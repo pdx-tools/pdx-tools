@@ -1,0 +1,38 @@
+version: '3'
+services:
+  db:
+    image: postgres:14-alpine
+    ports:
+      - "${DATABASE_PORT}:5432"
+    volumes:
+      - "./sql:/docker-entrypoint-initdb.d:ro"
+    environment:
+      - DATABASE_APP_USER=${DATABASE_USER}
+      - DATABASE_APP_USER_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_PASSWORD=${DATABASE_ADMIN_PASSWORD}
+      - DATABASE_BACKUP_PASSWORD=${DATABASE_BACKUP_PASSWORD}
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "${REDIS_PORT}:6379"
+
+  s3:
+    image: minio/minio
+    environment:
+      - MINIO_ROOT_USER=${S3_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${S3_SECRET_KEY}
+    ports:
+      - "${S3_PORT}:9000"
+    command: server /data
+
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - s3
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config --insecure host add myminio https://s3:9000 miniominio minio12minio;
+      /usr/bin/mc mb --insecure --ignore-existing myminio/savefiles;
+      exit 0;
+      "

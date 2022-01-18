@@ -1,0 +1,17 @@
+[package]
+name = "wasm-ck3"
+version = "0.1.0"
+authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+serde = { version = "1", features = ["derive"] }
+ck3save = "0.2"
+js-sys = "0.3"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

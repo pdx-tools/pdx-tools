@@ -1,0 +1,10 @@
+[package]
+name = "schemas"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+flatbuffers = "2"
+
+[build-dependencies]
+flatc-rust = "*"

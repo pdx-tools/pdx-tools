@@ -1,0 +1,13 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": { 
+    // https://github.com/ant-design/ant-design/issues/26111#issuecomment-671165964
+    // https://github.com/ant-design/ant-design/blob/13a829d20c8a1a83c3bfa1f9d7c30d95659f5b57/.eslintrc.js#L95
+    "react/display-name": "off",
+
+    // https://github.com/yannickcr/eslint-plugin-react/issues/894#issuecomment-613789396
+    "react/no-unescaped-entities": ["error", { "forbid": [">", "}"] }],
+
+    "@next/next/no-img-element": "off"
+  }
+}

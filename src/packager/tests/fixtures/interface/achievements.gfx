@@ -1,0 +1,1540 @@
+spriteTypes = {
+
+	spriteType = {
+		name = "GFX_achievements_bg"
+		texturefile = "gfx//interface//modifier_bg.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_entry_bg"
+		texturefile = "gfx//interface//modifier_entry_bg.dds"
+	}
+	
+	progressbartype = {
+		name = "achievement_progress"
+		color = { 0.0 0.5 0.0 }
+		colortwo = { 1.0 0.0 0.0 }
+		textureFile1 = "gfx//interface//modifier_progress_w72_h18_green.dds"
+		textureFile2 = "gfx//interface//modifier_progress_w72_h18_red.dds"
+		size = { x = 72 y = 18 }
+		effectFile = "gfx//FX//progress.lua"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_progress_frame"
+		texturefile = "gfx//interface//modifier_progress_frame.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_progress_text_bg"
+		texturefile = "gfx//interface//achievement_progress_text_bg.dds"
+	}
+	
+	########################
+	### ALL ACHIEVEMENTS ###
+	########################
+	
+	spriteType = {
+		name = "GFX_achievement_1"
+		texturefile = "gfx//interface//achievements//achievement_for_the_glory.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_2"
+		texturefile = "gfx//interface//achievements//achievement_grand_army.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_3"
+		texturefile = "gfx//interface//achievements//achievement_grand_navy.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_4"
+		texturefile = "gfx//interface//achievements//achievement_defender_of_the_faith.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_5"
+		texturefile = "gfx//interface//achievements//achievement_until_death_do_us_apart.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_6"
+		texturefile = "gfx//interface//achievements//achievement_that_is_mine.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_7"
+		texturefile = "gfx//interface//achievements//achievement_victorious.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_8"
+		texturefile = "gfx//interface//achievements//achievement_emperors_new_clothes.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_9"
+		texturefile = "gfx//interface//achievements//achievement_down_under.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_10"
+		texturefile = "gfx//interface//achievements//achievement_isnt_this_the_way_to_india.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_11"
+		texturefile = "gfx//interface//achievements//achievement_azur_seme_de_lis_or.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_12"
+		texturefile = "gfx//interface//achievements//achievement_not_so_sad_a_state.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_13"
+		texturefile = "gfx//interface//achievements//achievement_seriously.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_14"
+		texturefile = "gfx//interface//achievements//achievement_its_all_about_the_money.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_15"
+		texturefile = "gfx//interface//achievements//achievement_respected.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_16"
+		texturefile = "gfx//interface//achievements//achievement_true_catholic.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_17"
+		texturefile = "gfx//interface//achievements//achievement_truly_divine_ruler.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_18"
+		texturefile = "gfx//interface//achievements//achievement_italian_ambition.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_19"
+		texturefile = "gfx//interface//achievements//achievement_cold_war.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_20"
+		texturefile = "gfx//interface//achievements//achievement_royal_authority.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_21"
+		texturefile = "gfx//interface//achievements//achievement_viva_la_revolucion.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_22"
+		texturefile = "gfx//interface//achievements//achievement_brothers_in_arms.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_23"
+		texturefile = "gfx//interface//achievements//achievement_no_pirates_in_my_carribean.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_24"
+		texturefile = "gfx//interface//achievements//achievement_master_of_india.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_25"
+		texturefile = "gfx//interface//achievements//achievement_sweden_is_not_overpowered.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_26"
+		texturefile = "gfx//interface//achievements//achievement_my_armies_are_invincible.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_27"
+		texturefile = "gfx//interface//achievements//achievement_this_navy_can_take_it_all.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_28"
+		texturefile = "gfx//interface//achievements//achievement_the_pen_is_mightier_than_the_sword.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_29"
+		texturefile = "gfx//interface//achievements//achievement_traditional_player.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_30"	
+		texturefile = "gfx//interface//achievements//achievement_its_all_about_luck.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_31"
+	texturefile = "gfx//interface//achievements//achievement_all_belongs_to_mother_russia.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_32"
+		texturefile = "gfx//interface//achievements//achievement_at_every_continent.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_33"
+		texturefile = "gfx//interface//achievements//achievement_spain_is_the_emperor.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_34"
+		texturefile = "gfx//interface//achievements//achievement_an_early_reich.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_35"
+		texturefile = "gfx//interface//achievements//achievement_poland_can_into_space.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_36"
+		texturefile = "gfx//interface//achievements//achievement_world_discoverer.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_37"
+		texturefile = "gfx//interface//achievements//achievement_the_chrysanthemum_throne.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_38"
+		texturefile = "gfx//interface//achievements//achievement_basileus.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_39"
+		texturefile = "gfx//interface//achievements//achievement_agressive_expander.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_40"
+		texturefile = "gfx//interface//achievements//achievement_kaiser_not_just_in_name.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_41"
+		texturefile = "gfx//interface//achievements//achievement_norwegian_wood.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_42"
+		texturefile = "gfx//interface//achievements//achievement_african_power.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_43"
+		texturefile = "gfx//interface//achievements//achievement_no_trail_of_tears.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_44"
+		texturefile = "gfx//interface//achievements//achievement_one_night_in_paris.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_45"
+		texturefile = "gfx//interface//achievements//achievement_definitely_the_sultan_of_rum.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_46"
+		texturefile = "gfx//interface//achievements//achievement_market_control.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_47"
+		texturefile = "gfx//interface//achievements//achievement_ruina_imperii.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_48"
+		texturefile = "gfx//interface//achievements//achievement_world_conqueror.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_49"
+		texturefile = "gfx//interface//achievements//achievement_the_three_mountains.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_50"
+		texturefile = "gfx//interface//achievements//achievement_jihad.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_51"
+		texturefile = "gfx//interface//achievements//achievement_grand_coalition.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_52"
+		texturefile = "gfx//interface//achievements//achievement_winged_hussars.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_53"
+		texturefile = "gfx//interface//achievements//achievement_trade_hegemon.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_54"
+		texturefile = "gfx//interface//achievements//achievement_sunset_invasion.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_55"
+		texturefile = "gfx//interface//achievements//achievement_luck_of_the_irish.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_56"
+		texturefile = "gfx//interface//achievements//achievement_just_a_little_patience.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_57"
+		texturefile = "gfx//interface//achievements//achievement_turning_the_tide.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_58"
+		texturefile = "gfx//interface//achievements//achievement_double_the_love.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_59"
+		texturefile = "gfx//interface//achievements//achievement_liberty_or_death.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_60"
+		texturefile = "gfx//interface//achievements//achievement_nobody_wants_to_die.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_61"
+		texturefile = "gfx//interface//achievements//achievement_in_the_name_of_the_father.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_62"
+		texturefile = "gfx//interface//achievements//achievement_the_rising_sun.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_63"
+		texturefile = "gfx//interface//achievements//achievement_the_five_colonies.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_64"
+		texturefile = "gfx//interface//achievements//achievement_the_re_reconquista.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_65"
+		texturefile = "gfx//interface//achievements//achievement_turn_the_table.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_66"
+		texturefile = "gfx//interface//achievements//achievement_the_great_khan.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_67"
+		texturefile = "gfx//interface//achievements//achievement_four_for_trade.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_68"
+		texturefile = "gfx//interface//achievements//achievement_the_grand_armada.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_69"
+		texturefile = "gfx//interface//achievements//achievement_je_maintiendrai.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_70"
+		texturefile = "gfx//interface//achievements//achievement_a_protected_market.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_71"
+		texturefile = "gfx//interface//achievements//achievement_queen_of_mercury.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_72"
+		texturefile = "gfx//interface//achievements//achievement_a_pile_of_gold.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_73"
+		texturefile = "gfx//interface//achievements//achievement_sons_of_carthage.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_74"
+		texturefile = "gfx//interface//achievements//achievement_the_princess_is_in_this_castle.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_75"
+		texturefile = "gfx//interface//achievements//achievement_electable.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_76"
+		texturefile = "gfx//interface//achievements//achievement_vasa_or_wettin.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_77"
+		texturefile = "gfx//interface//achievements//achievement_sinaasappel.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_78"
+		texturefile = "gfx//interface//achievements//achievement_one_king_to_rule.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_79"
+		texturefile = "gfx//interface//achievements//achievement_venetian_sea.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_80"
+		texturefile = "gfx//interface//achievements//achievement_iron_price.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_81"
+		texturefile = "gfx//interface//achievements//achievement_total_control.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_82"
+		texturefile = "gfx//interface//achievements//achievement_center_of_attention.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_83"
+		texturefile = "gfx//interface//achievements//achievement_this_revolution_was_crushed.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_84"
+		texturefile = "gfx//interface//achievements//achievement_a_manchurian_candidate.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_85"
+		texturefile = "gfx//interface//achievements//achievement_land_of_eastern_jade.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_86"
+		texturefile = "gfx//interface//achievements//achievement_thats_a_silk_road.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_87"
+		texturefile = "gfx//interface//achievements//achievement_my_true_friend.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_88"
+		texturefile = "gfx//interface//achievements//achievement_marshy_march.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_89"
+		texturefile = "gfx//interface//achievements//achievement_shahanshah.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_90"
+		texturefile = "gfx//interface//achievements//achievement_die_please_die.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_91"
+		texturefile = "gfx//interface//achievements//achievement_holy_trinity.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_92"
+		texturefile = "gfx//interface//achievements//achievement_switzerlake.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_93"
+		texturefile = "gfx//interface//achievements//achievement_king_of_jerusalem.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_94"
+		texturefile = "gfx//interface//achievements//achievement_krabater.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_95"
+		texturefile = "gfx//interface//achievements//achievement_lion_of_the_north.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_96"
+		texturefile = "gfx//interface//achievements//achievement_guaranteer_of_peace.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_97"
+		texturefile = "gfx//interface//achievements//achievement_servitor_of_jagannath.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_98"
+		texturefile = "gfx//interface//achievements//achievement_bengal_tiger.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_99"
+		texturefile = "gfx//interface//achievements//achievement_prester_john.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_100"
+		texturefile = "gfx//interface//achievements//achievement_auld_alliance.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_101"
+		texturefile = "gfx//interface//achievements//achievement_gothic_invasion.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_102"
+		texturefile = "gfx//interface//achievements//achievement_kow_tow.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_103"
+		texturefile = "gfx//interface//achievements//achievement_barbarossa.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_104"
+		texturefile = "gfx//interface//achievements//achievement_georgia_on_my_mind.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_105"
+		texturefile = "gfx//interface//achievements//achievement_albania_or_iberia.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_106"
+		texturefile = "gfx//interface//achievements//achievement_spice_must_flow.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_107"
+		texturefile = "gfx//interface//achievements//achievement_raja_of_the_rajput_reich.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_108"
+		texturefile = "gfx//interface//achievements//achievement_sun_never_sets_on_the_indian_empire.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_109"
+		texturefile = "gfx//interface//achievements//achievement_over_a_thousand.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_110"
+		texturefile = "gfx//interface//achievements//achievement_draculas_revenge.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_111"
+		texturefile = "gfx//interface//achievements//achievement_arabian_coffee.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_112"
+		texturefile = "gfx//interface//achievements//achievement_even_better_than_piet_heyn.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_113"
+		texturefile = "gfx//interface//achievements//achievement_a_sun_god.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_114"
+		texturefile = "gfx//interface//achievements//achievement_on_the_edge_of_madness.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_115"
+		texturefile = "gfx//interface//achievements//achievement_magellans_voyage.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_116"
+		texturefile = "gfx//interface//achievements//achievement_imperio_espanol.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_117"
+		texturefile = "gfx//interface//achievements//achievement_blockader.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_118"
+		texturefile = "gfx//interface//achievements//achievement_this_is_persia.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_119"
+		texturefile = "gfx//interface//achievements//achievement_kirishitan_japan.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_120"
+		texturefile = "gfx//interface//achievements//achievement_hessian_mercenaries.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_121"
+		texturefile = "gfx//interface//achievements//achievement_baltic_crusader.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_122"
+		texturefile = "gfx//interface//achievements//achievement_neither_holy_nor_german.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_123"
+		texturefile = "gfx//interface//achievements//achievement_colonial_management.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_124"
+		texturefile = "gfx//interface//achievements//achievement_voting_streak.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_125"
+		texturefile = "gfx//interface//achievements//achievement_industrial_evolution.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_126"
+		texturefile = "gfx//interface//achievements//achievement_city_of_cities.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_127"
+		texturefile = "gfx//interface//achievements//achievement_one_family_to_rule_them_all.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_128"
+		texturefile = "gfx//interface//achievements//achievement_this_is_my_faith.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_129"
+		texturefile = "gfx//interface//achievements//achievement_bleed_them_dry.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_130"
+		texturefile = "gfx//interface//achievements//achievement_subsidize_my_love.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_131"
+		texturefile = "gfx//interface//achievements//achievement_take_that_habsburgs.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_132"
+		texturefile = "gfx//interface//achievements//achievement_white_elephant.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_133"
+		texturefile = "gfx//interface//achievements//achievement_buddhists_strike_back.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_134"
+		texturefile = "gfx//interface//achievements//achievement_better_than_napoleon.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_135"
+		texturefile = "gfx//interface//achievements//achievement_big_blue_blob.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_136"
+		texturefile = "gfx//interface//achievements//achievement_full_house.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_137"
+		texturefile = "gfx//interface//achievements//achievement_black_jack.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_138"
+		texturefile = "gfx//interface//achievements//achievement_a_decent_reserve.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_139"
+		texturefile = "gfx//interface//achievements//achievement_six_nations.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_140"
+		texturefile = "gfx//interface//achievements//achievement_the_bohemians.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_141"
+		texturefile = "gfx//interface//achievements//achievement_komenoi_empire.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_142"
+		texturefile = "gfx//interface//achievements//achievement_lucky_lucca.dds"
+	}	
+	
+		spriteType = {
+		name = "GFX_achievement_143"
+		texturefile = "gfx//interface//achievements//achievement_fine_goosestep.dds"
+	}	
+	
+		spriteType = {
+		name = "GFX_achievement_144"
+		texturefile = "gfx//interface//achievements//achievement_meissner_porcelain.dds"
+	}	
+	
+		spriteType = {
+		name = "GFX_achievement_145"
+		texturefile = "gfx//interface//achievements//achievement_all_your_trade_are_belong_to_us.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_146"
+		texturefile = "gfx//interface//achievements//achievement_grand_duchy.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_147"
+		texturefile = "gfx//interface//achievements//achievement_rags_and_riches.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_148"
+		texturefile = "gfx//interface//achievements//achievement_strait_talk.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_149"
+		texturefile = "gfx//interface//achievements//achievement_academical.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_150"
+		texturefile = "gfx//interface//achievements//achievement_one_faith.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_151"
+		texturefile = "gfx//interface//achievements//achievement_dar_al_islam.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_152"
+		texturefile = "gfx//interface//achievements//achievement_the_uncommonwealth.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_153"
+		texturefile = "gfx//interface//achievements//achievement_the_burgundian_inheritance.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_154"
+		texturefile = "gfx//interface//achievements//achievement_the_third_way.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_155"
+		texturefile = "gfx//interface//achievements//achievement_back_to_the_piast.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_156"
+		texturefile = "gfx//interface//achievements//achievement_great_perm.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_157"
+		texturefile = "gfx//interface//achievements//achievement_lazarus.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_158"
+		texturefile = "gfx//interface//achievements//achievement_frozen_assets.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_159"
+		texturefile = "gfx//interface//achievements//achievement_tatarstan.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_160"
+		texturefile = "gfx//interface//achievements//achievement_terra_mariana.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_161"
+		texturefile = "gfx//interface//achievements//achievement_blood_for_the_sky_god.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_162"
+		texturefile = "gfx//interface//achievements//achievement_pyramid_of_skulls.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_163"
+		texturefile = "gfx//interface//achievements//achievement_trustworthy.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_164"
+		texturefile = "gfx//interface//achievements//achievement_the_continuation_of_diplomacy.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_165"
+		texturefile = "gfx//interface//achievements//achievement_factionalism.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_166"
+		texturefile = "gfx//interface//achievements//achievement_from_humble_origins.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_167"
+		texturefile = "gfx//interface//achievements//achievement_ideas_guy.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_168"
+		texturefile = "gfx//interface//achievements//achievement_for_odin.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_169"
+		texturefile = "gfx//interface//achievements//achievement_rekindling_the_flames.dds"
+	}	
+
+		spriteType = {
+		name = "GFX_achievement_170"
+		texturefile = "gfx//interface//achievements//achievement_first_come_first_serve.dds"
+	}	
+	
+		spriteType = {
+		name = "GFX_achievement_171"
+		texturefile = "gfx//interface//achievements//achievement_mare_nostrum.dds"
+	}		
+
+		spriteType = {
+		name = "GFX_achievement_172"
+		texturefile = "gfx//interface//achievements//achievement_kuban_cigars.dds"
+	}
+	
+		spriteType = {
+		name = "GFX_achievement_173"
+		texturefile = "gfx//interface//achievements//achievement_kushite_restoration.dds"
+	}
+	
+		spriteType = {
+		name = "GFX_achievement_174"
+		texturefile = "gfx//interface//achievements//achievement_the_fezzan_corridors.dds"
+	}
+
+		spriteType = {
+		name = "GFX_achievement_175"
+		texturefile = "gfx//interface//achievements//achievement_victorian_three.dds"
+	}
+
+		spriteType = {
+		name = "GFX_achievement_176"
+		texturefile = "gfx//interface//achievements//achievement_the_animal_kingdom.dds"
+	}
+
+		spriteType = {
+		name = "GFX_achievement_177"
+		texturefile = "gfx//interface//achievements//achievement_golden_horn.dds"
+	}
+
+		spriteType = {
+		name = "GFX_achievement_178"
+		texturefile = "gfx//interface//achievements//achievement_kinslayer.dds"
+	}
+
+		spriteType = {
+		name = "GFX_achievement_179"
+		texturefile = "gfx//interface//achievements//achievement_choson_one.dds"
+	}
+
+		spriteType = {
+		name = "GFX_achievement_180"
+		texturefile = "gfx//interface//achievements//achievement_sailor_mon.dds"
+	}
+
+		spriteType = {
+		name = "GFX_achievement_181"
+		texturefile = "gfx//interface//achievements//achievement_networking.dds"
+	}
+
+		spriteType = {
+		name = "GFX_achievement_182"
+		texturefile = "gfx//interface//achievements//achievement_the_white_company.dds"
+	}
+
+		spriteType = {
+		name = "GFX_achievement_183"
+		texturefile = "gfx//interface//achievements//achievement_time_bandit.dds"
+	}
+
+		spriteType = {
+		name = "GFX_achievement_184"
+		texturefile = "gfx//interface//achievements//achievement_with_a_little_help.dds"
+	}
+
+		spriteType = {
+		name = "GFX_achievement_185"
+		texturefile = "gfx//interface//achievements//achievement_just_resting_in_my_account.dds"
+	}
+
+	# Rights of Man
+		
+	spriteType = {
+		name = "GFX_achievement_186"
+		texturefile = "gfx/interface/achievements/cities_of_cibola.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_187"
+		texturefile = "gfx/interface/achievements/turkish_delight.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_188"
+		texturefile = "gfx/interface/achievements/baa_baa_black_sheep.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_189"
+		texturefile = "gfx/interface/achievements/fanatic_collectivist.dds"
+	}
+	
+	spriteType = {
+		name = "GFX_achievement_190"
+		texturefile = "gfx/interface/achievements/core_fu.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_191"
+		texturefile = "gfx/interface/achievements/rozwi_empire.dds"
+	}
+	
+	spriteType = {
+		name = "GFX_achievement_192"
+		texturefile = "gfx/interface/achievements/the_sudanese_expedition.dds"
+	}
+	
+	spriteType = {
+		name = "GFX_achievement_193"
+		texturefile = "gfx/interface/achievements/a_tale_of_two_families.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_194"
+		texturefile = "gfx/interface/achievements/abu_bakr_iis_ambition.dds"
+	}
+	
+	spriteType = {
+		name = "GFX_achievement_195"
+		texturefile = "gfx/interface/achievements/consulate_of_the_sea.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_196"
+		texturefile = "gfx/interface/achievements/we_bled_for_this.dds"
+	}
+	
+	spriteType = {
+		name = "GFX_achievement_197"
+		texturefile = "gfx/interface/achievements/pick_your_poison.dds"
+	}	
+
+	spriteType = {
+		name = "GFX_achievement_198"
+		texturefile = "gfx/interface/achievements/not_just_pizza.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_199"
+		texturefile = "gfx/interface/achievements/all_thats_thine_shall_be_mine.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_200"
+		texturefile = "gfx/interface/achievements/a_blessed_nation.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_201"
+		texturefile = "gfx/interface/achievements/queen_of_conquest.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_202"
+		texturefile = "gfx/interface/achievements/aaa_credit.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_203"
+		texturefile = "gfx/interface/achievements/hoarder.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_204"
+		texturefile = "gfx/interface/achievements/gentle_persuasion.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_205"
+		texturefile = "gfx/interface/achievements/combined_arms.dds"
+	}
+	
+	spriteType = {
+		name = "GFX_achievement_218"
+		texturefile = "gfx/interface/achievements/achievement_live_long_and_prosper.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_219"
+		texturefile = "gfx/interface/achievements/achievement_tear_down_this_wall.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_220"
+		texturefile = "gfx/interface/achievements/achievement_a_golden_empire.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_216"
+		texturefile = "gfx/interface/achievements/achievement_qing_of_china.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_221"
+		texturefile = "gfx/interface/achievements/achievement_cherrypicking.dds"
+	}
+	spriteType = {
+		name = "GFX_achievement_215"
+		texturefile = "gfx/interface/achievements/achievement_three_trivial_tributary_tribes.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_222"
+		texturefile = "gfx/interface/achievements/achievement_these_banners_need_a_saga.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_223"
+		texturefile = "gfx/interface/achievements/achievement_sweet_harmony.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_217"
+		texturefile = "gfx/interface/achievements/achievement_carthago_delenda_est.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_224"
+		texturefile = "gfx/interface/achievements/achievement_sakoku_law.dds"
+	}
+	spriteType = {
+		name = "GFX_achievement_214"
+		texturefile = "gfx/interface/achievements/achievement_made_in_japan.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_207"
+		texturefile = "gfx/interface/achievements/achievement_the_navigator.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_225"
+		texturefile = "gfx/interface/achievements/achievement_absolutely.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_209"
+		texturefile = "gfx/interface/achievements/achievement_ill_graze_my_horse_here.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_206"
+		texturefile = "gfx/interface/achievements/achievement_turtles_all_the_way_down.dds"
+	}
+	spriteType = {
+		name = "GFX_achievement_211"
+		texturefile = "gfx/interface/achievements/achievement_where_the_heart_is.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_208"
+		texturefile = "gfx/interface/achievements/achievement_gold_rush.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_213"
+		texturefile = "gfx/interface/achievements/achievement_the_first_toungoo_empire.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_210"
+		texturefile = "gfx/interface/achievements/achievement_rise_of_the_white_sheep.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_212"
+		texturefile = "gfx/interface/achievements/achievement_disciples_of_enlightenment.dds"
+	}
+	
+### Third Rome	
+	spriteType = {
+		name = "GFX_achievement_226"
+		texturefile = "gfx/interface/achievements/achievement_dovmonts_own.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_227"
+		texturefile = "gfx/interface/achievements/achievement_redecorating.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_228"
+		texturefile = "gfx/interface/achievements/achievement_breaking_the_yoke.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_229"
+		texturefile = "gfx/interface/achievements/achievement_back_in_control.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_230"
+		texturefile = "gfx/interface/achievements/achievement_mass_production.dds"
+	}
+	
+	spriteType = {
+		name = "GFX_achievement_231"
+		texturefile = "gfx/interface/achievements/achievement_relentless_push_east.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_232"
+		texturefile = "gfx/interface/achievements/achievement_laughingstock.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_233"
+		texturefile = "gfx/interface/achievements/achievement_lessons_of_hemmingstedt.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_234"
+		texturefile = "gfx/interface/achievements/achievement_its_all_greek_to_me.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_235"
+		texturefile = "gfx/interface/achievements/achievement_the_52_garhs.dds"
+	}	
+	
+	
+### Cradle of Civilization
+	spriteType = {
+		name = "GFX_achievement_236"
+		texturefile = "gfx/interface/achievements/achievement_bunte_kuh.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_237"
+		texturefile = "gfx/interface/achievements/achievement_good_king_renee.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_238"
+		texturefile = "gfx/interface/achievements/achievement_saladins_legacy.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_239"
+		texturefile = "gfx/interface/achievements/achievement_avar_khaganate.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_240"
+		texturefile = "gfx/interface/achievements/achievement_protect_the_secret.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_241"
+		texturefile = "gfx/interface/achievements/achievement_great_moravia.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_242"
+		texturefile = "gfx/interface/achievements/achievement_a_heros_welcome.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_243"
+		texturefile = "gfx/interface/achievements/achievement_david_the_builder.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_244"
+		texturefile = "gfx/interface/achievements/achievement_voltaires_nightmare.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_245"
+		texturefile = "gfx/interface/achievements/achievement_pandya_empire.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_246"
+		texturefile = "gfx/interface/achievements/achievement_the_prince_of_egypt.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_247"
+		texturefile = "gfx/interface/achievements/achievement_around_the_world_in_80_years.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_248"
+		texturefile = "gfx/interface/achievements/achievement_hard_bargaining.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_249"
+		texturefile = "gfx/interface/achievements/achievement_early-modern_warfare.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_250"
+		texturefile = "gfx/interface/achievements/achievement_sworn_fealty.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_251"
+		texturefile = "gfx/interface/achievements/achievement_parisian_pasha.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_252"
+		texturefile = "gfx/interface/achievements/achievement_multiculturalism.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_253"
+		texturefile = "gfx/interface/achievements/achievement_narcissism.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_254"
+		texturefile = "gfx/interface/achievements/achievement_the_levant_turnabout.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_255"
+		texturefile = "gfx/interface/achievements/achievement_cowardly_tactics.dds"
+	}	
+	
+### Rule Britannia
+
+	spriteType = {
+		name = "GFX_achievement_256"
+		texturefile = "gfx/interface/achievements/achievement_home_and_away.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_257"
+		texturefile = "gfx/interface/achievements/achievement_sleepless_in_seattle.dds"
+	}
+	
+	spriteType = {
+		name = "GFX_achievement_258"
+		texturefile = "gfx/interface/achievements/achievement_sun_invasion.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_259"
+		texturefile = "gfx/interface/achievements/achievement_empire_of_mann.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_260"
+		texturefile = "gfx/interface/achievements/achievement_dude_where_s_my_boat.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_261"
+		texturefile = "gfx/interface/achievements/achievement_industrial_powerhouse.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_262"
+		texturefile = "gfx/interface/achievements/achievement_chop_chop.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_263"
+		texturefile = "gfx/interface/achievements/achievement_bright_spark.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_264"
+		texturefile = "gfx/interface/achievements/achievement_anglophile.dds"
+	}
+
+	spriteType = {
+		name = "GFX_achievement_265"
+		texturefile = "gfx/interface/achievements/achievement_philippine_tiger.dds"
+	}	
+	
+	
+### Dharma
+
+	spriteType = {
+		name = "GFX_achievement_266"
+		texturefile = "gfx/interface/achievements/achievement_mewar_never_changes.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_267"
+		texturefile = "gfx/interface/achievements/achievement_fine_financials.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_268"
+		texturefile = "gfx/interface/achievements/achievement_the_coin_is_stronger_than_the_sword.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_269"
+		texturefile = "gfx/interface/achievements/achievement_sweet_home_qaraqorum.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_270"
+		texturefile = "gfx/interface/achievements/achievement_the_ostenders.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_271"
+		texturefile = "gfx/interface/achievements/achievement_ganges_khan.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_272"
+		texturefile = "gfx/interface/achievements/achievement_foul_mouthed.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_273"
+		texturefile = "gfx/interface/achievements/achievement_populists_in_government.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_274"
+		texturefile = "gfx/interface/achievements/achievement_maharana_pratap.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_275"
+		texturefile = "gfx/interface/achievements/achievement_eat_your_greens.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_276"
+		texturefile = "gfx/interface/achievements/achievement_emperor_of_hindustan.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_277"
+		texturefile = "gfx/interface/achievements/achievement_true_heir_of_timor.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_278"
+		texturefile = "gfx/interface/achievements/achievement_ostindisk_kompagni_te.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_279"
+		texturefile = "gfx/interface/achievements/achievement_sikh_pun.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_280"
+		texturefile = "gfx/interface/achievements/achievement_pirate_bay_of_janjira.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_281"
+		texturefile = "gfx/interface/achievements/achievement_never_say_never.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_282"
+		texturefile = "gfx/interface/achievements/achievement_forgive_me_for_i_have_sind.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_283"
+		texturefile = "gfx/interface/achievements/achievement_cotton_kandy.dds"
+	}	
+	
+	
+	spriteType = {
+		name = "GFX_achievement_284"
+		texturefile = "gfx/interface/achievements/achievement_the_pheasant_strut.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_285"
+		texturefile = "gfx/interface/achievements/achievement_tiger_of_mysore.dds"
+	}	
+	
+	
+	### Golden Century
+	
+	spriteType = {
+		name = "GFX_achievement_286"
+		texturefile = "gfx/interface/achievements/trophy_hunter.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_287"
+		texturefile = "gfx/interface/achievements/yarr_harr_a_pirates_life_for_me.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_288"
+		texturefile = "gfx/interface/achievements/why_is_the_rum_gone.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_289"
+		texturefile = "gfx/interface/achievements/you_get_a_new_home.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_290"
+		texturefile = "gfx/interface/achievements/forever_golden.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_291"
+		texturefile = "gfx/interface/achievements/basque_in_glory.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_292"
+		texturefile = "gfx/interface/achievements/an_unlikely_candidate.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_293"
+		texturefile = "gfx/interface/achievements/spanish_fly.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_294"
+		texturefile = "gfx/interface/achievements/the_league_of_mayapan.dds"
+	}	
+	
+	spriteType = {
+		name = "GFX_achievement_295"
+		texturefile = "gfx/interface/achievements/where_am_i.dds"
+	}	
+	
+}

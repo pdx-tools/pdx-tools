@@ -1,0 +1,90 @@
+namespace Rakaly.Eu4;
+
+enum Terrain : ubyte {
+  Grasslands = 0,
+  Hills = 1,
+  Mountains = 2,
+  Desert = 3,
+  Farmlands = 10,
+  Forest = 12,
+  Ocean = 15,
+  InlandOcean = 17,
+  CoastalDesert = 19,
+  Savannah = 20,
+  Drylands = 22,
+  Highlands = 23,
+  Coastline = 35,
+
+  Glacier,
+  ImpassableMountain,
+  Marsh,
+  Steppe,
+  Wasteland,
+
+  Jungle = 254,
+  Woods = 255,
+}
+
+struct Rgb {
+  r:uint8;
+  g:uint8;
+  b:uint8;
+}
+
+table Country {
+  tag:string (key);
+  name:string;
+  adjective:string;
+  culturegfx:string;
+}
+
+table Province {
+  id:uint16 (key);
+  terrain:Terrain;
+  province_is_on_an_island:bool;
+  center_x: uint16;
+  center_y: uint16;
+}
+
+table EntryUI16List {
+  key:string (key);
+  value:[uint16];
+}
+
+table EntryString {
+  key: string (key);
+  value:string;
+}
+
+table EntryStringList {
+  key: string (key);
+  value:[string];
+}
+
+table Religion {
+  key: string (key);
+  name: string (required);
+  color: Rgb (required);
+}
+
+table Game {
+  countries:[Country];
+
+  /// includes placeholder provinces in count (like 3489)
+  total_provinces: uint32;
+
+  /// excludes placholder provinces
+  provinces:[Province];
+  localization:[EntryString];
+  areas:[EntryUI16List];
+  regions:[EntryStringList];
+  superregions:[EntryStringList];
+  continents:[EntryUI16List];
+  culture_groups:[EntryStringList];
+  trade_companies:[EntryString];
+  personalities:[EntryString];
+  advisors:[EntryString];
+  religions:[Religion];
+}
+
+root_type Game;

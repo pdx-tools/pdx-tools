@@ -1,0 +1,13 @@
+# Used as an override for the test docker-file to add HTTPS to minio and our app
+version: '3'
+services:
+  s3:
+    volumes:
+      - "./certs/minio:/root/.minio/certs"
+
+  nginx:
+    image: nginx:stable
+    network_mode: "host"
+    volumes:
+      - "./certs/localhost:/etc/ssl/localhost:ro"
+      - "./nginx.conf:/etc/nginx/conf.d/default.conf:ro"

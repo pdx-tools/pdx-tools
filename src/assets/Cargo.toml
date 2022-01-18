@@ -1,0 +1,17 @@
+[package]
+name = "assets"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1"
+aws-config = "0.4.1"
+aws-sdk-s3 = "0.4.1"
+chrono = "0.4"
+filetime = "0.2"
+pico-args = "0.4"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1.8"
+walkdir = "2"

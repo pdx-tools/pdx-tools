@@ -1,0 +1,6 @@
+.next/cache
+node_modules
+!node_modules/.prisma
+**/*.png
+**/*.webp
+**/*.bin

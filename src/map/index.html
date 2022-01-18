@@ -1,0 +1,131 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
+    <title>WebGL Playground</title>
+    <style>
+      body {
+        margin: 0;
+      }
+
+      #canvasContainer, #canvasControls {
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+        width: 100%;
+      }
+
+      #canvasUi {
+        position: absolute;
+        width: 150px;
+        background-color: white;
+        padding-left: 1em;
+        padding-top: 1em;
+        padding-bottom: 1em;
+        bottom: 0;
+        border-top-right-radius: 10px;
+        box-shadow: 3px -4px 10px #333;
+        border: #666 solid;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="canvasContainer" style="touch-action: none;">
+      <div id="canvasControls" style="display: none">
+        <div id="canvasUi">
+          <div>
+            <button id="btn-zoom-in">+</button>
+            <button id="btn-zoom-out">-</button>
+          </div>
+          <div>
+            <input type="checkbox" id="render-terrain" checked/>
+            <label for="render-terrain">Render Terrain</label>
+          </div>
+          <div>
+            <span>Map Mode:</span>
+            <div>
+              <input
+                type="radio"
+                id="political"
+                name="mapmode"
+                value="political"
+                checked
+              />
+              <label for="political">Political</label>
+            </div>
+            <div>
+              <input type="radio" id="political-player" name="mapmode" value="political-player" />
+              <label for="political-player">Political Player</label>
+            </div>
+            <div>
+              <input type="radio" id="religion" name="mapmode" value="religion" />
+              <label for="religion">Religion</label>
+            </div>
+            <div>
+              <input type="radio" id="religion-player" name="mapmode" value="religion-player" />
+              <label for="religion-player">Religion Player</label>
+            </div>
+            <div>
+              <input type="radio" id="terrain" name="mapmode" value="terrain" />
+              <label for="terrain">Terrain</label>
+            </div>
+          </div>
+          <div style="padding-top: 6px; padding-bottom: 6px">
+            <span>Borders:</span>
+            <div>
+              <input
+                type="checkbox"
+                id="province-borders"
+                name="bordermode"
+                value="province-borders"
+              />
+              <label for="province-borders">Province</label>
+            </div>
+            <div>
+              <input
+                type="checkbox"
+                id="country-borders"
+                name="bordermode"
+                value="country-borders"
+              />
+              <label for="country-borders">Country</label>
+            </div>
+            <div>
+              <input
+                type="checkbox"
+                id="map-mode-borders"
+                name="bordermode"
+                value="map-mode-borders"
+              />
+              <label for="map-mode-borders">Map Mode</label>
+            </div>
+          </div>
+          <div>
+            <span>Selected: </span>
+            <span id="selected-province-id"></span>
+          </div>
+          <div>
+            <span>Hover: </span>
+            <span id="hovered-province-id"></span>
+          </div>
+          <button id="btn-export">Export Image</button>
+          <button id="btn-full-export-1x">Export Full Image (1x)</button>
+          <button id="btn-full-export-2x">Export Full Image (2x)</button>
+          <button id="btn-full-export-3x" disabled>Export Full Image (3x)</button>
+        </div>
+
+        <canvas id="canvas" width="1200" height="600"></canvas>
+      </div>
+    </div>
+
+    <script
+      type="text/javascript"
+      src="https://cdn.jsdelivr.net/npm/almond@0.3.3/almond.min.js"
+    ></script>
+    <script type="text/javascript" src="./dist/index.js"></script>
+    <script>
+      require("index");
+    </script>
+  </body>
+</html>

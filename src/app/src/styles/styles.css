@@ -1,0 +1,58 @@
+:root {
+  --header-bg: #001529;
+  --secondary-light: 56, 99, 151;
+}
+
+#__next {
+  height: 100%;
+}
+
+.antd-center-list-items div.ant-row {
+  justify-content: center;
+}
+
+.antd-little-padding {
+  padding: 0 3px;
+}
+
+.antd-right-align {
+  text-align: right;
+}
+
+.no-break {
+  hyphens: none;
+  white-space: nowrap;
+}
+
+.antd-column-separator {
+  border-right: rgb(240, 240, 240) 1px solid;
+}
+
+/* https://github.com/csstools/sanitize.css/blob/092d0d85922bfa72d28e9e8d25d80a5437c8df44/assets.css */
+:where(img) {
+  height: auto;
+  max-width: 100%;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.grow {
+  flex-grow: 1;
+}
+
+.gap {
+  gap: 8px;
+}
+
+.items-center {
+  align-items: center;
+}

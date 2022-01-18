@@ -1,0 +1,143 @@
+use anyhow::{bail, Context};
+use aws_sdk_s3::{Client, Config, Credentials, Endpoint, Region};
+use chrono::{DateTime, TimeZone, Utc};
+use std::{collections::HashMap, fs::File, io::Write, path::Path};
+use tokio_stream::StreamExt;
+use walkdir::WalkDir;
+
+pub fn cmd(args: pico_args::Arguments) -> anyhow::Result<()> {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async { _cmd(args).await })
+}
+
+async fn _cmd(mut args: pico_args::Arguments) -> anyhow::Result<()> {
+    let access_key = args
+        .opt_value_from_str("--access-key")
+        .context("unable to parse access-key argument")?
+        .or_else(|| std::env::var("ACCESS_KEY").ok())
+        .context("missing access-key (--access-key or ACCESS_KEY)")?;
+
+    let secret_key = args
+        .opt_value_from_str("--secret-key")
+        .context("unable to parse secret-key argument")?
+        .or_else(|| std::env::var("SECRET_KEY").ok())
+        .context("missing secret-key (--secret-key or SECRET_KEY)")?;
+
+    let creds = Credentials::new(&access_key, &secret_key, None, None, "asset-cli");
+
+    let b2_s3 = "https://s3.us-west-002.backblazeb2.com";
+    let b2_endpoint = Endpoint::immutable(b2_s3.parse().unwrap());
+
+    let config = Config::builder()
+        .region(Region::new("us-west-002"))
+        .endpoint_resolver(b2_endpoint)
+        .credentials_provider(creds)
+        .build();
+
+    let client = Client::from_conf(config);
+
+    let object_list = client
+        .list_objects_v2()
+        .bucket("pdx-tools-build")
+        .prefix("game-bundles/")
+        .send()
+        .await
+        .context("unable to list objects")?;
+
+    let current_game_bundles: HashMap<String, _> = WalkDir::new("assets/game-bundles")
+        .into_iter()
+        .filter_map(|x| x.ok())
+        .filter(|x| x.path().is_file())
+        .map(|x| {
+            (
+                x.path().file_name().unwrap().to_str().unwrap().to_string(),
+                x.metadata().unwrap().modified().unwrap(),
+            )
+        })
+        .collect();
+
+    for object in object_list.contents().unwrap_or_default() {
+        let key = object.key().context("expected key to be defined")?;
+        let filename = key
+            .split('/')
+            .last()
+            .with_context(|| format!("expected {} to have filename", key))?;
+
+        let local_equivalent = current_game_bundles.get(filename);
+        let mut download = local_equivalent.is_none();
+        if let Some(created) = local_equivalent {
+            let lm = object
+                .last_modified()
+                .with_context(|| format!("expected {} to have last modified", key))?;
+            let remote_modified = Utc.timestamp(lm.secs(), lm.subsec_nanos());
+            let local_modified: DateTime<Utc> = (*created).into();
+
+            match remote_modified.cmp(&local_modified) {
+                std::cmp::Ordering::Greater => download = true,
+                std::cmp::Ordering::Equal => {}
+                std::cmp::Ordering::Less => {
+                    bail!(
+                        "{} has a local time farther in the future than remote.",
+                        key
+                    );
+                }
+            }
+        }
+
+        if download {
+            println!("downloading {}", filename);
+            download_object(&client, key)
+                .await
+                .with_context(|| format!("unable to download {}", key))?;
+        }
+    }
+
+    let object_list = client
+        .list_objects_v2()
+        .bucket("pdx-tools-build")
+        .prefix("tokens/")
+        .send()
+        .await
+        .context("unable to list objects")?;
+
+    for object in object_list.contents().unwrap_or_default() {
+        let key = object.key().context("expected key to be defined")?;
+        download_object(&client, key)
+            .await
+            .with_context(|| format!("unable to download {}", key))?;
+    }
+
+    Ok(())
+}
+
+async fn download_object(client: &Client, key: &str) -> anyhow::Result<()> {
+    let mut obj = client
+        .get_object()
+        .bucket("pdx-tools-build")
+        .key(key)
+        .send()
+        .await
+        .with_context(|| format!("unable to retrieve: {}", key))?;
+
+    let out_path = Path::new("assets").join(key);
+    std::fs::create_dir_all(out_path.parent().unwrap()).context("cannot create directories")?;
+
+    let mut file = File::create(&out_path)
+        .with_context(|| format!("unable to create {}", out_path.display()))?;
+
+    while let Some(bytes) = obj.body.next().await {
+        let data = bytes.context("download interrupted")?;
+        file.write(&data).context("unable to write to file")?;
+    }
+
+    let lm = obj
+        .last_modified()
+        .with_context(|| format!("expected {} to have last modified", key))?;
+    let mtime = filetime::FileTime::from_unix_time(lm.secs(), lm.subsec_nanos());
+
+    filetime::set_file_mtime(&out_path, mtime)
+        .with_context(|| format!("unable to set mtime on {}", out_path.display()))?;
+
+    println!("downloaded {}", key);
+    Ok(())
+}

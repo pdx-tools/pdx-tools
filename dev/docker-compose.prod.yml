@@ -1,0 +1,67 @@
+version: '3'
+services:
+  db:
+    image: postgres:14
+    restart: 'unless-stopped'
+    ports:
+      # So that we can expose it over a forwarded ssh connection and perform
+      # migrations
+      - "127.0.0.1:${DATABASE_EXPOSED_LOCAL_PORT}:5432"
+    environment:
+      - DATABASE_APP_USER=${DATABASE_USER}
+      - DATABASE_APP_USER_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_PASSWORD=${DATABASE_ADMIN_PASSWORD}
+      - DATABASE_BACKUP_PASSWORD=${DATABASE_BACKUP_PASSWORD}
+    volumes:
+      - "./sql:/docker-entrypoint-initdb.d:ro"
+      - pgdata:/var/lib/postgresql/data
+
+    # pg tune:
+    # DB Version: 14
+    # OS Type: linux
+    # DB Type: web
+    # Total Memory (RAM): 2 GB
+    # CPUs num: 2
+    # Connections num: 30
+    # Data Storage: ssd
+    command: >
+      -c max_connections=30
+      -c shared_buffers=512MB
+      -c effective_cache_size=1536MB
+      -c maintenance_work_mem=128MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=17476kB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c max_worker_processes=2
+      -c max_parallel_workers_per_gather=1
+      -c max_parallel_workers=2
+      -c max_parallel_maintenance_workers=1
+
+  redis:
+    image: redis:alpine
+    restart: 'unless-stopped'
+    volumes:
+      - redisdata:/data
+    command: redis-server --save 60 1 --loglevel warning
+
+  api:
+    image: docker.nbsoftsolutions.com/rakaly/app
+    restart: 'unless-stopped'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.tls=true"
+      - "traefik.http.routers.api.tls.certresolver=cloudflareresolver"
+      - "traefik.http.routers.api.rule=Host(`${PUBLIC_HOST}`) && !PathPrefix(`/api/admin`)"
+    volumes:
+      - ./.env.app:/app/.env:ro
+    logging:
+      driver: journald
+
+volumes:
+  redisdata:
+  pgdata:

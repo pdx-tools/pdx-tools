@@ -1,0 +1,25 @@
+[package]
+name = "wasm-eu4"
+version = "0.1.0"
+authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+js-sys = "0.3"
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+serde = { version = "1", features = ["derive"] }
+eu4save = { git = "https://github.com/rakaly/eu4save.git" }
+eu4game = { path = "../eu4game", default-features = false }
+schemas = { path = "../schemas" }
+tarsave = { path = "../tarsave" }
+tar = "0.4"
+zip = { version = "0.5", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.0"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

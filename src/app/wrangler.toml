@@ -1,0 +1,26 @@
+name = "rakaly"
+workers_dev = false
+type = "javascript"
+route = "rakaly.com/*"
+compatibility_date = "2021-09-18"
+
+[build]
+command = "cd workers-site && npm ci && npm run build"
+
+[build.upload]
+format = "service-worker"
+
+[vars]
+AWS_S3_BUCKET = ""
+
+[site]
+bucket = "./out"
+entry-point = "workers-site"
+
+# Ignore JS map files as they tend to be used for debugging, but more
+# importantly they will trip cloudflare KV value size of 10MB
+exclude = ["*.js.map"]
+
+[env.dev]
+name = "rakaly-dev"
+route = "dev.rakaly.com/*"

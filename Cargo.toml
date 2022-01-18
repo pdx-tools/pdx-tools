@@ -1,0 +1,38 @@
+[workspace]
+members = [
+    "src/admin",
+    "src/admin-shared",
+    "src/assets",
+    "src/create-bundle",
+    "src/packager",
+    "src/eu4game",
+    "src/eu4gamejs",
+    "src/schemas",
+    "src/tarsave",
+    "src/wasm-br",
+    "src/wasm-ck3",
+    "src/wasm-detect",
+    "src/wasm-eu4",
+    "src/wasm-hoi4",
+    "src/wasm-imperator",
+]
+
+[profile.release]
+lto = true
+codegen-units = 1
+
+[profile.bench]
+lto = true
+codegen-units = 1
+
+# We override the test profile so that our tests run in a tolerable time as
+# some of the asset files are heavyweight and can take a significant amount of
+# time. Here is some timing data recorded to run one test:
+#
+# cargo test                 0m15.037s
+# cargo test (opt-level=3)   0m9.644s
+# cargo test (+lto=thin)     0m0.907s
+# cargo test --release       0m0.620s
+[profile.test]
+opt-level = 3
+lto = "thin"

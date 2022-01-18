@@ -1,0 +1,19 @@
+[package]
+name = "eu4gamejs"
+version = "0.1.0"
+authors = ["nickbabcock <nbabcock19@hotmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = "2"
+napi-derive = "2"
+admin-shared = { path = "../admin-shared" }
+eu4game = { path = "../eu4game" }
+serde_json = "1"
+serde = {version = "1", features = ["derive"]}
+
+[build-dependencies]
+napi-build = "1"

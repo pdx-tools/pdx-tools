@@ -1,0 +1,34 @@
+# Used as an override for prod to make S3 self hosted
+version: '3'
+services:
+  s3:
+    image: minio/minio
+    restart: 'unless-stopped'
+    environment:
+      - MINIO_ROOT_USER=${S3_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${S3_SECRET_KEY}
+    volumes:
+      - s3data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.router-s3.entrypoints=websecure"
+      - "traefik.http.routers.router-s3.rule=Host(`s3.${PUBLIC_HOST}`)"
+      - "traefik.http.routers.router-s3.tls.certresolver=cloudflareresolver"
+      - "traefik.http.routers.router-s3.service=service-s3"
+      - "traefik.http.services.service-s3.loadbalancer.server.port=9000"
+    command: server /data
+
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - s3
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://s3:9000 ${S3_ACCESS_KEY} ${S3_SECRET_KEY};
+      /usr/bin/mc mb --ignore-existing myminio/${S3_BUCKET};
+      exit 0;
+      "
+
+volumes:
+  s3data:

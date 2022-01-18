@@ -1,0 +1,11 @@
+[package]
+name = "admin-shared"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+serde = {version = "1", features = ["derive"]}
+memmap = "0.7"
+eu4save = { git = "https://github.com/rakaly/eu4save.git", features = ["serialize"] }
+eu4game = { path = "../eu4game" }
+thiserror = "1"
