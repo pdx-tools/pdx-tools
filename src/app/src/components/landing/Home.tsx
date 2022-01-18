@@ -12,6 +12,10 @@ import { useSelector } from "react-redux";
 import { selectEngineError } from "@/features/engine";
 import { Alert } from "antd";
 import Link from "next/link";
+import { FirefoxIcon } from "../icons/FirefoxIcon";
+import { ChromeIcon } from "../icons/ChromeIcon";
+import { EdgeIcon } from "../icons/EdgeIcon";
+import { BrowserCheck } from "./BrowserCheck";
 
 interface HomeProps {
   openLink?: string;
@@ -132,6 +136,11 @@ export const Home: React.FC<HomeProps> = () => {
         img {
           height: fit-content;
         }
+
+        .divider {
+          height: 24px;
+          border-left: 1px dotted #d7d7db;
+        }
       `}</style>
 
       <div
@@ -169,11 +178,24 @@ export const Home: React.FC<HomeProps> = () => {
             alt="Screenshot showing map and graph"
           />
         </Shadow>
-        <div style={{ marginTop: "2rem" }}>
-          Curious?{" "}
-          <Link href="/eu4/saves/_9Hcw32JWTZRx6zK3FVuz">
-            <a>Load a sample</a>
-          </Link>
+        <div className="flex-col gap items-center">
+          <div style={{ marginTop: "2rem" }}>
+            Curious?{" "}
+            <Link href="/eu4/saves/_9Hcw32JWTZRx6zK3FVuz">
+              <a>Load a sample</a>
+            </Link>
+          </div>
+          <div className="flex-row gap">
+            <FirefoxIcon />
+            <div className="divider" />
+            <ChromeIcon />
+            <div className="divider" />
+            <EdgeIcon />
+          </div>
+          <span className="text-xs">
+            Works best in Firefox (62+), Chrome (66+), and Edge (79+)
+          </span>
+          <BrowserCheck />
         </div>
       </div>
 
