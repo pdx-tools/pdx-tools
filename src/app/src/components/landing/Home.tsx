@@ -12,10 +12,8 @@ import { useSelector } from "react-redux";
 import { selectEngineError } from "@/features/engine";
 import { Alert } from "antd";
 import Link from "next/link";
-import { FirefoxIcon } from "../icons/FirefoxIcon";
-import { ChromeIcon } from "../icons/ChromeIcon";
-import { EdgeIcon } from "../icons/EdgeIcon";
 import { BrowserCheck } from "./BrowserCheck";
+import { ChromeIcon, EdgeIcon, FirefoxIcon } from "@/components/icons";
 
 interface HomeProps {
   openLink?: string;
