@@ -130,7 +130,7 @@ build-wasm: build-wasm-dev
   wait
 
 build-wasm-dev:
-  wasm-pack build --no-typescript -t web src/wasm-br
+  wasm-pack build -t web src/wasm-br
   wasm-pack build -t web src/wasm-ck3
   wasm-pack build -t web src/wasm-detect
   wasm-pack build -t web src/wasm-eu4

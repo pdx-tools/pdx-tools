@@ -1,6 +1,5 @@
 import { expose, transfer } from "comlink";
 import init, * as wasmModule from "../../../../wasm-br/pkg/wasm_br";
-//@ts-ignore
 import wasmPath from "../../../../wasm-br/pkg/wasm_br_bg.wasm";
 import { debugLog } from "@/lib/debug";
 import { CompressionPayload } from "./brotli-types";
