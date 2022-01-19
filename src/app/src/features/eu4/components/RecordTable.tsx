@@ -2,12 +2,12 @@ import React from "react";
 import { Table, Tooltip } from "antd";
 import { rankDisplay } from "@/lib/ranks";
 import Link from "next/link";
-import { GameDifficulty } from "@/services/rakalyApi";
+import { GameDifficulty } from "@/services/appApi";
 import { difficultyNum, difficultyText } from "@/lib/difficulty";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { TimeAgo } from "@/components/TimeAgo";
 import { diff } from "@/lib/dates";
-import { RankedSaveFile } from "@/services/rakalyApi";
+import { RankedSaveFile } from "@/services/appApi";
 
 interface RecordTableProps {
   records: RankedSaveFile[];

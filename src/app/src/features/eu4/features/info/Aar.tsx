@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { Button, Form, Input } from "antd";
 import { EditOutlined } from "@ant-design/icons";
-import { rakalyApi } from "@/services/rakalyApi";
+import { appApi } from "@/services/appApi";
 import { useAppSelector } from "@/lib/store";
 
 const { TextArea } = Input;
@@ -15,7 +15,7 @@ export const Aar: React.FC<AarProps> = ({ defaultValue, editMode }) => {
   const [isEditing, setIsEditing] = useState(
     editMode == "always" || !defaultValue
   );
-  const [triggerPatchSave] = rakalyApi.endpoints.patchSave.useMutation();
+  const [triggerPatchSave] = appApi.endpoints.patchSave.useMutation();
   const serverFile = useAppSelector((state) => state.eu4.serverSaveFile);
 
   const handleSubmit = useCallback(

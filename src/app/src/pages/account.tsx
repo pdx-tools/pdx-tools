@@ -1,23 +1,23 @@
 import React from "react";
 import { HtmlHead } from "@/components/head";
-import { RakalyStructure } from "@/components/layout";
+import { AppStructure } from "@/components/layout";
 import { Account } from "@/features/account";
 
-export const RakalyAccount: React.FC<{}> = () => {
+export const AppAcount: React.FC<{}> = () => {
   return (
     <>
       <HtmlHead>
-        <title>Account Settings - Rakaly</title>
+        <title>Account Settings - PDX Tools</title>
         <meta
           name="description"
-          content="Update Rakaly account information"
+          content="Update PDX Tools account information"
         ></meta>
       </HtmlHead>
-      <RakalyStructure>
+      <AppStructure>
         <Account />
-      </RakalyStructure>
+      </AppStructure>
     </>
   );
 };
 
-export default RakalyAccount;
+export default AppAcount;

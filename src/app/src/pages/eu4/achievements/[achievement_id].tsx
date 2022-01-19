@@ -1,9 +1,9 @@
 import React from "react";
 import { useRouter } from "next/router";
 import { HtmlHead } from "@/components/head";
-import { RakalyStructure } from "@/components/layout";
+import { AppStructure } from "@/components/layout";
 import { AchievementPage } from "@/features/eu4/AchievementPage";
-import { Achievement } from "@/services/rakalyApi";
+import { Achievement } from "@/services/appApi";
 import { GetStaticProps } from "next";
 
 interface StaticAchievement {
@@ -20,7 +20,7 @@ export const Eu4Achievement: React.FC<StaticAchievement> = ({
       <HtmlHead>
         <title>
           {achievement && `${achievement.name} (${achievement.id}) - `} EU4
-          Achievements - Rakaly
+          Achievements - PDX Tools
         </title>
         <meta
           name="description"
@@ -29,7 +29,7 @@ export const Eu4Achievement: React.FC<StaticAchievement> = ({
           }`}
         ></meta>
       </HtmlHead>
-      <RakalyStructure>
+      <AppStructure>
         {achievement !== undefined ? (
           <AchievementPage
             achievementId={achievement.id.toString()}
@@ -39,7 +39,7 @@ export const Eu4Achievement: React.FC<StaticAchievement> = ({
           !Array.isArray(achievement_id) ? (
           <AchievementPage achievementId={achievement_id} />
         ) : null}
-      </RakalyStructure>
+      </AppStructure>
     </>
   );
 };

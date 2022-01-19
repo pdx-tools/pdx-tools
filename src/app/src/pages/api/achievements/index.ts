@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { db, toApiSave } from "../../../server-lib/db";
 import { achievementsWithTopSaves } from "../../../server-lib/leaderboard";
 import { withCoreMiddleware } from "../../../server-lib/middlware";
-import { ApiAchievementsResponse } from "../../../services/rakalyApi";
+import { ApiAchievementsResponse } from "../../../services/appApi";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "GET") {

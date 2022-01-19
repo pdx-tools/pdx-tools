@@ -21,7 +21,7 @@ export const UploadDrawerTitle: React.FC<{}> = () => {
     <div className="flex-row gap">
       <SaveMode mode={meta.mode} />
       <span>{`Upload ${meta.save_game}`}</span>
-      <HelpTooltip help="Upload the save to Rakaly servers so you can share a link with the world" />
+      <HelpTooltip help="Upload the save to PDX Tools servers so you can share a link with the world" />
       <span className="grow">
         {progress !== undefined && <ProgressBar height={30} value={progress} />}
         {uploadResponse && <SuccessAlert newSaveId={uploadResponse.save_id} />}

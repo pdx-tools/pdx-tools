@@ -10,7 +10,7 @@ import {
   AchievementDifficulty,
   SaveFile,
   Achievement,
-} from "@/services/rakalyApi";
+} from "@/services/appApi";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
 
 const { Text } = Typography;

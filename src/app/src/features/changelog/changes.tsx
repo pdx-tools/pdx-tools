@@ -180,7 +180,7 @@ export const changes: ChangelogEntry[] = [
           <li>
             ✨ - Change the display of mods into an expandable bulleted list
           </li>
-          <li>✨ - Allow other sites to post a file to analyze in Rakaly</li>
+          <li>✨ - Allow other sites to post a file to analyze in PDX Tools</li>
         </ChangelogList>
       );
     },
@@ -312,7 +312,7 @@ export const changes: ChangelogEntry[] = [
             fixes:
           </li>
           <li>
-            🐛 - Fix Rakaly logo not showing on homepage on Safari devices
+            🐛 - Fix PDX Tools logo not showing on homepage on Safari devices
           </li>
           <li>
             🐛 - Fix errors in analyzing saves in Safari by catering to their{" "}

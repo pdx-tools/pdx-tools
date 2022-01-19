@@ -1,6 +1,6 @@
 import { expose, transfer } from "comlink";
 import { fetchSkanSave } from "@/services/skanApi";
-import { getSaveFile } from "@/services/rakalyApi";
+import { getSaveFile } from "@/services/appApi";
 import { detectType } from "./detect";
 import { getRawData, setRawData } from "./storage";
 import { timeit } from "./worker-lib";
@@ -19,7 +19,7 @@ import {
 
 export type AnalyzeSource =
   | { kind: "local"; file: File }
-  | { kind: "rakaly"; saveId: string }
+  | { kind: "server"; saveId: string }
   | { kind: "skanderbeg"; skanId: string };
 
 export type AnalyzeResponse =
@@ -89,7 +89,7 @@ const obj = {
         }
       }
 
-      case "rakaly": {
+      case "server": {
         const saveDataRequest = getSaveFile(
           source.saveId,
           undefined,

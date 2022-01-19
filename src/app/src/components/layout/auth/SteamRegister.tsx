@@ -11,15 +11,15 @@ export const SteamRegister: React.FC<{}> = () => {
         Register
       </Button>
       <Drawer
-        title="Register an account with Rakaly"
+        title="Register an account with PDX Tools"
         onClose={() => setDrawerOpen(false)}
         visible={isDrawerOpen}
         width={400}
         footer={<Button onClick={() => setDrawerOpen(false)}>Close</Button>}
       >
         <Paragraph>
-          To sign up for a Rakaly account, simply login through Steam. You don't
-          need to have bought EU4 through Steam -- only a Steam account is
+          To sign up for a PDX Tools account, simply login through Steam. You
+          don't need to have bought EU4 through Steam -- only a Steam account is
           needed.
         </Paragraph>
         <SteamButton />
@@ -37,15 +37,15 @@ export const SteamRegister: React.FC<{}> = () => {
           </ul>
         </Paragraph>
         <Title level={4}>Why Steam?</Title>
-        EU4 is mainly distributed through Steam, so the majority of Rakaly users
-        should already have a Steam account. This allows Rakaly to offload the
+        EU4 is mainly distributed through Steam, so the majority of PDX Tools
+        users should already have a Steam account. This allows us to offload the
         bureaucracy of managing accounts to Steam.
         <Paragraph></Paragraph>
-        <Title level={4}>What Steam information does Rakaly use?</Title>
+        <Title level={4}>What Steam information does PDX Tools use?</Title>
         <Paragraph>
-          Rakaly only records the user id returned by Steam and the associated
-          persona name.{" "}
-          <Text strong>Rakaly will not get access to Steam passwords</Text>
+          PDX Tools only records the user id returned by Steam and the
+          associated persona name.{" "}
+          <Text strong>PDX Tools will not get access to Steam passwords</Text>
         </Paragraph>
       </Drawer>
     </>

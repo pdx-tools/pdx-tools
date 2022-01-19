@@ -12,7 +12,7 @@ export const Ck3Ui: React.FC<{}> = () => {
       <Head>
         <title>{`${filename.replace(".ck3", "")} - CK3 (${
           meta.version
-        }) - Rakaly`}</title>
+        }) - PDX Tools`}</title>
       </Head>
       <h2>CK3</h2>
       <p>

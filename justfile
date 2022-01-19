@@ -42,7 +42,7 @@ setup:
   (cd "src/app" && npm ci)
 
 publish-backend:
-  docker push docker.nbsoftsolutions.com/rakaly/app 
+  docker push docker.nbsoftsolutions.com/pdx-tools/app
   ssh -t pdx-tools 'cd /opt/pdx-tools && docker-compose pull app && docker-compose up -d app'
 
 publish-frontend:
@@ -60,10 +60,10 @@ touch-tokens:
   touch "$IMPERATOR_TOKENS"
 
 build-docker:
-  docker build -t docker.nbsoftsolutions.com/rakaly/app -f ./dev/app.dockerfile ./src/app
+  docker build -t docker.nbsoftsolutions.com/pdx-tools/app -f ./dev/app.dockerfile ./src/app
 
 build-admin:
-   cargo build --release -p rakaly-admin
+   cargo build --release -p admin-cli
 
 test-rust *cmd:
   cargo test {{cmd}}
@@ -167,7 +167,7 @@ dev-environment +cmd:
   trap 'rm -rf -- "$MY_TMP"' EXIT
   cat src/app/.env.development ./dev/.env.dev >> "$MY_TMP"
 
-  docker-compose -f ./dev/docker-compose.test.yml -f ./dev/docker-compose.dev.yml --env-file "$MY_TMP" --project-name rakaly_dev {{cmd}}
+  docker-compose -f ./dev/docker-compose.test.yml -f ./dev/docker-compose.dev.yml --env-file "$MY_TMP" --project-name pdx_dev {{cmd}}
 
 test-environment +cmd:
   #!/usr/bin/env bash
@@ -176,7 +176,7 @@ test-environment +cmd:
   trap 'rm -rf -- "$MY_TMP"' EXIT
   cat src/app/.env.test ./dev/.env.test >> "$MY_TMP"
 
-  docker-compose -f ./dev/docker-compose.test.yml --env-file "$MY_TMP" --project-name rakaly_test {{cmd}}
+  docker-compose -f ./dev/docker-compose.test.yml --env-file "$MY_TMP" --project-name pdx_test {{cmd}}
 
 db-deploy-staging:
   #!/usr/bin/env bash

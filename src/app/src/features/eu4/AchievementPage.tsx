@@ -3,7 +3,7 @@ import { PageHeader, Typography, Spin } from "antd";
 import type { Route } from "antd/es/breadcrumb/Breadcrumb";
 import Link from "next/link";
 import { RecordTable } from "./components/RecordTable";
-import { Achievement, rakalyApi } from "@/services/rakalyApi";
+import { Achievement, appApi } from "@/services/appApi";
 const { Paragraph } = Typography;
 
 interface AchievementRoute {
@@ -13,7 +13,7 @@ interface AchievementRoute {
 
 const useAchievement = (achievementId: string) => {
   const { isFetching, isUninitialized, data } =
-    rakalyApi.endpoints.getAchievement.useQuery(achievementId);
+    appApi.endpoints.getAchievement.useQuery(achievementId);
   const achievement = data?.achievement;
   const saves = useMemo(
     () =>

@@ -123,12 +123,12 @@ export const CountryDetailsDrawer: React.FC<CountryDetailsProps> = ({
         <p>
           The reason why countries who have re-elected rulers contain inaccurate
           calculations is that the election event is not stored in the save, so
-          when Rakaly sees a ruler is 6 / 6 / 6, it is unsure how many elections
-          have occurred and when they might have occurred, as some government
-          reforms change the frequency of elections. Thus for calculation
-          purposes, elections are ignored and it is assumed that the ruler was
-          always 6 / 6 / 6. This phenomenon is also observable due to events or
-          missions that increase ruler stats.
+          when PDX Tools sees a ruler is 6 / 6 / 6, it is unsure how many
+          elections have occurred and when they might have occurred, as some
+          government reforms change the frequency of elections. Thus for
+          calculation purposes, elections are ignored and it is assumed that the
+          ruler was always 6 / 6 / 6. This phenomenon is also observable due to
+          events or missions that increase ruler stats.
         </p>
         <FinancialHelp />
       </Drawer>

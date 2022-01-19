@@ -1,18 +1,18 @@
 import React from "react";
 import { ApiDocs } from "@/features/docs";
 import { HtmlHead } from "@/components/head";
-import { RakalyStructure } from "@/components/layout";
+import { AppStructure } from "@/components/layout";
 
 export const ApiDocsPage: React.FC<{}> = () => {
   return (
     <>
       <HtmlHead>
-        <title>API Docs - Rakaly</title>
-        <meta name="description" content="Rakaly API Docs"></meta>
+        <title>API Docs - PDX Tools</title>
+        <meta name="description" content="PDX Tools API Docs"></meta>
       </HtmlHead>
-      <RakalyStructure>
+      <AppStructure>
         <ApiDocs />
-      </RakalyStructure>
+      </AppStructure>
     </>
   );
 };

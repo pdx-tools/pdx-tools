@@ -15,6 +15,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aae1277d39aeec15cb388266ecc24b11c80469deae6067e17a1a7aa9e5c1f234"
 
 [[package]]
+name = "admin-cli"
+version = "0.1.0"
+dependencies = [
+ "admin-shared",
+ "anyhow",
+ "brotli",
+ "pico-args",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "walkdir",
+]
+
+[[package]]
 name = "admin-shared"
 version = "0.1.0"
 dependencies = [
@@ -1623,20 +1637,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47aa80447ce4daf1717500037052af176af5d38cc3e571d9ec1c7353fc10c87d"
 dependencies = [
  "proc-macro2",
-]
-
-[[package]]
-name = "rakaly-admin"
-version = "0.1.0"
-dependencies = [
- "admin-shared",
- "anyhow",
- "brotli",
- "pico-args",
- "serde",
- "serde_json",
- "tempfile",
- "walkdir",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 import { Save } from ".prisma/client";
-import { ApiAchievementsResponse } from "../services/rakalyApi";
+import { ApiAchievementsResponse } from "../services/appApi";
 import { db } from "./db";
 import { ParsedFile, loadAchievements } from "./pool";
 import { redisClient } from "./redis";

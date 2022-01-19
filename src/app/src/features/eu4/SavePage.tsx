@@ -13,7 +13,7 @@ export const SavePage: React.FC<SaveProps> = ({ saveId }) => {
   const engineError = useSelector(selectEngineError);
 
   useEffect(() => {
-    filePublisher({ kind: "rakaly", saveId });
+    filePublisher({ kind: "server", saveId });
   }, [filePublisher, saveId]);
 
   return (

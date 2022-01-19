@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { Layout, Grid } from "antd";
-import { RakalySvg } from "../icons/RakalyIcon";
+import { AppSvg } from "../icons/AppIcon";
 import { CoreMenu } from "./CoreMenu";
 import { MobileMenu } from "./MobileMenu";
 const { Header } = Layout;
@@ -52,9 +52,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ disabled = false }) => {
         <Link href="/">
           <a className="logo">
             <span>
-              <RakalySvg width="3rem" height="3rem" />
+              <AppSvg width="3rem" height="3rem" />
             </span>
-            Rakaly
+            PDX Tools
           </a>
         </Link>
         <HeaderMenu />

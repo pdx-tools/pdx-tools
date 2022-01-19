@@ -64,7 +64,7 @@ export const RejectAlert: React.FC<RejectAlertProps> = ({ error }) => {
         <Alert
           closable
           type="error"
-          message={`An internal Rakaly error, please feel free to reach out via discord to report the following error: ${error.msg}`}
+          message={`An internal PDX Tools error, please feel free to reach out via discord to report the following error: ${error.msg}`}
         />
       );
   }

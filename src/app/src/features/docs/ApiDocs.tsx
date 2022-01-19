@@ -6,11 +6,11 @@ import { selectUserInfo } from "../account/sessionSlice";
 
 export const ApiDocs: React.FC<{}> = ({}) => {
   const userInfo = useSelector(selectUserInfo);
-  const uid = userInfo?.user_id ?? "yourrakalyUserId";
+  const uid = userInfo?.user_id ?? "yourUserId";
   const cli = <a href="https://github.com/rakaly/cli">Rakaly CLI</a>;
   return (
     <PageHeader
-      title="Rakaly API Docs"
+      title="PDX Tools API Docs"
       style={{ width: "min(650px, 100%)", margin: "0 auto" }}
     >
       <style jsx>{`
@@ -23,19 +23,19 @@ export const ApiDocs: React.FC<{}> = ({}) => {
         }
       `}</style>
       <p>
-        Before getting started with Rakaly's API, you'll want to ensure you have
-        a Rakaly account so you can get an API key. You can always generate a
-        new API key on the{" "}
+        Before getting started with PDX Tools' API, you'll want to ensure you
+        have a PDX Tools account so you can get an API key. You can always
+        generate a new API key on the{" "}
         <Link href="/account">
           <a>account page.</a>
         </Link>
       </p>
       <p>
-        Rakaly's philosophy is to have an overly simple API and push most of the
-        analysis client side so all uploaded saves can seamlessly take advantage
-        of new features as they are added to the analysis engine. If it is
-        desired to upload a save and then perform queries against the save, then
-        consider Skanderbeg's API.
+        PDX Tools' philosophy is to have an overly simple API and push most of
+        the analysis client side so all uploaded saves can seamlessly take
+        advantage of new features as they are added to the analysis engine. If
+        it is desired to upload a save and then perform queries against the
+        save, then consider Skanderbeg's API.
       </p>
       <p>
         Please use the <a href="https://discord.gg/rCpNWQW">Discord</a> for help
@@ -55,22 +55,22 @@ export const ApiDocs: React.FC<{}> = ({}) => {
       </ul>
       <h2 id="local-analysis">Local Analysis</h2>
       <p>
-        It is not required to upload a save in order for it to be analyzed.
-        Rakaly is able to analyze saves that are transferred to it within the
+        It is not required to upload a save in order for it to be analyzed. PDX
+        Tools is able to analyze saves that are transferred to it within the
         browser. This means that you could have a web page, which when visited,
         loads the save, opens the{" "}
         <Link href="/">
           <a>EU4 analyze page</a>
         </Link>
-        , and then posts data to Rakaly with the help of:
+        , and then posts data to PDX Tools with the help of:
       </p>
       <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage">
         <pre>Window.postMessage().</pre>
       </a>
       <p>
-        When the Rakaly has finished initializing it will send a message to your
-        tab with the contents of "rakaly-loaded", informing that Rakaly is now
-        ready to receive the file.
+        When PDX Tools has finished initializing it will send a message to your
+        tab with the contents of "pdx-tools-loaded", informing that PDX Tools is
+        now ready to receive the file.
       </p>
       <p>
         You can refer to how{" "}
@@ -90,7 +90,7 @@ export const ApiDocs: React.FC<{}> = ({}) => {
       const newWindow = window.open("https://pdx.tools");
 
       window.addEventListener("message", (e) => {
-        if (e.data === "rakaly-loaded") {
+        if (e.data === "pdx-tools-loaded") {
           newWindow.postMessage(file, "*");
         }
       });
@@ -103,11 +103,11 @@ export const ApiDocs: React.FC<{}> = ({}) => {
 `}</pre>
       <h2 id="upload">Upload</h2>
       <p>
-        To upload a file to Rakaly, it is easiest to run the {cli} which uses
+        To upload a file to PDX Tools, it is easiest to run the {cli} which uses
         this same endpoint and does all the heavy lifting. If an API is still
         desired, below is the API endpoint:
       </p>
-      <pre>POST https://rakaly.com/api/saves</pre>
+      <pre>POST https://pdx.tools/api/saves</pre>
       <p>
         All requests must be authenticated through{" "}
         <a href="https://en.wikipedia.org/wiki/Basic_access_authentication">
@@ -129,14 +129,14 @@ export const ApiDocs: React.FC<{}> = ({}) => {
       </p>
       <p>First, an example request to upload a save that is a zip file.</p>
       <pre>{`
-curl "https://rakaly.com/api/saves" \\
+curl "https://pdx.tools/api/saves" \\
   --header "rakaly-filename: ita1.eu4" \\
   --header "Content-Type: application/zip" \\
   --data-binary @ita1.eu4 \\
   --user ${uid}`}</pre>
       <p>An example request to upload save that is plaintext</p>
       <pre>{`
-gzip < ita1.eu4 | curl "https://rakaly.com/api/saves" \\
+gzip < ita1.eu4 | curl "https://pdx.tools/api/saves" \\
   --header "rakaly-filename: ita1.eu4" \\
   --header "Content-Type: text/plain; charset=windows-1252" \\
   --header "Content-Encoding: gzip" \\

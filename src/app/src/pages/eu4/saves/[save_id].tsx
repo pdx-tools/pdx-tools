@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import React from "react";
 import { HtmlHead } from "@/components/head";
-import { RakalyStructure } from "@/components/layout";
+import { AppStructure } from "@/components/layout";
 import { FileDropInitial } from "@/features/engine/FileDrop";
 import { CanvasContextProvider } from "@/features/engine/persistant-canvas-context";
 import { SavePage } from "@/features/eu4/SavePage";
@@ -17,14 +17,14 @@ export const Eu4Save: React.FC<{}> = () => {
   return (
     <>
       <HtmlHead>
-        <title>Loading Rakaly Save: {save_id} - EU4 - Rakaly</title>
+        <title>Loading Save: {save_id} - EU4 - PDX Tools</title>
       </HtmlHead>
-      <RakalyStructure header={false}>
+      <AppStructure header={false}>
         <CanvasContextProvider>
           <SavePage saveId={save_id} />
           <FileDropInitial />
         </CanvasContextProvider>
-      </RakalyStructure>
+      </AppStructure>
     </>
   );
 };

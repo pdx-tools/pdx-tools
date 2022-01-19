@@ -4,11 +4,11 @@ import {
   AchievementsTable,
   AchievementUploads,
 } from "@/features/eu4/components/AchievementsTable";
-import { rakalyApi, SaveFile } from "@/services/rakalyApi";
+import { appApi, SaveFile } from "@/services/appApi";
 
 const useAchievements = () => {
   const { isFetching, isUninitialized, data } =
-    rakalyApi.endpoints.getAchievements.useQuery();
+    appApi.endpoints.getAchievements.useQuery();
 
   const achievements = useMemo(() => {
     const saves = new Map(data?.saves.map((x) => [x.id, x]));
@@ -55,7 +55,7 @@ export const AchievementsPage: React.FC<AchievementsPageProps> = ({
     <PageHeader
       backIcon={false}
       title="Achievements"
-      subTitle="EU4 achievements recognized by rakaly"
+      subTitle="EU4 achievements recognized by PDX Tools"
       extra={[extras]}
       style={{ maxWidth: "1000px", margin: "0 auto" }}
     >

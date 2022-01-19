@@ -1,7 +1,7 @@
 import React from "react";
 import { Table, Space } from "antd";
 import { TimeAgo } from "@/components/TimeAgo";
-import { GameDifficulty, SaveFile } from "@/services/rakalyApi";
+import { GameDifficulty, SaveFile } from "@/services/appApi";
 import { diff } from "@/lib/dates";
 import { difficultyNum, difficultyText } from "@/lib/difficulty";
 import Link from "next/link";

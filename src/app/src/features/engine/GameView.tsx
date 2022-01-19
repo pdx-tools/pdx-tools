@@ -47,7 +47,7 @@ export const GameView: React.FC<{}> = () => {
       dispatch(resetSaveAnalysis());
     }
 
-    // To ensure that when someone clicks on "Rakaly" in app header
+    // To ensure that when someone clicks on "PDX Tools" in app header
     // that analysis is reset
     router.events.on("routeChangeComplete", reset);
     return () => {

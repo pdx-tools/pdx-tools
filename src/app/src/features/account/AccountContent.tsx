@@ -1,14 +1,14 @@
 import { Alert, Button, Descriptions, Typography } from "antd";
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
-import { rakalyApi } from "../../services/rakalyApi";
+import { appApi } from "../../services/appApi";
 import { selectUserInfo } from "./sessionSlice";
 const { Text } = Typography;
 
 export const AccountContent: React.FC<{}> = () => {
   const userInfo = useSelector(selectUserInfo);
   const [key, setKey] = useState<string | undefined>();
-  const [trigger, { isLoading }] = rakalyApi.endpoints.newApiKey.useMutation();
+  const [trigger, { isLoading }] = appApi.endpoints.newApiKey.useMutation();
 
   if (!userInfo) {
     return null;
@@ -31,7 +31,7 @@ export const AccountContent: React.FC<{}> = () => {
         bordered
         column={{ xxl: 1, xl: 1, lg: 1, md: 1, sm: 1, xs: 1 }}
       >
-        <Descriptions.Item label="Rakaly User Id">
+        <Descriptions.Item label="PDX Tools User Id">
           <Text copyable>{userInfo.user_id}</Text>
         </Descriptions.Item>
         <Descriptions.Item label="New API Key">

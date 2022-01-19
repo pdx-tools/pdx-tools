@@ -12,7 +12,7 @@ export const Hoi4Ui: React.FC<{}> = () => {
       <Head>
         <title>{`${filename.replace(".hoi4", "")} - HOI4 (${
           meta.date
-        }) - Rakaly`}</title>
+        }) - PDX Tools`}</title>
       </Head>
       <h2>HOI4</h2>
       <p>

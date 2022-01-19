@@ -1,6 +1,6 @@
 import { createSlice, SerializedError } from "@reduxjs/toolkit";
 import { RootState } from "../../lib/store";
-import { rakalyApi } from "../../services/rakalyApi";
+import { appApi } from "../../services/appApi";
 
 type ApiError = Error | SerializedError | string;
 
@@ -54,18 +54,15 @@ const toastSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addMatcher(
-      rakalyApi.endpoints.deleteSave.matchFulfilled,
-      (state) => {
-        state.toasts.push({
-          kind: "success",
-          message: "save deleted",
-        });
-      }
-    );
+    builder.addMatcher(appApi.endpoints.deleteSave.matchFulfilled, (state) => {
+      state.toasts.push({
+        kind: "success",
+        message: "save deleted",
+      });
+    });
 
     builder.addMatcher(
-      rakalyApi.endpoints.getAchievements.matchRejected,
+      appApi.endpoints.getAchievements.matchRejected,
       (state, { error, payload }) => {
         if (!payload) {
           state.toasts.push({

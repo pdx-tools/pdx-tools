@@ -17,18 +17,18 @@ export const UploadFaq: React.FC<{}> = () => {
         reupload it at a later date, but it won't be accessible at the previous
         URL.
       </dd>
-      <dt>Can I download a file on Rakaly and continue it locally?</dt>
+      <dt>Can I download a file on PDX Tools and continue it locally?</dt>
       <dd>
-        Yes! In fact, Rakaly losslessly re-encodes saves with a higher
+        Yes! In fact, PDX Tools losslessly re-encodes saves with a higher
         compression ratio so downloaded saves will be smaller than the original.
       </dd>
       <dt>What are there limits on uploads?</dt>
       <dd>
         Compressed saves must not exceed 20MB and 200MB when uncompressed. Every
-        Rakaly user has 100 save slots available. Achievement compatible saves
-        that complete an achievement in a top 10 record time (the number of days
-        since 1444 dated at the latest date of the save), do not consume a save
-        slot.
+        PDX Tools user has 100 save slots available. Achievement compatible
+        saves that complete an achievement in a top 10 record time (the number
+        of days since 1444 dated at the latest date of the save), do not consume
+        a save slot.
       </dd>
       <dt>Can I get on an achievement leaderboard with an older patch?</dt>
       <dd>
@@ -42,9 +42,9 @@ export const UploadFaq: React.FC<{}> = () => {
       </dd>
       <dt>My save has achievements that aren't recognized</dt>
       <dd>
-        Not all achievements are implemented in Rakaly. Just like how the game
-        devs have to implement logic to check if achievement conditions have
-        been satisfied, so does Rakaly. Here's{" "}
+        Not all achievements are implemented in PDX Tools. Just like how the
+        game devs have to implement logic to check if achievement conditions
+        have been satisfied, so does PDX Tools. Here's{" "}
         <Link href="/eu4/achievements">
           <a>a list of all implemented achievements</a>
         </Link>
@@ -69,7 +69,7 @@ export const UploadFaq: React.FC<{}> = () => {
       <dd>
         Feel free to get in contact via{" "}
         <a href="https://discord.gg/rCpNWQW">Discord</a> or email hi [(at)]
-        rakaly.com
+        pdx.tools
       </dd>
 
       <style jsx>{`

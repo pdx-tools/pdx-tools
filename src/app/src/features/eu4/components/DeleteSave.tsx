@@ -3,7 +3,7 @@ import { Modal, Button } from "antd";
 import type { ButtonProps } from "antd/lib/button";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { useRouter } from "next/router";
-import { rakalyApi } from "@/services/rakalyApi";
+import { appApi } from "@/services/appApi";
 const { confirm } = Modal;
 
 interface DeleteSaveProps {
@@ -18,7 +18,7 @@ export const DeleteSave: React.FC<DeleteSaveProps> = ({
   redirect,
 }) => {
   const router = useRouter();
-  const [trigger] = rakalyApi.endpoints.deleteSave.useMutation();
+  const [trigger] = appApi.endpoints.deleteSave.useMutation();
   const showDeleteConfirm = () => {
     confirm({
       title: "Are you sure this save should be deleted?",

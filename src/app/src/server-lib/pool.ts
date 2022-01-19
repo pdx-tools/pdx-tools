@@ -6,7 +6,7 @@ import {
   Achievement,
   SaveEncoding as ApiSaveEncoding,
   GameDifficulty as ApiGameDifficulty,
-} from "@/services/rakalyApi";
+} from "@/services/appApi";
 const { dlopen } = require("process");
 let nextRoot = getConfig()?.serverRuntimeConfig?.PROJECT_ROOT;
 nextRoot = nextRoot && process.env.NODE_ENV === "production" ? "." : nextRoot;

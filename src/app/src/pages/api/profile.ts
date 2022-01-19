@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/server-lib/db";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { extractSession } from "@/server-lib/session";
-import { PrivateUserInfo, ProfileResponse } from "@/services/rakalyApi";
+import { PrivateUserInfo, ProfileResponse } from "@/services/appApi";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "GET") {

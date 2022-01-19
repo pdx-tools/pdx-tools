@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { SaveFile } from "@/services/rakalyApi";
+import { SaveFile } from "@/services/appApi";
 import { db, toApiSave } from "@/server-lib/db";
 import { ValidationError } from "@/server-lib/errors";
 import { getAchievement } from "@/server-lib/pool";
-import { AchievementView } from "@/services/rakalyApi";
+import { AchievementView } from "@/services/appApi";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import {
   countAchievementUploads,

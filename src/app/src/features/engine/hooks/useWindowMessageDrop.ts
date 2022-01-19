@@ -16,6 +16,7 @@ export function useWindowMessageDrop() {
 
     if (window.opener) {
       window.opener.postMessage("rakaly-loaded", "*");
+      window.opener.postMessage("pdx-tools-loaded", "*");
       window.addEventListener("message", messenger);
       return () => {
         window.removeEventListener("message", messenger);

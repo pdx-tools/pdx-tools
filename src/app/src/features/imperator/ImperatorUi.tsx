@@ -12,7 +12,7 @@ export const ImperatorUi: React.FC<{}> = () => {
       <Head>
         <title>{`${filename.replace(".rome", "")} - Imperator (${
           meta.date
-        }) - Rakaly`}</title>
+        }) - PDX Tools`}</title>
       </Head>
       <h2>Imperator</h2>
       <p>
