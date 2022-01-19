@@ -1,5 +1,5 @@
 import { withHttpSession } from "@/server-lib/session";
-import { ProfileResponse } from "@/services/rakalyApi";
+import { ProfileResponse } from "@/services/appApi";
 
 export default withHttpSession((req, res) => {
   req.session.destroy();

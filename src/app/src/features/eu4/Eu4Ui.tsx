@@ -34,7 +34,7 @@ export const Eu4Ui: React.FC<{}> = () => {
           meta.savegame_version.first
         }.${meta.savegame_version.second}.${
           meta.savegame_version.third
-        }) - Rakaly`}</title>
+        }) - PDX Tools`}</title>
       </Head>
       {showCanvas && <Eu4CanvasOverlay />}
     </>

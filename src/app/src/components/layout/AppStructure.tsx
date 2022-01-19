@@ -3,31 +3,26 @@ import { Layout } from "antd";
 import { useSelector } from "react-redux";
 import { SessionProvider } from "@/features/account";
 import { selectAppHeaderVisible, WasmWorkerProvider } from "@/features/engine";
-import { AnalyticsScript } from "./AnalyticsScript";
+import { UserMetricsScript } from "./UserMetricsScript";
 import { AppHeader } from "./AppHeader";
 import { ErrorCatcher } from "./ErrorCatcher";
 const { Content } = Layout;
 
-export const RakalyHeader: React.FC<{}> = () => {
-  const showBackdrop = useSelector(selectAppHeaderVisible);
-
-  return <AppHeader disabled={!showBackdrop} />;
-};
-
-interface RakalyStructureProps {
+interface AppStructureProps {
   header?: boolean;
 }
 
-export const RakalyStructure: React.FC<RakalyStructureProps> = ({
+export const AppStructure: React.FC<AppStructureProps> = ({
   header = true,
   children,
 }) => {
+  const visibleHeader = useSelector(selectAppHeaderVisible);
   return (
     <SessionProvider>
       <WasmWorkerProvider>
-        <AnalyticsScript />
+        <UserMetricsScript />
         <Layout style={{ backgroundColor: "white", height: "100%" }}>
-          {header && <RakalyHeader />}
+          {header && <AppHeader disabled={!visibleHeader} />}
           <Content className="flex-col" style={{ overflow: "auto" }}>
             <ErrorCatcher>{children}</ErrorCatcher>
           </Content>

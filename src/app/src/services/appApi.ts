@@ -235,8 +235,8 @@ export async function getSaveFile(
   return array;
 }
 
-export const rakalyApi = createApi({
-  reducerPath: "rakalyApi",
+export const appApi = createApi({
+  reducerPath: "appApi",
   baseQuery: fetchBaseQuery({ baseUrl: "/" }),
   tagTypes: ["Saves"],
   endpoints: (builder) => ({

@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../../lib/store";
-import { ProfileResponse, rakalyApi } from "../../services/rakalyApi";
+import { ProfileResponse, appApi } from "../../services/appApi";
 
 type SessionStatus =
   | {
@@ -28,14 +28,14 @@ const sessionSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addMatcher(
-      rakalyApi.endpoints.getProfile.matchFulfilled,
+      appApi.endpoints.getProfile.matchFulfilled,
       (state, action) => {
         state.session = action.payload;
       }
     );
 
     builder.addMatcher(
-      rakalyApi.endpoints.logout.matchFulfilled,
+      appApi.endpoints.logout.matchFulfilled,
       (state, action) => {
         state.session = action.payload;
       }

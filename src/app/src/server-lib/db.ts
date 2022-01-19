@@ -1,7 +1,7 @@
 // https://www.prisma.io/docs/support/help-articles/nextjs-prisma-client-dev-practices
 import { PrismaClient, Save, User } from "@prisma/client";
 import dayjs from "dayjs";
-import { GameDifficulty, SaveEncoding, SaveFile } from "@/services/rakalyApi";
+import { GameDifficulty, SaveEncoding, SaveFile } from "@/services/appApi";
 import { log } from "./logging";
 import { metrics } from "./metrics";
 import { calcWeightedScore } from "./pool";

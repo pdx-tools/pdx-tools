@@ -4,7 +4,7 @@ import { PageHeader, Spin, Descriptions } from "antd";
 import { UserSaveTable } from "./UserSaveTable";
 import { selectIsPrivileged, selectUserInfo } from "./sessionSlice";
 import { TimeAgo } from "../../components/TimeAgo";
-import { rakalyApi } from "../../services/rakalyApi";
+import { appApi } from "../../services/appApi";
 import Head from "next/head";
 
 interface UserRouteProps {
@@ -12,7 +12,7 @@ interface UserRouteProps {
 }
 
 export const UserPage: React.FC<UserRouteProps> = ({ userId }) => {
-  const { isFetching, data } = rakalyApi.endpoints.getUser.useQuery(userId);
+  const { isFetching, data } = appApi.endpoints.getUser.useQuery(userId);
   const user = data;
   const userInfo = useSelector(selectUserInfo);
   const privilege = useSelector(selectIsPrivileged);
@@ -30,7 +30,7 @@ export const UserPage: React.FC<UserRouteProps> = ({ userId }) => {
   return (
     <div>
       <Head>
-        <title>{user.user_info?.user_name} saves - Rakaly</title>
+        <title>{user.user_info?.user_name} saves - PDX Tools</title>
       </Head>
       <PageHeader
         avatar={{

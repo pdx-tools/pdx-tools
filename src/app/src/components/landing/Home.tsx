@@ -218,7 +218,7 @@ export const Home: React.FC<HomeProps> = () => {
                 src={map}
                 height={325}
                 width={400}
-                alt="EU4 political map simulated in Rakaly"
+                alt="EU4 political map simulated in PDX Tools"
               />
             </Shadow>
           </div>
@@ -270,7 +270,7 @@ export const Home: React.FC<HomeProps> = () => {
             </p>
             <p>
               Upload a save today and it will receive enchancements
-              automatically as Rakaly is updated to expose more insights
+              automatically as PDX Tools is updated to expose more insights
             </p>
           </div>
           <div>
@@ -286,8 +286,8 @@ export const Home: React.FC<HomeProps> = () => {
           <div>
             <h3>Melting Support</h3>
             <p>
-              Rakaly can convert (aka melt) ironman and binary saves into normal
-              saves so that one can easily inspect the raw contents
+              PDX Tools can convert (aka melt) ironman and binary saves into
+              normal saves so that one can easily inspect the raw contents
             </p>
             <p>
               As a bonus the newly converted save can be continued in game as if
@@ -328,7 +328,7 @@ export const Home: React.FC<HomeProps> = () => {
                 height={325}
                 width={400}
                 loading="lazy"
-                alt="Screenshot of the Rakaly leaderboard for an achievement"
+                alt="Screenshot of the PDX Tools leaderboard for an achievement"
               />
             </Shadow>
           </div>
@@ -339,15 +339,15 @@ export const Home: React.FC<HomeProps> = () => {
         <section>
           <div>
             <h3>Community</h3>
-            <p>Rakaly is powered by community use and feedback</p>
+            <p>PDX Tools is powered by community use and feedback</p>
             <p>
               Have ideas, questions, or bug reports? Join the{" "}
               <a href="https://discord.gg/rCpNWQW">discord!</a>
             </p>
             <p>
-              Want to take a peek at the code used to power Rakaly? Core
-              components are{" "}
-              <a href="https://github.com/rakaly">open source on Github</a>
+              See PDX Tools on{" "}
+              <a href="https://github.com/pdx-tools/pdx-tools">our Github</a>{" "}
+              and help contribute!
             </p>
           </div>
           <div>

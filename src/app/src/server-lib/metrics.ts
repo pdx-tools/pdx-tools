@@ -6,7 +6,7 @@ import client from "prom-client";
 client.register.clear();
 
 client.collectDefaultMetrics({
-  prefix: "rakaly_",
+  prefix: "pdx_tools_",
 });
 
 export { client as metrics };

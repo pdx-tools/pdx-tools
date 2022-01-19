@@ -1,5 +1,5 @@
-import { GameDifficulty } from "@/services/rakalyApi";
-import { AchievementDifficulty } from "../services/rakalyApi";
+import { GameDifficulty } from "@/services/appApi";
+import { AchievementDifficulty } from "../services/appApi";
 
 export const difficultyText = (
   diff: AchievementDifficulty | GameDifficulty

@@ -15,7 +15,7 @@ import {
   ProfileResponse,
   SaveFile,
   UserSaves,
-} from "@/services/rakalyApi";
+} from "@/services/appApi";
 
 jest.setTimeout(60000);
 

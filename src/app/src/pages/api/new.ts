@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { withCoreMiddleware } from "../../server-lib/middlware";
 import { db, toApiSave } from "../../server-lib/db";
-import { SaveFile } from "@/services/rakalyApi";
+import { SaveFile } from "@/services/appApi";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "GET") {

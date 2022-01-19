@@ -1,8 +1,4 @@
-import {
-  Achievement,
-  GameDifficulty,
-  SaveEncoding,
-} from "@/services/rakalyApi";
+import { Achievement, GameDifficulty, SaveEncoding } from "@/services/appApi";
 
 export interface CountryMatcher {
   players: "all" | "alive" | "dead" | "none";

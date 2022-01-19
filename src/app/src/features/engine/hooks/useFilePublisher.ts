@@ -1,4 +1,4 @@
-import { getSaveMeta } from "@/services/rakalyApi";
+import { getSaveMeta } from "@/services/appApi";
 import { proxy } from "comlink";
 import { useCallback } from "react";
 import { useDispatch } from "react-redux";
@@ -35,7 +35,7 @@ export function useFilePublisher() {
         let filename;
 
         switch (source.kind) {
-          case "rakaly": {
+          case "server": {
             filename = getSaveMeta(source.saveId).then((x) => {
               dispatch(setEu4ServerSaveFile(x));
               return x.filename;
@@ -125,7 +125,7 @@ export function useFilePublisher() {
 
             const [x, y] = await wasmWorker.eu4InitialMapPosition();
 
-            if (source.kind !== "rakaly") {
+            if (source.kind !== "server") {
               dispatch(setEu4ServerSaveFile(undefined));
             }
 

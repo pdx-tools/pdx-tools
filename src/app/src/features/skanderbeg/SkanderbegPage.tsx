@@ -5,7 +5,7 @@ import { SkanUserSavesTable } from "./SkanUserSavesTable";
 import { selectUserInfo } from "../account/sessionSlice";
 import { useRouter } from "next/router";
 import { extractSaveId } from "./skanUrl";
-import { rakalyApi } from "../../services/rakalyApi";
+import { appApi } from "../../services/appApi";
 import { epochOf } from "@/lib/dates";
 const { Paragraph } = Typography;
 const { Search } = Input;
@@ -14,7 +14,7 @@ export const SkanderbegPage: React.FC<{}> = () => {
   const router = useRouter();
   const userInfo = useSelector(selectUserInfo);
   const [trigger, { isFetching, data }] =
-    rakalyApi.endpoints.getSkanderbegSaves.useLazyQuery();
+    appApi.endpoints.getSkanderbegSaves.useLazyQuery();
 
   useEffect(() => {
     if (userInfo) {
@@ -51,9 +51,9 @@ export const SkanderbegPage: React.FC<{}> = () => {
       <Paragraph>
         <a href="https://skanderbeg.pm">Skanderbeg</a> is site dedicated to
         generating beautiful maps and insightful data tables. To analyze a
-        Skanderbeg save in Rakaly, upload the save to Skanderbeg and copy and
+        Skanderbeg save in PDX Tools, upload the save to Skanderbeg and copy and
         paste either a Skanderbeg URL or the save id. Ironman saves uploaded to
-        Skanderbeg will not work in Rakaly.
+        Skanderbeg will not work in PDX Tools.
       </Paragraph>
       <div className="flex-col gap">
         <Search

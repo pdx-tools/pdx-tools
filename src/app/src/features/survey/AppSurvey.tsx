@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 
 const ON_GOING_SURVEY = false;
 
-export const RakalySurvey: React.FC<{}> = () => {
+export const AppSurvey: React.FC<{}> = () => {
   const [showSurvey, setShowSurvey] = useState(false);
   const [showSurveyReminder, setShowSurveyReminder] = useState(false);
   useEffect(() => {
@@ -35,8 +35,8 @@ export const RakalySurvey: React.FC<{}> = () => {
         type="info"
         message={
           <Space>
-            Rakaly user survey: a quick 7 question survey to improve Rakaly for
-            you.
+            PDX Tools user survey: a quick 7 question survey to improve PDX
+            Tools for you.
             <Button>
               <a
                 target="_blank"

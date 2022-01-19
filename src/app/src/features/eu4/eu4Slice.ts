@@ -7,7 +7,7 @@ import {
 } from "./types/models";
 import { MapControls, MapOnlyControls, MapPayload } from "./types/map";
 import { RootState, useAppSelector } from "@/lib/store";
-import { SaveFile } from "@/services/rakalyApi";
+import { SaveFile } from "@/services/appApi";
 
 interface MapDate {
   days: number;

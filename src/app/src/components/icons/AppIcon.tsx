@@ -1,8 +1,8 @@
 import React, { SVGProps } from "react";
 import Icon from "@ant-design/icons";
 
-type RakalySvgProps = SVGProps<SVGSVGElement>;
-export const RakalySvg: React.FC<RakalySvgProps> = (props) => {
+type AppSvgProps = SVGProps<SVGSVGElement>;
+export const AppSvg: React.FC<AppSvgProps> = (props) => {
   return (
     <svg
       fill="#FFFFFF"
@@ -40,7 +40,7 @@ export const RakalySvg: React.FC<RakalySvgProps> = (props) => {
   );
 };
 
-type RakalyIconProps = React.ComponentProps<typeof Icon>;
-export const RakalyIcon: React.FC<RakalyIconProps> = (props) => (
-  <Icon component={RakalySvg} {...props} />
+type AppIconProps = React.ComponentProps<typeof Icon>;
+export const AppIcon: React.FC<AppIconProps> = (props) => (
+  <Icon component={AppSvg} {...props} />
 );

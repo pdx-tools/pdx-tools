@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { db, toApiSaveUser } from "../../../server-lib/db";
 import { withCoreMiddleware } from "../../../server-lib/middlware";
 import { getString } from "../../../server-lib/valiation";
-import { UserSaves } from "../../../services/rakalyApi";
+import { UserSaves } from "../../../services/appApi";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "GET") {

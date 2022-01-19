@@ -50,7 +50,7 @@ services:
     command: redis-server --save 60 1 --loglevel warning
 
   api:
-    image: docker.nbsoftsolutions.com/rakaly/app
+    image: docker.nbsoftsolutions.com/pdx-tools/app
     restart: 'unless-stopped'
     labels:
       - "traefik.enable=true"

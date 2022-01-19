@@ -9,7 +9,7 @@ import {
 } from "../../features/account/sessionSlice";
 import { SignInButtons } from "./auth";
 import { GithubIcon, DiscordIcon } from "@/components/icons";
-import { rakalyApi } from "../../services/rakalyApi";
+import { appApi } from "../../services/appApi";
 import css from "styled-jsx/css";
 
 const MySaves: React.FC<{}> = () => {
@@ -50,7 +50,7 @@ const { className, styles } = css.resolve`
 `;
 
 export const CoreMenu: React.FC<CoreMenuProps> = ({ mode }) => {
-  const [logoutTrigger] = rakalyApi.endpoints.logout.useMutation();
+  const [logoutTrigger] = appApi.endpoints.logout.useMutation();
   const session = useSelector(selectSession);
   const inlined = mode == "inline";
   const defaultOpenedKeys = !inlined ? [] : ["eu4", "community", "account"];
@@ -158,7 +158,7 @@ export const CoreMenu: React.FC<CoreMenuProps> = ({ mode }) => {
           icon={<GithubIcon style={{ height: "16px", width: "16px" }} />}
           key="community:2"
         >
-          <a href="https://github.com/rakaly">Github</a>
+          <a href="https://github.com/pdx-tools">Github</a>
         </Menu.Item>
         <Menu.Item key="community:3">
           <Link href="/docs">API</Link>

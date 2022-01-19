@@ -1,7 +1,7 @@
 import React from "react";
 import { HtmlHead } from "@/components/head";
 import { Home } from "@/components/landing/Home";
-import { RakalyStructure } from "@/components/layout";
+import { AppStructure } from "@/components/layout";
 import { FileDrop } from "@/features/engine/FileDrop";
 
 export const LoadingPage: React.FC<{}> = () => {
@@ -13,25 +13,25 @@ export const LoadingPage: React.FC<{}> = () => {
         }
       `}</style>
       <HtmlHead>
-        <title>Rakaly</title>
+        <title>PDX Tools</title>
         <meta
           name="description"
-          content="Rakaly is a home for EU4 save files to share with the world, compete in a casual leaderboard for achievement completion times, and to analyze with charts, tables, and maps"
+          content="PDX Tools is a home for EU4 save files to share with the world, compete in a casual leaderboard for achievement completion times, and to analyze with charts, tables, and maps"
         ></meta>
       </HtmlHead>
-      <RakalyStructure>
+      <AppStructure>
         <FileDrop>
           <Home
             subtitle={
               <p>
-                Please wait while your save is transferred to Rakaly. Not
+                Please wait while your save is transferred to PDX Tools. Not
                 working? Ensure that pop-ups are allowed or click the button
-                below to open Rakaly and manually select your save.
+                below to open PDX Tools and manually select your save.
               </p>
             }
           />
         </FileDrop>
-      </RakalyStructure>
+      </AppStructure>
     </>
   );
 };

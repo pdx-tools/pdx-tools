@@ -4,7 +4,7 @@ import { getEnv } from "../../../server-lib/env";
 import { log } from "../../../server-lib/logging";
 import { withCoreMiddleware } from "../../../server-lib/middlware";
 import { NextSessionRequest, withSession } from "../../../server-lib/session";
-import { SkanUserSaves } from "../../../services/rakalyApi";
+import { SkanUserSaves } from "../../../services/appApi";
 
 const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
   if (req.method !== "GET") {

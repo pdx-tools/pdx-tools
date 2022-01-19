@@ -1,6 +1,6 @@
 export * from "./DiscordIcon";
 export * from "./GithubIcon";
-export * from "./RakalyIcon";
+export * from "./AppIcon";
 export * from "./FilterIcon";
 export * from "./EdgeIcon";
 export * from "./ChromeIcon";

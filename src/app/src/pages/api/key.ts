@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { withCoreMiddleware } from "../../server-lib/middlware";
 import { NextSessionRequest, withSession } from "../../server-lib/session";
 import { redisClient } from "../../server-lib/redis";
-import { NewKeyResponse } from "../../services/rakalyApi";
+import { NewKeyResponse } from "../../services/appApi";
 
 const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
   if (req.method !== "POST") {

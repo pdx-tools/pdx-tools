@@ -1,6 +1,6 @@
 import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
-import { rakalyApi } from "@/services/rakalyApi";
+import { appApi } from "@/services/appApi";
 import { createSelectorHook, useDispatch } from "react-redux";
 import { reducer as sessionReducer } from "@/features/account";
 import { reducer as toasterReducer } from "@/features/notifications";
@@ -19,7 +19,7 @@ const rootReducer = combineReducers({
   ck3: ck3Reducer,
   hoi4: hoi4Reducer,
   imperator: imperatorReducer,
-  [rakalyApi.reducerPath]: rakalyApi.reducer,
+  [appApi.reducerPath]: appApi.reducer,
 });
 
 export type RootState = ReturnType<typeof rootReducer>;
@@ -27,7 +27,7 @@ const store = configureStore({
   reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
-      .concat(rakalyApi.middleware)
+      .concat(appApi.middleware)
       .concat(rtkQueryErrorLogger),
 });
 

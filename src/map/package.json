@@ -7,17 +7,8 @@
     "build": "tsc",
     "watch": "tsc --watch"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/rakaly/webgl-playground.git"
-  },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/rakaly/webgl-playground/issues"
-  },
-  "homepage": "https://github.com/rakaly/webgl-playground#readme",
   "devDependencies": {
     "typescript": "^4.5.2"
   }

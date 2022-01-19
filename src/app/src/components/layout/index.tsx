@@ -1,1 +1,1 @@
-export * from "./RakalyStructure";
+export * from "./AppStructure";

@@ -1,4 +1,4 @@
-import { CheckRequest, CheckResponse } from "@/services/rakalyApi";
+import { CheckRequest, CheckResponse } from "@/services/appApi";
 import { NextApiResponse } from "next";
 import { db, toApiSave } from "../../server-lib/db";
 import { leaderboardEligible } from "../../server-lib/leaderboard";

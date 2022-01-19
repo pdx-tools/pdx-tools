@@ -36,8 +36,8 @@ export const AnalyzeBox: React.FC<{}> = () => {
         className={isFileHover ? "hover" : ""}
       >
         Maps, graphs, and data await your EU4 save. Drag and drop a save onto
-        this page or select this box and analyze your save. Rakaly is a modern
-        EU4 savefile analyzer for the browser. Upload and share.
+        this page or select this box and analyze your save. PDX Tools is a
+        modern EU4 savefile analyzer for the browser. Upload and share.
         <input
           ref={fileInputRef}
           hidden

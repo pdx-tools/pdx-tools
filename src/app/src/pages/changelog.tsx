@@ -1,23 +1,23 @@
 import React from "react";
 import { HtmlHead } from "@/components/head";
-import { RakalyStructure } from "@/components/layout";
+import { AppStructure } from "@/components/layout";
 import { ChangeLog } from "@/features/changelog";
 
-export const RakalyChangelog: React.FC<{}> = () => {
+export const AppChangelog: React.FC<{}> = () => {
   return (
     <>
       <HtmlHead>
-        <title>Changelog - Rakaly</title>
+        <title>Changelog - PDX Tools</title>
         <meta
           name="description"
-          content="A changelog of bugs and features added to Rakaly"
+          content="A changelog of bugs and features added to PDX Tools"
         ></meta>
       </HtmlHead>
-      <RakalyStructure>
+      <AppStructure>
         <ChangeLog />
-      </RakalyStructure>
+      </AppStructure>
     </>
   );
 };
 
-export default RakalyChangelog;
+export default AppChangelog;
