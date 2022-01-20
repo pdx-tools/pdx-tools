@@ -1,3 +1,7 @@
+## EU4 Map
+
+The map module can also be built and used separately from the website:
+
 - Install Nodejs and NPM
 - Install dependencies `npm ci`
 - Watch build `npm run watch`
@@ -6,8 +10,3 @@
 ```bash
 python3 -m http.server 8000
 ```
-
-## TODO
-- Fix river edge detection
-- Fix inconsistent coast borders
-- Add alpha to mapmode colors when zooming close up
