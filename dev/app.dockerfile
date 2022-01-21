@@ -13,7 +13,7 @@ RUN groupadd --system --gid 1001 nextjs \
     && useradd --system --create-home --uid 1001 --gid 1001 nextjs
 
 COPY .next/standalone .
-COPY src/server-lib/libeu4gamejs.node ./src/server-lib/libeu4gamejs.node
+COPY src/server-lib/applib.node ./src/server-lib/applib.node
 COPY next.config.js ./
 COPY public ./public
 COPY --chown=nextjs:nextjs .next ./.next

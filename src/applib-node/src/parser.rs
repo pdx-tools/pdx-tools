@@ -6,7 +6,7 @@ pub struct FileParser {
 
 impl FileParser {
     pub fn parse_file(&self) -> Result<String, Box<dyn std::error::Error>> {
-        let f = admin_shared::parser::parse_path(&self.path)?;
+        let f = applib::parser::parse_path(&self.path)?;
         let result = serde_json::to_string(&f)?;
         Ok(result)
     }

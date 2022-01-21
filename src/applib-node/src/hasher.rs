@@ -6,7 +6,7 @@ pub struct FileHasher {
 
 impl FileHasher {
     fn hash(&self) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(admin_shared::hasher::hash(&self.path)?)
+        Ok(applib::hasher::hash(&self.path)?)
     }
 }
 

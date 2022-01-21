@@ -138,8 +138,8 @@ build-wasm-dev:
   wasm-pack build -t web src/wasm-imperator
 
 build-napi:
-  cargo build --release -p eu4gamejs
-  cp -f ./target/release/libeu4gamejs.so ./src/app/src/server-lib/libeu4gamejs.node
+  cargo build --release -p applib-node
+  cp -f ./target/release/libapplib_node.so ./src/app/src/server-lib/applib.node
 
 package-all: touch-tokens
   #!/usr/bin/env bash

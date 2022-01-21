@@ -2,9 +2,10 @@
 name = "admin-cli"
 version = "0.1.0"
 edition = "2018"
+publish = false
 
 [dependencies]
-admin-shared = { path = "../admin-shared" }
+applib = { path = "../applib" }
 anyhow = "1"
 brotli = "3"
 pico-args = "0.4"

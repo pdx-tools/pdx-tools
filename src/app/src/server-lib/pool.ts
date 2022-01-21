@@ -15,8 +15,8 @@ nextRoot = nextRoot && process.env.NODE_ENV === "production" ? "." : nextRoot;
 // __non_webpack_require__, node-loader, and webpack configuration
 // to workaround webpack issues
 var modulePath = nextRoot
-  ? path.join(path.resolve(nextRoot), "src", "server-lib", "libeu4gamejs.node")
-  : path.join(__dirname, "libeu4gamejs.node");
+  ? path.join(path.resolve(nextRoot), "src", "server-lib", "applib.node")
+  : path.join(__dirname, "applib.node");
 
 const nativeModule = { exports: {} as any };
 dlopen(nativeModule, modulePath);
