@@ -1,7 +1,10 @@
 import { ValidationError } from "./errors";
 
 export type UploadType = "gzipText" | "brText" | "brTar" | "zip";
-export function uploadType(type: string, encoding: string | null): UploadType {
+export function deduceUploadType(
+  type: string,
+  encoding: string | null
+): UploadType {
   if (encoding?.toLowerCase() === "gzip") {
     return "gzipText";
   } else if (encoding?.toLowerCase() == "br") {
