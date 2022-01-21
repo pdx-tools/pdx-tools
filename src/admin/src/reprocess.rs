@@ -1,4 +1,4 @@
-use admin_shared::parser::{ParseFileError, ParseResult, ParsedFile};
+use applib::parser::{ParseFileError, ParseResult, ParsedFile};
 use anyhow::{bail, Context};
 use serde::Serialize;
 use std::{
@@ -27,7 +27,7 @@ fn brotli_parse(fp: &Path, original_err: ParseFileError) -> anyhow::Result<Parse
     let mut reader = BufReader::new(deflated_file);
 
     match brotli::BrotliDecompress(&mut reader, &mut writer) {
-        Ok(_) => Ok(admin_shared::parser::parse_file(writer.into_inner()?)?),
+        Ok(_) => Ok(applib::parser::parse_file(writer.into_inner()?)?),
         Err(_) => Err(original_err.into()),
     }
 }
@@ -43,7 +43,7 @@ pub fn cmd(args: pico_args::Arguments) -> anyhow::Result<()> {
     for file in files {
         let path = file.path();
 
-        let parsed = match admin_shared::parser::parse_path(path) {
+        let parsed = match applib::parser::parse_path(path) {
             Ok(x) => Ok(x),
             Err(e) => brotli_parse(path, e),
         };

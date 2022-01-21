@@ -18,25 +18,14 @@ checksum = "aae1277d39aeec15cb388266ecc24b11c80469deae6067e17a1a7aa9e5c1f234"
 name = "admin-cli"
 version = "0.1.0"
 dependencies = [
- "admin-shared",
  "anyhow",
+ "applib",
  "brotli",
  "pico-args",
  "serde",
  "serde_json",
  "tempfile",
  "walkdir",
-]
-
-[[package]]
-name = "admin-shared"
-version = "0.1.0"
-dependencies = [
- "eu4game",
- "eu4save",
- "memmap",
- "serde",
- "thiserror",
 ]
 
 [[package]]
@@ -77,6 +66,30 @@ name = "anyhow"
 version = "1.0.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "84450d0b4a8bd1ba4144ce8ce718fbc5d071358b1e5384bace6536b3d1f2d5b3"
+
+[[package]]
+name = "applib"
+version = "0.1.0"
+dependencies = [
+ "eu4game",
+ "eu4save",
+ "memmap",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "applib-node"
+version = "0.1.0"
+dependencies = [
+ "applib",
+ "eu4game",
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "assets"
@@ -762,19 +775,6 @@ dependencies = [
  "tarsave",
  "walkdir",
  "zip",
-]
-
-[[package]]
-name = "eu4gamejs"
-version = "0.1.0"
-dependencies = [
- "admin-shared",
- "eu4game",
- "napi",
- "napi-build",
- "napi-derive",
- "serde",
- "serde_json",
 ]
 
 [[package]]

@@ -1,8 +1,9 @@
 [package]
-name = "eu4gamejs"
+name = "applib-node"
 version = "0.1.0"
 authors = ["nickbabcock <nbabcock19@hotmail.com>"]
 edition = "2018"
+publish = false
 
 [lib]
 crate-type = ["cdylib"]
@@ -10,7 +11,7 @@ crate-type = ["cdylib"]
 [dependencies]
 napi = "2"
 napi-derive = "2"
-admin-shared = { path = "../admin-shared" }
+applib = { path = "../applib" }
 eu4game = { path = "../eu4game" }
 serde_json = "1"
 serde = {version = "1", features = ["derive"]}
