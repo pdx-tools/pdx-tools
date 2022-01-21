@@ -20,18 +20,19 @@ import {
   leaderboardEligible,
 } from "@/server-lib/leaderboard";
 import { getOptionalString, getString } from "@/server-lib/valiation";
-import { uploadType, UploadType } from "@/server-lib/models";
+import { deduceUploadType, UploadType } from "@/server-lib/models";
 import { nanoid } from "@reduxjs/toolkit";
 
 const tmpDir = process.env["TMPDIR"] || os.tmpdir();
-var upload = multer({
-  dest: tmpDir,
-  limits: {
-    fileSize: 20 * 1024 * 1024,
-  },
-});
+const upload = multer({ dest: tmpDir });
 
-const parseMetadata = (data: any) => {
+interface UploadMetadata {
+  aar: string;
+  filename: string;
+  uploadType: UploadType;
+}
+
+const parseMetadata = (data: any): UploadMetadata => {
   const aar = data?.aar ?? "";
   if (typeof aar !== "string" || aar.length > 5000) {
     throw new ValidationError(
@@ -52,10 +53,12 @@ const parseMetadata = (data: any) => {
   return {
     aar,
     filename,
-    uploadType: uploadType(contentType, contentEncoding),
+    uploadType: deduceUploadType(contentType, contentEncoding),
   };
 };
 
+// Get random, temporary file name. Same algorithm used by multer:
+// https://github.com/expressjs/multer/blob/4f4326a6687635411a69d70f954f48abb4bce58a/storage/disk.js#L7-L11
 const randomBytes = promisify(crypto.randomBytes);
 const tmpPath = () =>
   randomBytes(16)
@@ -76,15 +79,16 @@ const unwrapSave = async (fp: string, upload: UploadType): Promise<string> => {
       return fp;
   }
 
+  const destinationPath = await tmpPath();
   try {
-    const destinationPath = await tmpPath();
     const source = createReadStream(fp);
     const destination = createWriteStream(destinationPath);
     await pipeline(source, inflater, destination);
     return destinationPath;
   } catch (ex) {
     log.exception(ex, { msg: "unable to inflate file" });
-    throw new ValidationError("unable to unzip file");
+    attemptUnlink(destinationPath);
+    throw new ValidationError("unable to inflate file");
   }
 };
 
@@ -112,22 +116,79 @@ const uploadFile = (
   });
 };
 
-const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
-  const uid = req.sessionUid;
+const attemptUnlink = async (filepath: string) => {
+  try {
+    await fs.promises.unlink(filepath);
+  } catch (innerEx) {
+    log.exception(innerEx, { msg: "unable to clean up temporary file" });
+  }
+};
+
+const uploadRawFile = async (
+  req: NextSessionRequest
+): Promise<[string, UploadMetadata] | null> => {
+  const filename =
+    req.headers["pdx-tools-filename"] ?? req.headers["rakaly-filename"];
+  const contentType = req.headers["content-type"];
+  const contentEncoding = req.headers["content-encoding"];
+
+  // Detect if it is a raw file upload
+  if (typeof filename !== "string" || typeof contentType !== "string") {
+    return null;
+  }
+
+  const uploadType = deduceUploadType(contentType, contentEncoding ?? null);
+  const sinkPath = await tmpPath();
+  try {
+    const sink = createWriteStream(sinkPath);
+    await pipeline(req, sink);
+
+    return [
+      sinkPath,
+      {
+        aar: "",
+        filename,
+        uploadType,
+      },
+    ];
+  } catch (ex) {
+    attemptUnlink(sinkPath);
+    throw ex;
+  }
+};
+
+const handleUpload = async (
+  req: NextSessionRequest,
+  res: NextApiResponse
+): Promise<[string, UploadMetadata]> => {
   const requestFile = await uploadFile(req, res);
 
   if (!requestFile) {
-    throw new ValidationError("request file not found");
+    const rawUpload = await uploadRawFile(req);
+    if (rawUpload) {
+      return rawUpload;
+    } else {
+      throw new ValidationError("request file not found");
+    }
   }
-
-  const requestPath = requestFile.path;
-  let savePath: string | undefined;
 
   try {
     const metadataObj = JSON.parse(req.body?.metadata || "{}");
     const metadata = parseMetadata(metadataObj);
-    const saveId = nanoid();
+    return [requestFile.path, metadata];
+  } catch (ex) {
+    attemptUnlink(requestFile.path);
+    throw ex;
+  }
+};
 
+const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
+  const uid = req.sessionUid;
+  const [requestPath, metadata] = await handleUpload(req, res);
+  let savePath: string | undefined;
+
+  try {
+    const saveId = nanoid();
     savePath = await unwrapSave(requestPath, metadata.uploadType);
     const checksum = await fileChecksum(savePath);
 
@@ -170,12 +231,7 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
       );
     }
 
-    await uploadFileToS3(
-      requestPath,
-      saveId,
-      requestFile.size,
-      metadata.uploadType
-    );
+    await uploadFileToS3(requestPath, saveId, metadata.uploadType);
 
     const newRow = await db.save.create({
       data: {
@@ -220,9 +276,9 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
 
     res.json(response);
   } finally {
-    await fs.promises.unlink(requestPath);
+    attemptUnlink(requestPath);
     if (savePath && savePath !== requestPath) {
-      await fs.promises.unlink(savePath);
+      attemptUnlink(savePath);
     }
   }
 };

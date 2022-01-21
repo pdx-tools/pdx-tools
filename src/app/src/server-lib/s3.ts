@@ -56,13 +56,13 @@ const sizeHistogram = new metrics.Histogram({
 export async function uploadFileToS3(
   filePath: string,
   filename: string,
-  bytes: number,
   upload: UploadType
 ): Promise<void> {
   const contentEncoding = uploadContentEncoding(upload);
   const contentType = uploadContentType(upload);
 
   const end = timeHistogram.startTimer();
+  const { size: bytes } = await fs.promises.stat(filePath);
   const stream = fs.createReadStream(filePath);
 
   await s3client

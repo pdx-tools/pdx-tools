@@ -1,5 +1,5 @@
 import FormData from "form-data";
-import { createReadStream, existsSync, writeFileSync } from "fs";
+import { createReadStream, existsSync, writeFileSync, promises } from "fs";
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import { db } from "../src/server-lib/db";
 import { BUCKET, deleteFile, s3client } from "../src/server-lib/s3";
@@ -16,6 +16,7 @@ import {
   SaveFile,
   UserSaves,
 } from "@/services/appApi";
+import { stringify } from "querystring";
 
 jest.setTimeout(60000);
 
@@ -66,6 +67,22 @@ async function getNewCookies() {
 
 class HttpClient {
   private constructor(private cookies: string) {}
+
+  async uploadSaveHeaders(
+    filepath: string,
+    headers: AxiosRequestConfig["headers"]
+  ): Promise<AxiosResponse<SavePostResponse>> {
+    await fetchEu4Save(filepath);
+    const data = await promises.readFile(eu4SaveLocation(filepath));
+
+    return await axios.post("http://localhost:3000/api/saves", data, {
+      headers: {
+        ...headers,
+        cookie: this.cookies,
+      },
+      withCredentials: true,
+    });
+  }
 
   async uploadSaveCore<T>(
     filepath: string,
@@ -498,4 +515,16 @@ test("admin rebalance", async () => {
   const out2 = await redis.zRangeWithScores("achievement_scores:108", 0, -1);
   expect(out2).toHaveLength(1);
   expect(out2[0]).toStrictEqual({ score: newScore, value: "MY_SAVE_ID" });
+});
+
+test("api post new save", async () => {
+  const client = await HttpClient.create();
+  const path = "Granada1468_05_09.eu4.gz";
+  const upload = await client.uploadSaveHeaders(path, {
+    "rakaly-filename": "granada.eu4",
+    "Content-Type": "text/plain; charset=windows-1252",
+    "Content-Encoding": "gzip",
+  });
+
+  expect(upload.data.save_id).toBeDefined();
 });

@@ -84,11 +84,11 @@ test-app *cmd: prep-test-app
 
   export NODE_ENV=test
   APP_OUT="$(mktemp)"
-  trap 'cat "$APP_OUT"' ERR
-  trap 'rm -rf -- "$APP_OUT"' EXIT
+  trap 'cat "$APP_OUT.stdout" "$APP_OUT.stderr"' ERR
+  trap 'rm -rf -- "$APP_OUT.stdout" "$APP_OUT.stderr"' EXIT
 
   # TODO: I need the naked `next` else killing pid doesn't kill next 
-  src/app/node_modules/.bin/next dev src/app 2>&1 >> "$APP_OUT" &
+  src/app/node_modules/.bin/next dev src/app > "$APP_OUT.stdout" 2> "$APP_OUT.stderr" &
   APP_PID=$!
   trap 'kill "$APP_PID"' EXIT
 
