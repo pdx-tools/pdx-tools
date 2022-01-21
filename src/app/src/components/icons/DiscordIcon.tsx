@@ -1,6 +1,7 @@
 import React from "react";
 import Icon from "@ant-design/icons";
 
+// From media kit: https://discord.com/branding
 export const DiscordSvg: React.FC<{}> = () => {
   return (
     <svg viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg">

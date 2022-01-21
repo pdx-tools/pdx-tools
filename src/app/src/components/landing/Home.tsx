@@ -184,11 +184,11 @@ export const Home: React.FC<HomeProps> = () => {
             </Link>
           </div>
           <div className="flex-row gap">
-            <FirefoxIcon />
+            <FirefoxIcon style={{fill: "lightgrey"}} />
             <div className="divider" />
-            <ChromeIcon />
+            <ChromeIcon style={{fill: "lightgrey"}} />
             <div className="divider" />
-            <EdgeIcon />
+            <EdgeIcon style={{fill: "lightgrey"}} />
           </div>
           <span className="text-xs">
             Works best in Firefox (62+), Chrome (66+), and Edge (79+)
