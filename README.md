@@ -1,5 +1,7 @@
 <h1 align="center">
 <a href="https://pdx.tools">PDX Tools</a>
+  <br/>
+  <a href="https://discord.gg/rCpNWQW"><img alt="Discord" src="https://img.shields.io/discord/712465396590182461?logo=discord&logoColor=white"></a> <a href="https://github.com/pdx-tools/pdx-tools/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/pdx-tools/pdx-tools/actions/workflows/ci.yml/badge.svg"></a> 
 <br/>
 <br/>
   <img src="src/app/src/components/landing/headline.png?raw=true">
