@@ -178,19 +178,37 @@ test-environment +cmd:
 
   docker-compose -f ./dev/docker-compose.test.yml --env-file "$MY_TMP" --project-name pdx_test {{cmd}}
 
-db-deploy-staging:
+deploy-db-schema ENVIRONMENT:
   #!/usr/bin/env bash
   set -euo pipefail
-  . dev/.env.staging
+  . dev/.env.{{ENVIRONMENT}}
   export DATABASE_URL=postgresql://postgres:$DATABASE_ADMIN_PASSWORD@localhost:$DATABASE_EXPOSED_LOCAL_PORT
   (cd src/app && npx prisma migrate deploy)
 
-db-deploy-prod:
+backup ENVIRONMENT:
+  backup-db {{ENVIRONMENT}}
+  backup-leaderboard {{ENVIRONMENT}}
+  backup-saves {{ENVIRONMENT}}
+
+backup-db ENVIRONMENT:
+  ssh -t pdx-tools-{{ENVIRONMENT}} '/opt/pdx-tools/docker-compose.sh exec --user postgres db pg_dump --exclude-table=\*prisma\* --data-only' > db-{{ENVIRONMENT}}.dump
+  ssh -t pdx-tools-{{ENVIRONMENT}} '/opt/pdx-tools/docker-compose.sh exec --user postgres db psql --command "\COPY saves TO STDOUT CSV HEADER"' > db-{{ENVIRONMENT}}-saves.csv
+
+backup-leaderboard ENVIRONMENT:
+  ssh -t pdx-tools-{{ENVIRONMENT}} '/opt/pdx-tools/docker-compose.sh exec redis cat dump.rdb' > leaderboard-{{ENVIRONMENT}}.rdb
+
+backup-saves ENVIRONMENT:
   #!/usr/bin/env bash
   set -euo pipefail
-  . dev/.env.prod
-  export DATABASE_URL=postgresql://postgres:$DATABASE_ADMIN_PASSWORD@localhost:$DATABASE_EXPOSED_LOCAL_PORT
-  (cd src/app && npx prisma migrate deploy)
+  . dev/.env.app.{{ENVIRONMENT}}
+
+  export RCLONE_CONFIG_PDX_TYPE=s3
+  export RCLONE_CONFIG_PDX_ACCESS_KEY_ID="$S3_ACCESS_KEY"
+  export RCLONE_CONFIG_PDX_SECRET_ACCESS_KEY="$S3_SECRET_KEY"
+  export RCLONE_CONFIG_PDX_REGION="$S3_REGION"
+  export RCLONE_CONFIG_PDX_ENDPOINT="${S3_ENDPOINT/https:\/\//}"
+
+  rclone sync --no-gzip-encoding --backup-dir ./saves-archive "pdx:/$S3_BUCKET" ./saves
 
 admin-sync-assets:
   cargo build --release -p assets

@@ -8,12 +8,12 @@ use serde::Serialize;
 use std::io;
 use std::{fs::File, path::Path};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Clone, Copy)]
 pub struct SavePatch {
-    first: u16,
-    second: u16,
-    third: u16,
-    fourth: u16,
+    pub first: u16,
+    pub second: u16,
+    pub third: u16,
+    pub fourth: u16,
 }
 
 #[derive(Debug, Serialize)]
@@ -28,29 +28,29 @@ pub enum ParseResult {
     Parsed(Box<ParsedFile>),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ParsedFile {
-    patch: SavePatch,
-    encoding: String,
-    playthrough_id: Option<String>,
-    game_difficulty: GameDifficulty,
-    campaign_id: String,
-    campaign_length: i32,
-    is_ironman: bool,
-    is_multiplayer: bool,
-    is_observer: bool,
-    player_names: Vec<String>,
-    player_tag: String,
-    player_tag_name: String,
-    player_start_tag: Option<String>,
-    player_start_tag_name: Option<String>,
-    date: String,
-    days: i32,
-    achievements: Option<Vec<i32>>,
-    dlc_ids: Vec<i32>,
-    checksum: String,
-    patch_shorthand: String,
-    weighted_score: i32,
+    pub patch: SavePatch,
+    pub encoding: String,
+    pub playthrough_id: Option<String>,
+    pub game_difficulty: GameDifficulty,
+    pub campaign_id: String,
+    pub campaign_length: i32,
+    pub is_ironman: bool,
+    pub is_multiplayer: bool,
+    pub is_observer: bool,
+    pub player_names: Vec<String>,
+    pub player_tag: String,
+    pub player_tag_name: String,
+    pub player_start_tag: Option<String>,
+    pub player_start_tag_name: Option<String>,
+    pub date: String,
+    pub days: i32,
+    pub achievements: Option<Vec<i32>>,
+    pub dlc_ids: Vec<i32>,
+    pub checksum: String,
+    pub patch_shorthand: String,
+    pub weighted_score: i32,
 }
 
 #[derive(thiserror::Error, Debug)]
