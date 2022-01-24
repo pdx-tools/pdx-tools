@@ -13,7 +13,9 @@ export const GameView: React.FC<{}> = () => {
   const router = useRouter();
 
   useEffect(() => {
-    dispatch(resetSaveAnalysis());
+    if (window.location.pathname === "/") {
+      dispatch(resetSaveAnalysis());
+    }
   }, [dispatch]);
 
   useEffect(() => {
