@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useRef, useState } from "react";
 import { EyeOutlined } from "@ant-design/icons";
 import { Button, Card, Descriptions, Divider, Grid, List, Tooltip } from "antd";
 import Link from "next/link";
@@ -17,6 +17,7 @@ import { selectSession } from "@/features/account/sessionSlice";
 import {
   getEu4Canvas,
   getWasmWorker,
+  useComputeOnSave,
   useEu4CanvasRef,
   useWasmWorker,
   WorkerClient,
@@ -24,14 +25,15 @@ import {
 import { Aar } from "./Aar";
 import {
   initialEu4CountryFilter,
+  selectEu4MapColorPayload,
   useEu4Achievements,
   useEu4Meta,
   useEu4ModList,
 } from "@/features/eu4/eu4Slice";
 import { FlipBook, StringFlipBook } from "../../components/flip-book";
 import { ModList } from "./ModList";
-import { useComputeOnSave } from "@/features/engine/worker/wasm-worker-context";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
+import { MapPayload } from "../../types/map";
 
 const { useBreakpoint } = Grid;
 
@@ -58,30 +60,36 @@ export const InfoDrawer: React.FC<{}> = () => {
   const serverFile = useAppSelector((state) => state.eu4.serverSaveFile);
   const { data } = useComputeOnSave(playerHistories);
   const sideBarContainerRef = useSideBarContainerRef();
+  const mapPayload = useSelector(selectEu4MapColorPayload);
+  const initialMapPayload = useRef(mapPayload);
+  const [filteredTag, setFilteredTag] = useState<string | undefined>(undefined);
 
-  const visibleTag = useCallback(
-    async (tag: string) => {
-      const worker = getWasmWorker(workerRef);
-      const eu4Canvas = getEu4Canvas(eu4CanvasRef);
+  const visibleTag = async (tag: string) => {
+    const payload =
+      tag == filteredTag
+        ? initialMapPayload.current
+        : ({
+            kind: "political",
+            date: null,
+            tagFilter: {
+              ...initialEu4CountryFilter,
+              players: "none",
+              ai: "none",
+              include: [tag],
+              includeSubjects: true,
+            },
+            showSecondaryColor: false,
+            paintSubjectInOverlordHue: false,
+          } as MapPayload);
 
-      const [primary, secondary] = await worker.eu4MapColors({
-        kind: "political",
-        date: null,
-        tagFilter: {
-          ...initialEu4CountryFilter,
-          players: "none",
-          ai: "none",
-          include: [tag],
-          includeSubjects: true,
-        },
-        showSecondaryColor: false,
-        paintSubjectInOverlordHue: false,
-      });
-      eu4Canvas.map?.updateProvinceColors(primary, secondary);
-      eu4Canvas.redrawMapImage();
-    },
-    [workerRef, eu4CanvasRef]
-  );
+    const worker = getWasmWorker(workerRef);
+    const eu4Canvas = getEu4Canvas(eu4CanvasRef);
+
+    const [primary, secondary] = await worker.eu4MapColors(payload);
+    eu4Canvas.map?.updateProvinceColors(primary, secondary);
+    eu4Canvas.redrawMapImage();
+    setFilteredTag(tag == filteredTag ? undefined : tag);
+  };
 
   const isPrivileged =
     session.kind == "user" &&

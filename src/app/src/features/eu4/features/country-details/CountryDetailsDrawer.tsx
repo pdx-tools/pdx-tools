@@ -10,10 +10,7 @@ import {
   selectEu4SelectedTag,
   setEu4SelectedTag,
 } from "@/features/eu4/eu4Slice";
-import {
-  useWorkerOnSave,
-  WorkerClient,
-} from "../../../engine/worker/wasm-worker-context";
+import { useWorkerOnSave, WorkerClient } from "@/features/engine";
 import {
   CountryDetails,
   GreatAdvisor,
