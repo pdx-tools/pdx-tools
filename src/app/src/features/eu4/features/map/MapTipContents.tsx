@@ -7,28 +7,31 @@ interface MapTipContentsProps {
 }
 
 const MapTipsTable: React.FC<MapTipContentsProps> = ({ tip }) => {
+  const items = [
+    <Descriptions.Item label="Owner">
+      <FlagAvatar tag={tip.owner.tag} name={tip.owner.name} />
+    </Descriptions.Item>,
+    ...(tip.owner.tag != tip.controller.tag
+      ? [
+          <Descriptions.Item label="Controller">
+            <FlagAvatar tag={tip.controller.tag} name={tip.controller.name} />
+          </Descriptions.Item>,
+        ]
+      : []),
+  ];
+
   switch (tip.kind) {
     case "political": {
       return (
         <Descriptions column={1} size="small">
-          <Descriptions.Item label="Owner">
-            <FlagAvatar tag={tip.owner.tag} name={tip.owner.name} />
-          </Descriptions.Item>
-          <Descriptions.Item label="Controller">
-            <FlagAvatar tag={tip.controller.tag} name={tip.controller.name} />
-          </Descriptions.Item>
+          {items}
         </Descriptions>
       );
     }
     case "religion": {
       return (
         <Descriptions column={1} size="small">
-          <Descriptions.Item label="Owner">
-            <FlagAvatar tag={tip.owner.tag} name={tip.owner.name} />
-          </Descriptions.Item>
-          <Descriptions.Item label="Controller">
-            <FlagAvatar tag={tip.controller.tag} name={tip.controller.name} />
-          </Descriptions.Item>
+          {items}
           <Descriptions.Item label="State Religion">
             {tip.stateReligion.name}
           </Descriptions.Item>
@@ -41,12 +44,7 @@ const MapTipsTable: React.FC<MapTipContentsProps> = ({ tip }) => {
     case "development": {
       return (
         <Descriptions column={1} size="small">
-          <Descriptions.Item label="Owner">
-            <FlagAvatar tag={tip.owner.tag} name={tip.owner.name} />
-          </Descriptions.Item>
-          <Descriptions.Item label="Controller">
-            <FlagAvatar tag={tip.controller.tag} name={tip.controller.name} />
-          </Descriptions.Item>
+          {items}
           <Descriptions.Item
             label={`Development (${
               tip.baseManpower + tip.baseProduction + tip.baseTax
@@ -60,12 +58,7 @@ const MapTipsTable: React.FC<MapTipContentsProps> = ({ tip }) => {
     case "technology": {
       return (
         <Descriptions column={1} size="small">
-          <Descriptions.Item label="Owner">
-            <FlagAvatar tag={tip.owner.tag} name={tip.owner.name} />
-          </Descriptions.Item>
-          <Descriptions.Item label="Controller">
-            <FlagAvatar tag={tip.controller.tag} name={tip.controller.name} />
-          </Descriptions.Item>
+          {items}
           <Descriptions.Item label="Tech">
             {`${tip.admTech} / ${tip.dipTech} / ${tip.milTech}`}
           </Descriptions.Item>
