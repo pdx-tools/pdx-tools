@@ -65,7 +65,8 @@ export const isRecordBreaking = async (
 
 export const addToLeaderboard = async (
   saveId: string,
-  save: ParsedFile,
+  save: Partial<ParsedFile> &
+    Pick<ParsedFile, "patch_shorthand" | "weighted_score">,
   epoch: number
 ) => {
   const achievementIds = save.achievements || [];
@@ -108,8 +109,6 @@ export const removeFromLeaderboard = async (save: Save) => {
     await client.zRem(top, save.id);
   }
 
-  const decr = save.saveSlot ? -1 : 0;
-  await client.zIncrBy("user_uploads_used_save_slots", decr, save.userId);
 };
 
 export const getAchievementLeaderboardSaveIds = async (
