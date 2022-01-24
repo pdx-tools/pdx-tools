@@ -31,6 +31,7 @@ import {
 import { FlipBook, StringFlipBook } from "../../components/flip-book";
 import { ModList } from "./ModList";
 import { useComputeOnSave } from "@/features/engine/worker/wasm-worker-context";
+import { useSideBarContainerRef } from "../../components/SideBarContainer";
 
 const { useBreakpoint } = Grid;
 
@@ -56,6 +57,7 @@ export const InfoDrawer: React.FC<{}> = () => {
   const achievements = useEu4Achievements();
   const serverFile = useAppSelector((state) => state.eu4.serverSaveFile);
   const { data } = useComputeOnSave(playerHistories);
+  const sideBarContainerRef = useSideBarContainerRef();
 
   const visibleTag = useCallback(
     async (tag: string) => {
@@ -90,7 +92,7 @@ export const InfoDrawer: React.FC<{}> = () => {
   const patch = `${version.first}.${version.second}.${version.third}.${version.fourth}`;
   const descriptionStyle = { verticalAlign: "middle" };
   return (
-    <div>
+    <div ref={sideBarContainerRef}>
       <Descriptions>
         {serverFile && (
           <Descriptions.Item label="Uploaded">
