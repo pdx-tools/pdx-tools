@@ -43,10 +43,12 @@ setup:
 
 publish-backend:
   docker push docker.nbsoftsolutions.com/pdx-tools/app
-  ssh -t pdx-tools 'cd /opt/pdx-tools && docker-compose pull app && docker-compose up -d app'
+  ssh -t pdx-tools-prod '/opt/pdx-tools/docker-compose.sh pull api && /opt/pdx-tools/docker-compose.sh up -d api'
 
-publish-frontend:
-  cd src/app && wrangler publish --env dev
+wrangler +cmd:
+  cd src/app && wrangler {{cmd}}
+
+publish-frontend: (wrangler "publish")
 
 build-app: prep-frontend
   cd src/app && npm run build
