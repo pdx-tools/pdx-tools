@@ -593,4 +593,23 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-01-24",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>
+            ✨ -{" "}
+            <a href="/blog/new-year-new-version-new-name-pdx-tools/">
+              New year, new version, new name: PDX Tools
+            </a>
+          </li>
+          <li>✨ - New immersive map</li>
+          <li>✨ - Uniform country filtering</li>
+          <li>✨ - CK3, HOI4, and Imperator support</li>
+          <li>✨ - EU4: Religion by development country graph</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
