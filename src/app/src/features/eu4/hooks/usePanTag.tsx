@@ -1,8 +1,12 @@
 import {
+  useWasmWorker,
+  getWasmWorker,
   useEu4CanvasRef,
   getEu4Canvas,
-} from "@/features/engine/persistant-canvas-context";
-import { useWasmWorker, getWasmWorker } from "@/features/engine";
+  getEu4Map,
+  useCanvasRef,
+  getCanvas,
+} from "@/features/engine";
 import { useCallback } from "react";
 import {
   useSideBarContainer,
@@ -12,20 +16,25 @@ import {
 export function usePanTag() {
   const workerRef = useWasmWorker();
   const eu4CanvasRef = useEu4CanvasRef();
+  const canvasRef = useCanvasRef();
   const sidebarContainer = useSideBarContainer();
 
   return useCallback(
     async (tag: string) => {
       const worker = getWasmWorker(workerRef);
+      const canvas = getCanvas(canvasRef);
       const eu4Canvas = getEu4Canvas(eu4CanvasRef);
-      const width = getSideBarContainerWidth(sidebarContainer);
+      const sideBarWidth = getSideBarContainerWidth(sidebarContainer);
+      const map = getEu4Map(eu4CanvasRef);
 
       const pos = await worker.eu4MapPositionOf(tag);
+      map.scale = 10000 / (canvas.width - sideBarWidth);
       eu4Canvas.focusCameraOn(pos, {
-        offsetX: width,
+        offsetX: sideBarWidth,
       });
+
       eu4Canvas.redrawViewport();
     },
-    [workerRef, eu4CanvasRef, sidebarContainer]
+    [workerRef, canvasRef, eu4CanvasRef, sidebarContainer]
   );
 }
