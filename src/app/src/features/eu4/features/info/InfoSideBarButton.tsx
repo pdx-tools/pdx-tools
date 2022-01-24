@@ -45,6 +45,7 @@ export const InfoSideBarButton: React.FC<SideBarButtonProps> = ({
         closable={true}
         mask={false}
         maskClosable={false}
+        destroyOnClose={true} /* to reset initial map payload */
         onClose={() => setDrawerVisible(false)}
         visible={drawerVisible}
         width="min(800px, 100%)"
