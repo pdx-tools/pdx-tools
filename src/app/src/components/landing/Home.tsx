@@ -13,7 +13,12 @@ import { selectEngineError } from "@/features/engine";
 import { Alert } from "antd";
 import Link from "next/link";
 import { BrowserCheck } from "./BrowserCheck";
-import { ChromeIcon, EdgeIcon, FirefoxIcon } from "@/components/icons";
+import {
+  ChromeIcon,
+  EdgeIcon,
+  FirefoxIcon,
+  SafariIcon,
+} from "@/components/icons";
 
 interface HomeProps {
   openLink?: string;
@@ -189,10 +194,13 @@ export const Home: React.FC<HomeProps> = () => {
             <ChromeIcon style={{ fill: "lightgrey" }} />
             <div className="divider" />
             <EdgeIcon style={{ fill: "lightgrey" }} />
+            <div className="divider" />
+            <SafariIcon style={{ fill: "lightgrey" }} />
           </div>
-          <span className="text-xs">
-            Works best in Firefox (62+), Chrome (66+), and Edge (79+)
-          </span>
+          <div className="text-xs text-center">
+            Works best in Firefox (62+), Chrome (66+), Edge (79+).
+            <div>Safari 15.2+ also supported.</div>
+          </div>
           <BrowserCheck />
         </div>
       </div>

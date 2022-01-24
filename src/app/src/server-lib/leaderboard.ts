@@ -108,7 +108,6 @@ export const removeFromLeaderboard = async (save: Save) => {
     await client.zRem(raw, save.id);
     await client.zRem(top, save.id);
   }
-
 };
 
 export const getAchievementLeaderboardSaveIds = async (

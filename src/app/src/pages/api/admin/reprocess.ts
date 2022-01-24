@@ -2,7 +2,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { calcWeightedScore, ParsedFile } from "@/server-lib/pool";
 import { db } from "@/server-lib/db";
-import { addToLeaderboard, removeFromLeaderboard } from "@/server-lib/leaderboard";
+import {
+  addToLeaderboard,
+  removeFromLeaderboard,
+} from "@/server-lib/leaderboard";
 
 type ReprocessEntry = {
   saveId: string;
@@ -33,7 +36,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         patch_shorthand: patch_shorthand,
         weighted_score: weighted_score.days,
       };
-      
+
       await removeFromLeaderboard(saveRow);
 
       await addToLeaderboard(

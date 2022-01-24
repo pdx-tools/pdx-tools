@@ -67,6 +67,10 @@
   line-height: 1rem;
 }
 
+.text-center {
+  text-align: center;
+}
+
 .font-bold {
   font-weight: 700;
 }

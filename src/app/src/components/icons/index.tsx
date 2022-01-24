@@ -5,3 +5,4 @@ export * from "./FilterIcon";
 export * from "./EdgeIcon";
 export * from "./ChromeIcon";
 export * from "./FirefoxIcon";
+export * from "./SafariIcon";
