@@ -7,6 +7,12 @@
   height: 100%;
 }
 
+/* To put the close icon of a select on the left side */
+.ant-select-selection-item {
+  flex-direction: row-reverse;
+  gap: 4px;
+}
+
 .antd-center-list-items div.ant-row {
   justify-content: center;
 }
