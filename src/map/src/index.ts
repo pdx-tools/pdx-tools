@@ -6,8 +6,8 @@ import { debounce } from "./debounce";
 import { compile } from "./shaderCompiler";
 
 async function fetchColorData(kind: string) {
-  const raw = await fetch(`assets/game/eu4/data/color-${kind}-data.bin`).then((x) =>
-    x.arrayBuffer()
+  const raw = await fetch(`assets/game/eu4/data/color-${kind}-data.bin`).then(
+    (x) => x.arrayBuffer()
   );
   const primary = new Uint8Array(raw, 0, raw.byteLength / 2);
   const secondary = new Uint8Array(raw, raw.byteLength / 2);
