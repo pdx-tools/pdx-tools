@@ -167,15 +167,6 @@ export class Eu4Canvas {
     return Promise.resolve(this.resources.provincesUniqueIndex.slice());
   }
 
-  async updateProvinceColors(primary: Uint8Array, secondary: Uint8Array) {
-    if (!this.map) {
-      throw new Error("undefined map");
-    }
-
-    this.map.updateProvinceColors(primary, secondary);
-    this.map.redrawMapImage();
-  }
-
   // WebGL map already handles this for us
   handleMouseMove(e: MouseEvent) {}
 

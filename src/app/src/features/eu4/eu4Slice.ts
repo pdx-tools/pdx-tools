@@ -159,24 +159,30 @@ export const selectEu4CountryBordersDisabled = (state: RootState) => {
   );
 };
 
-export const selectEu4MapDecorativeSettings = (
-  state: RootState
-): MapOnlyControls => ({
-  showCountryBorders:
-    !selectEu4CountryBordersDisabled(state) &&
-    state.eu4.mapControls.showCountryBorders,
-  showProvinceBorders: state.eu4.mapControls.showProvinceBorders,
-  showMapModeBorders: state.eu4.mapControls.showMapModeBorders,
-  showTerrain: state.eu4.mapControls.showTerrain,
-});
+export const selectEu4MapDecorativeSettings = createSelector(
+  selectEu4CountryBordersDisabled,
+  (state: RootState) => state.eu4.mapControls,
+  (bordersDisabled, mapControls): MapOnlyControls => ({
+    showCountryBorders: !bordersDisabled && mapControls.showCountryBorders,
+    showProvinceBorders: mapControls.showProvinceBorders,
+    showMapModeBorders: mapControls.showMapModeBorders,
+    showTerrain: mapControls.showTerrain,
+  })
+);
 
-export const selectEu4MapColorPayload = (state: RootState): MapPayload => ({
-  kind: state.eu4.mapControls.mode,
-  tagFilter: selectEu4CountryFilter(state),
-  date: state.eu4.mapDate.days,
-  showSecondaryColor: state.eu4.mapControls.showController,
-  paintSubjectInOverlordHue: state.eu4.mapControls.paintSubjectInOverlordHue,
-});
+export const selectEu4MapColorPayload = createSelector(
+  (state: RootState) => state.eu4.mapControls.mode,
+  (state: RootState) => state.eu4.countryFilter,
+  (state: RootState) => state.eu4.mapDate.days,
+  (state: RootState) => state.eu4.mapControls,
+  (mode, countryFilter, days, mapControls): MapPayload => ({
+    kind: mode,
+    tagFilter: countryFilter,
+    date: days,
+    showSecondaryColor: mapControls.showController,
+    paintSubjectInOverlordHue: mapControls.paintSubjectInOverlordHue,
+  })
+);
 
 export const selectEu4HumanCountries = createSelector(
   (state: RootState) => state.eu4.countries,
