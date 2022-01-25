@@ -69,31 +69,61 @@ export const ChartDrawer: React.FC<ChartDrawerProps> = ({
             showSearch
             defaultValue={defaultValue}
             value={selectedViz}
-            optionFilterProp="children"
             onChange={(e) => setSelectedViz(e)}
             style={{ width: 200 }}
-            filterOption={(input, option) =>
-              option?.value.toLowerCase().indexOf(input.toLowerCase()) >= 0
-            }
+            filterOption={(input, option) => {
+              if (Array.isArray(option?.options)) {
+                return false;
+              }
+
+              return option?.searchlabel?.toLowerCase().includes(input);
+            }}
           >
             <Select.OptGroup label="Annual Charts">
-              <Option value="monthly-income">Monthly Income</Option>
-              <Option value="nation-size">Nation Size</Option>
-              <Option value="score">Score</Option>
-              <Option value="inflation">Inflation</Option>
+              <Option value="monthly-income" searchlabel="Monthly Income">
+                Monthly Income
+              </Option>
+              <Option value="nation-size" searchlabel="Nation Size">
+                Nation Size
+              </Option>
+              <Option value="score" searchlabel="Score">
+                Score
+              </Option>
+              <Option value="inflation" searchlabel="Inflation">
+                Inflation
+              </Option>
             </Select.OptGroup>
             <Select.OptGroup label="Tables">
-              <Option value="army-casualties">Army Casualties</Option>
-              <Option value="navy-casualties">Navy Casualties</Option>
-              <Option value="wars">Wars and Battles</Option>
+              <Option value="army-casualties" searchlabel="Army Casualties">
+                Army Casualties
+              </Option>
+              <Option value="navy-casualties" searchlabel="Navy Casualties">
+                Navy Casualties
+              </Option>
+              <Option value="wars" searchlabel="Wars and Battles">
+                Wars and Battles
+              </Option>
 
-              <Option value="income-table">Last Month's Income</Option>
-              <Option value="expense-table">Last Month's Expenses</Option>
-              <Option value="total-expense-table">Accumulated Expenses</Option>
+              <Option value="income-table" searchlabel="Last Month Income">
+                Last Month's Income
+              </Option>
+              <Option value="expense-table" searchlabel="Last Month Expenses">
+                Last Month's Expenses
+              </Option>
+              <Option
+                value="total-expense-table"
+                searchlabel="Accumulated Expenses"
+              >
+                Accumulated Expenses
+              </Option>
             </Select.OptGroup>
             <Select.OptGroup label="Other">
-              <Option value="idea-group">Idea Groups Picked</Option>
-              <Option value="health">Health Heatmap</Option>
+              <Option value="idea-group" searchlabel="Idea Groups Picked">
+                Idea Groups Picked
+              </Option>
+              <Option value="health" searchlabel="Health Heatmap">
+                Health Heatmap
+              </Option>
             </Select.OptGroup>
           </Select>
           <CountryFilterButton />
