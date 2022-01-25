@@ -3,6 +3,7 @@ import { selectEngineError, useFilePublisher } from "@/features/engine";
 import { useSelector } from "react-redux";
 import { Alert } from "antd";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { AppLoading } from "@/components/AppLoading";
 
 interface SkanRoute {
   skanId: string;
@@ -24,6 +25,7 @@ export const SkanderbegSavePage: React.FC<SkanRoute> = ({ skanId }) => {
           <Alert type="error" closable={true} message={engineError} />
         </>
       )}
+      {!engineError && <AppLoading />}
     </>
   );
 };

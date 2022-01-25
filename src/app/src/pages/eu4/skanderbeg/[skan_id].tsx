@@ -21,8 +21,8 @@ export const SkanderbegSave: React.FC<{}> = () => {
       <AppStructure header={false}>
         {typeof skan_id === "string" && !Array.isArray(skan_id) ? (
           <CanvasContextProvider>
-            <SkanderbegSavePage skanId={skan_id} />
             <FileDropInitial />
+            <SkanderbegSavePage skanId={skan_id} />
           </CanvasContextProvider>
         ) : null}
       </AppStructure>

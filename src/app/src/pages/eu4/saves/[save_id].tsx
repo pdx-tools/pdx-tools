@@ -21,8 +21,8 @@ export const Eu4Save: React.FC<{}> = () => {
       </HtmlHead>
       <AppStructure header={false}>
         <CanvasContextProvider>
-          <SavePage saveId={save_id} />
           <FileDropInitial />
+          <SavePage saveId={save_id} />
         </CanvasContextProvider>
       </AppStructure>
     </>
