@@ -8,12 +8,12 @@ interface MapTipContentsProps {
 
 const MapTipsTable: React.FC<MapTipContentsProps> = ({ tip }) => {
   const items = [
-    <Descriptions.Item label="Owner">
+    <Descriptions.Item label="Owner" key="Owner">
       <FlagAvatar tag={tip.owner.tag} name={tip.owner.name} />
     </Descriptions.Item>,
     ...(tip.owner.tag != tip.controller.tag
       ? [
-          <Descriptions.Item label="Controller">
+          <Descriptions.Item label="Controller" key="Controller">
             <FlagAvatar tag={tip.controller.tag} name={tip.controller.name} />
           </Descriptions.Item>,
         ]
