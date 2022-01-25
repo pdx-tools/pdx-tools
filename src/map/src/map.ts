@@ -40,9 +40,11 @@ export class WebGLMap {
 
   private previousViewportTimestamp = 0;
   private viewportAnimationRequest: undefined | number = undefined;
+  private viewportAnimationRequestCancelled: number = 0;
 
   private previousMapTimestamp = 0;
   private mapAnimationRequest: undefined | number = undefined;
+  private mapAnimationRequestCancelled: number = 0;
 
   public readonly redrawMapImage: () => void;
   public readonly redrawViewport: () => void;
@@ -114,6 +116,7 @@ export class WebGLMap {
   private cancelQueuedViewportAnimation() {
     if (this.viewportAnimationRequest) {
       cancelAnimationFrame(this.viewportAnimationRequest);
+      this.viewportAnimationRequestCancelled += 1;
       this.viewportAnimationRequest = undefined;
     }
   }
@@ -124,14 +127,15 @@ export class WebGLMap {
 
     if (this.mapAnimationRequest) {
       cancelAnimationFrame(this.mapAnimationRequest);
+      this.mapAnimationRequestCancelled += 1;
       this.mapAnimationRequest = undefined;
     }
   }
 
   public redrawMapNow() {
     const gl = this.gl;
-    console.log("Redrawing map image ...");
 
+    const start = performance.now();
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.glResources.framebuffer);
     let drawBuffers = [gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1];
     gl.drawBuffers(drawBuffers);
@@ -167,8 +171,21 @@ export class WebGLMap {
     gl.bindTexture(gl.TEXTURE_2D, null);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
+    const viewportCancellations = this.viewportAnimationRequestCancelled;
+    const redrawCancellations = this.mapAnimationRequestCancelled;
     this.redrawViewportNow();
     this.cancelQueuedMapAnimation();
+    this.mapAnimationRequestCancelled = 0;
+
+    requestAnimationFrame(() => {
+      const end = performance.now();
+      const elapsedMs = end - start;
+      let cancellations = ``;
+      if (viewportCancellations != 0 || redrawCancellations != 0) {
+        cancellations += `(cancellations: viewport ${viewportCancellations} / redraw ${redrawCancellations}) `;
+      }
+      console.log(`Map redrawn ${cancellations}in: ${elapsedMs.toFixed(2)}ms`);
+    });
   }
 
   public redrawViewportNow() {
@@ -205,6 +222,7 @@ export class WebGLMap {
 
     this.glResources.xbrShaderProgram.clear();
     this.cancelQueuedViewportAnimation();
+    this.viewportAnimationRequestCancelled = 0;
   }
 
   public generateMapImage(width: number, height: number) {
