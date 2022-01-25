@@ -19,9 +19,9 @@ export interface StaticResources {
 }
 
 export async function loadStaticResources(): Promise<StaticResources> {
-  const provincesBufferPromise = fetch("assets/eu4/data/color-order.bin").then(
-    (x) => x.arrayBuffer()
-  );
+  const provincesBufferPromise = fetch(
+    "assets/game/eu4/data/color-order.bin"
+  ).then((x) => x.arrayBuffer());
 
   const [
     colorMap,
@@ -39,19 +39,19 @@ export async function loadStaticResources(): Promise<StaticResources> {
     heightMap,
   ] = await Promise.all(
     [
-      "./assets/eu4/images/colormap.webp",
-      "./assets/eu4/images/sea-image.webp",
-      "./assets/eu4/images/world_normal.webp",
-      "./assets/eu4/images/terrain.png",
-      "./assets/eu4/images/rivers.png",
-      "./assets/eu4/images/water.webp",
-      "./assets/eu4/images/provinces.png",
-      "./assets/eu4/images/stripes.png",
-      "./assets/eu4/images/surface_rock.webp",
-      "./assets/eu4/images/surface_green.webp",
-      "./assets/eu4/images/surface_normal_rock.webp",
-      "./assets/eu4/images/surface_normal_green.webp",
-      "./assets/eu4/images/heightmap.webp",
+      "./assets/game/eu4/images/colormap.webp",
+      "./assets/game/eu4/images/sea-image.webp",
+      "./assets/game/eu4/images/world_normal.webp",
+      "./assets/game/eu4/images/terrain.png",
+      "./assets/game/eu4/images/rivers.png",
+      "./assets/game/eu4/images/water.webp",
+      "./assets/game/eu4/images/provinces.png",
+      "./assets/game/eu4/images/stripes.png",
+      "./assets/game/eu4/images/surface_rock.webp",
+      "./assets/game/eu4/images/surface_green.webp",
+      "./assets/game/eu4/images/surface_normal_rock.webp",
+      "./assets/game/eu4/images/surface_normal_green.webp",
+      "./assets/game/eu4/images/heightmap.webp",
     ].map(loadImage)
   );
 
@@ -83,10 +83,10 @@ async function loadImage(src: string): Promise<ImageBitmap> {
 }
 
 export async function loadShaderSource(name: string): Promise<ShaderSource> {
-  const vertexFetch = fetch(`./assets/eu4/shaders/${name}.vert`).then((x) =>
+  const vertexFetch = fetch(`./assets/shaders/${name}.vert`).then((x) =>
     x.text()
   );
-  const fragmentFetch = fetch(`./assets/eu4/shaders/${name}.frag`).then((x) =>
+  const fragmentFetch = fetch(`./assets/shaders/${name}.frag`).then((x) =>
     x.text()
   );
 
