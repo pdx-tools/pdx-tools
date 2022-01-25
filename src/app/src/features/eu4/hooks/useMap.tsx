@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { usePrevious } from "@/hooks/usePrevious";
@@ -12,19 +12,16 @@ import {
   WorkerClient,
   useWorkerOnSave,
   moduleDrawn,
-  useCanvasRef,
-  getCanvas,
 } from "@/features/engine";
 import {
   selectEu4MapColorPayload,
   selectEu4MapDecorativeSettings,
 } from "../eu4Slice";
 
-type CanvasState = "initial" | "first-draw" | "drawn";
+type CanvasState = "initial" | "drawn";
 export function useMap() {
   const dispatch = useAppDispatch();
   const mapRef = useEu4CanvasRef();
-  const canvasRef = useCanvasRef();
   const analysisId = useSelector(selectAnalyzeId);
   const mapDecorativeSettings = useSelector(selectEu4MapDecorativeSettings);
   const mapColorPayload = useSelector(selectEu4MapColorPayload);
@@ -33,6 +30,7 @@ export function useMap() {
   const mapPosition = useAppSelector((state) => state.eu4.mapPosition);
   const mapColorPayloadPrev = usePrevious(mapColorPayload);
   const canvasState = useRef<CanvasState>("initial");
+  const [renderToken, setRenderToken] = useState(0);
 
   useCanvasPointerEvents();
 
@@ -55,7 +53,7 @@ export function useMap() {
           mapPosition
         );
 
-        canvasState.current = "first-draw";
+        setRenderToken(1);
       }
     }
 
@@ -73,19 +71,11 @@ export function useMap() {
 
   const updateMapColorsCb = useCallback(
     async (worker: WorkerClient) => {
-      if (canvasState.current == "initial") {
+      if (renderToken == 0) {
         return;
       }
 
       const map = getEu4Canvas(mapRef);
-      const canvas = getCanvas(canvasRef);
-
-      // Only on first draw do we blank out
-      // the canvas to avoid a flash of janky content.
-      if (canvasState.current == "first-draw") {
-        canvas.style.opacity = "0";
-      }
-
       if (mapColorPayloadPrev != mapColorPayload) {
         const [primary, secondary] = await worker.eu4MapColors(mapColorPayload);
         map.map?.updateProvinceColors(primary, secondary);
@@ -94,13 +84,14 @@ export function useMap() {
       map.setControls(mapDecorativeSettings);
       map.redrawMapImage();
 
-      if (canvasState.current == "first-draw") {
+      if (renderToken == 1 && canvasState.current != "drawn") {
         requestAnimationFrame(() => {
-          canvas.style.opacity = "100";
           dispatch(moduleDrawn());
         });
         canvasState.current = "drawn";
       }
+
+      setRenderToken(1);
     },
 
     // eslint can't tell that mapColorPayloadPrev is stable
@@ -112,7 +103,7 @@ export function useMap() {
       mapDecorativeSettings,
       canvasState,
       dispatch,
-      canvasRef,
+      renderToken,
     ]
   );
 
