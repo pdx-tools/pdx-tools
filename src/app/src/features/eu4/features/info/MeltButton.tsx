@@ -18,7 +18,7 @@ export const MeltButton: React.FC<{}> = () => {
 
     try {
       setLoading(true);
-      emitEvent("Melt");
+      emitEvent({ kind: "melt", game: "eu4" });
       const meltedName = translateToMeltedFilename(filename, "eu4");
       const data = await wasmWorker.current.worker.eu4Melt();
       downloadData(data, meltedName);

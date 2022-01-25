@@ -20,6 +20,7 @@ import { getErrorMessage } from "@/lib/getErrorMessage";
 import { endCk3Analyze } from "@/features/ck3/ck3Slice";
 import { endHoi4Analyze } from "@/features/hoi4/hoi4Slice";
 import { endImperatorAnalyze } from "@/features/imperator/imperatorSlice";
+import { emitEvent } from "@/lib/plausible";
 
 export function useFilePublisher() {
   const wasmWorkerRef = useWasmWorker();
@@ -59,6 +60,7 @@ export function useFilePublisher() {
           })
         );
 
+        emitEvent({ kind: "parse", game: analysis.kind });
         switch (analysis.kind) {
           case "eu4": {
             const meta = analysis.meta;

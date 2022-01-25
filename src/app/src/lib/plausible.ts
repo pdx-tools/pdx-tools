@@ -1,3 +1,5 @@
+import { DetectedDataType } from "@/features/engine";
+
 declare global {
   interface Window {
     plausible: any;
@@ -17,9 +19,24 @@ function getPlausible() {
     });
 }
 
-export type Event = "Eu4Parse" | "Melt" | "Analysis";
+export type Event =
+  | {
+      kind: "parse";
+      game: DetectedDataType;
+    }
+  | {
+      kind: "melt";
+      game: DetectedDataType;
+    };
 
-export function emitEvent(event: Event, props?: Record<any, any>) {
+export function emitEvent(event: Event) {
   const plausible = getPlausible();
-  plausible(event, { props });
+
+  switch (event.kind) {
+    case "melt":
+    case "parse": {
+      plausible(event.kind, { props: { game: event.game } });
+      break;
+    }
+  }
 }

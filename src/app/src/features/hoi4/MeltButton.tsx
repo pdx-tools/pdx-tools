@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import { selectAnalyzeFileName, useWasmWorker } from "@/features/engine";
 import { downloadData } from "@/lib/downloadData";
 import { translateToMeltedFilename } from "@/lib/translateMeltedFilename";
+import { emitEvent } from "@/lib/plausible";
 
 export const MeltButton: React.FC<{}> = () => {
   const [loading, setLoading] = useState(false);
@@ -17,6 +18,7 @@ export const MeltButton: React.FC<{}> = () => {
 
     try {
       setLoading(true);
+      emitEvent({ kind: "melt", game: "hoi4" });
       const meltedName = translateToMeltedFilename(filename, "hoi4");
       const data = await wasmWorker.current.worker.hoi4Melt();
       downloadData(data, meltedName);
