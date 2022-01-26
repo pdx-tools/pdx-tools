@@ -54,6 +54,7 @@ export const AnalyzeBox: React.FC<{}> = () => {
         label {
           border: 0;
           outline: 0.5rem dashed white;
+          margin: 0.5rem;
           padding: 1rem 2rem;
           border-radius: 1rem;
           background-color: transparent;

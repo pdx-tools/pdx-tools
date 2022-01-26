@@ -1,17 +1,16 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { HtmlHead } from "@/components/head";
 import { Home } from "@/components/landing/Home";
 import { AppStructure } from "@/components/layout";
 import { FileDrop } from "@/features/engine/FileDrop";
 
 export const LoadingPage: React.FC<{}> = () => {
+  useEffect(() => {
+    history.replaceState({}, "", "/");
+  }, []);
+
   return (
     <>
-      <style jsx>{`
-        p {
-          color: white;
-        }
-      `}</style>
       <HtmlHead>
         <title>PDX Tools</title>
         <meta
@@ -23,11 +22,11 @@ export const LoadingPage: React.FC<{}> = () => {
         <FileDrop>
           <Home
             subtitle={
-              <p>
+              <div>
                 Please wait while your save is transferred to PDX Tools. Not
-                working? Ensure that pop-ups are allowed or click the button
-                below to open PDX Tools and manually select your save.
-              </p>
+                working? Ensure that pop-ups are allowed or manually select and
+                drag and drop your save.
+              </div>
             }
           />
         </FileDrop>

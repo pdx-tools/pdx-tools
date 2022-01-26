@@ -21,7 +21,6 @@ import {
 } from "@/components/icons";
 
 interface HomeProps {
-  openLink?: string;
   subtitle?: React.ReactNode;
 }
 
@@ -47,7 +46,7 @@ const useWaveBackground = ([h, s, l]: number[]) => {
   return waveBackground;
 };
 
-export const Home: React.FC<HomeProps> = () => {
+export const Home: React.FC<HomeProps> = ({ subtitle }) => {
   const secondaryColor: [number, number, number] = [177, 100, 13.7];
   const sc = secondaryColor;
   const waveBackground = useWaveBackground(secondaryColor);
@@ -144,6 +143,10 @@ export const Home: React.FC<HomeProps> = () => {
           height: 24px;
           border-left: 1px dotted #d7d7db;
         }
+
+        .analyze-box {
+          display: flex;
+        }
       `}</style>
 
       <div
@@ -152,12 +155,12 @@ export const Home: React.FC<HomeProps> = () => {
           backgroundImage: waveBackground,
           backgroundPosition: "bottom",
           backgroundRepeat: "repeat-x",
-          paddingBottom: 0,
         }}
       >
-        <section style={{ marginBottom: "3rem" }}>
-          <div>
+        <section className="analyze-box flex-col">
+          <div className="flex-col gap">
             <AnalyzeBox />
+            {subtitle}
             {engineError && (
               <div
                 style={{
