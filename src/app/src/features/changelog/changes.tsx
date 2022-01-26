@@ -612,4 +612,21 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-01-25",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Add map performance diagnostics</li>
+          <li>🐛 - Fix incorrect values for open graph metadata</li>
+          <li>
+            🐛 - Fix entering text into chart selection drop down causing crash
+          </li>
+          <li>
+            🐛 - Move "X" to clear country in country filter to left hand side
+          </li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
