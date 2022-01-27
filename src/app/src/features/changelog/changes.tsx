@@ -629,4 +629,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-01-26",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>🐛 - Fix initial map render omitting stripes and highlights</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
