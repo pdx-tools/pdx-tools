@@ -16,10 +16,7 @@ impl<'a> SaveGameQuery<'a> {
             .localize_country(tag)
             .or_else(|| {
                 self.query
-                    .save()
-                    .game
-                    .countries
-                    .get(tag)
+                    .country(tag)
                     .and_then(|x| x.name.as_ref())
                     .map(|x| x.to_string())
             })

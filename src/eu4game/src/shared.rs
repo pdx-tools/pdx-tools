@@ -1,5 +1,6 @@
 use eu4save::{
     models::{CountryEvent, Eu4Save, Monarch},
+    query::Query,
     Encoding, Eu4Date, Eu4Error, RawEncoding,
 };
 use highway::{HighwayHash, HighwayHasher, Key};
@@ -94,18 +95,18 @@ pub fn save_checksum(body: &[u8]) -> String {
 // 40,000 combinations per patch is good, but it's not enough for me to sleep
 // easy. PDXU informed me that the REB decision_seed is appears to uniquely
 // identify a run and so it is added to the mix.
-pub fn playthrough_id(save: &Eu4Save) -> Option<String> {
-    let start_date = save.game.start_date;
+pub fn playthrough_id(query: &Query) -> Option<String> {
+    let start_date = query.save().game.start_date;
     let monarch_content_date = start_date.add_days(1);
     let mut hash = HighwayHasher::new(new_key());
 
-    if let Some(reb) = save.game.countries.get(&("REB".parse().unwrap())) {
+    if let Some(reb) = query.country(&"REB".parse().unwrap()) {
         hash.append(&reb.decision_seed.to_le_bytes())
     }
 
     // can't use advisors from province history as they are seemingly purged
     // from the history after they die.
-    hash_countries(&mut hash, monarch_content_date, save);
+    hash_countries(&mut hash, monarch_content_date, query.save());
 
     let output = hash.finalize256();
     let bytes = copy_hash_output_to_byte_array(output);
@@ -113,20 +114,25 @@ pub fn playthrough_id(save: &Eu4Save) -> Option<String> {
 }
 
 pub fn hash_countries(hash: &mut impl HighwayHash, content_date: Eu4Date, save: &Eu4Save) {
-    let events = save.game.countries.values().flat_map(|country| {
-        country
-            .history
-            .events
-            .iter()
-            .filter_map(|(d, events)| {
-                if d <= &content_date {
-                    Some(events.0.iter())
-                } else {
-                    None
-                }
-            })
-            .flatten()
-    });
+    let events = save
+        .game
+        .countries
+        .iter()
+        .map(|(_, country)| country)
+        .flat_map(|country| {
+            country
+                .history
+                .events
+                .iter()
+                .filter_map(|(d, events)| {
+                    if d <= &content_date {
+                        Some(events.0.iter())
+                    } else {
+                        None
+                    }
+                })
+                .flatten()
+        });
 
     let mut monarchs: Vec<&Monarch> = Vec::new();
 

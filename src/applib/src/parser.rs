@@ -88,8 +88,8 @@ pub fn parse_file(f: File) -> Result<ParseResult, ParseFileError> {
         None => return Ok(ParseResult::InvalidPatch(InvalidPatch { patch_shorthand })),
     };
 
-    let playthrough_id = eu4game::shared::playthrough_id(&save);
     let query = eu4save::query::Query::from_save(save);
+    let playthrough_id = eu4game::shared::playthrough_id(&query);
     let game = eu4game::game::Game::new(&query.save().meta.savegame_version);
     let save_game_query = eu4game::SaveGameQuery::new(&query, &game);
 

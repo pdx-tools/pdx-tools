@@ -93,12 +93,7 @@ pub struct CountryReligion {
 impl SaveFileImpl {
     pub fn get_country(&self, tag: JsValue) -> JsValue {
         if let Some(country_tag) = tag.as_string().and_then(|x| x.parse::<CountryTag>().ok()) {
-            let details = self
-                .query
-                .save()
-                .game
-                .countries
-                .get(&country_tag)
+            let details = self.query.country(&country_tag)
                 .and_then(|country| {
                     let ruler = if let Some(ruler_id) = &country.monarch {
                         country
@@ -244,7 +239,7 @@ impl SaveFileImpl {
 
     pub fn get_country_rulers(&self, tag: &str) -> Vec<RunningMonarch> {
         let tag = tag.parse::<CountryTag>().unwrap();
-        let country = self.query.save().game.countries.get(&tag).unwrap();
+        let country = self.query.country(&tag).unwrap();
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
 
         let monarch_ids = country
@@ -409,7 +404,7 @@ impl SaveFileImpl {
 
     pub fn get_country_great_advisors(&self, tag: &str) -> Vec<GreatAdvisor> {
         let tag = tag.parse::<CountryTag>().unwrap();
-        let country = self.query.save().game.countries.get(&tag).unwrap();
+        let country = self.query.country(&tag).unwrap();
 
         let mut great_advisors = Vec::new();
         for advisor_id in self.game.advisor_ids() {
