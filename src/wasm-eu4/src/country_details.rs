@@ -2,14 +2,14 @@ use crate::{hex_color, LocalizedObj, LocalizedTag, SaveFileImpl};
 use eu4game::SaveGameQuery;
 use eu4save::{
     models::{CountryEvent, CountryTechnology},
-    query::{CountryExpenseLedger, CountryIncomeLedger, CountryManaUsage},
+    query::{CountryExpenseLedger, CountryIncomeLedger, CountryManaUsage, Inheritance},
     CountryTag, Eu4Date, PdsDate,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use wasm_bindgen::JsValue;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct CountryDetails {
     pub tag: CountryTag,
     pub base_tax: f32,
@@ -32,6 +32,7 @@ pub struct CountryDetails {
     pub building_count: HashMap<String, i32>,
     pub ideas: Vec<(String, i32)>,
     pub num_cities: i32,
+    pub inheritance: Inheritance,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -93,8 +94,11 @@ pub struct CountryReligion {
 impl SaveFileImpl {
     pub fn get_country(&self, tag: JsValue) -> JsValue {
         if let Some(country_tag) = tag.as_string().and_then(|x| x.parse::<CountryTag>().ok()) {
-            let details = self.query.country(&country_tag)
-                .and_then(|country| {
+            let details = self
+                .query
+                .save_country(&country_tag)
+                .and_then(|save_country| {
+                    let country = save_country.country;
                     let ruler = if let Some(ruler_id) = &country.monarch {
                         country
                             .history
@@ -204,6 +208,7 @@ impl SaveFileImpl {
                         .map(|(name, v)| (name.clone(), i32::from(*v)))
                         .collect();
 
+                    let inheritance = self.query.inherit(&save_country);
                     let details = CountryDetails {
                         tag: country_tag,
                         ruler,
@@ -226,6 +231,7 @@ impl SaveFileImpl {
                         total_expenses: self.query.country_total_expense_breakdown(country),
                         mana_usage: self.query.country_mana_breakdown(country),
                         building_count: buildings,
+                        inheritance,
                     };
 
                     Some(details)

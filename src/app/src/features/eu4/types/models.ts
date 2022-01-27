@@ -131,6 +131,13 @@ export interface CountryDetails {
   building_count: Record<string, number>;
   num_cities: number;
   ideas: [string, number][];
+  inheritance: Inheritance;
+}
+
+export interface Inheritance {
+  start_year: number;
+  end_year: number;
+  pu_roll: number;
 }
 
 export interface CountryIncomeLedger {

@@ -115,7 +115,8 @@ impl SaveFileImpl {
     }
 
     fn map_position_of(&self, tag: &CountryTag) -> (u16, u16) {
-        self.query.country(tag)
+        self.query
+            .country(tag)
             .and_then(|x| self.game.get_province(&x.capital))
             .map(|x| (x.center_x, x.center_y))
             .unwrap_or((3000, 600))
@@ -387,8 +388,7 @@ impl SaveFileImpl {
                     secondary_color.copy_from_slice(&[255, 255, 255, 0]);
 
                     if let Some(controller_tag) = prov.controller.as_ref() {
-                        let controller = self.query.country(controller_tag)
-                            .unwrap();
+                        let controller = self.query.country(controller_tag).unwrap();
 
                         primary_color.copy_from_slice(&excluded_color);
                         secondary_color.copy_from_slice(&excluded_color);
@@ -483,7 +483,9 @@ impl SaveFileImpl {
                 let min_color = [127., 0., 0.];
                 let diff_color = [0. - 127., 212. - 0., 144. - 0.];
 
-                let max_tech = self.query.countries()
+                let max_tech = self
+                    .query
+                    .countries()
                     .map(|x| x.country)
                     .filter(|x| x.num_of_cities > 0)
                     .map(|x| {
