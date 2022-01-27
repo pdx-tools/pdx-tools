@@ -76,7 +76,10 @@ export function useMap() {
       }
 
       const map = getEu4Canvas(mapRef);
-      if (mapColorPayloadPrev != mapColorPayload) {
+      if (
+        mapColorPayloadPrev != mapColorPayload ||
+        canvasState.current != "drawn"
+      ) {
         const [primary, secondary] = await worker.eu4MapColors(mapColorPayload);
         map.map?.updateProvinceColors(primary, secondary);
       }
