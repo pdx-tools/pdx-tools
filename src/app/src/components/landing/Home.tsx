@@ -6,6 +6,7 @@ import achievement from "./achievement.png";
 import melted from "./melted.webp";
 import games from "./games.webp";
 import headline from "./headline.png";
+import discover from "./discover.png";
 import { Shadow } from "@/components/Shadow";
 import { AnalyzeBox } from "./AnalyzeBox";
 import { useSelector } from "react-redux";
@@ -145,6 +146,7 @@ export const Home: React.FC<HomeProps> = ({ subtitle }) => {
         }
 
         .analyze-box {
+          max-width: 1024px;
           display: flex;
         }
       `}</style>
@@ -211,20 +213,54 @@ export const Home: React.FC<HomeProps> = ({ subtitle }) => {
       <div className="row">
         <section>
           <div>
-            <h3>Maps</h3>
+            <h2>Discover Data</h2>
             <p>
-              Pan, zoom, and click around as if EU4 was played within Google
-              Maps
+              View data not exposed in game, like one time advisor events,
+              budgetary breakdown, mana usage, and religion by dev
             </p>
-            <p>Toggle different map modes and export the map</p>
             <p>
-              Click on provinces to see details, such as how many times a
-              province has been devved and by whom, when buildings were
-              constructed, and when the province traded hands
+              Marvel at past wars, how the AI allocates ducats, or what national
+              ideas are most popular
+            </p>
+            <p>
+              Uncover how ruler stats affect long term mana generation and what
+              heirs were unfortunate enough not to see the throne
             </p>
           </div>
           <div>
             <Shadow backgroundColor={secondaryColor}>
+              <img
+                src={discover}
+                height={478}
+                width={606}
+                alt="Country budgetary breakdown"
+              />
+            </Shadow>
+          </div>
+        </section>
+      </div>
+
+      <div className="row">
+        <section>
+          <div>
+            <h2>Marvelous Maps</h2>
+            <p>
+              Pan, zoom, and click around as if EU4 was played within Google
+              Maps
+            </p>
+            <p>
+              Overlay terrain on one of the several map modes (political,
+              religion, dev, etc)
+            </p>
+            <p>
+              View the world on a timeline and see a more accurate
+              representation than the game due to an improved tag switching
+              engine
+            </p>
+            <p>Export high resolution map images</p>
+          </div>
+          <div>
+            <Shadow>
               <img
                 src={map}
                 height={325}
@@ -239,22 +275,22 @@ export const Home: React.FC<HomeProps> = ({ subtitle }) => {
       <div className="row">
         <section>
           <div>
-            <h3>Graphs</h3>
+            <h2>Fine-tune Focus</h2>
             <p>
-              Visualize the wealth of data contained within a save with
-              immersive graphs
+              All maps, graphs, and data can be filtered to only desired
+              countries
             </p>
             <p>
-              See how your nation compares to others in income, nation size,
-              inflation, and mana usage
+              Keep an eye on how your nation compares to great powers or other
+              players. Or turn your eye inwards and ensure healthy subjects
             </p>
             <p>
-              Uncover AI playstyles -- see where they spend their money (or
-              where they don't), or which idea groups they select
+              Historical ledger data will chart the success and failure of
+              countries in income, nation size, and more
             </p>
           </div>
           <div>
-            <Shadow>
+            <Shadow backgroundColor={secondaryColor}>
               <img
                 src={graphs}
                 height={510}
@@ -269,23 +305,19 @@ export const Home: React.FC<HomeProps> = ({ subtitle }) => {
       <div className="row">
         <section>
           <div>
-            <h3>BYOB (Bring your own browser)</h3>
+            <h2>BYOB (Bring your own browser)</h2>
             <p>
-              All analysis takes place within your browser with unparalleled
-              speed, so no downloads needed and one isn't slowed by the speed of
-              the server or upload connection
+              No account needed, no downloads, no installs. All analysis takes
+              place within the browser with unparalleled speed
             </p>
+            <p>Saves can be uploaded to be shared with others or as a backup</p>
             <p>
-              No save is uploaded unless you decide to, so analyze those failed
-              runs with impunity
-            </p>
-            <p>
-              Upload a save today and it will receive enchancements
-              automatically as PDX Tools is updated to expose more insights
+              Uploaded saves receive enhancements automatically as PDX Tools is
+              updated
             </p>
           </div>
           <div>
-            <Shadow backgroundColor={secondaryColor}>
+            <Shadow>
               <span style={{ fontSize: "200px" }}>☁️</span>
             </Shadow>
           </div>
@@ -295,7 +327,7 @@ export const Home: React.FC<HomeProps> = ({ subtitle }) => {
       <div className="row">
         <section>
           <div>
-            <h3>Melting Support</h3>
+            <h2>Melting Support</h2>
             <p>
               PDX Tools can convert (aka melt) ironman and binary saves into
               normal saves so that one can easily inspect the raw contents
@@ -306,7 +338,7 @@ export const Home: React.FC<HomeProps> = ({ subtitle }) => {
             </p>
           </div>
           <div>
-            <Shadow>
+            <Shadow backgroundColor={secondaryColor}>
               <img
                 src={melted}
                 height={232}
@@ -321,19 +353,30 @@ export const Home: React.FC<HomeProps> = ({ subtitle }) => {
       <div className="row">
         <section>
           <div>
-            <h3>Competition</h3>
+            <h2>Fresh Competition</h2>
             <p>
-              Have a noteworthy game where you completed an achievement in
-              record time? Upload your save to bask in the glory
+              An advanced achievement engine uses the game's logic to check if a
+              save has completed one of the{" "}
+              <Link href="/eu4/achievements">
+                <a>supported achievements</a>
+              </Link>
             </p>
             <p>
-              With an innovative leaderboard that favors more recent patches,
-              the leaderboard remains fresh for each patch while allowing truly
-              exceptional runs to stand the test of time
+              Uploaded saves are tagged with completed achievements to generate
+              a leaderboard of who speed ran a{" "}
+              <Link href="/eu4/achievements/18">
+                <a>certain achievement</a>
+              </Link>{" "}
+              the quickest
+            </p>
+            <p>
+              The leaderboard is kept evergreen by enacting a small tax to saves
+              on previous patches, just enough to keep the leaderboard fresh
+              while allowing exceptional runs to bask in glory forever
             </p>
           </div>
           <div>
-            <Shadow backgroundColor={secondaryColor}>
+            <Shadow>
               <img
                 src={achievement}
                 height={325}
@@ -342,27 +385,6 @@ export const Home: React.FC<HomeProps> = ({ subtitle }) => {
                 alt="Screenshot of the PDX Tools leaderboard for an achievement"
               />
             </Shadow>
-          </div>
-        </section>
-      </div>
-
-      <div className="row">
-        <section>
-          <div>
-            <h3>Community</h3>
-            <p>PDX Tools is powered by community use and feedback</p>
-            <p>
-              Have ideas, questions, or bug reports? Join the{" "}
-              <a href="https://discord.gg/rCpNWQW">discord!</a>
-            </p>
-            <p>
-              See PDX Tools on{" "}
-              <a href="https://github.com/pdx-tools/pdx-tools">our Github</a>{" "}
-              and help contribute!
-            </p>
-          </div>
-          <div>
-            <img alt="" loading="lazy" src={icons} height={191} width={400} />
           </div>
         </section>
       </div>
@@ -383,6 +405,27 @@ export const Home: React.FC<HomeProps> = ({ subtitle }) => {
             <Shadow backgroundColor={secondaryColor}>
               <img alt="" loading="lazy" src={games} height={338} width={600} />
             </Shadow>
+          </div>
+        </section>
+      </div>
+
+      <div className="row">
+        <section>
+          <div>
+            <h2>Community</h2>
+            <p>PDX Tools is powered by community use and feedback</p>
+            <p>
+              Have ideas, questions, or bug reports? Join the{" "}
+              <a href="https://discord.gg/rCpNWQW">discord!</a>
+            </p>
+            <p>
+              See PDX Tools on{" "}
+              <a href="https://github.com/pdx-tools/pdx-tools">our Github</a>{" "}
+              and help contribute!
+            </p>
+          </div>
+          <div>
+            <img alt="" loading="lazy" src={icons} height={191} width={400} />
           </div>
         </section>
       </div>
