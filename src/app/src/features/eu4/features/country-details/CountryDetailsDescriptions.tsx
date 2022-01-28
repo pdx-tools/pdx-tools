@@ -62,17 +62,15 @@ export const CountryDetailsDescriptions: React.FC<CountryDetailsProps> = ({
         details.loans
       )} (${formatInt(details.debt)})`}</Descriptions.Item>
 
-      <Descriptions.Item label="Ideas" span={2}>
+      <Descriptions.Item label="Ideas">
         <table className="antd-little-padding" style={{ width: "unset" }}>
           <tbody>{ideaElem}</tbody>
         </table>
       </Descriptions.Item>
-      <Descriptions.Item label={<InheritanceLabel />} span={2}>
+      <Descriptions.Item label={<InheritanceLabel details={details} />}>
         <div className="flex-col no-break">
-          <div>{`Window: [${details.inheritance.start_year} - ${details.inheritance.end_year}]`}</div>
-          <div>{`PU Roll: ${
-            details.inheritance.pu_roll - details.num_cities
-          }%`}</div>
+          <div>{`Window: [${details.inheritance.start_t1_year} - ${details.inheritance.end_t1_year}]`}</div>
+          <div>{`Inheritance Value: ${details.inheritance.inheritance_value}%`}</div>
         </div>
       </Descriptions.Item>
     </Descriptions>
