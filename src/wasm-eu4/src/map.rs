@@ -115,10 +115,8 @@ impl SaveFileImpl {
     }
 
     fn map_position_of(&self, tag: &CountryTag) -> (u16, u16) {
-        let save = self.query.save();
-        save.game
-            .countries
-            .get(tag)
+        self.query
+            .country(tag)
             .and_then(|x| self.game.get_province(&x.capital))
             .map(|x| (x.center_x, x.center_y))
             .unwrap_or((3000, 600))
@@ -132,7 +130,7 @@ impl SaveFileImpl {
         let province_id = ProvinceId::new(province_id);
         let province = self.query.save().game.provinces.get(&province_id)?;
         let controller_tag = province.controller.as_ref()?;
-        let controller = self.query.save().game.countries.get(controller_tag)?;
+        let controller = self.query.country(controller_tag)?;
         let owner_tag = province.owner.as_ref()?;
 
         let sq = SaveGameQuery::new(&self.query, &self.game);
@@ -192,7 +190,7 @@ impl SaveFileImpl {
 
             MapPayloadKind::Technology => {
                 let owner_tag = province.owner.as_ref()?;
-                let owner = self.query.save().game.countries.get(owner_tag)?;
+                let owner = self.query.country(owner_tag)?;
 
                 Some(MapQuickTipPayload::Technology {
                     province_id,
@@ -390,13 +388,7 @@ impl SaveFileImpl {
                     secondary_color.copy_from_slice(&[255, 255, 255, 0]);
 
                     if let Some(controller_tag) = prov.controller.as_ref() {
-                        let controller = self
-                            .query
-                            .save()
-                            .game
-                            .countries
-                            .get(controller_tag)
-                            .unwrap();
+                        let controller = self.query.country(controller_tag).unwrap();
 
                         primary_color.copy_from_slice(&excluded_color);
                         secondary_color.copy_from_slice(&excluded_color);
@@ -493,10 +485,8 @@ impl SaveFileImpl {
 
                 let max_tech = self
                     .query
-                    .save()
-                    .game
-                    .countries
-                    .values()
+                    .countries()
+                    .map(|x| x.country)
                     .filter(|x| x.num_of_cities > 0)
                     .map(|x| {
                         i16::from(x.technology.adm_tech)
@@ -524,7 +514,7 @@ impl SaveFileImpl {
                             continue;
                         }
 
-                        let owner = if let Some(c) = self.query.save().game.countries.get(owner) {
+                        let owner = if let Some(c) = self.query.country(owner) {
                             c
                         } else {
                             continue;

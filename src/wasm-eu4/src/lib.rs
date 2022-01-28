@@ -799,32 +799,29 @@ impl SaveFileImpl {
     }
 
     pub fn playthrough_id(&self) -> Option<String> {
-        playthrough_id(self.query.save())
+        playthrough_id(&self.query)
     }
 
     pub fn get_countries(&self) -> JsValue {
         let blank: CountryTag = "---".parse().unwrap();
         let countries: Vec<_> = self
             .query
-            .save()
-            .game
-            .countries
-            .iter()
-            .filter(|(&tag, _)| tag != blank)
-            .map(|(tag, country)| {
+            .countries()
+            .filter(|x| x.tag != blank)
+            .map(|x| {
                 let name = self
                     .game
-                    .localize_country(tag)
-                    .or_else(|| country.name.clone())
-                    .unwrap_or_else(|| tag.to_string());
+                    .localize_country(&x.tag)
+                    .or_else(|| x.country.name.clone())
+                    .unwrap_or_else(|| x.tag.to_string());
 
-                let color = country_hex_color(country);
+                let color = country_hex_color(x.country);
                 CountryInfo {
-                    tag: tag.to_string(),
+                    tag: x.tag.to_string(),
                     name,
                     color,
-                    is_alive: country.num_of_cities > 0,
-                    is_human: country.human,
+                    is_alive: x.country.num_of_cities > 0,
+                    is_human: x.country.human,
                 }
             })
             .collect();
@@ -841,17 +838,14 @@ impl SaveFileImpl {
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
 
         self.query
-            .save()
-            .game
-            .countries
-            .iter()
-            .filter(|(tag, _)| filter.contains(tag))
-            .map(|(&tag, country)| {
+            .countries()
+            .filter(|x| filter.contains(&x.tag))
+            .map(|x| {
                 (
-                    tag,
+                    x.tag,
                     LocalizedCountryIncome {
-                        income: self.query.country_income_breakdown(country),
-                        name: save_game_query.localize_country(&tag),
+                        income: self.query.country_income_breakdown(x.country),
+                        name: save_game_query.localize_country(&x.tag),
                     },
                 )
             })
@@ -866,17 +860,14 @@ impl SaveFileImpl {
         let filter = self.matching_tags(&payload);
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
         self.query
-            .save()
-            .game
-            .countries
-            .iter()
-            .filter(|(tag, _)| filter.contains(tag))
-            .map(|(&tag, country)| {
+            .countries()
+            .filter(|x| filter.contains(&x.tag))
+            .map(|x| {
                 (
-                    tag,
+                    x.tag,
                     LocalizedCountryExpense {
-                        expenses: self.query.country_expense_breakdown(country),
-                        name: save_game_query.localize_country(&tag),
+                        expenses: self.query.country_expense_breakdown(x.country),
+                        name: save_game_query.localize_country(&x.tag),
                     },
                 )
             })
@@ -891,17 +882,14 @@ impl SaveFileImpl {
         let filter = self.matching_tags(&payload);
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
         self.query
-            .save()
-            .game
-            .countries
-            .iter()
-            .filter(|(tag, _)| filter.contains(tag))
-            .map(|(&tag, country)| {
+            .countries()
+            .filter(|x| filter.contains(&x.tag))
+            .map(|x| {
                 (
-                    tag,
+                    x.tag,
                     LocalizedCountryExpense {
-                        expenses: self.query.country_total_expense_breakdown(country),
-                        name: save_game_query.localize_country(&tag),
+                        expenses: self.query.country_total_expense_breakdown(x.country),
+                        name: save_game_query.localize_country(&x.tag),
                     },
                 )
             })
@@ -934,10 +922,7 @@ impl SaveFileImpl {
                 }),
                 is_human: self
                     .query
-                    .save()
-                    .game
-                    .countries
-                    .get(&x.history.stored)
+                    .country(&x.history.stored)
                     .map(|x| x.human)
                     .unwrap_or(false),
                 transitions: std::iter::once((
@@ -1139,7 +1124,8 @@ impl SaveFileImpl {
 
         let health: Vec<_> = countries
             .iter()
-            .flat_map(|(&tag, country)| {
+            .flat_map(|(tag, country)| {
+                let tag = *tag;
                 let treasury: f32 =
                     country.treasury - (country.loans.iter().map(|x| x.amount).sum::<i32>() as f32);
                 let treasury_color = if treasury < 0.0 {
@@ -1691,7 +1677,7 @@ impl SaveFileImpl {
         paint_subject_in_overlord_hue: bool,
         f: F,
     ) -> Vec<u8> {
-        let mut desired_countries: HashSet<&CountryTag> = HashSet::new();
+        let mut desired_countries: HashSet<CountryTag> = HashSet::new();
         let mut country_colors: HashMap<&CountryTag, [u8; 3]> = HashMap::new();
         let player_countries = self.all_players();
 
@@ -1703,7 +1689,7 @@ impl SaveFileImpl {
 
             if incl_subjects {
                 for x in &country.subjects {
-                    let country = self.query.save().game.countries.get(x).unwrap();
+                    let country = self.query.country(x).unwrap();
                     let c = &country.colors.map_color;
                     country_colors.insert(x, [c[0], c[1], c[2]]);
                 }
@@ -1711,21 +1697,12 @@ impl SaveFileImpl {
         }
 
         if !only_players {
-            desired_countries.extend(self.query.save().game.countries.keys());
+            desired_countries.extend(self.query.countries().map(|x| x.tag));
         } else {
             desired_countries.extend(player_countries.iter());
             if incl_subjects {
                 for tag in &player_countries {
-                    desired_countries.extend(
-                        self.query
-                            .save()
-                            .game
-                            .countries
-                            .get(tag)
-                            .unwrap()
-                            .subjects
-                            .iter(),
-                    );
+                    desired_countries.extend(self.query.country(tag).unwrap().subjects.iter());
                 }
             }
         }
@@ -1734,7 +1711,7 @@ impl SaveFileImpl {
             let mut lighten_subjects = HashMap::new();
             for tag in &desired_countries {
                 if let Some(color) = country_colors.get(tag) {
-                    for sub in &self.query.save().game.countries.get(tag).unwrap().subjects {
+                    for sub in &self.query.country(tag).unwrap().subjects {
                         let data = [
                             color[0].saturating_add((255.0 * 0.1) as u8),
                             color[1].saturating_add((255.0 * 0.1) as u8),
@@ -2078,7 +2055,7 @@ impl SaveFileImpl {
         commander: &str,
     ) -> String {
         for tag in tags {
-            let country = match self.query.save().game.countries.get(tag) {
+            let country = match self.query.country(tag) {
                 Some(c) => c,
                 None => continue,
             };

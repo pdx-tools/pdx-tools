@@ -30,7 +30,8 @@ pub fn ironman_saves_detected() -> Result<(), Box<dyn Error>> {
         println!("parsing {}", path.display());
         let data = fs::read(&path)?;
         let (save, _encoding) = Eu4Extractor::extract_save(Cursor::new(&data[..]))?;
-        if let Some(playthrough_id) = eu4game::shared::playthrough_id(&save) {
+        let query = Query::from_save(save);
+        if let Some(playthrough_id) = eu4game::shared::playthrough_id(&query) {
             let e = playthrough_ids
                 .entry(playthrough_id)
                 .or_insert_with(HashSet::new);

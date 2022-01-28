@@ -3,6 +3,7 @@ import { StopOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Descriptions } from "antd";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryDetails } from "@/features/eu4/types/models";
+import { InheritanceLabel } from "./InheritanceLabel";
 
 interface CountryDetailsProps {
   details: CountryDetails;
@@ -60,10 +61,19 @@ export const CountryDetailsDescriptions: React.FC<CountryDetailsProps> = ({
       <Descriptions.Item label="Loans">{`${formatInt(
         details.loans
       )} (${formatInt(details.debt)})`}</Descriptions.Item>
-      <Descriptions.Item label="Ideas" span={1}>
+
+      <Descriptions.Item label="Ideas" span={2}>
         <table className="antd-little-padding" style={{ width: "unset" }}>
           <tbody>{ideaElem}</tbody>
         </table>
+      </Descriptions.Item>
+      <Descriptions.Item label={<InheritanceLabel />} span={2}>
+        <div className="flex-col no-break">
+          <div>{`Window: [${details.inheritance.start_year} - ${details.inheritance.end_year}]`}</div>
+          <div>{`PU Roll: ${
+            details.inheritance.pu_roll - details.num_cities
+          }%`}</div>
+        </div>
       </Descriptions.Item>
     </Descriptions>
   );

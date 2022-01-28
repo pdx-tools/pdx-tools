@@ -565,12 +565,7 @@ impl<'a> AchievementHunter<'a> {
             && save.meta.not_observer
             && save.game.achievement_ok;
 
-        let mut current_humans: Vec<_> = save
-            .game
-            .countries
-            .iter()
-            .filter(|(_, x)| x.human)
-            .collect();
+        let mut current_humans: Vec<_> = query.countries().filter(|x| x.country.human).collect();
 
         valid &= current_humans.len() == 1;
         let patch = &query.save().meta.savegame_version;
@@ -597,10 +592,8 @@ impl<'a> AchievementHunter<'a> {
         };
 
         valid &= query
-            .save()
-            .game
-            .countries
-            .values()
+            .countries()
+            .map(|x| x.country)
             .flat_map(|x| x.history.events.iter().map(|(date, _event)| date))
             .all(|x| x <= &date_gate);
 
@@ -616,10 +609,10 @@ impl<'a> AchievementHunter<'a> {
             return None;
         }
 
-        let (&tag, country) = current_humans.remove(0);
+        let human = current_humans.remove(0);
 
-        let mut self_and_subjects: HashSet<_> = country.subjects.iter().cloned().collect();
-        self_and_subjects.insert(tag);
+        let mut self_and_subjects: HashSet<_> = human.country.subjects.iter().cloned().collect();
+        self_and_subjects.insert(human.tag);
 
         query
             .starting_country(player_histories)
@@ -628,8 +621,8 @@ impl<'a> AchievementHunter<'a> {
                 game,
                 patch: (patch.first, patch.second),
                 save,
-                tag,
-                country,
+                tag: human.tag,
+                country: human.country,
                 starting_country,
                 self_and_subjects,
             })
@@ -975,10 +968,8 @@ impl<'a> AchievementHunter<'a> {
             .self_and_subjects
             .iter()
             .filter(|x| {
-                self.save
-                    .game
-                    .countries
-                    .get(x)
+                self.query
+                    .country(x)
                     .map_or(false, |x| x.tribute_type.is_none())
             })
             .collect();
@@ -1007,10 +998,8 @@ impl<'a> AchievementHunter<'a> {
             .self_and_subjects
             .iter()
             .filter(|x| {
-                self.save
-                    .game
-                    .countries
-                    .get(x)
+                self.query
+                    .country(x)
                     .map_or(false, |x| x.tribute_type.is_none())
             })
             .collect();
@@ -1037,10 +1026,8 @@ impl<'a> AchievementHunter<'a> {
 
         let desc = "started out as a nation with dutch primary culture";
         let dutch = self
-            .save
-            .game
-            .countries
-            .get(&self.starting_country)
+            .query
+            .country(&self.starting_country)
             .map_or(false, |country| {
                 country
                     .history
@@ -1244,10 +1231,9 @@ impl<'a> AchievementHunter<'a> {
         // From eu4 wiki: Since a nation is a member of the HRE if and only if its capital province
         // is in the HRE
         let hre_countries = self
-            .save
-            .game
-            .countries
-            .values()
+            .query
+            .countries()
+            .map(|x| x.country)
             .filter(|country| country.num_of_cities >= 1)
             .map(|country| self.save.game.provinces.get(&country.capital))
             .flatten()
@@ -1458,10 +1444,8 @@ impl<'a> AchievementHunter<'a> {
 
         let desc = "started out as a nation with irish primary culture";
         let irish = self
-            .save
-            .game
-            .countries
-            .get(&self.starting_country)
+            .query
+            .country(&self.starting_country)
             .map_or(false, |country| {
                 country
                     .history
@@ -1574,10 +1558,8 @@ impl<'a> AchievementHunter<'a> {
             .game
             .culture_group_cultures("tartar")
             .map_or(false, |mut cultures| {
-                self.save
-                    .game
-                    .countries
-                    .get(&self.starting_country)
+                self.query
+                    .country(&self.starting_country)
                     .map_or(false, |country| {
                         country
                             .history
@@ -1590,17 +1572,15 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(is_tartar, desc));
 
         let desc = "started out as a steppe horde nation";
-        let steppe_horde =
-            self.save
-                .game
-                .countries
-                .get(&self.starting_country)
-                .map_or(false, |country| {
-                    country
-                        .history
-                        .add_government_reform
-                        .contains(&String::from("steppe_horde"))
-                });
+        let steppe_horde = self
+            .query
+            .country(&self.starting_country)
+            .map_or(false, |country| {
+                country
+                    .history
+                    .add_government_reform
+                    .contains(&String::from("steppe_horde"))
+            });
         result.and(AchievementCondition::new(steppe_horde, desc));
         result
     }
@@ -1905,10 +1885,9 @@ impl<'a> AchievementHunter<'a> {
                 .religion
                 .as_ref()
                 .map(|r| {
-                    self.save
-                        .game
-                        .countries
-                        .values()
+                    self.query
+                        .countries()
+                        .map(|x| x.country)
                         .filter(|country| country.num_of_cities >= 1)
                         .filter(|country| country.religion.as_ref().map_or(false, |r2| r == r2))
                         .count()
@@ -2005,18 +1984,16 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(is_qng, "is QNG tag"));
 
         let desc = "started out as a nation with Jurchen primary culture";
-        let jurchen =
-            self.save
-                .game
-                .countries
-                .get(&self.starting_country)
-                .map_or(false, |country| {
-                    country
-                        .history
-                        .primary_culture
-                        .as_ref()
-                        .map_or(false, |c| c == "jurchen")
-                });
+        let jurchen = self
+            .query
+            .country(&self.starting_country)
+            .map_or(false, |country| {
+                country
+                    .history
+                    .primary_culture
+                    .as_ref()
+                    .map_or(false, |c| c == "jurchen")
+            });
         result.and(AchievementCondition::new(jurchen, desc));
         result
     }
@@ -2029,10 +2006,9 @@ impl<'a> AchievementHunter<'a> {
         // From eu4 wiki: Since a nation is a member of the HRE if and only if its capital province
         // is in the HRE
         let hre_countries = self
-            .save
-            .game
-            .countries
-            .values()
+            .query
+            .countries()
+            .map(|x| x.country)
             .filter(|country| country.num_of_cities >= 1)
             .map(|country| self.save.game.provinces.get(&country.capital))
             .flatten()
@@ -2046,10 +2022,8 @@ impl<'a> AchievementHunter<'a> {
         ));
 
         let hrl_tag = self
-            .save
-            .game
-            .countries
-            .get(&"HRL".parse().unwrap())
+            .query
+            .country(&"HRL".parse().unwrap())
             .map_or(true, |x| x.num_of_cities == 0);
 
         result.and(AchievementCondition::new(
@@ -2413,18 +2387,16 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(playing, desc));
 
         let desc = "started out as a nation with Romanian primary culture";
-        let romanian =
-            self.save
-                .game
-                .countries
-                .get(&self.starting_country)
-                .map_or(false, |country| {
-                    country
-                        .history
-                        .primary_culture
-                        .as_ref()
-                        .map_or(false, |c| c == "romanian")
-                });
+        let romanian = self
+            .query
+            .country(&self.starting_country)
+            .map_or(false, |country| {
+                country
+                    .history
+                    .primary_culture
+                    .as_ref()
+                    .map_or(false, |c| c == "romanian")
+            });
         result.and(AchievementCondition::new(romanian, desc));
 
         let owns_balkan = if result.completed() {
@@ -2680,7 +2652,7 @@ impl<'a> AchievementHunter<'a> {
             .iter()
             .filter(|x| x.first == self.tag && x.subject_type == "vassal")
             .map(|x| x.second)
-            .filter_map(|x| self.save.game.countries.get(&x))
+            .filter_map(|x| self.query.country(&x))
             .filter(|x| x.development >= 100.0)
             .count();
 
@@ -2728,10 +2700,9 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
 
         let most_dev = self
-            .save
-            .game
-            .countries
-            .values()
+            .query
+            .countries()
+            .map(|x| x.country)
             .all(|x| x.development < self.country.development);
 
         let desc = "Have the most development";

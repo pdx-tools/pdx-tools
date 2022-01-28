@@ -2,14 +2,14 @@ use crate::{hex_color, LocalizedObj, LocalizedTag, SaveFileImpl};
 use eu4game::SaveGameQuery;
 use eu4save::{
     models::{CountryEvent, CountryTechnology},
-    query::{CountryExpenseLedger, CountryIncomeLedger, CountryManaUsage},
+    query::{CountryExpenseLedger, CountryIncomeLedger, CountryManaUsage, Inheritance},
     CountryTag, Eu4Date, PdsDate,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use wasm_bindgen::JsValue;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct CountryDetails {
     pub tag: CountryTag,
     pub base_tax: f32,
@@ -32,6 +32,7 @@ pub struct CountryDetails {
     pub building_count: HashMap<String, i32>,
     pub ideas: Vec<(String, i32)>,
     pub num_cities: i32,
+    pub inheritance: Inheritance,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -95,11 +96,9 @@ impl SaveFileImpl {
         if let Some(country_tag) = tag.as_string().and_then(|x| x.parse::<CountryTag>().ok()) {
             let details = self
                 .query
-                .save()
-                .game
-                .countries
-                .get(&country_tag)
-                .and_then(|country| {
+                .save_country(&country_tag)
+                .and_then(|save_country| {
+                    let country = save_country.country;
                     let ruler = if let Some(ruler_id) = &country.monarch {
                         country
                             .history
@@ -209,6 +208,7 @@ impl SaveFileImpl {
                         .map(|(name, v)| (name.clone(), i32::from(*v)))
                         .collect();
 
+                    let inheritance = self.query.inherit(&save_country);
                     let details = CountryDetails {
                         tag: country_tag,
                         ruler,
@@ -231,6 +231,7 @@ impl SaveFileImpl {
                         total_expenses: self.query.country_total_expense_breakdown(country),
                         mana_usage: self.query.country_mana_breakdown(country),
                         building_count: buildings,
+                        inheritance,
                     };
 
                     Some(details)
@@ -244,7 +245,7 @@ impl SaveFileImpl {
 
     pub fn get_country_rulers(&self, tag: &str) -> Vec<RunningMonarch> {
         let tag = tag.parse::<CountryTag>().unwrap();
-        let country = self.query.save().game.countries.get(&tag).unwrap();
+        let country = self.query.country(&tag).unwrap();
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
 
         let monarch_ids = country
@@ -409,7 +410,7 @@ impl SaveFileImpl {
 
     pub fn get_country_great_advisors(&self, tag: &str) -> Vec<GreatAdvisor> {
         let tag = tag.parse::<CountryTag>().unwrap();
-        let country = self.query.save().game.countries.get(&tag).unwrap();
+        let country = self.query.country(&tag).unwrap();
 
         let mut great_advisors = Vec::new();
         for advisor_id in self.game.advisor_ids() {
