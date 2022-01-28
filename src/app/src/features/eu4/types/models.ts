@@ -135,9 +135,21 @@ export interface CountryDetails {
 }
 
 export interface Inheritance {
-  start_year: number;
-  end_year: number;
-  pu_roll: number;
+  start_t0_year: number;
+  end_t0_year: number;
+  start_t1_year: number;
+  end_t1_year: number;
+  start_t2_year: number;
+  end_t2_year: number;
+  inheritance_value: number;
+  subtotal: number;
+  calculations: InheritanceCalculation[];
+}
+
+export interface InheritanceCalculation {
+  name: string;
+  value: number;
+  dependency: { Dependent: string } | "Independent";
 }
 
 export interface CountryIncomeLedger {

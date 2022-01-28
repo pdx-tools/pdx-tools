@@ -51,6 +51,15 @@
   flex-direction: column;
 }
 
+/* open props */
+:root {
+  --gray-3: #dee2e6;
+}
+
+.bg-gray-3 {
+  background-color: var(--gray-3);
+}
+
 /* tailwind */
 .grow {
   flex-grow: 1;
