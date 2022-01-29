@@ -132,7 +132,26 @@ export const InheritanceLabel: React.FC<InheranticeLabelProps> = ({
             list here to find old rulers who are likely die within their
             inheritance window.
           </p>
-          <p>For more information LINK TO ATWIX AND REDDIT POST</p>
+          <p>For more information:</p>
+          <ul>
+            <li>
+              <a href="https://www.reddit.com/r/eu4/comments/sfnba3/how_junior_partner_inheritance_really_workshint/?utm_source=share&utm_medium=web2x&context=3">
+                How junior partner inheritance really works (Hint: it is not a
+                dice roll) (Reddit)
+              </a>
+            </li>
+            <li>
+              <a href="https://forum.paradoxplaza.com/forum/threads/guide-to-royal-marriages-personal-unions-and-claim-throne.788829/">
+                Atwix's guide to royal marriages, personal unions and claim
+                throne.
+              </a>
+            </li>
+            <li>
+              <a href="https://youtu.be/seW0FRZdts4">
+                Radios Res' Personal Unions - An In-Depth Guide (Youtube)
+              </a>
+            </li>
+          </ul>
         </div>
       </Drawer>
       <div>Inheritance</div>
