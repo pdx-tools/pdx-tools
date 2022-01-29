@@ -118,15 +118,13 @@ export const InheritanceLabel: React.FC<InheranticeLabelProps> = ({
             provinces, so check this window frequently.
           </p>
           <p>
-            These values also inform us of the chances a junior country in a
-            personal union (PU) will be inherited on death (or abdication). The
-            personal union chance factor already includes the size of the nation
-            in the calculations, hence the possibility of negative chances. You
-            need to add your diplomatic reputation and{" "}
+            When the ruler dies, the inheritance value is compared with the{" "}
             <a href="https://eu4.paradoxwikis.com/Personal_union#Inheritance">
-              other factors
-            </a>{" "}
-            to calculate the true percentage.
+              inheritance chance
+            </a>
+            , which can be seen ingame in the union tooltip on the diplomatic
+            view. If the inheritance value is less than the inheritance chance,
+            the junior partner is inherited
           </p>
           <p>
             This is feature is currently intended to be used while EU4 is open,
