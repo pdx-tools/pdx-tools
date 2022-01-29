@@ -650,4 +650,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-01-29",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Add download save button to uploaded saves</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];

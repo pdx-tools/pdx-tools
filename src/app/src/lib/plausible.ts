@@ -27,12 +27,17 @@ export type Event =
   | {
       kind: "melt";
       game: DetectedDataType;
+    }
+  | {
+      kind: "download";
+      game: DetectedDataType;
     };
 
 export function emitEvent(event: Event) {
   const plausible = getPlausible();
 
   switch (event.kind) {
+    case "download":
     case "melt":
     case "parse": {
       plausible(event.kind, { props: { game: event.game } });

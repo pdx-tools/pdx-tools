@@ -9,20 +9,23 @@ import {
 } from "../../components/SideBarButton";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
 import { useEu4Meta } from "../../eu4Slice";
+import { useAppSelector } from "@/lib/store";
+import { DownloadButton } from "./DownloadButton";
 
 const InfoSideBarTitle: React.FC<{}> = () => {
   const meta = useEu4Meta();
+  const remoteFile = useAppSelector((state) => state.eu4.serverSaveFile);
   return (
     <div className="flex-row gap">
       <SaveMode mode={meta.mode} />
       <span>{meta.save_game || "EU4 Save Game"}</span>
-      <div className="drawer-extras">
+      <div className="drawer-extras flex-row gap">
+        {remoteFile && <DownloadButton />}
         {meta.encoding == "binzip" && <MeltButton />}
 
         <style jsx>{`
           .drawer-extras {
             flex-grow: 1;
-            display: flex;
             justify-content: flex-end;
             margin-right: 2rem;
           }

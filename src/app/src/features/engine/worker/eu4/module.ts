@@ -307,3 +307,13 @@ export function eu4GetMapTooltip(
 export async function eu4SaveHash(): Promise<string> {
   return wasmModule.save_checksum(await getRawData());
 }
+
+export async function eu4DownloadData(): Promise<Uint8Array> {
+  const data = await getRawData();
+  if (wasmModule.need_download_transformation(data)) {
+    const out = wasmModule.download_transformation(data);
+    return transfer(out, [out.buffer]);
+  } else {
+    return data;
+  }
+}
