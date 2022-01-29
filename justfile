@@ -216,6 +216,11 @@ admin-sync-assets:
   cargo build --release -p assets
   ACCESS_KEY="${ASSETS_ACCESS_KEY}" SECRET_KEY="${ASSETS_SECRET_KEY}" ./target/release/assets sync-assets
 
+format:
+  cargo fmt
+  cd src/app && npm run format
+  cd src/map && npx prettier@latest --write src
+
 prep-frontend:
   #!/usr/bin/env bash
   set -euxo pipefail
