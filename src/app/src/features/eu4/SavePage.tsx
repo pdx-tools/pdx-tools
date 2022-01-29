@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import { Alert } from "antd";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppLoading } from "@/components/AppLoading";
+import { BrowserCheck } from "@/components/landing/BrowserCheck";
 
 interface SaveProps {
   saveId: string;
@@ -19,6 +20,7 @@ export const SavePage: React.FC<SaveProps> = ({ saveId }) => {
 
   return (
     <>
+      <BrowserCheck />
       {engineError && (
         <>
           <AppHeader />
