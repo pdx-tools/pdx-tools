@@ -639,4 +639,15 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-01-28",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Add inheritance value calculations</li>
+          <li>🐛 - Collapse ruler personalities onto one line</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];

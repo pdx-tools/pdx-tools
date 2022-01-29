@@ -55,10 +55,13 @@ export const CountryRulersTable: React.FC<CountryRulersTableProps> = ({
     {
       title: "Personalities",
       dataIndex: "personalities",
-      render: (personalities: LocalizedObj[]) =>
-        personalities.map((personality) => (
-          <PersonalityAvatar key={personality.id} {...personality} />
-        )),
+      render: (personalities: LocalizedObj[]) => (
+        <div className="flex-row">
+          {personalities.map((personality) => (
+            <PersonalityAvatar key={personality.id} {...personality} />
+          ))}
+        </div>
+      ),
     },
     {
       title: "Stats",
