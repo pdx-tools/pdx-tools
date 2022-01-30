@@ -31,6 +31,10 @@ export type Event =
   | {
       kind: "download";
       game: DetectedDataType;
+    }
+  | {
+      kind: "webgl";
+      maxTextureSize: number;
     };
 
 export function emitEvent(event: Event) {
@@ -42,6 +46,13 @@ export function emitEvent(event: Event) {
     case "parse": {
       plausible(event.kind, { props: { game: event.game } });
       break;
+    }
+    case "webgl": {
+      plausible(event.kind, { props: { maxSize: event.maxTextureSize } });
+      break;
+    }
+    default: {
+      throw new Error("unrecognized event");
     }
   }
 }
