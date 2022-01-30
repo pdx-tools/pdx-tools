@@ -57,7 +57,7 @@ export const CanvasContextProvider: React.FC<{}> = ({ children }) => {
         ref={containerRef}
         style={{ display: showCanvas ? "flex" : "none", top: -positioning }}
       >
-        <canvas ref={canvasRef} />
+        <canvas ref={canvasRef} hidden={true} />
         <style jsx>{`
           canvas {
             max-width: 100%;

@@ -12,6 +12,8 @@ import {
   WorkerClient,
   useWorkerOnSave,
   moduleDrawn,
+  useCanvasRef,
+  getCanvas,
 } from "@/features/engine";
 import {
   selectEu4MapColorPayload,
@@ -21,6 +23,7 @@ import {
 type CanvasState = "initial" | "drawn";
 export function useMap() {
   const dispatch = useAppDispatch();
+  const canvasRef = useCanvasRef();
   const mapRef = useEu4CanvasRef();
   const analysisId = useSelector(selectAnalyzeId);
   const mapDecorativeSettings = useSelector(selectEu4MapDecorativeSettings);
@@ -85,13 +88,16 @@ export function useMap() {
       }
 
       map.setControls(mapDecorativeSettings);
-      map.redrawMapImage();
 
       if (renderToken == 1 && canvasState.current != "drawn") {
+        map.redrawMapNow();
         requestAnimationFrame(() => {
           dispatch(moduleDrawn());
+          getCanvas(canvasRef).hidden = false;
         });
         canvasState.current = "drawn";
+      } else {
+        map.redrawMapImage();
       }
 
       setRenderToken(1);
@@ -101,6 +107,7 @@ export function useMap() {
     // https://github.com/facebook/react/issues/20752
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
+      canvasRef,
       mapRef,
       mapColorPayload,
       mapDecorativeSettings,
@@ -109,6 +116,12 @@ export function useMap() {
       renderToken,
     ]
   );
+
+  useEffect(() => {
+    return () => {
+      getCanvas(canvasRef).hidden = true;
+    };
+  }, []);
 
   useWorkerOnSave(updateMapColorsCb);
 }

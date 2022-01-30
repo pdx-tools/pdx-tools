@@ -183,6 +183,10 @@ export class Eu4Canvas {
     this.map?.onWheel(e);
   }
 
+  redrawMapNow() {
+    this.map?.redrawMapNow();
+  }
+
   redrawMapImage() {
     this.map?.redrawMapImage();
   }
