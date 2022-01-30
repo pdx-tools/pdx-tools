@@ -149,17 +149,17 @@ package-all *opts: touch-tokens
   package() {
     length=$(($#-1))
     array=${@:1:$length}
-    cargo run --release -p packager --bin run_tar -- ${array} assets/game-bundles/eu4-"${@: -1}".tar.zst
+    cargo run --release -p packager --bin run_tar -- ${array} "${@: -1}"
   }
 
   cargo build --release -p packager --bin run_tar
 
-  LAST_VERSION=$(ls assets/game/eu4/ | grep -v common | sort -n | tail -n1)
-  for VERSION in $(ls assets/game/eu4/ | grep -v common | sort -n); do
-    if [ "$VERSION" = "$LAST_VERSION" ]; then
-      package {{opts}} --common "$VERSION" &
+  LAST_BUNDLE=$(ls assets/game-bundles/eu4-* | grep -v common | sort -n | tail -n1)
+  for BUNDLE in $(ls assets/game-bundles/eu4-* | grep -v common | sort -n); do
+    if [ "$BUNDLE" = "$LAST_BUNDLE" ]; then
+      package {{opts}} --common "$BUNDLE" &
     else
-      package {{opts}} "$VERSION" &
+      package {{opts}} "$BUNDLE" &
     fi;
   done;
 
