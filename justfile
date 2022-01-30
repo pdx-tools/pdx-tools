@@ -143,7 +143,7 @@ build-napi:
   cargo build --release -p applib-node
   cp -f ./target/release/libapplib_node.so ./src/app/src/server-lib/applib.node
 
-package-all: touch-tokens
+package-all *opts: touch-tokens
   #!/usr/bin/env bash
   set -euxo pipefail
   package() {
@@ -153,10 +153,16 @@ package-all: touch-tokens
   }
 
   cargo build --release -p packager --bin run_tar
-  package 1.29 &
-  package 1.30 &
-  package 1.31 &
-  package --common 1.32 &
+
+  LAST_VERSION=$(ls assets/game/eu4/ | grep -v common | sort -n | tail -n1)
+  for VERSION in $(ls assets/game/eu4/ | grep -v common | sort -n); do
+    if [ "$VERSION" = "$LAST_VERSION" ]; then
+      package {{opts}} --common "$VERSION" &
+    else
+      package {{opts}} "$VERSION" &
+    fi;
+  done;
+
   wait
 
 asset-extraction +cmd: touch-tokens
