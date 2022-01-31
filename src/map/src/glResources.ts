@@ -1,26 +1,36 @@
-import { StaticResources } from "./staticResources";
+import { StaticResources, TerrainOverlayResources } from "./staticResources";
 import { MapShader } from "./mapShader";
 import { XbrShader } from "./xbrShader";
-import { IMG_WIDTH, IMG_HEIGHT, IMG_PADDED_WIDTH } from "./map";
+import {
+  IMG_WIDTH,
+  IMG_HEIGHT,
+  IMG_PADDED_WIDTH,
+  SPLIT_IMG_PADDED_WIDTH,
+} from "./map";
 import { notNull } from "./nullcheck";
+
+const MAX_TEXTURE_SIZE = 4096;
 
 // Stores all WebGL resource data like textures, shader programs, etc.
 export class GLResources {
   private constructor(
     public readonly gl: WebGL2RenderingContext,
-    public readonly colorMap: WebGLTexture,
-    public readonly sea: WebGLTexture,
-    public readonly normal: WebGLTexture,
-    public readonly terrain: WebGLTexture,
-    public readonly rivers: WebGLTexture,
-    public readonly water: WebGLTexture,
-    public readonly provinces: WebGLTexture,
-    public readonly stripes: WebGLTexture,
-    public readonly surfaceRock: WebGLTexture,
-    public readonly surfaceGreen: WebGLTexture,
-    public readonly surfaceNormalRock: WebGLTexture,
-    public readonly surfaceNormalGreen: WebGLTexture,
-    public readonly heightMap: WebGLTexture,
+    public colorMap: WebGLTexture,
+    public sea: WebGLTexture,
+    public normal: WebGLTexture,
+    public readonly terrain1: WebGLTexture,
+    public readonly terrain2: WebGLTexture,
+    public rivers1: WebGLTexture,
+    public rivers2: WebGLTexture,
+    public water: WebGLTexture,
+    public readonly provinces1: WebGLTexture,
+    public readonly provinces2: WebGLTexture,
+    public stripes: WebGLTexture,
+    public surfaceRock: WebGLTexture,
+    public surfaceGreen: WebGLTexture,
+    public surfaceNormalRock: WebGLTexture,
+    public surfaceNormalGreen: WebGLTexture,
+    public heightMap: WebGLTexture,
     public readonly provincesUniqueColor: WebGLTexture,
     public readonly countryProvinceColors: WebGLTexture,
     public readonly primaryProvinceColors: WebGLTexture,
@@ -29,18 +39,28 @@ export class GLResources {
     public readonly xbrShaderProgram: XbrShader,
     public readonly posBuffer: WebGLBuffer,
     public readonly xbrPosBuffer: WebGLBuffer,
-    public readonly texCoordBuffer: WebGLBuffer,
+    public readonly rawMapTexCoordBuffer1: WebGLBuffer,
+    public readonly rawMapTexCoordBuffer2: WebGLBuffer,
     public readonly xbrTexCoordBuffer: WebGLBuffer,
-    public readonly geometryVao: WebGLVertexArrayObject,
+    public readonly rawMapVao1: WebGLVertexArrayObject,
+    public readonly rawMapVao2: WebGLVertexArrayObject,
     public readonly xbrVao: WebGLVertexArrayObject,
-    public readonly framebufferEdgesTexture: WebGLTexture,
-    public readonly framebufferTexture: WebGLTexture,
-    public readonly framebuffer: WebGLFramebuffer,
+    public readonly framebufferRawMapEdgesTexture1: WebGLTexture,
+    public readonly framebufferRawMapEdgesTexture2: WebGLTexture,
+    public readonly framebufferRawMapTexture1: WebGLTexture,
+    public readonly framebufferRawMapTexture2: WebGLTexture,
+    public readonly rawMapFramebuffer1: WebGLFramebuffer,
+    public readonly rawMapFramebuffer2: WebGLFramebuffer,
     public readonly provinceCount: number
   ) {
-    gl.bindVertexArray(geometryVao);
+    gl.bindVertexArray(rawMapVao1);
     mapShaderProgram.bindPosBuffer(posBuffer);
-    mapShaderProgram.bindTexCoordBuffer(texCoordBuffer);
+    mapShaderProgram.bindTexCoordBuffer(rawMapTexCoordBuffer1);
+    gl.bindVertexArray(null);
+
+    gl.bindVertexArray(rawMapVao2);
+    mapShaderProgram.bindPosBuffer(posBuffer);
+    mapShaderProgram.bindTexCoordBuffer(rawMapTexCoordBuffer2);
     gl.bindVertexArray(null);
 
     gl.bindVertexArray(xbrVao);
@@ -57,55 +77,92 @@ export class GLResources {
   ) {
     let provinceCount = staticRes.provincesUniqueColor.length / 3;
 
-    let fb = notNull(gl.createFramebuffer());
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-
-    let fbEdgesTexture = notNull(gl.createTexture());
-    setupFramebufferTexture(gl, fbEdgesTexture, IMG_PADDED_WIDTH, IMG_HEIGHT);
+    let rawMapFramebuffer1 = notNull(gl.createFramebuffer());
+    gl.bindFramebuffer(gl.FRAMEBUFFER, rawMapFramebuffer1);
+    let fbRawMapEdgesTexture1 = notNull(gl.createTexture());
+    setupFramebufferTexture(
+      gl,
+      fbRawMapEdgesTexture1,
+      SPLIT_IMG_PADDED_WIDTH,
+      IMG_HEIGHT
+    );
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
       gl.COLOR_ATTACHMENT0,
       gl.TEXTURE_2D,
-      fbEdgesTexture,
+      fbRawMapEdgesTexture1,
       0
     );
-
-    let fbTexture = notNull(gl.createTexture());
-    setupFramebufferTexture(gl, fbTexture, IMG_PADDED_WIDTH, IMG_HEIGHT);
+    let fbRawMapTexture1 = notNull(gl.createTexture());
+    setupFramebufferTexture(
+      gl,
+      fbRawMapTexture1,
+      SPLIT_IMG_PADDED_WIDTH,
+      IMG_HEIGHT
+    );
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
       gl.COLOR_ATTACHMENT1,
       gl.TEXTURE_2D,
-      fbTexture,
+      fbRawMapTexture1,
       0
     );
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
+    let rawMapFramebuffer2 = notNull(gl.createFramebuffer());
+    gl.bindFramebuffer(gl.FRAMEBUFFER, rawMapFramebuffer2);
+    let fbRawMapEdgesTexture2 = notNull(gl.createTexture());
+    setupFramebufferTexture(
+      gl,
+      fbRawMapEdgesTexture2,
+      SPLIT_IMG_PADDED_WIDTH,
+      IMG_HEIGHT
+    );
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      fbRawMapEdgesTexture2,
+      0
+    );
+    let fbRawMapTexture2 = notNull(gl.createTexture());
+    setupFramebufferTexture(
+      gl,
+      fbRawMapTexture2,
+      SPLIT_IMG_PADDED_WIDTH,
+      IMG_HEIGHT
+    );
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT1,
+      gl.TEXTURE_2D,
+      fbRawMapTexture2,
+      0
+    );
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     var xbrPositionBuffer = notNull(gl.createBuffer());
     resizeXbrGeometry(gl, xbrPositionBuffer, gl.canvas.width);
 
-    const colorMap = setupTexture(gl, staticRes.colorMap, gl.LINEAR);
-    const sea = setupTexture(gl, staticRes.sea, gl.LINEAR);
-    const normal = setupTexture(gl, staticRes.normal, gl.LINEAR);
-    const terrain = setupTexture(gl, staticRes.terrain, gl.NEAREST);
-    const rivers = setupTexture(gl, staticRes.rivers, gl.NEAREST);
-    const water = setupTexture(gl, staticRes.water, gl.LINEAR);
-    const provinces = setupTexture(gl, staticRes.provinces, gl.NEAREST);
-    const stripes = setupTexture(gl, staticRes.stripes, gl.NEAREST);
-    const surfaceRock = setupTexture(gl, staticRes.surfaceRock, gl.LINEAR);
-    const surfaceGreen = setupTexture(gl, staticRes.surfaceGreen, gl.LINEAR);
-    const surfaceNormalRock = setupTexture(
-      gl,
-      staticRes.surfaceNormalRock,
-      gl.LINEAR
-    );
-    const surfaceNormalGreen = setupTexture(
-      gl,
-      staticRes.surfaceNormalGreen,
-      gl.LINEAR
-    );
-    const heightMap = setupTexture(gl, staticRes.heightMap, gl.LINEAR);
+    const provinces1 = setupTexture(gl, staticRes.provinces1, gl.NEAREST);
+    const provinces2 = setupTexture(gl, staticRes.provinces2, gl.NEAREST);
+
+    const terrain1 = setupTexture(gl, staticRes.terrain1, gl.NEAREST);
+    const terrain2 = setupTexture(gl, staticRes.terrain2, gl.NEAREST);
+
+    const rivers1 = setupTexture(gl, new ImageData(1, 1), gl.NEAREST);
+    const rivers2 = setupTexture(gl, new ImageData(1, 1), gl.NEAREST);
+
+    const colorMap = setupTexture(gl, new ImageData(1, 1), gl.LINEAR);
+    const sea = setupTexture(gl, new ImageData(1, 1), gl.LINEAR);
+    const normal = setupTexture(gl, new ImageData(1, 1), gl.LINEAR);
+    const water = setupTexture(gl, new ImageData(1, 1), gl.LINEAR);
+    const stripes = setupTexture(gl, staticRes.stripes, gl.NEAREST, gl.REPEAT);
+    const surfaceRock = setupTexture(gl, new ImageData(1, 1), gl.LINEAR);
+    const surfaceGreen = setupTexture(gl, new ImageData(1, 1), gl.LINEAR);
+    const surfaceNormalRock = setupTexture(gl, new ImageData(1, 1), gl.LINEAR);
+    const surfaceNormalGreen = setupTexture(gl, new ImageData(1, 1), gl.LINEAR);
+    const heightMap = setupTexture(gl, new ImageData(1, 1), gl.LINEAR);
 
     const [mapProgram, xbrProgram] = await linkedPrograms();
 
@@ -114,10 +171,13 @@ export class GLResources {
       colorMap,
       sea,
       normal,
-      terrain,
-      rivers,
+      terrain1,
+      terrain2,
+      rivers1,
+      rivers2,
       water,
-      provinces,
+      provinces1,
+      provinces2,
       stripes,
       surfaceRock,
       surfaceGreen,
@@ -150,13 +210,18 @@ export class GLResources {
       XbrShader.create(gl, xbrProgram),
       initializeGeometry(gl),
       xbrPositionBuffer,
-      initializeGeometryTexCoords(gl),
+      initializeRawMapTexCoords1(gl),
+      initializeRawMapTexCoords2(gl),
       initializeXbrTexCoords(gl),
       createVao(gl),
       createVao(gl),
-      fbEdgesTexture,
-      fbTexture,
-      fb,
+      createVao(gl),
+      fbRawMapEdgesTexture1,
+      fbRawMapEdgesTexture2,
+      fbRawMapTexture1,
+      fbRawMapTexture2,
+      rawMapFramebuffer1,
+      rawMapFramebuffer2,
       staticRes.provincesUniqueColor.length / 3
     );
   }
@@ -188,6 +253,30 @@ export class GLResources {
       provinceUniqueColors
     );
   }
+
+  updateTerrainTextures(textures: TerrainOverlayResources) {
+    const { gl } = this;
+    this.rivers1 = setupTexture(gl, textures.rivers1, gl.NEAREST);
+    this.rivers2 = setupTexture(gl, textures.rivers2, gl.NEAREST);
+
+    this.colorMap = setupTexture(gl, textures.colorMap, gl.LINEAR);
+    this.sea = setupTexture(gl, textures.sea, gl.LINEAR);
+    this.normal = setupTexture(gl, textures.normal, gl.LINEAR);
+    this.water = setupTexture(gl, textures.water, gl.LINEAR);
+    this.surfaceRock = setupTexture(gl, textures.surfaceRock, gl.LINEAR);
+    this.surfaceGreen = setupTexture(gl, textures.surfaceGreen, gl.LINEAR);
+    this.surfaceNormalRock = setupTexture(
+      gl,
+      textures.surfaceNormalRock,
+      gl.LINEAR
+    );
+    this.surfaceNormalGreen = setupTexture(
+      gl,
+      textures.surfaceNormalGreen,
+      gl.LINEAR
+    );
+    this.heightMap = setupTexture(gl, textures.heightMap, gl.LINEAR);
+  }
 }
 
 function createVao(gl: WebGL2RenderingContext) {
@@ -206,8 +295,8 @@ export function setupFramebufferTexture(
   height: number
 ): WebGLTexture {
   gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   const mipLevel = 0; // the largest mip
@@ -232,8 +321,9 @@ export function setupFramebufferTexture(
 
 function setupTexture(
   gl: WebGL2RenderingContext,
-  img: ImageBitmap,
-  filter: number
+  img: TexImageSource,
+  filter: number,
+  wrap?: number
 ): WebGLTexture {
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -242,8 +332,8 @@ function setupTexture(
     throw new Error("texture was null");
   }
 
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap ?? gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap ?? gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
   const mipLevel = 0; // the largest mip
@@ -283,16 +373,22 @@ function setupProvinceColorsTexture(
   const internalFormat = type;
   const srcFormat = type;
   const srcType = gl.UNSIGNED_BYTE;
+
+  const total =
+    MAX_TEXTURE_SIZE * (Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1) * 4;
+  const buffed = new Uint8Array(total);
+  buffed.set(data);
+
   gl.texImage2D(
     gl.TEXTURE_2D,
     mipLevel,
     internalFormat,
-    provinceCount,
-    1,
+    Math.min(MAX_TEXTURE_SIZE, provinceCount),
+    Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1,
     0,
     srcFormat,
     srcType,
-    data
+    buffed
   );
   gl.bindTexture(gl.TEXTURE_2D, null);
   return texture;
@@ -318,16 +414,22 @@ function setupProvinceCustomColorsTexture(
   const internalFormat = gl.RGBA;
   const srcFormat = gl.RGBA;
   const srcType = gl.UNSIGNED_BYTE;
+
+  const total =
+    MAX_TEXTURE_SIZE * (Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1) * 4;
+  const buffed = new Uint8Array(total);
+  buffed.set(data);
+
   gl.texImage2D(
     gl.TEXTURE_2D,
     mipLevel,
     internalFormat,
-    provinceCount,
-    1,
+    Math.min(MAX_TEXTURE_SIZE, provinceCount),
+    Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1,
     0,
     srcFormat,
     srcType,
-    data
+    buffed
   );
   gl.bindTexture(gl.TEXTURE_2D, null);
   return texture;
@@ -341,16 +443,23 @@ function fillCustomProvinceColorsTexture(
   const srcFormat = gl.RGBA;
   const srcType = gl.UNSIGNED_BYTE;
   gl.bindTexture(gl.TEXTURE_2D, provinceUniqueColorsTexture);
+  const provinceCount = provinceUniqueColors.length / 4;
+
+  const total =
+    MAX_TEXTURE_SIZE * (Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1) * 4;
+  const buffed = new Uint8Array(total);
+  buffed.set(provinceUniqueColors);
+
   gl.texSubImage2D(
     gl.TEXTURE_2D,
     0,
     0,
     0,
-    provinceUniqueColors.length / 4,
-    1,
+    Math.min(MAX_TEXTURE_SIZE, provinceCount),
+    Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1,
     srcFormat,
     srcType,
-    provinceUniqueColors
+    buffed
   );
   gl.bindTexture(gl.TEXTURE_2D, null);
 }
@@ -444,13 +553,51 @@ function initializeGeometry(gl: WebGL2RenderingContext) {
   return positionBuffer;
 }
 
-function initializeGeometryTexCoords(gl: WebGL2RenderingContext) {
+function initializeRawMapTexCoords1(gl: WebGL2RenderingContext) {
+  var share = SPLIT_IMG_PADDED_WIDTH / IMG_WIDTH;
   const texCoordBuffer = notNull(gl.createBuffer());
   gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
   gl.bufferData(
     gl.ARRAY_BUFFER,
     new Float32Array([
-      0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0,
+      0.0,
+      0.0,
+      share,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      1.0,
+      share,
+      0.0,
+      share,
+      1.0,
+    ]),
+    gl.STATIC_DRAW
+  );
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  return texCoordBuffer;
+}
+
+function initializeRawMapTexCoords2(gl: WebGL2RenderingContext) {
+  var share = SPLIT_IMG_PADDED_WIDTH / IMG_WIDTH;
+  const texCoordBuffer = notNull(gl.createBuffer());
+  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Float32Array([
+      share,
+      0.0,
+      1.0,
+      0.0,
+      share,
+      1.0,
+      share,
+      1.0,
+      1.0,
+      0.0,
+      1.0,
+      1.0,
     ]),
     gl.STATIC_DRAW
   );

@@ -924,41 +924,50 @@ pub fn translate_map(
     // strip any profiles that the browser may misinterpret
 
     // these images need to remain 32bit
-    for image in &["provinces.bmp"] {
+    for image in &["provinces.bmp", "terrain.bmp", "rivers.bmp"] {
         let image_path = tmp_game_dir.join("map").join(image);
         let file_stem = image_path.file_stem().unwrap();
-        let mut end_filename = file_stem.to_os_string();
-        end_filename.push(".png");
-        let out_path = base_image_dir.join(&end_filename);
 
-        if out_path.exists() && !options.regen {
-            continue;
+        for i in 1..=2 {
+            let mut end_filename = file_stem.to_os_string();
+            end_filename.push(format!("-{}.png", i));
+            let out_path = base_image_dir.join(&end_filename);
+
+            if out_path.exists() && !options.regen {
+                continue;
+            }
+
+            let child = Command::new("convert")
+                .arg(&image_path)
+                .arg("-strip")
+                .arg("-crop")
+                .arg(format!("2816x2048+{}+0", (i - 1) * 2816))
+                .arg(format!("PNG32:{}", out_path.display()))
+                .output()
+                .context("imagemagick convert failed")?;
+
+            if !child.status.success() {
+                bail!(
+                    "convert failed with: {}",
+                    String::from_utf8_lossy(&child.stderr)
+                );
+            }
+
+            let mut opts = oxipng::Options::from_preset(2);
+            opts.strip = oxipng::Headers::Safe;
+            if *image == "provinces.bmp" {
+                opts.bit_depth_reduction = false;
+                opts.palette_reduction = false;
+                opts.color_type_reduction = false;
+            }
+
+            let out = oxipng::OutFile::Path(None);
+            oxipng::optimize(&out_path.clone().into(), &out, &opts)
+                .with_context(|| format!("unable to optimize png: {}", out_path.display()))?
         }
-
-        let child = Command::new("convert")
-            .arg(image_path)
-            .arg("-strip")
-            .arg(format!("PNG32:{}", out_path.display()))
-            .output()
-            .context("imagemagick convert failed")?;
-
-        if !child.status.success() {
-            bail!(
-                "convert failed with: {}",
-                String::from_utf8_lossy(&child.stderr)
-            );
-        }
-
-        let mut opts = oxipng::Options::from_preset(2);
-        opts.strip = oxipng::Headers::Safe;
-        opts.bit_depth_reduction = false;
-        opts.palette_reduction = false;
-        opts.color_type_reduction = false;
-        let out = oxipng::OutFile::Path(None);
-        oxipng::optimize(&out_path.into(), &out, &opts).context("unable to optimize png")?;
     }
 
-    for image in &["terrain.bmp", "rivers.bmp", "terrain/occupation.dds"] {
+    for image in &["terrain/occupation.dds"] {
         let image_path = tmp_game_dir.join("map").join(image);
         let file_stem = image_path.file_stem().unwrap();
         let mut end_filename = file_stem.to_os_string();
@@ -1004,15 +1013,19 @@ pub fn translate_map(
             continue;
         }
 
-        let child = Command::new("convert")
-            .arg(image_path)
-            .arg(&out_path)
-            .output()?;
+        let mut child = Command::new("convert");
+        child.arg(image_path);
 
-        if !child.status.success() {
+        if *image == "heightmap.bmp" {
+            child.arg("-resize");
+            child.arg("2816x1024");
+        }
+
+        let out = child.arg(&out_path).output()?;
+        if !out.status.success() {
             bail!(
                 "convert failed with: {}",
-                String::from_utf8_lossy(&child.stderr)
+                String::from_utf8_lossy(&out.stderr)
             );
         }
     }

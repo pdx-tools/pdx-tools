@@ -1,10 +1,13 @@
 export interface ResourceUrls {
-  provinces: string;
+  provinces1: string;
+  provinces2: string;
+  terrain1: string;
+  terrain2: string;
   colorMap: string;
   sea: string;
   normal: string;
-  terrain: string;
-  rivers: string;
+  rivers1: string;
+  rivers2: string;
   stripes: string;
   water: string;
   surfaceRock: string;

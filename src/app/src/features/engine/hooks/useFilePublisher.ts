@@ -21,12 +21,17 @@ import { endCk3Analyze } from "@/features/ck3/ck3Slice";
 import { endHoi4Analyze } from "@/features/hoi4/hoi4Slice";
 import { endImperatorAnalyze } from "@/features/imperator/imperatorSlice";
 import { emitEvent } from "@/lib/plausible";
+import { useAppSelector } from "@/lib/store";
+import { selectIsDeveloper } from "@/features/account";
+import { check } from "@/lib/isPresent";
+import { log } from "@/lib/log";
 
 export function useFilePublisher() {
   const wasmWorkerRef = useWasmWorker();
   const dispatch = useDispatch();
   const onProgress = useAnalyzeProgress();
   const eu4CanvasRef = useEu4CanvasRef();
+  const isDeveloper = useAppSelector(selectIsDeveloper);
 
   return useCallback(
     async (source: AnalyzeSource) => {
@@ -125,6 +130,26 @@ export function useFilePublisher() {
               });
             }
 
+            let drawCount = 0;
+            check(eu4Canvas.map).onDraw = (e) => {
+              if (isDeveloper || drawCount == 0) {
+                drawCount += 1;
+
+                let cancellations = ``;
+                if (
+                  e.viewportAnimationRequestCancelled != 0 ||
+                  e.mapAnimationRequestCancelled != 0
+                ) {
+                  cancellations += ` (cancellations: viewport ${e.viewportAnimationRequestCancelled} / redraw ${e.mapAnimationRequestCancelled})`;
+                }
+                log(
+                  `canvas content redrawn in: ${e.elapsedMs.toFixed(
+                    2
+                  )}ms${cancellations}`
+                );
+              }
+            };
+
             const [x, y] = await wasmWorker.eu4InitialMapPosition();
 
             if (source.kind !== "server") {
@@ -222,10 +247,11 @@ export function useFilePublisher() {
       try {
         await runEngineOverInput();
       } catch (ex) {
+        console.error(ex);
         captureException(ex);
         dispatch(engineFailure(getErrorMessage(ex)));
       }
     },
-    [wasmWorkerRef, dispatch, onProgress, eu4CanvasRef]
+    [wasmWorkerRef, dispatch, onProgress, eu4CanvasRef, isDeveloper]
   );
 }

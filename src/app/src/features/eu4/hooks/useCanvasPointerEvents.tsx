@@ -25,7 +25,6 @@ export function useCanvasPointerEvents() {
 
     function handleMouseUp(e: MouseEvent) {
       map.onMouseUp(e);
-      map.redrawViewport();
       window.removeEventListener("pointermove", moveCamera);
       window.removeEventListener("pointerup", handleMouseUp);
     }

@@ -11,9 +11,12 @@ export class MapShader {
     private uRenderProvinceBorders: WebGLUniformLocation,
     private uRenderMapmodeBorders: WebGLUniformLocation,
     private uRenderCountryBorders: WebGLUniformLocation,
-    private uTerrain: WebGLUniformLocation,
-    private uRivers: WebGLUniformLocation,
-    private uProvinces: WebGLUniformLocation,
+    private uTerrain1: WebGLUniformLocation,
+    private uTerrain2: WebGLUniformLocation,
+    private uRivers1: WebGLUniformLocation,
+    private uRivers2: WebGLUniformLocation,
+    private uProvinces1: WebGLUniformLocation,
+    private uProvinces2: WebGLUniformLocation,
     private uStripes: WebGLUniformLocation,
     private uProvincesUniqueColors: WebGLUniformLocation,
     private uCountryProvinceColor: WebGLUniformLocation,
@@ -32,9 +35,12 @@ export class MapShader {
       notNull(gl.getUniformLocation(program, "u_renderProvinceBorders")),
       notNull(gl.getUniformLocation(program, "u_renderMapmodeBorders")),
       notNull(gl.getUniformLocation(program, "u_renderCountryBorders")),
-      notNull(gl.getUniformLocation(program, "u_terrainImage")),
-      notNull(gl.getUniformLocation(program, "u_riversImage")),
-      notNull(gl.getUniformLocation(program, "u_provincesImage")),
+      notNull(gl.getUniformLocation(program, "u_terrainImage1")),
+      notNull(gl.getUniformLocation(program, "u_terrainImage2")),
+      notNull(gl.getUniformLocation(program, "u_riversImage1")),
+      notNull(gl.getUniformLocation(program, "u_riversImage2")),
+      notNull(gl.getUniformLocation(program, "u_provincesImage1")),
+      notNull(gl.getUniformLocation(program, "u_provincesImage2")),
       notNull(gl.getUniformLocation(program, "u_stripesImage")),
       notNull(gl.getUniformLocation(program, "u_provincesUniqueColorsImage")),
       notNull(gl.getUniformLocation(program, "u_countryProvincesColorImage")),
@@ -56,36 +62,48 @@ export class MapShader {
     let gl = this.gl;
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, res.terrain);
-    gl.uniform1i(this.uTerrain, 0);
+    gl.bindTexture(gl.TEXTURE_2D, res.terrain1);
+    gl.uniform1i(this.uTerrain1, 0);
 
     gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, res.rivers);
-    gl.uniform1i(this.uRivers, 1);
+    gl.bindTexture(gl.TEXTURE_2D, res.terrain2);
+    gl.uniform1i(this.uTerrain2, 1);
 
     gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, res.provinces);
-    gl.uniform1i(this.uProvinces, 2);
+    gl.bindTexture(gl.TEXTURE_2D, res.rivers1);
+    gl.uniform1i(this.uRivers1, 2);
 
     gl.activeTexture(gl.TEXTURE3);
-    gl.bindTexture(gl.TEXTURE_2D, res.stripes);
-    gl.uniform1i(this.uStripes, 3);
+    gl.bindTexture(gl.TEXTURE_2D, res.rivers2);
+    gl.uniform1i(this.uRivers2, 3);
 
     gl.activeTexture(gl.TEXTURE4);
-    gl.bindTexture(gl.TEXTURE_2D, res.provincesUniqueColor);
-    gl.uniform1i(this.uProvincesUniqueColors, 4);
+    gl.bindTexture(gl.TEXTURE_2D, res.provinces1);
+    gl.uniform1i(this.uProvinces1, 4);
 
     gl.activeTexture(gl.TEXTURE5);
-    gl.bindTexture(gl.TEXTURE_2D, res.countryProvinceColors);
-    gl.uniform1i(this.uCountryProvinceColor, 5);
+    gl.bindTexture(gl.TEXTURE_2D, res.provinces2);
+    gl.uniform1i(this.uProvinces2, 5);
 
     gl.activeTexture(gl.TEXTURE6);
-    gl.bindTexture(gl.TEXTURE_2D, res.primaryProvinceColors);
-    gl.uniform1i(this.uPrimaryProvinceColor, 6);
+    gl.bindTexture(gl.TEXTURE_2D, res.stripes);
+    gl.uniform1i(this.uStripes, 6);
 
     gl.activeTexture(gl.TEXTURE7);
+    gl.bindTexture(gl.TEXTURE_2D, res.provincesUniqueColor);
+    gl.uniform1i(this.uProvincesUniqueColors, 7);
+
+    gl.activeTexture(gl.TEXTURE8);
+    gl.bindTexture(gl.TEXTURE_2D, res.countryProvinceColors);
+    gl.uniform1i(this.uCountryProvinceColor, 8);
+
+    gl.activeTexture(gl.TEXTURE9);
+    gl.bindTexture(gl.TEXTURE_2D, res.primaryProvinceColors);
+    gl.uniform1i(this.uPrimaryProvinceColor, 9);
+
+    gl.activeTexture(gl.TEXTURE10);
     gl.bindTexture(gl.TEXTURE_2D, res.secondaryProvinceColors);
-    gl.uniform1i(this.uSecondaryProvinceColor, 7);
+    gl.uniform1i(this.uSecondaryProvinceColor, 10);
   }
 
   setProvinceCount(count: number) {

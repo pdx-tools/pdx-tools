@@ -8,8 +8,10 @@
 
 precision mediump float;
 
-uniform sampler2D u_mapEdgesTexture;
-uniform sampler2D u_mapTexture;
+uniform sampler2D u_mapEdgesTexture1;
+uniform sampler2D u_mapEdgesTexture2;
+uniform sampler2D u_mapTexture1;
+uniform sampler2D u_mapTexture2;
 uniform sampler2D u_normalImage;
 uniform sampler2D u_waterImage;
 uniform sampler2D u_colormapImage;
@@ -25,14 +27,14 @@ uniform float u_scale;
 uniform float u_maxScale;
 uniform bool u_renderTerrain;
 
-in vec4 v_t1;
-in vec4 v_t2;
-in vec4 v_t3;
-in vec4 v_t4;
-in vec4 v_t5;
-in vec4 v_t6;
-in vec4 v_t7;
-in vec2 v_texCoord;
+in highp vec4 v_t1;
+in highp vec4 v_t2;
+in highp vec4 v_t3;
+in highp vec4 v_t4;
+in highp vec4 v_t5;
+in highp vec4 v_t6;
+in highp vec4 v_t7;
+in highp vec2 v_texCoord;
 
 out vec4 outColor;
 
@@ -72,7 +74,7 @@ vec4 weighted_distance(vec4 a, vec4 b, vec4 c, vec4 d, vec4 e, vec4 f, vec4 g, v
 }
 
 
-float frac(float v)
+float frac(highp float v)
 {
   return v - floor(v);
 }
@@ -112,8 +114,16 @@ bool isHigherMountain(vec3 color) {
 	return b;
 }
 
-vec3 postProcess(vec2 tc) {
-	vec4 map = texture(u_mapTexture, tc);
+vec4 rawMapAt(highp vec2 tc) {
+	if (tc.x <= 0.5) {
+		return texture(u_mapTexture1, vec2(tc.x * 2.0, tc.y));
+	} else {
+		return texture(u_mapTexture2, vec2((tc.x - 0.5) * 2.0, tc.y));
+	}
+}
+
+vec3 postProcess(highp vec2 tc) {
+	vec4 map = rawMapAt(tc);
 
 	if (!u_renderTerrain) {
 		// Sea
@@ -203,18 +213,23 @@ vec3 postProcess(vec2 tc) {
 	return res;
 }
 
-vec3 image(vec2 tc) {
+vec3 image(highp vec2 tc) {
 	return postProcess(tc);
 }
 
-vec3 edgeDetectionImage(vec2 tc) {
-	return texture(u_mapEdgesTexture, tc).rgb;
+vec3 edgeDetectionImage(highp vec2 tc) {
+	if (tc.x <= 0.5) {
+		return texture(u_mapEdgesTexture1, vec2(tc.x * 2.0, tc.y)).rgb;
+	} else {
+		return texture(u_mapEdgesTexture2, vec2((tc.x - 0.5) * 2.0, tc.y)).rgb;
+	}
 }
 
 void main() {
-	//outColor = vec4(edgeDetectionImage(v_texCoord), 1.0);
-	//outColor =  texture(u_mapTexture, v_texCoord);
-	//return;
+	// outColor = vec4(edgeDetectionImage(v_texCoord), 1.0);
+	// outColor = rawMapAt(v_texCoord);
+	// outColor = vec4(postProcess(v_texCoord), 1.0);
+	// return;
 
     bvec4 edri, edr, edr_left, edr_up, px; // px = pixel, edr = edge detection rule
 	bvec4 interp_restriction_lv0, interp_restriction_lv1, interp_restriction_lv2_left, interp_restriction_lv2_up;

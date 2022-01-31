@@ -1,5 +1,9 @@
-import { WebGLMap } from "./map";
-import { loadShaderSource, loadStaticResources } from "./staticResources";
+import { glContextOptions, WebGLMap } from "./map";
+import {
+  loadShaderSource,
+  loadStaticResources,
+  loadTerrainResources,
+} from "./staticResources";
 import { GLResources } from "./glResources";
 import { ProvinceFinder } from "./ProvinceFinder";
 import { debounce } from "./debounce";
@@ -21,12 +25,7 @@ async function main() {
   const hoveredEl = document.querySelector("#hovered-province-id")!;
 
   const canvas = document!.querySelector("#canvas") as HTMLCanvasElement;
-  const glc = canvas!.getContext("webgl2", {
-    alpha: true,
-    depth: false,
-    antialias: false,
-    stencil: false,
-  });
+  const glc = canvas!.getContext("webgl2", glContextOptions());
   if (glc === null) {
     return;
   }
@@ -63,13 +62,27 @@ async function main() {
     primaryPoliticalColors
   );
   const finder = new ProvinceFinder(
-    staticResources.provinces,
+    staticResources.provinces1,
+    staticResources.provinces2,
     staticResources.provincesUniqueColor,
     new Uint16Array(provinceUniqueIndex)
   );
   const map = WebGLMap.create(await glResources, finder);
+  map.updateTerrainTextures(await loadTerrainResources());
   map.onProvinceSelection = (e) => (selectedEl.textContent = e.toString());
   map.onProvinceHover = (e) => (hoveredEl.textContent = e.toString());
+  map.onDraw = (e) => {
+    let cancellations = ``;
+    if (
+      e.viewportAnimationRequestCancelled != 0 ||
+      e.mapAnimationRequestCancelled != 0
+    ) {
+      cancellations += `(cancellations: viewport ${e.viewportAnimationRequestCancelled} / redraw ${e.mapAnimationRequestCancelled}) `;
+    }
+    console.log(
+      `Canvas content redrawn ${cancellations}in: ${e.elapsedMs.toFixed(2)}ms`
+    );
+  };
 
   map.updateProvinceColors(primaryPoliticalColors, secondaryPoliticalColors);
 
@@ -84,7 +97,6 @@ async function main() {
 
   function handleMouseUp(e: MouseEvent) {
     map.onMouseUp(e);
-    map.redrawViewport();
     window.removeEventListener("pointermove", moveCamera);
     window.removeEventListener("pointerup", handleMouseUp);
   }

@@ -1,6 +1,11 @@
 import { defaultVersion, resources } from "@/lib/url_gen";
-import type { StaticResources } from "../../../../map/staticResources";
+import {
+  loadImage,
+  StaticResources,
+  TerrainOverlayResources,
+} from "../../../../map/staticResources";
 import type { ShaderSource } from "../../../../map/types";
+import { glContextOptions } from "../../../../map/map";
 import { MapOnlyControls } from "../../types/map";
 
 export interface Resources {
@@ -36,23 +41,49 @@ export async function shaderUrls(): Promise<ShaderSource[]> {
   ];
 }
 
-export async function resourceUrls(version: string): Promise<Resources> {
+export async function loadTerrainOverlayImages(
+  version: string
+): Promise<TerrainOverlayResources> {
   const url = resources[version] ?? resources[defaultVersion];
 
   const promises = {
-    provinces: loadImage(url.provinces),
     colorMap: loadImage(url.colorMap),
     sea: loadImage(url.sea),
     normal: loadImage(url.normal),
-    terrain: loadImage(url.terrain),
-    rivers: loadImage(url.rivers),
-    stripes: loadImage(url.stripes),
+    rivers1: loadImage(url.rivers1),
+    rivers2: loadImage(url.rivers2),
     water: loadImage(url.water),
     surfaceRock: loadImage(url.surfaceRock),
     surfaceGreen: loadImage(url.surfaceGreen),
     surfaceNormalRock: loadImage(url.surfaceNormalRock),
     surfaceNormalGreen: loadImage(url.surfaceNormalGreen),
     heightmap: loadImage(url.heightmap),
+  };
+
+  return {
+    colorMap: await promises.colorMap,
+    sea: await promises.sea,
+    normal: await promises.normal,
+    rivers1: await promises.rivers1,
+    rivers2: await promises.rivers2,
+    water: await promises.water,
+    surfaceRock: await promises.surfaceRock,
+    surfaceGreen: await promises.surfaceGreen,
+    surfaceNormalRock: await promises.surfaceNormalRock,
+    surfaceNormalGreen: await promises.surfaceNormalGreen,
+    heightMap: await promises.heightmap,
+  };
+}
+
+export async function resourceUrls(version: string): Promise<Resources> {
+  const url = resources[version] ?? resources[defaultVersion];
+
+  const promises = {
+    provinces1: loadImage(url.provinces1),
+    provinces2: loadImage(url.provinces2),
+    terrain1: loadImage(url.terrain1),
+    terrain2: loadImage(url.terrain2),
+    stripes: loadImage(url.stripes),
     provincesUniqueColor: fetch(url.provincesUniqueColor)
       .then((x) => x.arrayBuffer())
       .then((x) => new Uint8Array(x)),
@@ -63,18 +94,10 @@ export async function resourceUrls(version: string): Promise<Resources> {
 
   return {
     static: {
-      colorMap: await promises.colorMap,
-      sea: await promises.sea,
-      normal: await promises.normal,
-      terrain: await promises.terrain,
-      rivers: await promises.rivers,
-      water: await promises.water,
-      surfaceRock: await promises.surfaceRock,
-      surfaceGreen: await promises.surfaceGreen,
-      surfaceNormalRock: await promises.surfaceNormalRock,
-      surfaceNormalGreen: await promises.surfaceNormalGreen,
-      heightMap: await promises.heightmap,
-      provinces: await promises.provinces,
+      provinces1: await promises.provinces1,
+      provinces2: await promises.provinces2,
+      terrain1: await promises.terrain1,
+      terrain2: await promises.terrain2,
       stripes: await promises.stripes,
       provincesUniqueColor: await promises.provincesUniqueColor,
     },
@@ -82,20 +105,8 @@ export async function resourceUrls(version: string): Promise<Resources> {
   };
 }
 
-async function loadImage(src: string): Promise<ImageBitmap> {
-  // Download as blobs per this 2021-06-04 chronium comment:
-  // https://bugs.chromium.org/p/chromium/issues/detail?id=580202#c53
-  const image = await fetch(src).then((x) => x.blob());
-  return createImageBitmap(image);
-}
-
-export function glContext(canvas: HTMLCanvasElement) {
-  return canvas.getContext("webgl2", {
-    alpha: true,
-    depth: false,
-    antialias: false,
-    stencil: false,
-  });
+export function glContext(canvas: HTMLCanvasElement): WebGL2RenderingContext | null {
+  return canvas.getContext("webgl2", glContextOptions());
 }
 
 export function setMapControls(map: any, controls: MapOnlyControls) {
