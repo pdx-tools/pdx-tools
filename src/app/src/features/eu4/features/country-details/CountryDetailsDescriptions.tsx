@@ -70,7 +70,7 @@ export const CountryDetailsDescriptions: React.FC<CountryDetailsProps> = ({
       <Descriptions.Item label={<InheritanceLabel details={details} />}>
         <div className="flex-col no-break">
           <div>{`Window: [${details.inheritance.start_t1_year} - ${details.inheritance.end_t1_year}]`}</div>
-          <div>{`Inheritance Value: ${details.inheritance.inheritance_value}%`}</div>
+          <div>{`Inheritance Value: ${details.inheritance.inheritance_value}`}</div>
         </div>
       </Descriptions.Item>
     </Descriptions>
