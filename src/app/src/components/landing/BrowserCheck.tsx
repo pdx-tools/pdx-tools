@@ -6,9 +6,14 @@ export const BrowserCheck: React.FC<{}> = () => {
   const [warnings, setWarnings] = useState<string[]>([]);
 
   useEffect(() => {
-    const gl = document.createElement("canvas").getContext("webgl2");
+    const canvas = document.createElement("canvas");
+    const gl = canvas.getContext("webgl2");
     const requiredSize = 8192;
     const maxTextureSize = gl ? gl.getParameter(gl.MAX_TEXTURE_SIZE) : 0;
+    const performanceCaveat = !canvas.getContext("webgl2", {
+      failIfMajorPerformanceCaveat: true,
+    });
+
     if (!gl) {
       setWarnings((x) => [...x, "WebGL2 not available"]);
     } else if (maxTextureSize < requiredSize) {
@@ -16,9 +21,12 @@ export const BrowserCheck: React.FC<{}> = () => {
         ...x,
         `WebGL2 max texture size (${maxTextureSize}) is smaller than required (${requiredSize})`,
       ]);
+    } else if (performanceCaveat) {
+      setWarnings((x) => [...x, `WebGL2 major performance caveat detected`]);
     }
 
-    emitEvent({ kind: "webgl", maxTextureSize });
+    canvas.remove();
+    emitEvent({ kind: "webgl", maxTextureSize, performanceCaveat });
   }, []);
 
   useEffect(() => {

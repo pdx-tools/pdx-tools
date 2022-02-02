@@ -35,6 +35,7 @@ export type Event =
   | {
       kind: "webgl";
       maxTextureSize: number;
+      performanceCaveat: boolean;
     };
 
 export function emitEvent(event: Event) {
@@ -48,7 +49,12 @@ export function emitEvent(event: Event) {
       break;
     }
     case "webgl": {
-      plausible(event.kind, { props: { maxSize: event.maxTextureSize } });
+      plausible(event.kind, {
+        props: {
+          maxSize: event.maxTextureSize,
+          performanceCaveat: event.performanceCaveat,
+        },
+      });
       break;
     }
     default: {

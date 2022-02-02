@@ -660,4 +660,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-02-02",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Expose warning on major map performance caveats</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
