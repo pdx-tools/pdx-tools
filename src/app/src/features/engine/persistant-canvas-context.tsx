@@ -29,9 +29,14 @@ export const CanvasContextProvider: React.FC<{}> = ({ children }) => {
     const canvas = canvasRef.current;
 
     if (container && canvas) {
+      let resiveObserverAF = 0;
       const ro = new ResizeObserver((_entries) => {
-        const bounds = container.getBoundingClientRect();
-        dispatch(canvasResize([bounds.width, bounds.height]));
+        // Why resive observer has RAF: https://stackoverflow.com/a/58701523
+        cancelAnimationFrame(resiveObserverAF);
+        resiveObserverAF = requestAnimationFrame(() => {
+          const bounds = container.getBoundingClientRect();
+          dispatch(canvasResize([bounds.width, bounds.height]));
+        });
       });
       ro.observe(container);
     }
