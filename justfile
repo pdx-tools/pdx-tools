@@ -4,6 +4,7 @@ export EU4_IRONMAN_TOKENS := `pwd | xargs printf "%s/assets/tokens/eu4.txt"`
 export HOI4_IRONMAN_TOKENS := `pwd | xargs printf "%s/assets/tokens/hoi4.txt"`
 export CK3_IRONMAN_TOKENS := `pwd | xargs printf "%s/assets/tokens/ck3.txt"`
 export IMPERATOR_TOKENS := `pwd | xargs printf "%s/assets/tokens/imperator.txt"`
+export NEXT_PUBLIC_SENTRY_DSN := `echo ${SENTRY_DSN:-''}`
 
 build: touch-tokens build-wasm build-napi build-app build-docker
 
