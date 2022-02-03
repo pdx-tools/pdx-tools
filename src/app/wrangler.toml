@@ -20,3 +20,7 @@ entry-point = "workers-site"
 # Ignore JS map files as they tend to be used for debugging, but more
 # importantly they will trip cloudflare KV value size of 10MB
 exclude = ["*.js.map"]
+
+[env.dev]
+name = "rakaly-dev"
+route = "dev.pdx.tools/*"

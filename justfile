@@ -49,6 +49,7 @@ wrangler +cmd:
   cd src/app && wrangler {{cmd}}
 
 publish-frontend: (wrangler "publish")
+publish-frontend-dev: (wrangler "publish --env dev")
 
 build-app: prep-frontend
   cd src/app && npm run build
