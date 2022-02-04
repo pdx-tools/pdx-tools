@@ -123,10 +123,11 @@ export function useMap() {
   );
 
   useEffect(() => {
+    const canvas = getCanvas(canvasRef);
     return () => {
-      getCanvas(canvasRef).hidden = true;
+      canvas.hidden = true;
     };
-  }, []);
+  }, [canvasRef]);
 
   useWorkerOnSave(updateMapColorsCb);
 }
