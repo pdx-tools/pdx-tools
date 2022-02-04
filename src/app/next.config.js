@@ -42,11 +42,11 @@ let nextConfig = {
 };
 
 if (process.env.SENTRY_DSN) {
-  nextConfig = withSentryConfig(nextConfig, {
+  nextConfig = withSentryConfig(nextConfig,{
     silent: true,
-    include: [
-      { paths: [".next/static/chunks"], urlPrefix: "~/_next/static/chunks" },
-    ],
+    include: [{
+      paths: [".next/static/chunks"], urlPrefix: "~/_next/static/chunks"
+    }],
   });
 }
 

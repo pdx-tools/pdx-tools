@@ -14,7 +14,7 @@
     "@ant-design/charts": "^1.2.5",
     "@prisma/client": "^3.8.1",
     "@reduxjs/toolkit": "^1.7.1",
-    "@sentry/nextjs": "^6.16.1",
+    "@sentry/nextjs": "^6.17.4",
     "antd": "^4.15.6",
     "aws-sdk": "^2.1054.0",
     "comlink": "^4.3.1",

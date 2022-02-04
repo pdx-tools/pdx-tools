@@ -1,5 +1,5 @@
 import { getCurrentHub } from "@sentry/nextjs";
-import { Event, Dsn } from "@sentry/types";
+import { Event, DsnComponents } from "@sentry/types";
 import { askToSendErrorReport } from "./ReportErrorConfirm";
 
 function eventProcessor(file: File, err: any) {
@@ -29,7 +29,7 @@ function eventProcessor(file: File, err: any) {
   };
 }
 
-function attachmentUrlFromDsn(dsn: Dsn, eventId: string) {
+function attachmentUrlFromDsn(dsn: DsnComponents, eventId: string) {
   const { host, path, projectId, port, protocol, user } = dsn;
   return `${protocol}://${host}${port !== "" ? `:${port}` : ""}${
     path !== "" ? `/${path}` : ""
