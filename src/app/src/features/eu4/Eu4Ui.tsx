@@ -1,15 +1,10 @@
 import { useSelector } from "react-redux";
-import {
-  resetSaveAnalysis,
-  selectAnalyzeFileName,
-  selectShowCanvas,
-} from "@/features/engine";
+import { selectAnalyzeFileName, selectShowCanvas } from "@/features/engine";
 import { useMap } from "./hooks/useMap";
 import { useEffect } from "react";
 import { useAppDispatch } from "@/lib/store";
 import { toggleShowTerrain, useEu4Meta } from "./eu4Slice";
 import { Eu4CanvasOverlay } from "./Eu4CanvasOverlay";
-import { useRouter } from "next/router";
 import Head from "next/head";
 
 export const Eu4Ui: React.FC<{}> = () => {

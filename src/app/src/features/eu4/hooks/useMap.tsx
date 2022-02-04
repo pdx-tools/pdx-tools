@@ -70,6 +70,7 @@ export function useMap() {
 
     const map = getEu4Canvas(mapRef);
     map.resize(canvasWidth, Math.floor(canvasHeight));
+    map.redrawViewport();
   }, [mapRef, canvasState, canvasWidth, canvasHeight]);
 
   const updateMapColorsCb = useCallback(
@@ -79,6 +80,10 @@ export function useMap() {
       }
 
       const map = getEu4Canvas(mapRef);
+      if (mapDecorativeSettings.showTerrain) {
+        await map.enableTerrainOverlay();
+      }
+
       if (
         mapColorPayloadPrev != mapColorPayload ||
         canvasState.current != "drawn"

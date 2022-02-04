@@ -1,19 +1,27 @@
 export class ProvinceFinder {
   private ctx: CanvasRenderingContext2D;
   constructor(
-    provinces: ImageBitmap,
+    provinces1: ImageBitmap,
+    provinces2: ImageBitmap,
     private sortedColors: Uint8Array,
     private provinceColorIndex: Uint16Array
   ) {
     const provinceCanvas = document.createElement("canvas");
-    provinceCanvas.width = provinces.width;
-    provinceCanvas.height = provinces.height;
+    provinceCanvas.width = provinces1.width * 2;
+    provinceCanvas.height = provinces2.height;
 
     this.ctx = provinceCanvas.getContext("2d")!;
 
     // turn off anti-aliasing else we will get color values that don't exist
     this.ctx.imageSmoothingEnabled = false;
-    this.ctx.drawImage(provinces, 0, 0, provinces.width, provinces.height);
+    this.ctx.drawImage(provinces1, 0, 0, provinces1.width, provinces1.height);
+    this.ctx.drawImage(
+      provinces2,
+      provinces1.width,
+      0,
+      provinces2.width,
+      provinces2.height
+    );
   }
 
   findProvinceId(x: number, y: number) {

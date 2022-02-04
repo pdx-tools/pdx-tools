@@ -2,20 +2,26 @@ import { ShaderSource } from "./types";
 
 // Stores all static resource data like images, shader source code, etc.
 export interface StaticResources {
+  provinces1: ImageBitmap;
+  provinces2: ImageBitmap;
+  terrain1: ImageBitmap;
+  terrain2: ImageBitmap;
+  provincesUniqueColor: Uint8Array;
+  stripes: ImageBitmap;
+}
+
+export interface TerrainOverlayResources {
   colorMap: ImageBitmap;
   sea: ImageBitmap;
   normal: ImageBitmap;
-  terrain: ImageBitmap;
-  rivers: ImageBitmap;
+  rivers1: ImageBitmap;
+  rivers2: ImageBitmap;
   water: ImageBitmap;
-  provinces: ImageBitmap;
-  stripes: ImageBitmap;
   surfaceRock: ImageBitmap;
   surfaceGreen: ImageBitmap;
   surfaceNormalRock: ImageBitmap;
   surfaceNormalGreen: ImageBitmap;
   heightMap: ImageBitmap;
-  provincesUniqueColor: Uint8Array;
 }
 
 export async function loadStaticResources(): Promise<StaticResources> {
@@ -23,15 +29,37 @@ export async function loadStaticResources(): Promise<StaticResources> {
     "assets/game/eu4/data/color-order.bin"
   ).then((x) => x.arrayBuffer());
 
+  const [terrain1, terrain2, provinces1, provinces2, stripes] =
+    await Promise.all(
+      [
+        "./assets/game/eu4/images/terrain-1.png",
+        "./assets/game/eu4/images/terrain-2.png",
+        "./assets/game/eu4/images/provinces-1.png",
+        "./assets/game/eu4/images/provinces-2.png",
+        "./assets/game/eu4/images/stripes.png",
+      ].map(loadImage)
+    );
+
+  const provincesUniqueColor = new Uint8Array(await provincesBufferPromise);
+
+  return {
+    provinces1,
+    provinces2,
+    terrain1,
+    terrain2,
+    provincesUniqueColor,
+    stripes,
+  };
+}
+
+export async function loadTerrainResources(): Promise<TerrainOverlayResources> {
   const [
     colorMap,
     sea,
     normal,
-    terrain,
-    rivers,
+    rivers1,
+    rivers2,
     water,
-    provinces,
-    stripes,
     surfaceRock,
     surfaceGreen,
     surfaceNormalRock,
@@ -42,11 +70,9 @@ export async function loadStaticResources(): Promise<StaticResources> {
       "./assets/game/eu4/images/colormap.webp",
       "./assets/game/eu4/images/sea-image.webp",
       "./assets/game/eu4/images/world_normal.webp",
-      "./assets/game/eu4/images/terrain.png",
-      "./assets/game/eu4/images/rivers.png",
+      "./assets/game/eu4/images/rivers-1.png",
+      "./assets/game/eu4/images/rivers-2.png",
       "./assets/game/eu4/images/water.webp",
-      "./assets/game/eu4/images/provinces.png",
-      "./assets/game/eu4/images/stripes.png",
       "./assets/game/eu4/images/surface_rock.webp",
       "./assets/game/eu4/images/surface_green.webp",
       "./assets/game/eu4/images/surface_normal_rock.webp",
@@ -55,27 +81,22 @@ export async function loadStaticResources(): Promise<StaticResources> {
     ].map(loadImage)
   );
 
-  const provincesUniqueColor = new Uint8Array(await provincesBufferPromise);
-
   return {
     colorMap,
     sea,
     normal,
-    terrain,
-    rivers,
+    rivers1,
+    rivers2,
     water,
-    provinces,
-    stripes,
     surfaceRock,
     surfaceGreen,
     surfaceNormalRock,
     surfaceNormalGreen,
     heightMap,
-    provincesUniqueColor,
   };
 }
 
-async function loadImage(src: string): Promise<ImageBitmap> {
+export async function loadImage(src: string): Promise<ImageBitmap> {
   // Download as blobs per this 2021-06-04 chronium comment:
   // https://bugs.chromium.org/p/chromium/issues/detail?id=580202#c53
   const image = await fetch(src).then((x) => x.blob());

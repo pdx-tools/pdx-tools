@@ -23,6 +23,7 @@ import { selectEu4MapDate } from "./eu4Slice";
 import { selectModuleDrawn } from "../engine";
 import { MapTip } from "./features/map/MapTip";
 import { MapZoomSideBar } from "./components/zoom";
+import { log } from "@/lib/log";
 
 const { className, styles } = css.resolve`
   span {

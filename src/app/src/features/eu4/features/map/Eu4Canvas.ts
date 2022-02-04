@@ -1,5 +1,6 @@
 import { GLResources } from "../../../../map/glResources";
 import {
+  DrawEvent,
   IMG_HEIGHT,
   IMG_WIDTH,
   MouseEvent,
@@ -13,6 +14,7 @@ import { timeit } from "../../../engine/worker/worker-lib";
 import { AnalyzeEvent } from "../../../engine/worker/worker-types";
 import { MapOnlyControls } from "../../types/map";
 import {
+  loadTerrainOverlayImages,
   provinceIdToColorIndexInvert,
   Resources,
   resourceUrls,
@@ -30,6 +32,7 @@ export class Eu4Canvas {
   private resources?: Resources;
   private linkedPrograms?: () => Promise<WebGLProgram[]>;
   public map: WebGLMap | undefined;
+  private terrainOverlayEnabled = false;
 
   private loadedVersion: SavegameVersion | undefined;
 
@@ -51,6 +54,7 @@ export class Eu4Canvas {
       );
     }
 
+    this.terrainOverlayEnabled = false;
     const version = `${saveVersion.first}.${saveVersion.second}`;
     const compilePromise = timeit(shaderUrls).then(
       async ([shaders, elapsedMs]) => {
@@ -103,7 +107,8 @@ export class Eu4Canvas {
       resources.provincesUniqueIndex
     );
     const finder = new ProvinceFinder(
-      resources.static.provinces,
+      resources.static.provinces1,
+      resources.static.provinces2,
       resources.static.provincesUniqueColor,
       colorIndexToProvinceId
     );
@@ -121,6 +126,17 @@ export class Eu4Canvas {
 
     this.resources = undefined;
     this.linkedPrograms = undefined;
+  }
+
+  async enableTerrainOverlay() {
+    if (this.terrainOverlayEnabled) {
+      return;
+    }
+
+    const version = `${this.loadedVersion?.first}.${this.loadedVersion?.second}`;
+    this.terrainOverlayEnabled = true;
+    const images = await loadTerrainOverlayImages(version);
+    this.map?.updateTerrainTextures(images);
   }
 
   cameraFromDimesions([width, height]: number[], [x, y]: number[]) {
@@ -198,7 +214,6 @@ export class Eu4Canvas {
   resize(width: number, height: number) {
     this.gl.canvas.width = width;
     this.gl.canvas.height = height;
-    this.redrawViewport();
   }
 
   mapData(scale: number, type: string) {

@@ -1,10 +1,12 @@
 import { GLResources, setupFramebufferTexture } from "./glResources";
 import { ProvinceFinder } from "./ProvinceFinder";
 import { throttle } from "./throttle";
+import { TerrainOverlayResources } from "./staticResources";
 
 export const IMG_HEIGHT = 2048;
 export const IMG_WIDTH = 5632;
 export const IMG_PADDED_WIDTH = 8192;
+export const SPLIT_IMG_PADDED_WIDTH = 4096;
 const IMG_ASPECT = IMG_WIDTH / IMG_HEIGHT;
 
 export interface MouseEvent {
@@ -20,6 +22,22 @@ export interface UserRect {
   top: number;
   left: number;
 }
+
+export interface DrawEvent {
+  elapsedMs: number;
+  viewportAnimationRequestCancelled: number;
+  mapAnimationRequestCancelled: number;
+}
+
+export const glContextOptions = (): WebGLContextAttributes => ({
+  alpha: true,
+  depth: false,
+  antialias: false,
+  stencil: false,
+  powerPreference: "high-performance",
+  preserveDrawingBuffer: true,
+  desynchronized: true,
+});
 
 export class WebGLMap {
   public scale: number;
@@ -46,10 +64,13 @@ export class WebGLMap {
   private mapAnimationRequest: undefined | number = undefined;
   private mapAnimationRequestCancelled: number = 0;
 
+  private rawMapStartTime: number = 0;
+
   public readonly redrawMapImage: () => void;
   public readonly redrawViewport: () => void;
   public onProvinceHover?: (proinceId: number) => void;
   public onProvinceSelection?: (proinceId: number) => void;
+  public onDraw?: (event: DrawEvent) => void;
 
   constructor(
     private gl: WebGL2RenderingContext,
@@ -74,6 +95,7 @@ export class WebGLMap {
     };
 
     const capMapAnimation = () => {
+      this.rawMapStartTime = this.rawMapStartTime || performance.now();
       this.cancelQueuedMapAnimation();
       this.mapAnimationRequest = requestAnimationFrame((timestamp) => {
         if (timestamp - this.previousMapTimestamp > 10) {
@@ -132,22 +154,7 @@ export class WebGLMap {
     }
   }
 
-  public redrawMapNow() {
-    const gl = this.gl;
-
-    const start = performance.now();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.glResources.framebuffer);
-    let drawBuffers = [gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1];
-    gl.drawBuffers(drawBuffers);
-    gl.bindTexture(gl.TEXTURE_2D, this.glResources.framebufferTexture);
-
-    gl.viewport(0, 0, IMG_WIDTH, IMG_HEIGHT);
-    gl.clearColor(0.0, 0.0, 0, 0.0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    this.glResources.mapShaderProgram.use();
-    gl.bindVertexArray(this.glResources.geometryVao);
-
+  private applyMapShaderParameters() {
     this.glResources.mapShaderProgram.setTextures(this.glResources);
     this.glResources.mapShaderProgram.setRenderProvinceBorders(
       this.showProvinceBorders
@@ -165,30 +172,72 @@ export class WebGLMap {
       IMG_PADDED_WIDTH,
       IMG_HEIGHT
     );
+  }
+
+  private redrawRawMapLeft() {
+    const gl = this.gl;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.glResources.rawMapFramebuffer1);
+    let drawBuffers = [gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1];
+    gl.drawBuffers(drawBuffers);
+    gl.bindTexture(gl.TEXTURE_2D, this.glResources.framebufferRawMapTexture1);
+
+    gl.viewport(0, 0, SPLIT_IMG_PADDED_WIDTH, IMG_HEIGHT);
+    gl.clearColor(0.0, 0.0, 0, 0.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    this.glResources.mapShaderProgram.use();
+    gl.bindVertexArray(this.glResources.rawMapVao1);
+    this.applyMapShaderParameters();
+
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     this.glResources.mapShaderProgram.clear();
 
     gl.bindTexture(gl.TEXTURE_2D, null);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.flush();
+  }
 
-    const viewportCancellations = this.viewportAnimationRequestCancelled;
-    const redrawCancellations = this.mapAnimationRequestCancelled;
+  private redrawRawMapRight() {
+    const gl = this.gl;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.glResources.rawMapFramebuffer2);
+    let drawBuffers = [gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1];
+    gl.drawBuffers(drawBuffers);
+    gl.bindTexture(gl.TEXTURE_2D, this.glResources.framebufferRawMapTexture2);
+
+    gl.viewport(0, 0, IMG_WIDTH - SPLIT_IMG_PADDED_WIDTH, IMG_HEIGHT);
+    gl.clearColor(0.0, 0.0, 0, 0.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    this.glResources.mapShaderProgram.use();
+    gl.bindVertexArray(this.glResources.rawMapVao2);
+    this.applyMapShaderParameters();
+
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    this.glResources.mapShaderProgram.clear();
+
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.flush();
+  }
+
+  public redrawRawMap() {
+    this.redrawRawMapLeft();
+    this.redrawRawMapRight();
+  }
+
+  public redrawMapNow() {
+    this.redrawRawMap();
     this.redrawViewportNow();
     this.cancelQueuedMapAnimation();
+    this.rawMapStartTime = 0;
     this.mapAnimationRequestCancelled = 0;
-
-    requestAnimationFrame(() => {
-      const end = performance.now();
-      const elapsedMs = end - start;
-      let cancellations = ``;
-      if (viewportCancellations != 0 || redrawCancellations != 0) {
-        cancellations += `(cancellations: viewport ${viewportCancellations} / redraw ${redrawCancellations}) `;
-      }
-      console.log(`Map redrawn ${cancellations}in: ${elapsedMs.toFixed(2)}ms`);
-    });
+    this.viewportAnimationRequestCancelled = 0;
   }
 
   public redrawViewportNow() {
+    const start = performance.now();
     const gl = this.gl;
     this.scale = Math.max(this.minScale, this.scale) || 1;
     this.scale = Math.min(this.maxScale, this.scale);
@@ -223,6 +272,17 @@ export class WebGLMap {
     this.glResources.xbrShaderProgram.clear();
     this.cancelQueuedViewportAnimation();
     this.viewportAnimationRequestCancelled = 0;
+
+    requestAnimationFrame(() => {
+      const end = performance.now();
+      const elapsedMs = end - (this.rawMapStartTime || start);
+      this.onDraw?.({
+        elapsedMs,
+        viewportAnimationRequestCancelled:
+          this.viewportAnimationRequestCancelled,
+        mapAnimationRequestCancelled: this.mapAnimationRequestCancelled,
+      });
+    });
   }
 
   public generateMapImage(width: number, height: number) {
@@ -295,6 +355,10 @@ export class WebGLMap {
         resolve(result);
       }, type);
     });
+  }
+
+  public updateTerrainTextures(textures: TerrainOverlayResources) {
+    this.glResources.updateTerrainTextures(textures);
   }
 
   public updateCountryProvinceColors(primaryPoliticalColors: Uint8Array) {

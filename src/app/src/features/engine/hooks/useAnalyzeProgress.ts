@@ -6,6 +6,7 @@ import {
   incrementSaveAnalyzePercent,
   setSaveAnalyzePercent,
 } from "../engineSlice";
+import { log } from "@/lib/log";
 
 export function useAnalyzeProgress() {
   const dispatch = useDispatch();
@@ -25,21 +26,21 @@ export function useAnalyzeProgress() {
       switch (evt.kind) {
         case "bytes read": {
           const kb = formatFloat(evt.amount / 1000, 2);
-          console.log(`read ${kb} KB | ${progressTail}`);
+          log(`read ${kb} KB | ${progressTail}`);
           break;
         }
         case "detected": {
-          console.log(`detected data to be ${evt.type} | ${progressTail}`);
+          log(`detected data to be ${evt.type} | ${progressTail}`);
           break;
         }
         case "progress": {
           if (evt.elapsedMs !== 0) {
-            console.log(`${evt.msg} | ${progressTail}`);
+            log(`${evt.msg} | ${progressTail}`);
           }
           break;
         }
         case "incremental progress": {
-          console.log(`${evt.msg} | ${elapsedTime}ms`);
+          log(`${evt.msg} | ${elapsedTime}ms`);
           break;
         }
         case "start poll": {

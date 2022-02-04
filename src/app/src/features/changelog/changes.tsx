@@ -670,4 +670,19 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-02-03",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>
+            ✨ - Add map compatibility with lower end devices with a max texture
+            size of 4096
+          </li>
+          <li>🐛 - Fix poor map visuals on mobile devices</li>
+          <li>🐛 - Fix map flicker on resize</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];

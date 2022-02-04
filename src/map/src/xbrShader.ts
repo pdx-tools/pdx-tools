@@ -15,8 +15,10 @@ export class XbrShader {
     private uRenderTerrain: WebGLUniformLocation,
     private aPos: GLuint,
     private aTexCoord: GLuint,
-    private uMapEdgesTexture: WebGLUniformLocation,
-    private uMapTexture: WebGLUniformLocation,
+    private uRawMapEdgesTexture1: WebGLUniformLocation,
+    private uRawMapEdgesTexture2: WebGLUniformLocation,
+    private uRawMapTexture1: WebGLUniformLocation,
+    private uRawMapTexture2: WebGLUniformLocation,
     private uNormal: WebGLUniformLocation,
     private uWater: WebGLUniformLocation,
     private uColormap: WebGLUniformLocation,
@@ -42,8 +44,10 @@ export class XbrShader {
       notNull(gl.getUniformLocation(program, "u_renderTerrain")),
       notNull(gl.getAttribLocation(program, "a_position")),
       notNull(gl.getAttribLocation(program, "a_texCoord")),
-      notNull(gl.getUniformLocation(program, "u_mapEdgesTexture")),
-      notNull(gl.getUniformLocation(program, "u_mapTexture")),
+      notNull(gl.getUniformLocation(program, "u_mapEdgesTexture1")),
+      notNull(gl.getUniformLocation(program, "u_mapEdgesTexture2")),
+      notNull(gl.getUniformLocation(program, "u_mapTexture1")),
+      notNull(gl.getUniformLocation(program, "u_mapTexture2")),
       notNull(gl.getUniformLocation(program, "u_normalImage")),
       notNull(gl.getUniformLocation(program, "u_waterImage")),
       notNull(gl.getUniformLocation(program, "u_colormapImage")),
@@ -68,12 +72,12 @@ export class XbrShader {
     let gl = this.gl;
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, res.framebufferEdgesTexture);
-    gl.uniform1i(this.uMapEdgesTexture, 0);
+    gl.bindTexture(gl.TEXTURE_2D, res.framebufferRawMapEdgesTexture1);
+    gl.uniform1i(this.uRawMapEdgesTexture1, 0);
 
     gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, res.framebufferTexture);
-    gl.uniform1i(this.uMapTexture, 1);
+    gl.bindTexture(gl.TEXTURE_2D, res.framebufferRawMapTexture1);
+    gl.uniform1i(this.uRawMapTexture1, 1);
 
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, res.normal);
@@ -110,6 +114,14 @@ export class XbrShader {
     gl.activeTexture(gl.TEXTURE12);
     gl.bindTexture(gl.TEXTURE_2D, res.surfaceNormalGreen);
     gl.uniform1i(this.uSurfaceNormalGreen, 12);
+
+    gl.activeTexture(gl.TEXTURE13);
+    gl.bindTexture(gl.TEXTURE_2D, res.framebufferRawMapEdgesTexture2);
+    gl.uniform1i(this.uRawMapEdgesTexture2, 13);
+
+    gl.activeTexture(gl.TEXTURE14);
+    gl.bindTexture(gl.TEXTURE_2D, res.framebufferRawMapTexture2);
+    gl.uniform1i(this.uRawMapTexture2, 14);
   }
 
   setScale(scale: number) {

@@ -8,7 +8,7 @@ export const BrowserCheck: React.FC<{}> = () => {
   useEffect(() => {
     const canvas = document.createElement("canvas");
     const gl = canvas.getContext("webgl2");
-    const requiredSize = 8192;
+    const requiredSize = 4096;
     const maxTextureSize = gl ? gl.getParameter(gl.MAX_TEXTURE_SIZE) : 0;
     const performanceCaveat = !canvas.getContext("webgl2", {
       failIfMajorPerformanceCaveat: true,
