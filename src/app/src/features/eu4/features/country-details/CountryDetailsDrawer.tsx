@@ -27,6 +27,7 @@ import { GreatAdvisorsList } from "./GreatAdvisorsList";
 import { CountrySelect } from "../../components/country-select";
 import { usePanTag } from "../../hooks/usePanTag";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
+import { CountryLeaders } from "./CountryLeaders";
 
 const { TabPane } = Tabs;
 const { useBreakpoint } = Grid;
@@ -142,6 +143,9 @@ export const CountryDetailsDrawer: React.FC<CountryDetailsProps> = ({
           <TabPane tab="Rulers" key="Rulers">
             <Divider orientation="left">Past Rulers and Failed Heirs</Divider>
             <CountryRulersTable rulers={rulers} />
+          </TabPane>
+          <TabPane tab="Leaders" key="Leaders">
+            {country && <CountryLeaders details={country} />}
           </TabPane>
           <TabPane tab="Budget" key="Budget">
             {country && <CountryBudget details={country} />}

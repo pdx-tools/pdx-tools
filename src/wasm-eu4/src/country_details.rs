@@ -1,7 +1,7 @@
 use crate::{hex_color, LocalizedObj, LocalizedTag, SaveFileImpl};
 use eu4game::SaveGameQuery;
 use eu4save::{
-    models::{CountryEvent, CountryTechnology},
+    models::{CountryEvent, CountryTechnology, Leader, LeaderKind},
     query::{CountryExpenseLedger, CountryIncomeLedger, CountryManaUsage, Inheritance},
     CountryTag, Eu4Date, PdsDate,
 };
@@ -89,6 +89,28 @@ pub struct CountryReligion {
     provinces_percent: f64,
     development: f32,
     development_percent: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct MonarchStats {
+    adm: u16,
+    dip: u16,
+    mil: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CountryLeader {
+    id: u32,
+    name: String,
+    fire: u16,
+    shock: u16,
+    manuever: u16,
+    siege: u16,
+    kind: LeaderKind,
+    active: bool,
+    activation: Option<Eu4Date>,
+    personality: Option<LocalizedObj>,
+    monarch_stats: Option<MonarchStats>,
 }
 
 impl SaveFileImpl {
@@ -491,6 +513,88 @@ impl SaveFileImpl {
         }
 
         result.sort_unstable_by(|a, b| a.religion.name.cmp(&b.religion.name));
+        result
+    }
+
+    pub fn get_country_leaders(&self, tag: &str) -> Vec<CountryLeader> {
+        let tag = tag.parse::<CountryTag>().unwrap();
+        let country = self.query.country(&tag).unwrap();
+
+        struct CountryLeaderRaw<'a> {
+            leader: &'a Leader,
+            monarch: Option<MonarchStats>,
+        }
+
+        let mut leaders: HashMap<u32, CountryLeaderRaw> = HashMap::new();
+        for (_date, events) in &country.history.events {
+            for event in events.0.iter() {
+                if let Some(monarch) = event.as_monarch() {
+                    if let Some(leader) = monarch.leader.as_ref() {
+                        if let Some(id) = leader.id.as_ref() {
+                            leaders.insert(
+                                id.id,
+                                CountryLeaderRaw {
+                                    leader,
+                                    monarch: Some(MonarchStats {
+                                        adm: monarch.adm,
+                                        dip: monarch.dip,
+                                        mil: monarch.mil,
+                                    }),
+                                },
+                            );
+                        }
+                    }
+                } else if let CountryEvent::Leader(leader) = event {
+                    if let Some(id) = leader.id.as_ref() {
+                        leaders.insert(
+                            id.id,
+                            CountryLeaderRaw {
+                                leader,
+                                monarch: None,
+                            },
+                        );
+                    }
+                }
+            }
+        }
+
+        let mut result: Vec<_> = leaders
+            .into_iter()
+            .map(|(id, x)| CountryLeader {
+                id,
+                name: x.leader.name.clone(),
+                fire: x.leader.fire,
+                shock: x.leader.shock,
+                manuever: x.leader.manuever,
+                siege: x.leader.siege,
+                kind: x.leader.kind.clone(),
+                active: x
+                    .leader
+                    .id
+                    .as_ref()
+                    .map(|x| country.leaders.iter().any(|y| x.id == y.id))
+                    .unwrap_or(false),
+                activation: x.leader.activation,
+                personality: x
+                    .leader
+                    .personality
+                    .as_ref()
+                    .map(|personality| LocalizedObj {
+                        id: personality.clone(),
+                        name: self.game.localize_personality(personality),
+                    }),
+                monarch_stats: x.monarch,
+            })
+            .collect();
+
+        // Sort so active is first and then activation date
+        result.sort_unstable_by(|a, b| {
+            b.active
+                .cmp(&a.active)
+                .then_with(|| b.activation.cmp(&b.activation))
+                .then_with(|| a.name.cmp(&b.name))
+        });
+
         result
     }
 }

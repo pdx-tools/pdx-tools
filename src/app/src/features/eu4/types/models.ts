@@ -221,12 +221,9 @@ export type LocalizedCountryExpense = {
   name: string;
 };
 
-export interface Ruler {
-  adm: number;
-  dip: number;
-  mil: number;
+export type Ruler = MonarchStats & {
   name: string;
-}
+};
 
 export interface Technology {
   adm_tech: number;
@@ -585,4 +582,23 @@ export interface SingleCountryWarCasualties {
   participation_percent: number;
   start: string | null;
   end: string | null;
+}
+
+export interface MonarchStats {
+  adm: number;
+  dip: number;
+  mil: number;
+}
+
+export interface CountryLeader {
+  id: number;
+  name: string;
+  fire: number;
+  shock: number;
+  manuever: number;
+  siege: number;
+  kind: "Admiral" | "General" | "Explorer" | "Conquistador";
+  active: boolean;
+  activation: string | null;
+  monarch_stats: MonarchStats | null;
 }
