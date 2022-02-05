@@ -9,6 +9,7 @@ import type {
   CountryExpenses,
   CountryIncome,
   CountryInfo,
+  CountryLeader,
   CountryLosses,
   CountryLossesRaw,
   CountryMatcher,
@@ -91,6 +92,11 @@ export function eu4GetCountryGreatAdvisors(tag: string): GreatAdvisor[] {
 export function eu4GetCountryProvinceReligion(tag: string): CountryReligion[] {
   const save = loadedSave();
   return save.get_country_province_religion(tag) as CountryReligion[];
+}
+
+export function eu4GetCountryLeaders(tag: string): CountryLeader[] {
+  const save = loadedSave();
+  return save.get_country_leaders(tag) as CountryLeader[];
 }
 
 export function eu4InitialMapPosition() {

@@ -685,4 +685,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-02-05",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Add list of past and present leaders to country details</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];

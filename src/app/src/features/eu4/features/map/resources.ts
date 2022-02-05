@@ -105,7 +105,9 @@ export async function resourceUrls(version: string): Promise<Resources> {
   };
 }
 
-export function glContext(canvas: HTMLCanvasElement): WebGL2RenderingContext | null {
+export function glContext(
+  canvas: HTMLCanvasElement
+): WebGL2RenderingContext | null {
   return canvas.getContext("webgl2", glContextOptions());
 }
 
