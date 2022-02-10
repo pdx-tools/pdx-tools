@@ -13,7 +13,21 @@ PDX Tools has a modular structure and can be expanded to handle any game. Curren
 
 If you'd like to contribute, you've come to the right place! This README should hopefully get you started on your journey. If you get stuck or have a bug report you can [file it here](issues) or chat about it [on the discord](https://discord.gg/rCpNWQW)
 
-## Build Requirements
+## Visual Studio Code (recommended)
+
+The easiest way to contribute is through [Visual Studio Code](https://code.visualstudio.com/) (vscode). After one has installed [Docker](https://docs.docker.com/get-docker/) on a machine, install the [Remote - Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) vscode plugin. Opening this repo inside vscode will give a prompt to reopen the repo inside the container which will have the fully fleshed build environment.
+
+After completing this step, copy or link your EU4 installation to `assets/game-bundles` and execute:
+
+```bash
+just asset-extraction "assets/game-bundles/Europa Universalis IV"
+```
+
+See [build assets for more details](#build-assets).
+
+After assets are successfully extracted, one can [start developing](#start-developing)
+
+## Manual Build Environment
 
 Linux environment assumed (WSL on Windows untested but probably supported). The following applications must be installed in order to instantiate the dev environment.
 
@@ -30,11 +44,19 @@ Once the above dependencies are installed, the remaining dependencies can be ins
 just setup
 ```
 
-Next come assets. Now, Paradox would be unhappy if the game assets and binary token files were uploaded here, so it is up to you to supply these. For incorporating game assets one can execute:
+## Build Assets
+
+Paradox would be unhappy if the game assets and binary token files were uploaded here, so it is up to you to supply these. For incorporating game assets one will need
 
 ```bash
 just asset-extraction /path/to/your/eu4/installation
 ```
+
+### Ironman saves
+
+By default, ironman and binary files will be unparsable, but one can populate the token files in `assets/tokens` to incorporate binary parsing functionality.
+
+## Start Developing
 
 To start the app:
 
@@ -43,10 +65,6 @@ just dev
 ```
 
 This will compile everything and start the web server on two ports: 3001 and 3003. 3001 is plain HTTP and 3003 is HTTPS with a self signed certificate. Since some web features like brotli decoding only work over HTTPS in firefox, it is recommended to use the HTTPS endpoint.
-
-### Ironman saves
-
-By default, ironman and binary files will be unparsable, but one can populate the token files in `assets/tokens` to incorporate binary parsing functionality.
 
 ## Contributor Project Guide
 

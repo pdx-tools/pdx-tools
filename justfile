@@ -20,26 +20,9 @@ test: touch-tokens test-rust test-app
 setup:
   #!/usr/bin/env bash
   set -euxo pipefail
-  MY_TMP="$(mktemp -d)"
-  trap 'rm -rf -- "$MY_TMP"' EXIT
-    
-  npm install -g wasm-pack@0.10.1
-  npm install -g @cloudflare/wrangler
 
-  HUGO_V=0.91.2
-  curl -o "$MY_TMP/hugo.deb" -L "https://github.com/gohugoio/hugo/releases/download/v${HUGO_V}/hugo_extended_${HUGO_V}_Linux-64bit.deb"
-  sudo dpkg -i "$MY_TMP/hugo.deb"
-
-  WASM_OPT_V=version_105
-  curl -o "$MY_TMP/binaryen.tar.gz" -L "https://github.com/WebAssembly/binaryen/releases/download/${WASM_OPT_V}/binaryen-${WASM_OPT_V}-x86_64-linux.tar.gz"
-  (cd "$MY_TMP" && tar -xzf "binaryen.tar.gz")
-  sudo mv "$MY_TMP/binaryen-$WASM_OPT_V/bin/wasm-opt" "/usr/local/bin/."
-
-  curl -o "$MY_TMP/flatc.zip" -L "https://github.com/google/flatbuffers/releases/download/v2.0.0/Linux.flatc.binary.clang++-9.zip"
-  (cd "$MY_TMP" && unzip flatc.zip)
-  chmod +x "$MY_TMP/flatc"
-  sudo mv "$MY_TMP/flatc" "/usr/local/bin/."
-
+  ./.devcontainer/library-scripts/npm-dependencies.sh
+  sudo ./.devcontainer/library-scripts/dependencies.sh
   (cd "src/app" && npm ci)
 
 publish-backend:
@@ -102,14 +85,14 @@ test-app *cmd: prep-test-app
   (cd src/app && npx prisma migrate dev --name init)
   (cd src/app && npm test -- {{cmd}})
 
-prep-test-app: (test-environment "up --no-start") (test-environment "up -d")
+prep-test-app: (test-environment "build") (test-environment "up --no-start") (test-environment "up -d")
   #!/usr/bin/env bash
   set -euxo pipefail
   . src/app/.env.test
   . dev/.env.test
   timeout 5 sh -c 'sleep 1; until nc -z $0 $1; do sleep 1; done' localhost $DATABASE_PORT
 
-prep-dev-app: (dev-environment "up --no-start") (dev-environment "up -d")
+prep-dev-app: (dev-environment "build") (dev-environment "up --no-start") (dev-environment "up -d")
   #!/usr/bin/env bash
   set -euxo pipefail
   . src/app/.env.development

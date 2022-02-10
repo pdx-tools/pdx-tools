@@ -21,5 +21,6 @@ schemas = { path = "../schemas" }
 oxipng = "5"
 pico-args = "0.4"
 attohttpc = "0.18.0"
+brotli = "3"
 
 [dev-dependencies]
