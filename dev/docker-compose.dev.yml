@@ -2,12 +2,13 @@
 version: '3'
 services:
   s3:
-    volumes:
-      - "./certs/minio:/root/.minio/certs"
+    build:
+      dockerfile: minio.dockerfile
+      context: .
+
 
   nginx:
-    image: nginx:stable
+    build:
+      dockerfile: nginx.dockerfile
+      context: .
     network_mode: "host"
-    volumes:
-      - "./certs/localhost:/etc/ssl/localhost:ro"
-      - "./nginx.conf:/etc/nginx/conf.d/default.conf:ro"

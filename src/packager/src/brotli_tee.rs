@@ -2,12 +2,15 @@ use std::{
     fs::File,
     io::{BufWriter, Write},
     path::Path,
-    process::{Child, Command, Stdio},
 };
 
 pub struct BrotliTee {
-    brotli: Child,
+    brotli: brotli::CompressorWriter<BufWriter<File>>,
     raw: BufWriter<File>,
+}
+
+fn new_brotli<W: Write>(writer: W) -> brotli::CompressorWriter<W> {
+    brotli::CompressorWriter::new(writer, 4096, 11, 24)
 }
 
 impl BrotliTee {
@@ -18,32 +21,24 @@ impl BrotliTee {
         let brotli_name = path.with_file_name(format!("{}.bin", current_name));
         let raw_name = path.with_file_name(format!("{}-raw.bin", current_name));
 
-        let child = Command::new("brotli")
-            .arg("--force")
-            .arg("-o")
-            .arg(brotli_name)
-            .stdin(Stdio::piped())
-            .spawn()
-            .unwrap();
+        let brotli_file = File::create(brotli_name).unwrap();
+        let brotli = new_brotli(BufWriter::new(brotli_file));
 
         let file = File::create(raw_name).unwrap();
         let buf = BufWriter::new(file);
-        Self {
-            brotli: child,
-            raw: buf,
-        }
+        Self { brotli, raw: buf }
     }
 }
 
 impl Write for BrotliTee {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.brotli.stdin.as_mut().unwrap().write_all(buf)?;
+        self.brotli.write_all(buf)?;
         self.raw.write_all(buf)?;
         Ok(buf.len())
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        self.brotli.stdin.as_mut().unwrap().flush()?;
+        self.brotli.flush()?;
         self.raw.flush()?;
         Ok(())
     }

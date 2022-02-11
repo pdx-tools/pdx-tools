@@ -1,11 +1,11 @@
 version: '3'
 services:
   db:
-    image: postgres:14-alpine
+    build:
+      dockerfile: postgres.dockerfile
+      context: .
     ports:
       - "${DATABASE_PORT}:5432"
-    volumes:
-      - "./sql:/docker-entrypoint-initdb.d:ro"
     environment:
       - DATABASE_APP_USER=${DATABASE_USER}
       - DATABASE_APP_USER_PASSWORD=${DATABASE_PASSWORD}

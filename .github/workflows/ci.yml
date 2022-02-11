@@ -6,6 +6,15 @@ on:
     branches: ["master"]
 
 jobs:
+  dev:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    - run: docker build .
+      working-directory: ./.devcontainer/
+
   build:
     runs-on: ubuntu-latest
     steps:

@@ -1523,6 +1523,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "attohttpc",
+ "brotli",
  "csv",
  "eu4save",
  "jomini",

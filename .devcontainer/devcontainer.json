@@ -1,0 +1,29 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
+{
+  "name": "app",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "runArgs": ["--network", "host"],
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+
+  "settings": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "[rust]": {
+      "editor.defaultFormatter": "matklad.rust-analyzer"
+    }
+  },
+
+  "extensions": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "matklad.rust-analyzer",
+    "slevesque.shader"
+  ],
+
+  "postStartCommand": "cd src/app && npm ci",
+  "forwardPorts": [3001, 3003],
+  "remoteUser": "node"
+}
