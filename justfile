@@ -1,4 +1,5 @@
 set dotenv-load := true
+set positional-arguments
 
 export EU4_IRONMAN_TOKENS := `pwd | xargs printf "%s/assets/tokens/eu4.txt"`
 export HOI4_IRONMAN_TOKENS := `pwd | xargs printf "%s/assets/tokens/hoi4.txt"`
@@ -30,10 +31,10 @@ publish-backend:
   ssh -t pdx-tools-prod '/opt/pdx-tools/docker-compose.sh pull api && /opt/pdx-tools/docker-compose.sh up -d api'
 
 wrangler +cmd:
-  cd src/app && wrangler {{cmd}}
+  cd src/app && wrangler "$@"
 
 publish-frontend: (wrangler "publish")
-publish-frontend-dev: (wrangler "publish --env dev")
+publish-frontend-dev: (wrangler "publish" "--env" "dev")
 
 build-app: prep-frontend
   cd src/app && npm run build
@@ -53,7 +54,7 @@ build-admin:
    cargo build --release -p admin-cli
 
 test-rust *cmd:
-  cargo test {{cmd}}
+  cargo test "$@"
 
 dev-app: prep-frontend prep-dev-app
   #!/usr/bin/env bash
@@ -83,16 +84,16 @@ test-app *cmd: prep-test-app
   . dev/.env.test
   export DATABASE_URL=postgresql://postgres:$DATABASE_ADMIN_PASSWORD@localhost:$DATABASE_PORT
   (cd src/app && npx prisma migrate dev --name init)
-  (cd src/app && npm test -- {{cmd}})
+  (cd src/app && npm test -- "$@")
 
-prep-test-app: (test-environment "build") (test-environment "up --no-start") (test-environment "up -d")
+prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "-d")
   #!/usr/bin/env bash
   set -euxo pipefail
   . src/app/.env.test
   . dev/.env.test
   timeout 5 sh -c 'sleep 1; until nc -z $0 $1; do sleep 1; done' localhost $DATABASE_PORT
 
-prep-dev-app: (dev-environment "build") (dev-environment "up --no-start") (dev-environment "up -d")
+prep-dev-app: (dev-environment "build") (dev-environment "up" "--no-start") (dev-environment "up" "-d")
   #!/usr/bin/env bash
   set -euxo pipefail
   . src/app/.env.development
@@ -142,16 +143,16 @@ package-all *opts: touch-tokens
   LAST_BUNDLE=$(ls assets/game-bundles/eu4-* | grep -v common | sort -n | tail -n1)
   for BUNDLE in $(ls assets/game-bundles/eu4-* | grep -v common | sort -n); do
     if [ "$BUNDLE" = "$LAST_BUNDLE" ]; then
-      package {{opts}} --common "$BUNDLE" &
+      package "$@" --common "$BUNDLE" &
     else
-      package {{opts}} "$BUNDLE" &
+      package "$@" "$BUNDLE" &
     fi;
   done;
 
   wait
 
 asset-extraction +cmd: touch-tokens
-  cargo run --release -p packager --bin asset_extraction -- --common {{cmd}} 
+  cargo run --release -p packager --bin asset_extraction -- --common "$@"
 
 dev-environment +cmd:
   #!/usr/bin/env bash
@@ -160,7 +161,7 @@ dev-environment +cmd:
   trap 'rm -rf -- "$MY_TMP"' EXIT
   cat src/app/.env.development ./dev/.env.dev >> "$MY_TMP"
 
-  docker-compose -f ./dev/docker-compose.test.yml -f ./dev/docker-compose.dev.yml --env-file "$MY_TMP" --project-name pdx_dev {{cmd}}
+  docker-compose -f ./dev/docker-compose.test.yml -f ./dev/docker-compose.dev.yml --env-file "$MY_TMP" --project-name pdx_dev "$@"
 
 test-environment +cmd:
   #!/usr/bin/env bash
@@ -169,7 +170,7 @@ test-environment +cmd:
   trap 'rm -rf -- "$MY_TMP"' EXIT
   cat src/app/.env.test ./dev/.env.test >> "$MY_TMP"
 
-  docker-compose -f ./dev/docker-compose.test.yml --env-file "$MY_TMP" --project-name pdx_test {{cmd}}
+  docker-compose -f ./dev/docker-compose.test.yml --env-file "$MY_TMP" --project-name pdx_test "$@"
 
 deploy-db-schema ENVIRONMENT:
   #!/usr/bin/env bash
