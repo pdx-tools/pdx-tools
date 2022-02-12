@@ -8,6 +8,12 @@
   "mounts": [
     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
   ],
+  "remoteEnv": {
+    "EU4_IRONMAN_TOKENS": "${containerWorkspaceFolder}/assets/tokens/eu4.txt",
+    "HOI4_IRONMAN_TOKENS": "${containerWorkspaceFolder}/assets/tokens/hoi4.txt",
+    "CK3_IRONMAN_TOKENS": "${containerWorkspaceFolder}/assets/tokens/ck3.txt",
+    "IMPERATOR_TOKENS": "${containerWorkspaceFolder}/assets/tokens/imperator.txt"
+  },
 
   "settings": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -23,7 +29,7 @@
     "slevesque.shader"
   ],
 
-  "postStartCommand": "cd src/app && npm ci",
+  "postStartCommand": "cd src/app && npm ci && just touch-tokens",
   "forwardPorts": [3001, 3003],
   "remoteUser": "node"
 }
