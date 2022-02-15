@@ -695,4 +695,17 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-02-15",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>
+            🐛 - Fix trying to mutate immutable mod list resulting in error on
+            info drawer
+          </li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
