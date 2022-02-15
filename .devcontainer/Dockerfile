@@ -38,6 +38,8 @@ RUN bash /tmp/library-scripts/dependencies.sh
 
 USER node
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile minimal --component rustfmt --component clippy -y && \
-    tmp/library-scripts/npm-dependencies.sh
+    . $HOME/.cargo/env && \
+    tmp/library-scripts/npm-dependencies.sh && \
+    tmp/library-scripts/opt-dependencies.sh
 
 EXPOSE 3001 3003
