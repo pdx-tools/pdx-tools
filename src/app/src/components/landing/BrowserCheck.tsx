@@ -1,4 +1,4 @@
-import { emitEvent } from "@/lib/plausible";
+import { compatibilityReport } from "@/lib/compatibility";
 import { Alert } from "antd";
 import { useEffect, useState } from "react";
 
@@ -6,33 +6,31 @@ export const BrowserCheck: React.FC<{}> = () => {
   const [warnings, setWarnings] = useState<string[]>([]);
 
   useEffect(() => {
-    const canvas = document.createElement("canvas");
-    const gl = canvas.getContext("webgl2");
-    const requiredSize = 4096;
-    const maxTextureSize = gl ? gl.getParameter(gl.MAX_TEXTURE_SIZE) : 0;
-    const performanceCaveat = !canvas.getContext("webgl2", {
-      failIfMajorPerformanceCaveat: true,
-    });
+    const report = compatibilityReport();
 
-    if (!gl) {
-      setWarnings((x) => [...x, "WebGL2 not available"]);
-    } else if (maxTextureSize < requiredSize) {
+    const browser = report.browser.webkit;
+    if (browser?.supported === false) {
       setWarnings((x) => [
         ...x,
-        `WebGL2 max texture size (${maxTextureSize}) is smaller than required (${requiredSize})`,
+        `Unsupported ${browser.kind} version (${
+          browser?.version ?? "unknown"
+        }). Requires: ${
+          browser.required
+        }. If on iPad or iPhone, upgrade to iOS 15.2. If on desktop, either use a different browser or upgrade to the latest macOS version`,
       ]);
-    } else if (performanceCaveat) {
+    }
+
+    if (!report.webgl2.enabled) {
+      setWarnings((x) => [...x, "WebGL2 not available"]);
+    } else if (report.webgl2.textureSize.tooSmall) {
+      const msg = `WebGL2 max texture size (${report.webgl2.textureSize.actual}) is smaller than required (${report.webgl2.textureSize.required})`;
+      setWarnings((x) => [...x, msg]);
+    } else if (report.webgl2.performanceCaveat) {
       setWarnings((x) => [...x, `WebGL2 major performance caveat detected`]);
     }
 
-    canvas.remove();
-    emitEvent({ kind: "webgl", maxTextureSize, performanceCaveat });
-  }, []);
-
-  useEffect(() => {
-    const supported = typeof WebAssembly?.instantiate === "function";
-    if (!supported) {
-      setWarnings((x) => [...x, "WebAssembly not available"]);
+    if (!report.wasm) {
+      setWarnings((x) => [...x, `WebAssembly not available`]);
     }
   }, []);
 
@@ -43,7 +41,21 @@ export const BrowserCheck: React.FC<{}> = () => {
   return (
     <Alert
       type="error"
-      message={`Your browser is not supported due to ${warnings.join(" and ")}`}
+      message={
+        <div>
+          Your browser is not supported due to:
+          <ul>
+            {warnings.map((x) => (
+              <li key={x}>{x}</li>
+            ))}
+          </ul>
+          <style jsx>{`
+            ul {
+              margin: 0;
+            }
+          `}</style>
+        </div>
+      }
     />
   );
 };

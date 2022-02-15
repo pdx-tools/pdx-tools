@@ -106,9 +106,11 @@ export async function resourceUrls(version: string): Promise<Resources> {
 }
 
 export function glContext(
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
+  options?: WebGLContextAttributes
 ): WebGL2RenderingContext | null {
-  return canvas.getContext("webgl2", glContextOptions());
+  const arg = { ...glContextOptions(), ...options };
+  return canvas.getContext("webgl2", arg);
 }
 
 export function setMapControls(map: any, controls: MapOnlyControls) {

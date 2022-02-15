@@ -34,8 +34,8 @@ export type Event =
     }
   | {
       kind: "webgl";
-      maxTextureSize: number;
-      performanceCaveat: boolean;
+      maxTextureSize: number | null;
+      performanceCaveat: boolean | null;
     };
 
 export function emitEvent(event: Event) {

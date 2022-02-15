@@ -44,9 +44,7 @@ export const CanvasContextProvider: React.FC<{}> = ({ children }) => {
 
   useEffect(() => {
     const gl = glContext(getCanvas(canvasRef));
-    if (gl === null) {
-      throw new Error("webgl 2 context is undefined");
-    } else {
+    if (gl !== null) {
       eu4CanvasRef.current = new Eu4Canvas(gl);
       glRef.current = gl;
     }
