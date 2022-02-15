@@ -26,7 +26,8 @@
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
     "matklad.rust-analyzer",
-    "slevesque.shader"
+    "slevesque.shader",
+    "styled-components.vscode-styled-components"
   ],
 
   "postStartCommand": "cd src/app && npm ci && just touch-tokens",
