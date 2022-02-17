@@ -65,13 +65,16 @@ function wasmCompatibility() {
   return window.WebAssembly !== undefined;
 }
 
-
 // Versions of safari / webkit known to handle our webgl2 shaders.
 const MINIMUM_WEBKIT = "605.1";
 const MINIMUM_SAFARI = "15.2";
 
 export function userAgentCompatibility(ua: string): BrowserCompatibility {
   if (!ua.includes("Safari")) {
+    return {};
+  }
+
+  if (ua.includes("Android")) {
     return {};
   }
 

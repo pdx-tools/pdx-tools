@@ -77,3 +77,10 @@ test("user-agent: safari on old ios 2", () => {
     },
   });
 });
+
+test("user-agent: android chrome", () => {
+  const actual = userAgentCompatibility(
+    "Mozilla/5.0 (Linux; Android 12; Pixel 3a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.87 Mobile Safari/537.36"
+  );
+  expect(actual).toStrictEqual({});
+});
