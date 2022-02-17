@@ -708,4 +708,15 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-02-17",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>🐛 - Fix browser compatibility check not closeable</li>
+          <li>🐛 - Avoid iphone error messages on android</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
