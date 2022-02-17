@@ -261,8 +261,10 @@ async function main() {
   }
 
   function resizeHandler() {
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
+    canvas.style.width = `${container.clientWidth}px`;
+    canvas.style.height = `${container.clientHeight}px`;
+    canvas.width = container.clientWidth * window.devicePixelRatio;
+    canvas.height = container.clientHeight * window.devicePixelRatio;
     map.redrawViewport();
   }
 
