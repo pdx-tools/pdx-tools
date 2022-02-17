@@ -261,11 +261,7 @@ async function main() {
   }
 
   function resizeHandler() {
-    canvas.style.width = `${container.clientWidth}px`;
-    canvas.style.height = `${container.clientHeight}px`;
-    canvas.width = container.clientWidth * window.devicePixelRatio;
-    canvas.height = container.clientHeight * window.devicePixelRatio;
-    map.redrawViewport();
+    map.resize(container.clientWidth, container.clientHeight);
   }
 
   const politicalMapModeEl =

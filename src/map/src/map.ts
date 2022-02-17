@@ -41,6 +41,7 @@ export const glContextOptions = (): WebGLContextAttributes => ({
 
 export class WebGLMap {
   public scale: number;
+  public pixelRatio: number = window.devicePixelRatio;
   public focusPoint: [number, number];
   private mousePos = [0, 0];
   private mouseDownInitialPos = [0, 0];
@@ -126,6 +127,14 @@ export class WebGLMap {
   get minScale(): number {
     const canvasAspect = this.gl.canvas.width / this.gl.canvas.height;
     return Math.max(1, IMG_ASPECT / canvasAspect);
+  }
+
+  public resize(cssWidth: number, cssHeight: number) {
+    this.gl.canvas.style.width = `${cssWidth}px`;
+    this.gl.canvas.style.height = `${cssHeight}px`;
+    this.gl.canvas.width = cssWidth * this.pixelRatio;
+    this.gl.canvas.height = cssHeight * this.pixelRatio;
+    this.redrawViewport();
   }
 
   static create(
@@ -406,6 +415,11 @@ export class WebGLMap {
     }
   }
 
+  private canvasDisplayDimensions() {
+    const rect = this.gl.canvas.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  }
+
   private mousePosition(e: MouseEvent, rect?: UserRect) {
     const canvas = this.gl.canvas;
     if (rect) {
@@ -425,8 +439,10 @@ export class WebGLMap {
   public moveCamera(e: MouseEvent, rect?: UserRect) {
     const [newX, newY] = this.mousePosition(e, rect);
     const newfocusPoint: [number, number] = [
-      this.focusPoint[0] - (newX - this.mousePos[0]) / this.scale,
-      this.focusPoint[1] - (newY - this.mousePos[1]) / this.scale,
+      this.focusPoint[0] -
+        ((newX - this.mousePos[0]) * this.pixelRatio) / this.scale,
+      this.focusPoint[1] -
+        ((newY - this.mousePos[1]) * this.pixelRatio) / this.scale,
     ];
 
     this.focusPoint = newfocusPoint;
@@ -499,26 +515,25 @@ export class WebGLMap {
   }
 
   private mousePixel(e: MouseEvent, rect?: UserRect) {
-    const canvas = this.gl.canvas;
+    const { height, width } = this.canvasDisplayDimensions();
     const trueScale = this.scale / this.minScale;
-    const canvasAspect = canvas.width / canvas.height;
-    const focusYLen = canvas.height / trueScale;
-    const focusYAdj = this.focusPoint[1] * (IMG_ASPECT / canvasAspect);
+    const canvasAspect = width / height;
+    const focusYLen = height / trueScale;
+    const focusYAdj =
+      this.focusPoint[1] * (IMG_ASPECT / canvasAspect) * this.pixelRatio;
 
-    const focusXLen = canvas.width / this.scale;
-    const focusXAdj = this.focusPoint[0];
+    const focusXLen = width / this.scale;
+    const focusXAdj = this.focusPoint[0] * this.pixelRatio;
 
     const [newX, newY] = this.mousePosition(e, rect);
-    const clipX = ((newX - canvas.width / 2) / canvas.width) * 2;
-    const clipY = ((newY - canvas.height / 2) / canvas.height) * 2;
+    const clipX = ((newX - width / 2) / width) * 2;
+    const clipY = ((newY - height / 2) / height) * 2;
 
     const mouseFocusX = focusXAdj + clipX * (focusXLen / 2);
     const mouseFocusY = focusYAdj + clipY * (focusYLen / 2);
 
-    const pixelX =
-      ((mouseFocusX + canvas.width / 2) / canvas.width) * IMG_WIDTH;
-    const pixelY =
-      ((mouseFocusY + canvas.height / 2) / canvas.height) * IMG_HEIGHT;
+    const pixelX = ((mouseFocusX + width / 2) / width) * IMG_WIDTH;
+    const pixelY = ((mouseFocusY + height / 2) / height) * IMG_HEIGHT;
 
     return [pixelX, pixelY];
   }
