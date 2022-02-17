@@ -41,6 +41,7 @@ export const BrowserCheck: React.FC<{}> = () => {
   return (
     <Alert
       type="error"
+      closable
       message={
         <div>
           Your browser is not supported due to:
