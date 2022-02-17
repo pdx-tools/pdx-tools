@@ -19,7 +19,7 @@ test("user-agent: safari on old ios", () => {
     "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3 like Mac OS X) AppleWebKit/603.1.23 (KHTML, like Gecko) Version/10.0 Mobile/14E5239e Safari/602.1"
   );
   expect(actual).toStrictEqual({
-    safari: {
+    webkit: {
       kind: "safari",
       required: "15.2",
       supported: false,
@@ -34,7 +34,7 @@ test("user-agent: chrome on old ios desktop requested", () => {
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85 Version/11.1.1 Safari/605.1.15"
   );
   expect(actual).toStrictEqual({
-    safari: {
+    webkit: {
       kind: "safari",
       required: "15.2",
       supported: false,
@@ -55,7 +55,7 @@ test("user-agent: supported safari", () => {
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_2_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Safari/605.1.15"
   );
   expect(actual).toStrictEqual({
-    safari: {
+    webkit: {
       kind: "safari",
       required: "15.2",
       supported: true,
@@ -69,7 +69,7 @@ test("user-agent: safari on old ios 2", () => {
     "Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/10.0 Mobile/14E5239e Safari/604.1"
   );
   expect(actual).toStrictEqual({
-    safari: {
+    webkit: {
       kind: "safari",
       required: "15.2",
       supported: false,
