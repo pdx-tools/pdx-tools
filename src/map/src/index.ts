@@ -23,6 +23,7 @@ async function main() {
   const controls = document.querySelector<HTMLElement>("#canvasControls")!;
   const selectedEl = document.querySelector("#selected-province-id")!;
   const hoveredEl = document.querySelector("#hovered-province-id")!;
+  const renderEl = document.querySelector("#render-time")!;
 
   const canvas = document!.querySelector("#canvas") as HTMLCanvasElement;
   const glc = canvas!.getContext("webgl2", glContextOptions());
@@ -82,6 +83,7 @@ async function main() {
     console.log(
       `Canvas content redrawn ${cancellations}in: ${e.elapsedMs.toFixed(2)}ms`
     );
+    renderEl.textContent = `${e.elapsedMs.toFixed(2)}ms`;
   };
 
   map.updateProvinceColors(primaryPoliticalColors, secondaryPoliticalColors);
@@ -261,9 +263,7 @@ async function main() {
   }
 
   function resizeHandler() {
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
-    map.redrawViewport();
+    map.resize(container.clientWidth, container.clientHeight);
   }
 
   const politicalMapModeEl =
