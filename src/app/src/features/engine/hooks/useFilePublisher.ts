@@ -1,10 +1,10 @@
 import { getSaveMeta } from "@/services/appApi";
-import { proxy } from "comlink";
+import { proxy, transfer } from "comlink";
 import { useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { getWasmWorker, useWasmWorker } from "../worker/wasm-worker-context";
-import { AnalyzeSource } from "../worker/worker";
 import { timeit } from "../worker/worker-lib";
+import { AnalyzeSource } from "../worker/worker";
 import { startSaveAnalyze } from "../engineSlice";
 import { getEu4Canvas, useEu4CanvasRef } from "../persistant-canvas-context";
 import { useAnalyzeProgress } from "./useAnalyzeProgress";
@@ -25,6 +25,47 @@ import { useAppSelector } from "@/lib/store";
 import { selectIsDeveloper } from "@/features/account";
 import { check } from "@/lib/isPresent";
 import { log } from "@/lib/log";
+import { AnalyzeEvent } from "../worker/worker-types";
+
+export type AnalyzeInput =
+  | { kind: "local"; file: File }
+  | { kind: "server"; saveId: string }
+  | { kind: "skanderbeg"; skanId: string };
+
+async function inputToSource(
+  input: AnalyzeInput,
+  onProgress: (evt: AnalyzeEvent) => void
+): Promise<AnalyzeSource> {
+  switch (input.kind) {
+    case "local": {
+      // Need to consume the file before passing it to the web worker
+      // else we'll get a permission issue on android when a save on
+      // google drive is selected
+      var [bytes, elapsedMs] = await timeit(
+        async () => new Uint8Array(await input.file.arrayBuffer())
+      );
+
+      onProgress({
+        kind: "bytes read",
+        amount: bytes.length,
+        percent: 10,
+        elapsedMs: elapsedMs,
+      });
+
+      return {
+        kind: "local",
+        name: input.file.name,
+        data: new Uint8Array(bytes),
+      };
+    }
+    default: {
+      return {
+        ...input,
+        data: new Uint8Array(),
+      };
+    }
+  }
+}
 
 export function useFilePublisher() {
   const wasmWorkerRef = useWasmWorker();
@@ -34,22 +75,22 @@ export function useFilePublisher() {
   const isDeveloper = useAppSelector(selectIsDeveloper);
 
   return useCallback(
-    async (source: AnalyzeSource) => {
+    async (input: AnalyzeInput) => {
       async function runEngineOverInput() {
         dispatch(startSaveAnalyze());
         const wasmWorker = getWasmWorker(wasmWorkerRef);
         let filename;
 
-        switch (source.kind) {
+        switch (input.kind) {
           case "server": {
-            filename = getSaveMeta(source.saveId).then((x) => {
+            filename = getSaveMeta(input.saveId).then((x) => {
               dispatch(setEu4ServerSaveFile(x));
               return x.filename;
             });
             break;
           }
           case "local": {
-            filename = Promise.resolve(source.file.name);
+            filename = Promise.resolve(input.file.name);
             break;
           }
           case "skanderbeg": {
@@ -58,8 +99,9 @@ export function useFilePublisher() {
           }
         }
 
+        const source = await inputToSource(input, onProgress);
         const analysis = await wasmWorker.analyze(
-          source,
+          transfer(source, [source.data.buffer]),
           proxy({
             progress: onProgress,
           })
@@ -152,7 +194,7 @@ export function useFilePublisher() {
 
             const [x, y] = await wasmWorker.eu4InitialMapPosition();
 
-            if (source.kind !== "server") {
+            if (input.kind !== "server") {
               dispatch(setEu4ServerSaveFile(undefined));
             }
 

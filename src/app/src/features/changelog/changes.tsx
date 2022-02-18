@@ -719,4 +719,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-02-18",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>🐛 - Fix permission issue for saves on google drive</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
