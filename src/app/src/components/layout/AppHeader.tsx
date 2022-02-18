@@ -4,7 +4,6 @@ import { Layout, Grid } from "antd";
 import { AppSvg } from "../icons/AppIcon";
 import { CoreMenu } from "./CoreMenu";
 import { MobileMenu } from "./MobileMenu";
-import { AnnouncementBar } from "./AnnouncementBar";
 const { Header } = Layout;
 const { useBreakpoint } = Grid;
 
@@ -25,18 +24,6 @@ interface AppHeaderProps {
 export const AppHeader: React.FC<AppHeaderProps> = ({ disabled = false }) => {
   return (
     <div className="flex-col" style={{ display: disabled ? "none" : "flex" }}>
-      <AnnouncementBar>
-        <p style={{ padding: 0, margin: 0 }}>
-          Rakaly is now PDX Tools.{" "}
-          <a
-            style={{ color: "#e8cabe" }}
-            href="/blog/new-year-new-version-new-name-pdx-tools/"
-            aria-label="New year, new version, new name: PDX Tools"
-          >
-            Read more
-          </a>
-        </p>
-      </AnnouncementBar>
       <Header style={{ padding: "0 16px" }}>
         <div className="flex-row items-center menu">
           <style jsx>{`
