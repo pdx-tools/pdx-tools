@@ -18,9 +18,9 @@ import {
 } from "./imperator";
 
 export type AnalyzeSource =
-  | { kind: "local"; file: File }
-  | { kind: "server"; saveId: string }
-  | { kind: "skanderbeg"; skanId: string };
+  | { kind: "local"; data: Uint8Array; name: string }
+  | { kind: "server"; saveId: string; data: Uint8Array }
+  | { kind: "skanderbeg"; skanId: string; data: Uint8Array };
 
 export type AnalyzeResponse =
   | { kind: "eu4"; meta: EnhancedMeta; achievements: Achievements }
@@ -54,21 +54,11 @@ const obj = {
   ): Promise<AnalyzeResponse> {
     switch (source.kind) {
       case "local": {
-        var [bytes, elapsedMs] = await timeit(
-          async () => new Uint8Array(await source.file.arrayBuffer())
-        );
-
-        options?.progress({
-          kind: "bytes read",
-          amount: bytes.length,
-          percent: 10,
-          elapsedMs: elapsedMs,
-        });
-
+        const bytes = source.data;
         setRawData(bytes);
 
         const kind =
-          extensionType(source.file.name) ?? (await detectType(bytes, options));
+          extensionType(source.name) ?? (await detectType(bytes, options));
         switch (kind) {
           case "eu4": {
             const results = await initializeEu4(bytes, options);
