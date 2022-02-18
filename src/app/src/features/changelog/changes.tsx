@@ -725,6 +725,7 @@ export const changes: ChangelogEntry[] = [
       return (
         <ChangelogList>
           <li>🐛 - Fix permission issue for saves on google drive</li>
+          <li>🐛 - Fix map tips appearing when panning the map</li>
         </ChangelogList>
       );
     },
