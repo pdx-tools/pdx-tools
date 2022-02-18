@@ -23,7 +23,6 @@ import { selectEu4MapDate } from "./eu4Slice";
 import { selectModuleDrawn } from "../engine";
 import { MapTip } from "./features/map/MapTip";
 import { MapZoomSideBar } from "./components/zoom";
-import { log } from "@/lib/log";
 
 const { className, styles } = css.resolve`
   span {
@@ -81,8 +80,8 @@ export const Eu4CanvasOverlay: React.FC<{}> = () => {
   return (
     <>
       <MapTip />
-      <div className="date-overlay">{mapDate.text}</div>
-      <div className="ui-sidebar">
+      <div className="date-overlay touch-none">{mapDate.text}</div>
+      <div className="ui-sidebar touch-none">
         <div className="flex-col gap">{buttons.map((x, i) => x(i))}</div>
         {styles}
       </div>

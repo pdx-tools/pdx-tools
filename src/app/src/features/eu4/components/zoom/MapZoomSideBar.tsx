@@ -4,7 +4,7 @@ import { ZoomOutSideBarButton } from "./ZoomOutSideBarButton";
 
 export const MapZoomSideBar: React.FC<{}> = () => {
   return (
-    <div className="container">
+    <div className="container touch-none">
       <ZoomInSideBarButton key="zoom-in">
         <PlusOutlined />
       </ZoomInSideBarButton>
