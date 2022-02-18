@@ -6,7 +6,7 @@ import { selectModuleDrawn } from "@/features/engine";
 export const MapModeSideBar: React.FC<{}> = () => {
   const hasDrawn = useSelector(selectModuleDrawn);
   return (
-    <div className="map-mode-sidebar">
+    <div className="map-mode-sidebar touch-none">
       <div className="map-mode-container">
         <MapModeButtonGroup />
       </div>

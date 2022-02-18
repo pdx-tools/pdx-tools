@@ -726,6 +726,7 @@ export const changes: ChangelogEntry[] = [
         <ChangelogList>
           <li>🐛 - Fix permission issue for saves on google drive</li>
           <li>🐛 - Fix map tips appearing when panning the map</li>
+          <li>🐛 - Fix possibility for accidental zoom on map UI controls</li>
         </ChangelogList>
       );
     },

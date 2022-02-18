@@ -94,3 +94,7 @@
 .font-bold {
   font-weight: 700;
 }
+
+.touch-none {
+  touch-action: none;
+}
