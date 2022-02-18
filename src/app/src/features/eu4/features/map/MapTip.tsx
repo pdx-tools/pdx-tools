@@ -32,16 +32,30 @@ export const MapTip: React.FC<{}> = () => {
   const isMounted = useIsMounted();
 
   useEffect(() => {
+    let isDown = false;
+
     function pointerMove(e: PointerEvent) {
       setPointerDisplay(
-        e.target instanceof Element && e.target.nodeName == "CANVAS"
+        !isDown && e.target instanceof Element && e.target.nodeName == "CANVAS"
       );
       setPointer({ x: e.x, y: e.y });
     }
 
+    function pointerDown() {
+      isDown = true;
+    }
+
+    function pointerUp() {
+      isDown = false;
+    }
+
     document.addEventListener("pointermove", pointerMove, false);
+    document.addEventListener("pointerdown", pointerDown, false);
+    document.addEventListener("pointerup", pointerUp, false);
     return () => {
       document.removeEventListener("pointermove", pointerMove, false);
+      document.removeEventListener("pointerdown", pointerDown, false);
+      document.removeEventListener("pointerup", pointerUp, false);
     };
   }, [toolTipRef]);
 
