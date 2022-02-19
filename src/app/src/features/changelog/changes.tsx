@@ -740,6 +740,7 @@ export const changes: ChangelogEntry[] = [
             🐛 - Fix chrome incorrectly detected as not compatible on Windows
             and Linux
           </li>
+          <li>🐛 - Fix stuck back button on home page</li>
         </ChangelogList>
       );
     },

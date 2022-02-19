@@ -19,7 +19,7 @@ export const GameView: React.FC<{}> = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    const routeMe = window.location.pathname !== "/";
+    const homeAnalysis = window.location.pathname === "/";
 
     // Allow users to hit the back button when they are locally analyzing a
     // file to go back to the home menu so they can analyze another file
@@ -27,14 +27,12 @@ export const GameView: React.FC<{}> = () => {
     function popHandler(_event: PopStateEvent) {
       dispatch(resetSaveAnalysis());
 
-      // Using the native window handler means that next.js kinda lost track
-      // so we reload the page.
-      if (routeMe) {
-        router.reload();
+      if (homeAnalysis && game !== null) {
+        history.back();
       }
     }
 
-    if (!routeMe) {
+    if (homeAnalysis && game !== null) {
       history.pushState(undefined, "", null);
     }
 
@@ -42,7 +40,7 @@ export const GameView: React.FC<{}> = () => {
     return () => {
       window.removeEventListener("popstate", popHandler);
     };
-  }, [dispatch, router]);
+  }, [dispatch, router, game]);
 
   useEffect(() => {
     function reset() {
