@@ -74,7 +74,11 @@ export function userAgentCompatibility(ua: string): BrowserCompatibility {
     return {};
   }
 
-  if (ua.includes("Android")) {
+  if (
+    ua.includes("Android") ||
+    ua.includes("Linux") ||
+    ua.includes("Windows")
+  ) {
     return {};
   }
 

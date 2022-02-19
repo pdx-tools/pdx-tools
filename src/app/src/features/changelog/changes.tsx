@@ -731,4 +731,17 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-02-19",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>
+            🐛 - Fix chrome incorrectly detected as not compatible on Windows
+            and Linux
+          </li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
