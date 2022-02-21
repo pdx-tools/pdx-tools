@@ -745,4 +745,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-02-20",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>🐛 - Fix additional unsupported browser false positives</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];

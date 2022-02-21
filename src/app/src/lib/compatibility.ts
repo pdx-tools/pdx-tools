@@ -26,7 +26,7 @@ export type BrowserCompatibility = {
 };
 
 export type WebkitCompatibility = {
-  kind: "webkit" | "safari";
+  kind: "ios" | "safari";
   version: string | null;
   required: string;
   supported: boolean;
@@ -65,8 +65,7 @@ function wasmCompatibility() {
   return window.WebAssembly !== undefined;
 }
 
-// Versions of safari / webkit known to handle our webgl2 shaders.
-const MINIMUM_WEBKIT = "605.1";
+// Versions of safari known to handle our webgl2 shaders.
 const MINIMUM_SAFARI = "15.2";
 
 export function userAgentCompatibility(ua: string): BrowserCompatibility {
@@ -74,11 +73,7 @@ export function userAgentCompatibility(ua: string): BrowserCompatibility {
     return {};
   }
 
-  if (
-    ua.includes("Android") ||
-    ua.includes("Linux") ||
-    ua.includes("Windows")
-  ) {
+  if (!ua.includes("Mac OS")) {
     return {};
   }
 
@@ -86,18 +81,18 @@ export function userAgentCompatibility(ua: string): BrowserCompatibility {
   const matches = ua.match(vere);
 
   if (matches === null) {
-    const safre = /Safari\/([0-9]+\.[0-9]+)/;
-    const safmatches = ua.match(safre);
-    if (safmatches === null) {
+    const osre = /OS ([0-9]+_[0-9]+)/;
+    const osMatches = ua.match(osre);
+    if (osMatches === null) {
       return {};
     } else {
-      const version = safmatches[1] ?? null;
-      const unsupported = +(version ?? 0) < +MINIMUM_WEBKIT;
+      const version = osMatches[1]?.replace(/_/g, ".") ?? null;
+      const unsupported = +(version ?? 0) < +MINIMUM_SAFARI;
       return {
         webkit: {
-          kind: "webkit",
+          kind: "ios",
           version,
-          required: MINIMUM_WEBKIT,
+          required: MINIMUM_SAFARI,
           supported: !unsupported,
         },
       };

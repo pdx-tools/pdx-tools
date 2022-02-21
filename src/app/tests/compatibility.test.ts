@@ -6,10 +6,10 @@ test("user-agent: chrome on old ios", () => {
   );
   expect(actual).toStrictEqual({
     webkit: {
-      kind: "webkit",
-      required: "605.1",
+      kind: "ios",
+      required: "15.2",
       supported: false,
-      version: "602.1",
+      version: "10.3",
     },
   });
 });
@@ -90,4 +90,53 @@ test("user-agent: desktop chrome", () => {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
   );
   expect(actual).toStrictEqual({});
+});
+
+test("user-agent: chrome on macOS", () => {
+  const actual = userAgentCompatibility(
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36"
+  );
+  expect(actual).toStrictEqual({});
+});
+
+test("user-agent: safari on old ipad", () => {
+  const actual = userAgentCompatibility(
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1 Safari/604.1"
+  );
+  expect(actual).toStrictEqual({
+    webkit: {
+      kind: "safari",
+      required: "15.2",
+      supported: false,
+      version: "14.1",
+    },
+  });
+});
+
+test("user-agent: chrome on old ipad", () => {
+  const actual = userAgentCompatibility(
+    "Mozilla/5.0 (iPad; CPU OS 14_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/92.0.4515.90 Mobile/15E148 Safari/604.1"
+  );
+  expect(actual).toStrictEqual({
+    webkit: {
+      kind: "ios",
+      required: "15.2",
+      supported: false,
+      version: "14.5",
+    },
+  });
+});
+
+test("user-agent: supported ios chrome", () => {
+  const actual = userAgentCompatibility(
+    "Mozilla/5.0 (iPhone; CPU OS 15_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/92.0.4515.90 Mobile/15E148 Safari/604.1"
+  );
+  expect(actual).toStrictEqual({
+    webkit: {
+      kind: "ios",
+      required: "15.2",
+      supported: true,
+      version: "15.2",
+    },
+  });
 });
