@@ -755,4 +755,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-02-23",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Support for CK3 1.5</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
