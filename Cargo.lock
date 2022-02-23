@@ -102,9 +102,11 @@ dependencies = [
  "anyhow",
  "aws-config",
  "aws-sdk-s3",
+ "brotli",
  "chrono",
  "filetime",
  "pico-args",
+ "schemas",
  "tokio",
  "tokio-stream",
  "walkdir",
@@ -539,9 +541,9 @@ dependencies = [
 
 [[package]]
 name = "ck3save"
-version = "0.2.11"
+version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c883ac5c6dbb3e51d3856008e2c998b3296d57d6aa8fe73cc02025778f89f87"
+checksum = "a3bc057fddadf0ecef12d9f6a70b6c6874b03f5681eef968d15b6deda9c1224f"
 dependencies = [
  "jomini",
  "serde",
@@ -773,6 +775,7 @@ dependencies = [
  "base64",
  "eu4save",
  "highway",
+ "jomini",
  "regex",
  "schemas",
  "serde",
@@ -783,8 +786,8 @@ dependencies = [
 
 [[package]]
 name = "eu4save"
-version = "0.5.4-pre"
-source = "git+https://github.com/rakaly/eu4save.git#14fd0338d219871d36e16f7bcadf1ea58643b446"
+version = "0.6.0"
+source = "git+https://github.com/rakaly/eu4save.git#b34bd28dcafcd60808b839315f28c225c01f945f"
 dependencies = [
  "jomini",
  "once_cell",
@@ -982,9 +985,9 @@ checksum = "a310093553e2397bd2936564960446b23233864bbffee554ec5847572e2dfd93"
 
 [[package]]
 name = "hoi4save"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b83fcd7db71013cc05f9861bdc772f747d78e366699d655c076223cb843a47f3"
+checksum = "267f861faa547084e68733a120421d80e47fb136a905d8f4027f722fb0674228"
 dependencies = [
  "jomini",
  "serde",
@@ -1093,9 +1096,9 @@ dependencies = [
 
 [[package]]
 name = "imperator-save"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e16910112cc2b321a1855c762031e1ab981f9bf2116bdaffe7406c8a741b2d7"
+checksum = "17bff072bd99f8d72007d837f41a6242a8c0d065e5afdc5e32bbea19b8384cd3"
 dependencies = [
  "jomini",
  "serde",
@@ -1154,9 +1157,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.16.4"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "384eb9d2415aeaaf18ec9cac341262c3d6a52fa7553232ce134f61ecfed31def"
+checksum = "727d2dad092c91afd844ddc524b8ba2c2b8bb4d6bc86099a65d00ba266d20e75"
 dependencies = [
  "jomini_derive",
  "serde",
@@ -2401,7 +2404,9 @@ name = "wasm-ck3"
 version = "0.1.0"
 dependencies = [
  "ck3save",
+ "jomini",
  "js-sys",
+ "schemas",
  "serde",
  "wasm-bindgen",
 ]
@@ -2420,6 +2425,7 @@ version = "0.1.0"
 dependencies = [
  "eu4game",
  "eu4save",
+ "jomini",
  "js-sys",
  "schemas",
  "serde",
@@ -2435,7 +2441,9 @@ name = "wasm-hoi4"
 version = "0.1.0"
 dependencies = [
  "hoi4save",
+ "jomini",
  "js-sys",
+ "schemas",
  "serde",
  "wasm-bindgen",
 ]
@@ -2445,7 +2453,9 @@ name = "wasm-imperator"
 version = "0.1.0"
 dependencies = [
  "imperator-save",
+ "jomini",
  "js-sys",
+ "schemas",
  "serde",
  "wasm-bindgen",
 ]

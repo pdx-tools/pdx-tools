@@ -10,9 +10,11 @@ publish = false
 anyhow = "1"
 aws-config = "0.4.1"
 aws-sdk-s3 = "0.4.1"
+brotli = "3"
 chrono = "0.4"
 filetime = "0.2"
 pico-args = "0.4"
+schemas = { path = "../schemas" }
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1.8"
 walkdir = "2"

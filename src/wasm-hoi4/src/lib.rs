@@ -2,6 +2,8 @@ use hoi4save::{models::Hoi4Save, Encoding, FailedResolveStrategy, Hoi4Date};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
+mod tokens;
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Hoi4Metadata {
@@ -40,7 +42,7 @@ impl SaveFileImpl {
 #[wasm_bindgen]
 pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
     let (save, encoding) = hoi4save::Hoi4Extractor::builder()
-        .extract_save(data)
+        .extract_save_with_tokens(data, tokens::get_tokens())
         .map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
 
     Ok(SaveFile(SaveFileImpl { save, encoding }))
@@ -50,7 +52,7 @@ pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
 pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
     let melter = hoi4save::Melter::new().with_on_failed_resolve(FailedResolveStrategy::Ignore);
     melter
-        .melt(data)
+        .melt_with_tokens(data, tokens::get_tokens())
         .map(|(x, _)| js_sys::Uint8Array::from(&x[..]))
         .map_err(|e| JsValue::from_str(e.to_string().as_str()))
 }

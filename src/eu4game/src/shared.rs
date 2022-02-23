@@ -4,6 +4,7 @@ use eu4save::{
     Encoding, Eu4Date, Eu4Error, RawEncoding,
 };
 use highway::{HighwayHash, HighwayHasher, Key};
+use jomini::TokenResolver;
 use std::io::Cursor;
 
 // This file contains code that is shared between the server and wasm, but not strictly relevant to
@@ -160,10 +161,15 @@ pub fn hash_countries(hash: &mut impl HighwayHash, content_date: Eu4Date, save: 
     }
 }
 
-pub fn parse_save(data: &[u8]) -> Result<(Eu4Save, Encoding), Eu4Error> {
+pub fn parse_save_with_tokens<Q>(data: &[u8], resolver: &Q) -> Result<(Eu4Save, Encoding), Eu4Error>
+where
+    Q: TokenResolver,
+{
     if let Some(tsave) = tarsave::extract_tarsave(data) {
-        let (meta, encoding) = eu4save::Eu4Extractor::extract_raw(tsave.meta)?;
-        let (gamestate, _) = eu4save::Eu4Extractor::extract_raw(tsave.gamestate)?;
+        let (meta, encoding) =
+            eu4save::Eu4Extractor::builder().extract_raw_with_tokens(tsave.meta, resolver)?;
+        let (gamestate, _) =
+            eu4save::Eu4Extractor::builder().extract_raw_with_tokens(tsave.gamestate, resolver)?;
 
         let encoding = match encoding {
             RawEncoding::Bin => Encoding::BinZip,
@@ -178,6 +184,10 @@ pub fn parse_save(data: &[u8]) -> Result<(Eu4Save, Encoding), Eu4Error> {
         ))
     } else {
         let reader = Cursor::new(data);
-        eu4save::Eu4Extractor::extract_save(reader)
+        eu4save::Eu4Extractor::builder().extract_save_with_tokens(reader, resolver)
     }
+}
+
+pub fn parse_save(data: &[u8]) -> Result<(Eu4Save, Encoding), Eu4Error> {
+    parse_save_with_tokens(data, &eu4save::tokens::TokenLookup)
 }

@@ -1,0 +1,7 @@
+namespace Rakaly.Tokens;
+
+table Tokens {
+  values:[string];
+}
+
+root_type Tokens;
