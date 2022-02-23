@@ -118,6 +118,13 @@ build-wasm: build-wasm-dev
   wait
 
 build-wasm-dev:
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  unset EU4_IRONMAN_TOKENS
+  unset HOI4_IRONMAN_TOKENS
+  unset CK3_IRONMAN_TOKENS
+  unset IMPERATOR_TOKENS
+
   wasm-pack build -t web src/wasm-br
   wasm-pack build -t web src/wasm-ck3
   wasm-pack build -t web src/wasm-detect
@@ -129,7 +136,7 @@ build-napi:
   cargo build --release -p applib-node
   cp -f ./target/release/libapplib_node.so ./src/app/src/server-lib/applib.node
 
-package-all *opts: touch-tokens
+package-all *opts: touch-tokens admin-tokenize
   #!/usr/bin/env bash
   set -euxo pipefail
   package() {
@@ -207,6 +214,9 @@ backup-saves ENVIRONMENT:
 admin-sync-assets:
   cargo build --release -p assets
   ACCESS_KEY="${ASSETS_ACCESS_KEY}" SECRET_KEY="${ASSETS_SECRET_KEY}" ./target/release/assets sync-assets
+
+admin-tokenize:
+  cargo run --release -p assets -- tokenize
 
 format:
   cargo fmt

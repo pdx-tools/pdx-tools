@@ -8,6 +8,8 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+jomini = "0.17.0"
+schemas = { path = "../schemas" }
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 serde = { version = "1", features = ["derive"] }
 hoi4save = "0.1"

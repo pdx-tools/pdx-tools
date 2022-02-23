@@ -6,7 +6,6 @@ use std::{env, fs};
 use regex::Regex;
 
 fn main() {
-    let _ = std::env::var("EU4_IRONMAN_TOKENS").unwrap();
     let entries = fs::read_dir("../../assets/game/eu4").unwrap();
     let re = Regex::new(r"(\d+)\.(\d+)").unwrap();
     let entries = entries.filter_map(|x| x.ok());

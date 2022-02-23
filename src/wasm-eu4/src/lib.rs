@@ -29,6 +29,7 @@ mod country_details;
 mod log;
 mod map;
 mod tag_filter;
+mod tokens;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LocalizedObj {
@@ -2614,8 +2615,8 @@ impl SaveFileParsed {
 
 #[wasm_bindgen]
 pub fn parse_save(data: &[u8]) -> Result<SaveFileParsed, JsValue> {
-    let (save, encoding) =
-        eu4game::shared::parse_save(data).map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+    let (save, encoding) = eu4game::shared::parse_save_with_tokens(data, tokens::get_tokens())
+        .map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
 
     Ok(SaveFileParsed(save, encoding))
 }
@@ -2657,12 +2658,12 @@ pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
 
     if let Some(tsave) = tarsave::extract_tarsave(data) {
         melter
-            .melt_entries(tsave.meta, tsave.gamestate, tsave.ai)
+            .melt_entries_with_tokens(tsave.meta, tsave.gamestate, tsave.ai, tokens::get_tokens())
             .map(|(x, _)| js_sys::Uint8Array::from(&x[..]))
             .map_err(|e| JsValue::from_str(e.to_string().as_str()))
     } else {
         melter
-            .melt(data)
+            .melt_with_tokens(data, tokens::get_tokens())
             .map(|(x, _)| js_sys::Uint8Array::from(&x[..]))
             .map_err(|e| JsValue::from_str(e.to_string().as_str()))
     }

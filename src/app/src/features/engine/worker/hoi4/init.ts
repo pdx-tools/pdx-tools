@@ -5,12 +5,22 @@ import { hoi4Metadata } from "./module";
 import { timeit } from "../worker-lib";
 import { AnalyzeOptions } from "../worker-types";
 
-let wasmInitialized: Promise<wasmModule.InitOutput> | undefined = undefined;
+let wasmInitialized: Promise<void> | undefined = undefined;
+
+async function loadWasm() {
+  const wasmInit = init(wasmPath);
+  const tokenLocation = require("../../../../../../../assets/tokens/hoi4.bin");
+  const tokenResp = await fetch(tokenLocation);
+  const tokenData = await tokenResp.arrayBuffer();
+  await wasmInit;
+  wasmModule.set_tokens(new Uint8Array(tokenData));
+}
 
 async function initializeWasm() {
   if (wasmInitialized === undefined) {
-    wasmInitialized = init(wasmPath);
+    wasmInitialized = loadWasm();
   }
+
   await wasmInitialized;
 }
 
