@@ -22,6 +22,7 @@ export const HeaderSideBarButton: React.FC<SideBarButtonProps> = ({
         }}
         bodyStyle={{
           padding: 0,
+          overflowY: "clip" /* antd upgrade needed this */,
         }}
       >
         <AppHeader />

@@ -69,7 +69,7 @@ export const ChartDrawer: React.FC<ChartDrawerProps> = ({
             showSearch
             defaultValue={defaultValue}
             value={selectedViz}
-            onChange={(e) => setSelectedViz(e)}
+            onChange={(e: VizModules) => setSelectedViz(e)}
             style={{ width: 200 }}
             filterOption={(input, option) => {
               if (Array.isArray(option?.options)) {

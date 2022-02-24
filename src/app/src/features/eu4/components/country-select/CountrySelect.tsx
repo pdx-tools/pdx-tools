@@ -11,35 +11,35 @@ const { OptGroup } = Select;
 
 type CountryFilterSelectProps = React.ComponentProps<typeof Select>;
 
-export const CountrySelect: React.FC<CountryFilterSelectProps> = ({
-  open,
-  ...rest
-}) => {
-  const humanCountries = useAppSelector(selectEu4HumanCountries);
-  const aliveAICountries = useAppSelector(selectEu4AliveAICountries);
-  const [isOpen, setIsOpen] = useState(open);
+export const CountrySelect: React.FC<CountryFilterSelectProps> =
+  React.forwardRef(({ open, ...rest }, ref) => {
+    const humanCountries = useAppSelector(selectEu4HumanCountries);
+    const aliveAICountries = useAppSelector(selectEu4AliveAICountries);
+    const [isOpen, setIsOpen] = useState(open);
 
-  const players = humanCountries.map(CountrySelectOption);
-  const others = aliveAICountries.map(CountrySelectOption);
+    const players = humanCountries.map(CountrySelectOption);
+    const others = aliveAICountries.map(CountrySelectOption);
 
-  return (
-    <Select
-      showSearch
-      optionFilterProp="label"
-      open={isOpen}
-      filterOption={(input, option) => {
-        const label = option?.options?.[0]?.searchlabel || option?.searchlabel;
-        if (typeof label === "string") {
-          return label.indexOf(input.toLowerCase()) !== -1;
-        } else {
-          return false;
-        }
-      }}
-      onDropdownVisibleChange={setIsOpen}
-      {...rest}
-    >
-      <OptGroup label="Players">{players}</OptGroup>
-      <OptGroup label="Others">{others}</OptGroup>
-    </Select>
-  );
-};
+    return (
+      <Select
+        showSearch
+        optionFilterProp="label"
+        open={isOpen}
+        ref={ref}
+        filterOption={(input, option) => {
+          const label =
+            option?.options?.[0]?.searchlabel || option?.searchlabel;
+          if (typeof label === "string") {
+            return label.indexOf(input.toLowerCase()) !== -1;
+          } else {
+            return false;
+          }
+        }}
+        onDropdownVisibleChange={setIsOpen}
+        {...rest}
+      >
+        <OptGroup label="Players">{players}</OptGroup>
+        <OptGroup label="Others">{others}</OptGroup>
+      </Select>
+    );
+  });

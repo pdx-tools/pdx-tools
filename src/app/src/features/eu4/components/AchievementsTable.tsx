@@ -60,16 +60,12 @@ export const AchievementsTable: React.FC<AchievementsTableProps> = ({
       width: 120,
       sorter: (a: TableEntry, b: TableEntry) =>
         difficultyComparator(a.achievement, b.achievement),
-      render: (difficulty: AchievementDifficulty) => {
-        return {
-          props: {
-            style: {
-              backgroundColor: difficultyColor(difficulty),
-            },
-          },
-          children: difficultyText(difficulty),
-        };
-      },
+      onCell: (record: TableEntry) => ({
+        style: {
+          backgroundColor: difficultyColor(record.achievement.difficulty),
+        },
+      }),
+      render: (difficulty: AchievementDifficulty) => difficultyText(difficulty),
     },
     {
       title: "Uploads",
