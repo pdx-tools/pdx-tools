@@ -38,11 +38,11 @@ export const CountryFilterDrawerContent: React.FC<
             value={filter.countries.map((x) => x.tag)}
             allowClear
             style={{ width: "100%", maxHeight: "150px", overflow: "auto" }}
-            onDeselect={(tag) =>
-              localDispatch({ kind: "exclude-tag", tag: tag as string })
+            onDeselect={(input: any) =>
+              localDispatch({ kind: "exclude-tag", tag: input as string })
             }
-            onSelect={(tag) =>
-              localDispatch({ kind: "include-tag", tag: tag as string })
+            onSelect={(input: any) =>
+              localDispatch({ kind: "include-tag", tag: input as string })
             }
           />
         )}

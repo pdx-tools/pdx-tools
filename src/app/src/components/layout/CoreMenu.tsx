@@ -41,11 +41,12 @@ interface CoreMenuProps {
 }
 
 const { className, styles } = css.resolve`
-  div {
+  .header-menu {
     display: flex;
     flex-grow: 1;
     align-self: center;
     justify-content: flex-end;
+    text-align: end;
   }
 `;
 
@@ -55,6 +56,7 @@ export const CoreMenu: React.FC<CoreMenuProps> = ({ mode }) => {
   const inlined = mode == "inline";
   const defaultOpenedKeys = !inlined ? [] : ["eu4", "community", "account"];
 
+  const isSubmenu = inlined && session.kind == "user";
   let accountSub;
   if (!inlined) {
     if (session.kind === "unknown") {
@@ -73,31 +75,27 @@ export const CoreMenu: React.FC<CoreMenuProps> = ({ mode }) => {
       );
     } else {
       accountSub = (
-        <Menu.SubMenu
-          key="account"
-          icon={
-            <Button
-              shape="circle"
-              icon={
-                <UserOutlined
-                  style={{
-                    margin: 0,
-                    display: "flex",
-                    justifyContent: "center",
-                  }}
-                />
-              }
-            />
-          }
-          style={{
-            display: "flex",
-            flexGrow: 1,
-            justifyContent: "end",
-            alignSelf: "center",
-          }}
-        >
-          {accountMenuOptions(logoutTrigger)}
-        </Menu.SubMenu>
+        <Menu theme="dark" mode="horizontal">
+          <Menu.SubMenu
+            key="account"
+            icon={
+              <Button
+                shape="circle"
+                icon={
+                  <UserOutlined
+                    style={{
+                      margin: 0,
+                      display: "flex",
+                      justifyContent: "center",
+                    }}
+                  />
+                }
+              />
+            }
+          >
+            {accountMenuOptions(logoutTrigger)}
+          </Menu.SubMenu>
+        </Menu>
       );
     }
   } else {
@@ -125,7 +123,7 @@ export const CoreMenu: React.FC<CoreMenuProps> = ({ mode }) => {
     }
   }
 
-  return (
+  const menu = (
     <Menu
       className="grow"
       style={{ display: !inlined ? "flex" : undefined }}
@@ -170,7 +168,18 @@ export const CoreMenu: React.FC<CoreMenuProps> = ({ mode }) => {
           <a href="https://github.com/sponsors/nickbabcock/">Sponsor</a>
         </Menu.Item>
       </Menu.SubMenu>
-      {accountSub}
+      {isSubmenu && accountSub}
     </Menu>
   );
+
+  if (isSubmenu) {
+    return menu;
+  } else {
+    return (
+      <div className={`flex grow ${inlined ? "flex-col" : "flex-row"}`}>
+        {menu}
+        {accountSub}
+      </div>
+    );
+  }
 };

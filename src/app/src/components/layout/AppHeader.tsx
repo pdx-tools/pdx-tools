@@ -10,7 +10,9 @@ const { useBreakpoint } = Grid;
 const HeaderMenu: React.FC<{}> = () => {
   const { md } = useBreakpoint();
 
-  if (md) {
+  if (md === undefined) {
+    return null;
+  } else if (md) {
     return <CoreMenu mode="horizontal" />;
   } else {
     return <MobileMenu />;

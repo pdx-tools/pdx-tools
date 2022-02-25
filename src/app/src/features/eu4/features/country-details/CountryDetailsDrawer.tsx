@@ -88,7 +88,7 @@ export const CountryDetailsDrawer: React.FC<CountryDetailsProps> = ({
           <CountrySelect
             value={selectedTag}
             style={{ width: "250px" }}
-            onSelect={(x) => {
+            onChange={(x: any) => {
               dispatch(setEu4SelectedTag(x as string));
               panTag(x as string);
             }}

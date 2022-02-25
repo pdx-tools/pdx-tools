@@ -19,12 +19,9 @@ export function countryColumnFilter<T>(
             open={true}
             autoFocus={true}
             value={selectedKeys.map((x) => x.toString()) || []}
-            onDeselect={(tag) => {
-              setSelectedKeys(selectedKeys.filter((x) => x != tag));
-              confirm({ closeDropdown: false });
-            }}
-            onSelect={(tag) => {
-              setSelectedKeys((selectedKeys || []).concat([tag as string]));
+            onChange={(input: any) => {
+              let tag: string = input;
+              setSelectedKeys([tag]);
               confirm({ closeDropdown: false });
             }}
           />

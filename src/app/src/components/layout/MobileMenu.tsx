@@ -14,6 +14,7 @@ export const MobileMenu: React.FC<{}> = () => {
       />
       <Drawer
         placement="right"
+        closable={false}
         onClose={() => setMenuVisible(false)}
         visible={menuVisible}
         bodyStyle={{
