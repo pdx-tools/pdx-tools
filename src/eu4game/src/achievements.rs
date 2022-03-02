@@ -531,10 +531,11 @@ impl WeightedScore {
 
 pub fn weighted_factor(major: u16, minor: u16) -> Option<f64> {
     match (major, minor) {
-        (1, 29) => Some(1.3),
-        (1, 30) => Some(1.2),
-        (1, 31) => Some(1.1),
-        (1, 32) => Some(1.0),
+        (1, 29) => Some(1.4),
+        (1, 30) => Some(1.3),
+        (1, 31) => Some(1.2),
+        (1, 32) => Some(1.1),
+        (1, 33) => Some(1.0),
         _ => None,
     }
 }
@@ -2533,8 +2534,8 @@ impl<'a> AchievementHunter<'a> {
 
         let provinces = if result.completed() {
             [
-                320, 321, 163, 164, 2348, 3003, 4700, 145, 1773, 4701, 4698, 142, 2982, 124, 125,
-                4737, 4736, 2954, 126, 127, 1247, 4559, 4560, 333, 112, 2986,
+                320, 321, 163, 164, 2348, 3003, 4700, 4698, 142, 2982, 124, 125, 4737, 4736, 2954,
+                126, 127, 1247, 4559, 4560, 333, 112, 4735, 2986,
             ]
             .iter()
             .all(|id| self.owns_core_province_id(ProvinceId::from(*id)))

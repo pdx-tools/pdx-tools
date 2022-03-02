@@ -439,3 +439,19 @@ fn test_dracula() {
         .collect();
     assert!(completed_ids.contains(&110));
 }
+
+#[test]
+fn test_not_just_pizza() {
+    let data = utils::request("naples.eu4");
+    let (save, encoding) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();
+    let game = Game::new(&save.meta.savegame_version);
+    let query = Query::from_save(save);
+    let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
+    let completed_ids: Vec<i32> = achievements
+        .achievements()
+        .iter()
+        .filter(|x| x.completed())
+        .map(|x| x.id)
+        .collect();
+    assert!(completed_ids.contains(&198));
+}
