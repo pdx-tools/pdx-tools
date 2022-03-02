@@ -765,4 +765,19 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-03-02",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Support for EU4 1.33 uploads</li>
+          <li>✨ - Add support for Not just Pizza achievement</li>
+          <li>
+            ✨ - Updated Knights of the Caribbean province requirements to
+            latest
+          </li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
