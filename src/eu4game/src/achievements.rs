@@ -306,6 +306,11 @@ pub fn achievements() -> Vec<Achievement> {
             description: String::from("Restore the Roman Empire and own the entire Mediterranean and Black Sea coast lines."),
             difficulty: Difficulty::Hard,
         }, Achievement {
+            id: 198,
+            name: String::from("Not just Pizza"),
+            description: String::from("Become a Great Power as Naples."),
+            difficulty: Difficulty::Medium,
+        }, Achievement {
             id: 208,
             name: String::from("Gold Rush"),
             description: String::from("Starting as a Tartar steppe nomad, form the golden horde before 1500"),
@@ -812,6 +817,7 @@ impl<'a> AchievementHunter<'a> {
             self.swahili_persuasion(),
             self.i_dont_like_sand(),
             self.atwix_legacy(),
+            self.not_just_pizza(),
             //            self.gothic_invasion(),
         ]
     }
@@ -2747,6 +2753,27 @@ impl<'a> AchievementHunter<'a> {
             .filter(|x| x.first == self.tag && x.subject_type == "personal_union")
             .count();
         result.and(AchievementCondition::new(unions >= 10, desc));
+
+        result
+    }
+
+    pub fn not_just_pizza(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(198);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+
+        let naples = "NAP".parse().unwrap();
+        let starter = self.starting_country == naples;
+        let desc = "started as Naples";
+        result.and(AchievementCondition::new(starter, desc));
+
+        let great_power = self
+            .country
+            .flags
+            .iter()
+            .any(|(flag, _)| flag == "became_great_power_flag");
+        let desc = "became a great power";
+        result.and(AchievementCondition::new(great_power, desc));
 
         result
     }
