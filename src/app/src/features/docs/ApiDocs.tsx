@@ -74,7 +74,7 @@ export const ApiDocs: React.FC<{}> = ({}) => {
       </p>
       <p>
         You can refer to how{" "}
-        <a href="https://github.com/crschnick/pdx_unlimiter/blob/68b758f66885836d8d51b51936bdd07a89585877/resources/web/rakaly.html">
+        <a href="https://github.com/crschnick/pdx_unlimiter/blob/938af410955437f8232de61d4a4755f0357e01b8/resources/web/pdx_tools.html">
           Pdx-Unlimiter
         </a>{" "}
         accomplishes it for an idea for your own implementation, but in short
