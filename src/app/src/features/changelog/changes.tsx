@@ -780,4 +780,16 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-03-10",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>
+            🐛 - recently tag switched nations from being excluded from the map
+          </li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
