@@ -115,6 +115,14 @@ impl SaveFileImpl {
             .iter()
             .filter_map(|x| x.as_ref())
             .chain(self.province_owners.changes.iter().map(|x| &x.tag))
+            .chain(
+                self.query
+                    .save()
+                    .game
+                    .provinces
+                    .values()
+                    .filter_map(|x| x.owner.as_ref()),
+            )
             .collect();
 
         let mut tags: HashSet<CountryTag> = HashSet::new();
