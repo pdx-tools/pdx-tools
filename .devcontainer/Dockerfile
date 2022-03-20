@@ -1,5 +1,5 @@
 ARG NODE_VERSION=16
-FROM mcr.microsoft.com/vscode/devcontainers/javascript-node:${NODE_VERSION}-bullseye
+FROM mcr.microsoft.com/vscode/devcontainers/javascript-node:0.203-${NODE_VERSION}-bullseye
 ARG JUST_VERSION=0.11.0
 ARG COMPOSE_VERSION=1.29.2
 ARG GIT_LFS_VERSION=3.0.2
