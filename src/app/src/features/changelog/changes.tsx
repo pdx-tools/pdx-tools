@@ -798,8 +798,12 @@ export const changes: ChangelogEntry[] = [
       return (
         <ChangelogList>
           <li>
-            🐛 - remove EU4 achievement A Manchurian Candidate as it couldn't be
+            🐛 - Remove EU4 achievement A Manchurian Candidate as it couldn't be
             detected properly
+          </li>
+          <li>
+            🐛 - Update EU4 melted output to be compatible with loading the save
+            from the in game menu by not containing a terminating newline
           </li>
         </ChangelogList>
       );

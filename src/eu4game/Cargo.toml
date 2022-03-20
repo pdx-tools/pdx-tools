@@ -10,7 +10,7 @@ default = ["embedded"]
 embedded = []
 
 [dependencies]
-jomini = "0.17"
+jomini = "0.18"
 eu4save = { git = "https://github.com/rakaly/eu4save.git" }
 schemas = { path = "../schemas" }
 tarsave = { path = "../tarsave" }
