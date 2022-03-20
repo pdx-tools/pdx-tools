@@ -195,11 +195,11 @@ pub fn achievements() -> Vec<Achievement> {
             name: String::from("Je maintiendrai"),
             description: String::from("Form the Netherlands as a minor nation starting with Dutch culture. Nice"),
             difficulty: Difficulty::Medium,
-        }, Achievement {
-            id: 84,
-            name: String::from("A Manchurian Candidate"),
-            description: String::from("Start as one of the Jurchen tribes and form Qing."),
-            difficulty: Difficulty::Hard,
+        // }, Achievement {
+        //     id: 84,
+        //     name: String::from("A Manchurian Candidate"),
+        //     description: String::from("Start as one of the Jurchen tribes and form Qing."),
+        //     difficulty: Difficulty::Hard,
         }, Achievement {
             id: 89,
             name: String::from("Shahanshah"),
@@ -791,7 +791,7 @@ impl<'a> AchievementHunter<'a> {
             self.god_tier(),
             self.everythings_coming_up_mulhouse(),
             self.true_heir_of_timur(),
-            self.a_manchurian_candidate(),
+            // self.a_manchurian_candidate(),
             self.ruina_imperii(),
             self.avar_khaganate(),
             self.albania_or_iberia(),

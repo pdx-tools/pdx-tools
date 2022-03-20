@@ -792,4 +792,17 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-03-20",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>
+            🐛 - remove EU4 achievement A Manchurian Candidate as it couldn't be
+            detected properly
+          </li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
