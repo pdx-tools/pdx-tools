@@ -1,4 +1,10 @@
-import React, { RefObject, useEffect, useRef, useState } from "react";
+import React, {
+  MutableRefObject,
+  RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { glContext } from "../eu4/features/map/resources";
 import { Eu4Canvas } from "../eu4/features/map/Eu4Canvas";
@@ -9,6 +15,7 @@ interface CanvasContextProps {
   glRef: RefObject<WebGL2RenderingContext | undefined>;
   containerRef: RefObject<HTMLDivElement>;
   eu4CanvasRef: RefObject<Eu4Canvas | undefined>;
+  sizeOverrideRef: MutableRefObject<boolean>;
 }
 
 const CanvasContext = React.createContext<CanvasContextProps | undefined>(
@@ -23,6 +30,7 @@ export const CanvasContextProvider: React.FC<{}> = ({ children }) => {
   const dispatch = useDispatch();
   const showCanvas = useSelector(selectShowCanvas);
   const [positioning, setPositioning] = useState(0);
+  const sizeOverrideRef = useRef<boolean>(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -35,7 +43,9 @@ export const CanvasContextProvider: React.FC<{}> = ({ children }) => {
         cancelAnimationFrame(resiveObserverAF);
         resiveObserverAF = requestAnimationFrame(() => {
           const bounds = container.getBoundingClientRect();
-          dispatch(canvasResize([bounds.width, bounds.height]));
+          if (!sizeOverrideRef.current) {
+            dispatch(canvasResize([bounds.width, bounds.height]));
+          }
         });
       });
       ro.observe(container);
@@ -60,12 +70,12 @@ export const CanvasContextProvider: React.FC<{}> = ({ children }) => {
         ref={containerRef}
         style={{ display: showCanvas ? "flex" : "none", top: -positioning }}
       >
-        <canvas ref={canvasRef} hidden={true} />
+        <canvas
+          ref={canvasRef}
+          hidden={true}
+          style={!sizeOverrideRef.current ? { maxWidth: "100%" } : {}}
+        />
         <style jsx>{`
-          canvas {
-            max-width: 100%;
-          }
-
           div {
             width: 100%;
             height: 100%;
@@ -75,7 +85,13 @@ export const CanvasContextProvider: React.FC<{}> = ({ children }) => {
         `}</style>
       </div>
       <CanvasContext.Provider
-        value={{ canvasRef, containerRef, glRef, eu4CanvasRef }}
+        value={{
+          canvasRef,
+          containerRef,
+          glRef,
+          eu4CanvasRef,
+          sizeOverrideRef,
+        }}
       >
         {children}
       </CanvasContext.Provider>
@@ -116,7 +132,7 @@ export function getEu4Map(x: CanvasContextProps["eu4CanvasRef"]) {
   }
 }
 
-function useCanvasContext() {
+export function useCanvasContext() {
   const data = React.useContext(CanvasContext);
   if (data === undefined) {
     throw new Error("canvas context is undefined");

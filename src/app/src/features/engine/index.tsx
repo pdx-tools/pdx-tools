@@ -15,4 +15,5 @@ export {
   getEu4Map,
   useCanvasRef,
   getCanvas,
+  useCanvasContext,
 } from "./persistant-canvas-context";

@@ -71,6 +71,7 @@ export class WebGLMap {
   public onProvinceHover?: (proinceId: number) => void;
   public onProvinceSelection?: (proinceId: number) => void;
   public onDraw?: (event: DrawEvent) => void;
+  public onCommit?: (context: WebGL2RenderingContext) => void;
 
   constructor(
     private gl: WebGL2RenderingContext,
@@ -269,6 +270,7 @@ export class WebGLMap {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.bindVertexArray(null);
 
+    this.onCommit?.(gl);
     this.glResources.xbrShaderProgram.clear();
     this.cancelQueuedViewportAnimation();
     this.viewportAnimationRequestCancelled = 0;
