@@ -23,6 +23,7 @@ import type {
   LocalizedCountryExpense,
   LocalizedCountryIncome,
   LocalizedTag,
+  MapDate,
   PlayerHistory,
   ProvinceDetails,
   RawWarInfo,
@@ -297,6 +298,10 @@ export function eu4DateToDays(s: string): number {
 
 export function eu4DaysToDate(s: number): string {
   return loadedSave().days_to_date(s);
+}
+
+export function eu4IncrementDate(days: number, increment: string): MapDate {
+  return loadedSave().increment_date(days, increment);
 }
 
 export function eu4GetProvinceDeteails(id: number): ProvinceDetails {

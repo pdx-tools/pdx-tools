@@ -365,6 +365,12 @@ pub struct LocalizedLedger {
     pub localization: Vec<LocalizedTag>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct MapDate {
+    pub days: i32,
+    pub text: String,
+}
+
 #[wasm_bindgen]
 pub struct SaveFile(SaveFileImpl);
 
@@ -427,6 +433,10 @@ impl SaveFile {
             .date_to_days(date)
             .map(|x| JsValue::from_f64(x as f64))
             .unwrap_or_else(JsValue::null)
+    }
+
+    pub fn increment_date(&self, days: f64, increment: &str) -> JsValue {
+        JsValue::from_serde(&self.0.increment_date(days, increment)).unwrap()
     }
 
     pub fn get_players(&self) -> JsValue {
@@ -1021,6 +1031,29 @@ impl SaveFileImpl {
             None
         } else {
             Some(days)
+        }
+    }
+
+    pub fn increment_date(&self, days: f64, increment: &str) -> MapDate {
+        let days = days.trunc() as i32;
+        let init_date = self.query.save().game.start_date.add_days(days);
+
+        let next_date = match increment {
+            "Year" => init_date.add_days(365),
+            "Month" => {
+                if init_date.month() + 1 > 12 {
+                    Eu4Date::from_ymd(init_date.year() + 1, 1, init_date.day())
+                } else {
+                    Eu4Date::from_ymd(init_date.year(), init_date.month() + 1, init_date.day())
+                }
+            }
+            "Week" => init_date.add_days(7),
+            _ => init_date.add_days(1),
+        };
+
+        MapDate {
+            days: self.query.save().game.start_date.days_until(&next_date),
+            text: next_date.iso_8601().to_string(),
         }
     }
 
