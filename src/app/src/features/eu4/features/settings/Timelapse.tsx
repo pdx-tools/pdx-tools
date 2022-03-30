@@ -11,7 +11,7 @@ export const Timelapse: React.FC<{}> = () => {
   const meta = useEu4Meta();
   const workerRef = useWasmWorker();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [intervalSelection, setIntervalSelection] = useState<string>("Day");
+  const [intervalSelection, setIntervalSelection] = useState<string>("Year");
   const currentMapDate = useSelector(selectEu4MapDate);
   const rafId = useRef(0);
 
@@ -81,20 +81,20 @@ export const Timelapse: React.FC<{}> = () => {
           optionType="button"
           options={[
             {
-              label: "Day",
-              value: "Day",
-            },
-            {
-              label: "Week",
-              value: "Week",
+              label: "Year",
+              value: "Year",
             },
             {
               label: "Month",
               value: "Month",
             },
             {
-              label: "Year",
-              value: "Year",
+              label: "Week",
+              value: "Week",
+            },
+            {
+              label: "Day",
+              value: "Day",
             },
           ]}
         />
