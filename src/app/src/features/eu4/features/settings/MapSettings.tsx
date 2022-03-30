@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Spin, Dropdown, Button } from "antd";
+import { Spin, Dropdown, Button, Divider } from "antd";
 import { DownOutlined } from "@ant-design/icons";
 import { useSelector } from "react-redux";
 import { useAppDispatch } from "@/lib/store";
@@ -20,6 +20,7 @@ import { CountryFilterButton } from "../country-filter";
 import { DateTimeline } from "./DateTimeline";
 import { MapExportMenu } from "./MapExportMenu";
 import { ToggleRow } from "./ToggleRow";
+import { Timelapse } from "./Timelapse";
 
 export const MapSettings: React.FC<{}> = () => {
   const [isExporting, setIsExporting] = useState(false);
@@ -93,7 +94,11 @@ export const MapSettings: React.FC<{}> = () => {
         text="Paint map mode borders"
       />
 
+      <Divider orientation="left">Date Controls</Divider>
       <DateTimeline />
+
+      <Divider orientation="left">Timelapse</Divider>
+      <Timelapse />
     </>
   );
 };

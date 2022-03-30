@@ -10,10 +10,7 @@ import {
   setMapDate,
   useEu4Meta,
 } from "@/features/eu4/eu4Slice";
-import {
-  getWasmWorker,
-  useWasmWorker,
-} from "../../../engine/worker/wasm-worker-context";
+import { getWasmWorker, useWasmWorker } from "@/features/engine";
 
 export const DateTimeline: React.FC<{}> = () => {
   const dispatch = useAppDispatch();

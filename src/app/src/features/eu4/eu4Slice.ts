@@ -4,15 +4,11 @@ import {
   CountryMatcher,
   EnhancedCountryInfo,
   EnhancedMeta,
+  MapDate,
 } from "./types/models";
 import { MapControls, MapOnlyControls, MapPayload } from "./types/map";
 import { RootState, useAppSelector } from "@/lib/store";
 import { SaveFile } from "@/services/appApi";
-
-interface MapDate {
-  days: number;
-  text: string;
-}
 
 interface EndEu4AnalyzePayload {
   date: string;

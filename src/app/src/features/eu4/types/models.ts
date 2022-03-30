@@ -602,3 +602,8 @@ export interface CountryLeader {
   activation: string | null;
   monarch_stats: MonarchStats | null;
 }
+
+export interface MapDate {
+  days: number;
+  text: string;
+}
