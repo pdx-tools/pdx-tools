@@ -809,4 +809,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-03-30",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Add map timelapse controls</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
