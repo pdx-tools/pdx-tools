@@ -9,7 +9,7 @@ jobs:
   dev:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
     - run: docker build .
@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
 
@@ -42,7 +42,7 @@ jobs:
         echo "ASSETS_SECRET_KEY=$ASSETS_SECRET_KEY" >> .env
 
     - name: Cache assets
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
           assets/game-bundles
@@ -51,7 +51,7 @@ jobs:
 
     # https://nextjs.org/docs/messages/no-cache#github-actions
     - name: Cache Next.js build
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: src/app/.next/cache
         key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
