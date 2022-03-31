@@ -56,6 +56,8 @@ async fn _cmd(mut args: pico_args::Arguments) -> anyhow::Result<()> {
         })
         .collect();
 
+    println!("detected local game bundles: {:?}", &current_game_bundles);
+
     for object in object_list.contents().unwrap_or_default() {
         let key = object.key().context("expected key to be defined")?;
         let filename = key
@@ -73,7 +75,13 @@ async fn _cmd(mut args: pico_args::Arguments) -> anyhow::Result<()> {
             let local_modified: DateTime<Utc> = (*created).into();
 
             match remote_modified.cmp(&local_modified) {
-                std::cmp::Ordering::Greater => download = true,
+                std::cmp::Ordering::Greater => {
+                    download = true;
+                    println!(
+                        "remote ({}) is more recent than local ({}), downloading {}",
+                        remote_modified, local_modified, filename
+                    );
+                }
                 std::cmp::Ordering::Equal => {}
                 std::cmp::Ordering::Less => {
                     bail!(
@@ -82,10 +90,11 @@ async fn _cmd(mut args: pico_args::Arguments) -> anyhow::Result<()> {
                     );
                 }
             }
+        } else {
+            println!("does not exist locally, downloading: {}", filename);
         }
 
         if download {
-            println!("downloading {}", filename);
             download_object(&client, key)
                 .await
                 .with_context(|| format!("unable to download {}", key))?;
@@ -138,6 +147,6 @@ async fn download_object(client: &Client, key: &str) -> anyhow::Result<()> {
     filetime::set_file_mtime(&out_path, mtime)
         .with_context(|| format!("unable to set mtime on {}", out_path.display()))?;
 
-    println!("downloaded {}", key);
+    println!("downloaded {} and set mtime: {}", key, mtime);
     Ok(())
 }
