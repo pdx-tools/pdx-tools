@@ -15,7 +15,7 @@ eu4save = { git = "https://github.com/rakaly/eu4save.git" }
 schemas = { path = "../schemas" }
 tarsave = { path = "../tarsave" }
 serde = { version = "1", features = ["derive"] }
-highway = "0.7"
+highway = "0.8"
 base64 = "0.13"
 
 [dev-dependencies]
