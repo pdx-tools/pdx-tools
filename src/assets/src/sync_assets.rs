@@ -56,7 +56,7 @@ async fn _cmd(mut args: pico_args::Arguments) -> anyhow::Result<()> {
         })
         .collect();
 
-    println!("detected local game bundles: {:?}", &current_game_bundles);
+    println!("detected local game bundles: {:#?}", &current_game_bundles);
 
     for object in object_list.contents().unwrap_or_default() {
         let key = object.key().context("expected key to be defined")?;
