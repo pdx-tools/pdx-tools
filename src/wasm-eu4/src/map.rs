@@ -285,17 +285,23 @@ impl SaveFileImpl {
                         }
                     }
 
-                    let country_colors: HashMap<&CountryTag, [u8; 4]> = self
-                        .query
-                        .save()
-                        .game
-                        .countries
-                        .iter()
-                        .map(|(tag, country)| {
-                            let c = &country.colors.map_color;
-                            (tag, [c[0], c[1], c[2], 255])
-                        })
-                        .collect();
+                    let no_owner: CountryTag = "---".parse().unwrap();
+                    let country_colors = {
+                        let mut colors: HashMap<&CountryTag, [u8; 4]> = self
+                            .query
+                            .save()
+                            .game
+                            .countries
+                            .iter()
+                            .map(|(tag, country)| {
+                                let c = &country.colors.map_color;
+                                (tag, [c[0], c[1], c[2], 255])
+                            })
+                            .collect();
+
+                        colors.insert(&no_owner, [94, 94, 94, 128]);
+                        colors
+                    };
 
                     for (id, owner) in owners.iter().enumerate() {
                         let offset = match province_id_to_color_index.get(id) {
@@ -313,6 +319,22 @@ impl SaveFileImpl {
                                 primary_color.copy_from_slice(known_color);
                                 secondary_color.copy_from_slice(known_color);
                             }
+                        }
+                    }
+
+                    for prov in self.game.provinces() {
+                        let id = usize::from(prov.id.as_u16());
+                        if owners.get(id).and_then(|x| x.as_ref()).is_none()
+                            && prov.terrain != schemas::eu4::Terrain::Wasteland
+                            && prov.terrain != schemas::eu4::Terrain::Ocean
+                        {
+                            let offset = match province_id_to_color_index.get(id) {
+                                Some(&ind) => ind as usize * 4,
+                                None => continue,
+                            };
+
+                            primary[offset..offset + 4].copy_from_slice(&[94, 94, 94, 128]);
+                            secondary[offset..offset + 4].copy_from_slice(&[94, 94, 94, 128]);
                         }
                     }
 
