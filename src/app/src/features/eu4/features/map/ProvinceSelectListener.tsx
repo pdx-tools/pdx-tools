@@ -11,7 +11,7 @@ import {
 } from "@/features/engine";
 
 export const ProvinceSelectListener: React.FC<{}> = () => {
-  const canvasRef = useEu4CanvasRef();
+  const eu4CanvasRef = useEu4CanvasRef();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [provinceDetails, setProvinceDetails] = useState<
     ProvinceDetails | undefined
@@ -19,11 +19,11 @@ export const ProvinceSelectListener: React.FC<{}> = () => {
   const [provinceId, setProvinceId] = useState<number | undefined>(undefined);
 
   useEffect(() => {
-    const map = getEu4Canvas(canvasRef);
-    if (map.map) {
-      map.map.onProvinceSelection = (id) => setProvinceId(id);
+    const map = eu4CanvasRef.current?.map;
+    if (map) {
+      map.onProvinceSelection = (id) => setProvinceId(id);
     }
-  }, [canvasRef]);
+  }, [eu4CanvasRef]);
 
   const cb = useCallback(
     async (worker: WorkerClient) => {

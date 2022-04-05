@@ -83,7 +83,7 @@ export const useWorkerOnSave = (cb: (arg0: WorkerClient) => Promise<void>) => {
   useEffect(() => {
     async function getData() {
       try {
-        if (isMounted.current) {
+        if (isMounted()) {
           setLoading(true);
           const worker = getWasmWorker(workerRef);
           await cb(worker);
@@ -92,13 +92,13 @@ export const useWorkerOnSave = (cb: (arg0: WorkerClient) => Promise<void>) => {
         captureException(error);
         dispatch(newError(error));
       } finally {
-        if (isMounted.current) {
+        if (isMounted()) {
           setLoading(false);
         }
       }
     }
     getData();
-  }, [workerRef, cb, analyzeId, dispatch, isMounted]);
+  }, [workerRef, cb, dispatch, isMounted, analyzeId]);
 
   return loading;
 };
@@ -124,16 +124,14 @@ export const useAnalysisWorker = (
 ) => {
   const loading = useWorkerOnSave(cb);
   const visualizationDispatch = useVisualizationDispatch();
-  const hasMounted = useRef(false);
+  const isMounted = useIsMounted();
   useEffect(() => {
-    if (hasMounted.current) {
+    if (isMounted()) {
       if (loading) {
         visualizationDispatch({ type: "enqueue-loading" });
       } else {
         visualizationDispatch({ type: "dequeue-loading" });
       }
-    } else {
-      hasMounted.current = true;
     }
-  }, [loading, visualizationDispatch]);
+  }, [loading, visualizationDispatch, isMounted]);
 };

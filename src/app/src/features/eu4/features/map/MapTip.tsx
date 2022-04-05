@@ -96,12 +96,14 @@ export const MapTip: React.FC<{}> = () => {
   }, [mapTip]);
 
   useEffect(() => {
-    const map = getEu4Map(eu4CanvasRef);
-    map.onProvinceHover = (e) => {
-      if (isMounted.current) {
-        setProvinceId(e);
-      }
-    };
+    const map = eu4CanvasRef.current?.map;
+    if (map) {
+      map.onProvinceHover = (e) => {
+        if (isMounted()) {
+          setProvinceId(e);
+        }
+      };
+    }
   }, [eu4CanvasRef, isMounted]);
 
   useEffect(() => {
@@ -117,7 +119,7 @@ export const MapTip: React.FC<{}> = () => {
 
     tooltipTimer.current = setTimeout(async () => {
       const data = await worker.eu4GetMapTooltip(provinceId, mapColor);
-      if (isMounted.current) {
+      if (isMounted()) {
         setMapTip(data);
       }
     }, 250);

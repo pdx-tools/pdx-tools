@@ -12,6 +12,10 @@ export function loadedSave() {
   }
 }
 
+export function eu4GetSaveFile() {
+  return savefile;
+}
+
 export function eu4SetSaveFile(aSavefile: SaveFile) {
   savefile?.free();
   savefile = aSavefile;

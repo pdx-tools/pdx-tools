@@ -38,7 +38,7 @@ import { MapPayload, QuickTipPayload } from "../../../eu4/types/map";
 import { getRawData } from "../storage";
 import { LedgerDataRaw, workLedgerData } from "../../../eu4/utils/ledger";
 import { expandLosses } from "../../../eu4/utils/losses";
-import { eu4GetMeta, loadedSave } from "./common";
+import { eu4GetMeta, eu4GetSaveFile, loadedSave } from "./common";
 
 let provinceIdToColorIndex = new Uint16Array();
 
@@ -312,7 +312,7 @@ export function eu4GetMapTooltip(
   province: number,
   payload: MapPayload
 ): QuickTipPayload | null {
-  return loadedSave().map_quick_tip(province, payload);
+  return eu4GetSaveFile()?.map_quick_tip(province, payload) ?? null;
 }
 
 export async function eu4SaveHash(): Promise<string> {
