@@ -55,6 +55,12 @@ export const GameView: React.FC<{}> = () => {
     };
   }, [dispatch, router.events]);
 
+  useEffect(() => {
+    return () => {
+      dispatch(resetSaveAnalysis());
+    };
+  }, [dispatch]);
+
   switch (game) {
     case "ck3": {
       return <Ck3View />;

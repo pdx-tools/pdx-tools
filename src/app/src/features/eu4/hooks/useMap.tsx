@@ -48,7 +48,7 @@ export function useMap() {
       }
 
       const map = getEu4Canvas(mapRef);
-      if (canvasState.current == "initial") {
+      if (canvasState.current == "initial" && map.map) {
         map.resize(canvasWidth, canvasHeight);
 
         map.cameraFromDimesions(

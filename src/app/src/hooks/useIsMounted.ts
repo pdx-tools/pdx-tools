@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
+// https://usehooks-ts.com/react-hook/use-is-mounted
 export const useIsMounted = () => {
   const isMounted = useRef(false);
 
@@ -8,7 +9,7 @@ export const useIsMounted = () => {
     return () => {
       isMounted.current = false;
     };
-  }, [isMounted]);
+  }, []);
 
-  return isMounted;
+  return useCallback(() => isMounted.current, []);
 };
