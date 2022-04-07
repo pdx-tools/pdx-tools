@@ -26,6 +26,19 @@ let nextConfig = {
   async headers() {
     return [
       {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Cross-Origin-Embedder-Policy",
+            value: "require-corp",
+          },
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin",
+          },
+        ],
+      },
+      {
         source: "/:path*.bin",
         headers: [
           {
@@ -42,11 +55,14 @@ let nextConfig = {
 };
 
 if (process.env.SENTRY_DSN) {
-  nextConfig = withSentryConfig(nextConfig,{
+  nextConfig = withSentryConfig(nextConfig, {
     silent: true,
-    include: [{
-      paths: [".next/static/chunks"], urlPrefix: "~/_next/static/chunks"
-    }],
+    include: [
+      {
+        paths: [".next/static/chunks"],
+        urlPrefix: "~/_next/static/chunks",
+      },
+    ],
   });
 }
 

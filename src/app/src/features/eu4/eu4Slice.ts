@@ -131,6 +131,9 @@ const eu4Slice = createSlice({
       state.mapControls.showMapModeBorders =
         action.payload ?? !state.mapControls.showMapModeBorders;
     },
+    setMapControls(state, action: PayloadAction<MapControls>) {
+      state.mapControls = action.payload;
+    },
     setMapDate(state, action: PayloadAction<MapDate>) {
       state.mapDate.days = action.payload.days;
       state.mapDate.text = action.payload.text;
@@ -234,6 +237,7 @@ export const {
   setEu4SelectedTag,
   setEu4ServerSaveFile,
   setMapDate,
+  setMapControls,
   togglePaintSubjectInOverlordHue,
   toggleShowController,
   toggleShowTerrain,

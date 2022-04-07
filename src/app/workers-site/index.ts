@@ -195,6 +195,8 @@ function withSecurityHeaders(response: Response, pathname: string) {
   );
   newResponse.headers.set("X-XSS-Protection", "1; mode=block");
   newResponse.headers.set("X-Content-Type-Options", "nosniff");
+  newResponse.headers.set("Cross-Origin-Embedder-Policy", "require-corp");
+  newResponse.headers.set("Cross-Origin-Opener-Policy", "same-origin");
   return newResponse;
 }
 

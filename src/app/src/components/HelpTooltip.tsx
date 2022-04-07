@@ -4,7 +4,7 @@ import { Tooltip } from "antd";
 import css from "styled-jsx/css";
 
 const { className, styles } = css.resolve`
-  button {
+  span.anticon {
     color: rgba(0, 0, 0, 0.45);
     cursor: help;
   }

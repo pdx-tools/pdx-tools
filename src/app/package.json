@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ant-design/charts": "^1.2.5",
+    "@ffmpeg/ffmpeg": "^0.10.1",
     "@prisma/client": "^3.9.2",
     "@reduxjs/toolkit": "^1.8.0",
     "@sentry/nextjs": "^6.19.3",

@@ -1,11 +1,13 @@
 import React from "react";
 import { Col, Row, Switch } from "antd";
+import { HelpTooltip } from "@/components/HelpTooltip";
 
 export interface ToggleRowProps {
   value: boolean;
   onChange: (value: boolean) => void;
   text: string;
   disabled?: boolean;
+  help?: string;
 }
 
 export const ToggleRow: React.FC<ToggleRowProps> = ({
@@ -13,6 +15,7 @@ export const ToggleRow: React.FC<ToggleRowProps> = ({
   onChange,
   text,
   disabled = false,
+  help,
 }) => {
   const controlSpan = 4;
   const labelSpan = 24 - controlSpan;
@@ -40,6 +43,11 @@ export const ToggleRow: React.FC<ToggleRowProps> = ({
         onClick={disabled ? () => {} : () => onChange(!value)}
       >
         {text}
+        {help && (
+          <span style={{ marginLeft: "4px" }}>
+            <HelpTooltip help={help} />
+          </span>
+        )}
       </Col>
     </Row>
   );
