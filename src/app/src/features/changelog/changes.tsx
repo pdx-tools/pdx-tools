@@ -819,4 +819,16 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-04-06",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Add map timelapse recordings</li>
+          <li>🐛 - Reset game analysis to fix canvas undefined errors</li>
+          <li>🐛 - Fix map colors for unowned provinces in timelapse</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
