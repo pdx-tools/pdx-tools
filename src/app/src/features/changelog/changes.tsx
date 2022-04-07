@@ -831,4 +831,17 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-04-07",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>
+            🐛 - Fix incorrect timelapse owner for newly released nations on
+            conquered provinced on same day as peace deal
+          </li>
+        </ChangelogList>
+      );
+    },
+  },
 ];

@@ -256,7 +256,7 @@ impl SaveFileImpl {
                         }
                     }
 
-                    tag_swithces.sort_unstable_by(|(adate, _, _), (bdate, _, _)| adate.cmp(bdate));
+                    tag_swithces.sort_by(|(adate, _, _), (bdate, _, _)| adate.cmp(bdate));
                     let mut switches = tag_swithces.iter();
                     let mut current_switch = switches.next();
 
