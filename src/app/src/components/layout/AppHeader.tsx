@@ -4,6 +4,7 @@ import { Layout, Grid } from "antd";
 import { AppSvg } from "../icons/AppIcon";
 import { CoreMenu } from "./CoreMenu";
 import { MobileMenu } from "./MobileMenu";
+import { AnnouncementBar } from "./AnnouncementBar";
 const { Header } = Layout;
 const { useBreakpoint } = Grid;
 
@@ -26,6 +27,18 @@ interface AppHeaderProps {
 export const AppHeader: React.FC<AppHeaderProps> = ({ disabled = false }) => {
   return (
     <div className="flex-col" style={{ display: disabled ? "none" : "flex" }}>
+      <AnnouncementBar>
+        <span>
+          NEW: Create map timelapses!{" "}
+          <a
+            style={{ color: "#e8cabe" }}
+            href="/blog/lights-camera-action-timelapse-maps"
+            aria-label="Lights, camera, action: timelapse maps"
+          >
+            Read more
+          </a>
+        </span>
+      </AnnouncementBar>
       <Header style={{ padding: "0 16px" }}>
         <div className="flex-row items-center menu">
           <style jsx>{`
