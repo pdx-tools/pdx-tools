@@ -190,6 +190,7 @@ backup ENVIRONMENT:
   backup-db {{ENVIRONMENT}}
   backup-leaderboard {{ENVIRONMENT}}
   backup-saves {{ENVIRONMENT}}
+  backup-config {{ENVIRONMENT}}
 
 backup-db ENVIRONMENT:
   ssh -t pdx-tools-{{ENVIRONMENT}} '/opt/pdx-tools/docker-compose.sh exec --user postgres db pg_dump --exclude-table=\*prisma\* --data-only' > db-{{ENVIRONMENT}}.dump
@@ -210,6 +211,9 @@ backup-saves ENVIRONMENT:
   export RCLONE_CONFIG_PDX_ENDPOINT="${S3_ENDPOINT/https:\/\//}"
 
   rclone sync --no-gzip-encoding --backup-dir ./saves-archive "pdx:/$S3_BUCKET" ./saves
+
+backup-config ENVIRONMENT:
+  ssh pdx-tools-{{ENVIRONMENT}} 'tar -c -C /opt/pdx-tools .' > config-{{ENVIRONMENT}}.tar
 
 admin-sync-assets:
   cargo build --release -p assets
