@@ -193,11 +193,11 @@ backup ENVIRONMENT:
   backup-config {{ENVIRONMENT}}
 
 backup-db ENVIRONMENT:
-  ssh -t pdx-tools-{{ENVIRONMENT}} '/opt/pdx-tools/docker-compose.sh exec --user postgres db pg_dump --exclude-table=\*prisma\* --data-only' > db-{{ENVIRONMENT}}.dump
-  ssh -t pdx-tools-{{ENVIRONMENT}} '/opt/pdx-tools/docker-compose.sh exec --user postgres db psql --command "\COPY saves TO STDOUT CSV HEADER"' > db-{{ENVIRONMENT}}-saves.csv
+  ssh pdx-tools-{{ENVIRONMENT}} '/opt/pdx-tools/docker-compose.sh exec -T --user postgres db pg_dump --exclude-table=\*prisma\* --data-only' > db-{{ENVIRONMENT}}.dump
+  ssh pdx-tools-{{ENVIRONMENT}} '/opt/pdx-tools/docker-compose.sh exec -T --user postgres db psql --command "\COPY saves TO STDOUT CSV HEADER"' > db-{{ENVIRONMENT}}-saves.csv
 
 backup-leaderboard ENVIRONMENT:
-  ssh -t pdx-tools-{{ENVIRONMENT}} '/opt/pdx-tools/docker-compose.sh exec redis cat dump.rdb' > leaderboard-{{ENVIRONMENT}}.rdb
+  ssh pdx-tools-{{ENVIRONMENT}} '/opt/pdx-tools/docker-compose.sh exec -T redis cat dump.rdb' > leaderboard-{{ENVIRONMENT}}.rdb
 
 backup-saves ENVIRONMENT:
   #!/usr/bin/env bash
