@@ -39,6 +39,7 @@ export const Bar: ComponentType<BarConfig> = React.memo(
 export {
   VisualizationProvider,
   useVisualizationDispatch,
+  useVisualization,
   useIsLoading,
 } from "./visualization-context";
 

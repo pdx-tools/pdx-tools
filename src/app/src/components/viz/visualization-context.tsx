@@ -2,9 +2,13 @@ import React from "react";
 
 interface VisualizationState {
   loading: number;
+  getCsvData: () => Promise<string>;
 }
 
-type Action = { type: "enqueue-loading" } | { type: "dequeue-loading" };
+type Action =
+  | { type: "enqueue-loading" }
+  | { type: "dequeue-loading" }
+  | { type: "update-csv-data"; getCsvData: VisualizationState["getCsvData"] };
 
 type Dispatch = (action: Action) => void;
 const VisualizationContext = React.createContext<
@@ -23,12 +27,15 @@ function visualizationReducer(
       return { ...state, loading: state.loading + 1 };
     case "dequeue-loading":
       return { ...state, loading: state.loading - 1 };
+    case "update-csv-data":
+      return { ...state, getCsvData: action.getCsvData };
   }
 }
 
 export const VisualizationProvider: React.FC<{}> = ({ children }) => {
   const [state, dispatch] = React.useReducer(visualizationReducer, {
     loading: 0,
+    getCsvData: async () => "",
   });
 
   return (
@@ -40,7 +47,7 @@ export const VisualizationProvider: React.FC<{}> = ({ children }) => {
   );
 };
 
-function useVisualization() {
+export function useVisualization() {
   const data = React.useContext(VisualizationContext);
   if (data === undefined) {
     throw new Error("visualization context is undefined");

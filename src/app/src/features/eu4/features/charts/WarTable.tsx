@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Input, Table } from "antd";
 import { PlusCircleTwoTone, MinusCircleTwoTone } from "@ant-design/icons";
 import { ColumnGroupType, ColumnType } from "antd/lib/table";
@@ -11,6 +11,8 @@ import { useWorkerOnSave, WorkerClient } from "@/features/engine";
 import { useSelector } from "react-redux";
 import { selectEu4CountryFilter } from "@/features/eu4/eu4Slice";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
+import { createCsv } from "@/lib/csv";
+import { useVisualizationDispatch } from "@/components/viz";
 
 interface WarSideData extends WarSide {
   original_name: string;
@@ -25,6 +27,7 @@ interface WarTableData extends War {
 export const WarTable: React.FC<{}> = () => {
   const [data, setData] = useState<WarTableData[]>([]);
   const filter = useSelector(selectEu4CountryFilter);
+  const visualizationDispatch = useVisualizationDispatch();
   const cb = useCallback(
     async (worker: WorkerClient) => {
       const data = await worker.eu4GetWars(filter);
@@ -40,6 +43,45 @@ export const WarTable: React.FC<{}> = () => {
   );
 
   useWorkerOnSave(cb);
+
+  useEffect(() => {
+    visualizationDispatch({
+      type: "update-csv-data",
+      getCsvData: async () => {
+        const dataCsv = data.map((x) => ({
+          ...x,
+          attacker_main: x.attackers.original,
+          attacker_main_name: x.attackers.original_name,
+          attacker_members: `"{${x.attackers.members.join(",")}}"`,
+          attacker_battle_losses: x.attackers.losses.totalBattle,
+          attacker_attrition_losses: x.attackers.losses.totalAttrition,
+          defender_main: x.defenders.original,
+          defender_main_name: x.defenders.original_name,
+          defender_members: `"{${x.defenders.members.join(",")}}"`,
+          defender_battle_losses: x.defenders.losses.totalBattle,
+          defender_attrition_losses: x.defenders.losses.totalAttrition,
+        }));
+
+        return createCsv(dataCsv, [
+          "name",
+          "start_date",
+          "end_date",
+          "days",
+          "attacker_main",
+          "attacker_main_name",
+          "attacker_members",
+          "attacker_battle_losses",
+          "attacker_attrition_losses",
+          "defender_main",
+          "defender_main_name",
+          "defender_members",
+          "defender_battle_losses",
+          "defender_attrition_losses",
+          "battles",
+        ]);
+      },
+    });
+  }, [data, visualizationDispatch]);
 
   const columns: (ColumnGroupType<WarTableData> | ColumnType<WarTableData>)[] =
     [

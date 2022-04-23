@@ -1,15 +1,55 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import type { HeatmapConfig } from "@ant-design/charts";
 import { formatInt } from "@/lib/format";
-import { Heatmap } from "@/components/viz";
+import { Heatmap, useVisualizationDispatch } from "@/components/viz";
 import { HealthDatum } from "@/features/eu4/types/models";
 import { selectEu4CountryFilter } from "@/features/eu4/eu4Slice";
 import { WorkerClient, useAnalysisWorker } from "@/features/engine";
+import { createCsv } from "@/lib/csv";
+
+const healthCategories = [
+  "prestige",
+  "stability",
+  "pp",
+  "development",
+  "treasury",
+  "inflation",
+  "corruption",
+  "manpower",
+  "adm tech",
+  "dip tech",
+  "mil tech",
+  "innovativeness",
+  "overextension",
+];
 
 export const HealthGrid: React.FC<{}> = () => {
   const [data, setData] = useState<HealthDatum[]>([]);
   const countryFilter = useSelector(selectEu4CountryFilter);
+  const visualizationDispatch = useVisualizationDispatch();
+
+  useEffect(() => {
+    visualizationDispatch({
+      type: "update-csv-data",
+      getCsvData: async () => {
+        const objs: Record<string, any> = {};
+        for (const group of data) {
+          objs[group.name] = {
+            ...objs[group.name],
+            [group.value_type]: group.value,
+          };
+        }
+
+        const flatten = Object.entries(objs).map(([key, values]) => ({
+          name: key,
+          ...values,
+        }));
+        return createCsv(flatten, ["name", ...healthCategories]);
+      },
+    });
+  }, [data, visualizationDispatch]);
+
   const cb = useCallback(
     async (worker: WorkerClient) => {
       const health = await worker.eu4GetHealth(countryFilter);
@@ -55,21 +95,7 @@ export const HealthGrid: React.FC<{}> = () => {
     meta: {
       value_type: {
         type: "cat",
-        values: [
-          "prestige",
-          "stability",
-          "pp",
-          "development",
-          "treasury",
-          "inflation",
-          "corruption",
-          "manpower",
-          "adm tech",
-          "dip tech",
-          "mil tech",
-          "innovativeness",
-          "overextension",
-        ],
+        values: healthCategories,
       },
       name: {},
       color: {
