@@ -24,21 +24,15 @@ interface AppHeaderProps {
   disabled?: boolean;
 }
 
+export const CurrentAnnouncement: React.FC<{}> | null = null;
+
 export const AppHeader: React.FC<AppHeaderProps> = ({ disabled = false }) => {
   return (
     <div className="flex-col" style={{ display: disabled ? "none" : "flex" }}>
-      <AnnouncementBar>
-        <span>
-          NEW: Create map timelapses!{" "}
-          <a
-            style={{ color: "#e8cabe" }}
-            href="/blog/lights-camera-action-timelapse-maps"
-            aria-label="Lights, camera, action: timelapse maps"
-          >
-            Read more
-          </a>
-        </span>
-      </AnnouncementBar>
+      {CurrentAnnouncement && (
+        <AnnouncementBar>{CurrentAnnouncement}</AnnouncementBar>
+      )}
+
       <Header style={{ padding: "0 16px" }}>
         <div className="flex-row items-center menu">
           <style jsx>{`
