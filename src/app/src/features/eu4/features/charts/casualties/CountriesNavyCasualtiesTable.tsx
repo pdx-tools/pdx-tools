@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { Table } from "antd";
 import { ColumnGroupType, ColumnType } from "antd/lib/table";
 import { PlusCircleTwoTone, MinusCircleTwoTone } from "@ant-design/icons";
@@ -6,25 +6,44 @@ import { TableLosses, useCountryCasualtyData } from "./hooks";
 import { ExpandableConfig } from "antd/lib/table/interface";
 import { CountriesNavyCasualtiesWarTable } from "./CountriesNavyCasualtiesWarTable";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
-import { useIsLoading } from "@/components/viz";
+import { useIsLoading, useVisualizationDispatch } from "@/components/viz";
 import { formatInt } from "@/lib/format";
 import { countryColumnFilter } from "../countryColumnFilter";
+import { createCsv } from "@/lib/csv";
+
+
+const unitTypes = [
+  ["Heavy", "heavyShip"],
+  ["Light", "lightShip"],
+  ["Galley", "galleyShip"],
+  ["Trnsprt", "transportShip"],
+  ["Total", "navyTotal"],
+];
 
 export const CountriesNavyCasualtiesTable: React.FC<{}> = () => {
   const data = useCountryCasualtyData();
   const isLoading = useIsLoading();
   const selectFilterRef = useRef(null);
+  const visualizationDispatch = useVisualizationDispatch();
+
+  useEffect(() => {
+    visualizationDispatch({
+      type: "update-csv-data",
+      getCsvData: async () => {
+        const keys: (keyof TableLosses)[] = [
+          "tag",
+          "name",
+          ...unitTypes.map(([_, type]) => `${type}Battle` as keyof TableLosses),
+          ...unitTypes.map(([_, type]) => `${type}Attrition` as keyof TableLosses),
+          ...unitTypes.map(([_, type]) => `${type}Capture` as keyof TableLosses),
+          "navyTotal",
+        ];
+        return createCsv(data, keys);
+      },
+    });
+  }, [data, visualizationDispatch]);
 
   const numRenderer = (x: number) => formatInt(x);
-
-  const unitTypes = [
-    ["Heavy", "heavyShip"],
-    ["Light", "lightShip"],
-    ["Galley", "galleyShip"],
-    ["Trnsprt", "transportShip"],
-    ["Total", "navyTotal"],
-  ];
-
   const battleColumns: ColumnType<TableLosses>[] = unitTypes.map(
     ([title, type]) => ({
       title,

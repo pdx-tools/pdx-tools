@@ -1,9 +1,12 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Divider, Space, Switch, Table, Typography } from "antd";
 import { ColumnProps } from "antd/lib/table";
 import { incomeLedgerAliases } from "../country-details/data";
 import { CountryIncome } from "../../types/models";
-import { useIsLoading } from "../../../../components/viz/visualization-context";
+import {
+  useIsLoading,
+  useVisualizationDispatch,
+} from "../../../../components/viz/visualization-context";
 import { countryColumnFilter } from "./countryColumnFilter";
 import { formatFloat } from "@/lib/format";
 import {
@@ -20,9 +23,11 @@ import {
 } from "../../../engine/engineSlice";
 import { useAppDispatch } from "@/lib/store";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
+import { createCsv } from "@/lib/csv";
 const { Text } = Typography;
 
 type CountryIncomeRecord = CountryIncome;
+const aliases = incomeLedgerAliases();
 
 export const CountriesIncomeTable: React.FC<{}> = () => {
   const dispatch = useAppDispatch();
@@ -30,9 +35,9 @@ export const CountriesIncomeTable: React.FC<{}> = () => {
   const [data, setData] = useState<CountryIncomeRecord[]>([]);
   const doShowPercent = useSelector(selectPrefersPercents);
   const showRecurringOnly = !useSelector(selectOneTimeLineItems);
-  const aliases = incomeLedgerAliases();
   const countryFilter = useSelector(selectEu4CountryFilter);
   const selectFilterRef = useRef(null);
+  const visualizationDispatch = useVisualizationDispatch();
 
   const cb = useCallback(
     async (worker: WorkerClient) => {
@@ -45,6 +50,21 @@ export const CountriesIncomeTable: React.FC<{}> = () => {
     },
     [countryFilter, doShowPercent, showRecurringOnly]
   );
+
+  useEffect(() => {
+    visualizationDispatch({
+      type: "update-csv-data",
+      getCsvData: async () => {
+        const keys: (keyof CountryIncomeRecord)[] = [
+          "tag",
+          "name",
+          ...aliases.map(([key, _]) => key),
+        ];
+
+        return createCsv(data, keys);
+      },
+    });
+  }, [data, visualizationDispatch]);
 
   useAnalysisWorker(cb);
 

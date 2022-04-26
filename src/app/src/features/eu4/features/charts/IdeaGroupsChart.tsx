@@ -1,9 +1,11 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import type { BarConfig } from "@ant-design/charts";
 import { useAnalysisWorker, WorkerClient } from "@/features/engine";
 import { useSelector } from "react-redux";
 import { selectEu4CountryFilter, useEu4Meta } from "@/features/eu4/eu4Slice";
-import { Bar } from "@/components/viz";
+import { Bar, useVisualizationDispatch } from "@/components/viz";
+import { createCsv } from "@/lib/csv";
+import key from "@/pages/api/key";
 
 interface IdeaGroupDatum {
   name: string;
@@ -13,6 +15,7 @@ interface IdeaGroupDatum {
 export const IdeaGroupsChart: React.FC<{}> = () => {
   const [ideaGroups, setIdeaGroups] = useState<IdeaGroupDatum[]>([]);
   const countryFilter = useSelector(selectEu4CountryFilter);
+  const visualizationDispatch = useVisualizationDispatch();
   const meta = useEu4Meta();
 
   const cb = useCallback(
@@ -83,6 +86,29 @@ export const IdeaGroupsChart: React.FC<{}> = () => {
   );
 
   useAnalysisWorker(cb);
+
+  useEffect(() => {
+    visualizationDispatch({
+      type: "update-csv-data",
+      getCsvData: async () => {
+        type IdeaGroupCsv = {
+          ideaGroup: string;
+          selected: number;
+          completed: number;
+        };
+        const data: Record<string, Omit<IdeaGroupCsv, "ideaGroup">> = {};
+        for (const group of ideaGroups) {
+          data[group.name] = { ...data[group.name], [group.type]: group.count };
+        }
+
+        const flatten = Object.entries(data).map(([key, values]) => ({
+          ideaGroup: key,
+          ...values,
+        }));
+        return createCsv(flatten, ["ideaGroup", "selected", "completed"]);
+      },
+    });
+  }, [ideaGroups, visualizationDispatch]);
 
   const config: BarConfig = {
     data: ideaGroups,

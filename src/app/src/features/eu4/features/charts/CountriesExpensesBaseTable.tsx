@@ -1,7 +1,7 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Divider, Space, Switch, Table, Typography } from "antd";
 import { ColumnProps } from "antd/lib/table";
-import { useIsLoading } from "@/components/viz/visualization-context";
+import { useIsLoading, useVisualizationDispatch } from "@/components/viz/visualization-context";
 import { CountryExpenses } from "@/features/eu4/types/models";
 import { expenseLedgerAliases } from "../country-details/data";
 import { countryColumnFilter } from "./countryColumnFilter";
@@ -17,6 +17,7 @@ import { useAnalysisWorker, WorkerClient } from "@/features/engine";
 import { useAppDispatch } from "@/lib/store";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { selectEu4CountryFilter } from "@/features/eu4/eu4Slice";
+import { createCsv } from "@/lib/csv";
 const { Text } = Typography;
 
 type CountryExpensesRecord = CountryExpenses;
@@ -24,6 +25,8 @@ type CountryExpensesRecord = CountryExpenses;
 interface BaseTableProps {
   monthlyExpenses: boolean;
 }
+
+const mapping = expenseLedgerAliases();
 
 export const CountriesExpensesBaseTable: React.FC<BaseTableProps> = ({
   monthlyExpenses,
@@ -35,6 +38,7 @@ export const CountriesExpensesBaseTable: React.FC<BaseTableProps> = ({
   const showRecurringOnly = !useSelector(selectOneTimeLineItems);
   const countryFilter = useSelector(selectEu4CountryFilter);
   const selectFilterRef = useRef(null);
+  const visualizationDispatch = useVisualizationDispatch();
 
   const cb = useCallback(
     async (worker: WorkerClient) => {
@@ -58,7 +62,22 @@ export const CountriesExpensesBaseTable: React.FC<BaseTableProps> = ({
   const title = monthlyExpenses
     ? "Country Expenses Table"
     : "Country Total Expenses Table";
-  const mapping = expenseLedgerAliases();
+
+  useEffect(() => {
+    visualizationDispatch({
+      type: "update-csv-data",
+      getCsvData: async () => {
+        const keys: (keyof CountryExpensesRecord)[] = [
+          "tag",
+          "name",
+          ...mapping.map(([key, _]) => key),
+        ];
+
+        return createCsv(data, keys);
+      },
+    });
+  }, [data, visualizationDispatch]);
+
   const numRenderer = doShowPercent
     ? (x: number) => `${x}%`
     : monthlyExpenses
@@ -140,3 +159,9 @@ export const CountriesExpensesBaseTable: React.FC<BaseTableProps> = ({
     </div>
   );
 };
+function visualizationDispatch(arg0: {
+  type: string;
+  getCsvData: () => Promise<any>;
+}) {
+  throw new Error("Function not implemented.");
+}
