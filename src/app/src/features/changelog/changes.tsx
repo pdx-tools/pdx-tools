@@ -844,4 +844,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-04-26",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>🐛 - Add export data as csv to chart view</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
