@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 wasm-bindgen = { version = "0.2" }
 brotli = "3"
-zip = { version = "0.5", default-features = false, features = ["deflate"] }
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
 tar = "0.4"
 js-sys = "0.3"
 
