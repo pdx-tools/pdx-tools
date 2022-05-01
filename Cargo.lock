@@ -816,7 +816,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.6.2"
-source = "git+https://github.com/rakaly/eu4save.git#fd93fcba36570a55d08012d09df96a9a978cd92f"
+source = "git+https://github.com/rakaly/eu4save.git#51202ea62812da2219fc106619a3c45841c57441"
 dependencies = [
  "jomini",
  "once_cell",

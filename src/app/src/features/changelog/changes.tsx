@@ -854,4 +854,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-05-01",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>🐛 - Fix EU4 African Power achievement not detecting colonies</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];

@@ -329,6 +329,22 @@ fn test_african_power() {
 }
 
 #[test]
+fn test_african_power2() {
+    let data = utils::request("kongo2.eu4");
+    let (save, encoding) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();
+    let game = Game::new(&save.meta.savegame_version);
+    let query = Query::from_save(save);
+    let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
+    let completed_ids: Vec<i32> = achievements
+        .achievements()
+        .iter()
+        .filter(|x| x.completed())
+        .map(|x| x.id)
+        .collect();
+    assert!(completed_ids.contains(&42));
+}
+
+#[test]
 fn test_stern_des_sudens() {
     let data = utils::request("Stern_des_Sudens.eu4");
     let (save, encoding) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();

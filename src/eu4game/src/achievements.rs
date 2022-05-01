@@ -662,6 +662,10 @@ impl<'a> AchievementHunter<'a> {
         owned_and_cored_by(province, self.tag)
     }
 
+    fn is_colony(&self, province: &Province) -> bool {
+        province.colony_size.is_some()
+    }
+
     fn owns_core_province_id(&self, id: ProvinceId) -> bool {
         let province = self.save.game.provinces.get(&id);
         province.map_or(false, |x| owned_and_cored_by(x, self.tag))
@@ -2314,7 +2318,9 @@ impl<'a> AchievementHunter<'a> {
 
         let kongo_owns_africa = if result.completed() {
             self.all_provs_in_continent("africa", |prov| {
-                self.owns_core_province(prov) || self.is_wasteland_or_empty_province(prov)
+                self.owns_core_province(prov)
+                    || self.is_wasteland_or_empty_province(prov)
+                    || self.is_colony(prov)
             })
         } else {
             false
