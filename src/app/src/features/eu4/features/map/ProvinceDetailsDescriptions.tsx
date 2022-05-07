@@ -24,9 +24,9 @@ interface ProvinceDetailsProps {
 
 type ProvinceEventIndex = { index: number } & ProvinceHistoryEvent;
 
-export const ProvinceDetailsDescriptions: React.FC<ProvinceDetailsProps> = ({
+export const ProvinceDetailsDescriptions = ({
   province,
-}) => {
+}: ProvinceDetailsProps) => {
   const sideBarContainerRef = useSideBarContainerRef();
   const events: ProvinceEventIndex[] = province.history.map((x, i) => ({
     index: i,

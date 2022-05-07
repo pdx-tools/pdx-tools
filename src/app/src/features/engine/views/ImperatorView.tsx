@@ -7,7 +7,7 @@ const DynamicImperator: ComponentType<
   React.ComponentProps<typeof ImperatorUi>
 > = dynamic(() => import("@/features/imperator/ImperatorUi"));
 
-export const ImperatorView: React.FC<{}> = () => {
+export const ImperatorView = () => {
   return (
     <>
       <AnalyzeDropZone />

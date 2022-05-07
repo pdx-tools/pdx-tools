@@ -4,7 +4,7 @@ import { selectAnalyzeFileName } from "@/features/engine";
 import { useCk3Meta } from "./ck3Slice";
 import { MeltButton } from "./MeltButton";
 
-export const Ck3Ui: React.FC<{}> = () => {
+export const Ck3Ui = () => {
   const filename = useSelector(selectAnalyzeFileName);
   const meta = useCk3Meta();
   return (

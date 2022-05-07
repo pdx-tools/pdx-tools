@@ -11,10 +11,10 @@ interface CountryFilterDrawerProps {
   closeDrawer: () => void;
 }
 
-export const CountryFilterDrawer: React.FC<CountryFilterDrawerProps> = ({
+export const CountryFilterDrawer = ({
   visible,
   closeDrawer,
-}) => {
+}: CountryFilterDrawerProps) => {
   const countryFilter = useSelector(selectEu4CountryFilter);
 
   return (

@@ -3,7 +3,7 @@ import { ApiDocs } from "@/features/docs";
 import { HtmlHead } from "@/components/head";
 import { AppStructure } from "@/components/layout";
 
-export const ApiDocsPage: React.FC<{}> = () => {
+export const ApiDocsPage = () => {
   return (
     <>
       <HtmlHead>

@@ -1,4 +1,4 @@
-export const FinancialHelp: React.FC<{}> = () => {
+export const FinancialHelp = () => {
   return (
     <>
       <p>

@@ -12,7 +12,7 @@ import { useEu4Meta } from "../../eu4Slice";
 import { useAppSelector } from "@/lib/store";
 import { DownloadButton } from "./DownloadButton";
 
-const InfoSideBarTitle: React.FC<{}> = () => {
+const InfoSideBarTitle = () => {
   const meta = useEu4Meta();
   const remoteFile = useAppSelector((state) => state.eu4.serverSaveFile);
   return (
@@ -35,10 +35,10 @@ const InfoSideBarTitle: React.FC<{}> = () => {
   );
 };
 
-export const InfoSideBarButton: React.FC<SideBarButtonProps> = ({
+export const InfoSideBarButton = ({
   children,
   ...props
-}) => {
+}: SideBarButtonProps) => {
   const [drawerVisible, setDrawerVisible] = useState(false);
   return (
     <>

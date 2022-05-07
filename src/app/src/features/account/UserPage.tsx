@@ -11,7 +11,7 @@ interface UserRouteProps {
   userId: string;
 }
 
-export const UserPage: React.FC<UserRouteProps> = ({ userId }) => {
+export const UserPage = ({ userId }: UserRouteProps) => {
   const { isFetching, data } = appApi.endpoints.getUser.useQuery(userId);
   const user = data;
   const userInfo = useSelector(selectUserInfo);

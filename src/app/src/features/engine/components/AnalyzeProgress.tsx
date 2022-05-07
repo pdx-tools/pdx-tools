@@ -4,7 +4,7 @@ import { ProgressBar } from "../../../components/ProgressBar";
 import { ZIndex } from "../../../lib/zIndices";
 import { selectSaveAnalayzePercent } from "../engineSlice";
 
-export const AnalyzeProgress: React.FC<{}> = () => {
+export const AnalyzeProgress = () => {
   const overlay = useRef<HTMLDivElement>(null);
   const fileLoadPercent = useSelector(selectSaveAnalayzePercent);
   const [restHeight, setRestHeight] = useState(0);

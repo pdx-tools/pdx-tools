@@ -2,7 +2,7 @@ import React from "react";
 import Icon from "@ant-design/icons";
 
 // github mark logo: https://github.com/logos
-export const GithubSvg: React.FC<{}> = () => {
+export const GithubSvg = () => {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
       <path
@@ -15,6 +15,6 @@ export const GithubSvg: React.FC<{}> = () => {
 };
 
 type GithubProps = React.ComponentProps<typeof Icon>;
-export const GithubIcon: React.FC<GithubProps> = (props) => (
+export const GithubIcon = (props: GithubProps) => (
   <Icon component={GithubSvg} {...props} />
 );

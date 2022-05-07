@@ -1,6 +1,6 @@
 import React from "react";
 import { CountriesExpensesBaseTable } from "./CountriesExpensesBaseTable";
 
-export const CountriesExpensesTable: React.FC<{}> = () => {
+export const CountriesExpensesTable = () => {
   return <CountriesExpensesBaseTable monthlyExpenses={true} />;
 };

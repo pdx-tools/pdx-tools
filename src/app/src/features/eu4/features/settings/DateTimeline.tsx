@@ -12,7 +12,7 @@ import {
 } from "@/features/eu4/eu4Slice";
 import { getWasmWorker, useWasmWorker } from "@/features/engine";
 
-export const DateTimeline: React.FC<{}> = () => {
+export const DateTimeline = () => {
   const dispatch = useAppDispatch();
   const meta = useEu4Meta();
   const mapMode = useSelector(selectEu4MapMode);

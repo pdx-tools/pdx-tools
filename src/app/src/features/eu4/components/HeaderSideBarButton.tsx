@@ -3,10 +3,10 @@ import { Drawer } from "antd";
 import { AppHeader } from "../../../components/layout/AppHeader";
 import { SideBarButton, SideBarButtonProps } from "./SideBarButton";
 
-export const HeaderSideBarButton: React.FC<SideBarButtonProps> = ({
+export const HeaderSideBarButton = ({
   children,
   ...props
-}) => {
+}: SideBarButtonProps) => {
   const [headerVisible, setheaderVisible] = useState(false);
   return (
     <>

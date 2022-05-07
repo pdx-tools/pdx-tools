@@ -10,7 +10,7 @@ import {
   useWorkerOnSave,
 } from "@/features/engine";
 
-export const ProvinceSelectListener: React.FC<{}> = () => {
+export const ProvinceSelectListener = () => {
   const eu4CanvasRef = useEu4CanvasRef();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [provinceDetails, setProvinceDetails] = useState<

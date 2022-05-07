@@ -22,7 +22,7 @@ import { MapExportMenu } from "./MapExportMenu";
 import { ToggleRow } from "./ToggleRow";
 import { Timelapse } from "./Timelapse";
 
-export const MapSettings: React.FC<{}> = () => {
+export const MapSettings = () => {
   const [isExporting, setIsExporting] = useState(false);
   const dispatch = useAppDispatch();
   const mapControl = useSelector(selectEu4MapColorPayload);

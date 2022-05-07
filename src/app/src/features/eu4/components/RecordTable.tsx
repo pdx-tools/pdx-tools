@@ -13,7 +13,7 @@ interface RecordTableProps {
   records: RankedSaveFile[];
 }
 
-export const RecordTable: React.FC<RecordTableProps> = ({ records }) => {
+export const RecordTable = ({ records }: RecordTableProps) => {
   const columns = [
     {
       title: "Rank",

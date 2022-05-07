@@ -12,7 +12,7 @@ import { UploadFaq } from "./UploadFaq";
 import { UploadForm } from "./UploadForm";
 
 const saveHash = (worker: WorkerClient) => worker.eu4SaveHash();
-export const UploadDrawerContent: React.FC<{}> = () => {
+export const UploadDrawerContent = () => {
   const session = useSelector(selectSession);
   const uploadError = useUploadError();
   const sideBarContainerRef = useSideBarContainerRef();

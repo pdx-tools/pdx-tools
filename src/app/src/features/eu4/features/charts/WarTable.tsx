@@ -24,7 +24,7 @@ interface WarTableData extends War {
   defenders: WarSideData;
 }
 
-export const WarTable: React.FC<{}> = () => {
+export const WarTable = () => {
   const [data, setData] = useState<WarTableData[]>([]);
   const filter = useSelector(selectEu4CountryFilter);
   const visualizationDispatch = useVisualizationDispatch();

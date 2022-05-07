@@ -1,6 +1,6 @@
 import { useEu4ModList } from "@/features/eu4/eu4Slice";
 
-export const ModList: React.FC<{}> = () => {
+export const ModList = () => {
   const mods = useEu4ModList();
   return (
     <ul>

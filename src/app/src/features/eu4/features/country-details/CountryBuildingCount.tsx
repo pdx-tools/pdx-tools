@@ -7,9 +7,7 @@ interface CountryBuildingCountProps {
   details: CountryDetails;
 }
 
-const CountryBuildingCountImpl: React.FC<CountryBuildingCountProps> = ({
-  details,
-}) => {
+const CountryBuildingCountImpl = ({ details }: CountryBuildingCountProps) => {
   const data = Object.entries(details.building_count).map(([key, val]) => ({
     label: key,
     value: val,

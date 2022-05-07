@@ -47,7 +47,7 @@ const useWaveBackground = ([h, s, l]: number[]) => {
   return waveBackground;
 };
 
-export const Home: React.FC<HomeProps> = ({ subtitle }) => {
+export const Home = ({ subtitle }: HomeProps) => {
   const secondaryColor: [number, number, number] = [177, 100, 13.7];
   const sc = secondaryColor;
   const waveBackground = useWaveBackground(secondaryColor);

@@ -31,7 +31,7 @@ const { className, styles } = css.resolve`
   }
 `;
 
-export const Eu4CanvasOverlay: React.FC<{}> = () => {
+export const Eu4CanvasOverlay = () => {
   const hasDrawn = useSelector(selectModuleDrawn);
   const serverFile = useAppSelector((state) => state.eu4.serverSaveFile);
 

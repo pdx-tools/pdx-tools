@@ -2,7 +2,7 @@ import Link from "next/link";
 import React from "react";
 import steam_login_image from "./sign-in-through-steam.png";
 
-export const SteamButton: React.FC<{}> = () => {
+export const SteamButton = () => {
   return (
     <button>
       <Link href="/api/login/steam">

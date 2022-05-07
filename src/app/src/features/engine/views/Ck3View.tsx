@@ -7,7 +7,7 @@ const DynamicCk3: ComponentType<React.ComponentProps<typeof Ck3Ui>> = dynamic(
   () => import("@/features/ck3/Ck3Ui")
 );
 
-export const Ck3View: React.FC<{}> = () => {
+export const Ck3View = () => {
   return (
     <>
       <AnalyzeDropZone />

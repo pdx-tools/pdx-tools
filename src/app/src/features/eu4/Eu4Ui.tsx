@@ -7,7 +7,7 @@ import { toggleShowTerrain, useEu4Meta } from "./eu4Slice";
 import { Eu4CanvasOverlay } from "./Eu4CanvasOverlay";
 import Head from "next/head";
 
-export const Eu4Ui: React.FC<{}> = () => {
+export const Eu4Ui = () => {
   const showCanvas = useSelector(selectShowCanvas);
   const dispatch = useAppDispatch();
   useMap();

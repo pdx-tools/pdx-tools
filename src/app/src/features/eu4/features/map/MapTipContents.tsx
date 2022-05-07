@@ -6,7 +6,7 @@ interface MapTipContentsProps {
   tip: QuickTipPayload;
 }
 
-const MapTipsTable: React.FC<MapTipContentsProps> = ({ tip }) => {
+const MapTipsTable = ({ tip }: MapTipContentsProps) => {
   const items = [
     <Descriptions.Item label="Owner" key="Owner">
       <FlagAvatar tag={tip.owner.tag} name={tip.owner.name} />
@@ -68,7 +68,7 @@ const MapTipsTable: React.FC<MapTipContentsProps> = ({ tip }) => {
   }
 };
 
-export const MapTipContents: React.FC<MapTipContentsProps> = ({ tip }) => {
+export const MapTipContents = ({ tip }: MapTipContentsProps) => {
   return (
     <div className="tooltip-contents no-break">
       <Divider orientation="left" style={{ margin: 0 }}>

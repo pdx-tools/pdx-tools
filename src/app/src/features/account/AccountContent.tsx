@@ -5,7 +5,7 @@ import { appApi } from "../../services/appApi";
 import { selectUserInfo } from "./sessionSlice";
 const { Text } = Typography;
 
-export const AccountContent: React.FC<{}> = () => {
+export const AccountContent = () => {
   const userInfo = useSelector(selectUserInfo);
   const [key, setKey] = useState<string | undefined>();
   const [trigger, { isLoading }] = appApi.endpoints.newApiKey.useMutation();

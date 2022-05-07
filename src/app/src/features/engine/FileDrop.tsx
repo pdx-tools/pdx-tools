@@ -10,7 +10,11 @@ import {
 import { CanvasContextProvider } from "./persistant-canvas-context";
 import { GameView } from "./GameView";
 
-export const FileDropInitial: React.FC<{}> = ({ children }) => {
+interface FileDropInitialProps {
+  children?: React.ReactNode;
+}
+
+export const FileDropInitial = ({ children }: FileDropInitialProps) => {
   const showProgress = useSelector(selectAnalyzeProgressVisible);
   const showBackdrop = useSelector(selectAnalyzeOriginalBackdropVisible);
 
@@ -25,13 +29,13 @@ export const FileDropInitial: React.FC<{}> = ({ children }) => {
   );
 };
 
-const ListenOnFileDrops: React.FC<{}> = ({ children }) => {
+const ListenOnFileDrops = ({ children }: FileDropInitialProps) => {
   useDocumentFileDrop();
   useWindowMessageDrop();
   return <>{children}</>;
 };
 
-export const FileDrop: React.FC<{}> = ({ children }) => {
+export const FileDrop = ({ children }: FileDropInitialProps) => {
   return (
     <CanvasContextProvider>
       <ListenOnFileDrops>

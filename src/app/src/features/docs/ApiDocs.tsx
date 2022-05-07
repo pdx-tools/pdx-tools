@@ -4,7 +4,7 @@ import { PageHeader } from "antd";
 import { useSelector } from "react-redux";
 import { selectUserInfo } from "../account/sessionSlice";
 
-export const ApiDocs: React.FC<{}> = ({}) => {
+export const ApiDocs = ({}: {}) => {
   const userInfo = useSelector(selectUserInfo);
   const uid = userInfo?.user_id ?? "yourUserId";
   const cli = <a href="https://github.com/rakaly/cli">Rakaly CLI</a>;

@@ -10,13 +10,13 @@ export interface ToggleRowProps {
   help?: string;
 }
 
-export const ToggleRow: React.FC<ToggleRowProps> = ({
+export const ToggleRow = ({
   value,
   onChange,
   text,
   disabled = false,
   help,
-}) => {
+}: ToggleRowProps) => {
   const controlSpan = 4;
   const labelSpan = 24 - controlSpan;
 

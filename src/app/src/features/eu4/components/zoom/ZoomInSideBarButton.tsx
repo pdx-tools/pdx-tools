@@ -2,10 +2,10 @@ import { getEu4Map, useEu4CanvasRef } from "@/features/engine";
 import { useCallback } from "react";
 import { SideBarButton, SideBarButtonProps } from "../SideBarButton";
 
-export const ZoomInSideBarButton: React.FC<SideBarButtonProps> = ({
+export const ZoomInSideBarButton = ({
   children,
   ...props
-}) => {
+}: SideBarButtonProps) => {
   const eu4CanvasRef = useEu4CanvasRef();
 
   const zoomIn = useCallback(() => {

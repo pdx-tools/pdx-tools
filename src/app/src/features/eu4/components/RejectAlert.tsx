@@ -16,7 +16,7 @@ export type ErrorAction =
   | { type: "empty-save-slots" }
   | { type: "remaining-save-slots"; remaining: number };
 
-export const RejectAlert: React.FC<RejectAlertProps> = ({ error }) => {
+export const RejectAlert = ({ error }: RejectAlertProps) => {
   switch (error.type) {
     case "none":
       return null;

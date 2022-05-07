@@ -14,7 +14,7 @@ interface HelpTooltipProps {
   help: string;
 }
 
-export const HelpTooltip: React.FC<HelpTooltipProps> = ({ help }) => {
+export const HelpTooltip = ({ help }: HelpTooltipProps) => {
   return (
     <Tooltip title={help}>
       <QuestionCircleOutlined className={className} />

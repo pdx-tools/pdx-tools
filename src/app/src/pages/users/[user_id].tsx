@@ -4,7 +4,7 @@ import { HtmlHead } from "@/components/head";
 import { UserPage } from "@/features/account";
 import { AppStructure } from "@/components/layout/AppStructure";
 
-export const UserSaves: React.FC<{}> = () => {
+export const UserSaves = () => {
   const router = useRouter();
   const { user_id } = router.query;
   return (

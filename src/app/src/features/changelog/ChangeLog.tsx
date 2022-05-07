@@ -4,7 +4,7 @@ import { changes } from "./changes";
 
 const { Title } = Typography;
 
-export const ChangeLog: React.FC<{}> = () => {
+export const ChangeLog = () => {
   const data = changes.slice().reverse();
   return (
     <PageHeader

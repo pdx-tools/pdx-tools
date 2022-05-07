@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 
 const ON_GOING_SURVEY = false;
 
-export const AppSurvey: React.FC<{}> = () => {
+export const AppSurvey = () => {
   const [showSurvey, setShowSurvey] = useState(false);
   const [showSurveyReminder, setShowSurveyReminder] = useState(false);
   useEffect(() => {

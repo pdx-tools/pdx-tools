@@ -26,7 +26,7 @@ interface DlcListProps {
   dlc_enabled: number[];
 }
 
-export const DlcList: React.FC<DlcListProps> = ({ dlc_enabled }) => {
+export const DlcList = ({ dlc_enabled }: DlcListProps) => {
   const list = dlc.map(([id, name, imgPath]) => {
     const disabled = dlc_enabled.find((x) => x === id) === undefined;
     return (

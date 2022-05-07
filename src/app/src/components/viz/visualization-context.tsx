@@ -32,7 +32,13 @@ function visualizationReducer(
   }
 }
 
-export const VisualizationProvider: React.FC<{}> = ({ children }) => {
+interface VisualizationProviderProps {
+  children: React.ReactNode;
+}
+
+export const VisualizationProvider = ({
+  children,
+}: VisualizationProviderProps) => {
   const [state, dispatch] = React.useReducer(visualizationReducer, {
     loading: 0,
     getCsvData: async () => "",

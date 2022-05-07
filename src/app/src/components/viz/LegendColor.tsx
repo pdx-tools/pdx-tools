@@ -3,10 +3,7 @@ export interface LegendColorProps {
   color?: string;
 }
 
-export const LegendColor: React.FC<LegendColorProps> = ({
-  size = 12,
-  color,
-}) => {
+export const LegendColor = ({ size = 12, color }: LegendColorProps) => {
   return (
     <div
       style={{

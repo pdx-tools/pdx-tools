@@ -6,7 +6,7 @@ import { AppStructure } from "@/components/layout";
 import { FileDropInitial } from "@/features/engine/FileDrop";
 import { CanvasContextProvider } from "@/features/engine/persistant-canvas-context";
 
-export const SkanderbegSave: React.FC<{}> = () => {
+export const SkanderbegSave = () => {
   const router = useRouter();
   const { skan_id } = router.query;
   return (

@@ -9,10 +9,7 @@ type AchievementAvatarProps = Pick<
   id: number | string;
 };
 
-export const AchievementAvatar: React.FC<AchievementAvatarProps> = ({
-  id,
-  size,
-}) => {
+export const AchievementAvatar = ({ id, size }: AchievementAvatarProps) => {
   return (
     <Link key={id} href={`/eu4/achievements/${id}`}>
       <a>

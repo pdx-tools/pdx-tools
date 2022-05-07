@@ -6,7 +6,7 @@ import { FileDropInitial } from "@/features/engine/FileDrop";
 import { CanvasContextProvider } from "@/features/engine/persistant-canvas-context";
 import { SavePage } from "@/features/eu4/SavePage";
 
-export const Eu4Save: React.FC<{}> = () => {
+export const Eu4Save = () => {
   const router = useRouter();
   const { save_id } = router.query;
 

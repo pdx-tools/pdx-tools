@@ -37,7 +37,7 @@ import { MapPayload } from "../../types/map";
 
 const { useBreakpoint } = Grid;
 
-const TagDescription: React.FC<TagTransition> = (play) => {
+const TagDescription = (play: TagTransition) => {
   return (
     <div className="flex-col items-center">
       <FlagAvatarCore tag={play.tag} size="large" />
@@ -49,7 +49,7 @@ const TagDescription: React.FC<TagTransition> = (play) => {
 
 const playerHistories = (worker: WorkerClient) =>
   worker.eu4GetPlayerHistories();
-export const InfoDrawer: React.FC<{}> = () => {
+export const InfoDrawer = () => {
   const workerRef = useWasmWorker();
   const eu4CanvasRef = useEu4CanvasRef();
   const mods = useEu4ModList();

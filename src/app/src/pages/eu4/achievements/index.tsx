@@ -10,9 +10,7 @@ interface StaticAchievements {
   achievements?: AchievementUploads[];
 }
 
-export const Eu4Achievements: React.FC<StaticAchievements> = ({
-  achievements,
-}) => {
+export const Eu4Achievements = ({ achievements }: StaticAchievements) => {
   return (
     <>
       <HtmlHead>

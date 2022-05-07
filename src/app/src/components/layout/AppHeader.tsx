@@ -8,7 +8,7 @@ import { AnnouncementBar } from "./AnnouncementBar";
 const { Header } = Layout;
 const { useBreakpoint } = Grid;
 
-const HeaderMenu: React.FC<{}> = () => {
+const HeaderMenu = () => {
   const { md } = useBreakpoint();
 
   if (md === undefined) {
@@ -26,7 +26,7 @@ interface AppHeaderProps {
 
 export const CurrentAnnouncement: React.FC<{}> | null = null;
 
-export const AppHeader: React.FC<AppHeaderProps> = ({ disabled = false }) => {
+export const AppHeader = ({ disabled = false }: AppHeaderProps) => {
   return (
     <div className="flex-col" style={{ display: disabled ? "none" : "flex" }}>
       {CurrentAnnouncement && (

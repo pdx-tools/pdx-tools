@@ -29,9 +29,7 @@ interface AchievementsTableProps {
   achievements: TableEntry[];
 }
 
-export const AchievementsTable: React.FC<AchievementsTableProps> = ({
-  achievements,
-}) => {
+export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
   const { md } = useBreakpoint();
 
   const columns = [

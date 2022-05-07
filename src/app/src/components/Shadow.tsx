@@ -19,14 +19,11 @@ const ELEVATIONS = {
 interface ShadowProps {
   size?: keyof typeof ELEVATIONS;
   backgroundColor?: [number, number, number];
+  children: React.ReactNode;
 }
 
 // https://www.joshwcomeau.com/css/designing-shadows/#fitting-into-a-design-system
-export const Shadow: React.FC<ShadowProps> = ({
-  children,
-  size,
-  backgroundColor,
-}) => {
+export const Shadow = ({ children, size, backgroundColor }: ShadowProps) => {
   const color = backgroundColor ?? [0, 0, 100];
   let sz = size ?? "medium";
   return (

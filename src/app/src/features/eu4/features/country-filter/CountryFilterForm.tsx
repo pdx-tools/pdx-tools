@@ -39,10 +39,10 @@ const superregionOptions = () =>
     return { label, value };
   });
 
-export const CountryFilterForm: React.FC<CountryFilterFormProps> = ({
+export const CountryFilterForm = ({
   initialValues,
   onChange,
-}) => {
+}: CountryFilterFormProps) => {
   const initVals = useRef(initialValues);
   const filter = useCountryFilterState();
   const dispatch = useCountryFilterDispatch();

@@ -27,7 +27,11 @@ const WasmWorkerContext = React.createContext<WasmContextState | undefined>(
   undefined
 );
 
-export const WasmWorkerProvider: React.FC<{}> = ({ children }) => {
+interface WasmWorkerProviderProps {
+  children: React.ReactNode;
+}
+
+export const WasmWorkerProvider = ({ children }: WasmWorkerProviderProps) => {
   const workerRef = useRef<WasmWorkerClient>();
   const [render, setRender] = useState(false);
 

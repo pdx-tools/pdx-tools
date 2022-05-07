@@ -12,11 +12,7 @@ interface DeleteSaveProps {
   redirect?: boolean;
 }
 
-export const DeleteSave: React.FC<DeleteSaveProps> = ({
-  saveId,
-  type,
-  redirect,
-}) => {
+export const DeleteSave = ({ saveId, type, redirect }: DeleteSaveProps) => {
   const router = useRouter();
   const [trigger] = appApi.endpoints.deleteSave.useMutation();
   const showDeleteConfirm = () => {

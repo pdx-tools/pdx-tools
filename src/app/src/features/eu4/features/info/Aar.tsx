@@ -11,7 +11,7 @@ interface AarProps {
   editMode: "always" | "privileged" | "never";
 }
 
-export const Aar: React.FC<AarProps> = ({ defaultValue, editMode }) => {
+export const Aar = ({ defaultValue, editMode }: AarProps) => {
   const [isEditing, setIsEditing] = useState(
     editMode == "always" || !defaultValue
   );

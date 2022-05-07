@@ -11,7 +11,7 @@ import {
   AchievementAvatar,
 } from "@/features/eu4/components/avatars";
 
-export const NewestSavesTable: React.FC<{}> = () => {
+export const NewestSavesTable = () => {
   const { data, isFetching } = appApi.endpoints.getNewestSaves.useQuery();
 
   const columns = [

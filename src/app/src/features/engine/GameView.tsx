@@ -7,7 +7,7 @@ import { Eu4View } from "./views/Eu4View";
 import { Hoi4View } from "./views/Hoi4View";
 import { ImperatorView } from "./views/ImperatorView";
 
-export const GameView: React.FC<{}> = () => {
+export const GameView = () => {
   const game = useSelector(selectAnalyzeGame);
   const dispatch = useDispatch();
   const router = useRouter();

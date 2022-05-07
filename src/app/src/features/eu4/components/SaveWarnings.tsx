@@ -2,7 +2,7 @@ import { Alert } from "antd";
 import React from "react";
 import { useEu4Meta } from "../eu4Slice";
 
-export const SaveWarnings: React.FC<{}> = () => {
+export const SaveWarnings = () => {
   const meta = useEu4Meta();
 
   if (meta.warnings.length == 0) {

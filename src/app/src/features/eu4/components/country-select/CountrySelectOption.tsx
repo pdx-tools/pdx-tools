@@ -4,9 +4,11 @@ import { FlagAvatarCore } from "@/features/eu4/components/avatars";
 import { EnhancedCountryInfo } from "@/features/eu4/types/models";
 const { Option } = Select;
 
-export const CountrySelectOption: React.FC<
-  Pick<EnhancedCountryInfo, "tag" | "name" | "normalizedName">
-> = ({ tag, name, normalizedName }) => {
+export const CountrySelectOption = ({
+  tag,
+  name,
+  normalizedName,
+}: Pick<EnhancedCountryInfo, "tag" | "name" | "normalizedName">) => {
   return (
     <Option
       key={tag}

@@ -5,7 +5,11 @@ import fav32 from "./favicon-32x32.png";
 import fav16 from "./favicon-16x16.png";
 import social from "../landing/social.png";
 
-export const HtmlHead: React.FC<{}> = ({ children }) => {
+interface HtmlHeadProps {
+  children: React.ReactNode;
+}
+
+export const HtmlHead = ({ children }: HtmlHeadProps) => {
   return (
     <Head>
       <meta

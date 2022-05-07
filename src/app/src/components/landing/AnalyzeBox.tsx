@@ -11,7 +11,7 @@ export function keyboardTrigger(fn: () => void) {
   };
 }
 
-export const AnalyzeBox: React.FC<{}> = () => {
+export const AnalyzeBox = () => {
   const publishFile = useFilePublisher();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isFileHover = useSelector(selectIsFileHover);

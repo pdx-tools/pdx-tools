@@ -69,7 +69,11 @@ const uploadReducer = (_state: UploadState, action: Action): UploadState => {
   }
 };
 
-export const UploadProvider: React.FC<{}> = ({ children }) => {
+interface UploadProviderProps {
+  children: React.ReactNode;
+}
+
+export const UploadProvider = ({ children }: UploadProviderProps) => {
   const analyzeId = useSelector(selectAnalyzeId);
   const [state, dispatch] = React.useReducer(uploadReducer, {
     kind: "initial",

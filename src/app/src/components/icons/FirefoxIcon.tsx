@@ -1,7 +1,7 @@
 import Icon from "@ant-design/icons";
 
 // https://simpleicons.org/?q=firefox
-export const FirefoxSvg: React.FC<{}> = () => {
+export const FirefoxSvg = () => {
   return (
     <svg
       role="img"
@@ -17,6 +17,6 @@ export const FirefoxSvg: React.FC<{}> = () => {
 };
 
 type FirefoxProps = React.ComponentProps<typeof Icon>;
-export const FirefoxIcon: React.FC<FirefoxProps> = (props) => (
+export const FirefoxIcon = (props: FirefoxProps) => (
   <Icon component={FirefoxSvg} {...props} />
 );

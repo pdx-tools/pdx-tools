@@ -6,11 +6,11 @@ export interface SideBarButtonProps
   index?: number;
 }
 
-export const SideBarButton: React.FC<SideBarButtonProps> = ({
+export const SideBarButton = ({
   index,
   children,
   ...rest
-}) => {
+}: SideBarButtonProps) => {
   const btnHsl: [number, number, number] = [0, 56, 47];
   const clazz = index !== undefined ? ` btn-${index}` : "";
   return (

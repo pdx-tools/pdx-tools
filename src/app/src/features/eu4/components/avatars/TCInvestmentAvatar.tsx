@@ -2,7 +2,7 @@ import React from "react";
 import { Avatar, Space, Tooltip } from "antd";
 import { LocalizedObj } from "@/features/eu4/types/models";
 
-export const TcInvestmentAvatar: React.FC<LocalizedObj> = ({ id, name }) => {
+export const TcInvestmentAvatar = ({ id, name }: LocalizedObj) => {
   let imageSrc;
   try {
     imageSrc = require(`@/images/eu4/tc-investments/${id}.png`);

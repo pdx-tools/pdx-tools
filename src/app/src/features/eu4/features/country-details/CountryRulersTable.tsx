@@ -12,9 +12,7 @@ interface CountryRulersTableProps {
   rulers: RunningMonarch[];
 }
 
-export const CountryRulersTable: React.FC<CountryRulersTableProps> = ({
-  rulers,
-}) => {
+export const CountryRulersTable = ({ rulers }: CountryRulersTableProps) => {
   const columns: (
     | ColumnGroupType<RunningMonarch>
     | ColumnType<RunningMonarch>

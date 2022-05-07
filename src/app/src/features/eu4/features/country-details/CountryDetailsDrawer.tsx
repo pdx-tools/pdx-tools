@@ -37,10 +37,10 @@ interface CountryDetailsProps {
   closeDrawer: () => void;
 }
 
-export const CountryDetailsDrawer: React.FC<CountryDetailsProps> = ({
+export const CountryDetailsDrawer = ({
   visible,
   closeDrawer,
-}) => {
+}: CountryDetailsProps) => {
   const { md } = useBreakpoint();
   const [expanded, setExpanded] = useState(false);
   const selectedTag = useSelector(selectEu4SelectedTag);

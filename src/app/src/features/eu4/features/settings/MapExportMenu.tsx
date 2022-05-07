@@ -19,9 +19,7 @@ interface MapExportMenuProps {
   setIsExporting: (arg: boolean) => void;
 }
 
-export const MapExportMenu: React.FC<MapExportMenuProps> = ({
-  setIsExporting,
-}) => {
+export const MapExportMenu = ({ setIsExporting }: MapExportMenuProps) => {
   const decorativeSettings = useSelector(selectEu4MapDecorativeSettings);
   const mapColorPayload = useSelector(selectEu4MapColorPayload);
   const meta = useEu4Meta();

@@ -7,7 +7,7 @@ const DynamicEu4: ComponentType<React.ComponentProps<typeof Eu4Ui>> = dynamic(
   () => import("@/features/eu4/Eu4Ui")
 );
 
-export const Eu4View: React.FC<{}> = ({}) => {
+export const Eu4View = ({}: {}) => {
   return (
     <>
       <AnalyzeDropZone />

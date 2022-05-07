@@ -9,9 +9,9 @@ interface CountryDetailsProps {
   details: CountryDetails;
 }
 
-export const CountryDetailsDescriptions: React.FC<CountryDetailsProps> = ({
+export const CountryDetailsDescriptions = ({
   details,
-}) => {
+}: CountryDetailsProps) => {
   const { ruler, technology, ideas } = details;
   let ideaElem = ideas.map(([name, count]) => {
     name = name.substring(0, name.length - "_ideas".length);

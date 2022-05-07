@@ -2,7 +2,7 @@ import { compatibilityReport } from "@/lib/compatibility";
 import { Alert } from "antd";
 import { useEffect, useState } from "react";
 
-export const BrowserCheck: React.FC<{}> = () => {
+export const BrowserCheck = () => {
   const [warnings, setWarnings] = useState<string[]>([]);
 
   useEffect(() => {

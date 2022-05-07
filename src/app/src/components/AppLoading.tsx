@@ -1,6 +1,6 @@
 import { AppSvg } from "./icons";
 
-export const AppLoading: React.FC<{}> = () => {
+export const AppLoading = () => {
   return (
     <div
       className="flex-col items-center justify-center"

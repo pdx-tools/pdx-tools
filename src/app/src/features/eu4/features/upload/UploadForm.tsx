@@ -4,7 +4,7 @@ import { useSelector } from "react-redux";
 import { useFileUpload, useUploadProgress } from "./uploadContext";
 const { TextArea } = Input;
 
-export const UploadForm: React.FC<{}> = () => {
+export const UploadForm = () => {
   const [form] = Form.useForm();
   const fileUpload = useFileUpload();
   const session = useSelector(selectSession);

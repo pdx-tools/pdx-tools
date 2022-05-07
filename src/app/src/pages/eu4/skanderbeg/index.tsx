@@ -3,7 +3,7 @@ import { HtmlHead } from "@/components/head";
 import { AppStructure } from "@/components/layout";
 import { SkanderbegPage } from "@/features/skanderbeg";
 
-export const Eu4Skanderbeg: React.FC<{}> = () => {
+export const Eu4Skanderbeg = () => {
   return (
     <>
       <HtmlHead>

@@ -24,13 +24,13 @@ interface ChartDrawerTitleProps {
   onHelp: () => void;
 }
 
-export const ChartDrawerTitle: React.FC<ChartDrawerTitleProps> = ({
+export const ChartDrawerTitle = ({
   selectedViz,
   setSelectedViz,
   expanded,
   setExpanded,
   onHelp,
-}) => {
+}: ChartDrawerTitleProps) => {
   const { md } = useBreakpoint();
   const isLoading = useIsLoading();
   const viz = useVisualization();

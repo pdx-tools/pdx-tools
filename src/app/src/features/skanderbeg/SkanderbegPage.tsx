@@ -10,7 +10,7 @@ import { epochOf } from "@/lib/dates";
 const { Paragraph } = Typography;
 const { Search } = Input;
 
-export const SkanderbegPage: React.FC<{}> = () => {
+export const SkanderbegPage = () => {
   const router = useRouter();
   const userInfo = useSelector(selectUserInfo);
   const [trigger, { isFetching, data }] =

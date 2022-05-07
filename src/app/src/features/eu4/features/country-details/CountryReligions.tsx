@@ -19,10 +19,10 @@ export interface CountryReligionVizProps {
   largeLayout: boolean;
 }
 
-const CountryReligionVizImpl: React.FC<CountryReligionVizProps> = ({
+const CountryReligionVizImpl = ({
   data,
   largeLayout,
-}) => {
+}: CountryReligionVizProps) => {
   const columns: ColumnType<CountryReligion>[] = [
     {
       title: "Religion",
@@ -115,9 +115,7 @@ const CountryReligionVizImpl: React.FC<CountryReligionVizProps> = ({
 
 const CountryReligionViz = React.memo(CountryReligionVizImpl);
 
-export const CountryReligions: React.FC<CountryReligionsProps> = ({
-  details,
-}) => {
+export const CountryReligions = ({ details }: CountryReligionsProps) => {
   const { md } = Grid.useBreakpoint();
   const [data, setData] = useState<CountryReligion[]>([]);
   const cb = useCallback(

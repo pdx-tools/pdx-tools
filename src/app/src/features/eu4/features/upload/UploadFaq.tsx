@@ -1,7 +1,7 @@
 import Link from "next/link";
 import React from "react";
 
-export const UploadFaq: React.FC<{}> = () => {
+export const UploadFaq = () => {
   return (
     <dl>
       <dt>What files can I upload?</dt>

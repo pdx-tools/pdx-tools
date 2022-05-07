@@ -6,12 +6,7 @@ type BuildingProps = GfxObj & {
   condensed?: boolean;
 };
 
-export const BuildingAvatar: React.FC<BuildingProps> = ({
-  id,
-  name,
-  gfx,
-  condensed,
-}) => {
+export const BuildingAvatar = ({ id, name, gfx, condensed }: BuildingProps) => {
   let buildingImage;
   try {
     buildingImage = require(`@/images/eu4/buildings/${id}_${gfx}.png`);

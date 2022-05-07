@@ -33,9 +33,9 @@ interface AchievementsPageProps {
   staticAchievements?: AchievementUploads[];
 }
 
-export const AchievementsPage: React.FC<AchievementsPageProps> = ({
+export const AchievementsPage = ({
   staticAchievements,
-}) => {
+}: AchievementsPageProps) => {
   const { isFetching, achievements } = useAchievements();
 
   let extras = [];

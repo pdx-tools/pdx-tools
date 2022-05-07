@@ -1,7 +1,7 @@
 import Icon from "@ant-design/icons";
 
 // https://simpleicons.org/?q=chrome
-export const ChromeSvg: React.FC<{}> = () => {
+export const ChromeSvg = () => {
   return (
     <svg
       role="img"
@@ -17,6 +17,6 @@ export const ChromeSvg: React.FC<{}> = () => {
 };
 
 type ChromeProps = React.ComponentProps<typeof Icon>;
-export const ChromeIcon: React.FC<ChromeProps> = (props) => (
+export const ChromeIcon = (props: ChromeProps) => (
   <Icon component={ChromeSvg} {...props} />
 );

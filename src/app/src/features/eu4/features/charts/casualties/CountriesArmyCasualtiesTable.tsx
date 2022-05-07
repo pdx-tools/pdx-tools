@@ -21,7 +21,7 @@ const unitTypes = [
   ["Total", "landTotal"],
 ];
 
-export const CountriesArmyCasualtiesTable: React.FC<{}> = () => {
+export const CountriesArmyCasualtiesTable = () => {
   const data = useCountryCasualtyData();
   const isLoading = useIsLoading();
   const numRenderer = (x: number) => formatInt(x);
@@ -36,7 +36,9 @@ export const CountriesArmyCasualtiesTable: React.FC<{}> = () => {
           "tag",
           "name",
           ...unitTypes.map(([_, type]) => `${type}Battle` as keyof TableLosses),
-          ...unitTypes.map(([_, type]) => `${type}Attrition` as keyof TableLosses),
+          ...unitTypes.map(
+            ([_, type]) => `${type}Attrition` as keyof TableLosses
+          ),
           "landTotal",
         ];
         return createCsv(data, keys);

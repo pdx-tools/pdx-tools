@@ -10,7 +10,7 @@ interface SkanRoute {
   skanId: string;
 }
 
-export const SkanderbegSavePage: React.FC<SkanRoute> = ({ skanId }) => {
+export const SkanderbegSavePage = ({ skanId }: SkanRoute) => {
   const filePublisher = useFilePublisher();
   const engineError = useSelector(selectEngineError);
 

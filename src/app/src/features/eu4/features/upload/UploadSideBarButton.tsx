@@ -7,10 +7,10 @@ import { UploadProvider } from "./uploadContext";
 import { UploadDrawer } from "./UploadDrawer";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
 
-export const UploadSideBarButton: React.FC<SideBarButtonProps> = ({
+export const UploadSideBarButton = ({
   children,
   ...props
-}) => {
+}: SideBarButtonProps) => {
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   return (

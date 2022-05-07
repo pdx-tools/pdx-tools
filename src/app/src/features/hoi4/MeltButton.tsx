@@ -6,7 +6,7 @@ import { downloadData } from "@/lib/downloadData";
 import { translateToMeltedFilename } from "@/lib/translateMeltedFilename";
 import { emitEvent } from "@/lib/plausible";
 
-export const MeltButton: React.FC<{}> = () => {
+export const MeltButton = () => {
   const [loading, setLoading] = useState(false);
   const filename = useSelector(selectAnalyzeFileName);
   const wasmWorker = useWasmWorker();

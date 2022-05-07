@@ -8,7 +8,7 @@ export interface CountryLeadersProps {
   details: CountryDetails;
 }
 
-export const CountryLeaders: React.FC<CountryLeadersProps> = ({ details }) => {
+export const CountryLeaders = ({ details }: CountryLeadersProps) => {
   const [data, setData] = useState<CountryLeader[]>([]);
   const cb = useCallback(
     async (worker: WorkerClient) => {

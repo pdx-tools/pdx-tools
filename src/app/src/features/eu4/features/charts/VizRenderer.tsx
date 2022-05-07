@@ -19,7 +19,7 @@ interface VizRendererProps {
   module: VizModules;
 }
 
-export const VizRenderer: React.FC<VizRendererProps> = ({ module }) => {
+export const VizRenderer = ({ module }: VizRendererProps) => {
   switch (module) {
     case "idea-group":
       return <IdeaGroupsChart />;

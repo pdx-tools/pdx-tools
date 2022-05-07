@@ -2,7 +2,7 @@ import React, { SVGProps } from "react";
 import Icon from "@ant-design/icons";
 
 type AppSvgProps = SVGProps<SVGSVGElement>;
-export const AppSvg: React.FC<AppSvgProps> = (props) => {
+export const AppSvg = (props: AppSvgProps) => {
   return (
     <svg
       fill="#FFFFFF"
@@ -41,6 +41,6 @@ export const AppSvg: React.FC<AppSvgProps> = (props) => {
 };
 
 type AppIconProps = React.ComponentProps<typeof Icon>;
-export const AppIcon: React.FC<AppIconProps> = (props) => (
+export const AppIcon = (props: AppIconProps) => (
   <Icon component={AppSvg} {...props} />
 );

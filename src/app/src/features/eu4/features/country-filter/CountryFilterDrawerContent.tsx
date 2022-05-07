@@ -13,9 +13,9 @@ interface CountryFilterDrawerContent {
   closeDrawer: () => void;
 }
 
-export const CountryFilterDrawerContent: React.FC<
-  CountryFilterDrawerContent
-> = ({ closeDrawer }) => {
+export const CountryFilterDrawerContent = ({
+  closeDrawer,
+}: CountryFilterDrawerContent) => {
   const [forceShowFiltered, setForceShowFiltered] = useState(false);
   const filter = useCountryFilterState();
   const localDispatch = useCountryFilterDispatch();

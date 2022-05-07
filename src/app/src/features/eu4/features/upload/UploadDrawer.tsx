@@ -13,7 +13,7 @@ interface UploadDrawerProps {
   closeDrawer: () => void;
 }
 
-export const UploadDrawerTitle: React.FC<{}> = () => {
+export const UploadDrawerTitle = () => {
   const meta = useEu4Meta();
   const progress = useUploadProgress();
   const uploadResponse = useUploadResponse();
@@ -35,10 +35,7 @@ export const UploadDrawerTitle: React.FC<{}> = () => {
   );
 };
 
-export const UploadDrawer: React.FC<UploadDrawerProps> = ({
-  visible,
-  closeDrawer,
-}) => {
+export const UploadDrawer = ({ visible, closeDrawer }: UploadDrawerProps) => {
   return (
     <Drawer
       title={<UploadDrawerTitle />}

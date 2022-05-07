@@ -12,7 +12,7 @@ import { GithubIcon, DiscordIcon } from "@/components/icons";
 import { appApi } from "../../services/appApi";
 import css from "styled-jsx/css";
 
-const MySaves: React.FC<{}> = () => {
+const MySaves = () => {
   let userInfo = useSelector(selectUserInfo);
   if (userInfo) {
     const key = `/users/${userInfo.user_id}`;
@@ -50,7 +50,7 @@ const { className, styles } = css.resolve`
   }
 `;
 
-export const CoreMenu: React.FC<CoreMenuProps> = ({ mode }) => {
+export const CoreMenu = ({ mode }: CoreMenuProps) => {
   const [logoutTrigger] = appApi.endpoints.logout.useMutation();
   const session = useSelector(selectSession);
   const inlined = mode == "inline";

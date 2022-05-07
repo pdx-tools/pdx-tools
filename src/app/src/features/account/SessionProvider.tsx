@@ -3,7 +3,11 @@ import React, { useEffect } from "react";
 import { appApi } from "../../services/appApi";
 import { setIsDeveloper } from "./sessionSlice";
 
-export const SessionProvider: React.FC<{}> = ({ children }) => {
+interface SessionProviderProps {
+  children: React.ReactNode;
+}
+
+export const SessionProvider = ({ children }: SessionProviderProps) => {
   const dispatch = useAppDispatch();
   appApi.endpoints.getProfile.useQuery();
 

@@ -1,4 +1,8 @@
-export const AnnouncementBar: React.FC<{}> = ({ children }) => {
+interface AnnouncementBarProps {
+  children: React.ReactNode;
+}
+
+export const AnnouncementBar = ({ children }: AnnouncementBarProps) => {
   return (
     <div className="flex-row justify-center font-bold">
       <style jsx>{`

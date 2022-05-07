@@ -1,7 +1,7 @@
 import Icon from "@ant-design/icons";
 
 // https://simpleicons.org/?q=edge
-export const EdgeSvg: React.FC<{}> = () => {
+export const EdgeSvg = () => {
   return (
     <svg
       role="img"
@@ -17,6 +17,6 @@ export const EdgeSvg: React.FC<{}> = () => {
 };
 
 type EdgeProps = React.ComponentProps<typeof Icon>;
-export const EdgeIcon: React.FC<EdgeProps> = (props) => (
+export const EdgeIcon = (props: EdgeProps) => (
   <Icon component={EdgeSvg} {...props} />
 );

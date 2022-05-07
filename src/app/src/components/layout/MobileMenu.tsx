@@ -3,7 +3,7 @@ import { Button, Drawer } from "antd";
 import { MenuOutlined } from "@ant-design/icons";
 import { CoreMenu } from "./CoreMenu";
 
-export const MobileMenu: React.FC<{}> = () => {
+export const MobileMenu = () => {
   const [menuVisible, setMenuVisible] = useState(false);
   return (
     <div>

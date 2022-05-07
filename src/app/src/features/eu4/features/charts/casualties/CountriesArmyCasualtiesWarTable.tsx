@@ -11,9 +11,9 @@ interface CountryArmyCasualtiesWarTableProps {
   record: TableLosses;
 }
 
-export const CountriesArmyCasualtiesWarTable: React.FC<
-  CountryArmyCasualtiesWarTableProps
-> = ({ record }) => {
+export const CountriesArmyCasualtiesWarTable = ({
+  record,
+}: CountryArmyCasualtiesWarTableProps) => {
   const [wars, setWars] = useState([] as SingleCountryWarCasualties[]);
   const isLoading = useIsLoading();
 

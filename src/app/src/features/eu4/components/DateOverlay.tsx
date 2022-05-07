@@ -1,7 +1,7 @@
 import { useSelector } from "react-redux";
 import { selectEu4MapDate } from "../eu4Slice";
 
-export const DateOverlay: React.FC = () => {
+export const DateOverlay = () => {
   const mapDate = useSelector(selectEu4MapDate);
   return (
     <div className="date-overlay touch-none">

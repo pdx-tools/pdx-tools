@@ -10,7 +10,7 @@ interface SaveProps {
   saveId: string;
 }
 
-export const SavePage: React.FC<SaveProps> = ({ saveId }) => {
+export const SavePage = ({ saveId }: SaveProps) => {
   const filePublisher = useFilePublisher();
   const engineError = useSelector(selectEngineError);
 

@@ -6,10 +6,10 @@ import {
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
 import { MapSettingsDrawer } from "./MapSettingsDrawer";
 
-export const MapSettingsSideBarButton: React.FC<SideBarButtonProps> = ({
+export const MapSettingsSideBarButton = ({
   children,
   ...props
-}) => {
+}: SideBarButtonProps) => {
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   return (

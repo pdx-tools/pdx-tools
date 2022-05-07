@@ -6,9 +6,7 @@ import { FilterOutlined } from "@ant-design/icons";
 type ButtonProps = React.ComponentProps<typeof Button>;
 export type CountryFilterButtonProps = ButtonProps;
 
-export const CountryFilterButton: React.FC<CountryFilterButtonProps> = (
-  props
-) => {
+export const CountryFilterButton = (props: CountryFilterButtonProps) => {
   const [visible, setVisible] = useState(false);
 
   const btn: ButtonProps = {

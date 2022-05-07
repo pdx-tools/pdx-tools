@@ -22,7 +22,13 @@ const CanvasContext = React.createContext<CanvasContextProps | undefined>(
   undefined
 );
 
-export const CanvasContextProvider: React.FC<{}> = ({ children }) => {
+interface CanvasContextProviderProps {
+  children: React.ReactNode;
+}
+
+export const CanvasContextProvider = ({
+  children,
+}: CanvasContextProviderProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const glRef = useRef<WebGL2RenderingContext>();

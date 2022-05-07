@@ -11,7 +11,6 @@ import { formatInt } from "@/lib/format";
 import { countryColumnFilter } from "../countryColumnFilter";
 import { createCsv } from "@/lib/csv";
 
-
 const unitTypes = [
   ["Heavy", "heavyShip"],
   ["Light", "lightShip"],
@@ -20,7 +19,7 @@ const unitTypes = [
   ["Total", "navyTotal"],
 ];
 
-export const CountriesNavyCasualtiesTable: React.FC<{}> = () => {
+export const CountriesNavyCasualtiesTable = () => {
   const data = useCountryCasualtyData();
   const isLoading = useIsLoading();
   const selectFilterRef = useRef(null);
@@ -34,8 +33,12 @@ export const CountriesNavyCasualtiesTable: React.FC<{}> = () => {
           "tag",
           "name",
           ...unitTypes.map(([_, type]) => `${type}Battle` as keyof TableLosses),
-          ...unitTypes.map(([_, type]) => `${type}Attrition` as keyof TableLosses),
-          ...unitTypes.map(([_, type]) => `${type}Capture` as keyof TableLosses),
+          ...unitTypes.map(
+            ([_, type]) => `${type}Attrition` as keyof TableLosses
+          ),
+          ...unitTypes.map(
+            ([_, type]) => `${type}Capture` as keyof TableLosses
+          ),
           "navyTotal",
         ];
         return createCsv(data, keys);

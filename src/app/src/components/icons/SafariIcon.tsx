@@ -1,7 +1,7 @@
 import Icon from "@ant-design/icons";
 
 // https://simpleicons.org/?q=safari
-export const SafariSvg: React.FC<{}> = () => {
+export const SafariSvg = () => {
   return (
     <svg
       role="img"
@@ -17,6 +17,6 @@ export const SafariSvg: React.FC<{}> = () => {
 };
 
 type SafariProps = React.ComponentProps<typeof Icon>;
-export const SafariIcon: React.FC<SafariProps> = (props) => (
+export const SafariIcon = (props: SafariProps) => (
   <Icon component={SafariSvg} {...props} />
 );

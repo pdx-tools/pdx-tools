@@ -7,7 +7,7 @@ const DynamicHoi4: ComponentType<React.ComponentProps<typeof Hoi4Ui>> = dynamic(
   () => import("@/features/hoi4/Hoi4Ui")
 );
 
-export const Hoi4View: React.FC<{}> = () => {
+export const Hoi4View = () => {
   return (
     <>
       <AnalyzeDropZone />

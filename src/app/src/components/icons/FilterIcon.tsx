@@ -4,6 +4,6 @@ interface FilterIconProps {
   filtered: boolean;
 }
 
-export const FilterIcon: React.FC<FilterIconProps> = ({ filtered }) => {
+export const FilterIcon = ({ filtered }: FilterIconProps) => {
   return <SearchOutlined style={{ color: filtered ? "#1890ff" : undefined }} />;
 };

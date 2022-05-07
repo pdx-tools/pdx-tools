@@ -8,7 +8,7 @@ import terrain from "./images/mapmode_terrain.png";
 import { setEu4MapMode } from "@/features/eu4/eu4Slice";
 import { MapControls } from "../../types/map";
 
-export const MapModeButtonGroup: React.FC<{}> = () => {
+export const MapModeButtonGroup = () => {
   const selectedMode = useAppSelector((state) => state.eu4.mapControls.mode);
 
   const dispatch = useAppDispatch();

@@ -136,7 +136,7 @@ function createSideColumn(): (
   ];
 }
 
-export const BattleView: React.FC<BattleViewProps> = ({ warName }) => {
+export const BattleView = ({ warName }: BattleViewProps) => {
   const isLoading = useIsLoading();
 
   // These are references instead of state as setState functions

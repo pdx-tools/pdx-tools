@@ -5,7 +5,7 @@ import { useSelector } from "react-redux";
 import { emitEvent } from "@/lib/plausible";
 import { downloadData } from "@/lib/downloadData";
 
-export const DownloadButton: React.FC<{}> = () => {
+export const DownloadButton = () => {
   const [loading, setLoading] = useState(false);
   const filename = useSelector(selectAnalyzeFileName);
   const wasmWorker = useWasmWorker();

@@ -7,7 +7,7 @@ interface SuccessAlertProps {
   newSaveId: string;
 }
 
-export const SuccessAlert: React.FC<SuccessAlertProps> = ({ newSaveId }) => {
+export const SuccessAlert = ({ newSaveId }: SuccessAlertProps) => {
   return (
     <Alert
       type="success"

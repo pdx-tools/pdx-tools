@@ -8,9 +8,7 @@ export interface InheranticeLabelProps {
   details: CountryDetails;
 }
 
-export const InheritanceLabel: React.FC<InheranticeLabelProps> = ({
-  details,
-}) => {
+export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
   const { inheritance, tag, num_cities } = details;
   const [drawerVisible, setDrawerVisible] = useState(false);
   const meta = useEu4Meta();

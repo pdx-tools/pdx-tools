@@ -4,7 +4,7 @@ import { selectAnalyzeFileName } from "@/features/engine";
 import { useHoi4Meta } from "./hoi4Slice";
 import { MeltButton } from "./MeltButton";
 
-export const Hoi4Ui: React.FC<{}> = () => {
+export const Hoi4Ui = () => {
   const filename = useSelector(selectAnalyzeFileName);
   const meta = useHoi4Meta();
   return (

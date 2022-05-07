@@ -5,7 +5,7 @@ interface HelpProps {
   module: VizModules;
 }
 
-export const Help: React.FC<HelpProps> = ({ module }) => {
+export const Help = ({ module }: HelpProps) => {
   switch (module) {
     case "monthly-income": {
       return (

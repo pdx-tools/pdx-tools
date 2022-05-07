@@ -10,9 +10,7 @@ interface StaticAchievement {
   achievement?: Achievement;
 }
 
-export const Eu4Achievement: React.FC<StaticAchievement> = ({
-  achievement,
-}) => {
+export const Eu4Achievement = ({ achievement }: StaticAchievement) => {
   const router = useRouter();
   const { achievement_id } = router.query;
   return (

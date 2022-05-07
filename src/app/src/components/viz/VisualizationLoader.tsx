@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useVisualizationDispatch } from "./visualization-context";
 
-export const VisualizationLoader: React.FC<{}> = () => {
+export const VisualizationLoader = () => {
   const dispatch = useVisualizationDispatch();
   useEffect(() => {
     dispatch({ type: "enqueue-loading" });

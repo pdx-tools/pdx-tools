@@ -27,10 +27,10 @@ const useAchievement = (achievementId: string) => {
   return { isFetching: isUninitialized || isFetching, achievement, saves };
 };
 
-export const AchievementPage: React.FC<AchievementRoute> = ({
+export const AchievementPage = ({
   achievementId,
   staticAchievement,
-}) => {
+}: AchievementRoute) => {
   const { isFetching, achievement, saves } = useAchievement(achievementId);
 
   const routes = [

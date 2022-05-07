@@ -25,7 +25,7 @@ interface PieTablePieProps {
   palette: Readonly<Map<string, string>>;
 }
 
-const PieTablePieImpl: React.FC<PieTablePieProps> = ({ rows, palette }) => {
+const PieTablePieImpl = ({ rows, palette }: PieTablePieProps) => {
   const chartConfig: PieConfig = {
     data: rows,
     angleField: "value",
@@ -46,13 +46,13 @@ const PieTablePieImpl: React.FC<PieTablePieProps> = ({ rows, palette }) => {
 
 const PieTablePie = React.memo(PieTablePieImpl);
 
-export const PieTable: React.FC<PieTableProps> = ({
+export const PieTable = ({
   rows,
   title,
   palette,
   paginate,
   wholeNumbers,
-}) => {
+}: PieTableProps) => {
   const isLoading = useIsLoading();
   const { md } = useBreakpoint();
   const numFormatter =

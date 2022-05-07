@@ -8,9 +8,7 @@ interface DisplayLimitAlertProps {
   displayLimit: number;
 }
 
-export const DisplayLimitAlert: React.FC<DisplayLimitAlertProps> = ({
-  displayLimit,
-}) => {
+export const DisplayLimitAlert = ({ displayLimit }: DisplayLimitAlertProps) => {
   const countryFilter = useSelector(selectEu4CountryFilter);
   const [limitExceeded, setLimitExceeded] = useState(false);
 

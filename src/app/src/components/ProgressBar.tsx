@@ -8,11 +8,11 @@ interface ProgressBarProps {
 }
 
 // https://alvarotrigo.com/blog/how-to-make-a-progress-bar-in-css/
-export const ProgressBar: React.FC<ProgressBarProps> = ({
+export const ProgressBar = ({
   value,
   height,
   absolutePositioning,
-}) => {
+}: ProgressBarProps) => {
   return (
     <div className="progress">
       <div

@@ -8,11 +8,11 @@ type AdvisorAvatarProps = {
   enabled: boolean;
 };
 
-export const AdvisorAvatar: React.FC<AdvisorAvatarProps> = ({
+export const AdvisorAvatar = ({
   triggerDate,
   localized,
   enabled,
-}) => {
+}: AdvisorAvatarProps) => {
   let image;
   try {
     image = require(`@/images/eu4/advisors/${localized.id}.png`);

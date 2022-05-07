@@ -4,7 +4,7 @@ import { Home } from "@/components/landing/Home";
 import { AppStructure } from "@/components/layout";
 import { FileDrop } from "@/features/engine/FileDrop";
 
-export const IndexPage: React.FC<{}> = () => {
+export const IndexPage = () => {
   return (
     <>
       <HtmlHead>

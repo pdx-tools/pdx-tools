@@ -8,7 +8,13 @@ const SideBarContainerContext = React.createContext<
   SideBarContainerContext | undefined
 >(undefined);
 
-export const SideBarContainerProvider: React.FC<{}> = ({ children }) => {
+interface SideBarContainerProviderProps {
+  children: React.ReactNode;
+}
+
+export const SideBarContainerProvider = ({
+  children,
+}: SideBarContainerProviderProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   return (
     <SideBarContainerContext.Provider value={{ containerRef }}>

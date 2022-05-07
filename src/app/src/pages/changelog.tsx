@@ -3,7 +3,7 @@ import { HtmlHead } from "@/components/head";
 import { AppStructure } from "@/components/layout";
 import { ChangeLog } from "@/features/changelog";
 
-export const AppChangelog: React.FC<{}> = () => {
+export const AppChangelog = () => {
   return (
     <>
       <HtmlHead>

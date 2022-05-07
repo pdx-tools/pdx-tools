@@ -10,12 +10,13 @@ const { Content } = Layout;
 
 interface AppStructureProps {
   header?: boolean;
+  children: React.ReactNode;
 }
 
-export const AppStructure: React.FC<AppStructureProps> = ({
+export const AppStructure = ({
   header = true,
   children,
-}) => {
+}: AppStructureProps) => {
   const visibleHeader = useSelector(selectAppHeaderVisible);
   return (
     <SessionProvider>

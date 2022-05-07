@@ -16,9 +16,7 @@ interface CountryBudgetCountProps {
   details: CountryDetails;
 }
 
-export const CountryBudget: React.FC<CountryBudgetCountProps> = ({
-  details,
-}) => {
+export const CountryBudget = ({ details }: CountryBudgetCountProps) => {
   const [showRecurringOnly, setRecurOnly] = useState(false);
   const income = useMemo(
     () => filterIncome(details.income, showRecurringOnly),

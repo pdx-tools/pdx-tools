@@ -17,10 +17,7 @@ interface FlagAvatarProps {
   condensed?: boolean;
 }
 
-export const FlagAvatarCore: React.FC<FlagAvatarCoreProps> = ({
-  tag,
-  size,
-}) => {
+export const FlagAvatarCore = ({ tag, size }: FlagAvatarCoreProps) => {
   let flag_src = "";
   try {
     flag_src = require(`@/images/eu4/flags/${tag}.png`);
@@ -65,12 +62,12 @@ const { className, styles } = css.resolve`
   }
 `;
 
-const InGameFlagAvatar: React.FC<FlagAvatarProps> = ({
+const InGameFlagAvatar = ({
   tag,
   name,
   size,
   condensed = false,
-}) => {
+}: FlagAvatarProps) => {
   const panTag = usePanTag();
   if (!condensed) {
     return (
@@ -98,12 +95,12 @@ const InGameFlagAvatar: React.FC<FlagAvatarProps> = ({
   }
 };
 
-const OutOfGameFlagAvatar: React.FC<FlagAvatarProps> = ({
+const OutOfGameFlagAvatar = ({
   tag,
   name,
   size,
   condensed = false,
-}) => {
+}: FlagAvatarProps) => {
   if (!condensed) {
     return (
       <Tooltip title={tag}>
@@ -124,7 +121,7 @@ const OutOfGameFlagAvatar: React.FC<FlagAvatarProps> = ({
   }
 };
 
-export const FlagAvatar: React.FC<FlagAvatarProps> = (props) => {
+export const FlagAvatar = (props: FlagAvatarProps) => {
   // If we're using a flag avatar inside eu4 then we can pan to the map
   if (useInEu4Analysis()) {
     return <InGameFlagAvatar {...props} />;

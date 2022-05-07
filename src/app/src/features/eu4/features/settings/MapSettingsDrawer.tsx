@@ -7,10 +7,10 @@ interface CountryDetailsProps {
   closeDrawer: () => void;
 }
 
-export const MapSettingsDrawer: React.FC<CountryDetailsProps> = ({
+export const MapSettingsDrawer = ({
   visible,
   closeDrawer,
-}) => {
+}: CountryDetailsProps) => {
   const sideBarContainerRef = useSideBarContainerRef();
   return (
     <Drawer

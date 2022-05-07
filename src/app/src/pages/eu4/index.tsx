@@ -3,7 +3,7 @@ import { HtmlHead } from "@/components/head";
 import { AppStructure } from "@/components/layout";
 import { Eu4GamePage } from "@/features/eu4/Eu4GamePage";
 
-export const Eu4Home: React.FC<{}> = () => {
+export const Eu4Home = () => {
   return (
     <>
       <HtmlHead>

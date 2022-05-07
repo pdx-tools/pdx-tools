@@ -24,7 +24,7 @@ const healthCategories = [
   "overextension",
 ];
 
-export const HealthGrid: React.FC<{}> = () => {
+export const HealthGrid = () => {
   const [data, setData] = useState<HealthDatum[]>([]);
   const countryFilter = useSelector(selectEu4CountryFilter);
   const visualizationDispatch = useVisualizationDispatch();

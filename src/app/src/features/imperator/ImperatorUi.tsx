@@ -4,7 +4,7 @@ import { selectAnalyzeFileName } from "@/features/engine";
 import { useImperatorMeta } from "./imperatorSlice";
 import { MeltButton } from "./MeltButton";
 
-export const ImperatorUi: React.FC<{}> = () => {
+export const ImperatorUi = () => {
   const filename = useSelector(selectAnalyzeFileName);
   const meta = useImperatorMeta();
   return (

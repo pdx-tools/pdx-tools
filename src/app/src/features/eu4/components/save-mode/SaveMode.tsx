@@ -9,7 +9,7 @@ export interface SaveModeProps {
   mode: Mode;
 }
 
-export const SaveMode: React.FC<SaveModeProps> = ({ mode }) => {
+export const SaveMode = ({ mode }: SaveModeProps) => {
   switch (mode) {
     case "Normal": {
       return (

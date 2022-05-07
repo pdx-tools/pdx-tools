@@ -16,10 +16,10 @@ interface UserSaveTableProps {
   isPrivileged: boolean;
 }
 
-export const UserSaveTable: React.FC<UserSaveTableProps> = ({
+export const UserSaveTable = ({
   records,
   isPrivileged,
-}) => {
+}: UserSaveTableProps) => {
   const columns = [
     {
       title: "Uploaded",

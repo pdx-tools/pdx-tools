@@ -27,10 +27,7 @@ const vizModuleDisplayLimit = (module: VizModules) => {
 
 const DEFAULT_VIZUALIZATION_SELECTION = "monthly-income";
 
-export const ChartDrawer: React.FC<ChartDrawerProps> = ({
-  visible,
-  closeDrawer,
-}) => {
+export const ChartDrawer = ({ visible, closeDrawer }: ChartDrawerProps) => {
   const [selectedViz, setSelectedViz] = useState<VizModules>(
     DEFAULT_VIZUALIZATION_SELECTION
   );

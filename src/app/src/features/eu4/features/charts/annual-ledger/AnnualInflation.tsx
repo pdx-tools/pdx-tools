@@ -5,7 +5,7 @@ import { LedgerSelection, useLedgerData } from "./hooks";
 const selectAnnualInflationData: LedgerSelection = (worker, filter) =>
   worker.eu4GetAnnualInflationData(filter);
 
-export const AnnualInflation: React.FC<{}> = () => {
+export const AnnualInflation = () => {
   const data = useLedgerData(selectAnnualInflationData);
 
   return <AnnualLedger ledger={data} />;

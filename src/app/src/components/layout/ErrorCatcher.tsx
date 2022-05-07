@@ -3,7 +3,11 @@ import { Alert, message } from "antd";
 import { ErrorBoundary } from "@sentry/react";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 
-export const ErrorCatcher: React.FC<{}> = ({ children }) => {
+interface ErrorCatcherProps {
+  children: React.ReactNode;
+}
+
+export const ErrorCatcher = ({ children }: ErrorCatcherProps) => {
   return (
     <ErrorBoundary
       fallback={({ error }) => {

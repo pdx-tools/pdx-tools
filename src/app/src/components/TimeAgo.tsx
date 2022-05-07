@@ -6,7 +6,7 @@ interface TimeAgoProps {
   date: string;
 }
 
-export const TimeAgo: React.FC<TimeAgoProps> = ({ date }) => {
+export const TimeAgo = ({ date }: TimeAgoProps) => {
   return (
     <Tooltip title={display(date)}>
       <span>{timeAgo(date)}</span>

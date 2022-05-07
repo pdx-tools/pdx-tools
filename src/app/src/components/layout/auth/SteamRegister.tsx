@@ -3,7 +3,7 @@ import { Drawer, Button, Typography, Divider } from "antd";
 import { SteamButton } from "./SteamButton";
 const { Title, Paragraph, Text } = Typography;
 
-export const SteamRegister: React.FC<{}> = () => {
+export const SteamRegister = () => {
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   return (
     <>

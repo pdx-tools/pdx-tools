@@ -21,7 +21,7 @@ interface TotalManaBarProps {
   mil: number;
 }
 
-const TotalManaBarImpl: React.FC<TotalManaBarProps> = ({ adm, dip, mil }) => {
+const TotalManaBarImpl = ({ adm, dip, mil }: TotalManaBarProps) => {
   const overviewConfig: BarConfig = {
     data: [
       {
@@ -57,7 +57,7 @@ const TotalManaBarImpl: React.FC<TotalManaBarProps> = ({ adm, dip, mil }) => {
 
 const TotalManaBar = React.memo(TotalManaBarImpl);
 
-const ManaCategoryBarsImpl: React.FC<CountryManaProps> = ({ details }) => {
+const ManaCategoryBarsImpl = ({ details }: CountryManaProps) => {
   const data = [
     {
       label: "Ideas",
@@ -131,7 +131,7 @@ const ManaCategoryBars = React.memo(ManaCategoryBarsImpl);
 const aliases: Map<string, string> = new Map(manaSpendAliases());
 const palette: Map<string, string> = new Map(manaSpendColorPalette());
 
-export const CountryManaUsage: React.FC<CountryManaProps> = ({ details }) => {
+export const CountryManaUsage = ({ details }: CountryManaProps) => {
   const adm_mana = useMemo(
     () =>
       Object.entries(details.mana_usage.adm)

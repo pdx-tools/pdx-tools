@@ -12,7 +12,7 @@ interface IdeaGroupDatum {
   type: string;
   count: number;
 }
-export const IdeaGroupsChart: React.FC<{}> = () => {
+export const IdeaGroupsChart = () => {
   const [ideaGroups, setIdeaGroups] = useState<IdeaGroupDatum[]>([]);
   const countryFilter = useSelector(selectEu4CountryFilter);
   const visualizationDispatch = useVisualizationDispatch();

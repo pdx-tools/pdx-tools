@@ -2,7 +2,7 @@ import { PageHeader } from "antd";
 import React from "react";
 import { AccountContent } from "./AccountContent";
 
-export const Account: React.FC<{}> = () => {
+export const Account = () => {
   return (
     <PageHeader
       title="Manage Your Account"

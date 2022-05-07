@@ -3,7 +3,7 @@ import { HtmlHead } from "@/components/head";
 import { AppStructure } from "@/components/layout";
 import { Account } from "@/features/account";
 
-export const AppAcount: React.FC<{}> = () => {
+export const AppAcount = () => {
   return (
     <>
       <HtmlHead>

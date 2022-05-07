@@ -5,6 +5,6 @@ interface StringFlipBookProps {
   items: string[];
 }
 
-export const StringFlipBook: React.FC<StringFlipBookProps> = ({ items }) => {
+export const StringFlipBook = ({ items }: StringFlipBookProps) => {
   return <FlipBook items={items} itemRender={(x) => <span>{x}</span>} />;
 };

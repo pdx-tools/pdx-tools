@@ -2,7 +2,7 @@ import { useSelector } from "react-redux";
 import { ZIndex } from "@/lib/zIndices";
 import { selectIsFileHover } from "../engineSlice";
 
-export const AnalyzeDropZone: React.FC<{}> = () => {
+export const AnalyzeDropZone = () => {
   const isFileHover = useSelector(selectIsFileHover);
 
   return (

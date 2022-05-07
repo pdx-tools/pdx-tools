@@ -7,10 +7,10 @@ import { VisualizationProvider } from "@/components/viz/visualization-context";
 import { CountryDetailsDrawer } from "./CountryDetailsDrawer";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
 
-export const CountrySideBarButton: React.FC<SideBarButtonProps> = ({
+export const CountrySideBarButton = ({
   children,
   ...props
-}) => {
+}: SideBarButtonProps) => {
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   return (

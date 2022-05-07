@@ -3,7 +3,7 @@ import { message } from "antd";
 import { useSelector, useDispatch } from "react-redux";
 import { selectLatestToast, popToast } from "./toastSlice";
 
-export const Toaster: React.FC<{}> = () => {
+export const Toaster = () => {
   const dispatch = useDispatch();
   const latestToast = useSelector(selectLatestToast);
   const [hideLoadingToast, setHide] = useState<() => void>(() => () => {});

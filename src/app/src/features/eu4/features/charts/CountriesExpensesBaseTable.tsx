@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Divider, Space, Switch, Table, Typography } from "antd";
 import { ColumnProps } from "antd/lib/table";
-import { useIsLoading, useVisualizationDispatch } from "@/components/viz/visualization-context";
+import {
+  useIsLoading,
+  useVisualizationDispatch,
+} from "@/components/viz/visualization-context";
 import { CountryExpenses } from "@/features/eu4/types/models";
 import { expenseLedgerAliases } from "../country-details/data";
 import { countryColumnFilter } from "./countryColumnFilter";
@@ -28,9 +31,9 @@ interface BaseTableProps {
 
 const mapping = expenseLedgerAliases();
 
-export const CountriesExpensesBaseTable: React.FC<BaseTableProps> = ({
+export const CountriesExpensesBaseTable = ({
   monthlyExpenses,
-}) => {
+}: BaseTableProps) => {
   const dispatch = useAppDispatch();
   const isLoading = useIsLoading();
   const [data, setData] = useState<CountryExpensesRecord[]>([]);

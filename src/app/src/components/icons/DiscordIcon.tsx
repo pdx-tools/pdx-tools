@@ -2,7 +2,7 @@ import React from "react";
 import Icon from "@ant-design/icons";
 
 // From media kit: https://discord.com/branding
-export const DiscordSvg: React.FC<{}> = () => {
+export const DiscordSvg = () => {
   return (
     <svg viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg">
       <g clipPath="url(#clip0)">
@@ -21,6 +21,6 @@ export const DiscordSvg: React.FC<{}> = () => {
 };
 
 type DiscordProps = React.ComponentProps<typeof Icon>;
-export const DiscordIcon: React.FC<DiscordProps> = (props) => (
+export const DiscordIcon = (props: DiscordProps) => (
   <Icon component={DiscordSvg} {...props} />
 );

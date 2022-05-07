@@ -9,10 +9,7 @@ interface SkanUserSavesProp {
   loading: boolean;
 }
 
-export const SkanUserSavesTable: React.FC<SkanUserSavesProp> = ({
-  records,
-  loading,
-}) => {
+export const SkanUserSavesTable = ({ records, loading }: SkanUserSavesProp) => {
   const columns = [
     {
       title: "Uploaded",

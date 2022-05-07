@@ -17,7 +17,7 @@ interface MousePosition {
   y: number;
 }
 
-export const MapTip: React.FC<{}> = () => {
+export const MapTip = () => {
   const [position, setPosition] = useState<MousePosition>({ x: 0, y: 0 });
   const [pointer, setPointer] = useState<MousePosition>({ x: 0, y: 0 });
   const [pointerDisplay, setPointerDisplay] = useState(false);

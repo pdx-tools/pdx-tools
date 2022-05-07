@@ -3,7 +3,7 @@ import { MapModeButtonGroup } from "./MapModeButtonGroup";
 import { useSelector } from "react-redux";
 import { selectModuleDrawn } from "@/features/engine";
 
-export const MapModeSideBar: React.FC<{}> = () => {
+export const MapModeSideBar = () => {
   const hasDrawn = useSelector(selectModuleDrawn);
   return (
     <div className="map-mode-sidebar touch-none">

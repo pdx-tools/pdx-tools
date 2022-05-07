@@ -5,7 +5,11 @@ type ChangelogEntry = {
   render: () => JSX.Element;
 };
 
-const ChangelogList: React.FC<{}> = ({ children }) => {
+interface ChangelogListProps {
+  children: React.ReactNode;
+}
+
+const ChangelogList = ({ children }: ChangelogListProps) => {
   return <ul style={{ listStyleType: "none" }}>{children}</ul>;
 };
 

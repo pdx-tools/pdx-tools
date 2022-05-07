@@ -29,7 +29,7 @@ const { Text } = Typography;
 type CountryIncomeRecord = CountryIncome;
 const aliases = incomeLedgerAliases();
 
-export const CountriesIncomeTable: React.FC<{}> = () => {
+export const CountriesIncomeTable = () => {
   const dispatch = useAppDispatch();
   const isLoading = useIsLoading();
   const [data, setData] = useState<CountryIncomeRecord[]>([]);

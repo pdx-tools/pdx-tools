@@ -79,12 +79,13 @@ const countryFilterReducer = (
 
 interface CountryFilterProvider {
   initialValues: CountryMatcher;
+  children: React.ReactNode;
 }
 
-export const CountryFilterProvider: React.FC<CountryFilterProvider> = ({
+export const CountryFilterProvider = ({
   initialValues,
   children,
-}) => {
+}: CountryFilterProvider) => {
   const [state, dispatch] = React.useReducer(countryFilterReducer, {
     matcher: initialValues,
     countries: [],

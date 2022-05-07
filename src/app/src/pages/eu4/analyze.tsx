@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import React from "react";
 
-export const Eu4Analyze: React.FC<{}> = () => {
+export const Eu4Analyze = () => {
   const router = useRouter();
 
   if (typeof window !== "undefined") {

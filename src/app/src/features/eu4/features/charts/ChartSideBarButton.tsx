@@ -7,10 +7,10 @@ import { VisualizationProvider } from "@/components/viz";
 import { ChartDrawer } from "./ChartDrawer";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
 
-export const ChartSideBarButton: React.FC<SideBarButtonProps> = ({
+export const ChartSideBarButton = ({
   children,
   ...props
-}) => {
+}: SideBarButtonProps) => {
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   return (

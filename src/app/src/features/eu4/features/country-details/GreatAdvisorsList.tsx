@@ -6,9 +6,9 @@ interface GreatAdvisorsListProps {
   greatAdvisors: GreatAdvisor[];
 }
 
-export const GreatAdvisorsList: React.FC<GreatAdvisorsListProps> = ({
+export const GreatAdvisorsList = ({
   greatAdvisors,
-}) => {
+}: GreatAdvisorsListProps) => {
   return (
     <div className="container">
       <style jsx>{`

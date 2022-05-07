@@ -241,7 +241,7 @@ interface MapState {
   height: number;
 }
 
-export const Timelapse: React.FC<{}> = () => {
+export const Timelapse = () => {
   const dispatch = useDispatch();
   const meta = useEu4Meta();
   const workerRef = useWasmWorker();

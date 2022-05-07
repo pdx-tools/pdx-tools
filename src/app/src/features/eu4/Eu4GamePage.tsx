@@ -3,7 +3,7 @@ import { Button, PageHeader } from "antd";
 import Link from "next/link";
 import { NewestSavesTable } from "./components/NewestSavesTable";
 
-export const Eu4GamePage: React.FC<{}> = () => {
+export const Eu4GamePage = () => {
   return (
     <PageHeader
       title="Latest EU4 saves"
