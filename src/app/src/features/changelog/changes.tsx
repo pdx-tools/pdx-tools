@@ -868,4 +868,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-06-01",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>🐛 - Support CK3 1.6 saves</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];

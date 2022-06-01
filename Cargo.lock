@@ -569,9 +569,9 @@ dependencies = [
 
 [[package]]
 name = "ck3save"
-version = "0.2.14"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "415be65205b3a64c01e7b9c77974ba31b58a150a823613bee281759c6ba8f200"
+checksum = "876d28a590465b08847c2007d0afa18b93c7f26b5483181d005335cce3ead770"
 dependencies = [
  "jomini",
  "serde",
@@ -816,7 +816,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.6.2"
-source = "git+https://github.com/rakaly/eu4save.git#51202ea62812da2219fc106619a3c45841c57441"
+source = "git+https://github.com/rakaly/eu4save.git#59e0ac57ba66630f4cef40fcffe989cd01b26264"
 dependencies = [
  "jomini",
  "once_cell",
