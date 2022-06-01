@@ -13,6 +13,7 @@ import { selectEu4CountryFilter } from "@/features/eu4/eu4Slice";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { createCsv } from "@/lib/csv";
 import { useVisualizationDispatch } from "@/components/viz";
+import { useTablePagination } from "@/features/ui-controls";
 
 interface WarSideData extends WarSide {
   original_name: string;
@@ -27,6 +28,7 @@ interface WarTableData extends War {
 export const WarTable = () => {
   const [data, setData] = useState<WarTableData[]>([]);
   const filter = useSelector(selectEu4CountryFilter);
+  const tablePagination = useTablePagination();
   const visualizationDispatch = useVisualizationDispatch();
   const cb = useCallback(
     async (worker: WorkerClient) => {
@@ -269,6 +271,7 @@ export const WarTable = () => {
       scroll={{ x: true }}
       dataSource={data}
       columns={columns}
+      pagination={tablePagination}
       expandable={expandable}
     />
   );

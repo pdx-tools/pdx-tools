@@ -13,6 +13,7 @@ import { CountriesArmyCasualtiesWarTable } from "./CountriesArmyCasualtiesWarTab
 import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { countryColumnFilter } from "../countryColumnFilter";
 import { createCsv } from "@/lib/csv";
+import { useTablePagination } from "@/features/ui-controls";
 
 const unitTypes = [
   ["Inf", "infantry"],
@@ -27,6 +28,7 @@ export const CountriesArmyCasualtiesTable = () => {
   const numRenderer = (x: number) => formatInt(x);
   const selectFilterRef = useRef(null);
   const visualizationDispatch = useVisualizationDispatch();
+  const tablePagination = useTablePagination();
 
   useEffect(() => {
     visualizationDispatch({
@@ -135,6 +137,7 @@ export const CountriesArmyCasualtiesTable = () => {
       scroll={{ x: true }}
       dataSource={data}
       columns={columns}
+      pagination={tablePagination}
       expandable={expandable}
     />
   );

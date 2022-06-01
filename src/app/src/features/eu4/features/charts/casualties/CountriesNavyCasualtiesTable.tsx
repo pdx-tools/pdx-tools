@@ -10,6 +10,7 @@ import { useIsLoading, useVisualizationDispatch } from "@/components/viz";
 import { formatInt } from "@/lib/format";
 import { countryColumnFilter } from "../countryColumnFilter";
 import { createCsv } from "@/lib/csv";
+import { useTablePagination } from "@/features/ui-controls";
 
 const unitTypes = [
   ["Heavy", "heavyShip"],
@@ -24,6 +25,7 @@ export const CountriesNavyCasualtiesTable = () => {
   const isLoading = useIsLoading();
   const selectFilterRef = useRef(null);
   const visualizationDispatch = useVisualizationDispatch();
+  const tablePagination = useTablePagination();
 
   useEffect(() => {
     visualizationDispatch({
@@ -135,6 +137,7 @@ export const CountriesNavyCasualtiesTable = () => {
       scroll={{ x: true }}
       dataSource={data}
       columns={columns}
+      pagination={tablePagination}
       expandable={expandable}
     />
   );
