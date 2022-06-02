@@ -21,6 +21,7 @@ import { useAppDispatch } from "@/lib/store";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { selectEu4CountryFilter } from "@/features/eu4/eu4Slice";
 import { createCsv } from "@/lib/csv";
+import { useTablePagination } from "@/features/ui-controls";
 const { Text } = Typography;
 
 type CountryExpensesRecord = CountryExpenses;
@@ -42,6 +43,7 @@ export const CountriesExpensesBaseTable = ({
   const countryFilter = useSelector(selectEu4CountryFilter);
   const selectFilterRef = useRef(null);
   const visualizationDispatch = useVisualizationDispatch();
+  const tablePagination = useTablePagination();
 
   const cb = useCallback(
     async (worker: WorkerClient) => {
@@ -157,6 +159,7 @@ export const CountriesExpensesBaseTable = ({
         loading={isLoading}
         dataSource={data}
         columns={columns}
+        pagination={tablePagination}
         scroll={{ x: true }}
       />
     </div>

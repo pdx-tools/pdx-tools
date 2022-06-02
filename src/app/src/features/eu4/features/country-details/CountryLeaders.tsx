@@ -1,4 +1,5 @@
 import { useWorkerOnSave, WorkerClient } from "@/features/engine";
+import { useTablePagination } from "@/features/ui-controls";
 import { Tag } from "antd";
 import Table, { ColumnGroupType, ColumnType } from "antd/lib/table";
 import { useCallback, useState } from "react";
@@ -9,6 +10,7 @@ export interface CountryLeadersProps {
 }
 
 export const CountryLeaders = ({ details }: CountryLeadersProps) => {
+  const tablePagination = useTablePagination();
   const [data, setData] = useState<CountryLeader[]>([]);
   const cb = useCallback(
     async (worker: WorkerClient) => {
@@ -19,13 +21,6 @@ export const CountryLeaders = ({ details }: CountryLeadersProps) => {
   );
 
   useWorkerOnSave(cb);
-
-  const [includeGenerals, setIncludeGenerals] = useState(true);
-  const [includeAdmirals, setIncludeAdmirals] = useState(true);
-  const [includeExplorers, setIncludeExplorers] = useState(true);
-  const [includeConquistadors, setIncludeConquistadors] = useState(true);
-  const [includeUnactive, setIncludeUnactive] = useState(true);
-  const [includeOnlyRulers, setIncludeOnlyRulers] = useState(false);
 
   const columns: (
     | ColumnGroupType<CountryLeader>
@@ -129,6 +124,7 @@ export const CountryLeaders = ({ details }: CountryLeadersProps) => {
       dataSource={data}
       scroll={{ x: true }}
       columns={columns}
+      pagination={tablePagination}
       title={() => "Leaders"}
     />
   );

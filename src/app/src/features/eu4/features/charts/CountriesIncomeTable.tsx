@@ -24,6 +24,7 @@ import {
 import { useAppDispatch } from "@/lib/store";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { createCsv } from "@/lib/csv";
+import { useTablePagination } from "@/features/ui-controls";
 const { Text } = Typography;
 
 type CountryIncomeRecord = CountryIncome;
@@ -38,6 +39,7 @@ export const CountriesIncomeTable = () => {
   const countryFilter = useSelector(selectEu4CountryFilter);
   const selectFilterRef = useRef(null);
   const visualizationDispatch = useVisualizationDispatch();
+  const tablePagination = useTablePagination();
 
   const cb = useCallback(
     async (worker: WorkerClient) => {
@@ -145,6 +147,7 @@ export const CountriesIncomeTable = () => {
           loading={isLoading}
           dataSource={data}
           columns={columns}
+          pagination={tablePagination}
           scroll={{ x: true }}
         />
       </Space>
