@@ -874,6 +874,7 @@ export const changes: ChangelogEntry[] = [
       return (
         <ChangelogList>
           <li>🐛 - Support CK3 1.6 saves</li>
+          <li>🐛 - Data tables are consistent in showing pagination size</li>
         </ChangelogList>
       );
     },
