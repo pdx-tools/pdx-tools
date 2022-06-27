@@ -18,14 +18,14 @@
   "settings": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "[rust]": {
-      "editor.defaultFormatter": "matklad.rust-analyzer"
+      "editor.defaultFormatter": "rust-lang.rust-analyzer"
     }
   },
 
   "extensions": [
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
-    "matklad.rust-analyzer",
+    "rust-lang.rust-analyzer",
     "slevesque.shader",
     "styled-components.vscode-styled-components"
   ],
