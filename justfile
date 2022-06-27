@@ -42,6 +42,7 @@ build-app: prep-frontend
 touch-tokens:
   # Create dummy token files so that one can still test
   # plain text saves
+  mkdir -p "$(dirname "$EU4_IRONMAN_TOKENS")"
   touch "$EU4_IRONMAN_TOKENS"
   touch "$HOI4_IRONMAN_TOKENS"
   touch "$CK3_IRONMAN_TOKENS"
