@@ -2,7 +2,11 @@ use eu4game::{
     achievements::{AchievementHunter, WeightedScore},
     shared::parse_save,
 };
-use eu4save::{eu4_start_date, models::GameDifficulty, Encoding, PdsDate};
+use eu4save::{
+    eu4_start_date,
+    models::{Eu4Save, GameDifficulty},
+    Encoding, PdsDate,
+};
 use memmap::Mmap;
 use serde::Serialize;
 use std::io;
@@ -64,14 +68,21 @@ pub enum ParseFileError {
     #[error("unable to parse file")]
     Parse(#[from] eu4save::Eu4Error),
 }
+
 pub fn parse_path<P: AsRef<Path>>(fp: P) -> Result<ParseResult, ParseFileError> {
     let f = File::open(fp.as_ref()).map_err(ParseFileError::InvalidFile)?;
     parse_file(f)
 }
 
-pub fn parse_file(f: File) -> Result<ParseResult, ParseFileError> {
+pub fn extract_save(f: File) -> Result<(Eu4Save, Encoding), ParseFileError> {
     let mmap = unsafe { Mmap::map(&f).map_err(ParseFileError::Mmap)? };
-    let (save, encoding) = parse_save(&mmap[..])?;
+    parse_save(&mmap[..]).map_err(|e| e.into())
+}
+
+pub fn save_to_parse_result(
+    save: Eu4Save,
+    encoding: Encoding,
+) -> Result<ParseResult, ParseFileError> {
     let out_encoding = match encoding {
         Encoding::BinZip => String::from("binzip"),
         Encoding::TextZip => String::from("textzip"),
@@ -156,4 +167,9 @@ pub fn parse_file(f: File) -> Result<ParseResult, ParseFileError> {
         patch_shorthand,
         weighted_score: weighted_score.days,
     })))
+}
+
+pub fn parse_file(f: File) -> Result<ParseResult, ParseFileError> {
+    let (save, encoding) = extract_save(f)?;
+    save_to_parse_result(save, encoding)
 }

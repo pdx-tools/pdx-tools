@@ -1,14 +1,18 @@
 use anyhow::bail;
 
 mod reprocess;
+mod scratch;
+mod utils;
 
 enum Subcommand {
     Reprocess,
+    Scratch,
 }
 
 fn interpret_subcommand(input: Option<&str>) -> anyhow::Result<Subcommand> {
     match input {
         Some("reprocess") => Ok(Subcommand::Reprocess),
+        Some("scratch") => Ok(Subcommand::Scratch),
         Some(_) => bail!("unrecognized subcommand, must be reprocess"),
         None => bail!("must provide subcommand"),
     }
@@ -20,5 +24,6 @@ fn main() -> anyhow::Result<()> {
 
     match command {
         Subcommand::Reprocess => reprocess::cmd(args),
+        Subcommand::Scratch => scratch::cmd(args),
     }
 }

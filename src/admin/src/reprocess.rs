@@ -1,18 +1,16 @@
+use crate::utils::remote_parse;
 use anyhow::{bail, Context};
-use applib::parser::{ParseResult, ParsedFile, SavePatch};
+use applib::parser::{save_to_parse_result, ParseResult, ParsedFile, SavePatch};
 use csv::{Reader, StringRecord};
 use eu4game::achievements::WeightedScore;
 use eu4save::models::GameDifficulty;
-use flate2::read::GzDecoder;
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::{
     collections::HashMap,
     fmt,
-    fs::File,
-    io::{self, BufReader, BufWriter, Cursor, Read, Seek, SeekFrom},
-    path::{Path, PathBuf},
+    io::{self, Cursor, Read},
+    path::PathBuf,
 };
-use tempfile::tempfile;
 use walkdir::WalkDir;
 
 #[derive(Serialize)]
@@ -363,51 +361,6 @@ fn enhance_flat(x: &FlatSave) -> anyhow::Result<ParsedFile> {
     })
 }
 
-// maybe the file is brotli encoded. There's no way to know, so
-// if we don't succeed in the decoding step return the original error,
-// else return the parse result on the brotli inflated data
-fn brotli_parse(
-    fp: &Path,
-    original_err: impl std::error::Error + Sync + Send + 'static,
-) -> anyhow::Result<ParseResult> {
-    let inflated_file = tempfile()?;
-    let deflated_file = File::open(fp)?;
-
-    let mut writer = BufWriter::new(inflated_file);
-    let mut reader = BufReader::new(deflated_file);
-
-    match brotli::BrotliDecompress(&mut reader, &mut writer) {
-        Ok(_) => Ok(applib::parser::parse_file(writer.into_inner()?)?),
-        Err(_) => Err(original_err.into()),
-    }
-}
-
-fn remote_parse(path: &Path) -> anyhow::Result<ParseResult> {
-    let mut file = File::open(path).context("unable to open")?;
-    let mut magic = [0u8; 2];
-    file.read_exact(&mut magic)
-        .context("unable to read magic number")?;
-
-    if magic == [0x1f, 0x8b] {
-        file.seek(SeekFrom::Start(0)).context("unable to seek")?;
-        let mut inflated_file = tempfile().context("unable to create temporary file")?;
-        let mut decoder = GzDecoder::new(file);
-
-        // If the copy fails, let's try to brotli decode as the probability that a brotli
-        // save starts with the gzip magic number is 1 in 4.3 billion
-        match std::io::copy(&mut decoder, &mut inflated_file) {
-            Ok(_) => applib::parser::parse_file(inflated_file).context("unable to parse"),
-            Err(e) => brotli_parse(path, e),
-        }
-    } else {
-        file.seek(SeekFrom::Start(0)).context("unable to seek")?;
-        match applib::parser::parse_file(file) {
-            Ok(x) => Ok(x),
-            Err(e) => brotli_parse(path, e),
-        }
-    }
-}
-
 fn extract_existing_records<T: Read>(
     mut rdr: Reader<T>,
 ) -> anyhow::Result<HashMap<String, ParsedFile>> {
@@ -444,8 +397,9 @@ pub fn cmd(mut args: pico_args::Arguments) -> anyhow::Result<()> {
 
     for file in files {
         let path = file.path();
-        let save =
+        let (save, encoding) =
             remote_parse(path).with_context(|| format!("unable to parse: {}", path.display()))?;
+        let save = save_to_parse_result(save, encoding)?;
 
         let save = match save {
             ParseResult::InvalidPatch(_) => bail!("unable parse patch"),
