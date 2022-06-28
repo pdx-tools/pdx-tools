@@ -8,6 +8,9 @@
   "mounts": [
     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
   ],
+  "containerEnv": {
+    "CROSS_CONTAINER_IN_CONTAINER": "true"
+  },
   "remoteEnv": {
     "EU4_IRONMAN_TOKENS": "${containerWorkspaceFolder}/assets/tokens/eu4.txt",
     "HOI4_IRONMAN_TOKENS": "${containerWorkspaceFolder}/assets/tokens/hoi4.txt",

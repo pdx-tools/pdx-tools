@@ -52,7 +52,18 @@ build-docker:
   docker build -t docker.nbsoftsolutions.com/pdx-tools/app -f ./dev/app.dockerfile ./src/app
 
 build-admin:
-   cargo build --release -p admin-cli
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  if [[ $REMOTE_CONTAINERS == "true" ]]; then
+    export EU4_IRONMAN_TOKENS="/project/assets/tokens/eu4.txt"
+
+    # If we're within the dev container then we need to use special cross within
+    # docker instructions, and workaround how the devcontainer uses "host"
+    # networking so `hostname` doesn't return the name of the container.
+    HOSTNAME=$(docker ps | grep vsc-pdx-tools | cut -d' ' -f 1) cross build -p admin-cli --release --target x86_64-unknown-linux-musl
+  else
+    cargo build --release -p admin-cli
+  fi
 
 test-rust *cmd:
   cargo test "$@"
