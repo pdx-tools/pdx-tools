@@ -38,10 +38,11 @@ pub fn parse_game_bundle(options: &PackageOptions) -> anyhow::Result<()> {
         .join("game")
         .join(game_name)
         .join(&game_version);
-    std::fs::create_dir_all(&game_dir)?;
+    std::fs::create_dir_all(&game_dir).with_context(|| format!("{}", game_dir.display()))?;
 
-    let tar_zst = fs::File::open(&options.path)?;
-    let tar = zstd::Decoder::new(tar_zst)?;
+    let tar_zst =
+        fs::File::open(&options.path).with_context(|| format!("{}", options.path.display()))?;
+    let tar = zstd::Decoder::new(tar_zst).with_context(|| format!("{}", options.path.display()))?;
     let mut archive = tar::Archive::new(tar);
 
     let dir = tempfile::tempdir()?;
