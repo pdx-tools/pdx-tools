@@ -1,7 +1,8 @@
+use crate::Eu4GameError;
 use eu4save::{
-    models::{CountryEvent, Eu4Save, Monarch, GameState, Meta},
+    models::{CountryEvent, Eu4Save, GameState, Meta, Monarch},
     query::Query,
-    Encoding, Eu4Date, Eu4Error, Eu4File,
+    Encoding, Eu4Date, Eu4File,
 };
 use highway::{HighwayHash, HighwayHasher, Key};
 use jomini::binary::TokenResolver;
@@ -160,7 +161,10 @@ pub fn hash_countries(hash: &mut impl HighwayHash, content_date: Eu4Date, save: 
     }
 }
 
-pub fn parse_save_with_tokens<Q>(data: &[u8], resolver: &Q) -> Result<(Eu4Save, Encoding), Eu4Error>
+pub fn parse_save_with_tokens<Q>(
+    data: &[u8],
+    resolver: &Q,
+) -> Result<(Eu4Save, Encoding), Eu4GameError>
 where
     Q: TokenResolver,
 {
@@ -180,20 +184,18 @@ where
             x => x,
         };
 
-        Ok((
-            Eu4Save {
-                meta,
-                game,
-            },
-            encoding,
-        ))
+        Ok((Eu4Save { meta, game }, encoding))
     } else {
         let file = Eu4File::from_slice(data)?;
+        if file.size() > 300 * 1024 * 1024 {
+            return Err(Eu4GameError::TooLarge(file.size()));
+        }
+
         let save = file.deserializer().build_save(resolver)?;
         Ok((save, file.encoding()))
     }
 }
 
-pub fn parse_save(data: &[u8]) -> Result<(Eu4Save, Encoding), Eu4Error> {
+pub fn parse_save(data: &[u8]) -> Result<(Eu4Save, Encoding), Eu4GameError> {
     parse_save_with_tokens(data, &eu4save::EnvTokens)
 }

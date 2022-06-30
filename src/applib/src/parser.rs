@@ -66,7 +66,7 @@ pub enum ParseFileError {
     Mmap(io::Error),
 
     #[error("unable to parse file")]
-    Parse(#[from] eu4save::Eu4Error),
+    Parse(#[from] eu4game::Eu4GameError),
 }
 
 pub fn parse_path<P: AsRef<Path>>(fp: P) -> Result<ParseResult, ParseFileError> {

@@ -17,6 +17,7 @@ tarsave = { path = "../tarsave" }
 serde = { version = "1", features = ["derive"] }
 highway = "0.8"
 base64 = "0.13"
+thiserror = "1"
 
 [dev-dependencies]
 attohttpc = "0.18"

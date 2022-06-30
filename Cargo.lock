@@ -809,6 +809,7 @@ dependencies = [
  "schemas",
  "serde",
  "tarsave",
+ "thiserror",
  "walkdir",
  "zip",
 ]
