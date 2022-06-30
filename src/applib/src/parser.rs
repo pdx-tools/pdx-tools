@@ -83,11 +83,7 @@ pub fn save_to_parse_result(
     save: Eu4Save,
     encoding: Encoding,
 ) -> Result<ParseResult, ParseFileError> {
-    let out_encoding = match encoding {
-        Encoding::BinZip => String::from("binzip"),
-        Encoding::TextZip => String::from("textzip"),
-        Encoding::Text => String::from("text"),
-    };
+    let out_encoding = String::from(encoding.as_str());
 
     let patch_shorthand = format!(
         "{}.{}",

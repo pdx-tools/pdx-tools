@@ -11,7 +11,7 @@ tar = "0.4"
 tempfile = "3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-jomini = "0.18"
+jomini = "0.19"
 regex = "1"
 walkdir = "2.3.1" 
 zstd = { version = "0.9", features = ["zstdmt"] }

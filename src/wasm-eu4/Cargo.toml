@@ -9,7 +9,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-jomini = "0.18"
+jomini = "0.19"
 js-sys = "0.3"
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 serde = { version = "1", features = ["derive"] }

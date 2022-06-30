@@ -6,18 +6,15 @@ use crate::{
     regions, religion, sprites, superregion,
 };
 use anyhow::{bail, Context};
-use eu4save::{CountryTag, Eu4Extractor, ProvinceId};
+use eu4save::{CountryTag, Eu4File, ProvinceId};
 use jomini::TextDeserializer;
 use mapper::GameProvince;
 use serde::{de::IgnoredAny, Deserialize};
 use std::fs;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::{collections::HashMap, time::Instant};
 use std::{collections::HashSet, process::Command};
-use std::{
-    io::Cursor,
-    path::{Path, PathBuf},
-};
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone)]
@@ -668,8 +665,8 @@ fn write_provinces_csv(
         .collect();
 
     let data = assets::request(format!("terrain/terrain-{}.eu4", game_version));
-    let (save, _) = Eu4Extractor::extract_save(Cursor::new(&data[..]))
-        .with_context(|| format!("unable to parse terrain {}", game_version))?;
+    let save_file = Eu4File::from_slice(&data)?;
+    let save = save_file.deserializer().build_save(&eu4save::EnvTokens)?;
     let mut provs: Vec<_> = save.game.provinces.iter().collect();
     provs.sort_unstable_by_key(|(k, _v)| *k);
     let total_provs = provs.len();

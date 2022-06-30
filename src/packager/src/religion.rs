@@ -29,25 +29,19 @@ pub fn parse_enhanced_religions(
 
 pub fn parse_religions(data: &[u8]) -> Vec<RawReligion> {
     let tape = jomini::TextTape::from_slice(data).unwrap();
-    let mut reader = tape.windows1252_reader();
+    let reader = tape.windows1252_reader();
     let mut result = Vec::new();
-    while let Some((_, _, value)) = reader.next_field() {
-        if let Ok(mut religion_group) = value.read_object() {
-            while let Some((key, _, value)) = religion_group.next_field() {
+    for (_, _, value) in reader.fields() {
+        if let Ok(religion_group) = value.read_object() {
+            for (key, _, value) in religion_group.fields() {
                 let religion_name = key.read_str();
-                if let Ok(mut religion) = value.read_object() {
-                    while let Some((key, _, value)) = religion.next_field() {
+                if let Ok(religion) = value.read_object() {
+                    for (key, _, value) in religion.fields() {
                         if key.read_str() == "color" {
                             let mut color = [0u8; 3];
-                            let mut colors = value.read_array().unwrap();
-                            for channel in color.iter_mut() {
-                                *channel = colors
-                                    .next_value()
-                                    .unwrap()
-                                    .read_scalar()
-                                    .unwrap()
-                                    .to_u64()
-                                    .unwrap() as u8;
+                            let colors = value.read_array().unwrap();
+                            for (channel, reader) in color.iter_mut().zip(colors.values()) {
+                                *channel = reader.read_scalar().unwrap().to_u64().unwrap() as u8;
                             }
 
                             result.push(RawReligion {

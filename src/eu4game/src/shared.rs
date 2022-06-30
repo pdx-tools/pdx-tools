@@ -1,11 +1,10 @@
 use eu4save::{
-    models::{CountryEvent, Eu4Save, Monarch},
+    models::{CountryEvent, Eu4Save, Monarch, GameState, Meta},
     query::Query,
-    Encoding, Eu4Date, Eu4Error, RawEncoding,
+    Encoding, Eu4Date, Eu4Error, Eu4File,
 };
 use highway::{HighwayHash, HighwayHasher, Key};
-use jomini::TokenResolver;
-use std::io::Cursor;
+use jomini::binary::TokenResolver;
 
 // This file contains code that is shared between the server and wasm, but not strictly relevant to
 // the save file.
@@ -166,28 +165,35 @@ where
     Q: TokenResolver,
 {
     if let Some(tsave) = tarsave::extract_tarsave(data) {
-        let (meta, encoding) =
-            eu4save::Eu4Extractor::builder().extract_raw_with_tokens(tsave.meta, resolver)?;
-        let (gamestate, _) =
-            eu4save::Eu4Extractor::builder().extract_raw_with_tokens(tsave.gamestate, resolver)?;
+        let mut zip_sink = Vec::new();
+        let meta_file = Eu4File::from_slice(tsave.meta)?;
+        let parsed_meta = meta_file.parse(&mut zip_sink)?;
+        let meta: Meta = parsed_meta.deserializer().build(resolver)?;
 
-        let encoding = match encoding {
-            RawEncoding::Bin => Encoding::BinZip,
-            RawEncoding::Text => Encoding::TextZip,
+        let gamestate_file = Eu4File::from_slice(tsave.gamestate)?;
+        let parsed_gamestate = gamestate_file.parse(&mut zip_sink)?;
+        let game: GameState = parsed_gamestate.deserializer().build(resolver)?;
+
+        let encoding = match meta_file.encoding() {
+            Encoding::Binary => Encoding::BinaryZip,
+            Encoding::Text => Encoding::TextZip,
+            x => x,
         };
+
         Ok((
             Eu4Save {
                 meta,
-                game: gamestate,
+                game,
             },
             encoding,
         ))
     } else {
-        let reader = Cursor::new(data);
-        eu4save::Eu4Extractor::builder().extract_save_with_tokens(reader, resolver)
+        let file = Eu4File::from_slice(data)?;
+        let save = file.deserializer().build_save(resolver)?;
+        Ok((save, file.encoding()))
     }
 }
 
 pub fn parse_save(data: &[u8]) -> Result<(Eu4Save, Encoding), Eu4Error> {
-    parse_save_with_tokens(data, &eu4save::tokens::TokenLookup)
+    parse_save_with_tokens(data, &eu4save::EnvTokens)
 }

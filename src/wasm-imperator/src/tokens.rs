@@ -1,1 +1,1 @@
-../../wasm-eu4/src/tokens.rs
+../../wasm-ck3/src/tokens.rs

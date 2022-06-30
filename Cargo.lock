@@ -573,7 +573,7 @@ version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "876d28a590465b08847c2007d0afa18b93c7f26b5483181d005335cce3ead770"
 dependencies = [
- "jomini",
+ "jomini 0.18.1",
  "serde",
  "zip",
 ]
@@ -804,7 +804,7 @@ dependencies = [
  "base64",
  "eu4save",
  "highway",
- "jomini",
+ "jomini 0.19.0",
  "regex",
  "schemas",
  "serde",
@@ -816,9 +816,9 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.6.2"
-source = "git+https://github.com/rakaly/eu4save.git#59e0ac57ba66630f4cef40fcffe989cd01b26264"
+source = "git+https://github.com/rakaly/eu4save.git#453b4aa15cb6d9a146ff8828c4b0f38f915372ad"
 dependencies = [
- "jomini",
+ "jomini 0.19.0",
  "once_cell",
  "serde",
  "zip",
@@ -1018,7 +1018,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e10d9c1ab668268de1d55b4da34c797497fe05cbb775e014af6dca8ed4fcfa1f"
 dependencies = [
- "jomini",
+ "jomini 0.18.1",
  "serde",
 ]
 
@@ -1129,7 +1129,7 @@ version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e72d7e5db338f2f94624af8240976d2e3e4df14081ade844505c0e84771497db"
 dependencies = [
- "jomini",
+ "jomini 0.18.1",
  "serde",
  "zip",
 ]
@@ -1192,6 +1192,17 @@ checksum = "b5d6dba1f33081d1ed79d8cf45872ab0619a2729d9fe54f69fd672928ca957e1"
 dependencies = [
  "jomini_derive",
  "serde",
+]
+
+[[package]]
+name = "jomini"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96fe9973c37c0717ff10c22e764fe399b985a60c57109add90ff7eefe6cb96cf"
+dependencies = [
+ "jomini_derive",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1559,7 +1570,7 @@ dependencies = [
  "brotli",
  "csv",
  "eu4save",
- "jomini",
+ "jomini 0.19.0",
  "oxipng",
  "pico-args",
  "regex",
@@ -2453,7 +2464,7 @@ name = "wasm-ck3"
 version = "0.1.0"
 dependencies = [
  "ck3save",
- "jomini",
+ "jomini 0.18.1",
  "js-sys",
  "schemas",
  "serde",
@@ -2474,7 +2485,7 @@ version = "0.1.0"
 dependencies = [
  "eu4game",
  "eu4save",
- "jomini",
+ "jomini 0.19.0",
  "js-sys",
  "schemas",
  "serde",
@@ -2490,7 +2501,7 @@ name = "wasm-hoi4"
 version = "0.1.0"
 dependencies = [
  "hoi4save",
- "jomini",
+ "jomini 0.18.1",
  "js-sys",
  "schemas",
  "serde",
@@ -2502,7 +2513,7 @@ name = "wasm-imperator"
 version = "0.1.0"
 dependencies = [
  "imperator-save",
- "jomini",
+ "jomini 0.18.1",
  "js-sys",
  "schemas",
  "serde",

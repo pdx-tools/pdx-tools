@@ -7,7 +7,7 @@ pub(crate) struct TokenIndex<'a> {
     data: Vec<&'a str>,
 }
 
-impl<'a> jomini::TokenResolver for TokenIndex<'a> {
+impl<'a> jomini::binary::TokenResolver for TokenIndex<'a> {
     fn resolve(&self, token: u16) -> Option<&str> {
         self.data
             .get(usize::from(token))

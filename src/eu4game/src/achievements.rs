@@ -565,7 +565,7 @@ impl<'a> AchievementHunter<'a> {
         player_histories: &[PlayerHistory],
     ) -> Option<Self> {
         let save = query.save();
-        let mut valid = encoding == Encoding::BinZip
+        let mut valid = encoding == Encoding::BinaryZip
             && save.meta.is_ironman
             && !save.meta.multiplayer
             && save.meta.not_observer

@@ -6,6 +6,7 @@ use eu4game::{
 };
 use eu4save::{
     eu4_start_date,
+    file::Eu4Binary,
     models::{
         Country, CountryEvent, Eu4Save, GameplayOptions, Province, ProvinceEvent,
         ProvinceEventValue, WarEvent,
@@ -14,7 +15,8 @@ use eu4save::{
         BuildingConstruction, CountryExpenseLedger, CountryIncomeLedger, LedgerPoint,
         NationEventKind, NationEvents, Query,
     },
-    CountryTag, Encoding, Eu4Date, FailedResolveStrategy, PdsDate, ProvinceId, TagResolver,
+    CountryTag, Encoding, Eu4Date, Eu4File, Eu4Melter, FailedResolveStrategy, PdsDate, ProvinceId,
+    TagResolver,
 };
 use serde::{Deserialize, Serialize};
 use std::io::Write;
@@ -23,6 +25,7 @@ use std::{
     io::Cursor,
 };
 use tag_filter::{TagFilterPayload, TagFilterPayloadRaw};
+use tarsave::TarSave;
 use wasm_bindgen::prelude::*;
 
 mod country_details;
@@ -2685,19 +2688,36 @@ pub fn save_checksum(data: &[u8]) -> JsValue {
     JsValue::from_str(res.as_str())
 }
 
+fn melt_tar(tsave: TarSave) -> Result<js_sys::Uint8Array, Box<dyn std::error::Error>> {
+    let meta = Eu4Binary::from_slice(tsave.meta)?;
+    let gamestate = Eu4Binary::from_slice(tsave.gamestate)?;
+    let ai = Eu4Binary::from_slice(tsave.ai)?;
+
+    let out = Eu4Melter::from_entries(&meta, &gamestate, &ai)
+        .on_failed_resolve(FailedResolveStrategy::Ignore)
+        .melt(tokens::get_tokens())?;
+
+    Ok(js_sys::Uint8Array::from(out.data()))
+}
+
 #[wasm_bindgen]
 pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
-    let melter = eu4save::Melter::new().with_on_failed_resolve(FailedResolveStrategy::Ignore);
+    // let melter = eu4save::Melter::new().with_on_failed_resolve(FailedResolveStrategy::Ignore);
 
     if let Some(tsave) = tarsave::extract_tarsave(data) {
-        melter
-            .melt_entries_with_tokens(tsave.meta, tsave.gamestate, tsave.ai, tokens::get_tokens())
-            .map(|(x, _)| js_sys::Uint8Array::from(&x[..]))
-            .map_err(|e| JsValue::from_str(e.to_string().as_str()))
+        melt_tar(tsave).map_err(|e| JsValue::from_str(e.to_string().as_str()))
     } else {
-        melter
-            .melt_with_tokens(data, tokens::get_tokens())
-            .map(|(x, _)| js_sys::Uint8Array::from(&x[..]))
+        let mut zip_sink = Vec::new();
+        Eu4File::from_slice(data)
+            .and_then(|file| file.parse(&mut zip_sink))
+            .and_then(|file| {
+                file.as_binary()
+                    .unwrap()
+                    .melter()
+                    .on_failed_resolve(FailedResolveStrategy::Ignore)
+                    .melt(tokens::get_tokens())
+            })
+            .map(|x| js_sys::Uint8Array::from(x.data()))
             .map_err(|e| JsValue::from_str(e.to_string().as_str()))
     }
 }
