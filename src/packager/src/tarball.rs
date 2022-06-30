@@ -894,6 +894,8 @@ pub fn translate_flags(tmp_game_dir: &Path, options: &PackageOptions) -> anyhow:
         }
 
         let child = Command::new("convert")
+            .arg("-rotate")
+            .arg("180")
             .arg(file_path)
             .arg(&out_path)
             .output()?;
