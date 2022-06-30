@@ -879,4 +879,15 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-06-30",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Improve performance of save parsing</li>
+          <li>🐛 - Fix country flags flipped upside down</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
