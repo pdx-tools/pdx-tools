@@ -1,6 +1,6 @@
-use eu4save::{Eu4Extractor, ProvinceId};
+use eu4save::{EnvTokens, Eu4File, ProvinceId};
 use packager::rawbmp::{Bmp, Pixels, Rgb};
-use std::{collections::HashMap, collections::HashSet, io::Cursor, path::Path};
+use std::{collections::HashMap, collections::HashSet, path::Path};
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
@@ -294,7 +294,8 @@ fn main() {
     // }
 
     let data = std::fs::read(&args[2]).unwrap();
-    let (save, _) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();
+    let file = Eu4File::from_slice(&data).unwrap();
+    let save = file.deserializer().build_save(&EnvTokens).unwrap();
     let mut mismatched2: Vec<(ProvinceId, Terrain, Terrain)> = Vec::new();
     for (id, prov) in save.game.provinces {
         if let Some(owner) = prov.owner {
