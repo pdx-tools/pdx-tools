@@ -59,13 +59,13 @@ pub struct ParsedFile {
 
 #[derive(thiserror::Error, Debug)]
 pub enum ParseFileError {
-    #[error("unable to open save file")]
+    #[error("unable to open save file: {0}")]
     InvalidFile(io::Error),
 
-    #[error("unable to memory map file")]
+    #[error("unable to memory map file: {0}")]
     Mmap(io::Error),
 
-    #[error("unable to parse file")]
+    #[error("unable to parse file: {0}")]
     Parse(#[from] eu4game::Eu4GameError),
 }
 
