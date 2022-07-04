@@ -1,16 +1,17 @@
 use crate::utils;
-use eu4save::{query::Query, Eu4Extractor};
-use std::io::Cursor;
+use eu4save::{query::Query, EnvTokens, Eu4File};
 
 #[test]
 fn test_playthrough_id() {
     let data = utils::request("arda-shahansha.eu4");
-    let (save, _) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();
+    let file = Eu4File::from_slice(&data).unwrap();
+    let save = file.deserializer().build_save(&EnvTokens).unwrap();
 
     let playthrough_id1 = eu4game::shared::playthrough_id(&Query::from_save(save));
 
     let data = utils::request("arda-persia.eu4");
-    let (save, _) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();
+    let file = Eu4File::from_slice(&data).unwrap();
+    let save = file.deserializer().build_save(&EnvTokens).unwrap();
     let playthrough_id2 = eu4game::shared::playthrough_id(&Query::from_save(save));
 
     assert_eq!(playthrough_id1, playthrough_id2);
@@ -23,12 +24,14 @@ fn test_playthrough_id() {
 #[test]
 fn test_playthrough_id2() {
     let data = utils::request("ragusa.bin.eu4");
-    let (save, _) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();
+    let file = Eu4File::from_slice(&data).unwrap();
+    let save = file.deserializer().build_save(&EnvTokens).unwrap();
 
     let playthrough_id1 = eu4game::shared::playthrough_id(&Query::from_save(save));
 
     let data = utils::request("ragusa2.bin.eu4");
-    let (save, _) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();
+    let file = Eu4File::from_slice(&data).unwrap();
+    let save = file.deserializer().build_save(&EnvTokens).unwrap();
     let playthrough_id2 = eu4game::shared::playthrough_id(&Query::from_save(save));
 
     assert_eq!(playthrough_id1, playthrough_id2);
@@ -37,16 +40,19 @@ fn test_playthrough_id2() {
 #[test]
 fn test_playthrough_id3() {
     let data = utils::request("ita2_later.eu4");
-    let (save, _) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();
+    let file = Eu4File::from_slice(&data).unwrap();
+    let save = file.deserializer().build_save(&EnvTokens).unwrap();
 
     let playthrough_id1 = eu4game::shared::playthrough_id(&Query::from_save(save));
 
     let data = utils::request("ita2_later13.eu4");
-    let (save, _) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();
+    let file = Eu4File::from_slice(&data).unwrap();
+    let save = file.deserializer().build_save(&EnvTokens).unwrap();
     let playthrough_id2 = eu4game::shared::playthrough_id(&Query::from_save(save));
 
     let data = utils::request("ita2.eu4");
-    let (save, _) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();
+    let file = Eu4File::from_slice(&data).unwrap();
+    let save = file.deserializer().build_save(&EnvTokens).unwrap();
     let playthrough_id3 = eu4game::shared::playthrough_id(&Query::from_save(save));
 
     assert_eq!(playthrough_id1, playthrough_id2);
@@ -56,12 +62,14 @@ fn test_playthrough_id3() {
 #[test]
 fn test_playthrough_id4() {
     let data = utils::request("tartartar.eu4");
-    let (save, _) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();
+    let file = Eu4File::from_slice(&data).unwrap();
+    let save = file.deserializer().build_save(&EnvTokens).unwrap();
 
     let playthrough_id1 = eu4game::shared::playthrough_id(&Query::from_save(save));
 
     let data = utils::request("tartar-gold.eu4");
-    let (save, _) = Eu4Extractor::extract_save(Cursor::new(&data[..])).unwrap();
+    let file = Eu4File::from_slice(&data).unwrap();
+    let save = file.deserializer().build_save(&EnvTokens).unwrap();
     let playthrough_id2 = eu4game::shared::playthrough_id(&Query::from_save(save));
 
     assert_eq!(playthrough_id1, playthrough_id2);
