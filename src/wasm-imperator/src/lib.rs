@@ -1,4 +1,7 @@
-use imperator_save::{models::HeaderOwned, Encoding, FailedResolveStrategy, ImperatorDate};
+use imperator_save::{
+    models::MetadataOwned, Encoding, FailedResolveStrategy, ImperatorDate, ImperatorError,
+    ImperatorFile,
+};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -13,7 +16,7 @@ pub struct ImperatorMetadata {
 }
 
 pub struct SaveFileImpl {
-    header: HeaderOwned,
+    header: MetadataOwned,
     encoding: Encoding,
 }
 
@@ -37,25 +40,41 @@ impl SaveFileImpl {
     }
 
     fn is_meltable(&self) -> bool {
-        matches!(self.encoding, Encoding::Standard)
+        matches!(self.encoding, Encoding::Binary | Encoding::BinaryZip)
     }
+}
+
+fn _parse_save(data: &[u8]) -> Result<SaveFile, ImperatorError> {
+    let file = ImperatorFile::from_slice(data)?;
+    let meta = file.parse_metadata()?;
+    let header = meta.deserializer().build(tokens::get_tokens())?;
+    Ok(SaveFile(SaveFileImpl {
+        header,
+        encoding: file.encoding(),
+    }))
 }
 
 #[wasm_bindgen]
 pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
-    let (header, encoding) = imperator_save::ImperatorExtractor::builder()
-        .extract_header_with_tokens_as(data, tokens::get_tokens())
-        .map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+    let s = _parse_save(data).map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+    Ok(s)
+}
 
-    Ok(SaveFile(SaveFileImpl { header, encoding }))
+fn _melt(data: &[u8]) -> Result<imperator_save::MeltedDocument, ImperatorError> {
+    let file = ImperatorFile::from_slice(data)?;
+    let mut zip_sink = Vec::new();
+    let parsed_file = file.parse(&mut zip_sink)?;
+    let binary = parsed_file.as_binary().unwrap();
+    let out = binary
+        .melter()
+        .on_failed_resolve(FailedResolveStrategy::Ignore)
+        .melt(tokens::get_tokens())?;
+    Ok(out)
 }
 
 #[wasm_bindgen]
 pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
-    let melter =
-        imperator_save::Melter::new().with_on_failed_resolve(FailedResolveStrategy::Ignore);
-    melter
-        .melt_with_tokens(data, tokens::get_tokens())
-        .map(|(x, _)| js_sys::Uint8Array::from(&x[..]))
+    _melt(data)
+        .map(|x| js_sys::Uint8Array::from(x.data()))
         .map_err(|e| JsValue::from_str(e.to_string().as_str()))
 }

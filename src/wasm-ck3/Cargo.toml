@@ -9,11 +9,11 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-jomini = "0.18.0"
+jomini = "0.19"
 schemas = { path = "../schemas" }
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 serde = { version = "1", features = ["derive"] }
-ck3save = "0.2"
+ck3save = "0.3"
 js-sys = "0.3"
 
 [package.metadata.wasm-pack.profile.release]

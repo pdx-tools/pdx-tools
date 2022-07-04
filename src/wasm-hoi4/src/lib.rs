@@ -1,4 +1,4 @@
-use hoi4save::{models::Hoi4Save, Encoding, FailedResolveStrategy, Hoi4Date};
+use hoi4save::{models::Hoi4Save, Encoding, FailedResolveStrategy, Hoi4Date, Hoi4Error, Hoi4File};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -39,20 +39,35 @@ impl SaveFileImpl {
     }
 }
 
+fn _parse_save(data: &[u8]) -> Result<SaveFile, Hoi4Error> {
+    let file = Hoi4File::from_slice(data)?;
+    let save = file.parse()?.deserializer().build(tokens::get_tokens())?;
+    Ok(SaveFile(SaveFileImpl {
+        save,
+        encoding: file.encoding(),
+    }))
+}
+
 #[wasm_bindgen]
 pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
-    let (save, encoding) = hoi4save::Hoi4Extractor::builder()
-        .extract_save_with_tokens(data, tokens::get_tokens())
-        .map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+    let s = _parse_save(data).map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+    Ok(s)
+}
 
-    Ok(SaveFile(SaveFileImpl { save, encoding }))
+fn _melt(data: &[u8]) -> Result<hoi4save::MeltedDocument, Hoi4Error> {
+    let file = Hoi4File::from_slice(data)?;
+    let parsed_file = file.parse()?;
+    let binary = parsed_file.as_binary().unwrap();
+    let out = binary
+        .melter()
+        .on_failed_resolve(FailedResolveStrategy::Ignore)
+        .melt(tokens::get_tokens())?;
+    Ok(out)
 }
 
 #[wasm_bindgen]
 pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
-    let melter = hoi4save::Melter::new().with_on_failed_resolve(FailedResolveStrategy::Ignore);
-    melter
-        .melt_with_tokens(data, tokens::get_tokens())
-        .map(|(x, _)| js_sys::Uint8Array::from(&x[..]))
+    _melt(data)
+        .map(|x| js_sys::Uint8Array::from(x.data()))
         .map_err(|e| JsValue::from_str(e.to_string().as_str()))
 }
