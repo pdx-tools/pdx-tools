@@ -975,7 +975,7 @@ impl SaveFileImpl {
     pub fn get_starting_country(&self) -> JsValue {
         self.query
             .starting_country(&self.player_histories)
-            .map(|x| JsValue::from_str(&x.to_string()))
+            .map(|x| JsValue::from_str(x.as_str()))
             .unwrap_or_else(JsValue::null)
     }
 

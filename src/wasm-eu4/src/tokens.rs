@@ -23,7 +23,7 @@ pub(crate) fn get_tokens() -> &'static TokenIndex<'static> {
 #[wasm_bindgen]
 pub fn set_tokens(data: Vec<u8>) {
     let sl: &'static [u8] = unsafe { std::mem::transmute(data.as_slice()) };
-    let xb: schemas::tokens::Tokens = schemas::tokens::root_as_tokens(&sl).unwrap();
+    let xb: schemas::tokens::Tokens = schemas::tokens::root_as_tokens(sl).unwrap();
     let values = xb.values().unwrap();
     let tokens = values.iter().collect::<Vec<_>>();
     unsafe {

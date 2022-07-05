@@ -46,7 +46,7 @@ fn main() {
     let trees_bmp = Bmp::parse(&trees_bmp).unwrap();
 
     let mut forest_colors = terrain.tree.get("forest").cloned().unwrap().color;
-    forest_colors = forest_colors.iter().copied().collect();
+    forest_colors = forest_colors.to_vec();
 
     let jungle_colors = terrain.tree.get("jungle").cloned().unwrap().color;
     let mut tree_override: Vec<u8> = vec![0; provinces.len()];

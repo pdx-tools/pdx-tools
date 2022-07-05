@@ -960,7 +960,7 @@ impl<'a> AchievementHunter<'a> {
                     .game
                     .provinces
                     .values()
-                    .filter_map(|x| x.owner.and_then(|_| x.religion.as_ref()))
+                    .filter_map(|x| x.owner.and(x.religion.as_ref()))
                     .all(|x| x == country_religion)
             });
 
@@ -1246,8 +1246,7 @@ impl<'a> AchievementHunter<'a> {
             .countries()
             .map(|x| x.country)
             .filter(|country| country.num_of_cities >= 1)
-            .map(|country| self.save.game.provinces.get(&country.capital))
-            .flatten()
+            .filter_map(|country| self.save.game.provinces.get(&country.capital))
             .filter(|prov| prov.hre)
             .count();
 
@@ -2021,8 +2020,7 @@ impl<'a> AchievementHunter<'a> {
             .countries()
             .map(|x| x.country)
             .filter(|country| country.num_of_cities >= 1)
-            .map(|country| self.save.game.provinces.get(&country.capital))
-            .flatten()
+            .filter_map(|country| self.save.game.provinces.get(&country.capital))
             .filter(|prov| prov.hre)
             .count();
 
