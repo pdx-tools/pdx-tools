@@ -1,7 +1,7 @@
 use crate::brotli_tee::BrotliTee;
 use anyhow::Context;
 use clap::Args;
-use log::info;
+use log::{info, debug};
 use std::{
     fs::File,
     io::{self, BufRead, BufReader},
@@ -84,10 +84,13 @@ where
         let z = u16::from_str_radix(num.trim_start_matches("0x"), 16)
             .with_context(|| format!("unable to parse {num}"))?;
 
-        empty_ranges += if z == current { 0 } else { 1 };
-        for _ in current..z {
-            empty_count += 1;
-            tokens.push(String::from(""));
+        if z != current {
+            debug!("empty range: [{},{}) {} len", current, z, z - current);
+            empty_ranges += 1;
+            for _ in current..z {
+                empty_count += 1;
+                tokens.push(String::from(""));
+            }
         }
 
         tokens.push(String::from(text.trim()));

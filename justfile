@@ -231,8 +231,8 @@ admin-sync-assets:
   cargo build --release --package pdx --features fetch_assets
   ACCESS_KEY="${ASSETS_ACCESS_KEY}" SECRET_KEY="${ASSETS_SECRET_KEY}" ./target/release/pdx fetch-assets
 
-admin-tokenize:
-  cargo run --release --package pdx --features tokenize -- tokenize
+admin-tokenize *cmd:
+  cargo run --release --package pdx --features tokenize -- tokenize "$@"
 
 format:
   cargo fmt
