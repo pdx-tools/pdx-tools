@@ -217,7 +217,7 @@ where
 
 fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
     UpdateSave {
-        patch: a.patch.ne(&b.patch).then(|| b.patch.clone()),
+        patch: a.patch.ne(&b.patch).then(|| b.patch),
         encoding: a.encoding.ne(&b.encoding).then(|| b.encoding.clone()),
         playthrough_id: a
             .playthrough_id
@@ -226,7 +226,7 @@ fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
         game_difficulty: a
             .game_difficulty
             .ne(&b.game_difficulty)
-            .then(|| b.game_difficulty.clone()),
+            .then(|| b.game_difficulty),
         campaign_id: a
             .campaign_id
             .ne(&b.campaign_id)
@@ -234,16 +234,13 @@ fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
         campaign_length: a
             .campaign_length
             .ne(&b.campaign_length)
-            .then(|| b.campaign_length.clone()),
-        is_ironman: a.is_ironman.ne(&b.is_ironman).then(|| b.is_ironman.clone()),
+            .then(|| b.campaign_length),
+        is_ironman: a.is_ironman.ne(&b.is_ironman).then(|| b.is_ironman),
         is_multiplayer: a
             .is_multiplayer
             .ne(&b.is_multiplayer)
-            .then(|| b.is_multiplayer.clone()),
-        is_observer: a
-            .is_observer
-            .ne(&b.is_observer)
-            .then(|| b.is_observer.clone()),
+            .then(|| b.is_multiplayer),
+        is_observer: a.is_observer.ne(&b.is_observer).then(|| b.is_observer),
         player_names: a
             .player_names
             .ne(&b.player_names)
@@ -262,7 +259,7 @@ fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
             .ne(&b.player_start_tag_name)
             .then(|| b.player_start_tag_name.clone()),
         date: a.date.ne(&b.date).then(|| b.date.clone()),
-        days: a.days.ne(&b.days).then(|| b.days.clone()),
+        days: a.days.ne(&b.days).then(|| b.days),
         achievements: a
             .achievements
             .ne(&b.achievements)
@@ -276,17 +273,17 @@ fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
         weighted_score: a
             .weighted_score
             .ne(&b.weighted_score)
-            .then(|| b.weighted_score.clone()),
+            .then(|| b.weighted_score),
     }
 }
 
 fn postgres_split(x: &str) -> Option<Vec<String>> {
-    if x.len() == 0 {
+    if x.is_empty() {
         None
     } else if x == "{}" {
         Some(Vec::new())
     } else {
-        let inner_csv = x[1..x.len() - 1].replace("\"\"", &"\"");
+        let inner_csv = x[1..x.len() - 1].replace("\"\"", "\"");
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(false)
             .from_reader(Cursor::new(inner_csv));

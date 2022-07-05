@@ -16,7 +16,7 @@ dev: touch-tokens build-wasm-dev build-napi dev-app
   
 publish: publish-backend publish-frontend
 
-test: touch-tokens test-rust test-app
+test: touch-tokens (test-rust "--all-features") test-app
 
 setup:
   #!/usr/bin/env bash
@@ -228,11 +228,11 @@ backup-config ENVIRONMENT:
   ssh pdx-tools-{{ENVIRONMENT}} 'tar -c -C /opt/pdx-tools .' > config-{{ENVIRONMENT}}.tar
 
 admin-sync-assets:
-  cargo build --release -p assets
-  ACCESS_KEY="${ASSETS_ACCESS_KEY}" SECRET_KEY="${ASSETS_SECRET_KEY}" ./target/release/assets sync-assets
+  cargo build --release --package pdx --features fetch_assets
+  ACCESS_KEY="${ASSETS_ACCESS_KEY}" SECRET_KEY="${ASSETS_SECRET_KEY}" ./target/release/pdx fetch-assets
 
 admin-tokenize:
-  cargo run --release -p assets -- tokenize
+  cargo run --release --package pdx --features tokenize -- tokenize
 
 format:
   cargo fmt
