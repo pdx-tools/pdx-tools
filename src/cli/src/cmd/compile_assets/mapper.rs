@@ -1,14 +1,12 @@
-use crate::rawbmp;
-use crate::{deserialize_vec_pair, rawbmp::Pixels};
+use crate::rawbmp::{Bmp, Pixels, Rgb};
 use eu4save::ProvinceId;
 use jomini::Scalar;
-use rawbmp::{Bmp, Rgb};
 use serde::Deserialize;
 use std::{collections::HashMap, io::Cursor};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Terrain {
-    #[serde(default, deserialize_with = "deserialize_vec_pair")]
+    #[serde(default, deserialize_with = "super::vec_pair::deserialize_vec_pair")]
     pub categories: Vec<(String, TerrainCategory)>,
     pub terrain: HashMap<String, GraphicalTerrain>,
     pub tree: HashMap<String, TreeTerrain>,

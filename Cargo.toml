@@ -1,10 +1,8 @@
 [workspace]
 members = [
-    "src/admin",
     "src/applib",
     "src/applib-node",
     "src/cli",
-    "src/packager",
     "src/eu4game",
     "src/schemas",
     "src/tarsave",

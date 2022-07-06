@@ -154,24 +154,27 @@ package-all *opts: touch-tokens admin-tokenize
   package() {
     length=$(($#-1))
     array=${@:1:$length}
-    cargo run --release -p packager --bin run_tar -- ${array} "${@: -1}"
+    ./target/release/pdx compile-assets ${array} "${@: -1}"
   }
 
-  cargo build --release -p packager --bin run_tar
+  cargo build --release --package pdx --features compile_assets
 
   LAST_BUNDLE=$(ls assets/game-bundles/eu4-* | grep -v common | sort -n | tail -n1)
   for BUNDLE in $(ls assets/game-bundles/eu4-* | grep -v common | sort -n); do
     if [ "$BUNDLE" = "$LAST_BUNDLE" ]; then
-      package "$@" --common "$BUNDLE" &
-    else
       package "$@" "$BUNDLE" &
+    else
+      package "$@" --skip-common "$BUNDLE" &
     fi;
   done;
 
   wait
 
-asset-extraction +cmd: touch-tokens
-  cargo run --release -p packager --bin asset_extraction -- --common "$@"
+create-bundle path:
+  cargo run --release --package pdx --features create_bundle -- create-bundle "{{path}}"
+
+compile-assets +cmd: touch-tokens
+  cargo run --release --package pdx --features compile_assets -- compile-assets "$@"
 
 dev-environment +cmd:
   #!/usr/bin/env bash
