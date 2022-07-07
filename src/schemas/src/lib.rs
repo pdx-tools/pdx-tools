@@ -6,6 +6,9 @@ mod eu4_flatbuffers;
 #[path = "../target/flatbuffers/tokens_generated.rs"]
 mod tokens_flatbuffers;
 
+mod resolver;
+
 pub use eu4_flatbuffers::rakaly::eu_4 as eu4;
 pub use flatbuffers;
+pub use resolver::FlatBufferResolver;
 pub use tokens_flatbuffers::rakaly::tokens;
