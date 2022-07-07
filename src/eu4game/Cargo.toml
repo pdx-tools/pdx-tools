@@ -20,7 +20,7 @@ base64 = "0.13"
 thiserror = "1"
 
 [dev-dependencies]
-attohttpc = "0.18"
+attohttpc = "0.19"
 walkdir = "2"
 zip = { version =  "0.6", default-features = false, features = ["deflate"] }
 
