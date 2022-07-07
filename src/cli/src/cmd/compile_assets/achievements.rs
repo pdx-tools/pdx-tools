@@ -1,4 +1,4 @@
-use crate::sprites;
+use super::sprites;
 use regex::Regex;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -24,7 +24,7 @@ mod tests {
 
     #[test]
     fn test_parse_achievements() {
-        let data = include_bytes!("../tests/fixtures/interface/achievements.gfx");
+        let data = include_bytes!("../../../tests/fixtures/interface/achievements.gfx");
         let images = achievement_images(&data[..]);
         let first = images.get(&1).unwrap();
         assert_eq!(

@@ -20,7 +20,8 @@ The easiest way to contribute is through [Visual Studio Code](https://code.visua
 After completing this step, copy or link your EU4 installation to `assets/game-bundles` and execute:
 
 ```bash
-just asset-extraction "assets/game-bundles/Europa Universalis IV"
+just create-bundle "D:/games/steam/steamapps/common/Europa Universalis IV" assets/game-bundles
+just compile-assets assets/game-bundles/eu4-1.33.tar.zst
 ```
 
 See [build assets for more details](#build-assets).
@@ -46,10 +47,11 @@ just setup
 
 ## Build Assets
 
-Paradox would be unhappy if the game assets and binary token files were uploaded here, so it is up to you to supply these. For incorporating game assets one will need
+Paradox would be unhappy if the game assets and binary token files were uploaded here, so it is up to you to supply these. For incorporating game assets one will need a local installation of EU4.
 
 ```bash
-just asset-extraction /path/to/your/eu4/installation
+just create-bundle "D:/games/steam/steamapps/common/Europa Universalis IV" assets/game-bundles
+just compile-assets assets/game-bundles/eu4-1.33.tar.zst
 ```
 
 ### Ironman saves

@@ -1,7 +1,7 @@
 use crate::brotli_tee::BrotliTee;
 use anyhow::Context;
 use clap::Args;
-use log::{info, debug};
+use log::{debug, info};
 use std::{
     fs::File,
     io::{self, BufRead, BufReader},

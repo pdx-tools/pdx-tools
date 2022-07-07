@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_parse_localized_countries() {
-        let data = include_str!("../tests/fixtures/localisation/countries_l_english.yml");
+        let data = include_str!("../../../tests/fixtures/localisation/countries_l_english.yml");
         let data = parse_localization(data);
         let res = country_localization(&data);
         let ada = res.get(&"ADA".parse().unwrap()).unwrap();
@@ -112,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_parse_localized_countries_text_english() {
-        let data = include_str!("../tests/fixtures/localisation/text_l_english.yml");
+        let data = include_str!("../../../tests/fixtures/localisation/text_l_english.yml");
         let data = parse_localization(data);
         let res = country_localization(&data);
         let bha = res.get(&"BHA".parse().unwrap()).unwrap();
@@ -124,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_parse_localize_condition() {
-        let data = include_str!("../tests/fixtures/localisation/text_l_english.yml");
+        let data = include_str!("../../../tests/fixtures/localisation/text_l_english.yml");
         let res: HashMap<_, _> = parse_localization(data)
             .into_iter()
             .filter(|(k, _v)| k.starts_with("building_"))

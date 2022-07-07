@@ -1,6 +1,7 @@
-use crate::utils::remote_parse;
+use crate::remote_parse::remote_parse;
 use anyhow::{bail, Context};
 use applib::parser::{save_to_parse_result, ParseResult, ParsedFile, SavePatch};
+use clap::Args;
 use csv::{Reader, StringRecord};
 use eu4game::achievements::WeightedScore;
 use eu4save::models::GameDifficulty;
@@ -10,8 +11,75 @@ use std::{
     fmt,
     io::{self, Cursor, Read},
     path::PathBuf,
+    process::ExitCode,
 };
 use walkdir::WalkDir;
+
+/// Produces a delta to apply to database from reparsed saves
+#[derive(Args)]
+pub struct ReprocessArgs {
+    /// Path to database export (csv)
+    #[clap(long, value_parser)]
+    reference: Option<PathBuf>,
+
+    /// Files and directories to parse
+    #[clap(action = clap::ArgAction::Append)]
+    files: Vec<PathBuf>,
+}
+
+impl ReprocessArgs {
+    pub fn run(&self) -> anyhow::Result<ExitCode> {
+        let mut saves = Vec::new();
+        let existing_records = if let Some(reference) = self.reference.as_ref() {
+            let rdr = csv::Reader::from_path(&reference)
+                .with_context(|| format!("unable to open: {}", reference.display()))?;
+            extract_existing_records(rdr)?
+        } else {
+            HashMap::new()
+        };
+
+        let files = self
+            .files
+            .iter()
+            .flat_map(|fp| WalkDir::new(fp).into_iter().filter_map(|e| e.ok()))
+            .filter(|e| e.file_type().is_file());
+
+        for file in files {
+            let path = file.path();
+            let (save, encoding) = remote_parse(path)
+                .with_context(|| format!("unable to parse: {}", path.display()))?;
+            let save = save_to_parse_result(save, encoding)?;
+
+            let save = match save {
+                ParseResult::InvalidPatch(_) => bail!("unable parse patch"),
+                ParseResult::Parsed(x) => *x,
+            };
+
+            let save_id = String::from(path.file_name().unwrap().to_str().unwrap());
+            if let Some(existing) = existing_records.get(&save_id) {
+                let diff = diff_saves(existing, &save);
+
+                if diff.has_change() {
+                    saves.push(ReprocessEntry {
+                        save_id,
+                        save: diff,
+                    });
+                }
+            } else if existing_records.is_empty() {
+                let update = UpdateSave::from(save);
+                saves.push(ReprocessEntry {
+                    save_id,
+                    save: update,
+                });
+            };
+        }
+
+        let stdout = io::stdout();
+        let mut locked = stdout.lock();
+        serde_json::to_writer(&mut locked, &saves)?;
+        Ok(ExitCode::SUCCESS)
+    }
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -370,62 +438,6 @@ fn extract_existing_records<T: Read>(
     }
 
     Ok(existing_records)
-}
-
-pub fn cmd(mut args: pico_args::Arguments) -> anyhow::Result<()> {
-    let mut saves = Vec::new();
-    let reference_path: Option<PathBuf> = args
-        .opt_value_from_str("--reference")
-        .context("unable to extract reference path")?;
-
-    let existing_records = if let Some(reference) = reference_path {
-        let rdr = csv::Reader::from_path(&reference)
-            .with_context(|| format!("unable to open: {}", reference.display()))?;
-        extract_existing_records(rdr)?
-    } else {
-        HashMap::new()
-    };
-
-    let rest = args.finish();
-    let files = rest
-        .iter()
-        .flat_map(|fp| WalkDir::new(fp).into_iter().filter_map(|e| e.ok()))
-        .filter(|e| e.file_type().is_file());
-
-    for file in files {
-        let path = file.path();
-        let (save, encoding) =
-            remote_parse(path).with_context(|| format!("unable to parse: {}", path.display()))?;
-        let save = save_to_parse_result(save, encoding)?;
-
-        let save = match save {
-            ParseResult::InvalidPatch(_) => bail!("unable parse patch"),
-            ParseResult::Parsed(x) => *x,
-        };
-
-        let save_id = String::from(path.file_name().unwrap().to_str().unwrap());
-        if let Some(existing) = existing_records.get(&save_id) {
-            let diff = diff_saves(existing, &save);
-
-            if diff.has_change() {
-                saves.push(ReprocessEntry {
-                    save_id,
-                    save: diff,
-                });
-            }
-        } else if existing_records.is_empty() {
-            let update = UpdateSave::from(save);
-            saves.push(ReprocessEntry {
-                save_id,
-                save: update,
-            });
-        };
-    }
-
-    let stdout = io::stdout();
-    let mut locked = stdout.lock();
-    serde_json::to_writer(&mut locked, &saves)?;
-    Ok(())
 }
 
 #[cfg(test)]

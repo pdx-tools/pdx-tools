@@ -1,10 +1,9 @@
-use crate::{
-    achievements, area, assets,
-    brotli_tee::BrotliTee,
-    continents, cultures, localization, mapper, personalities,
-    rawbmp::{self, Pixels, Rgb},
-    regions, religion, sprites, superregion,
+use super::{
+    achievements, area, assets, continents, cultures, localization, mapper, personalities, regions,
+    religion, sprites, superregion,
 };
+use crate::brotli_tee::BrotliTee;
+use crate::rawbmp::{self, Pixels, Rgb};
 use anyhow::{bail, Context};
 use eu4save::{CountryTag, Eu4File, ProvinceId};
 use jomini::TextDeserializer;
@@ -388,7 +387,7 @@ pub fn parse_game_dir(
     buffer.finish(game, None);
     let raw = buffer.finished_data();
 
-    let mut writer = BrotliTee::create(out_game_dir.join("data"));
+    let mut writer = BrotliTee::create(out_game_dir.join("data"))?;
     writer.write_all(raw)?;
     writer.flush()?;
 
@@ -733,7 +732,7 @@ pub fn write_map_indices(tmp_game_dir: &Path, out_game_dir: &Path) -> anyhow::Re
     // as gzip compression gets it within 50-100 kb. We also need to translate from pixels
     // starting from the bottom left to the top left.
     let now = Instant::now();
-    let mut writer = BrotliTee::create(out_game_dir.join("provinces-indices"));
+    let mut writer = BrotliTee::create(out_game_dir.join("provinces-indices"))?;
 
     let provinces_file_data = fs::read(tmp_game_dir.join("map").join("provinces.bmp"))?;
 
@@ -1083,14 +1082,14 @@ pub fn translate_map(
         .collect();
     provs.sort_unstable_by_key(|(&&id, _index)| id);
 
-    let mut color_order_writer = BrotliTee::create(out_game_dir.join("map").join("color-order"));
+    let mut color_order_writer = BrotliTee::create(out_game_dir.join("map").join("color-order"))?;
 
     for (rgb, _prov_id) in &definitions {
         color_order_writer.write_all(&[rgb.r, rgb.g, rgb.b])?;
     }
     color_order_writer.flush()?;
 
-    let mut color_index_writer = BrotliTee::create(out_game_dir.join("map").join("color-index"));
+    let mut color_index_writer = BrotliTee::create(out_game_dir.join("map").join("color-index"))?;
     for (_prov_id, index) in &provs {
         let val = *index as u16;
         let data = val.to_le_bytes();
