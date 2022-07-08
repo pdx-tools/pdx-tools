@@ -2,6 +2,7 @@ namespace Rakaly.Tokens;
 
 table Tokens {
   values:[string];
+  breakpoint:uint16;
 }
 
 root_type Tokens;

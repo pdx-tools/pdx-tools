@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2018"
 publish = false
 
+[features]
+inline = []
+
 [dependencies]
 flatbuffers = "2"
 jomini = "0.19"

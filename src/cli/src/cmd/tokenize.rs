@@ -68,7 +68,6 @@ where
     R: io::Read,
     W: io::Write,
 {
-    let mut buffer = schemas::flatbuffers::FlatBufferBuilder::new();
     let mut reader = BufReader::new(reader);
 
     let mut tokens: Vec<String> = Vec::new();
@@ -76,6 +75,7 @@ where
     let mut line = String::new();
     let mut empty_count = 0;
     let mut empty_ranges = 0;
+    let mut breakpoint = 0;
 
     while reader.read_line(&mut line).context("read line")? != 0 {
         let (num, text) = line
@@ -93,29 +93,26 @@ where
             }
         }
 
+        if z < 10000 {
+            breakpoint = z;
+        }
+
         tokens.push(String::from(text.trim()));
         current = z + 1;
         line.clear();
     }
 
-    let arg: Vec<_> = tokens.iter().map(|x| x.as_ref()).collect();
-    let off = buffer.create_vector_of_strings(&arg);
-
-    let root = schemas::tokens::Tokens::create(
-        &mut buffer,
-        &schemas::tokens::TokensArgs { values: Some(off) },
-    );
-
-    buffer.finish(root, None);
-    let raw = buffer.finished_data();
+    let refs = tokens.iter().map(|x| x.as_ref()).collect::<Vec<_>>();
+    let raw = schemas::FlatBufferResolver::create_data(refs);
     info!(
-        "{}: tokens: {}, empty: {}, ranges: {}, size: {}",
+        "{}: tokens: {}, breakpoint: {} empty: {}, empty ranges: {}, byte size: {}",
         name,
         tokens.len(),
+        breakpoint,
         empty_count,
         empty_ranges,
         raw.len()
     );
-    writer.write_all(raw)?;
+    writer.write_all(&raw)?;
     Ok(())
 }
