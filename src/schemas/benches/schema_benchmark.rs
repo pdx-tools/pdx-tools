@@ -29,42 +29,6 @@ impl<'a> jomini::binary::TokenResolver for FlatbufferResolver<'a> {
     }
 }
 
-pub struct FlatbufferResolverHalf<'a> {
-    lower: Vec<&'a str>,
-    upper: Vec<&'a str>,
-}
-
-impl<'a> FlatbufferResolverHalf<'a> {
-    pub fn from_slice(data: &'a [u8]) -> Self {
-        let xb = schemas::tokens::root_as_tokens(data).unwrap();
-        let values = xb.values().unwrap();
-        let mut lower = Vec::new();
-        let mut upper = Vec::new();
-        for (i, val) in values.iter().enumerate() {
-            if i < 10000 {
-                lower.push(val);
-            } else {
-                upper.push(val);
-            }
-        }
-        Self { lower, upper }
-    }
-}
-
-impl<'a> jomini::binary::TokenResolver for FlatbufferResolverHalf<'a> {
-    fn resolve(&self, token: u16) -> Option<&str> {
-        if token < 10000 {
-            self.lower
-                .get(usize::from(token))
-                .and_then(|x| (!x.is_empty()).then(|| *x))
-        } else {
-            self.upper
-                .get(usize::from(token))
-                .and_then(|x| (!x.is_empty()).then(|| *x))
-        }
-    }
-}
-
 pub struct FlatbufferResolverRaw<'a> {
     data: Vector<'a, ForwardsUOffset<&'a str>>,
 }
@@ -148,9 +112,9 @@ fn token_benchmark(c: &mut Criterion) {
         })
     });
 
-    group.bench_function("vec-half", |b| {
+    group.bench_function("current", |b| {
         let mut i = 0;
-        let resolver = FlatbufferResolverHalf::from_slice(data);
+        let resolver = schemas::FlatBufferResolver::from_slice(data);
 
         b.iter(|| {
             let res = resolver.resolve(arr[i % 1024]);
