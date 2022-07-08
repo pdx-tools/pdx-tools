@@ -1,14 +1,13 @@
 use crate::utils;
+use eu4game::shared::parse_save;
 use eu4game::{achievements::AchievementHunter, game::Game};
 use eu4save::{models::SavegameVersion, query::Query};
-use eu4save::{EnvTokens, Eu4File};
 use std::error::Error;
 
 #[test]
 pub fn old_saves_are_invalid() -> Result<(), Box<dyn Error>> {
     let data = utils::request("Ruskies.eu4");
-    let file = Eu4File::from_slice(&data)?;
-    let save = file.deserializer().build_save(&EnvTokens)?;
+    let (save, encoding) = parse_save(&data)?;
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     assert_eq!(
@@ -22,7 +21,7 @@ pub fn old_saves_are_invalid() -> Result<(), Box<dyn Error>> {
         }
     );
 
-    let achievements = AchievementHunter::new(file.encoding(), &query, &game);
+    let achievements = AchievementHunter::new(encoding, &query, &game);
     assert!(achievements.is_none());
     Ok(())
 }

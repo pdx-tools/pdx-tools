@@ -9,7 +9,7 @@ admin = ["create_bundle", "fetch_assets", "tokenize", "dep:applib", "dep:eu4game
 fun = ["dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2"]
 
 create_bundle = ["dep:zstd"]
-compile_assets = ["dep:attohttpc", "dep:brotli", "dep:eu4save", "dep:jomini", "dep:oxipng", "dep:schemas", "dep:zstd"]
+compile_assets = ["dep:attohttpc", "dep:brotli", "dep:eu4save", "dep:jomini", "dep:oxipng", "dep:schemas", "schemas?/inline", "dep:zstd"]
 fetch_assets = ["dep:aws-config", "dep:aws-sdk-s3", "dep:tokio", "dep:tokio-stream"]
 tokenize = ["dep:brotli", "dep:schemas"]
 

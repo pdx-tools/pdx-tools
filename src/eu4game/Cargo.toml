@@ -12,7 +12,7 @@ embedded = []
 [dependencies]
 jomini = "0.19"
 eu4save = { git = "https://github.com/rakaly/eu4save.git" }
-schemas = { path = "../schemas" }
+schemas = { path = "../schemas", features = ["inline"] }
 tarsave = { path = "../tarsave" }
 serde = { version = "1", features = ["derive"] }
 highway = "0.8"

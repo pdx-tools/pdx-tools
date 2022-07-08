@@ -1,4 +1,0 @@
-[build.env]
-passthrough = [
-    "EU4_IRONMAN_TOKENS"
-]

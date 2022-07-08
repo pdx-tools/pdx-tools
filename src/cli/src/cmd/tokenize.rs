@@ -57,7 +57,10 @@ where
 {
     let reader = File::open(path.as_ref())
         .with_context(|| format!("unable to open {}", path.as_ref().display()))?;
-    let out = Path::new("assets").join("tokens").join(name);
+    let out_dir = Path::new("assets").join("tokens");
+    std::fs::create_dir_all(&out_dir).context("unable to create token directory")?;
+
+    let out = out_dir.join(name);
     let writer = BrotliTee::create(&out)?;
 
     tokenize(reader, writer, name)
