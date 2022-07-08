@@ -6,6 +6,16 @@ publish = false
 
 [dependencies]
 flatbuffers = "2"
+jomini = "0.19"
 
 [build-dependencies]
 flatc-rust = "*"
+
+[dev-dependencies]
+criterion = "0.3"
+eu4save = { git = "https://github.com/rakaly/eu4save.git" }
+rand = "0.8"
+
+[[bench]]
+name = "schema_benchmark"
+harness = false
