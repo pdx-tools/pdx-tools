@@ -33,7 +33,7 @@
     "styled-components.vscode-styled-components"
   ],
 
-  "postStartCommand": "cd src/app && npm ci && just touch-tokens",
+  "postStartCommand": "cd src/app && npm ci",
   "forwardPorts": [3001, 3003],
   "remoteUser": "node"
 }
