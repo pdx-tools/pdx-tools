@@ -17,7 +17,7 @@
     "@reduxjs/toolkit": "^1.8.1",
     "@sentry/nextjs": "^6.19.6",
     "antd": "^4.19.5",
-    "aws-sdk": "^2.1120.0",
+    "aws-sdk": "^2.1171.0",
     "comlink": "^4.3.1",
     "dayjs": "^1.11.1",
     "iron-session": "^6.1.3",
