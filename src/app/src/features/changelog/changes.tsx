@@ -890,4 +890,17 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-07-09",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>
+            ✨ - Small reduction in memory and network usage with new token
+            format
+          </li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
