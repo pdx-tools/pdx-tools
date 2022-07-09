@@ -25,9 +25,9 @@ jobs:
     - name: Install Just
       run: |
         cd ${{ env.RUNNER_TEMP }}
-        curl -O -L "https://github.com/casey/just/releases/download/0.10.5/just-0.10.5-x86_64-unknown-linux-musl.tar.gz"
+        curl -O -L "https://github.com/casey/just/releases/download/1.2.0/just-1.2.0-x86_64-unknown-linux-musl.tar.gz"
         mkdir just
-        tar -C just -xzf just-0.10.5-x86_64-unknown-linux-musl.tar.gz
+        tar -C just -xzf just-1.2.0-x86_64-unknown-linux-musl.tar.gz
         mv just/just /usr/local/bin/.
 
     - name: Install dependencies
