@@ -8,6 +8,7 @@ use anyhow::{bail, Context};
 use eu4save::{CountryTag, Eu4File, ProvinceId};
 use jomini::TextDeserializer;
 use mapper::GameProvince;
+use schemas::resolver::Eu4FlatBufferTokens;
 use serde::{de::IgnoredAny, Deserialize};
 use std::fs;
 use std::io::Write;
@@ -665,7 +666,8 @@ fn write_provinces_csv(
 
     let data = assets::request(format!("terrain/terrain-{}.eu4", game_version));
     let save_file = Eu4File::from_slice(&data)?;
-    let save = save_file.deserializer().build_save(&eu4save::EnvTokens)?;
+    let tokens = Eu4FlatBufferTokens::new();
+    let save = save_file.deserializer().build_save(&tokens)?;
     let mut provs: Vec<_> = save.game.provinces.iter().collect();
     provs.sort_unstable_by_key(|(k, _v)| *k);
     let total_provs = provs.len();

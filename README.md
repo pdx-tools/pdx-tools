@@ -20,8 +20,8 @@ The easiest way to contribute is through [Visual Studio Code](https://code.visua
 After completing this step, copy or link your EU4 installation to `assets/game-bundles` and execute:
 
 ```bash
-just create-bundle "D:/games/steam/steamapps/common/Europa Universalis IV" assets/game-bundles
-just compile-assets assets/game-bundles/eu4-1.33.tar.zst
+just pdx create-bundle "D:/games/steam/steamapps/common/Europa Universalis IV" assets/game-bundles
+just pdx compile-assets assets/game-bundles/eu4-1.33.tar.zst
 ```
 
 See [build assets for more details](#build-assets).
@@ -50,8 +50,8 @@ just setup
 Paradox would be unhappy if the game assets and binary token files were uploaded here, so it is up to you to supply these. For incorporating game assets one will need a local installation of EU4.
 
 ```bash
-just create-bundle "D:/games/steam/steamapps/common/Europa Universalis IV" assets/game-bundles
-just compile-assets assets/game-bundles/eu4-1.33.tar.zst
+just pdx create-bundle "D:/games/steam/steamapps/common/Europa Universalis IV" assets/game-bundles
+just pdx compile-assets assets/game-bundles/eu4-1.33.tar.zst
 ```
 
 ### Ironman saves
@@ -72,16 +72,13 @@ This will compile everything and start the web server on two ports: 3001 and 300
 
 A quick intro into how the repo is structured.
 
-- **admin**: (production use only) CLI used to prepare data offline to upload to production.
 - **app**: The main project directory, a [Next.js](https://nextjs.org/) project. This is where the API, frontend UI, and the bulk of the code live.
 - **applib**: Rust library that contains code shared between CLI clients and the backend of the app.
 - **applib-node**: [N-API](https://nodejs.org/api/n-api.html#node-api) bindings for app backend to access Rust computations at native speed.
-- **assets**: (CI use only) Used to sync assets so that CI can build the repo.
 - **blog**: blog contents
-- **create-bundle**: (production use only) CLI to create asset bundle from game directory
+- **cli**: CLI used for asset, admin, and user commands
 - **eu4game**: Rust library for computing EU4 achievements and for exposing information only found in game files.
 - **map**: Project that contains the WebGL2 map shaders and logic for interacting with shaders. It is a standalone module, so that contributors can quickly iterate on shader and WebGL2 implementations without instantiating a dev environment.
-- **packager**: CLI used to process game directory to extract and prepare assets
 - **schemas**: flatbuffer schema for communicating game data efficiently to the browser
 - **tarsave**: Utility crate that detects if a eu4 save file has been converted into a tarsave. A tarsave, much like it sounds, is a [tarball](https://en.wikipedia.org/wiki/Tar_(computing)) with every file from a zip transferred into the archive. Tarsaves allow us to transfer the save over the network with a content encoding that can leverage the browser's natively implemented brotli decompression engine, which is faster at inflating than our Wasm zip decompression while having a much better compression ratio.   
 - **wasm-br**: Wasm package that takes in a byte array, brotli deflates it, and returns the deflated bytes. This is a standalone package due to how large brotli encoding consumes. Brotli encoding is used when users upload and since most users don't upload, we only want to pay the price to load the brotli module when needed. Maybe one day browsers will expose a JS api so we can use a native brotli deflate implementation.

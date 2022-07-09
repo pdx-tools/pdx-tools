@@ -559,9 +559,9 @@ dependencies = [
 
 [[package]]
 name = "ck3save"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16b8b999528aaf81297579f1db5408eedae49093a4245a0ebc1280330aaba77d"
+checksum = "4fb5736aae4b7b5cfbebb454b979e3bdb1b73c8f08c7ae87605d713111078f6f"
 dependencies = [
  "jomini",
  "serde",
@@ -903,8 +903,8 @@ dependencies = [
 
 [[package]]
 name = "eu4save"
-version = "0.7.0"
-source = "git+https://github.com/rakaly/eu4save.git#fde4c808f12d9e8ef435e9a5e42fee2b80babba1"
+version = "0.7.1"
+source = "git+https://github.com/rakaly/eu4save.git#3c422b29d22d8211dcb23ec4000fd7b6c53062c4"
 dependencies = [
  "jomini",
  "once_cell",
@@ -1134,9 +1134,9 @@ checksum = "3688f13e7735ae5ca93edc490f6c5885b77d473255bc1fed92b9c805f972bf94"
 
 [[package]]
 name = "hoi4save"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "658800f6d14559e351bfab92d771dbdd76d130de894abaa1ab5382749c106095"
+checksum = "5c2be5f01a7f4d435cfe43088adf12c0a954f5ec797a78a1fb542d71ee044eec"
 dependencies = [
  "jomini",
  "serde",
@@ -1252,9 +1252,9 @@ dependencies = [
 
 [[package]]
 name = "imperator-save"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f236de7547700f567cd2c18c2508d2acfc68f4745a94832782489d24697f21aa"
+checksum = "f7522c5968a70f5f4d413e77bfd7eed6f8c7ba5d91b5647e66647a5b4878bda9"
 dependencies = [
  "jomini",
  "serde",

@@ -138,6 +138,10 @@ fn token_benchmark(c: &mut Criterion) {
         let mut i = 0;
         let resolver = eu4save::EnvTokens;
 
+        if !matches!(resolver.resolve(0x337f), Some("campaign_id")) {
+            panic!("EU4 compile tokens missing");
+        }
+
         b.iter(|| {
             let res = resolver.resolve(arr[i % 1024]);
             i += 1;
@@ -163,5 +167,13 @@ fn token_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, token_benchmark);
+fn token_creation_benchmark(c: &mut Criterion) {
+    let data = include_bytes!("../../../assets/tokens/eu4-raw.bin");
+
+    c.bench_function("creation", |b| {
+        b.iter(|| FlatbufferResolver::from_slice(data))
+    });
+}
+
+criterion_group!(benches, token_benchmark, token_creation_benchmark);
 criterion_main!(benches);

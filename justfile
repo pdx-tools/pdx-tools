@@ -1,22 +1,26 @@
 set dotenv-load := true
 set positional-arguments
 
-export EU4_IRONMAN_TOKENS := `pwd | xargs printf "%s/assets/tokens/eu4.txt"`
-export HOI4_IRONMAN_TOKENS := `pwd | xargs printf "%s/assets/tokens/hoi4.txt"`
-export CK3_IRONMAN_TOKENS := `pwd | xargs printf "%s/assets/tokens/ck3.txt"`
-export IMPERATOR_TOKENS := `pwd | xargs printf "%s/assets/tokens/imperator.txt"`
+# "unset" the token environment variables as we inline a flatbuffer variant and
+# don't want the compile time and (small) performance penalty of compile time
+# tokens.
+export EU4_IRONMAN_TOKENS := ""
+export HOI4_IRONMAN_TOKENS := ""
+export CK3_IRONMAN_TOKENS := ""
+export IMPERATOR_TOKENS := ""
+
 export NEXT_PUBLIC_SENTRY_DSN := `echo ${SENTRY_DSN:-''}`
 
-build: touch-tokens build-wasm build-napi build-app build-docker
+build: build-wasm build-napi build-app build-docker
 
 build-rust:
   cargo build --all
 
-dev: touch-tokens build-wasm-dev build-napi dev-app
+dev: build-wasm-dev build-napi dev-app
   
 publish: publish-backend publish-frontend
 
-test: touch-tokens (test-rust "--all-features") test-app
+test: (cargo "test" "--all-features") test-app
 
 setup:
   #!/usr/bin/env bash
@@ -39,15 +43,6 @@ publish-frontend-dev: (wrangler "publish" "--env" "dev")
 build-app: prep-frontend
   cd src/app && npm run build
 
-touch-tokens:
-  # Create dummy token files so that one can still test
-  # plain text saves
-  mkdir -p "$(dirname "$EU4_IRONMAN_TOKENS")"
-  touch "$EU4_IRONMAN_TOKENS"
-  touch "$HOI4_IRONMAN_TOKENS"
-  touch "$CK3_IRONMAN_TOKENS"
-  touch "$IMPERATOR_TOKENS"
-
 build-docker:
   docker build -t docker.nbsoftsolutions.com/pdx-tools/app -f ./dev/app.dockerfile ./src/app
 
@@ -55,18 +50,16 @@ build-admin:
   #!/usr/bin/env bash
   set -euxo pipefail
   if [[ $REMOTE_CONTAINERS == "true" ]]; then
-    export EU4_IRONMAN_TOKENS="/project/assets/tokens/eu4.txt"
-
     # If we're within the dev container then we need to use special cross within
     # docker instructions, and workaround how the devcontainer uses "host"
     # networking so `hostname` doesn't return the name of the container.
-    HOSTNAME=$(docker ps | grep vsc-pdx-tools | cut -d' ' -f 1) cross build -p admin-cli --release --target x86_64-unknown-linux-musl
+    HOSTNAME=$(docker ps | grep vsc-pdx-tools | cut -d' ' -f 1) cross build --package pdx --features admin --release --target x86_64-unknown-linux-musl
   else
-    cargo build --release -p admin-cli
+    cargo build --package pdx --features admin
   fi
 
-test-rust *cmd:
-  cargo test "$@"
+cargo *cmd:
+  cargo "$@"
 
 dev-app: prep-frontend prep-dev-app
   #!/usr/bin/env bash
@@ -130,13 +123,6 @@ build-wasm: build-wasm-dev
   wait
 
 build-wasm-dev:
-  #!/usr/bin/env bash
-  set -euxo pipefail
-  unset EU4_IRONMAN_TOKENS
-  unset HOI4_IRONMAN_TOKENS
-  unset CK3_IRONMAN_TOKENS
-  unset IMPERATOR_TOKENS
-
   wasm-pack build -t web src/wasm-br
   wasm-pack build -t web src/wasm-ck3
   wasm-pack build -t web src/wasm-detect
@@ -148,7 +134,7 @@ build-napi:
   cargo build --release -p applib-node
   cp -f ./target/release/libapplib_node.so ./src/app/src/server-lib/applib.node
 
-package-all *opts: touch-tokens admin-tokenize
+package-all *opts: admin-tokenize
   #!/usr/bin/env bash
   set -euxo pipefail
   package() {
@@ -170,11 +156,8 @@ package-all *opts: touch-tokens admin-tokenize
 
   wait
 
-create-bundle path:
-  cargo run --release --package pdx --features create_bundle -- create-bundle "{{path}}"
-
-compile-assets +cmd: touch-tokens
-  cargo run --release --package pdx --features compile_assets -- compile-assets "$@"
+pdx cmd *args:
+  cargo run --release --package pdx --features {{replace(cmd, "-", "_")}} -- "$@"
 
 dev-environment +cmd:
   #!/usr/bin/env bash
@@ -231,11 +214,15 @@ backup-config ENVIRONMENT:
   ssh pdx-tools-{{ENVIRONMENT}} 'tar -c -C /opt/pdx-tools .' > config-{{ENVIRONMENT}}.tar
 
 admin-sync-assets:
-  cargo build --release --package pdx --features fetch_assets
-  ACCESS_KEY="${ASSETS_ACCESS_KEY}" SECRET_KEY="${ASSETS_SECRET_KEY}" ./target/release/pdx fetch-assets
+  just pdx fetch-assets --access-key "${ASSETS_ACCESS_KEY}" --secret-key "${ASSETS_SECRET_KEY}"
 
 admin-tokenize *cmd:
-  cargo run --release --package pdx --features tokenize -- tokenize "$@"
+  cargo run --release --package pdx --features tokenize -- tokenize \
+    --eu4-ironman-tokens "./assets/tokens/eu4.txt" \
+    --ck3-ironman-tokens "./assets/tokens/ck3.txt" \
+    --hoi4-ironman-tokens "./assets/tokens/hoi4.txt" \
+    --imperator-tokens "./assets/tokens/imperator.txt" \
+     "$@"
 
 format:
   cargo fmt
