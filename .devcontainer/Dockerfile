@@ -1,9 +1,8 @@
 ARG NODE_VERSION=16
 FROM mcr.microsoft.com/vscode/devcontainers/javascript-node:0.203-${NODE_VERSION}-bullseye
 ARG JUST_VERSION=0.11.0
-ARG COMPOSE_VERSION=1.29.2
 ARG GIT_LFS_VERSION=3.0.2
-ARG DOCKER_COMPOSE_VERSION=1.29.2
+ARG DOCKER_COMPOSE_VERSION=2.6.1
 
 RUN apt-get update && apt-get install -y \
       ca-certificates \
@@ -27,7 +26,7 @@ RUN apt-get update && apt-get install -y \
     tar xf ${JUST_VERSION}.tar.gz && \
     mv just /usr/bin/just && \
     # Install docker compose
-    curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
+    curl -L "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-linux-$(uname -m)" -o /usr/local/bin/docker-compose && \
     chmod +x /usr/local/bin/docker-compose && \
     # Install git lfs
     curl -o git-lfs.deb -L "https://packagecloud.io/github/git-lfs/packages/debian/bullseye/git-lfs_${GIT_LFS_VERSION}_amd64.deb/download" && \
