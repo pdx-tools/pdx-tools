@@ -10,6 +10,11 @@ import { Agent as HttpsAgent } from "https";
 export const BUCKET = getEnv("S3_BUCKET");
 const endpoint = getEnv("S3_ENDPOINT");
 
+AWS.config.logger = {
+  log: (msg) => log.info({ msg }),
+  warn: (msg) => log.warn({ msg }),
+};
+
 if (process.env.NODE_ENV !== "production") {
   if (endpoint.startsWith("https:")) {
     AWS.config.update({
