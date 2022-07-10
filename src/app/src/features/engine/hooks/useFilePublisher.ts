@@ -15,7 +15,6 @@ import {
 } from "@/features/eu4/eu4Slice";
 import { MapPayload } from "@/features/eu4/types/map";
 import { engineFailure, moduleLoaded } from "..";
-import { captureException } from "@sentry/nextjs";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { endCk3Analyze } from "@/features/ck3/ck3Slice";
 import { endHoi4Analyze } from "@/features/hoi4/hoi4Slice";
@@ -26,6 +25,7 @@ import { selectIsDeveloper } from "@/features/account";
 import { check } from "@/lib/isPresent";
 import { log } from "@/lib/log";
 import { AnalyzeEvent } from "../worker/worker-types";
+import { captureException } from "@/features/errors";
 
 export type AnalyzeInput =
   | { kind: "local"; file: File }

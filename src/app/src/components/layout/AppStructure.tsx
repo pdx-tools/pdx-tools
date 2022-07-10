@@ -5,7 +5,7 @@ import { SessionProvider } from "@/features/account";
 import { selectAppHeaderVisible, WasmWorkerProvider } from "@/features/engine";
 import { UserMetricsScript } from "./UserMetricsScript";
 import { AppHeader } from "./AppHeader";
-import { ErrorCatcher } from "./ErrorCatcher";
+import { ErrorCatcher } from "@/features/errors";
 const { Content } = Layout;
 
 interface AppStructureProps {

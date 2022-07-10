@@ -1,10 +1,10 @@
+import { captureException } from "@/features/errors";
 import {
   MiddlewareAPI,
   isRejectedWithValue,
   isRejected,
   Middleware,
 } from "@reduxjs/toolkit";
-import { captureException } from "@sentry/nextjs";
 import { newError } from "../features/notifications/toastSlice";
 import { appApi } from "../services/appApi";
 export const rtkQueryErrorLogger: Middleware =

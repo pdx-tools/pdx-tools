@@ -7,12 +7,12 @@ import React, {
 } from "react";
 import { releaseProxy, Remote, wrap } from "comlink";
 import { WasmWorker } from "./worker";
-import { captureException } from "@sentry/nextjs";
 import { useDispatch, useSelector } from "react-redux";
 import { newError } from "@/features/notifications";
 import { selectAnalyzeId } from "../engineSlice";
 import { useVisualizationDispatch } from "@/components/viz/visualization-context";
 import { useIsMounted } from "@/hooks/useIsMounted";
+import { captureException } from "@/features/errors";
 
 export type WorkerClient = Remote<WasmWorker>;
 

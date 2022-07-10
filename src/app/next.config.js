@@ -1,4 +1,7 @@
-const { withSentryConfig } = require("@sentry/nextjs");
+const SentryWebpackPlugin = require("@sentry/webpack-plugin");
+const {
+  getWebpackPluginOptions,
+} = require("@sentry/nextjs/cjs/config/webpack");
 
 // @ts-check
 /** @type {import('next').NextConfig} */
@@ -15,6 +18,7 @@ let nextConfig = {
       test: /\.(png|wasm|bin|webp|frag|vert)$/,
       type: "asset/resource",
     });
+
     return config;
   },
   experimental: {
@@ -54,16 +58,35 @@ let nextConfig = {
   },
 };
 
-if (process.env.SENTRY_DSN) {
-  nextConfig = withSentryConfig(nextConfig, {
-    silent: true,
-    include: [
-      {
-        paths: [".next/static/chunks"],
-        urlPrefix: "~/_next/static/chunks",
-      },
-    ],
-  });
-}
+// a poor man's withSentryConfig that allows lazy loading by not requiring
+// sentry.client.config
+const withCustomSentry = (userNextConfig, userSentryWebpackPluginOptions) => {
+  if (!process.env.SENTRY_DSN) {
+    return userNextConfig;
+  }
 
-module.exports = nextConfig;
+  return {
+    ...userNextConfig,
+    webpack: (incomingConfig, buildContext) => {
+      let newConfig = { ...incomingConfig };
+      newConfig = userNextConfig.webpack(newConfig, buildContext);
+      newConfig.plugins = newConfig.plugins || [];
+      newConfig.plugins.push(
+        new SentryWebpackPlugin(
+          getWebpackPluginOptions(buildContext, userSentryWebpackPluginOptions)
+        )
+      );
+      return newConfig;
+    },
+  };
+};
+
+module.exports = withCustomSentry(nextConfig, {
+  silent: true,
+  include: [
+    {
+      paths: [".next/static/chunks"],
+      urlPrefix: "~/_next/static/chunks",
+    },
+  ],
+});
