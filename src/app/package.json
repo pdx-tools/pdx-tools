@@ -13,7 +13,7 @@
   "dependencies": {
     "@ant-design/charts": "^1.2.5",
     "@ffmpeg/ffmpeg": "^0.10.1",
-    "@prisma/client": "^3.12.0",
+    "@prisma/client": "^4.0.0",
     "@reduxjs/toolkit": "^1.8.1",
     "@sentry/nextjs": "^7.6.0",
     "antd": "^4.19.5",
@@ -37,7 +37,7 @@
     "eslint": "^8.14.0",
     "eslint-config-next": "^12.1.5",
     "jest": "^27.5.1",
-    "prisma": "^3.12.0",
+    "prisma": "^4.0.0",
     "typescript": "^4.6.3",
     "undici": "^5.6.1"
   },
