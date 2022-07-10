@@ -12,3 +12,7 @@ services:
       dockerfile: nginx.dockerfile
       context: .
     network_mode: "host"
+
+  createbuckets:
+    environment:
+      - SCHEME=https
