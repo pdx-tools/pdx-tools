@@ -32,7 +32,7 @@ services:
       - s3
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc config --insecure host add myminio https://s3:9000 miniominio minio12minio;
+      /usr/bin/mc config --insecure host add myminio http://s3:9000 miniominio minio12minio;
       /usr/bin/mc mb --insecure --ignore-existing myminio/savefiles;
       exit 0;
       "
