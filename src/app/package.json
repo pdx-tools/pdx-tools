@@ -14,7 +14,7 @@
     "@ant-design/charts": "^1.2.5",
     "@ffmpeg/ffmpeg": "^0.10.1",
     "@prisma/client": "^4.0.0",
-    "@reduxjs/toolkit": "^1.8.1",
+    "@reduxjs/toolkit": "^1.8.3",
     "@sentry/nextjs": "^7.6.0",
     "antd": "^4.19.5",
     "aws-sdk": "^2.1171.0",
@@ -26,19 +26,19 @@
     "prom-client": "^14.0.1",
     "react-dom": "17.0.2",
     "react-redux": "^7.2.6",
-    "redis": "^4.0.6"
+    "redis": "^4.2.0"
   },
   "devDependencies": {
-    "@types/jest": "^27.4.1",
+    "@types/jest": "^28.1.4",
     "@types/multer": "^1.4.7",
-    "@types/node": "^17.0.25",
+    "@types/node": "^18.0.3",
     "@types/react": "^17.0.43",
     "@types/react-redux": "^7.1.23",
-    "eslint": "^8.14.0",
+    "eslint": "^8.19.0",
     "eslint-config-next": "^12.2.2",
-    "jest": "^27.5.1",
+    "jest": "^28.1.2",
     "prisma": "^4.0.0",
-    "typescript": "^4.6.3",
+    "typescript": "^4.7.4",
     "undici": "^5.6.1"
   },
   "browserslist": [
