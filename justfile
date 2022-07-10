@@ -15,6 +15,12 @@ release:
   #!/usr/bin/env bash
   set -euxo pipefail
   export PDX_RELEASE=1
+
+  if [[ $(git status --porcelain --untracked-files=no) ]]; then
+    echo "Address uncommitted changes before release"
+    exit 1
+  fi
+
   just build
   just publish-frontend
 
