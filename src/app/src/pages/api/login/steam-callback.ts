@@ -36,7 +36,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
 async function loginVerify(data: NextSessionRequest["query"]) {
   data["openid.mode"] = "check_authentication";
-  const url = new URL(getSingleInstance(data["openid.claimed_id"]));
+  const claimId = data["openid.claimed_id"];
+  if (claimId === undefined) {
+    throw new Error("openid.claimed_id");
+  }
+
+  const url = new URL(getSingleInstance(claimId));
   const uid = url.pathname.substring(url.pathname.lastIndexOf("/") + 1);
 
   const reqParams: string[][] = [];
@@ -44,7 +49,7 @@ async function loginVerify(data: NextSessionRequest["query"]) {
     const val = data[key];
     if (typeof val === "string") {
       reqParams.push([key, val]);
-    } else {
+    } else if (val !== undefined) {
       reqParams.push([key, ...val]);
     }
   }

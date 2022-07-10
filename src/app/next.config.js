@@ -5,6 +5,7 @@ const { withSentryConfig } = require("@sentry/nextjs");
 let nextConfig = {
   // disabled until https://github.com/ant-design/ant-design/issues/26136
   // reactStrictMode: true,
+  output: "standalone",
   webpack: (config, { webpack }) => {
     const experiments = config.experiments || {};
     config.experiments = { ...experiments, asyncWebAssembly: true };
@@ -25,9 +26,6 @@ let nextConfig = {
     );
 
     return config;
-  },
-  experimental: {
-    outputStandalone: true,
   },
   images: {
     disableStaticImages: true,
