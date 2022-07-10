@@ -1,6 +1,5 @@
-import FormData from "form-data";
 import { createReadStream, existsSync, writeFileSync, promises } from "fs";
-import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import { fetch, FormData } from "undici";
 import { db } from "../src/server-lib/db";
 import { BUCKET, deleteFile, s3client } from "../src/server-lib/s3";
 import * as pool from "../src/server-lib/pool";
@@ -16,6 +15,7 @@ import {
   SaveFile,
   UserSaves,
 } from "@/services/appApi";
+import { Blob } from "buffer";
 
 jest.setTimeout(60000);
 
@@ -55,41 +55,48 @@ afterAll(async () => {
   await client.disconnect();
 });
 
-async function getNewCookies() {
-  const resp = await axios.post("http://localhost:3000/api/login/steam", null, {
-    maxRedirects: 0,
-    validateStatus: (s) => s < 400,
-  });
+const pdxUrl = (path: string) => `http://localhost:3000${path}`;
 
-  return resp.headers["set-cookie"];
+async function getNewCookies(): Promise<string> {
+  const resp = await fetch(pdxUrl("/api/login/steam"), {
+    method: "POST",
+    redirect: "manual",
+  });
+  const result = resp.headers.get("set-cookie");
+  if (result === null) {
+    throw new Error("did not get cookie");
+  }
+  return result;
 }
 
 class HttpClient {
   private constructor(private cookies: string) {}
 
-  async uploadSaveHeaders(
-    filepath: string,
-    headers: AxiosRequestConfig["headers"]
-  ): Promise<AxiosResponse<SavePostResponse>> {
+  async uploadSaveHeaders(filepath: string, headers: RequestInit["headers"]) {
     await fetchEu4Save(filepath);
     const data = await promises.readFile(eu4SaveLocation(filepath));
+    const file = new Blob([data], { type: "application/octet-stream" });
 
-    return await axios.post("http://localhost:3000/api/saves", data, {
+    const resp = await fetch(pdxUrl("/api/saves"), {
+      method: "POST",
+      body: file,
       headers: {
         ...headers,
         cookie: this.cookies,
       },
-      withCredentials: true,
     });
+
+    if (!resp.ok) {
+      throw new Error("unable to upload save");
+    }
+
+    return (await resp.json()) as SavePostResponse;
   }
 
-  async uploadSaveCore<T>(
-    filepath: string,
-    metadata?: any,
-    validateStatus?: AxiosRequestConfig["validateStatus"]
-  ) {
+  async uploadSaveCore(filepath: string, metadata?: any) {
     await fetchEu4Save(filepath);
-    const data = createReadStream(eu4SaveLocation(filepath));
+    const data = await promises.readFile(eu4SaveLocation(filepath));
+    const file = new Blob([data], { type: "application/octet-stream" });
 
     const meta = JSON.stringify({
       aar: "",
@@ -99,73 +106,111 @@ class HttpClient {
     });
 
     const formData = new FormData();
-    formData.append("file", data);
+    formData.append("file", file);
     formData.append("metadata", meta);
 
-    return await axios.post<T>("http://localhost:3000/api/saves", formData, {
+    return await fetch(pdxUrl("/api/saves"), {
+      method: "POST",
       headers: {
-        ...formData.getHeaders(),
         cookie: this.cookies,
       },
-      withCredentials: true,
-      validateStatus,
+      body: formData,
     });
   }
 
   public async uploadSave(filepath: string, metadata?: any) {
-    return await this.uploadSaveCore<SavePostResponse>(filepath, metadata);
+    const resp = await this.uploadSaveCore(filepath, metadata);
+
+    if (!resp.ok) {
+      throw new Error("unable to upload save");
+    }
+
+    return (await resp.json()) as SavePostResponse;
   }
 
-  public async uploadSaveAllowError(filepath: string) {
-    return await this.uploadSaveCore<any>(filepath, {}, () => true);
+  public async uploadSaveReq(filepath: string) {
+    return await this.uploadSaveCore(filepath);
   }
 
-  public async get<T>(path: string): Promise<AxiosResponse<T>> {
-    return await axios.get<T>(`http://localhost:3000${path}`, {
+  public async getReq(path: string) {
+    return await fetch(pdxUrl(path), {
       headers: {
         cookie: this.cookies,
       },
-      withCredentials: true,
     });
   }
 
-  public async post<T>(path: string, data: any): Promise<AxiosResponse<T>> {
-    return await axios.post<T>(`http://localhost:3000${path}`, data, {
+  public async get<T>(path: string): Promise<T> {
+    const resp = await this.getReq(path);
+
+    if (!resp.ok) {
+      throw new Error(`unable to get ${path}`);
+    }
+
+    return (await resp.json()) as T;
+  }
+
+  public async postReq(path: string, data?: any) {
+    return await fetch(pdxUrl(path), {
+      method: "POST",
+      body: data !== undefined ? JSON.stringify(data) : undefined,
       headers: {
-        cookie: this.cookies,
+        "Content-Type": "application/json",
+        Cookie: this.cookies,
       },
-      withCredentials: true,
     });
   }
 
-  public async delete<T>(path: string): Promise<AxiosResponse<T>> {
-    return await axios.delete<T>(`http://localhost:3000${path}`, {
+  public async post<T>(path: string, data: any): Promise<T> {
+    const resp = await fetch(pdxUrl(path), {
+      method: "POST",
+      body: JSON.stringify(data),
       headers: {
-        cookie: this.cookies,
+        "Content-Type": "application/json",
+        Cookie: this.cookies,
       },
-      withCredentials: true,
     });
+
+    if (!resp.ok) {
+      throw new Error("unable to post");
+    }
+
+    return (await resp.json()) as T;
   }
 
-  public async patch<T>(path: string, data: any): Promise<AxiosResponse<T>> {
-    return await axios.patch<T>(`http://localhost:3000${path}`, data, {
+  public async delete<T>(path: string): Promise<void> {
+    const resp = await fetch(pdxUrl(path), {
+      method: "DELETE",
       headers: {
-        cookie: this.cookies,
+        Cookie: this.cookies,
       },
-      withCredentials: true,
     });
+
+    await resp.text();
+    if (!resp.ok) {
+      throw new Error("unable to delete");
+    }
   }
 
-  public req() {
-    return axios;
+  public async patch<T>(path: string, data: any): Promise<void> {
+    const resp = await fetch(pdxUrl(path), {
+      method: "PATCH",
+      body: JSON.stringify(data),
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: this.cookies,
+      },
+    });
+
+    await resp.text();
+    if (!resp.ok) {
+      throw new Error("unable to patch");
+    }
   }
 
   public static async create() {
-    const cookies = await getNewCookies();
-    if (cookies === undefined) {
-      throw new Error("unable to retrieve cookies");
-    }
-    return new HttpClient(cookies[0]);
+    const cookie = await getNewCookies();
+    return new HttpClient(cookie);
   }
 }
 
@@ -188,11 +233,14 @@ async function fetchEu4Save(save: string) {
   const fp = eu4SaveLocation(save);
 
   if (!existsSync(fp)) {
-    const resp = await axios.get(
-      `https://eu4saves-test-cases.s3.us-west-002.backblazeb2.com/${save}`,
-      { responseType: "arraybuffer" }
+    const resp = await fetch(
+      `https://eu4saves-test-cases.s3.us-west-002.backblazeb2.com/${save}`
     );
-    writeFileSync(fp, resp.data);
+    if (!resp.ok) {
+      throw new Error(`unable to retrieve: ${save}`);
+    }
+    let buf = await resp.arrayBuffer();
+    writeFileSync(fp, Buffer.from(buf));
   }
 }
 
@@ -232,7 +280,7 @@ test("same campaign", async () => {
 
   {
     const resp = await client.post<CheckResponse>("/api/check", startCheckReq);
-    expect(resp.data.qualifying_record).toBe(true);
+    expect(resp.qualifying_record).toBe(true);
   }
 
   const midCheckReq: CheckRequest = {
@@ -246,7 +294,7 @@ test("same campaign", async () => {
 
   {
     const resp = await client.post<CheckResponse>("/api/check", midCheckReq);
-    expect(resp.data.qualifying_record).toBe(true);
+    expect(resp.qualifying_record).toBe(true);
   }
 
   const endCheckReq: CheckRequest = {
@@ -260,53 +308,52 @@ test("same campaign", async () => {
 
   {
     const resp = await client.post<CheckResponse>("/api/check", endCheckReq);
-    expect(resp.data.qualifying_record).toBe(true);
+    expect(resp.qualifying_record).toBe(true);
   }
 
   // Now upload the halfway save. It'll cause the later save to not be a qualifying record
   const midUpload = await client.uploadSave(midPath);
-  expect(midUpload.data.save_id).toBeDefined();
+  expect(midUpload.save_id).toBeDefined();
 
   {
     const resp = await client.post<CheckResponse>("/api/check", endCheckReq);
-    expect(resp.data.qualifying_record).toBe(false);
+    expect(resp.qualifying_record).toBe(false);
   }
 
   // Ensure that upload matches check behavior
   const endUpload = await client.uploadSave(endPath);
-  expect(endUpload.data.used_save_slot).toBe(true);
-  expect(endUpload.data.save_id).toBeDefined();
+  expect(endUpload.used_save_slot).toBe(true);
+  expect(endUpload.save_id).toBeDefined();
 
   // But we can still upload the earliest save
   const startUpload = await client.uploadSave(startPath);
-  expect(startUpload.data.save_id).toBeDefined();
-  expect(startUpload.data.used_save_slot).toBe(false);
+  expect(startUpload.save_id).toBeDefined();
+  expect(startUpload.used_save_slot).toBe(false);
 
   // When retrieving the achievements, we should only see the save with the earliest date
   let achievementLeaderboard = await client.get<AchievementView>(
     "/api/achievements/18"
   );
-  expect(achievementLeaderboard.data.saves).toHaveLength(1);
-  expect(achievementLeaderboard.data.saves[0].id).toEqual(
-    startUpload.data.save_id
-  );
+  expect(achievementLeaderboard.saves).toHaveLength(1);
+  expect(achievementLeaderboard.saves[0].id).toEqual(startUpload.save_id);
 
   // But both saves will be exposed when viewing user saves
   let userProfile = await client.get<UserSaves>("/api/users/100");
-  expect(userProfile.data.saves).toHaveLength(3);
-  expect(userProfile.data.saves[0].id).toEqual(startUpload.data.save_id);
-  expect(userProfile.data.saves[1].id).toEqual(endUpload.data.save_id);
-  expect(userProfile.data.saves[2].id).toEqual(midUpload.data.save_id);
+  expect(userProfile.saves).toHaveLength(3);
+  expect(userProfile.saves[0].id).toEqual(startUpload.save_id);
+  expect(userProfile.saves[1].id).toEqual(endUpload.save_id);
+  expect(userProfile.saves[2].id).toEqual(midUpload.save_id);
 });
 
 test("invalid ironman", async () => {
   const client = await HttpClient.create();
 
-  const newSave = await client.uploadSaveAllowError("Ruskies.eu4");
+  const newSave = await client.uploadSaveReq("Ruskies.eu4");
 
   expect(newSave.status).toEqual(400);
-  expect(newSave.data.name).toEqual("ValidationError");
-  expect(newSave.data.msg).toEqual("unsupported patch: 1.28");
+  const data = (await newSave.json()) as any;
+  expect(data.name).toEqual("ValidationError");
+  expect(data.msg).toEqual("unsupported patch: 1.28");
 });
 
 test("same playthrough id", async () => {
@@ -328,20 +375,18 @@ test("same playthrough id", async () => {
 
   const shahansha = await client.uploadSave(startPath);
   const persia = await client.uploadSave(midPath);
-  expect(persia.data.save_id).toBeDefined();
+  expect(persia.save_id).toBeDefined();
 
   // When retrieving the shahanshah achievement we should only see the start data
   let achievementLeaderboard = await client.get<AchievementView>(
     "/api/achievements/89"
   );
-  expect(achievementLeaderboard.data.saves).toHaveLength(1);
-  expect(achievementLeaderboard.data.saves[0].id).toEqual(
-    shahansha.data.save_id
-  );
+  expect(achievementLeaderboard.saves).toHaveLength(1);
+  expect(achievementLeaderboard.saves[0].id).toEqual(shahansha.save_id);
 
   const newest = await client.get<{ saves: SaveFile[] }>("/api/new");
-  expect(newest.data.saves).toHaveLength(2);
-  expect(newest.data.saves[0].game_difficulty).toBe("Normal");
+  expect(newest.saves).toHaveLength(2);
+  expect(newest.saves[0].game_difficulty).toBe("Normal");
 });
 
 test("same playthrough disjoint set", async () => {
@@ -360,7 +405,7 @@ test("same playthrough disjoint set", async () => {
   expect(tatar.playthrough_id).toBe(golden.playthrough_id);
 
   const tatarUpload = await client.uploadSave(tatarPath);
-  expect(tatarUpload.data.save_id).toBeDefined();
+  expect(tatarUpload.save_id).toBeDefined();
 
   const endCheckReq: CheckRequest = {
     hash: goldenHash,
@@ -373,11 +418,11 @@ test("same playthrough disjoint set", async () => {
 
   {
     const resp = await client.post<CheckResponse>("/api/check", endCheckReq);
-    expect(resp.data.qualifying_record).toBe(true);
+    expect(resp.qualifying_record).toBe(true);
   }
 
   const goldenUpload = await client.uploadSave(goldenPath);
-  expect(goldenUpload.data.save_id).toBeDefined();
+  expect(goldenUpload.save_id).toBeDefined();
 });
 
 test("delete save", async () => {
@@ -386,31 +431,31 @@ test("delete save", async () => {
   const kandyPath = "kandy2.bin.eu4";
 
   const kandy = await client.uploadSave(kandyPath);
-  expect(kandy.data.save_id).toBeDefined();
+  expect(kandy.save_id).toBeDefined();
 
   const ita1 = await client.uploadSave(ita1Path);
-  expect(ita1.data.save_id).toBeDefined();
+  expect(ita1.save_id).toBeDefined();
 
-  await client.delete(`/api/saves/${ita1.data.save_id}`);
+  await client.delete(`/api/saves/${ita1.save_id}`);
 
   let userProfile = await client.get<UserSaves>("/api/users/100");
-  expect(userProfile.data.saves).toHaveLength(1);
+  expect(userProfile.saves).toHaveLength(1);
 
-  await client.delete(`/api/saves/${kandy.data.save_id}`);
+  await client.delete(`/api/saves/${kandy.save_id}`);
 
   userProfile = await client.get<UserSaves>("/api/users/100");
-  expect(userProfile.data.saves).toHaveLength(0);
+  expect(userProfile.saves).toHaveLength(0);
 
   const achievements = await client.get<ApiAchievementsResponse>(
     "/api/achievements"
   );
-  const achievement = achievements.data.achievements.find(
+  const achievement = achievements.achievements.find(
     (x) => x.name === "Italian Ambition"
   );
   expect(achievement?.uploads).toBe(0);
 
   const kandy2 = await client.uploadSave(kandyPath);
-  expect(kandy2.data.save_id).not.toBe(kandy.data.save_id);
+  expect(kandy2.save_id).not.toBe(kandy.save_id);
 });
 
 test("set aar", async () => {
@@ -419,28 +464,28 @@ test("set aar", async () => {
   const initAar = "hello world";
   const uploadResponse = await client.uploadSave(ita1Path, { aar: initAar });
   const uploadedSave = await client.get<SaveFile>(
-    `/api/saves/${uploadResponse.data.save_id}`
+    `/api/saves/${uploadResponse.save_id}`
   );
-  expect(uploadedSave.data.aar).toBe(initAar);
+  expect(uploadedSave.aar).toBe(initAar);
 
-  await client.patch(`/api/saves/${uploadResponse.data.save_id}`, {
+  await client.patch(`/api/saves/${uploadResponse.save_id}`, {
     aar: "goodbye",
     filename: "hello world.eu4",
   });
 
   const updatedSave = await client.get<SaveFile>(
-    `/api/saves/${uploadResponse.data.save_id}`
+    `/api/saves/${uploadResponse.save_id}`
   );
-  expect(updatedSave.data.aar).toBe("goodbye");
-  expect(updatedSave.data.filename).toBe("hello world.eu4");
+  expect(updatedSave.aar).toBe("goodbye");
+  expect(updatedSave.filename).toBe("hello world.eu4");
 });
 
 test("chinese supplementary", async () => {
   const client = await HttpClient.create();
   const path = "chinese-supplementary.eu4";
   const newSave = await client.uploadSave(path);
-  const meta = await client.get<SaveFile>(`/api/saves/${newSave.data.save_id}`);
-  expect(meta.data.displayed_country_name).toBe("Saluzzo");
+  const meta = await client.get<SaveFile>(`/api/saves/${newSave.save_id}`);
+  expect(meta.displayed_country_name).toBe("Saluzzo");
 });
 
 test("plain saves", async () => {
@@ -450,16 +495,15 @@ test("plain saves", async () => {
     content_type: "plain/text",
     content_encoding: "gzip",
   });
-  const data = await client.get<string>(
-    `/api/saves/${upload.data.save_id}/file`
-  );
-  expect(data.data.slice(0, 6)).toBe("EU4txt");
+  const data = await client.getReq(`/api/saves/${upload.save_id}/file`);
+  const resp = await data.text();
+  expect(resp.slice(0, 6)).toBe("EU4txt");
 });
 
 test("get profile", async () => {
   const client = await HttpClient.create();
   const profile = await client.get<ProfileResponse>("/api/profile");
-  expect(profile.data).toHaveProperty("user.user_id", "100");
+  expect(profile).toHaveProperty("user.user_id", "100");
 });
 
 test("get profile with api key", async () => {
@@ -469,26 +513,26 @@ test("get profile with api key", async () => {
   const kandyPath = "kandy2.bin.eu4";
 
   const kandy = await client.uploadSave(kandyPath);
-  expect(kandy.data.save_id).toBeDefined();
+  expect(kandy.save_id).toBeDefined();
 
-  await client
-    .req()
-    .delete(`http://localhost:3000/api/saves/${kandy.data.save_id}`, {
-      auth: {
-        username: "100",
-        password: key.data.api_key,
-      },
-    });
+  const req = await fetch(pdxUrl(`/api/saves/${kandy.save_id}`), {
+    method: "DELETE",
+    headers: {
+      Authorization:
+        "Basic " + Buffer.from(`100:${key.api_key}`).toString("base64"),
+    },
+  });
 
+  expect(req.ok).toEqual(true);
   const newest = await client.get<{ saves: SaveFile[] }>("/api/new");
-  expect(newest.data.saves).toHaveLength(0);
+  expect(newest.saves).toHaveLength(0);
 });
 
 test("admin rebalance", async () => {
   const client = await HttpClient.create();
 
   // test with empty redis instamce
-  const resp1 = await client.post("/api/admin/rebalance", undefined);
+  const resp1 = await client.postReq("/api/admin/rebalance");
   expect(resp1.status).toBe(200);
 
   const redis = await redisClient();
@@ -499,7 +543,7 @@ test("admin rebalance", async () => {
     { value: "MY_SAVE_ID", score: 100 },
   ]);
 
-  const resp2 = await client.post("/api/admin/rebalance", undefined);
+  const resp2 = await client.postReq("/api/admin/rebalance");
   expect(resp2.status).toBe(200);
 
   let newScore = 100.0 * pool.weightedFactor(1, 29)!;
@@ -525,5 +569,5 @@ test("api post new save", async () => {
     "Content-Encoding": "gzip",
   });
 
-  expect(upload.data.save_id).toBeDefined();
+  expect(upload.save_id).toBeDefined();
 });
