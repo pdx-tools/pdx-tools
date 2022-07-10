@@ -2,10 +2,10 @@
 version: '3'
 services:
   s3:
+    image: pdx-tools.minio-dev
     build:
       dockerfile: minio-dev.dockerfile
       context: .
-
 
   nginx:
     build:
