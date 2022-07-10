@@ -1,6 +1,6 @@
 import React from "react";
 import { Alert, message } from "antd";
-import { ErrorBoundary } from "@sentry/react";
+import { ErrorBoundary } from "@sentry/nextjs";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 
 interface ErrorCatcherProps {

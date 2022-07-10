@@ -15,7 +15,7 @@
     "@ffmpeg/ffmpeg": "^0.10.1",
     "@prisma/client": "^3.12.0",
     "@reduxjs/toolkit": "^1.8.1",
-    "@sentry/nextjs": "^6.19.6",
+    "@sentry/nextjs": "^7.6.0",
     "antd": "^4.19.5",
     "aws-sdk": "^2.1171.0",
     "comlink": "^4.3.1",

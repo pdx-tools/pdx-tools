@@ -30,8 +30,8 @@ function eventProcessor(file: File, err: any) {
 }
 
 function attachmentUrlFromDsn(dsn: DsnComponents, eventId: string) {
-  const { host, path, projectId, port, protocol, user } = dsn;
+  const { host, path, projectId, port, protocol, publicKey } = dsn;
   return `${protocol}://${host}${port !== "" ? `:${port}` : ""}${
     path !== "" ? `/${path}` : ""
-  }/api/${projectId}/events/${eventId}/attachments/?sentry_key=${user}&sentry_version=7&sentry_client=custom-javascript`;
+  }/api/${projectId}/events/${eventId}/attachments/?sentry_key=${publicKey}&sentry_version=7&sentry_client=custom-javascript`;
 }
