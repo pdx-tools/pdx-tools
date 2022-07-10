@@ -11,6 +11,19 @@ export IMPERATOR_TOKENS := ""
 
 export NEXT_PUBLIC_SENTRY_DSN := `echo ${SENTRY_DSN:-''}`
 
+release:
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  export PDX_RELEASE=1
+  just build
+  just publish-frontend
+
+  if [[ $(grep -c pdx-tools-prod ~/.ssh/config || echo "0") -gt 0 ]]; then
+    just publish-backend
+  else
+    echo "pdx-tools-prod not found in ssh config, please add it and then run just publish-backend"
+  fi
+
 build: build-wasm build-napi build-app build-docker
 
 build-rust:

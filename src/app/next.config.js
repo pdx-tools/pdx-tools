@@ -1,14 +1,11 @@
-const SentryWebpackPlugin = require("@sentry/webpack-plugin");
-const {
-  getWebpackPluginOptions,
-} = require("@sentry/nextjs/cjs/config/webpack");
+const { withSentryConfig } = require("@sentry/nextjs");
 
 // @ts-check
 /** @type {import('next').NextConfig} */
 let nextConfig = {
   // disabled until https://github.com/ant-design/ant-design/issues/26136
   // reactStrictMode: true,
-  webpack: (config) => {
+  webpack: (config, { webpack }) => {
     const experiments = config.experiments || {};
     config.experiments = { ...experiments, asyncWebAssembly: true };
 
@@ -18,6 +15,14 @@ let nextConfig = {
       test: /\.(png|wasm|bin|webp|frag|vert)$/,
       type: "asset/resource",
     });
+
+    // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/tree-shaking/#tree-shaking-optional-code-with-nextjs
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        __SENTRY_DEBUG__: process.env.NODE_ENV !== "production",
+        __SENTRY_TRACING__: false,
+      })
+    );
 
     return config;
   },
@@ -58,35 +63,16 @@ let nextConfig = {
   },
 };
 
-// a poor man's withSentryConfig that allows lazy loading by not requiring
-// sentry.client.config
-const withCustomSentry = (userNextConfig, userSentryWebpackPluginOptions) => {
-  if (!process.env.SENTRY_DSN) {
-    return userNextConfig;
-  }
-
-  return {
-    ...userNextConfig,
-    webpack: (incomingConfig, buildContext) => {
-      let newConfig = { ...incomingConfig };
-      newConfig = userNextConfig.webpack(newConfig, buildContext);
-      newConfig.plugins = newConfig.plugins || [];
-      newConfig.plugins.push(
-        new SentryWebpackPlugin(
-          getWebpackPluginOptions(buildContext, userSentryWebpackPluginOptions)
-        )
-      );
-      return newConfig;
-    },
-  };
-};
-
-module.exports = withCustomSentry(nextConfig, {
-  silent: true,
-  include: [
+if (process.env.SENTRY_DSN) {
+  nextConfig = withSentryConfig(
     {
-      paths: [".next/static/chunks"],
-      urlPrefix: "~/_next/static/chunks",
+      ...nextConfig,
+      sentry: {
+        widenClientFileUpload: true,
+      },
     },
-  ],
-});
+    { silent: true, dryRun: process.env.PDX_RELEASE !== "1" }
+  );
+}
+
+module.exports = nextConfig;
