@@ -3,7 +3,7 @@ use crate::{
     LocalizedObj, LocalizedTag, SaveFileImpl,
 };
 use eu4game::SaveGameQuery;
-use eu4save::{models::Province, query::NationEventKind, CountryTag, ProvinceId};
+use eu4save::{models::Province, CountryTag, ProvinceId};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};
 
@@ -210,6 +210,18 @@ impl SaveFileImpl {
         let result_len: usize = province_id_to_color_index.len() * 4;
         let mut result: Vec<u8> = vec![0; result_len * 2];
         let (primary, secondary) = result.split_at_mut(result_len);
+
+        if matches!(payload.kind, MapPayloadKind::Political) {
+            let date = payload
+                .date
+                .map(|x| self.query.save().game.start_date.add_days(x))
+                .and_then(|x| (x != self.query.save().meta.date).then_some(x));
+
+            if let Some(date) = date {
+                return self.historical_map_color(province_id_to_color_index, date);
+            }
+        }
+
         let excluded_color = [106, 108, 128, 255];
         let filter = TagFilterPayload::from(payload.tag_filter);
         let tags = self.matching_tags(&filter);
@@ -232,115 +244,6 @@ impl SaveFileImpl {
 
         match payload.kind {
             MapPayloadKind::Political => {
-                let date = payload
-                    .date
-                    .map(|x| self.query.save().game.start_date.add_days(x))
-                    .and_then(|x| {
-                        if x == self.query.save().meta.date {
-                            None
-                        } else {
-                            Some(x)
-                        }
-                    });
-                if let Some(date) = date {
-                    let mut tag_swithces = Vec::new();
-                    for x in &self.nation_events {
-                        let events = x.events.iter().filter(|x| x.date <= date);
-
-                        let mut cur = x.initial;
-                        for e in events {
-                            if let NationEventKind::TagSwitch(switch) = e.kind {
-                                tag_swithces.push((e.date, cur, switch));
-                                cur = switch;
-                            }
-                        }
-                    }
-
-                    tag_swithces.sort_by(|(adate, _, _), (bdate, _, _)| adate.cmp(bdate));
-                    let mut switches = tag_swithces.iter();
-                    let mut current_switch = switches.next();
-
-                    let mut owners = self.province_owners.initial.clone();
-                    let owner_changes = self
-                        .province_owners
-                        .changes
-                        .iter()
-                        .take_while(|x| x.date <= date);
-
-                    for change in owner_changes {
-                        if let Some((switch_date, from, to)) = current_switch {
-                            if switch_date < &change.date {
-                                for owner in owners.iter_mut().filter_map(|x| x.as_mut()) {
-                                    if owner == from {
-                                        *owner = *to;
-                                    }
-                                }
-
-                                current_switch = switches.next();
-                            }
-                        }
-
-                        if let Some(owner) = owners.get_mut(usize::from(change.province.as_u16())) {
-                            *owner = Some(change.tag);
-                        }
-                    }
-
-                    let no_owner: CountryTag = "---".parse().unwrap();
-                    let country_colors = {
-                        let mut colors: HashMap<&CountryTag, [u8; 4]> = self
-                            .query
-                            .save()
-                            .game
-                            .countries
-                            .iter()
-                            .map(|(tag, country)| {
-                                let c = &country.colors.map_color;
-                                (tag, [c[0], c[1], c[2], 255])
-                            })
-                            .collect();
-
-                        colors.insert(&no_owner, [94, 94, 94, 128]);
-                        colors
-                    };
-
-                    for (id, owner) in owners.iter().enumerate() {
-                        let offset = match province_id_to_color_index.get(id) {
-                            Some(&ind) => ind as usize * 4,
-                            None => continue,
-                        };
-
-                        let primary_color = &mut primary[offset..offset + 4];
-                        let secondary_color = &mut secondary[offset..offset + 4];
-
-                        primary_color.copy_from_slice(&[255, 255, 255, 0]);
-                        secondary_color.copy_from_slice(&[255, 255, 255, 0]);
-                        if let Some(owner_tag) = owner {
-                            if let Some(known_color) = country_colors.get(owner_tag) {
-                                primary_color.copy_from_slice(known_color);
-                                secondary_color.copy_from_slice(known_color);
-                            }
-                        }
-                    }
-
-                    for prov in self.game.provinces() {
-                        let id = usize::from(prov.id.as_u16());
-                        if owners.get(id).and_then(|x| x.as_ref()).is_none()
-                            && prov.terrain != schemas::eu4::Terrain::Wasteland
-                            && prov.terrain != schemas::eu4::Terrain::Ocean
-                        {
-                            let offset = match province_id_to_color_index.get(id) {
-                                Some(&ind) => ind as usize * 4,
-                                None => continue,
-                            };
-
-                            primary[offset..offset + 4].copy_from_slice(&[94, 94, 94, 128]);
-                            secondary[offset..offset + 4].copy_from_slice(&[94, 94, 94, 128]);
-                        }
-                    }
-
-                    return result;
-                }
-
                 let mut country_colors: HashMap<&CountryTag, [u8; 4]> = HashMap::new();
                 for (tag, country) in &self.query.save().game.countries {
                     let c = &country.colors.map_color;
@@ -390,9 +293,7 @@ impl SaveFileImpl {
                             }
                         }
                     } else if let Some(prov) = self.game.get_province(&id) {
-                        if prov.terrain != schemas::eu4::Terrain::Wasteland
-                            && prov.terrain != schemas::eu4::Terrain::Ocean
-                        {
+                        if prov.is_habitable() {
                             primary_color.copy_from_slice(&[94, 94, 94, 128]);
                             secondary_color.copy_from_slice(&[94, 94, 94, 128]);
                         }
@@ -442,9 +343,7 @@ impl SaveFileImpl {
                             }
                         }
                     } else if let Some(prov) = self.game.get_province(&id) {
-                        if prov.terrain != schemas::eu4::Terrain::Wasteland
-                            && prov.terrain != schemas::eu4::Terrain::Ocean
-                        {
+                        if prov.is_habitable() {
                             primary_color.copy_from_slice(&[94, 94, 94, 128]);
                             secondary_color.copy_from_slice(&[94, 94, 94, 128]);
                         }
@@ -491,9 +390,7 @@ impl SaveFileImpl {
                         primary_color[..3].copy_from_slice(&color);
                         secondary_color[..3].copy_from_slice(&color);
                     } else if let Some(prov) = self.game.get_province(&id) {
-                        if prov.terrain != schemas::eu4::Terrain::Wasteland
-                            && prov.terrain != schemas::eu4::Terrain::Ocean
-                        {
+                        if prov.is_habitable() {
                             primary_color.copy_from_slice(&[94, 94, 94, 128]);
                             secondary_color.copy_from_slice(&[94, 94, 94, 128]);
                         }
@@ -567,6 +464,78 @@ impl SaveFileImpl {
             }
 
             MapPayloadKind::Terrain => {}
+        }
+
+        result
+    }
+
+    fn historical_map_color(
+        &self,
+        province_id_to_color_index: &[u16],
+        date: eu4save::Eu4Date,
+    ) -> Vec<u8> {
+        let result_len: usize = province_id_to_color_index.len() * 4;
+        let mut result: Vec<u8> = vec![0; result_len * 2];
+        let (primary, secondary) = result.split_at_mut(result_len);
+        let resolver = self.tag_resolver.at(date);
+
+        let no_owner: CountryTag = "---".parse().unwrap();
+        let country_colors = {
+            let mut colors: HashMap<&CountryTag, [u8; 4]> = self
+                .query
+                .save()
+                .game
+                .countries
+                .iter()
+                .map(|(tag, country)| {
+                    let c = &country.colors.map_color;
+                    (tag, [c[0], c[1], c[2], 255])
+                })
+                .collect();
+
+            colors.insert(&no_owner, [94, 94, 94, 128]);
+            colors
+        };
+
+        let changes = self
+            .province_owners
+            .changes
+            .iter()
+            .filter(|change| change.date <= date);
+        let mut last_owners = vec![None; self.province_owners.initial.len()];
+        for change in changes {
+            let ind = usize::from(change.province.as_u16());
+            last_owners[ind] = Some((change.date, change.tag));
+        }
+
+        let prov_owners = self
+            .game
+            .provinces()
+            .filter(|prov| prov.is_habitable())
+            .filter_map(|prov| {
+                last_owners
+                    .get(usize::from(prov.id.as_u16()))
+                    .map(move |owner| (prov, owner))
+            });
+
+        for (prov, owner) in prov_owners {
+            let prov_ind = usize::from(prov.id.as_u16());
+            let color = owner
+                .and_then(|(date, tag)| resolver.resolve(tag, date))
+                .map(|x| x.current)
+                .or_else(|| {
+                    let init = self.province_owners.initial[prov_ind];
+                    init.and_then(|x| resolver.initial(x))
+                        .map(|x| x.current)
+                        .or(init)
+                })
+                .and_then(|tag| country_colors.get(&tag))
+                .unwrap_or(&[94, 94, 94, 128]);
+
+            let ind = province_id_to_color_index[prov_ind];
+            let offset = usize::from(ind) * 4;
+            primary[offset..offset + 4].copy_from_slice(color);
+            secondary[offset..offset + 4].copy_from_slice(color);
         }
 
         result

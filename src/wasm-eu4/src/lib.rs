@@ -1939,7 +1939,12 @@ impl SaveFileImpl {
                 .chain(std::iter::once(&(start, war.original_defender)))
                 .chain(attackers_date.iter())
                 .chain(defenders_date.iter())
-                .map(|(date, tag)| self.tag_resolver.resolve(*tag, *date))
+                .map(|(date, tag)| {
+                    self.tag_resolver
+                        .resolve(*tag, *date)
+                        .map(|x| x.current)
+                        .unwrap_or(*tag)
+                })
                 .any(|tag| tags.contains(&tag));
 
             if !filter_war {
@@ -2047,7 +2052,12 @@ impl SaveFileImpl {
                 .chain(std::iter::once(&(start, war.original_defender)))
                 .chain(attackers_date.iter())
                 .chain(defenders_date.iter())
-                .map(|(date, tag)| self.tag_resolver.resolve(*tag, *date))
+                .map(|(date, tag)| {
+                    self.tag_resolver
+                        .resolve(*tag, *date)
+                        .map(|x| x.current)
+                        .unwrap_or(*tag)
+                })
                 .any(|tag| tags.contains(&tag));
 
             if !filter_war {
