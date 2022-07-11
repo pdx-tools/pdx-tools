@@ -37,8 +37,6 @@ build-rust:
 
 dev: build-wasm-dev build-napi dev-app
   
-publish: publish-backend publish-frontend
-
 test: (cargo "test" "--all-features") test-app
 
 setup:
