@@ -13,7 +13,7 @@ use eu4save::{
     },
     query::{
         BuildingConstruction, CountryExpenseLedger, CountryIncomeLedger, LedgerPoint,
-        NationEventKind, NationEvents, Query,
+        NationEventKind, NationEvents, ProvinceReligions, Query,
     },
     CountryTag, Encoding, Eu4Date, Eu4File, Eu4Melter, FailedResolveStrategy, PdsDate, ProvinceId,
     TagResolver,
@@ -633,9 +633,16 @@ pub struct SaveFileImpl {
     war_participants: Vec<eu4save::query::ResolvedWarParticipants>,
     player_histories: Vec<eu4save::query::PlayerHistory>,
     province_owners: eu4save::query::ProvinceOwners,
+    religion_lookup: eu4save::query::ReligionLookup,
+    province_religions: once_cell::sync::OnceCell<ProvinceReligions>,
 }
 
 impl SaveFileImpl {
+    fn province_religions(&self) -> &ProvinceReligions {
+        self.province_religions
+            .get_or_init(|| self.query.province_religions(&self.religion_lookup))
+    }
+
     pub fn get_meta_raw(&self) -> Result<JsValue, JsValue> {
         JsValue::from_serde(&self.query.save().meta)
             .map_err(|e| JsValue::from_str(e.to_string().as_str()))
@@ -2679,6 +2686,7 @@ pub fn game_save(save: SaveFileParsed, game_data: Vec<u8>) -> Result<SaveFile, J
     let player_histories = query.player_histories(&nation_events);
     let tag_resolver = query.tag_resolver(&nation_events);
     let war_participants = query.resolved_war_participants(&tag_resolver);
+    let religion_lookup = query.religion_lookup();
     Ok(SaveFile(SaveFileImpl {
         query,
         game,
@@ -2689,6 +2697,8 @@ pub fn game_save(save: SaveFileParsed, game_data: Vec<u8>) -> Result<SaveFile, J
         tag_resolver,
         war_participants,
         player_histories,
+        religion_lookup,
+        province_religions: once_cell::sync::OnceCell::new(),
     }))
 }
 

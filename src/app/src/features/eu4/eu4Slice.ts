@@ -153,7 +153,8 @@ export const selectEu4SelectedTag = (state: RootState) => state.eu4.selectedTag;
 
 export const selectEu4CountryBordersDisabled = (state: RootState) => {
   return (
-    state.eu4.mapControls.mode == "political" &&
+    (state.eu4.mapControls.mode == "political" ||
+      state.eu4.mapControls.mode == "religion") &&
     state.eu4.mapDate.days != state.eu4.meta?.total_days
   );
 };

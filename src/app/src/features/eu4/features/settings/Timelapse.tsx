@@ -302,10 +302,14 @@ export const Timelapse = () => {
       // the last frame to show striped political provinces when the timelapse
       // didn't. So we save the current controls to restore them later.
       savedMapControls.current = mapControls;
+      const mode =
+        mapControls.mode == "political" || mapControls.mode == "religion"
+          ? mapControls.mode
+          : "political";
       dispatch(
         setMapControls({
           ...mapControls,
-          mode: "political",
+          mode,
           borderFill: "Provinces",
           showController: false,
           showCountryBorders: false,
