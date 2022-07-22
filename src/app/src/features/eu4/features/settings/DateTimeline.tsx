@@ -20,7 +20,7 @@ export const DateTimeline = () => {
   const workerRef = useWasmWorker();
   const mapDate = useSelector(selectEu4MapDate);
   const [localDate, setLocalDate] = useState(meta.date);
-  const datePickerDisabled = mapMode !== "political";
+  const datePickerDisabled = mapMode !== "political" && mapMode !== "religion";
   const date = datePickerDisabled
     ? meta.total_days
     : controls.date ?? meta.total_days;

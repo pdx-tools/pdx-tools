@@ -3,7 +3,10 @@ use crate::{
     LocalizedObj, LocalizedTag, SaveFileImpl,
 };
 use eu4game::SaveGameQuery;
-use eu4save::{models::Province, CountryTag, ProvinceId};
+use eu4save::{
+    models::{CountryEvent, Province},
+    CountryTag, ProvinceId,
+};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};
 
@@ -211,14 +214,17 @@ impl SaveFileImpl {
         let mut result: Vec<u8> = vec![0; result_len * 2];
         let (primary, secondary) = result.split_at_mut(result_len);
 
-        if matches!(payload.kind, MapPayloadKind::Political) {
+        if matches!(
+            payload.kind,
+            MapPayloadKind::Political | MapPayloadKind::Religion
+        ) {
             let date = payload
                 .date
                 .map(|x| self.query.save().game.start_date.add_days(x))
                 .and_then(|x| (x != self.query.save().meta.date).then_some(x));
 
             if let Some(date) = date {
-                return self.historical_map_color(province_id_to_color_index, date);
+                return self.historical_map_color(province_id_to_color_index, date, payload.kind);
             }
         }
 
@@ -469,7 +475,163 @@ impl SaveFileImpl {
         result
     }
 
-    fn historical_map_color(
+    fn last_province_owners_at(
+        &self,
+        date: eu4save::Eu4Date,
+    ) -> Vec<Option<(eu4save::Eu4Date, CountryTag)>> {
+        let owner_changes = self
+            .province_owners
+            .changes
+            .iter()
+            .filter(|change| change.date <= date);
+        let mut last_owners = vec![None; self.province_owners.initial.len()];
+        for change in owner_changes {
+            let ind = usize::from(change.province.as_u16());
+            last_owners[ind] = Some((change.date, change.tag));
+        }
+
+        last_owners
+    }
+
+    fn historical_religion_map_color(
+        &self,
+        province_id_to_color_index: &[u16],
+        date: eu4save::Eu4Date,
+    ) -> Vec<u8> {
+        let result_len: usize = province_id_to_color_index.len() * 4;
+        let mut result: Vec<u8> = vec![0; result_len * 2];
+        let (primary, secondary) = result.split_at_mut(result_len);
+        let last_owners = self.last_province_owners_at(date);
+
+        let country_religions = self
+            .query
+            .save()
+            .game
+            .countries
+            .iter()
+            .map(|(tag, country)| {
+                country
+                    .history
+                    .events
+                    .iter()
+                    .take_while(|(evt_date, _)| *evt_date <= date)
+                    .flat_map(|(_, events)| {
+                        events.0.iter().filter_map(|evt| match evt {
+                            CountryEvent::Religion(religion) => Some(religion),
+                            _ => None,
+                        })
+                    })
+                    .last()
+                    .or_else(|| {
+                        // Colonial nations don't store what religion they
+                        // started as. And annexed nations don't store their
+                        // latest religion. The proper solution would be to copy
+                        // the game's logic. From grotaclas:
+                        //
+                        // > I just did a quick test as Castile and created two
+                        // > CNs. One had only animist provinces and started as
+                        // > animist and the other had only sunni provinces and
+                        // > started as sunni. But in both cases the starting
+                        // > ruler was catholic.
+                        //
+                        // This seems like a lot of work to emulate for not too
+                        // much gain, so we just grab the monarch's religion as
+                        // an approximation
+                        country
+                            .history
+                            .events
+                            .iter()
+                            .flat_map(|(_, events)| events.0.iter())
+                            .find_map(|evt| evt.as_monarch())
+                            .and_then(|monarch| monarch.religion.as_ref())
+                    })
+                    .or_else(|| country.history.religion.as_ref())
+                    .and_then(|religion| self.religion_lookup.index(religion))
+                    .map(|index| (*tag, index))
+            })
+            .filter_map(|x| x)
+            .collect::<HashMap<_, _>>();
+
+        let province_religions = self.province_religions();
+
+        let religion_changes = province_religions
+            .changes
+            .iter()
+            .filter(|change| change.date <= date);
+        let mut last_religion = province_religions.initial.clone();
+        for change in religion_changes {
+            let ind = usize::from(change.province.as_u16());
+            last_religion[ind] = Some(change.religion);
+        }
+
+        let prov_religions = self
+            .game
+            .provinces()
+            .filter(|prov| prov.is_habitable())
+            .filter_map(|prov| {
+                last_religion
+                    .get(usize::from(prov.id.as_u16()))
+                    .and_then(|religion| {
+                        last_owners
+                            .get(usize::from(prov.id.as_u16()))
+                            .map(|owner| (religion, owner))
+                    })
+                    .map(move |(religion, owner)| (prov, religion, owner))
+            });
+
+        let color_map = self
+            .query
+            .save()
+            .game
+            .religions
+            .iter()
+            .map(|(religion, _)| religion)
+            .filter_map(|religion| {
+                self.game.religion(religion).and_then(|gr| {
+                    self.religion_lookup
+                        .index(religion)
+                        .map(|index| (index, [gr.color[0], gr.color[1], gr.color[2], 255]))
+                })
+            })
+            .collect::<HashMap<_, _>>();
+
+        for (prov, religion, owner) in prov_religions {
+            let prov_ind = usize::from(prov.id.as_u16());
+            let mut province_color = religion
+                .and_then(|religion| color_map.get(&religion))
+                .unwrap_or(&[94, 94, 94, 128]);
+
+            let owner_religion_color = owner
+                .and_then(|(date, tag)| self.tag_resolver.resolve(tag, date))
+                .map(|x| x.current)
+                .or_else(|| {
+                    let init = self.province_owners.initial[prov_ind];
+                    init.and_then(|x| self.tag_resolver.initial(x))
+                        .map(|x| x.current)
+                        .or(init)
+                })
+                .and_then(|tag| country_religions.get(&tag))
+                .and_then(|religion| color_map.get(&religion))
+                .unwrap_or(&[94, 94, 94, 128]);
+
+            let ind = province_id_to_color_index[prov_ind];
+            let offset = usize::from(ind) * 4;
+
+            // If the owner doesn't have a religion color then also mark the
+            // province as not having a religion color. This is so we don't
+            // clutter the map by showing colors for unowned provinces.
+            if owner_religion_color == &[94, 94, 94, 128] {
+                province_color = &owner_religion_color;
+            }
+
+            primary[offset..offset + 4].copy_from_slice(owner_religion_color);
+            secondary[offset..offset + 4].copy_from_slice(province_color);
+        }
+
+        result
+    }
+
+    fn historical_political_map_color(
         &self,
         province_id_to_color_index: &[u16],
         date: eu4save::Eu4Date,
@@ -478,6 +640,7 @@ impl SaveFileImpl {
         let mut result: Vec<u8> = vec![0; result_len * 2];
         let (primary, secondary) = result.split_at_mut(result_len);
         let resolver = self.tag_resolver.at(date);
+        let last_owners = self.last_province_owners_at(date);
 
         let no_owner: CountryTag = "---".parse().unwrap();
         let country_colors = {
@@ -496,17 +659,6 @@ impl SaveFileImpl {
             colors.insert(&no_owner, [94, 94, 94, 128]);
             colors
         };
-
-        let changes = self
-            .province_owners
-            .changes
-            .iter()
-            .filter(|change| change.date <= date);
-        let mut last_owners = vec![None; self.province_owners.initial.len()];
-        for change in changes {
-            let ind = usize::from(change.province.as_u16());
-            last_owners[ind] = Some((change.date, change.tag));
-        }
 
         let prov_owners = self
             .game
@@ -539,5 +691,21 @@ impl SaveFileImpl {
         }
 
         result
+    }
+
+    fn historical_map_color(
+        &self,
+        province_id_to_color_index: &[u16],
+        date: eu4save::Eu4Date,
+        kind: MapPayloadKind,
+    ) -> Vec<u8> {
+        match kind {
+            MapPayloadKind::Religion => {
+                self.historical_religion_map_color(province_id_to_color_index, date)
+            }
+            MapPayloadKind::Political | _ => {
+                self.historical_political_map_color(province_id_to_color_index, date)
+            }
+        }
     }
 }
