@@ -76,15 +76,17 @@ async function transcode(webmInput: Uint8Array, isDeveloper: boolean) {
   const ffmpeg = await ffmpegModule;
   ffmpeg.FS("writeFile", "recording.webm", new Uint8Array(webmInput));
   try {
+    // prettier-ignore
     await ffmpeg.run(
-      "-i",
-      "recording.webm",
-      "-vf",
+      "-i", "recording.webm",
 
       // ref: https://stackoverflow.com/a/20848224/433785
-      "pad=ceil(iw/2)*2:ceil(ih/2)*2",
-      "-vcodec",
-      "libx264",
+      "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+
+      // ref: https://superuser.com/q/1308355/635104
+      "-vsync", "0",
+
+      "-vcodec", "libx264",
       "recording.mp4"
     );
     const mp4Data = ffmpeg.FS("readFile", "recording.mp4");
