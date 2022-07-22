@@ -903,4 +903,19 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-07-22",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Add religion timelapse</li>
+          <li>✨ - Optimize political map timeline calculations</li>
+          <li>
+            🐛 - Fix occassional poor quality and performance of mp4 transcode
+          </li>
+          <li>🐛 - Further fix for country flag orientation</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
