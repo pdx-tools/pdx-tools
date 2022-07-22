@@ -20,3 +20,4 @@ assets/tokens
 dev/.env.*prod
 dev/.env.*staging
 *.node
+tmp/
