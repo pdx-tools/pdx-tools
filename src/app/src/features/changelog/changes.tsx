@@ -918,4 +918,17 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-07-23",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Add country culture breakdown</li>
+          <li>
+            🐛 - Fix save parsing for saves without change culture progress
+          </li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
