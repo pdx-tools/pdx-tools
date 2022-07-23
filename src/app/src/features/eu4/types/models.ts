@@ -1,4 +1,5 @@
 import { Achievement, GameDifficulty, SaveEncoding } from "@/services/appApi";
+import { bool } from "aws-sdk/clients/signer";
 
 export interface CountryMatcher {
   players: "all" | "alive" | "dead" | "none";
@@ -564,6 +565,23 @@ export interface CountryReligion {
   development: number;
   provinces_percent: number;
   development_percent: number;
+}
+
+export interface CountryCulture {
+  id: string;
+  name: string;
+  group: string | null;
+  tolerance: "Primary" | "Accepted" | "None";
+  provinces: number;
+  development: number;
+  provinces_percent: number;
+  development_percent: number;
+  stated_provs: number;
+  stated_provs_percent: number;
+  stated_provs_development: number;
+  stated_provs_development_percent: number;
+  conversions: number;
+  conversions_development: number;
 }
 
 export interface SingleCountryWarCasualtiesRaw {

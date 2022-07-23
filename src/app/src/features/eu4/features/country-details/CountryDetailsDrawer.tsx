@@ -28,6 +28,7 @@ import { CountrySelect } from "../../components/country-select";
 import { usePanTag } from "../../hooks/usePanTag";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { CountryLeaders } from "./CountryLeaders";
+import { CountryCultures } from "./CountryCultures";
 
 const { TabPane } = Tabs;
 const { useBreakpoint } = Grid;
@@ -158,6 +159,9 @@ export const CountryDetailsDrawer = ({
           </TabPane>
           <TabPane tab="Religion" key="Religion">
             {country && <CountryReligions details={country} />}
+          </TabPane>
+          <TabPane tab="Culture" key="Culture">
+            {country && <CountryCultures details={country} />}
           </TabPane>
         </Tabs>
       </div>

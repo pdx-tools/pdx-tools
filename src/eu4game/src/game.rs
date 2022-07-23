@@ -17,6 +17,12 @@ pub struct GameReligion<'a> {
 }
 
 #[derive(Debug)]
+pub struct EntryStringList<'a> {
+    pub key: &'a str,
+    pub list: Vec<&'a str>,
+}
+
+#[derive(Debug)]
 pub struct Game<'a> {
     data: schemas::eu4::Game<'a>,
 }
@@ -184,6 +190,17 @@ impl<'a> Game<'a> {
 
         let res = culture_groups.get(idx).value().unwrap().iter();
         Some(res)
+    }
+
+    pub fn culture_groups(&self) -> impl Iterator<Item = EntryStringList<'a>> + 'a {
+        self.data
+            .culture_groups()
+            .unwrap()
+            .iter()
+            .map(|group| EntryStringList {
+                key: group.key(),
+                list: group.value().unwrap().iter().collect(),
+            })
     }
 
     pub fn province_area(&self, id: &ProvinceId) -> Option<&str> {

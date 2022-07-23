@@ -91,6 +91,34 @@ pub struct CountryReligion {
     development_percent: f64,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub enum CultureTolerance {
+    Primary,
+    Accepted,
+    None,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CountryCulture {
+    #[serde(flatten)]
+    culture: LocalizedObj,
+    group: Option<String>,
+    tolerance: CultureTolerance,
+
+    provinces: usize,
+    provinces_percent: f64,
+    development: f32,
+    development_percent: f64,
+
+    stated_provs: usize,
+    stated_provs_percent: f64,
+    stated_provs_development: f32,
+    stated_provs_development_percent: f64,
+
+    conversions: usize,
+    conversions_development: f32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct MonarchStats {
     adm: u16,
@@ -513,6 +541,151 @@ impl SaveFileImpl {
         }
 
         result.sort_unstable_by(|a, b| a.religion.name.cmp(&b.religion.name));
+        result
+    }
+
+    pub fn get_country_province_culture(&self, tag: &str) -> Vec<CountryCulture> {
+        let tag = tag.parse::<CountryTag>().unwrap();
+
+        let mut culture_to_group = HashMap::new();
+        for culture_group in self.game.culture_groups() {
+            for culture in culture_group.list {
+                culture_to_group.insert(culture, culture_group.key);
+            }
+        }
+
+        let country = self.query.country(&tag);
+        let accepted_cultures = if let Some(country) = country {
+            let mut accepted_cultures = country.accepted_cultures.clone();
+            if country.government_rank >= 3 {
+                let cultural_union = country
+                    .primary_culture
+                    .as_ref()
+                    .and_then(|culture| culture_to_group.get(culture.as_str()))
+                    .and_then(|group| self.game.culture_group_cultures(group))
+                    .into_iter()
+                    .flatten()
+                    .map(String::from);
+                accepted_cultures.extend(cultural_union);
+            }
+            accepted_cultures
+        } else {
+            Vec::new()
+        };
+
+        let primary_culture = country.and_then(|x| x.primary_culture.as_ref());
+
+        let stated = self
+            .query
+            .save()
+            .game
+            .map_area_data
+            .iter()
+            .flat_map(|(area, data)| {
+                data.state
+                    .as_ref()
+                    .and_then(|state| state.country_states.iter().find(|x| x.country == tag))
+                    .and_then(|_| self.game.area_provinces(area))
+            })
+            .flatten()
+            .collect::<HashSet<_>>();
+
+        let owned_provinces = self
+            .query
+            .save()
+            .game
+            .provinces
+            .iter()
+            .filter(|(_, prov)| prov.owner.as_ref().map_or(false, |owner| owner == &tag))
+            .filter_map(|(id, prov)| prov.culture.as_ref().map(|r| (id, prov, r)));
+
+        #[derive(Default)]
+        struct ProvinceCount {
+            count: usize,
+            development: f32,
+
+            stated_core: usize,
+            stated_core_development: f32,
+
+            conversion: usize,
+            conversion_development: f32,
+        }
+
+        let mut province_counts: HashMap<_, ProvinceCount> = HashMap::new();
+        for (id, prov, culture) in owned_provinces {
+            let entry = province_counts.entry(culture).or_default();
+            let dev = prov.base_manpower + prov.base_production + prov.base_tax;
+            entry.count += 1;
+            entry.development += dev;
+
+            // Only check if stated for culture shifting even though the wiki
+            // says "Any accepted culture that has at least 50% of the
+            // development of the country’s state cores". Per lambda.
+            if stated.contains(id) {
+                entry.stated_core += 1;
+                entry.stated_core_development += dev;
+            }
+
+            if let Some(x) = prov.change_culture_construction.as_ref() {
+                let entry = province_counts.entry(&x.culture).or_default();
+                entry.conversion += 1;
+                entry.conversion_development += dev;
+            }
+        }
+
+        let mut total_provinces = 0;
+        let mut total_development = 0.0;
+        let mut total_stated_provs = 0;
+        let mut total_stated_provs_development = 0.0;
+        for tally in province_counts.values() {
+            total_provinces += tally.count;
+            total_development += f64::from(tally.development);
+            total_stated_provs += tally.stated_core;
+            total_stated_provs_development += f64::from(tally.stated_core_development);
+        }
+
+        let mut result = Vec::with_capacity(province_counts.len());
+        for (culture_id, tally) in province_counts {
+            let name = self
+                .game
+                .localize(culture_id)
+                .map(|x| String::from(x))
+                .unwrap_or_else(|| culture_id.clone());
+
+            let tolerance = if Some(culture_id) == primary_culture {
+                CultureTolerance::Primary
+            } else if accepted_cultures.contains(culture_id) {
+                CultureTolerance::Accepted
+            } else {
+                CultureTolerance::None
+            };
+
+            result.push(CountryCulture {
+                culture: LocalizedObj {
+                    id: String::from(culture_id),
+                    name,
+                },
+                group: culture_to_group
+                    .get(culture_id.as_str())
+                    .map(|&x| String::from(x)),
+                tolerance,
+                provinces: tally.count,
+                provinces_percent: (tally.count as f64) / (total_provinces as f64) * 100.0,
+                development: tally.development,
+                development_percent: f64::from(tally.development) / total_development * 100.0,
+                stated_provs: tally.stated_core,
+                stated_provs_percent: (tally.stated_core as f64) / (total_stated_provs as f64)
+                    * 100.0,
+                stated_provs_development: tally.stated_core_development,
+                stated_provs_development_percent: f64::from(tally.stated_core_development)
+                    / total_stated_provs_development
+                    * 100.0,
+                conversions: tally.conversion,
+                conversions_development: tally.conversion_development,
+            })
+        }
+
+        result.sort_unstable_by(|a, b| a.culture.name.cmp(&b.culture.name));
         result
     }
 

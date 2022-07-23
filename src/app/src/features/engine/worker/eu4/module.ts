@@ -5,6 +5,7 @@ import {
   reduceToTableLedger,
 } from "../../../eu4/utils/budget";
 import type {
+  CountryCulture,
   CountryDetails,
   CountryExpenses,
   CountryIncome,
@@ -93,6 +94,11 @@ export function eu4GetCountryGreatAdvisors(tag: string): GreatAdvisor[] {
 export function eu4GetCountryProvinceReligion(tag: string): CountryReligion[] {
   const save = loadedSave();
   return save.get_country_province_religion(tag) as CountryReligion[];
+}
+
+export function eu4GetCountryProvinceCulture(tag: string): CountryCulture[] {
+  const save = loadedSave();
+  return save.get_country_province_culture(tag) as CountryCulture[];
 }
 
 export function eu4GetCountryLeaders(tag: string): CountryLeader[] {
