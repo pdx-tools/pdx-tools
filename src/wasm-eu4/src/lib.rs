@@ -533,6 +533,10 @@ impl SaveFile {
         JsValue::from_serde(&self.0.get_country_province_religion(tag)).unwrap()
     }
 
+    pub fn get_country_province_culture(&self, tag: &str) -> JsValue {
+        JsValue::from_serde(&self.0.get_country_province_culture(tag)).unwrap()
+    }
+
     pub fn get_country_leaders(&self, tag: &str) -> JsValue {
         JsValue::from_serde(&self.0.get_country_leaders(tag)).unwrap()
     }
