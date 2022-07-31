@@ -26,6 +26,7 @@
   },
 
   "extensions": [
+    "bradlc.vscode-tailwindcss",
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
     "rust-lang.rust-analyzer",
