@@ -1,6 +1,5 @@
 import React from "react";
 import { Avatar, Space, Tooltip } from "antd";
-import css from "styled-jsx/css";
 import { usePanTag } from "../../hooks/usePanTag";
 import { useInEu4Analysis } from "../SideBarContainer";
 
@@ -44,24 +43,6 @@ export const FlagAvatarCore = ({ tag, size }: FlagAvatarCoreProps) => {
   );
 };
 
-const { className, styles } = css.resolve`
-  button {
-    border: 0;
-    padding: 4px;
-    background-color: transparent;
-    cursor: pointer;
-  }
-
-  button:hover {
-    background-color: revert;
-  }
-
-  button:active {
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15),
-      inset 0 0 6px rgba(0, 0, 0, 0.2);
-  }
-`;
-
 const InGameFlagAvatar = ({
   tag,
   name,
@@ -72,24 +53,28 @@ const InGameFlagAvatar = ({
   if (!condensed) {
     return (
       <Tooltip title={tag}>
-        <button className={className} onClick={() => panTag(tag)}>
+        <button
+          className="border-none p-1 bg-transparent cursor-pointer hover:bg-gray-200 active:bg-gray-300"
+          onClick={() => panTag(tag)}
+        >
           <Space style={{ textAlign: "start" }}>
             <FlagAvatarCore tag={tag} size={size} />
             <span>{name}</span>
           </Space>
         </button>
-        {styles}
       </Tooltip>
     );
   } else {
     return (
       <Tooltip title={`${name} (${tag})`}>
-        <button className={className} onClick={() => panTag(tag)}>
+        <button
+          className="border-none p-1 bg-transparent cursor-pointer hover:bg-gray-200 active:bg-gray-300"
+          onClick={() => panTag(tag)}
+        >
           <Space>
             <FlagAvatarCore tag={tag} size={size} />
           </Space>
         </button>
-        {styles}
       </Tooltip>
     );
   }

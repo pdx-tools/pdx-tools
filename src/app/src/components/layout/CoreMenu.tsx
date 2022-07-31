@@ -10,7 +10,6 @@ import {
 import { SignInButtons } from "./auth";
 import { GithubIcon, DiscordIcon } from "@/components/icons";
 import { appApi } from "../../services/appApi";
-import css from "styled-jsx/css";
 
 type Items = React.ComponentProps<typeof Menu>["items"];
 
@@ -35,16 +34,6 @@ const accountMenuOptions = (logout: () => void): Items => {
 interface CoreMenuProps {
   mode: MenuProps["mode"];
 }
-
-const { className, styles } = css.resolve`
-  .header-menu {
-    display: flex;
-    flex-grow: 1;
-    align-self: center;
-    justify-content: flex-end;
-    text-align: end;
-  }
-`;
 
 export const CoreMenu = ({ mode }: CoreMenuProps) => {
   const [logoutTrigger] = appApi.endpoints.logout.useMutation();
@@ -105,21 +94,7 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
   const isSubmenu = inlined && session.kind == "user";
   let accountSub = null;
   if (!inlined) {
-    if (session.kind === "unknown") {
-      accountSub = (
-        <div className={className}>
-          <Skeleton.Button className="flex items-center" />
-          {styles}
-        </div>
-      );
-    } else if (session.kind === "guest") {
-      accountSub = (
-        <div className={className}>
-          <SignInButtons />
-          {styles}
-        </div>
-      );
-    } else {
+    if (session.kind === "user") {
       accountSub = (
         <Menu
           theme="dark"
@@ -145,6 +120,16 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
             },
           ]}
         />
+      );
+    } else {
+      accountSub = (
+        <div className="flex grow self-center justify-end text-end">
+          {session.kind === "unknown" ? (
+            <Skeleton.Button className="flex items-center" />
+          ) : (
+            <SignInButtons />
+          )}
+        </div>
       );
     }
   } else {
