@@ -74,6 +74,7 @@ export const CanvasContextProvider = ({
     <>
       <div
         ref={containerRef}
+        className="absolute w-full h-full touch-none"
         style={{ display: showCanvas ? "flex" : "none", top: -positioning }}
       >
         <canvas
@@ -81,14 +82,6 @@ export const CanvasContextProvider = ({
           hidden={true}
           style={!sizeOverrideRef.current ? { maxWidth: "100%" } : {}}
         />
-        <style jsx>{`
-          div {
-            width: 100%;
-            height: 100%;
-            touch-action: none;
-            position: absolute;
-          }
-        `}</style>
       </div>
       <CanvasContext.Provider
         value={{

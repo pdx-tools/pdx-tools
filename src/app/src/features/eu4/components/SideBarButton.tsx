@@ -1,5 +1,5 @@
 import React from "react";
-import { Shadow } from "@/components/Shadow";
+import classes from "./SideBarButton.module.css";
 
 export interface SideBarButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -9,45 +9,19 @@ export interface SideBarButtonProps
 export const SideBarButton = ({
   index,
   children,
+  style,
+  className,
   ...rest
 }: SideBarButtonProps) => {
-  const btnHsl: [number, number, number] = [0, 56, 47];
-  const clazz = index !== undefined ? ` btn-${index}` : "";
+  const duration = { "--slide-duration": 1 - 0.1 * ((index ?? 0) + 1) };
+  const durationStyle = duration as React.CSSProperties;
   return (
-    <Shadow size="small" backgroundColor={btnHsl}>
-      <button className={`btn${clazz}`} {...rest}>
-        {children}
-      </button>
-      <style jsx>{`
-        .btn-${index} {
-          animation: slideIn ${1 - 0.1 * (index || 0 + 1)}s ease-out;
-        }
-
-        @keyframes slideIn {
-          0% {
-            transform: translateX(200px);
-          }
-          100% {
-            transform: translateX(0);
-          }
-        }
-      `}</style>
-      <style jsx>{`
-        .btn {
-          width: 60px;
-          height: 60px;
-          background-color: hsl(${btnHsl[0]}deg, ${btnHsl[1]}%, ${btnHsl[2]}%);
-          border: transparent;
-          border-radius: 2px;
-          box-shadow: inset 0 0 30px #333;
-        }
-
-        .btn:active {
-          border-color: black;
-          box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15),
-            inset 0 0 6px rgba(0, 0, 0, 0.2);
-        }
-      `}</style>
-    </Shadow>
+    <button
+      style={{ ...style, ...durationStyle }}
+      className={`${className} ${classes["slide-in"]} w-[60px] h-[60px] bg-rose-800 active:bg-rose-900 drop-shadow-md`}
+      {...rest}
+    >
+      {children}
+    </button>
   );
 };

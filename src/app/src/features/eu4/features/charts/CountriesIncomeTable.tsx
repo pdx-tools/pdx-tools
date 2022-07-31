@@ -117,7 +117,7 @@ export const CountriesIncomeTable = () => {
 
   return (
     <>
-      <Space direction="vertical" size="large" style={{ display: "flex" }}>
+      <Space direction="vertical" size="large" className="flex">
         <Space>
           <Space size="small">
             <Text>Show as percentages:</Text>

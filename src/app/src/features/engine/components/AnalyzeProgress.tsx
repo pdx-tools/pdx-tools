@@ -17,26 +17,16 @@ export const AnalyzeProgress = () => {
   const shadeHeight = `calc(100% - ${restHeight}px)`;
 
   return (
-    <div ref={overlay}>
+    <div className="absolute top-0 w-full h-full" ref={overlay}>
       <ProgressBar
         value={fileLoadPercent}
         height={height}
         absolutePositioning={true}
       />
-      <div className="shade" style={{ height: shadeHeight }}></div>
-      <style jsx>{`
-        div {
-          position: absolute;
-          top: 0;
-          width: 100%;
-          height: 100%;
-        }
-
-        .shade {
-          background-color: rgba(45, 45, 45, 0.5);
-          z-index: ${ZIndex.AnalyzeShadeOverlay};
-        }
-      `}</style>
+      <div
+        className="absolute top-0 w-full h-full bg-gray-500/50"
+        style={{ height: shadeHeight, zIndex: ZIndex.AnalyzeShadeOverlay }}
+      ></div>
     </div>
   );
 };

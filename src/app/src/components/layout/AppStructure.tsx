@@ -24,7 +24,7 @@ export const AppStructure = ({
         <UserMetricsScript />
         <Layout style={{ backgroundColor: "white", height: "100%" }}>
           {header && <AppHeader disabled={!visibleHeader} />}
-          <Content className="flex-col" style={{ overflow: "auto" }}>
+          <Content className="flex flex-col" style={{ overflow: "auto" }}>
             <ErrorCatcher>{children}</ErrorCatcher>
           </Content>
         </Layout>

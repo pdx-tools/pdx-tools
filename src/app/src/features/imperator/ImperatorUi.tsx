@@ -8,25 +8,19 @@ export const ImperatorUi = () => {
   const filename = useSelector(selectAnalyzeFileName);
   const meta = useImperatorMeta();
   return (
-    <main>
+    <main className="max-w-screen-lg mx-auto mt-4">
       <Head>
         <title>{`${filename.replace(".rome", "")} - Imperator (${
           meta.date
         }) - PDX Tools`}</title>
       </Head>
-      <h2>Imperator</h2>
-      <p>
-        {`An Imperator: Rome save was detected (version ${meta.version}). At this time, Imperator functionality is limited but one can still melt binary ironman saves into plaintext`}
-      </p>
-      {meta.isMeltable && <MeltButton />}
-
-      <style jsx>{`
-        main {
-          max-width: 600px;
-          margin-inline: auto;
-          margin-block-start: 2rem;
-        }
-      `}</style>
+      <div className="max-w-prose mx-auto">
+        <h2>Imperator</h2>
+        <p>
+          {`An Imperator: Rome save was detected (version ${meta.version}). At this time, Imperator functionality is limited but one can still melt binary ironman saves into plaintext`}
+        </p>
+        {meta.isMeltable && <MeltButton />}
+      </div>
     </main>
   );
 };

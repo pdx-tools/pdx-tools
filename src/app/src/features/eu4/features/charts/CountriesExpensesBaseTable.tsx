@@ -129,7 +129,7 @@ export const CountriesExpensesBaseTable = ({
   }
 
   return (
-    <div className="flex-col gap">
+    <div className="flex flex-col gap-2">
       <Space>
         <Space size="small">
           <Text>Show as percentages:</Text>

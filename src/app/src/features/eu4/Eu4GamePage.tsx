@@ -9,8 +9,8 @@ export const Eu4GamePage = () => {
       title="Latest EU4 saves"
       style={{ maxWidth: "1200px", margin: "0 auto" }}
       footer={
-        <div className="flex-col gap">
-          <div className="flex-row gap">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
             <Button size="large">
               <Link href="/">
                 <a>Analyze EU4 Saves</a>

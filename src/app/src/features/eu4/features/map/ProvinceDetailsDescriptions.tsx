@@ -119,7 +119,7 @@ export const ProvinceDetailsDescriptions = ({
   ];
 
   return (
-    <div className="flex-col gap" ref={sideBarContainerRef}>
+    <div className="flex flex-col gap-2" ref={sideBarContainerRef}>
       <Descriptions column={1} bordered size="small">
         <Descriptions.Item label="Id">{province.id}</Descriptions.Item>
         <Descriptions.Item label="Name">{province.name}</Descriptions.Item>

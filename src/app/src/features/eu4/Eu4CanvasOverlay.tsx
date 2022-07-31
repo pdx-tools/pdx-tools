@@ -80,22 +80,13 @@ export const Eu4CanvasOverlay = () => {
     <>
       <MapTip />
       <DateOverlay />
-      <div className="ui-sidebar touch-none">
-        <div className="flex-col gap">{buttons.map((x, i) => x(i))}</div>
+      <div className="fixed select-none touch-none right-0">
+        <div className="flex flex-col gap-2">{buttons.map((x, i) => x(i))}</div>
         {styles}
       </div>
       <MapZoomSideBar />
       <MapModeSideBar />
       <ProvinceSelectListener />
-      <style jsx>{`
-        .ui-sidebar {
-          position: fixed;
-          right: 0;
-          display: flex;
-          flex-direction: column;
-          user-select: none;
-        }
-      `}</style>
       <SaveWarnings />
     </>
   );

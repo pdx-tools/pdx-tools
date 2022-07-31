@@ -16,20 +16,12 @@ const InfoSideBarTitle = () => {
   const meta = useEu4Meta();
   const remoteFile = useAppSelector((state) => state.eu4.serverSaveFile);
   return (
-    <div className="flex-row gap">
+    <div className="flex items-center gap-2">
       <SaveMode mode={meta.mode} />
       <span>{meta.save_game || "EU4 Save Game"}</span>
-      <div className="drawer-extras flex-row gap">
+      <div className="drawer-extras flex justify-end grow items-center mr-4 gap-2">
         {remoteFile && <DownloadButton />}
         {meta.encoding == "binzip" && <MeltButton />}
-
-        <style jsx>{`
-          .drawer-extras {
-            flex-grow: 1;
-            justify-content: flex-end;
-            margin-right: 2rem;
-          }
-        `}</style>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { Descriptions, Divider } from "antd";
 import { QuickTipPayload } from "../../types/map";
 import { FlagAvatar } from "../../components/avatars";
+import classes from "./MapTipContents.module.css";
 
 interface MapTipContentsProps {
   tip: QuickTipPayload;
@@ -70,24 +71,13 @@ const MapTipsTable = ({ tip }: MapTipContentsProps) => {
 
 export const MapTipContents = ({ tip }: MapTipContentsProps) => {
   return (
-    <div className="tooltip-contents no-break">
+    <div
+      className={`${classes["tooltip-contents"]} border-2 border-solid border-gray-300 bg-white p-4 rounded-2xl no-break`}
+    >
       <Divider orientation="left" style={{ margin: 0 }}>
         {`${tip.provinceName} (${tip.provinceId})`}
       </Divider>
       <MapTipsTable tip={tip} />
-
-      <style jsx>{`
-        .tooltip-contents {
-          background-color: white;
-          padding: 1rem;
-          border-radius: 1rem;
-          border: 1px #ccc solid;
-        }
-
-        .tooltip-contents :global(.ant-descriptions-view > table) {
-          width: max-content;
-        }
-      `}</style>
     </div>
   );
 };

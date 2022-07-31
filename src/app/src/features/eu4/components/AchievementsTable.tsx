@@ -59,9 +59,7 @@ export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
       sorter: (a: TableEntry, b: TableEntry) =>
         difficultyComparator(a.achievement, b.achievement),
       onCell: (record: TableEntry) => ({
-        style: {
-          backgroundColor: difficultyColor(record.achievement.difficulty),
-        },
+        className: difficultyColor(record.achievement.difficulty),
       }),
       render: (difficulty: AchievementDifficulty) => difficultyText(difficulty),
     },

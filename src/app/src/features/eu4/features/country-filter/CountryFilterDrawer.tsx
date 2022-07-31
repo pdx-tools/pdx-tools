@@ -23,10 +23,10 @@ export const CountryFilterDrawer = ({
       onClose={closeDrawer}
       width="min(800px, 100%)"
       title={
-        <>
-          <span style={{ paddingRight: "8px" }}>Country Filter</span>
+        <div className="flex gap-x-2">
+          <span>Country Filter</span>
           <HelpTooltip help="Calculate the module with only the filtered countries selected" />
-        </>
+        </div>
       }
     >
       <CountryFilterProvider initialValues={countryFilter}>

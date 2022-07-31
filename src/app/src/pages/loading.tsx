@@ -22,7 +22,7 @@ export const LoadingPage = () => {
         <FileDrop>
           <Home
             subtitle={
-              <div>
+              <div className="text-lg mt-6 mx-auto text-center max-w-prose">
                 Please wait while your save is transferred to PDX Tools. Not
                 working? Ensure that pop-ups are allowed or manually select and
                 drag and drop your save.

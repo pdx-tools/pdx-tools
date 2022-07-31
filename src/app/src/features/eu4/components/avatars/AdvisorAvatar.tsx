@@ -22,13 +22,13 @@ export const AdvisorAvatar = ({
     const style = enabled ? {} : { filter: "grayscale(1)" };
     return (
       <Tooltip title={`${localized.id}`}>
-        <Space>
+        <div className="flex items-center gap-x-2">
           <Avatar shape="square" size={48} src={image} style={style} />
           <div>
             <div>{`${localized.name}`}</div>
             <div className="no-break date">{triggerDate || " "}</div>
           </div>
-        </Space>
+        </div>
       </Tooltip>
     );
   } else {

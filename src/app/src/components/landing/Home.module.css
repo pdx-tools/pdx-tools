@@ -1,0 +1,19 @@
+.row :is(h1, h2, h3) {
+  @apply text-2xl font-bold;
+}
+
+.row > section {
+  @apply flex flex-col gap-8 items-center max-w-screen-xl lg:flex-row;
+}
+
+.row > section > * {
+  @apply flex-grow basis-0;
+}
+
+.row:nth-child(odd) :is(h1, h2, h3) {
+  @apply text-white;
+}
+
+.row:nth-child(odd) > section {
+  @apply lg:flex-row-reverse;
+}

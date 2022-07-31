@@ -7,7 +7,6 @@ import melted from "./melted.webp";
 import games from "./games.webp";
 import headline from "./headline.png";
 import discover from "./discover.png";
-import { Shadow } from "@/components/Shadow";
 import { AnalyzeBox } from "./AnalyzeBox";
 import { useSelector } from "react-redux";
 import { selectEngineError } from "@/features/engine";
@@ -20,6 +19,7 @@ import {
   FirefoxIcon,
   SafariIcon,
 } from "@/components/icons";
+import classes from "./Home.module.css";
 
 interface HomeProps {
   subtitle?: React.ReactNode;
@@ -49,127 +49,21 @@ const useWaveBackground = ([h, s, l]: number[]) => {
 
 export const Home = ({ subtitle }: HomeProps) => {
   const secondaryColor: [number, number, number] = [177, 100, 13.7];
-  const sc = secondaryColor;
   const waveBackground = useWaveBackground(secondaryColor);
   const engineError = useSelector(selectEngineError);
 
   return (
-    <div className="main">
-      <style jsx>{`
-        h1 {
-          font-size: 2rem;
-          display: inline-flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        h1 span {
-          height: 2em;
-          width: 2em;
-        }
-
-        .main {
-          width: 100%;
-          font-size: 1.35rem;
-          min-height: 100vh;
-        }
-
-        section {
-          max-width: 768px;
-          display: grid;
-          grid-template-areas: "text" "img";
-        }
-
-        section > div:nth-child(2) {
-          padding-top: 2em;
-        }
-
-        @media screen and (min-width: 768px) {
-          section {
-            gap: 2em;
-          }
-
-          .row:nth-child(odd) section {
-            grid-template-areas: "text img";
-          }
-
-          .row:nth-child(even) section {
-            grid-template-areas: "img text";
-          }
-
-          section > div:nth-child(2) {
-            padding-top: unset;
-          }
-        }
-
-        .row {
-          padding: 3em 1em;
-          display: flex;
-          justify-content: center;
-        }
-
-        .row:nth-child(odd) {
-          background-color: hsl(${sc[0]}deg ${sc[1]}% ${sc[2]}%);
-        }
-
-        .row:nth-child(odd),
-        .row:nth-child(odd) :is(h1, h2, h3) {
-          color: white;
-        }
-
-        section div:nth-child(1) {
-          grid-area: text;
-        }
-
-        section div:nth-child(2) {
-          grid-area: img;
-          display: flex;
-          justify-content: center;
-        }
-
-        section p.subtitle {
-          line-height: 1.5;
-          font-size: 2rem;
-        }
-
-        section p {
-          font-size: 1.2rem;
-        }
-
-        img {
-          height: fit-content;
-        }
-
-        .divider {
-          height: 24px;
-          border-left: 1px dotted #d7d7db;
-        }
-
-        .analyze-box {
-          max-width: 1024px;
-          display: flex;
-        }
-      `}</style>
-
+    <div className="w-full h-screen">
       <div
-        className="row"
-        style={{
-          backgroundImage: waveBackground,
-          backgroundPosition: "bottom",
-          backgroundRepeat: "repeat-x",
-        }}
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white bg-bottom bg-repeat-x`}
+        style={{ backgroundImage: waveBackground }}
       >
-        <section className="analyze-box flex-col">
-          <div className="flex-col gap">
+        <section className="flex flex-col max-w-5xl">
+          <div className="flex flex-col gap">
             <AnalyzeBox />
             {subtitle}
             {engineError && (
-              <div
-                style={{
-                  marginBlockStart: "2rem",
-                  justifyContent: "flex-start",
-                }}
-              >
+              <div className="mt-6 justify-start">
                 <Alert type="error" closable={true} message={engineError} />
               </div>
             )}
@@ -177,30 +71,31 @@ export const Home = ({ subtitle }: HomeProps) => {
         </section>
       </div>
 
-      <div className="row flex-col items-center">
-        <Shadow>
-          <img
-            src={headline}
-            height={685}
-            width={1250}
-            alt="Screenshot showing map and graph"
-          />
-        </Shadow>
-        <div className="flex-col gap items-center">
-          <div style={{ marginTop: "2rem" }}>
+      <div
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white flex flex-col items-center text-xl`}
+      >
+        <img
+          src={headline}
+          className="drop-shadow-xl"
+          height={685}
+          width={1250}
+          alt="Screenshot showing map and graph"
+        />
+        <div className="flex flex-col gap-y-2 items-center">
+          <div className="mt-6">
             Curious?{" "}
             <Link href="/eu4/saves/_9Hcw32JWTZRx6zK3FVuz">
               <a>Load a sample</a>
             </Link>
           </div>
-          <div className="flex-row gap">
-            <FirefoxIcon style={{ fill: "lightgrey" }} />
-            <div className="divider" />
-            <ChromeIcon style={{ fill: "lightgrey" }} />
-            <div className="divider" />
-            <EdgeIcon style={{ fill: "lightgrey" }} />
-            <div className="divider" />
-            <SafariIcon style={{ fill: "lightgrey" }} />
+          <div className="flex items-center gap-x-1">
+            <FirefoxIcon className="fill-gray-300" />
+            <div className="h-6 border-l border-y-0 border-r-0 border-gray-300 border-dotted" />
+            <ChromeIcon className="fill-gray-300" />
+            <div className="h-6 border-l border-y-0 border-r-0 border-gray-300 border-dotted" />
+            <EdgeIcon className="fill-gray-300" />
+            <div className="h-6 border-l border-y-0 border-r-0 border-gray-300 border-dotted" />
+            <SafariIcon className="fill-gray-300" />
           </div>
           <div className="text-xs text-center">
             Works best in Firefox (62+), Chrome (66+), Edge (79+).
@@ -210,9 +105,11 @@ export const Home = ({ subtitle }: HomeProps) => {
         </div>
       </div>
 
-      <div className="row">
+      <div
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+      >
         <section>
-          <div>
+          <div className="max-w-prose">
             <h2>Discover Data</h2>
             <p>
               View data not exposed in game, like one time advisor events,
@@ -228,21 +125,22 @@ export const Home = ({ subtitle }: HomeProps) => {
             </p>
           </div>
           <div>
-            <Shadow backgroundColor={secondaryColor}>
-              <img
-                src={discover}
-                height={478}
-                width={606}
-                alt="Country budgetary breakdown"
-              />
-            </Shadow>
+            <img
+              src={discover}
+              className="drop-shadow-xl"
+              height={478}
+              width={606}
+              alt="Country budgetary breakdown"
+            />
           </div>
         </section>
       </div>
 
-      <div className="row">
+      <div
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+      >
         <section>
-          <div>
+          <div className="max-w-prose">
             <h2>Marvelous Maps</h2>
             <p>
               Pan, zoom, and click around as if EU4 was played within Google
@@ -260,21 +158,22 @@ export const Home = ({ subtitle }: HomeProps) => {
             <p>Export high resolution map images</p>
           </div>
           <div>
-            <Shadow>
-              <img
-                src={map}
-                height={325}
-                width={400}
-                alt="EU4 political map simulated in PDX Tools"
-              />
-            </Shadow>
+            <img
+              src={map}
+              height={325}
+              width={400}
+              className="drop-shadow-xl"
+              alt="EU4 political map simulated in PDX Tools"
+            />
           </div>
         </section>
       </div>
 
-      <div className="row">
+      <div
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+      >
         <section>
-          <div>
+          <div className="max-w-prose">
             <h2>Fine-tune Focus</h2>
             <p>
               All maps, graphs, and data can be filtered to only desired
@@ -290,21 +189,22 @@ export const Home = ({ subtitle }: HomeProps) => {
             </p>
           </div>
           <div>
-            <Shadow backgroundColor={secondaryColor}>
-              <img
-                src={graphs}
-                height={510}
-                width={971}
-                alt="Screenshot of income graph when analyzing a save"
-              />
-            </Shadow>
+            <img
+              src={graphs}
+              height={510}
+              width={971}
+              className="drop-shadow-xl"
+              alt="Screenshot of income graph when analyzing a save"
+            />
           </div>
         </section>
       </div>
 
-      <div className="row">
+      <div
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+      >
         <section>
-          <div>
+          <div className="max-w-prose">
             <h2>BYOB (Bring your own browser)</h2>
             <p>
               No account needed, no downloads, no installs. All analysis takes
@@ -317,16 +217,18 @@ export const Home = ({ subtitle }: HomeProps) => {
             </p>
           </div>
           <div>
-            <Shadow>
-              <span style={{ fontSize: "200px" }}>☁️</span>
-            </Shadow>
+            <span className="drop-shadow-xl" style={{ fontSize: "200px" }}>
+              ☁️
+            </span>
           </div>
         </section>
       </div>
 
-      <div className="row">
+      <div
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+      >
         <section>
-          <div>
+          <div className="max-w-prose">
             <h2>Melting Support</h2>
             <p>
               PDX Tools can convert (aka melt) ironman and binary saves into
@@ -338,21 +240,22 @@ export const Home = ({ subtitle }: HomeProps) => {
             </p>
           </div>
           <div>
-            <Shadow backgroundColor={secondaryColor}>
-              <img
-                src={melted}
-                height={232}
-                width={287}
-                alt="Screenshot of EU4 showing a melted save being loaded"
-              />
-            </Shadow>
+            <img
+              src={melted}
+              height={232}
+              width={287}
+              className="drop-shadow-xl"
+              alt="Screenshot of EU4 showing a melted save being loaded"
+            />
           </div>
         </section>
       </div>
 
-      <div className="row">
+      <div
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+      >
         <section>
-          <div>
+          <div className="max-w-prose">
             <h2>Fresh Competition</h2>
             <p>
               An advanced achievement engine uses the game's logic to check if a
@@ -376,22 +279,23 @@ export const Home = ({ subtitle }: HomeProps) => {
             </p>
           </div>
           <div>
-            <Shadow>
-              <img
-                src={achievement}
-                height={325}
-                width={400}
-                loading="lazy"
-                alt="Screenshot of the PDX Tools leaderboard for an achievement"
-              />
-            </Shadow>
+            <img
+              src={achievement}
+              height={325}
+              width={400}
+              loading="lazy"
+              className="drop-shadow-xl"
+              alt="Screenshot of the PDX Tools leaderboard for an achievement"
+            />
           </div>
         </section>
       </div>
 
-      <div className="row">
+      <div
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+      >
         <section>
-          <div>
+          <div className="max-w-prose">
             <h2>More Games!</h2>
             <p>The following games can be loaded:</p>
             <ul>
@@ -402,16 +306,23 @@ export const Home = ({ subtitle }: HomeProps) => {
             </ul>
           </div>
           <div>
-            <Shadow backgroundColor={secondaryColor}>
-              <img alt="" loading="lazy" src={games} height={338} width={600} />
-            </Shadow>
+            <img
+              alt=""
+              className="drop-shadow-xl"
+              loading="lazy"
+              src={games}
+              height={338}
+              width={600}
+            />
           </div>
         </section>
       </div>
 
-      <div className="row">
+      <div
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+      >
         <section>
-          <div>
+          <div className="max-w-prose">
             <h2>Community</h2>
             <p>PDX Tools is powered by community use and feedback</p>
             <p>

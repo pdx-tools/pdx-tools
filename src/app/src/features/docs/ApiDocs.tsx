@@ -3,25 +3,15 @@ import Link from "next/link";
 import { PageHeader } from "antd";
 import { useSelector } from "react-redux";
 import { selectUserInfo } from "../account/sessionSlice";
+import classes from "./ApiDocs.module.css";
 
 export const ApiDocs = ({}: {}) => {
   const userInfo = useSelector(selectUserInfo);
   const uid = userInfo?.user_id ?? "yourUserId";
   const cli = <a href="https://github.com/rakaly/cli">Rakaly CLI</a>;
   return (
-    <PageHeader
-      title="PDX Tools API Docs"
-      style={{ width: "min(650px, 100%)", margin: "0 auto" }}
-    >
-      <style jsx>{`
-        pre {
-          overflow: auto;
-        }
-
-        dl {
-          margin-left: 3em;
-        }
-      `}</style>
+    <div className={`mt-4 mx-auto max-w-prose ${classes.docs}`}>
+      <h1>PDX Tools API Docs</h1>
       <p>
         Before getting started with PDX Tools' API, you'll want to ensure you
         have a PDX Tools account so you can get an API key. You can always
@@ -191,6 +181,6 @@ gzip < ita1.eu4 | curl "https://pdx.tools/api/saves" \\
         shared library that one can integrate with any programming language.
       </p>
       <p>There is no API endpoint for melting.</p>
-    </PageHeader>
+    </div>
   );
 };

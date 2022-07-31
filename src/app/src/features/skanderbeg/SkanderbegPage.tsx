@@ -55,7 +55,7 @@ export const SkanderbegPage = () => {
         paste either a Skanderbeg URL or the save id. Ironman saves uploaded to
         Skanderbeg will not work in PDX Tools.
       </Paragraph>
-      <div className="flex-col gap">
+      <div className="flex flex-col gap-2">
         <Search
           placeholder="Skanderbeg URL or id"
           enterButton="Analyze"

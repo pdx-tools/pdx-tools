@@ -20,10 +20,7 @@ export const SaveWarnings = () => {
         </div>
       }
       closable={true}
-      style={{
-        position: "fixed",
-        width: "100%",
-      }}
+      className="fixed w-full"
     />
   );
 };

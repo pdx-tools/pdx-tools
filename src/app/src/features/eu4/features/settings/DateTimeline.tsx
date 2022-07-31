@@ -48,7 +48,7 @@ export const DateTimeline = () => {
   }, [mapDate.text]);
 
   return (
-    <div className="flex-col gap">
+    <div className="flex flex-col gap-2">
       <label>
         Date:
         <Input

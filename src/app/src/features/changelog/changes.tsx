@@ -10,7 +10,7 @@ interface ChangelogListProps {
 }
 
 const ChangelogList = ({ children }: ChangelogListProps) => {
-  return <ul style={{ listStyleType: "none" }}>{children}</ul>;
+  return <ul className="list-none">{children}</ul>;
 };
 
 export const changes: ChangelogEntry[] = [

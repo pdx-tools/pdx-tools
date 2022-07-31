@@ -54,7 +54,7 @@ export const CountryRulersTable = ({ rulers }: CountryRulersTableProps) => {
       title: "Personalities",
       dataIndex: "personalities",
       render: (personalities: LocalizedObj[]) => (
-        <div className="flex-row">
+        <div className="flex items-center">
           {personalities.map((personality) => (
             <PersonalityAvatar key={personality.id} {...personality} />
           ))}
