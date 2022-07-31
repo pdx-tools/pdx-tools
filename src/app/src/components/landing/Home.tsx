@@ -72,7 +72,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white flex flex-col items-center text-xl`}
+        className={`${classes.row} flex flex-col items-center px-9 py-12 justify-center text-xl even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <img
           src={headline}
@@ -106,7 +106,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -137,7 +137,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -170,7 +170,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -201,7 +201,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -225,7 +225,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -252,7 +252,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -292,7 +292,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -319,7 +319,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-emerald-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
