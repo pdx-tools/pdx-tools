@@ -936,6 +936,7 @@ export const changes: ChangelogEntry[] = [
     render: () => {
       return (
         <ChangelogList>
+          <li>🐛 - Fix some upside down building image</li>
           <li>🐛 - Slight style tweaks</li>
           <li>🐛 - Dependency updates</li>
         </ChangelogList>

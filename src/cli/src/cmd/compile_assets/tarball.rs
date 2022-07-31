@@ -857,6 +857,7 @@ pub fn translate_building_images(
         let child = Command::new("convert")
             .arg("-alpha")
             .arg("Off")
+            .arg("-auto-orient")
             .arg(image_path)
             .arg(&out_path)
             .output()?;
@@ -896,7 +897,7 @@ pub fn translate_flags(tmp_game_dir: &Path, options: &PackageOptions) -> anyhow:
 
         let child = Command::new("convert")
             .arg(file_path)
-            .arg("-flip")
+            .arg("-auto-orient")
             .arg(&out_path)
             .output()?;
 
