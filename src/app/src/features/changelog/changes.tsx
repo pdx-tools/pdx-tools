@@ -931,4 +931,15 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-07-31",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>🐛 - Slight style tweaks</li>
+          <li>🐛 - Dependency updates</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
