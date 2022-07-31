@@ -75,12 +75,12 @@ export const Home = ({ subtitle }: HomeProps) => {
           <div className="flex flex-row justify-center lg:justify-start items-center gap-x-3 mt-4">
             <label
               htmlFor="analyze-box-file-input"
-              className="mx-2 px-6 py-3 font-bold border-4 border-solid text-white border-white rounded-xl hover:border-blue-500"
+              className="mx-2 px-6 py-3 font-bold border-4 border-solid cursor-pointer text-white border-white rounded-xl hover:border-blue-500"
             >
               Select a save
             </label>
             <Link href="/eu4/saves/_9Hcw32JWTZRx6zK3FVuz">
-              <a className="mx-2 px-6 py-3 font-bold border-4 border-solid text-white border-white rounded-xl hover:border-blue-500 hover:text-white">
+              <a className="mx-2 px-6 py-3 font-bold border-4 border-solid cursor-pointer text-white border-white rounded-xl hover:border-blue-500 hover:text-white">
                 Load sample
               </a>
             </Link>
