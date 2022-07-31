@@ -1,6 +1,7 @@
 import React from "react";
 import { GreatAdvisor } from "../../types/models";
 import { AdvisorAvatar } from "@/features/eu4/components/avatars";
+import classes from "./GreatAdvisorsList.module.css";
 
 interface GreatAdvisorsListProps {
   greatAdvisors: GreatAdvisor[];
@@ -10,15 +11,7 @@ export const GreatAdvisorsList = ({
   greatAdvisors,
 }: GreatAdvisorsListProps) => {
   return (
-    <div className="container">
-      <style jsx>{`
-        .container {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-          column-gap: 1rem;
-          row-gap: 0.25rem;
-        }
-      `}</style>
+    <div className={`grid gap-x-4 gap-y-1 ${classes.table}`}>
       {greatAdvisors.map((x) => {
         return (
           <AdvisorAvatar

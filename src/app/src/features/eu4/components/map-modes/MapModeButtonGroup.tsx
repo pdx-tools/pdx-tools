@@ -25,6 +25,7 @@ export const MapModeButtonGroup = () => {
       {Object.entries(modes).map(([key, value]) => (
         <Tooltip key={key} mouseEnterDelay={1} title={key}>
           <button
+            className="p-0 m-0 bg-transparent border-none select-none"
             onClick={() => dispatch(setEu4MapMode(key as MapControls["mode"]))}
           >
             <img
@@ -32,7 +33,7 @@ export const MapModeButtonGroup = () => {
               src={value}
               width={41}
               height={31}
-              className={selectedMode == key ? "selected" : undefined}
+              className={selectedMode == key ? "brightness-200" : undefined}
               draggable={
                 false
               } /* don't want to accidentally trigger file drop */
@@ -40,20 +41,6 @@ export const MapModeButtonGroup = () => {
           </button>
         </Tooltip>
       ))}
-
-      <style jsx>{`
-        button {
-          padding: 0;
-          margin: 0;
-          user-select: none;
-          border: none;
-          background-color: transparent;
-        }
-
-        .selected {
-          filter: brightness(1.75);
-        }
-      `}</style>
     </>
   );
 };

@@ -4,14 +4,7 @@ interface AnnouncementBarProps {
 
 export const AnnouncementBar = ({ children }: AnnouncementBarProps) => {
   return (
-    <div className="flex-row justify-center font-bold">
-      <style jsx>{`
-        div {
-          background-color: #207dd4;
-          color: white;
-          padding: 0.25rem 0;
-        }
-      `}</style>
+    <div className="flex items-center justify-center font-bold text-white py-1 px-0 bg-sky-600">
       {children}
     </div>
   );

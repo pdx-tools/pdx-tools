@@ -1,0 +1,9 @@
+.bar {
+  background: repeating-linear-gradient(
+    135deg,
+    #036ffc,
+    #036ffc 20px,
+    #1163cf 20px,
+    #1163cf 40px
+  );
+}

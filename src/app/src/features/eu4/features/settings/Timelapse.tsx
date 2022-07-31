@@ -571,7 +571,7 @@ export const Timelapse = () => {
 
   return (
     <>
-      <div className="flex-row gap justify-center">
+      <div className="flex items-center gap-2 justify-center">
         <Tooltip title={!isPlaying ? "Start timelapse" : "Stop timelapse"}>
           <Button
             shape="circle"
@@ -674,7 +674,7 @@ export const Timelapse = () => {
           />
         </Form.Item>
       </Form>
-      <Row className="flex-row">
+      <Row className="flex items-center">
         <Col span={4}>
           <InputNumber
             min={0}

@@ -6,23 +6,10 @@ import { selectModuleDrawn } from "@/features/engine";
 export const MapModeSideBar = () => {
   const hasDrawn = useSelector(selectModuleDrawn);
   return (
-    <div className="map-mode-sidebar touch-none">
-      <div className="map-mode-container">
+    <div className="fixed bottom-0 right-0 flex select-none touch-none">
+      <div style={{ display: hasDrawn ? "flex" : "none" }}>
         <MapModeButtonGroup />
       </div>
-      <style jsx>{`
-        .map-mode-sidebar {
-          position: fixed;
-          bottom: 0;
-          right: 0;
-          display: flex;
-          user-select: none;
-        }
-
-        .map-mode-container {
-          display: ${hasDrawn ? "flex" : "none"};
-        }
-      `}</style>
     </div>
   );
 };

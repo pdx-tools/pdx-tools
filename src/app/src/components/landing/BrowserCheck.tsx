@@ -45,16 +45,11 @@ export const BrowserCheck = () => {
       message={
         <div>
           Your browser is not supported due to:
-          <ul>
+          <ul className="m-0">
             {warnings.map((x) => (
               <li key={x}>{x}</li>
             ))}
           </ul>
-          <style jsx>{`
-            ul {
-              margin: 0;
-            }
-          `}</style>
         </div>
       }
     />

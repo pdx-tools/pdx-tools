@@ -23,7 +23,7 @@ export const MapSettingsDrawer = ({
       visible={visible}
       width="min(400px, 100%)"
     >
-      <div className="flex-col gap" ref={sideBarContainerRef}>
+      <div className="flex flex-col gap-2" ref={sideBarContainerRef}>
         <MapSettings />
       </div>
     </Drawer>

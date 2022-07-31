@@ -79,10 +79,7 @@ export const PieTable = ({
               //@ts-ignore
               <Table.Summary.Cell key="total-label">Total</Table.Summary.Cell>,
               //@ts-ignore
-              <Table.Summary.Cell
-                key="total-value"
-                className="antd-right-align"
-              >
+              <Table.Summary.Cell key="total-value" className="text-right">
                 <Text>{numFormatter(total)}</Text>
               </Table.Summary.Cell>,
             ];

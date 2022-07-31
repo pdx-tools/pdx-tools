@@ -63,12 +63,12 @@ export const CountryDetailsDescriptions = ({
       )} (${formatInt(details.debt)})`}</Descriptions.Item>
 
       <Descriptions.Item label="Ideas">
-        <table className="antd-little-padding" style={{ width: "unset" }}>
+        <table className="px-0 py-1">
           <tbody>{ideaElem}</tbody>
         </table>
       </Descriptions.Item>
       <Descriptions.Item label={<InheritanceLabel details={details} />}>
-        <div className="flex-col no-break">
+        <div className="flex flex-col no-break">
           <div>{`Window: [${details.inheritance.start_t1_year} - ${details.inheritance.end_t1_year}]`}</div>
           <div>{`Inheritance Value: ${details.inheritance.inheritance_value}`}</div>
         </div>

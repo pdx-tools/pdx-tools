@@ -1,5 +1,6 @@
 import React from "react";
 import { ZIndex } from "@/lib/zIndices";
+import classes from "./ProgressBar.module.css";
 
 interface ProgressBarProps {
   value: number;
@@ -14,35 +15,18 @@ export const ProgressBar = ({
   absolutePositioning,
 }: ProgressBarProps) => {
   return (
-    <div className="progress">
+    <div
+      className="w-full bg-transparent"
+      style={{ zIndex: ZIndex.AnalyzeProgressBar }}
+    >
       <div
-        className="progress__bar"
+        className={`${classes.bar} h-full transition-[width] duration-200`}
         style={{
           width: `${value}%`,
           height,
           ...(absolutePositioning && { position: "absolute" }),
         }}
       ></div>
-      <style jsx>{`
-        .progress {
-          z-index: ${ZIndex.AnalyzeProgressBar};
-          width: 100%;
-          background: transparent;
-          transition: height 1s ease-in-out;
-        }
-
-        .progress__bar {
-          height: 100%;
-          background: repeating-linear-gradient(
-            135deg,
-            #036ffc,
-            #036ffc 20px,
-            #1163cf 20px,
-            #1163cf 40px
-          );
-          transition: width 0.5s ease-in-out;
-        }
-      `}</style>
     </div>
   );
 };

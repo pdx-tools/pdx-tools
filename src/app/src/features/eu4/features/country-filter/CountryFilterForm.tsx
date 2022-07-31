@@ -155,11 +155,11 @@ export const CountryFilterForm = ({
       </Form.Item>
 
       <Form.Item label="Include" name="include">
-        <CountrySelect mode="multiple" style={{ width: "100%" }} />
+        <CountrySelect mode="multiple" className="w-full" />
       </Form.Item>
 
       <Form.Item label="Exclude" name="exclude">
-        <CountrySelect mode="multiple" style={{ width: "100%" }} />
+        <CountrySelect mode="multiple" className="w-full" />
       </Form.Item>
       <Form.Item
         label="Include Subjects"
@@ -169,11 +169,11 @@ export const CountryFilterForm = ({
         <Switch />
       </Form.Item>
       <Form.Item>
-        <div className="flex-row gap">
-          <Button htmlType="submit" type="primary" style={{ width: "100%" }}>
+        <div className="flex items-center gap-2">
+          <Button htmlType="submit" type="primary" className="w-full">
             Apply
           </Button>
-          <Button style={{ width: "100%" }} onClick={resetForm}>
+          <Button className="w-full" onClick={resetForm}>
             Reset
           </Button>
         </div>

@@ -1,0 +1,11 @@
+.overlay-outline {
+  --outline-width: theme(spacing.4);
+  outline-width: var(--outline-width);
+  outline-offset: calc(var(--outline-width) * -1);
+}
+
+@media screen(md) {
+  .overlay-outline {
+    --outline-width: theme(spacing.8);
+  }
+}

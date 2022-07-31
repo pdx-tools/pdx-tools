@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button, Grid, Select, Spin, Tooltip } from "antd";
 import { useIsLoading, useVisualization } from "@/components/viz";
 import {
@@ -37,7 +36,7 @@ export const ChartDrawerTitle = ({
   const filename = useSelector(selectAnalyzeFileName);
 
   return (
-    <div className="flex-row gap">
+    <div className="flex items-center gap-2">
       {md && (
         <Button
           icon={expanded ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}

@@ -1,0 +1,3 @@
+.tooltip-contents :global(.ant-descriptions-view > table) {
+  width: max-content;
+}

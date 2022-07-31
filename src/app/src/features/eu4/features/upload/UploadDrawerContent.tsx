@@ -43,7 +43,7 @@ export const UploadDrawerContent = () => {
   // }, [hash, meta, achievements])
 
   return (
-    <div className="flex-col gap" ref={sideBarContainerRef}>
+    <div className="flex flex-col gap-2" ref={sideBarContainerRef}>
       {session.kind !== "guest" ? null : (
         <Alert
           closable={true}

@@ -39,7 +39,7 @@ export const MapSettings = () => {
       <div>
         <MapModeButtonGroup />
       </div>
-      <div className="flex-row gap">
+      <div className="flex items-center gap-2">
         <CountryFilterButton>Filter Countries</CountryFilterButton>
 
         <Spin delay={50} spinning={isExporting}>

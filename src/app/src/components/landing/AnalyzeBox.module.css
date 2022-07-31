@@ -1,0 +1,13 @@
+.label {
+  outline: 0.5rem dashed white;
+  padding-block: clamp(1rem, 10%, 6rem);
+  padding-inline: clamp(1rem, 10%, 6rem);
+  font-size: clamp(1.25rem, 3vw, 2rem);
+  gap: clamp(1.25rem, 3vw, 2rem);
+}
+
+.hover,
+.label:hover,
+.label:focus {
+  outline: 0.5rem dashed theme(colors.blue.500);
+}

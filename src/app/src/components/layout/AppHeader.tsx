@@ -24,44 +24,23 @@ interface AppHeaderProps {
   disabled?: boolean;
 }
 
-export const CurrentAnnouncement: React.FC<{}> | null = null;
+export const CurrentAnnouncement: React.ReactNode | null = null;
 
 export const AppHeader = ({ disabled = false }: AppHeaderProps) => {
   return (
-    <div className="flex-col" style={{ display: disabled ? "none" : "flex" }}>
+    <div
+      className="flex flex-col"
+      style={{ display: disabled ? "none" : "flex" }}
+    >
       {CurrentAnnouncement && (
         <AnnouncementBar>{CurrentAnnouncement}</AnnouncementBar>
       )}
 
       <Header style={{ padding: "0 16px" }}>
-        <div className="flex-row items-center menu">
-          <style jsx>{`
-            .logo:hover {
-              text-decoration: revert;
-            }
-
-            .logo span {
-              float: left;
-              display: inline-flex;
-            }
-
-            .logo {
-              display: flex;
-              color: white;
-              font-size: 2rem;
-              align-items: center;
-              gap: 4px;
-              margin-right: 1em;
-            }
-
-            .menu {
-              width: min(100%, 1400px);
-              margin: 0 auto;
-            }
-          `}</style>
+        <div className="flex items-center mx-auto w-full h-full max-w-screen-xl">
           <Link href="/">
-            <a className="logo">
-              <span>
+            <a className="flex text-3xl text-white items-center mr-3 gap-1 hover:underline">
+              <span className="float-left inline-flex">
                 <AppSvg width="3rem" height="3rem" />
               </span>
               PDX Tools

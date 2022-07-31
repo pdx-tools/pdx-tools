@@ -18,7 +18,7 @@ export const UploadDrawerTitle = () => {
   const progress = useUploadProgress();
   const uploadResponse = useUploadResponse();
   return (
-    <div className="flex-row gap">
+    <div className="flex items-center gap-2">
       <SaveMode mode={meta.mode} />
       <span>{`Upload ${meta.save_game}`}</span>
       <HelpTooltip help="Upload the save to PDX Tools servers so you can share a link with the world" />
@@ -26,11 +26,6 @@ export const UploadDrawerTitle = () => {
         {progress !== undefined && <ProgressBar height={30} value={progress} />}
         {uploadResponse && <SuccessAlert newSaveId={uploadResponse.save_id} />}
       </span>
-      <style jsx>{`
-        div {
-          margin-right: 30px;
-        }
-      `}</style>
     </div>
   );
 };

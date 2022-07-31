@@ -1,9 +1,7 @@
-import { Shadow } from "@/components/Shadow";
 import {
   getWasmWorker,
   useEu4CanvasRef,
   useWasmWorker,
-  getEu4Map,
 } from "@/features/engine";
 import { useIsMounted } from "@/hooks/useIsMounted";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -149,15 +147,12 @@ export const MapTip = () => {
         };
 
   return (
-    <div ref={toolTipRef} className="tooltip" style={toolTipStyle}>
-      <Shadow size="small" backgroundColor={[0, 0, 0]}>
-        {mapTip && <MapTipContents tip={mapTip} />}
-      </Shadow>
-      <style jsx>{`
-        .tooltip {
-          position: absolute;
-        }
-      `}</style>
+    <div
+      ref={toolTipRef}
+      className="absolute drop-shadow-md"
+      style={toolTipStyle}
+    >
+      {mapTip && <MapTipContents tip={mapTip} />}
     </div>
   );
 };

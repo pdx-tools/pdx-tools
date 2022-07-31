@@ -78,7 +78,7 @@ export const CountryDetailsDrawer = ({
       onClose={closeDrawer}
       width={!expanded ? "min(800px, 100%)" : "100%"}
       title={
-        <div className="flex-row gap">
+        <div className="flex items-center gap-2">
           {md && (
             <Button
               icon={expanded ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}

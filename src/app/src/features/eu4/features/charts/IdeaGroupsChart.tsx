@@ -120,7 +120,7 @@ export const IdeaGroupsChart = () => {
   };
 
   return (
-    <div style={{ height: "100%" }}>
+    <div className="h-full">
       <Bar {...config} />
     </div>
   );

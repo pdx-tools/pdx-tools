@@ -3,6 +3,7 @@ import { QuestionCircleOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { useEu4Meta } from "../../eu4Slice";
 import { CountryDetails } from "../../types/models";
+import classes from "./InheritanceLabel.module.css";
 
 export interface InheranticeLabelProps {
   details: CountryDetails;
@@ -14,7 +15,7 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
   const meta = useEu4Meta();
   const saveYear = +meta.date.split("-")[0];
   return (
-    <div className="flex-row gap">
+    <div className="flex items-center gap-2">
       <Drawer
         placement="right"
         closable={true}
@@ -22,19 +23,9 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
         visible={drawerVisible}
         width="400px"
       >
-        <div>
-          <style jsx>{`
-            table {
-              margin-bottom: 1rem;
-              width: 100%;
-            }
-
-            td:nth-child(2) {
-              text-align: right;
-            }
-          `}</style>
+        <div className={classes.table}>
           <h2>Inheritance Values</h2>
-          <table>
+          <table className="w-full mb-4">
             <tbody>
               {inheritance.calculations.map((x) => (
                 <tr key={x.name}>
@@ -47,7 +38,7 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
                   <td>{x.value}</td>
                 </tr>
               ))}
-              <tr className="bg-gray-3">
+              <tr className="bg-gray-200">
                 <td>Subtotal</td>
                 <td>{inheritance.subtotal}</td>
               </tr>
@@ -55,11 +46,11 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
                 <td>Save year</td>
                 <td>{saveYear}</td>
               </tr>
-              <tr className="bg-gray-3">
+              <tr className="bg-gray-200">
                 <td>Total</td>
                 <td>{saveYear + inheritance.subtotal}</td>
               </tr>
-              <tr className="bg-gray-3">
+              <tr className="bg-gray-200">
                 <td>Inheritance Value</td>
                 <td>{inheritance.inheritance_value}</td>
               </tr>
@@ -67,7 +58,7 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
           </table>
 
           <h3>On Ruler Death Tiers:</h3>
-          <table>
+          <table className="w-full mb-4">
             <tbody>
               <tr>
                 <td>

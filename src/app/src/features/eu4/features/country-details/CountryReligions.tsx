@@ -29,7 +29,7 @@ const CountryReligionVizImpl = ({
       dataIndex: ["religion", "name"],
       render: (_name: string, x: CountryReligion) => (
         <Tooltip title={x.id}>
-          <div className="flex-row gap">
+          <div className="flex items-center gap-2">
             <LegendColor color={x.color}></LegendColor>
             {x.name}
           </div>
@@ -97,7 +97,7 @@ const CountryReligionVizImpl = ({
 
   return (
     <div
-      className="flex-row gap"
+      className="flex items-center gap-2"
       style={{ flexDirection: largeLayout ? "row" : "column" }}
     >
       <Table

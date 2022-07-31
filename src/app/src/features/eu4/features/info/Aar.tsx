@@ -33,11 +33,11 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
   return (
     <Form
       layout="vertical"
-      style={{ display: "flex", flexFlow: "column" }}
+      className="flex flex-col"
       initialValues={{ aar: defaultValue }}
       onFinish={handleSubmit}
     >
-      <div className="flex-row">
+      <div className="flex items-center">
         <Form.Item name="aar" noStyle>
           <TextArea
             autoSize={{ minRows: 8 }}

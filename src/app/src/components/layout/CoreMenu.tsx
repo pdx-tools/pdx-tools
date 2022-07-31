@@ -62,7 +62,7 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
     if (session.kind === "unknown") {
       accountSub = (
         <div className={className}>
-          <Skeleton.Button className="flex-row" />
+          <Skeleton.Button className="flex items-center" />
           {styles}
         </div>
       );
@@ -103,14 +103,7 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
       accountSub = null;
     } else if (session.kind === "guest") {
       accountSub = (
-        <div>
-          <style jsx>{`
-            div {
-              display: flex;
-              justify-content: center;
-              padding-top: 1rem;
-            }
-          `}</style>
+        <div className="flex justify-center pt-4">
           <SignInButtons />
         </div>
       );

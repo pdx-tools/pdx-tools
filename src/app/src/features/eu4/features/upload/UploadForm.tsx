@@ -22,7 +22,7 @@ export const UploadForm = () => {
       >
         <TextArea autoSize={{ minRows: 8 }} maxLength={5000} showCount={true} />
       </Form.Item>
-      <Form.Item style={{ textAlign: "center" }}>
+      <Form.Item className="text-center">
         {/* The workaround to display a tooltip on a disabled button:
               https://github.com/react-component/tooltip/issues/18#issuecomment-650864750
           */}
@@ -37,7 +37,7 @@ export const UploadForm = () => {
           </Button>
         ) : (
           <Tooltip title="Register an account to upload">
-            <span style={{ cursor: "not-allowed" }}>
+            <span className="cursor-not-allowed">
               <Button
                 htmlType="submit"
                 type="primary"

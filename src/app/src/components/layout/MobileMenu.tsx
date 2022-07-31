@@ -6,7 +6,7 @@ import { CoreMenu } from "./CoreMenu";
 export const MobileMenu = () => {
   const [menuVisible, setMenuVisible] = useState(false);
   return (
-    <div>
+    <div className="flex grow justify-end">
       <Button
         icon={<MenuOutlined />}
         size="large"
@@ -18,19 +18,12 @@ export const MobileMenu = () => {
         onClose={() => setMenuVisible(false)}
         visible={menuVisible}
         bodyStyle={{
-          backgroundColor: "var(--header-bg)",
+          backgroundColor: "#001529",
           padding: 0,
         }}
       >
         <CoreMenu mode="inline" />
       </Drawer>
-      <style jsx>{`
-        div {
-          display: flex;
-          flex-grow: 1;
-          justify-content: flex-end;
-        }
-      `}</style>
     </div>
   );
 };

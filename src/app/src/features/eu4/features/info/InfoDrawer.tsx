@@ -39,7 +39,7 @@ const { useBreakpoint } = Grid;
 
 const TagDescription = (play: TagTransition) => {
   return (
-    <div className="flex-col items-center">
+    <div className="flex flex-col items-center">
       <FlagAvatarCore tag={play.tag} size="large" />
       <div>{play.name}</div>
       <div>{play.date}</div>
@@ -153,7 +153,7 @@ export const InfoDrawer = () => {
                 <FlagAvatar tag={item.latest} name={item.name} size="large" />
               }
               extra={
-                <div className="flex-row gap">
+                <div className="flex items-center gap-2">
                   {!item.annexed && (
                     <Tooltip title={`Show only ${item.name} on the map`}>
                       <Button

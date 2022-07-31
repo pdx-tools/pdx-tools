@@ -28,23 +28,14 @@ export const ToggleRow = ({
       <Col
         aria-disabled={disabled}
         span={labelSpan}
-        style={
-          disabled
-            ? {
-                userSelect: "none",
-                cursor: "not-allowed",
-                color: "rgba(131, 131, 131, 0.85)",
-              }
-            : {
-                userSelect: "none",
-                cursor: "pointer",
-              }
-        }
+        className={`select-none ${
+          disabled ? "cursor-not-allowed text-gray-400" : "cursor-pointer"
+        }`}
         onClick={disabled ? () => {} : () => onChange(!value)}
       >
         {text}
         {help && (
-          <span style={{ marginLeft: "4px" }}>
+          <span className="ml-1">
             <HelpTooltip help={help} />
           </span>
         )}

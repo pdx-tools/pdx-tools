@@ -1,9 +1,10 @@
 import React from "react";
 import { AppProps } from "next/app";
 import "antd/dist/antd.css";
-import "../styles/styles.css";
+import "@/styles/styles.css";
+import "@/styles/tailwind.css";
 import { Provider } from "react-redux";
-import { store } from "../lib/store";
+import { store } from "@/lib/store";
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
