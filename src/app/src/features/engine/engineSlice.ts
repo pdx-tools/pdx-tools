@@ -92,7 +92,7 @@ const engineSlice = createSlice({
 
     moduleLoaded(state, action: PayloadAction<ModuleLoaded>) {
       if (state.analysisState.kind != "analyzing") {
-        throw new Error("can only end analyzing state");
+        return;
       }
 
       state.analyzeId += 1;

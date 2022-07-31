@@ -55,11 +55,39 @@ export const Home = ({ subtitle }: HomeProps) => {
   return (
     <div className="w-full h-screen">
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white bg-bottom bg-repeat-x`}
+        className={`${classes.row} grid lg:grid-cols-2 gap-8 px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white bg-bottom bg-repeat-x`}
         style={{ backgroundImage: waveBackground }}
       >
-        <section className="flex flex-col max-w-5xl">
-          <div className="flex flex-col gap">
+        <div className="flex flex-col gap-y-4 lg:max-w-lg justify-self-end">
+          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:mt-0 sm:text-6xl lg:mt-6 xl:text-6xl">
+            Explore save files
+          </h1>
+          <p className="text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl max-w-prose mb-0">
+            Save files contain a treasure trove of information. PDX Tools is a
+            modern save file analyzer that will unlock hidden EU4 insights
+            without the save leaving your browser.
+          </p>
+          <p className="text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl max-w-prose mb-0">
+            Ready to explore maps, timelapses, and charts?
+          </p>
+
+          <div className="flex flex-row justify-center lg:justify-start items-center gap-x-3 mt-4">
+            <label
+              htmlFor="analyze-box-file-input"
+              className="mx-2 px-6 py-3 font-bold border-4 border-solid text-white border-white rounded-xl hover:border-blue-500"
+            >
+              Select a save
+            </label>
+            <Link href="/eu4/saves/_9Hcw32JWTZRx6zK3FVuz">
+              <a className="mx-2 px-6 py-3 font-bold border-4 border-solid text-white border-white rounded-xl hover:border-blue-500 hover:text-white">
+                Load sample
+              </a>
+            </Link>
+          </div>
+          <BrowserCheck />
+        </div>
+        <section className="flex flex-col w-full justify-end">
+          <div className="flex flex-col gap w-full max-w-xl">
             <AnalyzeBox />
             {subtitle}
             {engineError && (
@@ -70,9 +98,8 @@ export const Home = ({ subtitle }: HomeProps) => {
           </div>
         </section>
       </div>
-
       <div
-        className={`${classes.row} flex flex-col items-center px-9 py-12 justify-center text-xl even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex flex-col items-center px-9 py-16 justify-center text-xl even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <img
           src={headline}
@@ -81,32 +108,10 @@ export const Home = ({ subtitle }: HomeProps) => {
           width={1250}
           alt="Screenshot showing map and graph"
         />
-        <div className="flex flex-col gap-y-2 items-center">
-          <div className="mt-6">
-            Curious?{" "}
-            <Link href="/eu4/saves/_9Hcw32JWTZRx6zK3FVuz">
-              <a>Load a sample</a>
-            </Link>
-          </div>
-          <div className="flex items-center gap-x-1">
-            <FirefoxIcon className="fill-gray-300" />
-            <div className="h-6 border-l border-y-0 border-r-0 border-gray-300 border-dotted" />
-            <ChromeIcon className="fill-gray-300" />
-            <div className="h-6 border-l border-y-0 border-r-0 border-gray-300 border-dotted" />
-            <EdgeIcon className="fill-gray-300" />
-            <div className="h-6 border-l border-y-0 border-r-0 border-gray-300 border-dotted" />
-            <SafariIcon className="fill-gray-300" />
-          </div>
-          <div className="text-xs text-center">
-            Works best in Firefox (62+), Chrome (66+), Edge (79+).
-            <div>Safari 15.2+ also supported.</div>
-          </div>
-          <BrowserCheck />
-        </div>
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -137,7 +142,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -170,7 +175,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -201,7 +206,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -215,9 +220,27 @@ export const Home = ({ subtitle }: HomeProps) => {
               Uploaded saves receive enhancements automatically as PDX Tools is
               updated
             </p>
+            <div className="flex flex-col gap-y-2">
+              <div className="flex items-center gap-x-1">
+                <FirefoxIcon className="fill-gray-300" />
+                <div className="h-6 border-l border-y-0 border-r-0 border-gray-300 border-dotted" />
+                <ChromeIcon className="fill-gray-300" />
+                <div className="h-6 border-l border-y-0 border-r-0 border-gray-300 border-dotted" />
+                <EdgeIcon className="fill-gray-300" />
+                <div className="h-6 border-l border-y-0 border-r-0 border-gray-300 border-dotted" />
+                <SafariIcon className="fill-gray-300" />
+              </div>
+              <div className="text-xs">
+                Works best in Firefox (62+), Chrome (66+), Edge (79+).
+                <div>Safari 15.2+ also supported.</div>
+              </div>
+            </div>
           </div>
           <div>
-            <span className="drop-shadow-xl" style={{ fontSize: "200px" }}>
+            <span
+              className="drop-shadow-xl"
+              style={{ fontSize: "200px", lineHeight: "1" }}
+            >
               ☁️
             </span>
           </div>
@@ -225,7 +248,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -252,7 +275,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -292,7 +315,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -319,7 +342,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
