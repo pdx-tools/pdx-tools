@@ -1,7 +1,11 @@
 import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import { appApi } from "@/services/appApi";
-import { createSelectorHook, useDispatch } from "react-redux";
+import {
+  useSelector,
+  useDispatch,
+  type TypedUseSelectorHook,
+} from "react-redux";
 import { reducer as sessionReducer } from "@/features/account";
 import { reducer as toasterReducer } from "@/features/notifications";
 import { reducer as engineReducer } from "@/features/engine";
@@ -24,7 +28,6 @@ const rootReducer = combineReducers({
   [appApi.reducerPath]: appApi.reducer,
 });
 
-export type RootState = ReturnType<typeof rootReducer>;
 const store = configureStore({
   reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
@@ -35,7 +38,9 @@ const store = configureStore({
 
 setupListeners(store.dispatch);
 
+export type RootState = ReturnType<typeof store.getState>;
+
 export { store };
 export type AppDispatch = typeof store.dispatch;
 export const useAppDispatch = () => useDispatch<AppDispatch>();
-export const useAppSelector = createSelectorHook<RootState>();
+export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;

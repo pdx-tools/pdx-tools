@@ -80,7 +80,6 @@ export const HealthGrid = () => {
     legend: false,
     label: false,
     tooltip: {
-      showMarkers: false,
       customContent: (title, data) => {
         const v = data[0];
         if (!v) {

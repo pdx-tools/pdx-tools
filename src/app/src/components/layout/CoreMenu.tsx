@@ -12,6 +12,8 @@ import { GithubIcon, DiscordIcon } from "@/components/icons";
 import { appApi } from "../../services/appApi";
 import css from "styled-jsx/css";
 
+type Items = React.ComponentProps<typeof Menu>["items"];
+
 const MySaves = () => {
   let userInfo = useSelector(selectUserInfo);
   if (userInfo) {
@@ -22,17 +24,11 @@ const MySaves = () => {
   }
 };
 
-const accountMenuOptions = (logout: () => void) => {
+const accountMenuOptions = (logout: () => void): Items => {
   return [
-    <Menu.Item key="account:account">
-      <Link href="/account">Account</Link>
-    </Menu.Item>,
-    <Menu.Item key="account:my-saves">
-      <MySaves />
-    </Menu.Item>,
-    <Menu.Item key="account:logout" onClick={() => logout()}>
-      Logout
-    </Menu.Item>,
+    { key: "account:account", label: <Link href="/account">Account</Link> },
+    { key: "account:my-saves", label: <MySaves /> },
+    { key: "account:logout", onClick: () => logout(), label: "Logout" },
   ];
 };
 
@@ -56,8 +52,58 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
   const inlined = mode == "inline";
   const defaultOpenedKeys = !inlined ? [] : ["eu4", "community", "account"];
 
+  const items: Items = [
+    {
+      key: "eu4",
+      label: "EU4",
+      children: [
+        { key: "eu4:home", label: <Link href="/eu4">Home</Link> },
+        {
+          key: "eu4:achievements",
+          label: <Link href="/eu4/achievements">Achievements</Link>,
+        },
+        {
+          key: "eu4:skanderbeg",
+          label: <Link href="/eu4/skanderbeg">Skanderbeg</Link>,
+        },
+      ],
+    },
+    {
+      key: "changelog",
+      label: <Link href="/changelog">Changelog</Link>,
+    },
+    {
+      key: "community",
+      label: "Community",
+      children: [
+        {
+          key: "community:1",
+          icon: <DiscordIcon style={{ height: "16px", width: "16px" }} />,
+          label: <a href="https://discord.gg/rCpNWQW">Discord</a>,
+        },
+        {
+          key: "community:2",
+          icon: <GithubIcon style={{ height: "16px", width: "16px" }} />,
+          label: <a href="https://github.com/pdx-tools">Github</a>,
+        },
+        {
+          key: "community:3",
+          label: <Link href="/docs">API</Link>,
+        },
+        {
+          key: "community:4",
+          label: <a href="/blog">Blog</a>,
+        },
+        {
+          key: "community:5",
+          label: <a href="https://github.com/sponsors/nickbabcock/">Sponsor</a>,
+        },
+      ],
+    },
+  ];
+
   const isSubmenu = inlined && session.kind == "user";
-  let accountSub;
+  let accountSub = null;
   if (!inlined) {
     if (session.kind === "unknown") {
       accountSub = (
@@ -75,27 +121,30 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
       );
     } else {
       accountSub = (
-        <Menu theme="dark" mode="horizontal">
-          <Menu.SubMenu
-            key="account"
-            icon={
-              <Button
-                shape="circle"
-                icon={
-                  <UserOutlined
-                    style={{
-                      margin: 0,
-                      display: "flex",
-                      justifyContent: "center",
-                    }}
-                  />
-                }
-              />
-            }
-          >
-            {accountMenuOptions(logoutTrigger)}
-          </Menu.SubMenu>
-        </Menu>
+        <Menu
+          theme="dark"
+          mode="horizontal"
+          items={[
+            {
+              key: "account",
+              icon: (
+                <Button
+                  shape="circle"
+                  icon={
+                    <UserOutlined
+                      style={{
+                        margin: 0,
+                        display: "flex",
+                        justifyContent: "center",
+                      }}
+                    />
+                  }
+                />
+              ),
+              children: accountMenuOptions(logoutTrigger),
+            },
+          ]}
+        />
       );
     }
   } else {
@@ -108,11 +157,11 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
         </div>
       );
     } else {
-      accountSub = (
-        <Menu.SubMenu key="account" title="Account">
-          {accountMenuOptions(logoutTrigger)}
-        </Menu.SubMenu>
-      );
+      items.push({
+        key: "account",
+        label: "Account",
+        children: accountMenuOptions(logoutTrigger),
+      });
     }
   }
 
@@ -123,44 +172,8 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
       theme="dark"
       mode={mode}
       defaultOpenKeys={defaultOpenedKeys}
+      items={items}
     >
-      <Menu.SubMenu key="eu4" title="EU4">
-        <Menu.Item key="eu4:home">
-          <Link href="/eu4">Home</Link>
-        </Menu.Item>
-        <Menu.Item key="eu4:achievements">
-          <Link href="/eu4/achievements">Achievements</Link>
-        </Menu.Item>
-        <Menu.Item key="eu4:skanderbeg">
-          <Link href="/eu4/skanderbeg">Skanderbeg</Link>
-        </Menu.Item>
-      </Menu.SubMenu>
-      <Menu.Item key="changelog" title="Changelog">
-        <Link href="/changelog">Changelog</Link>
-      </Menu.Item>
-      <Menu.SubMenu key="community" title="Community">
-        <Menu.Item
-          icon={<DiscordIcon style={{ height: "16px", width: "16px" }} />}
-          key="community:1"
-        >
-          <a href="https://discord.gg/rCpNWQW">Discord</a>
-        </Menu.Item>
-        <Menu.Item
-          icon={<GithubIcon style={{ height: "16px", width: "16px" }} />}
-          key="community:2"
-        >
-          <a href="https://github.com/pdx-tools">Github</a>
-        </Menu.Item>
-        <Menu.Item key="community:3">
-          <Link href="/docs">API</Link>
-        </Menu.Item>
-        <Menu.Item key="community:4">
-          <a href="/blog">Blog</a>
-        </Menu.Item>
-        <Menu.Item key="community:5">
-          <a href="https://github.com/sponsors/nickbabcock/">Sponsor</a>
-        </Menu.Item>
-      </Menu.SubMenu>
       {isSubmenu && accountSub}
     </Menu>
   );

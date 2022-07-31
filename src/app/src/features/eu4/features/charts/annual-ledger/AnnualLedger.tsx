@@ -3,10 +3,6 @@ import { useSelector } from "react-redux";
 import { Line, LineConfig, useVisualizationDispatch } from "@/components/viz";
 import { LedgerDatum } from "@/features/eu4/types/models";
 import { selectEu4CountryNameLookup } from "@/features/eu4/eu4Slice";
-import { Button, Tooltip } from "antd";
-import { FileExcelOutlined } from "@ant-design/icons";
-import { useVisualization } from "@/components/viz/visualization-context";
-import { downloadData } from "@/lib/downloadData";
 import { createCsv } from "@/lib/csv";
 
 interface LedgerProps {
