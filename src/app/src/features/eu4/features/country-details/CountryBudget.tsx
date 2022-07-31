@@ -65,6 +65,7 @@ export const CountryBudget = ({ details }: CountryBudgetCountProps) => {
       },
     },
     tooltip: {
+      // @ts-ignore https://github.com/ant-design/ant-design-charts/issues/1474
       formatter: (datum) => ({
         name: datum.key,
         value: formatInt(datum.value || 0),

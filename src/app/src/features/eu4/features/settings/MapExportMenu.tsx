@@ -15,6 +15,8 @@ import {
   useWasmWorker,
 } from "@/features/engine";
 
+type Items = React.ComponentProps<typeof Menu>["items"];
+
 interface MapExportMenuProps {
   setIsExporting: (arg: boolean) => void;
 }
@@ -94,42 +96,36 @@ export const MapExportMenu = ({ setIsExporting }: MapExportMenuProps) => {
     downloadDataFile(data, "map-3x");
   };
 
-  return (
-    <Menu>
-      <Menu.Item key="1" onClick={exportView}>
-        View
-      </Menu.Item>
-      <Menu.Item key="2" onClick={exportFullView}>
-        World
-      </Menu.Item>
-      <Menu.Item key="3" onClick={exportFullView2x}>
-        World (2x)
-      </Menu.Item>
-      {isDeveloper && (
-        <>
-          <Menu.Item
-            key="5"
-            onClick={exportFullView3x}
-            style={{ backgroundColor: "blanchedalmond" }}
-          >
-            World (3x)
-          </Menu.Item>
-          <Menu.Item
-            key="6"
-            onClick={colorCb}
-            style={{ backgroundColor: "blanchedalmond" }}
-          >
-            Color Data
-          </Menu.Item>
-          <Menu.Item
-            key="7"
-            onClick={indicesCb}
-            style={{ backgroundColor: "blanchedalmond" }}
-          >
-            Index Data
-          </Menu.Item>
-        </>
-      )}
-    </Menu>
-  );
+  const items: Items = [
+    { key: "1", onClick: exportView, label: "View" },
+    { key: "2", onClick: exportFullView, label: "World" },
+    { key: "3", onClick: exportFullView2x, label: "World (2x)" },
+  ];
+
+  if (isDeveloper) {
+    items.push(
+      ...[
+        {
+          key: "5",
+          onClick: exportFullView3x,
+          label: "World (3x)",
+          className: "bg-amber-200",
+        },
+        {
+          key: "6",
+          onClick: colorCb,
+          label: "Color Data",
+          className: "bg-amber-200",
+        },
+        {
+          key: "7",
+          onClick: indicesCb,
+          label: "Index Data",
+          className: "bg-amber-200",
+        },
+      ]
+    );
+  }
+
+  return <Menu items={items}></Menu>;
 };

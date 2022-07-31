@@ -112,7 +112,7 @@ export const useComputeOnSave = <T,>(
 ) => {
   const [data, setData] = useState<T | undefined>(undefined);
   const c = useCallback(
-    async (worker) => {
+    async (worker: WorkerClient) => {
       const result = await cb(worker);
       setData(result);
     },
