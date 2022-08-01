@@ -150,7 +150,7 @@ export const WarTable = () => {
           const additional = x.attackers.members.length - 1;
           const elem =
             additional == 0 ? null : (
-              <span style={{ display: "block" }}>{`+ ${additional}`}</span>
+              <span className="block">{`+ ${additional}`}</span>
             );
           return (
             <>

@@ -57,7 +57,7 @@ const InGameFlagAvatar = ({
           className="border-none p-1 bg-transparent cursor-pointer hover:bg-gray-200 active:bg-gray-300"
           onClick={() => panTag(tag)}
         >
-          <Space style={{ textAlign: "start" }}>
+          <Space className="text-start">
             <FlagAvatarCore tag={tag} size={size} />
             <span>{name}</span>
           </Space>
@@ -89,7 +89,7 @@ const OutOfGameFlagAvatar = ({
   if (!condensed) {
     return (
       <Tooltip title={tag}>
-        <Space style={{ textAlign: "start" }}>
+        <Space className="text-start">
           <FlagAvatarCore tag={tag} size={size} />
           <span>{name}</span>
         </Space>

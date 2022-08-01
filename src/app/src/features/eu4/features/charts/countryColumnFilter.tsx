@@ -11,10 +11,10 @@ export function countryColumnFilter<T>(
   return {
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, visible }) => {
       return (
-        <div style={{ padding: 16 }}>
+        <div className="p-4">
           <CountrySelect
             placeholder="filter to country"
-            style={{ width: "250px" }}
+            className="w-64"
             ref={ref}
             open={true}
             autoFocus={true}

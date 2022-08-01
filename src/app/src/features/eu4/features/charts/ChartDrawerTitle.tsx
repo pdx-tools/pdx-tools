@@ -48,7 +48,7 @@ export const ChartDrawerTitle = ({
         showSearch
         value={selectedViz}
         onChange={(e: VizModules) => setSelectedViz(e)}
-        style={{ width: 200 }}
+        className="w-60"
         filterOption={(input, option) => {
           if (Array.isArray(option?.options)) {
             return false;

@@ -88,7 +88,7 @@ export const CountryDetailsDrawer = ({
 
           <CountrySelect
             value={selectedTag}
-            style={{ width: "250px" }}
+            className="w-64"
             onChange={(x: any) => {
               dispatch(setEu4SelectedTag(x as string));
               panTag(x as string);

@@ -54,7 +54,7 @@ export const DateTimeline = () => {
         <Input
           value={localDate}
           disabled={datePickerDisabled}
-          style={{ marginInlineStart: "8px", width: "150px" }}
+          className="ml-2 w-32"
           maxLength={10}
           onChange={(e) => dateTextChange(e.target.value)}
         />
@@ -65,7 +65,7 @@ export const DateTimeline = () => {
         disabled={datePickerDisabled}
         max={meta.total_days}
         onChange={onDateChange}
-        style={{ flexGrow: 1, userSelect: "none" }}
+        className="grow select-none"
         tooltipVisible={false}
         marks={{
           0: {

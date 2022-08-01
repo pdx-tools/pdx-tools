@@ -74,7 +74,7 @@ export const MapTipContents = ({ tip }: MapTipContentsProps) => {
     <div
       className={`${classes["tooltip-contents"]} border-2 border-solid border-gray-300 bg-white p-4 rounded-2xl no-break`}
     >
-      <Divider orientation="left" style={{ margin: 0 }}>
+      <Divider orientation="left" className="m-0">
         {`${tip.provinceName} (${tip.provinceId})`}
       </Divider>
       <MapTipsTable tip={tip} />

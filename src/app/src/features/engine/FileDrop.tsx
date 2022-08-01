@@ -20,7 +20,7 @@ export const FileDropInitial = ({ children }: FileDropInitialProps) => {
 
   return (
     <>
-      <div style={{ position: "relative" }}>
+      <div className="relative">
         {showBackdrop && children}
         {showProgress && <AnalyzeProgress />}
       </div>
