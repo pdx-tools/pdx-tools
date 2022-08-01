@@ -943,4 +943,15 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-08-01",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Expose multiple timelapse recording codecs if available</li>
+          <li>✨ - Add support for native MP4 timelapse codec (Safari)</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
