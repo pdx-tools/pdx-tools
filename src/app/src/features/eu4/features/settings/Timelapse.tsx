@@ -41,17 +41,42 @@ import { MapControls } from "../../types/map";
 import { useAppSelector } from "@/lib/store";
 import type { FFmpeg } from "@ffmpeg/ffmpeg";
 
-function getSupportedCodec() {
-  const vp9 = "video/webm;codecs=vp8";
-  const vp8 = "video/webm;codecs=vp8";
-  if (MediaRecorder.isTypeSupported(vp9)) {
-    return vp9;
-  } else if (MediaRecorder.isTypeSupported(vp8)) {
-    return vp8;
-  } else {
-    throw new Error("VP9 and VP8 codecs are not supported by current browser");
-  }
+interface CodecOption {
+  title: string;
+  mimeType: string;
+  extension: string;
 }
+
+const codecOptions: CodecOption[] = [
+  {
+    title: "Webm VP9",
+    mimeType: "video/webm;codecs=vp9",
+    extension: "webm",
+  },
+  {
+    title: "Webm VP8",
+    mimeType: "video/webm;codecs=vp8",
+    extension: "webm",
+  },
+  {
+    title: "MP4",
+    mimeType: "video/mp4",
+    extension: "mp4",
+  },
+];
+
+const useRecordingCodecs = () => {
+  const [availableOptions, setAvailableOptions] = useState<CodecOption[]>([]);
+
+  useEffect(() => {
+    const result = codecOptions.filter((x) =>
+      MediaRecorder.isTypeSupported(x.mimeType)
+    );
+    setAvailableOptions(result);
+  }, []);
+
+  return availableOptions;
+};
 
 let ffmpegModule: Promise<FFmpeg> | undefined = undefined;
 
@@ -112,14 +137,18 @@ class MapRecorder {
   hasStarted: Promise<void> | undefined = undefined;
   hasStopped = false;
 
-  constructor(private recordingCanvas: HTMLCanvasElement, maxFps: number) {
+  constructor(
+    private recordingCanvas: HTMLCanvasElement,
+    maxFps: number,
+    codec: CodecOption
+  ) {
     // Side note: for some reason chrome media recorder won't record changes
     // that occur more than 250ms apart (in spite of the framerate that we
     // capture the stream at), so we set force the interval to be a max of 250ms
     // apart from each other.
     const stream = recordingCanvas.captureStream(Math.ceil(maxFps * 1.25));
     this.recorder = new MediaRecorder(stream, {
-      mimeType: getSupportedCodec(),
+      mimeType: codec.mimeType,
     });
 
     this.recorder.addEventListener("dataavailable", (e) => {
@@ -269,6 +298,16 @@ export const Timelapse = () => {
   const [form] = Form.useForm();
   const isDeveloper = useSelector(selectIsDeveloper);
   const filename = useSelector(selectAnalyzeFileName);
+  const codecs = useRecordingCodecs();
+  const [selectedCodec, setSelectedCodec] = useState(codecs?.[0]);
+  const ffmpegTranscode = selectedCodec?.extension === "webm";
+
+  useEffect(() => {
+    form.setFieldValue("codec", codecs?.[0]?.mimeType);
+    if (codecs?.[0]) {
+      setSelectedCodec(codecs[0]);
+    }
+  }, [form, codecs]);
 
   useEffect(() => {
     return () => {
@@ -435,7 +474,11 @@ export const Timelapse = () => {
       throw new Error("expected recording canvas 2d contex to be defined");
     }
 
-    recorder.current = new MapRecorder(recordingCanvas, maxFps);
+    if (selectedCodec === undefined) {
+      throw new Error("need to select a codec");
+    }
+
+    recorder.current = new MapRecorder(recordingCanvas, maxFps, selectedCodec);
 
     if (syncRecording) {
       startTimelapse();
@@ -529,10 +572,10 @@ export const Timelapse = () => {
     eu4Map.onCommit = undefined;
 
     const blob = new Blob(data, {
-      type: "video/webm",
+      type: selectedCodec.mimeType.split(";")[0],
     });
 
-    const extension = exportAsMp4 ? "mp4" : "webm";
+    const extension = exportAsMp4 ? "mp4" : selectedCodec.extension;
     const nameInd = filename.lastIndexOf(".");
     const outputName =
       nameInd == -1
@@ -579,16 +622,18 @@ export const Timelapse = () => {
             onClick={!isPlaying ? startTimelapse : stopTimelapseWithSync}
           />
         </Tooltip>
-        <Tooltip title={!isPlaying ? "Start recording" : "Stop recording"}>
-          <Button
-            shape="circle"
-            loading={isTranscoding}
-            icon={
-              !isRecording ? <VideoCameraOutlined /> : <VideoCameraTwoTone />
-            }
-            onClick={!isRecording ? startRecording : stopRecordingWithSync}
-          />
-        </Tooltip>
+        {selectedCodec && (
+          <Tooltip title={!isPlaying ? "Start recording" : "Stop recording"}>
+            <Button
+              shape="circle"
+              loading={isTranscoding}
+              icon={
+                !isRecording ? <VideoCameraOutlined /> : <VideoCameraTwoTone />
+              }
+              onClick={!isRecording ? startRecording : stopRecordingWithSync}
+            />
+          </Tooltip>
+        )}
       </div>
       <Form
         form={form}
@@ -601,10 +646,16 @@ export const Timelapse = () => {
           setIntervalSelection(find("interval"));
           setRecordingFrame(find("frame"));
           setMaxFps(+find("maxFps"));
+
+          const codec = codecs.find((x) => x.mimeType === find("codec"));
+          if (codec) {
+            setSelectedCodec(codec);
+          }
         }}
         initialValues={{
           interval: intervalSelection,
           frame: recordingFrame,
+          codec: codecs?.[0]?.mimeType,
           maxFps,
         }}
       >
@@ -642,64 +693,87 @@ export const Timelapse = () => {
             marks={{ 4: "4", 8: "8", 12: "12", 16: "16" }}
           />
         </Form.Item>
-        <Form.Item
-          label="Recording Frame"
-          name="frame"
-          tooltip="Determines the size of the map for recording. 'None' will record the current view in the browser. The other numerical options represent the zoom level of the map and will temporarily resize the map so that the entire map is visible at the zoom level. The 2x zoom level is recommended as a good mix between quality and render times."
-        >
-          <Radio.Group
-            optionType="button"
-            options={[
-              {
-                label: "None",
-                value: "None",
-              },
-              {
-                label: "8x",
-                value: "8x",
-              },
-              {
-                label: "4x",
-                value: "4x",
-              },
-              {
-                label: "2x",
-                value: "2x",
-              },
-              {
-                label: "1x",
-                value: "1x",
-              },
-            ]}
-          />
-        </Form.Item>
+        {codecs.length > 1 && (
+          <Form.Item
+            label="Recording Codec"
+            name="codec"
+            tooltip="The recording output codec. Other browsers may have different options"
+          >
+            <Radio.Group
+              optionType="button"
+              options={codecs.map((x) => ({
+                label: x.title,
+                value: x.mimeType,
+              }))}
+            />
+          </Form.Item>
+        )}
+        {selectedCodec && (
+          <Form.Item
+            label="Recording Frame"
+            name="frame"
+            tooltip="Determines the size of the map for recording. 'None' will record the current view in the browser. The other numerical options represent the zoom level of the map and will temporarily resize the map so that the entire map is visible at the zoom level. The 2x zoom level is recommended as a good mix between quality and render times."
+          >
+            <Radio.Group
+              optionType="button"
+              options={[
+                {
+                  label: "None",
+                  value: "None",
+                },
+                {
+                  label: "8x",
+                  value: "8x",
+                },
+                {
+                  label: "4x",
+                  value: "4x",
+                },
+                {
+                  label: "2x",
+                  value: "2x",
+                },
+                {
+                  label: "1x",
+                  value: "1x",
+                },
+              ]}
+            />
+          </Form.Item>
+        )}
       </Form>
-      <Row className="flex items-center">
-        <Col span={4}>
-          <InputNumber
-            min={0}
-            max={8}
-            defaultValue={0}
-            value={freezeFrameSeconds}
-            onChange={setFreezeFrameSeconds}
-            style={{ width: "calc(100% - 5px)" }}
-          />
-        </Col>
-        <Col span={24 - 4}>Seconds of final freeze frame</Col>
-      </Row>
+      {selectedCodec && (
+        <Row className="flex items-center">
+          <Col span={4}>
+            <InputNumber
+              min={0}
+              max={8}
+              defaultValue={0}
+              value={freezeFrameSeconds}
+              onChange={setFreezeFrameSeconds}
+              style={{ width: "calc(100% - 5px)" }}
+            />
+          </Col>
+          <Col span={24 - 4}>Seconds of final freeze frame</Col>
+        </Row>
+      )}
 
-      <ToggleRow
-        text="Sync recording with timelapse"
-        onChange={setSyncRecording}
-        value={syncRecording}
-        help="Synchronizes the recording with the timelapse such that when a recording starts the timelapse starts too and each continue until one or the other stops"
-      />
-      <ToggleRow
-        text="Export as MP4 (slow)"
-        onChange={setExportAsMp4}
-        value={exportAsMp4}
-        help="After the recording is finished, it will be transcoded into an mp4. May take several minutes"
-      />
+      {selectedCodec && (
+        <ToggleRow
+          text="Sync recording with timelapse"
+          onChange={setSyncRecording}
+          value={syncRecording}
+          help="Synchronizes the recording with the timelapse such that when a recording starts the timelapse starts too and each continue until one or the other stops"
+        />
+      )}
+      {ffmpegTranscode && (
+        <ToggleRow
+          text="Export as MP4 (slow)"
+          onChange={setExportAsMp4}
+          value={exportAsMp4}
+          help="After the recording is finished, it will be transcoded into an mp4. May take several minutes"
+        />
+      )}
     </>
   );
 };
