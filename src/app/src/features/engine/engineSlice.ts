@@ -58,6 +58,12 @@ const engineSlice = createSlice({
   initialState: initialState,
   reducers: {
     resetSaveAnalysis(state) {
+      // This is for when the "load sample" triggers an unmount
+      // at the same time as a parse
+      if (state.analysisState.kind === "analyzing") {
+        return;
+      }
+
       state.analysisState = { kind: "initial", hover: false };
       state.game = null;
     },
