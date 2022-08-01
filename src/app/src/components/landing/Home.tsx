@@ -61,7 +61,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         <div className="flex flex-col gap-y-4 lg:max-w-lg justify-self-end">
           <h1 className="text-4xl font-extrabold tracking-tight text-white sm:mt-0 sm:text-6xl lg:mt-6 xl:text-6xl">
             Explore the world
-            <span className="block underline">you created</span>
+            <span className="block italic">you created</span>
           </h1>
           <p className="text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl max-w-prose mb-0">
             Save files contain a treasure trove of information. PDX Tools is a
