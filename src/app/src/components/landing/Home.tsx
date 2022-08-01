@@ -323,10 +323,10 @@ export const Home = ({ subtitle }: HomeProps) => {
             <h2>More Games!</h2>
             <p>The following games can be loaded:</p>
             <ul>
-              <li>Europa Univeralis IV</li>
-              <li>Hearts of Iron IV</li>
-              <li>Crusader Kings III</li>
-              <li>Imperator: Rome</li>
+              <li>Europa Univeralis IV (1.29+)</li>
+              <li>Hearts of Iron IV (1.0+)</li>
+              <li>Crusader Kings III (1.0+)</li>
+              <li>Imperator: Rome (1.0+)</li>
             </ul>
           </div>
           <div>
