@@ -954,4 +954,15 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-08-02",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Enable high DPI map renders</li>
+          <li>🐛 - Fix export map view returning a blank image on Chrome</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
