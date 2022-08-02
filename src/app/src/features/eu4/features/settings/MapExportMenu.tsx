@@ -73,7 +73,7 @@ export const MapExportMenu = ({ setIsExporting }: MapExportMenuProps) => {
   };
 
   const exportView = () => {
-    map.redrawMapImage();
+    map.map?.redrawMapNow();
     setIsExporting(true);
     canvas.toBlob((b) => downloadDataFile(b, "view"));
   };

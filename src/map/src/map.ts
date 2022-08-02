@@ -30,13 +30,26 @@ export interface DrawEvent {
 }
 
 export const glContextOptions = (): WebGLContextAttributes => ({
-  alpha: true,
   depth: false,
   antialias: false,
   stencil: false,
+
+  // In dual GPU systems, prefer the more powerful one
   powerPreference: "high-performance",
-  preserveDrawingBuffer: true,
-  desynchronized: true,
+
+  // Avoid alpha:false, which can be expensive
+  // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices#avoid_alphafalse_which_can_be_expensive
+  alpha: true,
+
+  // We force a redraw whenever exporting a view, so this can be false to
+  // facilitate wegbl swaps instead of copies:
+  // https://stackoverflow.com/a/27747016/433785
+  preserveDrawingBuffer: false,
+
+  // Need desynchronized to be false so that we can export view on chrome,
+  // otherwise it exports a blank rectangle even when `preserveDrawingBuffer` is
+  // true (firefox isn't effected).
+  desynchronized: false,
 });
 
 export class WebGLMap {
