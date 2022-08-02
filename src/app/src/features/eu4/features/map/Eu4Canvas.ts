@@ -212,8 +212,7 @@ export class Eu4Canvas {
   }
 
   resize(width: number, height: number) {
-    this.gl.canvas.width = width;
-    this.gl.canvas.height = height;
+    this.map?.resize(width, height);
   }
 
   mapData(scale: number, type: string) {
