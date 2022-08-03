@@ -33,6 +33,7 @@ pub struct CountryDetails {
     pub ideas: Vec<(String, i32)>,
     pub num_cities: i32,
     pub inheritance: Inheritance,
+    pub diplomacy: Vec<DiplomacyEntry>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -141,156 +142,300 @@ pub struct CountryLeader {
     monarch_stats: Option<MonarchStats>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct DiplomacyEntry {
+    pub first: LocalizedTag,
+    pub second: LocalizedTag,
+    pub start_date: Option<Eu4Date>,
+    #[serde(flatten)]
+    pub kind: DiplomacyKind,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind")]
+pub enum DiplomacyKind {
+    Dependency {
+        subject_type: String,
+    },
+    Alliance,
+    RoyalMarriage,
+    Warning,
+    TransferTrade,
+    SteerTrade,
+    Reparations {
+        end_date: Option<Eu4Date>,
+    },
+    Subsidy {
+        amount: f32,
+        duration: u16,
+        total: Option<f32>,
+    },
+}
+
 impl SaveFileImpl {
     pub fn get_country(&self, tag: JsValue) -> JsValue {
-        if let Some(country_tag) = tag.as_string().and_then(|x| x.parse::<CountryTag>().ok()) {
-            let details = self
-                .query
-                .save_country(&country_tag)
-                .and_then(|save_country| {
-                    let country = save_country.country;
-                    let ruler = if let Some(ruler_id) = &country.monarch {
-                        country
-                            .history
-                            .events
-                            .iter()
-                            .flat_map(|(_, v)| v.0.iter())
-                            .filter_map(|x| x.as_monarch())
-                            .find(|x| x.id.id == ruler_id.id)
-                            .map(|x| FrontendMonarch {
-                                name: x.name.clone(),
-                                adm: x.adm,
-                                dip: x.dip,
-                                mil: x.mil,
-                            })
-                            .unwrap_or_else(|| FrontendMonarch {
-                                name: "Interregnum".to_string(),
-                                adm: 0,
-                                dip: 0,
-                                mil: 0,
-                            })
-                    } else {
-                        country
-                            .history
-                            .events
-                            .iter()
-                            .flat_map(|(_, v)| v.0.iter())
-                            .filter_map(|x| match x {
-                                CountryEvent::Monarch(mon) => Some(mon),
-                                _ => None,
-                            })
-                            .last()
-                            .map(|x| FrontendMonarch {
-                                name: x.name.clone(),
-                                adm: x.adm,
-                                dip: x.dip,
-                                mil: x.mil,
-                            })
-                            .unwrap_or_else(|| FrontendMonarch {
-                                name: "Interregnum".to_string(),
-                                adm: 0,
-                                dip: 0,
-                                mil: 0,
-                            })
-                    };
+        let country_tag = tag
+            .as_string()
+            .and_then(|x| x.parse::<CountryTag>().ok())
+            .expect("Country tags should only be strings");
 
-                    let religion = match country.religion.clone() {
-                        Some(x) => x,
-                        None => return None,
-                    };
+        let save_country = match self.query.save_country(&country_tag) {
+            Some(x) => x,
+            None => return JsValue::from_serde(&None::<CountryDetails>).unwrap(),
+        };
 
-                    let primary_culture = match country.primary_culture.clone() {
-                        Some(x) => x,
-                        None => return None,
-                    };
-
-                    let mut building_count = HashMap::new();
-                    let prov_buildings = self
-                        .query
-                        .save()
-                        .game
-                        .provinces
-                        .values()
-                        .filter(|prov| prov.owner.as_ref().map_or(false, |x| x == &country_tag))
-                        .flat_map(|x| x.buildings.keys());
-                    for building in prov_buildings {
-                        *building_count.entry(building).or_default() += 1
-                    }
-
-                    let mut investment_count: HashMap<&String, i32> = HashMap::new();
-                    let investments = self
-                        .query
-                        .save()
-                        .game
-                        .map_area_data
-                        .values()
-                        .flat_map(|x| x.investments.iter())
-                        .filter(|x| x.tag == country_tag)
-                        .flat_map(|x| x.investments.iter());
-                    for investment in investments {
-                        *investment_count.entry(investment).or_default() += 1;
-                    }
-
-                    let invests = investment_count.iter().map(|(investment, count)| {
-                        let key = self.game.localize_trade_company(investment);
-                        let key = format!("TC {}", key);
-                        (key, *count)
-                    });
-
-                    let buildings: HashMap<_, _> = building_count
-                        .iter()
-                        .map(|(building, count)| {
-                            let key = self
-                                .game
-                                .localize_building(building)
-                                .unwrap_or(building)
-                                .to_string();
-                            (key, *count)
-                        })
-                        .chain(invests)
-                        .collect();
-
-                    let loans = country.loans.len();
-                    let debt = country.loans.iter().map(|x| x.amount).sum();
-                    let ideas = country
-                        .active_idea_groups
-                        .iter()
-                        .map(|(name, v)| (name.clone(), i32::from(*v)))
-                        .collect();
-
-                    let inheritance = self.query.inherit(&save_country);
-                    let details = CountryDetails {
-                        tag: country_tag,
-                        ruler,
-                        base_tax: country.base_tax,
-                        development: country.development,
-                        prestige: country.prestige,
-                        stability: country.stability,
-                        treasury: country.treasury,
-                        inflation: country.inflation,
-                        corruption: country.corruption,
-                        technology: country.technology.clone(),
-                        num_cities: country.num_of_cities,
-                        ideas,
-                        primary_culture,
-                        religion,
-                        loans,
-                        debt,
-                        income: self.query.country_income_breakdown(country),
-                        expenses: self.query.country_expense_breakdown(country),
-                        total_expenses: self.query.country_total_expense_breakdown(country),
-                        mana_usage: self.query.country_mana_breakdown(country),
-                        building_count: buildings,
-                        inheritance,
-                    };
-
-                    Some(details)
-                });
-
-            JsValue::from_serde(&details).unwrap()
+        let country = save_country.country;
+        let ruler = if let Some(ruler_id) = &country.monarch {
+            country
+                .history
+                .events
+                .iter()
+                .flat_map(|(_, v)| v.0.iter())
+                .filter_map(|x| x.as_monarch())
+                .find(|x| x.id.id == ruler_id.id)
+                .map(|x| FrontendMonarch {
+                    name: x.name.clone(),
+                    adm: x.adm,
+                    dip: x.dip,
+                    mil: x.mil,
+                })
+                .unwrap_or_else(|| FrontendMonarch {
+                    name: "Interregnum".to_string(),
+                    adm: 0,
+                    dip: 0,
+                    mil: 0,
+                })
         } else {
-            panic!("Country tags should only be strings");
+            country
+                .history
+                .events
+                .iter()
+                .flat_map(|(_, v)| v.0.iter())
+                .filter_map(|x| match x {
+                    CountryEvent::Monarch(mon) => Some(mon),
+                    _ => None,
+                })
+                .last()
+                .map(|x| FrontendMonarch {
+                    name: x.name.clone(),
+                    adm: x.adm,
+                    dip: x.dip,
+                    mil: x.mil,
+                })
+                .unwrap_or_else(|| FrontendMonarch {
+                    name: "Interregnum".to_string(),
+                    adm: 0,
+                    dip: 0,
+                    mil: 0,
+                })
+        };
+
+        let religion = country
+            .religion
+            .clone()
+            .unwrap_or_else(|| String::from("noreligion"));
+
+        let primary_culture = country
+            .primary_culture
+            .clone()
+            .unwrap_or_else(|| String::from("noculture"));
+
+        let mut building_count = HashMap::new();
+        let prov_buildings = self
+            .query
+            .save()
+            .game
+            .provinces
+            .values()
+            .filter(|prov| prov.owner.as_ref().map_or(false, |x| x == &country_tag))
+            .flat_map(|x| x.buildings.keys());
+        for building in prov_buildings {
+            *building_count.entry(building).or_default() += 1
         }
+
+        let mut investment_count: HashMap<&String, i32> = HashMap::new();
+        let investments = self
+            .query
+            .save()
+            .game
+            .map_area_data
+            .values()
+            .flat_map(|x| x.investments.iter())
+            .filter(|x| x.tag == country_tag)
+            .flat_map(|x| x.investments.iter());
+        for investment in investments {
+            *investment_count.entry(investment).or_default() += 1;
+        }
+
+        let invests = investment_count.iter().map(|(investment, count)| {
+            let key = self.game.localize_trade_company(investment);
+            let key = format!("TC {}", key);
+            (key, *count)
+        });
+
+        let buildings: HashMap<_, _> = building_count
+            .iter()
+            .map(|(building, count)| {
+                let key = self
+                    .game
+                    .localize_building(building)
+                    .unwrap_or(building)
+                    .to_string();
+                (key, *count)
+            })
+            .chain(invests)
+            .collect();
+
+        let loans = country.loans.len();
+        let debt = country.loans.iter().map(|x| x.amount).sum();
+        let ideas = country
+            .active_idea_groups
+            .iter()
+            .map(|(name, v)| (name.clone(), i32::from(*v)))
+            .collect();
+
+        let inheritance = self.query.inherit(&save_country);
+
+        let diplomacy = &self.query.save().game.diplomacy;
+        let mut diplomacy_entries = Vec::new();
+
+        let dependencies = diplomacy
+            .dependencies
+            .iter()
+            .filter(|x| x.first == country_tag || x.second == country_tag)
+            .map(|x| DiplomacyEntry {
+                first: self.localize_tag(x.first),
+                second: self.localize_tag(x.second),
+                start_date: x.start_date,
+                kind: DiplomacyKind::Dependency {
+                    subject_type: x.subject_type.clone(),
+                },
+            });
+
+        diplomacy_entries.extend(dependencies);
+
+        let alliances = diplomacy
+            .alliances
+            .iter()
+            .filter(|x| x.first == country_tag || x.second == country_tag)
+            .map(|x| DiplomacyEntry {
+                first: self.localize_tag(x.first),
+                second: self.localize_tag(x.second),
+                start_date: x.start_date,
+                kind: DiplomacyKind::Alliance,
+            });
+        diplomacy_entries.extend(alliances);
+
+        let royal_marriages = diplomacy
+            .royal_marriages
+            .iter()
+            .filter(|x| x.first == country_tag || x.second == country_tag)
+            .map(|x| DiplomacyEntry {
+                first: self.localize_tag(x.first),
+                second: self.localize_tag(x.second),
+                start_date: x.start_date,
+                kind: DiplomacyKind::RoyalMarriage,
+            });
+        diplomacy_entries.extend(royal_marriages);
+
+        let warnings = diplomacy
+            .warnings
+            .iter()
+            .filter(|x| x.first == country_tag || x.second == country_tag)
+            .map(|x| DiplomacyEntry {
+                first: self.localize_tag(x.first),
+                second: self.localize_tag(x.second),
+                start_date: x.start_date,
+                kind: DiplomacyKind::Warning,
+            });
+        diplomacy_entries.extend(warnings);
+
+        let subsidies = diplomacy
+            .subsidies
+            .iter()
+            .filter(|x| x.first == country_tag || x.second == country_tag)
+            .map(|x| DiplomacyEntry {
+                first: self.localize_tag(x.first),
+                second: self.localize_tag(x.second),
+                start_date: x.start_date,
+                kind: DiplomacyKind::Subsidy {
+                    amount: x.amount,
+                    duration: x.duration,
+                    total: x.start_date.map(|start| {
+                        let end = self.query.save().meta.date;
+                        let result = (i64::from(end.year()) * 12 + i64::from(end.month()))
+                            - (i64::from(start.year()) * 12 + i64::from(start.month()));
+                        result as f32 * x.amount
+                    }),
+                },
+            });
+        diplomacy_entries.extend(subsidies);
+
+        let war_reparations = diplomacy
+            .war_reparations
+            .iter()
+            .filter(|x| x.first == country_tag || x.second == country_tag)
+            .map(|x| DiplomacyEntry {
+                first: self.localize_tag(x.first),
+                second: self.localize_tag(x.second),
+                start_date: x.start_date,
+                kind: DiplomacyKind::Reparations {
+                    end_date: x.end_date,
+                },
+            });
+        diplomacy_entries.extend(war_reparations);
+
+        let transfer_trade_powers = diplomacy
+            .transfer_trade_powers
+            .iter()
+            .filter(|x| x.first == country_tag || x.second == country_tag)
+            .map(|x| DiplomacyEntry {
+                first: self.localize_tag(x.first),
+                second: self.localize_tag(x.second),
+                start_date: x.start_date,
+                kind: DiplomacyKind::TransferTrade,
+            });
+        diplomacy_entries.extend(transfer_trade_powers);
+
+        let steer_trades = diplomacy
+            .steer_trades
+            .iter()
+            .filter(|x| x.first == country_tag || x.second == country_tag)
+            .map(|x| DiplomacyEntry {
+                first: self.localize_tag(x.first),
+                second: self.localize_tag(x.second),
+                start_date: x.start_date,
+                kind: DiplomacyKind::SteerTrade,
+            });
+        diplomacy_entries.extend(steer_trades);
+
+        let details = CountryDetails {
+            tag: country_tag,
+            ruler,
+            base_tax: country.base_tax,
+            development: country.development,
+            prestige: country.prestige,
+            stability: country.stability,
+            treasury: country.treasury,
+            inflation: country.inflation,
+            corruption: country.corruption,
+            technology: country.technology.clone(),
+            num_cities: country.num_of_cities,
+            ideas,
+            primary_culture,
+            religion,
+            loans,
+            debt,
+            income: self.query.country_income_breakdown(country),
+            expenses: self.query.country_expense_breakdown(country),
+            total_expenses: self.query.country_total_expense_breakdown(country),
+            mana_usage: self.query.country_mana_breakdown(country),
+            building_count: buildings,
+            inheritance,
+            diplomacy: diplomacy_entries,
+        };
+
+        JsValue::from_serde(&details).unwrap()
     }
 
     pub fn get_country_rulers(&self, tag: &str) -> Vec<RunningMonarch> {

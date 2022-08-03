@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { StopOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Descriptions } from "antd";
 import { formatFloat, formatInt } from "@/lib/format";
@@ -30,6 +30,17 @@ export const CountryDetailsDescriptions = ({
       </tr>
     );
   });
+
+  const isJuniorParter = useMemo(
+    () =>
+      details.diplomacy.find(
+        (x) =>
+          x.kind === "Dependency" &&
+          x.second.tag === details.tag &&
+          x.subject_type === "personal_union"
+      ) !== undefined,
+    [details]
+  );
 
   return (
     <Descriptions>
@@ -67,12 +78,14 @@ export const CountryDetailsDescriptions = ({
           <tbody>{ideaElem}</tbody>
         </table>
       </Descriptions.Item>
-      <Descriptions.Item label={<InheritanceLabel details={details} />}>
-        <div className="flex flex-col no-break">
-          <div>{`Window: [${details.inheritance.start_t1_year} - ${details.inheritance.end_t1_year}]`}</div>
-          <div>{`Inheritance Value: ${details.inheritance.inheritance_value}`}</div>
-        </div>
-      </Descriptions.Item>
+      {!isJuniorParter && (
+        <Descriptions.Item label={<InheritanceLabel details={details} />}>
+          <div className="flex flex-col no-break">
+            <div>{`Window: [${details.inheritance.start_t1_year} - ${details.inheritance.end_t1_year}]`}</div>
+            <div>{`Inheritance Value: ${details.inheritance.inheritance_value}`}</div>
+          </div>
+        </Descriptions.Item>
+      )}
     </Descriptions>
   );
 };
