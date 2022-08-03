@@ -2,11 +2,6 @@
 
 The map module can also be built and used separately from the website:
 
-- Install Nodejs and NPM
+- Install Nodejs and NPM (already installed if using the dev container)
 - Install dependencies `npm ci`
-- Watch build `npm run watch`
-- Use any one line [http servers](https://gist.github.com/willurd/5720255):
-
-```bash
-python3 -m http.server 8000
-```
+- Run `npm run dev` to spin up the dev server on port 8080
