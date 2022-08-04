@@ -965,4 +965,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-08-03",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>✨ - Add country diplomacy section</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
