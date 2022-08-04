@@ -1,5 +1,7 @@
 import { Achievement, GameDifficulty, SaveEncoding } from "@/services/appApi";
-import { bool } from "aws-sdk/clients/signer";
+
+export type CountryTag = string;
+export type Eu4Date = string;
 
 export interface CountryMatcher {
   players: "all" | "alive" | "dead" | "none";
@@ -133,6 +135,7 @@ export interface CountryDetails {
   num_cities: number;
   ideas: [string, number][];
   inheritance: Inheritance;
+  diplomacy: DiplomacyEntry[];
 }
 
 export interface Inheritance {
@@ -152,6 +155,37 @@ export interface InheritanceCalculation {
   value: number;
   dependency: { Dependent: string } | "Independent";
 }
+
+export type DiplomacySubsidy = {
+  kind: "Subsidy";
+  amount: number;
+  duration: number;
+  total: number | null;
+};
+
+export type DiplomacyEntry = {
+  first: LocalizedTag;
+  second: LocalizedTag;
+  start_date: Eu4Date | null;
+} & (
+  | {
+      kind: "Dependency";
+      subject_type: string;
+    }
+  | {
+      kind:
+        | "Alliance"
+        | "RoyalMarriage"
+        | "Warning"
+        | "TransferTrade"
+        | "SteerTrade";
+    }
+  | DiplomacySubsidy
+  | {
+      kind: "Reparations";
+      end_date: Eu4Date | null;
+    }
+);
 
 export interface CountryIncomeLedger {
   taxation: number;

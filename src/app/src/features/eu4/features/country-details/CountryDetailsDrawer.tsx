@@ -29,6 +29,7 @@ import { usePanTag } from "../../hooks/usePanTag";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { CountryLeaders } from "./CountryLeaders";
 import { CountryCultures } from "./CountryCultures";
+import { CountryDiplomacy } from "./CountryDiplomacy";
 
 const { TabPane } = Tabs;
 const { useBreakpoint } = Grid;
@@ -135,7 +136,13 @@ export const CountryDetailsDrawer = ({
       <div ref={sideBarContainerRef}>
         <Tabs defaultActiveKey="1">
           <TabPane tab="General" key="General">
-            {country && <CountryDetailsDescriptions details={country} />}
+            {country && (
+              <>
+                <CountryDetailsDescriptions details={country} />
+                <Divider orientation="left">Diplomacy</Divider>
+                <CountryDiplomacy details={country} />
+              </>
+            )}
           </TabPane>
           <TabPane tab="Advisors" key="Advisors">
             <Divider orientation="left">One Time Advisor Events</Divider>

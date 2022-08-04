@@ -1000,6 +1000,12 @@ impl SaveFileImpl {
         }
     }
 
+    fn localize_tag(&self, tag: CountryTag) -> LocalizedTag {
+        let save_game_query = SaveGameQuery::new(&self.query, &self.game);
+        let name = save_game_query.localize_country(&tag);
+        LocalizedTag { tag, name }
+    }
+
     pub fn get_dlc_ids(&self) -> JsValue {
         let dlc: Vec<_> = self
             .query
