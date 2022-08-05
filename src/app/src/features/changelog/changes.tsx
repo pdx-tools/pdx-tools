@@ -981,6 +981,8 @@ export const changes: ChangelogEntry[] = [
       return (
         <ChangelogList>
           <li>🐛 - Reinstate pagination on large tables to fix performance</li>
+          <li>🐛 - Fix country national ideas wrapping onto another line</li>
+          <li>🐛 - Fix map tip having too large of a top gap</li>
         </ChangelogList>
       );
     },

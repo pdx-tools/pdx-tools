@@ -26,7 +26,9 @@ export const CountryDetailsDescriptions = ({
     return (
       <tr key={name}>
         <td>{name}</td>
-        <td><div className="flex">{ideaMarkers}</div></td>
+        <td>
+          <div className="flex">{ideaMarkers}</div>
+        </td>
       </tr>
     );
   });
