@@ -35,7 +35,7 @@ export const AnalyzeBox = () => {
       <label
         tabIndex={0}
         onKeyDown={keyboardTrigger(labelFocus)}
-        className={`flex flex-col w-full items-center text-white text-center m-2 rounded-2xl cursor-pointer bg-transparent border-0 outline-white outline-8 outline-dashed p-4 lg:p-8 ${
+        className={`flex flex-col items-center text-white text-center m-2 rounded-2xl cursor-pointer bg-transparent border-0 outline-white outline-8 outline-dashed p-4 lg:p-8 ${
           classes.label
         } ${isFileHover ? classes.hover : ""}`}
       >

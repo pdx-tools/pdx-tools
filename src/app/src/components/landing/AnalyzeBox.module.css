@@ -3,3 +3,7 @@
 .label:focus {
   @apply outline-blue-500 outline-8 outline-dashed;
 }
+
+.label {
+  width: calc(100% - theme(outlineWidth.8) * 1px);
+}

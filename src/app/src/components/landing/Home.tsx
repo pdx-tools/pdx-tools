@@ -55,7 +55,7 @@ export const Home = ({ subtitle }: HomeProps) => {
   return (
     <div className="w-full h-screen">
       <div
-        className={`${classes.row} grid lg:grid-cols-2 gap-8 px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white bg-bottom bg-repeat-x`}
+        className={`${classes.row} grid lg:grid-cols-2 gap-8 px-5 md:px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white bg-bottom bg-repeat-x`}
         style={{ backgroundImage: waveBackground }}
       >
         <div className="flex flex-col gap-y-4 lg:max-w-lg justify-self-end">
@@ -100,7 +100,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         </section>
       </div>
       <div
-        className={`${classes.row} flex flex-col items-center px-9 py-16 justify-center text-xl even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex flex-col items-center px-5 md:px-9 py-16 justify-center text-xl even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <img
           src={headline}
@@ -112,38 +112,76 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
-        <section>
-          <div className="max-w-prose">
-            <h2>Discover Data</h2>
-            <p>
-              View data not exposed in game, like one time advisor events,
-              budgetary breakdown, mana usage, and religion by dev
-            </p>
-            <p>
-              Marvel at past wars, how the AI allocates ducats, or what national
-              ideas are most popular
-            </p>
-            <p>
-              Uncover how ruler stats affect long term mana generation and what
-              heirs were unfortunate enough not to see the throne
-            </p>
+        <div className="max-w-7xl">
+          <h2 className="text-center text-3xl xl:text-4xl font-extrabold tracking-tight text-white m-0">
+            Questions? Answered.
+          </h2>
+          <p className="text-xl text-center mt-3 mb-6">
+            Only PDX Tools can give you these EU4 answers
+          </p>
+          <div className="grid gap-4 md:gap-y-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
+              <p className="m-0 text-2xl text-center">
+                Could a royal marriage cause a{" "}
+                <abbr title="Personal Union">PU</abbr> or inheritance?
+              </p>
+            </div>
+            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
+              <p className="m-0 text-2xl text-center">
+                How much mana was spent developing provinces?
+              </p>
+            </div>
+            <div className="sm:col-span-2 mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
+              <p className="m-0 text-2xl text-center">
+                How much more dev is needed for religious rebels to change the
+                state religion?
+              </p>
+            </div>
+            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
+              <p className="m-0 text-2xl text-center">
+                How fast did the reformation spread?
+              </p>
+            </div>
+
+            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
+              <p className="m-0 text-2xl text-center">
+                What one time advisor events remain?
+              </p>
+            </div>
+
+            <div className="sm:col-span-2 mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
+              <p className="m-0 text-2xl text-center">
+                What is the reign weighted running average of monarch power?
+              </p>
+            </div>
+            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
+              <p className="m-0 text-2xl text-center">
+                How much more dev is needed to culture shift?
+              </p>
+            </div>
+            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
+              <p className="m-0 text-2xl text-center">
+                What wars were wars of attrition?
+              </p>
+            </div>
+            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
+              <p className="m-0 text-2xl text-center">
+                What heirs failed to take the throne?
+              </p>
+            </div>
+            <div className="mx-2 px-9 flex items-center justify-center py-4 border-4 border-solid text-white border-white rounded-xl">
+              <p className="m-0 text-2xl text-center">
+                What are the most popular idea groups?
+              </p>
+            </div>
           </div>
-          <div>
-            <img
-              src={discover}
-              className="drop-shadow-xl"
-              height={478}
-              width={606}
-              alt="Country budgetary breakdown"
-            />
-          </div>
-        </section>
+        </div>
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
@@ -176,11 +214,11 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
-            <h2>Fine-tune Focus</h2>
+            <h2 className="text-2xl font-bold">Fine-tune Focus</h2>
             <p>
               All maps, graphs, and data can be filtered to only desired
               countries
@@ -196,7 +234,7 @@ export const Home = ({ subtitle }: HomeProps) => {
           </div>
           <div>
             <img
-              src={graphs}
+              src={discover}
               height={510}
               width={971}
               className="drop-shadow-xl"
@@ -207,11 +245,13 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
-            <h2>BYOB (Bring your own browser)</h2>
+            <h2 className="text-2xl font-bold">
+              BYOB (Bring your own browser)
+            </h2>
             <p>
               No account needed, no downloads, no installs. All analysis takes
               place within the browser with unparalleled speed
@@ -249,11 +289,11 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
-            <h2>Melting Support</h2>
+            <h2 className="text-2xl font-bold">Melting Support</h2>
             <p>
               PDX Tools can convert (aka melt) ironman and binary saves into
               normal saves so that one can easily inspect the raw contents
@@ -276,11 +316,11 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
-            <h2>Fresh Competition</h2>
+            <h2 className="text-2xl font-bold">Fresh Competition</h2>
             <p>
               An advanced achievement engine uses the game's logic to check if a
               save has completed one of the{" "}
@@ -316,11 +356,11 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
-            <h2>More Games!</h2>
+            <h2 className="text-2xl font-bold">More Games!</h2>
             <p>The following games can be loaded:</p>
             <ul>
               <li>Europa Univeralis IV (1.29+)</li>
@@ -343,11 +383,11 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
       >
         <section>
           <div className="max-w-prose">
-            <h2>Community</h2>
+            <h2 className="text-2xl font-bold">Community</h2>
             <p>PDX Tools is powered by community use and feedback</p>
             <p>
               Have ideas, questions, or bug reports? Join the{" "}
