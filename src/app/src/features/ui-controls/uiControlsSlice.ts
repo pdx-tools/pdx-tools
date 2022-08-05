@@ -3,11 +3,11 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { PaginationProps } from "antd";
 
 interface UiControlsState {
-  tablePageSize?: number;
+  tablePageSize: number;
 }
 
 const initialState: UiControlsState = {
-  tablePageSize: undefined,
+  tablePageSize: 20,
 };
 
 const uiControlsSlice = createSlice({

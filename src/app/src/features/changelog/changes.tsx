@@ -975,4 +975,14 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-08-05",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>🐛 - Reinstate pagination on large tables to fix performance</li>
+        </ChangelogList>
+      );
+    },
+  },
 ];
