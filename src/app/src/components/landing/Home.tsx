@@ -119,7 +119,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             Questions? Answered.
           </h2>
           <p className="text-xl text-center mt-3 mb-6">
-            Only PDX Tools can give you these EU4 answers
+            PDX Tools can help you answer these EU4 questions
           </p>
           <div className="grid gap-4 md:gap-y-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
             <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
