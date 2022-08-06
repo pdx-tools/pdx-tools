@@ -154,317 +154,319 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
 
   return (
     <table className="border-collapse">
-      {allies.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Allies:</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {allies.map((x) => (
-              <div key={notMe(x).tag} className="flex gap-x-1">
-                <FlagAvatarCore tag={notMe(x).tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${notMe(x).name} (${
-                    notMe(x).tag
-                  })`}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">Since: {x.start_date}</p>
-                  )}
+      <tbody>
+        {allies.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Allies:</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {allies.map((x) => (
+                <div key={notMe(x).tag} className="flex gap-x-1">
+                  <FlagAvatarCore tag={notMe(x).tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${notMe(x).name} (${
+                      notMe(x).tag
+                    })`}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">Since: {x.start_date}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
-      {marriages.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Royal Marriages:</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {marriages.map((x) => (
-              <div key={notMe(x).tag} className="flex gap-x-1">
-                <FlagAvatarCore tag={notMe(x).tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${notMe(x).name} (${
-                    notMe(x).tag
-                  })`}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">Since: {x.start_date}</p>
-                  )}
+              ))}
+            </td>
+          </tr>
+        )}
+        {marriages.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Royal Marriages:</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {marriages.map((x) => (
+                <div key={notMe(x).tag} className="flex gap-x-1">
+                  <FlagAvatarCore tag={notMe(x).tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${notMe(x).name} (${
+                      notMe(x).tag
+                    })`}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">Since: {x.start_date}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
-      {vassals.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Vassals:</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {vassals.map((x) => (
-              <div key={notMe(x).tag} className="flex gap-x-1">
-                <FlagAvatarCore tag={x.second.tag} size="large" />
-                <div>
+              ))}
+            </td>
+          </tr>
+        )}
+        {vassals.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Vassals:</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {vassals.map((x) => (
+                <div key={notMe(x).tag} className="flex gap-x-1">
+                  <FlagAvatarCore tag={x.second.tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${x.second.name} (${x.second.tag})`}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">Since: {x.start_date}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </td>
+          </tr>
+        )}
+        {colonies.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Colonies:</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {colonies.map((x) => (
+                <div key={notMe(x).tag}>
                   <p className="m-0 text-sm">{`${x.second.name} (${x.second.tag})`}</p>
+                  <p className="m-0 text-sm">
+                    {x.subject_type.replace("_colony", "")}
+                  </p>
                   {x.start_date && (
                     <p className="m-0 text-sm">Since: {x.start_date}</p>
                   )}
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
-      {colonies.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Colonies:</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {colonies.map((x) => (
-              <div key={notMe(x).tag}>
-                <p className="m-0 text-sm">{`${x.second.name} (${x.second.tag})`}</p>
-                <p className="m-0 text-sm">
-                  {x.subject_type.replace("_colony", "")}
-                </p>
-                {x.start_date && (
-                  <p className="m-0 text-sm">Since: {x.start_date}</p>
-                )}
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
-      {juniorPartners.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Junior Partners:</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {juniorPartners.map((x) => (
-              <div key={notMe(x).tag} className="flex gap-x-1">
-                <FlagAvatarCore tag={x.second.tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${x.second.name} (${x.second.tag})`}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">Since: {x.start_date}</p>
-                  )}
+              ))}
+            </td>
+          </tr>
+        )}
+        {juniorPartners.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Junior Partners:</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {juniorPartners.map((x) => (
+                <div key={notMe(x).tag} className="flex gap-x-1">
+                  <FlagAvatarCore tag={x.second.tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${x.second.name} (${x.second.tag})`}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">Since: {x.start_date}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
-      {warned.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Warning:</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {warned.map((x) => (
-              <div key={notMe(x).tag} className="flex gap-x-1">
-                <FlagAvatarCore tag={notMe(x).tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${notMe(x).name} (${
-                    notMe(x).tag
-                  })`}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">Since: {x.start_date}</p>
-                  )}
+              ))}
+            </td>
+          </tr>
+        )}
+        {warned.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Warning:</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {warned.map((x) => (
+                <div key={notMe(x).tag} className="flex gap-x-1">
+                  <FlagAvatarCore tag={notMe(x).tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${notMe(x).name} (${
+                      notMe(x).tag
+                    })`}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">Since: {x.start_date}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
-      {warnedBy.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Warned by:</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {warnedBy.map((x) => (
-              <div key={notMe(x).tag} className="flex gap-x-1">
-                <FlagAvatarCore tag={notMe(x).tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${notMe(x).name} (${
-                    notMe(x).tag
-                  })`}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">Since: {x.start_date}</p>
-                  )}
+              ))}
+            </td>
+          </tr>
+        )}
+        {warnedBy.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Warned by:</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {warnedBy.map((x) => (
+                <div key={notMe(x).tag} className="flex gap-x-1">
+                  <FlagAvatarCore tag={notMe(x).tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${notMe(x).name} (${
+                      notMe(x).tag
+                    })`}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">Since: {x.start_date}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
+              ))}
+            </td>
+          </tr>
+        )}
 
-      {subsidizing.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Subsidizing:</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {subsidizing.map((x) => (
-              <div key={notMe(x).tag} className="flex items-center gap-x-1">
-                <FlagAvatarCore tag={notMe(x).tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${notMe(x).name} (${
-                    notMe(x).tag
-                  })`}</p>
-                  <p className="m-0 text-sm">Monthly amount: {x.amount}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">{`Since ${x.start_date}${
-                      x.total !== null && `: ${formatInt(x.total)}`
-                    }`}</p>
-                  )}
+        {subsidizing.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Subsidizing:</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {subsidizing.map((x) => (
+                <div key={notMe(x).tag} className="flex items-center gap-x-1">
+                  <FlagAvatarCore tag={notMe(x).tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${notMe(x).name} (${
+                      notMe(x).tag
+                    })`}</p>
+                    <p className="m-0 text-sm">Monthly amount: {x.amount}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">{`Since ${x.start_date}${
+                        x.total !== null && `: ${formatInt(x.total)}`
+                      }`}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
+              ))}
+            </td>
+          </tr>
+        )}
 
-      {subsidized.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Subsidized by:</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {subsidized.map((x) => (
-              <div key={notMe(x).tag} className="flex items-center gap-x-1">
-                <FlagAvatarCore tag={notMe(x).tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${notMe(x).name} (${
-                    notMe(x).tag
-                  })`}</p>
-                  <p className="m-0 text-sm">Monthly amount: {x.amount}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">{`Since ${x.start_date}${
-                      x.total !== null && `: ${formatInt(x.total)}`
-                    }`}</p>
-                  )}
+        {subsidized.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Subsidized by:</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {subsidized.map((x) => (
+                <div key={notMe(x).tag} className="flex items-center gap-x-1">
+                  <FlagAvatarCore tag={notMe(x).tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${notMe(x).name} (${
+                      notMe(x).tag
+                    })`}</p>
+                    <p className="m-0 text-sm">Monthly amount: {x.amount}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">{`Since ${x.start_date}${
+                        x.total !== null && `: ${formatInt(x.total)}`
+                      }`}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
+              ))}
+            </td>
+          </tr>
+        )}
 
-      {reparationsReceiving.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Reparations (receiving):</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {reparationsReceiving.map((x) => (
-              <div key={notMe(x).tag} className="flex items-center gap-x-1">
-                <FlagAvatarCore tag={notMe(x).tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${notMe(x).name} (${
-                    notMe(x).tag
-                  })`}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">Since: {x.start_date}</p>
-                  )}
-                  {x.end_date && (
-                    <p className="m-0 text-sm">End: {x.end_date}</p>
-                  )}
+        {reparationsReceiving.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Reparations (receiving):</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {reparationsReceiving.map((x) => (
+                <div key={notMe(x).tag} className="flex items-center gap-x-1">
+                  <FlagAvatarCore tag={notMe(x).tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${notMe(x).name} (${
+                      notMe(x).tag
+                    })`}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">Since: {x.start_date}</p>
+                    )}
+                    {x.end_date && (
+                      <p className="m-0 text-sm">End: {x.end_date}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
-      {reparationsGiving.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Reparations (giving):</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {reparationsGiving.map((x) => (
-              <div key={notMe(x).tag} className="flex items-center gap-x-1">
-                <FlagAvatarCore tag={notMe(x).tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${notMe(x).name} (${
-                    notMe(x).tag
-                  })`}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">Since: {x.start_date}</p>
-                  )}
-                  {x.end_date && (
-                    <p className="m-0 text-sm">End: {x.end_date}</p>
-                  )}
+              ))}
+            </td>
+          </tr>
+        )}
+        {reparationsGiving.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Reparations (giving):</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {reparationsGiving.map((x) => (
+                <div key={notMe(x).tag} className="flex items-center gap-x-1">
+                  <FlagAvatarCore tag={notMe(x).tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${notMe(x).name} (${
+                      notMe(x).tag
+                    })`}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">Since: {x.start_date}</p>
+                    )}
+                    {x.end_date && (
+                      <p className="m-0 text-sm">End: {x.end_date}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
+              ))}
+            </td>
+          </tr>
+        )}
 
-      {tradePowerReceiving.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Trade Power (receiving):</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {tradePowerReceiving.map((x) => (
-              <div key={notMe(x).tag} className="flex items-center gap-x-1">
-                <FlagAvatarCore tag={notMe(x).tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${notMe(x).name} (${
-                    notMe(x).tag
-                  })`}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">Since: {x.start_date}</p>
-                  )}
+        {tradePowerReceiving.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Trade Power (receiving):</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {tradePowerReceiving.map((x) => (
+                <div key={notMe(x).tag} className="flex items-center gap-x-1">
+                  <FlagAvatarCore tag={notMe(x).tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${notMe(x).name} (${
+                      notMe(x).tag
+                    })`}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">Since: {x.start_date}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
-      {tradePowerGiving.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Trade Power (giving):</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {tradePowerGiving.map((x) => (
-              <div key={notMe(x).tag} className="flex items-center gap-x-1">
-                <FlagAvatarCore tag={notMe(x).tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${notMe(x).name} (${
-                    notMe(x).tag
-                  })`}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">Since: {x.start_date}</p>
-                  )}
+              ))}
+            </td>
+          </tr>
+        )}
+        {tradePowerGiving.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Trade Power (giving):</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {tradePowerGiving.map((x) => (
+                <div key={notMe(x).tag} className="flex items-center gap-x-1">
+                  <FlagAvatarCore tag={notMe(x).tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${notMe(x).name} (${
+                      notMe(x).tag
+                    })`}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">Since: {x.start_date}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
+              ))}
+            </td>
+          </tr>
+        )}
 
-      {steerTradeReceiving.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Steer Trade (receiving):</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {steerTradeReceiving.map((x) => (
-              <div key={notMe(x).tag} className="flex items-center gap-x-1">
-                <FlagAvatarCore tag={notMe(x).tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${notMe(x).name} (${
-                    notMe(x).tag
-                  })`}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">Since: {x.start_date}</p>
-                  )}
+        {steerTradeReceiving.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Steer Trade (receiving):</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {steerTradeReceiving.map((x) => (
+                <div key={notMe(x).tag} className="flex items-center gap-x-1">
+                  <FlagAvatarCore tag={notMe(x).tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${notMe(x).name} (${
+                      notMe(x).tag
+                    })`}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">Since: {x.start_date}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
-      {steerTradeGiving.length > 0 && (
-        <tr className="even:bg-gray-50">
-          <td>Steer Trade (giving):</td>
-          <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
-            {steerTradeGiving.map((x) => (
-              <div key={notMe(x).tag} className="flex items-center gap-x-1">
-                <FlagAvatarCore tag={notMe(x).tag} size="large" />
-                <div>
-                  <p className="m-0 text-sm">{`${notMe(x).name} (${
-                    notMe(x).tag
-                  })`}</p>
-                  {x.start_date && (
-                    <p className="m-0 text-sm">Since: {x.start_date}</p>
-                  )}
+              ))}
+            </td>
+          </tr>
+        )}
+        {steerTradeGiving.length > 0 && (
+          <tr className="even:bg-gray-50">
+            <td>Steer Trade (giving):</td>
+            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+              {steerTradeGiving.map((x) => (
+                <div key={notMe(x).tag} className="flex items-center gap-x-1">
+                  <FlagAvatarCore tag={notMe(x).tag} size="large" />
+                  <div>
+                    <p className="m-0 text-sm">{`${notMe(x).name} (${
+                      notMe(x).tag
+                    })`}</p>
+                    {x.start_date && (
+                      <p className="m-0 text-sm">Since: {x.start_date}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </td>
-        </tr>
-      )}
+              ))}
+            </td>
+          </tr>
+        )}
+      </tbody>
     </table>
   );
 };
