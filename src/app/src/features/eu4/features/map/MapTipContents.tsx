@@ -1,21 +1,37 @@
 import { Descriptions, Divider } from "antd";
 import { QuickTipPayload } from "../../types/map";
-import { FlagAvatar } from "../../components/avatars";
+import { FlagAvatarCore } from "../../components/avatars";
 import classes from "./MapTipContents.module.css";
 
 interface MapTipContentsProps {
   tip: QuickTipPayload;
 }
 
+interface MapTipFlagProps {
+  tag: string;
+  name: string;
+}
+
+const MapTipFlag = ({ tag, name }: MapTipFlagProps) => {
+  return (
+    <div className="flex text-start gap-1">
+      <FlagAvatarCore tag={tag} />
+      <span>
+        {name} ({tag})
+      </span>
+    </div>
+  );
+};
+
 const MapTipsTable = ({ tip }: MapTipContentsProps) => {
   const items = [
     <Descriptions.Item label="Owner" key="Owner">
-      <FlagAvatar tag={tip.owner.tag} name={tip.owner.name} />
+      <MapTipFlag tag={tip.owner.tag} name={tip.owner.name} />
     </Descriptions.Item>,
     ...(tip.owner.tag != tip.controller.tag
       ? [
           <Descriptions.Item label="Controller" key="Controller">
-            <FlagAvatar tag={tip.controller.tag} name={tip.controller.name} />
+            <MapTipFlag tag={tip.controller.tag} name={tip.controller.name} />
           </Descriptions.Item>,
         ]
       : []),
