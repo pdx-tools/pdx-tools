@@ -987,4 +987,16 @@ export const changes: ChangelogEntry[] = [
       );
     },
   },
+  {
+    title: "2022-08-08",
+    render: () => {
+      return (
+        <ChangelogList>
+          <li>
+            🐛 - Fix map tooltip flicker when hovering over bottom of page
+          </li>
+        </ChangelogList>
+      );
+    },
+  },
 ];

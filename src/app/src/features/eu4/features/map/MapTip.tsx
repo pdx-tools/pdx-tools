@@ -81,10 +81,17 @@ export const MapTip = () => {
       document.documentElement.clientWidth - rect.width - 5,
       pointer.x + 10
     );
-    const y = Math.min(
+
+    let y = Math.min(
       document.documentElement.clientHeight - rect.height - 5,
       pointer.y + 10
     );
+
+    // Make the map tip above the cursor when at the bottom of the page to avoid
+    // DOM flicker
+    if (y < pointer.y) {
+      y = pointer.y - rect.height - 5;
+    }
 
     setPosition({ x, y });
   }, [mapTip, toolTipRef, pointer.x, pointer.y]);
