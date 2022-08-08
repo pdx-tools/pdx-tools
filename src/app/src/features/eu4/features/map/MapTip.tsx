@@ -156,7 +156,7 @@ export const MapTip = () => {
   return (
     <div
       ref={toolTipRef}
-      className="absolute drop-shadow-md"
+      className="absolute drop-shadow-md pointer-events-none"
       style={toolTipStyle}
     >
       {mapTip && <MapTipContents tip={mapTip} />}
