@@ -42,8 +42,8 @@ export const AnalyzeBox = () => {
         <img
           src={filetypes}
           className="drop-shadow-xl mb-6"
-          height={300}
-          width={269}
+          height={269}
+          width={300}
           alt="Country budgetary breakdown"
         />
         <p className="text-2xl leading-loose mb-2">
