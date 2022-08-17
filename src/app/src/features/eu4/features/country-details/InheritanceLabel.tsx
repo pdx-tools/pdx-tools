@@ -24,7 +24,7 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
         width="400px"
       >
         <div className={classes.table}>
-          <h2>Inheritance Values</h2>
+          <h2>Inheritance Value Breakdown</h2>
           <table className="w-full mb-4">
             <tbody>
               {inheritance.calculations.map((x) => (
@@ -100,47 +100,13 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
           </table>
 
           <p>
-            Inheritance values give us insight into the window of inclusive
-            years of other countries, who will be inherited if their ruler dies
-            without an heir. All inheritance windows shift on new emperors,
-            papacy controller changes, capital provinces, and number of
-            provinces, so check this window frequently.
-          </p>
-          <p>
-            When the ruler dies, the inheritance value is compared with the{" "}
-            <a href="https://eu4.paradoxwikis.com/Personal_union#Inheritance">
-              inheritance chance
+            <a target="_blank" href="/docs/eu4-guides/royal-marriage-inheritance/">
+              Check out the guide on inheritance values
             </a>
-            , which can be seen ingame in the union tooltip on the diplomatic
-            view. If the inheritance value is less than the inheritance chance,
-            the junior partner is inherited
+            , which will deteministically tell you if the death of an heirless
+            ruler will result in a PU or even an inheritance! It will also tell
+            you if the junior partner of a PU will be inherited.
           </p>
-          <p>
-            This is feature is currently intended to be used while EU4 is open,
-            as EU4 informs us of rulers without an heir. Cross reference that
-            list here to find old rulers who are likely die within their
-            inheritance window.
-          </p>
-          <p>For more information:</p>
-          <ul>
-            <li>
-              <a href="https://www.reddit.com/r/eu4/comments/sfnba3/how_junior_partner_inheritance_really_workshint/?utm_source=share&utm_medium=web2x&context=3">
-                How junior partner inheritance really works (Hint: it is not a
-                dice roll) (Reddit)
-              </a>
-            </li>
-            <li>
-              <a href="https://forum.paradoxplaza.com/forum/threads/guide-to-royal-marriages-personal-unions-and-claim-throne.788829/">
-                Atwix's guide to royal marriages, personal unions and claim
-                throne.
-              </a>
-            </li>
-            <li>
-              <a href="https://youtu.be/seW0FRZdts4">
-                Radios Res' Personal Unions - An In-Depth Guide (Youtube)
-              </a>
-            </li>
-          </ul>
         </div>
       </Drawer>
       <div>Inheritance</div>

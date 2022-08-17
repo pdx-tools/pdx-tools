@@ -21,3 +21,4 @@ dev/.env.*prod
 dev/.env.*staging
 *.node
 tmp/
+node_modules

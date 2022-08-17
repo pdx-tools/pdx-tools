@@ -1,3 +1,0 @@
-[submodule "src/blog"]
-	path = src/blog
-	url = https://github.com/rakaly/blog.git
