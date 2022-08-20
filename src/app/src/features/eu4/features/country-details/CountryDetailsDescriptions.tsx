@@ -4,6 +4,7 @@ import { Descriptions } from "antd";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryDetails } from "@/features/eu4/types/models";
 import { InheritanceLabel } from "./InheritanceLabel";
+import { useIsJuniorPartner } from "./detailHooks";
 
 interface CountryDetailsProps {
   details: CountryDetails;
@@ -13,6 +14,7 @@ export const CountryDetailsDescriptions = ({
   details,
 }: CountryDetailsProps) => {
   const { ruler, technology, ideas } = details;
+  const isJuniorParter = useIsJuniorPartner(details);
   let ideaElem = ideas.map(([name, count]) => {
     name = name.substring(0, name.length - "_ideas".length);
     let ideaMarkers = [];
@@ -32,17 +34,6 @@ export const CountryDetailsDescriptions = ({
       </tr>
     );
   });
-
-  const isJuniorParter = useMemo(
-    () =>
-      details.diplomacy.find(
-        (x) =>
-          x.kind === "Dependency" &&
-          x.second.tag === details.tag &&
-          x.subject_type === "personal_union"
-      ) !== undefined,
-    [details]
-  );
 
   return (
     <Descriptions>
@@ -80,14 +71,14 @@ export const CountryDetailsDescriptions = ({
           <tbody>{ideaElem}</tbody>
         </table>
       </Descriptions.Item>
-      {!isJuniorParter && (
-        <Descriptions.Item label={<InheritanceLabel details={details} />}>
-          <div className="flex flex-col no-break">
+      <Descriptions.Item label={<InheritanceLabel details={details} />}>
+        <div className="flex flex-col no-break">
+          {!isJuniorParter && (
             <div>{`Window: [${details.inheritance.start_t1_year} - ${details.inheritance.end_t1_year}]`}</div>
-            <div>{`Inheritance Value: ${details.inheritance.inheritance_value}`}</div>
-          </div>
-        </Descriptions.Item>
-      )}
+          )}
+          <div>{`Inheritance Value: ${details.inheritance.inheritance_value}`}</div>
+        </div>
+      </Descriptions.Item>
     </Descriptions>
   );
 };
