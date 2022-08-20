@@ -19,6 +19,14 @@ const config = {
     locales: ["en"],
   },
 
+  scripts: [
+    {
+      src: "https://a.pdx.tools/js/index.js",
+      async: true,
+      "data-domain": "pdx.tools",
+    }
+  ],
+
   presets: [
     [
       "classic",
