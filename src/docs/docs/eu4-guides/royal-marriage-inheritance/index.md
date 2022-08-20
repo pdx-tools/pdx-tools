@@ -61,19 +61,18 @@ Since this may be tough to visualize or plan for, PDX tools lists out when each 
 [![Breakdown of inheritance values](breakdown-2.png)](breakdown-2.png)
 *Breakdown of inheritance values*
 
-Thus Berg would come under my PU if:
+Thus, in our example, Berg would come under my PU if:
 
 - I royal married Berg
 - Their ruler died heirless within the next 6 years with no changes to the inheritance value subtotal (ie: Curia controller, emperor, capital)
 - Berg is at peace
-- No other country has a higher priority (eg: has the same dynasty as Berg or used claim throne)
-- My nation has the highest autonomy adjusted development compared to the other nations that royal married Berg
+- I am [the best claimant](https://eu4.paradoxwikis.com/Personal_union#Personal_union_through_diplomatic_means)
 
 All this and the PU could be contested through a succession war
 
 ## Opportunistic Marriage Strategy
 
-The opportunistic marriage strategy is a short term strategy designed to increase our luck surface area without totally disregarding the number of diplo relations. This strategy is inherently limited (heirless rulers in T1/T2 that don't have a shared dynasty with another country can be rare), and luck based (timing ruler death). At the very least it can be a fun way to try and cheese EU4.
+The opportunistic marriage strategy is a short term strategy designed to increase our luck surface area without totally disregarding the number of diplo relations. This strategy is inherently limited, as heirless rulers in T1/T2 that die when desired is very luck based. At the very least it can be a fun way to try and cheese EU4.
 
 :::tip
 Spreading your dynasty on monarch death (T0) is still a good strategy for long term interests as it increases your chance of PU in the future if the target country finds itself without an heir again (or if you want to claim the throne). The opportunistic marriage strategy is just focused on exploiting situations with additional data.
@@ -86,18 +85,15 @@ The strategy:
   *Notification banner of heirless rulers*
 - Filter list to only desired countries
 - Load save into PDX Tools and check inheritance values
-- Filter list to countries that have an inheritance value close to or above 75 (T1/T2) (and potentially exclude those who will soon enter T0 and there's slim chance likelihood of monarch death)
-- Filter list to countries that don't have the same dynasty as another country
-  [![](monarch-death.jpg)](monarch-death.jpg)
-  *If France starting ruler and heir died in 1444, I couldn't get a PU over France as Austria, as I don't share the same dynasty (de Valois)*
-- Filter list to countries that aren't royal married to someone with more development
+- Filter list to countries to those that have an inheritance value close to or above 75 (T1/T2) (and potentially exclude those who will soon enter T0 and there's slim chance likelihood of monarch death)
+- Filter list to countries to those where you are [the best claimant](https://eu4.paradoxwikis.com/Personal_union#Personal_union_through_diplomatic_means). See the wiki for more details, but a good heuristic is you have the most development of all who share the same dynasty or have royal married the target.
 - Send royal marriage and hopefully the heirless ruler dies when desired
 - Repeat the entire process whenever world wide inheritance value subtotal fluxuates (ie: Curia controller, emperor), as countries that were previously in T0 may now be in T1 or T2.
 
 In 1.33, there are pretty slim pickings at the 1444 start date, some young rulers need to die:
 
 - A few Irish minors (Ulster, Tyrconnel, Offaly (probably the best one)).
-- A few German minors (Nassau, Ingolstadt, Berg)
+- A couple German minors (Nassau, Berg)
 - The best one may be England, who enters T1/T2 territory after a few in-game years, but even if the young king dies while at peace, one will most likely need to contend with France in a succession war.
 
 The good news is that the constant churn of rulers could open up more interesting maneuvers like a play for Scotland or Bohemia if the curia controller changes hands or the emperor dies. Always keep an eye on inheritance value updates.  
@@ -119,14 +115,9 @@ First observe the reported inheritance chance when hovering over the personal un
 [![inheritance chance](inheritance-chance.png)](inheritance-chance.png)
 *Thuringia has an inheritance chance of 7*
 
-Even though it is reported as a chance, if the inheritance value is less than the inheritance chance, the junior partner gets inherited provided the union is 50 years old and the junior partner has positive relations.
+Even though it is reported as a percentage, if the inheritance value is less than the inheritance chance, the junior partner gets inherited provided the union is 50 years old and the junior partner has positive relations.
 
-Inheritance chance factors [from the wiki](https://eu4.paradoxwikis.com/Personal_union#Inheritance):
-
-- +1% for each point of Stability
-- +5% for each point of diplomatic reputation
-- +5% if in same culture group
-- -1% for each province of the junior partner
+For a list of inheritance chance factors, [see the wiki](https://eu4.paradoxwikis.com/Personal_union#Inheritance)
 
 :::tip
 Crafty players can use throne abdication if they want to force inheritance.
@@ -139,3 +130,22 @@ For more information, see:
 - [How junior partner inheritance really works (Hint: it is not a dice roll) (Reddit)](https://www.reddit.com/r/eu4/comments/sfnba3/how_junior_partner_inheritance_really_workshint/?utm_source=share&utm_medium=web2x&context=3)
 - [Atwix's guide to royal marriages, personal unions and claim throne.](https://forum.paradoxplaza.com/forum/threads/guide-to-royal-marriages-personal-unions-and-claim-throne.788829)
 - [Radios Res' Personal Unions - An In-Depth Guide (Youtube)](https://youtu.be/seW0FRZdts4)
+
+## Test Scenarios
+
+To build an intuition for how the mechanics work, here are some scenarios to try out with console commands (executed on patch 1.33):
+
+- Stettin starts in T1, so if the heir and ruler of Stettin die before 1447, Stettin gets inherited by Wolgast (who shares the same dynasty at the start) or by whoever also has a royal marriage, but with more development:
+  ```
+  kill_heir ste
+  kill ste
+  ```
+- If the Orlean ruler dies between in 1446-1450 (T1), France inherits their vassal:
+  ```
+  date 1446.1.1
+  kill orl
+  ```
+- Offaly becomes under a PU (T2) if you royal marry them and their ruler dies
+  ```
+  kill fly
+  ```
