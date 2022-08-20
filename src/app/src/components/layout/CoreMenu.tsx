@@ -62,6 +62,10 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
       label: <Link href="/changelog">Changelog</Link>,
     },
     {
+      key: "docs",
+      label: <Link href="/docs">Docs</Link>,
+    },
+    {
       key: "community",
       label: "Community",
       children: [

@@ -13,7 +13,7 @@ let nextConfig = {
     config.output.assetModuleFilename = `static/[hash][ext]`;
     config.output.publicPath = `/_next/`;
     config.module.rules.push({
-      test: /\.(png|wasm|bin|webp|frag|vert)$/,
+      test: /\.(png|wasm|bin|webp|frag|vert|svg)$/,
       type: "asset/resource",
     });
 
@@ -55,6 +55,16 @@ let nextConfig = {
         ],
       },
     ];
+  },
+  async rewrites() {
+    return {
+      fallback: [
+        {
+          source: '/:path*',
+          destination: `http://localhost:3000/:path*`,
+        },
+      ],
+    }
   },
   serverRuntimeConfig: {
     PROJECT_ROOT: __dirname,

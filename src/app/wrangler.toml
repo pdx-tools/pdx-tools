@@ -5,7 +5,7 @@ route = "pdx.tools/*"
 compatibility_date = "2021-09-18"
 
 [build]
-command = "cd workers-site && npm ci && npm run build"
+command = "cd workers-site && npm run build"
 
 [build.upload]
 format = "service-worker"

@@ -45,7 +45,12 @@ setup:
 
   ./.devcontainer/library-scripts/npm-dependencies.sh
   sudo ./.devcontainer/library-scripts/dependencies.sh
-  (cd "src/app" && npm ci)
+  just npm-ci
+
+npm-ci:
+  (cd src/docs && npm ci)
+  (cd src/app && npm ci)
+  (cd src/app/workers-site && npm ci)
 
 publish-backend:
   docker push docker.nbsoftsolutions.com/pdx-tools/app
@@ -58,7 +63,9 @@ publish-frontend: (wrangler "publish")
 publish-frontend-dev: (wrangler "publish" "--env" "dev")
 
 build-app: prep-frontend
+  cd src/docs && npm run build
   cd src/app && npm run build
+  cd src/docs/build && cp -r assets blog changelog docs img ../../app/out/.
 
 build-docker:
   docker build -t docker.nbsoftsolutions.com/pdx-tools/app -f ./dev/app.dockerfile ./src/app
@@ -86,7 +93,9 @@ dev-app: prep-frontend prep-dev-app
   export DATABASE_URL=postgresql://postgres:$DATABASE_ADMIN_PASSWORD@localhost:$DATABASE_PORT
   (cd src/app && npx prisma migrate dev --name init)
 
-  PORT=3001 src/app/node_modules/.bin/next dev src/app
+  npx --yes concurrently@latest \
+    "PORT=3001 src/app/node_modules/.bin/next dev src/app" \
+    "cd src/docs && npm run docusaurus -- start --no-open"
 
 test-app *cmd: prep-test-app
   #!/usr/bin/env bash

@@ -53,8 +53,8 @@ addEventListener("fetch", (event: FetchEvent) => {
       }
     } else if (path.startsWith("/api") || path.startsWith("/admin")) {
       return;
-    } else if (path.startsWith("/blog")) {
-      event.respondWith(handleBlogEvent(event));
+    } else if (isDocsUrl(path)) {
+      event.respondWith(handleDocsEvent(event));
     } else {
       event.respondWith(handleEvent(event));
     }
@@ -226,7 +226,12 @@ async function handleEvent(event: FetchEvent) {
   }
 }
 
-async function handleBlogEvent(event: FetchEvent) {
+function isDocsUrl(path: string) {
+  const prefixes = ["assets", "blog", "changelog", "docs", "img"];
+  return prefixes.find((x) => path.startsWith(`/${x}`)) !== undefined;
+}
+
+async function handleDocsEvent(event: FetchEvent) {
   let pathname = new URL(event.request.url).pathname;
   try {
     const cacheControl = calcCacheControl(event);
