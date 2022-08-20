@@ -1,5 +1,9 @@
 import React, { useEffect } from "react";
-import { selectEngineError, useFilePublisher } from "@/features/engine";
+import {
+  selectAnalyzeProgressVisible,
+  selectEngineError,
+  useFilePublisher,
+} from "@/features/engine";
 import { useSelector } from "react-redux";
 import { Alert } from "antd";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -13,6 +17,7 @@ interface SaveProps {
 export const SavePage = ({ saveId }: SaveProps) => {
   const filePublisher = useFilePublisher();
   const engineError = useSelector(selectEngineError);
+  const progressVisible = useSelector(selectAnalyzeProgressVisible);
 
   useEffect(() => {
     filePublisher({ kind: "server", saveId });
@@ -27,7 +32,7 @@ export const SavePage = ({ saveId }: SaveProps) => {
           <Alert type="error" closable={true} message={engineError} />
         </>
       )}
-      {!engineError && <AppLoading />}
+      {progressVisible && <AppLoading />}
     </>
   );
 };
