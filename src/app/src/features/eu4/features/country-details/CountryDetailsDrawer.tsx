@@ -145,7 +145,16 @@ export const CountryDetailsDrawer = ({
             )}
           </TabPane>
           <TabPane tab="Advisors" key="Advisors">
-            <Divider orientation="left">One Time Advisor Events</Divider>
+            <Divider orientation="left">
+              One Time Advisor Events (
+              <a
+                target="_blank"
+                href="/docs/eu4-guides/one-time-advisor-events/"
+              >
+                guide
+              </a>
+              )
+            </Divider>
             <GreatAdvisorsList greatAdvisors={greatAdvisors} />
           </TabPane>
           <TabPane tab="Rulers" key="Rulers">
