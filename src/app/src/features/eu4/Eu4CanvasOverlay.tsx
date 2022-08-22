@@ -72,8 +72,8 @@ export const Eu4CanvasOverlay = () => {
     <>
       <MapTip />
       <DateOverlay />
-      <div className="fixed select-none touch-none right-0">
-        <div className="flex flex-col gap-2 text-white text-4xl">
+      <div className="fixed right-0 touch-none select-none">
+        <div className="flex flex-col gap-2 text-4xl text-white">
           {buttons.map((x, i) => x(i))}
         </div>
       </div>

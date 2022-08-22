@@ -8,13 +8,13 @@ export const Ck3Ui = () => {
   const filename = useSelector(selectAnalyzeFileName);
   const meta = useCk3Meta();
   return (
-    <main className="max-w-screen-lg mx-auto mt-4">
+    <main className="mx-auto mt-4 max-w-screen-lg">
       <Head>
         <title>{`${filename.replace(".ck3", "")} - CK3 (${
           meta.version
         }) - PDX Tools`}</title>
       </Head>
-      <div className="max-w-prose mx-auto">
+      <div className="mx-auto max-w-prose">
         <h2>CK3</h2>
         <p>
           {`A CK3 save was detected (version ${meta.version}). At this time, CK3 functionality is limited but one can still melt binary ironman saves into plaintext`}

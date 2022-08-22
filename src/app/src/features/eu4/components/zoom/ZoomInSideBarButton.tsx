@@ -17,7 +17,7 @@ export const ZoomInSideBarButton = ({
   return (
     <SideBarButton
       {...props}
-      className="p-0 w-[30px] h-[30px] text-white text-lg border-b-0"
+      className="h-[30px] w-[30px] border-b-0 p-0 text-lg text-white"
       onClick={zoomIn}
     >
       {children}

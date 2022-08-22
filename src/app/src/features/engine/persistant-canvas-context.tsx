@@ -74,7 +74,7 @@ export const CanvasContextProvider = ({
     <>
       <div
         ref={containerRef}
-        className="absolute w-full h-full touch-none"
+        className="absolute h-full w-full touch-none"
         style={{ display: showCanvas ? "flex" : "none", top: -positioning }}
       >
         <canvas

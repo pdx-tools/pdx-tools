@@ -11,7 +11,7 @@ export const AnalyzeDropZone = () => {
       style={{ zIndex: ZIndex.AnalyzeShadeOverlay }}
       className={`absolute top-0 left-0 bg-transparent transition ${
         isFileHover &&
-        `w-screen h-screen bg-gray-500/25 outline outline-blue-500/50 ${classes["overlay-outline"]}`
+        `h-screen w-screen bg-gray-500/25 outline outline-blue-500/50 ${classes["overlay-outline"]}`
       }`}
     ></div>
   );

@@ -53,42 +53,42 @@ export const Home = ({ subtitle }: HomeProps) => {
   const engineError = useSelector(selectEngineError);
 
   return (
-    <div className="w-full h-screen">
+    <div className="h-screen w-full">
       <div
-        className={`${classes.row} grid lg:grid-cols-2 gap-8 px-5 md:px-9 py-12 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white bg-bottom bg-repeat-x`}
+        className={`${classes.row} grid justify-center gap-8 bg-bottom bg-repeat-x px-5 py-12 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 lg:grid-cols-2`}
         style={{ backgroundImage: waveBackground }}
       >
-        <div className="flex flex-col gap-y-4 lg:max-w-lg justify-self-end">
+        <div className="flex flex-col gap-y-4 justify-self-end lg:max-w-lg">
           <h1 className="text-4xl font-extrabold tracking-tight text-white sm:mt-0 sm:text-6xl lg:mt-6 xl:text-6xl">
             Explore the world
             <span className="block italic">you created</span>
           </h1>
-          <p className="text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl max-w-prose mb-0">
+          <p className="mb-0 max-w-prose text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
             Save files contain a treasure trove of information. PDX Tools is a
             modern save file analyzer that will unlock hidden EU4 insights
             without the save leaving your browser.
           </p>
-          <p className="text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl max-w-prose mb-0">
+          <p className="mb-0 max-w-prose text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
             Ready to explore maps, timelapses, and charts?
           </p>
 
-          <div className="flex flex-row justify-center lg:justify-start items-center gap-x-3 mt-4">
+          <div className="mt-4 flex flex-row items-center justify-center gap-x-3 lg:justify-start">
             <label
               htmlFor="analyze-box-file-input"
-              className="mx-2 px-6 py-3 font-bold border-4 border-solid cursor-pointer text-white border-white rounded-xl hover:border-blue-500"
+              className="mx-2 cursor-pointer rounded-xl border-4 border-solid border-white px-6 py-3 font-bold text-white hover:border-blue-500"
             >
               Select a save
             </label>
             <Link href="/eu4/saves/_9Hcw32JWTZRx6zK3FVuz">
-              <a className="mx-2 px-6 py-3 font-bold border-4 border-solid cursor-pointer text-white border-white rounded-xl hover:border-blue-500 hover:text-white">
+              <a className="mx-2 cursor-pointer rounded-xl border-4 border-solid border-white px-6 py-3 font-bold text-white hover:border-blue-500 hover:text-white">
                 Load sample
               </a>
             </Link>
           </div>
           <BrowserCheck />
         </div>
-        <section className="flex flex-col w-full justify-end">
-          <div className="flex flex-col gap w-full max-w-xl">
+        <section className="flex w-full flex-col justify-end">
+          <div className="gap flex w-full max-w-xl flex-col">
             <AnalyzeBox />
             {subtitle}
             {engineError && (
@@ -100,7 +100,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         </section>
       </div>
       <div
-        className={`${classes.row} flex flex-col items-center px-5 md:px-9 py-16 justify-center text-xl even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex flex-col items-center justify-center px-5 py-16 text-xl odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <img
           src={headline}
@@ -112,67 +112,67 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <div className="max-w-7xl">
-          <h2 className="text-center text-3xl xl:text-4xl font-extrabold tracking-tight text-white m-0">
+          <h2 className="m-0 text-center text-3xl font-extrabold tracking-tight text-white xl:text-4xl">
             Questions? Answered.
           </h2>
-          <p className="text-xl text-center mt-3 mb-6">
+          <p className="mt-3 mb-6 text-center text-xl">
             PDX Tools can help you answer these EU4 questions
           </p>
-          <div className="grid gap-4 md:gap-y-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
-              <p className="m-0 text-2xl text-center">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-y-6 xl:grid-cols-4">
+            <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
+              <p className="m-0 text-center text-2xl">
                 Could a royal marriage cause a{" "}
                 <abbr title="Personal Union">PU</abbr> or inheritance?
               </p>
             </div>
-            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
-              <p className="m-0 text-2xl text-center">
+            <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
+              <p className="m-0 text-center text-2xl">
                 How much mana was spent developing provinces?
               </p>
             </div>
-            <div className="sm:col-span-2 mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
-              <p className="m-0 text-2xl text-center">
+            <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white sm:col-span-2">
+              <p className="m-0 text-center text-2xl">
                 How much more dev is needed for religious rebels to change the
                 state religion?
               </p>
             </div>
-            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
-              <p className="m-0 text-2xl text-center">
+            <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
+              <p className="m-0 text-center text-2xl">
                 How fast did the reformation spread?
               </p>
             </div>
 
-            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
-              <p className="m-0 text-2xl text-center">
+            <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
+              <p className="m-0 text-center text-2xl">
                 What one time advisor events remain?
               </p>
             </div>
 
-            <div className="sm:col-span-2 mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
-              <p className="m-0 text-2xl text-center">
+            <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white sm:col-span-2">
+              <p className="m-0 text-center text-2xl">
                 What is the reign weighted running average of monarch power?
               </p>
             </div>
-            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
-              <p className="m-0 text-2xl text-center">
+            <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
+              <p className="m-0 text-center text-2xl">
                 How much more dev is needed to culture shift?
               </p>
             </div>
-            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
-              <p className="m-0 text-2xl text-center">
+            <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
+              <p className="m-0 text-center text-2xl">
                 What wars were wars of attrition?
               </p>
             </div>
-            <div className="mx-2 px-9 flex items-center justify-center py-6 border-4 border-solid text-white border-white rounded-xl">
-              <p className="m-0 text-2xl text-center">
+            <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
+              <p className="m-0 text-center text-2xl">
                 What heirs failed to take the throne?
               </p>
             </div>
-            <div className="mx-2 px-9 flex items-center justify-center py-4 border-4 border-solid text-white border-white rounded-xl">
-              <p className="m-0 text-2xl text-center">
+            <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-4 text-white">
+              <p className="m-0 text-center text-2xl">
                 What are the most popular idea groups?
               </p>
             </div>
@@ -181,7 +181,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <section>
           <div className="max-w-prose">
@@ -214,7 +214,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <section>
           <div className="max-w-prose">
@@ -245,7 +245,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <section>
           <div className="max-w-prose">
@@ -264,11 +264,11 @@ export const Home = ({ subtitle }: HomeProps) => {
             <div className="flex flex-col gap-y-2">
               <div className="flex items-center gap-x-1">
                 <FirefoxIcon className="fill-gray-300" />
-                <div className="h-6 border-l border-y-0 border-r-0 border-gray-300 border-dotted" />
+                <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
                 <ChromeIcon className="fill-gray-300" />
-                <div className="h-6 border-l border-y-0 border-r-0 border-gray-300 border-dotted" />
+                <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
                 <EdgeIcon className="fill-gray-300" />
-                <div className="h-6 border-l border-y-0 border-r-0 border-gray-300 border-dotted" />
+                <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
                 <SafariIcon className="fill-gray-300" />
               </div>
               <div className="text-xs">
@@ -289,7 +289,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <section>
           <div className="max-w-prose">
@@ -316,7 +316,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <section>
           <div className="max-w-prose">
@@ -356,7 +356,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <section>
           <div className="max-w-prose">
@@ -383,7 +383,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex px-5 md:px-9 py-16 justify-center text-lg even:bg-white odd:bg-teal-900 odd:text-white`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <section>
           <div className="max-w-prose">

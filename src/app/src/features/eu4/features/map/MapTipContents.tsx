@@ -14,7 +14,7 @@ interface MapTipFlagProps {
 
 const MapTipFlag = ({ tag, name }: MapTipFlagProps) => {
   return (
-    <div className="flex text-start gap-1">
+    <div className="flex gap-1 text-start">
       <FlagAvatarCore tag={tag} />
       <span>
         {name} ({tag})
@@ -88,7 +88,7 @@ const MapTipsTable = ({ tip }: MapTipContentsProps) => {
 export const MapTipContents = ({ tip }: MapTipContentsProps) => {
   return (
     <div
-      className={`${classes["tooltip-contents"]} border-2 border-solid border-gray-300 bg-white p-4 pt-0 rounded-2xl no-break`}
+      className={`${classes["tooltip-contents"]} no-break rounded-2xl border-2 border-solid border-gray-300 bg-white p-4 pt-0`}
     >
       <Divider orientation="left">
         {`${tip.provinceName} (${tip.provinceId})`}

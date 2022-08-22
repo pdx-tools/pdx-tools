@@ -72,7 +72,7 @@ export const CountryDetailsDescriptions = ({
         </table>
       </Descriptions.Item>
       <Descriptions.Item label={<InheritanceLabel details={details} />}>
-        <div className="flex flex-col no-break">
+        <div className="no-break flex flex-col">
           {!isJuniorParter && (
             <div>{`Window: [${details.inheritance.start_t1_year} - ${details.inheritance.end_t1_year}]`}</div>
           )}

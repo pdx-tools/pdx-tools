@@ -25,7 +25,7 @@ export const MapModeButtonGroup = () => {
       {Object.entries(modes).map(([key, value]) => (
         <Tooltip key={key} mouseEnterDelay={1} title={key}>
           <button
-            className="p-0 m-0 bg-transparent border-none select-none"
+            className="m-0 select-none border-none bg-transparent p-0"
             onClick={() => dispatch(setEu4MapMode(key as MapControls["mode"]))}
           >
             <img

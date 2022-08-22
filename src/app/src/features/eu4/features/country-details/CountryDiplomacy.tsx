@@ -158,7 +158,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {allies.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Allies:</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {allies.map((x) => (
                 <div key={notMe(x).tag} className="flex gap-x-1">
                   <FlagAvatarCore tag={notMe(x).tag} size="large" />
@@ -178,7 +178,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {marriages.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Royal Marriages:</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {marriages.map((x) => (
                 <div key={notMe(x).tag} className="flex gap-x-1">
                   <FlagAvatarCore tag={notMe(x).tag} size="large" />
@@ -198,7 +198,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {vassals.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Vassals:</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {vassals.map((x) => (
                 <div key={notMe(x).tag} className="flex gap-x-1">
                   <FlagAvatarCore tag={x.second.tag} size="large" />
@@ -216,7 +216,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {colonies.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Colonies:</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {colonies.map((x) => (
                 <div key={notMe(x).tag}>
                   <p className="m-0 text-sm">{`${x.second.name} (${x.second.tag})`}</p>
@@ -234,7 +234,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {juniorPartners.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Junior Partners:</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {juniorPartners.map((x) => (
                 <div key={notMe(x).tag} className="flex gap-x-1">
                   <FlagAvatarCore tag={x.second.tag} size="large" />
@@ -252,7 +252,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {warned.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Warning:</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {warned.map((x) => (
                 <div key={notMe(x).tag} className="flex gap-x-1">
                   <FlagAvatarCore tag={notMe(x).tag} size="large" />
@@ -272,7 +272,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {warnedBy.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Warned by:</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {warnedBy.map((x) => (
                 <div key={notMe(x).tag} className="flex gap-x-1">
                   <FlagAvatarCore tag={notMe(x).tag} size="large" />
@@ -293,7 +293,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {subsidizing.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Subsidizing:</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {subsidizing.map((x) => (
                 <div key={notMe(x).tag} className="flex items-center gap-x-1">
                   <FlagAvatarCore tag={notMe(x).tag} size="large" />
@@ -317,7 +317,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {subsidized.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Subsidized by:</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {subsidized.map((x) => (
                 <div key={notMe(x).tag} className="flex items-center gap-x-1">
                   <FlagAvatarCore tag={notMe(x).tag} size="large" />
@@ -341,7 +341,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {reparationsReceiving.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Reparations (receiving):</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {reparationsReceiving.map((x) => (
                 <div key={notMe(x).tag} className="flex items-center gap-x-1">
                   <FlagAvatarCore tag={notMe(x).tag} size="large" />
@@ -364,7 +364,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {reparationsGiving.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Reparations (giving):</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {reparationsGiving.map((x) => (
                 <div key={notMe(x).tag} className="flex items-center gap-x-1">
                   <FlagAvatarCore tag={notMe(x).tag} size="large" />
@@ -388,7 +388,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {tradePowerReceiving.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Trade Power (receiving):</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {tradePowerReceiving.map((x) => (
                 <div key={notMe(x).tag} className="flex items-center gap-x-1">
                   <FlagAvatarCore tag={notMe(x).tag} size="large" />
@@ -408,7 +408,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {tradePowerGiving.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Trade Power (giving):</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {tradePowerGiving.map((x) => (
                 <div key={notMe(x).tag} className="flex items-center gap-x-1">
                   <FlagAvatarCore tag={notMe(x).tag} size="large" />
@@ -429,7 +429,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {steerTradeReceiving.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Steer Trade (receiving):</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {steerTradeReceiving.map((x) => (
                 <div key={notMe(x).tag} className="flex items-center gap-x-1">
                   <FlagAvatarCore tag={notMe(x).tag} size="large" />
@@ -449,7 +449,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         {steerTradeGiving.length > 0 && (
           <tr className="even:bg-gray-50">
             <td>Steer Trade (giving):</td>
-            <td className="px-2 py-4 flex flex-wrap gap-x-4 gap-y-2">
+            <td className="flex flex-wrap gap-x-4 gap-y-2 px-2 py-4">
               {steerTradeGiving.map((x) => (
                 <div key={notMe(x).tag} className="flex items-center gap-x-1">
                   <FlagAvatarCore tag={notMe(x).tag} size="large" />

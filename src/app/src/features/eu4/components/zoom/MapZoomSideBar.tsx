@@ -6,7 +6,7 @@ import classes from "./MapZoomSideBar.module.css";
 export const MapZoomSideBar = () => {
   return (
     <div
-      className={`fixed flex flex-col select-none touch-none ${classes.sidebar}`}
+      className={`fixed flex touch-none select-none flex-col ${classes.sidebar}`}
     >
       <ZoomInSideBarButton key="zoom-in">
         <PlusOutlined />

@@ -4,7 +4,7 @@ interface AnnouncementBarProps {
 
 export const AnnouncementBar = ({ children }: AnnouncementBarProps) => {
   return (
-    <div className="flex items-center justify-center font-bold text-white py-1 px-0 bg-sky-600">
+    <div className="flex items-center justify-center bg-sky-600 py-1 px-0 font-bold text-white">
       {children}
     </div>
   );

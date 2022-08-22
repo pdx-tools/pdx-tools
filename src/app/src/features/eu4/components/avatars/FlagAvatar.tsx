@@ -54,7 +54,7 @@ const InGameFlagAvatar = ({
     return (
       <Tooltip title={tag}>
         <button
-          className="border-none p-1 bg-transparent cursor-pointer hover:bg-gray-200 active:bg-gray-300"
+          className="cursor-pointer border-none bg-transparent p-1 hover:bg-gray-200 active:bg-gray-300"
           onClick={() => panTag(tag)}
         >
           <Space className="text-start">
@@ -68,7 +68,7 @@ const InGameFlagAvatar = ({
     return (
       <Tooltip title={`${name} (${tag})`}>
         <button
-          className="border-none p-1 bg-transparent cursor-pointer hover:bg-gray-200 active:bg-gray-300"
+          className="cursor-pointer border-none bg-transparent p-1 hover:bg-gray-200 active:bg-gray-300"
           onClick={() => panTag(tag)}
         >
           <Space>

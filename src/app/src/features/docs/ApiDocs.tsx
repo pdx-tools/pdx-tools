@@ -10,7 +10,7 @@ export const ApiDocs = ({}: {}) => {
   const uid = userInfo?.user_id ?? "yourUserId";
   const cli = <a href="https://github.com/rakaly/cli">Rakaly CLI</a>;
   return (
-    <div className={`mt-4 mx-auto max-w-prose ${classes.docs}`}>
+    <div className={`mx-auto mt-4 max-w-prose ${classes.docs}`}>
       <h1>PDX Tools API Docs</h1>
       <p>
         Before getting started with PDX Tools' API, you'll want to ensure you

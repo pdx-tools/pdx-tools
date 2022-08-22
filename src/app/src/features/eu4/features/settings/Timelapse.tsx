@@ -614,7 +614,7 @@ export const Timelapse = () => {
 
   return (
     <>
-      <div className="flex items-center gap-2 justify-center">
+      <div className="flex items-center justify-center gap-2">
         <Tooltip title={!isPlaying ? "Start timelapse" : "Stop timelapse"}>
           <Button
             shape="circle"

@@ -4,9 +4,9 @@ import steam_login_image from "./sign-in-through-steam.png";
 
 export const SteamButton = () => {
   return (
-    <button className="border-none bg-transparent hover:outline-initial">
+    <button className="hover:outline-initial border-none bg-transparent">
       <Link href="/api/login/steam">
-        <a className="border-none bg-transparent hover:outline-initial">
+        <a className="hover:outline-initial border-none bg-transparent">
           <img
             className="hover:brightness-90"
             alt="login via steam"

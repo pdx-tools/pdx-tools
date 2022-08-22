@@ -18,7 +18,7 @@ export const SideBarButton = ({
   return (
     <button
       style={{ ...style, ...durationStyle }}
-      className={`${className} ${classes["slide-in"]} w-[60px] h-[60px] bg-rose-800 active:bg-rose-900 border-1 border-solid border-black drop-shadow-md`}
+      className={`${className} ${classes["slide-in"]} border-1 h-[60px] w-[60px] border-solid border-black bg-rose-800 drop-shadow-md active:bg-rose-900`}
       {...rest}
     >
       {children}

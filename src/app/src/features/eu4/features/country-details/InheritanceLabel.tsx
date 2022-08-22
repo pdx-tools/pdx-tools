@@ -28,7 +28,7 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
       >
         <div className={classes.table}>
           <h2>Inheritance Value Breakdown</h2>
-          <table className="w-full mb-4">
+          <table className="mb-4 w-full">
             <tbody>
               {inheritance.calculations.map((x) => (
                 <tr key={x.name}>
@@ -62,7 +62,7 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
 
           <h3>On Ruler Death Tiers:</h3>
           {!isJuniorParter ? (
-            <table className="w-full mb-4">
+            <table className="mb-4 w-full">
               <tbody>
                 <tr>
                   <td>

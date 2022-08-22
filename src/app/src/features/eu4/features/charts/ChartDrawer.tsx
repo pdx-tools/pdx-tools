@@ -59,7 +59,7 @@ export const ChartDrawer = ({ visible, closeDrawer }: ChartDrawerProps) => {
         <Help module={selectedViz} />
       </Drawer>
 
-      <div className="flex flex-col gap-2 h-full" ref={sideBarContainerRef}>
+      <div className="flex h-full flex-col gap-2" ref={sideBarContainerRef}>
         {displayLimit && <DisplayLimitAlert displayLimit={displayLimit} />}
         <VizRenderer module={selectedViz} />
       </div>

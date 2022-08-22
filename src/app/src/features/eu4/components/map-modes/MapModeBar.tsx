@@ -6,7 +6,7 @@ import { selectModuleDrawn } from "@/features/engine";
 export const MapModeSideBar = () => {
   const hasDrawn = useSelector(selectModuleDrawn);
   return (
-    <div className="fixed bottom-0 right-0 flex select-none touch-none">
+    <div className="fixed bottom-0 right-0 flex touch-none select-none">
       <div style={{ display: hasDrawn ? "flex" : "none" }}>
         <MapModeButtonGroup />
       </div>

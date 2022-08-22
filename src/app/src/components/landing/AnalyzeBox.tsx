@@ -35,18 +35,18 @@ export const AnalyzeBox = () => {
       <label
         tabIndex={0}
         onKeyDown={keyboardTrigger(labelFocus)}
-        className={`flex flex-col items-center text-white text-center m-2 rounded-2xl cursor-pointer bg-transparent border-0 outline-white outline-8 outline-dashed p-4 lg:p-8 ${
+        className={`m-2 flex cursor-pointer flex-col items-center rounded-2xl border-0 bg-transparent p-4 text-center text-white outline-dashed outline-8 outline-white lg:p-8 ${
           classes.label
         } ${isFileHover ? classes.hover : ""}`}
       >
         <img
           src={filetypes}
-          className="drop-shadow-xl mb-6"
+          className="mb-6 drop-shadow-xl"
           height={269}
           width={300}
           alt="Country budgetary breakdown"
         />
-        <p className="text-2xl leading-loose mb-2">
+        <p className="mb-2 text-2xl leading-loose">
           Select or drag and drop a save file
         </p>
         <input

@@ -127,7 +127,7 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
       );
     } else {
       accountSub = (
-        <div className="flex grow self-center justify-end text-end">
+        <div className="flex grow justify-end self-center text-end">
           {session.kind === "unknown" ? (
             <Skeleton.Button className="flex items-center" />
           ) : (

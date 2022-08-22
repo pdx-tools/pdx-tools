@@ -8,13 +8,13 @@ export const Hoi4Ui = () => {
   const filename = useSelector(selectAnalyzeFileName);
   const meta = useHoi4Meta();
   return (
-    <main className="max-w-screen-lg mx-auto mt-4">
+    <main className="mx-auto mt-4 max-w-screen-lg">
       <Head>
         <title>{`${filename.replace(".hoi4", "")} - HOI4 (${
           meta.date
         }) - PDX Tools`}</title>
       </Head>
-      <div className="max-w-prose mx-auto">
+      <div className="mx-auto max-w-prose">
         <h2>HOI4</h2>
         <p>
           {`A HOI4 save was detected (date ${meta.date}). At this time, HOI4 functionality is limited but one can still melt binary ironman saves into plaintext`}

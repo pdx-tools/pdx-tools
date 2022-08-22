@@ -1,5 +1,5 @@
 .row > section {
-  @apply flex flex-col gap-8 items-center max-w-screen-xl lg:flex-row;
+  @apply flex max-w-screen-xl flex-col items-center gap-8 lg:flex-row;
 }
 
 .row > section > * {
