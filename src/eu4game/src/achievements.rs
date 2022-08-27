@@ -587,6 +587,7 @@ impl<'a> AchievementHunter<'a> {
             .options
             .tax_manpower_modifier
             == TaxManpowerModifier::Historical;
+
         valid &= !query.save().meta.is_random_new_world;
 
         // Protect against users "upgrading" a patch to a later version by comparing against the
