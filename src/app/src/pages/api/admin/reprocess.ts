@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { calcWeightedScore, ParsedFile } from "@/server-lib/pool";
-import { db } from "@/server-lib/db";
+import { db, fromApiSave } from "@/server-lib/db";
 import {
   addToLeaderboard,
   removeFromLeaderboard,
 } from "@/server-lib/leaderboard";
+import { log } from "@/server-lib/logging";
 
 type ReprocessEntry = {
   saveId: string;
@@ -20,7 +21,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     const saveRow = await db.save.update({
       where: { id: save.saveId },
-      data: save.save,
+      data: fromApiSave(save.save),
     });
 
     const patch_shorthand = `${saveRow.saveVersionFirst}.${saveRow.saveVersionSecond}`;
@@ -31,8 +32,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     );
 
     if (save.save.achievements || save.save.weighted_score !== undefined) {
+      log.info({
+        msg: `save (${saveRow.id}) achievements (${save.save.achievements}) updated score (${weighted_score.days})`,
+      });
       const leaderboardData = {
-        ...save.save,
+        achievements: saveRow.achieveIds,
+        days: saveRow.days,
         patch_shorthand: patch_shorthand,
         weighted_score: weighted_score.days,
       };

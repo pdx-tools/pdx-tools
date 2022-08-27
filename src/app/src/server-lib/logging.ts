@@ -1,3 +1,4 @@
+import { toErrorWithMessage } from "@/lib/getErrorMessage";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import { ValidationError } from "./errors";
 
@@ -38,11 +39,9 @@ class Log {
   }
 
   public exception(err: unknown, data: LogMessage) {
-    if (err instanceof Error) {
-      this.error({ ...data, err: err.stack });
-    } else {
-      this.error({ ...data, err });
-    }
+    let { message, stack } = toErrorWithMessage(err);
+    stack = stack ?? new Error().stack ?? "no stack available";
+    this.error({ ...data, error: message, stack });
   }
 }
 

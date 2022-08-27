@@ -1,6 +1,7 @@
 import { Save } from ".prisma/client";
 import { ApiAchievementsResponse } from "../services/appApi";
 import { db } from "./db";
+import { log } from "./logging";
 import { ParsedFile, loadAchievements } from "./pool";
 import { redisClient } from "./redis";
 
@@ -66,7 +67,10 @@ export const isRecordBreaking = async (
 export const addToLeaderboard = async (
   saveId: string,
   save: Partial<ParsedFile> &
-    Pick<ParsedFile, "patch_shorthand" | "weighted_score">,
+    Pick<
+      ParsedFile,
+      "patch_shorthand" | "weighted_score" | "days" | "achievements"
+    >,
   epoch: number
 ) => {
   const achievementIds = save.achievements || [];
@@ -77,23 +81,22 @@ export const addToLeaderboard = async (
     epochStr = "0" + epochStr;
   }
 
+  const rawScore = `${save.days}.${epochStr}`;
+  const weightedScore = `${save.weighted_score}.${epochStr}`;
+
+  log.info({
+    msg: `save (${saveId}) achievements (${achievementIds}) redis scores (raw: ${rawScore}, weighted: ${weightedScore}))`,
+  });
+
   for (let i = 0; i < achievementIds.length; i++) {
     const achievement = achievementIds[i];
-    const entry = {
-      score: parseFloat(`${save.days}.${epochStr}`),
-      value: saveId,
-    };
-
+    const entry = { score: parseFloat(rawScore), value: saveId };
     await client.zAdd(
       `raw_achievement_scores:${achievement}:${save.patch_shorthand}`,
       entry
     );
 
-    const topEntry = {
-      score: parseFloat(`${save.weighted_score}.${epochStr}`),
-      value: saveId,
-    };
-
+    const topEntry = { score: parseFloat(weightedScore), value: saveId };
     await client.zAdd(`achievement_scores:${achievement}`, topEntry);
   }
 };

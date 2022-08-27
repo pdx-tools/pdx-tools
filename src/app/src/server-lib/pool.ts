@@ -7,6 +7,7 @@ import {
   SaveEncoding as ApiSaveEncoding,
   GameDifficulty as ApiGameDifficulty,
 } from "@/services/appApi";
+import { dbDifficulty, dbEncoding, toDbDifficulty, toDbEncoding } from "./db";
 const { dlopen } = require("process");
 let nextRoot = getConfig()?.serverRuntimeConfig?.PROJECT_ROOT;
 nextRoot = nextRoot && process.env.NODE_ENV === "production" ? "." : nextRoot;
@@ -70,38 +71,12 @@ type ParsedFileNative = Omit<ParsedResult, "encoding" | "game_difficulty"> & {
 
 type ParseResultNative = InvalidPatchResult | ParsedFileNative;
 
-function apiEncodingToDb(x: ApiSaveEncoding): SaveEncoding {
-  switch (x) {
-    case "binzip":
-      return SaveEncoding.BINZIP;
-    case "text":
-      return SaveEncoding.TEXT;
-    case "textzip":
-      return SaveEncoding.TEXTZIP;
-  }
-}
-
-function apiDifficultyToDb(x: ApiGameDifficulty): GameDifficulty {
-  switch (x) {
-    case "VeryEasy":
-      return GameDifficulty.VERY_EASY;
-    case "Easy":
-      return GameDifficulty.EASY;
-    case "Normal":
-      return GameDifficulty.NORMAL;
-    case "Hard":
-      return GameDifficulty.HARD;
-    case "VeryHard":
-      return GameDifficulty.VERY_HARD;
-  }
-}
-
 function nativeParseToDb(x: ParseResultNative): ParseResult {
   if (x.kind == "Parsed") {
     return {
       ...x,
-      encoding: apiEncodingToDb(x.encoding),
-      game_difficulty: apiDifficultyToDb(x.game_difficulty),
+      encoding: toDbEncoding(x.encoding),
+      game_difficulty: toDbDifficulty(x.game_difficulty),
     };
   } else {
     return x;

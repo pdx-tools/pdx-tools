@@ -18,7 +18,9 @@ const InfoSideBarTitle = () => {
   return (
     <div className="flex items-center gap-2">
       <SaveMode mode={meta.mode} />
-      <span className="text-ellipsis overflow-hidden">{meta.save_game || "EU4 Save Game"}</span>
+      <span className="overflow-hidden text-ellipsis">
+        {meta.save_game || "EU4 Save Game"}
+      </span>
       <div className="drawer-extras mr-4 flex grow items-center justify-end gap-2">
         {remoteFile && <DownloadButton />}
         {meta.encoding == "binzip" && <MeltButton />}
