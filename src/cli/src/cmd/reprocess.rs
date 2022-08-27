@@ -123,7 +123,7 @@ struct UpdateSave {
     #[serde(skip_serializing_if = "Option::is_none")]
     days: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    achievements: Option<Option<Vec<i32>>>,
+    achievements: Option<Vec<i32>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     dlc_ids: Option<Vec<i32>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -153,7 +153,7 @@ impl From<ParsedFile> for UpdateSave {
             player_start_tag_name: Some(x.player_start_tag_name),
             date: Some(x.date),
             days: Some(x.days),
-            achievements: Some(x.achievements),
+            achievements: Some(x.achievements.unwrap_or_default()),
             dlc_ids: Some(x.dlc_ids),
             checksum: Some(x.checksum),
             patch_shorthand: Some(x.patch_shorthand),
@@ -284,6 +284,9 @@ where
 }
 
 fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
+    let a_achievements = a.achievements.clone().unwrap_or_default();
+    let b_achievements = b.achievements.clone().unwrap_or_default();
+
     UpdateSave {
         patch: a.patch.ne(&b.patch).then(|| b.patch),
         encoding: a.encoding.ne(&b.encoding).then(|| b.encoding.clone()),
@@ -328,10 +331,7 @@ fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
             .then(|| b.player_start_tag_name.clone()),
         date: a.date.ne(&b.date).then(|| b.date.clone()),
         days: a.days.ne(&b.days).then(|| b.days),
-        achievements: a
-            .achievements
-            .ne(&b.achievements)
-            .then(|| b.achievements.clone()),
+        achievements: a_achievements.ne(&b_achievements).then(|| b_achievements),
         dlc_ids: a.dlc_ids.ne(&b.dlc_ids).then(|| b.dlc_ids.clone()),
         checksum: a.checksum.ne(&b.checksum).then(|| b.checksum.clone()),
         patch_shorthand: a
@@ -363,16 +363,13 @@ fn postgres_split(x: &str) -> Option<Vec<String>> {
 
 fn enhance_flat(x: &FlatSave) -> anyhow::Result<ParsedFile> {
     let patch_shorthand = format!("{}.{}", x.save_version_first, x.save_version_second);
-    let achievements = if let Some(achieves) = postgres_split(x.achieve_ids) {
-        let result = achieves
-            .into_iter()
-            .map(|y| y.parse())
-            .collect::<Result<Vec<_>, _>>()
-            .with_context(|| format!("unable to parse achievements: {}", x.achieve_ids))?;
-        Some(result)
-    } else {
-        None
-    };
+
+    let achievements = postgres_split(x.achieve_ids)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|y| y.parse())
+        .collect::<Result<Vec<_>, _>>()
+        .with_context(|| format!("unable to parse achievements: {}", x.achieve_ids))?;
 
     let dlc = postgres_split(x.dlc).unwrap_or_default();
     let dlc_ids = dlc
@@ -412,7 +409,7 @@ fn enhance_flat(x: &FlatSave) -> anyhow::Result<ParsedFile> {
             .then(|| String::from(x.player_start_tag_name)),
         date: String::from(x.date),
         days: x.days,
-        achievements,
+        achievements: Some(achievements),
         dlc_ids,
         checksum: String::from(x.checksum),
         patch_shorthand,
@@ -475,7 +472,7 @@ FcdKVa_EYzoHip7swnUrr,2020-05-25 12:20:56.962656+00,f,ita2.eu4,_r6Wq70gZyz3,binz
         assert_eq!(
             &update,
             &UpdateSave {
-                achievements: Some(Some(vec![18, 19])),
+                achievements: Some(vec![18, 19]),
                 ..UpdateSave::default()
             }
         );
