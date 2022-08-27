@@ -441,6 +441,22 @@ fn test_spaghetti_western() {
 }
 
 #[test]
+fn test_spaghetti_western2() {
+    let data = utils::request("SpaghettiWestern.eu4");
+    let (save, encoding) = parse_save(&data).unwrap();
+    let game = Game::new(&save.meta.savegame_version);
+    let query = Query::from_save(save);
+    let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
+    let completed_ids: Vec<i32> = achievements
+        .achievements()
+        .iter()
+        .filter(|x| x.completed())
+        .map(|x| x.id)
+        .collect();
+    assert!(completed_ids.contains(&301));
+}
+
+#[test]
 fn test_dracula() {
     let data = utils::request("dracula3.eu4");
     let (save, encoding) = parse_save(&data).unwrap();
@@ -486,4 +502,20 @@ fn test_re_reconquista() {
         .map(|x| x.id)
         .collect();
     assert!(completed_ids.contains(&64));
+}
+
+#[test]
+fn test_empire_of_mann() {
+    let data = utils::request("EmpireofMannEnd.eu4");
+    let (save, encoding) = parse_save(&data).unwrap();
+    let game = Game::new(&save.meta.savegame_version);
+    let query = Query::from_save(save);
+    let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
+    let completed_ids: Vec<i32> = achievements
+        .achievements()
+        .iter()
+        .filter(|x| x.completed())
+        .map(|x| x.id)
+        .collect();
+    assert!(completed_ids.contains(&259));
 }
