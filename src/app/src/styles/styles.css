@@ -12,6 +12,15 @@
   justify-content: center;
 }
 
+/*
+  To prevent long save names from overflowing the drawer:
+  https://stackoverflow.com/questions/36230944/prevent-flex-items-from-overflowing-a-container
+*/
+.ant-drawer-title {
+  max-width: 100%;
+  min-width: 0px;
+}
+
 .no-break {
   hyphens: none;
   white-space: nowrap;
