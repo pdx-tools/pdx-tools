@@ -190,6 +190,11 @@ pub fn achievements() -> Vec<Achievement> {
             name: String::from("Luck of the Irish"),
             description: String::from("Own and have cores on the British Isles as an Irish nation."),
             difficulty: Difficulty::Hard,
+        }, Achievement {
+            id: 64,
+            name: String::from("The Re-Reconquista"),
+            description: String::from("As Granada, form Andalusia and reconquer all of Iberia."),
+            difficulty: Difficulty::VeryHard,
         }, Achievement{
             id: 69,
             name: String::from("Je maintiendrai"),
@@ -823,6 +828,7 @@ impl<'a> AchievementHunter<'a> {
             self.i_dont_like_sand(),
             self.atwix_legacy(),
             self.not_just_pizza(),
+            self.re_reqonquista(),
             //            self.gothic_invasion(),
         ]
     }
@@ -2779,6 +2785,33 @@ impl<'a> AchievementHunter<'a> {
             .any(|(flag, _)| flag == "became_great_power_flag");
         let desc = "became a great power";
         result.and(AchievementCondition::new(great_power, desc));
+
+        result
+    }
+
+    pub fn re_reqonquista(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(64);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+
+        let granada = "GRA".parse().unwrap();
+        let starter = self.starting_country == granada;
+        let desc = "started as Granada";
+        result.and(AchievementCondition::new(starter, desc));
+
+        let adu = "ADU".parse().unwrap();
+        let playing = self.tag == adu;
+        let desc = "currently Andalusia";
+        result.and(AchievementCondition::new(playing, desc));
+
+        let owns_baltic = if result.completed() {
+            self.all_provs_in_region("iberia_region", |p| owned_and_cored_by(p, adu))
+        } else {
+            false
+        };
+
+        let desc = "Andalusia own and core all provinces of Iberia";
+        result.and(AchievementCondition::new(owns_baltic, desc));
 
         result
     }
