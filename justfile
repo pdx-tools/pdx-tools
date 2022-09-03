@@ -10,7 +10,6 @@ export CK3_IRONMAN_TOKENS := ""
 export IMPERATOR_TOKENS := ""
 
 export NEXT_PUBLIC_SENTRY_DSN := `echo ${SENTRY_DSN:-''}`
-export UNALIGNED_ACCESS_IS_FAST := "1"
 
 release:
   #!/usr/bin/env bash
