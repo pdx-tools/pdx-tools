@@ -183,13 +183,13 @@ function withSecurityHeaders(response: Response, pathname: string) {
     newResponse.headers.set("X-Frame-Options", "SAMEORIGIN");
   }
 
+  // if CSP is updated, make sure to next.js config
   newResponse.headers.set(
     "Content-Security-Policy",
     "default-src 'self';" +
       "connect-src 'self' blob: https://skanderbeg.pm/api.php https://a.pdx.tools/api/event https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.10.0/;" +
       "img-src 'self' data:;" +
-      // unsafe-eval needed for webassembly on safari (even though we don't
-      // technically support safari)
+      // unsafe-eval needed for webassembly on safari
       "script-src 'self' 'unsafe-eval' blob: https://a.pdx.tools/js/index.js;" +
       "style-src 'self' 'unsafe-inline'"
   );
