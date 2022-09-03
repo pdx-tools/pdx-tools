@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "rm -rf out && next build && next export && find out/ -size +1M -name '*.bin' -exec rm {} \\;",
-    "format": "prettier --write 'src' 'workers-site' 'tests' '!workers-site/worker'",
+    "format": "prettier --write 'src' 'workers-site' 'tests' '!workers-site/worker' && prisma format",
     "lint": "next lint --dir src",
     "test": "jest",
     "start": "next start"

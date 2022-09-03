@@ -67,7 +67,7 @@ model User {
 }
 
 enum Account {
-  FREE @map("free")
+  FREE  @map("free")
   ADMIN @map("admin")
 
   @@map("account")
@@ -75,18 +75,18 @@ enum Account {
 
 enum GameDifficulty {
   VERY_EASY @map("very_easy")
-  EASY @map("easy")
-  NORMAL @map("normal")
-  HARD @map("hard")
+  EASY      @map("easy")
+  NORMAL    @map("normal")
+  HARD      @map("hard")
   VERY_HARD @map("very_hard")
 
   @@map("game_difficulty")
 }
 
 enum SaveEncoding {
-  TEXT @map("text")
+  TEXT    @map("text")
   TEXTZIP @map("textzip")
-  BINZIP @map("binzip")
+  BINZIP  @map("binzip")
 
   @@map("save_encoding")
 }
