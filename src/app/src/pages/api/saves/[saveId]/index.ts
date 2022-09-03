@@ -24,9 +24,7 @@ function withSave<R extends NextApiRequest, T extends R & SaveRequest>(
     if (save === null) {
       res.status(404).json({ msg: "save does not exist" });
     } else {
-      const x = req as T;
-      x.save = save;
-      await handler(x, res);
+      await handler({...req, save } as T, res);
     }
   };
 }

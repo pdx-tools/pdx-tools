@@ -86,6 +86,7 @@ if (process.env.SENTRY_DSN) {
       ...nextConfig,
       sentry: {
         widenClientFileUpload: true,
+        hideSourceMaps: true,
       },
     },
     { silent: true, dryRun: process.env.PDX_RELEASE !== "1" }
