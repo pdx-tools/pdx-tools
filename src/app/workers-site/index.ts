@@ -181,6 +181,9 @@ function withSecurityHeaders(response: Response, pathname: string) {
   // pdxu embeds this in an iframe.
   if (pathname !== "/loading") {
     newResponse.headers.set("X-Frame-Options", "SAMEORIGIN");
+    newResponse.headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  } else {
+    newResponse.headers.set("Cross-Origin-Opener-Policy", "unsafe-none");
   }
 
   // if CSP is updated, make sure to next.js config
@@ -196,7 +199,6 @@ function withSecurityHeaders(response: Response, pathname: string) {
   newResponse.headers.set("X-XSS-Protection", "1; mode=block");
   newResponse.headers.set("X-Content-Type-Options", "nosniff");
   newResponse.headers.set("Cross-Origin-Embedder-Policy", "require-corp");
-  newResponse.headers.set("Cross-Origin-Opener-Policy", "same-origin");
   return newResponse;
 }
 

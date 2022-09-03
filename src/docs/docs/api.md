@@ -39,18 +39,20 @@ the code looks something like:
   <input type="file" />
 
   <script>
-    function fileChange(e) {
-      const file = e.currentTarget.files[0];
-      const newWindow = window.open("https://pdx.tools");
+    (function () {
+      function fileChange(e) {
+        const file = e.currentTarget.files[0];
+        const newWindow = window.open("https://pdx.tools/loading");
 
-      window.addEventListener("message", (e) => {
-        if (e.data === "pdx-tools-loaded") {
-          newWindow.postMessage(file, "*");
-        }
-      });
-    }
+        window.addEventListener("message", (e) => {
+          if (e.data === "pdx-tools-loaded") {
+            newWindow.postMessage(file, "*");
+          }
+        });
+      }
 
-    document.querySelector("input").addEventListener("change", fileChange);
+      document.querySelector("input").addEventListener("change", fileChange);
+    })();
   </script>
 </body>
 </html>
