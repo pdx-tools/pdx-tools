@@ -2,7 +2,7 @@
 name = "applib-node"
 version = "0.1.0"
 authors = ["nickbabcock <nbabcock19@hotmail.com>"]
-edition = "2018"
+edition = "2021"
 publish = false
 
 [lib]
