@@ -6,6 +6,7 @@ ARG DOCKER_COMPOSE_VERSION=2.6.1
 
 RUN apt-get update && apt-get install -y \
       ca-certificates \
+      clang \
       curl  \
       git \
       gnupg \

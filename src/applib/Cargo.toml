@@ -4,9 +4,14 @@ version = "0.1.0"
 edition = "2018"
 publish = false
 
+[features]
+default = ["miniz"]
+miniz = ["eu4save/miniz", "eu4game/miniz"]
+libdeflate = ["eu4save/libdeflate", "eu4game/libdeflate"]
+
 [dependencies]
 serde = {version = "1", features = ["derive"]}
 memmap = "0.7"
-eu4save = { git = "https://github.com/rakaly/eu4save.git", features = ["serialize"] }
-eu4game = { path = "../eu4game" }
+eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["serialize"] }
+eu4game = { path = "../eu4game", default-features = false, features = ["embedded"] }
 thiserror = "1"

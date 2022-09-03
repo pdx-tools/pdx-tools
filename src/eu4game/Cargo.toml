@@ -6,12 +6,14 @@ edition = "2018"
 publish = false
 
 [features]
-default = ["embedded"]
+default = ["embedded", "miniz"]
+miniz = ["eu4save/miniz"]
+libdeflate = ["eu4save/libdeflate"]
 embedded = []
 
 [dependencies]
 jomini = "0.19"
-eu4save = { git = "https://github.com/rakaly/eu4save.git" }
+eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false }
 schemas = { path = "../schemas", features = ["inline"] }
 tarsave = { path = "../tarsave" }
 serde = { version = "1", features = ["derive"] }
