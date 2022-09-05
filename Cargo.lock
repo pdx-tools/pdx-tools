@@ -545,10 +545,11 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fb5736aae4b7b5cfbebb454b979e3bdb1b73c8f08c7ae87605d713111078f6f"
+source = "git+https://github.com/rakaly/ck3save.git#1f048acf32ef596daeaff62bd6ba60e9d8657a1f"
 dependencies = [
  "jomini",
+ "libdeflater",
+ "miniz_oxide 0.6.1",
  "serde",
  "thiserror",
  "zip",
@@ -1221,10 +1222,11 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7522c5968a70f5f4d413e77bfd7eed6f8c7ba5d91b5647e66647a5b4878bda9"
+source = "git+https://github.com/rakaly/imperator-save.git#a22676b5a974006dca63fc9c5a43d3b109aa5342"
 dependencies = [
  "jomini",
+ "libdeflater",
+ "miniz_oxide 0.6.1",
  "serde",
  "thiserror",
  "zip",
