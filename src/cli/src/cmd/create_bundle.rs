@@ -62,6 +62,7 @@ where
 
     let output_name = format!("eu4-{}.tar.zst", version);
     let output_path = output_dir.as_ref();
+    fs::create_dir_all(output_path).with_context(|| format!("{}", output_path.display()))?;
     let output_ball = output_path.join(output_name);
     let output_file =
         fs::File::create(&output_ball).with_context(|| format!("{}", output_ball.display()))?;
