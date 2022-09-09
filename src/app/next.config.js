@@ -55,6 +55,15 @@ let nextConfig = {
         ],
       },
       {
+        source: "/loading",
+        headers: [
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "unsafe-none",
+          },
+        ],
+      },
+      {
         source: "/:path*.bin",
         headers: [
           {
