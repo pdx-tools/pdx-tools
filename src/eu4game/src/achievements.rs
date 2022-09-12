@@ -476,6 +476,31 @@ pub fn achievements() -> Vec<Achievement> {
             description: String::from("Have 10 personal unions at the same time."),
             difficulty: Difficulty::Medium,
         }, Achievement {
+            id: 336,
+            name: String::from("Brick by Brick"),
+            description: String::from("Starting as Denmark, enact the Unified Kalmar Monarchy government reform and own the entire Scandinavian region as your cores."),
+            difficulty: Difficulty::Medium,
+        }, Achievement {
+            id: 340,
+            name: String::from("Holy Horder"),
+            description: String::from("Starting as the Teutonic Order, form the Mongol Empire while have the Holy Horde government reform enacted."),
+            difficulty: Difficulty::Medium,
+        }, Achievement {
+            id: 344,
+            name: String::from("Purify the Temple"),
+            description: String::from("Starting as Riga, enact the Salvific Plutocracy government reform and raid the heretic church of Rome."),
+            difficulty: Difficulty::Medium,
+        }, Achievement {
+            id: 345,
+            name: String::from("Almost Prussian Blue"),
+            description: String::from("Starting as the Livonian Order, form Livonia and own the territory of the North German Confederation as core provinces."),
+            difficulty: Difficulty::Medium,
+        }, Achievement {
+            id: 346,
+            name: String::from("Hanukkah Mutapa"),
+            description: String::from("Starting as Mutapa, convert to Judaism and celebrate a festival."),
+            difficulty: Difficulty::Medium,
+        },  Achievement {
             id: 10000,
             name: String::from("Form the Roman Empire"),
             description: String::from("Custom achievement where one needs to form the Roman Empire"),
@@ -830,6 +855,11 @@ impl<'a> AchievementHunter<'a> {
             self.atwix_legacy(),
             self.not_just_pizza(),
             self.re_reqonquista(),
+            self.brick_by_brick(),
+            self.holy_hoarder(),
+            self.purify_the_temple(),
+            self.almost_prussian_blue(),
+            self.hannukah_mutapa(),
             //            self.gothic_invasion(),
         ]
     }
@@ -2816,6 +2846,135 @@ impl<'a> AchievementHunter<'a> {
 
         result
     }
+
+    pub fn brick_by_brick(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(336);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+
+        let denmark = "DAN".parse().unwrap();
+        let starter = self.starting_country == denmark;
+        let desc = "started as Denmark";
+        result.and(AchievementCondition::new(starter, desc));
+
+        let reform = self.country.government.as_ref().map_or(false, |x| {
+            x.reform_stack.reforms.iter().any(|r| r == "danish_archkingdom")
+        });
+        let desc = "enact the Unified Kalmar Monarchy government reform";
+        result.and(AchievementCondition::new(reform, desc));
+
+        let territory = if result.completed() {
+            self.all_provs_in_region("scandinavia_region", |p| owned_and_cored_by(p, denmark))
+        } else {
+            false
+        };
+
+        let desc = "Own and core all of Scandinavia";
+        result.and(AchievementCondition::new(territory, desc));
+
+        result
+    }
+
+    pub fn holy_hoarder(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(340);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(self.has_not_switched_nation());
+
+        let starter = self.starting_country == "TEU".parse().unwrap();
+        let desc = "started as Teutonic Order";
+        result.and(AchievementCondition::new(starter, desc));
+
+        let current = self.tag == "MGE".parse().unwrap();
+        let desc = "currently Mongol Empire";
+        result.and(AchievementCondition::new(current, desc));
+
+        let reform = self.country.government.as_ref().map_or(false, |x| {
+            x.reform_stack.reforms.iter().any(|r| r == "holy_horde_reform")
+        });
+        let desc = "Holy Horde government reform enacted";
+        result.and(AchievementCondition::new(reform, desc));
+
+        result
+    }
+
+    pub fn purify_the_temple(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(344);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+
+        let starter = self.starting_country == "RIG".parse().unwrap();
+        let desc = "started as Riga";
+        result.and(AchievementCondition::new(starter, desc));
+
+        let reform = self.country.government.as_ref().map_or(false, |x| {
+            x.reform_stack.reforms.iter().any(|r| r == "reformer_state_reform")
+        });
+        let desc = "enact the Salvific Plutocracy government reform";
+        result.and(AchievementCondition::new(reform, desc));
+
+        let flag = self.country.flags.iter().any(|(flag, _)| flag == "looted_heretic_church_of_rome");
+        let desc = "raid the heretic church of Rome";
+        result.and(AchievementCondition::new(flag, desc));
+
+        result
+    }
+
+    pub fn almost_prussian_blue(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(345);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+
+        let starter = self.starting_country == "LIV".parse().unwrap();
+        let desc = "started as Livonian Order";
+        result.and(AchievementCondition::new(starter, desc));
+
+        let current = self.tag == "LVA".parse().unwrap();
+        let desc = "currently Livonia";
+        result.and(AchievementCondition::new(current, desc));
+
+        let territory = if result.completed() {
+            self.all_provs_in_area("east_prussia_area", |p| owned_and_cored_by(p, self.tag)) &&
+            self.all_provs_in_area("west_prussia_area", |p| owned_and_cored_by(p, self.tag)) &&
+            self.all_provs_in_area("silesia_area", |p| owned_and_cored_by(p, self.tag)) &&
+            self.all_provs_in_area("bohemia_area", |p| owned_and_cored_by(p, self.tag)) &&
+            self.all_provs_in_area("moravia_area", |p| owned_and_cored_by(p, self.tag)) &&
+            self.all_provs_in_area("erzgebirge_area", |p| owned_and_cored_by(p, self.tag)) &&
+            self.owns_core_province_id(ProvinceId::from(1859)) &&
+            self.owns_core_province_id(ProvinceId::from(4523)) &&
+            self.owns_core_province_id(ProvinceId::from(4526)) &&
+            self.owns_core_province_id(ProvinceId::from(254)) &&
+            self.owns_core_province_id(ProvinceId::from(2963)) &&
+            self.owns_core_province_id(ProvinceId::from(1931))
+        } else {
+            false
+        };
+        let desc = "own the territory of the North German Confederation as core provinces";
+        result.and(AchievementCondition::new(territory, desc));
+
+        result
+    }
+
+    pub fn hannukah_mutapa(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(346);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+
+        let starter = self.starting_country == "ZIM".parse().unwrap();
+        let desc = "started as Mutapa";
+        result.and(AchievementCondition::new(starter, desc));
+
+        let religion = self.country.religion.as_ref().map_or(false, |x| x == "jewish");
+        let desc = "is Jewish";
+        result.and(AchievementCondition::new(religion, desc));
+
+        let flag = self.country.flags.iter().any(|(flag, _)| flag == "has_celebrated_festival");
+        let desc = "has celebrated a festival";
+        result.and(AchievementCondition::new(flag, desc));
+
+        result
+    }
+
 
     /*    pub fn gothic_invasion(&self) -> AchievementResult {
         let mut result = AchievementResult::new(101);

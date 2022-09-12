@@ -49,7 +49,7 @@ export class Eu4Canvas {
       // 1.31, 1.32, 1.33 share same map asset
       return (
         [saveVersion.second, this.loadedVersion?.second].filter(
-          (x) => x == 31 || x == 32 || x == 33
+          (x) => x == 31 || x == 32 || x == 33 || x == 34
         ).length == 2
       );
     }
