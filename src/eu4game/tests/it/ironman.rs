@@ -519,3 +519,19 @@ fn test_empire_of_mann() {
         .collect();
     assert!(completed_ids.contains(&259));
 }
+
+#[test]
+fn test_purify_the_temple() {
+    let data = utils::request("riga.eu4");
+    let (save, encoding) = parse_save(&data).unwrap();
+    let game = Game::new(&save.meta.savegame_version);
+    let query = Query::from_save(save);
+    let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
+    let completed_ids: Vec<i32> = achievements
+        .achievements()
+        .iter()
+        .filter(|x| x.completed())
+        .map(|x| x.id)
+        .collect();
+    assert!(completed_ids.contains(&344));
+}
