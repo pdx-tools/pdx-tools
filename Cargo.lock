@@ -544,8 +544,8 @@ dependencies = [
 
 [[package]]
 name = "ck3save"
-version = "0.3.1"
-source = "git+https://github.com/rakaly/ck3save.git#1f048acf32ef596daeaff62bd6ba60e9d8657a1f"
+version = "0.4.1"
+source = "git+https://github.com/rakaly/ck3save.git#9e1ed76ebae0354327efafd8003ec57921d6a5bc"
 dependencies = [
  "jomini",
  "libdeflater",
@@ -1103,9 +1103,9 @@ checksum = "3688f13e7735ae5ca93edc490f6c5885b77d473255bc1fed92b9c805f972bf94"
 
 [[package]]
 name = "hoi4save"
-version = "0.2.1"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c2be5f01a7f4d435cfe43088adf12c0a954f5ec797a78a1fb542d71ee044eec"
+checksum = "b0c927b1ebe832c56eeb6cde1f37645647416dee3e14070b90c417b8e7297433"
 dependencies = [
  "jomini",
  "serde",
@@ -1221,8 +1221,8 @@ dependencies = [
 
 [[package]]
 name = "imperator-save"
-version = "0.3.1"
-source = "git+https://github.com/rakaly/imperator-save.git#a22676b5a974006dca63fc9c5a43d3b109aa5342"
+version = "0.4.1"
+source = "git+https://github.com/rakaly/imperator-save.git#d6990fc3c5d4a6ed8c81a087d2445a3234cbfc82"
 dependencies = [
  "jomini",
  "libdeflater",
