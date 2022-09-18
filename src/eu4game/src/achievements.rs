@@ -2855,7 +2855,10 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(starter, desc));
 
         let reform = self.country.government.as_ref().map_or(false, |x| {
-            x.reform_stack.reforms.iter().any(|r| r == "danish_archkingdom")
+            x.reform_stack
+                .reforms
+                .iter()
+                .any(|r| r == "danish_archkingdom")
         });
         let desc = "enact the Unified Kalmar Monarchy government reform";
         result.and(AchievementCondition::new(reform, desc));
@@ -2887,7 +2890,10 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(current, desc));
 
         let reform = self.country.government.as_ref().map_or(false, |x| {
-            x.reform_stack.reforms.iter().any(|r| r == "holy_horde_reform")
+            x.reform_stack
+                .reforms
+                .iter()
+                .any(|r| r == "holy_horde_reform")
         });
         let desc = "Holy Horde government reform enacted";
         result.and(AchievementCondition::new(reform, desc));
@@ -2905,12 +2911,19 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(starter, desc));
 
         let reform = self.country.government.as_ref().map_or(false, |x| {
-            x.reform_stack.reforms.iter().any(|r| r == "reformer_state_reform")
+            x.reform_stack
+                .reforms
+                .iter()
+                .any(|r| r == "reformer_state_reform")
         });
         let desc = "enact the Salvific Plutocracy government reform";
         result.and(AchievementCondition::new(reform, desc));
 
-        let flag = self.country.flags.iter().any(|(flag, _)| flag == "looted_heretic_church_of_rome");
+        let flag = self
+            .country
+            .flags
+            .iter()
+            .any(|(flag, _)| flag == "looted_heretic_church_of_rome");
         let desc = "raid the heretic church of Rome";
         result.and(AchievementCondition::new(flag, desc));
 
@@ -2931,18 +2944,18 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(current, desc));
 
         let territory = if result.completed() {
-            self.all_provs_in_area("east_prussia_area", |p| owned_and_cored_by(p, self.tag)) &&
-            self.all_provs_in_area("west_prussia_area", |p| owned_and_cored_by(p, self.tag)) &&
-            self.all_provs_in_area("silesia_area", |p| owned_and_cored_by(p, self.tag)) &&
-            self.all_provs_in_area("bohemia_area", |p| owned_and_cored_by(p, self.tag)) &&
-            self.all_provs_in_area("moravia_area", |p| owned_and_cored_by(p, self.tag)) &&
-            self.all_provs_in_area("erzgebirge_area", |p| owned_and_cored_by(p, self.tag)) &&
-            self.owns_core_province_id(ProvinceId::from(1859)) &&
-            self.owns_core_province_id(ProvinceId::from(4523)) &&
-            self.owns_core_province_id(ProvinceId::from(4526)) &&
-            self.owns_core_province_id(ProvinceId::from(254)) &&
-            self.owns_core_province_id(ProvinceId::from(2963)) &&
-            self.owns_core_province_id(ProvinceId::from(1931))
+            self.all_provs_in_area("east_prussia_area", |p| owned_and_cored_by(p, self.tag))
+                && self.all_provs_in_area("west_prussia_area", |p| owned_and_cored_by(p, self.tag))
+                && self.all_provs_in_area("silesia_area", |p| owned_and_cored_by(p, self.tag))
+                && self.all_provs_in_area("bohemia_area", |p| owned_and_cored_by(p, self.tag))
+                && self.all_provs_in_area("moravia_area", |p| owned_and_cored_by(p, self.tag))
+                && self.all_provs_in_area("erzgebirge_area", |p| owned_and_cored_by(p, self.tag))
+                && self.owns_core_province_id(ProvinceId::from(1859))
+                && self.owns_core_province_id(ProvinceId::from(4523))
+                && self.owns_core_province_id(ProvinceId::from(4526))
+                && self.owns_core_province_id(ProvinceId::from(254))
+                && self.owns_core_province_id(ProvinceId::from(2963))
+                && self.owns_core_province_id(ProvinceId::from(1931))
         } else {
             false
         };
@@ -2961,17 +2974,24 @@ impl<'a> AchievementHunter<'a> {
         let desc = "started as Mutapa";
         result.and(AchievementCondition::new(starter, desc));
 
-        let religion = self.country.religion.as_ref().map_or(false, |x| x == "jewish");
+        let religion = self
+            .country
+            .religion
+            .as_ref()
+            .map_or(false, |x| x == "jewish");
         let desc = "is Jewish";
         result.and(AchievementCondition::new(religion, desc));
 
-        let flag = self.country.flags.iter().any(|(flag, _)| flag == "has_celebrated_festival");
+        let flag = self
+            .country
+            .flags
+            .iter()
+            .any(|(flag, _)| flag == "has_celebrated_festival");
         let desc = "has celebrated a festival";
         result.and(AchievementCondition::new(flag, desc));
 
         result
     }
-
 
     /*    pub fn gothic_invasion(&self) -> AchievementResult {
         let mut result = AchievementResult::new(101);
