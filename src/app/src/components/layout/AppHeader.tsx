@@ -30,7 +30,7 @@ export const CurrentAnnouncement: (() => React.ReactElement) | null = () => (
     <a
       target="_blank"
       rel="noopener noreferrer"
-      href="https://strawpoll.vote/polls/226yru33/vote?s=0"
+      href="https://strawpoll.vote/polls/axicc6u8/vote?s=0"
       className="text-white underline hover:text-white"
     >
       a quick 2 question survey
