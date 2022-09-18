@@ -253,6 +253,7 @@ admin-tokenize *cmd:
 format:
   cargo fmt
   cd src/app && npm run format
+  cd src/docs && npm run format
   cd src/map && npx prettier@latest --write src
 
 prep-frontend:

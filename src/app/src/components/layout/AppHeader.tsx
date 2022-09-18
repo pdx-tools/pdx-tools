@@ -24,7 +24,20 @@ interface AppHeaderProps {
   disabled?: boolean;
 }
 
-export const CurrentAnnouncement: React.ReactNode | null = null;
+export const CurrentAnnouncement: (() => React.ReactElement) | null = () => (
+  <div>
+    Fill out{" "}
+    <a
+      target="_blank"
+      rel="noopener noreferrer"
+      href="https://strawpoll.vote/polls/226yru33/vote?s=0"
+      className="text-white underline hover:text-white"
+    >
+      a quick 2 question survey
+    </a>{" "}
+    about PDX Tools 📝
+  </div>
+);
 
 export const AppHeader = ({ disabled = false }: AppHeaderProps) => {
   return (
@@ -33,7 +46,9 @@ export const AppHeader = ({ disabled = false }: AppHeaderProps) => {
       style={{ display: disabled ? "none" : "flex" }}
     >
       {CurrentAnnouncement && (
-        <AnnouncementBar>{CurrentAnnouncement}</AnnouncementBar>
+        <AnnouncementBar>
+          <CurrentAnnouncement />
+        </AnnouncementBar>
       )}
 
       <Header style={{ padding: "0 16px" }}>

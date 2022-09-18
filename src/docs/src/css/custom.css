@@ -73,7 +73,7 @@ article video {
   https://github.com/algolia/docsearch/blob/2c64362067376a76575b7b5131972f71c920a406/packages/website/src/css/custom.css#L148
 */
 .header-github-link:before {
-  content: '';
+  content: "";
   width: 24px;
   height: 24px;
   display: flex;

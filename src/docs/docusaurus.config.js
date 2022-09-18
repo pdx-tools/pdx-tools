@@ -24,7 +24,7 @@ const config = {
       src: "https://a.pdx.tools/js/index.js",
       async: true,
       "data-domain": "pdx.tools",
-    }
+    },
   ],
 
   presets: [
@@ -54,6 +54,15 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
+      announcementBar: {
+        id: "pre-vic3-survey",
+        content:
+          'Fill out <a target="_blank" rel="noopener noreferrer" href="https://strawpoll.vote/polls/226yru33/vote?s=0">a quick 2 question survey</a> about PDX Tools 📝',
+        backgroundColor: "#0284C7", // bg-sky-600
+        textColor: "white",
+        isCloseable: false,
+      },
+
       colorMode: {
         disableSwitch: true,
       },
@@ -88,9 +97,9 @@ const config = {
             position: "right",
           },
           {
-            href: 'https://github.com/pdx-tools/pdx-tools',
-            position: 'right',
-            className: 'header-github-link',
+            href: "https://github.com/pdx-tools/pdx-tools",
+            position: "right",
+            className: "header-github-link",
           },
         ],
       },
