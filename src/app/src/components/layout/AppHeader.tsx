@@ -26,7 +26,7 @@ interface AppHeaderProps {
 
 export const CurrentAnnouncement: (() => React.ReactElement) | null = () => (
   <div>
-    Fill out{" "}
+    Vote for what's next in PDX Tools with{" "}
     <a
       target="_blank"
       rel="noopener noreferrer"
@@ -34,8 +34,7 @@ export const CurrentAnnouncement: (() => React.ReactElement) | null = () => (
       className="text-white underline hover:text-white"
     >
       a 2 question survey
-    </a>{" "}
-    to decide what's next 📝
+    </a>
   </div>
 );
 

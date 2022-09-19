@@ -57,7 +57,7 @@ const config = {
       announcementBar: {
         id: "pre-vic3-survey",
         content:
-          'Fill out <a target="_blank" rel="noopener noreferrer" href="https://strawpoll.vote/polls/axicc6u8/vote?s=0">a 2 question survey</a> to decide what\'s next 📝',
+          'Vote for what\'s next in PDX Tools with <a target="_blank" rel="noopener noreferrer" href="https://strawpoll.vote/polls/axicc6u8/vote?s=0">a 2 question survey</a>',
         backgroundColor: "#0284C7", // bg-sky-600
         textColor: "white",
         isCloseable: false,
