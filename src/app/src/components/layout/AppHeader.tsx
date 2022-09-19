@@ -33,9 +33,9 @@ export const CurrentAnnouncement: (() => React.ReactElement) | null = () => (
       href="https://strawpoll.vote/polls/axicc6u8/vote?s=0"
       className="text-white underline hover:text-white"
     >
-      a quick 2 question survey
+      a 2 question survey
     </a>{" "}
-    about PDX Tools 📝
+    to decide what's next 📝
   </div>
 );
 
