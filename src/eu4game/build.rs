@@ -26,6 +26,19 @@ fn main() {
 
     versions.sort_unstable();
 
+    let embedded_path = Path::new(&env::var("OUT_DIR").unwrap()).join("embedded_game.rs");
+    let mut embedded_file = File::create(embedded_path).unwrap();
+
+    let latest_minor = versions
+        .last()
+        .map(|(_major, minor)| *minor)
+        .unwrap_or_default();
+    let _ = writeln!(
+        embedded_file,
+        "pub const LATEST_MINOR: u16 = {};",
+        latest_minor
+    );
+
     for (major, minor) in &versions {
         let version = format!("{}.{}", major, minor);
         let p = Path::new("../../assets/game/eu4")
@@ -39,8 +52,6 @@ fn main() {
         std::fs::copy(p, out_path).unwrap();
     }
 
-    let embedded_path = Path::new(&env::var("OUT_DIR").unwrap()).join("embedded_game.rs");
-    let mut embedded_file = File::create(embedded_path).unwrap();
     let _ = writeln!(embedded_file, "impl<'a> crate::game::Game<'a> {{");
     let _ = writeln!(embedded_file, r#"#[cfg(feature = "embedded")]"#);
     let _ = writeln!(

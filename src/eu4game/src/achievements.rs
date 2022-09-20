@@ -560,10 +560,11 @@ impl WeightedScore {
 }
 
 pub fn weighted_factor(major: u16, minor: u16) -> Option<f64> {
+    let latest = crate::game::LATEST_MINOR;
     if major != 1 || minor < 29 {
         None
     } else {
-        Some(1.0 + f64::from(34 - minor.min(34)) * 0.1)
+        Some(1.0 + f64::from(latest - minor.min(latest)) * 0.1)
     }
 }
 
