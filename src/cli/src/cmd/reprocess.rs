@@ -3,7 +3,6 @@ use anyhow::{bail, Context};
 use applib::parser::{save_to_parse_result, ParseResult, ParsedFile, SavePatch};
 use clap::Args;
 use csv::{Reader, StringRecord};
-use eu4game::achievements::WeightedScore;
 use eu4save::models::GameDifficulty;
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::{
@@ -123,6 +122,10 @@ struct UpdateSave {
     #[serde(skip_serializing_if = "Option::is_none")]
     days: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    score_date: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    score_days: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     achievements: Option<Vec<i32>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     dlc_ids: Option<Vec<i32>>,
@@ -130,8 +133,7 @@ struct UpdateSave {
     checksum: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     patch_shorthand: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    weighted_score: Option<i32>,
+
 }
 
 impl From<ParsedFile> for UpdateSave {
@@ -153,11 +155,12 @@ impl From<ParsedFile> for UpdateSave {
             player_start_tag_name: Some(x.player_start_tag_name),
             date: Some(x.date),
             days: Some(x.days),
+            score_date: Some(x.score_date),
+            score_days: Some(x.score_days),
             achievements: Some(x.achievements.unwrap_or_default()),
             dlc_ids: Some(x.dlc_ids),
             checksum: Some(x.checksum),
             patch_shorthand: Some(x.patch_shorthand),
-            weighted_score: Some(x.weighted_score),
         }
     }
 }
@@ -180,11 +183,12 @@ impl UpdateSave {
             || self.player_start_tag_name.is_some()
             || self.date.is_some()
             || self.days.is_some()
+            || self.score_date.is_some()
+            || self.score_days.is_some()
             || self.achievements.is_some()
             || self.dlc_ids.is_some()
             || self.checksum.is_some()
             || self.patch_shorthand.is_some()
-            || self.weighted_score.is_some()
     }
 }
 
@@ -199,6 +203,7 @@ struct FlatSave<'a> {
     // hash: &'a str,
     date: &'a str,
     days: i32,
+    score_days: i32,
     player: &'a str,
     displayed_country_name: &'a str,
     campaign_id: &'a str,
@@ -331,6 +336,8 @@ fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
             .then(|| b.player_start_tag_name.clone()),
         date: a.date.ne(&b.date).then(|| b.date.clone()),
         days: a.days.ne(&b.days).then(|| b.days),
+        score_date: a.score_date.ne(&b.score_date).then(|| b.score_date.clone()),
+        score_days: a.score_days.ne(&b.score_days).then(|| b.score_days),
         achievements: a_achievements.ne(&b_achievements).then(|| b_achievements),
         dlc_ids: a.dlc_ids.ne(&b.dlc_ids).then(|| b.dlc_ids.clone()),
         checksum: a.checksum.ne(&b.checksum).then(|| b.checksum.clone()),
@@ -338,10 +345,6 @@ fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
             .patch_shorthand
             .ne(&b.patch_shorthand)
             .then(|| b.patch_shorthand.clone()),
-        weighted_score: a
-            .weighted_score
-            .ne(&b.weighted_score)
-            .then(|| b.weighted_score),
     }
 }
 
@@ -378,6 +381,8 @@ fn enhance_flat(x: &FlatSave) -> anyhow::Result<ParsedFile> {
         .collect::<Result<Vec<_>, _>>()
         .with_context(|| format!("unable to parse dlc: {}", x.dlc))?;
 
+    let score_date = applib::eu4_days_to_date(x.score_days);
+
     Ok(ParsedFile {
         patch: SavePatch {
             first: x.save_version_first,
@@ -409,17 +414,12 @@ fn enhance_flat(x: &FlatSave) -> anyhow::Result<ParsedFile> {
             .then(|| String::from(x.player_start_tag_name)),
         date: String::from(x.date),
         days: x.days,
+        score_days: x.score_days,
+        score_date,
         achievements: Some(achievements),
         dlc_ids,
         checksum: String::from(x.checksum),
         patch_shorthand,
-        weighted_score: WeightedScore::from_raw_parts(
-            x.save_version_first,
-            x.save_version_second,
-            x.days,
-        )
-        .context("invalid patch")?
-        .days,
     })
 }
 
@@ -444,8 +444,8 @@ mod tests {
 
     #[test]
     fn extract_data_from_csv() {
-        let data = r#"id,created_on,locked,filename,user_id,encoding,hash,date,days,player,displayed_country_name,campaign_id,campaign_length,ironman,multiplayer,observer,dlc,checksum,achieve_ids,players,player_start_tag,player_start_tag_name,game_difficulty,aar,playthrough_id,save_slot,save_version_first,save_version_second,save_version_third,save_version_fourth
-FcdKVa_EYzoHip7swnUrr,2020-05-25 12:20:56.962656+00,f,ita2.eu4,_r6Wq70gZyz3,binzip,WIYzie1JiPRNKDZq3wFOYBJ5WGIyyKbZH3lLxiBgX7o=,1528-07-01,30527,ITA,Italy,0aca73ce-79df-41e7-b3e8-d2e1f02e44b8,9559,t,f,f,"{10,18,21,27,33,39,46,55,60,66,72,77,84,90,95}",aa9b1d852ca27f98300b2fd390d67760,{18},{comagoosie},MLO,Milan,normal,"First time playing Milan (well probably since EU3)! Definitely fun mechanics with the Ambrosian Republic and some special events like Caterina Sforza. Only had one coalition war which took a lot of wind out of my sails but maybe only delayed me by a decade. To me, achieving the Italian ambition as Milan is much easier than others as you seem to start out with more options for expansion.",p7ofaCpn4/pSq1iAhFAMe36q5OABZF/fWg5drlrlfII=,f,1,29,6,0"#;
+        let data = r#"id,created_on,locked,filename,user_id,encoding,hash,date,days,player,displayed_country_name,campaign_id,campaign_length,ironman,multiplayer,observer,dlc,checksum,achieve_ids,players,player_start_tag,player_start_tag_name,game_difficulty,aar,playthrough_id,save_slot,save_version_first,save_version_second,save_version_third,save_version_fourth,score_days
+FcdKVa_EYzoHip7swnUrr,2020-05-25 12:20:56.962656+00,f,ita2.eu4,_r6Wq70gZyz3,binzip,WIYzie1JiPRNKDZq3wFOYBJ5WGIyyKbZH3lLxiBgX7o=,1528-07-01,30527,ITA,Italy,0aca73ce-79df-41e7-b3e8-d2e1f02e44b8,9559,t,f,f,"{10,18,21,27,33,39,46,55,60,66,72,77,84,90,95}",aa9b1d852ca27f98300b2fd390d67760,{18},{comagoosie},MLO,Milan,normal,"First time playing Milan (well probably since EU3)! Definitely fun mechanics with the Ambrosian Republic and some special events like Caterina Sforza. Only had one coalition war which took a lot of wind out of my sails but maybe only delayed me by a decade. To me, achieving the Italian ambition as Milan is much easier than others as you seem to start out with more options for expansion.",p7ofaCpn4/pSq1iAhFAMe36q5OABZF/fWg5drlrlfII=,f,1,29,6,0,30527"#;
 
         let rdr = csv::Reader::from_reader(Cursor::new(data));
         let result = extract_existing_records(rdr).unwrap();
@@ -455,8 +455,8 @@ FcdKVa_EYzoHip7swnUrr,2020-05-25 12:20:56.962656+00,f,ita2.eu4,_r6Wq70gZyz3,binz
 
     #[test]
     fn compute_patch() {
-        let data = r#"id,created_on,locked,filename,user_id,encoding,hash,date,days,player,displayed_country_name,campaign_id,campaign_length,ironman,multiplayer,observer,dlc,checksum,achieve_ids,players,player_start_tag,player_start_tag_name,game_difficulty,aar,playthrough_id,save_slot,save_version_first,save_version_second,save_version_third,save_version_fourth
-FcdKVa_EYzoHip7swnUrr,2020-05-25 12:20:56.962656+00,f,ita2.eu4,_r6Wq70gZyz3,binzip,WIYzie1JiPRNKDZq3wFOYBJ5WGIyyKbZH3lLxiBgX7o=,1528-07-01,30527,ITA,Italy,0aca73ce-79df-41e7-b3e8-d2e1f02e44b8,9559,t,f,f,"{10,18,21,27,33,39,46,55,60,66,72,77,84,90,95}",aa9b1d852ca27f98300b2fd390d67760,{18},{comagoosie},MLO,Milan,normal,"First time playing Milan (well probably since EU3)! Definitely fun mechanics with the Ambrosian Republic and some special events like Caterina Sforza. Only had one coalition war which took a lot of wind out of my sails but maybe only delayed me by a decade. To me, achieving the Italian ambition as Milan is much easier than others as you seem to start out with more options for expansion.",p7ofaCpn4/pSq1iAhFAMe36q5OABZF/fWg5drlrlfII=,f,1,29,6,0"#;
+        let data = r#"id,created_on,locked,filename,user_id,encoding,hash,date,days,player,displayed_country_name,campaign_id,campaign_length,ironman,multiplayer,observer,dlc,checksum,achieve_ids,players,player_start_tag,player_start_tag_name,game_difficulty,aar,playthrough_id,save_slot,save_version_first,save_version_second,save_version_third,save_version_fourth,score_days
+FcdKVa_EYzoHip7swnUrr,2020-05-25 12:20:56.962656+00,f,ita2.eu4,_r6Wq70gZyz3,binzip,WIYzie1JiPRNKDZq3wFOYBJ5WGIyyKbZH3lLxiBgX7o=,1528-07-01,30527,ITA,Italy,0aca73ce-79df-41e7-b3e8-d2e1f02e44b8,9559,t,f,f,"{10,18,21,27,33,39,46,55,60,66,72,77,84,90,95}",aa9b1d852ca27f98300b2fd390d67760,{18},{comagoosie},MLO,Milan,normal,"First time playing Milan (well probably since EU3)! Definitely fun mechanics with the Ambrosian Republic and some special events like Caterina Sforza. Only had one coalition war which took a lot of wind out of my sails but maybe only delayed me by a decade. To me, achieving the Italian ambition as Milan is much easier than others as you seem to start out with more options for expansion.",p7ofaCpn4/pSq1iAhFAMe36q5OABZF/fWg5drlrlfII=,f,1,29,6,0,30527"#;
 
         let rdr = csv::Reader::from_reader(Cursor::new(data));
         let result = extract_existing_records(rdr).unwrap();

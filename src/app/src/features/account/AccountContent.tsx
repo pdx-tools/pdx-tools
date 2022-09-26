@@ -19,7 +19,7 @@ export const AccountContent = () => {
   };
   const message = (
     <Text copyable={{ text: key || "" }}>
-      {`Your new API Key: ${key}. Keep it safe`}
+      Your new API Key: <pre className="inline">{key}</pre>. Keep it safe
     </Text>
   );
   const alert = key ? <Alert type="info" closable message={message} /> : null;

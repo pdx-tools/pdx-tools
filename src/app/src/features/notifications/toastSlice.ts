@@ -60,21 +60,6 @@ const toastSlice = createSlice({
         message: "save deleted",
       });
     });
-
-    builder.addMatcher(
-      appApi.endpoints.getAchievements.matchRejected,
-      (state, { error, payload }) => {
-        if (!payload) {
-          state.toasts.push({
-            kind: "warning",
-            error: { message: error.message },
-          });
-        } else {
-          var data = payload.data as ApiError;
-          state.toasts.push(err(data));
-        }
-      }
-    );
   },
 });
 

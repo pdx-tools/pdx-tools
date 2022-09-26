@@ -5,10 +5,6 @@ import { ValidationError } from "@/server-lib/errors";
 import { getAchievement } from "@/server-lib/pool";
 import { AchievementView } from "@/services/appApi";
 import { withCoreMiddleware } from "@/server-lib/middlware";
-import {
-  countAchievementUploads,
-  getAchievementLeaderboardSaveIds,
-} from "@/server-lib/leaderboard";
 import { getNumber } from "@/server-lib/valiation";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -23,50 +19,60 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     throw new ValidationError("achievement not found");
   }
 
-  const saveIds = await getAchievementLeaderboardSaveIds(achieveId);
-  const count = await countAchievementUploads(achieveId);
-  const saves = await db.save.findMany({
+  type LeaderboardSave = {
+    id: string;
+    campaign_id: string;
+    playthrough_id: string;
+  };
+  const achievementNeedle = `{${achieveId}}`;
+  const saves = await db.$queryRaw<LeaderboardSave[]>`
+    SELECT saves.id, saves.campaign_id, saves.playthrough_id, RANK() OVER(
+        ORDER BY score_days, created_on ASC
+      ) rank
+    FROM saves
+    WHERE achieve_ids @> ${achievementNeedle}::int[]
+  `;
+
+  const campaignIds = new Set();
+  const playthroughIds = new Set();
+  const outSaves: string[] = [];
+
+  for (let i = 0; i < saves.length; i++) {
+    const save = saves[i];
+    if (
+      campaignIds.has(save.campaign_id) ||
+      (save.playthrough_id && playthroughIds.has(save.playthrough_id))
+    ) {
+      continue;
+    }
+
+    campaignIds.add(save.campaign_id);
+    playthroughIds.add(save.playthrough_id);
+    outSaves.push(save.id);
+  }
+
+  const result = await db.save.findMany({
     where: {
       id: {
-        in: saveIds,
+        in: outSaves,
       },
     },
     include: {
       user: true,
     },
     orderBy: {
-      days: "asc",
+      score_days: "asc",
     },
   });
 
-  const campaignIds = new Set();
-  const playthroughIds = new Set();
-  const outSaves: SaveFile[] = [];
-
-  for (let i = 0; i < saves.length; i++) {
-    const save = saves[i];
-    if (
-      campaignIds.has(save.campaignId) ||
-      (save.playthroughId && playthroughIds.has(save.playthroughId))
-    ) {
-      continue;
-    }
-
-    campaignIds.add(save.campaignId);
-    playthroughIds.add(save.playthroughId);
-    outSaves.push(toApiSave(save));
-  }
-
-  const result: AchievementView = {
+  const out: AchievementView = {
     achievement: {
       ...achievement,
-      top_save_id: saveIds[0] || null,
-      uploads: count,
     },
-    saves: outSaves,
+    saves: result.map((x) => toApiSave(x)),
   };
 
-  res.json(result);
+  res.json(out);
 };
 
 export default withCoreMiddleware(handler);

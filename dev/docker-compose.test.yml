@@ -12,11 +12,6 @@ services:
       - POSTGRES_PASSWORD=${DATABASE_ADMIN_PASSWORD}
       - DATABASE_BACKUP_PASSWORD=${DATABASE_BACKUP_PASSWORD}
 
-  redis:
-    image: redis:alpine
-    ports:
-      - "${REDIS_PORT}:6379"
-
   s3:
     image: minio/minio@sha256:c92f04149c93010eefc4e4581b18fb4b9ea46af8e9f658291c377388b7691828
     environment:

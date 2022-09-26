@@ -17,6 +17,7 @@ model Save {
   hash                 String
   date                 String
   days                 Int
+  score_days           Int?
   player               String
   displayedCountryName String?        @map("displayed_country_name")
   campaignId           String         @map("campaign_id")
@@ -37,7 +38,6 @@ model Save {
   gameDifficulty       GameDifficulty @map("game_difficulty")
   aar                  String?
   playthroughId        String?        @map("playthrough_id")
-  saveSlot             Boolean        @map("save_slot")
   user                 User           @relation(fields: [userId], references: [userId])
 
   @@index([days], map: "idx_save_achieve_days")
@@ -60,6 +60,7 @@ model User {
   account   Account  @default(FREE)
   display   String?
   createdOn DateTime @default(now()) @map("created_on") @db.Timestamptz(6)
+  apiKey    String?  @map("api_key")
   saves     Save[]
 
   @@index([steamId], map: "idx_users_steam_id")

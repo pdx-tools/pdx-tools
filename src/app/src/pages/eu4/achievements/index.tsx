@@ -2,12 +2,11 @@ import { GetStaticProps } from "next";
 import React from "react";
 import { HtmlHead } from "@/components/head";
 import { AppStructure } from "@/components/layout";
-import { type AchievementUploads } from "@/features/eu4/components/AchievementsTable";
 import { Achievement } from "@/services/appApi";
 import { AchievementsPage } from "@/features/eu4/AchievementsPage";
 
 interface StaticAchievements {
-  achievements?: AchievementUploads[];
+  achievements?: Achievement[];
 }
 
 export const Eu4Achievements = ({ achievements }: StaticAchievements) => {
@@ -39,7 +38,6 @@ export const getStaticProps: GetStaticProps<StaticAchievements> = async (
     name: achievement.name,
     description: achievement.description,
     difficulty: achievement.difficulty,
-    uploads: 0,
   }));
 
   return {

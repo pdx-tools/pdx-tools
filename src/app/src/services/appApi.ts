@@ -75,14 +75,9 @@ export type ProfileResponse =
     };
 
 export interface ApiAchievementsResponse {
-  achievements: AchievementWithTopSave[];
+  achievements: Achievement[];
   saves: SaveFile[];
 }
-
-export type AchievementWithTopSave = Achievement & {
-  top_save_id: string | null;
-  uploads: number;
-};
 
 export type AchievementDifficulty =
   | "VeryEasy"
@@ -100,7 +95,7 @@ export interface Achievement {
 }
 
 export interface AchievementView {
-  achievement: AchievementWithTopSave;
+  achievement: Achievement;
   saves: SaveFile[];
 }
 
@@ -141,9 +136,7 @@ export interface CheckRequest {
 
 export interface CheckResponse {
   saves: SaveFile[];
-  qualifying_record: boolean;
   valid_patch: boolean;
-  remaining_save_slots: number;
 }
 
 export async function checkSave(req: CheckRequest): Promise<CheckResponse> {
@@ -248,10 +241,6 @@ export const appApi = createApi({
         url: `api/logout`,
         method: "POST",
       }),
-    }),
-    getAchievements: builder.query<ApiAchievementsResponse, void>({
-      query: () => `/api/achievements`,
-      providesTags: (_) => ["Saves"],
     }),
     getAchievement: builder.query<AchievementView, string>({
       query: (id) => `/api/achievements/${id}`,

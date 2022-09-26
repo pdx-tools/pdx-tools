@@ -2,7 +2,6 @@ import { Save, User, Prisma } from "@prisma/client";
 import { NextApiRequest, NextApiResponse } from "next";
 import { db, toApiSave } from "@/server-lib/db";
 import { ValidationError } from "@/server-lib/errors";
-import { removeFromLeaderboard } from "@/server-lib/leaderboard";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { deleteFile } from "@/server-lib/s3";
 import { NextSessionRequest, withSession } from "@/server-lib/session";
@@ -52,7 +51,6 @@ const _deleteHandler = async (
   const save = req.save;
   await deleteFile(save.id);
   await db.save.delete({ where: { id: save.id } });
-  await removeFromLeaderboard(save);
   res.status(200).send("");
 };
 

@@ -11,7 +11,7 @@ export const BUCKET = getEnv("S3_BUCKET");
 const endpoint = getEnv("S3_ENDPOINT");
 
 AWS.config.logger = {
-  log: (msg) => log.info({ msg }),
+  // log: (msg) => log.info({ msg }),
   warn: (msg) => log.warn({ msg }),
 };
 
