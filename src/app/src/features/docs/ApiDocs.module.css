@@ -1,7 +1,0 @@
-.docs pre {
-  overflow: auto;
-}
-
-.docs dl {
-  @apply ml-6;
-}

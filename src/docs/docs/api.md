@@ -17,45 +17,6 @@ save, then consider Skanderbeg's API.
 Please use the [Discord](https://discord.gg/rCpNWQW) for help
 with the API or if you have any suggestions.
 
-## Local Analysis
-
-It is not required to upload a save in order for it to be analyzed. PDX Tools is
-able to analyze saves that are transferred to it within the browser. This means
-that you could have a web page, which when visited, loads the save, opens the
-[save analysis page](/), and then posts data to PDX Tools with the help of
-[`Window.postMessage()`](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage)
-
-When PDX Tools has finished initializing it will send a message to your
-tab with the contents of "pdx-tools-loaded", informing that PDX Tools is
-now ready to receive the file.
-
-You can refer to how [Pdx-Unlimiter](https://github.com/crschnick/pdx_unlimiter/blob/938af410955437f8232de61d4a4755f0357e01b8/resources/web/pdx_tools.html)
-accomplishes it for an idea for your own implementation, but in short
-the code looks something like:
-
-```html
-<html>
-<body>
-  <input type="file" />
-
-  <script>
-    function fileChange(e) {
-      const file = e.currentTarget.files[0];
-      const newWindow = window.open("https://pdx.tools");
-
-      window.addEventListener("message", (e) => {
-        if (e.data === "pdx-tools-loaded") {
-          newWindow.postMessage(file, "*");
-        }
-      });
-    }
-
-    document.querySelector("input").addEventListener("change", fileChange);
-  </script>
-</body>
-</html>
-```
-
 ## Upload
 
 To upload a file to PDX Tools, it is easiest to run the [cli](https://github.com/rakaly/cli) which uses
@@ -107,9 +68,7 @@ Once uploaded, the server will return a response resembling:
 
 ```json
 {
-  "save_id": "xxx",
-  "remaining_save_slots": 10,
-  "used_save_slot": false
+  "save_id": "xxx"
 }
 ```
 
@@ -120,17 +79,6 @@ Once uploaded, the server will return a response resembling:
     <dd>
       The unique identifier for the uploaded save. The save will be publicly
       hosted at /eu4/saves/xxx
-    </dd>
-    <dt>remaining_save_slots</dt>
-    <dd>
-      Informs the request how many save slots remain. By default all
-      accounts have 100 save slots.
-    </dd>
-    <dt>used_save_slot</dt>
-    <dd>
-      Describes if the previous request consumed a save slot. Uploads
-      consume a save slot if the save does not set a top 10 record for an
-      achievement
     </dd>
   </dl>
 </details>
