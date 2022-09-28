@@ -1,13 +1,11 @@
-import { createReadStream, existsSync, writeFileSync, promises } from "fs";
+import { existsSync, writeFileSync, promises } from "fs";
 import { fetch, FormData } from "undici";
 import { db } from "../src/server-lib/db";
 import { BUCKET, deleteFile, s3client } from "../src/server-lib/s3";
 import * as pool from "../src/server-lib/pool";
-import { redisClient } from "../src/server-lib/redis";
 import { SavePostResponse } from "../src/pages/api/saves";
 import {
   AchievementView,
-  ApiAchievementsResponse,
   CheckRequest,
   CheckResponse,
   NewKeyResponse,
@@ -41,18 +39,8 @@ beforeEach(async () => {
   }
 });
 
-beforeEach(async () => {
-  const client = await redisClient();
-  await client.flushDb();
-});
-
 afterAll(async () => {
   await db.$disconnect();
-});
-
-afterAll(async () => {
-  const client = await redisClient();
-  await client.disconnect();
 });
 
 const pdxUrl = (path: string) => `http://localhost:3000${path}`;
@@ -245,9 +233,9 @@ async function fetchEu4Save(save: string) {
 }
 
 test("same campaign", async () => {
-  // This test will ensure that given three saves of the same campaign that checking them all
-  // initially will allow an upload. Then uploading the middle save will only allow the
-  // earliest save to be uploaded.
+  // This test will ensure that given three saves of the same campaign that
+  // checking them all initially will allow an upload. Then uploading the middle
+  // save will only allow the earliest save to be uploaded.
   const client = await HttpClient.create();
 
   let startPath = "ita2.eu4";
@@ -280,7 +268,8 @@ test("same campaign", async () => {
 
   {
     const resp = await client.post<CheckResponse>("/api/check", startCheckReq);
-    expect(resp.qualifying_record).toBe(true);
+    expect(resp.saves).toHaveLength(0);
+    expect(resp.valid_patch).toBe(true);
   }
 
   const midCheckReq: CheckRequest = {
@@ -294,7 +283,8 @@ test("same campaign", async () => {
 
   {
     const resp = await client.post<CheckResponse>("/api/check", midCheckReq);
-    expect(resp.qualifying_record).toBe(true);
+    expect(resp.saves).toHaveLength(0);
+    expect(resp.valid_patch).toBe(true);
   }
 
   const endCheckReq: CheckRequest = {
@@ -308,27 +298,27 @@ test("same campaign", async () => {
 
   {
     const resp = await client.post<CheckResponse>("/api/check", endCheckReq);
-    expect(resp.qualifying_record).toBe(true);
+    expect(resp.saves).toHaveLength(0);
+    expect(resp.valid_patch).toBe(true);
   }
 
-  // Now upload the halfway save. It'll cause the later save to not be a qualifying record
+  // Now upload the halfway save. We should still be able to upload the later one
   const midUpload = await client.uploadSave(midPath);
   expect(midUpload.save_id).toBeDefined();
 
   {
     const resp = await client.post<CheckResponse>("/api/check", endCheckReq);
-    expect(resp.qualifying_record).toBe(false);
+    expect(resp.saves).toHaveLength(0);
+    expect(resp.valid_patch).toBe(true);
   }
 
   // Ensure that upload matches check behavior
   const endUpload = await client.uploadSave(endPath);
-  expect(endUpload.used_save_slot).toBe(true);
   expect(endUpload.save_id).toBeDefined();
 
   // But we can still upload the earliest save
   const startUpload = await client.uploadSave(startPath);
   expect(startUpload.save_id).toBeDefined();
-  expect(startUpload.used_save_slot).toBe(false);
 
   // When retrieving the achievements, we should only see the save with the earliest date
   let achievementLeaderboard = await client.get<AchievementView>(
@@ -418,7 +408,8 @@ test("same playthrough disjoint set", async () => {
 
   {
     const resp = await client.post<CheckResponse>("/api/check", endCheckReq);
-    expect(resp.qualifying_record).toBe(true);
+    expect(resp.saves).toHaveLength(0);
+    expect(resp.valid_patch).toBe(true);
   }
 
   const goldenUpload = await client.uploadSave(goldenPath);
@@ -446,13 +437,8 @@ test("delete save", async () => {
   userProfile = await client.get<UserSaves>("/api/users/100");
   expect(userProfile.saves).toHaveLength(0);
 
-  const achievements = await client.get<ApiAchievementsResponse>(
-    "/api/achievements"
-  );
-  const achievement = achievements.achievements.find(
-    (x) => x.name === "Italian Ambition"
-  );
-  expect(achievement?.uploads).toBe(0);
+  const achievement = await client.get<AchievementView>("/api/achievements/18");
+  expect(achievement.saves).toHaveLength(0);
 
   const kandy2 = await client.uploadSave(kandyPath);
   expect(kandy2.save_id).not.toBe(kandy.save_id);
@@ -531,33 +517,28 @@ test("get profile with api key", async () => {
 test("admin rebalance", async () => {
   const client = await HttpClient.create();
 
-  // test with empty redis instamce
+  // test with empty database
   const resp1 = await client.postReq("/api/admin/rebalance");
   expect(resp1.status).toBe(200);
 
-  const redis = await redisClient();
-  await redis.zAdd("raw_achievement_scores:108:1.29", [
-    { value: "MY_SAVE_ID", score: 100 },
-  ]);
-  await redis.zAdd("achievement_scores:108", [
-    { value: "MY_SAVE_ID", score: 100 },
-  ]);
+  // upload a save at patch 1.29 and recalculate the score
+  // if EU4 ever gets to 1.243
+  const midUpload = await client.uploadSave("ita2.eu4");
+  expect(midUpload.save_id).toBeDefined();
 
-  const resp2 = await client.postReq("/api/admin/rebalance");
+  // test with empty database
+  const resp2 = await client.postReq(
+    "/api/admin/rebalance?__patch_override_for_testing=243"
+  );
   expect(resp2.status).toBe(200);
 
-  let newScore = 100.0 * pool.weightedFactor(1, 29)!;
-  const out = await redis.zRangeWithScores(
-    "raw_achievement_scores:108:1.29",
-    0,
-    -1
+  let achievementLeaderboard = await client.get<AchievementView>(
+    "/api/achievements/18"
   );
-  expect(out).toHaveLength(1);
-  expect(out[0]).toStrictEqual({ score: 100, value: "MY_SAVE_ID" });
-
-  const out2 = await redis.zRangeWithScores("achievement_scores:108", 0, -1);
-  expect(out2).toHaveLength(1);
-  expect(out2[0]).toStrictEqual({ score: newScore, value: "MY_SAVE_ID" });
+  expect(achievementLeaderboard.saves).toHaveLength(1);
+  expect(achievementLeaderboard.saves[0].patch).toBe("1.29.6.0");
+  expect(achievementLeaderboard.saves[0].days).toBe(30527);
+  expect(achievementLeaderboard.saves[0].weighted_score?.days).toBe(683804);
 });
 
 test("api post new save", async () => {

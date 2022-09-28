@@ -50,11 +50,12 @@ pub struct ParsedFile {
     pub player_start_tag_name: Option<String>,
     pub date: String,
     pub days: i32,
+    pub score_date: String,
+    pub score_days: i32,
     pub achievements: Option<Vec<i32>>,
     pub dlc_ids: Vec<i32>,
     pub checksum: String,
     pub patch_shorthand: String,
-    pub weighted_score: i32,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -161,7 +162,8 @@ pub fn save_to_parse_result(
         dlc_ids: dlc,
         checksum: meta.checksum.clone(),
         patch_shorthand,
-        weighted_score: weighted_score.days,
+        score_date: weighted_score.date,
+        score_days: weighted_score.days,
     })))
 }
 

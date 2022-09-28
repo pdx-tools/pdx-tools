@@ -42,13 +42,6 @@ services:
       -c max_parallel_workers=2
       -c max_parallel_maintenance_workers=1
 
-  redis:
-    image: redis:alpine
-    restart: 'unless-stopped'
-    volumes:
-      - redisdata:/data
-    command: redis-server --save 60 1 --loglevel warning
-
   api:
     image: docker.nbsoftsolutions.com/pdx-tools/app
     restart: 'unless-stopped'
@@ -65,5 +58,4 @@ services:
       driver: journald
 
 volumes:
-  redisdata:
   pgdata:

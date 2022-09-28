@@ -24,13 +24,9 @@ export const UploadFaq = () => {
         Yes! In fact, PDX Tools losslessly re-encodes saves with a higher
         compression ratio so downloaded saves will be smaller than the original.
       </dd>
-      <dt className="font-bold">What are there limits on uploads?</dt>
+      <dt className="font-bold">What are the limits on uploads?</dt>
       <dd>
-        Compressed saves must not exceed 20MB and 200MB when uncompressed. Every
-        PDX Tools user has 100 save slots available. Achievement compatible
-        saves that complete an achievement in a top 10 record time (the number
-        of days since 1444 dated at the latest date of the save), do not consume
-        a save slot.
+        Compressed saves must not exceed 20MB and 200MB when uncompressed.
       </dd>
       <dt className="font-bold">
         Can I get on an achievement leaderboard with an older patch?

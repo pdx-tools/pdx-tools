@@ -7,7 +7,7 @@ import {
   SaveEncoding as ApiSaveEncoding,
   GameDifficulty as ApiGameDifficulty,
 } from "@/services/appApi";
-import { dbDifficulty, dbEncoding, toDbDifficulty, toDbEncoding } from "./db";
+import { toDbDifficulty, toDbEncoding } from "./db";
 const { dlopen } = require("process");
 let nextRoot = getConfig()?.serverRuntimeConfig?.PROJECT_ROOT;
 nextRoot = nextRoot && process.env.NODE_ENV === "production" ? "." : nextRoot;
@@ -57,11 +57,12 @@ export interface ParsedFile {
   player_start_tag_name: string | null;
   date: string;
   days: number;
+  score_date: string;
+  score_days: number;
   achievements: number[] | null;
   dlc_ids: number[];
   checksum: string;
   patch_shorthand: string;
-  weighted_score: number;
 }
 
 type ParsedFileNative = Omit<ParsedResult, "encoding" | "game_difficulty"> & {
@@ -115,19 +116,14 @@ export function getAchievement(id: number): Achievement | undefined {
   return loadAchievements().find((x) => x.id == id);
 }
 
-export function calcWeightedScore(
-  major: number,
-  minor: number,
-  days: number
-): WeightedScore {
-  const result = nativeModule.exports.weightedScore(major, minor, days);
-  return JSON.parse(result);
-}
-
-export function weightedFactor(major: number, minor: number): number | null {
-  return nativeModule.exports.weightedFactor(major, minor);
+export function eu4DaysToDate(days: number): string {
+  return nativeModule.exports.eu4DaysToDate(days);
 }
 
 export function validPatch(major: number, minor: number): boolean {
   return nativeModule.exports.validPatch(major, minor);
+}
+
+export function latestEu4MinorPatch(): number {
+  return nativeModule.exports.latestEu4MinorPatch();
 }

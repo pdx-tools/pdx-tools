@@ -6,23 +6,14 @@ import {
   difficultyComparator,
   difficultyText,
 } from "@/lib/difficulty";
-import {
-  AchievementDifficulty,
-  SaveFile,
-  Achievement,
-} from "@/services/appApi";
+import { AchievementDifficulty, Achievement } from "@/services/appApi";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
 
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
-export type AchievementUploads = Achievement & {
-  uploads: number;
-};
-
 interface TableEntry {
-  achievement: AchievementUploads;
-  topSave?: SaveFile;
+  achievement: Achievement;
 }
 
 interface AchievementsTableProps {
@@ -62,32 +53,6 @@ export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
         className: difficultyColor(record.achievement.difficulty),
       }),
       render: (difficulty: AchievementDifficulty) => difficultyText(difficulty),
-    },
-    {
-      title: "Uploads",
-      dataIndex: ["achievement", "uploads"],
-      width: 120,
-      sorter: (a: TableEntry, b: TableEntry) =>
-        a.achievement.uploads - b.achievement.uploads,
-    },
-    {
-      title: "Record",
-      dataIndex: ["topSave", "date"],
-      className: "no-break",
-      width: 120,
-      render: (date: SaveFile["date"] | undefined) =>
-        date === null || date === undefined ? "---" : date,
-      sorter: (a: TableEntry, b: TableEntry) => {
-        const aScore = a.topSave?.weighted_score?.days;
-        const bScore = b.topSave?.weighted_score?.days;
-        if (aScore === null || aScore === undefined) {
-          return -1;
-        } else if (bScore === null || bScore === undefined) {
-          return 1;
-        } else {
-          return aScore - bScore;
-        }
-      },
     },
   ];
 

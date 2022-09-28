@@ -1,10 +1,11 @@
 // https://www.prisma.io/docs/support/help-articles/nextjs-prisma-client-dev-practices
 import { PrismaClient, Save, User } from "@prisma/client";
+import crypto from "crypto";
 import dayjs from "dayjs";
 import { GameDifficulty, SaveEncoding, SaveFile } from "@/services/appApi";
 import { log } from "./logging";
 import { metrics } from "./metrics";
-import { calcWeightedScore, ParsedFile } from "./pool";
+import { eu4DaysToDate, ParsedFile } from "./pool";
 
 // add prisma to the NodeJS global type
 // @ts-ignore
@@ -86,17 +87,20 @@ export const dbEncoding = (dbEncoding: Save["encoding"]): SaveEncoding =>
 export const toDbEncoding = (encoding: SaveEncoding): Save["encoding"] =>
   encodingTable[encoding];
 
+export const apiKeyAtRest = (key: crypto.BinaryLike) => {
+  return crypto.createHash("sha256").update(key).digest().toString("base64url");
+};
+
 export const toApiSaveUser = (save: Save, user: User): SaveFile => {
   const difficulty = dbDifficulty(save.gameDifficulty);
   const encoding = dbEncoding(save.encoding);
-  let weighted_score = null;
-  if (save.achieveIds) {
-    weighted_score = calcWeightedScore(
-      save.saveVersionFirst,
-      save.saveVersionSecond,
-      save.days
-    );
-  }
+
+  const weightedScore = save.score_days
+    ? {
+        days: save.score_days,
+        date: eu4DaysToDate(save.score_days),
+      }
+    : null;
 
   return {
     id: save.id,
@@ -116,7 +120,7 @@ export const toApiSaveUser = (save: Save, user: User): SaveFile => {
     patch: `${save.saveVersionFirst}.${save.saveVersionSecond}.${save.saveVersionThird}.${save.saveVersionFourth}`,
     dlc: save.dlc,
     achievements: save.achieveIds,
-    weighted_score,
+    weighted_score: weightedScore,
     game_difficulty: difficulty,
     aar: save.aar,
     version: {

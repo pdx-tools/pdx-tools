@@ -1,10 +1,8 @@
 import { CheckRequest, CheckResponse } from "@/services/appApi";
 import { NextApiResponse } from "next";
 import { db, toApiSave } from "../../server-lib/db";
-import { leaderboardEligible } from "../../server-lib/leaderboard";
 import { withCoreMiddleware } from "../../server-lib/middlware";
 import * as pool from "../../server-lib/pool";
-import { remainingSaveSlots } from "../../server-lib/redis";
 import { NextSessionRequest, withSession } from "../../server-lib/session";
 import {
   getArray,
@@ -37,14 +35,11 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
 
   const uid = req.sessionUid;
   const body = parseCheck(req.body);
-  const remainingSlots = await remainingSaveSlots(uid);
   const validPatch = pool.validPatch(body.patch.first, body.patch.second);
   if (!validPatch) {
     const response: CheckResponse = {
       saves: [],
       valid_patch: false,
-      qualifying_record: false,
-      remaining_save_slots: remainingSlots,
     };
     res.json(response);
     return;
@@ -63,8 +58,6 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
   const response: CheckResponse = {
     saves,
     valid_patch: validPatch,
-    qualifying_record: false,
-    remaining_save_slots: remainingSlots,
   };
 
   if (saves.length > 0) {
@@ -80,17 +73,7 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
     return;
   }
 
-  const qualifyingRecord = await leaderboardEligible({
-    days: body.score,
-    achievements: body.achievement_ids,
-    campaignId: body.campaign_id,
-    playthroughId: body.playthrough_id,
-  });
-
-  res.json({
-    ...response,
-    qualifying_record: qualifyingRecord,
-  });
+  res.json(response);
 };
 
 export default withCoreMiddleware(withSession(handler));

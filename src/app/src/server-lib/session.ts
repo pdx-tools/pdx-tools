@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getEnv } from "./env";
 import { withIronSessionApiRoute } from "iron-session/next";
 import { getIronSession, IronSession } from "iron-session";
-import { redisClient } from "./redis";
+import { apiKeyAtRest, db } from "./db";
 
 declare module "iron-session" {
   interface IronSessionData {
@@ -85,9 +85,16 @@ export const withSession = (
         return;
       }
 
-      const redis = await redisClient();
-      const password = await redis.get(`api_key:${creds.username}`);
-      if (password !== creds.password) {
+      const user = await db.user.findUnique({
+        where: {
+          userId: creds.username,
+        },
+        select: {
+          apiKey: true,
+        },
+      });
+
+      if (user?.apiKey !== apiKeyAtRest(creds.password)) {
         res.status(401).json({ msg: "invalid credentials" });
         return;
       }

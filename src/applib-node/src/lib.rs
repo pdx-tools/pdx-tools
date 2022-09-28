@@ -1,4 +1,3 @@
-use eu4game::achievements::WeightedScore;
 use hasher::FileHasher;
 use napi::bindgen_prelude::*;
 use napi_derive::*;
@@ -33,18 +32,13 @@ pub fn achievements() -> String {
 }
 
 #[napi]
-pub fn weighted_score(major: i32, minor: i32, score: i32) -> Result<String> {
-    let major = to_u16(major)?;
-    let minor = to_u16(minor)?;
-    let result = WeightedScore::from_raw_parts(major, minor, score).unwrap();
-    Ok(serde_json::to_string(&result).unwrap())
+pub fn eu4_days_to_date(days: i32) -> String {
+    applib::eu4_days_to_date(days)
 }
 
 #[napi]
-pub fn weighted_factor(major: i32, minor: i32) -> Result<Option<f64>> {
-    let major = to_u16(major)?;
-    let minor = to_u16(minor)?;
-    Ok(eu4game::achievements::weighted_factor(major, minor))
+pub fn latest_eu4_minor_patch() -> u16 {
+    eu4game::game::LATEST_MINOR
 }
 
 #[napi]

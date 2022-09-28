@@ -12,13 +12,8 @@ import { fileChecksum, parseFile } from "@/server-lib/pool";
 import { uploadFileToS3 } from "@/server-lib/s3";
 import { ValidationError } from "@/server-lib/errors";
 import { createBrotliDecompress, createGunzip } from "zlib";
-import { remainingSaveSlots } from "@/server-lib/redis";
 import { NextSessionRequest, withSession } from "@/server-lib/session";
 import { withCoreMiddleware } from "@/server-lib/middlware";
-import {
-  addToLeaderboard,
-  leaderboardEligible,
-} from "@/server-lib/leaderboard";
 import { getOptionalString, getString } from "@/server-lib/valiation";
 import { deduceUploadType, UploadType } from "@/server-lib/models";
 import { nanoid } from "@reduxjs/toolkit";
@@ -94,8 +89,6 @@ const unwrapSave = async (fp: string, upload: UploadType): Promise<string> => {
 
 export interface SavePostResponse {
   save_id: string;
-  remaining_save_slots: number;
-  used_save_slot: boolean;
 }
 
 const fileuploader = upload.single("file");
@@ -207,33 +200,9 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
       throw new ValidationError(`unsupported patch: ${out.patch_shorthand}`);
     }
 
-    const remainingSlots = await remainingSaveSlots(uid);
-    let needsSlot = false;
-
-    needsSlot = (out.achievements || []).length === 0;
-    if (needsSlot && remainingSlots <= 0) {
-      throw new ValidationError(
-        "not eligible for achievements and no remaining save slots"
-      );
-    }
-
-    const qualifyingRecord = await leaderboardEligible({
-      days: out.days,
-      achievements: out.achievements || [],
-      campaignId: out.campaign_id,
-      playthroughId: out.playthrough_id,
-    });
-
-    needsSlot = needsSlot || !qualifyingRecord;
-    if (needsSlot && remainingSlots <= 0) {
-      throw new ValidationError(
-        "same playthoughs need to have time improved upon or have more achievements and no more save slots"
-      );
-    }
-
     await uploadFileToS3(requestPath, saveId, metadata.uploadType);
 
-    const newRow = await db.save.create({
+    await db.save.create({
       data: {
         id: saveId,
         userId: uid,
@@ -242,6 +211,7 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
         hash: checksum,
         date: out.date,
         days: out.days,
+        score_days: out.score_days,
         player: out.player_tag,
         displayedCountryName: out.player_tag_name,
         campaignId: out.campaign_id,
@@ -262,16 +232,11 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
         gameDifficulty: out.game_difficulty,
         aar: metadata.aar,
         playthroughId: out.playthrough_id,
-        saveSlot: needsSlot,
       },
     });
 
-    await addToLeaderboard(saveId, out, +newRow.createdOn / 1000);
-
     const response: SavePostResponse = {
       save_id: saveId,
-      remaining_save_slots: remainingSlots,
-      used_save_slot: needsSlot,
     };
 
     res.json(response);
