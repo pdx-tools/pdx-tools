@@ -133,7 +133,6 @@ struct UpdateSave {
     checksum: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     patch_shorthand: Option<String>,
-
 }
 
 impl From<ParsedFile> for UpdateSave {

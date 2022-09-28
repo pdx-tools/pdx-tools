@@ -54,15 +54,6 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
-      announcementBar: {
-        id: "pre-vic3-survey",
-        content:
-          'Vote for what\'s next in PDX Tools with <a target="_blank" rel="noopener noreferrer" href="https://strawpoll.vote/polls/axicc6u8/vote?s=0">a 2 question survey</a>',
-        backgroundColor: "#0284C7", // bg-sky-600
-        textColor: "white",
-        isCloseable: false,
-      },
-
       colorMode: {
         disableSwitch: true,
       },

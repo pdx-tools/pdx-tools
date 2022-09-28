@@ -24,19 +24,8 @@ interface AppHeaderProps {
   disabled?: boolean;
 }
 
-export const CurrentAnnouncement: (() => React.ReactElement) | null = () => (
-  <div>
-    Vote for what's next in PDX Tools with{" "}
-    <a
-      target="_blank"
-      rel="noopener noreferrer"
-      href="https://strawpoll.vote/polls/axicc6u8/vote?s=0"
-      className="text-white underline hover:text-white"
-    >
-      a 2 question survey
-    </a>
-  </div>
-);
+export const CurrentAnnouncement: (() => React.ReactElement) | undefined =
+  undefined as unknown as (() => React.ReactElement) | undefined;
 
 export const AppHeader = ({ disabled = false }: AppHeaderProps) => {
   return (
