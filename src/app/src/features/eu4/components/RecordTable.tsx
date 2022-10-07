@@ -8,6 +8,7 @@ import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { TimeAgo } from "@/components/TimeAgo";
 import { diff } from "@/lib/dates";
 import { RankedSaveFile } from "@/services/appApi";
+import { formatInt } from "@/lib/format";
 
 interface RecordTableProps {
   records: RankedSaveFile[];
@@ -42,9 +43,14 @@ export const RecordTable = ({ records }: RecordTableProps) => {
       showSorterTooltip: false,
       sorter: (a: RankedSaveFile, b: RankedSaveFile) =>
         (a.weighted_score?.days || 0) - (b.weighted_score?.days || 0),
-      render: (score: RankedSaveFile["weighted_score"]) => (
-        <Tooltip title={score?.days || "---"}>
-          <div>{score?.date || "---"}</div>
+      render: (score: RankedSaveFile["weighted_score"], x: RankedSaveFile) => (
+        <Tooltip
+          title={`${formatInt(x.days)} @ ${x.patch
+            .split(".")
+            .slice(0, 2)
+            .join(".")} = ${score?.date}`}
+        >
+          <div>{score?.days ? formatInt(score.days) : "---"}</div>
         </Tooltip>
       ),
     },
@@ -54,7 +60,7 @@ export const RecordTable = ({ records }: RecordTableProps) => {
       className: "no-break",
       sorter: (a: RankedSaveFile, b: RankedSaveFile) => a.days - b.days,
       render: (date: string, x: RankedSaveFile) => (
-        <Tooltip title={x.days}>
+        <Tooltip title={formatInt(x.days)}>
           <div>{date}</div>
         </Tooltip>
       ),
