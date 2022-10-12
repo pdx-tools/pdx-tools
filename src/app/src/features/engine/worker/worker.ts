@@ -1,9 +1,7 @@
 import { expose, transfer } from "comlink";
 import { fetchSkanSave } from "@/services/skanApi";
 import { getSaveFile } from "@/services/appApi";
-import { detectType } from "./detect";
 import { getRawData, setRawData } from "./storage";
-import { timeit } from "./worker-lib";
 import { AnalyzeOptions } from "./worker-types";
 import { Achievements, EnhancedMeta } from "@/features/eu4/types/models";
 import { DetectedDataType } from "../engineSlice";
@@ -28,7 +26,7 @@ export type AnalyzeResponse =
   | { kind: "hoi4"; meta: Hoi4Metadata }
   | { kind: "imperator"; meta: ImperatorMetadata };
 
-function extensionType(filename: string): DetectedDataType | null {
+function extensionType(filename: string): DetectedDataType {
   const splits = filename.split(".");
   const extension = splits[splits.length - 1];
   switch (extension) {
@@ -39,7 +37,7 @@ function extensionType(filename: string): DetectedDataType | null {
     case "hoi4":
       return extension;
     default:
-      return null;
+      return "eu4";
   }
 }
 
@@ -57,8 +55,7 @@ const obj = {
         const bytes = source.data;
         setRawData(bytes);
 
-        const kind =
-          extensionType(source.name) ?? (await detectType(bytes, options));
+        const kind = extensionType(source.name);
         switch (kind) {
           case "eu4": {
             const results = await initializeEu4(bytes, options);
