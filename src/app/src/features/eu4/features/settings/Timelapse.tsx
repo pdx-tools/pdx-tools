@@ -630,7 +630,7 @@ export const Timelapse = () => {
           <Tooltip
             title={
               isChrome
-                ? "Timelapse recording is disabled in Chrome. Try Edge or Firefox"
+                ? "Due to a bug in Chrome, timelapse recording is disabled. Try Edge or Firefox"
                 : !isPlaying
                 ? "Start recording"
                 : "Stop recording"
