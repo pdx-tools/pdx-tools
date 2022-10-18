@@ -151,7 +151,6 @@ build-wasm: build-wasm-dev
 build-wasm-dev:
   wasm-pack build -t web src/wasm-br
   wasm-pack build -t web src/wasm-ck3
-  wasm-pack build -t web src/wasm-detect
   wasm-pack build -t web src/wasm-eu4
   wasm-pack build -t web src/wasm-hoi4
   wasm-pack build -t web src/wasm-imperator

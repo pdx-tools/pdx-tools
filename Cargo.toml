@@ -8,7 +8,6 @@ members = [
     "src/tarsave",
     "src/wasm-br",
     "src/wasm-ck3",
-    "src/wasm-detect",
     "src/wasm-eu4",
     "src/wasm-hoi4",
     "src/wasm-imperator",
