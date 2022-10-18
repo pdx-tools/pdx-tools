@@ -612,6 +612,10 @@ export const Timelapse = () => {
     }
   }
 
+  const isChrome =
+    navigator.userAgent.includes("Chrome") &&
+    !navigator.userAgent.includes("Edg/");
+
   return (
     <>
       <div className="flex items-center justify-center gap-2">
@@ -623,10 +627,19 @@ export const Timelapse = () => {
           />
         </Tooltip>
         {selectedCodec && (
-          <Tooltip title={!isPlaying ? "Start recording" : "Stop recording"}>
+          <Tooltip
+            title={
+              isChrome
+                ? "Timelapse recording is disabled in Chrome. Try Edge or Firefox"
+                : !isPlaying
+                ? "Start recording"
+                : "Stop recording"
+            }
+          >
             <Button
               shape="circle"
               loading={isTranscoding}
+              disabled={isChrome}
               icon={
                 !isRecording ? <VideoCameraOutlined /> : <VideoCameraTwoTone />
               }
