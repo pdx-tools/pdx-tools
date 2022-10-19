@@ -128,8 +128,11 @@ pub fn parse_game_dir(
     let mut regions = Vec::new();
     for (key, areas) in data.iter() {
         let key = buffer.create_string(key);
-        let strs = areas.iter().map(|x| x.as_str()).collect::<Vec<_>>();
-        let vec = buffer.create_vector_of_strings(&strs);
+        let strs = areas
+            .iter()
+            .map(|x| buffer.create_string(x.as_str()))
+            .collect::<Vec<_>>();
+        let vec = buffer.create_vector(&strs);
         let entry = schemas::eu4::EntryStringList::create(
             &mut buffer,
             &schemas::eu4::EntryStringListArgs {
@@ -155,8 +158,11 @@ pub fn parse_game_dir(
     let mut superregions = Vec::new();
     for (key, areas) in data.iter() {
         let key = buffer.create_string(key);
-        let strs = areas.iter().map(|x| x.as_str()).collect::<Vec<_>>();
-        let vec = buffer.create_vector_of_strings(&strs);
+        let strs = areas
+            .iter()
+            .map(|x| buffer.create_string(x.as_str()))
+            .collect::<Vec<_>>();
+        let vec = buffer.create_vector(&strs);
         let entry = schemas::eu4::EntryStringList::create(
             &mut buffer,
             &schemas::eu4::EntryStringListArgs {
@@ -216,9 +222,9 @@ pub fn parse_game_dir(
         let strs = group
             .cultures
             .iter()
-            .map(|x| x.as_str())
+            .map(|x| buffer.create_string(x.as_str()))
             .collect::<Vec<_>>();
-        let vec = buffer.create_vector_of_strings(&strs);
+        let vec = buffer.create_vector(&strs);
         let entry = schemas::eu4::EntryStringList::create(
             &mut buffer,
             &schemas::eu4::EntryStringListArgs {
