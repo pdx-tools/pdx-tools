@@ -31,7 +31,8 @@ impl<'a> FlatBufferResolver<'a> {
         values.extend_from_slice(&tokens[..lower_max + 1]);
         values.extend_from_slice(&tokens[usize::from(BREAKPOINT)..]);
 
-        let offset = buffer.create_vector_of_strings(&values);
+        let softs: Vec<_> = values.iter().map(|x| buffer.create_string(x)).collect();
+        let offset = buffer.create_vector(&softs);
 
         let root = crate::tokens::Tokens::create(
             &mut buffer,

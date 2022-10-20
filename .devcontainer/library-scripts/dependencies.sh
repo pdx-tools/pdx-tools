@@ -9,7 +9,7 @@ curl -o "$MY_TMP/binaryen.tar.gz" -L "https://github.com/WebAssembly/binaryen/re
 (cd "$MY_TMP" && tar -xzf "binaryen.tar.gz")
 mv "$MY_TMP/binaryen-$WASM_OPT_V/bin/wasm-opt" "/usr/local/bin/."
 
-curl -o "$MY_TMP/flatc.zip" -L "https://github.com/google/flatbuffers/releases/download/v2.0.0/Linux.flatc.binary.clang++-9.zip"
+curl -o "$MY_TMP/flatc.zip" -L "https://github.com/google/flatbuffers/releases/download/v22.9.29/Linux.flatc.binary.clang++-12.zip"
 (cd "$MY_TMP" && unzip flatc.zip)
 chmod +x "$MY_TMP/flatc"
 mv "$MY_TMP/flatc" "/usr/local/bin/."
