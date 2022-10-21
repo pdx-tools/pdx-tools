@@ -78,7 +78,7 @@ impl FetchAssetsArgs {
                 let lm = object
                     .last_modified()
                     .with_context(|| format!("expected {} to have last modified", key))?;
-                let remote_modified = Utc.timestamp(lm.secs(), lm.subsec_nanos());
+                let remote_modified = Utc.timestamp(lm.secs(), 0);
                 let local_modified: DateTime<Utc> = (*created).into();
 
                 match remote_modified.cmp(&local_modified) {
