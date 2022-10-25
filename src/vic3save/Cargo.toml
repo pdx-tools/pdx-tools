@@ -1,0 +1,22 @@
+[package]
+name = "vic3save"
+version = "0.1.0"
+authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
+edition = "2021"
+publish = false
+
+[features]
+default = ["miniz"]
+miniz = ["miniz_oxide"]
+libdeflate = ["libdeflater/freestanding"]
+
+[dependencies]
+jomini = { version = "0.20", features = ["json"] }
+zip = { version =  "0.6", default-features = false }
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
+libdeflater = { version = "0.11", optional = true }
+miniz_oxide = { version = "0.6", optional = true }
+
+[dev-dependencies]
+zip = { version =  "0.6", default-features = false, features = ["deflate"] }

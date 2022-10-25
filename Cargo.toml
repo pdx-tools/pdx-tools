@@ -6,6 +6,7 @@ members = [
     "src/eu4game",
     "src/schemas",
     "src/tarsave",
+    "src/vic3save",
     "src/wasm-br",
     "src/wasm-ck3",
     "src/wasm-eu4",

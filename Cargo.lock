@@ -2519,6 +2519,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
+name = "vic3save"
+version = "0.1.0"
+dependencies = [
+ "jomini",
+ "libdeflater",
+ "miniz_oxide 0.6.1",
+ "serde",
+ "thiserror",
+ "zip",
+]
+
+[[package]]
 name = "walkdir"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
