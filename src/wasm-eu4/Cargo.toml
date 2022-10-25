@@ -14,7 +14,7 @@ miniz = ["eu4save/miniz", "eu4game/miniz"]
 libdeflate = ["eu4save/libdeflate", "eu4game/libdeflate"]
 
 [dependencies]
-jomini = "0.19"
+jomini = "0.20"
 js-sys = "0.3"
 once_cell = "1.13"
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }

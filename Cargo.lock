@@ -538,8 +538,8 @@ dependencies = [
 
 [[package]]
 name = "ck3save"
-version = "0.4.2"
-source = "git+https://github.com/rakaly/ck3save.git#cb3fb04182b40202a5ff253116f9893fdc7be694"
+version = "0.4.3"
+source = "git+https://github.com/rakaly/ck3save.git#28d41286534cbb439be575938b94d271252c6292"
 dependencies = [
  "jomini",
  "libdeflater",
@@ -871,7 +871,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.1"
-source = "git+https://github.com/rakaly/eu4save.git#cf33ace0d5906c7aac381ebffc3485ba9e347060"
+source = "git+https://github.com/rakaly/eu4save.git#34e36fcb0ce8d7e128ba86eabfd320840202beff"
 dependencies = [
  "jomini",
  "libdeflater",
@@ -1096,9 +1096,9 @@ checksum = "3688f13e7735ae5ca93edc490f6c5885b77d473255bc1fed92b9c805f972bf94"
 
 [[package]]
 name = "hoi4save"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0c927b1ebe832c56eeb6cde1f37645647416dee3e14070b90c417b8e7297433"
+checksum = "110351713431df4d395c31e1633aefbec285e51b867a554299c00875ea5eda58"
 dependencies = [
  "jomini",
  "serde",
@@ -1214,8 +1214,8 @@ dependencies = [
 
 [[package]]
 name = "imperator-save"
-version = "0.4.1"
-source = "git+https://github.com/rakaly/imperator-save.git#d6990fc3c5d4a6ed8c81a087d2445a3234cbfc82"
+version = "0.4.2"
+source = "git+https://github.com/rakaly/imperator-save.git#86be7c11e510a285abb1be727986c6b43c636cc9"
 dependencies = [
  "jomini",
  "libdeflater",
@@ -1277,9 +1277,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.19.1"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abcf56da419099ea8558927a5db96655db1d725d24517473367d4f03c877d9bf"
+checksum = "62c072d9234b3deb0f732326e636672aa93f28ca7650dcff271b27fe775efaf1"
 dependencies = [
  "jomini_derive",
  "serde",
@@ -1319,18 +1319,18 @@ checksum = "349d5a591cd28b49e1d1037471617a32ddcda5731b99419008085f72d5a53836"
 
 [[package]]
 name = "libdeflate-sys"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43afa5b192ff058426ba20a4f35c290ef402478d6045ac934ac15aa947a3898d"
+checksum = "cb6784b6b84b67d71b4307963d456a9c7c29f9b47c658f533e598de369e34277"
 dependencies = [
  "cc",
 ]
 
 [[package]]
 name = "libdeflater"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e656b7960ec49e864badc7ad1b810427a7ac8b78511a699ce5cdc3ead0b32e5b"
+checksum = "d8e285aa6a046fd338b2592c16bee148b2b00789138ed6b7bb56bb13d585050d"
 dependencies = [
  "libdeflate-sys",
 ]
