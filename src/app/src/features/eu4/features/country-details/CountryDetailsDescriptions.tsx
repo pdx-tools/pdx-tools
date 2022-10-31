@@ -71,7 +71,8 @@ export const CountryDetailsDescriptions = ({
           <tbody>{ideaElem}</tbody>
         </table>
       </Descriptions.Item>
-      <Descriptions.Item label={<InheritanceLabel details={details} />}>
+      <Descriptions.Item label={<InheritanceLabel details={details} />} 
+        span={3}>
         <div className="no-break flex flex-col">
           {!isJuniorParter && (
             <div>{`Window: [${details.inheritance.start_t1_year} - ${details.inheritance.end_t1_year}]`}</div>
@@ -79,6 +80,8 @@ export const CountryDetailsDescriptions = ({
           <div>{`Inheritance Value: ${details.inheritance.inheritance_value}`}</div>
         </div>
       </Descriptions.Item>
+
+      <Descriptions.Item label="Development">{`${details.raw_development} (${details.development} counting autonomy)`}</Descriptions.Item>
     </Descriptions>
   );
 };
