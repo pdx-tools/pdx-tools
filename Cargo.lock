@@ -1277,9 +1277,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.20.0"
+version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62c072d9234b3deb0f732326e636672aa93f28ca7650dcff271b27fe775efaf1"
+checksum = "9985c274ba09fb366d5a25b3848615ea2b7b9948dc4b6012f9cba5947d412c06"
 dependencies = [
  "jomini_derive",
  "serde",
