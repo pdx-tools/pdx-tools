@@ -83,7 +83,7 @@ export const CountryDetailsDescriptions = ({
 
       <Descriptions.Item label="Dev">
         <div className="no-break flex flex-col">
-          <div>{`${formatFloat(details.development, 2)} / ${details.raw_development}`}</div>
+          <div>{`${formatFloat(details.development, 2)} / ${formatInt(details.raw_development)}`}</div>
           <div>{`${formatFloat(100 * (1 - details.development/details.raw_development), 2)}% avg autonomy`}</div>
         </div>
       </Descriptions.Item>
