@@ -31,8 +31,9 @@ export const CountryLeaders = ({ details }: CountryLeadersProps) => {
       dataIndex: "name",
       render: (_: any, x: CountryLeader) =>
         `${x.name}${
-          x.monarch_stats ?
-          ` (${x.monarch_stats.adm} / ${x.monarch_stats.dip} / ${x.monarch_stats.mil})` : ""
+          x.monarch_stats
+            ? ` (${x.monarch_stats.adm} / ${x.monarch_stats.dip} / ${x.monarch_stats.mil})`
+            : ""
         }`,
       sorter: (a: CountryLeader, b: CountryLeader) =>
         a.name.localeCompare(b.name),
