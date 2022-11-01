@@ -63,95 +63,9 @@ impl<'a> jomini::binary::TokenResolver for FlatBufferResolver<'a> {
     }
 }
 
-#[cfg(feature = "inline")]
-pub struct Eu4FlatBufferTokens {
-    resolver: FlatBufferResolver<'static>,
-}
+include!(concat!(env!("OUT_DIR"), "/gen_tokens.rs"));
 
-#[cfg(feature = "inline")]
-impl Eu4FlatBufferTokens {
-    pub fn new() -> Self {
-        let data = include_bytes!("../../../assets/tokens/eu4-raw.bin");
-        Self {
-            resolver: FlatBufferResolver::from_slice(data),
-        }
-    }
-}
-
-#[cfg(feature = "inline")]
-impl jomini::binary::TokenResolver for Eu4FlatBufferTokens {
-    fn resolve(&self, token: u16) -> Option<&str> {
-        self.resolver.resolve(token)
-    }
-}
-
-#[cfg(feature = "inline")]
-pub struct Ck3FlatBufferTokens {
-    resolver: FlatBufferResolver<'static>,
-}
-
-#[cfg(feature = "inline")]
-impl Ck3FlatBufferTokens {
-    pub fn new() -> Self {
-        let data = include_bytes!("../../../assets/tokens/ck3-raw.bin");
-        Self {
-            resolver: FlatBufferResolver::from_slice(data),
-        }
-    }
-}
-
-#[cfg(feature = "inline")]
-impl jomini::binary::TokenResolver for Ck3FlatBufferTokens {
-    fn resolve(&self, token: u16) -> Option<&str> {
-        self.resolver.resolve(token)
-    }
-}
-
-#[cfg(feature = "inline")]
-pub struct Hoi4FlatBufferTokens {
-    resolver: FlatBufferResolver<'static>,
-}
-
-#[cfg(feature = "inline")]
-impl Hoi4FlatBufferTokens {
-    pub fn new() -> Self {
-        let data = include_bytes!("../../../assets/tokens/hoi4-raw.bin");
-        Self {
-            resolver: FlatBufferResolver::from_slice(data),
-        }
-    }
-}
-
-#[cfg(feature = "inline")]
-impl jomini::binary::TokenResolver for Hoi4FlatBufferTokens {
-    fn resolve(&self, token: u16) -> Option<&str> {
-        self.resolver.resolve(token)
-    }
-}
-
-#[cfg(feature = "inline")]
-pub struct ImperatorFlatBufferTokens {
-    resolver: FlatBufferResolver<'static>,
-}
-
-#[cfg(feature = "inline")]
-impl ImperatorFlatBufferTokens {
-    pub fn new() -> Self {
-        let data = include_bytes!("../../../assets/tokens/imperator-raw.bin");
-        Self {
-            resolver: FlatBufferResolver::from_slice(data),
-        }
-    }
-}
-
-#[cfg(feature = "inline")]
-impl jomini::binary::TokenResolver for ImperatorFlatBufferTokens {
-    fn resolve(&self, token: u16) -> Option<&str> {
-        self.resolver.resolve(token)
-    }
-}
-
-#[cfg(all(test, feature = "inline"))]
+#[cfg(all(test, feature = "inline", eu4_tokens))]
 mod tests {
     use super::*;
     use jomini::binary::TokenResolver;
