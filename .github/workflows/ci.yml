@@ -18,7 +18,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    if: "!github.event.pull_request.head.repo.fork or contains(github.event.pull_request.labels.*.name, 'safe to test')"
+    if: "!github.event.pull_request.head.repo.fork || contains(github.event.pull_request.labels.*.name, 'safe to test')"
     steps:
     - uses: actions/checkout@v3
       with:
