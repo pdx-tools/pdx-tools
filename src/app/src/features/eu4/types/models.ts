@@ -117,6 +117,7 @@ export interface CountryDetails {
   ruler: Ruler;
   base_tax: number;
   development: number;
+  raw_development: number;
   prestige: number;
   stability: number;
   treasury: number;
