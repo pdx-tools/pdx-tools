@@ -97,7 +97,7 @@ dev-app: prep-frontend prep-dev-app
     "PORT=3001 src/app/node_modules/.bin/next dev src/app" \
     "cd src/docs && npm run docusaurus -- start --no-open"
 
-test-app *cmd: prep-test-app
+test-app *cmd: prep-frontend prep-test-app
   #!/usr/bin/env bash
   set -euxo pipefail
 
