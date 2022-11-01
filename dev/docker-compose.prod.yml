@@ -43,7 +43,7 @@ services:
       -c max_parallel_maintenance_workers=1
 
   api:
-    image: docker.nbsoftsolutions.com/pdx-tools/app
+    image: ghcr.io/pdx-tools/pdx-tools:nightly
     restart: 'unless-stopped'
     labels:
       - "traefik.enable=true"

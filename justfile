@@ -68,7 +68,7 @@ build-app: prep-frontend
   cd src/docs/build && cp -r assets blog changelog docs img ../../app/out/.
 
 build-docker:
-  docker build -t docker.nbsoftsolutions.com/pdx-tools/app -f ./dev/app.dockerfile ./src/app
+  docker build -t ghcr.io/pdx-tools/pdx-tools:nightly -f ./dev/app.dockerfile ./src/app
 
 build-admin:
   #!/usr/bin/env bash

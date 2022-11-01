@@ -65,7 +65,18 @@ jobs:
       run: just admin-sync-assets
     - name: Unpack assets
       run: just package-all
-    - name: Build
-      run: just build
     - name: Run tests
       run: just test
+    - name: Build
+      run: just build
+
+    - name: Log in to the Container registry
+      if: github.ref == 'refs/heads/master'
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Push to container registry
+      run: docker push ghcr.io/pdx-tools/pdx-tools:nightly
