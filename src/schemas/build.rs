@@ -24,8 +24,13 @@ fn main() {
         let mut pascal = String::from(*game);
         pascal.get_mut(0..1).unwrap().make_ascii_uppercase();
         let path = format!("../../assets/tokens/{game}-raw.bin");
-        let tokens = Path::new(&path).canonicalize().unwrap();
-        let token_path = tokens.display();
+        let tokens = Path::new(&path);
+        let exists = tokens.exists();
+        let token_path = if exists {
+            tokens.canonicalize().unwrap().display().to_string()
+        } else {
+            String::from("")
+        };
 
         writeln!(
             writer,
@@ -39,7 +44,7 @@ pub struct {pascal}FlatBufferTokens {{
 impl {pascal}FlatBufferTokens {{
     #[cfg({game}_tokens)]
     pub fn new() -> Self {{
-        let data = include_bytes!({token_path});
+        let data = include_bytes!("{token_path}");
         Self {{
             resolver: FlatBufferResolver::from_slice(data),
         }}
