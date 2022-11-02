@@ -53,7 +53,6 @@ npm-ci:
   (cd src/app/workers-site && npm ci)
 
 publish-backend:
-  docker push docker.nbsoftsolutions.com/pdx-tools/app
   ssh -t pdx-tools-prod '/opt/pdx-tools/docker-compose.sh pull api && /opt/pdx-tools/docker-compose.sh up -d api'
 
 wrangler +cmd:
