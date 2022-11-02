@@ -158,7 +158,7 @@ build-napi:
   cargo build --release -p applib-node
   cp -f ./target/release/libapplib_node.so ./src/app/src/server-lib/applib.node
 
-package-all *opts: admin-tokenize
+package-all *opts: admin-tokenize-all
   #!/usr/bin/env bash
   set -euxo pipefail
   package() {
@@ -237,13 +237,15 @@ backup-config ENVIRONMENT:
 admin-sync-assets:
   just pdx fetch-assets --access-key "${ASSETS_ACCESS_KEY}" --secret-key "${ASSETS_SECRET_KEY}"
 
-admin-tokenize *cmd:
-  cargo run --release --package pdx --features tokenize -- tokenize \
-    --eu4-ironman-tokens "./assets/tokens/eu4.txt" \
-    --ck3-ironman-tokens "./assets/tokens/ck3.txt" \
-    --hoi4-ironman-tokens "./assets/tokens/hoi4.txt" \
-    --imperator-tokens "./assets/tokens/imperator.txt" \
-     "$@"
+admin-tokenize-all: (tokenize 
+  "--eu4-ironman-tokens" "./assets/tokens/eu4.txt"
+  "--ck3-ironman-tokens" "./assets/tokens/ck3.txt"
+  "--hoi4-ironman-tokens" "./assets/tokens/hoi4.txt"
+  "--imperator-tokens" "./assets/tokens/imperator.txt"
+)
+
+tokenize *cmd:
+  cargo run --release --package pdx --features tokenize -- tokenize "$@"
 
 format:
   cargo fmt
