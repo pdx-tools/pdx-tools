@@ -1,5 +1,5 @@
-use vic3save::{EnvTokens, Vic3File, FailedResolveStrategy};
 use std::{error::Error, io::Write};
+use vic3save::{EnvTokens, FailedResolveStrategy, Vic3File};
 
 pub fn run(file_data: &[u8]) -> Result<(), Box<dyn Error>> {
     let file = Vic3File::from_slice(file_data)?;
