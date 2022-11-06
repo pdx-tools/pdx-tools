@@ -8,22 +8,28 @@ import {
   getEu4Canvas,
   WorkerClient,
   useWorkerOnSave,
+  selectAnalyzeId,
 } from "@/features/engine";
+import { useSelector } from "react-redux";
 
 export const ProvinceSelectListener = () => {
   const eu4CanvasRef = useEu4CanvasRef();
+  const analyzeId = useSelector(selectAnalyzeId);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [provinceDetails, setProvinceDetails] = useState<
     ProvinceDetails | undefined
   >(undefined);
   const [provinceId, setProvinceId] = useState<number | undefined>(undefined);
 
+  const map = eu4CanvasRef.current?.map;
+  if (map) {
+    map.onProvinceSelection = (id) => setProvinceId(id);
+  }
+
   useEffect(() => {
-    const map = eu4CanvasRef.current?.map;
-    if (map) {
-      map.onProvinceSelection = (id) => setProvinceId(id);
-    }
-  }, [eu4CanvasRef]);
+    setProvinceId(undefined);
+    setProvinceDetails(undefined);
+  }, [analyzeId]);
 
   const cb = useCallback(
     async (worker: WorkerClient) => {
@@ -45,7 +51,7 @@ export const ProvinceSelectListener = () => {
       title="Province Details"
       placement="right"
       onClose={() => setDrawerVisible(false)}
-      visible={drawerVisible}
+      visible={drawerVisible && provinceId !== undefined}
       mask={false}
       closable={true}
       width="min(400px, 100%)"
