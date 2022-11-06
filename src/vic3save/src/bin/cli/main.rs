@@ -1,6 +1,7 @@
 use std::{env, error::Error, io::Read};
 
 mod fmt;
+mod melt;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
@@ -11,6 +12,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match args[1].as_str() {
         "fmt" => fmt::run(&buf),
+        "melt" => melt::run(&buf),
         x => panic!("unrecognized argument: {}", x),
     }?;
 
