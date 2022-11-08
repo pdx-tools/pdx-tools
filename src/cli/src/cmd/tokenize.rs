@@ -27,6 +27,10 @@ pub struct TokenizeArgs {
     /// path to imperator tokens
     #[clap(long, env, value_parser)]
     imperator_tokens: Option<PathBuf>,
+
+    /// path to vic3 tokens
+    #[clap(long, env, value_parser)]
+    vic3_tokens: Option<PathBuf>,
 }
 
 impl TokenizeArgs {
@@ -45,6 +49,10 @@ impl TokenizeArgs {
 
         if let Some(e) = self.imperator_tokens.as_ref() {
             tokenize_path(e, "imperator")?
+        }
+
+        if let Some(e) = self.vic3_tokens.as_ref() {
+            tokenize_path(e, "vic3")?
         }
 
         Ok(ExitCode::SUCCESS)

@@ -21,7 +21,7 @@ type AnalysisState =
       drawn: boolean;
     };
 
-export type DetectedDataType = "eu4" | "ck3" | "hoi4" | "imperator";
+export type DetectedDataType = "eu4" | "ck3" | "hoi4" | "imperator" | "vic3";
 
 interface EngineState {
   analyzeId: number;

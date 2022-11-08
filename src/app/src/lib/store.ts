@@ -12,6 +12,7 @@ import { reducer as engineReducer } from "@/features/engine";
 import { reducer as eu4Reducer } from "@/features/eu4/eu4Slice";
 import { reducer as ck3Reducer } from "@/features/ck3/ck3Slice";
 import { reducer as hoi4Reducer } from "@/features/hoi4/hoi4Slice";
+import { reducer as vic3Reducer } from "@/features/vic3/vic3Slice";
 import { reducer as imperatorReducer } from "@/features/imperator/imperatorSlice";
 import { reducer as uiControlsReducer } from "@/features/ui-controls";
 import { rtkQueryErrorLogger } from "./apiErrorMiddleware";
@@ -23,6 +24,7 @@ const rootReducer = combineReducers({
   eu4: eu4Reducer,
   ck3: ck3Reducer,
   hoi4: hoi4Reducer,
+  vic3: vic3Reducer,
   imperator: imperatorReducer,
   uiControls: uiControlsReducer,
   [appApi.reducerPath]: appApi.reducer,

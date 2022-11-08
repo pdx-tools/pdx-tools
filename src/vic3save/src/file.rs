@@ -67,6 +67,11 @@ impl<'a> Vic3File<'a> {
         }
     }
 
+    /// Return first line header
+    pub fn header(&self) -> &SaveHeader {
+        &self.header
+    }
+
     /// Returns the size of the file
     ///
     /// The size includes the inflated size of the zip

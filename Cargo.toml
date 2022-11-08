@@ -12,6 +12,7 @@ members = [
     "src/wasm-eu4",
     "src/wasm-hoi4",
     "src/wasm-imperator",
+    "src/wasm-vic3",
 ]
 
 [profile.release]

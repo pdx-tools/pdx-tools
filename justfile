@@ -145,6 +145,7 @@ build-wasm: build-wasm-dev
   optimize src/wasm-eu4/pkg/wasm_eu4_bg.wasm &
   optimize src/wasm-hoi4/pkg/wasm_hoi4_bg.wasm &
   optimize src/wasm-imperator/pkg/wasm_imperator_bg.wasm &
+  optimize src/wasm-vic3/pkg/wasm_vic3_bg.wasm &
   wait
 
 build-wasm-dev:
@@ -153,6 +154,7 @@ build-wasm-dev:
   wasm-pack build -t web src/wasm-eu4
   wasm-pack build -t web src/wasm-hoi4
   wasm-pack build -t web src/wasm-imperator
+  wasm-pack build -t web src/wasm-vic3
 
 build-napi:
   cargo build --release -p applib-node
@@ -242,6 +244,7 @@ admin-tokenize-all: (tokenize
   "--ck3-ironman-tokens" "./assets/tokens/ck3.txt"
   "--hoi4-ironman-tokens" "./assets/tokens/hoi4.txt"
   "--imperator-tokens" "./assets/tokens/imperator.txt"
+  "--vic3-tokens" "./assets/tokens/vic3.txt"
 )
 
 tokenize *cmd:

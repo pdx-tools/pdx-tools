@@ -6,6 +6,7 @@ import { Ck3View } from "./views/Ck3View";
 import { Eu4View } from "./views/Eu4View";
 import { Hoi4View } from "./views/Hoi4View";
 import { ImperatorView } from "./views/ImperatorView";
+import { Vic3View } from "./views/Vic3View";
 
 export const GameView = () => {
   const game = useSelector(selectAnalyzeGame);
@@ -73,6 +74,9 @@ export const GameView = () => {
     }
     case "imperator": {
       return <ImperatorView />;
+    }
+    case "vic3": {
+      return <Vic3View />;
     }
     case null: {
       return null;

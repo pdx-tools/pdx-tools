@@ -14,6 +14,7 @@ import {
   ImperatorMod,
   initializeImperator,
 } from "./imperator";
+import { initializeVic3, Vic3Metadata, Vic3Mod } from "./vic3";
 
 export type AnalyzeSource =
   | { kind: "local"; data: Uint8Array; name: string }
@@ -24,7 +25,8 @@ export type AnalyzeResponse =
   | { kind: "eu4"; meta: EnhancedMeta; achievements: Achievements }
   | { kind: "ck3"; meta: Ck3Metadata }
   | { kind: "hoi4"; meta: Hoi4Metadata }
-  | { kind: "imperator"; meta: ImperatorMetadata };
+  | { kind: "imperator"; meta: ImperatorMetadata }
+  | { kind: "vic3"; meta: Vic3Metadata };
 
 function extensionType(filename: string): DetectedDataType {
   const splits = filename.split(".");
@@ -36,6 +38,8 @@ function extensionType(filename: string): DetectedDataType {
     case "ck3":
     case "hoi4":
       return extension;
+    case "v3":
+      return "vic3";
     default:
       return "eu4";
   }
@@ -46,6 +50,7 @@ const obj = {
   ...Ck3Mod,
   ...Hoi4Mod,
   ...ImperatorMod,
+  ...Vic3Mod,
   async analyze(
     source: AnalyzeSource,
     options?: AnalyzeOptions
@@ -72,6 +77,10 @@ const obj = {
           case "imperator": {
             const { meta } = await initializeImperator(bytes, options);
             return { kind: "imperator", meta };
+          }
+          case "vic3": {
+            const { meta } = await initializeVic3(bytes, options);
+            return { kind: "vic3", meta };
           }
         }
       }
