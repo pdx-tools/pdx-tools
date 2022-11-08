@@ -1,5 +1,7 @@
 pub use jomini::common::PdsDate;
 use jomini::common::{DateError, DateFormat, PdsDateFormatter, RawDate};
+use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use std::fmt;
 use std::str::FromStr;
 
 const DAYS_PER_MONTH: [u8; 13] = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -151,5 +153,55 @@ impl FromStr for Vic3Date {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::parse(s.as_bytes())
+    }
+}
+
+impl Serialize for Vic3Date {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.iso_8601().to_string().as_str())
+    }
+}
+
+struct DateVisitor;
+
+impl<'de> Visitor<'de> for DateVisitor {
+    type Value = Vic3Date;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a date")
+    }
+
+    fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Vic3Date::from_binary(v)
+            .ok_or_else(|| de::Error::custom(format!("invalid binary date: {}", v)))
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Vic3Date::parse(v).map_err(|_e| de::Error::custom(format!("invalid date: {}", v)))
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.visit_str(v.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for Vic3Date {
+    fn deserialize<D>(deserializer: D) -> Result<Vic3Date, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(DateVisitor)
     }
 }

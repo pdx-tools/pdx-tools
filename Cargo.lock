@@ -2721,6 +2721,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-vic3"
+version = "0.1.0"
+dependencies = [
+ "jomini",
+ "js-sys",
+ "schemas",
+ "serde",
+ "vic3save",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "web-sys"
 version = "0.3.58"
 source = "registry+https://github.com/rust-lang/crates.io-index"

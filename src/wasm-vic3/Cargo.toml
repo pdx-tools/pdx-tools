@@ -1,0 +1,24 @@
+[package]
+name = "wasm-vic3"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["miniz"]
+miniz = ["vic3save/miniz"]
+libdeflate = ["vic3save/libdeflate"]
+
+[dependencies]
+jomini = "0.20"
+schemas = { path = "../schemas" }
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+serde = { version = "1", features = ["derive"] }
+vic3save = { path = "../vic3save" }
+js-sys = "0.3"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

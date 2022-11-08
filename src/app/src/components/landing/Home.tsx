@@ -366,6 +366,7 @@ export const Home = ({ subtitle }: HomeProps) => {
               <li>Europa Univeralis IV (1.29+)</li>
               <li>Hearts of Iron IV (1.0+)</li>
               <li>Crusader Kings III (1.0+)</li>
+              <li>Victoria 3 (1.0+)</li>
               <li>Imperator: Rome (1.0+)</li>
             </ul>
           </div>

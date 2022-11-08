@@ -19,6 +19,7 @@ import { getErrorMessage } from "@/lib/getErrorMessage";
 import { endCk3Analyze } from "@/features/ck3/ck3Slice";
 import { endHoi4Analyze } from "@/features/hoi4/hoi4Slice";
 import { endImperatorAnalyze } from "@/features/imperator/imperatorSlice";
+import { endVic3Analyze } from "@/features/vic3/vic3Slice";
 import { emitEvent } from "@/lib/plausible";
 import { useAppSelector } from "@/lib/store";
 import { selectIsDeveloper } from "@/features/account";
@@ -269,6 +270,27 @@ export function useFilePublisher() {
 
             dispatch(
               endImperatorAnalyze({
+                meta,
+              })
+            );
+
+            dispatch(
+              moduleLoaded({
+                filename: name,
+                isImmersive: false,
+                game: analysis.kind,
+              })
+            );
+
+            break;
+          }
+
+          case "vic3": {
+            const meta = analysis.meta;
+            const name = await filename;
+
+            dispatch(
+              endVic3Analyze({
                 meta,
               })
             );

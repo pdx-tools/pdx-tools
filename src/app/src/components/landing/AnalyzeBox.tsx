@@ -55,7 +55,7 @@ export const AnalyzeBox = () => {
           hidden
           type="file"
           onChange={handleChange}
-          accept=".eu4, .ck3, .hoi4, .rome"
+          accept=".eu4, .ck3, .hoi4, .rome, .v3"
         />
       </label>
     </div>
