@@ -18,6 +18,21 @@ enum FileKind<'a> {
     },
 }
 
+/// The encoding of a save file
+pub enum Encoding {
+    /// plaintext
+    Text,
+
+    /// plain binary
+    Binary,
+
+    /// text that requires decompression
+    TextZip,
+
+    /// binary that requires decompression
+    BinaryZip,
+}
+
 /// Entrypoint for parsing Vic3 saves
 ///
 /// Only consumes enough data to determine encoding of the file
@@ -70,6 +85,15 @@ impl<'a> Vic3File<'a> {
     /// Return first line header
     pub fn header(&self) -> &SaveHeader {
         &self.header
+    }
+
+    pub fn encoding(&self) -> Encoding {
+        match &self.kind {
+            FileKind::Text(_) => Encoding::Text,
+            FileKind::Binary(_) => Encoding::Binary,
+            FileKind::Zip { is_text: true, .. } => Encoding::TextZip,
+            FileKind::Zip { is_text: false, .. } => Encoding::BinaryZip,
+        }
     }
 
     /// Returns the size of the file
