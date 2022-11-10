@@ -980,6 +980,14 @@ impl SaveFileImpl {
                     })
                     .fold(0.0, f32::max);
 
+                // Some provinces in the state don't have the same num_centralize_state.
+                // It appears EU4 takes the max one when calculating gov cost.
+                let centralized = provinces
+                    .iter()
+                    .map(|(_, prov)| prov.num_centralize_state)
+                    .max()
+                    .unwrap_or(0);
+
                 let total_gc = provinces
                     .iter()
                     .map(|(_, prov)| {
@@ -1021,7 +1029,7 @@ impl SaveFileImpl {
                             }
                         }
 
-                        gc_modifier -= 0.2 * prov.num_centralize_state as f32;
+                        gc_modifier -= 0.2 * centralized as f32;
                         gc_modifier += 0.1 * prov.expand_infrastructure as f32;
 
                         let base = (dev * gc_modifier).max(dev * 0.01);
@@ -1043,12 +1051,6 @@ impl SaveFileImpl {
                             })
                     })
                     .next();
-
-                let centralized = provinces
-                    .iter()
-                    .map(|(_, prov)| prov.num_centralize_state)
-                    .max()
-                    .unwrap_or(0);
 
                 CountryState {
                     state: LocalizedObj {
