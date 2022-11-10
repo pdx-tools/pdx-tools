@@ -15,6 +15,7 @@ import type {
   CountryLossesRaw,
   CountryMatcher,
   CountryReligion,
+  CountryStateDetails,
   EnhancedCountryInfo,
   EnhancedMeta,
   GreatAdvisor,
@@ -104,6 +105,11 @@ export function eu4GetCountryProvinceCulture(tag: string): CountryCulture[] {
 export function eu4GetCountryLeaders(tag: string): CountryLeader[] {
   const save = loadedSave();
   return save.get_country_leaders(tag) as CountryLeader[];
+}
+
+export function eu4GetCountryStates(tag: string): CountryStateDetails[] {
+  const save = loadedSave();
+  return save.get_country_states(tag) as CountryStateDetails[];
 }
 
 export function eu4InitialMapPosition() {

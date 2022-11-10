@@ -660,3 +660,14 @@ export interface MapDate {
   days: number;
   text: string;
 }
+
+export interface CountryStateDetails {
+  state: LocalizedObj;
+  total_dev: number;
+  total_gc: number;
+  centralizing: {
+    progress: number;
+    date: string;
+  };
+  centralized: number;
+}

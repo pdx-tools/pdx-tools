@@ -1,9 +1,9 @@
 use crate::{hex_color, LocalizedObj, LocalizedTag, SaveFileImpl};
 use eu4game::SaveGameQuery;
 use eu4save::{
-    models::{CountryEvent, CountryTechnology, Leader, LeaderKind},
+    models::{CountryEvent, CountryTechnology, Leader, LeaderKind, Province},
     query::{CountryExpenseLedger, CountryIncomeLedger, CountryManaUsage, Inheritance},
-    CountryTag, Eu4Date, PdsDate,
+    CountryTag, Eu4Date, PdsDate, ProvinceId,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -171,6 +171,21 @@ pub enum DiplomacyKind {
         duration: u16,
         total: Option<f32>,
     },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ProgressDate {
+    progress: f32,
+    date: Eu4Date,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CountryState {
+    state: LocalizedObj,
+    total_dev: f32,
+    total_gc: f32,
+    centralizing: Option<ProgressDate>,
+    centralized: i32,
 }
 
 impl SaveFileImpl {
@@ -915,6 +930,140 @@ impl SaveFileImpl {
                 .then_with(|| a.name.cmp(&b.name))
         });
 
+        result
+    }
+
+    pub fn get_country_states(&self, tag: &str) -> Vec<CountryState> {
+        let tag = tag.parse::<CountryTag>().unwrap();
+        let country = self.query.country(&tag).unwrap();
+        let state_lookup = self.game.province_area_lookup();
+
+        let owned_provinces = self
+            .query
+            .save()
+            .game
+            .provinces
+            .iter()
+            .filter(|(_, prov)| prov.owner.as_ref().map_or(false, |owner| owner == &tag))
+            .filter_map(|(id, prov)| state_lookup.get(id).map(|state| (id, prov, state)));
+
+        let mut province_states: HashMap<&str, Vec<(ProvinceId, &Province)>> = HashMap::new();
+        for (id, prov, state) in owned_provinces {
+            let provs = province_states.entry(state).or_default();
+            provs.push((id.clone(), prov));
+        }
+
+        let mut result: Vec<_> = province_states
+            .iter()
+            .map(|(state, provinces)| {
+                let name = self.game.localize(state).unwrap_or(state);
+
+                let total_dev = provinces
+                    .iter()
+                    .map(|(_, prov)| prov.base_manpower + prov.base_production + prov.base_tax)
+                    .sum();
+
+                let capital_state_modifier =
+                    if provinces.iter().any(|(id, _)| id == &country.capital) {
+                        1.0
+                    } else {
+                        0.0
+                    };
+
+                let state_house_gc_state_modifier = provinces
+                    .iter()
+                    .filter(|(_, prov)| prov.buildings.contains_key("state_house"))
+                    .filter_map(|(_, prov)| prov.trade_goods.as_deref())
+                    .map(|trade_good| match trade_good {
+                        "gems" | "paper" | "glass" => 0.4,
+                        _ => 0.2,
+                    })
+                    .fold(0.0, f32::max);
+
+                let total_gc = provinces
+                    .iter()
+                    .map(|(_, prov)| {
+                        let dev = prov.base_manpower + prov.base_production + prov.base_tax;
+                        let mut flat = 0.0;
+                        let mut gc_modifier =
+                            1.0 - state_house_gc_state_modifier - capital_state_modifier;
+
+                        if prov
+                            .territorial_core
+                            .as_ref()
+                            .map_or(false, |core| core == &tag)
+                        {
+                            gc_modifier -= 0.75;
+                        }
+
+                        if prov.active_trade_company {
+                            gc_modifier += 0.25;
+                        }
+
+                        if prov.buildings.contains_key("courthouse") {
+                            gc_modifier -= 0.25;
+                        }
+
+                        if prov.buildings.contains_key("town_hall") {
+                            gc_modifier -= 0.5;
+                        }
+
+                        if prov.buildings.contains_key("state_house") {
+                            match prov.trade_goods.as_deref() {
+                                Some("paper" | "glass" | "gems") => {
+                                    gc_modifier -= 0.3;
+                                    flat -= 20.0;
+                                }
+                                _ => {
+                                    gc_modifier -= 0.15;
+                                    flat -= 10.0;
+                                }
+                            }
+                        }
+
+                        gc_modifier -= 0.2 * prov.num_centralize_state as f32;
+                        gc_modifier += 0.1 * prov.expand_infrastructure as f32;
+
+                        let base = (dev * gc_modifier).max(dev * 0.01);
+
+                        flat += 15.0 * (prov.expand_infrastructure as f32);
+
+                        (base + flat).max(0.0)
+                    })
+                    .sum();
+
+                let centralizing = provinces
+                    .iter()
+                    .filter_map(|(_, prov)| {
+                        prov.centralize_state_construction
+                            .as_ref()
+                            .map(|x| ProgressDate {
+                                progress: x.progress,
+                                date: x.date,
+                            })
+                    })
+                    .next();
+
+                let centralized = provinces
+                    .iter()
+                    .map(|(_, prov)| prov.num_centralize_state)
+                    .max()
+                    .unwrap_or(0);
+
+                CountryState {
+                    state: LocalizedObj {
+                        id: String::from(*state),
+                        name: String::from(name),
+                    },
+                    total_gc,
+                    total_dev,
+                    centralizing,
+                    centralized,
+                }
+            })
+            .collect();
+
+        result.sort_unstable_by(|a, b| a.state.name.cmp(&b.state.name));
         result
     }
 }

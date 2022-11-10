@@ -9,7 +9,7 @@ mod vic3date;
 
 pub use errors::*;
 #[doc(inline)]
-pub use file::{Vic3File, Encoding};
+pub use file::{Encoding, Vic3File};
 pub use header::*;
 pub use jomini::binary::FailedResolveStrategy;
 pub use melt::*;
