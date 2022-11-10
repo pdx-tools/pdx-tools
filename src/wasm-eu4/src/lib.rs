@@ -543,6 +543,10 @@ impl SaveFile {
         JsValue::from_serde(&self.0.get_country_leaders(tag)).unwrap()
     }
 
+    pub fn get_country_states(&self, tag: &str) -> JsValue {
+        JsValue::from_serde(&self.0.get_country_states(tag)).unwrap()
+    }
+
     pub fn get_nation_idea_groups(&self, payload: JsValue) -> JsValue {
         let payload = payload.into_serde().unwrap();
         JsValue::from_serde(&self.0.get_nation_idea_groups(payload)).unwrap()

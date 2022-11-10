@@ -1,7 +1,7 @@
 use crate::GameProvince;
 use eu4save::{CountryTag, ProvinceId};
 use schemas::flatbuffers::{Follow, Vector};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::HashMap};
 
 #[derive(Debug)]
 pub struct LocalizedCountry {
@@ -209,6 +209,20 @@ impl<'a> Game<'a> {
             .iter()
             .find(|entry| entry.value().unwrap().iter().any(|p| p == id.as_u16()))
             .map(|entry| entry.key())
+    }
+
+    pub fn province_area_lookup(&self) -> HashMap<ProvinceId, &str> {
+        let areas = self.data.areas().unwrap();
+        areas
+            .iter()
+            .flat_map(|entry| {
+                entry
+                    .value()
+                    .unwrap()
+                    .iter()
+                    .map(move |p| (ProvinceId::new(p as i32), entry.key()))
+            })
+            .collect()
     }
 }
 

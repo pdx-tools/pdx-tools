@@ -30,6 +30,7 @@ import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { CountryLeaders } from "./CountryLeaders";
 import { CountryCultures } from "./CountryCultures";
 import { CountryDiplomacy } from "./CountryDiplomacy";
+import { CountryStates } from "./CountryStates";
 
 const { TabPane } = Tabs;
 const { useBreakpoint } = Grid;
@@ -178,6 +179,9 @@ export const CountryDetailsDrawer = ({
           </TabPane>
           <TabPane tab="Culture" key="Culture">
             {country && <CountryCultures details={country} />}
+          </TabPane>
+          <TabPane tab="States" key="States">
+            {country && <CountryStates details={country} />}
           </TabPane>
         </Tabs>
       </div>
