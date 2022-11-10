@@ -91,7 +91,7 @@ const CountryStateDetails = ({ data }: { data: CountryStateDetails[] }) => {
       render: (x: boolean) => `${x}`,
     },
     {
-      title: "Propsperity",
+      title: "Prosperity",
       dataIndex: "prosperity",
       align: "right",
       sorter: (a: CountryStateDetails, b: CountryStateDetails) =>
