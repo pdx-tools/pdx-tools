@@ -3,6 +3,12 @@ import { useTablePagination } from "@/features/ui-controls";
 import { formatFloat, formatInt } from "@/lib/format";
 import { Tooltip } from "antd";
 import Table, { ColumnType } from "antd/lib/table";
+import {
+  StarOutlined,
+  CaretUpFilled,
+  CaretDownFilled,
+  MinusOutlined,
+} from "@ant-design/icons";
 import React, { useCallback, useState } from "react";
 import { CountryDetails, CountryStateDetails } from "../../types/models";
 
@@ -18,20 +24,25 @@ const CountryStateDetails = ({ data }: { data: CountryStateDetails[] }) => {
       title: "State",
       dataIndex: ["state", "name"],
       render: (_name: string, x: CountryStateDetails) => (
-        <Tooltip title={x.state.id}>
-          <span>{x.state.name}</span>
-        </Tooltip>
+        <div className="flex items-center gap-2">
+          <Tooltip title={x.state.id}>{x.state.name}</Tooltip>
+          {x.capital_state && (
+            <Tooltip title="is capital state">
+              <StarOutlined />
+            </Tooltip>
+          )}
+        </div>
       ),
       sorter: (a: CountryStateDetails, b: CountryStateDetails) =>
         a.state.name.localeCompare(b.state.name),
     },
     {
-      title: "Development",
+      title: "Dev.",
       dataIndex: "total_dev",
       align: "right",
       sorter: (a: CountryStateDetails, b: CountryStateDetails) =>
         a.total_dev - b.total_dev,
-      render: (x: number) => `${formatFloat(x)}`,
+      render: (x: number) => `${formatInt(x)}`,
     },
     {
       title: "Gov. Cost",
@@ -70,6 +81,29 @@ const CountryStateDetails = ({ data }: { data: CountryStateDetails[] }) => {
       sorter: (a: CountryStateDetails, b: CountryStateDetails) =>
         a.centralized - b.centralized,
       render: (x: number) => `${formatInt(x)}`,
+    },
+    {
+      title: "State House",
+      dataIndex: "state_house",
+      align: "right",
+      sorter: (a: CountryStateDetails, b: CountryStateDetails) =>
+        +a.state_house - +b.state_house,
+      render: (x: boolean) => `${x}`,
+    },
+    {
+      title: "Propsperity",
+      dataIndex: "prosperity",
+      align: "right",
+      sorter: (a: CountryStateDetails, b: CountryStateDetails) =>
+        a.prosperity - b.prosperity,
+      render: (_: number, x: CountryStateDetails) => (
+        <div className="flex items-center gap-2">
+          <span className="grow">{formatInt(x.prosperity)}</span>
+          {x.prosperity_mode === true && <CaretUpFilled />}
+          {x.prosperity_mode === false && <CaretDownFilled />}
+          {x.prosperity_mode === null && <MinusOutlined />}
+        </div>
+      ),
     },
   ];
 

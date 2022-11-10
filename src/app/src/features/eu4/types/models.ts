@@ -1,4 +1,5 @@
 import { Achievement, GameDifficulty, SaveEncoding } from "@/services/appApi";
+import { bool } from "aws-sdk/clients/signer";
 
 export type CountryTag = string;
 export type Eu4Date = string;
@@ -670,4 +671,8 @@ export interface CountryStateDetails {
     date: string;
   };
   centralized: number;
+  capital_state: bool;
+  prosperity: number;
+  prosperity_mode: bool | null;
+  state_house: bool;
 }

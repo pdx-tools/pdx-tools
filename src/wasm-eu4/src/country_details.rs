@@ -182,10 +182,14 @@ pub struct ProgressDate {
 #[derive(Debug, Clone, Serialize)]
 pub struct CountryState {
     state: LocalizedObj,
+    capital_state: bool,
     total_dev: f32,
     total_gc: f32,
     centralizing: Option<ProgressDate>,
     centralized: i32,
+    prosperity: f32,
+    prosperity_mode: Option<bool>,
+    state_house: bool,
 }
 
 impl SaveFileImpl {
@@ -963,12 +967,18 @@ impl SaveFileImpl {
                     .map(|(_, prov)| prov.base_manpower + prov.base_production + prov.base_tax)
                     .sum();
 
-                let capital_state_modifier =
-                    if provinces.iter().any(|(id, _)| id == &country.capital) {
-                        1.0
-                    } else {
-                        0.0
-                    };
+                let is_pirate = country
+                    .government
+                    .as_ref()
+                    .map(|x| {
+                        x.reform_stack
+                            .reforms
+                            .iter()
+                            .any(|y| y == "pirate_republic_reform")
+                    })
+                    .unwrap_or_default();
+
+                let is_capital_state = provinces.iter().any(|(id, _)| id == &country.capital);
 
                 let state_house_gc_state_modifier = provinces
                     .iter()
@@ -979,6 +989,15 @@ impl SaveFileImpl {
                         _ => 0.2,
                     })
                     .fold(0.0, f32::max);
+
+                let country_state = self
+                    .query
+                    .save()
+                    .game
+                    .map_area_data
+                    .get(*state)
+                    .and_then(|x| x.state.as_ref())
+                    .and_then(|x| x.country_states.iter().find(|c| c.country == tag));
 
                 // Some provinces in the state don't have the same num_centralize_state.
                 // It appears EU4 takes the max one when calculating gov cost.
@@ -993,15 +1012,25 @@ impl SaveFileImpl {
                     .map(|(_, prov)| {
                         let dev = prov.base_manpower + prov.base_production + prov.base_tax;
                         let mut flat = 0.0;
-                        let mut gc_modifier =
-                            1.0 - state_house_gc_state_modifier - capital_state_modifier;
+                        let mut gc_modifier = 1.0;
+                        let colonial_core = prov.territorial_core.contains(&tag);
 
-                        if prov
-                            .territorial_core
-                            .as_ref()
-                            .map_or(false, |core| core == &tag)
-                        {
-                            gc_modifier -= 0.75;
+                        if colonial_core {
+                            if country_state.is_some() {
+                                gc_modifier -= 0.5;
+                            } else {
+                                gc_modifier -= 0.75;
+                            }
+                        }
+
+                        gc_modifier -= state_house_gc_state_modifier;
+
+                        if is_pirate {
+                            gc_modifier += 0.75;
+                        }
+
+                        if is_capital_state {
+                            gc_modifier -= 1.0;
                         }
 
                         if prov.active_trade_company {
@@ -1052,15 +1081,33 @@ impl SaveFileImpl {
                     })
                     .next();
 
+                let prosperity = country_state.map(|x| x.prosperity).unwrap_or_default();
+                let has_devastation = provinces.iter().any(|(_, prov)| prov.devastation > 0.);
+                let prosperity_mode = if country.stability > 0.0
+                    && !has_devastation
+                    && prosperity < 100.0
+                    && country_state.is_some()
+                {
+                    Some(true)
+                } else if country_state.is_some() && (country.stability < 0.0 || has_devastation) {
+                    Some(false)
+                } else {
+                    None
+                };
+
                 CountryState {
                     state: LocalizedObj {
                         id: String::from(*state),
                         name: String::from(name),
                     },
+                    capital_state: is_capital_state,
                     total_gc,
                     total_dev,
                     centralizing,
                     centralized,
+                    prosperity,
+                    prosperity_mode,
+                    state_house: state_house_gc_state_modifier != 0.0,
                 }
             })
             .collect();
