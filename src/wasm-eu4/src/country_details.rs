@@ -1012,16 +1012,15 @@ impl SaveFileImpl {
                     .map(|(_, prov)| {
                         let dev = prov.base_manpower + prov.base_production + prov.base_tax;
                         let mut flat = 0.0;
-                        let mut gc_modifier = 1.0;
-                        let colonial_core = prov.territorial_core.contains(&tag);
-
-                        if colonial_core {
-                            if country_state.is_some() {
-                                gc_modifier -= 0.5;
+                        let mut gc_modifier = if country_state.is_some() {
+                            if prov.territorial_core.contains(&tag) {
+                                0.5
                             } else {
-                                gc_modifier -= 0.75;
+                                1.0
                             }
-                        }
+                        } else {
+                            0.25
+                        };
 
                         gc_modifier -= state_house_gc_state_modifier;
 
