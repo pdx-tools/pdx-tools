@@ -13,6 +13,9 @@ pub(crate) enum MelterError {
 
     #[error("")]
     UnknownToken { token_id: u16 },
+
+    #[error("")]
+    InvalidDate(i32),
 }
 
 /// Output from melting a binary save to plaintext
@@ -84,6 +87,7 @@ impl<'a, 'b> Vic3Melter<'a, 'b> {
         let out = melt(self, resolver).map_err(|e| match e {
             MelterError::Write(x) => Vic3ErrorKind::Writer(x),
             MelterError::UnknownToken { token_id } => Vic3ErrorKind::UnknownToken { token_id },
+            MelterError::InvalidDate(x) => Vic3ErrorKind::InvalidDate(x),
         })?;
         Ok(out)
     }
@@ -111,6 +115,7 @@ where
         .from_writer(out);
     let mut token_idx = 0;
     let mut known_number = false;
+    let mut known_date = false;
     let tokens = melter.tape.tokens();
 
     while let Some(token) = tokens.get(token_idx) {
@@ -137,6 +142,15 @@ where
                 if known_number {
                     wtr.write_i32(*x)?;
                     known_number = false;
+                } else if known_date {
+                    if let Some(date) = Vic3Date::from_binary(*x) {
+                        wtr.write_date(date.game_fmt())?;
+                    } else if melter.on_failed_resolve != FailedResolveStrategy::Error {
+                        wtr.write_i32(*x)?;
+                    } else {
+                        return Err(MelterError::InvalidDate(*x));
+                    }
+                    known_date = false;
                 } else if let Some(date) = Vic3Date::from_binary_heuristic(*x) {
                     wtr.write_date(date.game_fmt())?;
                 } else {
@@ -162,6 +176,7 @@ where
                     }
 
                     known_number = id == "seed";
+                    known_date = id == "real_date";
                     wtr.write_unquoted(id.as_bytes())?;
                 }
                 None => match melter.on_failed_resolve {

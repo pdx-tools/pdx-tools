@@ -68,9 +68,20 @@ impl Vic3Date {
         RawDate::from_binary(s).and_then(Self::from_raw)
     }
 
+    /// Decodes a date from a number that had been parsed from binary data with the
+    /// added check that the date is not too far fetched. This function is useful
+    /// when working with binary data and it's not clear with an encountered integer
+    /// is supposed to represent a date or a number.
+    ///
+    /// ```
+    /// use vic3save::{Vic3Date, PdsDate};
+    /// let date = Vic3Date::from_binary_heuristic(43808760).expect("to parse date");
+    /// assert_eq!(date.game_fmt().to_string(), String::from("1.1.1"));
+    /// ```
     pub fn from_binary_heuristic(s: i32) -> Option<Self> {
         RawDate::from_binary(s).and_then(|x| {
-            if x.year() > 1700 {
+            if x.year() > 1700 || (x.year() == 1 && x.month() == 1 && x.day() == 1 && !x.has_hour())
+            {
                 Self::from_raw(x)
             } else {
                 None

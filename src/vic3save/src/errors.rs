@@ -51,6 +51,9 @@ pub enum Vic3ErrorKind {
     #[error("unknown binary token encountered: {token_id:#x}")]
     UnknownToken { token_id: u16 },
 
+    #[error("expected the binary integer: {0} to be parsed as a date")]
+    InvalidDate(i32),
+
     #[error("invalid header")]
     InvalidHeader,
 }
