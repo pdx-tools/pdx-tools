@@ -1,5 +1,4 @@
 import { existsSync, writeFileSync, promises } from "fs";
-import { fetch, FormData } from "undici";
 import { db } from "../src/server-lib/db";
 import { BUCKET, deleteFile, s3client } from "../src/server-lib/s3";
 import * as pool from "../src/server-lib/pool";
