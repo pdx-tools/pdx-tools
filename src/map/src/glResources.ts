@@ -8,13 +8,14 @@ import {
   SPLIT_IMG_PADDED_WIDTH,
 } from "./map";
 import { notNull } from "./nullcheck";
+import { OnScreenWegblContext } from "./types";
 
 const MAX_TEXTURE_SIZE = 4096;
 
 // Stores all WebGL resource data like textures, shader programs, etc.
 export class GLResources {
   private constructor(
-    public readonly gl: WebGL2RenderingContext,
+    public readonly gl: OnScreenWegblContext,
     public colorMap: WebGLTexture,
     public sea: WebGLTexture,
     public normal: WebGLTexture,
@@ -70,7 +71,7 @@ export class GLResources {
   }
 
   static async create(
-    gl: WebGL2RenderingContext,
+    gl: OnScreenWegblContext,
     staticRes: StaticResources,
     linkedPrograms: () => Promise<WebGLProgram[]>,
     provincesCountryColor: Uint8Array

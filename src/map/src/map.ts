@@ -2,6 +2,7 @@ import { GLResources, setupFramebufferTexture } from "./glResources";
 import { ProvinceFinder } from "./ProvinceFinder";
 import { throttle } from "./throttle";
 import { TerrainOverlayResources } from "./staticResources";
+import { OnScreenWegblContext } from "./types";
 
 export const IMG_HEIGHT = 2048;
 export const IMG_WIDTH = 5632;
@@ -85,10 +86,10 @@ export class WebGLMap {
   public onProvinceHover?: (proinceId: number) => void;
   public onProvinceSelection?: (proinceId: number) => void;
   public onDraw?: (event: DrawEvent) => void;
-  public onCommit?: (context: WebGL2RenderingContext) => void;
+  public onCommit?: (context: OnScreenWegblContext) => void;
 
   constructor(
-    private gl: WebGL2RenderingContext,
+    private gl: OnScreenWegblContext,
     private glResources: GLResources,
     private provinceFinder: ProvinceFinder
   ) {

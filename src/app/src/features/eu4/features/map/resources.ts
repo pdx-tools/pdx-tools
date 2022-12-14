@@ -4,7 +4,7 @@ import {
   StaticResources,
   TerrainOverlayResources,
 } from "../../../../map/staticResources";
-import type { ShaderSource } from "../../../../map/types";
+import type { OnScreenWegblContext, ShaderSource } from "../../../../map/types";
 import { glContextOptions } from "../../../../map/map";
 import { MapOnlyControls } from "../../types/map";
 
@@ -108,9 +108,9 @@ export async function resourceUrls(version: string): Promise<Resources> {
 export function glContext(
   canvas: HTMLCanvasElement,
   options?: WebGLContextAttributes
-): WebGL2RenderingContext | null {
+): OnScreenWegblContext | null {
   const arg = { ...glContextOptions(), ...options };
-  return canvas.getContext("webgl2", arg);
+  return canvas.getContext("webgl2", arg) as OnScreenWegblContext;
 }
 
 export function setMapControls(map: any, controls: MapOnlyControls) {

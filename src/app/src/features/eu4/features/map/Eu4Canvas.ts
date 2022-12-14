@@ -21,6 +21,7 @@ import {
   setMapControls,
   shaderUrls,
 } from "./resources";
+import { OnScreenWegblContext } from "@/map/types";
 
 interface FocusCameraOnProps {
   offsetX: number;
@@ -36,7 +37,7 @@ export class Eu4Canvas {
 
   private loadedVersion: SavegameVersion | undefined;
 
-  public constructor(private readonly gl: WebGL2RenderingContext) {}
+  public constructor(private readonly gl: OnScreenWegblContext) {}
 
   async initializeAssetsFromVersion(
     saveVersion: SavegameVersion,

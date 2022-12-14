@@ -8,6 +8,7 @@ import { GLResources } from "./glResources";
 import { ProvinceFinder } from "./ProvinceFinder";
 import { debounce } from "./debounce";
 import { compile } from "./shaderCompiler";
+import { OnScreenWegblContext } from "./types";
 
 async function fetchColorData(kind: string) {
   const raw = await fetch(`assets/game/eu4/data/color-${kind}-data.bin`).then(
@@ -35,7 +36,7 @@ async function main() {
     "assets/game/eu4/data/color-index.bin"
   ).then((x) => x.arrayBuffer());
 
-  const gl = glc;
+  const gl = glc as OnScreenWegblContext;
 
   const shaderPromise = Promise.all([
     loadShaderSource("map"),
