@@ -1,4 +1,4 @@
-ARG NODE_VERSION=16
+ARG NODE_VERSION=18
 FROM mcr.microsoft.com/vscode/devcontainers/javascript-node:0.204-${NODE_VERSION}-bullseye
 ARG JUST_VERSION=1.5.0
 ARG GIT_LFS_VERSION=3.0.2
