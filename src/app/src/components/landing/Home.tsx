@@ -81,10 +81,11 @@ export const Home = ({ subtitle }: HomeProps) => {
             </label>
             <div className="text-base text-gray-300">
               No save?{" "}
-              <Link href="/eu4/saves/_9Hcw32JWTZRx6zK3FVuz">
-                <a className="text-gray-300 underline hover:text-white">
-                  Load sample
-                </a>
+              <Link
+                href="/eu4/saves/_9Hcw32JWTZRx6zK3FVuz"
+                className="text-gray-300 underline hover:text-white"
+              >
+                Load sample
               </Link>
             </div>
           </div>
@@ -327,17 +328,13 @@ export const Home = ({ subtitle }: HomeProps) => {
             <p>
               An advanced achievement engine uses the game's logic to check if a
               save has completed one of the{" "}
-              <Link href="/eu4/achievements">
-                <a>supported achievements</a>
-              </Link>
+              <Link href="/eu4/achievements">supported achievements</Link>
             </p>
             <p>
               Uploaded saves are tagged with completed achievements to generate
               a leaderboard of who speed ran a{" "}
-              <Link href="/eu4/achievements/18">
-                <a>certain achievement</a>
-              </Link>{" "}
-              the quickest
+              <Link href="/eu4/achievements/18">certain achievement</Link> the
+              quickest
             </p>
             <p>
               The leaderboard is kept evergreen by enacting a small tax to saves

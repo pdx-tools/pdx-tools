@@ -48,7 +48,7 @@ export const UploadFaq = () => {
         game devs have to implement logic to check if achievement conditions
         have been satisfied, so does PDX Tools. Here's{" "}
         <Link href="/eu4/achievements">
-          <a>a list of all implemented achievements</a>
+          a list of all implemented achievements
         </Link>
         . The good news is that community input greatly impacts what
         achievements get implemented and custom achievements can be made too!

@@ -111,7 +111,7 @@ export const InfoDrawer = () => {
         {serverFile && (
           <Descriptions.Item label="By">
             <Link href={`/users/${serverFile.user_id}`}>
-              <a>{serverFile.user_name}</a>
+              {serverFile.user_name}
             </Link>
           </Descriptions.Item>
         )}

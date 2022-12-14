@@ -46,11 +46,7 @@ export const AchievementPage = ({
     routes: Route[],
     paths: string[]
   ) => {
-    return (
-      <Link href={`/${paths.join("/")}`}>
-        <a>{route.breadcrumbName}</a>
-      </Link>
-    );
+    return <Link href={`/${paths.join("/")}`}>{route.breadcrumbName}</Link>;
   };
 
   let extras = [];

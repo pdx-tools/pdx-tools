@@ -25,9 +25,7 @@ export const NewestSavesTable = () => {
       title: "Player",
       dataIndex: "user_name",
       render: (name: string, x: SaveFile) => (
-        <Link href={`/users/${x.user_id}`}>
-          <a>{name}</a>
-        </Link>
+        <Link href={`/users/${x.user_id}`}>{name}</Link>
       ),
       sorter: (a: SaveFile, b: SaveFile) =>
         a.user_name.localeCompare(b.user_name),
@@ -96,11 +94,7 @@ export const NewestSavesTable = () => {
       title: "",
       dataIndex: "id",
       render: (id: string) => {
-        const link = (
-          <Link href={`/eu4/saves/${id}`}>
-            <a>View</a>
-          </Link>
-        );
+        const link = <Link href={`/eu4/saves/${id}`}>View</Link>;
         return <Space>{link}</Space>;
       },
     },

@@ -35,7 +35,7 @@ export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
           <Space direction="vertical">
             <Text strong={true}>
               <Link href={`/eu4/achievements/${record.achievement.id}`}>
-                <a>{name}</a>
+                {name}
               </Link>
             </Text>
             {md && <Text>{record.achievement.description}</Text>}

@@ -42,11 +42,7 @@ export const SkanUserSavesTable = ({ records, loading }: SkanUserSavesProp) => {
       title: "",
       dataIndex: "hash",
       render: (hash: string) => {
-        return (
-          <Link href={`/eu4/skanderbeg/${hash}`}>
-            <a>View</a>
-          </Link>
-        );
+        return <Link href={`/eu4/skanderbeg/${hash}`}>View</Link>;
       },
     },
   ];

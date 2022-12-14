@@ -12,14 +12,10 @@ export const Eu4GamePage = () => {
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <Button size="large">
-              <Link href="/">
-                <a>Analyze EU4 Saves</a>
-              </Link>
+              <Link href="/">Analyze EU4 Saves</Link>
             </Button>
             <Button size="large">
-              <Link href="/eu4/achievements">
-                <a>Available Achievements</a>
-              </Link>
+              <Link href="/eu4/achievements">Available Achievements</Link>
             </Button>
           </div>
           <NewestSavesTable />

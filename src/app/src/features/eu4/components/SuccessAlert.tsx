@@ -19,9 +19,7 @@ export const SuccessAlert = ({ newSaveId }: SuccessAlertProps) => {
           }}
         >
           {`Save successfully uploaded! `}
-          <Link href={`/eu4/saves/${newSaveId}`}>
-            <a>Permalink</a>
-          </Link>
+          <Link href={`/eu4/saves/${newSaveId}`}>Permalink</Link>
         </Text>
       }
     />

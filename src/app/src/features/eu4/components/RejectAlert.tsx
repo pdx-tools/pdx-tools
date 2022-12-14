@@ -32,9 +32,7 @@ export const RejectAlert = ({ error }: RejectAlertProps) => {
               }}
             >
               {`This save appears to have aleady been uploaded here: `}
-              <Link href={`/eu4/saves/${error.saveId}`}>
-                <a>Link to save</a>
-              </Link>
+              <Link href={`/eu4/saves/${error.saveId}`}>Link to save</Link>
             </Text>
           }
         ></Alert>

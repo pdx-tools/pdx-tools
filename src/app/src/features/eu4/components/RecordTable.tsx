@@ -26,9 +26,7 @@ export const RecordTable = ({ records }: RecordTableProps) => {
       title: "Player",
       dataIndex: "user_name",
       render: (name: string, x: RankedSaveFile) => (
-        <Link href={`/users/${x.user_id}`}>
-          <a>{name}</a>
-        </Link>
+        <Link href={`/users/${x.user_id}`}>{name}</Link>
       ),
       sorter: (a: RankedSaveFile, b: RankedSaveFile) =>
         a.user_name.localeCompare(b.user_name),
@@ -114,11 +112,7 @@ export const RecordTable = ({ records }: RecordTableProps) => {
     {
       title: "",
       dataIndex: "id",
-      render: (id: string) => (
-        <Link href={`/eu4/saves/${id}`}>
-          <a>View</a>
-        </Link>
-      ),
+      render: (id: string) => <Link href={`/eu4/saves/${id}`}>View</Link>,
     },
   ];
 

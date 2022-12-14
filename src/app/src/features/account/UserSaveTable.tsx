@@ -97,11 +97,7 @@ export const UserSaveTable = ({
       title: "",
       dataIndex: "id",
       render: (id: string) => {
-        const link = (
-          <Link href={`/eu4/saves/${id}`}>
-            <a>View</a>
-          </Link>
-        );
+        const link = <Link href={`/eu4/saves/${id}`}>View</Link>;
         let deleteEle = null;
         if (isPrivileged) {
           deleteEle = <DeleteSave saveId={id} type="link" />;

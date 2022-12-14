@@ -69,7 +69,7 @@ export const UploadDrawerContent = () => {
           showIcon={true}
           message={
             <Link href={`/eu4/saves/${alreadyExistingSave}`}>
-              <a>This save has already been uploaded</a>
+              This save has already been uploaded
             </Link>
           }
         />

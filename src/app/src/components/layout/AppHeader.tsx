@@ -41,13 +41,14 @@ export const AppHeader = ({ disabled = false }: AppHeaderProps) => {
 
       <Header style={{ padding: "0 16px" }}>
         <div className="mx-auto flex h-full w-full items-center">
-          <Link href="/">
-            <a className="mr-3 flex items-center gap-1 text-3xl text-white hover:text-white hover:underline">
-              <span className="float-left inline-flex">
-                <AppSvg width="48" />
-              </span>
-              PDX Tools
-            </a>
+          <Link
+            href="/"
+            className="mr-3 flex items-center gap-1 text-3xl text-white hover:text-white hover:underline"
+          >
+            <span className="float-left inline-flex">
+              <AppSvg width="48" />
+            </span>
+            PDX Tools
           </Link>
           <HeaderMenu />
         </div>
