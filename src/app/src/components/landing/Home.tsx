@@ -72,18 +72,21 @@ export const Home = ({ subtitle }: HomeProps) => {
             Ready to explore maps, timelapses, and charts?
           </p>
 
-          <div className="mt-4 flex flex-row items-center justify-center gap-x-3 lg:justify-start">
+          <div className="mt-4 flex flex-col items-center justify-center gap-2 lg:justify-start">
             <label
               htmlFor="analyze-box-file-input"
-              className="mx-2 cursor-pointer rounded-xl border-4 border-solid border-white px-6 py-3 font-bold text-white hover:border-blue-500"
+              className="mx-2 cursor-pointer rounded-xl border-4 border-solid border-white px-6 py-3 text-xl font-bold text-white transition-colors duration-150 hover:border-blue-500 hover:text-blue-200"
             >
-              Select a save
+              Select save file
             </label>
-            <Link href="/eu4/saves/_9Hcw32JWTZRx6zK3FVuz">
-              <a className="mx-2 cursor-pointer rounded-xl border-4 border-solid border-white px-6 py-3 font-bold text-white hover:border-blue-500 hover:text-white">
-                Load sample
-              </a>
-            </Link>
+            <div className="text-base text-gray-300">
+              No save?{" "}
+              <Link href="/eu4/saves/_9Hcw32JWTZRx6zK3FVuz">
+                <a className="text-gray-300 underline hover:text-white">
+                  Load sample
+                </a>
+              </Link>
+            </div>
           </div>
           <BrowserCheck />
         </div>

@@ -1,7 +1,7 @@
 .hover,
 .label:hover,
 .label:focus {
-  @apply outline-dashed outline-8 outline-blue-500;
+  @apply bg-black/10 outline-dashed outline-8 outline-blue-500 hover:text-blue-200;
 }
 
 .label {
