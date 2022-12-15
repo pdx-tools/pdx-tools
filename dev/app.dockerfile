@@ -1,5 +1,5 @@
 # Production image, copy all the files and run next
-FROM node:slim
+FROM node:18-slim
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libssl-dev \
