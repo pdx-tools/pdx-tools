@@ -7,7 +7,7 @@ import melted from "./melted.webp";
 import games from "./games.webp";
 import headline from "./headline.png";
 import discover from "./discover.png";
-import { AnalyzeBox } from "./AnalyzeBox";
+import { HeroFileInput } from "./HeroFileInput";
 import { useSelector } from "react-redux";
 import { selectEngineError } from "@/features/engine";
 import { Alert } from "antd";
@@ -93,7 +93,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         </div>
         <section className="flex w-full flex-col justify-end">
           <div className="gap flex w-full max-w-xl flex-col">
-            <AnalyzeBox />
+            <HeroFileInput />
             {subtitle}
             {engineError && (
               <div className="mt-6 justify-start">

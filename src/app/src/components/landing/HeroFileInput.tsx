@@ -1,8 +1,9 @@
 import React, { useRef, KeyboardEvent } from "react";
 import { useSelector } from "react-redux";
-import { useFilePublisher, selectIsFileHover } from "@/features/engine";
+import { useFilePublisher } from "@/features/engine";
 import filetypes from "./file-types.png";
-import classes from "./AnalyzeBox.module.css";
+import classes from "./HeroFileInput.module.css";
+import { useFileDrop } from "@/hooks/useFileDrop";
 
 export function keyboardTrigger(fn: () => void) {
   return (e: KeyboardEvent) => {
@@ -13,10 +14,12 @@ export function keyboardTrigger(fn: () => void) {
   };
 }
 
-export const AnalyzeBox = () => {
+export const HeroFileInput = () => {
   const publishFile = useFilePublisher();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isFileHover = useSelector(selectIsFileHover);
+  const { isHovering } = useFileDrop({
+    onFile: (file) => publishFile({ kind: "local", file }),
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.currentTarget.files && e.currentTarget.files[0]) {
@@ -24,20 +27,14 @@ export const AnalyzeBox = () => {
     }
   };
 
-  const labelFocus = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
   return (
     <div className="leading-relaxed">
       <label
         tabIndex={0}
-        onKeyDown={keyboardTrigger(labelFocus)}
+        onKeyDown={keyboardTrigger(() => fileInputRef.current?.click())}
         className={`m-2 flex cursor-pointer flex-col items-center rounded-2xl border-0 bg-black/20 p-4 text-center text-white outline-dashed outline-8 outline-white transition-all duration-150 lg:p-8 ${
           classes.label
-        } ${isFileHover ? classes.hover : ""}`}
+        } ${isHovering ? classes.hover : ""}`}
       >
         <img
           src={filetypes}

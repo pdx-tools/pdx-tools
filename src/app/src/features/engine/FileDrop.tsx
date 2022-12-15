@@ -2,7 +2,6 @@ import React from "react";
 import { useSelector } from "react-redux";
 import { AnalyzeProgress } from "./components/AnalyzeProgress";
 import { useWindowMessageDrop } from "./hooks/useWindowMessageDrop";
-import { useDocumentFileDrop } from "./hooks/useDocumentFileDrop";
 import {
   selectAnalyzeOriginalBackdropVisible,
   selectAnalyzeProgressVisible,
@@ -30,7 +29,6 @@ export const FileDropInitial = ({ children }: FileDropInitialProps) => {
 };
 
 const ListenOnFileDrops = ({ children }: FileDropInitialProps) => {
-  useDocumentFileDrop();
   useWindowMessageDrop();
   return <>{children}</>;
 };

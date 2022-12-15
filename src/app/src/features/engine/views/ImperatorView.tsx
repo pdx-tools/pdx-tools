@@ -1,7 +1,7 @@
 import { ComponentType } from "react";
 import dynamic from "next/dynamic";
 import { type ImperatorUi } from "@/features/imperator/ImperatorUi";
-import { AnalyzeDropZone } from "../components/AnalyzeDropZone";
+import { PageDropOverlay } from "../components/PageDropOverlay";
 
 const DynamicImperator: ComponentType<
   React.ComponentProps<typeof ImperatorUi>
@@ -10,7 +10,7 @@ const DynamicImperator: ComponentType<
 export const ImperatorView = () => {
   return (
     <>
-      <AnalyzeDropZone />
+      <PageDropOverlay />
       <DynamicImperator />
     </>
   );

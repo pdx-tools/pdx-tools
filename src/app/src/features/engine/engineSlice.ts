@@ -2,13 +2,12 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "@/lib/store";
 
 // - Initial page load:
-// - File hover (outline an element, can be skipped)
 // - File analysis (start transition, start analysis, progress 0)
 //   - Transitioned (show progress screen)
 // - Loaded (Show analysis screen)
 
 type AnalysisState =
-  | { kind: "initial"; hover: boolean; error?: string }
+  | { kind: "initial"; error?: string }
   | {
       kind: "analyzing";
       percent: number;
@@ -16,7 +15,6 @@ type AnalysisState =
     }
   | {
       kind: "analyzed";
-      hover: boolean;
       recur: boolean;
       drawn: boolean;
     };
@@ -39,7 +37,7 @@ const initialState: EngineState = {
   analyzeId: 0,
   game: null,
   analyzeFileName: "savefile.eu4",
-  analysisState: { kind: "initial", hover: false },
+  analysisState: { kind: "initial" },
   isImmersive: false,
   showOneTimeLineItems: true,
   prefereredValueFormat: "absolute",
@@ -64,17 +62,8 @@ const engineSlice = createSlice({
         return;
       }
 
-      state.analysisState = { kind: "initial", hover: false };
+      state.analysisState = { kind: "initial" };
       state.game = null;
-    },
-
-    setIsFileHover(state, action: PayloadAction<boolean>) {
-      if (
-        state.analysisState.kind == "initial" ||
-        state.analysisState.kind == "analyzed"
-      ) {
-        state.analysisState.hover = action.payload;
-      }
     },
 
     startSaveAnalyze(state) {
@@ -108,7 +97,6 @@ const engineSlice = createSlice({
       state.game = action.payload.game;
       state.analysisState = {
         kind: "analyzed",
-        hover: false,
         drawn: !action.payload.isImmersive,
         recur: state.analysisState.recur,
       };
@@ -119,7 +107,6 @@ const engineSlice = createSlice({
     engineFailure(state, action: PayloadAction<string>) {
       state.analysisState = {
         kind: "initial",
-        hover: false,
         error: action.payload,
       };
     },
@@ -153,22 +140,12 @@ export const {
   engineFailure,
   incrementSaveAnalyzePercent,
   resetSaveAnalysis,
-  setIsFileHover,
   setSaveAnalyzePercent,
   startSaveAnalyze,
   setPrefersPercents,
   setShowOneTimeLineItems,
   moduleDrawn,
 } = engineSlice.actions;
-export const selectIsFileHover = (state: RootState) => {
-  switch (state.engine.analysisState.kind) {
-    case "initial":
-    case "analyzed":
-      return state.engine.analysisState.hover;
-    default:
-      return null;
-  }
-};
 
 export const selectAnalyzeOriginalBackdropVisible = (state: RootState) => {
   switch (state.engine.analysisState.kind) {
