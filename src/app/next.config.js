@@ -17,6 +17,11 @@ let nextConfig = {
       type: "asset/resource",
     });
 
+    config.module.rules.push({
+      test: /@ffmpeg\/core/,
+      type: "asset/resource",
+    });
+
     // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/tree-shaking/#tree-shaking-optional-code-with-nextjs
     config.plugins.push(
       new webpack.DefinePlugin({
@@ -47,7 +52,7 @@ let nextConfig = {
           {
             key: "Content-Security-Policy",
             value: "default-src 'self';" +
-              "connect-src 'self' blob: https://skanderbeg.pm/api.php https://a.pdx.tools/api/event https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.10.0/;" +
+              "connect-src 'self' blob: https://skanderbeg.pm/api.php https://a.pdx.tools/api/event;" +
               "img-src 'self' data:;" +
               "script-src 'self' 'unsafe-eval' blob: https://a.pdx.tools/js/index.js;" +
               "style-src 'self' 'unsafe-inline'"

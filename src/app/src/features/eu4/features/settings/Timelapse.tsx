@@ -40,6 +40,8 @@ import { selectIsDeveloper } from "@/features/account";
 import { MapControls } from "../../types/map";
 import { useAppSelector } from "@/lib/store";
 import type { FFmpeg } from "@ffmpeg/ffmpeg";
+import ffmpegCorePath from "@ffmpeg/core/dist/ffmpeg-core";
+import ffmpegWasmPath from "@ffmpeg/core/dist/ffmpeg-core.wasm";
 
 interface CodecOption {
   title: string;
@@ -78,20 +80,21 @@ const useRecordingCodecs = () => {
   return availableOptions;
 };
 
+// keep around a single instance of ffmpeg.
 let ffmpegModule: Promise<FFmpeg> | undefined = undefined;
 
 async function transcode(webmInput: Uint8Array, isDeveloper: boolean) {
   if (ffmpegModule === undefined) {
-    // ffmpeg has a bit of a weird way of initializing itself, where it will do a
-    // string replace on "ffmpeg-core.js" for hard-coded paths of where the wasm
-    // should be. I don't want to fiddle around with how to cater to this, so we
-    // just pull the library and wasm from jsdelivr. ref:
-    // https://github.com/ffmpegwasm/ffmpeg.wasm/blob/4c3a85b2e6617b8b0692edaf87936a290ecfbdf2/src/browser/getCreateFFmpegCore.js#L31
+    // For some reason, this is needed to be loaded dynamically, otherwise
+    // next.js is not happy: "TypeError: Cannot read properties of null (reading
+    // 'on')"
+    const worker = import("@ffmpeg/core/dist/ffmpeg-core.worker");
     ffmpegModule = import("@ffmpeg/ffmpeg").then(async (mod) => {
       const x = mod.createFFmpeg({
         log: isDeveloper,
-        corePath:
-          "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.10.0/dist/ffmpeg-core.js",
+        corePath: `${location.origin}${ffmpegCorePath}`,
+        wasmPath: `${location.origin}${ffmpegWasmPath}`,
+        workerPath: `${location.origin}${(await worker).default}`,
       });
       await x.load();
       return x;
@@ -119,9 +122,6 @@ async function transcode(webmInput: Uint8Array, isDeveloper: boolean) {
       type: "video/mp4",
     });
 
-    // can't call ffmpeg.exit here due to
-    // https://github.com/ffmpegwasm/ffmpeg.wasm/issues/242 so we just keep
-    // around a single instance of ffmpeg
     return mp4Blob;
   } finally {
     ffmpeg.FS("unlink", "recording.mp4");
