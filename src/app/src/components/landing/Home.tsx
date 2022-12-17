@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import map from "./map.webp";
 import graphs from "./graphs.png";
 import icons from "./icons.png";
@@ -106,7 +107,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       <div
         className={`${classes.row} flex flex-col items-center justify-center px-5 py-16 text-xl odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
-        <img
+        <Image
           src={headline}
           className="drop-shadow-xl"
           height={685}
@@ -206,7 +207,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             <p>Export high resolution map images</p>
           </div>
           <div>
-            <img
+            <Image
               src={map}
               height={325}
               width={400}
@@ -237,7 +238,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             </p>
           </div>
           <div>
-            <img
+            <Image
               src={discover}
               height={510}
               width={971}
@@ -308,7 +309,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             </p>
           </div>
           <div>
-            <img
+            <Image
               src={melted}
               height={232}
               width={287}
@@ -343,7 +344,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             </p>
           </div>
           <div>
-            <img
+            <Image
               src={achievement}
               height={325}
               width={400}
@@ -371,7 +372,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             </ul>
           </div>
           <div>
-            <img
+            <Image
               alt=""
               className="drop-shadow-xl"
               loading="lazy"
@@ -401,7 +402,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             </p>
           </div>
           <div>
-            <img alt="" loading="lazy" src={icons} height={191} width={400} />
+            <Image alt="" loading="lazy" src={icons} height={191} width={400} />
           </div>
         </section>
       </div>

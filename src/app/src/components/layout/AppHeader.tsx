@@ -46,7 +46,7 @@ export const AppHeader = ({ disabled = false }: AppHeaderProps) => {
             className="mr-3 flex items-center gap-1 text-3xl text-white hover:text-white hover:underline"
           >
             <span className="float-left inline-flex">
-              <AppSvg width="48" />
+              <AppSvg width={48} height={48} />
             </span>
             PDX Tools
           </Link>

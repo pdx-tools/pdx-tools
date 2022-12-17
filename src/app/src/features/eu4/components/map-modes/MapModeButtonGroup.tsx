@@ -1,4 +1,5 @@
 import { Tooltip } from "antd";
+import Image from "next/image";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import political from "./images/mapmode_political.png";
 import religion from "./images/mapmode_religion.png";
@@ -28,7 +29,7 @@ export const MapModeButtonGroup = () => {
             className="m-0 select-none border-none bg-transparent p-0"
             onClick={() => dispatch(setEu4MapMode(key as MapControls["mode"]))}
           >
-            <img
+            <Image
               alt={`${key} mapmode`}
               src={value}
               width={41}

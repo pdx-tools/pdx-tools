@@ -1,5 +1,6 @@
 import React from "react";
 import { Tooltip } from "antd";
+import Image from "next/image";
 
 const dlc = [
   [10, "Conquest of Paradise", require("./dlc-images/10_s.png")],
@@ -33,7 +34,7 @@ export const DlcList = ({ dlc_enabled }: DlcListProps) => {
     return (
       <Tooltip key={id} title={name}>
         <span style={disabled ? { filter: "grayscale(1)" } : undefined}>
-          <img alt={`${name} icon`} src={imgPath}></img>
+          <Image alt={`${name} icon`} src={imgPath} />
         </span>
       </Tooltip>
     );

@@ -1,5 +1,5 @@
 import React, { useRef, KeyboardEvent } from "react";
-import { useSelector } from "react-redux";
+import Image from "next/image";
 import { useFilePublisher } from "@/features/engine";
 import filetypes from "./file-types.png";
 import classes from "./HeroFileInput.module.css";
@@ -36,12 +36,13 @@ export const HeroFileInput = () => {
           classes.label
         } ${isHovering ? classes.hover : ""}`}
       >
-        <img
+        <Image
           src={filetypes}
           className="mb-6 drop-shadow-xl"
           height={269}
           width={300}
           alt="Country budgetary breakdown"
+          priority
         />
         <p className="mb-2 text-2xl leading-loose">
           Select or drag and drop a save file

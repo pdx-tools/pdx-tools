@@ -6,8 +6,6 @@
     "react/display-name": "off",
 
     // https://github.com/yannickcr/eslint-plugin-react/issues/894#issuecomment-613789396
-    "react/no-unescaped-entities": ["error", { "forbid": [">", "}"] }],
-
-    "@next/next/no-img-element": "off"
+    "react/no-unescaped-entities": ["error", { "forbid": [">", "}"] }]
   }
 }

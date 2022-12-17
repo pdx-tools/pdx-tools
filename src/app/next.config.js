@@ -29,6 +29,7 @@ let nextConfig = {
   },
   images: {
     disableStaticImages: true,
+    unoptimized: true,
   },
   async headers() {
     return [
