@@ -59,7 +59,7 @@ export class WebGLMap {
   public focusPoint: [number, number];
   private mousePos = [0, 0];
   private mouseDownInitialPos = [0, 0];
-  private scrollSensitivity = 0.04;
+  private lastScrollTime = 0;
   private maxViewWidth = 24000;
   private selectedProvinceColorInd: number | undefined;
   private hoverProvinceColorInd: number | undefined;
@@ -490,20 +490,16 @@ export class WebGLMap {
   }
 
   public onWheel(e: WheelEvent, rect?: UserRect) {
-    const canvas = this.gl.canvas;
-    const oldScale = this.scale;
-    this.scale *= Math.pow(2, e.deltaY * -0.01);
-    if (this.scale > oldScale) {
-      this.scale = Math.min(
-        this.scale,
-        oldScale * (1 + this.scrollSensitivity)
-      );
-    } else if (this.scale < oldScale) {
-      this.scale = Math.max(
-        this.scale,
-        oldScale * (1 - this.scrollSensitivity)
-      );
+    const time = performance.now();
+    const eventDiff = time - this.lastScrollTime;
+    this.lastScrollTime = time;
+    if (eventDiff > 300) {
+      return;
     }
+
+    const oldScale = this.scale;
+    const clampedY = Math.max(-30, Math.min(30, e.deltaY));
+    this.scale *= Math.pow(2, clampedY * -0.01 * (Math.min(eventDiff, 64) / 64));
 
     this.scale = Math.max(this.minScale, this.scale);
     this.scale = Math.min(this.maxScale, this.scale);
