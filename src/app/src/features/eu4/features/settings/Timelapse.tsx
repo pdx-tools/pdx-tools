@@ -494,6 +494,7 @@ export const Timelapse = () => {
       });
     }
 
+    const fontFamily = getComputedStyle(document.body).fontFamily;
     const create2dFrame = (ctx: WebGL2RenderingContext) => {
       const scale = recordingCanvas.width > 2000 ? 2 : 1;
 
@@ -507,8 +508,6 @@ export const Timelapse = () => {
         50 * scale
       );
 
-      const fontFamily =
-        "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,Arial,Noto Sans,sans-serif";
       ctx2d.fillStyle = "#ffffff";
       ctx2d.textAlign = "right";
       ctx2d.font = `700 ${12 * scale}px ${fontFamily}`;
