@@ -1,14 +1,6 @@
 set dotenv-load := true
 set positional-arguments
 
-# "unset" the token environment variables as we inline a flatbuffer variant and
-# don't want the compile time and (small) performance penalty of compile time
-# tokens.
-export EU4_IRONMAN_TOKENS := ""
-export HOI4_IRONMAN_TOKENS := ""
-export CK3_IRONMAN_TOKENS := ""
-export IMPERATOR_TOKENS := ""
-
 export NEXT_PUBLIC_SENTRY_DSN := `echo ${SENTRY_DSN:-''}`
 
 release:

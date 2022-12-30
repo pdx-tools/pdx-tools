@@ -11,12 +11,6 @@
   "containerEnv": {
     "CROSS_CONTAINER_IN_CONTAINER": "true"
   },
-  "remoteEnv": {
-    "EU4_IRONMAN_TOKENS": "${containerWorkspaceFolder}/assets/tokens/eu4.txt",
-    "HOI4_IRONMAN_TOKENS": "${containerWorkspaceFolder}/assets/tokens/hoi4.txt",
-    "CK3_IRONMAN_TOKENS": "${containerWorkspaceFolder}/assets/tokens/ck3.txt",
-    "IMPERATOR_TOKENS": "${containerWorkspaceFolder}/assets/tokens/imperator.txt"
-  },
 
   "settings": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
