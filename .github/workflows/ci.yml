@@ -13,11 +13,14 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
-    - run: docker build .
-      working-directory: ./.devcontainer/
+    - run: npm install -g @devcontainers/cli
+    - run: devcontainer build --workspace-folder .
 
   build:
-    runs-on: ubuntu-latest
+    # run on ubuntu-20.04 as 22.04 has glibc 2.35 and our production debian
+    # bullseye only has 2.31. So we want to compile the napi module with a
+    # compatible glibc in production
+    runs-on: ubuntu-20.04
     if: "!github.event.pull_request.head.repo.fork || contains(github.event.pull_request.labels.*.name, 'safe to test')"
     env:
       CARGO_TERM_VERBOSE: true
