@@ -12,6 +12,13 @@ pub struct FlatBufferResolver<'a> {
 
 impl<'a> FlatBufferResolver<'a> {
     pub fn from_slice(data: &'a [u8]) -> Self {
+        if data.is_empty() {
+            return FlatBufferResolver {
+                values: Vec::new(),
+                breakpoint: 0,
+            }
+        }
+
         let xb = crate::tokens::root_as_tokens(data).unwrap();
         let values = xb.values().unwrap();
         let values = values.iter().collect::<Vec<_>>();

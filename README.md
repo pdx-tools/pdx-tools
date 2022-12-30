@@ -9,7 +9,7 @@
 
 PDX Tools is a modern [EU4](https://en.wikipedia.org/wiki/Europa_Universalis_IV) save file analyzer that allow users to view maps, graphs, and data tables of their save all within the browser. If the user desires, they can upload the save and share it with the world, while also being elibigle to compete in achievement speedrun leaderboards.
 
-PDX Tools has a modular structure and can be expanded to handle any game. Currently [CK3](https://en.wikipedia.org/wiki/Crusader_Kings_III), [HOI4](https://en.wikipedia.org/wiki/Hearts_of_Iron_IV), and [Imperator](https://en.wikipedia.org/wiki/Imperator:_Rome) saves can also be analyzed, though functionality is limited to just melting (conversion of a binary save to plaintext).
+PDX Tools has a modular structure and can be expanded to handle any game. Currently [CK3](https://en.wikipedia.org/wiki/Crusader_Kings_III), [HOI4](https://en.wikipedia.org/wiki/Hearts_of_Iron_IV), [Victoria 3](https://en.wikipedia.org/wiki/Victoria_3), and [Imperator](https://en.wikipedia.org/wiki/Imperator:_Rome) saves can also be analyzed, though functionality is limited to just melting (conversion of a binary save to plaintext).
 
 ## Contributor Guide
 
@@ -17,41 +17,56 @@ If you'd like to contribute, you've come to the right place! This README should 
 
 The best way to get started contributing is to use the [Dev Container](https://code.visualstudio.com/docs/devcontainers/containers) setup with [Visual Studio Code](https://code.visualstudio.com/) (vscode), as it will handle juggling all the system dependencies to ensure your environment matches others. Alternatively, there are instructions for a [manual dev environment](#manual-build-environment) that is less well tested.
 
-To get started with Dev Containers, there is an [official installation guide](https://code.visualstudio.com/docs/devcontainers/containers#_installation) that will have you download and install [Docker](https://docs.docker.com/engine/install/ubuntu/#installation-methods), [vscode](https://code.visualstudio.com/Download), and the [vscode remote development extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.vscode-remote-extensionpack).
+To get started with Dev Containers, there is an [official vscode installation guide](https://code.visualstudio.com/docs/devcontainers/containers#_installation) that will have you download and install [Docker](https://docs.docker.com/engine/install/ubuntu/#installation-methods), [vscode](https://code.visualstudio.com/Download), and the [vscode remote development extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.vscode-remote-extensionpack).
 
 Couple of important notes for the installation:
 
-- While Windows and Mac have Dev Container support and should technically work, a Linux host is better supported and will have better performance*. 
-- Prefer installing [Docker Engine](https://docs.docker.com/engine/install/ubuntu/) over Docker desktop for best support
+- A Linux Docker host is recommended as it has better support and performance, though Windows and Mac hosts can narrow the performance gap if the PDX Tools repo is [cloned in a container volume](https://code.visualstudio.com/remote/advancedcontainers/improve-performance#_use-clone-repository-in-container-volume)
+- On Linux, prefer installing [Docker Engine](https://docs.docker.com/engine/install/ubuntu/) over Docker desktop
 
-After Docker and vscode have been installed with the remote development plugin added to vscode:
-
-- Clone this repo
-- Open the repo in vscode
-- Either click the tooltip to open in Dev Container or [open manually](https://code.visualstudio.com/docs/devcontainers/tutorial#_check-installation)
-
-After successfully opening the Dev Container the next step is to copy or link your EU4 installation to `assets/game-bundles` and then open a terminal inside vscode to execute:
+After Docker and vscode have been installed with the remote development plugin added to vscode, installation can continue:
 
 ```bash
-just pdx create-bundle "D:/games/steam/steamapps/common/Europa Universalis IV" assets/game-bundles
-just pdx compile-assets assets/game-bundles/eu4-1.33.tar.zst
+# clone the repo
+git clone https://github.com/pdx-tools/pdx-tools.git
+
+# open the repo in vscode
+code pdx-tools
 ```
 
-See [build assets for more details](#build-assets).
+Once the repo is open in vscode, either click the tooltip to open in Dev Container or [open manually](https://code.visualstudio.com/docs/devcontainers/tutorial#_check-installation)
 
-After assets are successfully extracted, one can [start developing](#start-developing)
+The next step is deciding on how to communicate EU4 assets during the compilation stage, as Paradox would be unhappy if the game assets were uploaded to the repo. There are a couple ways of doing this:
 
-*: performance in Dev Containers on Windows and Mac can be improved with [this guide](https://code.visualstudio.com/remote/advancedcontainers/improve-performance)
+- If you're comfortable with docker, modify the docker mounts in `.devcontainer/devcontainer.json` to include the directory where EU4 is installed. Below is an example:
+  ```diff
+  -    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  +    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+  +    "source=${localEnv:HOME}/.steam/steam/SteamApps/common/Europa Universalis IV,target=/tmp/eu4,type=bind,consistency=cached,readonly"
+  ```
+  After saving, reload the project. You know it's successful once `/tmp/eu4` is visible within the container terminal.
+- Alternatively, copy the entire EU4 installation into the cloned directory
 
-
-## Build Assets
-
-Paradox would be unhappy if the game assets and binary token files were uploaded here, so it is up to you to supply these. For incorporating game assets one will need a local installation of EU4.
+Now let's process the EU4 into digestible chunks. In a terminal inside vscode, execute:
 
 ```bash
-just pdx create-bundle "D:/games/steam/steamapps/common/Europa Universalis IV" assets/game-bundles
-just pdx compile-assets assets/game-bundles/eu4-1.33.tar.zst
+just pdx create-bundle "/tmp/eu4" assets/game-bundles
+
+# The above command outputs a versioned eu4 bundle. In this case 1.34
+just pdx compile-assets assets/game-bundles/eu4-1.34.tar.zst
 ```
+
+After those commands have finished, one can unlink the EU4 assets if desired.
+
+Then, to start the PDX Tools:
+
+```bash
+just dev
+```
+
+This will start the web server on two ports: 3001 and 3003. 3001 is plain HTTP and 3003 is HTTPS with a self signed certificate. Since some web features like brotli decoding only work over HTTPS in firefox, it is recommended to use the HTTPS endpoint.
+
+Congrats! You should now be able to see PDX Tools in your browser and be able to parse non-ironman saves.
 
 ### Ironman saves
 
@@ -60,16 +75,6 @@ By default, ironman and binary files will be unparsable. If you are in possessio
 ```bash
 just tokenize --eu4-ironman-tokens ./assets/tokens/eu4.txt
 ```
-
-## Start Developing
-
-To start the app:
-
-```bash
-just dev
-```
-
-This will compile everything and start the web server on two ports: 3001 and 3003. 3001 is plain HTTP and 3003 is HTTPS with a self signed certificate. Since some web features like brotli decoding only work over HTTPS in firefox, it is recommended to use the HTTPS endpoint.
 
 ## Contributor Project Guide
 

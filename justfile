@@ -260,6 +260,12 @@ prep-frontend:
   #!/usr/bin/env bash
   set -euxo pipefail
 
+  # Create empty token files for devs without them
+  mkdir -p assets/tokens
+  for game in "eu4" "ck3" "hoi4" "imperator" "vic3"; do
+    touch -a assets/tokens/$game.bin assets/tokens/$game.txt
+  done;
+
   mkdir -p src/app/src/map && cp src/map/src/* src/app/src/map/.
 
   # Auto generate URLs for game data and resource files. We split them into two
