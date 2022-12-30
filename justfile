@@ -53,7 +53,7 @@ npm-ci:
   (cd src/app/workers-site && npm ci)
 
 publish-backend:
-  ssh -t pdx-tools-prod '/opt/pdx-tools/docker-compose.sh pull api && /opt/pdx-tools/docker-compose.sh up -d api'
+  docker image save ghcr.io/pdx-tools/pdx-tools:nightly | gzip | ssh pdx-tools-prod 'docker load && /opt/pdx-tools/docker-compose.sh up -d api'
 
 wrangler +cmd:
   cd src/app && wrangler "$@"
