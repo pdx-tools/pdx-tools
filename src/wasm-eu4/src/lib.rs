@@ -242,7 +242,7 @@ pub struct FrontendBattleInfo {
     pub defender: FrontendBattleSide,
     pub winner_alliance: f32,
     pub loser_alliance: f32,
-    pub losses: u32,
+    pub losses: i32,
     pub forces: u32,
 }
 
@@ -255,7 +255,7 @@ pub struct FrontendBattleSide {
     pub light_ship: u32,
     pub galley: u32,
     pub transport: u32,
-    pub losses: u32,
+    pub losses: i32,
     pub country: CountryTag,
     pub country_name: String,
     pub commander: Option<String>,
@@ -1886,10 +1886,16 @@ impl SaveFileImpl {
             .collect()
     }
 
-    fn create_losses(data: &[u32]) -> [u32; 21] {
+    fn create_losses(data: &[i32]) -> [u32; 21] {
         let mut values = [0u32; 21];
+        const LOSSES_MAX: i32 = i32::MAX / 1000;
+        const LOSSES_MIN: i32 = -LOSSES_MAX;
         for (&x, y) in data.iter().zip(values.iter_mut()) {
-            *y += x;
+            *y += match x {
+                0.. => x as u32,
+                LOSSES_MIN..=-1 => (x + 2 * LOSSES_MAX) as u32,
+                _ => x.abs() as u32,
+            };
         }
         values
     }
