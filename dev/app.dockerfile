@@ -1,5 +1,5 @@
 # Production image, copy all the files and run next
-FROM node:18.12.1-buster-slim
+FROM node:18.12.1-bullseye-slim
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libssl-dev \
