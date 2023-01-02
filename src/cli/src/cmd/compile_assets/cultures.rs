@@ -71,7 +71,7 @@ impl<'de> Deserialize<'de> for CultureGroup {
 }
 
 pub fn parse_cultures(data: &[u8]) -> Cultures {
-    let groups = jomini::TextDeserializer::from_windows1252_slice(data).unwrap();
+    let groups = jomini::text::de::from_windows1252_slice(data).unwrap();
     Cultures {
         culture_groups: groups,
     }

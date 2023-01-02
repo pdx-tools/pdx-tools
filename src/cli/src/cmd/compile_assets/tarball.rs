@@ -6,7 +6,6 @@ use crate::brotli_tee::BrotliTee;
 use crate::rawbmp::{self, Pixels, Rgb};
 use anyhow::{bail, Context};
 use eu4save::{CountryTag, Eu4File, ProvinceId};
-use jomini::TextDeserializer;
 use mapper::GameProvince;
 use schemas::resolver::Eu4FlatBufferTokens;
 use serde::{de::IgnoredAny, Deserialize};
@@ -426,12 +425,12 @@ fn generate_countries(
 
     let tag_data = fs::read(tag_path)?;
     let tags: HashMap<CountryTag, PathBuf> =
-        TextDeserializer::from_windows1252_slice(&tag_data[..])?;
+        jomini::text::de::from_windows1252_slice(&tag_data[..])?;
     let mut countries = Vec::new();
     for (tag, path) in tags {
         let country_path = tmp_game_dir.join("common").join(&path);
         let country_data = fs::read(country_path)?;
-        let country: CountryData = TextDeserializer::from_windows1252_slice(&country_data[..])
+        let country: CountryData = jomini::text::de::from_windows1252_slice(&country_data[..])
             .with_context(|| format!("parsing {} at: {}", tag, path.display()))?;
 
         let localized = country_localization.get(&tag).unwrap();
@@ -473,7 +472,7 @@ fn generate_trade_company_investments(
 
     let file_data = fs::read(file_path)?;
     let data: HashMap<String, InvestmentData> =
-        TextDeserializer::from_windows1252_slice(&file_data[..])?;
+        jomini::text::de::from_windows1252_slice(&file_data[..])?;
 
     let gfx_path = tmp_game_dir
         .join("interface")
@@ -620,7 +619,7 @@ fn generate_advisors(
     let mut advisors = Vec::new();
     for person_file in persons {
         let data = fs::read(person_file.path())?;
-        let advise: HashMap<String, IgnoredAny> = TextDeserializer::from_windows1252_slice(&data)?;
+        let advise: HashMap<String, IgnoredAny> = jomini::text::de::from_windows1252_slice(&data)?;
 
         for advisor in advise.keys() {
             advisors.push((advisor.clone(), localization.get(advisor).unwrap().clone()));
@@ -673,7 +672,7 @@ fn write_provinces_csv(
     let data = assets::request(format!("terrain/terrain-{}.eu4", game_version));
     let save_file = Eu4File::from_slice(&data)?;
     let tokens = Eu4FlatBufferTokens::new();
-    let save = save_file.deserializer().build_save(&tokens)?;
+    let save = save_file.parse_save(&tokens)?;
     let mut provs: Vec<_> = save.game.provinces.iter().collect();
     provs.sort_unstable_by_key(|(k, _v)| *k);
     let total_provs = provs.len();

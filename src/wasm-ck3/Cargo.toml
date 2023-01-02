@@ -14,7 +14,7 @@ miniz = ["ck3save/miniz"]
 libdeflate = ["ck3save/libdeflate"]
 
 [dependencies]
-jomini = "0.20"
+jomini = "0.21"
 schemas = { path = "../schemas" }
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 serde = { version = "1", features = ["derive"] }

@@ -2690,10 +2690,14 @@ impl SaveFileParsed {
 
 #[wasm_bindgen]
 pub fn parse_save(data: &[u8]) -> Result<SaveFileParsed, JsValue> {
-    let (save, encoding) = eu4game::shared::parse_save_with_tokens(data, tokens::get_tokens())
-        .map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
-
-    Ok(SaveFileParsed(save, encoding))
+    let tokens = tokens::get_tokens();
+    match eu4game::shared::parse_save_with_tokens(data, tokens) {
+        Ok((save, encoding)) => Ok(SaveFileParsed(save, encoding)),
+        Err(_) => {
+            let err = eu4game::shared::parse_save_with_tokens_full(data, tokens, true).unwrap_err();
+            Err(JsValue::from_str(err.to_string().as_str()))
+        }
+    }
 }
 
 #[wasm_bindgen]

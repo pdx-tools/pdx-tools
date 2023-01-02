@@ -539,7 +539,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/ck3save.git#28d41286534cbb439be575938b94d271252c6292"
+source = "git+https://github.com/rakaly/ck3save.git#69841619faff859f061baff559faeb9f23fa32d4"
 dependencies = [
  "jomini",
  "libdeflater",
@@ -862,6 +862,7 @@ dependencies = [
  "regex",
  "schemas",
  "serde",
+ "serde_path_to_error",
  "tarsave",
  "thiserror",
  "walkdir",
@@ -871,7 +872,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#06b2d019baa6e91e88e3a9fe315c6df8b4aa9a14"
+source = "git+https://github.com/rakaly/eu4save.git#f6e0a46bad2d101eb065811b68eb15b0be7c7e03"
 dependencies = [
  "jomini",
  "libdeflater",
@@ -1097,8 +1098,7 @@ checksum = "3688f13e7735ae5ca93edc490f6c5885b77d473255bc1fed92b9c805f972bf94"
 [[package]]
 name = "hoi4save"
 version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "110351713431df4d395c31e1633aefbec285e51b867a554299c00875ea5eda58"
+source = "git+https://github.com/rakaly/hoi4save.git#f1589b96d62ab40c9f3ac792fff25703b5178304"
 dependencies = [
  "jomini",
  "serde",
@@ -1215,7 +1215,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/imperator-save.git#86be7c11e510a285abb1be727986c6b43c636cc9"
+source = "git+https://github.com/rakaly/imperator-save.git#450a9c52e374b078e5847cec4ea6a22c72568673"
 dependencies = [
  "jomini",
  "libdeflater",
@@ -1277,9 +1277,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.20.1"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9985c274ba09fb366d5a25b3848615ea2b7b9948dc4b6012f9cba5947d412c06"
+checksum = "d725fbaacebb9e663b0070ab631e18674c6e517dd40b23e4db04d49100a88a89"
 dependencies = [
  "jomini_derive",
  "serde",
@@ -2127,6 +2127,15 @@ checksum = "82c2c1fdcd807d1098552c5b9a36e425e42e9fbd7c6a37a8425f390f781f7fa7"
 dependencies = [
  "itoa 1.0.2",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_path_to_error"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26b04f22b563c91331a10074bda3dd5492e3cc39d56bd557e91c0af42b6c7341"
+dependencies = [
  "serde",
 ]
 

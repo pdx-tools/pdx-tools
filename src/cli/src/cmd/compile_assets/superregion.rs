@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 pub fn parse_superregions(data: &[u8]) -> HashMap<String, Vec<String>> {
     let regions: HashMap<String, Vec<String>> =
-        jomini::TextDeserializer::from_windows1252_slice(data).unwrap();
+        jomini::text::de::from_windows1252_slice(data).unwrap();
     regions
         .into_iter()
         .map(|(key, val)| {

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use eu4save::ProvinceId;
 
 pub fn parse_continents(data: &[u8]) -> HashMap<String, Vec<ProvinceId>> {
-    jomini::TextDeserializer::from_windows1252_slice(data).unwrap()
+    jomini::text::de::from_windows1252_slice(data).unwrap()
 }
 
 #[cfg(test)]

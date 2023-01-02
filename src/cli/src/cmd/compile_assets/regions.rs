@@ -9,7 +9,7 @@ struct Region {
 
 pub fn parse_regions(data: &[u8]) -> HashMap<String, Vec<String>> {
     let regions: HashMap<String, Region> =
-        jomini::TextDeserializer::from_windows1252_slice(data).unwrap();
+        jomini::text::de::from_windows1252_slice(data).unwrap();
     regions
         .into_iter()
         .map(|(key, val)| (key, val.areas))

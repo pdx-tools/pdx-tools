@@ -48,7 +48,7 @@ impl SaveFileImpl {
 fn _parse_save(data: &[u8]) -> Result<SaveFile, ImperatorError> {
     let file = ImperatorFile::from_slice(data)?;
     let meta = file.parse_metadata()?;
-    let header = meta.deserializer().build(tokens::get_tokens())?;
+    let header = meta.deserializer(tokens::get_tokens()).deserialize()?;
     Ok(SaveFile(SaveFileImpl {
         header,
         encoding: file.encoding(),

@@ -1,6 +1,6 @@
 use crate::{flavor::Vic3Flavor, SaveHeader, Vic3Error, Vic3ErrorKind, Vic3Melter};
 use jomini::{
-    binary::{BinaryDeserializerBuilder, FailedResolveStrategy, TokenResolver},
+    binary::{FailedResolveStrategy, TokenResolver},
     text::ObjectReader,
     BinaryDeserializer, BinaryTape, TextDeserializer, TextTape, Utf8Encoding,
 };
@@ -186,13 +186,16 @@ impl<'a> Vic3ParsedFile<'a> {
     }
 
     /// Prepares the file for deserialization into a custom structure
-    pub fn deserializer(&self) -> Vic3Deserializer {
+    pub fn deserializer<'b, RES>(&'b self, resolver: &'b RES) -> Vic3Deserializer<RES>
+    where
+        RES: TokenResolver,
+    {
         match &self.kind {
             Vic3ParsedFileKind::Text(x) => Vic3Deserializer {
                 kind: Vic3DeserializerKind::Text(x),
             },
             Vic3ParsedFileKind::Binary(x) => Vic3Deserializer {
-                kind: Vic3DeserializerKind::Binary(x.deserializer()),
+                kind: Vic3DeserializerKind::Binary(x.deserializer(resolver)),
             },
         }
     }
@@ -293,52 +296,64 @@ impl<'a> Vic3Text<'a> {
     where
         T: Deserialize<'a>,
     {
-        let result =
-            TextDeserializer::from_utf8_tape(&self.tape).map_err(Vic3ErrorKind::Deserialize)?;
+        let deser = TextDeserializer::from_utf8_tape(&self.tape);
+        let result = deser
+            .deserialize()
+            .map_err(Vic3ErrorKind::Deserialize)?;
         Ok(result)
     }
 }
 
 /// A parsed Vic3 binary document
-pub struct Vic3Binary<'a> {
-    tape: BinaryTape<'a>,
+pub struct Vic3Binary<'data> {
+    tape: BinaryTape<'data>,
     header: SaveHeader,
 }
 
-impl<'a> Vic3Binary<'a> {
-    pub fn from_slice(data: &'a [u8]) -> Result<Self, Vic3Error> {
+impl<'data> Vic3Binary<'data> {
+    pub fn from_slice(data: &'data [u8]) -> Result<Self, Vic3Error> {
         let header = SaveHeader::from_slice(data)?;
         Self::from_raw(&data[..header.header_len()], header)
     }
 
-    pub(crate) fn from_raw(data: &'a [u8], header: SaveHeader) -> Result<Self, Vic3Error> {
+    pub(crate) fn from_raw(data: &'data [u8], header: SaveHeader) -> Result<Self, Vic3Error> {
         let tape = BinaryTape::from_slice(data).map_err(Vic3ErrorKind::Parse)?;
         Ok(Vic3Binary { tape, header })
     }
 
-    pub fn deserializer<'b>(&'b self) -> Vic3BinaryDeserializer<'a, 'b> {
+    pub fn deserializer<'b, RES>(
+        &'b self,
+        resolver: &'b RES,
+    ) -> Vic3BinaryDeserializer<'data, 'b, RES>
+    where
+        RES: TokenResolver,
+    {
         Vic3BinaryDeserializer {
-            builder: BinaryDeserializer::builder_flavor(Vic3Flavor::new()),
-            tape: &self.tape,
+            deser: BinaryDeserializer::builder_flavor(Vic3Flavor::new())
+                .from_tape(&self.tape, resolver),
         }
     }
 
-    pub fn melter<'b>(&'b self) -> Vic3Melter<'a, 'b> {
+    pub fn melter<'b>(&'b self) -> Vic3Melter<'data, 'b> {
         Vic3Melter::new(&self.tape, &self.header)
     }
 }
 
-enum Vic3DeserializerKind<'a, 'b> {
-    Text(&'b Vic3Text<'a>),
-    Binary(Vic3BinaryDeserializer<'a, 'b>),
+
+enum Vic3DeserializerKind<'data, 'tape, RES> {
+    Text(&'tape Vic3Text<'data>),
+    Binary(Vic3BinaryDeserializer<'data, 'tape, RES>),
 }
 
 /// A deserializer for custom structures
-pub struct Vic3Deserializer<'a, 'b> {
-    kind: Vic3DeserializerKind<'a, 'b>,
+pub struct Vic3Deserializer<'data, 'tape, RES> {
+    kind: Vic3DeserializerKind<'data, 'tape, RES>,
 }
 
-impl<'a, 'b> Vic3Deserializer<'a, 'b> {
+impl<'data, 'tape, RES> Vic3Deserializer<'data, 'tape, RES>
+where
+    RES: TokenResolver,
+{
     pub fn on_failed_resolve(&mut self, strategy: FailedResolveStrategy) -> &mut Self {
         if let Vic3DeserializerKind::Binary(x) = &mut self.kind {
             x.on_failed_resolve(strategy);
@@ -346,47 +361,45 @@ impl<'a, 'b> Vic3Deserializer<'a, 'b> {
         self
     }
 
-    pub fn build<T, R>(&self, resolver: &'a R) -> Result<T, Vic3Error>
+    pub fn deserialize<T>(&self) -> Result<T, Vic3Error>
     where
-        R: TokenResolver,
-        T: Deserialize<'a>,
+        T: Deserialize<'data>,
     {
         match &self.kind {
             Vic3DeserializerKind::Text(x) => x.deserialize(),
-            Vic3DeserializerKind::Binary(x) => x.build(resolver),
+            Vic3DeserializerKind::Binary(x) => x.deserialize(),
         }
     }
 }
 
 /// Deserializes binary data into custom structures
-pub struct Vic3BinaryDeserializer<'a, 'b> {
-    builder: BinaryDeserializerBuilder<Vic3Flavor>,
-    tape: &'b BinaryTape<'a>,
+pub struct Vic3BinaryDeserializer<'data, 'tape, RES> {
+    deser: BinaryDeserializer<'tape, 'data, 'tape, RES, Vic3Flavor>,
 }
 
-impl<'a, 'b> Vic3BinaryDeserializer<'a, 'b> {
+impl<'data, 'tape, RES> Vic3BinaryDeserializer<'data, 'tape, RES>
+where
+    RES: TokenResolver,
+{
     pub fn on_failed_resolve(&mut self, strategy: FailedResolveStrategy) -> &mut Self {
-        self.builder.on_failed_resolve(strategy);
+        self.deser.on_failed_resolve(strategy);
         self
     }
 
-    pub fn build<T, R>(&self, resolver: &'a R) -> Result<T, Vic3Error>
+    pub fn deserialize<T>(&self) -> Result<T, Vic3Error>
     where
-        R: TokenResolver,
-        T: Deserialize<'a>,
+        T: Deserialize<'data>,
     {
-        let result = self
-            .builder
-            .from_tape(self.tape, resolver)
-            .map_err(|e| match e.kind() {
-                jomini::ErrorKind::Deserialize(e2) => match e2.kind() {
-                    &jomini::DeserializeErrorKind::UnknownToken { token_id } => {
-                        Vic3ErrorKind::UnknownToken { token_id }
-                    }
-                    _ => Vic3ErrorKind::Deserialize(e),
-                },
+        let result = self.deser.deserialize().map_err(|e| match e.kind() {
+            jomini::ErrorKind::Deserialize(e2) => match e2.kind() {
+                &jomini::DeserializeErrorKind::UnknownToken { token_id } => {
+                    Vic3ErrorKind::UnknownToken { token_id }
+                }
                 _ => Vic3ErrorKind::Deserialize(e),
-            })?;
+            },
+            _ => Vic3ErrorKind::Deserialize(e),
+        })?;
         Ok(result)
     }
 }
+

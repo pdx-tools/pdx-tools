@@ -61,7 +61,7 @@ fn _parse_save(data: &[u8]) -> Result<SaveFile, Vic3Error> {
     let header = file.header();
     let mut zip_sink = Vec::new();
     let parsed = file.parse(&mut zip_sink)?;
-    let save = parsed.deserializer().build(tokens::get_tokens())?;
+    let save = parsed.deserializer(tokens::get_tokens()).deserialize()?;
     Ok(SaveFile(SaveFileImpl {
         save,
         header: header.clone(),

@@ -21,6 +21,6 @@ pub struct SpriteType {
 }
 
 pub fn parse_sprites(data: &[u8]) -> Vec<SpriteType> {
-    let interface: SpriteFile = jomini::TextDeserializer::from_windows1252_slice(data).unwrap();
+    let interface: SpriteFile = jomini::text::de::from_windows1252_slice(data).unwrap();
     interface.sprite_types.sprite_types
 }

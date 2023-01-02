@@ -5,7 +5,7 @@ use std::path::Path;
 
 fn main() {
     let out_path = Path::new(&env::var("OUT_DIR").unwrap()).join("gen_tokens.rs");
-    let mut writer = BufWriter::new(File::create(&out_path).unwrap());
+    let mut writer = BufWriter::new(File::create(out_path).unwrap());
     writeln!(writer, "match token {{").unwrap();
 
     println!("cargo:rerun-if-env-changed=VIC3_IRONMAN_TOKENS");

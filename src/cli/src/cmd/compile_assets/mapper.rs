@@ -53,11 +53,11 @@ impl Terrain {
 }
 
 pub fn parse_terrain_txt(data: &[u8]) -> Terrain {
-    jomini::TextDeserializer::from_windows1252_slice(data).unwrap()
+    jomini::text::de::from_windows1252_slice(data).unwrap()
 }
 
 pub fn parse_default_map(data: &[u8]) -> DefaultMap {
-    jomini::TextDeserializer::from_windows1252_slice(data).unwrap()
+    jomini::text::de::from_windows1252_slice(data).unwrap()
 }
 
 pub fn parse_definition(data: &[u8]) -> HashMap<u16, Rgb> {
