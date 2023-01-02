@@ -34,7 +34,7 @@ export const DlcList = ({ dlc_enabled }: DlcListProps) => {
     return (
       <Tooltip key={id} title={name}>
         <span style={disabled ? { filter: "grayscale(1)" } : undefined}>
-          <Image alt={`${name} icon`} src={imgPath} />
+          <Image alt={`${name} icon`} src={imgPath} width={24} height={24} />
         </span>
       </Tooltip>
     );
