@@ -42,7 +42,10 @@ impl SaveFileImpl {
 
 fn _parse_save(data: &[u8]) -> Result<SaveFile, Hoi4Error> {
     let file = Hoi4File::from_slice(data)?;
-    let save = file.parse()?.deserializer(tokens::get_tokens()).deserialize()?;
+    let save = file
+        .parse()?
+        .deserializer(tokens::get_tokens())
+        .deserialize()?;
     Ok(SaveFile(SaveFileImpl {
         save,
         encoding: file.encoding(),

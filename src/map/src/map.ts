@@ -499,7 +499,10 @@ export class WebGLMap {
 
     const oldScale = this.scale;
     const clampedY = Math.max(-30, Math.min(30, e.deltaY));
-    this.scale *= Math.pow(2, clampedY * -0.01 * (Math.min(eventDiff, 64) / 64));
+    this.scale *= Math.pow(
+      2,
+      clampedY * -0.01 * (Math.min(eventDiff, 64) / 64)
+    );
 
     this.scale = Math.max(this.minScale, this.scale);
     this.scale = Math.min(this.maxScale, this.scale);

@@ -16,7 +16,7 @@ impl<'a> FlatBufferResolver<'a> {
             return FlatBufferResolver {
                 values: Vec::new(),
                 breakpoint: 0,
-            }
+            };
         }
 
         let xb = crate::tokens::root_as_tokens(data).unwrap();

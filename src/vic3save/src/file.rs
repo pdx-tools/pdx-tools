@@ -297,9 +297,7 @@ impl<'a> Vic3Text<'a> {
         T: Deserialize<'a>,
     {
         let deser = TextDeserializer::from_utf8_tape(&self.tape);
-        let result = deser
-            .deserialize()
-            .map_err(Vic3ErrorKind::Deserialize)?;
+        let result = deser.deserialize().map_err(Vic3ErrorKind::Deserialize)?;
         Ok(result)
     }
 }
@@ -338,7 +336,6 @@ impl<'data> Vic3Binary<'data> {
         Vic3Melter::new(&self.tape, &self.header)
     }
 }
-
 
 enum Vic3DeserializerKind<'data, 'tape, RES> {
     Text(&'tape Vic3Text<'data>),
@@ -402,4 +399,3 @@ where
         Ok(result)
     }
 }
-
