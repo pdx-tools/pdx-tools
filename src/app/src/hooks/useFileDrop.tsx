@@ -1,9 +1,9 @@
 import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
 import { useEffect, useRef, useState } from "react";
 
-// ref: https://css-tricks.com/snippets/javascript/test-if-dragenterdragover-event-contains-files/
 function containsFiles(e: DragEvent): boolean {
-  return e.dataTransfer?.types?.includes("Files") ?? false;
+  const arr = e.dataTransfer?.items;
+  return arr?.length === 1 && arr[0].kind === "file";
 }
 
 export interface FileDropProps {
@@ -42,7 +42,7 @@ export function useFileDrop({ onFile, enabled = true }: FileDropProps) {
       e.stopPropagation();
       setHovering(false);
 
-      if (e.dataTransfer && e.dataTransfer.items) {
+      if (e.dataTransfer && e.dataTransfer.files) {
         const items = e.dataTransfer.items;
         if (items.length !== 1) {
           throw Error("unexpected one file drop");
