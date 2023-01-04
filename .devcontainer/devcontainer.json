@@ -18,6 +18,10 @@
     "IMPERATOR_TOKENS": "${containerWorkspaceFolder}/assets/tokens/imperator.txt"
   },
 
+  "features": {
+    "ghcr.io/devcontainers/features/docker-from-docker:1": {}
+  },
+
   "settings": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "files.associations": {

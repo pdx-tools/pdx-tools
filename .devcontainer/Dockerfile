@@ -15,12 +15,6 @@ RUN apt-get update && apt-get install -y \
       netcat \
       openssl \
     && \
-    # Install Docker
-    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
-    apt-get update && \
-    apt-get install -y docker-ce docker-ce-cli containerd.io && \
-    usermod -aG docker node && \
     rm -rf /var/lib/apt/lists/* && \
     # Install just
     wget -O ${JUST_VERSION}.tar.gz https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz && \
