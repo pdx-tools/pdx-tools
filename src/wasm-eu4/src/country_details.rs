@@ -215,9 +215,9 @@ impl SaveFileImpl {
                 .find(|x| x.id.id == ruler_id.id)
                 .map(|x| FrontendMonarch {
                     name: x.name.clone(),
-                    adm: x.adm,
-                    dip: x.dip,
-                    mil: x.mil,
+                    adm: x.adm as u16,
+                    dip: x.dip as u16,
+                    mil: x.mil as u16,
                 })
                 .unwrap_or_else(|| FrontendMonarch {
                     name: "Interregnum".to_string(),
@@ -238,9 +238,9 @@ impl SaveFileImpl {
                 .last()
                 .map(|x| FrontendMonarch {
                     name: x.name.clone(),
-                    adm: x.adm,
-                    dip: x.dip,
-                    mil: x.mil,
+                    adm: x.adm as u16,
+                    dip: x.dip as u16,
+                    mil: x.mil as u16,
                 })
                 .unwrap_or_else(|| FrontendMonarch {
                     name: "Interregnum".to_string(),
@@ -548,9 +548,9 @@ impl SaveFileImpl {
                                     })
                                     .collect(),
                                 failed_heirs: failed_heirs.clone(),
-                                adm: x.adm,
-                                dip: x.dip,
-                                mil: x.mil,
+                                adm: x.adm as u16,
+                                dip: x.dip as u16,
+                                mil: x.mil as u16,
                                 avg_adm: 0.0,
                                 avg_dip: 0.0,
                                 avg_mil: 0.0,
@@ -581,9 +581,9 @@ impl SaveFileImpl {
                                         name: self.game.localize_personality(personality),
                                     })
                                     .collect(),
-                                adm: heir.adm,
-                                dip: heir.dip,
-                                mil: heir.mil,
+                                adm: heir.adm as u16,
+                                dip: heir.dip as u16,
+                                mil: heir.mil as u16,
                             });
                         }
                     }
@@ -875,9 +875,9 @@ impl SaveFileImpl {
                                 CountryLeaderRaw {
                                     leader,
                                     monarch: Some(MonarchStats {
-                                        adm: monarch.adm,
-                                        dip: monarch.dip,
-                                        mil: monarch.mil,
+                                        adm: monarch.adm as u16,
+                                        dip: monarch.dip as u16,
+                                        mil: monarch.mil as u16,
                                     }),
                                 },
                             );
