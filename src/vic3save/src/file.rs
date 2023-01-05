@@ -8,12 +8,19 @@ use serde::Deserialize;
 use std::io::Cursor;
 use zip::result::ZipError;
 
+#[derive(Debug, Clone, Copy)]
+enum Vic3ZipMeta<'a> {
+    Raw(&'a [u8]),
+    Entry(VerifiedIndex),
+}
+
 enum FileKind<'a> {
     Text(&'a [u8]),
     Binary(&'a [u8]),
     Zip {
         archive: Vic3ZipFiles<'a>,
         gamestate: VerifiedIndex,
+        meta: Vic3ZipMeta<'a>,
         is_text: bool,
     },
 }
@@ -50,16 +57,25 @@ impl<'a> Vic3File<'a> {
         let reader = Cursor::new(data);
         match zip::ZipArchive::new(reader) {
             Ok(mut zip) => {
+                let metadata_preamble = &data[..zip.offset() as usize];
                 let files = Vic3ZipFiles::new(&mut zip, data);
                 let gamestate_idx = files
                     .gamestate_index()
                     .ok_or(Vic3ErrorKind::ZipMissingEntry)?;
+
+                let meta = if !metadata_preamble.is_empty() {
+                    Vic3ZipMeta::Raw(metadata_preamble)
+                } else {
+                    let meta_idx = files.meta_index().ok_or(Vic3ErrorKind::ZipMissingEntry)?;
+                    Vic3ZipMeta::Entry(meta_idx)
+                };
 
                 let is_text = !header.kind().is_binary();
                 Ok(Vic3File {
                     header,
                     kind: FileKind::Zip {
                         archive: files,
+                        meta,
                         gamestate: gamestate_idx,
                         is_text,
                     },
@@ -106,6 +122,73 @@ impl<'a> Vic3File<'a> {
         }
     }
 
+    pub fn meta(&self) -> Result<Vic3Meta<'a>, Vic3Error> {
+        match &self.kind {
+            FileKind::Text(x) => {
+                let len = self.header.metadata_len() as usize;
+                let data = if len * 2 > x.len() {
+                    x
+                } else {
+                    &x[..len.min(x.len())]
+                };
+
+                Ok(Vic3Meta {
+                    kind: Vic3MetaKind::TextRaw(data),
+                    header: self.header.clone(),
+                })
+            }
+            FileKind::Binary(x) => {
+                let metadata = x.get(..self.header.metadata_len() as usize).unwrap_or(x);
+                Ok(Vic3Meta {
+                    kind: Vic3MetaKind::BinaryRaw(metadata),
+                    header: self.header.clone(),
+                })
+            }
+            FileKind::Zip {
+                meta: Vic3ZipMeta::Raw(data),
+                is_text: true,
+                ..
+            } => Ok(Vic3Meta {
+                kind: Vic3MetaKind::TextRaw(data),
+                header: self.header.clone(),
+            }),
+            FileKind::Zip {
+                archive,
+                meta: Vic3ZipMeta::Entry(entry),
+                is_text: true,
+                ..
+            } => {
+                let mut data = Vec::new();
+                archive.retrieve_file(*entry).read_to_end(&mut data)?;
+                Ok(Vic3Meta {
+                    kind: Vic3MetaKind::TextEntry(data),
+                    header: self.header.clone(),
+                })
+            }
+            FileKind::Zip {
+                meta: Vic3ZipMeta::Raw(data),
+                is_text: false,
+                ..
+            } => Ok(Vic3Meta {
+                kind: Vic3MetaKind::BinaryRaw(data),
+                header: self.header.clone(),
+            }),
+            FileKind::Zip {
+                archive,
+                meta: Vic3ZipMeta::Entry(entry),
+                is_text: false,
+                ..
+            } => {
+                let mut data = Vec::new();
+                archive.retrieve_file(*entry).read_to_end(&mut data)?;
+                Ok(Vic3Meta {
+                    kind: Vic3MetaKind::BinaryEntry(data),
+                    header: self.header.clone(),
+                })
+            }
+        }
+    }
+
     /// Parses the entire file
     ///
     /// If the file is a zip, the zip contents will be inflated into the zip
@@ -144,6 +227,52 @@ impl<'a> Vic3File<'a> {
                         kind: Vic3ParsedFileKind::Binary(binary),
                     })
                 }
+            }
+        }
+    }
+}
+
+pub struct Vic3Meta<'a> {
+    header: SaveHeader,
+    kind: Vic3MetaKind<'a>,
+}
+
+pub enum Vic3MetaData<'a> {
+    Text(&'a [u8]),
+    Binary(&'a [u8]),
+}
+
+enum Vic3MetaKind<'a> {
+    TextRaw(&'a [u8]),
+    TextEntry(Vec<u8>),
+    BinaryRaw(&'a [u8]),
+    BinaryEntry(Vec<u8>),
+}
+
+impl<'a> Vic3Meta<'a> {
+    pub fn header(&self) -> &SaveHeader {
+        &self.header
+    }
+
+    pub fn kind(&self) -> Vic3MetaData {
+        match &self.kind {
+            Vic3MetaKind::TextRaw(x) => Vic3MetaData::Text(x),
+            Vic3MetaKind::TextEntry(x) => Vic3MetaData::Text(x.as_slice()),
+            Vic3MetaKind::BinaryRaw(x) => Vic3MetaData::Binary(x),
+            Vic3MetaKind::BinaryEntry(x) => Vic3MetaData::Binary(x.as_slice()),
+        }
+    }
+
+    pub fn parse(&self) -> Result<Vic3ParsedFile, Vic3Error> {
+        match self.kind() {
+            Vic3MetaData::Text(x) => Vic3Text::from_raw(x).map(|kind| Vic3ParsedFile {
+                kind: Vic3ParsedFileKind::Text(kind),
+            }),
+
+            Vic3MetaData::Binary(x) => {
+                Vic3Binary::from_raw(x, self.header.clone()).map(|kind| Vic3ParsedFile {
+                    kind: Vic3ParsedFileKind::Binary(kind),
+                })
             }
         }
     }
@@ -212,24 +341,29 @@ struct VerifiedIndex {
 struct Vic3ZipFiles<'a> {
     archive: &'a [u8],
     gamestate_index: Option<VerifiedIndex>,
+    meta_index: Option<VerifiedIndex>,
 }
 
 impl<'a> Vic3ZipFiles<'a> {
     pub fn new(archive: &mut zip::ZipArchive<Cursor<&'a [u8]>>, data: &'a [u8]) -> Self {
         let mut gamestate_index = None;
+        let mut meta_index = None;
 
         for index in 0..archive.len() {
             if let Ok(file) = archive.by_index_raw(index) {
                 let size = file.size() as usize;
                 let data_start = file.data_start() as usize;
                 let data_end = data_start + file.compressed_size() as usize;
+                let index = VerifiedIndex {
+                    data_start,
+                    data_end,
+                    size,
+                };
 
                 if file.name() == "gamestate" {
-                    gamestate_index = Some(VerifiedIndex {
-                        data_start,
-                        data_end,
-                        size,
-                    })
+                    gamestate_index = Some(index);
+                } else if file.name() == "meta" {
+                    meta_index = Some(index);
                 }
             }
         }
@@ -237,6 +371,7 @@ impl<'a> Vic3ZipFiles<'a> {
         Self {
             archive: data,
             gamestate_index,
+            meta_index,
         }
     }
 
@@ -250,6 +385,10 @@ impl<'a> Vic3ZipFiles<'a> {
 
     pub fn gamestate_index(&self) -> Option<VerifiedIndex> {
         self.gamestate_index
+    }
+
+    pub fn meta_index(&self) -> Option<VerifiedIndex> {
+        self.meta_index
     }
 }
 

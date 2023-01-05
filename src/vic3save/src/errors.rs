@@ -30,7 +30,7 @@ pub enum Vic3ErrorKind {
     #[error("unable to parse as zip: {0}")]
     ZipArchive(#[from] ZipError),
 
-    #[error("missing gamestate entry in zip")]
+    #[error("missing zip entry in zip")]
     ZipMissingEntry,
 
     #[error("unable to inflate zip entry: {msg}")]

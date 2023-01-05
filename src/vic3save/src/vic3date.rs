@@ -23,10 +23,8 @@ impl std::fmt::Debug for Vic3Date {
 impl Vic3Date {
     fn from_raw(raw: RawDate) -> Option<Self> {
         let days = DAYS_PER_MONTH[usize::from(raw.month())];
-        if raw.day() <= days {
-            if matches!(raw.hour(), 0 | 6 | 12 | 18) {
-                return Some(Vic3Date { raw });
-            }
+        if raw.day() <= days && matches!(raw.hour(), 0 | 6 | 12 | 18) {
+            return Some(Vic3Date { raw });
         }
 
         None
