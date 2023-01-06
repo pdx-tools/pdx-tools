@@ -5,7 +5,7 @@ import {
   TerrainOverlayResources,
 } from "../../../../map/staticResources";
 import type { OnScreenWegblContext, ShaderSource } from "../../../../map/types";
-import { glContextOptions } from "../../../../map/map";
+import { glContextOptions, WebGLMap } from "../../../../map/map";
 import { MapOnlyControls } from "../../types/map";
 
 export interface Resources {
@@ -113,7 +113,7 @@ export function glContext(
   return canvas.getContext("webgl2", arg) as OnScreenWegblContext;
 }
 
-export function setMapControls(map: any, controls: MapOnlyControls) {
+export function setMapControls(map: WebGLMap, controls: MapOnlyControls) {
   map.showProvinceBorders = controls.showProvinceBorders;
   map.showMapModeBorders = controls.showMapModeBorders;
   map.showCountryBorders = controls.showCountryBorders;
