@@ -7,6 +7,7 @@ import {
   Tooltip,
   Form,
   InputNumber,
+  Modal,
   Row,
   Col,
   Slider,
@@ -39,6 +40,7 @@ import { dates, TimelapseEncoder } from "./TimelapseEncoder";
 import { transcode } from "./WebMTranscoder";
 import { useAppSelector } from "@/lib/store";
 import Link from "next/link";
+import { captureException } from "@/features/errors";
 
 interface MapState {
   focusPoint: [number, number];
@@ -137,6 +139,16 @@ export const Timelapse = () => {
       eu4Canvas.redrawViewport();
     }
 
+    const restoreMapState = () => {
+      eu4Canvas.webglContext().canvas.style.setProperty("max-width", "100%");
+      if (savedMapStateRef) {
+        canvasContext.sizeOverrideRef.current = false;
+        eu4Map.focusPoint = savedMapStateRef.focusPoint;
+        eu4Map.scale = savedMapStateRef.scale;
+        eu4Canvas.resize(savedMapStateRef.width, savedMapStateRef.height);
+      }
+    };
+
     eu4Canvas.setControls({
       ...mapControls,
       showCountryBorders: false,
@@ -144,19 +156,32 @@ export const Timelapse = () => {
       showProvinceBorders: true,
     });
 
-    const encoder = await TimelapseEncoder.create({
-      canvas: getEu4Canvas(canvasContext.eu4CanvasRef),
-      worker: getWasmWorker(workerRef),
-      fps: maxFps,
-      interval: intervalSelection,
-      startDate: startTimelapseDate(),
-      endDate: { days: meta.total_days, text: meta.date },
-      mapPayload: {
-        ...payload,
-        showSecondaryColor: payload.kind == "religion",
-      },
-      freezeFrame: freezeFrameSeconds,
-    });
+    let encoder;
+    try {
+      encoder = await TimelapseEncoder.create({
+        canvas: getEu4Canvas(canvasContext.eu4CanvasRef),
+        worker: getWasmWorker(workerRef),
+        fps: maxFps,
+        interval: intervalSelection,
+        startDate: startTimelapseDate(),
+        endDate: { days: meta.total_days, text: meta.date },
+        mapPayload: {
+          ...payload,
+          showSecondaryColor: payload.kind == "religion",
+        },
+        freezeFrame: freezeFrameSeconds,
+      });
+    } catch (ex) {
+      captureException(ex);
+      Modal.error({
+        title: "The timelapse engine encountered an error",
+        content: `${ex}`,
+      });
+      setIsRecording(false);
+      restoreMapState();
+      return;
+    }
+
     encoderRef.current = encoder;
 
     for await (const date of encoder.timelapse()) {
@@ -176,14 +201,7 @@ export const Timelapse = () => {
         : `${filename.substring(0, nameInd)}.${extension}`;
 
     setIsRecording(false);
-    eu4Canvas.webglContext().canvas.style.setProperty("max-width", "100%");
-
-    if (savedMapStateRef) {
-      canvasContext.sizeOverrideRef.current = false;
-      eu4Map.focusPoint = savedMapStateRef.focusPoint;
-      eu4Map.scale = savedMapStateRef.scale;
-      eu4Canvas.resize(savedMapStateRef.width, savedMapStateRef.height);
-    }
+    restoreMapState();
 
     eu4Canvas.setControls(mapControls);
     const [primary, secondary] = await getWasmWorker(workerRef).eu4MapColors(
@@ -241,11 +259,15 @@ export const Timelapse = () => {
           type="info"
           message={
             <>
-              Only browsers (like Chrome) with a{" "}
-              <a href="https://caniuse.com/mdn-api_videoencoder">
-                <pre className="inline">VideoEncoder</pre>
+              Browser does not support timelapse recording.{" "}
+              <a
+                target="_blank"
+                rel="noreferrer"
+                href="https://caniuse.com/mdn-api_videoencoder"
+              >
+                See supported browsers
               </a>{" "}
-              can record timelapses. {" "}
+              like Chrome.{" "}
               <Link
                 target="_blank"
                 href="/blog/a-new-timelapse-video-recorder"
