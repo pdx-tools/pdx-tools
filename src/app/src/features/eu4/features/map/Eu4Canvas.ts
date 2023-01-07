@@ -229,5 +229,9 @@ export class Eu4Canvas {
     }
   }
 
+  webglContext() {
+    return this.gl;
+  }
+
   close() {}
 }
