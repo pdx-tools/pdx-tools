@@ -146,6 +146,7 @@ export const Timelapse = () => {
         eu4Map.focusPoint = savedMapStateRef.focusPoint;
         eu4Map.scale = savedMapStateRef.scale;
         eu4Canvas.resize(savedMapStateRef.width, savedMapStateRef.height);
+        savedMapStateRef = undefined;
       }
     };
 
@@ -156,9 +157,8 @@ export const Timelapse = () => {
       showProvinceBorders: true,
     });
 
-    let encoder;
     try {
-      encoder = await TimelapseEncoder.create({
+      const encoder = await TimelapseEncoder.create({
         canvas: getEu4Canvas(canvasContext.eu4CanvasRef),
         worker: getWasmWorker(workerRef),
         fps: maxFps,
@@ -171,59 +171,54 @@ export const Timelapse = () => {
         },
         freezeFrame: freezeFrameSeconds,
       });
+      encoderRef.current = encoder;
+
+      for await (const date of encoder.timelapse()) {
+        setProgress(`recording: ${date.text}`);
+      }
+
+      const out = encoder.finish();
+      const blob = new Blob([out], {
+        type: exportAsMp4 ? "video/mp4" : "video/webm",
+      });
+
+      const extension = exportAsMp4 ? "mp4" : "webm";
+      const nameInd = filename.lastIndexOf(".");
+      const outputName =
+        nameInd == -1
+          ? `${filename}.${extension}`
+          : `${filename.substring(0, nameInd)}.${extension}`;
+
+      setIsRecording(false);
+      restoreMapState();
+
+      eu4Canvas.setControls(mapControls);
+      const [primary, secondary] = await getWasmWorker(workerRef).eu4MapColors(
+        payload
+      );
+      eu4Canvas.map?.updateProvinceColors(primary, secondary);
+      eu4Canvas.redrawMapNow();
+
+      if (exportAsMp4) {
+        setProgress("transcoding into MP4");
+        setIsTranscoding(true);
+        const blobBuffer = new Uint8Array(out);
+        const output = await transcode(blobBuffer, isDeveloper);
+        downloadData(output, outputName);
+      } else {
+        downloadData(blob, outputName);
+      }
     } catch (ex) {
       captureException(ex);
       Modal.error({
         title: "The timelapse engine encountered an error",
         content: `${ex}`,
       });
-      setIsRecording(false);
+    } finally {
       restoreMapState();
-      return;
-    }
-
-    encoderRef.current = encoder;
-
-    for await (const date of encoder.timelapse()) {
-      setProgress(`recording: ${date.text}`);
-    }
-
-    const out = encoder.finish();
-    const blob = new Blob([out], {
-      type: exportAsMp4 ? "video/mp4" : "video/webm",
-    });
-
-    const extension = exportAsMp4 ? "mp4" : "webm";
-    const nameInd = filename.lastIndexOf(".");
-    const outputName =
-      nameInd == -1
-        ? `${filename}.${extension}`
-        : `${filename.substring(0, nameInd)}.${extension}`;
-
-    setIsRecording(false);
-    restoreMapState();
-
-    eu4Canvas.setControls(mapControls);
-    const [primary, secondary] = await getWasmWorker(workerRef).eu4MapColors(
-      payload
-    );
-    eu4Canvas.map?.updateProvinceColors(primary, secondary);
-    eu4Canvas.redrawMapNow();
-
-    if (exportAsMp4) {
-      try {
-        setProgress("transcoding into MP4");
-        setIsTranscoding(true);
-        const blobBuffer = new Uint8Array(out);
-        const output = await transcode(blobBuffer, isDeveloper);
-        downloadData(output, outputName);
-      } finally {
-        setProgress("");
-        setIsTranscoding(false);
-      }
-    } else {
       setProgress("");
-      downloadData(blob, outputName);
+      setIsTranscoding(false);
+      setIsRecording(false);
     }
   };
 
