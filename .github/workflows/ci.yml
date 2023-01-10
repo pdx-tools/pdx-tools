@@ -57,6 +57,7 @@ jobs:
         path: |
           assets/game-bundles
           assets/eu4-saves
+          src/vic3save/assets
         key: asset-cache
 
     # https://nextjs.org/docs/messages/no-cache#github-actions
