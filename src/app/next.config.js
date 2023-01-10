@@ -13,7 +13,7 @@ let nextConfig = {
     config.output.assetModuleFilename = `static/[hash][ext]`;
     config.output.publicPath = `/_next/`;
     config.module.rules.push({
-      test: /\.(png|wasm|bin|webp|frag|vert|svg)$/,
+      test: /\.(png|wasm|bin|webp|frag|vert|svg|mp4)$/,
       type: "asset/resource",
     });
 

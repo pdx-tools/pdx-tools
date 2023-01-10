@@ -115,7 +115,7 @@ export const CountryRulersTable = ({ rulers }: CountryRulersTableProps) => {
           dataIndex: "avg_adm",
           key: "total-average",
           render: (_x, monarch) =>
-            formatFloat(monarch.avg_adm + monarch.avg_dip + monarch.avg_mil),
+            formatFloat(monarch.avg_adm + monarch.avg_dip + monarch.avg_mil, 2),
           className: "antd-column-separator",
           align: "right",
         },

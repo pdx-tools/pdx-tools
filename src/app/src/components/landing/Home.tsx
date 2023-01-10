@@ -6,7 +6,6 @@ import icons from "./icons.png";
 import achievement from "./achievement.png";
 import melted from "./melted.webp";
 import games from "./games.webp";
-import headline from "./headline.png";
 import discover from "./discover.png";
 import { HeroFileInput } from "./HeroFileInput";
 import { useSelector } from "react-redux";
@@ -21,6 +20,7 @@ import {
   SafariIcon,
 } from "@/components/icons";
 import classes from "./Home.module.css";
+import { ImageGallery } from "./ImageGallery";
 
 interface HomeProps {
   subtitle?: React.ReactNode;
@@ -107,13 +107,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       <div
         className={`${classes.row} flex flex-col items-center justify-center px-5 py-16 text-xl odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
-        <Image
-          src={headline}
-          className="drop-shadow-xl"
-          height={685}
-          width={1250}
-          alt="Screenshot showing map and graph"
-        />
+        <ImageGallery />
       </div>
 
       <div
@@ -183,70 +177,6 @@ export const Home = ({ subtitle }: HomeProps) => {
             </div>
           </div>
         </div>
-      </div>
-
-      <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
-      >
-        <section>
-          <div className="max-w-prose">
-            <h2>Marvelous Maps</h2>
-            <p>
-              Pan, zoom, and click around as if EU4 was played within Google
-              Maps
-            </p>
-            <p>
-              Overlay terrain on one of the several map modes (political,
-              religion, dev, etc)
-            </p>
-            <p>
-              View the world on a timeline and see a more accurate
-              representation than the game due to an improved tag switching
-              engine
-            </p>
-            <p>Export high resolution map images</p>
-          </div>
-          <div>
-            <Image
-              src={map}
-              height={325}
-              width={400}
-              className="drop-shadow-xl"
-              alt="EU4 political map simulated in PDX Tools"
-            />
-          </div>
-        </section>
-      </div>
-
-      <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
-      >
-        <section>
-          <div className="max-w-prose">
-            <h2 className="text-2xl font-bold">Fine-tune Focus</h2>
-            <p>
-              All maps, graphs, and data can be filtered to only desired
-              countries
-            </p>
-            <p>
-              Keep an eye on how your nation compares to great powers or other
-              players. Or turn your eye inwards and ensure healthy subjects
-            </p>
-            <p>
-              Historical ledger data will chart the success and failure of
-              countries in income, nation size, and more
-            </p>
-          </div>
-          <div>
-            <Image
-              src={discover}
-              height={510}
-              width={971}
-              className="drop-shadow-xl"
-              alt="Screenshot of income graph when analyzing a save"
-            />
-          </div>
-        </section>
       </div>
 
       <div
