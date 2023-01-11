@@ -27,6 +27,7 @@ import {
   selectAnalyzeFileName,
 } from "@/features/engine";
 import {
+  initialEu4CountryFilter,
   selectEu4MapColorPayload,
   selectEu4MapDate,
   setMapDate,
@@ -168,6 +169,7 @@ export const Timelapse = () => {
         mapPayload: {
           ...payload,
           showSecondaryColor: payload.kind == "religion",
+          tagFilter: initialEu4CountryFilter,
         },
         freezeFrame: freezeFrameSeconds,
       });
