@@ -27,7 +27,11 @@ export async function* dates(
   }
 }
 
-interface TimelapseEncoderOptions {
+type EncoderConfig = VideoEncoderConfig & {
+  webmCodec: "V_VP8" | "V_VP9";
+};
+
+type TimelapseEncoderOptions = {
   canvas: Eu4Canvas;
   fps: number;
   interval: "Year" | "Month" | "Week" | "Day";
@@ -36,7 +40,7 @@ interface TimelapseEncoderOptions {
   startDate: MapDate;
   endDate: MapDate;
   freezeFrame: number;
-}
+};
 
 export class TimelapseEncoder {
   private error: DOMException | undefined;
@@ -49,7 +53,7 @@ export class TimelapseEncoder {
   private constructor(
     private canvas: Eu4Canvas,
     private worker: WorkerClient,
-    config: VideoEncoderConfig,
+    config: EncoderConfig,
     private ctx2d: CanvasRenderingContext2D,
     private fontFamily: string,
     private mapPayload: MapPayload,
@@ -62,7 +66,7 @@ export class TimelapseEncoder {
     this.muxer = new WebMMuxer({
       target: "buffer",
       video: {
-        codec: "V_VP8",
+        codec: config.webmCodec,
         width: ctx2d.canvas.width,
         height: ctx2d.canvas.height,
       },
@@ -193,19 +197,38 @@ export class TimelapseEncoder {
     interval,
     freezeFrame,
   }: TimelapseEncoderOptions) {
+    async function findSupportedEncoder() {
+      const codecs = [
+        { codec: "vp09.00.10.08", webmCodec: "V_VP9" },
+        { codec: "vp8", webmCodec: "V_VP8" },
+      ] as const;
+
+      for (const codec of codecs) {
+        try {
+          const bitrate = 200_000 + (recordingCanvas.height * recordingCanvas.width) / 6;
+          const support = await VideoEncoder.isConfigSupported({
+            codec: codec.codec,
+            height: recordingCanvas.height,
+            width: recordingCanvas.width,
+            bitrateMode: "variable",
+            bitrate: Math.min(bitrate, 2_000_000),
+            framerate: fps,
+          });
+
+          if (support.supported) {
+            return { ...codec, ...support.config };
+          }
+        } catch (ex) {}
+      }
+
+      throw new Error("No supported codecs found");
+    }
+
     const recordingCanvas = document.createElement("canvas");
     recordingCanvas.width = canvas.webglContext().canvas.width;
     recordingCanvas.height = canvas.webglContext().canvas.height;
 
-    const support = await VideoEncoder.isConfigSupported({
-      codec: "vp8",
-      height: recordingCanvas.height,
-      width: recordingCanvas.width,
-    });
-
-    if (!support.supported) {
-      throw new Error("not supported");
-    }
+    const config = await findSupportedEncoder();
 
     // get 2d context without alpha:
     // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas#turn_off_transparency
@@ -219,7 +242,7 @@ export class TimelapseEncoder {
     return new TimelapseEncoder(
       canvas,
       worker,
-      support.config,
+      config,
       ctx2d,
       fontFamily,
       mapPayload,
