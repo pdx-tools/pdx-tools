@@ -870,7 +870,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#9c2dac48813e8f74341a50dd1651741eec217da8"
+source = "git+https://github.com/rakaly/eu4save.git#657404c0210b43f6af07a6514471d2d17d90802a"
 dependencies = [
  "jomini",
  "libdeflater",

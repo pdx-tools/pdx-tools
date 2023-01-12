@@ -49,9 +49,23 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
                 <td>Save year</td>
                 <td>{saveYear}</td>
               </tr>
-              <tr className="bg-gray-200">
-                <td>Total</td>
+              <tr>
+                <td>T Total</td>
                 <td>{saveYear + inheritance.subtotal}</td>
+              </tr>
+              <tr className="bg-gray-200">
+                <td>T Value</td>
+                <td>{inheritance.t_value}</td>
+              </tr>
+              <tr>
+                <td>Heretic offset</td>
+                <td>{-inheritance.heretic_offset}</td>
+              </tr>
+              <tr>
+                <td>Inheritance Total</td>
+                <td>
+                  {saveYear + inheritance.subtotal - inheritance.heretic_offset}
+                </td>
               </tr>
               <tr className="bg-gray-200">
                 <td>Inheritance Value</td>

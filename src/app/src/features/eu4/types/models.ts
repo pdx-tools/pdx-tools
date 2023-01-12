@@ -147,7 +147,10 @@ export interface Inheritance {
   start_t2_year: number;
   end_t2_year: number;
   inheritance_value: number;
+  t_value: number;
   subtotal: number;
+  heretic_offset: number;
+
   calculations: InheritanceCalculation[];
 }
 
