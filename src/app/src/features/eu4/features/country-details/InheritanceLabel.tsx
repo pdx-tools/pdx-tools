@@ -1,6 +1,6 @@
 import { Button, Drawer } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useEu4Meta } from "../../eu4Slice";
 import { CountryDetails } from "../../types/models";
 import classes from "./InheritanceLabel.module.css";
@@ -48,24 +48,6 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
               <tr>
                 <td>Save year</td>
                 <td>{saveYear}</td>
-              </tr>
-              <tr>
-                <td>T Total</td>
-                <td>{saveYear + inheritance.subtotal}</td>
-              </tr>
-              <tr className="bg-gray-200">
-                <td>T Value</td>
-                <td>{inheritance.t_value}</td>
-              </tr>
-              <tr>
-                <td>Heretic offset</td>
-                <td>{-inheritance.heretic_offset}</td>
-              </tr>
-              <tr>
-                <td>Inheritance Total</td>
-                <td>
-                  {saveYear + inheritance.subtotal - inheritance.heretic_offset}
-                </td>
               </tr>
               <tr className="bg-gray-200">
                 <td>Inheritance Value</td>
@@ -118,8 +100,8 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
             </table>
           ) : (
             <p>
-              Check if inheritance chance is greater than or equal to{" "}
-              {inheritance.inheritance_value} in game
+              Inheritance occurs when the inheritance chance (shown in game) is
+              greater than inheritance value ({inheritance.inheritance_value})
             </p>
           )}
 

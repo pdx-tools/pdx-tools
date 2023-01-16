@@ -14,7 +14,7 @@ The chance to PU, inherit a country, or inherit an existing junior partner is de
 
 - The target [nation ID](https://eu4.paradoxwikis.com/Countries#List_of_tags)
 - The HRE ruler ID
-- The curia controller's [nation ID](https://eu4.paradoxwikis.com/Countries#List_of_tags)
+- The curia controller's [nation ID](https://eu4.paradoxwikis.com/Countries#List_of_tags) (only if the junior partner is not catholic or if the curia is disabled).
 - The target nation's current and past rulers
 - The target nation's capital [province ID](https://eu4.paradoxwikis.com/Geographical_list_of_provinces)
 - How many provinces the target nation owns
@@ -128,6 +128,7 @@ Crafty players can use throne abdication if they want to force inheritance.
 For more information, see:
 
 - [How junior partner inheritance really works (Hint: it is not a dice roll) (Reddit)](https://www.reddit.com/r/eu4/comments/sfnba3/how_junior_partner_inheritance_really_workshint/?utm_source=share&utm_medium=web2x&context=3)
+- [Johan posted source code](https://forum.paradoxplaza.com/forum/threads/how-junior-partner-inheritance-really-works-hint-it-is-not-a-dice-roll.1508465/post-28723263)
 - [Atwix's guide to royal marriages, personal unions and claim throne.](https://forum.paradoxplaza.com/forum/threads/guide-to-royal-marriages-personal-unions-and-claim-throne.788829)
 - [Radios Res' Personal Unions - An In-Depth Guide (Youtube)](https://youtu.be/seW0FRZdts4)
 
