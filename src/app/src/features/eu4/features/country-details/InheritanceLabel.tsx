@@ -24,7 +24,7 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
         closable={true}
         onClose={() => setDrawerVisible(false)}
         visible={drawerVisible}
-        width="400px"
+        width="450px"
       >
         <div className={classes.table}>
           <h2>Inheritance Value Breakdown</h2>
