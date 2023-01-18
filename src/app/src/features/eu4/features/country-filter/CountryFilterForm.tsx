@@ -155,11 +155,11 @@ export const CountryFilterForm = ({
       </Form.Item>
 
       <Form.Item label="Include" name="include">
-        <CountrySelect mode="multiple" className="w-full" />
+        <CountrySelect ai="all" mode="multiple" className="w-full" />
       </Form.Item>
 
       <Form.Item label="Exclude" name="exclude">
-        <CountrySelect mode="multiple" className="w-full" />
+        <CountrySelect ai="all" mode="multiple" className="w-full" />
       </Form.Item>
       <Form.Item
         label="Include Subjects"

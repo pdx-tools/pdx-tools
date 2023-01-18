@@ -13,6 +13,7 @@ export function countryColumnFilter<T>(
       return (
         <div className="p-4">
           <CountrySelect
+            ai="all"
             placeholder="filter to country"
             className="w-64"
             ref={ref}

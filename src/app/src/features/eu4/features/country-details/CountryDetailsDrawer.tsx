@@ -89,6 +89,7 @@ export const CountryDetailsDrawer = ({
           )}
 
           <CountrySelect
+            ai="alive"
             value={selectedTag}
             className="w-64"
             onChange={(x: any) => {

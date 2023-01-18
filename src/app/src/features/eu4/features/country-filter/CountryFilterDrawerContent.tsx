@@ -34,6 +34,7 @@ export const CountryFilterDrawerContent = ({
         )}
         {(forceShowFiltered || !manySelectedTags) && (
           <CountrySelect
+            ai="all"
             mode="multiple"
             value={filter.countries.map((x) => x.tag)}
             allowClear

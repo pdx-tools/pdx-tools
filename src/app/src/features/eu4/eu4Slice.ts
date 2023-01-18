@@ -202,6 +202,15 @@ export const selectEu4AliveAICountries = createSelector(
   }
 );
 
+export const selectEu4AICountries = createSelector(
+  (state: RootState) => state.eu4.countries,
+  (countries) => {
+    const result = countries.filter((x) => !x.is_human) || [];
+    result.sort((a, b) => a.tag.localeCompare(b.tag));
+    return result;
+  }
+);
+
 export function useEu4Meta() {
   const meta = useAppSelector((state) => state.eu4.meta);
   if (!meta) {
