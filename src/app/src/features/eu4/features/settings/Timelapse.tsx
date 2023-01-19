@@ -321,12 +321,12 @@ export const Timelapse = () => {
         <Form.Item
           label="Max intervals per second"
           name="maxFps"
-          tooltip="The number of intervals to step through per second. A beefy computer may be required to hit more than 8 intervals per second."
+          tooltip="The number of intervals to step through per second."
         >
           <Slider
-            min={4}
-            max={16}
-            marks={{ 4: "4", 8: "8", 12: "12", 16: "16" }}
+            min={5}
+            max={30}
+            marks={{ 5: "5", 10: "10", 15: "15", 20: "20", 25: "25", 30: "30" }}
           />
         </Form.Item>
         {recordingSupported && (
