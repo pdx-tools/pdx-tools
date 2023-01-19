@@ -321,6 +321,11 @@ pub fn achievements() -> Vec<Achievement> {
             description: String::from("Become a Great Power as Naples."),
             difficulty: Difficulty::Medium,
         }, Achievement {
+            id: 200,
+            name: String::from("A Blessed Nation"),
+            description: String::from("As a Coptic Nation, gain all 5 Blessings."),
+            difficulty: Difficulty::Hard,
+        }, Achievement {
             id: 208,
             name: String::from("Gold Rush"),
             description: String::from("Starting as a Tartar steppe nomad, form the golden horde before 1500"),
@@ -864,6 +869,7 @@ impl<'a> AchievementHunter<'a> {
             self.almost_prussian_blue(),
             self.hannukah_mutapa(),
             self.prester_john(),
+            self.a_blessed_nation(),
             //            self.gothic_invasion(),
         ]
     }
@@ -3020,6 +3026,26 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.owns_core_province_condition(ProvinceId::from(358)));
         result.and(self.owns_core_province_condition(ProvinceId::from(2313)));
         result.and(self.owns_core_province_condition(ProvinceId::from(151)));
+
+        result
+    }
+
+    pub fn a_blessed_nation(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(200);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+
+        let religion = self
+            .country
+            .religion
+            .as_ref()
+            .map_or(false, |x| x == "coptic");
+        let desc = "is Coptic";
+        result.and(AchievementCondition::new(religion, desc));
+
+        let blessings = self.country.blessings.len() >= 5;
+        let desc = "have 5 active blessings";
+        result.and(AchievementCondition::new(blessings, desc));
 
         result
     }
