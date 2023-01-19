@@ -221,6 +221,11 @@ pub fn achievements() -> Vec<Achievement> {
             description: String::from("Form the Kingdom of Jerusalem as Cyprus or The Knights."),
             difficulty: Difficulty::Hard,
         }, Achievement {
+            id: 99,
+            name: String::from("Prester John"),
+            description: String::from("Own and have cores on Alexandria, Antioch and Constantinople as Coptic Ethiopia."),
+            difficulty: Difficulty::Hard,
+        }, Achievement {
             id: 105,
             name: String::from("Albania or Iberia"),
             description: String::from("As Albania, own or have a subject own Iberia and the Caucasus."),
@@ -858,6 +863,7 @@ impl<'a> AchievementHunter<'a> {
             self.purify_the_temple(),
             self.almost_prussian_blue(),
             self.hannukah_mutapa(),
+            self.prester_john(),
             //            self.gothic_invasion(),
         ]
     }
@@ -2990,6 +2996,30 @@ impl<'a> AchievementHunter<'a> {
             .any(|(flag, _)| flag == "has_celebrated_festival");
         let desc = "has celebrated a festival";
         result.and(AchievementCondition::new(flag, desc));
+
+        result
+    }
+
+    pub fn prester_john(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(99);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+
+        let starter = self.starting_country == "ETH".parse().unwrap();
+        let desc = "started as Ethiopia";
+        result.and(AchievementCondition::new(starter, desc));
+
+        let religion = self
+            .country
+            .religion
+            .as_ref()
+            .map_or(false, |x| x == "coptic");
+        let desc = "is Coptic";
+        result.and(AchievementCondition::new(religion, desc));
+
+        result.and(self.owns_core_province_condition(ProvinceId::from(358)));
+        result.and(self.owns_core_province_condition(ProvinceId::from(2313)));
+        result.and(self.owns_core_province_condition(ProvinceId::from(151)));
 
         result
     }
