@@ -175,10 +175,11 @@ export const selectEu4MapColorPayload = createSelector(
   (state: RootState) => state.eu4.countryFilter,
   (state: RootState) => state.eu4.mapDate.days,
   (state: RootState) => state.eu4.mapControls,
-  (mode, countryFilter, days, mapControls): MapPayload => ({
+  (state: RootState) => state.eu4.meta,
+  (mode, countryFilter, days, mapControls, meta): MapPayload => ({
     kind: mode,
     tagFilter: countryFilter,
-    date: days,
+    date: days == meta?.total_days ? null : days,
     showSecondaryColor: mapControls.showController,
     paintSubjectInOverlordHue: mapControls.paintSubjectInOverlordHue,
   })

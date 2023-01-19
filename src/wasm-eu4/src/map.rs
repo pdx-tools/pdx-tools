@@ -220,8 +220,7 @@ impl SaveFileImpl {
         ) {
             let date = payload
                 .date
-                .map(|x| self.query.save().game.start_date.add_days(x))
-                .and_then(|x| (x != self.query.save().meta.date).then_some(x));
+                .map(|x| self.query.save().game.start_date.add_days(x));
 
             if let Some(date) = date {
                 return self.historical_map_color(province_id_to_color_index, date, payload.kind);
