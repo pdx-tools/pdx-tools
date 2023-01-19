@@ -205,8 +205,9 @@ export class TimelapseEncoder {
 
       for (const codec of codecs) {
         try {
-          const bitrate =
-            200_000 + (recordingCanvas.height * recordingCanvas.width) / 6;
+          const canvasRate =
+            (recordingCanvas.height * recordingCanvas.width) / 4;
+          const bitrate = canvasRate * (fps / 15) + 200_000;
           const support = await VideoEncoder.isConfigSupported({
             codec: codec.codec,
             height: recordingCanvas.height,
