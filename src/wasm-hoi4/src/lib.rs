@@ -23,7 +23,7 @@ pub struct SaveFile(SaveFileImpl);
 #[wasm_bindgen]
 impl SaveFile {
     pub fn metadata(&self) -> JsValue {
-        JsValue::from_serde(&self.0.metadata()).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.metadata()).unwrap()
     }
 }
 

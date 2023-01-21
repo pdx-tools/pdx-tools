@@ -17,7 +17,8 @@ libdeflate = ["eu4save/libdeflate", "eu4game/libdeflate"]
 jomini = { version = "0.21" }
 js-sys = "0.3"
 once_cell = "1.13"
-wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+wasm-bindgen = { version = "0.2" }
+serde-wasm-bindgen = "0.4"
 serde = { version = "1", features = ["derive"] }
 eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false }
 eu4game = { path = "../eu4game", default-features = false }

@@ -16,7 +16,8 @@ libdeflate = ["ck3save/libdeflate"]
 [dependencies]
 jomini = "0.21"
 schemas = { path = "../schemas" }
-wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+wasm-bindgen = { version = "0.2" }
+serde-wasm-bindgen = "0.4"
 serde = { version = "1", features = ["derive"] }
 ck3save = { git = "https://github.com/rakaly/ck3save.git" }
 js-sys = "0.3"

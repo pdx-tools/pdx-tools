@@ -386,31 +386,31 @@ impl SaveFile {
     }
 
     pub fn gameplay_options(&self) -> JsValue {
-        JsValue::from_serde(&self.0.gameplay_options()).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.gameplay_options()).unwrap()
     }
 
     pub fn savefile_warnings(&self) -> JsValue {
-        JsValue::from_serde(&self.0.savefile_warnings()).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.savefile_warnings()).unwrap()
     }
 
     pub fn get_annual_income_ledger(&self, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.get_annual_income_ledger(payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.get_annual_income_ledger(payload)).unwrap()
     }
 
     pub fn get_annual_nation_size_ledger(&self, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.get_annual_nation_size_ledger(payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.get_annual_nation_size_ledger(payload)).unwrap()
     }
 
     pub fn get_annual_score_ledger(&self, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.get_annual_score_ledger(payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.get_annual_score_ledger(payload)).unwrap()
     }
 
     pub fn get_annual_inflation_ledger(&self, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.get_annual_inflation_ledger(payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.get_annual_inflation_ledger(payload)).unwrap()
     }
 
     pub fn get_achievements(&self) -> Result<JsValue, JsValue> {
@@ -441,19 +441,19 @@ impl SaveFile {
     }
 
     pub fn increment_date(&self, days: f64, increment: &str) -> JsValue {
-        JsValue::from_serde(&self.0.increment_date(days, increment)).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.increment_date(days, increment)).unwrap()
     }
 
     pub fn get_players(&self) -> JsValue {
-        JsValue::from_serde(&self.0.get_players()).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.get_players()).unwrap()
     }
 
     pub fn get_player_histories(&self) -> JsValue {
-        JsValue::from_serde(&self.0.get_player_histories()).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.get_player_histories()).unwrap()
     }
 
     pub fn get_alive_countries(&self) -> JsValue {
-        JsValue::from_serde(&self.0.get_alive_countries()).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.get_alive_countries()).unwrap()
     }
 
     pub fn localize_country(&self, tag: JsValue) -> JsValue {
@@ -476,12 +476,12 @@ impl SaveFile {
     }
 
     pub fn save_mode(&self) -> JsValue {
-        JsValue::from_serde(&self.0.save_mode()).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.save_mode()).unwrap()
     }
 
     pub fn get_health(&self, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.get_health(payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.get_health(payload)).unwrap()
     }
 
     pub fn get_countries(&self) -> JsValue {
@@ -493,26 +493,26 @@ impl SaveFile {
     }
 
     pub fn get_countries_income(&self, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.get_countries_income(payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.get_countries_income(payload)).unwrap()
     }
 
     pub fn get_countries_expenses(&self, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.get_countries_expenses(payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.get_countries_expenses(payload)).unwrap()
     }
 
     pub fn get_countries_total_expenses(&self, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.get_countries_total_expenses(payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.get_countries_total_expenses(payload)).unwrap()
     }
 
     pub fn get_province_details(&self, province_id: u16) -> JsValue {
-        JsValue::from_serde(&self.0.get_province_details(province_id)).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.get_province_details(province_id)).unwrap()
     }
 
     pub fn get_province_development(&self, tag: JsValue) -> JsValue {
-        JsValue::from_serde(&self.0.get_province_development(tag)).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.get_province_development(tag)).unwrap()
     }
 
     pub fn get_building_history(&self) -> JsValue {
@@ -524,32 +524,32 @@ impl SaveFile {
     }
 
     pub fn get_country_rulers(&self, tag: &str) -> JsValue {
-        JsValue::from_serde(&self.0.get_country_rulers(tag)).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.get_country_rulers(tag)).unwrap()
     }
 
     pub fn get_country_great_advisors(&self, tag: &str) -> JsValue {
-        JsValue::from_serde(&self.0.get_country_great_advisors(tag)).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.get_country_great_advisors(tag)).unwrap()
     }
 
     pub fn get_country_province_religion(&self, tag: &str) -> JsValue {
-        JsValue::from_serde(&self.0.get_country_province_religion(tag)).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.get_country_province_religion(tag)).unwrap()
     }
 
     pub fn get_country_province_culture(&self, tag: &str) -> JsValue {
-        JsValue::from_serde(&self.0.get_country_province_culture(tag)).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.get_country_province_culture(tag)).unwrap()
     }
 
     pub fn get_country_leaders(&self, tag: &str) -> JsValue {
-        JsValue::from_serde(&self.0.get_country_leaders(tag)).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.get_country_leaders(tag)).unwrap()
     }
 
     pub fn get_country_states(&self, tag: &str) -> JsValue {
-        JsValue::from_serde(&self.0.get_country_states(tag)).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.get_country_states(tag)).unwrap()
     }
 
     pub fn get_nation_idea_groups(&self, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.get_nation_idea_groups(payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.get_nation_idea_groups(payload)).unwrap()
     }
 
     pub fn province_nation_owner_color(
@@ -583,50 +583,50 @@ impl SaveFile {
         province_id_to_color_index: &[u16],
         payload: JsValue,
     ) -> Result<Vec<u8>, JsValue> {
-        let payload = payload.into_serde().map_err(js_err)?;
+        let payload = serde_wasm_bindgen::from_value(payload).map_err(js_err)?;
         Ok(self.0.map_colors(province_id_to_color_index, payload))
     }
 
     pub fn map_quick_tip(&self, province_id: i32, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.map_quick_tip(province_id, payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.map_quick_tip(province_id, payload)).unwrap()
     }
 
     pub fn initial_map_position(&self) -> JsValue {
         let (x, y) = self.0.initial_map_position();
         let result = vec![x, y];
-        JsValue::from_serde(&result).unwrap()
+        serde_wasm_bindgen::to_value(&result).unwrap()
     }
 
     pub fn map_position_of_tag(&self, tag: &str) -> JsValue {
         let (x, y) = self.0.map_position_of_tag(tag);
         let result = vec![x, y];
-        JsValue::from_serde(&result).unwrap()
+        serde_wasm_bindgen::to_value(&result).unwrap()
     }
 
     pub fn matching_countries(&self, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.matching_countries(payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.matching_countries(payload)).unwrap()
     }
 
     pub fn countries_war_losses(&self, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.countries_war_losses(payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.countries_war_losses(payload)).unwrap()
     }
 
     pub fn wars(&self, payload: JsValue) -> JsValue {
-        let payload = payload.into_serde().unwrap();
-        JsValue::from_serde(&self.0.wars(payload)).unwrap()
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        serde_wasm_bindgen::to_value(&self.0.wars(payload)).unwrap()
     }
 
     pub fn get_country_casualties(&self, tag: &str) -> JsValue {
-        JsValue::from_serde(&self.0.get_country_casualties(tag)).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.get_country_casualties(tag)).unwrap()
     }
 
     pub fn get_war(&self, war_name: JsValue) -> JsValue {
         let name = war_name.as_string().unwrap();
         let res = self.0.get_war(&name);
-        JsValue::from_serde(&res).unwrap()
+        serde_wasm_bindgen::to_value(&res).unwrap()
     }
 }
 
@@ -654,7 +654,7 @@ impl SaveFileImpl {
     }
 
     pub fn get_meta_raw(&self) -> Result<JsValue, JsValue> {
-        JsValue::from_serde(&self.query.save().meta)
+        serde_wasm_bindgen::to_value(&self.query.save().meta)
             .map_err(|e| JsValue::from_str(e.to_string().as_str()))
     }
 
@@ -830,7 +830,7 @@ impl SaveFileImpl {
             },
         };
 
-        JsValue::from_serde(&res).map_err(|e| JsValue::from_str(e.to_string().as_str()))
+        serde_wasm_bindgen::to_value(&res).map_err(|e| JsValue::from_str(e.to_string().as_str()))
     }
 
     pub fn playthrough_id(&self) -> Option<String> {
@@ -861,7 +861,7 @@ impl SaveFileImpl {
             })
             .collect();
 
-        JsValue::from_serde(&countries).unwrap()
+        serde_wasm_bindgen::to_value(&countries).unwrap()
     }
 
     pub fn get_countries_income(
@@ -1021,7 +1021,7 @@ impl SaveFileImpl {
             .iter()
             .filter_map(|x| eu4save::dlc_id(x.as_str()))
             .collect();
-        JsValue::from_serde(&dlc).unwrap()
+        serde_wasm_bindgen::to_value(&dlc).unwrap()
     }
 
     pub fn get_start_date(&self) -> JsValue {
@@ -1654,7 +1654,7 @@ impl SaveFileImpl {
 
         result
             .sort_unstable_by(|a, b| a.year.cmp(&b.year).then_with(|| b.building.cmp(a.building)));
-        JsValue::from_serde(&result).unwrap()
+        serde_wasm_bindgen::to_value(&result).unwrap()
     }
 
     pub fn get_nation_size_statistics(&self) -> JsValue {
@@ -1694,7 +1694,7 @@ impl SaveFileImpl {
 
         result.extend(mapped);
 
-        JsValue::from_serde(&result).unwrap()
+        serde_wasm_bindgen::to_value(&result).unwrap()
     }
 
     /// returns vec of group rank, group name, and completed ideas in group

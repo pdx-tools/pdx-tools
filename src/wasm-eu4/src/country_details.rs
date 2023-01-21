@@ -201,7 +201,7 @@ impl SaveFileImpl {
 
         let save_country = match self.query.save_country(&country_tag) {
             Some(x) => x,
-            None => return JsValue::from_serde(&None::<CountryDetails>).unwrap(),
+            None => return serde_wasm_bindgen::to_value(&None::<CountryDetails>).unwrap(),
         };
 
         let country = save_country.country;
@@ -456,7 +456,7 @@ impl SaveFileImpl {
             diplomacy: diplomacy_entries,
         };
 
-        JsValue::from_serde(&details).unwrap()
+        serde_wasm_bindgen::to_value(&details).unwrap()
     }
 
     pub fn get_country_rulers(&self, tag: &str) -> Vec<RunningMonarch> {

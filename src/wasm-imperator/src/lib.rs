@@ -27,7 +27,7 @@ pub struct SaveFile(SaveFileImpl);
 #[wasm_bindgen]
 impl SaveFile {
     pub fn metadata(&self) -> JsValue {
-        JsValue::from_serde(&self.0.metadata()).unwrap()
+        serde_wasm_bindgen::to_value(&self.0.metadata()).unwrap()
     }
 }
 
@@ -47,7 +47,7 @@ impl SaveFileImpl {
 
 fn _parse_save(data: &[u8]) -> Result<SaveFile, ImperatorError> {
     let file = ImperatorFile::from_slice(data)?;
-    let meta = file.parse_metadata()?;
+    let meta = file.meta().parse()?;
     let header = meta.deserializer(tokens::get_tokens()).deserialize()?;
     Ok(SaveFile(SaveFileImpl {
         header,
