@@ -47,8 +47,8 @@ use cli::InfoLevel;
 use std::process::ExitCode;
 
 #[derive(Parser)]
-#[clap(author, version, about, long_about = None)]
-#[clap(propagate_version = true)]
+#[command(author, version, about, long_about = None)]
+#[command(propagate_version = true)]
 struct Cli {
     #[clap(flatten)]
     verbose: cli::Verbosity<InfoLevel>,

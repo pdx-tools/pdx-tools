@@ -13,23 +13,23 @@ use std::{
 #[derive(Args)]
 pub struct TokenizeArgs {
     /// path to eu4 ironman tokens
-    #[clap(long, env, value_parser)]
+    #[arg(long, env)]
     eu4_ironman_tokens: Option<PathBuf>,
 
     /// path to ck3 ironman tokens
-    #[clap(long, env, value_parser)]
+    #[arg(long, env)]
     ck3_ironman_tokens: Option<PathBuf>,
 
     /// path to hoi4 ironman tokens
-    #[clap(long, env, value_parser)]
+    #[arg(long, env)]
     hoi4_ironman_tokens: Option<PathBuf>,
 
     /// path to imperator tokens
-    #[clap(long, env, value_parser)]
+    #[arg(long, env)]
     imperator_tokens: Option<PathBuf>,
 
     /// path to vic3 tokens
-    #[clap(long, env, value_parser)]
+    #[arg(long, env)]
     vic3_tokens: Option<PathBuf>,
 }
 

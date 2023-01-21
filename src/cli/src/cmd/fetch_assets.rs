@@ -16,11 +16,11 @@ use walkdir::WalkDir;
 #[derive(Args)]
 pub struct FetchAssetsArgs {
     /// S3 access key
-    #[clap(long, env, value_parser)]
+    #[arg(long, env)]
     access_key: String,
 
     /// S3 secret key
-    #[clap(long, env, value_parser)]
+    #[arg(long, env)]
     secret_key: String,
 }
 

@@ -3,7 +3,7 @@
 
 #[derive(clap::Args, Debug, Clone)]
 pub struct Verbosity<L: LogLevel = ErrorLevel> {
-    #[clap(
+    #[arg(
         long,
         short = 'v',
         action = clap::ArgAction::Count,
@@ -13,7 +13,7 @@ pub struct Verbosity<L: LogLevel = ErrorLevel> {
     )]
     verbose: u8,
 
-    #[clap(
+    #[arg(
         long,
         short = 'q',
         action = clap::ArgAction::Count,
@@ -24,7 +24,7 @@ pub struct Verbosity<L: LogLevel = ErrorLevel> {
     )]
     quiet: u8,
 
-    #[clap(skip)]
+    #[arg(skip)]
     phantom: std::marker::PhantomData<L>,
 }
 

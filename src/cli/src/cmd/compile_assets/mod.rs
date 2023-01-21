@@ -21,11 +21,11 @@ use std::{path::PathBuf, process::ExitCode};
 #[derive(Args)]
 pub struct CompileAssetsArgs {
     /// Skip compiling common assets
-    #[clap(long, value_parser)]
+    #[clap(long)]
     skip_common: bool,
 
     /// Regenerate images
-    #[clap(long, value_parser)]
+    #[clap(long)]
     regen: bool,
 
     /// Path to asset bundle

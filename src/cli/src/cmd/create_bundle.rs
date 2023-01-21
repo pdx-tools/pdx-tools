@@ -7,10 +7,10 @@ use walkdir::WalkDir;
 
 #[derive(Args)]
 pub struct CreateBundleArgs {
-    #[clap(value_parser)]
+    #[arg()]
     from: PathBuf,
 
-    #[clap(value_parser)]
+    #[arg()]
     to: PathBuf,
 }
 

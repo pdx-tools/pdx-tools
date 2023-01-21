@@ -18,11 +18,11 @@ use walkdir::WalkDir;
 #[derive(Args)]
 pub struct ReprocessArgs {
     /// Path to database export (csv)
-    #[clap(long, value_parser)]
+    #[arg(long)]
     reference: Option<PathBuf>,
 
     /// Files and directories to parse
-    #[clap(action = clap::ArgAction::Append)]
+    #[arg(action = clap::ArgAction::Append)]
     files: Vec<PathBuf>,
 }
 
