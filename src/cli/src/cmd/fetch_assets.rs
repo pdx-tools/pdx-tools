@@ -1,5 +1,5 @@
 use anyhow::{bail, Context};
-use aws_sdk_s3::{Client, Config, Credentials, Endpoint, Region};
+use aws_sdk_s3::{Client, Config, Credentials, Region};
 use chrono::{DateTime, TimeZone, Utc};
 use clap::Args;
 use log::info;
@@ -35,11 +35,10 @@ impl FetchAssetsArgs {
         let creds = Credentials::new(&self.access_key, &self.secret_key, None, None, "asset-cli");
 
         let b2_s3 = "https://s3.us-west-002.backblazeb2.com";
-        let b2_endpoint = Endpoint::immutable(b2_s3.parse().unwrap());
 
         let config = Config::builder()
             .region(Region::new("us-west-002"))
-            .endpoint_resolver(b2_endpoint)
+            .endpoint_url(b2_s3)
             .credentials_provider(creds)
             .build();
 
@@ -78,7 +77,7 @@ impl FetchAssetsArgs {
                 let lm = object
                     .last_modified()
                     .with_context(|| format!("expected {} to have last modified", key))?;
-                let remote_modified = Utc.timestamp(lm.secs(), 0);
+                let remote_modified = Utc.timestamp_opt(lm.secs(), 0).unwrap();
                 let local_modified: DateTime<Utc> = (*created).into();
 
                 match remote_modified.cmp(&local_modified) {
@@ -160,7 +159,7 @@ async fn download_object(client: &Client, key: &str) -> anyhow::Result<()> {
     filetime::set_file_mtime(&out_path, mtime)
         .with_context(|| format!("unable to set mtime on {}", out_path.display()))?;
 
-    let timestamp = Utc.timestamp(lm.secs(), lm.subsec_nanos());
+    let timestamp = Utc.timestamp_opt(lm.secs(), lm.subsec_nanos()).unwrap();
     info!("downloaded {} and set mtime: {}", key, timestamp);
     Ok(())
 }
