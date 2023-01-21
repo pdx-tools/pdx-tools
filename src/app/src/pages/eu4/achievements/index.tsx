@@ -4,6 +4,7 @@ import { HtmlHead } from "@/components/head";
 import { AppStructure } from "@/components/layout";
 import { Achievement } from "@/services/appApi";
 import { AchievementsPage } from "@/features/eu4/AchievementsPage";
+import { loadAchievements } from "@/server-lib/pool";
 
 interface StaticAchievements {
   achievements?: Achievement[];
@@ -31,7 +32,6 @@ export default Eu4Achievements;
 export const getStaticProps: GetStaticProps<StaticAchievements> = async (
   _context
 ) => {
-  const { loadAchievements } = require("@/server-lib/pool");
   const achievements: Achievement[] = loadAchievements();
   const result = achievements.map((achievement) => ({
     id: achievement.id,

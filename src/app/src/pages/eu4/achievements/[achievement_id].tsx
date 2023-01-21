@@ -5,6 +5,7 @@ import { AppStructure } from "@/components/layout";
 import { AchievementPage } from "@/features/eu4/AchievementPage";
 import { Achievement } from "@/services/appApi";
 import { GetStaticProps } from "next";
+import { getAchievement, loadAchievements } from "@/server-lib/pool";
 
 interface StaticAchievement {
   achievement?: Achievement;
@@ -45,7 +46,6 @@ export const Eu4Achievement = ({ achievement }: StaticAchievement) => {
 export default Eu4Achievement;
 
 export async function getStaticPaths() {
-  const { loadAchievements } = require("@/server-lib/pool");
   const achievements: Achievement[] = loadAchievements();
   const paths = achievements.map((x) => ({
     params: { achievement_id: x.id.toString() },
@@ -56,10 +56,8 @@ export async function getStaticPaths() {
 export const getStaticProps: GetStaticProps<StaticAchievement> = async ({
   params,
 }) => {
-  const { getAchievement } = require("@/server-lib/pool");
-  const achievement: Achievement | undefined = getAchievement(
-    params?.achievement_id
-  );
+  const achievementId = +(params?.achievement_id ?? "0");
+  const achievement: Achievement | undefined = getAchievement(achievementId);
 
   if (achievement === undefined) {
     throw new Error("achievement needs to be defined");
