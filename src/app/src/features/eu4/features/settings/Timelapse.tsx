@@ -367,7 +367,7 @@ export const Timelapse = () => {
               max={8}
               defaultValue={0}
               value={freezeFrameSeconds}
-              onChange={setFreezeFrameSeconds}
+              onChange={(x) => setFreezeFrameSeconds(x ?? 0)}
               style={{ width: "calc(100% - 5px)" }}
             />
           </Col>
