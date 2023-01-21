@@ -14,13 +14,14 @@ interface StaticAchievement {
 export const Eu4Achievement = ({ achievement }: StaticAchievement) => {
   const router = useRouter();
   const { achievement_id } = router.query;
+  const prefix = achievement
+    ? `${achievement.name} (${achievement.id}) - `
+    : "";
+  const title = `${prefix}EU4 Achievements - PDX Tools`;
   return (
     <>
       <HtmlHead>
-        <title>
-          {achievement && `${achievement.name} (${achievement.id}) - `} EU4
-          Achievements - PDX Tools
-        </title>
+        <title>{title}</title>
         <meta
           name="description"
           content={`Leaderboard for EU4 achievement${
