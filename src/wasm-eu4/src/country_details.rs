@@ -1,4 +1,4 @@
-use crate::{hex_color, LocalizedObj, LocalizedTag, SaveFileImpl};
+use crate::{hex_color, to_json_value, LocalizedObj, LocalizedTag, SaveFileImpl};
 use eu4game::SaveGameQuery;
 use eu4save::{
     models::{CountryEvent, CountryTechnology, Leader, LeaderKind, Province},
@@ -201,7 +201,7 @@ impl SaveFileImpl {
 
         let save_country = match self.query.save_country(&country_tag) {
             Some(x) => x,
-            None => return serde_wasm_bindgen::to_value(&None::<CountryDetails>).unwrap(),
+            None => return to_json_value(&None::<CountryDetails>),
         };
 
         let country = save_country.country;
@@ -456,7 +456,7 @@ impl SaveFileImpl {
             diplomacy: diplomacy_entries,
         };
 
-        serde_wasm_bindgen::to_value(&details).unwrap()
+        to_json_value(&details)
     }
 
     pub fn get_country_rulers(&self, tag: &str) -> Vec<RunningMonarch> {

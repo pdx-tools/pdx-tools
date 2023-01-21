@@ -381,36 +381,36 @@ pub struct SaveFile(SaveFileImpl);
 
 #[wasm_bindgen]
 impl SaveFile {
-    pub fn get_meta_raw(&self) -> Result<JsValue, JsValue> {
+    pub fn get_meta_raw(&self) -> JsValue {
         self.0.get_meta_raw()
     }
 
     pub fn gameplay_options(&self) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.gameplay_options()).unwrap()
+        to_json_value(&self.0.gameplay_options())
     }
 
     pub fn savefile_warnings(&self) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.savefile_warnings()).unwrap()
+        to_json_value(&self.0.savefile_warnings())
     }
 
     pub fn get_annual_income_ledger(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.get_annual_income_ledger(payload)).unwrap()
+        to_json_value(&self.0.get_annual_income_ledger(payload))
     }
 
     pub fn get_annual_nation_size_ledger(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.get_annual_nation_size_ledger(payload)).unwrap()
+        to_json_value(&self.0.get_annual_nation_size_ledger(payload))
     }
 
     pub fn get_annual_score_ledger(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.get_annual_score_ledger(payload)).unwrap()
+        to_json_value(&self.0.get_annual_score_ledger(payload))
     }
 
     pub fn get_annual_inflation_ledger(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.get_annual_inflation_ledger(payload)).unwrap()
+        to_json_value(&self.0.get_annual_inflation_ledger(payload))
     }
 
     pub fn get_achievements(&self) -> Result<JsValue, JsValue> {
@@ -441,19 +441,19 @@ impl SaveFile {
     }
 
     pub fn increment_date(&self, days: f64, increment: &str) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.increment_date(days, increment)).unwrap()
+        to_json_value(&self.0.increment_date(days, increment))
     }
 
     pub fn get_players(&self) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.get_players()).unwrap()
+        to_json_value(&self.0.get_players())
     }
 
     pub fn get_player_histories(&self) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.get_player_histories()).unwrap()
+        to_json_value(&self.0.get_player_histories())
     }
 
     pub fn get_alive_countries(&self) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.get_alive_countries()).unwrap()
+        to_json_value(&self.0.get_alive_countries())
     }
 
     pub fn localize_country(&self, tag: JsValue) -> JsValue {
@@ -476,12 +476,12 @@ impl SaveFile {
     }
 
     pub fn save_mode(&self) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.save_mode()).unwrap()
+        to_json_value(&self.0.save_mode())
     }
 
     pub fn get_health(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.get_health(payload)).unwrap()
+        to_json_value(&self.0.get_health(payload))
     }
 
     pub fn get_countries(&self) -> JsValue {
@@ -494,25 +494,25 @@ impl SaveFile {
 
     pub fn get_countries_income(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.get_countries_income(payload)).unwrap()
+        to_json_value(&self.0.get_countries_income(payload))
     }
 
     pub fn get_countries_expenses(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.get_countries_expenses(payload)).unwrap()
+        to_json_value(&self.0.get_countries_expenses(payload))
     }
 
     pub fn get_countries_total_expenses(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.get_countries_total_expenses(payload)).unwrap()
+        to_json_value(&self.0.get_countries_total_expenses(payload))
     }
 
     pub fn get_province_details(&self, province_id: u16) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.get_province_details(province_id)).unwrap()
+        to_json_value(&self.0.get_province_details(province_id))
     }
 
     pub fn get_province_development(&self, tag: JsValue) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.get_province_development(tag)).unwrap()
+        to_json_value(&self.0.get_province_development(tag))
     }
 
     pub fn get_building_history(&self) -> JsValue {
@@ -524,32 +524,32 @@ impl SaveFile {
     }
 
     pub fn get_country_rulers(&self, tag: &str) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.get_country_rulers(tag)).unwrap()
+        to_json_value(&self.0.get_country_rulers(tag))
     }
 
     pub fn get_country_great_advisors(&self, tag: &str) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.get_country_great_advisors(tag)).unwrap()
+        to_json_value(&self.0.get_country_great_advisors(tag))
     }
 
     pub fn get_country_province_religion(&self, tag: &str) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.get_country_province_religion(tag)).unwrap()
+        to_json_value(&self.0.get_country_province_religion(tag))
     }
 
     pub fn get_country_province_culture(&self, tag: &str) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.get_country_province_culture(tag)).unwrap()
+        to_json_value(&self.0.get_country_province_culture(tag))
     }
 
     pub fn get_country_leaders(&self, tag: &str) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.get_country_leaders(tag)).unwrap()
+        to_json_value(&self.0.get_country_leaders(tag))
     }
 
     pub fn get_country_states(&self, tag: &str) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.get_country_states(tag)).unwrap()
+        to_json_value(&self.0.get_country_states(tag))
     }
 
     pub fn get_nation_idea_groups(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.get_nation_idea_groups(payload)).unwrap()
+        to_json_value(&self.0.get_nation_idea_groups(payload))
     }
 
     pub fn province_nation_owner_color(
@@ -589,44 +589,44 @@ impl SaveFile {
 
     pub fn map_quick_tip(&self, province_id: i32, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.map_quick_tip(province_id, payload)).unwrap()
+        to_json_value(&self.0.map_quick_tip(province_id, payload))
     }
 
     pub fn initial_map_position(&self) -> JsValue {
         let (x, y) = self.0.initial_map_position();
         let result = vec![x, y];
-        serde_wasm_bindgen::to_value(&result).unwrap()
+        to_json_value(&result)
     }
 
     pub fn map_position_of_tag(&self, tag: &str) -> JsValue {
         let (x, y) = self.0.map_position_of_tag(tag);
         let result = vec![x, y];
-        serde_wasm_bindgen::to_value(&result).unwrap()
+        to_json_value(&result)
     }
 
     pub fn matching_countries(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.matching_countries(payload)).unwrap()
+        to_json_value(&self.0.matching_countries(payload))
     }
 
     pub fn countries_war_losses(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.countries_war_losses(payload)).unwrap()
+        to_json_value(&self.0.countries_war_losses(payload))
     }
 
     pub fn wars(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        serde_wasm_bindgen::to_value(&self.0.wars(payload)).unwrap()
+        to_json_value(&self.0.wars(payload))
     }
 
     pub fn get_country_casualties(&self, tag: &str) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.get_country_casualties(tag)).unwrap()
+        to_json_value(&self.0.get_country_casualties(tag))
     }
 
     pub fn get_war(&self, war_name: JsValue) -> JsValue {
         let name = war_name.as_string().unwrap();
         let res = self.0.get_war(&name);
-        serde_wasm_bindgen::to_value(&res).unwrap()
+        to_json_value(&res)
     }
 }
 
@@ -653,9 +653,8 @@ impl SaveFileImpl {
             .get_or_init(|| self.query.province_religions(&self.religion_lookup))
     }
 
-    pub fn get_meta_raw(&self) -> Result<JsValue, JsValue> {
-        serde_wasm_bindgen::to_value(&self.query.save().meta)
-            .map_err(|e| JsValue::from_str(e.to_string().as_str()))
+    pub fn get_meta_raw(&self) -> JsValue {
+        to_json_value(&self.query.save().meta)
     }
 
     pub fn gameplay_options(&self) -> &GameplayOptions {
@@ -830,7 +829,7 @@ impl SaveFileImpl {
             },
         };
 
-        serde_wasm_bindgen::to_value(&res).map_err(|e| JsValue::from_str(e.to_string().as_str()))
+        Ok(to_json_value(&res))
     }
 
     pub fn playthrough_id(&self) -> Option<String> {
@@ -861,7 +860,7 @@ impl SaveFileImpl {
             })
             .collect();
 
-        serde_wasm_bindgen::to_value(&countries).unwrap()
+        to_json_value(&countries)
     }
 
     pub fn get_countries_income(
@@ -1021,7 +1020,7 @@ impl SaveFileImpl {
             .iter()
             .filter_map(|x| eu4save::dlc_id(x.as_str()))
             .collect();
-        serde_wasm_bindgen::to_value(&dlc).unwrap()
+        to_json_value(&dlc)
     }
 
     pub fn get_start_date(&self) -> JsValue {
@@ -1654,7 +1653,7 @@ impl SaveFileImpl {
 
         result
             .sort_unstable_by(|a, b| a.year.cmp(&b.year).then_with(|| b.building.cmp(a.building)));
-        serde_wasm_bindgen::to_value(&result).unwrap()
+        to_json_value(&result)
     }
 
     pub fn get_nation_size_statistics(&self) -> JsValue {
@@ -1694,7 +1693,7 @@ impl SaveFileImpl {
 
         result.extend(mapped);
 
-        serde_wasm_bindgen::to_value(&result).unwrap()
+        to_json_value(&result)
     }
 
     /// returns vec of group rank, group name, and completed ideas in group
@@ -2673,6 +2672,11 @@ pub fn map_fill_borders(
 
 fn js_err(err: impl std::error::Error) -> JsValue {
     JsValue::from(err.to_string())
+}
+
+pub(crate) fn to_json_value<T: serde::ser::Serialize + ?Sized>(value: &T) -> JsValue {
+    let serializer = serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true);
+    value.serialize(&serializer).unwrap()
 }
 
 #[wasm_bindgen]

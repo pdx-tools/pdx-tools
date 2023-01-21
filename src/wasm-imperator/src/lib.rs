@@ -24,10 +24,15 @@ pub struct SaveFileImpl {
 #[wasm_bindgen]
 pub struct SaveFile(SaveFileImpl);
 
+pub fn to_json_value<T: serde::ser::Serialize + ?Sized>(value: &T) -> JsValue {
+    let serializer = serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true);
+    value.serialize(&serializer).unwrap()
+}
+
 #[wasm_bindgen]
 impl SaveFile {
     pub fn metadata(&self) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.0.metadata()).unwrap()
+        to_json_value(&self.0.metadata())
     }
 }
 
