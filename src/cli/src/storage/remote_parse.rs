@@ -1,45 +1,52 @@
 use anyhow::Context;
 use eu4save::{models::Eu4Save, Encoding};
-use flate2::read::GzDecoder;
-use std::fs::File;
+use flate2::bufread::GzDecoder;
+use std::fs::{self, File};
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 
-// maybe the file is brotli encoded. There's no way to know, so
-// if we don't succeed in the decoding step return the original error,
-// else return the parse result on the brotli inflated data
-fn brotli_parse(fp: &Path) -> anyhow::Result<(Eu4Save, Encoding)> {
-    let mut inflated_data = Vec::new();
-    let deflated_file = File::open(fp)?;
+fn brotli_inflate(file: &File, meta: &fs::Metadata) -> anyhow::Result<Vec<u8>> {
+    let buffer_size = 4096;
+    let mut reader = BufReader::new(file);
+    let mut input = brotli::Decompressor::new(&mut reader, buffer_size);
+    let mut out = vec![0u8; buffer_size];
+    input.read_exact(&mut out)?;
 
-    let mut reader = BufReader::new(deflated_file);
+    // Now that we know it is a brotli stream, let's allocate a buffer accordingly.
+    // Some empirical evidence shows that it should be around 17x after inflation.
+    out.reserve((meta.len() * 17) as usize);
+    std::io::copy(&mut input, &mut out)?;
+    Ok(out)
+}
 
-    brotli::BrotliDecompress(&mut reader, &mut inflated_data)?;
-    eu4game::shared::parse_save(&inflated_data).map_err(|e| e.into())
+pub(crate) fn inflate_file(mut file: &File) -> anyhow::Result<Vec<u8>> {
+    let meta = file.metadata()?;
+    if let Ok(out) = brotli_inflate(file, &meta) {
+        return Ok(out);
+    };
+
+    file.seek(SeekFrom::Start(0)).context("unable to seek")?;
+    let mut out = vec![0u8; 2];
+    file.read_exact(out.as_mut_slice())
+        .context("unable to read magic number")?;
+    if out.as_slice() == [0x1f, 0x8b] {
+        out.clear();
+        out.reserve(meta.len() as usize * 10);
+        file.seek(SeekFrom::Start(0)).context("unable to seek")?;
+        let reader = BufReader::new(file);
+        let mut decoder = GzDecoder::new(reader);
+        if let Ok(_) = std::io::copy(&mut decoder, &mut out) {
+            return Ok(out);
+        }
+    }
+
+    out.reserve(meta.len() as usize);
+    file.read_to_end(&mut out)?;
+    Ok(out)
 }
 
 pub(crate) fn remote_parse(path: &Path) -> anyhow::Result<(Eu4Save, Encoding)> {
-    let mut file = File::open(path).context("unable to open")?;
-    let mut magic = [0u8; 2];
-    file.read_exact(&mut magic)
-        .context("unable to read magic number")?;
-
-    if magic == [0x1f, 0x8b] {
-        file.seek(SeekFrom::Start(0)).context("unable to seek")?;
-        let mut inflated_data = Vec::new();
-        let mut decoder = GzDecoder::new(file);
-
-        // If the copy fails, let's try to brotli decode as the probability that a brotli
-        // save starts with the gzip magic number is 1 in 4.3 billion
-        match std::io::copy(&mut decoder, &mut inflated_data).map_err(|e| e.into()) {
-            Ok(_) => eu4game::shared::parse_save(&inflated_data).context("unable to parse"),
-            Err(e) => brotli_parse(path).map_err(|_| e),
-        }
-    } else {
-        file.seek(SeekFrom::Start(0)).context("unable to seek")?;
-        match applib::parser::extract_save(file).map_err(|e| e.into()) {
-            Ok(x) => Ok(x),
-            Err(e) => brotli_parse(path).map_err(|_| e),
-        }
-    }
+    let file = File::open(path).context("unable to open")?;
+    let data = inflate_file(&file)?;
+    Ok(eu4game::shared::parse_save(&data).context("unable to parse")?)
 }

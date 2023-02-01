@@ -332,11 +332,11 @@ export async function eu4SaveHash(): Promise<string> {
 }
 
 export async function eu4DownloadData(): Promise<Uint8Array> {
-  const data = await getRawData();
-  if (wasmModule.need_download_transformation(data)) {
-    const out = wasmModule.download_transformation(data);
-    return transfer(out, [out.buffer]);
-  } else {
-    return data;
-  }
+  const data = await getRawData({ copy: true });
+  const dataOffset = wasmModule.data_offset(data);
+  const out =
+    dataOffset === undefined
+      ? wasmModule.download_transformation(data)
+      : data.subarray(dataOffset);
+  return transfer(out, [out.buffer]);
 }

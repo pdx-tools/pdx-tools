@@ -23,7 +23,7 @@ const InfoSideBarTitle = () => {
       </span>
       <div className="drawer-extras mr-4 flex grow items-center justify-end gap-2">
         {remoteFile && <DownloadButton />}
-        {meta.encoding == "binzip" && <MeltButton />}
+        {!meta.encoding.includes("text") && <MeltButton />}
       </div>
     </div>
   );

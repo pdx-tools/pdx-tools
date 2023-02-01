@@ -14,9 +14,11 @@ export async function setRawData(data: Uint8Array) {
   }
 }
 
-export async function getRawData(): Promise<Uint8Array> {
+export async function getRawData(
+  options?: Partial<{ copy?: boolean }>
+): Promise<Uint8Array> {
   if (fallbackData) {
-    return fallbackData;
+    return options?.copy ? fallbackData.slice() : fallbackData;
   }
 
   const storedData = await get("data");

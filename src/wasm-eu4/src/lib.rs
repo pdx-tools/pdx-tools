@@ -2752,8 +2752,6 @@ fn melt_tar(tsave: TarSave) -> Result<js_sys::Uint8Array, Box<dyn std::error::Er
 
 #[wasm_bindgen]
 pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
-    // let melter = eu4save::Melter::new().with_on_failed_resolve(FailedResolveStrategy::Ignore);
-
     if let Some(tsave) = tarsave::extract_tarsave(data) {
         melt_tar(tsave).map_err(|e| JsValue::from_str(e.to_string().as_str()))
     } else {
@@ -2773,8 +2771,12 @@ pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn need_download_transformation(data: &[u8]) -> bool {
-    tarsave::extract_tarsave(data).is_some()
+pub fn data_offset(data: &[u8]) -> Option<usize> {
+    if tarsave::extract_tarsave(data).is_some() {
+        None
+    } else {
+        Some(0)
+    }
 }
 
 #[wasm_bindgen]
@@ -2785,18 +2787,15 @@ pub fn download_transformation(data: &[u8]) -> Vec<u8> {
     let options =
         zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
-    let mut archive = tar::Archive::new(data);
-    let entries = archive.entries().unwrap();
-    for entry in entries {
-        let entry = entry.unwrap();
-        let pos = entry.raw_file_position() as usize;
-        let len = entry.size() as usize;
-        let file_data = &data[pos..pos + len];
-
-        out_zip
-            .start_file(entry.path().unwrap().to_string_lossy(), options)
-            .unwrap();
-        out_zip.write_all(file_data).unwrap();
+    if let Some(tar) = tarsave::extract_tarsave(data) {
+        for (name, data) in &[
+            ("meta", tar.meta),
+            ("gamestate", tar.gamestate),
+            ("ai", tar.ai),
+        ] {
+            out_zip.start_file(String::from(*name), options).unwrap();
+            out_zip.write_all(data).unwrap();
+        }
     }
     out_zip.finish().unwrap().into_inner()
 }
