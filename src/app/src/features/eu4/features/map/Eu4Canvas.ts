@@ -175,12 +175,12 @@ export class Eu4Canvas {
     }
   }
 
-  provinceIdToColorIndex(): Promise<Uint16Array> {
+  provinceIdToColorIndex(): Uint16Array {
     if (!this.resources) {
       throw new Error("programmer error, resources can't be false");
     }
 
-    return Promise.resolve(this.resources.provincesUniqueIndex.slice());
+    return this.resources.provincesUniqueIndex.slice();
   }
 
   // WebGL map already handles this for us

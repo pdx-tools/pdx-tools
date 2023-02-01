@@ -3,7 +3,7 @@ import { proxy, transfer } from "comlink";
 import { useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { getWasmWorker, useWasmWorker } from "../worker/wasm-worker-context";
-import { timeit } from "../worker/worker-lib";
+import { timeit, timeit2 } from "../worker/worker-lib";
 import { AnalyzeSource } from "../worker/worker";
 import { startSaveAnalyze } from "../engineSlice";
 import { getEu4Canvas, useEu4CanvasRef } from "../persistant-canvas-context";
@@ -27,6 +27,7 @@ import { check } from "@/lib/isPresent";
 import { log } from "@/lib/log";
 import { AnalyzeEvent } from "../worker/worker-types";
 import { captureException } from "@/features/errors";
+import { getDataUrls } from "@/lib/urls";
 
 export type AnalyzeInput =
   | { kind: "local"; file: File }
@@ -111,19 +112,39 @@ export function useFilePublisher() {
         emitEvent({ kind: "parse", game: analysis.kind });
         switch (analysis.kind) {
           case "eu4": {
-            const meta = analysis.meta;
-            const eu4Canvas = getEu4Canvas(eu4CanvasRef);
-            const countries = await wasmWorker.eu4GetCountries();
-            const defaultTag = await wasmWorker.eu4DefaultSelectedTag();
+            const { meta: rawMeta, version } = analysis;
 
-            const isNewMap = await eu4Canvas.initializeAssetsFromVersion(
-              meta.savegame_version,
+            const dataUrl = getDataUrls(version).data;
+            const gameDataTask = timeit2(async () => {
+              const resp = await fetch(dataUrl);
+              return new Uint8Array(await resp.arrayBuffer());
+            });
+
+            const eu4Canvas = getEu4Canvas(eu4CanvasRef);
+            const mapInitializeTask = eu4Canvas.initializeAssetsFromVersion(
+              rawMeta.savegame_version,
               onProgress
             );
 
+            const gameData = await gameDataTask;
+            const save = await timeit2(() =>
+              wasmWorker.eu4GameParse(gameData.data)
+            );
+            const { meta, achievements } = save.data;
+
+            onProgress({
+              kind: "progress",
+              percent: 80,
+              msg: "parse save",
+              elapsedMs: save.elapsedMs,
+            });
+
+            const countries = await wasmWorker.eu4GetCountries();
+            const defaultTag = await wasmWorker.eu4DefaultSelectedTag();
+
+            const isNewMap = await mapInitializeTask;
             if (isNewMap) {
-              const provinceIdToColorIndex =
-                await eu4Canvas.provinceIdToColorIndex();
+              const provinceIdToColorIndex = eu4Canvas.provinceIdToColorIndex();
               await wasmWorker.eu4SetProvinceIdToColorIndex(
                 provinceIdToColorIndex
               );
@@ -214,7 +235,7 @@ export function useFilePublisher() {
                 date: meta.date,
                 defaultSelectedCountry: defaultTag,
                 meta,
-                achievements: analysis.achievements,
+                achievements,
                 countries,
                 mapPosition: [x, y],
               })

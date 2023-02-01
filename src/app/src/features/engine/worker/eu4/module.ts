@@ -5,6 +5,7 @@ import {
   reduceToTableLedger,
 } from "../../../eu4/utils/budget";
 import type {
+  Achievements,
   CountryCulture,
   CountryDetails,
   CountryExpenses,
@@ -17,7 +18,6 @@ import type {
   CountryReligion,
   CountryStateDetails,
   EnhancedCountryInfo,
-  EnhancedMeta,
   GreatAdvisor,
   HealthData,
   IdeaGroup,
@@ -40,7 +40,18 @@ import { MapPayload, QuickTipPayload } from "../../../eu4/types/map";
 import { getRawData } from "../storage";
 import { LedgerDataRaw, workLedgerData } from "../../../eu4/utils/ledger";
 import { expandLosses } from "../../../eu4/utils/losses";
-import { eu4GetMeta, eu4GetSaveFile, loadedSave } from "./common";
+import {
+  eu4GetMeta,
+  eu4TakeSaveBytes,
+  eu4GetSaveFile,
+  loadedSave,
+  eu4SetSaveFile,
+  getMeta,
+  eu4SetMeta,
+} from "./common";
+import { timeit2 } from "../worker-lib";
+import { log } from "@/lib/log";
+import { formatFloat } from "@/lib/format";
 
 let provinceIdToColorIndex = new Uint16Array();
 
@@ -52,6 +63,21 @@ export function eu4SetProvinceIdToColorIndex(
 
 export function eu4GetProvinceIdToColorIndex() {
   return provinceIdToColorIndex;
+}
+
+export async function eu4GameParse(gameData: Uint8Array) {
+  const parse = await timeit2(() => wasmModule.parse_save(eu4TakeSaveBytes()));
+  const join = await timeit2(() => wasmModule.game_save(parse.data, gameData));
+  const savefile = join.data;
+
+  const meta = getMeta(savefile);
+  eu4SetSaveFile(savefile);
+  eu4SetMeta(meta);
+  const achievements = await timeit2<Achievements>(() =>
+    savefile.get_achievements()
+  );
+
+  return { meta, achievements: achievements.data };
 }
 
 export function eu4MapColors(payload: MapPayload) {

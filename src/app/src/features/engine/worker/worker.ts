@@ -3,7 +3,7 @@ import { fetchSkanSave } from "@/services/skanApi";
 import { getSaveFile } from "@/services/appApi";
 import { getRawData, setRawData } from "./storage";
 import { AnalyzeOptions } from "./worker-types";
-import { Achievements, EnhancedMeta } from "@/features/eu4/types/models";
+import { Meta } from "@/features/eu4/types/models";
 import { DetectedDataType } from "../engineSlice";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { Ck3Metadata, initializeCk3, Ck3Mod } from "./ck3";
@@ -22,7 +22,7 @@ export type AnalyzeSource =
   | { kind: "skanderbeg"; skanId: string; data: Uint8Array };
 
 export type AnalyzeResponse =
-  | { kind: "eu4"; meta: EnhancedMeta; achievements: Achievements }
+  | { kind: "eu4"; meta: Meta; version: string }
   | { kind: "ck3"; meta: Ck3Metadata }
   | { kind: "hoi4"; meta: Hoi4Metadata }
   | { kind: "imperator"; meta: ImperatorMetadata }

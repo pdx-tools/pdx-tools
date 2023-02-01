@@ -1,5 +1,6 @@
 use crate::Eu4GameError;
 use eu4save::{
+    file::Eu4FileEntryName,
     models::{CountryEvent, Eu4Save, GameState, Meta, Monarch},
     query::Query,
     Encoding, Eu4Date, Eu4File,
@@ -225,4 +226,39 @@ where
 pub fn parse_save(data: &[u8]) -> Result<(Eu4Save, Encoding), Eu4GameError> {
     let tokens = schemas::resolver::Eu4FlatBufferTokens::new();
     parse_save_with_tokens(data, &tokens)
+}
+
+pub fn parse_meta<'de, Q>(data: &[u8], resolver: &Q) -> Result<Meta, Eu4GameError>
+where
+    Q: TokenResolver,
+{
+    if let Some(tsave) = tarsave::extract_tarsave(data) {
+        let mut zip_sink = Vec::new();
+        let meta_file = Eu4File::from_slice(tsave.meta)?;
+        let parsed_meta = meta_file.parse(&mut zip_sink)?;
+        Ok(parsed_meta.deserializer(resolver).deserialize()?)
+    } else {
+        let file = Eu4File::from_slice(data)?;
+        if file.size() > 300 * 1024 * 1024 {
+            return Err(Eu4GameError::TooLarge(file.size()));
+        }
+
+        let mut entries = file.entries();
+        while let Some(entry) = entries.next_entry() {
+            if !matches!(entry.name(), Some(Eu4FileEntryName::Meta) | None) {
+                continue;
+            }
+
+            let mut zip_sink = Vec::new();
+            let file = entry.parse(&mut zip_sink)?;
+            let deser = file.deserializer(resolver);
+
+            let meta: Meta = serde_path_to_error::deserialize(&deser)
+                .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
+
+            return Ok(meta);
+        }
+
+        Err(Eu4GameError::NoMeta)
+    }
 }

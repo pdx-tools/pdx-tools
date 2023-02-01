@@ -2683,12 +2683,11 @@ pub(crate) fn to_json_value<T: serde::ser::Serialize + ?Sized>(value: &T) -> JsV
 pub struct SaveFileParsed(Eu4Save, Encoding);
 
 #[wasm_bindgen]
-impl SaveFileParsed {
-    pub fn get_version(&self) -> String {
-        format!(
-            "{}.{}",
-            self.0.meta.savegame_version.first, self.0.meta.savegame_version.second
-        )
+pub fn parse_meta(data: &[u8]) -> Result<JsValue, JsValue> {
+    let tokens = tokens::get_tokens();
+    match eu4game::shared::parse_meta(data, tokens) {
+        Ok(meta) => Ok(to_json_value(&meta)),
+        Err(err) => Err(JsValue::from_str(err.to_string().as_str())),
     }
 }
 

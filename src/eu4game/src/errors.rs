@@ -9,6 +9,9 @@ pub enum Eu4GameError {
     #[error("eu4 deserialization error: {0}")]
     DeserializeDebug(String),
 
+    #[error("No meta file detected")]
+    NoMeta,
+
     #[error("save file is too large at: {0} bytes")]
     TooLarge(usize),
 }
