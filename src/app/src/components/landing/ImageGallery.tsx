@@ -97,6 +97,7 @@ const DesktopImageGallery = () => {
           <Image
             src={selected.src}
             className="drop-shadow-xl"
+            priority={Object.is(selected, images[0])}
             width={1920}
             height={1080}
             alt={selected.alt}
