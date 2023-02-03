@@ -1,6 +1,6 @@
 use crate::Eu4GameError;
 use eu4save::{
-    file::Eu4FileEntryName,
+    file::{Eu4Binary, Eu4FileEntryName, Eu4ParsedFile, Eu4Text},
     models::{CountryEvent, Eu4Save, GameState, Meta, Monarch},
     query::Query,
     Encoding, Eu4Date, Eu4File,
@@ -172,7 +172,7 @@ where
     parse_save_with_tokens_full(data, resolver, false)
 }
 
-pub fn parse_save_with_tokens_full<'de, Q>(
+pub fn parse_save_with_tokens_full<Q>(
     data: &[u8],
     resolver: &Q,
     debug: bool,
@@ -180,46 +180,9 @@ pub fn parse_save_with_tokens_full<'de, Q>(
 where
     Q: TokenResolver,
 {
-    if let Some(tsave) = tarsave::extract_tarsave(data) {
-        let mut zip_sink = Vec::new();
-        let meta_file = Eu4File::from_slice(tsave.meta)?;
-        let parsed_meta = meta_file.parse(&mut zip_sink)?;
-        let meta: Meta = parsed_meta.deserializer(resolver).deserialize()?;
-
-        let gamestate_file = Eu4File::from_slice(tsave.gamestate)?;
-        let parsed_gamestate = gamestate_file.parse(&mut zip_sink)?;
-        let game: GameState = parsed_gamestate.deserializer(resolver).deserialize()?;
-
-        let encoding = match meta_file.encoding() {
-            Encoding::Binary => Encoding::BinaryZip,
-            Encoding::Text => Encoding::TextZip,
-            x => x,
-        };
-
-        Ok((Eu4Save { meta, game }, encoding))
-    } else {
-        let file = Eu4File::from_slice(data)?;
-        if file.size() > 300 * 1024 * 1024 {
-            return Err(Eu4GameError::TooLarge(file.size()));
-        }
-
-        let mut zip_sink = Vec::new();
-        let parsed_file = file.parse(&mut zip_sink)?;
-        let deser = parsed_file.deserializer(resolver);
-        let save = if debug {
-            let meta = serde_path_to_error::deserialize(&deser)
-                .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
-            let game = serde_path_to_error::deserialize(&deser)
-                .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
-            Eu4Save { game, meta }
-        } else {
-            let meta = deser.deserialize()?;
-            let game = deser.deserialize()?;
-            Eu4Save { game, meta }
-        };
-
-        Ok((save, file.encoding()))
-    }
+    let mut zip_sink = Vec::new();
+    let save = parse_save_raw(data, &mut zip_sink)?;
+    save.parse_full_save(resolver, debug)
 }
 
 #[cfg(feature = "embedded")]
@@ -260,5 +223,92 @@ where
         }
 
         Err(Eu4GameError::NoMeta)
+    }
+}
+
+pub struct Eu4RemoteFile<'a> {
+    pub encoding: Encoding,
+    pub kind: Eu4RemoteFileKind<'a>,
+}
+
+impl<'a> Eu4RemoteFile<'a> {
+    pub fn parse_full_save<Q>(
+        &self,
+        resolver: &Q,
+        debug: bool,
+    ) -> Result<(Eu4Save, Encoding), Eu4GameError>
+    where
+        Q: TokenResolver,
+    {
+        match &self.kind {
+            Eu4RemoteFileKind::Disjoint { meta, game } => {
+                let meta: Meta = meta.deserializer(resolver).deserialize()?;
+                let game: GameState = game.deserializer(resolver).deserialize()?;
+                Ok((Eu4Save { meta, game }, self.encoding))
+            }
+            Eu4RemoteFileKind::Unified(game) => {
+                let deser = game.deserializer(resolver);
+                let data = if debug {
+                    let meta = serde_path_to_error::deserialize(&deser)
+                        .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
+                    let game = serde_path_to_error::deserialize(&deser)
+                        .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
+                    Eu4Save { game, meta }
+                } else {
+                    let meta = deser.deserialize()?;
+                    let game = deser.deserialize()?;
+                    Eu4Save { game, meta }
+                };
+                Ok((data, self.encoding))
+            }
+        }
+    }
+}
+
+pub enum Eu4RemoteFileKind<'a> {
+    Disjoint {
+        meta: Eu4ParsedFile<'a>,
+        game: Eu4ParsedFile<'a>,
+    },
+    Unified(Eu4ParsedFile<'a>),
+}
+
+pub fn parse_save_raw<'a>(
+    data: &'a [u8],
+    zip_sink: &'a mut Vec<u8>,
+) -> Result<Eu4RemoteFile<'a>, Eu4GameError> {
+    if let Some(tsave) = tarsave::extract_tarsave(data) {
+        if tsave.meta.starts_with(b"EU4txt") {
+            let meta = Eu4Text::from_slice(tsave.meta)?;
+            let game = Eu4Text::from_slice(tsave.gamestate)?;
+            Ok(Eu4RemoteFile {
+                encoding: Encoding::TextZip,
+                kind: Eu4RemoteFileKind::Disjoint {
+                    meta: Eu4ParsedFile::from(meta),
+                    game: Eu4ParsedFile::from(game),
+                },
+            })
+        } else {
+            let meta = Eu4Binary::from_slice(tsave.meta)?;
+            let game = Eu4Binary::from_slice(tsave.gamestate)?;
+            Ok(Eu4RemoteFile {
+                encoding: Encoding::BinaryZip,
+                kind: Eu4RemoteFileKind::Disjoint {
+                    meta: Eu4ParsedFile::from(meta),
+                    game: Eu4ParsedFile::from(game),
+                },
+            })
+        }
+    } else {
+        let file = Eu4File::from_slice(data)?;
+        if file.size() > 300 * 1024 * 1024 {
+            return Err(Eu4GameError::TooLarge(file.size()));
+        }
+
+        let parsed_file = file.parse(zip_sink)?;
+        Ok(Eu4RemoteFile {
+            encoding: file.encoding(),
+            kind: Eu4RemoteFileKind::Unified(parsed_file),
+        })
     }
 }

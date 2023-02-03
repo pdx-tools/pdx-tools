@@ -209,7 +209,8 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn map_colors(&self, province_id_to_color_index: &[u16], payload: MapPayload) -> Vec<u8> {
+    pub fn map_colors(&self, payload: MapPayload) -> Vec<u8> {
+        let province_id_to_color_index = &self.province_id_to_color_index;
         let result_len: usize = province_id_to_color_index.len() * 4;
         let mut result: Vec<u8> = vec![0; result_len * 2];
         let (primary, secondary) = result.split_at_mut(result_len);

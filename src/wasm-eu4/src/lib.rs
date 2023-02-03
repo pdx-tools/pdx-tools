@@ -1,14 +1,14 @@
 use eu4game::{
     achievements::{Achievement, AchievementHunter},
     game::Game,
-    shared::playthrough_id,
-    SaveGameQuery,
+    shared::{playthrough_id, Eu4RemoteFile},
+    Eu4GameError, SaveGameQuery,
 };
 use eu4save::{
     eu4_start_date,
     file::Eu4Binary,
     models::{
-        Country, CountryEvent, Eu4Save, GameplayOptions, Province, ProvinceEvent,
+        Country, CountryColors, CountryEvent, Eu4Save, GameplayOptions, Province, ProvinceEvent,
         ProvinceEventValue, WarEvent,
     },
     query::{
@@ -578,13 +578,9 @@ impl SaveFile {
         )
     }
 
-    pub fn map_colors(
-        &self,
-        province_id_to_color_index: &[u16],
-        payload: JsValue,
-    ) -> Result<Vec<u8>, JsValue> {
+    pub fn map_colors(&self, payload: JsValue) -> Result<Vec<u8>, JsValue> {
         let payload = serde_wasm_bindgen::from_value(payload).map_err(js_err)?;
-        Ok(self.0.map_colors(province_id_to_color_index, payload))
+        Ok(self.0.map_colors(payload))
     }
 
     pub fn map_quick_tip(&self, province_id: i32, payload: JsValue) -> JsValue {
@@ -645,6 +641,7 @@ pub struct SaveFileImpl {
     province_owners: eu4save::query::ProvinceOwners,
     religion_lookup: eu4save::query::ReligionLookup,
     province_religions: once_cell::sync::OnceCell<ProvinceReligions>,
+    province_id_to_color_index: Vec<u16>,
 }
 
 impl SaveFileImpl {
@@ -2704,7 +2701,129 @@ pub fn parse_save(data: &[u8]) -> Result<SaveFileParsed, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn game_save(save: SaveFileParsed, game_data: Vec<u8>) -> Result<SaveFile, JsValue> {
+pub struct InitialSave {
+    save: Eu4RemoteFile<'static>,
+    province_id_to_color_index: Vec<u16>,
+    primary_colors: Vec<u8>,
+    _zip_data: Vec<u8>,
+    _game_data: Vec<u8>,
+    _save_data: Vec<u8>,
+}
+
+#[wasm_bindgen]
+impl InitialSave {
+    pub fn initial_primary_colors(&mut self) -> Vec<u8> {
+        self.primary_colors.drain(..).collect()
+    }
+
+    pub fn full_parse(self) -> Result<SaveFile, JsValue> {
+        let tokens = tokens::get_tokens();
+        let save = match self.save.parse_full_save(tokens, false) {
+            Ok((save, encoding)) => Ok(SaveFileParsed(save, encoding)),
+            Err(_) => {
+                let err = self.save.parse_full_save(tokens, true).unwrap_err();
+                Err(JsValue::from_str(err.to_string().as_str()))
+            }
+        }?;
+
+        game_save(save, self._game_data, self.province_id_to_color_index)
+    }
+}
+
+#[wasm_bindgen]
+pub fn initial_save(
+    save_data: Vec<u8>,
+    game_data: Vec<u8>,
+    province_id_to_color_index: Vec<u16>,
+) -> Result<InitialSave, JsValue> {
+    _initial_save(save_data, game_data, province_id_to_color_index)
+        .map_err(|e| JsValue::from_str(e.to_string().as_str()))
+}
+
+pub fn _initial_save(
+    save_data: Vec<u8>,
+    game_data: Vec<u8>,
+    province_id_to_color_index: Vec<u16>,
+) -> Result<InitialSave, Eu4GameError> {
+    use eu4game::shared::Eu4RemoteFileKind;
+
+    let mut zip_data = Vec::new();
+    let save = eu4game::shared::parse_save_raw(&save_data, &mut zip_data)?;
+    let save: Eu4RemoteFile<'static> = unsafe { std::mem::transmute(save) };
+
+    // Cast away the lifetime so that we can store it in a wasm-bindgen compatible struct
+    let game = Game::from_flatbuffer(&game_data);
+    let game: Game<'static> = unsafe { std::mem::transmute(game) };
+
+    #[derive(Deserialize)]
+    struct SkinnyGame {
+        #[serde(default, deserialize_with = "eu4save::de::deserialize_vec_pair")]
+        countries: Vec<(CountryTag, SkinnyCountry)>,
+        #[serde(default, deserialize_with = "eu4save::de::deserialize_vec_pair")]
+        provinces: Vec<(ProvinceId, SkinnyProvince)>,
+    }
+
+    #[derive(Deserialize)]
+    struct SkinnyCountry {
+        colors: CountryColors,
+    }
+
+    #[derive(Deserialize)]
+    struct SkinnyProvince {
+        owner: Option<CountryTag>,
+    }
+
+    let (Eu4RemoteFileKind::Disjoint {
+        game: gamestate, ..
+    }
+    | Eu4RemoteFileKind::Unified(gamestate)) = &save.kind;
+    let skinny_game: SkinnyGame = gamestate.deserializer(tokens::get_tokens()).deserialize()?;
+    let country_colors: HashMap<&CountryTag, [u8; 4]> = skinny_game
+        .countries
+        .iter()
+        .map(|(tag, country)| {
+            let c = &country.colors.map_color;
+            (tag, [c[0], c[1], c[2], 255])
+        })
+        .collect();
+
+    let result_len: usize = province_id_to_color_index.len() * 4;
+    let mut primary: Vec<u8> = vec![0; result_len];
+
+    for (id, prov) in &skinny_game.provinces {
+        let offset = match province_id_to_color_index.get(usize::from(id.as_u16())) {
+            Some(&x) => x as usize * 4,
+            None => continue,
+        };
+
+        let primary_color = &mut primary[offset..offset + 4];
+        primary_color.copy_from_slice(&[255, 255, 255, 0]);
+        if let Some(owner_tag) = prov.owner.as_ref() {
+            if let Some(known_color) = country_colors.get(owner_tag) {
+                primary_color.copy_from_slice(known_color);
+            }
+        } else if let Some(prov) = game.get_province(&id) {
+            if prov.is_habitable() {
+                primary_color.copy_from_slice(&[94, 94, 94, 128]);
+            }
+        }
+    }
+
+    Ok(InitialSave {
+        save,
+        province_id_to_color_index,
+        primary_colors: primary,
+        _zip_data: zip_data,
+        _game_data: game_data,
+        _save_data: save_data,
+    })
+}
+
+pub fn game_save(
+    save: SaveFileParsed,
+    game_data: Vec<u8>,
+    province_id_to_color_index: Vec<u16>,
+) -> Result<SaveFile, JsValue> {
     let game = Game::from_flatbuffer(&game_data);
     // Cast away the lifetime so that we can store it in a wasm-bindgen compatible struct
     let game: Game<'static> = unsafe { std::mem::transmute(game) };
@@ -2728,6 +2847,7 @@ pub fn game_save(save: SaveFileParsed, game_data: Vec<u8>) -> Result<SaveFile, J
         player_histories,
         religion_lookup,
         province_religions: once_cell::sync::OnceCell::new(),
+        province_id_to_color_index,
     }))
 }
 

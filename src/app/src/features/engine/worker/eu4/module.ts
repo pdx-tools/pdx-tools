@@ -50,8 +50,6 @@ import {
   eu4SetMeta,
 } from "./common";
 import { timeit2 } from "../worker-lib";
-import { log } from "@/lib/log";
-import { formatFloat } from "@/lib/format";
 
 let provinceIdToColorIndex = new Uint16Array();
 
@@ -65,10 +63,36 @@ export function eu4GetProvinceIdToColorIndex() {
   return provinceIdToColorIndex;
 }
 
-export async function eu4GameParse(gameData: Uint8Array) {
-  const parse = await timeit2(() => wasmModule.parse_save(eu4TakeSaveBytes()));
-  const join = await timeit2(() => wasmModule.game_save(parse.data, gameData));
-  const savefile = join.data;
+let initialSave: wasmModule.InitialSave | undefined;
+
+function getInitialSave() {
+  if (initialSave === undefined) {
+    throw new Error("initial save is undefined");
+  }
+  return initialSave;
+}
+
+export async function eu4InitialParse(
+  gameData: Uint8Array,
+  provinceIdToColorIndex: Uint16Array
+) {
+  const parse = await timeit2(() =>
+    wasmModule.initial_save(
+      eu4TakeSaveBytes(),
+      gameData,
+      provinceIdToColorIndex
+    )
+  );
+  initialSave = parse.data;
+}
+
+export async function eu4InitialMapColors() {
+  const result = getInitialSave().initial_primary_colors();
+  return transfer(result, [result.buffer]);
+}
+
+export async function eu4GameParse() {
+  const savefile = getInitialSave().full_parse();
 
   const meta = getMeta(savefile);
   eu4SetSaveFile(savefile);
@@ -81,7 +105,7 @@ export async function eu4GameParse(gameData: Uint8Array) {
 }
 
 export function eu4MapColors(payload: MapPayload) {
-  const arr = loadedSave().map_colors(provinceIdToColorIndex, payload);
+  const arr = loadedSave().map_colors(payload);
   const primary = arr.subarray(0, arr.length / 2);
   const secondary = arr.subarray(arr.length / 2);
   return transfer([primary, secondary], [arr.buffer]);
