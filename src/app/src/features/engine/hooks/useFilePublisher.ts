@@ -115,84 +115,69 @@ export function useFilePublisher() {
             const { meta: rawMeta, version } = analysis;
 
             const dataUrl = getDataUrls(version).data;
-            const gameDataTask = timeit2(async () => {
-              const resp = await fetch(dataUrl);
-              return new Uint8Array(await resp.arrayBuffer());
+            const eu4Canvas = getEu4Canvas(eu4CanvasRef);
+
+            const [gameData, isNewMap] = await Promise.all([
+              timeit2(async () => {
+                const resp = await fetch(dataUrl);
+                return new Uint8Array(await resp.arrayBuffer());
+              }),
+              eu4Canvas.initializeAssetsFromVersion(
+                rawMeta.savegame_version,
+                onProgress
+              ),
+            ]);
+
+            await timeit2(() =>
+              wasmWorker.eu4InitialParse(
+                gameData.data,
+                eu4Canvas.provinceIdToColorIndex()
+              )
+            );
+
+            onProgress({
+              kind: "progress",
+              percent: 50,
+              msg: "initial parse",
+              elapsedMs: gameData.elapsedMs,
             });
 
-            const eu4Canvas = getEu4Canvas(eu4CanvasRef);
-            const mapInitializeTask = eu4Canvas.initializeAssetsFromVersion(
-              rawMeta.savegame_version,
-              onProgress
+            const provinceCountryColors =
+              await wasmWorker.eu4InitialMapColors();
+
+            const saveTask = timeit2(() => wasmWorker.eu4GameParse());
+
+            const setupRendererTask = timeit2(() =>
+              isNewMap
+                ? eu4Canvas.setupRenderer(provinceCountryColors)
+                : Promise.resolve(
+                    eu4Canvas.map?.updateCountryProvinceColors(
+                      provinceCountryColors
+                    )
+                  )
             );
 
-            const gameData = await gameDataTask;
-            const save = await timeit2(() =>
-              wasmWorker.eu4GameParse(gameData.data)
-            );
+            const save = await saveTask;
             const { meta, achievements } = save.data;
 
             onProgress({
               kind: "progress",
               percent: 80,
-              msg: "parse save",
+              msg: "full parse",
               elapsedMs: save.elapsedMs,
             });
 
             const countries = await wasmWorker.eu4GetCountries();
             const defaultTag = await wasmWorker.eu4DefaultSelectedTag();
-
-            const isNewMap = await mapInitializeTask;
-            if (isNewMap) {
-              const provinceIdToColorIndex = eu4Canvas.provinceIdToColorIndex();
-              await wasmWorker.eu4SetProvinceIdToColorIndex(
-                provinceIdToColorIndex
-              );
-            }
-
-            // reset the map mode to calculate country borders
-            const politicalPayload: MapPayload = {
-              kind: "political",
-              paintSubjectInOverlordHue: false,
-              tagFilter: initialEu4CountryFilter,
-              showSecondaryColor: false,
-              date: null,
-            };
-
-            var [provinceCountryColors, elapsedMs] = await timeit(() =>
-              wasmWorker.eu4MapColors(politicalPayload)
-            );
+            const [x, y] = await wasmWorker.eu4InitialMapPosition();
+            const task = await setupRendererTask;
 
             onProgress({
-              kind: "incremental progress",
-              msg: "initial setup calculations",
-              percent: 5,
-              elapsedMs: elapsedMs,
+              kind: "progress",
+              percent: 100,
+              msg: "setup renderer",
+              elapsedMs: task.elapsedMs,
             });
-
-            if (isNewMap) {
-              var [_, elapsedMs] = await timeit(() =>
-                eu4Canvas.setupRenderer(provinceCountryColors[0])
-              );
-
-              onProgress({
-                kind: "progress",
-                percent: 100,
-                msg: "setup map renderer",
-                elapsedMs,
-              });
-            } else {
-              eu4Canvas.map?.updateCountryProvinceColors(
-                provinceCountryColors[0]
-              );
-
-              onProgress({
-                kind: "progress",
-                percent: 100,
-                msg: "setup map renderer",
-                elapsedMs: 0,
-              });
-            }
 
             let drawCount = 0;
             check(eu4Canvas.map).onDraw = (e) => {
@@ -213,8 +198,6 @@ export function useFilePublisher() {
                 );
               }
             };
-
-            const [x, y] = await wasmWorker.eu4InitialMapPosition();
 
             if (input.kind !== "server") {
               dispatch(setEu4ServerSaveFile(undefined));
