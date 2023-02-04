@@ -32,6 +32,7 @@ import type {
   RunningMonarch,
   SingleCountryWarCasualties,
   SingleCountryWarCasualtiesRaw,
+  TreeDevelopment,
   War,
   WarInfo,
   WarRaw,
@@ -287,6 +288,10 @@ export function eu4GetCountriesTotalExpenses(
   >;
 
   return reduceToTableExpenseLedger(data, percent, recurringOnly);
+}
+
+export function eu4DevelopmentTree(filter: CountryMatcher): TreeDevelopment {
+  return loadedSave().development_tree(filter);
 }
 
 export function eu4GetCountriesWarLosses(

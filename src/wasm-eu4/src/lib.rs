@@ -507,6 +507,11 @@ impl SaveFile {
         to_json_value(&self.0.get_countries_total_expenses(payload))
     }
 
+    pub fn development_tree(&self, payload: JsValue) -> JsValue {
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        self.0.development_tree(payload)
+    }
+
     pub fn get_province_details(&self, province_id: u16) -> JsValue {
         to_json_value(&self.0.get_province_details(province_id))
     }
@@ -925,6 +930,285 @@ impl SaveFileImpl {
                 )
             })
             .collect()
+    }
+
+    pub fn development_tree(&self, payload: TagFilterPayloadRaw) -> JsValue {
+        let payload = TagFilterPayload::from(payload);
+        let filter = self.matching_tags(&payload);
+
+        let prov_area = self.game.province_area_lookup();
+
+        let area_region: HashMap<_, _> = self
+            .game
+            .regions()
+            .flat_map(|(region, areas)| areas.map(move |x| (x, region)))
+            .collect();
+
+        let region_superregion: HashMap<_, _> = self
+            .game
+            .superregions()
+            .flat_map(|(superregion, regions)| regions.map(move |x| (x, superregion)))
+            .collect();
+
+        #[derive(Serialize)]
+        struct ProvinceIdDevelopment {
+            name: String,
+            id: ProvinceId,
+            tax: f32,
+            production: f32,
+            manpower: f32,
+            value: f32,
+        }
+
+        #[derive(Default, Serialize)]
+        struct AreaDevelopmentValue {
+            value: f32,
+            tax: f32,
+            production: f32,
+            manpower: f32,
+            children: Vec<ProvinceIdDevelopment>,
+        }
+
+        #[derive(Default, Serialize)]
+        struct AreaDevelopment {
+            name: String,
+            value: f32,
+            tax: f32,
+            production: f32,
+            manpower: f32,
+            children: Vec<ProvinceIdDevelopment>,
+        }
+
+        #[derive(Default, Serialize)]
+        struct RegionDevelopmentValue {
+            value: f32,
+            tax: f32,
+            production: f32,
+            manpower: f32,
+            children: Vec<AreaDevelopment>,
+        }
+
+        #[derive(Default, Serialize)]
+        struct RegionDevelopment {
+            name: String,
+            value: f32,
+            tax: f32,
+            production: f32,
+            manpower: f32,
+            children: Vec<AreaDevelopment>,
+        }
+
+        #[derive(Default, Serialize)]
+        struct SuperRegionDevelopmentValue {
+            value: f32,
+            tax: f32,
+            production: f32,
+            manpower: f32,
+            children: Vec<RegionDevelopment>,
+        }
+
+        #[derive(Default, Serialize)]
+        struct SuperRegionDevelopment {
+            name: String,
+            value: f32,
+            tax: f32,
+            production: f32,
+            manpower: f32,
+            children: Vec<RegionDevelopment>,
+        }
+
+        #[derive(Default, Serialize)]
+        struct ContinentDevelopment {
+            name: String,
+            value: f32,
+            tax: f32,
+            production: f32,
+            manpower: f32,
+            children: Vec<SuperRegionDevelopment>,
+        }
+
+        let (world_tax, world_production, world_manpower) =
+            self.query.save().game.provinces.values().fold(
+                (0f32, 0f32, 0f32),
+                |(tax, production, manpower), prov| {
+                    (
+                        prov.base_tax + tax,
+                        prov.base_production + production,
+                        prov.base_manpower + manpower,
+                    )
+                },
+            );
+
+        let (uncolonized_tax, uncolonized_production, uncolonized_manpower) = self
+            .query
+            .save()
+            .game
+            .provinces
+            .values()
+            .filter(|prov| prov.owner.is_none())
+            .fold((0f32, 0f32, 0f32), |(tax, production, manpower), prov| {
+                (
+                    prov.base_tax + tax,
+                    prov.base_production + production,
+                    prov.base_manpower + manpower,
+                )
+            });
+
+        let mut continents = Vec::new();
+        for (continent, provs) in self.game.continents() {
+            let provs = provs
+                .filter_map(|id| {
+                    let Some(prov) = self.query.save().game.provinces.get(&id) else { return None };
+                    let owned = prov
+                        .owner
+                        .as_ref()
+                        .map_or(false, |owner| filter.contains(owner));
+
+                    if !owned {
+                        return None;
+                    }
+
+                    Some(ProvinceIdDevelopment {
+                        name: prov.name.clone(),
+                        id,
+                        tax: prov.base_tax,
+                        production: prov.base_production,
+                        manpower: prov.base_manpower,
+                        value: prov.base_tax + prov.base_production + prov.base_manpower,
+                    })
+                })
+                .filter_map(|prov| prov_area.get(&prov.id).map(|area| (area, prov)));
+
+            let mut areas: HashMap<_, AreaDevelopmentValue> = HashMap::new();
+            for (area_name, prov) in provs {
+                let area = areas.entry(area_name).or_default();
+                area.value += prov.value;
+                area.tax += prov.tax;
+                area.production += prov.production;
+                area.manpower += prov.manpower;
+                area.children.push(prov)
+            }
+
+            let mut regions: HashMap<_, RegionDevelopmentValue> = HashMap::new();
+            for (area_name, area) in areas {
+                match area_region.get(area_name) {
+                    Some(region_name) => {
+                        let region = regions.entry(region_name).or_default();
+                        region.value += area.value;
+                        region.tax += area.tax;
+                        region.production += area.production;
+                        region.manpower += area.manpower;
+                        region.children.push(AreaDevelopment {
+                            name: String::from(
+                                self.game.localize(*area_name).unwrap_or(*area_name),
+                            ),
+                            children: area.children,
+                            value: area.value,
+                            tax: area.tax,
+                            production: area.production,
+                            manpower: area.manpower,
+                        });
+                    }
+                    None => continue,
+                }
+            }
+
+            let mut superregion: HashMap<_, SuperRegionDevelopmentValue> = HashMap::new();
+            for (region_name, region) in regions {
+                match region_superregion.get(region_name) {
+                    Some(superregion_name) => {
+                        let superregion = superregion.entry(superregion_name).or_default();
+                        superregion.value += region.value;
+                        superregion.tax += region.tax;
+                        superregion.production += region.production;
+                        superregion.manpower += region.manpower;
+                        superregion.children.push(RegionDevelopment {
+                            name: String::from(
+                                self.game.localize(*region_name).unwrap_or(*region_name),
+                            ),
+                            children: region.children,
+                            value: region.value,
+                            tax: region.tax,
+                            production: region.production,
+                            manpower: region.manpower,
+                        });
+                    }
+                    None => continue,
+                }
+            }
+
+            let continent_children: Vec<_> = superregion
+                .into_iter()
+                .map(|(superregion_name, superregion)| SuperRegionDevelopment {
+                    name: String::from(
+                        self.game
+                            .localize(*superregion_name)
+                            .unwrap_or(*superregion_name),
+                    ),
+                    value: superregion.value,
+                    tax: superregion.tax,
+                    production: superregion.production,
+                    manpower: superregion.manpower,
+                    children: superregion.children,
+                })
+                .collect();
+
+            let continent_value: f32 = continent_children.iter().map(|x| x.value).sum();
+            let continent_tax: f32 = continent_children.iter().map(|x| x.tax).sum();
+            let continent_production: f32 = continent_children.iter().map(|x| x.production).sum();
+            let continent_manpower: f32 = continent_children.iter().map(|x| x.manpower).sum();
+
+            if !continent_children.is_empty() {
+                continents.push(ContinentDevelopment {
+                    name: String::from(self.game.localize(continent).unwrap_or(continent)),
+                    value: continent_value,
+                    children: continent_children,
+                    tax: continent_tax,
+                    production: continent_production,
+                    manpower: continent_manpower,
+                });
+            }
+        }
+
+        let (filtered_tax, filtered_production, filtered_manpower) =
+            continents
+                .iter()
+                .fold((0f32, 0f32, 0f32), |(tax, production, manpower), c| {
+                    (
+                        c.tax + tax,
+                        c.production + production,
+                        c.manpower + manpower,
+                    )
+                });
+
+        #[derive(Serialize)]
+        struct RootTree {
+            name: &'static str,
+            children: Vec<ContinentDevelopment>,
+            world_tax: f32,
+            world_production: f32,
+            world_manpower: f32,
+            filtered_tax: f32,
+            filtered_production: f32,
+            filtered_manpower: f32,
+            uncolonized_tax: f32,
+            uncolonized_production: f32,
+            uncolonized_manpower: f32,
+        }
+
+        to_json_value(&RootTree {
+            name: "root",
+            children: continents,
+            world_tax,
+            world_production,
+            world_manpower,
+            filtered_tax,
+            filtered_production,
+            filtered_manpower,
+            uncolonized_tax,
+            uncolonized_production,
+            uncolonized_manpower,
+        })
     }
 
     pub fn get_players(&self) -> HashMap<&str, &str> {

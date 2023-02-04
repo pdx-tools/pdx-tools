@@ -71,6 +71,11 @@ export const ChartDrawerTitle = ({
             Inflation
           </Option>
         </Select.OptGroup>
+        <Select.OptGroup label="Trees">
+          <Option value="development-tree" searchlabel="Development Tree">
+            Development Tree
+          </Option>
+        </Select.OptGroup>
         <Select.OptGroup label="Tables">
           <Option value="army-casualties" searchlabel="Army Casualties">
             Army Casualties

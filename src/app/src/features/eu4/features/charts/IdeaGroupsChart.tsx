@@ -5,7 +5,6 @@ import { useSelector } from "react-redux";
 import { selectEu4CountryFilter, useEu4Meta } from "@/features/eu4/eu4Slice";
 import { Bar, useVisualizationDispatch } from "@/components/viz";
 import { createCsv } from "@/lib/csv";
-import key from "@/pages/api/key";
 
 interface IdeaGroupDatum {
   name: string;

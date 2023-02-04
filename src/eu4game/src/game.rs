@@ -148,6 +148,54 @@ impl<'a> Game<'a> {
         Some(res)
     }
 
+    pub fn continents(
+        &self,
+    ) -> impl Iterator<Item = (&'a str, impl Iterator<Item = ProvinceId> + 'a)> + 'a {
+        self.data.continents().unwrap().iter().map(|x| {
+            (
+                x.key(),
+                x.value()
+                    .unwrap()
+                    .iter()
+                    .map(|id| ProvinceId::new(id as i32)),
+            )
+        })
+    }
+
+    pub fn superregions(
+        &self,
+    ) -> impl Iterator<Item = (&'a str, impl Iterator<Item = &'a str> + 'a)> + 'a {
+        self.data
+            .superregions()
+            .unwrap()
+            .iter()
+            .map(|x| (x.key(), x.value().unwrap().iter()))
+    }
+
+    pub fn regions(
+        &self,
+    ) -> impl Iterator<Item = (&'a str, impl Iterator<Item = &'a str> + 'a)> + 'a {
+        self.data
+            .regions()
+            .unwrap()
+            .iter()
+            .map(|x| (x.key(), x.value().unwrap().iter()))
+    }
+
+    pub fn areas(
+        &self,
+    ) -> impl Iterator<Item = (&'a str, impl Iterator<Item = ProvinceId> + 'a)> + 'a {
+        self.data.areas().unwrap().iter().map(|x| {
+            (
+                x.key(),
+                x.value()
+                    .unwrap()
+                    .iter()
+                    .map(|id| ProvinceId::new(id as i32)),
+            )
+        })
+    }
+
     pub fn area_provinces(&self, area: &str) -> Option<impl Iterator<Item = ProvinceId> + 'a> {
         let areas = self.data.areas().unwrap();
         let idx = binary_search_by(&areas, |x| x.key_compare_with_value(area)).ok()?;
@@ -212,16 +260,8 @@ impl<'a> Game<'a> {
     }
 
     pub fn province_area_lookup(&self) -> HashMap<ProvinceId, &str> {
-        let areas = self.data.areas().unwrap();
-        areas
-            .iter()
-            .flat_map(|entry| {
-                entry
-                    .value()
-                    .unwrap()
-                    .iter()
-                    .map(move |p| (ProvinceId::new(p as i32), entry.key()))
-            })
+        self.areas()
+            .flat_map(|(area, provs)| provs.map(move |p| (p, area)))
             .collect()
     }
 }
