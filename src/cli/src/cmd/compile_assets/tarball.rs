@@ -350,7 +350,12 @@ pub fn parse_game_dir(
     // LOCALIZATION
     let mut localization: Vec<_> = localization
         .iter()
-        .filter(|(k, _v)| k.starts_with("building_") || k.ends_with("_area"))
+        .filter(|(k, _v)| {
+            k.starts_with("building_")
+                || k.ends_with("_area")
+                || k.ends_with("_superregion")
+                || k.ends_with("_region")
+        })
         .collect();
     localization.sort_unstable();
     let data = localization;

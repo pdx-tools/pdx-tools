@@ -675,3 +675,42 @@ export interface CountryStateDetails {
   prosperity_mode: boolean | null;
   state_house: boolean;
 }
+
+export type Development = {
+  tax: number;
+  production: number;
+  manpower: number;
+};
+
+export interface TreeDevelopment {
+  name: "root";
+  world_tax: number;
+  world_production: number;
+  world_manpower: number;
+  filtered_tax: number;
+  filtered_production: number;
+  filtered_manpower: number;
+  uncolonized_tax: number;
+  uncolonized_production: number;
+  uncolonized_manpower: number;
+  children: ({
+    name: string;
+    value: number;
+    children: ({
+      name: string;
+      value: number;
+      children: ({
+        name: string;
+        value: number;
+        children: ({
+          name: string;
+          value: number;
+          children: ({
+            name: string;
+            value: number;
+          } & Development)[];
+        } & Development)[];
+      } & Development)[];
+    } & Development)[];
+  } & Development)[];
+}

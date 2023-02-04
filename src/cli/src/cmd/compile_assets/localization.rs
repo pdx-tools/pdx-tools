@@ -132,4 +132,16 @@ mod tests {
         let building = res.get("building_farm_estate").unwrap();
         assert_eq!(building, &String::from("Farm Estate"));
     }
+
+    #[test]
+    fn test_parse_localize_region() {
+        let data = r#"
+        l_english:
+          andes_superregion:0 "Andes""#;
+        let data = parse_localization(data);
+        assert_eq!(
+            data.get("andes_superregion").unwrap().clone(),
+            String::from("Andes")
+        );
+    }
 }

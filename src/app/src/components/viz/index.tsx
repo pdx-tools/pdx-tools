@@ -5,6 +5,7 @@ import type {
   HeatmapConfig,
   PieConfig,
   BarConfig,
+  Treemap as TreemapImpl,
 } from "@ant-design/plots";
 import { VisualizationLoader } from "./VisualizationLoader";
 
@@ -46,6 +47,14 @@ export const Pie: ComponentType<PieConfig> = React.memo(
 
 export const Bar: ComponentType<BarConfig> = React.memo(
   dynamic(() => import("@ant-design/plots").then((mod) => mod.Bar), {
+    ssr: false,
+    loading: () => <VisualizationLoader />,
+  })
+);
+
+export type TreemapConfig = React.ComponentProps<typeof TreemapImpl>;
+export const Treemap: ComponentType<TreemapConfig> = React.memo(
+  dynamic(() => import("@ant-design/plots").then((mod) => mod.Treemap), {
     ssr: false,
     loading: () => <VisualizationLoader />,
   })

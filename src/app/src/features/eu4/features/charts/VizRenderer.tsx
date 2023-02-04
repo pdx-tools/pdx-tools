@@ -14,12 +14,13 @@ import { CountriesNavyCasualtiesTable } from "./casualties/CountriesNavyCasualti
 import { CountriesExpensesTable } from "./CountriesExpensesTable";
 import { CountriesIncomeTable } from "./CountriesIncomeTable";
 import { CountriesTotalExpensesTable } from "./CountriesTotalExpensesTable";
+import { DevelopmentTree } from "./DevelopmentTree";
 
 interface VizRendererProps {
   module: VizModules;
 }
 
-export const VizRenderer = ({ module }: VizRendererProps) => {
+export const VizRenderer = ({ module }: VizRendererProps): JSX.Element => {
   switch (module) {
     case "idea-group":
       return <IdeaGroupsChart />;
@@ -45,5 +46,7 @@ export const VizRenderer = ({ module }: VizRendererProps) => {
       return <CountriesNavyCasualtiesTable />;
     case "wars":
       return <WarTable />;
+    case "development-tree":
+      return <DevelopmentTree />;
   }
 };

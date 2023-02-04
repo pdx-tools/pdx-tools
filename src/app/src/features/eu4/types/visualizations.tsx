@@ -10,4 +10,5 @@ export type VizModules =
   | "total-expense-table"
   | "army-casualties"
   | "navy-casualties"
-  | "wars";
+  | "wars"
+  | "development-tree";
