@@ -57,9 +57,9 @@ const CountryStateDetails = ({ data }: { data: CountryStateDetails[] }) => {
       dataIndex: "centralizing",
       align: "right",
       sorter: (a: CountryStateDetails, b: CountryStateDetails) => {
-        if (a.centralizing === null) {
+        if (!a.centralizing) {
           return 1;
-        } else if (b.centralizing === null) {
+        } else if (!b.centralizing) {
           return -1;
         } else {
           return a.centralizing.progress - b.centralizing.progress;
