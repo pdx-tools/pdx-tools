@@ -44,15 +44,15 @@ pub struct TagFilterPayloadRaw {
     include_subjects: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub struct TagFilterPayload {
-    players: TagsState,
-    ai: AiTagsState,
-    subcontinents: Vec<String>,
-    include: Vec<CountryTag>,
-    exclude: Vec<CountryTag>,
-    include_subjects: bool,
+    pub players: TagsState,
+    pub ai: AiTagsState,
+    pub subcontinents: Vec<String>,
+    pub include: Vec<CountryTag>,
+    pub exclude: Vec<CountryTag>,
+    pub include_subjects: bool,
 }
 
 impl From<TagFilterPayloadRaw> for TagFilterPayload {

@@ -26,7 +26,8 @@ export const DisplayLimitAlert = ({ displayLimit }: DisplayLimitAlertProps) => {
     return (
       <Alert
         type="warning"
-        message={`Display limited to ${displayLimit} countries`}
+        message="Too many countries in filter, display limited to players and great countries"
+        closable
       />
     );
   } else {

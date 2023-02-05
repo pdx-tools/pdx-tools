@@ -24,7 +24,7 @@ use std::{
     collections::{HashMap, HashSet},
     io::Cursor,
 };
-use tag_filter::{TagFilterPayload, TagFilterPayloadRaw};
+use tag_filter::{AiTagsState, TagFilterPayload, TagFilterPayloadRaw};
 use tarsave::TarSave;
 use wasm_bindgen::prelude::*;
 
@@ -680,11 +680,25 @@ impl SaveFileImpl {
         let payload = TagFilterPayload::from(payload);
         let tags = self.matching_tags(&payload);
         if tags.len() > limit {
-            tags.into_iter()
-                .enumerate()
-                .filter(|(i, _x)| *i < limit)
-                .map(|(_i, x)| x)
-                .collect()
+            let mut new_payload = payload.clone();
+            if self.player_histories.len() == 1 {
+                new_payload.ai = AiTagsState::Great;
+            } else {
+                new_payload.ai = AiTagsState::None;
+            };
+
+            let ntags = self.matching_tags(&new_payload);
+            let inter: HashSet<CountryTag> = tags.intersection(&ntags).cloned().collect();
+
+            if inter.is_empty() {
+                tags.into_iter()
+                    .enumerate()
+                    .filter(|(i, _x)| *i < limit)
+                    .map(|(_i, x)| x)
+                    .collect()
+            } else {
+                inter
+            }
         } else {
             tags
         }
