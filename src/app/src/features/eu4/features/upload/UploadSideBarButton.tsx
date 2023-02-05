@@ -6,6 +6,7 @@ import {
 import { UploadProvider } from "./uploadContext";
 import { UploadDrawer } from "./UploadDrawer";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
+import { Tooltip } from "antd";
 
 export const UploadSideBarButton = ({
   children,
@@ -23,9 +24,11 @@ export const UploadSideBarButton = ({
           />
         </SideBarContainerProvider>
       </UploadProvider>
-      <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
-        {children}
-      </SideBarButton>
+      <Tooltip title="Upload save" placement="left">
+        <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
+          {children}
+        </SideBarButton>
+      </Tooltip>
     </>
   );
 };

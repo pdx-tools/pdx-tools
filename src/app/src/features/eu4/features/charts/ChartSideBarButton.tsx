@@ -6,6 +6,7 @@ import {
 import { VisualizationProvider } from "@/components/viz";
 import { ChartDrawer } from "./ChartDrawer";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
+import { Tooltip } from "antd";
 
 export const ChartSideBarButton = ({
   children,
@@ -23,9 +24,11 @@ export const ChartSideBarButton = ({
           />
         </SideBarContainerProvider>
       </VisualizationProvider>
-      <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
-        {children}
-      </SideBarButton>
+      <Tooltip title="Worldwide charts and tables" placement="left">
+        <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
+          {children}
+        </SideBarButton>
+      </Tooltip>
     </>
   );
 };

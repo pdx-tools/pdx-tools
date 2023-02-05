@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Drawer } from "antd";
+import { Drawer, Tooltip } from "antd";
 import { AppHeader } from "../../../components/layout/AppHeader";
 import { SideBarButton, SideBarButtonProps } from "./SideBarButton";
 
@@ -27,9 +27,11 @@ export const HeaderSideBarButton = ({
       >
         <AppHeader />
       </Drawer>
-      <SideBarButton {...props} onClick={() => setheaderVisible(true)}>
-        {children}
-      </SideBarButton>
+      <Tooltip title="Main menu" placement="bottomLeft">
+        <SideBarButton {...props} onClick={() => setheaderVisible(true)}>
+          {children}
+        </SideBarButton>
+      </Tooltip>
     </>
   );
 };

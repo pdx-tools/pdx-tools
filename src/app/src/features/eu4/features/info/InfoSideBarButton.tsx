@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Drawer } from "antd";
+import { Drawer, Tooltip } from "antd";
 import { InfoDrawer } from "./InfoDrawer";
 import { MeltButton } from "./MeltButton";
 import { SaveMode } from "../../components/save-mode";
@@ -51,9 +51,11 @@ export const InfoSideBarButton = ({
           <InfoDrawer />
         </SideBarContainerProvider>
       </Drawer>
-      <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
-        {children}
-      </SideBarButton>
+      <Tooltip title="Save info" placement="left">
+        <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
+          {children}
+        </SideBarButton>
+      </Tooltip>
     </>
   );
 };

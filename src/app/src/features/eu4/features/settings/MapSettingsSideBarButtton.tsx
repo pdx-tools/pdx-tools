@@ -1,3 +1,4 @@
+import { Tooltip } from "antd";
 import React, { useState } from "react";
 import {
   SideBarButtonProps,
@@ -20,9 +21,11 @@ export const MapSettingsSideBarButton = ({
           closeDrawer={() => setDrawerVisible(false)}
         />
       </SideBarContainerProvider>
-      <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
-        {children}
-      </SideBarButton>
+      <Tooltip title="Map and timelapse settings" placement="left">
+        <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
+          {children}
+        </SideBarButton>
+      </Tooltip>
     </>
   );
 };
