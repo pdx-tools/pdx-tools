@@ -174,17 +174,6 @@ function assetRequest(request: Request) {
   }
 }
 
-// https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls#rel-canonical-header-method
-function withCanonicalHeaders(response: Response, url: URL) {
-  const newResponse = new Response(response.body, response);
-  if (url.hostname.startsWith("dev.")) {
-    const canonicalUrl = new URL(url.toString());
-    canonicalUrl.hostname = url.hostname.slice("dev.".length);
-    newResponse.headers.append("Link", `<${canonicalUrl}>; rel="canonical"`);
-  }
-  return newResponse;
-}
-
 function withSecurityHeaders(response: Response, pathname: string) {
   const newResponse = new Response(response.body, response);
   newResponse.headers.set("Strict-Transport-Security", `max-age=${CACHE_AGE}`);
@@ -233,10 +222,7 @@ async function handleEvent(event: FetchEvent) {
     resp.headers.set("Content-Encoding", "br");
     return resp;
   } else {
-    return withSecurityHeaders(
-      withCanonicalHeaders(resp, parsedUrl),
-      parsedUrl.pathname
-    );
+    return withSecurityHeaders(resp, parsedUrl.pathname);
   }
 }
 
@@ -253,10 +239,7 @@ async function handleDocsEvent(event: FetchEvent) {
       mapRequestToAsset,
       cacheControl,
     });
-    return withSecurityHeaders(
-      withCanonicalHeaders(resp, parsedUrl),
-      parsedUrl.pathname
-    );
+    return withSecurityHeaders(resp, parsedUrl.pathname);
   } catch (e) {
     return new Response(`"${parsedUrl.pathname}" not found`, {
       status: 404,
