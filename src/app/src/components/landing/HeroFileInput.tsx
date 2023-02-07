@@ -1,18 +1,8 @@
-import React, { useRef, KeyboardEvent } from "react";
+import React, { useRef } from "react";
 import Image from "next/image";
 import { useFilePublisher } from "@/features/engine";
 import filetypes from "./file-types.png";
-import classes from "./HeroFileInput.module.css";
 import { useFileDrop } from "@/hooks/useFileDrop";
-
-export function keyboardTrigger(fn: () => void) {
-  return (e: KeyboardEvent) => {
-    if (e.key === "Enter" && !e.isPropagationStopped()) {
-      e.stopPropagation();
-      fn();
-    }
-  };
-}
 
 export const HeroFileInput = () => {
   const publishFile = useFilePublisher();
@@ -29,12 +19,21 @@ export const HeroFileInput = () => {
 
   return (
     <div className="leading-relaxed">
+      <input
+        id="analyze-box-file-input"
+        ref={fileInputRef}
+        type="file"
+        className="peer absolute opacity-0"
+        onChange={handleChange}
+        accept=".eu4, .ck3, .hoi4, .rome, .v3"
+      />
+
       <label
-        tabIndex={0}
-        onKeyDown={keyboardTrigger(() => fileInputRef.current?.click())}
-        className={`m-2 flex cursor-pointer flex-col items-center rounded-2xl border-0 bg-black/20 p-4 text-center text-white outline-dashed outline-8 outline-white transition-all duration-150 lg:p-8 ${
-          classes.label
-        } ${isHovering ? classes.hover : ""}`}
+        className={`m-2 flex cursor-pointer flex-col items-center rounded-2xl border-0 p-4 text-center outline-dashed outline-8 transition-all duration-150 hover:bg-black/10 hover:text-blue-200 hover:outline-blue-500 peer-focus:text-blue-200 peer-focus:outline-blue-500 lg:p-8 ${
+          !isHovering
+            ? "bg-black/20 text-white outline-white"
+            : "bg-black/10 text-blue-200 outline-blue-500"
+        }`}
       >
         <Image
           src={filetypes}
@@ -47,14 +46,6 @@ export const HeroFileInput = () => {
         <p className="mb-2 text-2xl leading-loose">
           Select or drag and drop a save file
         </p>
-        <input
-          id="analyze-box-file-input"
-          ref={fileInputRef}
-          hidden
-          type="file"
-          onChange={handleChange}
-          accept=".eu4, .ck3, .hoi4, .rome, .v3"
-        />
       </label>
     </div>
   );

@@ -1,9 +1,0 @@
-.hover,
-.label:hover,
-.label:focus {
-  @apply bg-black/10 outline-dashed outline-8 outline-blue-500 hover:text-blue-200;
-}
-
-.label {
-  width: calc(100% - theme(outlineWidth.8) * 1px);
-}
