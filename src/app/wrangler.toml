@@ -1,21 +1,14 @@
 name = "pdx-tools"
 workers_dev = false
-type = "javascript"
 route = "pdx.tools/*"
 compatibility_date = "2021-09-18"
+main = "workers-site/worker/script.js"
 
 [build]
 command = "cd workers-site && npm run build"
 
-[build.upload]
-format = "service-worker"
-
-[vars]
-AWS_S3_BUCKET = ""
-
 [site]
 bucket = "./out"
-entry-point = "workers-site"
 
 # Ignore JS map files as they tend to be used for debugging, but more
 # importantly they will trip cloudflare KV value size of 10MB

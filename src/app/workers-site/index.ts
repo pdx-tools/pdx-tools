@@ -15,13 +15,6 @@ declare global {
 const CACHE_AGE = 8640000;
 const assetCacheControl = { browserTTL: CACHE_AGE };
 
-const aws = new AwsClient({
-  accessKeyId: AWS_ACCESS_KEY_ID,
-  secretAccessKey: AWS_SECRET_ACCESS_KEY,
-  region: AWS_DEFAULT_REGION,
-  service: "s3",
-});
-
 let getSaveRe = /^\/api\/saves\/([A-Za-z0-9_-]+)\/file$/;
 
 addEventListener("fetch", (event: FetchEvent) => {
@@ -77,6 +70,13 @@ async function fetchS3(event: FetchEvent, saveId: string) {
     } else {
       url.pathname = `/${saveId}`;
     }
+
+    const aws = new AwsClient({
+      accessKeyId: AWS_ACCESS_KEY_ID,
+      secretAccessKey: AWS_SECRET_ACCESS_KEY,
+      region: AWS_DEFAULT_REGION,
+      service: "s3",
+    });
 
     const signedRequest = await aws.sign(url.toString());
     response = await fetch(signedRequest, { cf: { cacheEverything: true } });
