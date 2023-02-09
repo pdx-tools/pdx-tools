@@ -1,11 +1,10 @@
 import fs from "fs";
 import AWS, { S3 } from "aws-sdk";
 import { metrics } from "./metrics";
-import { getEnv } from "./env";
+import { getEnv, isLocal } from "./env";
 import { log } from "./logging";
 import { uploadContentEncoding, uploadContentType, UploadType } from "./models";
 import { Agent as HttpAgent } from "http";
-import { Agent as HttpsAgent } from "https";
 
 export const BUCKET = getEnv("S3_BUCKET");
 const endpoint = getEnv("S3_ENDPOINT");
@@ -15,22 +14,12 @@ AWS.config.logger = {
   warn: (msg) => log.warn({ msg }),
 };
 
-if (process.env.NODE_ENV !== "production") {
-  if (endpoint.startsWith("https:")) {
-    AWS.config.update({
-      httpOptions: {
-        agent: new HttpsAgent({
-          rejectUnauthorized: false,
-        }),
-      },
-    });
-  } else {
-    AWS.config.update({
-      httpOptions: {
-        agent: new HttpAgent(),
-      },
-    });
-  }
+if (isLocal()) {
+  AWS.config.update({
+    httpOptions: {
+      agent: new HttpAgent(),
+    },
+  });
 }
 
 export const s3client = new S3({

@@ -36,7 +36,17 @@ build-rust:
   cargo build --all
 
 dev: build-wasm-dev build-napi dev-app
+
+staging: build-napi build-app prep-dev-app
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  cd src/app
+  . .env.production
   
+  npx --yes concurrently@latest \
+    "PORT=3001 node_modules/.bin/next start" \
+    "wrangler dev --port 3003 --local --local-upstream localhost:3001 --var AWS_S3_HOST:localhost --var AWS_S3_PORT:$S3_PORT --var AWS_S3_BUCKET:$S3_BUCKET --var AWS_DEFAULT_REGION:$S3_REGION --var AWS_ACCESS_KEY_ID:$S3_ACCESS_KEY --var AWS_SECRET_ACCESS_KEY:$S3_SECRET_KEY"
+
 test: (cargo "test" "--all-features") test-app
 
 setup:
@@ -192,7 +202,7 @@ dev-environment +cmd:
   trap 'rm -rf -- "$MY_TMP"' EXIT
   cat src/app/.env.development ./dev/.env.dev >> "$MY_TMP"
 
-  docker-compose -f ./dev/docker-compose.test.yml -f ./dev/docker-compose.dev.yml --env-file "$MY_TMP" --project-name pdx_dev "$@"
+  docker-compose -f ./dev/docker-compose.test.yml --env-file "$MY_TMP" --project-name pdx_dev "$@"
 
 test-environment +cmd:
   #!/usr/bin/env bash

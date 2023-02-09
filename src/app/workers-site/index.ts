@@ -10,6 +10,7 @@ declare global {
   const AWS_DEFAULT_REGION: string;
   const AWS_S3_HOST: string;
   const AWS_S3_BUCKET: string | undefined;
+  const AWS_S3_PORT: string | undefined;
 }
 
 const CACHE_AGE = 8640000;
@@ -69,6 +70,10 @@ async function fetchS3(event: FetchEvent, saveId: string) {
       url.pathname = `/${AWS_S3_BUCKET}/${saveId}`;
     } else {
       url.pathname = `/${saveId}`;
+    }
+
+    if (typeof AWS_S3_PORT !== "undefined") {
+      url.port = AWS_S3_PORT;
     }
 
     const aws = new AwsClient({
