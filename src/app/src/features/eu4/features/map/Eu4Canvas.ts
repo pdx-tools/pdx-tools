@@ -10,7 +10,7 @@ import {
 import { ProvinceFinder } from "../../../../map/ProvinceFinder";
 import { compile } from "../../../../map/shaderCompiler";
 import { SavegameVersion } from "../../types/models";
-import { timeit } from "../../../engine/worker/worker-lib";
+import { timeit2 } from "../../../engine/worker/worker-lib";
 import { AnalyzeEvent } from "../../../engine/worker/worker-types";
 import { MapOnlyControls } from "../../types/map";
 import {
@@ -56,43 +56,39 @@ export class Eu4Canvas {
 
     this.terrainOverlayEnabled = false;
     const version = `${saveVersion.first}.${saveVersion.second}`;
-    const compilePromise = timeit(shaderUrls).then(
-      async ([shaders, elapsedMs]) => {
-        onProgress({
-          kind: "incremental progress",
-          msg: "shaders fetched",
-          percent: 3,
-          elapsedMs,
-        });
-        var [linkage, elapsedMs] = await timeit(() =>
-          compile(this.gl, shaders)
-        );
-        onProgress({
-          kind: "incremental progress",
-          msg: "shaders compiled",
-          percent: 3,
-          elapsedMs,
-        });
-        var [linked, elapsedMs] = await timeit(linkage);
-        onProgress({
-          kind: "incremental progress",
-          msg: "shaders linked",
-          percent: 4,
-          elapsedMs,
-        });
-        return linked;
-      }
-    );
+    const compilePromise = timeit2(shaderUrls).then(async (shaders) => {
+      onProgress({
+        kind: "incremental progress",
+        msg: "shaders fetched",
+        percent: 3,
+        elapsedMs: shaders.elapsedMs,
+      });
+      const linkage = await timeit2(() => compile(this.gl, shaders.data));
+      onProgress({
+        kind: "incremental progress",
+        msg: "shaders compiled",
+        percent: 3,
+        elapsedMs: linkage.elapsedMs,
+      });
+      const linked = await timeit2(linkage.data);
+      onProgress({
+        kind: "incremental progress",
+        msg: "shaders linked",
+        percent: 4,
+        elapsedMs: linked.elapsedMs,
+      });
+      return linked.data;
+    });
 
-    var [resources, elapsedMs] = await timeit(() => resourceUrls(version));
+    const resources = await timeit2(() => resourceUrls(version));
     onProgress({
       kind: "incremental progress",
       msg: "textures fetched and bitmapped",
       percent: 10,
-      elapsedMs,
+      elapsedMs: resources.elapsedMs,
     });
 
-    this.resources = resources;
+    this.resources = resources.data;
     this.linkedPrograms = () => compilePromise;
     return true;
   }
