@@ -29,6 +29,7 @@ export const HeroFileInput = () => {
       />
 
       <label
+        htmlFor="analyze-box-file-input"
         className={`m-2 flex cursor-pointer flex-col items-center rounded-2xl border-0 p-4 text-center outline-dashed outline-8 transition-all duration-150 hover:bg-black/10 hover:text-blue-200 hover:outline-blue-500 peer-focus:text-blue-200 peer-focus:outline-blue-500 lg:p-8 ${
           !isHovering
             ? "bg-black/20 text-white outline-white"
