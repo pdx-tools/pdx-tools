@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/server-lib/db";
-import { getEnv } from "@/server-lib/env";
+import { getEnv, isLocal } from "@/server-lib/env";
 import { withLogger } from "@/server-lib/logging";
 import { withHttpSession } from "@/server-lib/session";
 
@@ -8,7 +8,7 @@ export const STEAM_URL = "https://steamcommunity.com/openid/login";
 const TEST_UID = "100";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
-  if (process.env.NODE_ENV !== "production") {
+  if (isLocal()) {
     const user = req.session.user;
 
     if (!user?.uid) {

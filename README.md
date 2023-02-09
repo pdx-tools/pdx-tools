@@ -64,7 +64,7 @@ Then, to start the PDX Tools:
 just dev
 ```
 
-This will start the web server on two ports: 3001 and 3003. 3001 is plain HTTP and 3003 is HTTPS with a self signed certificate. Since some web features like brotli decoding only work over HTTPS in firefox, it is recommended to use the HTTPS endpoint.
+This will start the web server on port 3001.
 
 Congrats! You should now be able to see PDX Tools in your browser and be able to parse non-ironman saves.
 

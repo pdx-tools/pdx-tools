@@ -48,7 +48,7 @@ let nextConfig = {
           {
             key: "Content-Security-Policy",
             value: "default-src 'self';" +
-              "connect-src 'self' blob: https://skanderbeg.pm/api.php https://a.pdx.tools/api/event https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.10.0/" + (process.env.NODE_ENV !== "production" ? " https://localhost:9000;" : ";") +
+              "connect-src 'self' blob: https://skanderbeg.pm/api.php https://a.pdx.tools/api/event https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.10.0/" + (process.env.NODE_ENV !== "production" ? " http://localhost:9000;" : ";") +
               "img-src 'self' data:;" +
               "script-src 'self' 'unsafe-eval' blob: https://a.pdx.tools/js/index.js;" +
               "style-src 'self' 'unsafe-inline'"
