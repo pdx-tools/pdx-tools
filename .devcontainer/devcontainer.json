@@ -2,10 +2,7 @@
 {
   "name": "app",
   "build": {
-    "dockerfile": "Dockerfile",
-    "args": {
-      "BUILDKIT_INLINE_CACHE": "0"
-    }
+    "dockerfile": "Dockerfile"
   },
   "runArgs": ["--network", "host"],
   "mounts": [
