@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Table, Tooltip, Grid } from "antd";
+import { Table, Tooltip } from "antd";
 import { ColumnType, ColumnGroupType } from "antd/lib/table";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryDetails, CountryCulture } from "../../types/models";
@@ -8,6 +8,7 @@ import {
   WorkerClient,
 } from "../../../engine/worker/wasm-worker-context";
 import { StarTwoTone } from "@ant-design/icons";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
 
 export interface CountryCulturesProps {
   details: CountryDetails;
@@ -157,7 +158,7 @@ const CountryCultureVizImpl = ({
 const CountryCultureViz = React.memo(CountryCultureVizImpl);
 
 export const CountryCultures = ({ details }: CountryCulturesProps) => {
-  const { md } = Grid.useBreakpoint();
+  const isMd = useBreakpoint("md");
   const [data, setData] = useState<CountryCulture[]>([]);
   const cb = useCallback(
     async (worker: WorkerClient) => {
@@ -169,5 +170,5 @@ export const CountryCultures = ({ details }: CountryCulturesProps) => {
 
   useWorkerOnSave(cb);
 
-  return <CountryCultureViz data={data} largeLayout={!!md} />;
+  return <CountryCultureViz data={data} largeLayout={isMd} />;
 };

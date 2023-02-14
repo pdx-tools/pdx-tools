@@ -1,10 +1,10 @@
 import React from "react";
-import { Table, Space, Typography, Grid } from "antd";
+import { Table, Space, Typography } from "antd";
 import { formatFloat, formatInt } from "@/lib/format";
 import { LegendColor, useIsLoading, Pie, PieConfig } from "@/components/viz";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
 
 const { Text } = Typography;
-const { useBreakpoint } = Grid;
 
 interface BudgetRow {
   key: string;
@@ -54,7 +54,7 @@ export const PieTable = ({
   wholeNumbers,
 }: PieTableProps) => {
   const isLoading = useIsLoading();
-  const { md } = useBreakpoint();
+  const isMd = useBreakpoint("md");
   const numFormatter =
     wholeNumbers || false
       ? (x: number) => formatInt(x)
@@ -66,7 +66,7 @@ export const PieTable = ({
     <Space
       size="large"
       align="start"
-      direction={md ? "horizontal" : "vertical"}
+      direction={isMd ? "horizontal" : "vertical"}
     >
       {isLoading ? null : (
         <Table

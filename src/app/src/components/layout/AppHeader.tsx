@@ -1,19 +1,17 @@
 import React from "react";
 import Link from "next/link";
-import { Layout, Grid } from "antd";
+import { Layout } from "antd";
 import { AppSvg } from "../icons/AppIcon";
 import { CoreMenu } from "./CoreMenu";
 import { MobileMenu } from "./MobileMenu";
 import { AnnouncementBar } from "./AnnouncementBar";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
 const { Header } = Layout;
-const { useBreakpoint } = Grid;
 
 const HeaderMenu = () => {
-  const { md } = useBreakpoint();
+  const isMd = useBreakpoint("md");
 
-  if (md === undefined) {
-    return null;
-  } else if (md) {
+  if (isMd) {
     return <CoreMenu mode="horizontal" />;
   } else {
     return <MobileMenu />;

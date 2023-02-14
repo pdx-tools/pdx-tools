@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { EyeOutlined } from "@ant-design/icons";
-import { Button, Card, Descriptions, Divider, Grid, List, Tooltip } from "antd";
+import { Button, Card, Descriptions, Divider, List, Tooltip } from "antd";
 import Link from "next/link";
 import { useSelector } from "react-redux";
 import { TimeAgo } from "@/components/TimeAgo";
@@ -34,8 +34,7 @@ import { FlipBook, StringFlipBook } from "../../components/flip-book";
 import { ModList } from "./ModList";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { MapPayload } from "../../types/map";
-
-const { useBreakpoint } = Grid;
+import { useBreakpoint } from "@/hooks/useBreakpoint";
 
 const TagDescription = (play: TagTransition) => {
   return (
@@ -53,7 +52,7 @@ export const InfoDrawer = () => {
   const workerRef = useWasmWorker();
   const eu4CanvasRef = useEu4CanvasRef();
   const mods = useEu4ModList();
-  const { lg } = useBreakpoint();
+  const isLg = useBreakpoint("lg");
   const session = useSelector(selectSession);
   const meta = useEu4Meta();
   const achievements = useEu4Achievements();
@@ -138,7 +137,7 @@ export const InfoDrawer = () => {
         <Descriptions.Item label={`Mods ${mods.length}`}>
           <ModList />
         </Descriptions.Item>
-        <Descriptions.Item label="DLC" span={lg ? 2 : 1}>
+        <Descriptions.Item label="DLC" span={isLg ? 2 : 1}>
           <DlcList dlc_enabled={meta.dlc} />
         </Descriptions.Item>
       </Descriptions>

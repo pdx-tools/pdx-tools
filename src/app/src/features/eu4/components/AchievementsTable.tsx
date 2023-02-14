@@ -1,5 +1,5 @@
 import React from "react";
-import { Table, Space, Typography, Grid } from "antd";
+import { Table, Space, Typography } from "antd";
 import Link from "next/link";
 import {
   difficultyColor,
@@ -8,9 +8,9 @@ import {
 } from "@/lib/difficulty";
 import { AchievementDifficulty, Achievement } from "@/services/appApi";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
 
 const { Text } = Typography;
-const { useBreakpoint } = Grid;
 
 interface TableEntry {
   achievement: Achievement;
@@ -21,7 +21,7 @@ interface AchievementsTableProps {
 }
 
 export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
-  const { md } = useBreakpoint();
+  const isMd = useBreakpoint("md");
 
   const columns = [
     {
@@ -38,7 +38,7 @@ export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
                 {name}
               </Link>
             </Text>
-            {md && <Text>{record.achievement.description}</Text>}
+            {isMd && <Text>{record.achievement.description}</Text>}
           </Space>
         </Space>
       ),

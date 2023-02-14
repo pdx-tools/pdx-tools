@@ -10,11 +10,7 @@ import insights from "./gallery-insights.png";
 import insightsThumbnail from "./gallery-insights-thumbnail.png";
 import Image from "next/image";
 import { useState } from "react";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
-
-import resolveConfig from "tailwindcss/resolveConfig";
-import tailwindConfig from "../../../tailwind.config.js";
-const fullConfig = resolveConfig(tailwindConfig);
+import { useBreakpoint } from "@/hooks/useBreakpoint";
 
 const images = [
   {
@@ -142,10 +138,7 @@ const MobileImageGallery = () => {
 };
 
 export const ImageGallery = () => {
-  const screens = fullConfig.theme?.screens;
-  const width = screens && "lg" in screens ? screens["lg"] : "1024px";
-  const desktopGallery = useMediaQuery(`(min-width: ${width})`);
-
+  const desktopGallery = useBreakpoint("lg");
   if (desktopGallery) {
     return <DesktopImageGallery />;
   } else {

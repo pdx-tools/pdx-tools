@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { PieConfig } from "@ant-design/charts";
-import { Table, Tooltip, Grid } from "antd";
+import { Table, Tooltip } from "antd";
 import { ColumnType } from "antd/lib/table";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryDetails, CountryReligion } from "../../types/models";
@@ -9,6 +9,7 @@ import {
   WorkerClient,
 } from "../../../engine/worker/wasm-worker-context";
 import { Pie, LegendColor } from "@/components/viz";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
 
 export interface CountryReligionsProps {
   details: CountryDetails;
@@ -116,7 +117,7 @@ const CountryReligionVizImpl = ({
 const CountryReligionViz = React.memo(CountryReligionVizImpl);
 
 export const CountryReligions = ({ details }: CountryReligionsProps) => {
-  const { md } = Grid.useBreakpoint();
+  const isMd = useBreakpoint("md");
   const [data, setData] = useState<CountryReligion[]>([]);
   const cb = useCallback(
     async (worker: WorkerClient) => {
@@ -128,5 +129,5 @@ export const CountryReligions = ({ details }: CountryReligionsProps) => {
 
   useWorkerOnSave(cb);
 
-  return <CountryReligionViz data={data} largeLayout={!!md} />;
+  return <CountryReligionViz data={data} largeLayout={isMd} />;
 };
