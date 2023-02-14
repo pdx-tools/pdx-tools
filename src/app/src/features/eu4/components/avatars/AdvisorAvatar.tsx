@@ -1,5 +1,5 @@
 import React from "react";
-import { Avatar, Space, Tooltip } from "antd";
+import { Avatar, Tooltip } from "antd";
 import { LocalizedObj } from "@/features/eu4/types/models";
 
 type AdvisorAvatarProps = {

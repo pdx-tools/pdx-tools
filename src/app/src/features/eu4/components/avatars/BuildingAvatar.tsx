@@ -1,5 +1,5 @@
 import React from "react";
-import { Avatar, Space, Tooltip } from "antd";
+import { Avatar, Tooltip } from "antd";
 import { GfxObj } from "@/features/eu4/types/models";
 
 type BuildingProps = GfxObj & {
@@ -20,18 +20,16 @@ export const BuildingAvatar = ({ id, name, gfx, condensed }: BuildingProps) => {
     if (condensed) {
       return (
         <Tooltip title={`${name}`}>
-          <Space>
-            <Avatar shape="square" size={48} src={buildingImage} />
-          </Space>
+          <Avatar shape="square" size={48} src={buildingImage} />
         </Tooltip>
       );
     } else {
       return (
         <Tooltip title={`${id}`}>
-          <Space>
+          <div className="flex items-center space-x-2">
             <Avatar shape="square" size={48} src={buildingImage} />
             <span>{name}</span>
-          </Space>
+          </div>
         </Tooltip>
       );
     }

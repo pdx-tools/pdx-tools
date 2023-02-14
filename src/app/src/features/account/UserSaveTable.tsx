@@ -1,5 +1,5 @@
 import React from "react";
-import { Table, Space } from "antd";
+import { Table } from "antd";
 import { TimeAgo } from "@/components/TimeAgo";
 import { GameDifficulty, SaveFile } from "@/services/appApi";
 import { diff } from "@/lib/dates";
@@ -86,11 +86,11 @@ export const UserSaveTable = ({
       title: "Achievements",
       dataIndex: "achievements",
       render: (achievements: string[]) => (
-        <Space size="small">
+        <div className="flex space-x-1">
           {achievements.map((x) => (
             <AchievementAvatar id={x} key={x} size="large" />
           ))}
-        </Space>
+        </div>
       ),
     },
     {
@@ -104,10 +104,10 @@ export const UserSaveTable = ({
         }
 
         return (
-          <Space>
+          <div className="flex items-center space-x-2">
             {link}
             {deleteEle}
-          </Space>
+          </div>
         );
       },
     },

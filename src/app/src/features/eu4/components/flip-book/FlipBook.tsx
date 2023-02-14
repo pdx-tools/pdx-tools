@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Space } from "antd";
+import { Button } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 
 interface FlipBookProps<T> {
@@ -18,7 +18,7 @@ export function FlipBook<T>({
     return itemRender(items[0]);
   } else {
     return (
-      <Space>
+      <div className="flex items-center space-x-2">
         <Button
           icon={<LeftOutlined />}
           type="text"
@@ -32,7 +32,7 @@ export function FlipBook<T>({
           disabled={ind == items.length - 1}
           onClick={() => setInd(ind + 1)}
         ></Button>
-      </Space>
+      </div>
     );
   }
 }

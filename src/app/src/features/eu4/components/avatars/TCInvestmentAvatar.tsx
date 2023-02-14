@@ -11,9 +11,9 @@ export const TcInvestmentAvatar = ({ id, name }: LocalizedObj) => {
   if (imageSrc) {
     return (
       <Tooltip title={`${name}`}>
-        <Space>
+        <div className="space-x-2">
           <Avatar shape="square" size={48} src={imageSrc} />
-        </Space>
+        </div>
       </Tooltip>
     );
   } else {

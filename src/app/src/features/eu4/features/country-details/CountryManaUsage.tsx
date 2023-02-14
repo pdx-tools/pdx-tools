@@ -1,4 +1,3 @@
-import { Space } from "antd";
 import React, { useMemo } from "react";
 import type { BarConfig } from "@ant-design/charts";
 import { manaSpendAliases, manaSpendColorPalette } from "./data";
@@ -157,16 +156,16 @@ export const CountryManaUsage = ({ details }: CountryManaProps) => {
   );
 
   return (
-    <Space size="large" direction="vertical">
-      <Space align="start">
+    <div className="flex flex-col space-y-6">
+      <div className="flex space-x-2">
         <TotalManaBar
           adm={adm_mana.reduce((acc, x) => acc + x.value, 0)}
           dip={dip_mana.reduce((acc, x) => acc + x.value, 0)}
           mil={mil_mana.reduce((acc, x) => acc + x.value, 0)}
         />
         <ManaCategoryBars details={details} />
-      </Space>
-      <div>
+      </div>
+      <div className="flex flex-wrap gap-6">
         <PieTable
           palette={palette}
           title="ADM mana breakdown"
@@ -186,6 +185,6 @@ export const CountryManaUsage = ({ details }: CountryManaProps) => {
           wholeNumbers={true}
         />
       </div>
-    </Space>
+    </div>
   );
 };

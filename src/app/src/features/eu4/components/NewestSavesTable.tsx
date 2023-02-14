@@ -1,4 +1,4 @@
-import { Space, Table } from "antd";
+import { Table } from "antd";
 import Link from "next/link";
 import React from "react";
 import { TimeAgo } from "../../../components/TimeAgo";
@@ -83,19 +83,18 @@ export const NewestSavesTable = () => {
       title: "Achievements",
       dataIndex: "achievements",
       render: (achievements: string[]) => (
-        <Space size="small">
+        <div className="flex space-x-1">
           {achievements.map((x) => (
-            <AchievementAvatar key={x} size="large" id={x} />
+            <AchievementAvatar id={x} key={x} size="large" />
           ))}
-        </Space>
+        </div>
       ),
     },
     {
       title: "",
       dataIndex: "id",
       render: (id: string) => {
-        const link = <Link href={`/eu4/saves/${id}`}>View</Link>;
-        return <Space>{link}</Space>;
+        return <Link href={`/eu4/saves/${id}`}>View</Link>;
       },
     },
   ];

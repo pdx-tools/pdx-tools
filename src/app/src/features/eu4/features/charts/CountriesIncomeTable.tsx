@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Divider, Space, Switch, Table, Typography } from "antd";
+import { Divider, Switch, Table, Typography } from "antd";
 import { ColumnProps } from "antd/lib/table";
 import { incomeLedgerAliases } from "../country-details/data";
 import { CountryIncome } from "../../types/models";
@@ -117,9 +117,9 @@ export const CountriesIncomeTable = () => {
 
   return (
     <>
-      <Space direction="vertical" size="large" className="flex">
-        <Space>
-          <Space size="small">
+      <div className="flex flex-col space-y-6">
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2">
             <Text>Show as percentages:</Text>
 
             <Switch
@@ -128,10 +128,10 @@ export const CountriesIncomeTable = () => {
                 dispatch(setPrefersPercents(checked))
               }
             />
-          </Space>
+          </div>
 
           <Divider type="vertical" />
-          <Space size="small">
+          <div className="flex items-center space-x-2">
             <Text>Recurring expenses only:</Text>
             <Switch
               checked={showRecurringOnly}
@@ -139,8 +139,8 @@ export const CountriesIncomeTable = () => {
                 dispatch(setShowOneTimeLineItems(!checked))
               }
             />
-          </Space>
-        </Space>
+          </div>
+        </div>
         <Table
           size="small"
           rowKey="name"
@@ -150,7 +150,7 @@ export const CountriesIncomeTable = () => {
           pagination={tablePagination}
           scroll={{ x: true }}
         />
-      </Space>
+      </div>
     </>
   );
 };

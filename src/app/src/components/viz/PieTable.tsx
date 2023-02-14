@@ -1,8 +1,7 @@
 import React from "react";
-import { Table, Space, Typography } from "antd";
+import { Table, Typography } from "antd";
 import { formatFloat, formatInt } from "@/lib/format";
 import { LegendColor, useIsLoading, Pie, PieConfig } from "@/components/viz";
-import { useBreakpoint } from "@/hooks/useBreakpoint";
 
 const { Text } = Typography;
 
@@ -54,7 +53,6 @@ export const PieTable = ({
   wholeNumbers,
 }: PieTableProps) => {
   const isLoading = useIsLoading();
-  const isMd = useBreakpoint("md");
   const numFormatter =
     wholeNumbers || false
       ? (x: number) => formatInt(x)
@@ -63,11 +61,7 @@ export const PieTable = ({
   let pag = paginate ? undefined : false;
   const total = rows.reduce((acc, x) => acc + x.value, 0);
   return (
-    <Space
-      size="large"
-      align="start"
-      direction={isMd ? "horizontal" : "vertical"}
-    >
+    <div className="flex gap-6">
       {isLoading ? null : (
         <Table
           size="small"
@@ -92,10 +86,10 @@ export const PieTable = ({
               dataIndex: "key",
               render: (className: string) => {
                 return (
-                  <Space>
+                  <div className="flex items-center space-x-2">
                     <LegendColor color={palette.get(className)} />
                     <Text>{`${className}`}</Text>
-                  </Space>
+                  </div>
                 );
               },
               sorter: (a: BudgetRow, b: BudgetRow) =>
@@ -122,6 +116,6 @@ export const PieTable = ({
         />
       )}
       <PieTablePie rows={rows} palette={palette} />
-    </Space>
+    </div>
   );
 };

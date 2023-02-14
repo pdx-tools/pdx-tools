@@ -1,5 +1,5 @@
 import React from "react";
-import { Avatar, Space, Tooltip } from "antd";
+import { Avatar, Tooltip } from "antd";
 import { LocalizedObj } from "@/features/eu4/types/models";
 
 export const PersonalityAvatar = ({ id, name }: LocalizedObj) => {
@@ -11,9 +11,9 @@ export const PersonalityAvatar = ({ id, name }: LocalizedObj) => {
   if (imageSrc) {
     return (
       <Tooltip title={`${name}`}>
-        <Space>
+        <div className="space-x-2">
           <Avatar shape="square" size={64} src={imageSrc} />
-        </Space>
+        </div>
       </Tooltip>
     );
   } else {

@@ -34,7 +34,7 @@ export const AppSurvey = () => {
       <Alert
         type="info"
         message={
-          <Space>
+          <div className="flex items-center space-x-2">
             PDX Tools user survey: a quick 7 question survey to improve PDX
             Tools for you.
             <Button>
@@ -48,7 +48,7 @@ export const AppSurvey = () => {
               </a>
             </Button>
             <Button onClick={closeSurvey}>No Thanks</Button>
-          </Space>
+          </div>
         }
         onClose={closeSurvey}
       />

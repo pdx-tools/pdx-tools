@@ -1,5 +1,5 @@
 import React from "react";
-import { Avatar, Space, Tooltip } from "antd";
+import { Avatar, Tooltip } from "antd";
 import { usePanTag } from "../../hooks/usePanTag";
 import { useInEu4Analysis } from "../SideBarContainer";
 
@@ -57,10 +57,10 @@ const InGameFlagAvatar = ({
           className="cursor-pointer border-none bg-transparent p-1 hover:bg-gray-200 active:bg-gray-300"
           onClick={() => panTag(tag)}
         >
-          <Space className="text-start">
+          <div className="flex items-center space-x-2 text-start">
             <FlagAvatarCore tag={tag} size={size} />
             <span>{name}</span>
-          </Space>
+          </div>
         </button>
       </Tooltip>
     );
@@ -71,9 +71,7 @@ const InGameFlagAvatar = ({
           className="cursor-pointer border-none bg-transparent p-1 hover:bg-gray-200 active:bg-gray-300"
           onClick={() => panTag(tag)}
         >
-          <Space>
-            <FlagAvatarCore tag={tag} size={size} />
-          </Space>
+          <FlagAvatarCore tag={tag} size={size} />
         </button>
       </Tooltip>
     );
@@ -89,18 +87,16 @@ const OutOfGameFlagAvatar = ({
   if (!condensed) {
     return (
       <Tooltip title={tag}>
-        <Space className="text-start">
+        <div className="flex items-center space-x-2 text-start">
           <FlagAvatarCore tag={tag} size={size} />
           <span>{name}</span>
-        </Space>
+        </div>
       </Tooltip>
     );
   } else {
     return (
       <Tooltip title={`${name} (${tag})`}>
-        <Space>
-          <FlagAvatarCore tag={tag} size={size} />
-        </Space>
+        <FlagAvatarCore tag={tag} size={size} />
       </Tooltip>
     );
   }

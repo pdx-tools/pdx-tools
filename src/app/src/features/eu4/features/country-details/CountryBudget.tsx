@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Typography, Space, Switch } from "antd";
+import { Switch } from "antd";
 import type { BarConfig } from "@ant-design/charts";
 import {
   expenseLedgerColorPalette,
@@ -10,7 +10,6 @@ import {
 import { formatInt } from "@/lib/format";
 import { CountryDetails } from "../../types/models";
 import { Bar, PieTable } from "@/components/viz";
-const { Text } = Typography;
 
 interface CountryBudgetCountProps {
   details: CountryDetails;
@@ -84,32 +83,34 @@ export const CountryBudget = ({ details }: CountryBudgetCountProps) => {
 
   return (
     <>
-      <Space>
-        <Text>Recurring income / expenses only:</Text>
+      <div className="flex items-center space-x-2">
+        <span>Recurring income / expenses only:</span>
         <Switch
           checked={showRecurringOnly}
           onChange={(checked: boolean) => setRecurOnly(checked)}
         />
-      </Space>
+      </div>
       <div>
         <Bar {...overviewConfig} />
       </div>
-      <PieTable
-        palette={incomePalette}
-        title="Last Month Income Breakdown"
-        rows={income}
-      />
-      <PieTable
-        palette={expensePalette}
-        title="Last Month Expense Breakdown"
-        rows={expenses}
-      />
-      <PieTable
-        palette={expensePalette}
-        title="Total Expense Breakdown"
-        rows={totalExpenses}
-        paginate={true}
-      />
+      <div className="flex flex-wrap gap-6">
+        <PieTable
+          palette={incomePalette}
+          title="Last Month Income Breakdown"
+          rows={income}
+        />
+        <PieTable
+          palette={expensePalette}
+          title="Last Month Expense Breakdown"
+          rows={expenses}
+        />
+        <PieTable
+          palette={expensePalette}
+          title="Total Expense Breakdown"
+          rows={totalExpenses}
+          paginate={true}
+        />
+      </div>
     </>
   );
 };

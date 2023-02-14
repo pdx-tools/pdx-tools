@@ -1,5 +1,5 @@
 import React from "react";
-import { Table, Space, Typography } from "antd";
+import { Table } from "antd";
 import Link from "next/link";
 import {
   difficultyColor,
@@ -9,8 +9,6 @@ import {
 import { AchievementDifficulty, Achievement } from "@/services/appApi";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
-
-const { Text } = Typography;
 
 interface TableEntry {
   achievement: Achievement;
@@ -30,17 +28,17 @@ export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
       sorter: (a: TableEntry, b: TableEntry) =>
         a.achievement.name.localeCompare(b.achievement.name),
       render: (name: string, record: TableEntry) => (
-        <Space>
+        <div className="flex items-center space-x-2">
           <AchievementAvatar size={64} id={record.achievement.id} />
-          <Space direction="vertical">
-            <Text strong={true}>
+          <div className="flex flex-col space-y-2">
+            <span className="font-bold">
               <Link href={`/eu4/achievements/${record.achievement.id}`}>
                 {name}
               </Link>
-            </Text>
-            {isMd && <Text>{record.achievement.description}</Text>}
-          </Space>
-        </Space>
+            </span>
+            {isMd && <span>{record.achievement.description}</span>}
+          </div>
+        </div>
       ),
     },
     {

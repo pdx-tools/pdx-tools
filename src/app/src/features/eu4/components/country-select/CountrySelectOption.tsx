@@ -1,5 +1,5 @@
 import React from "react";
-import { Space, Select } from "antd";
+import { Select } from "antd";
 import { FlagAvatarCore } from "@/features/eu4/components/avatars";
 import { EnhancedCountryInfo } from "@/features/eu4/types/models";
 const { Option } = Select;
@@ -16,10 +16,10 @@ export const CountrySelectOption = ({
       label={`${tag} - ${name}`}
       searchlabel={`${tag} - ${name} - ${normalizedName}`.toLowerCase()}
     >
-      <Space>
+      <div className="flex items-center space-x-2">
         <FlagAvatarCore tag={tag} />
         <span>{`${tag} - ${name}`}</span>
-      </Space>
+      </div>
     </Option>
   );
 };
