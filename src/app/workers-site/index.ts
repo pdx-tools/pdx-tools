@@ -66,7 +66,7 @@ async function fetchS3(event: FetchEvent, saveId: string) {
     url.hostname = AWS_S3_HOST;
 
     // For minio to avoid setting up virtual host configuration
-    if (AWS_S3_BUCKET) {
+    if (typeof AWS_S3_BUCKET !== "undefined") {
       url.pathname = `/${AWS_S3_BUCKET}/${saveId}`;
     } else {
       url.pathname = `/${saveId}`;
