@@ -18,7 +18,6 @@ interface AchievementsTableProps {
 }
 
 export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
-
   const columns = [
     {
       title: "Name",
@@ -34,7 +33,9 @@ export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
                 {name}
               </Link>
             </span>
-            <span className="hidden md:block">{record.achievement.description}</span>
+            <span className="hidden md:block">
+              {record.achievement.description}
+            </span>
           </div>
         </div>
       ),

@@ -5,32 +5,23 @@ import { AppSvg } from "../icons/AppIcon";
 import { CoreMenu } from "./CoreMenu";
 import { MobileMenu } from "./MobileMenu";
 import { AnnouncementBar } from "./AnnouncementBar";
-import { useBreakpoint } from "@/hooks/useBreakpoint";
 const { Header } = Layout;
 
 const HeaderMenu = () => {
-  const isMd = useBreakpoint("md");
-
-  if (isMd) {
-    return <CoreMenu mode="horizontal" />;
-  } else {
-    return <MobileMenu />;
-  }
+  return (
+    <>
+      <CoreMenu mode="horizontal" className="hidden md:flex" />
+      <MobileMenu />
+    </>
+  );
 };
-
-interface AppHeaderProps {
-  disabled?: boolean;
-}
 
 export const CurrentAnnouncement: (() => React.ReactElement) | undefined =
   undefined as unknown as (() => React.ReactElement) | undefined;
 
-export const AppHeader = ({ disabled = false }: AppHeaderProps) => {
+export const AppHeader = () => {
   return (
-    <div
-      className="flex flex-col"
-      style={{ display: disabled ? "none" : "flex" }}
-    >
+    <div className="flex flex-col">
       {CurrentAnnouncement && (
         <AnnouncementBar>
           <CurrentAnnouncement />

@@ -1,12 +1,8 @@
 import React, { useCallback } from "react";
 import { CountryMatcher, LocalizedTag } from "@/features/eu4/types/models";
-import { WorkerClient, useWorkerOnSave } from "@/features/engine";
+import { useEu4Worker } from "@/features/eu4/worker";
 
 type Action =
-  | {
-      kind: "set-countries";
-      countries: LocalizedTag[];
-    }
   | {
       kind: "set-matcher";
       matcher: CountryMatcher;
@@ -19,12 +15,11 @@ type Dispatch = (action: Action) => void;
 
 type CountryFilterState = {
   matcher: CountryMatcher;
-  countries: LocalizedTag[];
 };
 
 interface CountryFilterContextData {
   dispatch: Dispatch;
-  state: CountryFilterState;
+  state: CountryFilterState & { countries: LocalizedTag[] };
 }
 
 const CountryFilterContext = React.createContext<
@@ -36,12 +31,6 @@ const countryFilterReducer = (
   action: Action
 ): CountryFilterState => {
   switch (action.kind) {
-    case "set-countries": {
-      return {
-        ...state,
-        countries: action.countries,
-      };
-    }
     case "set-matcher": {
       return {
         ...state,
@@ -88,20 +77,16 @@ export const CountryFilterProvider = ({
 }: CountryFilterProvider) => {
   const [state, dispatch] = React.useReducer(countryFilterReducer, {
     matcher: initialValues,
-    countries: [],
   });
 
-  const matchingCountries = useCallback(
-    async (worker: WorkerClient) => {
-      const countries = await worker.eu4MatchingCountries(state.matcher);
-
-      dispatch({ kind: "set-countries", countries });
-    },
-    [state.matcher, dispatch]
+  const { data = [] } = useEu4Worker(
+    useCallback(
+      (worker) => worker.eu4MatchingCountries(state.matcher),
+      [state.matcher]
+    )
   );
-  useWorkerOnSave(matchingCountries);
 
-  const value = { state, dispatch };
+  const value = { state: { ...state, countries: data }, dispatch };
   return (
     <CountryFilterContext.Provider value={value}>
       {children}

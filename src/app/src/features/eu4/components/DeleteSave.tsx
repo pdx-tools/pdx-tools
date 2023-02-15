@@ -3,7 +3,7 @@ import { Modal, Button } from "antd";
 import type { ButtonProps } from "antd/lib/button";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { useRouter } from "next/router";
-import { appApi } from "@/services/appApi";
+import { useSaveDeletion } from "@/services/appApi";
 const { confirm } = Modal;
 
 interface DeleteSaveProps {
@@ -14,7 +14,7 @@ interface DeleteSaveProps {
 
 export const DeleteSave = ({ saveId, type, redirect }: DeleteSaveProps) => {
   const router = useRouter();
-  const [trigger] = appApi.endpoints.deleteSave.useMutation();
+  const saveDeletion = useSaveDeletion(saveId);
   const showDeleteConfirm = () => {
     confirm({
       title: "Are you sure this save should be deleted?",
@@ -25,7 +25,7 @@ export const DeleteSave = ({ saveId, type, redirect }: DeleteSaveProps) => {
       okType: "danger",
       cancelText: "No",
       async onOk() {
-        await trigger(saveId);
+        await saveDeletion.mutateAsync();
         if (redirect && router) {
           router.back();
         }

@@ -9,8 +9,7 @@ import {
 import { VizModules } from "../../types/visualizations";
 import { CountryFilterButton } from "../country-filter";
 import { downloadData } from "@/lib/downloadData";
-import { useSelector } from "react-redux";
-import { selectAnalyzeFileName } from "@/features/engine";
+import { useSaveFilename } from "../../Eu4SaveProvider";
 
 const { useBreakpoint } = Grid;
 const { Option } = Select;
@@ -33,7 +32,7 @@ export const ChartDrawerTitle = ({
   const { md } = useBreakpoint();
   const isLoading = useIsLoading();
   const viz = useVisualization();
-  const filename = useSelector(selectAnalyzeFileName);
+  const filename = useSaveFilename();
 
   return (
     <div className="flex items-center gap-2">

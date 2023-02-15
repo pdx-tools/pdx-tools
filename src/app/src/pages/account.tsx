@@ -1,11 +1,11 @@
 import React from "react";
 import { HtmlHead } from "@/components/head";
-import { AppStructure } from "@/components/layout";
+import { Root, WebPage } from "@/components/layout";
 import { Account } from "@/features/account";
 
 export const AppAcount = () => {
   return (
-    <>
+    <Root>
       <HtmlHead>
         <title>Account Settings - PDX Tools</title>
         <meta
@@ -13,10 +13,10 @@ export const AppAcount = () => {
           content="Update PDX Tools account information"
         ></meta>
       </HtmlHead>
-      <AppStructure>
+      <WebPage>
         <Account />
-      </AppStructure>
-    </>
+      </WebPage>
+    </Root>
   );
 };
 

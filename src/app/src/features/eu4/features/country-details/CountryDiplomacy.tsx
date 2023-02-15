@@ -1,6 +1,6 @@
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
 import { useCallback, useMemo } from "react";
-import { FlagAvatar, FlagAvatarCore } from "../../components/avatars";
+import { FlagAvatarCore } from "../../components/avatars";
 import {
   CountryDetails,
   DiplomacyEntry,

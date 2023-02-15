@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { Divider, Switch, Table } from "antd";
 import { ColumnProps } from "antd/lib/table";
 import {
@@ -9,59 +9,54 @@ import { CountryExpenses } from "@/features/eu4/types/models";
 import { expenseLedgerAliases } from "../country-details/data";
 import { countryColumnFilter } from "./countryColumnFilter";
 import { formatFloat, formatInt } from "@/lib/format";
-import { useSelector } from "react-redux";
-import {
-  selectOneTimeLineItems,
-  selectPrefersPercents,
-  setPrefersPercents,
-  setShowOneTimeLineItems,
-} from "@/features/engine";
-import { useAnalysisWorker, WorkerClient } from "@/features/engine";
-import { useAppDispatch } from "@/lib/store";
+import { useAnalysisWorker } from "@/features/eu4/worker";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
-import { selectEu4CountryFilter } from "@/features/eu4/eu4Slice";
 import { createCsv } from "@/lib/csv";
 import { useTablePagination } from "@/features/ui-controls";
+import {
+  useEu4Actions,
+  useShowOnetimeLineItems,
+  useTagFilter,
+  useValueFormatPreference,
+} from "../../Eu4SaveProvider";
 
 type CountryExpensesRecord = CountryExpenses;
 
-interface BaseTableProps {
+type BaseTableProps = {
   monthlyExpenses: boolean;
-}
+};
 
 const mapping = expenseLedgerAliases();
 
 export const CountriesExpensesBaseTable = ({
   monthlyExpenses,
 }: BaseTableProps) => {
-  const dispatch = useAppDispatch();
+  const { setShowOneTimeLineItems, setPrefersPercents } = useEu4Actions();
   const isLoading = useIsLoading();
-  const [data, setData] = useState<CountryExpensesRecord[]>([]);
-  const doShowPercent = useSelector(selectPrefersPercents);
-  const showRecurringOnly = !useSelector(selectOneTimeLineItems);
-  const countryFilter = useSelector(selectEu4CountryFilter);
+  const doShowPercent = useValueFormatPreference() === "percent";
+  const showRecurringOnly = !useShowOnetimeLineItems();
+  const countryFilter = useTagFilter();
   const selectFilterRef = useRef(null);
   const visualizationDispatch = useVisualizationDispatch();
   const tablePagination = useTablePagination();
 
-  const cb = useCallback(
-    async (worker: WorkerClient) => {
-      const result = monthlyExpenses
-        ? await worker.eu4GetCountriesExpenses(
-            countryFilter,
-            doShowPercent,
-            showRecurringOnly
-          )
-        : await worker.eu4GetCountriesTotalExpenses(
-            countryFilter,
-            doShowPercent,
-            showRecurringOnly
-          );
-      setData(result);
-    },
-    [countryFilter, doShowPercent, showRecurringOnly, monthlyExpenses]
+  const { data = [] } = useAnalysisWorker(
+    useCallback(
+      (worker) =>
+        monthlyExpenses
+          ? worker.eu4GetCountriesExpenses(
+              countryFilter,
+              doShowPercent,
+              showRecurringOnly
+            )
+          : worker.eu4GetCountriesTotalExpenses(
+              countryFilter,
+              doShowPercent,
+              showRecurringOnly
+            ),
+      [countryFilter, doShowPercent, showRecurringOnly, monthlyExpenses]
+    )
   );
-  useAnalysisWorker(cb);
 
   const title = monthlyExpenses
     ? "Country Expenses Table"
@@ -133,12 +128,7 @@ export const CountriesExpensesBaseTable = ({
         <div className="flex items-center space-x-2">
           <span>Show as percentages:</span>
 
-          <Switch
-            checked={doShowPercent}
-            onChange={(checked: boolean) =>
-              dispatch(setPrefersPercents(checked))
-            }
-          />
+          <Switch checked={doShowPercent} onChange={setPrefersPercents} />
         </div>
 
         <Divider type="vertical" />
@@ -146,9 +136,7 @@ export const CountriesExpensesBaseTable = ({
           <span>Recurring expenses only:</span>
           <Switch
             checked={showRecurringOnly}
-            onChange={(checked: boolean) =>
-              dispatch(setShowOneTimeLineItems(!checked))
-            }
+            onChange={(checked: boolean) => setShowOneTimeLineItems(!checked)}
           />
         </div>
       </div>
@@ -164,9 +152,3 @@ export const CountriesExpensesBaseTable = ({
     </div>
   );
 };
-function visualizationDispatch(arg0: {
-  type: string;
-  getCsvData: () => Promise<any>;
-}) {
-  throw new Error("Function not implemented.");
-}

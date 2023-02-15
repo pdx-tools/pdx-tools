@@ -1,11 +1,9 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { EyeOutlined } from "@ant-design/icons";
 import { Button, Card, Descriptions, Divider, List, Tooltip } from "antd";
 import Link from "next/link";
-import { useSelector } from "react-redux";
 import { TimeAgo } from "@/components/TimeAgo";
 import { difficultyText } from "@/lib/difficulty";
-import { useAppSelector } from "@/lib/store";
 import { DlcList } from "@/features/eu4/components/dlc-list";
 import { TagTransition } from "@/features/eu4/types/models";
 import {
@@ -13,28 +11,21 @@ import {
   FlagAvatar,
   FlagAvatarCore,
 } from "@/features/eu4/components/avatars";
-import { selectSession } from "@/features/account/sessionSlice";
-import {
-  getEu4Canvas,
-  getWasmWorker,
-  useComputeOnSave,
-  useEu4CanvasRef,
-  useWasmWorker,
-  WorkerClient,
-} from "@/features/engine";
 import { Aar } from "./Aar";
-import {
-  initialEu4CountryFilter,
-  selectEu4MapColorPayload,
-  useEu4Achievements,
-  useEu4Meta,
-  useEu4ModList,
-} from "@/features/eu4/eu4Slice";
 import { FlipBook, StringFlipBook } from "../../components/flip-book";
 import { ModList } from "./ModList";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
-import { MapPayload } from "../../types/map";
-import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { useEu4Worker, Eu4Worker } from "@/features/eu4/worker";
+import { useIsPrivileged } from "@/services/appApi";
+import {
+  emptyEu4CountryFilter,
+  useAchievements,
+  useEu4Actions,
+  useEu4Meta,
+  useEu4ModList,
+  useServerSaveFile,
+  useTagFilter,
+} from "../../Eu4SaveProvider";
 
 const TagDescription = (play: TagTransition) => {
   return (
@@ -46,54 +37,32 @@ const TagDescription = (play: TagTransition) => {
   );
 };
 
-const playerHistories = (worker: WorkerClient) =>
-  worker.eu4GetPlayerHistories();
+const playerHistoriesFn = (worker: Eu4Worker) => worker.eu4GetPlayerHistories();
+
 export const InfoDrawer = () => {
-  const workerRef = useWasmWorker();
-  const eu4CanvasRef = useEu4CanvasRef();
   const mods = useEu4ModList();
-  const isLg = useBreakpoint("lg");
-  const session = useSelector(selectSession);
   const meta = useEu4Meta();
-  const achievements = useEu4Achievements();
-  const serverFile = useAppSelector((state) => state.eu4.serverSaveFile);
-  const { data } = useComputeOnSave(playerHistories);
+  const achievements = useAchievements();
+  const serverFile = useServerSaveFile();
+  const playerHistories = useEu4Worker(playerHistoriesFn);
   const sideBarContainerRef = useSideBarContainerRef();
-  const mapPayload = useSelector(selectEu4MapColorPayload);
-  const initialMapPayload = useRef(mapPayload);
   const [filteredTag, setFilteredTag] = useState<string | undefined>(undefined);
+  const [initialTagFilter] = useState(useTagFilter());
+  const { updateTagFilter: updateTagFilter } = useEu4Actions();
+  const isPrivileged = useIsPrivileged(serverFile?.user_id);
 
   const visibleTag = async (tag: string) => {
-    const payload =
-      tag == filteredTag
-        ? initialMapPayload.current
-        : ({
-            kind: "political",
-            date: null,
-            tagFilter: {
-              ...initialEu4CountryFilter,
-              players: "none",
-              ai: "none",
-              include: [tag],
-              includeSubjects: true,
-            },
-            showSecondaryColor: false,
-            paintSubjectInOverlordHue: false,
-          } as MapPayload);
-
-    const worker = getWasmWorker(workerRef);
-    const eu4Canvas = getEu4Canvas(eu4CanvasRef);
-
-    const [primary, secondary] = await worker.eu4MapColors(payload);
-    eu4Canvas.map?.updateProvinceColors(primary, secondary);
-    eu4Canvas.redrawMapImage();
-    setFilteredTag(tag == filteredTag ? undefined : tag);
+    if (tag === filteredTag) {
+      updateTagFilter(initialTagFilter);
+      setFilteredTag(undefined);
+    } else {
+      updateTagFilter({
+        ...emptyEu4CountryFilter,
+        include: [tag],
+      });
+      setFilteredTag(tag);
+    }
   };
-
-  const isPrivileged =
-    session.kind == "user" &&
-    (session.user.account == "admin" ||
-      session.user.user_id == serverFile?.user_id);
 
   const version = meta.savegame_version;
   const patch = `${version.first}.${version.second}.${version.third}.${version.fourth}`;
@@ -137,14 +106,14 @@ export const InfoDrawer = () => {
         <Descriptions.Item label={`Mods ${mods.length}`}>
           <ModList />
         </Descriptions.Item>
-        <Descriptions.Item label="DLC" span={isLg ? 2 : 1}>
+        <Descriptions.Item label="DLC">
           <DlcList dlc_enabled={meta.dlc} />
         </Descriptions.Item>
       </Descriptions>
       <Divider orientation="left">Countries</Divider>
       <List
         grid={{ gutter: 16, xs: 1, sm: 1, md: 2, lg: 2, xl: 2, xxl: 2 }}
-        dataSource={data}
+        dataSource={playerHistories.data}
         renderItem={(item) => (
           <List.Item key={item.latest}>
             <Card

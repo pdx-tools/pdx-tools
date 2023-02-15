@@ -1,21 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Button, Divider, Drawer, Grid, Tabs } from "antd";
-import { useDispatch, useSelector } from "react-redux";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   QuestionCircleOutlined,
 } from "@ant-design/icons";
-import {
-  selectEu4SelectedTag,
-  setEu4SelectedTag,
-} from "@/features/eu4/eu4Slice";
-import { useWorkerOnSave, WorkerClient } from "@/features/engine";
-import {
-  CountryDetails,
-  GreatAdvisor,
-  RunningMonarch,
-} from "../../types/models";
 import { FinancialHelp } from "../charts/FinancialHelp";
 import { CountryBudget } from "./CountryBudget";
 import { CountryBuildingCount } from "./CountryBuildingCount";
@@ -25,12 +14,17 @@ import { CountryReligions } from "./CountryReligions";
 import { CountryRulersTable } from "./CountryRulersTable";
 import { GreatAdvisorsList } from "./GreatAdvisorsList";
 import { CountrySelect } from "../../components/country-select";
-import { usePanTag } from "../../hooks/usePanTag";
-import { useSideBarContainerRef } from "../../components/SideBarContainer";
+import {
+  closeDrawerPropagation,
+  useSideBarContainerRef,
+} from "../../components/SideBarContainer";
 import { CountryLeaders } from "./CountryLeaders";
 import { CountryCultures } from "./CountryCultures";
 import { CountryDiplomacy } from "./CountryDiplomacy";
 import { CountryStates } from "./CountryStates";
+import { useEu4Worker } from "@/features/eu4/worker";
+import { useSideBarPanTag } from "../../hooks/useSideBarPanTag";
+import { useEu4Actions, useSelectedTag } from "../../Eu4SaveProvider";
 
 const { TabPane } = Tabs;
 const { useBreakpoint } = Grid;
@@ -46,29 +40,24 @@ export const CountryDetailsDrawer = ({
 }: CountryDetailsProps) => {
   const { md } = useBreakpoint();
   const [expanded, setExpanded] = useState(false);
-  const selectedTag = useSelector(selectEu4SelectedTag);
-  const dispatch = useDispatch();
+  const selectedTag = useSelectedTag();
+  const { setSelectedTag } = useEu4Actions();
   const [helpVisible, setHelpVisible] = useState(false);
-  const [country, setCountry] = useState<CountryDetails>();
-  const [rulers, setRulers] = useState<RunningMonarch[]>([]);
-  const [greatAdvisors, setGreatAdvisors] = useState<GreatAdvisor[]>([]);
   const sideBarContainerRef = useSideBarContainerRef();
-  const panTag = usePanTag();
+  const panTag = useSideBarPanTag();
 
-  const cb = useCallback(
-    async (worker: WorkerClient) => {
-      const country = worker.eu4GetCountry(selectedTag);
-      const rulers = worker.eu4GetCountryRulers(selectedTag);
-      const greatAdvisors = worker.eu4GetCountryGreatAdvisors(selectedTag);
-
-      setCountry(await country);
-      setRulers(await rulers);
-      setGreatAdvisors(await greatAdvisors);
-    },
-    [selectedTag]
-  );
-
-  useWorkerOnSave(cb);
+  const { data: [country, rulers, greatAdvisors] = [undefined, [], []] } =
+    useEu4Worker(
+      useCallback(
+        (worker) =>
+          Promise.all([
+            worker.eu4GetCountry(selectedTag),
+            worker.eu4GetCountryRulers(selectedTag),
+            worker.eu4GetCountryGreatAdvisors(selectedTag),
+          ]),
+        [selectedTag]
+      )
+    );
 
   return (
     <Drawer
@@ -77,7 +66,7 @@ export const CountryDetailsDrawer = ({
       mask={false}
       push={false}
       maskClosable={false}
-      onClose={closeDrawer}
+      onClose={closeDrawerPropagation(closeDrawer, visible)}
       width={!expanded ? "min(800px, 100%)" : "100%"}
       title={
         <div className="flex items-center gap-2">
@@ -93,7 +82,7 @@ export const CountryDetailsDrawer = ({
             value={selectedTag}
             className="w-64"
             onChange={(x: any) => {
-              dispatch(setEu4SelectedTag(x as string));
+              setSelectedTag(x as string);
               panTag(x as string);
             }}
           />

@@ -1,8 +1,8 @@
-import { useWorkerOnSave, WorkerClient } from "@/features/engine";
+import { useEu4Worker } from "@/features/eu4/worker";
 import { useTablePagination } from "@/features/ui-controls";
 import { Tag } from "antd";
 import Table, { ColumnGroupType, ColumnType } from "antd/lib/table";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { CountryDetails, CountryLeader } from "../../types/models";
 
 export interface CountryLeadersProps {
@@ -11,16 +11,12 @@ export interface CountryLeadersProps {
 
 export const CountryLeaders = ({ details }: CountryLeadersProps) => {
   const tablePagination = useTablePagination();
-  const [data, setData] = useState<CountryLeader[]>([]);
-  const cb = useCallback(
-    async (worker: WorkerClient) => {
-      const result = await worker.eu4GetCountryLeaders(details.tag);
-      setData(result);
-    },
-    [details.tag]
+  const { data = [] } = useEu4Worker(
+    useCallback(
+      (worker) => worker.eu4GetCountryLeaders(details.tag),
+      [details.tag]
+    )
   );
-
-  useWorkerOnSave(cb);
 
   const columns: (
     | ColumnGroupType<CountryLeader>

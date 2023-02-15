@@ -1,12 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useSelector } from "react-redux";
+import React, { useCallback, useEffect, useMemo } from "react";
 import type { HeatmapConfig } from "@ant-design/charts";
 import { formatInt } from "@/lib/format";
 import { Heatmap, useVisualizationDispatch } from "@/components/viz";
-import { HealthDatum } from "@/features/eu4/types/models";
-import { selectEu4CountryFilter } from "@/features/eu4/eu4Slice";
-import { WorkerClient, useAnalysisWorker } from "@/features/engine";
+import { useAnalysisWorker } from "@/features/eu4/worker";
 import { createCsv } from "@/lib/csv";
+import { useTagFilter } from "../../Eu4SaveProvider";
 
 const healthCategories = [
   "prestige",
@@ -25,9 +23,15 @@ const healthCategories = [
 ];
 
 export const HealthGrid = () => {
-  const [data, setData] = useState<HealthDatum[]>([]);
-  const countryFilter = useSelector(selectEu4CountryFilter);
+  const countryFilter = useTagFilter();
   const visualizationDispatch = useVisualizationDispatch();
+
+  const { data = [] } = useAnalysisWorker(
+    useCallback(
+      (worker) => worker.eu4GetHealth(countryFilter).then((x) => x.data),
+      [countryFilter]
+    )
+  );
 
   useEffect(() => {
     visualizationDispatch({
@@ -50,14 +54,6 @@ export const HealthGrid = () => {
     });
   }, [data, visualizationDispatch]);
 
-  const cb = useCallback(
-    async (worker: WorkerClient) => {
-      const health = await worker.eu4GetHealth(countryFilter);
-      setData(health.data);
-    },
-    [countryFilter]
-  );
-
   const countryCount = useMemo(() => {
     const countSet = new Set();
     for (let i = 0; i < data.length; i++) {
@@ -66,8 +62,6 @@ export const HealthGrid = () => {
     }
     return countSet.size;
   }, [data]);
-
-  useAnalysisWorker(cb);
 
   const config: HeatmapConfig = {
     data,

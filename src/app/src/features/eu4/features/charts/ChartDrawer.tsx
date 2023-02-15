@@ -4,7 +4,10 @@ import { VizRenderer } from "./VizRenderer";
 import { DisplayLimitAlert } from "./DisplayLimitAlert";
 import { VizModules } from "../../types/visualizations";
 import { Help } from "./Help";
-import { useSideBarContainerRef } from "../../components/SideBarContainer";
+import {
+  closeDrawerPropagation,
+  useSideBarContainerRef,
+} from "../../components/SideBarContainer";
 import { ChartDrawerTitle } from "./ChartDrawerTitle";
 
 interface ChartDrawerProps {
@@ -43,7 +46,7 @@ export const ChartDrawer = ({ visible, closeDrawer }: ChartDrawerProps) => {
       mask={false}
       maskClosable={false}
       push={!helpVisible}
-      onClose={closeDrawer}
+      onClose={closeDrawerPropagation(closeDrawer, visible)}
       width={!expanded ? "min(800px, 100%)" : "100%"}
       title={
         <ChartDrawerTitle

@@ -3,14 +3,14 @@ import { AppProps } from "next/app";
 import "antd/dist/antd.css";
 import "@/styles/styles.css";
 import "@/styles/tailwind.css";
-import { Provider } from "react-redux";
-import { store } from "@/lib/store";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/services/appApi";
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
-    <Provider store={store}>
+    <QueryClientProvider client={queryClient}>
       <Component {...pageProps} />
-    </Provider>
+    </QueryClientProvider>
   );
 }
 

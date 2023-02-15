@@ -1,5 +1,5 @@
-import { nanoid } from "@reduxjs/toolkit";
 import { NextApiRequest, NextApiResponse } from "next";
+import { nanoid } from "nanoid";
 import { db } from "@/server-lib/db";
 import { getEnv } from "@/server-lib/env";
 import { ValidationError } from "@/server-lib/errors";

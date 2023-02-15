@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from "react";
 import { Button, Form, Input } from "antd";
 import { EditOutlined } from "@ant-design/icons";
-import { appApi } from "@/services/appApi";
-import { useAppSelector } from "@/lib/store";
+import { useServerSaveFile } from "../../Eu4SaveProvider";
+import { useSavePatch } from "@/services/appApi";
 
 const { TextArea } = Input;
 
@@ -15,8 +15,8 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
   const [isEditing, setIsEditing] = useState(
     editMode == "always" || !defaultValue
   );
-  const [triggerPatchSave] = appApi.endpoints.patchSave.useMutation();
-  const serverFile = useAppSelector((state) => state.eu4.serverSaveFile);
+  const patchSave = useSavePatch();
+  const serverFile = useServerSaveFile();
 
   const handleSubmit = useCallback(
     (values: { aar: string }) => {
@@ -25,9 +25,9 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
       if (id === undefined) {
         throw new Error("server file id can't be undefined");
       }
-      triggerPatchSave({ id, aar: values.aar });
+      patchSave.mutate({ id, aar: values.aar });
     },
-    [serverFile, triggerPatchSave]
+    [serverFile, patchSave]
   );
 
   return (

@@ -1,16 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Image from "next/image";
-import map from "./map.webp";
-import graphs from "./graphs.png";
 import icons from "./icons.png";
 import achievement from "./achievement.png";
 import melted from "./melted.webp";
 import games from "./games.webp";
-import discover from "./discover.png";
 import { HeroFileInput } from "./HeroFileInput";
-import { useSelector } from "react-redux";
-import { selectEngineError } from "@/features/engine";
-import { Alert } from "antd";
 import Link from "next/link";
 import { BrowserCheck } from "./BrowserCheck";
 import {
@@ -21,6 +15,8 @@ import {
 } from "@/components/icons";
 import classes from "./Home.module.css";
 import { ImageGallery } from "./ImageGallery";
+import { useRouter } from "next/router";
+import { useEngineActions } from "@/features/engine";
 
 interface HomeProps {
   subtitle?: React.ReactNode;
@@ -37,24 +33,28 @@ const computeWaveBackground = ([h, s, l]: number[]) => {
 };
 
 const useWaveBackground = ([h, s, l]: number[]) => {
-  const [waveBackground, setWaveBackground] = useState<string | undefined>();
-
-  // For some reason next.js has a hard time running the compute wave background
-  // so we save the calculation for client side.
-  useEffect(() => {
-    setWaveBackground(computeWaveBackground([h, s, l]));
-  }, [h, s, l]);
-
-  return waveBackground;
+  return computeWaveBackground([h, s, l]);
 };
 
 export const Home = ({ subtitle }: HomeProps) => {
   const secondaryColor: [number, number, number] = [177, 100, 13.7];
   const waveBackground = useWaveBackground(secondaryColor);
-  const engineError = useSelector(selectEngineError);
+
+  const router = useRouter();
+  const { resetSaveAnalysis } = useEngineActions();
+  useEffect(() => {
+    resetSaveAnalysis();
+
+    // To ensure that when someone clicks on "PDX Tools" in app header
+    // that analysis is reset
+    router.events.on("routeChangeComplete", resetSaveAnalysis);
+    return () => {
+      router.events.off("routeChangeComplete", resetSaveAnalysis);
+    };
+  }, [resetSaveAnalysis, router.events]);
 
   return (
-    <div className="h-screen w-full">
+    <div className="w-full">
       <div
         className={`${classes.row} grid justify-center gap-8 bg-bottom bg-repeat-x px-5 py-12 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 lg:grid-cols-2`}
         style={{ backgroundImage: waveBackground }}
@@ -96,11 +96,6 @@ export const Home = ({ subtitle }: HomeProps) => {
           <div className="gap flex w-full max-w-xl flex-col">
             <HeroFileInput />
             {subtitle}
-            {engineError && (
-              <div className="mt-6 justify-start">
-                <Alert type="error" closable={true} message={engineError} />
-              </div>
-            )}
           </div>
         </section>
       </div>

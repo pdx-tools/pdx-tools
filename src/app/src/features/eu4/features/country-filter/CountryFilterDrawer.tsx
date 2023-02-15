@@ -1,21 +1,20 @@
 import React from "react";
-import { useSelector } from "react-redux";
 import { Drawer } from "antd";
 import { CountryFilterDrawerContent } from "./CountryFilterDrawerContent";
 import { CountryFilterProvider } from "./countryFilterContext";
-import { selectEu4CountryFilter } from "@/features/eu4/eu4Slice";
 import { HelpTooltip } from "@/components/HelpTooltip";
+import { useTagFilter } from "../../Eu4SaveProvider";
 
-interface CountryFilterDrawerProps {
+type CountryFilterDrawerProps = {
   visible: boolean;
   closeDrawer: () => void;
-}
+};
 
 export const CountryFilterDrawer = ({
   visible,
   closeDrawer,
 }: CountryFilterDrawerProps) => {
-  const countryFilter = useSelector(selectEu4CountryFilter);
+  const countryFilter = useTagFilter();
 
   return (
     <Drawer

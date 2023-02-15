@@ -7,8 +7,10 @@ import {
 import { GLResources } from "./glResources";
 import { ProvinceFinder } from "./ProvinceFinder";
 import { debounce } from "./debounce";
-import { compile } from "./shaderCompiler";
+import { startCompilation } from "./shaderCompiler";
 import { OnScreenWegblContext } from "./types";
+import { MapShader } from "./mapShader";
+import { XbrShader } from "./xbrShader";
 
 async function fetchColorData(kind: string) {
   const raw = await fetch(`assets/game/eu4/data/color-${kind}-data.bin`).then(
@@ -44,7 +46,7 @@ async function main() {
   ]);
 
   const staticResourcesPromise = loadStaticResources();
-  const linkedPrograms = compile(gl, await shaderPromise);
+  const linkedPrograms = startCompilation(gl, await shaderPromise);
 
   const [primaryPoliticalColors, secondaryPoliticalColors] =
     await fetchColorData("political");
@@ -57,19 +59,25 @@ async function main() {
     await fetchColorData("religion-player");
 
   const staticResources = await staticResourcesPromise;
-  const glResources = GLResources.create(
+  const glResourcesInit = GLResources.create(
     gl,
     staticResources,
-    linkedPrograms,
     primaryPoliticalColors
   );
+  const [mapProgram, xbrProgram] = await linkedPrograms.compilationCompletion();
+  const glResources = new GLResources(
+    ...glResourcesInit,
+    MapShader.create(gl, mapProgram),
+    XbrShader.create(gl, xbrProgram)
+  );
+
   const finder = new ProvinceFinder(
     staticResources.provinces1,
     staticResources.provinces2,
     staticResources.provincesUniqueColor,
     new Uint16Array(provinceUniqueIndex)
   );
-  const map = WebGLMap.create(await glResources, finder);
+  const map = WebGLMap.create(glResources, finder);
   map.updateTerrainTextures(await loadTerrainResources());
   map.onProvinceSelection = (e) => (selectedEl.textContent = e.toString());
   map.onProvinceHover = (e) => (hoveredEl.textContent = e.toString());
@@ -265,6 +273,7 @@ async function main() {
 
   function resizeHandler() {
     map.resize(container.clientWidth, container.clientHeight);
+    map.redrawViewport();
   }
 
   const politicalMapModeEl =

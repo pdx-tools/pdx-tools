@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { StopOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Descriptions } from "antd";
 import { formatFloat, formatInt } from "@/lib/format";

@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import type { BarConfig } from "@ant-design/charts";
-import { useAnalysisWorker, WorkerClient } from "@/features/engine";
-import { useSelector } from "react-redux";
-import { selectEu4CountryFilter, useEu4Meta } from "@/features/eu4/eu4Slice";
+import { useAnalysisWorker, Eu4Worker } from "@/features/eu4/worker";
 import { Bar, useVisualizationDispatch } from "@/components/viz";
 import { createCsv } from "@/lib/csv";
+import { useEu4Meta, useTagFilter } from "../../Eu4SaveProvider";
 
 interface IdeaGroupDatum {
   name: string;
@@ -12,13 +11,12 @@ interface IdeaGroupDatum {
   count: number;
 }
 export const IdeaGroupsChart = () => {
-  const [ideaGroups, setIdeaGroups] = useState<IdeaGroupDatum[]>([]);
-  const countryFilter = useSelector(selectEu4CountryFilter);
+  const countryFilter = useTagFilter();
   const visualizationDispatch = useVisualizationDispatch();
   const meta = useEu4Meta();
 
   const cb = useCallback(
-    async (worker: WorkerClient) => {
+    async (worker: Eu4Worker) => {
       const rawIdeas = await worker.eu4GetNationIdeaGroups(countryFilter);
       const seedIdeas = [
         "aristocracy",
@@ -78,13 +76,12 @@ export const IdeaGroupsChart = () => {
         });
       }
 
-      const result = data.sort((a, b) => a.name.localeCompare(b.name));
-      setIdeaGroups(result);
+      return data.sort((a, b) => a.name.localeCompare(b.name));
     },
     [countryFilter, meta.savegame_version.second]
   );
 
-  useAnalysisWorker(cb);
+  const { data: ideaGroups = [] } = useAnalysisWorker(cb);
 
   useEffect(() => {
     visualizationDispatch({

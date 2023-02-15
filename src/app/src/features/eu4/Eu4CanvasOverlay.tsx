@@ -7,26 +7,29 @@ import {
   FlagOutlined,
   MenuOutlined,
 } from "@ant-design/icons";
-import { useSelector } from "react-redux";
 import { HeaderSideBarButton } from "./components/HeaderSideBarButton";
 import { SaveWarnings } from "./components/SaveWarnings";
 import { MapModeSideBar } from "./components/map-modes/MapModeBar";
-import { useAppSelector } from "@/lib/store";
 import { InfoSideBarButton } from "@/features/eu4/features/info";
 import { ChartSideBarButton } from "@/features/eu4/features/charts";
 import { CountrySideBarButton } from "@/features/eu4/features/country-details";
 import { ProvinceSelectListener } from "./features/map/ProvinceSelectListener";
 import { UploadSideBarButton } from "@/features/eu4/features/upload";
 import { MapSettingsSideBarButton } from "@/features/eu4/features/settings";
-import { selectModuleDrawn } from "../engine";
 import { MapTip } from "./features/map/MapTip";
 import { MapZoomSideBar } from "./components/zoom";
 import { DateOverlay } from "./components/DateOverlay";
+import Head from "next/head";
+import {
+  useEu4Meta,
+  useIsServerSaveFile,
+  useSaveFilename,
+} from "./Eu4SaveProvider";
 
 export const Eu4CanvasOverlay = () => {
-  const hasDrawn = useSelector(selectModuleDrawn);
-  const serverFile = useAppSelector((state) => state.eu4.serverSaveFile);
-
+  const serverFile = useIsServerSaveFile();
+  const meta = useEu4Meta();
+  const filename = useSaveFilename();
   const buttons = [
     (i: number) => (
       <HeaderSideBarButton key="header" index={i}>
@@ -64,12 +67,15 @@ export const Eu4CanvasOverlay = () => {
     ),
   ];
 
-  if (!hasDrawn) {
-    return null;
-  }
-
   return (
     <>
+      <Head>
+        <title>{`${filename.replace(".eu4", "")} (${meta.date}) - EU4 (${
+          meta.savegame_version.first
+        }.${meta.savegame_version.second}.${
+          meta.savegame_version.third
+        }) - PDX Tools`}</title>
+      </Head>
       <MapTip />
       <DateOverlay />
       <div className="fixed right-0 touch-none select-none">

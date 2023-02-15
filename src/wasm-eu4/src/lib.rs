@@ -3095,7 +3095,7 @@ pub fn _initial_save(
         };
 
         let primary_color = &mut primary[offset..offset + 4];
-        primary_color.copy_from_slice(&[255, 255, 255, 0]);
+        primary_color.copy_from_slice(&[94, 94, 94, 128]);
         if let Some(owner_tag) = prov.owner.as_ref() {
             if let Some(known_color) = country_colors.get(owner_tag) {
                 primary_color.copy_from_slice(known_color);

@@ -1,18 +1,11 @@
-import { getEu4Map, useEu4CanvasRef } from "@/features/engine";
-import { useCallback } from "react";
+import { useEu4Actions } from "../../Eu4SaveProvider";
 import { SideBarButton, SideBarButtonProps } from "../SideBarButton";
 
 export const ZoomInSideBarButton = ({
   children,
   ...props
 }: SideBarButtonProps) => {
-  const eu4CanvasRef = useEu4CanvasRef();
-
-  const zoomIn = useCallback(() => {
-    const eu4Map = getEu4Map(eu4CanvasRef);
-    eu4Map.zoomIn();
-    eu4Map.redrawViewport();
-  }, [eu4CanvasRef]);
+  const { zoomIn } = useEu4Actions();
 
   return (
     <SideBarButton

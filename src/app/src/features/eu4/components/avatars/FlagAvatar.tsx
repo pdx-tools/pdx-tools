@@ -1,7 +1,7 @@
 import React from "react";
 import { Avatar, Tooltip } from "antd";
-import { usePanTag } from "../../hooks/usePanTag";
 import { useInEu4Analysis } from "../SideBarContainer";
+import { useSideBarPanTag } from "../../hooks/useSideBarPanTag";
 
 type AvatarProps = React.ComponentProps<typeof Avatar>;
 interface FlagAvatarCoreProps {
@@ -49,7 +49,7 @@ const InGameFlagAvatar = ({
   size,
   condensed = false,
 }: FlagAvatarProps) => {
-  const panTag = usePanTag();
+  const panTag = useSideBarPanTag();
   if (!condensed) {
     return (
       <Tooltip title={tag}>

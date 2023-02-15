@@ -25,6 +25,10 @@ export class ProvinceFinder {
   }
 
   findProvinceId(x: number, y: number) {
+    if (isNaN(x) || isNaN(y)) {
+      return undefined;
+    }
+
     const pixels = this.ctx.getImageData(x, y, 1, 1);
     const pixel: [number, number, number] = [
       pixels.data[0],

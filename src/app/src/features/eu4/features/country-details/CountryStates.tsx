@@ -1,4 +1,3 @@
-import { useWorkerOnSave, WorkerClient } from "@/features/engine";
 import { useTablePagination } from "@/features/ui-controls";
 import { formatFloat, formatInt } from "@/lib/format";
 import { Tooltip } from "antd";
@@ -9,8 +8,9 @@ import {
   CaretDownFilled,
   MinusOutlined,
 } from "@ant-design/icons";
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { CountryDetails, CountryStateDetails } from "../../types/models";
+import { useEu4Worker } from "@/features/eu4/worker";
 
 export interface CountryStatesProps {
   details: CountryDetails;
@@ -101,7 +101,7 @@ const CountryStateDetails = ({ data }: { data: CountryStateDetails[] }) => {
           <span className="grow">{formatInt(x.prosperity)}</span>
           {x.prosperity_mode === true && <CaretUpFilled />}
           {x.prosperity_mode === false && <CaretDownFilled />}
-          {x.prosperity_mode === null && <MinusOutlined />}
+          {x.prosperity_mode === undefined && <MinusOutlined />}
         </div>
       ),
     },
@@ -121,16 +121,11 @@ const CountryStateDetails = ({ data }: { data: CountryStateDetails[] }) => {
 const CountryStateImpl = React.memo(CountryStateDetails);
 
 export const CountryStates = ({ details }: CountryStatesProps) => {
-  const [data, setData] = useState<CountryStateDetails[]>([]);
-  const cb = useCallback(
-    async (worker: WorkerClient) => {
-      const result = await worker.eu4GetCountryStates(details.tag);
-      setData(result);
-    },
-    [details.tag]
+  const { data = [] } = useEu4Worker(
+    useCallback(
+      (worker) => worker.eu4GetCountryStates(details.tag),
+      [details.tag]
+    )
   );
-
-  useWorkerOnSave(cb);
-
   return <CountryStateImpl data={data} />;
 };

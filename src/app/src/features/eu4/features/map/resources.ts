@@ -7,24 +7,20 @@ import {
 import type { OnScreenWegblContext, ShaderSource } from "../../../../map/types";
 import { glContextOptions, WebGLMap } from "../../../../map/map";
 import { MapOnlyControls } from "../../types/map";
-
-export interface Resources {
-  static: StaticResources;
-  provincesUniqueIndex: Uint16Array;
-}
+import { fetchOk } from "@/lib/fetch";
 
 export async function shaderUrls(): Promise<ShaderSource[]> {
   const promises = {
-    mapVertexShader: fetch(
+    mapVertexShader: fetchOk(
       require(`../../../../../../map/assets/shaders/map.vert`)
     ).then((x) => x.text()),
-    mapFargmentShader: fetch(
+    mapFargmentShader: fetchOk(
       require(`../../../../../../map/assets/shaders/map.frag`)
     ).then((x) => x.text()),
-    xbrVertexShader: fetch(
+    xbrVertexShader: fetchOk(
       require(`../../../../../../map/assets/shaders/xbr.vert`)
     ).then((x) => x.text()),
-    xbrFargmentShader: fetch(
+    xbrFargmentShader: fetchOk(
       require(`../../../../../../map/assets/shaders/xbr.frag`)
     ).then((x) => x.text()),
   };
@@ -75,7 +71,16 @@ export async function loadTerrainOverlayImages(
   };
 }
 
-export async function resourceUrls(version: string): Promise<Resources> {
+export async function fetchProvinceUniqueIndex(
+  version: string
+): Promise<Uint16Array> {
+  const url = resources[version] ?? resources[defaultVersion];
+  return fetchOk(url.provincesUniqueIndex)
+    .then((x) => x.arrayBuffer())
+    .then((x) => new Uint16Array(x));
+}
+
+export async function resourceUrls(version: string): Promise<StaticResources> {
   const url = resources[version] ?? resources[defaultVersion];
 
   const promises = {
@@ -84,24 +89,18 @@ export async function resourceUrls(version: string): Promise<Resources> {
     terrain1: loadImage(url.terrain1),
     terrain2: loadImage(url.terrain2),
     stripes: loadImage(url.stripes),
-    provincesUniqueColor: fetch(url.provincesUniqueColor)
+    provincesUniqueColor: fetchOk(url.provincesUniqueColor)
       .then((x) => x.arrayBuffer())
       .then((x) => new Uint8Array(x)),
-    provincesUniqueIndex: fetch(url.provincesUniqueIndex)
-      .then((x) => x.arrayBuffer())
-      .then((x) => new Uint16Array(x)),
   };
 
   return {
-    static: {
-      provinces1: await promises.provinces1,
-      provinces2: await promises.provinces2,
-      terrain1: await promises.terrain1,
-      terrain2: await promises.terrain2,
-      stripes: await promises.stripes,
-      provincesUniqueColor: await promises.provincesUniqueColor,
-    },
-    provincesUniqueIndex: await promises.provincesUniqueIndex,
+    provinces1: await promises.provinces1,
+    provinces2: await promises.provinces2,
+    terrain1: await promises.terrain1,
+    terrain2: await promises.terrain2,
+    stripes: await promises.stripes,
+    provincesUniqueColor: await promises.provincesUniqueColor,
   };
 }
 

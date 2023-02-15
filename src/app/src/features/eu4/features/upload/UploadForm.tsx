@@ -1,14 +1,13 @@
-import { selectSession } from "@/features/account";
+import { useProfileQuery } from "@/services/appApi";
 import { Button, Form, Input, Tooltip } from "antd";
-import { useSelector } from "react-redux";
 import { useFileUpload, useUploadProgress } from "./uploadContext";
 const { TextArea } = Input;
 
 export const UploadForm = () => {
   const [form] = Form.useForm();
   const fileUpload = useFileUpload();
-  const session = useSelector(selectSession);
   const progress = useUploadProgress();
+  const profileQuery = useProfileQuery();
 
   return (
     <Form form={form} layout="vertical" onFinish={fileUpload}>
@@ -26,7 +25,7 @@ export const UploadForm = () => {
         {/* The workaround to display a tooltip on a disabled button:
               https://github.com/react-component/tooltip/issues/18#issuecomment-650864750
           */}
-        {session.kind != "guest" ? (
+        {profileQuery.data && profileQuery.data.kind == "user" ? (
           <Button
             htmlType="submit"
             type="primary"

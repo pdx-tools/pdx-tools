@@ -1,27 +1,26 @@
 import React, { useState } from "react";
 import { Button, Tooltip } from "antd";
-import { selectAnalyzeFileName, useWasmWorker } from "@/features/engine";
-import { useSelector } from "react-redux";
 import { emitEvent } from "@/lib/plausible";
 import { downloadData } from "@/lib/downloadData";
+import { useIsMounted } from "@/hooks/useIsMounted";
+import { getEu4Worker } from "../../worker";
+import { useSaveFilename } from "../../Eu4SaveProvider";
 
 export const DownloadButton = () => {
   const [loading, setLoading] = useState(false);
-  const filename = useSelector(selectAnalyzeFileName);
-  const wasmWorker = useWasmWorker();
+  const filename = useSaveFilename();
+  const isMounted = useIsMounted();
 
   const download = async () => {
-    if (!wasmWorker.current) {
-      return;
-    }
-
     try {
       setLoading(true);
       emitEvent({ kind: "download", game: "eu4" });
-      const data = await wasmWorker.current.worker.eu4DownloadData();
+      const data = await getEu4Worker().eu4DownloadData();
       downloadData(data, filename);
     } finally {
-      setLoading(false);
+      if (isMounted()) {
+        setLoading(false);
+      }
     }
   };
 

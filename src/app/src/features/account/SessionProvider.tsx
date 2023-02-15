@@ -1,19 +1,30 @@
-import { useAppDispatch } from "@/lib/store";
-import React, { useEffect } from "react";
-import { appApi } from "../../services/appApi";
-import { setIsDeveloper } from "./sessionSlice";
+import React, { useContext, useEffect, useState } from "react";
+import { getIsDeveloper } from "./isDeveloper";
 
-interface SessionProviderProps {
+type SessionProviderProps = {
   children: React.ReactNode;
+};
+
+interface SessionContextData {
+  isDeveloper: boolean;
 }
 
+const SessionContext = React.createContext<SessionContextData>({
+  isDeveloper: false,
+});
+
 export const SessionProvider = ({ children }: SessionProviderProps) => {
-  const dispatch = useAppDispatch();
-  appApi.endpoints.getProfile.useQuery();
+  const [isDeveloper, setIsDeveloper] = useState(false);
 
   useEffect(() => {
-    const isDeveloper = localStorage.getItem("developer") === "1";
-    dispatch(setIsDeveloper(isDeveloper));
-  }, [dispatch]);
-  return <>{children}</>;
+    setIsDeveloper(getIsDeveloper());
+  }, []);
+
+  return (
+    <SessionContext.Provider value={{ isDeveloper }}>
+      {children}
+    </SessionContext.Provider>
+  );
 };
+
+export const useIsDeveloper = () => useContext(SessionContext).isDeveloper;

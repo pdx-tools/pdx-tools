@@ -40,6 +40,15 @@ export function useSideBarContainerRef() {
   return useSideBarContainer().containerRef;
 }
 
+export function closeDrawerPropagation(fn: () => void, visible: boolean) {
+  return (ev: { stopPropagation: () => void }) => {
+    fn();
+    if (visible) {
+      ev.stopPropagation();
+    }
+  };
+}
+
 export function getSideBarContainerWidth(
   x: ReturnType<typeof useSideBarContainer>
 ) {

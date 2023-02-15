@@ -9,10 +9,10 @@ use eu4save::{CountryTag, Eu4File, ProvinceId};
 use mapper::GameProvince;
 use schemas::resolver::Eu4FlatBufferTokens;
 use serde::{de::IgnoredAny, Deserialize};
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::{collections::HashMap, time::Instant};
 use std::{collections::HashSet, process::Command};
 use walkdir::WalkDir;
 
@@ -59,7 +59,6 @@ pub fn parse_game_dir(
     let persons = generate_ruler_personalities(tmp_game_dir, &localization, options)?;
     let advs = generate_advisors(tmp_game_dir, &localization, options)?;
     let (total_provs, provs) = write_provinces_csv(tmp_game_dir, game_version)?;
-    write_map_indices(tmp_game_dir, out_game_dir)?;
     translate_flags(tmp_game_dir, options).context("country flag error")?;
     translate_achievements_images(tmp_game_dir, options).context("achievement images error")?;
     translate_building_images(tmp_game_dir, options).context("building images error")?;
@@ -737,43 +736,6 @@ fn write_provinces_csv(
     terrains.sort_by_key(|x| x.id);
     terrains.dedup();
     Ok((total_provs, terrains))
-}
-
-pub fn write_map_indices(tmp_game_dir: &Path, out_game_dir: &Path) -> anyhow::Result<()> {
-    // Write out province id for each pixel. No need to get fancy here with run length encoding
-    // as gzip compression gets it within 50-100 kb. We also need to translate from pixels
-    // starting from the bottom left to the top left.
-    let now = Instant::now();
-    let mut writer = BrotliTee::create(out_game_dir.join("provinces-indices"))?;
-
-    let provinces_file_data = fs::read(tmp_game_dir.join("map").join("provinces.bmp"))?;
-
-    let definition_data = fs::read(tmp_game_dir.join("map").join("definition.csv"))?;
-    let defs = mapper::parse_definition(&definition_data[..]);
-    let definitions: HashMap<_, _> = defs.into_iter().map(|(id, color)| (color, id)).collect();
-
-    let provinces_bmp = rawbmp::Bmp::parse(&provinces_file_data[..]).unwrap();
-    let mut translated = vec![0u16; provinces_bmp.pixels_len()];
-    let Pixels::Rgb(pixs) = provinces_bmp.pixels();
-    for (i, pix) in pixs.enumerate() {
-        let (width, height) = (
-            provinces_bmp.dib_header.width.abs() as usize,
-            provinces_bmp.dib_header.height.abs() as usize,
-        );
-        let id = definitions.get(&pix).copied().unwrap();
-        let row = i / width as usize;
-        let col = i % width as usize;
-        translated[(height - row - 1) * width + col] = id;
-    }
-
-    for x in translated {
-        writer.write_all(&x.to_le_bytes()[..]).unwrap();
-    }
-
-    writer.flush().unwrap();
-    println!("province indices {}ms", now.elapsed().as_millis());
-
-    Ok(())
 }
 
 pub fn translate_achievements_images(

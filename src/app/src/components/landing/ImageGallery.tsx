@@ -1,3 +1,5 @@
+import { useState } from "react";
+import Image from "next/image";
 import map from "./gallery-map.png";
 import mapThumbnail from "./gallery-map-thumbnail.png";
 import video from "./gallery-video.mp4";
@@ -8,9 +10,6 @@ import graphs from "./gallery-graphs.png";
 import graphsThumbnail from "./gallery-graphs-thumbnail.png";
 import insights from "./gallery-insights.png";
 import insightsThumbnail from "./gallery-insights-thumbnail.png";
-import Image from "next/image";
-import { useState } from "react";
-import { useBreakpoint } from "@/hooks/useBreakpoint";
 
 const images = [
   {
@@ -49,24 +48,21 @@ const images = [
 ];
 
 const DesktopImageGallery = () => {
-  const [selected, setSelected] = useState<typeof images[number]>(images[0]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const selected = images[selectedIndex];
   return (
     <div className="grid w-full max-w-7xl grid-cols-[150px_1fr] gap-5">
       <div className="flex flex-col gap-4">
-        {images.map((x) => (
+        {images.map((x, i) => (
           <button
             className="m-0 rounded-xl border-0 bg-transparent p-0"
             key={x.src}
-            onClick={() => setSelected(x)}
+            onClick={() => setSelectedIndex(i)}
           >
             <Image
               src={x.thumbnail}
-              className={
-                "cursor-pointer rounded-xl border-4 border-solid transition duration-100 ease-in hover:border-teal-700 hover:opacity-100 " +
-                (Object.is(x, selected)
-                  ? "border-teal-700"
-                  : "border-slate-400 opacity-80")
-              }
+              aria-selected={i == selectedIndex}
+              className="cursor-pointer rounded-xl border-4 border-solid border-slate-400 opacity-80 transition duration-100 ease-in hover:border-teal-700 hover:opacity-100 aria-selected:border-teal-700 aria-selected:opacity-100"
               width={1920}
               height={1080}
               alt={`Select ${x.alt}`}
@@ -93,7 +89,7 @@ const DesktopImageGallery = () => {
           <Image
             src={selected.src}
             className="drop-shadow-xl"
-            priority={Object.is(selected, images[0])}
+            priority={selectedIndex == 0}
             width={1920}
             height={1080}
             alt={selected.alt}
@@ -138,10 +134,14 @@ const MobileImageGallery = () => {
 };
 
 export const ImageGallery = () => {
-  const desktopGallery = useBreakpoint("lg");
-  if (desktopGallery) {
-    return <DesktopImageGallery />;
-  } else {
-    return <MobileImageGallery />;
-  }
+  return (
+    <>
+      <div className="hidden lg:block">
+        <DesktopImageGallery />
+      </div>
+      <div className="lg:hidden">
+        <MobileImageGallery />
+      </div>
+    </>
+  );
 };

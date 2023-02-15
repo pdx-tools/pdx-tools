@@ -4,7 +4,7 @@ import { ColumnGroupType, ColumnType } from "antd/lib/table";
 import { TableLosses } from "./hooks";
 import { useIsLoading } from "@/components/viz";
 import { SingleCountryWarCasualties } from "@/features/eu4/types/models";
-import { useAnalysisWorker, WorkerClient } from "@/features/engine";
+import { useAnalysisWorker } from "@/features/eu4/worker";
 import { formatInt } from "@/lib/format";
 
 interface CountryArmyCasualtiesWarTableProps {
@@ -14,17 +14,13 @@ interface CountryArmyCasualtiesWarTableProps {
 export const CountriesArmyCasualtiesWarTable = ({
   record,
 }: CountryArmyCasualtiesWarTableProps) => {
-  const [wars, setWars] = useState([] as SingleCountryWarCasualties[]);
   const isLoading = useIsLoading();
-
-  const cb = useCallback(
-    async (worker: WorkerClient) => {
-      const data = await worker.eu4GetSingleCountryCasualties(record.tag);
-      setWars(data);
-    },
-    [record.tag]
+  const { data: wars } = useAnalysisWorker(
+    useCallback(
+      (worker) => worker.eu4GetSingleCountryCasualties(record.tag),
+      [record.tag]
+    )
   );
-  useAnalysisWorker(cb);
 
   const unitTypes = [
     ["Inf", "infantry"],

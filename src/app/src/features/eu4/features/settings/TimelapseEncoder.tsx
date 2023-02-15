@@ -1,13 +1,13 @@
-import { WorkerClient } from "@/features/engine";
 import { MapPayload } from "../../types/map";
 import { MapDate } from "../../types/models";
-import { Eu4Canvas } from "../map/Eu4Canvas";
 import WebMMuxer from "webm-muxer";
+import { WebGLMap } from "@/map/map";
+import { Eu4Worker } from "../../worker";
 
 type DateInterval = "Year" | "Month" | "Week" | "Day";
 
 export async function* dates(
-  worker: WorkerClient,
+  worker: Eu4Worker,
   start: MapDate,
   end: MapDate,
   step: DateInterval
@@ -32,10 +32,10 @@ type EncoderConfig = VideoEncoderConfig & {
 };
 
 type TimelapseEncoderOptions = {
-  canvas: Eu4Canvas;
+  map: WebGLMap;
   fps: number;
   interval: "Year" | "Month" | "Week" | "Day";
-  worker: WorkerClient;
+  worker: Eu4Worker;
   mapPayload: MapPayload;
   startDate: MapDate;
   endDate: MapDate;
@@ -51,8 +51,8 @@ export class TimelapseEncoder {
   private stopRequested: boolean = false;
 
   private constructor(
-    private canvas: Eu4Canvas,
-    private worker: WorkerClient,
+    private map: WebGLMap,
+    private worker: Eu4Worker,
     config: EncoderConfig,
     private ctx2d: CanvasRenderingContext2D,
     private fontFamily: string,
@@ -86,7 +86,7 @@ export class TimelapseEncoder {
     const scale = recordingCanvas.width > 2000 ? 2 : 1;
 
     // Create rectangle to hold text
-    ctx2d.drawImage(this.canvas.webglContext().canvas, 0, 0);
+    ctx2d.drawImage(this.map.gl.canvas, 0, 0);
     ctx2d.fillStyle = "#20272c";
     ctx2d.fillRect(
       recordingCanvas.width - 130 * scale,
@@ -124,8 +124,8 @@ export class TimelapseEncoder {
         date: date.days,
       });
 
-      this.canvas.map?.updateProvinceColors(primary, secondary);
-      this.canvas.map?.redrawMapNow();
+      this.map.updateProvinceColors(primary, secondary);
+      this.map.redrawMapNow();
       this.create2dFrame(date.text);
 
       const frame = new VideoFrame(this.ctx2d.canvas, {
@@ -188,7 +188,7 @@ export class TimelapseEncoder {
   }
 
   static async create({
-    canvas,
+    map,
     fps,
     mapPayload,
     startDate,
@@ -227,8 +227,8 @@ export class TimelapseEncoder {
     }
 
     const recordingCanvas = document.createElement("canvas");
-    recordingCanvas.width = canvas.webglContext().canvas.width;
-    recordingCanvas.height = canvas.webglContext().canvas.height;
+    recordingCanvas.width = map.gl.canvas.width;
+    recordingCanvas.height = map.gl.canvas.height;
 
     const config = await findSupportedEncoder();
 
@@ -242,7 +242,7 @@ export class TimelapseEncoder {
     const fontFamily = getComputedStyle(document.body).fontFamily;
 
     return new TimelapseEncoder(
-      canvas,
+      map,
       worker,
       config,
       ctx2d,

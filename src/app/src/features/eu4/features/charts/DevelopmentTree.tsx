@@ -1,17 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useCallback, useEffect } from "react";
 import {
   Treemap,
   TreemapConfig,
   useVisualizationDispatch,
 } from "@/components/viz";
-import { useAnalysisWorker, WorkerClient } from "@/features/engine";
-import { timeit2 } from "@/features/engine/worker/worker-lib";
-import { formatFloat, formatInt } from "@/lib/format";
-import { log } from "@/lib/log";
-import { selectEu4CountryFilter } from "../../eu4Slice";
-import { TreeDevelopment } from "../../types/models";
+import { useAnalysisWorker } from "@/features/eu4/worker";
+import { formatInt } from "@/lib/format";
 import { createCsv } from "@/lib/csv";
+import { useTagFilter } from "../../Eu4SaveProvider";
 
 type DevelopmentStatisticProps = {
   title: string;
@@ -42,22 +38,14 @@ const DevelopmentStatistic = ({
 };
 
 export const DevelopmentTree = () => {
-  const countryFilter = useSelector(selectEu4CountryFilter);
-  const [data, setData] = useState<TreeDevelopment | undefined>();
-  const visualizationDispatch = useVisualizationDispatch();
-
-  const cb = useCallback(
-    async (worker: WorkerClient) => {
-      const tree = await timeit2(() =>
-        worker.eu4DevelopmentTree(countryFilter)
-      );
-      setData(tree.data);
-      log(`computed development tree ${formatFloat(tree.elapsedMs)}ms`);
-    },
-    [countryFilter]
+  const countryFilter = useTagFilter();
+  const { data } = useAnalysisWorker(
+    useCallback(
+      (worker) => worker.eu4DevelopmentTree(countryFilter),
+      [countryFilter]
+    )
   );
-
-  useAnalysisWorker(cb);
+  const visualizationDispatch = useVisualizationDispatch();
 
   useEffect(() => {
     visualizationDispatch({

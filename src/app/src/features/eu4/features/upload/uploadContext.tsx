@@ -1,13 +1,9 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import { useSelector } from "react-redux";
 import { useBrotli } from "@/features/brotli";
-import {
-  useWasmWorker,
-  getWasmWorker,
-  selectAnalyzeId,
-  selectAnalyzeFileName,
-} from "@/features/engine";
 import { SavePostResponse } from "@/pages/api/saves";
+import { getEu4Worker } from "../../worker";
+import { useSaveFilename } from "../../Eu4SaveProvider";
+import { invalidateSaves } from "@/services/appApi";
 
 type Action =
   | {
@@ -20,9 +16,6 @@ type Action =
   | {
       kind: "error";
       error: string;
-    }
-  | {
-      kind: "reset";
     };
 
 type Dispatch = (action: Action) => void;
@@ -54,9 +47,6 @@ const UploadContext = React.createContext<UploadContextData | undefined>(
 
 const uploadReducer = (_state: UploadState, action: Action): UploadState => {
   switch (action.kind) {
-    case "reset": {
-      return { kind: "initial" };
-    }
     case "progress": {
       return { kind: "uploading", progress: action.progress };
     }
@@ -74,14 +64,9 @@ interface UploadProviderProps {
 }
 
 export const UploadProvider = ({ children }: UploadProviderProps) => {
-  const analyzeId = useSelector(selectAnalyzeId);
   const [state, dispatch] = React.useReducer(uploadReducer, {
     kind: "initial",
   });
-
-  useEffect(() => {
-    dispatch({ kind: "reset" });
-  }, [analyzeId, dispatch]);
 
   const value = { state, dispatch };
   return (
@@ -129,11 +114,10 @@ interface UploadFormValues {
 }
 
 export const useFileUpload = () => {
-  const workerRef = useWasmWorker();
   const brotli = useBrotli();
   const { dispatch } = useUpload();
   const uploadRequestRef = useRef<XMLHttpRequest | undefined>(undefined);
-  const filename = useSelector(selectAnalyzeFileName);
+  const filename = useSaveFilename();
 
   useEffect(() => {
     return () => {
@@ -143,11 +127,11 @@ export const useFileUpload = () => {
 
   return useCallback(
     async (values: UploadFormValues) => {
-      const worker = getWasmWorker(workerRef);
+      const worker = getEu4Worker();
       const data = new FormData();
       dispatch({ kind: "progress", progress: 5 });
 
-      const rawFileData = await worker.getRawFileData();
+      const rawFileData = await worker.getRawData();
       dispatch({ kind: "progress", progress: 10 });
 
       const compressProgress = (portion: number) => {
@@ -194,6 +178,7 @@ export const useFileUpload = () => {
         if (request.status >= 200 && request.status < 300) {
           const response: SavePostResponse = JSON.parse(request.response);
           dispatch({ kind: "success", ...response });
+          invalidateSaves();
         } else {
           try {
             const err = JSON.parse(request.response).msg;
@@ -221,6 +206,6 @@ export const useFileUpload = () => {
 
       request.send(data);
     },
-    [workerRef, brotli, uploadRequestRef, dispatch, filename]
+    [brotli, uploadRequestRef, dispatch, filename]
   );
 };

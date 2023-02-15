@@ -1,85 +1,151 @@
-import { useEffect } from "react";
-import { useRouter } from "next/router";
-import { useDispatch, useSelector } from "react-redux";
-import { resetSaveAnalysis, selectAnalyzeGame } from "./engineSlice";
-import { Ck3View } from "./views/Ck3View";
-import { Eu4View } from "./views/Eu4View";
-import { Hoi4View } from "./views/Hoi4View";
-import { ImperatorView } from "./views/ImperatorView";
-import { Vic3View } from "./views/Vic3View";
+import {
+  ComponentProps,
+  ComponentType,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
+import { WebPage } from "@/components/layout";
+import dynamic from "next/dynamic";
+import { PageDropOverlay } from "./components/PageDropOverlay";
+import {
+  SaveGameInput,
+  useEngineActions,
+  useSaveFileInput,
+} from "./engineStore";
+import classes from "./GameView.module.css";
+import type Eu4Ui from "@/features/eu4/Eu4Ui";
+import type Ck3Ui from "@/features/ck3/Ck3Ui";
+import type Hoi4Ui from "@/features/hoi4/Hoi4Ui";
+import type ImperatorUi from "@/features/imperator/ImperatorUi";
+import type Vic3Ui from "@/features/vic3/vic3Ui";
+import { timeit } from "@/lib/timeit";
+import { logMs } from "@/lib/log";
+import { useWindowMessageDrop } from "./hooks/useWindowMessageDrop";
 
-export const GameView = () => {
-  const game = useSelector(selectAnalyzeGame);
-  const dispatch = useDispatch();
-  const router = useRouter();
+function timeModule<T>(fn: () => Promise<T>, module: string): () => Promise<T> {
+  return () =>
+    timeit(fn).then((x) => {
+      if (typeof window !== "undefined") {
+        logMs(x, `load ${module} module`);
+      }
+      return x.data;
+    });
+}
+
+const DynamicEu4: ComponentType<ComponentProps<typeof Eu4Ui>> = dynamic(
+  timeModule(() => import("@/features/eu4/Eu4Ui"), "eu4")
+);
+
+const DynamicCk3: ComponentType<ComponentProps<typeof Ck3Ui>> = dynamic(
+  timeModule(() => import("@/features/ck3/Ck3Ui"), "ck3")
+);
+
+const DynamicHoi4: ComponentType<ComponentProps<typeof Hoi4Ui>> = dynamic(
+  timeModule(() => import("@/features/hoi4/Hoi4Ui"), "hoi4")
+);
+
+const DynamicImperator: ComponentType<ComponentProps<typeof ImperatorUi>> =
+  dynamic(
+    timeModule(() => import("@/features/imperator/ImperatorUi"), "imperator")
+  );
+
+const DynamicVic3: ComponentType<ComponentProps<typeof Vic3Ui>> = dynamic(
+  timeModule(() => import("@/features/vic3/vic3Ui"), "vic3")
+);
+
+const gameRenderer = (savegame: SaveGameInput | null) => {
+  switch (savegame?.kind) {
+    case undefined:
+      return null;
+    case "eu4":
+      return {
+        kind: "full-screen",
+        component: () => <DynamicEu4 save={savegame.data} />,
+      } as const;
+    case "ck3":
+      return {
+        kind: "in-screen",
+        component: () => <DynamicCk3 save={savegame} />,
+      } as const;
+    case "vic3":
+      return {
+        kind: "in-screen",
+        component: () => <DynamicVic3 save={savegame} />,
+      } as const;
+    case "hoi4":
+      return {
+        kind: "in-screen",
+        component: () => <DynamicHoi4 save={savegame} />,
+      } as const;
+    case "imperator":
+      return {
+        kind: "in-screen",
+        component: () => <DynamicImperator save={savegame} />,
+      } as const;
+  }
+};
+
+const FullscreenPage = ({ children }: { children: ReactNode }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const { resetSaveAnalysis } = useEngineActions();
 
   useEffect(() => {
-    if (window.location.pathname === "/") {
-      dispatch(resetSaveAnalysis());
-    }
-  }, [dispatch]);
+    document.body.classList.toggle("overflow-hidden");
+    return () => {
+      document.body.classList.toggle("overflow-hidden");
+    };
+  }, []);
 
   useEffect(() => {
-    const homeAnalysis = window.location.pathname === "/";
+    function out(ev: KeyboardEvent) {
+      if (ev.key === "Escape") {
+        ref.current?.addEventListener("animationend", resetSaveAnalysis, {
+          once: true,
+        });
 
-    // Allow users to hit the back button when they are locally analyzing a
-    // file to go back to the home menu so they can analyze another file
-    // ergonomically.
-    function popHandler(_event: PopStateEvent) {
-      dispatch(resetSaveAnalysis());
-
-      if (homeAnalysis && game !== null) {
-        history.back();
+        ref.current?.classList.add(classes["slide-out"]);
       }
     }
 
-    if (homeAnalysis && game !== null) {
-      history.pushState(undefined, "", null);
-    }
-
-    window.addEventListener("popstate", popHandler);
+    window.addEventListener("keydown", out);
     return () => {
-      window.removeEventListener("popstate", popHandler);
+      window.removeEventListener("keydown", out);
     };
-  }, [dispatch, router, game]);
+  }, [resetSaveAnalysis]);
 
-  useEffect(() => {
-    function reset() {
-      dispatch(resetSaveAnalysis());
-    }
+  return (
+    <div
+      ref={ref}
+      className={`absolute inset-0 bg-white ${classes["slide-in"]}`}
+    >
+      {children}
+    </div>
+  );
+};
 
-    // To ensure that when someone clicks on "PDX Tools" in app header
-    // that analysis is reset
-    router.events.on("routeChangeComplete", reset);
-    return () => {
-      router.events.off("routeChangeComplete", reset);
-    };
-  }, [dispatch, router.events]);
+type GameViewProps = {
+  children?: React.ReactNode;
+};
 
-  useEffect(() => {
-    return () => {
-      dispatch(resetSaveAnalysis());
-    };
-  }, [dispatch]);
+export const GameView = ({ children }: GameViewProps) => {
+  const savegame = useSaveFileInput();
+  const game = useMemo(() => gameRenderer(savegame), [savegame]);
+  useWindowMessageDrop();
 
-  switch (game) {
-    case "ck3": {
-      return <Ck3View />;
-    }
-    case "eu4": {
-      return <Eu4View />;
-    }
-    case "hoi4": {
-      return <Hoi4View />;
-    }
-    case "imperator": {
-      return <ImperatorView />;
-    }
-    case "vic3": {
-      return <Vic3View />;
-    }
-    case null: {
-      return null;
-    }
-  }
+  return (
+    <>
+      {children ? (
+        <WebPage inert={game?.kind === "full-screen"}>
+          {game === null || game.kind === "full-screen" ? children : null}
+          {game?.kind === "in-screen" ? game.component() : null}
+        </WebPage>
+      ) : null}
+      {game?.kind === "full-screen" ? (
+        <FullscreenPage>{game.component()}</FullscreenPage>
+      ) : null}
+      <PageDropOverlay />
+    </>
+  );
 };

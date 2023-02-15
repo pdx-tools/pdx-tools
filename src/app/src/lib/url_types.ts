@@ -18,8 +18,3 @@ export interface ResourceUrls {
   provincesUniqueColor: string;
   provincesUniqueIndex: string;
 }
-
-export interface DataUrls {
-  data: string;
-  provinceIndices: string;
-}

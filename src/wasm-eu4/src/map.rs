@@ -128,7 +128,7 @@ impl SaveFileImpl {
     pub fn map_quick_tip(
         &self,
         province_id: i32,
-        payload: MapPayload,
+        payload: MapPayloadKind,
     ) -> Option<MapQuickTipPayload> {
         let province_id = ProvinceId::new(province_id);
         let province = self.query.save().game.provinces.get(&province_id)?;
@@ -147,7 +147,7 @@ impl SaveFileImpl {
             tag: *controller_tag,
         };
 
-        match payload.kind {
+        match payload {
             MapPayloadKind::Political => Some(MapQuickTipPayload::Political {
                 province_id,
                 province_name: province.name.clone(),

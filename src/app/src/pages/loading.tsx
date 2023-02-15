@@ -1,8 +1,8 @@
 import React, { useEffect } from "react";
 import { HtmlHead } from "@/components/head";
+import { Root } from "@/components/layout";
+import { GameView } from "@/features/engine/GameView";
 import { Home } from "@/components/landing/Home";
-import { AppStructure } from "@/components/layout";
-import { FileDrop } from "@/features/engine/FileDrop";
 
 export const LoadingPage = () => {
   useEffect(() => {
@@ -10,7 +10,7 @@ export const LoadingPage = () => {
   }, []);
 
   return (
-    <>
+    <Root>
       <HtmlHead>
         <title>PDX Tools</title>
         <meta
@@ -18,20 +18,10 @@ export const LoadingPage = () => {
           content="PDX Tools is a home for EU4 save files to share with the world, compete in a casual leaderboard for achievement completion times, and to analyze with charts, tables, and maps"
         ></meta>
       </HtmlHead>
-      <AppStructure>
-        <FileDrop>
-          <Home
-            subtitle={
-              <div className="mx-auto mt-6 max-w-prose text-center text-lg">
-                Please wait while your save is transferred to PDX Tools. Not
-                working? Ensure that pop-ups are allowed or manually select and
-                drag and drop your save.
-              </div>
-            }
-          />
-        </FileDrop>
-      </AppStructure>
-    </>
+      <GameView>
+        <Home />
+      </GameView>
+    </Root>
   );
 };
 
