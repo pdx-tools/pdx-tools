@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { PageHeader, Typography, Input, Spin } from "antd";
+import { PageHeader, Input, Spin } from "antd";
 import { useSelector } from "react-redux";
 import { SkanUserSavesTable } from "./SkanUserSavesTable";
 import { selectUserInfo } from "../account/sessionSlice";
@@ -7,7 +7,6 @@ import { useRouter } from "next/router";
 import { extractSaveId } from "./skanUrl";
 import { appApi } from "../../services/appApi";
 import { epochOf } from "@/lib/dates";
-const { Paragraph } = Typography;
 const { Search } = Input;
 
 export const SkanderbegPage = () => {
@@ -48,13 +47,13 @@ export const SkanderbegPage = () => {
 
   const footer = (
     <div>
-      <Paragraph>
+      <p>
         <a href="https://skanderbeg.pm">Skanderbeg</a> is site dedicated to
         generating beautiful maps and insightful data tables. To analyze a
         Skanderbeg save in PDX Tools, upload the save to Skanderbeg and copy and
         paste either a Skanderbeg URL or the save id. Ironman saves uploaded to
         Skanderbeg will not work in PDX Tools.
-      </Paragraph>
+      </p>
       <div className="flex flex-col gap-2">
         <Search
           placeholder="Skanderbeg URL or id"

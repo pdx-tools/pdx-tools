@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Divider, Switch, Table, Typography } from "antd";
+import { Divider, Switch, Table } from "antd";
 import { ColumnProps } from "antd/lib/table";
 import {
   useIsLoading,
@@ -22,7 +22,6 @@ import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { selectEu4CountryFilter } from "@/features/eu4/eu4Slice";
 import { createCsv } from "@/lib/csv";
 import { useTablePagination } from "@/features/ui-controls";
-const { Text } = Typography;
 
 type CountryExpensesRecord = CountryExpenses;
 
@@ -132,7 +131,7 @@ export const CountriesExpensesBaseTable = ({
     <div className="flex flex-col space-y-6">
       <div className="flex items-center space-x-2">
         <div className="flex items-center space-x-2">
-          <Text>Show as percentages:</Text>
+          <span>Show as percentages:</span>
 
           <Switch
             checked={doShowPercent}
@@ -144,7 +143,7 @@ export const CountriesExpensesBaseTable = ({
 
         <Divider type="vertical" />
         <div className="flex items-center space-x-2">
-          <Text>Recurring expenses only:</Text>
+          <span>Recurring expenses only:</span>
           <Switch
             checked={showRecurringOnly}
             onChange={(checked: boolean) =>

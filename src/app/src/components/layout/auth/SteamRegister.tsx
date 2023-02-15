@@ -1,7 +1,6 @@
 import React, { useState } from "react";
-import { Drawer, Button, Typography, Divider } from "antd";
+import { Drawer, Button, Divider } from "antd";
 import { SteamButton } from "./SteamButton";
-const { Title, Paragraph, Text } = Typography;
 
 export const SteamRegister = () => {
   const [isDrawerOpen, setDrawerOpen] = useState(false);
@@ -17,15 +16,15 @@ export const SteamRegister = () => {
         width={400}
         footer={<Button onClick={() => setDrawerOpen(false)}>Close</Button>}
       >
-        <Paragraph>
+        <p>
           To sign up for a PDX Tools account, simply login through Steam. You
           don't need to have bought EU4 through Steam -- only a Steam account is
           needed.
-        </Paragraph>
+        </p>
         <SteamButton />
         <Divider />
-        <Title level={4}>What does signing up get me?</Title>
-        <Paragraph>
+        <h3 className="text-xl">What does signing up get me?</h3>
+        <p>
           Signing up automatically grants one a free basic account. Basic
           account features:
           <ul>
@@ -35,18 +34,20 @@ export const SteamRegister = () => {
               your profile
             </li>
           </ul>
-        </Paragraph>
-        <Title level={4}>Why Steam?</Title>
+        </p>
+        <h3 className="text-xl">Why Steam?</h3>
         EU4 is mainly distributed through Steam, so the majority of PDX Tools
         users should already have a Steam account. This allows us to offload the
         bureaucracy of managing accounts to Steam.
-        <Paragraph></Paragraph>
-        <Title level={4}>What Steam information does PDX Tools use?</Title>
-        <Paragraph>
+        <p></p>
+        <h3 className="text-xl">What Steam information does PDX Tools use?</h3>
+        <p>
           PDX Tools only records the user id returned by Steam and the
           associated persona name.{" "}
-          <Text strong>PDX Tools will not get access to Steam passwords</Text>
-        </Paragraph>
+          <span className="font-bold">
+            PDX Tools will not get access to Steam passwords
+          </span>
+        </p>
       </Drawer>
     </>
   );

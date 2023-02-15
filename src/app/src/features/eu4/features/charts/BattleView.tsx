@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from "react";
-import { Divider, Table, Tooltip } from "antd";
+import { Table, Tooltip } from "antd";
 import { ColumnGroupType, ColumnType } from "antd/lib/table";
 import { useIsLoading } from "@/components/viz/visualization-context";
 import { BattleInfo, Losses, WarParticipant } from "../../types/models";
@@ -513,7 +513,7 @@ export const BattleView = ({ warName }: BattleViewProps) => {
     ];
 
   return (
-    <>
+    <div className="grid grid-cols-1 gap-12">
       <Table
         size="small"
         title={() => "Attackers"}
@@ -525,7 +525,6 @@ export const BattleView = ({ warName }: BattleViewProps) => {
         columns={createSideColumn()}
         summary={createSideSummary(attackers.current)}
       />
-      <Divider />
       <Table
         size="small"
         title={() => "Defenders"}
@@ -537,7 +536,6 @@ export const BattleView = ({ warName }: BattleViewProps) => {
         columns={createSideColumn()}
         summary={createSideSummary(defenders.current)}
       />
-      <Divider />
       <Table
         size="small"
         title={() => "Land Battles"}
@@ -548,7 +546,6 @@ export const BattleView = ({ warName }: BattleViewProps) => {
         dataSource={landBattles.current}
         columns={landColumns}
       />
-      <Divider />
       <Table
         size="small"
         title={() => "Naval Battles"}
@@ -559,6 +556,6 @@ export const BattleView = ({ warName }: BattleViewProps) => {
         dataSource={navalBattles.current}
         columns={navalColumns}
       />
-    </>
+    </div>
   );
 };

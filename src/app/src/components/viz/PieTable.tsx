@@ -1,9 +1,7 @@
 import React from "react";
-import { Table, Typography } from "antd";
+import { Table } from "antd";
 import { formatFloat, formatInt } from "@/lib/format";
 import { LegendColor, useIsLoading, Pie, PieConfig } from "@/components/viz";
-
-const { Text } = Typography;
 
 interface BudgetRow {
   key: string;
@@ -74,7 +72,7 @@ export const PieTable = ({
               <Table.Summary.Cell key="total-label">Total</Table.Summary.Cell>,
               //@ts-ignore
               <Table.Summary.Cell key="total-value" className="text-right">
-                <Text>{numFormatter(total)}</Text>
+                <span>{numFormatter(total)}</span>
               </Table.Summary.Cell>,
             ];
 
@@ -88,7 +86,7 @@ export const PieTable = ({
                 return (
                   <div className="flex items-center space-x-2">
                     <LegendColor color={palette.get(className)} />
-                    <Text>{`${className}`}</Text>
+                    <span>{`${className}`}</span>
                   </div>
                 );
               },

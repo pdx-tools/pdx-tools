@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Drawer, Button, Typography } from "antd";
+import { Drawer, Button } from "antd";
 import { SteamButton } from "./SteamButton";
 
 export const SteamLogin = () => {

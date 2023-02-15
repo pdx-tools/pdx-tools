@@ -8,7 +8,6 @@ import {
 } from "@/lib/difficulty";
 import { AchievementDifficulty, Achievement } from "@/services/appApi";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
-import { useBreakpoint } from "@/hooks/useBreakpoint";
 
 interface TableEntry {
   achievement: Achievement;
@@ -19,7 +18,6 @@ interface AchievementsTableProps {
 }
 
 export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
-  const isMd = useBreakpoint("md");
 
   const columns = [
     {
@@ -36,7 +34,7 @@ export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
                 {name}
               </Link>
             </span>
-            {isMd && <span>{record.achievement.description}</span>}
+            <span className="hidden md:block">{record.achievement.description}</span>
           </div>
         </div>
       ),
