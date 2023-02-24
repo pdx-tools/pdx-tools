@@ -87,7 +87,10 @@ const gameRenderer = (savegame: SaveGameInput | null) => {
   }
 };
 
-const FullscreenPage = ({ children }: { children: ReactNode }) => {
+const FullscreenPage = ({
+  children,
+  hasBackdrop,
+}: React.PropsWithChildren<{ hasBackdrop: boolean }>) => {
   const ref = useRef<HTMLDivElement>(null);
   const { resetSaveAnalysis } = useEngineActions();
 
@@ -99,6 +102,10 @@ const FullscreenPage = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    if (!hasBackdrop) {
+      return;
+    }
+
     function out(ev: KeyboardEvent) {
       if (ev.key === "Escape") {
         ref.current?.addEventListener("animationend", resetSaveAnalysis, {
@@ -113,7 +120,7 @@ const FullscreenPage = ({ children }: { children: ReactNode }) => {
     return () => {
       window.removeEventListener("keydown", out);
     };
-  }, [resetSaveAnalysis]);
+  }, [hasBackdrop, resetSaveAnalysis]);
 
   return (
     <div
@@ -143,7 +150,9 @@ export const GameView = ({ children }: GameViewProps) => {
         </WebPage>
       ) : null}
       {game?.kind === "full-screen" ? (
-        <FullscreenPage>{game.component()}</FullscreenPage>
+        <FullscreenPage hasBackdrop={!!children}>
+          {game.component()}
+        </FullscreenPage>
       ) : null}
       <PageDropOverlay />
     </>
