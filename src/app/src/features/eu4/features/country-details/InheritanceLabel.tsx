@@ -1,10 +1,10 @@
 import { Button, Drawer } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import { useState } from "react";
-import { useEu4Meta } from "../../eu4Slice";
 import { CountryDetails } from "../../types/models";
 import classes from "./InheritanceLabel.module.css";
 import { useIsJuniorPartner } from "./detailHooks";
+import { useEu4Meta } from "../../Eu4SaveProvider";
 
 export interface InheranticeLabelProps {
   details: CountryDetails;

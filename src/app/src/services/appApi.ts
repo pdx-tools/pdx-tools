@@ -1,20 +1,22 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { epochOf } from "@/lib/dates";
+import { fetchOk, fetchOkJson } from "@/lib/fetch";
+import { QueryClient, useMutation, useQuery } from "@tanstack/react-query";
 
 export type SaveEncoding = "text" | "textzip" | "binzip";
 
-export interface WeightedScore {
+export type WeightedScore = {
   days: number;
   date: string;
-}
+};
 
-export interface GameVersion {
+export type GameVersion = {
   first: number;
   second: number;
   third: number;
   fourth: number;
-}
+};
 
-export interface SaveFile {
+export type SaveFile = {
   id: string;
   filename: string;
   upload_time: string;
@@ -37,7 +39,7 @@ export interface SaveFile {
   aar: string | undefined | null;
   version: GameVersion;
   encoding: SaveEncoding;
-}
+};
 
 export type GameDifficulty =
   | "VeryEasy"
@@ -46,24 +48,24 @@ export type GameDifficulty =
   | "Hard"
   | "VeryHard";
 
-export interface UserSaves {
+export type UserSaves = {
   saves: SaveFile[];
   user_info: PublicUserInfo | null;
-}
+};
 
-export interface PublicUserInfo {
+export type PublicUserInfo = {
   user_id: string;
   user_name: string | null;
   created_on: string;
-}
+};
 
-export interface PrivateUserInfo {
+export type PrivateUserInfo = {
   user_id: string;
   steam_id: string;
   user_name: string | null;
   account: "free" | "admin";
   created_on: string;
-}
+};
 
 export type ProfileResponse =
   | {
@@ -74,10 +76,10 @@ export type ProfileResponse =
       user: PrivateUserInfo;
     };
 
-export interface ApiAchievementsResponse {
+export type ApiAchievementsResponse = {
   achievements: Achievement[];
   saves: SaveFile[];
-}
+};
 
 export type AchievementDifficulty =
   | "VeryEasy"
@@ -87,31 +89,31 @@ export type AchievementDifficulty =
   | "VeryHard"
   | "Insane";
 
-export interface Achievement {
+export type Achievement = {
   id: number;
   name: string;
   description: string;
   difficulty: AchievementDifficulty;
-}
+};
 
-export interface AchievementView {
+export type AchievementView = {
   achievement: Achievement;
   saves: SaveFile[];
-}
+};
 
-export interface NewKeyResponse {
+export type NewKeyResponse = {
   api_key: string;
-}
+};
 
 export type RankedSaveFile = { rank: number } & SaveFile;
 
-export interface SavePatchProps {
+export type SavePatchProps = {
   id: string;
   aar?: string;
   filename?: string;
-}
+};
 
-export interface SkanUserSaves {
+export type SkanUserSaves = {
   hash: string;
   timestamp: string;
   name: string;
@@ -123,21 +125,21 @@ export interface SkanUserSaves {
   last_visited: string;
   view_count: string;
   version: string;
-}
+};
 
-export interface CheckRequest {
+export type CheckRequest = {
   hash: string;
   patch: GameVersion;
   campaign_id: string;
   score: number;
   achievement_ids: number[];
   playthrough_id: string | null;
-}
+};
 
-export interface CheckResponse {
+export type CheckResponse = {
   saves: SaveFile[];
   valid_patch: boolean;
-}
+};
 
 export async function checkSave(req: CheckRequest): Promise<CheckResponse> {
   const body = JSON.stringify(req);
@@ -156,131 +158,169 @@ export async function checkSave(req: CheckRequest): Promise<CheckResponse> {
   return response as CheckResponse;
 }
 
-export async function getSaveMeta(saveId: string): Promise<SaveFile> {
-  const request = await fetch(`/api/saves/${saveId}`);
-  const response = await request.json();
-  return response as SaveFile;
+export async function fetchSaveMeta(saveId: string): Promise<SaveFile> {
+  return fetchOk(`/api/saves/${saveId}`).then((x) => x.json());
 }
 
-async function streamResponse(
-  response: Response,
-  progress: (percent: number) => void
-): Promise<Uint8Array> {
-  let contentHeader = response.headers.get("Content-Length");
-  if (contentHeader === null || isNaN(+contentHeader)) {
-    const data = await response.arrayBuffer();
-    return new Uint8Array(data);
+export function useIsPrivileged(userId: string | undefined | null) {
+  const { data } = useProfileQuery();
+  if (!data || data.kind === "guest") {
+    return false;
   }
 
-  let contentLength = +contentHeader;
-
-  // Super annoying that the reading the content returns the uncompressed data
-  // so we don't know how far we are, so we estimate that the content has a
-  // compression ratio of ~15%. Else we will have progress of over 100%
-  if (response.headers.get("Content-Encoding")) {
-    contentLength *= 7;
-  }
-
-  if (response.body === null) {
-    const data = await response.arrayBuffer();
-    return new Uint8Array(data);
-  }
-
-  const reader = response.body.getReader();
-  let receivedLength = 0;
-  let chunks = [];
-  while (true) {
-    const { done, value } = await reader.read();
-
-    if (done) {
-      break;
-    }
-
-    if (value) {
-      chunks.push(value);
-      receivedLength += value.length;
-      progress(Math.min(1, receivedLength / contentLength));
-    }
-  }
-
-  const array = new Uint8Array(receivedLength);
-  let position = 0;
-  for (let chunk of chunks) {
-    array.set(chunk, position);
-    position += chunk.length;
-  }
-
-  return array;
+  return data.user.account === "admin" || data.user.user_id === userId;
 }
 
-export async function getSaveFile(
-  saveId: string,
-  signal: AbortSignal | undefined,
-  progress: (percent: number) => void
-): Promise<Uint8Array> {
-  const url = `/api/saves/${saveId}/file`;
-  const response = await fetch(url, { signal });
-  if (!response.ok) {
-    throw Error(await response.text());
-  }
-
-  const array = await streamResponse(response, progress);
-  return array;
-}
-
-export const appApi = createApi({
-  reducerPath: "appApi",
-  baseQuery: fetchBaseQuery({ baseUrl: "/" }),
-  tagTypes: ["Saves"],
-  endpoints: (builder) => ({
-    getProfile: builder.query<ProfileResponse, void>({
-      query: () => `/api/profile`,
-    }),
-    logout: builder.mutation<ProfileResponse, void>({
-      query: () => ({
-        url: `api/logout`,
-        method: "POST",
-      }),
-    }),
-    getAchievement: builder.query<AchievementView, string>({
-      query: (id) => `/api/achievements/${id}`,
-      providesTags: (_) => ["Saves"],
-    }),
-    newApiKey: builder.mutation<NewKeyResponse, void>({
-      query: () => ({
-        url: `/api/key`,
-        method: "POST",
-      }),
-    }),
-    getUser: builder.query<UserSaves, string>({
-      query: (id) => `/api/users/${id}`,
-      providesTags: (_) => ["Saves"],
-    }),
-    getNewestSaves: builder.query<{ saves: SaveFile[] }, void>({
-      query: () => `/api/new`,
-      providesTags: (_) => ["Saves"],
-    }),
-    getSave: builder.query<SaveFile, string>({
-      query: (saveId) => `/api/saves/${saveId}`,
-      providesTags: (_) => ["Saves"],
-    }),
-    patchSave: builder.mutation<void, SavePatchProps>({
-      query: ({ id, ...rest }) => ({
-        url: `/api/saves/${id}`,
-        method: "PATCH",
-        body: rest,
-      }),
-      invalidatesTags: ["Saves"],
-    }),
-    deleteSave: builder.mutation<void, string>({
-      query: (saveId) => ({
-        url: `/api/saves/${saveId}`,
-        method: "DELETE",
-      }),
-      invalidatesTags: ["Saves"],
-    }),
-    getSkanderbegSaves: builder.query<SkanUserSaves[], void>({
-      query: () => `/api/skan/user`,
-    }),
-  }),
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000,
+    },
+  },
 });
+
+export const pdxKeys = {
+  all: ["pdx"] as const,
+  profile: () => [...pdxKeys.all, "profile"] as const,
+  newSaves: () => [...pdxKeys.all, "new-saves"] as const,
+  saves: () => [...pdxKeys.all, "saves"] as const,
+  save: (id: string) => [...pdxKeys.saves(), id] as const,
+  achievements: () => [...pdxKeys.all, "achievements"] as const,
+  achievement: (id: string) => [...pdxKeys.achievements(), id] as const,
+  skanderbegUsers: () => [...pdxKeys.all, "skanderbeg"] as const,
+  skanderbegUser: (id: string) => [...pdxKeys.skanderbegUsers(), id] as const,
+  users: () => [...pdxKeys.all, "users"] as const,
+  user: (id: string) => [...pdxKeys.users(), id] as const,
+};
+
+export const useProfileQuery = () => {
+  return useQuery({
+    queryKey: pdxKeys.profile(),
+    queryFn: () =>
+      fetchOkJson("/api/profile").then((x) => x as ProfileResponse),
+  });
+};
+
+export const useLogoutMutation = () => {
+  return useMutation({
+    mutationFn: () =>
+      fetchOkJson("/api/logout", {
+        method: "POST",
+      }).then((x) => x as ProfileResponse),
+    onSuccess: (data) => {
+      queryClient.setQueryData(pdxKeys.profile(), data);
+    },
+  });
+};
+
+export const useNewestSavesQuery = () => {
+  return useQuery({
+    queryKey: pdxKeys.newSaves(),
+    queryFn: () =>
+      fetchOkJson("/api/new").then((x) => x as { saves: SaveFile[] }),
+    onSuccess: (data) =>
+      data.saves.forEach((x) =>
+        queryClient.setQueryData(pdxKeys.save(x.id), x)
+      ),
+  });
+};
+
+type SaveQueryProps = {
+  enabled?: boolean;
+};
+export const useSaveQuery = (id: string, opts?: Partial<SaveQueryProps>) => {
+  const enabled = opts?.enabled ?? true;
+  return useQuery({
+    queryKey: [...pdxKeys.save(id), { enabled }],
+    queryFn: () => fetchSaveMeta(id),
+    enabled,
+  });
+};
+
+export const useAchievementQuery = (id: string) => {
+  return useQuery({
+    queryKey: pdxKeys.achievement(id),
+    queryFn: () =>
+      fetchOkJson(`/api/achievements/${id}`).then((x) => x as AchievementView),
+  });
+};
+
+export const useUserQuery = (userId: string) => {
+  return useQuery({
+    queryKey: pdxKeys.user(userId),
+    queryFn: () =>
+      fetchOkJson(`/api/users/${userId}`).then((x) => x as UserSaves),
+    onSuccess: (data) =>
+      data.saves.forEach((x) =>
+        queryClient.setQueryData(pdxKeys.save(x.id), x)
+      ),
+  });
+};
+
+export const invalidateSaves = () => {
+  queryClient.invalidateQueries(pdxKeys.newSaves());
+  queryClient.invalidateQueries(pdxKeys.saves());
+  queryClient.invalidateQueries(pdxKeys.achievements());
+  queryClient.invalidateQueries(pdxKeys.users());
+};
+
+export const useUserSkanderbegSaves = () => {
+  const profileQuery = useProfileQuery();
+  const userId =
+    profileQuery.data?.kind === "user"
+      ? profileQuery.data.user.user_id
+      : undefined;
+  return useQuery({
+    queryKey: pdxKeys.skanderbegUser(userId ?? ""),
+    queryFn: () =>
+      fetchOkJson(`/api/skan/user`).then((x) => x as SkanUserSaves[]),
+    enabled: !!userId,
+    select: (data) => {
+      const saves = data.map((obj) => ({
+        hash: obj.hash,
+        timestamp: obj.timestamp,
+        timestamp_epoch: epochOf(obj.timestamp),
+        name: obj.customname || obj.name,
+        uploaded_by: obj.uploaded_by,
+        player: obj.player,
+        date: obj.date,
+        version: obj.version,
+      }));
+      saves.sort((a, b) => b.timestamp_epoch - a.timestamp_epoch);
+      return saves;
+    },
+  });
+};
+
+export const useSaveDeletion = (id: string) => {
+  return useMutation({
+    mutationFn: () => fetchOk(`/api/saves/${id}`, { method: "DELETE" }),
+    onSuccess: invalidateSaves,
+  });
+};
+
+export const useNewApiKeyRequest = (onSuccess: (key: string) => void) => {
+  return useMutation({
+    mutationFn: () =>
+      fetchOkJson(`/api/key`, { method: "POST" }).then(
+        (x) => x as NewKeyResponse
+      ),
+    onSuccess: (data) => onSuccess(data.api_key),
+  });
+};
+
+export const useSavePatch = () => {
+  return useMutation({
+    mutationFn: ({ id, ...rest }: SavePatchProps) =>
+      fetchOkJson(`/api/saves/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(rest),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries(pdxKeys.save(id));
+    },
+  });
+};

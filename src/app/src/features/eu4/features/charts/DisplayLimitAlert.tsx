@@ -1,26 +1,21 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { Alert } from "antd";
-import { useSelector } from "react-redux";
-import { selectEu4CountryFilter } from "@/features/eu4/eu4Slice";
-import { WorkerClient, useAnalysisWorker } from "@/features/engine";
+import { useAnalysisWorker } from "@/features/eu4/worker";
+import { useTagFilter } from "../../Eu4SaveProvider";
 
-interface DisplayLimitAlertProps {
+type DisplayLimitAlertProps = {
   displayLimit: number;
-}
+};
 
 export const DisplayLimitAlert = ({ displayLimit }: DisplayLimitAlertProps) => {
-  const countryFilter = useSelector(selectEu4CountryFilter);
-  const [limitExceeded, setLimitExceeded] = useState(false);
-
-  const cb = useCallback(
-    async (worker: WorkerClient) => {
-      const data = await worker.eu4MatchingCountries(countryFilter);
-      setLimitExceeded(data.length > displayLimit);
-    },
-    [displayLimit, countryFilter]
+  const countryFilter = useTagFilter();
+  const matchingCountries = useAnalysisWorker(
+    useCallback(
+      (worker) => worker.eu4MatchingCountries(countryFilter),
+      [countryFilter]
+    )
   );
-
-  useAnalysisWorker(cb);
+  const limitExceeded = (matchingCountries.data?.length ?? 0) > displayLimit;
 
   if (limitExceeded) {
     return (

@@ -1,16 +1,15 @@
 import React, { useEffect } from "react";
-import { useSelector } from "react-redux";
 import { Line, LineConfig, useVisualizationDispatch } from "@/components/viz";
 import { LedgerDatum } from "@/features/eu4/types/models";
-import { selectEu4CountryNameLookup } from "@/features/eu4/eu4Slice";
 import { createCsv } from "@/lib/csv";
+import { useCountryNameLookup } from "@/features/eu4/Eu4SaveProvider";
 
 interface LedgerProps {
   ledger: LedgerDatum[];
 }
 
 type MemoProps = LedgerProps & {
-  lookup: ReturnType<typeof selectEu4CountryNameLookup>;
+  lookup: ReturnType<typeof useCountryNameLookup>;
 };
 
 const AnnualLedgerPropped = React.memo(({ ledger, lookup }: MemoProps) => {
@@ -39,7 +38,7 @@ const AnnualLedgerPropped = React.memo(({ ledger, lookup }: MemoProps) => {
 });
 
 export const AnnualLedger = ({ ledger }: LedgerProps) => {
-  const lookup = useSelector(selectEu4CountryNameLookup);
+  const lookup = useCountryNameLookup();
   const visualizationDispatch = useVisualizationDispatch();
 
   useEffect(() => {

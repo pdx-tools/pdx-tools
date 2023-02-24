@@ -4,15 +4,18 @@ import React from "react";
 import { TimeAgo } from "../../../components/TimeAgo";
 import { diff } from "../../../lib/dates";
 import { difficultyText, difficultyNum } from "../../../lib/difficulty";
-import { appApi } from "../../../services/appApi";
-import { GameDifficulty, SaveFile } from "@/services/appApi";
+import {
+  GameDifficulty,
+  SaveFile,
+  useNewestSavesQuery,
+} from "@/services/appApi";
 import {
   FlagAvatar,
   AchievementAvatar,
 } from "@/features/eu4/components/avatars";
 
 export const NewestSavesTable = () => {
-  const { data, isFetching } = appApi.endpoints.getNewestSaves.useQuery();
+  const { data, isFetching } = useNewestSavesQuery();
 
   const columns = [
     {

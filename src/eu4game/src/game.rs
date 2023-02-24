@@ -47,12 +47,14 @@ impl<'a> Game<'a> {
         self.localize(&needle)
     }
 
-    pub fn localize_country(&self, tag: &CountryTag) -> Option<String> {
+    pub fn localize_country_ref(&self, tag: &CountryTag) -> Option<&str> {
         let countries = self.data.countries().unwrap();
         let idx = binary_search_by(&countries, |x| x.key_compare_with_value(tag.as_str()));
-        idx.ok()
-            .and_then(|x| countries.get(x).name())
-            .map(String::from)
+        idx.ok().and_then(|x| countries.get(x).name())
+    }
+
+    pub fn localize_country(&self, tag: &CountryTag) -> Option<String> {
+        self.localize_country_ref(tag).map(String::from)
     }
 
     pub fn localize_trade_company(&self, key: &str) -> String {

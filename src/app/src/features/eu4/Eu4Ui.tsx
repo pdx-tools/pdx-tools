@@ -1,39 +1,69 @@
-import { useSelector } from "react-redux";
-import { selectAnalyzeFileName, selectShowCanvas } from "@/features/engine";
-import { useMap } from "./hooks/useMap";
-import { useEffect } from "react";
-import { useAppDispatch } from "@/lib/store";
-import { toggleShowTerrain, useEu4Meta } from "./eu4Slice";
+import { useEffect, forwardRef, memo } from "react";
 import { Eu4CanvasOverlay } from "./Eu4CanvasOverlay";
-import Head from "next/head";
+import { AppLoading } from "@/components/AppLoading";
+import { ProgressBar } from "@/components/ProgressBar";
+import { MapProvider } from "./features/map/MapProvider";
+import { Alert } from "antd";
+import { Eu4SaveProps, Eu4SaveProvider, useLoadEu4 } from "./Eu4SaveProvider";
+import { useEngineActions } from "../engine";
+import { developerLog } from "@/lib/log";
 
-export const Eu4Ui = () => {
-  const showCanvas = useSelector(selectShowCanvas);
-  const dispatch = useAppDispatch();
-  useMap();
+type Eu4UiProps = {
+  save: Eu4SaveProps;
+};
 
-  useEffect(() => {
-    const showTerrain = JSON.parse(
-      localStorage.getItem("map-show-terrain") ?? "false"
-    );
-    dispatch(toggleShowTerrain(showTerrain));
-  }, [dispatch]);
+const TrackingCanvas = memo(
+  forwardRef<HTMLCanvasElement>(function TrackingCanvas({}, ref) {
+    useEffect(() => {
+      return () => {
+        developerLog("tracking canvas unmounted");
+      };
+    });
 
-  const filename = useSelector(selectAnalyzeFileName);
-  const meta = useEu4Meta();
+    return <canvas ref={ref} />;
+  })
+);
+
+export const Eu4Ui = ({ save }: Eu4UiProps) => {
+  const { loading, data, error, mapCanvas, mapContainer } = useLoadEu4(save);
+  const { resetSaveAnalysis } = useEngineActions();
+  useEffect(() => resetSaveAnalysis, [resetSaveAnalysis]);
+
+  const loadingIcon =
+    data === null ? (
+      <div className="absolute inset-0">
+        <AppLoading />
+      </div>
+    ) : null;
+
+  const progress =
+    error || loading ? (
+      <div className="absolute w-full">
+        {loading !== null ? (
+          <ProgressBar height={32} value={loading.percent ?? 0} />
+        ) : null}
+        {error !== null ? (
+          <Alert type="error" closable message={`${error}`} />
+        ) : null}
+      </div>
+    ) : null;
 
   return (
     <>
-      <Head>
-        <title>{`${filename.replace(".eu4", "")} (${meta.date}) - EU4 (${
-          meta.savegame_version.first
-        }.${meta.savegame_version.second}.${
-          meta.savegame_version.third
-        }) - PDX Tools`}</title>
-      </Head>
-      {showCanvas && <Eu4CanvasOverlay />}
+      {loadingIcon}
+      <div className="absolute inset-0" ref={mapContainer}>
+        <TrackingCanvas ref={mapCanvas} />
+      </div>
+      {progress}
+      {data !== null ? (
+        <Eu4SaveProvider store={data}>
+          <MapProvider>
+            <Eu4CanvasOverlay />
+          </MapProvider>
+        </Eu4SaveProvider>
+      ) : null}
     </>
   );
 };
 
-export default Eu4Ui;
+export default memo(Eu4Ui);

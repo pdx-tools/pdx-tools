@@ -14,6 +14,7 @@ export const HeroFileInput = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.currentTarget.files && e.currentTarget.files[0]) {
       publishFile({ kind: "local", file: e.currentTarget.files[0] });
+      e.currentTarget.value = "";
     }
   };
 

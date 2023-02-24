@@ -4,9 +4,10 @@ import { useUploadProgress, useUploadResponse } from "./uploadContext";
 import { UploadDrawerContent } from "./UploadDrawerContent";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import { ProgressBar } from "@/components/ProgressBar";
-import { useEu4Meta } from "@/features/eu4/eu4Slice";
 import { SaveMode } from "../../components/save-mode";
 import { SuccessAlert } from "../../components/SuccessAlert";
+import { closeDrawerPropagation } from "../../components/SideBarContainer";
+import { useEu4Meta } from "../../Eu4SaveProvider";
 
 interface UploadDrawerProps {
   visible: boolean;
@@ -38,7 +39,7 @@ export const UploadDrawer = ({ visible, closeDrawer }: UploadDrawerProps) => {
       closable={true}
       mask={false}
       maskClosable={false}
-      onClose={closeDrawer}
+      onClose={closeDrawerPropagation(closeDrawer, visible)}
       visible={visible}
       width="min(800px, 100%)"
     >

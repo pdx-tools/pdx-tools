@@ -1,7 +1,7 @@
 import React from "react";
 import { useRouter } from "next/router";
 import { HtmlHead } from "@/components/head";
-import { AppStructure } from "@/components/layout";
+import { Root, WebPage } from "@/components/layout";
 import { AchievementPage } from "@/features/eu4/AchievementPage";
 import { Achievement } from "@/services/appApi";
 import { GetStaticProps } from "next";
@@ -19,7 +19,7 @@ export const Eu4Achievement = ({ achievement }: StaticAchievement) => {
     : "";
   const title = `${prefix}EU4 Achievements - PDX Tools`;
   return (
-    <>
+    <Root>
       <HtmlHead>
         <title>{title}</title>
         <meta
@@ -29,7 +29,7 @@ export const Eu4Achievement = ({ achievement }: StaticAchievement) => {
           }`}
         ></meta>
       </HtmlHead>
-      <AppStructure>
+      <WebPage>
         {achievement !== undefined ? (
           <AchievementPage
             achievementId={achievement.id.toString()}
@@ -39,8 +39,8 @@ export const Eu4Achievement = ({ achievement }: StaticAchievement) => {
           !Array.isArray(achievement_id) ? (
           <AchievementPage achievementId={achievement_id} />
         ) : null}
-      </AppStructure>
-    </>
+      </WebPage>
+    </Root>
   );
 };
 

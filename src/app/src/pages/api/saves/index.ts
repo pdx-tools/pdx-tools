@@ -16,7 +16,7 @@ import { NextSessionRequest, withSession } from "@/server-lib/session";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { getOptionalString, getString } from "@/server-lib/valiation";
 import { deduceUploadType, UploadType } from "@/server-lib/models";
-import { nanoid } from "@reduxjs/toolkit";
+import { nanoid } from "nanoid";
 
 const tmpDir = process.env["TMPDIR"] || os.tmpdir();
 const upload = multer({ dest: tmpDir });

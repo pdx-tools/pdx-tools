@@ -1,22 +1,12 @@
-import {
-  useEu4CanvasRef,
-  useCanvasRef,
-  getEu4Canvas,
-  getCanvas,
-} from "@/features/engine";
+import { WebGLMap } from "@/map/map";
 import { useEffect } from "react";
 
-export function useCanvasPointerEvents() {
-  const mapRef = useEu4CanvasRef();
-  const canvasRef = useCanvasRef();
-
+export function useCanvasPointerEvents(map: WebGLMap) {
   useEffect(() => {
     let primaryPointer: PointerEvent | null = null;
     let secondaryPointer: PointerEvent | null = null;
     let pointerDiff = 0;
-
-    const canvas = getCanvas(canvasRef);
-    const map = getEu4Canvas(mapRef);
+    const canvas = map.gl.canvas;
 
     function moveCamera(e: MouseEvent) {
       map.moveCamera(e);
@@ -104,5 +94,5 @@ export function useCanvasPointerEvents() {
     canvas.addEventListener("wheel", handleMouseWheel);
     canvas.addEventListener("pointerdown", handleMouseDown);
     canvas.addEventListener("pointerup", handleMouseUp);
-  }, [canvasRef, mapRef]);
+  }, [map]);
 }

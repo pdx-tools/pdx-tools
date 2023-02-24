@@ -3,13 +3,9 @@ import { Table, Tooltip } from "antd";
 import { ColumnGroupType, ColumnType } from "antd/lib/table";
 import { useIsLoading } from "@/components/viz/visualization-context";
 import { BattleInfo, Losses, WarParticipant } from "../../types/models";
-import { debugLog } from "@/lib/debug";
 import { formatInt } from "@/lib/format";
-import {
-  useWorkerOnSave,
-  WorkerClient,
-} from "../../../engine/worker/wasm-worker-context";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
+import { useEu4Worker } from "@/features/eu4/worker";
 
 interface BattleViewProps {
   warName: string;
@@ -148,37 +144,34 @@ export const BattleView = ({ warName }: BattleViewProps) => {
   const attackers = useRef<WarParticipant[]>([]);
   const defenders = useRef<WarParticipant[]>([]);
 
-  const cb = useCallback(
-    async (worker: WorkerClient) => {
-      const start = performance.now();
-      const war = await worker.eu4GetWarInfo(warName);
-      const battles = war.battles;
-      const [landBattleInfos, navalBattleInfos]: BattleInfo[][] = [[], []];
-      for (let i = 0; i < battles.length; i++) {
-        const battle = battles[i];
-        if (
-          battle.attacker.infantry +
-            battle.attacker.cavalry +
-            battle.attacker.artillery ===
-          0
-        ) {
-          navalBattleInfos.push(battle);
-        } else {
-          landBattleInfos.push(battle);
+  useEu4Worker(
+    useCallback(
+      async (worker) => {
+        const war = await worker.eu4GetWarInfo(warName);
+        const battles = war.battles;
+        const [landBattleInfos, navalBattleInfos]: BattleInfo[][] = [[], []];
+        for (let i = 0; i < battles.length; i++) {
+          const battle = battles[i];
+          if (
+            battle.attacker.infantry +
+              battle.attacker.cavalry +
+              battle.attacker.artillery ===
+            0
+          ) {
+            navalBattleInfos.push(battle);
+          } else {
+            landBattleInfos.push(battle);
+          }
         }
-      }
 
-      attackers.current = war.attacker_participants;
-      defenders.current = war.defender_participants;
-      navalBattles.current = navalBattleInfos;
-      landBattles.current = landBattleInfos;
-      const end = performance.now();
-      debugLog(`battle view js calculations: ${(end - start).toFixed(2)}ms`);
-    },
-    [warName]
+        attackers.current = war.attacker_participants;
+        defenders.current = war.defender_participants;
+        navalBattles.current = navalBattleInfos;
+        landBattles.current = landBattleInfos;
+      },
+      [warName]
+    )
   );
-
-  useWorkerOnSave(cb);
 
   const navalColumns: (ColumnGroupType<BattleInfo> | ColumnType<BattleInfo>)[] =
     [

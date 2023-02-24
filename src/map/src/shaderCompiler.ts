@@ -2,10 +2,10 @@ import { ShaderSource } from "./types";
 
 // Compile shaders and link programs in parallel
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices#compile_shaders_and_link_programs_in_parallel
-export function compile(
+export function startCompilation(
   gl: WebGL2RenderingContext,
   sources: ShaderSource[]
-): () => Promise<WebGLProgram[]> {
+) {
   const ext = gl.getExtension("KHR_parallel_shader_compile");
   const shaders = sources.map(({ vertex, fragment }) => [
     createShader(gl, gl.VERTEX_SHADER, vertex),
@@ -33,29 +33,34 @@ export function compile(
     ? (program) => {
         return new Promise((resolve) => resolveStatus(program, resolve));
       }
-    : (program) => gl.getProgramParameter(program, gl.LINK_STATUS);
+    : (program) =>
+        Promise.resolve(gl.getProgramParameter(program, gl.LINK_STATUS));
 
   // Only check status of everything at the end of pipeline
   // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices#dont_check_shader_compile_status_unless_linking_fails
-  return async () => {
-    for (let i = 0; i < programs.length; i++) {
-      const program = programs[i];
-      const [vertexShader, fragmentShader] = shaders[i];
+  return {
+    nonBlocking: !!ext,
+    compilationCompletion: () =>
+      Promise.all(
+        programs.map((program, i) => {
+          const [vertexShader, fragmentShader] = shaders[i];
+          return programStatus(program).then((isSuccess) => {
+            if (isSuccess) {
+              return Promise.resolve(program);
+            }
 
-      const isSuccess = await programStatus(program);
-
-      if (!isSuccess) {
-        throw new Error(
-          `Link failed: ${gl.getProgramInfoLog(
-            program
-          )} | vs info: ${gl.getShaderInfoLog(
-            vertexShader
-          )} | fs info: ${gl.getShaderInfoLog(fragmentShader)}`
-        );
-      }
-    }
-
-    return programs;
+            return Promise.reject(
+              new Error(
+                `Link failed: ${gl.getProgramInfoLog(
+                  program
+                )} | vs info: ${gl.getShaderInfoLog(
+                  vertexShader
+                )} | fs info: ${gl.getShaderInfoLog(fragmentShader)}`
+              )
+            );
+          });
+        })
+      ),
   };
 }
 

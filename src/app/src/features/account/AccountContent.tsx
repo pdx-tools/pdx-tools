@@ -1,22 +1,17 @@
+import { useNewApiKeyRequest, useProfileQuery } from "@/services/appApi";
 import { Alert, Button, Descriptions, Typography } from "antd";
 import React, { useState } from "react";
-import { useSelector } from "react-redux";
-import { appApi } from "../../services/appApi";
-import { selectUserInfo } from "./sessionSlice";
 const { Text } = Typography;
 
 export const AccountContent = () => {
-  const userInfo = useSelector(selectUserInfo);
+  const profileQuery = useProfileQuery();
   const [key, setKey] = useState<string | undefined>();
-  const [trigger, { isLoading }] = appApi.endpoints.newApiKey.useMutation();
+  const newKey = useNewApiKeyRequest(setKey);
 
-  if (!userInfo) {
+  if (profileQuery.data === undefined || profileQuery.data.kind == "guest") {
     return null;
   }
 
-  const generateApiClick = async () => {
-    setKey((await trigger().unwrap()).api_key);
-  };
   const message = (
     <Text copyable={{ text: key || "" }}>
       Your new API Key: <pre className="inline">{key}</pre>. Keep it safe
@@ -32,14 +27,14 @@ export const AccountContent = () => {
         column={{ xxl: 1, xl: 1, lg: 1, md: 1, sm: 1, xs: 1 }}
       >
         <Descriptions.Item label="PDX Tools User Id">
-          <Text copyable>{userInfo.user_id}</Text>
+          <Text copyable>{profileQuery.data.user.user_id}</Text>
         </Descriptions.Item>
         <Descriptions.Item label="New API Key">
           <p>
             Generate a new API key for 3rd party apps. Previous API key is
             overwritten
           </p>
-          <Button loading={isLoading} onClick={generateApiClick}>
+          <Button loading={newKey.isLoading} onClick={() => newKey.mutate()}>
             Generate
           </Button>
         </Descriptions.Item>

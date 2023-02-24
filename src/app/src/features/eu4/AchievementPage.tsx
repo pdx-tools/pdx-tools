@@ -3,7 +3,7 @@ import { PageHeader, Typography, Spin } from "antd";
 import type { Route } from "antd/es/breadcrumb/Breadcrumb";
 import Link from "next/link";
 import { RecordTable } from "./components/RecordTable";
-import { Achievement, appApi } from "@/services/appApi";
+import { Achievement, useAchievementQuery } from "@/services/appApi";
 const { Paragraph } = Typography;
 
 interface AchievementRoute {
@@ -12,19 +12,18 @@ interface AchievementRoute {
 }
 
 const useAchievement = (achievementId: string) => {
-  const { isFetching, isUninitialized, data } =
-    appApi.endpoints.getAchievement.useQuery(achievementId);
-  const achievement = data?.achievement;
+  const achievementQuery = useAchievementQuery(achievementId);
+  const achievement = achievementQuery.data?.achievement;
   const saves = useMemo(
     () =>
-      (data?.saves ?? []).map((x, i) => ({
+      (achievementQuery.data?.saves ?? []).map((x, i) => ({
         ...x,
         rank: i + 1,
       })),
-    [data?.saves]
+    [achievementQuery.data]
   );
 
-  return { isFetching: isUninitialized || isFetching, achievement, saves };
+  return { isFetching: achievementQuery.isFetching, achievement, saves };
 };
 
 export const AchievementPage = ({

@@ -1,33 +1,25 @@
-import {
-  getWasmWorker,
-  useEu4CanvasRef,
-  useWasmWorker,
-} from "@/features/engine";
-import { useIsMounted } from "@/hooks/useIsMounted";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useSelector } from "react-redux";
-import { selectEu4MapColorPayload } from "../../eu4Slice";
+import { useEu4Map, useEu4Save } from "../../Eu4SaveProvider";
 import { QuickTipPayload } from "../../types/map";
+import { getEu4Worker } from "../../worker";
 import { MapTipContents } from "./MapTipContents";
 
-interface MousePosition {
+type MousePosition = {
   x: number;
   y: number;
-}
+};
 
 export const MapTip = () => {
   const [position, setPosition] = useState<MousePosition>({ x: 0, y: 0 });
   const [pointer, setPointer] = useState<MousePosition>({ x: 0, y: 0 });
   const [pointerDisplay, setPointerDisplay] = useState(false);
   const toolTipRef = useRef<HTMLDivElement>(null);
-  const eu4CanvasRef = useEu4CanvasRef();
   const tooltipTimer = useRef<ReturnType<typeof setTimeout>>();
   const [timerDisplay, setTimerDisplay] = useState(false);
-  const wasmWorkerRef = useWasmWorker();
   const [mapTip, setMapTip] = useState<QuickTipPayload | null>(null);
   const [provinceId, setProvinceId] = useState(0);
-  const mapColor = useSelector(selectEu4MapColorPayload);
-  const isMounted = useIsMounted();
+  const mapMode = useEu4Save((x) => x.mapMode);
+  const map = useEu4Map();
 
   useEffect(() => {
     let isDown = false;
@@ -101,40 +93,43 @@ export const MapTip = () => {
   }, [mapTip]);
 
   useEffect(() => {
-    const map = eu4CanvasRef.current?.map;
-    if (map) {
-      map.onProvinceHover = (e) => {
-        if (isMounted()) {
-          setProvinceId(e);
-        }
-      };
-    }
-  }, [eu4CanvasRef, isMounted]);
+    let isMounted = true;
+    map.onProvinceHover = (e) => {
+      if (isMounted) {
+        setProvinceId(e);
+      }
+    };
+    return () => {
+      isMounted = false;
+    };
+  }, [map]);
 
   useEffect(() => {
     if (provinceId == 0) {
       return;
     }
 
-    const worker = getWasmWorker(wasmWorkerRef);
+    let isMounted = true;
+    const worker = getEu4Worker();
     if (tooltipTimer.current) {
       clearTimeout(tooltipTimer.current);
     }
     setTimerDisplay(false);
 
     tooltipTimer.current = setTimeout(async () => {
-      const data = await worker.eu4GetMapTooltip(provinceId, mapColor);
-      if (isMounted()) {
+      const data = await worker.eu4GetMapTooltip(provinceId, mapMode);
+      if (isMounted) {
         setMapTip(data);
       }
     }, 250);
 
     return () => {
+      isMounted = false;
       if (tooltipTimer.current) {
         clearTimeout(tooltipTimer.current);
       }
     };
-  }, [provinceId, wasmWorkerRef, mapColor, isMounted]);
+  }, [provinceId, mapMode]);
 
   // When we are calculating (or don't want to display) the tooltip,
   // set the opacity to 0 instead of removing the display so that the width

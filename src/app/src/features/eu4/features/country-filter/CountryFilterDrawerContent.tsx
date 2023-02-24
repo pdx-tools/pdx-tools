@@ -5,9 +5,8 @@ import {
   useCountryFilterState,
 } from "./countryFilterContext";
 import { CountryFilterForm } from "./CountryFilterForm";
-import { useDispatch } from "react-redux";
-import { setEu4CountryFilter } from "@/features/eu4/eu4Slice";
 import { CountrySelect } from "../../components/country-select";
+import { useEu4Actions } from "../../Eu4SaveProvider";
 
 interface CountryFilterDrawerContent {
   closeDrawer: () => void;
@@ -16,10 +15,10 @@ interface CountryFilterDrawerContent {
 export const CountryFilterDrawerContent = ({
   closeDrawer,
 }: CountryFilterDrawerContent) => {
+  const { updateTagFilter } = useEu4Actions();
   const [forceShowFiltered, setForceShowFiltered] = useState(false);
   const filter = useCountryFilterState();
   const localDispatch = useCountryFilterDispatch();
-  const globalDispatch = useDispatch();
   const manySelectedTags = filter.countries.length > 50;
 
   return (
@@ -53,7 +52,7 @@ export const CountryFilterDrawerContent = ({
         initialValues={filter.matcher}
         onChange={(x) => {
           closeDrawer();
-          globalDispatch(setEu4CountryFilter(x));
+          updateTagFilter(x);
         }}
       />
     </>

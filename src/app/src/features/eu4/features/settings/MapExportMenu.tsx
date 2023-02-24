@@ -1,19 +1,17 @@
 import React, { useCallback } from "react";
 import { Menu } from "antd";
 import { downloadData } from "@/lib/downloadData";
-import { useSelector } from "react-redux";
-import {
-  selectEu4MapColorPayload,
-  selectEu4MapDecorativeSettings,
-  useEu4Meta,
-} from "@/features/eu4/eu4Slice";
 import { provinceIdToColorIndexInvert } from "@/features/eu4/features/map/resources";
-import { selectIsDeveloper } from "@/features/account";
+import { useIsDeveloper } from "@/features/account";
+import { getEu4Worker } from "../../worker";
 import {
-  useCanvasRef,
-  useEu4CanvasRef,
-  useWasmWorker,
-} from "@/features/engine";
+  selectMapPayload,
+  useEu4Context,
+  useEu4Map,
+  useEu4MapMode,
+  useEu4Meta,
+  useTerrainOverlay,
+} from "../../Eu4SaveProvider";
 
 type Items = React.ComponentProps<typeof Menu>["items"];
 
@@ -22,43 +20,29 @@ interface MapExportMenuProps {
 }
 
 export const MapExportMenu = ({ setIsExporting }: MapExportMenuProps) => {
-  const decorativeSettings = useSelector(selectEu4MapDecorativeSettings);
-  const mapColorPayload = useSelector(selectEu4MapColorPayload);
   const meta = useEu4Meta();
-  const eu4CanvasRef = useEu4CanvasRef();
-  const canvasRef = useCanvasRef();
-  const isDeveloper = useSelector(selectIsDeveloper);
-  const workerRef = useWasmWorker();
-  const colorCb = useCallback(async () => {
-    const worker = workerRef.current?.worker;
-    if (!worker) {
-      return;
-    }
+  const isDeveloper = useIsDeveloper();
+  const map = useEu4Map();
+  const terrainOverlay = useTerrainOverlay();
+  const mapMode = useEu4MapMode();
+  const store = useEu4Context();
 
-    const [primary, _] = await worker.eu4MapColors(mapColorPayload);
+  const colorCb = useCallback(async () => {
+    const mapPayload = selectMapPayload(store.getState());
+    const [primary, _] = await getEu4Worker().eu4MapColors(mapPayload);
     downloadData(new Uint8Array(primary.buffer), "color-data.bin");
-  }, [workerRef, mapColorPayload]);
+  }, [store]);
 
   const indicesCb = useCallback(async () => {
-    const worker = workerRef.current?.worker;
-    if (!worker) {
-      return;
-    }
-
-    const provinceIdToColorIndex = await worker.eu4GetProvinceIdToColorIndex();
+    const provinceIdToColorIndex =
+      await getEu4Worker().eu4GetProvinceIdToColorIndex();
     const colorIndexToProvinceId = provinceIdToColorIndexInvert(
       provinceIdToColorIndex
     );
     downloadData(colorIndexToProvinceId, "color-index.bin");
-  }, [workerRef]);
+  }, []);
 
-  if (!eu4CanvasRef.current || !canvasRef.current) {
-    return null;
-  }
-
-  const canvas = canvasRef.current;
-  const map = eu4CanvasRef.current;
-  const exportType = decorativeSettings.showTerrain ? "webp" : "png";
+  const exportType = terrainOverlay ? "webp" : "png";
 
   const downloadDataFile = (data: Blob | null, suffix: string) => {
     if (!data) {
@@ -66,16 +50,16 @@ export const MapExportMenu = ({ setIsExporting }: MapExportMenuProps) => {
     }
 
     let outName = meta.save_game.replace(".eu4", "");
-    outName = `${outName}-${meta.date}-${mapColorPayload.kind}-${suffix}.${exportType}`;
+    outName = `${outName}-${meta.date}-${mapMode}-${suffix}.${exportType}`;
 
     downloadData(data, outName);
     setIsExporting(false);
   };
 
   const exportView = () => {
-    map.map?.redrawMapNow();
+    map.redrawMapNow();
     setIsExporting(true);
-    canvas.toBlob((b) => downloadDataFile(b, "view"));
+    map.gl.canvas.toBlob((b) => downloadDataFile(b, "view"));
   };
 
   const exportFullView = async () => {

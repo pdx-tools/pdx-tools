@@ -1,8 +1,10 @@
 import { expose, transfer } from "comlink";
 import init, * as wasmModule from "../../../../wasm-br/pkg/wasm_br";
 import wasmPath from "../../../../wasm-br/pkg/wasm_br_bg.wasm";
-import { debugLog } from "@/lib/debug";
 import { CompressionPayload } from "./brotli-types";
+import { timeSync } from "@/lib/timeit";
+import { formatInt } from "@/lib/format";
+import { logMs } from "@/lib/log";
 
 export type BrotliProgressCb = (portion: number) => void;
 
@@ -12,23 +14,19 @@ const obj = {
   },
 
   compress(data: Uint8Array, cb: BrotliProgressCb): CompressionPayload {
-    const start = performance.now();
-    const startKb = (data.length / 1024).toFixed(0);
-    const result = wasmModule.brotli_compress(data, cb);
-    const end = performance.now();
-    const endKb = (result.length / 1024).toFixed(0);
-    debugLog(
-      `compressed: ${startKb}KB to ${endKb}KB in ${(end - start).toFixed(2)}ms`
-    );
+    const deflated = timeSync(() => wasmModule.brotli_compress(data, cb));
+    const startKb = formatInt(data.length / 1024);
+    const endKb = formatInt(deflated.data.length / 1024);
+    logMs(deflated, `compressed: ${startKb}kB to ${endKb}kB`);
 
     const meta = JSON.parse(wasmModule.recompressed_meta(data));
     return transfer(
       {
         contentType: meta.content_type,
         contentEncoding: meta.content_encoding,
-        data: result,
+        data: deflated.data,
       },
-      [result.buffer]
+      [deflated.data.buffer]
     );
   },
 };

@@ -14,7 +14,7 @@ const MAX_TEXTURE_SIZE = 4096;
 
 // Stores all WebGL resource data like textures, shader programs, etc.
 export class GLResources {
-  private constructor(
+  public constructor(
     public readonly gl: OnScreenWegblContext,
     public colorMap: WebGLTexture,
     public sea: WebGLTexture,
@@ -36,8 +36,6 @@ export class GLResources {
     public readonly countryProvinceColors: WebGLTexture,
     public readonly primaryProvinceColors: WebGLTexture,
     public readonly secondaryProvinceColors: WebGLTexture,
-    public readonly mapShaderProgram: MapShader,
-    public readonly xbrShaderProgram: XbrShader,
     public readonly posBuffer: WebGLBuffer,
     public readonly xbrPosBuffer: WebGLBuffer,
     public readonly rawMapTexCoordBuffer1: WebGLBuffer,
@@ -52,7 +50,9 @@ export class GLResources {
     public readonly framebufferRawMapTexture2: WebGLTexture,
     public readonly rawMapFramebuffer1: WebGLFramebuffer,
     public readonly rawMapFramebuffer2: WebGLFramebuffer,
-    public readonly provinceCount: number
+    public readonly provinceCount: number,
+    public readonly mapShaderProgram: MapShader,
+    public readonly xbrShaderProgram: XbrShader
   ) {
     gl.bindVertexArray(rawMapVao1);
     mapShaderProgram.bindPosBuffer(posBuffer);
@@ -70,10 +70,9 @@ export class GLResources {
     gl.bindVertexArray(null);
   }
 
-  static async create(
+  static create(
     gl: OnScreenWegblContext,
     staticRes: StaticResources,
-    linkedPrograms: () => Promise<WebGLProgram[]>,
     provincesCountryColor: Uint8Array
   ) {
     let provinceCount = staticRes.provincesUniqueColor.length / 3;
@@ -165,9 +164,7 @@ export class GLResources {
     const surfaceNormalGreen = setupTexture(gl, new ImageData(1, 1), gl.LINEAR);
     const heightMap = setupTexture(gl, new ImageData(1, 1), gl.LINEAR);
 
-    const [mapProgram, xbrProgram] = await linkedPrograms();
-
-    return new GLResources(
+    return [
       gl,
       colorMap,
       sea,
@@ -207,8 +204,6 @@ export class GLResources {
         provinceCount,
         provincesCountryColor
       ),
-      MapShader.create(gl, mapProgram),
-      XbrShader.create(gl, xbrProgram),
       initializeGeometry(gl),
       xbrPositionBuffer,
       initializeRawMapTexCoords1(gl),
@@ -223,8 +218,8 @@ export class GLResources {
       fbRawMapTexture2,
       rawMapFramebuffer1,
       rawMapFramebuffer2,
-      staticRes.provincesUniqueColor.length / 3
-    );
+      staticRes.provincesUniqueColor.length / 3,
+    ] as const;
   }
 
   resizeXbrGeometry(width: number) {

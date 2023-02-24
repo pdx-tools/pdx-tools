@@ -1,20 +1,28 @@
 import React, { useState } from "react";
 import { Drawer, Tooltip } from "antd";
 import { InfoDrawer } from "./InfoDrawer";
-import { MeltButton } from "./MeltButton";
 import { SaveMode } from "../../components/save-mode";
 import {
   SideBarButtonProps,
   SideBarButton,
 } from "../../components/SideBarButton";
-import { SideBarContainerProvider } from "../../components/SideBarContainer";
-import { useEu4Meta } from "../../eu4Slice";
-import { useAppSelector } from "@/lib/store";
+import {
+  closeDrawerPropagation,
+  SideBarContainerProvider,
+} from "../../components/SideBarContainer";
 import { DownloadButton } from "./DownloadButton";
+import { MeltButton } from "@/components/MeltButton";
+import { getEu4Worker } from "../../worker";
+import {
+  useEu4Meta,
+  useSaveFilename,
+  useServerSaveFile,
+} from "../../Eu4SaveProvider";
 
 const InfoSideBarTitle = () => {
   const meta = useEu4Meta();
-  const remoteFile = useAppSelector((state) => state.eu4.serverSaveFile);
+  const remoteFile = useServerSaveFile();
+  const filename = useSaveFilename();
   return (
     <div className="flex items-center gap-2">
       <SaveMode mode={meta.mode} />
@@ -23,7 +31,9 @@ const InfoSideBarTitle = () => {
       </span>
       <div className="drawer-extras mr-4 flex grow items-center justify-end gap-2">
         {remoteFile && <DownloadButton />}
-        {!meta.encoding.includes("text") && <MeltButton />}
+        {!meta.encoding.includes("text") && (
+          <MeltButton game="eu4" worker={getEu4Worker()} filename={filename} />
+        )}
       </div>
     </div>
   );
@@ -43,7 +53,10 @@ export const InfoSideBarButton = ({
         mask={false}
         maskClosable={false}
         destroyOnClose={true} /* to reset initial map payload */
-        onClose={() => setDrawerVisible(false)}
+        onClose={closeDrawerPropagation(
+          () => setDrawerVisible(false),
+          drawerVisible
+        )}
         visible={drawerVisible}
         width="min(800px, 100%)"
       >

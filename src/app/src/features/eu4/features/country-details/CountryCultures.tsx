@@ -1,14 +1,11 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { Table, Tooltip } from "antd";
 import { ColumnType, ColumnGroupType } from "antd/lib/table";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryDetails, CountryCulture } from "../../types/models";
-import {
-  useWorkerOnSave,
-  WorkerClient,
-} from "../../../engine/worker/wasm-worker-context";
 import { StarTwoTone } from "@ant-design/icons";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { useEu4Worker } from "@/features/eu4/worker";
 
 export interface CountryCulturesProps {
   details: CountryDetails;
@@ -159,16 +156,11 @@ const CountryCultureViz = React.memo(CountryCultureVizImpl);
 
 export const CountryCultures = ({ details }: CountryCulturesProps) => {
   const isMd = useBreakpoint("md");
-  const [data, setData] = useState<CountryCulture[]>([]);
-  const cb = useCallback(
-    async (worker: WorkerClient) => {
-      const result = await worker.eu4GetCountryProvinceCulture(details.tag);
-      setData(result);
-    },
-    [details.tag]
+  const { data = [] } = useEu4Worker(
+    useCallback(
+      (worker) => worker.eu4GetCountryProvinceCulture(details.tag),
+      [details.tag]
+    )
   );
-
-  useWorkerOnSave(cb);
-
   return <CountryCultureViz data={data} largeLayout={isMd} />;
 };

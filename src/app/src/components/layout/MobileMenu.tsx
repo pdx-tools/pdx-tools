@@ -6,7 +6,7 @@ import { CoreMenu } from "./CoreMenu";
 export const MobileMenu = () => {
   const [menuVisible, setMenuVisible] = useState(false);
   return (
-    <div className="flex grow justify-end">
+    <div className="flex grow justify-end md:hidden">
       <Button
         icon={<MenuOutlined />}
         size="large"

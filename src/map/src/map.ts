@@ -89,7 +89,7 @@ export class WebGLMap {
   public onCommit?: (context: OnScreenWegblContext) => void;
 
   constructor(
-    private gl: OnScreenWegblContext,
+    public readonly gl: OnScreenWegblContext,
     private glResources: GLResources,
     private provinceFinder: ProvinceFinder
   ) {
@@ -149,7 +149,6 @@ export class WebGLMap {
     this.gl.canvas.style.height = `${cssHeight}px`;
     this.gl.canvas.width = cssWidth * this.pixelRatio;
     this.gl.canvas.height = cssHeight * this.pixelRatio;
-    this.redrawViewport();
   }
 
   static create(
@@ -565,7 +564,7 @@ export class WebGLMap {
 
     if (diffX + diffY < 15) {
       const prov = this.provinceFinder.findProvinceId(pixelX, pixelY);
-      if (prov.colorIndex !== this.selectedProvinceColorInd) {
+      if (prov && prov.colorIndex !== this.selectedProvinceColorInd) {
         this.selectedProvinceColorInd = prov.colorIndex;
         this.highlightSelectedProvince();
         this.redrawMapNow();
@@ -577,7 +576,7 @@ export class WebGLMap {
   private onDblClick(e: any) {
     const [pixelX, pixelY] = this.mousePixel(e);
     const prov = this.provinceFinder.findProvinceId(pixelX, pixelY);
-    if (prov.colorIndex === this.selectedProvinceColorInd) {
+    if (prov && prov.colorIndex === this.selectedProvinceColorInd) {
       console.log("double click on same province");
     }
   }
@@ -589,7 +588,7 @@ export class WebGLMap {
   private onMouseMove(e: any, rect?: UserRect) {
     const [pixelX, pixelY] = this.mousePixel(e, rect);
     const prov = this.provinceFinder.findProvinceId(pixelX, pixelY);
-    if (prov.colorIndex !== this.hoverProvinceColorInd) {
+    if (prov && prov.colorIndex !== this.hoverProvinceColorInd) {
       this.hoverProvinceColorInd = prov.colorIndex;
       this.onProvinceHover?.(prov.provinceId);
     }

@@ -1,16 +1,19 @@
 import { Drawer } from "antd";
-import { useSideBarContainerRef } from "../../components/SideBarContainer";
+import {
+  closeDrawerPropagation,
+  useSideBarContainerRef,
+} from "../../components/SideBarContainer";
 import { MapSettings } from "./MapSettings";
 
-interface CountryDetailsProps {
+type MapSettingsDrawerProps = {
   visible: boolean;
   closeDrawer: () => void;
-}
+};
 
 export const MapSettingsDrawer = ({
   visible,
   closeDrawer,
-}: CountryDetailsProps) => {
+}: MapSettingsDrawerProps) => {
   const sideBarContainerRef = useSideBarContainerRef();
   return (
     <Drawer
@@ -19,7 +22,7 @@ export const MapSettingsDrawer = ({
       closable={true}
       mask={false}
       maskClosable={false}
-      onClose={closeDrawer}
+      onClose={closeDrawerPropagation(closeDrawer, visible)}
       visible={visible}
       width="min(400px, 100%)"
     >

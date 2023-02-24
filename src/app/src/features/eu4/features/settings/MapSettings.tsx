@@ -1,38 +1,109 @@
 import { useState } from "react";
 import { Spin, Dropdown, Button, Divider } from "antd";
 import { DownOutlined } from "@ant-design/icons";
-import { useSelector } from "react-redux";
-import { useAppDispatch } from "@/lib/store";
-import {
-  selectEu4MapColorPayload,
-  selectEu4MapDecorativeSettings,
-  selectEu4MapMode,
-  selectEu4CountryBordersDisabled,
-  toggleShowTerrain,
-  toggleShowController,
-  togglePaintSubjectInOverlordHue,
-  toggleShowProvinceBorders,
-  toggleShowCountryBorders,
-  toggleShowMapModeBorders,
-} from "@/features/eu4/eu4Slice";
 import { MapModeButtonGroup } from "../../components/map-modes";
 import { CountryFilterButton } from "../country-filter";
 import { DateTimeline } from "./DateTimeline";
 import { MapExportMenu } from "./MapExportMenu";
 import { ToggleRow } from "./ToggleRow";
 import { Timelapse } from "./Timelapse";
+import {
+  useEu4Actions,
+  useEu4MapMode,
+  usePaintSubjectInOverlordHue,
+  useMapShowStripes,
+  useTerrainOverlay,
+  useShowProvinceBorders,
+  useShowCountryBorders,
+  useIsCountryBordersDisabled,
+  useShowMapModeBorders,
+} from "../../Eu4SaveProvider";
+
+const TerrainToggleRow = () => {
+  const data = useTerrainOverlay();
+  const { setTerrainOverlay } = useEu4Actions();
+  return (
+    <ToggleRow
+      value={data}
+      onChange={setTerrainOverlay}
+      text="Overlay terrain textures"
+    />
+  );
+};
+
+const MapStripesToggleRow = () => {
+  const data = useMapShowStripes();
+  const { setMapShowStripes } = useEu4Actions();
+  return (
+    <ToggleRow
+      value={data}
+      onChange={setMapShowStripes}
+      text="Paint map mode stripes"
+    />
+  );
+};
+
+const PaintSubjectInOverlordHueToggleRow = () => {
+  const data = usePaintSubjectInOverlordHue();
+  const { setPaintSubjectInOverlordHue } = useEu4Actions();
+  const mapMode = useEu4MapMode();
+  const overlordHueDisabled = mapMode != "political";
+
+  return (
+    <ToggleRow
+      value={data}
+      onChange={setPaintSubjectInOverlordHue}
+      text="Paint subjects in overlord hue"
+      disabled={overlordHueDisabled}
+    />
+  );
+};
+
+const ProvinceBordersToggleRow = () => {
+  const data = useShowProvinceBorders();
+  const { setShowProvinceBorders } = useEu4Actions();
+  return (
+    <ToggleRow
+      value={data}
+      onChange={setShowProvinceBorders}
+      text="Paint province borders"
+    />
+  );
+};
+
+const CountryBordersToggleRow = () => {
+  const data = useShowCountryBorders();
+  const { setShowCountryBorders } = useEu4Actions();
+  const countryBordersDisabled = useIsCountryBordersDisabled();
+
+  return (
+    <ToggleRow
+      value={countryBordersDisabled ? false : data}
+      onChange={setShowCountryBorders}
+      text="Paint country borders"
+      disabled={countryBordersDisabled}
+    />
+  );
+};
+
+const MapModeBordersToggleRow = () => {
+  const data = useShowMapModeBorders();
+  const { setShowMapModeBorders } = useEu4Actions();
+  const mapMode = useEu4MapMode();
+  const disabled = mapMode == "terrain" || mapMode == "political";
+
+  return (
+    <ToggleRow
+      value={data}
+      onChange={setShowMapModeBorders}
+      text="Paint map mode borders"
+      disabled={disabled}
+    />
+  );
+};
 
 export const MapSettings = () => {
   const [isExporting, setIsExporting] = useState(false);
-  const dispatch = useAppDispatch();
-  const mapControl = useSelector(selectEu4MapColorPayload);
-  const decorativeMap = useSelector(selectEu4MapDecorativeSettings);
-  const mapMode = useSelector(selectEu4MapMode);
-
-  const overlordHueDisabled = mapMode != "political";
-  const showStripesDisabled = mapMode == "terrain";
-  const mapModeBordersDisabled = mapMode == "terrain" || mapMode == "political";
-  const countryBordersDisabled = useSelector(selectEu4CountryBordersDisabled);
 
   return (
     <>
@@ -51,48 +122,12 @@ export const MapSettings = () => {
         </Spin>
       </div>
 
-      <ToggleRow
-        value={decorativeMap.showTerrain}
-        onChange={(e) => {
-          dispatch(toggleShowTerrain(e));
-          localStorage.setItem("map-show-terrain", JSON.stringify(e));
-        }}
-        text="Overlay terrain textures"
-      />
-
-      <ToggleRow
-        value={mapControl.showSecondaryColor}
-        onChange={(e) => dispatch(toggleShowController(e))}
-        text="Paint map mode stripes"
-        disabled={showStripesDisabled}
-      />
-
-      <ToggleRow
-        value={mapControl.paintSubjectInOverlordHue}
-        onChange={(e) => dispatch(togglePaintSubjectInOverlordHue(e))}
-        text="Paint subjects in overlord hue"
-        disabled={overlordHueDisabled}
-      />
-
-      <ToggleRow
-        value={decorativeMap.showProvinceBorders}
-        onChange={(e) => dispatch(toggleShowProvinceBorders(e))}
-        text="Paint province borders"
-      />
-
-      <ToggleRow
-        value={decorativeMap.showCountryBorders}
-        onChange={(e) => dispatch(toggleShowCountryBorders(e))}
-        text="Paint country borders"
-        disabled={countryBordersDisabled}
-      />
-
-      <ToggleRow
-        value={decorativeMap.showMapModeBorders}
-        onChange={(e) => dispatch(toggleShowMapModeBorders(e))}
-        disabled={mapModeBordersDisabled}
-        text="Paint map mode borders"
-      />
+      <TerrainToggleRow />
+      <MapStripesToggleRow />
+      <PaintSubjectInOverlordHueToggleRow />
+      <ProvinceBordersToggleRow />
+      <CountryBordersToggleRow />
+      <MapModeBordersToggleRow />
 
       <Divider orientation="left">Date Controls</Divider>
       <DateTimeline />

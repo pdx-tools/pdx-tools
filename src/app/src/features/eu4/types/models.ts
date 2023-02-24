@@ -672,7 +672,7 @@ export interface CountryStateDetails {
   centralized: number;
   capital_state: boolean;
   prosperity: number;
-  prosperity_mode: boolean | null;
+  prosperity_mode: boolean | undefined;
   state_house: boolean;
 }
 

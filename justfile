@@ -293,8 +293,7 @@ prep-frontend:
   echo "import type { ResourceUrls } from \"./url_types\"" >> "$RESOURCE_OUTPUT"
   echo "export const resources: Record<string, ResourceUrls> = {" >> "$RESOURCE_OUTPUT"
 
-  echo "import type { DataUrls } from \"./url_types\"" >> "$DATA_OUTPUT"
-  echo "export const dataUrls: Record<string, DataUrls> = {" >> "$DATA_OUTPUT"
+  echo "export const dataUrls: Record<string, string> = {" >> "$DATA_OUTPUT"
 
   for VERSION in $(ls assets/game/eu4/ | grep -v common | sort -n); do
     cat >> "$RESOURCE_OUTPUT" << EOF
@@ -321,10 +320,7 @@ prep-frontend:
   EOF
 
   cat >> "$DATA_OUTPUT" << EOF
-  "$VERSION": {
-    data: require(\`../../../../assets/game/eu4/$VERSION/data.bin\`),
-    provinceIndices: require(\`../../../../assets/game/eu4/$VERSION/provinces-indices.bin\`),
-  },
+  "$VERSION": require(\`../../../../assets/game/eu4/$VERSION/data.bin\`),
   EOF
 
   done;

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import Link from "next/link";
 import {
   Alert,
   Button,
@@ -18,30 +18,26 @@ import {
   VideoCameraOutlined,
   VideoCameraTwoTone,
 } from "@ant-design/icons";
-import {
-  getWasmWorker,
-  useWasmWorker,
-  getEu4Map,
-  getEu4Canvas,
-  useCanvasContext,
-  selectAnalyzeFileName,
-} from "@/features/engine";
-import {
-  initialEu4CountryFilter,
-  selectEu4MapColorPayload,
-  selectEu4MapDate,
-  setMapDate,
-  useEu4Meta,
-} from "../../eu4Slice";
 import { downloadData } from "@/lib/downloadData";
 import { ToggleRow } from "./ToggleRow";
 import { IMG_HEIGHT, IMG_WIDTH } from "@/map/map";
-import { selectIsDeveloper } from "@/features/account";
+import { useIsDeveloper } from "@/features/account";
 import { dates, TimelapseEncoder } from "./TimelapseEncoder";
 import { transcode } from "./WebMTranscoder";
-import { useAppSelector } from "@/lib/store";
-import Link from "next/link";
 import { captureException } from "@/features/errors";
+import { getEu4Worker } from "../../worker";
+import {
+  initialEu4CountryFilter,
+  selectMapPayload,
+  useEu4Actions,
+  useEu4Context,
+  useEu4Map,
+  useEu4Meta,
+  useIsDatePickerEnabled,
+  useSaveFilename,
+  useSelectedDate,
+} from "../../Eu4SaveProvider";
+import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
 
 interface MapState {
   focusPoint: [number, number];
@@ -51,9 +47,7 @@ interface MapState {
 }
 
 export const Timelapse = () => {
-  const dispatch = useDispatch();
   const meta = useEu4Meta();
-  const workerRef = useWasmWorker();
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscoding, setIsTranscoding] = useState(false);
@@ -64,19 +58,22 @@ export const Timelapse = () => {
   const [intervalSelection, setIntervalSelection] = useState<
     "Year" | "Month" | "Week" | "Day"
   >("Year");
-  const currentMapDate = useSelector(selectEu4MapDate);
-  const canvasContext = useCanvasContext();
+  const currentMapDate = useSelectedDate();
   const [form] = Form.useForm();
-  const mapControls = useAppSelector((x) => x.eu4.mapControls);
-  const isDeveloper = useSelector(selectIsDeveloper);
-  const filename = useSelector(selectAnalyzeFileName);
-  const payload = useSelector(selectEu4MapColorPayload);
+  const isDeveloper = useIsDeveloper();
+  const filename = useSaveFilename();
   const encoderRef = useRef<TimelapseEncoder | undefined>(undefined);
   const stopTimelapseReq = useRef<boolean>(false);
   const [recordingSupported] = useState(() => TimelapseEncoder.isSupported());
   const [progress, setProgress] = useState("");
-  const timelapseEnabled =
-    payload.kind === "political" || payload.kind === "religion";
+  const map = useEu4Map();
+  const timelapseEnabled = useIsDatePickerEnabled();
+  const { setSelectedDate } = useEu4Actions();
+  const store = useEu4Context();
+  const storeRef = useRef(store);
+  useIsomorphicLayoutEffect(() => {
+    storeRef.current = store;
+  });
 
   const startTimelapseDate = () =>
     currentMapDate.days == meta.total_days
@@ -90,16 +87,15 @@ export const Timelapse = () => {
     setIsPlaying(true);
     stopTimelapseReq.current = false;
 
-    const worker = getWasmWorker(workerRef);
     const startDate = startTimelapseDate();
     const endDate = { days: meta.total_days, text: meta.date };
     for await (const date of dates(
-      worker,
+      getEu4Worker(),
       startDate,
       endDate,
       intervalSelection
     )) {
-      dispatch(setMapDate(date));
+      setSelectedDate(date);
 
       await new Promise((res) => setTimeout(res, 1000 / maxFps));
       if (stopTimelapseReq.current) {
@@ -118,50 +114,44 @@ export const Timelapse = () => {
   const startRecording = async () => {
     setIsRecording(true);
 
-    const eu4Canvas = getEu4Canvas(canvasContext.eu4CanvasRef);
-    const eu4Map = getEu4Map(canvasContext.eu4CanvasRef);
     let savedMapStateRef: MapState | undefined;
     if (recordingFrame !== "None") {
       const zoom = recordingFrame.charCodeAt(0) - "0".charCodeAt(0);
 
       savedMapStateRef = {
-        width: eu4Canvas.webglContext().canvas.width,
-        height: eu4Canvas.webglContext().canvas.height,
-        focusPoint: eu4Map.focusPoint,
-        scale: eu4Map.scale,
+        width: map.gl.canvas.width,
+        height: map.gl.canvas.height,
+        focusPoint: map.focusPoint,
+        scale: map.scale,
       };
 
-      canvasContext.sizeOverrideRef.current = true;
-      eu4Canvas.webglContext().canvas.style.removeProperty("max-width");
-      eu4Canvas;
-      eu4Map.focusPoint = [0, 0];
-      eu4Map.scale = 1;
-      eu4Canvas.resize(IMG_WIDTH / zoom, IMG_HEIGHT / zoom);
-      eu4Canvas.redrawViewport();
+      map.focusPoint = [0, 0];
+      map.scale = 1;
+      map.resize(IMG_WIDTH / zoom, IMG_HEIGHT / zoom);
+      map.redrawViewport();
     }
 
     const restoreMapState = () => {
-      eu4Canvas.webglContext().canvas.style.setProperty("max-width", "100%");
       if (savedMapStateRef) {
-        canvasContext.sizeOverrideRef.current = false;
-        eu4Map.focusPoint = savedMapStateRef.focusPoint;
-        eu4Map.scale = savedMapStateRef.scale;
-        eu4Canvas.resize(savedMapStateRef.width, savedMapStateRef.height);
+        map.focusPoint = savedMapStateRef.focusPoint;
+        map.scale = savedMapStateRef.scale;
+        map.resize(savedMapStateRef.width, savedMapStateRef.height);
         savedMapStateRef = undefined;
       }
     };
 
-    eu4Canvas.setControls({
-      ...mapControls,
-      showCountryBorders: false,
-      showMapModeBorders: false,
-      showProvinceBorders: true,
-    });
+    const showCountryBorders = map.showCountryBorders;
+    map.showCountryBorders = false;
+    const showMapModeBorders = map.showMapModeBorders;
+    map.showMapModeBorders = false;
+    const showProvinceBorders = map.showProvinceBorders;
+    map.showProvinceBorders = true;
 
+    const payload = selectMapPayload(storeRef.current.getState());
     try {
       const encoder = await TimelapseEncoder.create({
-        canvas: getEu4Canvas(canvasContext.eu4CanvasRef),
-        worker: getWasmWorker(workerRef),
+        map,
+        worker: getEu4Worker(),
         fps: maxFps,
         interval: intervalSelection,
         startDate: startTimelapseDate(),
@@ -194,12 +184,13 @@ export const Timelapse = () => {
       setIsRecording(false);
       restoreMapState();
 
-      eu4Canvas.setControls(mapControls);
-      const [primary, secondary] = await getWasmWorker(workerRef).eu4MapColors(
-        payload
-      );
-      eu4Canvas.map?.updateProvinceColors(primary, secondary);
-      eu4Canvas.redrawMapNow();
+      map.showCountryBorders = showCountryBorders;
+      map.showMapModeBorders = showMapModeBorders;
+      map.showProvinceBorders = showProvinceBorders;
+
+      const [primary, secondary] = await getEu4Worker().eu4MapColors(payload);
+      map.updateProvinceColors(primary, secondary);
+      map.redrawMapNow();
 
       if (exportAsMp4) {
         setProgress("transcoding into MP4");

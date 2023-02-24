@@ -1,43 +1,41 @@
 import React from "react";
 import { Button, Menu, MenuProps, Skeleton } from "antd";
 import { UserOutlined } from "@ant-design/icons";
-import { useSelector } from "react-redux";
 import Link from "next/link";
-import {
-  selectSession,
-  selectUserInfo,
-} from "../../features/account/sessionSlice";
 import { SignInButtons } from "./auth";
 import { GithubIcon, DiscordIcon } from "@/components/icons";
-import { appApi } from "../../services/appApi";
+import {
+  PrivateUserInfo,
+  useLogoutMutation,
+  useProfileQuery,
+} from "../../services/appApi";
 
 type Items = React.ComponentProps<typeof Menu>["items"];
 
-const MySaves = () => {
-  let userInfo = useSelector(selectUserInfo);
-  if (userInfo) {
-    const key = `/users/${userInfo.user_id}`;
-    return <Link href={key}>My Saves</Link>;
-  } else {
-    return null;
-  }
+const MySaves = (userInfo: PrivateUserInfo) => {
+  const key = `/users/${userInfo.user_id}`;
+  return <Link href={key}>My Saves</Link>;
 };
 
-const accountMenuOptions = (logout: () => void): Items => {
+const accountMenuOptions = (
+  userInfo: PrivateUserInfo,
+  logout: () => void
+): Items => {
   return [
     { key: "account:account", label: <Link href="/account">Account</Link> },
-    { key: "account:my-saves", label: <MySaves /> },
+    { key: "account:my-saves", label: <MySaves {...userInfo} /> },
     { key: "account:logout", onClick: () => logout(), label: "Logout" },
   ];
 };
 
-interface CoreMenuProps {
+type CoreMenuProps = {
   mode: MenuProps["mode"];
-}
+  className?: string;
+};
 
-export const CoreMenu = ({ mode }: CoreMenuProps) => {
-  const [logoutTrigger] = appApi.endpoints.logout.useMutation();
-  const session = useSelector(selectSession);
+export const CoreMenu = ({ mode, className }: CoreMenuProps) => {
+  const logout = useLogoutMutation();
+  const profileQuery = useProfileQuery();
   const inlined = mode == "inline";
   const defaultOpenedKeys = !inlined ? [] : ["eu4", "community", "account"];
 
@@ -95,32 +93,28 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
     },
   ];
 
-  const isSubmenu = inlined && session.kind == "user";
+  const isSubmenu = inlined && profileQuery.data?.kind == "user";
   let accountSub = null;
   if (!inlined) {
-    if (session.kind === "user") {
+    if (profileQuery.data && profileQuery.data.kind === "user") {
       accountSub = (
         <Menu
           theme="dark"
           mode="horizontal"
+          className="grow justify-end"
           items={[
             {
               key: "account",
               icon: (
                 <Button
                   shape="circle"
-                  icon={
-                    <UserOutlined
-                      style={{
-                        margin: 0,
-                        display: "flex",
-                        justifyContent: "center",
-                      }}
-                    />
-                  }
+                  icon={<UserOutlined className="m-0 flex justify-center" />}
                 />
               ),
-              children: accountMenuOptions(logoutTrigger),
+              children: accountMenuOptions(
+                profileQuery.data.user,
+                logout.mutate
+              ),
             },
           ]}
         />
@@ -128,7 +122,7 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
     } else {
       accountSub = (
         <div className="flex grow justify-end self-center text-end">
-          {session.kind === "unknown" ? (
+          {profileQuery.data === undefined ? (
             <Skeleton.Button className="flex items-center" />
           ) : (
             <SignInButtons />
@@ -137,9 +131,9 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
       );
     }
   } else {
-    if (session.kind === "unknown") {
+    if (profileQuery.data === undefined) {
       accountSub = null;
-    } else if (session.kind === "guest") {
+    } else if (profileQuery.data.kind === "guest") {
       accountSub = (
         <div className="flex justify-center pt-4">
           <SignInButtons />
@@ -149,7 +143,7 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
       items.push({
         key: "account",
         label: "Account",
-        children: accountMenuOptions(logoutTrigger),
+        children: accountMenuOptions(profileQuery.data.user, logout.mutate),
       });
     }
   }
@@ -171,7 +165,11 @@ export const CoreMenu = ({ mode }: CoreMenuProps) => {
     return menu;
   } else {
     return (
-      <div className={`flex grow ${inlined ? "flex-col" : "flex-row"}`}>
+      <div
+        className={`${className ?? "flex"} grow ${
+          inlined ? "flex-col" : "flex-row"
+        }`}
+      >
         {menu}
         {accountSub}
       </div>

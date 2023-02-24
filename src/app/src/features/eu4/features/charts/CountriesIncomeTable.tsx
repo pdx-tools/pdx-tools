@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { Divider, Switch, Table } from "antd";
 import { ColumnProps } from "antd/lib/table";
 import { incomeLedgerAliases } from "../country-details/data";
@@ -9,47 +9,40 @@ import {
 } from "../../../../components/viz/visualization-context";
 import { countryColumnFilter } from "./countryColumnFilter";
 import { formatFloat } from "@/lib/format";
-import {
-  useAnalysisWorker,
-  WorkerClient,
-} from "../../../engine/worker/wasm-worker-context";
-import { useSelector } from "react-redux";
-import { selectEu4CountryFilter } from "@/features/eu4/eu4Slice";
-import {
-  selectOneTimeLineItems,
-  selectPrefersPercents,
-  setPrefersPercents,
-  setShowOneTimeLineItems,
-} from "../../../engine/engineSlice";
-import { useAppDispatch } from "@/lib/store";
+import { useAnalysisWorker } from "../../worker/useAnalysisWorker";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { createCsv } from "@/lib/csv";
 import { useTablePagination } from "@/features/ui-controls";
+import {
+  useEu4Actions,
+  useShowOnetimeLineItems,
+  useTagFilter,
+  useValueFormatPreference,
+} from "../../Eu4SaveProvider";
 
 type CountryIncomeRecord = CountryIncome;
 const aliases = incomeLedgerAliases();
 
 export const CountriesIncomeTable = () => {
-  const dispatch = useAppDispatch();
+  const { setShowOneTimeLineItems, setPrefersPercents } = useEu4Actions();
   const isLoading = useIsLoading();
-  const [data, setData] = useState<CountryIncomeRecord[]>([]);
-  const doShowPercent = useSelector(selectPrefersPercents);
-  const showRecurringOnly = !useSelector(selectOneTimeLineItems);
-  const countryFilter = useSelector(selectEu4CountryFilter);
+  const doShowPercent = useValueFormatPreference() === "percent";
+  const showRecurringOnly = !useShowOnetimeLineItems();
+  const countryFilter = useTagFilter();
   const selectFilterRef = useRef(null);
   const visualizationDispatch = useVisualizationDispatch();
   const tablePagination = useTablePagination();
 
-  const cb = useCallback(
-    async (worker: WorkerClient) => {
-      const result = await worker.eu4GetCountriesIncome(
-        countryFilter,
-        doShowPercent,
-        showRecurringOnly
-      );
-      setData(result);
-    },
-    [countryFilter, doShowPercent, showRecurringOnly]
+  const { data = [] } = useAnalysisWorker(
+    useCallback(
+      (worker) =>
+        worker.eu4GetCountriesIncome(
+          countryFilter,
+          doShowPercent,
+          showRecurringOnly
+        ),
+      [countryFilter, doShowPercent, showRecurringOnly]
+    )
   );
 
   useEffect(() => {
@@ -66,8 +59,6 @@ export const CountriesIncomeTable = () => {
       },
     });
   }, [data, visualizationDispatch]);
-
-  useAnalysisWorker(cb);
 
   const mapping = aliases;
 
@@ -121,12 +112,7 @@ export const CountriesIncomeTable = () => {
           <div className="flex items-center space-x-2">
             <span>Show as percentages:</span>
 
-            <Switch
-              checked={doShowPercent}
-              onChange={(checked: boolean) =>
-                dispatch(setPrefersPercents(checked))
-              }
-            />
+            <Switch checked={doShowPercent} onChange={setPrefersPercents} />
           </div>
 
           <Divider type="vertical" />
@@ -134,9 +120,7 @@ export const CountriesIncomeTable = () => {
             <span>Recurring expenses only:</span>
             <Switch
               checked={showRecurringOnly}
-              onChange={(checked: boolean) =>
-                dispatch(setShowOneTimeLineItems(!checked))
-              }
+              onChange={(checked: boolean) => setShowOneTimeLineItems(!checked)}
             />
           </div>
         </div>

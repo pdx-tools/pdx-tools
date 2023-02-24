@@ -1,35 +1,26 @@
-import { useAppDispatch, useAppSelector } from "@/lib/store";
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { PaginationProps } from "antd";
+import { create } from "zustand";
 
-interface UiControlsState {
+type UiControlsState = {
   tablePageSize: number;
-}
-
-const initialState: UiControlsState = {
-  tablePageSize: 20,
+  actions: {
+    pageSizeChange: (size: number) => void;
+  };
 };
 
-const uiControlsSlice = createSlice({
-  name: "uiControls",
-  initialState: initialState,
-  reducers: {
-    pageSizeChange(state, action: PayloadAction<number>) {
-      state.tablePageSize = action.payload;
-    },
+const useUiControlsStore = create<UiControlsState>()((set) => ({
+  tablePageSize: 20,
+  actions: {
+    pageSizeChange: (size: number) => set({ tablePageSize: size }),
   },
-});
+}));
 
 export function useTablePagination(): PaginationProps {
-  const dispatch = useAppDispatch();
-  const tablePageSize = useAppSelector((x) => x.uiControls.tablePageSize);
+  const { pageSizeChange } = useUiControlsStore((x) => x.actions);
+  const tablePageSize = useUiControlsStore((x) => x.tablePageSize);
   return {
     defaultPageSize: tablePageSize,
     showSizeChanger: true,
-    onShowSizeChange: (_, size) => dispatch(pageSizeChange(size)),
+    onShowSizeChange: (_, size) => pageSizeChange(size),
   };
 }
-
-export const { pageSizeChange } = uiControlsSlice.actions;
-
-export const { reducer } = uiControlsSlice;

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Input, Table } from "antd";
 import { PlusCircleTwoTone, MinusCircleTwoTone } from "@ant-design/icons";
 import { ColumnGroupType, ColumnType } from "antd/lib/table";
@@ -7,13 +7,12 @@ import { War, WarSide } from "../../types/models";
 import { ExpandableConfig } from "rc-table/lib/interface";
 import { FilterIcon } from "@/components/icons";
 import { formatInt } from "@/lib/format";
-import { useWorkerOnSave, WorkerClient } from "@/features/engine";
-import { useSelector } from "react-redux";
-import { selectEu4CountryFilter } from "@/features/eu4/eu4Slice";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { createCsv } from "@/lib/csv";
 import { useVisualizationDispatch } from "@/components/viz";
 import { useTablePagination } from "@/features/ui-controls";
+import { useEu4Worker } from "@/features/eu4/worker";
+import { useTagFilter } from "../../Eu4SaveProvider";
 
 interface WarSideData extends WarSide {
   original_name: string;
@@ -26,25 +25,22 @@ interface WarTableData extends War {
 }
 
 export const WarTable = () => {
-  const [data, setData] = useState<WarTableData[]>([]);
-  const filter = useSelector(selectEu4CountryFilter);
+  const filter = useTagFilter();
   const tablePagination = useTablePagination();
   const visualizationDispatch = useVisualizationDispatch();
-  const cb = useCallback(
-    async (worker: WorkerClient) => {
-      const data = await worker.eu4GetWars(filter);
-      const result = data.map((x, i) => {
-        return {
-          key: i,
-          ...x,
-        };
-      });
-      setData(result);
-    },
-    [filter]
-  );
 
-  useWorkerOnSave(cb);
+  const { data = [] } = useEu4Worker(
+    useCallback(
+      async (worker) => {
+        const data = await worker.eu4GetWars(filter);
+        return data.map((x, i) => ({
+          ...x,
+          key: i,
+        }));
+      },
+      [filter]
+    )
+  );
 
   useEffect(() => {
     visualizationDispatch({

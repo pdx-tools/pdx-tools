@@ -1,4 +1,4 @@
-import { useEu4ModList } from "@/features/eu4/eu4Slice";
+import { useEu4ModList } from "../../Eu4SaveProvider";
 
 export const ModList = () => {
   const mods = useEu4ModList();
