@@ -11,9 +11,64 @@ import { formatInt } from "@/lib/format";
 import { CountryDetails } from "../../types/models";
 import { Bar, PieTable } from "@/components/viz";
 
-interface CountryBudgetCountProps {
+type CountryBudgetCountProps = {
   details: CountryDetails;
-}
+};
+
+const incomePalette = new Map(incomeLedgerColorPalette());
+const expensePalette = new Map(expenseLedgerColorPalette());
+
+const BudgetBar = React.memo(
+  ({ income, expenses }: { income: number; expenses: number }) => {
+    const overviewConfig: BarConfig = {
+      data: [
+        {
+          key: "Income",
+          value: income,
+        },
+        {
+          key: "Expenses",
+          value: expenses,
+        },
+      ],
+      width: 500,
+      height: 200,
+      xField: "value",
+      yField: "key",
+      seriesField: "key",
+      color: (v: Record<string, any>) => {
+        switch (v["key"]) {
+          case "Income":
+            return "#1383ab";
+          case "Expenses":
+            return "#c52125";
+          default:
+            return "#000";
+        }
+      },
+      xAxis: {
+        title: {
+          text: "ducats",
+        },
+      },
+      tooltip: {
+        // @ts-ignore https://github.com/ant-design/ant-design-charts/issues/1474
+        formatter: (datum) => ({
+          name: datum.key,
+          value: formatInt(datum.value || 0),
+        }),
+      },
+      label: {
+        style: {
+          fill: "#fff",
+        },
+        formatter: (datum: any, _item: any) => datum.value.toFixed(0),
+      },
+    };
+
+    return <Bar {...overviewConfig} />;
+  }
+);
 
 export const CountryBudget = ({ details }: CountryBudgetCountProps) => {
   const [showRecurringOnly, setRecurOnly] = useState(false);
@@ -32,54 +87,6 @@ export const CountryBudget = ({ details }: CountryBudgetCountProps) => {
 
   const totalIncome = income.reduce((acc, x) => x.value + acc, 0);
   const totalExpense = expenses.reduce((acc, x) => x.value + acc, 0);
-  const overviewConfig: BarConfig = {
-    data: [
-      {
-        key: "Income",
-        value: totalIncome,
-      },
-      {
-        key: "Expenses",
-        value: totalExpense,
-      },
-    ],
-    width: 500,
-    height: 200,
-    xField: "value",
-    yField: "key",
-    seriesField: "key",
-    color: (v: Record<string, any>) => {
-      switch (v["key"]) {
-        case "Income":
-          return "#1383ab";
-        case "Expenses":
-          return "#c52125";
-        default:
-          return "#000";
-      }
-    },
-    xAxis: {
-      title: {
-        text: "ducats",
-      },
-    },
-    tooltip: {
-      // @ts-ignore https://github.com/ant-design/ant-design-charts/issues/1474
-      formatter: (datum) => ({
-        name: datum.key,
-        value: formatInt(datum.value || 0),
-      }),
-    },
-    label: {
-      style: {
-        fill: "#fff",
-      },
-      formatter: (datum: any, _item: any) => datum.value.toFixed(0),
-    },
-  };
-
-  const incomePalette = new Map(incomeLedgerColorPalette());
-  const expensePalette = new Map(expenseLedgerColorPalette());
 
   return (
     <>
@@ -91,7 +98,7 @@ export const CountryBudget = ({ details }: CountryBudgetCountProps) => {
         />
       </div>
       <div>
-        <Bar {...overviewConfig} />
+        <BudgetBar income={totalIncome} expenses={totalExpense} />
       </div>
       <div className="flex flex-wrap gap-6">
         <PieTable
