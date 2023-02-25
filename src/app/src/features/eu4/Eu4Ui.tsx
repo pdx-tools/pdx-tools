@@ -2,7 +2,6 @@ import { useEffect, forwardRef, memo } from "react";
 import { Eu4CanvasOverlay } from "./Eu4CanvasOverlay";
 import { AppLoading } from "@/components/AppLoading";
 import { ProgressBar } from "@/components/ProgressBar";
-import { MapProvider } from "./features/map/MapProvider";
 import { Alert } from "antd";
 import { Eu4SaveProps, Eu4SaveProvider, useLoadEu4 } from "./Eu4SaveProvider";
 import { useEngineActions } from "../engine";
@@ -57,9 +56,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
       {progress}
       {data !== null ? (
         <Eu4SaveProvider store={data}>
-          <MapProvider>
-            <Eu4CanvasOverlay />
-          </MapProvider>
+          <Eu4CanvasOverlay />
         </Eu4SaveProvider>
       ) : null}
     </>

@@ -6,7 +6,7 @@ import { emitEvent } from "@/lib/plausible";
 import { timeit, timeSync } from "@/lib/timeit";
 import { getDataUrls } from "@/lib/urls";
 import { GLResources } from "@/map/glResources";
-import { WebGLMap } from "@/map/map";
+import { IMG_HEIGHT, IMG_WIDTH, WebGLMap } from "@/map/map";
 import { MapShader } from "@/map/mapShader";
 import { ProvinceFinder } from "@/map/ProvinceFinder";
 import { startCompilation } from "@/map/shaderCompiler";
@@ -23,13 +23,13 @@ import {
 } from "react";
 import { createStore, StoreApi, useStore } from "zustand";
 import { captureException } from "../errors";
-import { focusCameraOn, loadTerrainImages } from "./features/map/MapProvider";
 import {
   glContext,
   shaderUrls,
   fetchProvinceUniqueIndex,
   resourceUrls,
   provinceIdToColorIndexInvert,
+  loadTerrainOverlayImages,
 } from "./features/map/resources";
 import { MapPayload } from "./types/map";
 import {
@@ -456,6 +456,38 @@ function savedSettings() {
       localStorage.getItem("map-show-terrain") ?? "false"
     ),
   };
+}
+
+type FocusCameraOnProps = {
+  offsetX: number;
+  width: number;
+  height: number;
+};
+
+function focusCameraOn(
+  map: WebGLMap,
+  [x, y]: number[],
+  options?: Partial<FocusCameraOnProps>
+) {
+  const width = options?.width ?? map.gl.canvas.width;
+  const height = options?.height ?? map.gl.canvas.height;
+
+  const IMG_ASPECT = IMG_WIDTH / IMG_HEIGHT;
+  const initX = ((x - IMG_WIDTH / 2) / (IMG_WIDTH / 2)) * (width / 2);
+  const initY =
+    (((y - IMG_HEIGHT / 2) / (IMG_HEIGHT / 2)) * (height / 2)) /
+    (IMG_ASPECT / (width / height));
+
+  map.focusPoint = [initX, initY];
+
+  if (options?.offsetX) {
+    map.focusPoint[0] = initX + options.offsetX / 2 / map.scale;
+  }
+}
+
+async function loadTerrainImages(map: WebGLMap, version: string) {
+  const images = await loadTerrainOverlayImages(version);
+  map.updateTerrainTextures(images);
 }
 
 async function loadEu4Save(
