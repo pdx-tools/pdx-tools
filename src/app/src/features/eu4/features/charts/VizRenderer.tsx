@@ -14,7 +14,8 @@ import { CountriesNavyCasualtiesTable } from "./casualties/CountriesNavyCasualti
 import { CountriesExpensesTable } from "./CountriesExpensesTable";
 import { CountriesIncomeTable } from "./CountriesIncomeTable";
 import { CountriesTotalExpensesTable } from "./CountriesTotalExpensesTable";
-import { DevelopmentTree } from "./DevelopmentTree";
+import { GeographicalDevelopmentTree } from "./GeographicalDevelopmentTree";
+import { OwnedDevelopmentStatesTree } from "./OwnedDevelopmentStatesTree";
 
 interface VizRendererProps {
   module: VizModules;
@@ -46,7 +47,9 @@ export const VizRenderer = ({ module }: VizRendererProps): JSX.Element => {
       return <CountriesNavyCasualtiesTable />;
     case "wars":
       return <WarTable />;
-    case "development-tree":
-      return <DevelopmentTree />;
+    case "geographical-development":
+      return <GeographicalDevelopmentTree />;
+    case "owned-development-states":
+      return <OwnedDevelopmentStatesTree />;
   }
 };

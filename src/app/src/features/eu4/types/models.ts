@@ -682,7 +682,7 @@ export type Development = {
   manpower: number;
 };
 
-export interface TreeDevelopment {
+export interface GeographicalDevelopment {
   name: "root";
   world_tax: number;
   world_production: number;
@@ -694,19 +694,19 @@ export interface TreeDevelopment {
   uncolonized_production: number;
   uncolonized_manpower: number;
   children: ({
-    name: string;
+    name: string; // continent
     value: number;
     children: ({
-      name: string;
+      name: string; // superregion
       value: number;
       children: ({
-        name: string;
+        name: string; // region
         value: number;
         children: ({
-          name: string;
+          name: string; // area
           value: number;
           children: ({
-            name: string;
+            name: string; // province
             value: number;
           } & Development)[];
         } & Development)[];
@@ -714,3 +714,17 @@ export interface TreeDevelopment {
     } & Development)[];
   } & Development)[];
 }
+
+export type NameValuePair = {
+  name: string;
+  value: number;
+};
+
+export type OwnedDevelopmentStates = {
+  country: LocalizedTag;
+  fullCores: Development;
+  halfStates: Development;
+  overextension: Development;
+  tc: Development;
+  territories: Development;
+};

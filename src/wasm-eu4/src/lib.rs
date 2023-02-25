@@ -312,24 +312,6 @@ pub struct TagTransition {
     pub date: Eu4Date,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct CountryDevelopment {
-    buckets: Vec<ProvinceDevelopment>,
-    raw_tax: f32,
-    raw_production: f32,
-    raw_manpower: f32,
-    adj_tax: f32,
-    adj_production: f32,
-    adj_manpower: f32,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-pub struct ProvinceDevelopment {
-    tax: f32,
-    production: f32,
-    manpower: f32,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LocalizedCountryIncome {
     income: CountryIncomeLedger,
@@ -516,8 +498,9 @@ impl SaveFile {
         to_json_value(&self.0.get_province_details(province_id))
     }
 
-    pub fn get_province_development(&self, tag: JsValue) -> JsValue {
-        to_json_value(&self.0.get_province_development(tag))
+    pub fn owned_development_states(&self, payload: JsValue) -> JsValue {
+        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+        self.0.owned_development_states(payload)
     }
 
     pub fn get_building_history(&self) -> JsValue {
@@ -1809,50 +1792,124 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn get_province_development(&self, tag: JsValue) -> CountryDevelopment {
-        let tag = tag
-            .as_string()
-            .and_then(|x| x.parse::<CountryTag>().ok())
-            .unwrap();
-        let mut buckets = vec![ProvinceDevelopment::default(); 10];
+    pub fn owned_development_states(&self, payload: TagFilterPayloadRaw) -> JsValue {
+        let filter = self.filter_stored_tags(payload, 12);
+        let mut devs: HashMap<CountryTag, CountryDevelopment> = HashMap::new();
+        let prov_area = self.game.province_area_lookup();
+        let provs = self
+            .query
+            .save()
+            .game
+            .provinces
+            .iter()
+            .filter_map(|(id, prov)| prov.owner.as_ref().map(|owner| (id, owner, prov)))
+            .filter(|(_id, owner, _)| filter.contains(owner));
 
-        let mut raw_tax = 0.0;
-        let mut raw_production = 0.0;
-        let mut raw_manpower = 0.0;
+        let states: HashSet<_> = self
+            .query
+            .save()
+            .game
+            .map_area_data
+            .iter()
+            .flat_map(|(area, data)| data.state.as_ref().map(|state| (area, state)))
+            .flat_map(move |(area, data)| {
+                data.country_states
+                    .iter()
+                    .map(move |x| (area.as_str(), &x.country))
+            })
+            .filter(|(_area, owner)| filter.contains(owner))
+            .collect();
 
-        let mut adj_tax = 0.0;
-        let mut adj_production = 0.0;
-        let mut adj_manpower = 0.0;
+        for (id, owner, prov) in provs {
+            let dev = devs.entry(*owner).or_default();
+            let owner_has_stated = prov_area
+                .get(id)
+                .map_or(false, |area| states.contains(&(area, owner)));
 
-        for province in self.query.save().game.provinces.values() {
-            if province.owner.as_ref().map_or(true, |x| x != &tag) {
-                continue;
+            if owner_has_stated {
+                if prov.territorial_core.contains(owner) {
+                    dev.half_states += prov
+                } else if prov.cores.contains(owner) {
+                    dev.full_cores += prov;
+                } else {
+                    dev.overextension += prov;
+                }
+            } else if prov.cores.contains(owner) {
+                if prov.active_trade_company {
+                    dev.tc += prov;
+                } else {
+                    dev.territories += prov;
+                }
+            } else {
+                dev.overextension += prov;
             }
-
-            raw_tax += province.base_tax;
-            raw_production += province.base_production;
-            raw_manpower += province.base_manpower;
-
-            let autonomy = (100.0 - province.local_autonomy.clamp(0.0, 100.0)) / 100.0;
-            adj_tax += province.base_tax * autonomy;
-            adj_production += province.base_production * autonomy;
-            adj_manpower += province.base_manpower * autonomy;
-
-            let index = (autonomy * 10.0).clamp(0.0, 9.0) as usize;
-            buckets[index].tax += province.base_tax;
-            buckets[index].production += province.base_tax;
-            buckets[index].manpower += province.base_manpower;
         }
 
-        CountryDevelopment {
-            buckets,
-            raw_tax,
-            raw_production,
-            raw_manpower,
-            adj_tax,
-            adj_production,
-            adj_manpower,
+        #[derive(Clone, Debug, Default)]
+        pub struct CountryDevelopment {
+            full_cores: ProvinceDevelopment,
+            half_states: ProvinceDevelopment,
+            territories: ProvinceDevelopment,
+            overextension: ProvinceDevelopment,
+            tc: ProvinceDevelopment,
         }
+
+        #[derive(Serialize, Clone, Debug, Default)]
+        pub struct ProvinceDevelopment {
+            tax: f32,
+            production: f32,
+            manpower: f32,
+        }
+
+        impl ProvinceDevelopment {
+            fn total(&self) -> f32 {
+                self.tax + self.production + self.manpower
+            }
+        }
+
+        impl std::ops::AddAssign<&Province> for ProvinceDevelopment {
+            fn add_assign(&mut self, rhs: &Province) {
+                self.tax += rhs.base_tax;
+                self.production += rhs.base_production;
+                self.manpower += rhs.base_manpower;
+            }
+        }
+
+        #[derive(Serialize, Clone, Debug)]
+        #[serde(rename_all = "camelCase")]
+        pub struct CountryDevelopmentTypes {
+            country: LocalizedTag,
+            full_cores: ProvinceDevelopment,
+            half_states: ProvinceDevelopment,
+            territories: ProvinceDevelopment,
+            overextension: ProvinceDevelopment,
+            tc: ProvinceDevelopment,
+        }
+
+        impl CountryDevelopmentTypes {
+            fn total(&self) -> f32 {
+                self.full_cores.total()
+                    + self.half_states.total()
+                    + self.territories.total()
+                    + self.overextension.total()
+                    + self.tc.total()
+            }
+        }
+
+        let mut results: Vec<_> = devs
+            .into_iter()
+            .map(|(tag, dev)| CountryDevelopmentTypes {
+                country: self.localize_tag(tag),
+                full_cores: dev.full_cores,
+                half_states: dev.half_states,
+                territories: dev.territories,
+                overextension: dev.overextension,
+                tc: dev.tc,
+            })
+            .collect();
+
+        results.sort_unstable_by(|a, b| a.total().total_cmp(&b.total()).reverse());
+        to_json_value(&results)
     }
 
     pub fn get_building_history(&self) -> JsValue {

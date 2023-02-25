@@ -26,11 +26,12 @@ import type {
   MapDate,
   PlayerHistory,
   ProvinceDetails,
+  OwnedDevelopmentStates,
   RawWarInfo,
   RunningMonarch,
   SingleCountryWarCasualties,
   SingleCountryWarCasualtiesRaw,
-  TreeDevelopment,
+  GeographicalDevelopment,
   War,
   WarInfo,
   WarRaw,
@@ -210,8 +211,16 @@ export function eu4GetCountriesTotalExpenses(
   return reduceToTableExpenseLedger(data, percent, recurringOnly);
 }
 
-export function eu4DevelopmentTree(filter: CountryMatcher): TreeDevelopment {
+export function eu4GeographicalDevelopment(
+  filter: CountryMatcher
+): GeographicalDevelopment {
   return wasm.save.development_tree(filter);
+}
+
+export function eu4OwnedDevelopmentStates(
+  filter: CountryMatcher
+): OwnedDevelopmentStates[] {
+  return wasm.save.owned_development_states(filter);
 }
 
 export function eu4GetCountriesWarLosses(
