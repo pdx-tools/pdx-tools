@@ -71,8 +71,17 @@ export const ChartDrawerTitle = ({
           </Option>
         </Select.OptGroup>
         <Select.OptGroup label="Trees">
-          <Option value="development-tree" searchlabel="Development Tree">
-            Development Tree
+          <Option
+            value="geographical-development"
+            searchlabel="Geographical Development"
+          >
+            Geographical Development
+          </Option>
+          <Option
+            value="owned-development-states"
+            searchlabel="Owned Development States"
+          >
+            Owned Development States
           </Option>
         </Select.OptGroup>
         <Select.OptGroup label="Tables">

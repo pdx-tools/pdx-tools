@@ -17,6 +17,8 @@ interface ChartDrawerProps {
 
 const vizModuleDisplayLimit = (module: VizModules) => {
   switch (module) {
+    case "owned-development-states":
+      return 12;
     case "monthly-income":
     case "score":
     case "nation-size":

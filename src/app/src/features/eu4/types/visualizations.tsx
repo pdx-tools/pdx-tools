@@ -11,4 +11,5 @@ export type VizModules =
   | "army-casualties"
   | "navy-casualties"
   | "wars"
-  | "development-tree";
+  | "geographical-development"
+  | "owned-development-states";

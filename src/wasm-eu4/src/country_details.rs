@@ -741,18 +741,20 @@ impl SaveFileImpl {
 
         let primary_culture = country.and_then(|x| x.primary_culture.as_ref());
 
-        let stated = self
+        let stated: HashSet<_> = self
             .query
             .save()
             .game
             .map_area_data
             .iter()
-            .flat_map(|(area, data)| {
-                data.state
-                    .as_ref()
-                    .and_then(|state| state.country_states.iter().find(|x| x.country == tag))
-                    .and_then(|_| self.game.area_provinces(area))
+            .flat_map(|(area, data)| data.state.as_ref().map(|state| (area, state)))
+            .flat_map(move |(area, data)| {
+                data.country_states
+                    .iter()
+                    .map(move |x| (area.as_str(), &x.country))
             })
+            .filter(|(_area, &owner)| owner == tag)
+            .filter_map(|(area, _)| self.game.area_provinces(area))
             .flatten()
             .collect::<HashSet<_>>();
 

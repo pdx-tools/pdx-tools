@@ -154,8 +154,9 @@ export const Help = ({ module }: HelpProps) => {
     case "total-expense-table": {
       return <FinancialHelp />;
     }
-    case "development-tree": {
-      return <p>Filter development tree</p>;
+    case "owned-development-states":
+    case "geographical-development": {
+      return <p>No help is available</p>;
     }
     case "navy-casualties":
     case "army-casualties": {

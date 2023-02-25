@@ -37,11 +37,11 @@ const DevelopmentStatistic = ({
   );
 };
 
-export const DevelopmentTree = () => {
+export const GeographicalDevelopmentTree = () => {
   const countryFilter = useTagFilter();
   const { data } = useAnalysisWorker(
     useCallback(
-      (worker) => worker.eu4DevelopmentTree(countryFilter),
+      (worker) => worker.eu4GeographicalDevelopment(countryFilter),
       [countryFilter]
     )
   );
