@@ -724,7 +724,7 @@ export type OwnedDevelopmentStates = {
   country: LocalizedTag;
   fullCores: Development;
   halfStates: Development;
-  overextension: Development;
+  noCore: Development;
   tc: Development;
   territories: Development;
 };

@@ -1826,22 +1826,17 @@ impl SaveFileImpl {
                 .get(id)
                 .map_or(false, |area| states.contains(&(area, owner)));
 
-            if owner_has_stated {
-                if prov.territorial_core.contains(owner) {
-                    dev.half_states += prov
-                } else if prov.cores.contains(owner) {
-                    dev.full_cores += prov;
-                } else {
-                    dev.overextension += prov;
-                }
-            } else if prov.cores.contains(owner) {
-                if prov.active_trade_company {
-                    dev.tc += prov;
-                } else {
-                    dev.territories += prov;
-                }
+            let has_any_core = prov.cores.contains(owner);
+            if owner_has_stated && prov.territorial_core.contains(owner) {
+                dev.half_states += prov;
+            } else if owner_has_stated && has_any_core {
+                dev.full_cores += prov;
+            } else if !has_any_core {
+                dev.no_core += prov;
+            } else if prov.active_trade_company {
+                dev.tc += prov;
             } else {
-                dev.overextension += prov;
+                dev.territories += prov;
             }
         }
 
@@ -1850,7 +1845,7 @@ impl SaveFileImpl {
             full_cores: ProvinceDevelopment,
             half_states: ProvinceDevelopment,
             territories: ProvinceDevelopment,
-            overextension: ProvinceDevelopment,
+            no_core: ProvinceDevelopment,
             tc: ProvinceDevelopment,
         }
 
@@ -1882,7 +1877,7 @@ impl SaveFileImpl {
             full_cores: ProvinceDevelopment,
             half_states: ProvinceDevelopment,
             territories: ProvinceDevelopment,
-            overextension: ProvinceDevelopment,
+            no_core: ProvinceDevelopment,
             tc: ProvinceDevelopment,
         }
 
@@ -1891,7 +1886,7 @@ impl SaveFileImpl {
                 self.full_cores.total()
                     + self.half_states.total()
                     + self.territories.total()
-                    + self.overextension.total()
+                    + self.no_core.total()
                     + self.tc.total()
             }
         }
@@ -1903,7 +1898,7 @@ impl SaveFileImpl {
                 full_cores: dev.full_cores,
                 half_states: dev.half_states,
                 territories: dev.territories,
-                overextension: dev.overextension,
+                no_core: dev.no_core,
                 tc: dev.tc,
             })
             .collect();

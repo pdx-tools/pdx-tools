@@ -34,7 +34,7 @@ export const OwnedDevelopmentStatesTree = () => {
           tag: row.country.tag,
           full_cores: row.fullCores,
           half_states: row.halfStates,
-          overextension: row.overextension,
+          overextension: row.noCore,
           tc: row.tc,
           territories: row.territories,
         }));
@@ -73,7 +73,7 @@ function provinceDevelopmentTotal(x: Development) {
 }
 
 function countryDevelopmentTotal(x: OwnedDevelopmentStates) {
-  return [x.fullCores, x.halfStates, x.overextension, x.tc, x.territories]
+  return [x.fullCores, x.halfStates, x.noCore, x.tc, x.territories]
     .map(provinceDevelopmentTotal)
     .reduce((acc, x) => acc + x, 0);
 }
@@ -97,8 +97,8 @@ function CountryStateDevelopmentTree({
       value: provinceDevelopmentTotal(dev.halfStates),
     },
     {
-      name: "Overextension",
-      value: provinceDevelopmentTotal(dev.overextension),
+      name: "No Core",
+      value: provinceDevelopmentTotal(dev.noCore),
     },
     {
       name: "TCs",
@@ -127,7 +127,7 @@ function CountryStateDevelopmentTree({
           return "#6D93F4";
         case "Half States":
           return "#6D5FF3";
-        case "Overextension":
+        case "No Core":
           return "#EFC344";
         case "TCs":
           return "#687696";

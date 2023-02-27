@@ -21,15 +21,20 @@ import { MapZoomSideBar } from "./components/zoom";
 import { DateOverlay } from "./components/DateOverlay";
 import Head from "next/head";
 import {
+  useEu4Map,
   useEu4Meta,
   useIsServerSaveFile,
   useSaveFilename,
 } from "./Eu4SaveProvider";
+import { useCanvasPointerEvents } from "./hooks/useCanvasPointerEvents";
 
 export const Eu4CanvasOverlay = () => {
   const serverFile = useIsServerSaveFile();
   const meta = useEu4Meta();
   const filename = useSaveFilename();
+  const map = useEu4Map();
+  useCanvasPointerEvents(map);
+
   const buttons = [
     (i: number) => (
       <HeaderSideBarButton key="header" index={i}>
