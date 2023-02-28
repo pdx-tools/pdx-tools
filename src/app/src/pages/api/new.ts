@@ -9,14 +9,33 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return;
   }
 
+  const pageSize = +(req.query?.pageSize ?? 0) || 50;
+  const cursor = req.query?.cursor;
+  let timestamp: Date | undefined = undefined;
+  if (cursor && !Array.isArray(cursor)) {
+    const row = await db.save.findUnique({
+      where: {
+        id: cursor,
+      },
+      select: {
+        createdOn: true,
+      },
+    });
+    timestamp = row?.createdOn;
+  }
+
   const saves = await db.save.findMany({
-    take: 50,
+    take: pageSize,
+    where: {
+      ...(timestamp !== undefined ? { createdOn: { lt: timestamp } } : {}),
+    },
     include: { user: true },
     orderBy: { createdOn: "desc" },
   });
 
   const result: SaveFile[] = saves.map(toApiSave);
-  res.json({ saves: result });
+  const cursorRes = result.length < pageSize ? undefined : result.at(-1)?.id;
+  res.json({ saves: result, cursor: cursorRes });
 };
 
 export default withCoreMiddleware(handler);

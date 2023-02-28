@@ -1,6 +1,11 @@
 import { epochOf } from "@/lib/dates";
 import { fetchOk, fetchOkJson } from "@/lib/fetch";
-import { QueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import {
+  QueryClient,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+} from "@tanstack/react-query";
 
 export type SaveEncoding = "text" | "textzip" | "binzip";
 
@@ -214,13 +219,25 @@ export const useLogoutMutation = () => {
 };
 
 export const useNewestSavesQuery = () => {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: pdxKeys.newSaves(),
-    queryFn: () =>
-      fetchOkJson("/api/new").then((x) => x as { saves: SaveFile[] }),
+    queryFn: ({ pageParam }) =>
+      fetchOkJson(
+        "/api/new?" +
+          new URLSearchParams(
+            pageParam
+              ? {
+                  cursor: pageParam,
+                }
+              : {}
+          )
+      ).then((x) => x as { saves: SaveFile[]; cursor: string | undefined }),
+    getNextPageParam: (lastPage, _pages) => lastPage.cursor,
     onSuccess: (data) =>
-      data.saves.forEach((x) =>
-        queryClient.setQueryData(pdxKeys.save(x.id), x)
+      data.pages.forEach((page) =>
+        page.saves.forEach((x) =>
+          queryClient.setQueryData(pdxKeys.save(x.id), x)
+        )
       ),
   });
 };

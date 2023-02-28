@@ -1,4 +1,4 @@
-import { Table } from "antd";
+import { Button, Table } from "antd";
 import Link from "next/link";
 import React from "react";
 import { TimeAgo } from "../../../components/TimeAgo";
@@ -15,7 +15,8 @@ import {
 } from "@/features/eu4/components/avatars";
 
 export const NewestSavesTable = () => {
-  const { data, isFetching } = useNewestSavesQuery();
+  const { data, isFetching, hasNextPage, fetchNextPage } =
+    useNewestSavesQuery();
 
   const columns = [
     {
@@ -103,14 +104,23 @@ export const NewestSavesTable = () => {
   ];
 
   return (
-    <Table
-      size="small"
-      pagination={false}
-      loading={isFetching}
-      rowKey="id"
-      dataSource={data?.saves}
-      columns={columns}
-      scroll={{ x: 1000 }}
-    />
+    <div className="flex flex-col space-y-4">
+      <Table
+        size="small"
+        pagination={false}
+        loading={isFetching}
+        rowKey="id"
+        dataSource={data?.pages.flatMap((x) => x.saves)}
+        columns={columns}
+        scroll={{ x: 1000 }}
+      />
+      <Button
+        className="self-center"
+        disabled={!hasNextPage || isFetching}
+        onClick={() => fetchNextPage()}
+      >
+        Load more
+      </Button>
+    </div>
   );
 };
