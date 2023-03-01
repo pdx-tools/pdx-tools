@@ -96,6 +96,13 @@ export const GeographicalDevelopmentTree = () => {
     legend: {
       position: "top-left",
     },
+    hierarchyConfig: {
+      sort(a, b) {
+        // Sort by name so that names like "africa" are always
+        // assigned the same color across saves
+        return a.data.name.localeCompare(b.data.name);
+      }
+    },
 
     tooltip: {
       formatter: (v) => {

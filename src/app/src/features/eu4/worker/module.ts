@@ -214,7 +214,7 @@ export function eu4GetCountriesTotalExpenses(
 export function eu4GeographicalDevelopment(
   filter: CountryMatcher
 ): GeographicalDevelopment {
-  return wasm.save.development_tree(filter);
+  return wasm.save.geographical_development(filter);
 }
 
 export function eu4OwnedDevelopmentStates(

@@ -489,9 +489,9 @@ impl SaveFile {
         to_json_value(&self.0.get_countries_total_expenses(payload))
     }
 
-    pub fn development_tree(&self, payload: JsValue) -> JsValue {
+    pub fn geographical_development(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        self.0.development_tree(payload)
+        self.0.geographical_development(payload)
     }
 
     pub fn get_province_details(&self, province_id: u16) -> JsValue {
@@ -929,7 +929,7 @@ impl SaveFileImpl {
             .collect()
     }
 
-    pub fn development_tree(&self, payload: TagFilterPayloadRaw) -> JsValue {
+    pub fn geographical_development(&self, payload: TagFilterPayloadRaw) -> JsValue {
         let payload = TagFilterPayload::from(payload);
         let filter = self.matching_tags(&payload);
 
