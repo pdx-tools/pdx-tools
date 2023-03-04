@@ -7,7 +7,6 @@ export const BrowserCheck = () => {
 
   useEffect(() => {
     const report = compatibilityReport();
-
     const browser = report.browser.webkit;
     if (browser?.supported === false) {
       setWarnings((x) => [
@@ -26,7 +25,10 @@ export const BrowserCheck = () => {
       const msg = `WebGL2 max texture size (${report.webgl2.textureSize.actual}) is smaller than required (${report.webgl2.textureSize.required})`;
       setWarnings((x) => [...x, msg]);
     } else if (report.webgl2.performanceCaveat) {
-      setWarnings((x) => [...x, `WebGL2 major performance caveat detected`]);
+      setWarnings((x) => [
+        ...x,
+        `WebGL2 major performance caveat detected. Is hardware acceleration turned off?`,
+      ]);
     }
 
     if (!report.wasm) {

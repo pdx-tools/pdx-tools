@@ -36,8 +36,11 @@ let report: CompatibilityReport | undefined = undefined;
 
 function webgl2Compatibility(): WegblCompatibility {
   const canvas = document.createElement("canvas");
-  const gl = glContext(canvas);
+  const performanceCaveat = !glContext(canvas, {
+    failIfMajorPerformanceCaveat: true,
+  });
 
+  const gl = glContext(canvas);
   if (!gl) {
     canvas.remove();
     return { enabled: false };
@@ -45,9 +48,6 @@ function webgl2Compatibility(): WegblCompatibility {
 
   const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
   const requiredTextureSize = 4096;
-  const performanceCaveat = !glContext(canvas, {
-    failIfMajorPerformanceCaveat: true,
-  });
 
   canvas.remove();
   return {
