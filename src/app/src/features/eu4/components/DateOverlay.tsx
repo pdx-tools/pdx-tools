@@ -1,4 +1,4 @@
-import { useSelectedDate } from "../Eu4SaveProvider";
+import { useSelectedDate } from "../store";
 
 export const DateOverlay = () => {
   const mapDate = useSelectedDate();

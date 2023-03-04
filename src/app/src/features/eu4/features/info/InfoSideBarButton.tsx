@@ -13,11 +13,7 @@ import {
 import { DownloadButton } from "./DownloadButton";
 import { MeltButton } from "@/components/MeltButton";
 import { getEu4Worker } from "../../worker";
-import {
-  useEu4Meta,
-  useSaveFilename,
-  useServerSaveFile,
-} from "../../Eu4SaveProvider";
+import { useEu4Meta, useSaveFilename, useServerSaveFile } from "../../store";
 
 const InfoSideBarTitle = () => {
   const meta = useEu4Meta();

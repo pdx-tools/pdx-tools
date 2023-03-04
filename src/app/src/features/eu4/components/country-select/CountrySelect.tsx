@@ -6,7 +6,7 @@ import {
   useAiCountries,
   useAliveAiCountries,
   useHumanCountries,
-} from "../../Eu4SaveProvider";
+} from "../../store";
 
 const { OptGroup } = Select;
 

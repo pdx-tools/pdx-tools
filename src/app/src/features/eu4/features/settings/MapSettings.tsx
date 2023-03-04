@@ -17,7 +17,7 @@ import {
   useShowCountryBorders,
   useIsCountryBordersDisabled,
   useShowMapModeBorders,
-} from "../../Eu4SaveProvider";
+} from "../../store";
 
 const TerrainToggleRow = () => {
   const data = useTerrainOverlay();

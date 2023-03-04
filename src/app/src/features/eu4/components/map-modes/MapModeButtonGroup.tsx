@@ -6,7 +6,7 @@ import development from "./images/mapmode_development.png";
 import technology from "./images/mapmode_tech.png";
 import terrain from "./images/mapmode_terrain.png";
 import { MapControls } from "../../types/map";
-import { useEu4Actions, useEu4MapMode } from "../../Eu4SaveProvider";
+import { useEu4Actions, useEu4MapMode } from "../../store";
 
 export const MapModeButtonGroup = () => {
   const mapMode = useEu4MapMode();

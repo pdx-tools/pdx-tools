@@ -1,4 +1,4 @@
-import { useEu4Actions } from "../../Eu4SaveProvider";
+import { useEu4Actions } from "../../store";
 import { SideBarButton, SideBarButtonProps } from "../SideBarButton";
 
 export const ZoomInSideBarButton = ({

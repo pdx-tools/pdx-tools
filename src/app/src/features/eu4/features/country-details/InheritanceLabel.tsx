@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CountryDetails } from "../../types/models";
 import classes from "./InheritanceLabel.module.css";
 import { useIsJuniorPartner } from "./detailHooks";
-import { useEu4Meta } from "../../Eu4SaveProvider";
+import { useEu4Meta } from "../../store";
 
 export interface InheranticeLabelProps {
   details: CountryDetails;

@@ -6,7 +6,7 @@ import {
   useEu4Meta,
   useIsDatePickerEnabled,
   useSelectedDate,
-} from "../../Eu4SaveProvider";
+} from "../../store";
 
 export const DateTimeline = () => {
   const meta = useEu4Meta();

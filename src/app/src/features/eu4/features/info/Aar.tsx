@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { Button, Form, Input } from "antd";
 import { EditOutlined } from "@ant-design/icons";
-import { useServerSaveFile } from "../../Eu4SaveProvider";
+import { useServerSaveFile } from "../../store";
 import { useSavePatch } from "@/services/appApi";
 
 const { TextArea } = Input;

@@ -1,13 +1,11 @@
 import { dequal } from "@/lib/dequal";
 import { create } from "zustand";
+import { type Eu4SaveInput } from "@/features/eu4/store";
 
 export type SaveGameInput =
   | {
       kind: "eu4";
-      data:
-        | { kind: "local"; file: File }
-        | { kind: "server"; saveId: string }
-        | { kind: "skanderbeg"; skanId: string };
+      data: Eu4SaveInput;
     }
   | { kind: "ck3"; file: File }
   | { kind: "hoi4"; file: File }

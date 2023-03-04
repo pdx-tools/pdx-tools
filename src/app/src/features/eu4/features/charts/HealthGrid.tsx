@@ -4,7 +4,7 @@ import { formatInt } from "@/lib/format";
 import { Heatmap, useVisualizationDispatch } from "@/components/viz";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { createCsv } from "@/lib/csv";
-import { useTagFilter } from "../../Eu4SaveProvider";
+import { useTagFilter } from "../../store";
 
 const healthCategories = [
   "prestige",

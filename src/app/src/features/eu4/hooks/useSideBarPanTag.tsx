@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useSideBarContainer } from "../components/SideBarContainer";
-import { useEu4Actions } from "../Eu4SaveProvider";
+import { useEu4Actions } from "../store";
 
 export function useSideBarPanTag() {
   const { panToTag } = useEu4Actions();

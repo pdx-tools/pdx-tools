@@ -12,7 +12,7 @@ import { createCsv } from "@/lib/csv";
 import { useVisualizationDispatch } from "@/components/viz";
 import { useTablePagination } from "@/features/ui-controls";
 import { useEu4Worker } from "@/features/eu4/worker";
-import { useTagFilter } from "../../Eu4SaveProvider";
+import { useTagFilter } from "../../store";
 
 interface WarSideData extends WarSide {
   original_name: string;

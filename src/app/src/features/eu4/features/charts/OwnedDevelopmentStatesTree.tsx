@@ -6,7 +6,7 @@ import {
 } from "@/components/viz";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { createCsv } from "@/lib/csv";
-import { useTagFilter } from "../../Eu4SaveProvider";
+import { useTagFilter } from "../../store";
 import { OwnedDevelopmentStates, Development } from "../../types/models";
 import { FlagAvatar } from "../../components/avatars";
 import { formatInt } from "@/lib/format";

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useEu4Map, useEu4Save } from "../../Eu4SaveProvider";
+import { useEu4Map, useEu4MapMode } from "../../store";
 import { QuickTipPayload } from "../../types/map";
 import { getEu4Worker } from "../../worker";
 import { MapTipContents } from "./MapTipContents";
@@ -18,7 +18,7 @@ export const MapTip = () => {
   const [timerDisplay, setTimerDisplay] = useState(false);
   const [mapTip, setMapTip] = useState<QuickTipPayload | null>(null);
   const [provinceId, setProvinceId] = useState(0);
-  const mapMode = useEu4Save((x) => x.mapMode);
+  const mapMode = useEu4MapMode();
   const map = useEu4Map();
 
   useEffect(() => {

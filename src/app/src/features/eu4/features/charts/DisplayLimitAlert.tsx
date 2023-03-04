@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { Alert } from "antd";
 import { useAnalysisWorker } from "@/features/eu4/worker";
-import { useTagFilter } from "../../Eu4SaveProvider";
+import { useTagFilter } from "../../store";
 
 type DisplayLimitAlertProps = {
   displayLimit: number;

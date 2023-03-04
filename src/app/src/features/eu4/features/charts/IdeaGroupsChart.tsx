@@ -3,7 +3,7 @@ import type { BarConfig } from "@ant-design/charts";
 import { useAnalysisWorker, Eu4Worker } from "@/features/eu4/worker";
 import { Bar, useVisualizationDispatch } from "@/components/viz";
 import { createCsv } from "@/lib/csv";
-import { useEu4Meta, useTagFilter } from "../../Eu4SaveProvider";
+import { useEu4Meta, useTagFilter } from "../../store";
 
 interface IdeaGroupDatum {
   name: string;

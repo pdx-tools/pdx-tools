@@ -6,7 +6,7 @@ import {
 } from "./countryFilterContext";
 import { CountryFilterForm } from "./CountryFilterForm";
 import { CountrySelect } from "../../components/country-select";
-import { useEu4Actions } from "../../Eu4SaveProvider";
+import { useEu4Actions } from "../../store";
 
 interface CountryFilterDrawerContent {
   closeDrawer: () => void;

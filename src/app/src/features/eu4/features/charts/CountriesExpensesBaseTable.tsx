@@ -18,7 +18,7 @@ import {
   useShowOnetimeLineItems,
   useTagFilter,
   useValueFormatPreference,
-} from "../../Eu4SaveProvider";
+} from "../../store";
 
 type CountryExpensesRecord = CountryExpenses;
 

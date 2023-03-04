@@ -24,7 +24,7 @@ import { CountryDiplomacy } from "./CountryDiplomacy";
 import { CountryStates } from "./CountryStates";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { useSideBarPanTag } from "../../hooks/useSideBarPanTag";
-import { useEu4Actions, useSelectedTag } from "../../Eu4SaveProvider";
+import { useEu4Actions, useSelectedTag } from "../../store";
 
 const { TabPane } = Tabs;
 const { useBreakpoint } = Grid;

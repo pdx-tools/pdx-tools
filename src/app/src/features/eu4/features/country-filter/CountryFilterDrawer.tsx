@@ -3,7 +3,7 @@ import { Drawer } from "antd";
 import { CountryFilterDrawerContent } from "./CountryFilterDrawerContent";
 import { CountryFilterProvider } from "./countryFilterContext";
 import { HelpTooltip } from "@/components/HelpTooltip";
-import { useTagFilter } from "../../Eu4SaveProvider";
+import { useTagFilter } from "../../store";
 
 type CountryFilterDrawerProps = {
   visible: boolean;

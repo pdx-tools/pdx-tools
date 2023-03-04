@@ -7,7 +7,7 @@ import { ProgressBar } from "@/components/ProgressBar";
 import { SaveMode } from "../../components/save-mode";
 import { SuccessAlert } from "../../components/SuccessAlert";
 import { closeDrawerPropagation } from "../../components/SideBarContainer";
-import { useEu4Meta } from "../../Eu4SaveProvider";
+import { useEu4Meta } from "../../store";
 
 interface UploadDrawerProps {
   visible: boolean;

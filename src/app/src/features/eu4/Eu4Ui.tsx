@@ -3,12 +3,12 @@ import { Eu4CanvasOverlay } from "./Eu4CanvasOverlay";
 import { AppLoading } from "@/components/AppLoading";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Alert } from "antd";
-import { Eu4SaveProps, Eu4SaveProvider, useLoadEu4 } from "./Eu4SaveProvider";
 import { useEngineActions } from "../engine";
 import { developerLog } from "@/lib/log";
+import { Eu4SaveInput, useLoadEu4, Eu4StoreProvider } from "./store";
 
 type Eu4UiProps = {
-  save: Eu4SaveProps;
+  save: Eu4SaveInput;
 };
 
 const TrackingCanvas = memo(
@@ -55,9 +55,9 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
       </div>
       {progress}
       {data !== null ? (
-        <Eu4SaveProvider store={data}>
+        <Eu4StoreProvider store={data}>
           <Eu4CanvasOverlay />
-        </Eu4SaveProvider>
+        </Eu4StoreProvider>
       ) : null}
     </>
   );

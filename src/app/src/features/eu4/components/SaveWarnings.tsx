@@ -1,6 +1,6 @@
 import { Alert } from "antd";
 import React from "react";
-import { useEu4Meta } from "../Eu4SaveProvider";
+import { useEu4Meta } from "../store";
 
 export const SaveWarnings = () => {
   const meta = useEu4Meta();

@@ -4,7 +4,7 @@ import { captureException } from "@/features/errors";
 import { getEu4Worker } from "@/features/eu4/worker";
 import { Eu4Worker } from "./bridge";
 import { getErrorMessage } from "@/lib/getErrorMessage";
-import { useOnNewSave } from "./useOnSave";
+import { useOnNewSave } from "./useOnNewSave";
 
 export const useEu4Worker = <T>(cb: (arg0: Eu4Worker) => Promise<T>) => {
   const [isLoading, setLoading] = useState(false);

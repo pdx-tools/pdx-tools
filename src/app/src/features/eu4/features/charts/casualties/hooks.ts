@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { CountryLosses } from "@/features/eu4/types/models";
 import { useAnalysisWorker } from "@/features/eu4/worker";
-import { useTagFilter } from "@/features/eu4/Eu4SaveProvider";
+import { useTagFilter } from "@/features/eu4/store";
 
 export type TableLosses = CountryLosses;
 

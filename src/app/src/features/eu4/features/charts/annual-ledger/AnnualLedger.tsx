@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { Line, LineConfig, useVisualizationDispatch } from "@/components/viz";
 import { LedgerDatum } from "@/features/eu4/types/models";
 import { createCsv } from "@/lib/csv";
-import { useCountryNameLookup } from "@/features/eu4/Eu4SaveProvider";
+import { useCountryNameLookup } from "@/features/eu4/store";
 
 interface LedgerProps {
   ledger: LedgerDatum[];

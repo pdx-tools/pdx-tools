@@ -9,7 +9,7 @@ import {
 import { VizModules } from "../../types/visualizations";
 import { CountryFilterButton } from "../country-filter";
 import { downloadData } from "@/lib/downloadData";
-import { useSaveFilename } from "../../Eu4SaveProvider";
+import { useSaveFilename } from "../../store";
 
 const { useBreakpoint } = Grid;
 const { Option } = Select;

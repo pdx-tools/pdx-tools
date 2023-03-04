@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef } from "react";
 import { useBrotli } from "@/features/brotli";
 import { SavePostResponse } from "@/pages/api/saves";
 import { getEu4Worker } from "../../worker";
-import { useSaveFilename } from "../../Eu4SaveProvider";
+import { useSaveFilename } from "../../store";
 import { invalidateSaves } from "@/services/appApi";
 
 type Action =

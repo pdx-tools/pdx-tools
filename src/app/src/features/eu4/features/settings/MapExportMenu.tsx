@@ -11,7 +11,7 @@ import {
   useEu4MapMode,
   useEu4Meta,
   useTerrainOverlay,
-} from "../../Eu4SaveProvider";
+} from "../../store";
 
 type Items = React.ComponentProps<typeof Menu>["items"];
 

@@ -7,7 +7,7 @@ import {
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { formatInt } from "@/lib/format";
 import { createCsv } from "@/lib/csv";
-import { useTagFilter } from "../../Eu4SaveProvider";
+import { useTagFilter } from "../../store";
 
 type DevelopmentStatisticProps = {
   title: string;
@@ -101,7 +101,7 @@ export const GeographicalDevelopmentTree = () => {
         // Sort by name so that names like "africa" are always
         // assigned the same color across saves
         return a.data.name.localeCompare(b.data.name);
-      }
+      },
     },
 
     tooltip: {

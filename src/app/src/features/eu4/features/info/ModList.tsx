@@ -1,4 +1,4 @@
-import { useEu4ModList } from "../../Eu4SaveProvider";
+import { useEu4ModList } from "../../store";
 
 export const ModList = () => {
   const mods = useEu4ModList();

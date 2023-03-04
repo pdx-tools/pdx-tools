@@ -25,7 +25,7 @@ import {
   useEu4Meta,
   useIsServerSaveFile,
   useSaveFilename,
-} from "./Eu4SaveProvider";
+} from "./store";
 import { useCanvasPointerEvents } from "./hooks/useCanvasPointerEvents";
 
 export const Eu4CanvasOverlay = () => {
