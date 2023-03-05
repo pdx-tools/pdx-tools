@@ -30,6 +30,15 @@ const PieTablePieImpl = ({ rows, palette }: PieTablePieProps) => {
     autoFit: true,
     color: (data: Record<string, any>) =>
       palette.get(data["key"] as string) || "#000",
+    tooltip: {
+      formatter: (datum) => {
+        if (Number.isInteger(datum.value)) {
+          return { name: datum.key, value: formatInt(datum.value) };
+        } else {
+          return { name: datum.key, value: formatFloat(datum.value) };
+        }
+      },
+    },
     label: {
       type: "inner",
       offset: "-30%",
