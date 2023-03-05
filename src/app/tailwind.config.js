@@ -1,7 +1,6 @@
-/** @type {import('tailwindcss').Config} */
-
 const path = require("path");
 
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   corePlugins: {
     preflight: false,

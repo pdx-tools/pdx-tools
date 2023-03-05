@@ -3,7 +3,6 @@ import tailwindConfig from "../../tailwind.config.js";
 import { useMediaQuery } from "./useMediaQuery";
 
 const fullConfig = resolveConfig(tailwindConfig);
-
 const screens = fullConfig.theme?.screens;
 
 const breakpoints = {
