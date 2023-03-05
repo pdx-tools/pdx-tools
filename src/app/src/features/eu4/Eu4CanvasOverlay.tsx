@@ -37,12 +37,12 @@ export const Eu4CanvasOverlay = () => {
 
   const buttons = [
     (i: number) => (
-      <HeaderSideBarButton key="header" index={i}>
+      <HeaderSideBarButton key="header" index={i} className="h-[60px] w-[60px]">
         <MenuOutlined />
       </HeaderSideBarButton>
     ),
     (i: number) => (
-      <InfoSideBarButton key="info" index={i}>
+      <InfoSideBarButton key="info" index={i} className="h-[60px] w-[60px]">
         <InfoCircleOutlined />
       </InfoSideBarButton>
     ),
@@ -50,23 +50,31 @@ export const Eu4CanvasOverlay = () => {
       ? []
       : [
           (i: number) => (
-            <UploadSideBarButton key="upload" index={i}>
+            <UploadSideBarButton
+              key="upload"
+              index={i}
+              className="h-[60px] w-[60px]"
+            >
               <UploadOutlined />
             </UploadSideBarButton>
           ),
         ]),
     (i: number) => (
-      <ChartSideBarButton key="chart" index={i}>
+      <ChartSideBarButton key="chart" index={i} className="h-[60px] w-[60px]">
         <AreaChartOutlined />
       </ChartSideBarButton>
     ),
     (i: number) => (
-      <CountrySideBarButton key="data" index={i}>
+      <CountrySideBarButton key="data" index={i} className="h-[60px] w-[60px]">
         <FlagOutlined />
       </CountrySideBarButton>
     ),
     (i: number) => (
-      <MapSettingsSideBarButton key="settings" index={i}>
+      <MapSettingsSideBarButton
+        key="settings"
+        index={i}
+        className="h-[60px] w-[60px]"
+      >
         <GlobalOutlined />
       </MapSettingsSideBarButton>
     ),
