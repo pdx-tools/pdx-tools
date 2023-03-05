@@ -52,7 +52,7 @@ const DesktopImageGallery = () => {
   const selected = images[selectedIndex];
   return (
     <div className="flex w-full max-w-7xl gap-5">
-      <div className="flex min-w-[150px] basis-0 flex-col gap-4">
+      <div className="flex basis-[150px] flex-col gap-4">
         {images.map((x, i) => (
           <button
             className="m-0 rounded-xl border-0 bg-transparent p-0"
@@ -77,19 +77,14 @@ const DesktopImageGallery = () => {
           <span>{selected.description}</span>
         </div>
         {selected.src.endsWith("mp4") ? (
-          // Responsive Video Ratio:
-          // https://www.thismanslife.co.uk/projects/responsivevideo/
-          // https://css-tricks.com/fluid-width-video/
-          <div className="relative h-0 pb-[56.25%]">
-            <video
-              className="absolute left-0 top-0 h-full w-full drop-shadow-xl"
-              src={selected.src}
-              autoPlay
-              loop
-              playsInline
-              muted
-            />
-          </div>
+          <video
+            className="aspect-video w-full drop-shadow-xl"
+            src={selected.src}
+            autoPlay
+            loop
+            playsInline
+            muted
+          />
         ) : (
           <Image
             src={selected.src}
