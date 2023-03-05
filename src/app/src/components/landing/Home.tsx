@@ -202,8 +202,8 @@ export const Home = ({ subtitle }: HomeProps) => {
                 <SafariIcon className="fill-gray-300" />
               </div>
               <div className="text-xs">
-                Works best in Firefox (62+), Chrome (66+), Edge (79+).
-                <div>Safari 15.2+ also supported.</div>
+                Recommended: Chrome (88+), Edge (88+).
+                <div>Supported: Firefox (89+), Safari (15.2+).</div>
               </div>
             </div>
           </div>
