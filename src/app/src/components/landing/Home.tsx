@@ -100,7 +100,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         </section>
       </div>
       <div
-        className={`${classes.row} flex flex-col items-center justify-center px-5 py-16 text-xl odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
+        className={`${classes.row} flex w-full flex-col items-center justify-center px-5 py-16 text-xl odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <ImageGallery />
       </div>
