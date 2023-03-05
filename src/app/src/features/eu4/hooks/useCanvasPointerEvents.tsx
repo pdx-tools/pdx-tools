@@ -15,8 +15,8 @@ export function useCanvasPointerEvents(map: WebGLMap) {
 
     function handleMouseUp(e: MouseEvent) {
       map.onMouseUp(e);
-      window.removeEventListener("pointermove", moveCamera);
-      window.removeEventListener("pointerup", handleMouseUp);
+      canvas.removeEventListener("pointermove", moveCamera);
+      canvas.removeEventListener("pointerup", handleMouseUp);
     }
 
     function pinchUp(e: PointerEvent) {
@@ -27,8 +27,8 @@ export function useCanvasPointerEvents(map: WebGLMap) {
       }
 
       map.redrawViewport();
-      window.removeEventListener("pointermove", pinchMove);
-      window.removeEventListener("pointerup", pinchUp);
+      canvas.removeEventListener("pointermove", pinchMove);
+      canvas.removeEventListener("pointerup", pinchUp);
     }
 
     function pinchMove(e: PointerEvent) {
@@ -73,14 +73,14 @@ export function useCanvasPointerEvents(map: WebGLMap) {
         if (e.isPrimary) {
           primaryPointer = e;
           map.onMouseDown(e);
-          window.addEventListener("pointermove", moveCamera);
-          window.addEventListener("pointerup", handleMouseUp);
+          canvas.addEventListener("pointermove", moveCamera);
+          canvas.addEventListener("pointerup", handleMouseUp);
         } else {
           secondaryPointer = e;
-          window.removeEventListener("pointermove", moveCamera);
-          window.removeEventListener("pointerup", handleMouseUp);
-          window.addEventListener("pointermove", pinchMove);
-          window.addEventListener("pointerup", pinchUp);
+          canvas.removeEventListener("pointermove", moveCamera);
+          canvas.removeEventListener("pointerup", handleMouseUp);
+          canvas.addEventListener("pointermove", pinchMove);
+          canvas.addEventListener("pointerup", pinchUp);
         }
       }
     }

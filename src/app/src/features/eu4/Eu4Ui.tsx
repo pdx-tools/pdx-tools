@@ -19,7 +19,9 @@ const TrackingCanvas = memo(
       };
     });
 
-    return <canvas ref={ref} />;
+    // Need touch-none for pointermove events to work
+    // ref: https://stackoverflow.com/a/48254578/433785
+    return <canvas className="touch-none" ref={ref} />;
   })
 );
 
