@@ -1,5 +1,5 @@
 import React from "react";
-import { Descriptions, Space, Table, Tooltip } from "antd";
+import { Descriptions, Table, Tooltip } from "antd";
 import { ColumnType } from "antd/lib/table";
 import {
   CountryState,
@@ -17,6 +17,7 @@ import {
   FlagAvatar,
 } from "@/features/eu4/components/avatars";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
+import { formatFloat } from "@/lib/format";
 
 interface ProvinceDetailsProps {
   province: ProvinceDetails;
@@ -172,7 +173,7 @@ export const ProvinceDetailsDescriptions = ({
           {province.culture || "---"}
         </Descriptions.Item>
         <Descriptions.Item label="Devastation">
-          {province.devastation}
+          {formatFloat(province.devastation)}
         </Descriptions.Item>
         <Descriptions.Item label="Trade Goods">
           {province.trade_goods || "---"}
