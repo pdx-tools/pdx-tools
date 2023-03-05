@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import { useFilePublisher } from "@/features/engine";
-import { BrowserCheck } from "@/components/landing/BrowserCheck";
 import { GameView } from "../engine/GameView";
 
 type SaveProps = {
@@ -14,10 +13,5 @@ export const SavePage = ({ saveId }: SaveProps) => {
     filePublisher({ kind: "server", saveId });
   }, [filePublisher, saveId]);
 
-  return (
-    <>
-      <BrowserCheck />
-      <GameView />
-    </>
-  );
+  return <GameView />;
 };

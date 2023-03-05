@@ -6,6 +6,7 @@ import { Alert } from "antd";
 import { useEngineActions } from "../engine";
 import { developerLog } from "@/lib/log";
 import { Eu4SaveInput, useLoadEu4, Eu4StoreProvider } from "./store";
+import { BrowserCheck } from "@/components/landing/BrowserCheck";
 
 type Eu4UiProps = {
   save: Eu4SaveInput;
@@ -37,8 +38,17 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
       </div>
     ) : null;
 
-  const progress =
-    error || loading ? (
+  return (
+    <>
+      {loadingIcon}
+      <div className="absolute inset-0" ref={mapContainer}>
+        <TrackingCanvas ref={mapCanvas} />
+      </div>
+      {data !== null ? (
+        <Eu4StoreProvider store={data}>
+          <Eu4CanvasOverlay />
+        </Eu4StoreProvider>
+      ) : null}
       <div className="absolute w-full">
         {loading !== null ? (
           <ProgressBar height={32} value={loading.percent ?? 0} />
@@ -46,21 +56,8 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
         {error !== null ? (
           <Alert type="error" closable message={`${error}`} />
         ) : null}
+        <BrowserCheck />
       </div>
-    ) : null;
-
-  return (
-    <>
-      {loadingIcon}
-      <div className="absolute inset-0" ref={mapContainer}>
-        <TrackingCanvas ref={mapCanvas} />
-      </div>
-      {progress}
-      {data !== null ? (
-        <Eu4StoreProvider store={data}>
-          <Eu4CanvasOverlay />
-        </Eu4StoreProvider>
-      ) : null}
     </>
   );
 };
