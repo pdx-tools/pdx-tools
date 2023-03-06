@@ -1,4 +1,3 @@
-import { type AnalyzeInput } from "@/features/engine";
 import { check } from "@/lib/isPresent";
 import { log, logMs } from "@/lib/log";
 import { timeit } from "@/lib/timeit";
@@ -12,9 +11,10 @@ import {
 import { wasm } from "./common";
 import * as mod from "../../../../../wasm-eu4/pkg/wasm_eu4";
 import { fetchOk } from "@/lib/fetch";
+import { type Eu4SaveInput } from "../store";
 
 export const initializeWasm = wasm.initializeModule;
-export async function fetchData(save: AnalyzeInput) {
+export async function fetchData(save: Eu4SaveInput) {
   switch (save.kind) {
     case "local": {
       const data = await save.file.arrayBuffer();
