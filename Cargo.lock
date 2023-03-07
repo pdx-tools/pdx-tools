@@ -1240,8 +1240,8 @@ dependencies = [
 
 [[package]]
 name = "hoi4save"
-version = "0.3.2"
-source = "git+https://github.com/rakaly/hoi4save.git#f1589b96d62ab40c9f3ac792fff25703b5178304"
+version = "0.3.3"
+source = "git+https://github.com/rakaly/hoi4save.git#d033a4f8e24ff63c20c5a51d2cc7e3b1307faf0a"
 dependencies = [
  "jomini",
  "serde",
