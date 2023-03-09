@@ -992,7 +992,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#46f589251d7a50e42622d2df40dc6b9b79a263b2"
+source = "git+https://github.com/rakaly/eu4save.git#0be38336849bf816dd23ece4bffd55b127becc5b"
 dependencies = [
  "jomini",
  "libdeflater",
@@ -1462,9 +1462,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.21.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d725fbaacebb9e663b0070ab631e18674c6e517dd40b23e4db04d49100a88a89"
+checksum = "ea37a19bcb64b13d602bacfb408324015b9edaadae3e449fda35ec7d8b54e9bc"
 dependencies = [
  "jomini_derive",
  "serde",

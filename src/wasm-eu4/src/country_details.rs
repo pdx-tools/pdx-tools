@@ -210,8 +210,7 @@ impl SaveFileImpl {
                 .history
                 .events
                 .iter()
-                .flat_map(|(_, v)| v.0.iter())
-                .filter_map(|x| x.as_monarch())
+                .filter_map(|(_, x)| x.as_monarch())
                 .find(|x| x.id.id == ruler_id.id)
                 .map(|x| FrontendMonarch {
                     name: x.name.clone(),
@@ -230,8 +229,7 @@ impl SaveFileImpl {
                 .history
                 .events
                 .iter()
-                .flat_map(|(_, v)| v.0.iter())
-                .filter_map(|x| match x {
+                .filter_map(|(_, x)| match x {
                     CountryEvent::Monarch(mon) => Some(mon),
                     _ => None,
                 })
@@ -483,112 +481,110 @@ impl SaveFileImpl {
         let mut total_month_mil = 0;
         let mut total_months = 0;
 
-        for (date, events) in &country.history.events {
-            for event in events.0.iter() {
-                // we exclude heirs and queens (before they've become monarch heirs and monarch consorts)
-                match event {
-                    CountryEvent::Monarch(x)
-                    | CountryEvent::MonarchHeir(x)
-                    | CountryEvent::MonarchConsort(x) => {
-                        if monarch_ids.contains(&x.id.id) {
-                            if let Some((prev_start_date, prev_monarch)) = prev.take() {
-                                let death_date = *date;
+        for (date, event) in &country.history.events {
+            // we exclude heirs and queens (before they've become monarch heirs and monarch consorts)
+            match event {
+                CountryEvent::Monarch(x)
+                | CountryEvent::MonarchHeir(x)
+                | CountryEvent::MonarchConsort(x) => {
+                    if monarch_ids.contains(&x.id.id) {
+                        if let Some((prev_start_date, prev_monarch)) = prev.take() {
+                            let death_date = *date;
 
-                                let months = (i32::from(death_date.year()) * 12
-                                    + i32::from(death_date.month()))
-                                    - (i32::from(prev_start_date.year()) * 12
-                                        + i32::from(prev_start_date.month()));
+                            let months = (i32::from(death_date.year()) * 12
+                                + i32::from(death_date.month()))
+                                - (i32::from(prev_start_date.year()) * 12
+                                    + i32::from(prev_start_date.month()));
 
-                                if *date > self.query.save().game.start_date {
-                                    total_months += months;
-                                    total_adm += prev_monarch.adm;
-                                    total_dip += prev_monarch.dip;
-                                    total_mil += prev_monarch.mil;
-                                    total_month_adm += months * i32::from(prev_monarch.adm);
-                                    total_month_dip += months * i32::from(prev_monarch.dip);
-                                    total_month_mil += months * i32::from(prev_monarch.mil);
+                            if *date > self.query.save().game.start_date {
+                                total_months += months;
+                                total_adm += prev_monarch.adm;
+                                total_dip += prev_monarch.dip;
+                                total_mil += prev_monarch.mil;
+                                total_month_adm += months * i32::from(prev_monarch.adm);
+                                total_month_dip += months * i32::from(prev_monarch.dip);
+                                total_month_mil += months * i32::from(prev_monarch.mil);
 
-                                    let add_monarch = RunningMonarch {
-                                        reign: months,
-                                        end: Some(date.iso_8601().to_string()),
-                                        avg_adm: f64::from(total_adm)
-                                            / f64::from(result.len() as u32 + 1),
-                                        avg_dip: f64::from(total_dip)
-                                            / f64::from(result.len() as u32 + 1),
-                                        avg_mil: f64::from(total_mil)
-                                            / f64::from(result.len() as u32 + 1),
-                                        avg_dur_adm: f64::from(total_month_adm)
-                                            / f64::from(total_months),
-                                        avg_dur_dip: f64::from(total_month_dip)
-                                            / f64::from(total_months),
-                                        avg_dur_mil: f64::from(total_month_mil)
-                                            / f64::from(total_months),
-                                        ..prev_monarch
-                                    };
-                                    result.push(add_monarch);
-                                }
+                                let add_monarch = RunningMonarch {
+                                    reign: months,
+                                    end: Some(date.iso_8601().to_string()),
+                                    avg_adm: f64::from(total_adm)
+                                        / f64::from(result.len() as u32 + 1),
+                                    avg_dip: f64::from(total_dip)
+                                        / f64::from(result.len() as u32 + 1),
+                                    avg_mil: f64::from(total_mil)
+                                        / f64::from(result.len() as u32 + 1),
+                                    avg_dur_adm: f64::from(total_month_adm)
+                                        / f64::from(total_months),
+                                    avg_dur_dip: f64::from(total_month_dip)
+                                        / f64::from(total_months),
+                                    avg_dur_mil: f64::from(total_month_mil)
+                                        / f64::from(total_months),
+                                    ..prev_monarch
+                                };
+                                result.push(add_monarch);
                             }
-
-                            let start_date = date.max(&self.query.save().game.start_date);
-
-                            let tmp_monarch = RunningMonarch {
-                                name: x.name.clone(),
-                                start: start_date.iso_8601().to_string(),
-                                country: LocalizedTag {
-                                    tag: x.country,
-                                    name: save_game_query.localize_country(&x.country),
-                                },
-                                end: None,
-                                personalities: x
-                                    .personalities
-                                    .iter()
-                                    .map(|(personality, _)| LocalizedObj {
-                                        id: personality.clone(),
-                                        name: self.game.localize_personality(personality),
-                                    })
-                                    .collect(),
-                                failed_heirs: failed_heirs.clone(),
-                                adm: x.adm as u16,
-                                dip: x.dip as u16,
-                                mil: x.mil as u16,
-                                avg_adm: 0.0,
-                                avg_dip: 0.0,
-                                avg_mil: 0.0,
-                                avg_dur_adm: 0.0,
-                                avg_dur_dip: 0.0,
-                                avg_dur_mil: 0.0,
-                                reign: 0,
-                            };
-
-                            prev = Some((date, tmp_monarch));
-                            failed_heirs.clear();
                         }
+
+                        let start_date = date.max(&self.query.save().game.start_date);
+
+                        let tmp_monarch = RunningMonarch {
+                            name: x.name.clone(),
+                            start: start_date.iso_8601().to_string(),
+                            country: LocalizedTag {
+                                tag: x.country,
+                                name: save_game_query.localize_country(&x.country),
+                            },
+                            end: None,
+                            personalities: x
+                                .personalities
+                                .iter()
+                                .map(|(personality, _)| LocalizedObj {
+                                    id: personality.clone(),
+                                    name: self.game.localize_personality(personality),
+                                })
+                                .collect(),
+                            failed_heirs: failed_heirs.clone(),
+                            adm: x.adm as u16,
+                            dip: x.dip as u16,
+                            mil: x.mil as u16,
+                            avg_adm: 0.0,
+                            avg_dip: 0.0,
+                            avg_mil: 0.0,
+                            avg_dur_adm: 0.0,
+                            avg_dur_dip: 0.0,
+                            avg_dur_mil: 0.0,
+                            reign: 0,
+                        };
+
+                        prev = Some((date, tmp_monarch));
+                        failed_heirs.clear();
                     }
-                    CountryEvent::Heir(heir) => {
-                        if !monarch_ids.contains(&heir.id.id) {
-                            failed_heirs.push(FailedHeir {
-                                name: heir.name.clone(),
-                                country: LocalizedTag {
-                                    tag: heir.country,
-                                    name: save_game_query.localize_country(&heir.country),
-                                },
-                                birth: heir.birth_date.iso_8601().to_string(),
-                                personalities: heir
-                                    .personalities
-                                    .iter()
-                                    .map(|(personality, _)| LocalizedObj {
-                                        id: personality.clone(),
-                                        name: self.game.localize_personality(personality),
-                                    })
-                                    .collect(),
-                                adm: heir.adm as u16,
-                                dip: heir.dip as u16,
-                                mil: heir.mil as u16,
-                            });
-                        }
-                    }
-                    _ => {}
                 }
+                CountryEvent::Heir(heir) => {
+                    if !monarch_ids.contains(&heir.id.id) {
+                        failed_heirs.push(FailedHeir {
+                            name: heir.name.clone(),
+                            country: LocalizedTag {
+                                tag: heir.country,
+                                name: save_game_query.localize_country(&heir.country),
+                            },
+                            birth: heir.birth_date.iso_8601().to_string(),
+                            personalities: heir
+                                .personalities
+                                .iter()
+                                .map(|(personality, _)| LocalizedObj {
+                                    id: personality.clone(),
+                                    name: self.game.localize_personality(personality),
+                                })
+                                .collect(),
+                            adm: heir.adm as u16,
+                            dip: heir.dip as u16,
+                            mil: heir.mil as u16,
+                        });
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -867,34 +863,32 @@ impl SaveFileImpl {
         }
 
         let mut leaders: HashMap<u32, CountryLeaderRaw> = HashMap::new();
-        for (_date, events) in &country.history.events {
-            for event in events.0.iter() {
-                if let Some(monarch) = event.as_monarch() {
-                    if let Some(leader) = monarch.leader.as_ref() {
-                        if let Some(id) = leader.id.as_ref() {
-                            leaders.insert(
-                                id.id,
-                                CountryLeaderRaw {
-                                    leader,
-                                    monarch: Some(MonarchStats {
-                                        adm: monarch.adm as u16,
-                                        dip: monarch.dip as u16,
-                                        mil: monarch.mil as u16,
-                                    }),
-                                },
-                            );
-                        }
-                    }
-                } else if let CountryEvent::Leader(leader) = event {
+        for (_date, event) in &country.history.events {
+            if let Some(monarch) = event.as_monarch() {
+                if let Some(leader) = monarch.leader.as_ref() {
                     if let Some(id) = leader.id.as_ref() {
                         leaders.insert(
                             id.id,
                             CountryLeaderRaw {
                                 leader,
-                                monarch: None,
+                                monarch: Some(MonarchStats {
+                                    adm: monarch.adm as u16,
+                                    dip: monarch.dip as u16,
+                                    mil: monarch.mil as u16,
+                                }),
                             },
                         );
                     }
+                }
+            } else if let CountryEvent::Leader(leader) = event {
+                if let Some(id) = leader.id.as_ref() {
+                    leaders.insert(
+                        id.id,
+                        CountryLeaderRaw {
+                            leader,
+                            monarch: None,
+                        },
+                    );
                 }
             }
         }

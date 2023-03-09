@@ -515,11 +515,9 @@ impl SaveFileImpl {
                     .events
                     .iter()
                     .take_while(|(evt_date, _)| *evt_date <= date)
-                    .flat_map(|(_, events)| {
-                        events.0.iter().filter_map(|evt| match evt {
-                            CountryEvent::Religion(religion) => Some(religion),
-                            _ => None,
-                        })
+                    .flat_map(|(_, event)| match event {
+                        CountryEvent::Religion(religion) => Some(religion),
+                        _ => None,
                     })
                     .last()
                     .or_else(|| {
@@ -541,8 +539,7 @@ impl SaveFileImpl {
                             .history
                             .events
                             .iter()
-                            .flat_map(|(_, events)| events.0.iter())
-                            .find_map(|evt| evt.as_monarch())
+                            .find_map(|(_, event)| event.as_monarch())
                             .and_then(|monarch| monarch.religion.as_ref())
                     })
                     .or_else(|| country.history.religion.as_ref())

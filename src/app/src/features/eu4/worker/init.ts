@@ -65,13 +65,9 @@ export async function eu4GameParse() {
 
   const meta = getMeta(savefile);
   wasm.save = savefile;
-  const achievements = await timeit<Achievements>(() =>
-    savefile.get_achievements()
-  );
-  logMs(achievements, "computing achievements");
-
+  const achievements: Achievements = savefile.get_achievements();
   const defaultSelectedTag = eu4DefaultSelectedTag(meta);
-  return { meta, achievements: achievements.data, defaultSelectedTag };
+  return { meta, achievements, defaultSelectedTag };
 }
 
 export async function parseMeta() {

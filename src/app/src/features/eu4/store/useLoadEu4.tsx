@@ -184,7 +184,7 @@ async function loadEu4Save(
 
   await runTask(dispatch, {
     fn: () => worker.eu4InitialParse(gameData, provincesUniqueIndex),
-    name: "initial parse",
+    name: "save parsed",
     progress: 20,
   });
 
@@ -196,7 +196,7 @@ async function loadEu4Save(
 
   const saveTask = runTask(dispatch, {
     fn: () => worker.eu4GameParse(),
-    name: "full save parse",
+    name: "save deserialized",
     progress: 20,
   });
 

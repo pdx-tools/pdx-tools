@@ -122,18 +122,13 @@ pub fn hash_countries(hash: &mut impl HighwayHash, content_date: Eu4Date, save: 
         .iter()
         .map(|(_, country)| country)
         .flat_map(|country| {
-            country
-                .history
-                .events
-                .iter()
-                .filter_map(|(d, events)| {
-                    if d <= &content_date {
-                        Some(events.0.iter())
-                    } else {
-                        None
-                    }
-                })
-                .flatten()
+            country.history.events.iter().filter_map(|(d, event)| {
+                if d <= &content_date {
+                    Some(event)
+                } else {
+                    None
+                }
+            })
         });
 
     let mut monarchs: Vec<&Monarch> = Vec::new();

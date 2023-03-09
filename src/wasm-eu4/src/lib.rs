@@ -1701,48 +1701,46 @@ impl SaveFileImpl {
 
         let building_set = self.query.built_buildings();
         let mut history = Vec::new();
-        for (date, events) in province.history.events.iter() {
-            for event in events.0.iter() {
-                match event {
-                    ProvinceEvent::Owner(x) => {
-                        history.push(ProvinceHistoryEvent {
-                            date: date.iso_8601().to_string(),
-                            kind: ProvinceHistoryEventKind::Owner(LocalizedTag {
-                                tag: *x,
-                                name: save_game_query.localize_country(x),
-                            }),
-                        });
-                    }
-                    ProvinceEvent::KV((key, ProvinceEventValue::Bool(value))) => {
-                        if building_set.contains(key) {
-                            let name = self
-                                .game
-                                .localize_building(key)
-                                .map(String::from)
-                                .unwrap_or_else(|| key.clone());
-                            if *value {
-                                history.push(ProvinceHistoryEvent {
-                                    date: date.iso_8601().to_string(),
-                                    kind: ProvinceHistoryEventKind::Constructed(GfxObj {
-                                        id: key.clone(),
-                                        name,
-                                        gfx: String::from("westerngfx"),
-                                    }),
-                                });
-                            } else {
-                                history.push(ProvinceHistoryEvent {
-                                    date: date.iso_8601().to_string(),
-                                    kind: ProvinceHistoryEventKind::Demolished(GfxObj {
-                                        id: key.clone(),
-                                        name,
-                                        gfx: String::from("westerngfx"),
-                                    }),
-                                });
-                            }
+        for (date, event) in province.history.events.iter() {
+            match event {
+                ProvinceEvent::Owner(x) => {
+                    history.push(ProvinceHistoryEvent {
+                        date: date.iso_8601().to_string(),
+                        kind: ProvinceHistoryEventKind::Owner(LocalizedTag {
+                            tag: *x,
+                            name: save_game_query.localize_country(x),
+                        }),
+                    });
+                }
+                ProvinceEvent::KV((key, ProvinceEventValue::Bool(value))) => {
+                    if building_set.contains(key) {
+                        let name = self
+                            .game
+                            .localize_building(key)
+                            .map(String::from)
+                            .unwrap_or_else(|| key.clone());
+                        if *value {
+                            history.push(ProvinceHistoryEvent {
+                                date: date.iso_8601().to_string(),
+                                kind: ProvinceHistoryEventKind::Constructed(GfxObj {
+                                    id: key.clone(),
+                                    name,
+                                    gfx: String::from("westerngfx"),
+                                }),
+                            });
+                        } else {
+                            history.push(ProvinceHistoryEvent {
+                                date: date.iso_8601().to_string(),
+                                kind: ProvinceHistoryEventKind::Demolished(GfxObj {
+                                    id: key.clone(),
+                                    name,
+                                    gfx: String::from("westerngfx"),
+                                }),
+                            });
                         }
                     }
-                    _ => {}
                 }
+                _ => {}
             }
         }
 
@@ -2265,7 +2263,7 @@ impl SaveFileImpl {
             let mut battles = 0;
             let mut start_date = None;
 
-            for (date, events) in war.history.events.iter() {
+            for (date, event) in war.history.events.iter() {
                 if matches!(&start_date, Some(x) if x > date) {
                     start_date = Some(*date)
                 }
@@ -2274,19 +2272,17 @@ impl SaveFileImpl {
                     start_date = Some(*date)
                 }
 
-                for event in events.0.iter() {
-                    match event {
-                        WarEvent::AddAttacker(x) => {
-                            attackers.insert(x);
-                            attackers_date.push((*date, *x));
-                        }
-                        WarEvent::AddDefender(x) => {
-                            defenders.insert(x);
-                            defenders_date.push((*date, *x));
-                        }
-                        WarEvent::Battle(_) => battles += 1,
-                        _ => {}
+                match event {
+                    WarEvent::AddAttacker(x) => {
+                        attackers.insert(x);
+                        attackers_date.push((*date, *x));
                     }
+                    WarEvent::AddDefender(x) => {
+                        defenders.insert(x);
+                        defenders_date.push((*date, *x));
+                    }
+                    WarEvent::Battle(_) => battles += 1,
+                    _ => {}
                 }
             }
 
@@ -2370,7 +2366,7 @@ impl SaveFileImpl {
             let mut start_date = None;
             let mut end_date = None;
 
-            for (date, events) in war.history.events.iter() {
+            for (date, event) in war.history.events.iter() {
                 if matches!(&start_date, Some(x) if x > date) {
                     start_date = Some(*date)
                 }
@@ -2387,19 +2383,17 @@ impl SaveFileImpl {
                     end_date = Some(*date)
                 }
 
-                for event in events.0.iter() {
-                    match event {
-                        WarEvent::AddAttacker(x) => {
-                            attackers.insert(x);
-                            attackers_date.push((*date, *x));
-                        }
-                        WarEvent::AddDefender(x) => {
-                            defenders.insert(x);
-                            defenders_date.push((*date, *x));
-                        }
-                        WarEvent::Battle(_) => battles += 1,
-                        _ => {}
+                match event {
+                    WarEvent::AddAttacker(x) => {
+                        attackers.insert(x);
+                        attackers_date.push((*date, *x));
                     }
+                    WarEvent::AddDefender(x) => {
+                        defenders.insert(x);
+                        defenders_date.push((*date, *x));
+                    }
+                    WarEvent::Battle(_) => battles += 1,
+                    _ => {}
                 }
             }
 
@@ -2492,7 +2486,7 @@ impl SaveFileImpl {
                 .iter()
                 .rev()
                 .skip_while(|(d, _)| d > &date)
-                .flat_map(|(_, events)| events.0.iter());
+                .map(|(_, event)| event);
 
             let merc_leaders = country
                 .mercenary_companries
@@ -2601,7 +2595,7 @@ impl SaveFileImpl {
         let mut start_date = None;
         let mut end_date = None;
 
-        for (date, events) in &war_history.events {
+        for (date, event) in &war_history.events {
             if matches!(&start_date, Some(x) if x > date) {
                 start_date = Some(*date)
             }
@@ -2618,98 +2612,96 @@ impl SaveFileImpl {
                 end_date = Some(*date)
             }
 
-            for event in &events.0 {
-                match event {
-                    WarEvent::AddAttacker(x) => {
-                        attackers.insert(participants.get(x).unwrap_or(x));
-                        joined.insert(x, date);
-                        total_attackers.insert(x);
-                    }
-                    WarEvent::AddDefender(x) => {
-                        joined.insert(x, date);
-                        defenders.insert(participants.get(x).unwrap_or(x));
-                    }
-                    WarEvent::RemoveAttacker(x) => {
-                        exited.insert(x, date);
-                        attackers.remove(participants.get(x).unwrap_or(x));
-                    }
-                    WarEvent::RemoveDefender(x) => {
-                        exited.insert(x, date);
-                        defenders.remove(participants.get(x).unwrap_or(x));
-                    }
-                    WarEvent::Battle(b) => {
-                        let attacker_commander_stats = match b.attacker.commander.as_ref() {
-                            Some(name) => {
-                                let stats = commanders.entry(name).or_insert_with(|| {
-                                    self.get_commander_stats(
-                                        *date,
-                                        attackers.iter().copied(),
-                                        name.as_str(),
-                                    )
-                                });
-                                Some(stats.clone())
-                            }
-                            None => None,
-                        };
+            match event {
+                WarEvent::AddAttacker(x) => {
+                    attackers.insert(participants.get(x).unwrap_or(x));
+                    joined.insert(x, date);
+                    total_attackers.insert(x);
+                }
+                WarEvent::AddDefender(x) => {
+                    joined.insert(x, date);
+                    defenders.insert(participants.get(x).unwrap_or(x));
+                }
+                WarEvent::RemoveAttacker(x) => {
+                    exited.insert(x, date);
+                    attackers.remove(participants.get(x).unwrap_or(x));
+                }
+                WarEvent::RemoveDefender(x) => {
+                    exited.insert(x, date);
+                    defenders.remove(participants.get(x).unwrap_or(x));
+                }
+                WarEvent::Battle(b) => {
+                    let attacker_commander_stats = match b.attacker.commander.as_ref() {
+                        Some(name) => {
+                            let stats = commanders.entry(name).or_insert_with(|| {
+                                self.get_commander_stats(
+                                    *date,
+                                    attackers.iter().copied(),
+                                    name.as_str(),
+                                )
+                            });
+                            Some(stats.clone())
+                        }
+                        None => None,
+                    };
 
-                        let defender_commander_stats = match b.defender.commander.as_ref() {
-                            Some(name) => {
-                                let stats = commanders.entry(name).or_insert_with(|| {
-                                    self.get_commander_stats(
-                                        *date,
-                                        defenders.iter().copied(),
-                                        name.as_str(),
-                                    )
-                                });
-                                Some(stats.clone())
-                            }
-                            None => None,
-                        };
+                    let defender_commander_stats = match b.defender.commander.as_ref() {
+                        Some(name) => {
+                            let stats = commanders.entry(name).or_insert_with(|| {
+                                self.get_commander_stats(
+                                    *date,
+                                    defenders.iter().copied(),
+                                    name.as_str(),
+                                )
+                            });
+                            Some(stats.clone())
+                        }
+                        None => None,
+                    };
 
-                        let attacker = FrontendBattleSide {
-                            infantry: b.attacker.infantry,
-                            cavalry: b.attacker.cavalry,
-                            artillery: b.attacker.artillery,
-                            heavy_ship: b.attacker.heavy_ship,
-                            light_ship: b.attacker.light_ship,
-                            galley: b.attacker.galley,
-                            transport: b.attacker.transport,
-                            losses: b.attacker.losses,
-                            country: b.attacker.country,
-                            country_name: save_game_query.localize_country(&b.attacker.country),
-                            commander: b.attacker.commander.clone(),
-                            commander_stats: attacker_commander_stats,
-                        };
+                    let attacker = FrontendBattleSide {
+                        infantry: b.attacker.infantry,
+                        cavalry: b.attacker.cavalry,
+                        artillery: b.attacker.artillery,
+                        heavy_ship: b.attacker.heavy_ship,
+                        light_ship: b.attacker.light_ship,
+                        galley: b.attacker.galley,
+                        transport: b.attacker.transport,
+                        losses: b.attacker.losses,
+                        country: b.attacker.country,
+                        country_name: save_game_query.localize_country(&b.attacker.country),
+                        commander: b.attacker.commander.clone(),
+                        commander_stats: attacker_commander_stats,
+                    };
 
-                        let defender = FrontendBattleSide {
-                            infantry: b.defender.infantry,
-                            cavalry: b.defender.cavalry,
-                            artillery: b.defender.artillery,
-                            heavy_ship: b.defender.heavy_ship,
-                            light_ship: b.defender.light_ship,
-                            galley: b.defender.galley,
-                            transport: b.defender.transport,
-                            losses: b.defender.losses,
-                            country: b.defender.country,
-                            country_name: save_game_query.localize_country(&b.defender.country),
-                            commander: b.defender.commander.clone(),
-                            commander_stats: defender_commander_stats,
-                        };
+                    let defender = FrontendBattleSide {
+                        infantry: b.defender.infantry,
+                        cavalry: b.defender.cavalry,
+                        artillery: b.defender.artillery,
+                        heavy_ship: b.defender.heavy_ship,
+                        light_ship: b.defender.light_ship,
+                        galley: b.defender.galley,
+                        transport: b.defender.transport,
+                        losses: b.defender.losses,
+                        country: b.defender.country,
+                        country_name: save_game_query.localize_country(&b.defender.country),
+                        commander: b.defender.commander.clone(),
+                        commander_stats: defender_commander_stats,
+                    };
 
-                        let x = FrontendBattleInfo {
-                            name: b.name.clone(),
-                            date: date.iso_8601().to_string(),
-                            location: b.location.as_u16(),
-                            loser_alliance: b.loser_alliance,
-                            winner_alliance: b.winner_alliance,
-                            attacker_won: b.attacker_won,
-                            forces: attacker.forces() + defender.forces(),
-                            losses: attacker.losses + defender.losses,
-                            attacker,
-                            defender,
-                        };
-                        battles.push(x)
-                    }
+                    let x = FrontendBattleInfo {
+                        name: b.name.clone(),
+                        date: date.iso_8601().to_string(),
+                        location: b.location.as_u16(),
+                        loser_alliance: b.loser_alliance,
+                        winner_alliance: b.winner_alliance,
+                        attacker_won: b.attacker_won,
+                        forces: attacker.forces() + defender.forces(),
+                        losses: attacker.losses + defender.losses,
+                        attacker,
+                        defender,
+                    };
+                    battles.push(x)
                 }
             }
         }
