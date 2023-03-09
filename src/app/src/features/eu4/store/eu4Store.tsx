@@ -1,3 +1,4 @@
+import { compatibilityReport } from "@/lib/compatibility";
 import { check } from "@/lib/isPresent";
 import { IMG_HEIGHT, IMG_WIDTH, WebGLMap } from "@/map/map";
 import { useSaveQuery } from "@/services/appApi";
@@ -203,7 +204,9 @@ export const createEu4Store = async ({
   }));
 
   const state = store.getState();
-  map.renderTerrain = state.renderTerrain;
+  const report = compatibilityReport().webgl2;
+  map.renderTerrain =
+    state.renderTerrain && report.enabled && !report.performanceCaveat;
   map.showProvinceBorders = state.showProvinceBorders;
   map.showCountryBorders = state.showCountryBorders;
   map.showMapModeBorders = state.showMapModeBorders;
