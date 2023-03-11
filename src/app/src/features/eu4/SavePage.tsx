@@ -1,17 +1,11 @@
-import React, { useEffect } from "react";
-import { useFilePublisher } from "@/features/engine";
-import { GameView } from "../engine/GameView";
+import React, { useMemo } from "react";
+import Eu4Ui from "./Eu4Ui";
 
 type SaveProps = {
   saveId: string;
 };
 
 export const SavePage = ({ saveId }: SaveProps) => {
-  const filePublisher = useFilePublisher();
-
-  useEffect(() => {
-    filePublisher({ kind: "server", saveId });
-  }, [filePublisher, saveId]);
-
-  return <GameView />;
+  const save = useMemo(() => ({ kind: "server", saveId } as const), [saveId]);
+  return <Eu4Ui save={save} />;
 };

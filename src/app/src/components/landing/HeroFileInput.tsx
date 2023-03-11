@@ -8,12 +8,12 @@ export const HeroFileInput = () => {
   const publishFile = useFilePublisher();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isHovering } = useFileDrop({
-    onFile: (file) => publishFile({ kind: "local", file }),
+    onFile: (file) => publishFile({ file }),
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.currentTarget.files && e.currentTarget.files[0]) {
-      publishFile({ kind: "local", file: e.currentTarget.files[0] });
+      publishFile({ file: e.currentTarget.files[0] });
       e.currentTarget.value = "";
     }
   };

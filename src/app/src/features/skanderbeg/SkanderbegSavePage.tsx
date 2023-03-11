@@ -1,17 +1,14 @@
-import React, { useEffect } from "react";
-import { useFilePublisher } from "@/features/engine";
-import { GameView } from "../engine/GameView";
+import React, { useMemo } from "react";
+import Eu4Ui from "../eu4/Eu4Ui";
 
 type SkanRoute = {
   skanId: string;
 };
 
 export const SkanderbegSavePage = ({ skanId }: SkanRoute) => {
-  const filePublisher = useFilePublisher();
-
-  useEffect(() => {
-    filePublisher({ kind: "skanderbeg", skanId });
-  }, [filePublisher, skanId]);
-
-  return <GameView />;
+  const save = useMemo(
+    () => ({ kind: "skanderbeg", skanId } as const),
+    [skanId]
+  );
+  return <Eu4Ui save={save} />;
 };

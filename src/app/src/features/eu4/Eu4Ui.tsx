@@ -3,7 +3,6 @@ import { Eu4CanvasOverlay } from "./Eu4CanvasOverlay";
 import { AppLoading } from "@/components/AppLoading";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Alert } from "antd";
-import { useEngineActions } from "../engine";
 import { developerLog } from "@/lib/log";
 import { Eu4SaveInput, useLoadEu4, Eu4StoreProvider } from "./store";
 import { BrowserCheck } from "@/components/landing/BrowserCheck";
@@ -28,8 +27,6 @@ const TrackingCanvas = memo(
 
 export const Eu4Ui = ({ save }: Eu4UiProps) => {
   const { loading, data, error, mapCanvas, mapContainer } = useLoadEu4(save);
-  const { resetSaveAnalysis } = useEngineActions();
-  useEffect(() => resetSaveAnalysis, [resetSaveAnalysis]);
 
   const loadingIcon =
     data === null ? (
@@ -41,7 +38,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
   return (
     <>
       {loadingIcon}
-      <div className="absolute inset-0" ref={mapContainer}>
+      <div className="absolute inset-0 overflow-hidden" ref={mapContainer}>
         <TrackingCanvas ref={mapCanvas} />
       </div>
       {data !== null ? (

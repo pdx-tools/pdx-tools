@@ -3,10 +3,7 @@ import { create } from "zustand";
 import { type Eu4SaveInput } from "@/features/eu4/store";
 
 export type SaveGameInput =
-  | {
-      kind: "eu4";
-      data: Eu4SaveInput;
-    }
+  | { kind: "eu4"; data: Eu4SaveInput }
   | { kind: "ck3"; file: File }
   | { kind: "hoi4"; file: File }
   | { kind: "imperator"; file: File }

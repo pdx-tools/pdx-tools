@@ -10,7 +10,7 @@ export function useWindowMessageDrop() {
         e.origin === "null" ||
         (new URL(e.origin).hostname == "localhost" && e.data instanceof File)
       ) {
-        publishFile({ kind: "local", file: e.data });
+        publishFile({ file: e.data });
       }
     }
 

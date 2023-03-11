@@ -137,7 +137,9 @@ type GameViewProps = {
 
 export const GameView = ({ children }: GameViewProps) => {
   const savegame = useSaveFileInput();
+  const { resetSaveAnalysis } = useEngineActions();
   const game = useMemo(() => gameRenderer(savegame), [savegame]);
+  useEffect(() => resetSaveAnalysis, [resetSaveAnalysis]);
   useWindowMessageDrop();
 
   return (
