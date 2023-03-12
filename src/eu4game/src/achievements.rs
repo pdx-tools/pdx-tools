@@ -2590,8 +2590,9 @@ impl<'a> AchievementHunter<'a> {
             ]
             .iter()
             .all(|id| self.owns_core_province_id(ProvinceId::from(*id)))
-                && self
-                    .all_provs_in_region("carribeans_region", |p| owned_and_cored_by(p, self.tag))
+                && self.all_provs_in_region("carribeans_region", |prov| {
+                    prov.owner.map_or(false, |x| x == self.starting_country)
+                })
         } else {
             false
         };
