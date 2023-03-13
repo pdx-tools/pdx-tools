@@ -202,9 +202,9 @@ struct FlatSave<'a> {
     // hash: &'a str,
     date: &'a str,
     days: i32,
-    score_days: i32,
+    score_days: Option<i32>,
     player: &'a str,
-    displayed_country_name: &'a str,
+    displayed_country_name: Option<&'a str>,
     campaign_id: &'a str,
     campaign_length: i32,
     #[serde(deserialize_with = "deserialize_postgres_bool")]
@@ -380,7 +380,11 @@ fn enhance_flat(x: &FlatSave) -> anyhow::Result<ParsedFile> {
         .collect::<Result<Vec<_>, _>>()
         .with_context(|| format!("unable to parse dlc: {}", x.dlc))?;
 
-    let score_date = applib::eu4_days_to_date(x.score_days);
+    let (score_date, score_days) = if let Some(days) = x.score_days {
+        (applib::eu4_days_to_date(days), days)
+    } else {
+        (String::from(""), 0)
+    };
 
     Ok(ParsedFile {
         patch: SavePatch {
@@ -402,7 +406,7 @@ fn enhance_flat(x: &FlatSave) -> anyhow::Result<ParsedFile> {
         is_observer: x.observer,
         player_names: postgres_split(x.players).context("expected at least one player")?,
         player_tag: String::from(x.player),
-        player_tag_name: String::from(x.displayed_country_name),
+        player_tag_name: String::from(x.displayed_country_name.unwrap_or("")),
         player_start_tag: x
             .player_start_tag
             .ne("")
@@ -413,7 +417,7 @@ fn enhance_flat(x: &FlatSave) -> anyhow::Result<ParsedFile> {
             .then(|| String::from(x.player_start_tag_name)),
         date: String::from(x.date),
         days: x.days,
-        score_days: x.score_days,
+        score_days,
         score_date,
         achievements: Some(achievements),
         dlc_ids,
@@ -443,13 +447,14 @@ mod tests {
 
     #[test]
     fn extract_data_from_csv() {
-        let data = r#"id,created_on,locked,filename,user_id,encoding,hash,date,days,player,displayed_country_name,campaign_id,campaign_length,ironman,multiplayer,observer,dlc,checksum,achieve_ids,players,player_start_tag,player_start_tag_name,game_difficulty,aar,playthrough_id,save_slot,save_version_first,save_version_second,save_version_third,save_version_fourth,score_days
-FcdKVa_EYzoHip7swnUrr,2020-05-25 12:20:56.962656+00,f,ita2.eu4,_r6Wq70gZyz3,binzip,WIYzie1JiPRNKDZq3wFOYBJ5WGIyyKbZH3lLxiBgX7o=,1528-07-01,30527,ITA,Italy,0aca73ce-79df-41e7-b3e8-d2e1f02e44b8,9559,t,f,f,"{10,18,21,27,33,39,46,55,60,66,72,77,84,90,95}",aa9b1d852ca27f98300b2fd390d67760,{18},{comagoosie},MLO,Milan,normal,"First time playing Milan (well probably since EU3)! Definitely fun mechanics with the Ambrosian Republic and some special events like Caterina Sforza. Only had one coalition war which took a lot of wind out of my sails but maybe only delayed me by a decade. To me, achieving the Italian ambition as Milan is much easier than others as you seem to start out with more options for expansion.",p7ofaCpn4/pSq1iAhFAMe36q5OABZF/fWg5drlrlfII=,f,1,29,6,0,30527"#;
+        let data = r#"id,created_on,locked,filename,user_id,encoding,hash,date,days,player,displayed_country_name,campaign_id,campaign_length,ironman,multiplayer,observer,dlc,save_version_first,save_version_second,save_version_third,save_version_fourth,checksum,achieve_ids,players,player_start_tag,player_start_tag_name,game_difficulty,aar,playthrough_id,score_days
+ihrVduP0vXMgILyvAgs2G,2021-11-25 22:02:26.501926+00,f,poopdaddy_melted (2).eu4,asEKwa3mQHqJ,text,vAkePWFf1SgmS9C1D+VkYU2AaxLkOtOXvcAnq4Opn2I=,1488-04-14,15849,FRA,France,750255a3-9ded-40d1-9ce3-acc26ff59f7c,2709,f,f,f,"{10,18,21,27,33,39,46,55,60,66,72,77,84,90,95,101,106,110}",1,32,1,0,875c3cb01d8a0bed892b7f6247c4bd51,,{redx209},FRA,France,hard,,7Qc5xbeBXFwV7SBALg3+5B7eXGAymyXauRkztRR0bX0=,"#;
 
         let rdr = csv::Reader::from_reader(Cursor::new(data));
         let result = extract_existing_records(rdr).unwrap();
-        let parsed = result.get("FcdKVa_EYzoHip7swnUrr").unwrap();
-        assert_eq!(parsed.achievements, Some(vec![18]))
+
+        let parsed = result.get("ihrVduP0vXMgILyvAgs2G").unwrap();
+        assert_eq!(parsed.score_days, 0);
     }
 
     #[test]
