@@ -144,8 +144,6 @@ export const Timelapse = () => {
     map.showCountryBorders = false;
     const showMapModeBorders = map.showMapModeBorders;
     map.showMapModeBorders = false;
-    const showProvinceBorders = map.showProvinceBorders;
-    map.showProvinceBorders = true;
 
     const payload = selectMapPayload(storeRef.current.getState());
     try {
@@ -186,7 +184,6 @@ export const Timelapse = () => {
 
       map.showCountryBorders = showCountryBorders;
       map.showMapModeBorders = showMapModeBorders;
-      map.showProvinceBorders = showProvinceBorders;
 
       const [primary, secondary] = await getEu4Worker().eu4MapColors(payload);
       map.updateProvinceColors(primary, secondary);
