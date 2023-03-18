@@ -2,7 +2,7 @@ mod cli;
 
 /* Commands */
 
-#[cfg(any(feature = "compile_assets", feature = "fun"))]
+#[cfg(any(feature = "compile_assets"))]
 #[path = "cmd/compile_assets/mod.rs"]
 mod compile_assets;
 #[cfg(feature = "create_bundle")]
@@ -26,6 +26,9 @@ mod ai_development;
 #[cfg(feature = "fun")]
 #[path = "cmd-fun/province_borders.rs"]
 mod province_borders;
+#[cfg(feature = "fun")]
+#[path = "cmd-fun/province_names.rs"]
+mod province_names;
 #[cfg(feature = "fun")]
 #[path = "cmd-fun/smallest_province.rs"]
 mod smallest_province;
@@ -74,6 +77,8 @@ enum Commands {
     #[cfg(feature = "fun")]
     ProvinceBorders(province_borders::ProvinceBordersArgs),
     #[cfg(feature = "fun")]
+    ProvinceNames(province_names::ProvinceNamesArgs),
+    #[cfg(feature = "fun")]
     SmallestProvince(smallest_province::SmallestProvinceArgs),
 }
 
@@ -100,6 +105,8 @@ fn main() -> ExitCode {
         Commands::CompileAssets(x) => x.run(),
         #[cfg(feature = "fun")]
         Commands::ProvinceBorders(x) => x.run(),
+        #[cfg(feature = "fun")]
+        Commands::ProvinceNames(x) => x.run(),
         #[cfg(feature = "fun")]
         Commands::SmallestProvince(x) => x.run(),
     };

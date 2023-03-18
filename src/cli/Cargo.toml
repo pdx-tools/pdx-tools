@@ -6,7 +6,7 @@ publish = false
 
 [features]
 admin = ["create_bundle", "fetch_assets", "tokenize", "dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2"]
-fun = ["dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2"]
+fun = ["compile_assets", "dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2"]
 
 create_bundle = ["dep:zstd"]
 compile_assets = ["dep:attohttpc", "dep:brotli", "dep:eu4save", "dep:jomini", "dep:oxipng", "dep:schemas", "schemas?/inline", "dep:zstd"]
