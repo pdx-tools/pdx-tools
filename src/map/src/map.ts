@@ -398,7 +398,12 @@ export class WebGLMap {
     this.highlightSelectedProvince();
   }
 
-  private highlightSelectedProvince() {
+  public unhighlightSelectedProvince() {
+    this.selectedProvinceColorInd = undefined;
+    this.highlightSelectedProvince();
+  }
+
+  public highlightSelectedProvince() {
     if (this.selectedProvinceColorInd !== undefined) {
       const newPrimary = this.originalPrimaryColor.slice();
       newPrimary[this.selectedProvinceColorInd * 4] = 255;
@@ -426,6 +431,9 @@ export class WebGLMap {
     } else {
       this.glResources.fillPrimaryProvinceColorsTexture(
         this.originalPrimaryColor
+      );
+      this.glResources.fillSecondaryProvinceColorsTexture(
+        this.originalSecondaryColor
       );
     }
   }
@@ -566,8 +574,6 @@ export class WebGLMap {
       const prov = this.provinceFinder.findProvinceId(pixelX, pixelY);
       if (prov && prov.colorIndex !== this.selectedProvinceColorInd) {
         this.selectedProvinceColorInd = prov.colorIndex;
-        this.highlightSelectedProvince();
-        this.redrawMapNow();
         this.onProvinceSelection?.(prov.provinceId);
       }
     }

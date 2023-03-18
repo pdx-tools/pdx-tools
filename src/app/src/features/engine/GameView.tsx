@@ -122,10 +122,7 @@ const FullscreenPage = ({
   }, [hasBackdrop, resetSaveAnalysis]);
 
   return (
-    <div
-      ref={ref}
-      className={`fixed inset-0 bg-white ${classes["slide-in"]}`}
-    >
+    <div ref={ref} className={`fixed inset-0 bg-white ${classes["slide-in"]}`}>
       {children}
     </div>
   );

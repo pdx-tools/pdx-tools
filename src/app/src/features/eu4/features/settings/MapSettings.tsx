@@ -15,7 +15,6 @@ import {
   useTerrainOverlay,
   useShowProvinceBorders,
   useShowCountryBorders,
-  useIsCountryBordersDisabled,
   useShowMapModeBorders,
 } from "../../store";
 
@@ -74,14 +73,12 @@ const ProvinceBordersToggleRow = () => {
 const CountryBordersToggleRow = () => {
   const data = useShowCountryBorders();
   const { setShowCountryBorders } = useEu4Actions();
-  const countryBordersDisabled = useIsCountryBordersDisabled();
 
   return (
     <ToggleRow
-      value={countryBordersDisabled ? false : data}
+      value={data}
       onChange={setShowCountryBorders}
       text="Paint country borders"
-      disabled={countryBordersDisabled}
     />
   );
 };
@@ -89,15 +86,12 @@ const CountryBordersToggleRow = () => {
 const MapModeBordersToggleRow = () => {
   const data = useShowMapModeBorders();
   const { setShowMapModeBorders } = useEu4Actions();
-  const mapMode = useEu4MapMode();
-  const disabled = mapMode == "terrain" || mapMode == "political";
 
   return (
     <ToggleRow
       value={data}
       onChange={setShowMapModeBorders}
       text="Paint map mode borders"
-      disabled={disabled}
     />
   );
 };

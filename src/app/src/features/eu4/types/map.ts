@@ -16,7 +16,6 @@ type MapMode =
 export interface MapPayload {
   kind: MapMode;
   date: number | null;
-  showSecondaryColor: boolean;
   paintSubjectInOverlordHue: boolean;
   tagFilter: CountryMatcher;
 }
