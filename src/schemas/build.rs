@@ -61,6 +61,7 @@ impl {pascal}FlatBufferTokens {{
     }}
 }}
 
+#[cfg(feature = "inline")]
 impl Default for {pascal}FlatBufferTokens {{
     fn default() -> Self {{
         Self::new()
