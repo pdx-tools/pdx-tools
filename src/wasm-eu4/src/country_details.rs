@@ -813,7 +813,7 @@ impl SaveFileImpl {
             let name = self
                 .game
                 .localize(culture_id)
-                .map(|x| String::from(x))
+                .map(String::from)
                 .unwrap_or_else(|| culture_id.clone());
 
             let tolerance = if Some(culture_id) == primary_culture {

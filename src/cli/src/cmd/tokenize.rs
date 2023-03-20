@@ -69,7 +69,7 @@ where
     std::fs::create_dir_all(&out_dir).context("unable to create token directory")?;
 
     let out = out_dir.join(name);
-    let writer = BrotliTee::create(&out)?;
+    let writer = BrotliTee::create(out)?;
 
     tokenize(reader, writer, name)
 }

@@ -47,7 +47,7 @@ where
     Q: AsRef<Path>,
 {
     #[allow(clippy::trivial_regex)]
-    let regex = RegexSet::new(&[
+    let regex = RegexSet::new([
         r"/music/",
         r"/tutorial/",
         r"/sound/",

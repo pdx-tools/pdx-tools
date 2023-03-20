@@ -59,11 +59,11 @@ impl<'a> jomini::binary::TokenResolver for FlatBufferResolver<'a> {
         if token < self.breakpoint {
             self.values
                 .get(usize::from(token))
-                .and_then(|x| (!x.is_empty()).then(|| *x))
+                .and_then(|x| (!x.is_empty()).then_some(*x))
         } else if token >= BREAKPOINT {
             self.values
                 .get(usize::from(token - BREAKPOINT + self.breakpoint))
-                .and_then(|x| (!x.is_empty()).then(|| *x))
+                .and_then(|x| (!x.is_empty()).then_some(*x))
         } else {
             None
         }

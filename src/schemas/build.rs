@@ -61,6 +61,12 @@ impl {pascal}FlatBufferTokens {{
     }}
 }}
 
+impl Default for {pascal}FlatBufferTokens {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}
+
 #[cfg(feature = "inline")]
 impl jomini::binary::TokenResolver for {pascal}FlatBufferTokens {{
     fn resolve(&self, token: u16) -> Option<&str> {{

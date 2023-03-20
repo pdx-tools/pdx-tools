@@ -54,7 +54,7 @@ impl SaveCheckSummer {
     pub fn finish(self) -> String {
         let hash = self.hasher.finalize256();
         let bytes = copy_hash_output_to_byte_array(hash);
-        base64::encode(&bytes)
+        base64::encode(bytes)
     }
 }
 
@@ -112,7 +112,7 @@ pub fn playthrough_id(query: &Query) -> Option<String> {
 
     let output = hash.finalize256();
     let bytes = copy_hash_output_to_byte_array(output);
-    Some(base64::encode(&bytes))
+    Some(base64::encode(bytes))
 }
 
 pub fn hash_countries(hash: &mut impl HighwayHash, content_date: Eu4Date, save: &Eu4Save) {
@@ -186,7 +186,7 @@ pub fn parse_save(data: &[u8]) -> Result<(Eu4Save, Encoding), Eu4GameError> {
     parse_save_with_tokens(data, &tokens)
 }
 
-pub fn parse_meta<'de, Q>(data: &[u8], resolver: &Q) -> Result<Meta, Eu4GameError>
+pub fn parse_meta<Q>(data: &[u8], resolver: &Q) -> Result<Meta, Eu4GameError>
 where
     Q: TokenResolver,
 {

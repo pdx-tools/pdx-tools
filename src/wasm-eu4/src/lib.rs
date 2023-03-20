@@ -663,7 +663,7 @@ impl SaveFileImpl {
         let payload = TagFilterPayload::from(payload);
         let tags = self.matching_tags(&payload);
         if tags.len() > limit {
-            let mut new_payload = payload.clone();
+            let mut new_payload = payload;
             if self.player_histories.len() == 1 {
                 new_payload.ai = AiTagsState::Great;
             } else {
@@ -1096,9 +1096,7 @@ impl SaveFileImpl {
                         region.production += area.production;
                         region.manpower += area.manpower;
                         region.children.push(AreaDevelopment {
-                            name: String::from(
-                                self.game.localize(*area_name).unwrap_or(*area_name),
-                            ),
+                            name: String::from(self.game.localize(area_name).unwrap_or(*area_name)),
                             children: area.children,
                             value: area.value,
                             tax: area.tax,
@@ -1121,7 +1119,7 @@ impl SaveFileImpl {
                         superregion.manpower += region.manpower;
                         superregion.children.push(RegionDevelopment {
                             name: String::from(
-                                self.game.localize(*region_name).unwrap_or(*region_name),
+                                self.game.localize(region_name).unwrap_or(*region_name),
                             ),
                             children: region.children,
                             value: region.value,
@@ -1139,7 +1137,7 @@ impl SaveFileImpl {
                 .map(|(superregion_name, superregion)| SuperRegionDevelopment {
                     name: String::from(
                         self.game
-                            .localize(*superregion_name)
+                            .localize(superregion_name)
                             .unwrap_or(*superregion_name),
                     ),
                     value: superregion.value,
@@ -1328,7 +1326,7 @@ impl SaveFileImpl {
     }
 
     pub fn date_to_days(&self, date: &str) -> Option<i32> {
-        let date = Eu4Date::parse(&date.replace('-', ".")).ok()?;
+        let date = Eu4Date::parse(date.replace('-', ".")).ok()?;
         let days = self.query.save().game.start_date.days_until(&date);
         if days < 0 {
             None
@@ -2238,7 +2236,7 @@ impl SaveFileImpl {
             *y += match x {
                 0.. => x as u32,
                 LOSSES_MIN..=-1 => (x + 2 * LOSSES_MAX) as u32,
-                _ => x.abs() as u32,
+                _ => x.unsigned_abs(),
             };
         }
         values
@@ -3144,7 +3142,7 @@ pub fn _initial_save(
             if let Some(known_color) = country_colors.get(owner_tag) {
                 primary_color.copy_from_slice(known_color);
             }
-        } else if let Some(prov) = game.get_province(&id) {
+        } else if let Some(prov) = game.get_province(id) {
             if prov.is_habitable() {
                 primary_color.copy_from_slice(&[94, 94, 94, 128]);
             }

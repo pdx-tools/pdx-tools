@@ -30,7 +30,7 @@ impl ReprocessArgs {
     pub fn run(&self) -> anyhow::Result<ExitCode> {
         let mut saves = Vec::new();
         let existing_records = if let Some(reference) = self.reference.as_ref() {
-            let rdr = csv::Reader::from_path(&reference)
+            let rdr = csv::Reader::from_path(reference)
                 .with_context(|| format!("unable to open: {}", reference.display()))?;
             extract_existing_records(rdr)?
         } else {
@@ -292,7 +292,7 @@ fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
     let b_achievements = b.achievements.clone().unwrap_or_default();
 
     UpdateSave {
-        patch: a.patch.ne(&b.patch).then(|| b.patch),
+        patch: a.patch.ne(&b.patch).then_some(b.patch),
         encoding: a.encoding.ne(&b.encoding).then(|| b.encoding.clone()),
         playthrough_id: a
             .playthrough_id
@@ -301,7 +301,7 @@ fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
         game_difficulty: a
             .game_difficulty
             .ne(&b.game_difficulty)
-            .then(|| b.game_difficulty),
+            .then_some(b.game_difficulty),
         campaign_id: a
             .campaign_id
             .ne(&b.campaign_id)
@@ -309,13 +309,13 @@ fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
         campaign_length: a
             .campaign_length
             .ne(&b.campaign_length)
-            .then(|| b.campaign_length),
-        is_ironman: a.is_ironman.ne(&b.is_ironman).then(|| b.is_ironman),
+            .then_some(b.campaign_length),
+        is_ironman: a.is_ironman.ne(&b.is_ironman).then_some(b.is_ironman),
         is_multiplayer: a
             .is_multiplayer
             .ne(&b.is_multiplayer)
-            .then(|| b.is_multiplayer),
-        is_observer: a.is_observer.ne(&b.is_observer).then(|| b.is_observer),
+            .then_some(b.is_multiplayer),
+        is_observer: a.is_observer.ne(&b.is_observer).then_some(b.is_observer),
         player_names: a
             .player_names
             .ne(&b.player_names)
@@ -334,10 +334,10 @@ fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
             .ne(&b.player_start_tag_name)
             .then(|| b.player_start_tag_name.clone()),
         date: a.date.ne(&b.date).then(|| b.date.clone()),
-        days: a.days.ne(&b.days).then(|| b.days),
+        days: a.days.ne(&b.days).then_some(b.days),
         score_date: a.score_date.ne(&b.score_date).then(|| b.score_date.clone()),
-        score_days: a.score_days.ne(&b.score_days).then(|| b.score_days),
-        achievements: a_achievements.ne(&b_achievements).then(|| b_achievements),
+        score_days: a.score_days.ne(&b.score_days).then_some(b.score_days),
+        achievements: a_achievements.ne(&b_achievements).then_some(b_achievements),
         dlc_ids: a.dlc_ids.ne(&b.dlc_ids).then(|| b.dlc_ids.clone()),
         checksum: a.checksum.ne(&b.checksum).then(|| b.checksum.clone()),
         patch_shorthand: a

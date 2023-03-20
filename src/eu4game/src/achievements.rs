@@ -937,8 +937,8 @@ impl<'a> AchievementHunter<'a> {
             .save
             .game
             .provinces
-            .iter()
-            .map(|(_id, prov)| prov.owner)
+            .values()
+            .map(|prov| prov.owner)
             .filter(|x| x.map_or(false, |owner| owner == self.tag))
             .count();
 
