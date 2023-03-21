@@ -124,7 +124,7 @@ const FullscreenPage = ({
   return (
     <div
       ref={ref}
-      className={`absolute inset-0 bg-white ${classes["slide-in"]}`}
+      className={`fixed inset-0 bg-white ${classes["slide-in"]}`}
     >
       {children}
     </div>
