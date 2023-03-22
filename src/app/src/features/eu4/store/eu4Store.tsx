@@ -365,7 +365,7 @@ export const useIsDatePickerEnabled = () => {
 };
 
 const dateEnabledMapMode = (mode: MapPayload["kind"]) => {
-  return mode === "political" || mode === "religion";
+  return mode === "political" || mode === "religion" || mode === "battles";
 };
 
 const selectDate = (

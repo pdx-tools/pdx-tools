@@ -67,7 +67,7 @@ export const Timelapse = () => {
   const store = useEu4Context();
   const mapMode = useEu4MapMode();
   const timelapsePayload = {
-    kind: mapMode == "religion" ? "religion" : "political",
+    kind: mapMode == "battles" || mapMode == "religion" ? mapMode : "political",
     interval: intervalSelection,
     start: currentMapDate.enabledDays ?? 0,
   } as const;
