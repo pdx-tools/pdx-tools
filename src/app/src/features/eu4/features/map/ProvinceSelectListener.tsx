@@ -12,8 +12,17 @@ export const ProvinceSelectListener = () => {
   const [data, setData] = useState<ProvinceDetails | undefined>();
   useEffect(() => {
     map.onProvinceSelection = async (id) => {
-      setData(await getEu4Worker().eu4GetProvinceDeteails(id));
-      setDrawerVisible(true);
+      const details = await getEu4Worker().eu4GetProvinceDeteails(id);
+      if (details) {
+        map.highlightSelectedProvince();
+        map.redrawMapImage();
+        setDrawerVisible(true);
+        setData(details);
+      } else {
+        map.unhighlightSelectedProvince();
+        map.redrawMapImage();
+        setDrawerVisible(false);
+      }
     };
   }, [map]);
 

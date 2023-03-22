@@ -950,7 +950,7 @@ impl SaveFileImpl {
         let mut province_states: HashMap<&str, Vec<(ProvinceId, &Province)>> = HashMap::new();
         for (id, prov, state) in owned_provinces {
             let provs = province_states.entry(state).or_default();
-            provs.push((id.clone(), prov));
+            provs.push((*id, prov));
         }
 
         let mut result: Vec<_> = province_states

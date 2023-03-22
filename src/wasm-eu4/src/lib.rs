@@ -13,7 +13,7 @@ use eu4save::{
     },
     query::{
         BuildingConstruction, CountryExpenseLedger, CountryIncomeLedger, LedgerPoint,
-        NationEventKind, NationEvents, ProvinceReligions, Query,
+        NationEventKind, NationEvents, Query,
     },
     CountryTag, Encoding, Eu4Date, Eu4File, Eu4Melter, FailedResolveStrategy, PdsDate, ProvinceId,
     TagResolver,
@@ -33,8 +33,11 @@ mod log;
 mod map;
 mod tag_filter;
 mod tokens;
+mod utils;
 
 pub use tokens::*;
+
+use crate::utils::to_json_value;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LocalizedObj {
@@ -352,12 +355,6 @@ pub struct LocalizedLedger {
     pub localization: Vec<LocalizedTag>,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct MapDate {
-    pub days: i32,
-    pub text: String,
-}
-
 #[wasm_bindgen]
 pub struct SaveFile(SaveFileImpl);
 
@@ -420,10 +417,6 @@ impl SaveFile {
             .date_to_days(date)
             .map(|x| JsValue::from_f64(x as f64))
             .unwrap_or_else(JsValue::null)
-    }
-
-    pub fn increment_date(&self, days: f64, increment: &str) -> JsValue {
-        to_json_value(&self.0.increment_date(days, increment))
     }
 
     pub fn get_players(&self) -> JsValue {
@@ -571,9 +564,14 @@ impl SaveFile {
         Ok(self.0.map_colors(payload))
     }
 
-    pub fn map_quick_tip(&self, province_id: i32, payload: JsValue) -> JsValue {
+    pub fn map_cursor(&self, payload: JsValue) -> Result<map::TimelapseIter, JsValue> {
+        let payload = serde_wasm_bindgen::from_value(payload).map_err(js_err)?;
+        Ok(self.0.map_cursor(payload))
+    }
+
+    pub fn map_quick_tip(&self, province_id: i32, payload: JsValue, days: Option<i32>) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.map_quick_tip(province_id, payload))
+        to_json_value(&self.0.map_quick_tip(province_id, payload, days))
     }
 
     pub fn initial_map_position(&self) -> JsValue {
@@ -628,16 +626,10 @@ pub struct SaveFileImpl {
     player_histories: Vec<eu4save::query::PlayerHistory>,
     province_owners: eu4save::query::ProvinceOwners,
     religion_lookup: eu4save::query::ReligionLookup,
-    province_religions: once_cell::sync::OnceCell<ProvinceReligions>,
     province_id_to_color_index: Vec<u16>,
 }
 
 impl SaveFileImpl {
-    fn province_religions(&self) -> &ProvinceReligions {
-        self.province_religions
-            .get_or_init(|| self.query.province_religions(&self.religion_lookup))
-    }
-
     pub fn get_meta_raw(&self) -> JsValue {
         to_json_value(&self.query.save().meta)
     }
@@ -1335,29 +1327,6 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn increment_date(&self, days: f64, increment: &str) -> MapDate {
-        let days = days.trunc() as i32;
-        let init_date = self.query.save().game.start_date.add_days(days);
-
-        let next_date = match increment {
-            "Year" => init_date.add_days(365),
-            "Month" => {
-                if init_date.month() + 1 > 12 {
-                    Eu4Date::from_ymd(init_date.year() + 1, 1, init_date.day())
-                } else {
-                    Eu4Date::from_ymd(init_date.year(), init_date.month() + 1, init_date.day())
-                }
-            }
-            "Week" => init_date.add_days(7),
-            _ => init_date.add_days(1),
-        };
-
-        MapDate {
-            days: self.query.save().game.start_date.days_until(&next_date),
-            text: next_date.iso_8601().to_string(),
-        }
-    }
-
     pub fn save_encoding(&self) -> JsValue {
         JsValue::from_str(self.encoding.as_str())
     }
@@ -1593,8 +1562,18 @@ impl SaveFileImpl {
         HealthData { data: health }
     }
 
-    pub fn get_province_details(&self, province_id: u16) -> ProvinceDetails {
+    pub fn get_province_details(&self, province_id: u16) -> Option<ProvinceDetails> {
         let id = ProvinceId::from(i32::from(province_id));
+        let can_select = self
+            .game
+            .get_province(&id)
+            .map(|x| x.is_habitable())
+            .unwrap_or(false);
+
+        if !can_select {
+            return None;
+        }
+
         let province = self.query.save().game.provinces.get(&id).unwrap();
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
 
@@ -1765,7 +1744,7 @@ impl SaveFileImpl {
             })
             .map(String::from);
 
-        ProvinceDetails {
+        Some(ProvinceDetails {
             id,
             name: province.name.clone(),
             owner,
@@ -1785,7 +1764,7 @@ impl SaveFileImpl {
             improvements,
             history,
             map_area,
-        }
+        })
     }
 
     pub fn owned_development_states(&self, payload: TagFilterPayloadRaw) -> JsValue {
@@ -3011,11 +2990,6 @@ fn js_err(err: impl std::error::Error) -> JsValue {
     JsValue::from(err.to_string())
 }
 
-pub(crate) fn to_json_value<T: serde::ser::Serialize + ?Sized>(value: &T) -> JsValue {
-    let serializer = serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true);
-    value.serialize(&serializer).unwrap()
-}
-
 #[wasm_bindgen]
 pub struct SaveFileParsed(Eu4Save, Encoding);
 
@@ -3137,7 +3111,7 @@ pub fn _initial_save(
         };
 
         let primary_color = &mut primary[offset..offset + 4];
-        primary_color.copy_from_slice(&[94, 94, 94, 128]);
+        primary_color.copy_from_slice(&map::WASTELAND);
         if let Some(owner_tag) = prov.owner.as_ref() {
             if let Some(known_color) = country_colors.get(owner_tag) {
                 primary_color.copy_from_slice(known_color);
@@ -3186,7 +3160,6 @@ pub fn game_save(
         war_participants,
         player_histories,
         religion_lookup,
-        province_religions: once_cell::sync::OnceCell::new(),
         province_id_to_color_index,
     }))
 }

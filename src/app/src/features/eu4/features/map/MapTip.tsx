@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useEu4Map, useEu4MapMode } from "../../store";
+import { useEu4Map, useEu4MapMode, useSelectedDate } from "../../store";
 import { QuickTipPayload } from "../../types/map";
 import { getEu4Worker } from "../../worker";
 import { MapTipContents } from "./MapTipContents";
@@ -19,6 +19,7 @@ export const MapTip = () => {
   const [mapTip, setMapTip] = useState<QuickTipPayload | null>(null);
   const [provinceId, setProvinceId] = useState(0);
   const mapMode = useEu4MapMode();
+  const currentMapDate = useSelectedDate();
   const map = useEu4Map();
 
   useEffect(() => {
@@ -117,7 +118,8 @@ export const MapTip = () => {
     setTimerDisplay(false);
 
     tooltipTimer.current = setTimeout(async () => {
-      const data = await worker.eu4GetMapTooltip(provinceId, mapMode);
+      const days = currentMapDate.enabledDays ?? undefined;
+      const data = await worker.eu4GetMapTooltip(provinceId, mapMode, days);
       if (isMounted) {
         setMapTip(data);
       }
@@ -129,7 +131,7 @@ export const MapTip = () => {
         clearTimeout(tooltipTimer.current);
       }
     };
-  }, [provinceId, mapMode]);
+  }, [provinceId, mapMode, currentMapDate]);
 
   // When we are calculating (or don't want to display) the tooltip,
   // set the opacity to 0 instead of removing the display so that the width

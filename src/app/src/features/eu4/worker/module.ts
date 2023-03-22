@@ -40,6 +40,7 @@ import { MapPayload, QuickTipPayload } from "../types/map";
 import { LedgerDataRaw, workLedgerData } from "../utils/ledger";
 import { expandLosses } from "../utils/losses";
 import { wasm } from "./common";
+import { TimelapseIter } from "../../../../../wasm-eu4/pkg/wasm_eu4";
 export * from "./init";
 
 export const getRawData = wasm.viewData;
@@ -57,11 +58,73 @@ export function eu4GetProvinceIdToColorIndex() {
   return provinceIdToColorIndex;
 }
 
-export function eu4MapColors(payload: MapPayload) {
+export type MapColors = {
+  primary: Uint8Array;
+  secondary: Uint8Array;
+  country?: Uint8Array;
+};
+
+export function eu4MapColors(payload: MapPayload): MapColors {
   const arr = wasm.save.map_colors(payload);
-  const primary = arr.subarray(0, arr.length / 2);
-  const secondary = arr.subarray(arr.length / 2);
-  return transfer([primary, secondary], [arr.buffer]);
+  if (payload.kind == "political") {
+    const primary = arr.subarray(0, arr.length / 2);
+    const secondary = arr.subarray(arr.length / 2);
+    const country = primary;
+    return transfer({ primary, secondary, country }, [arr.buffer]);
+  } else if (payload.date != null && payload.kind == "religion") {
+    const primary = arr.subarray(0, arr.length / 3);
+    const secondary = arr.subarray(arr.length / 3, (arr.length * 2) / 3);
+    const country = arr.subarray((arr.length * 2) / 3);
+    return transfer({ primary, secondary, country }, [arr.buffer]);
+  } else {
+    const primary = arr.subarray(0, arr.length / 2);
+    const secondary = arr.subarray(arr.length / 2);
+    return transfer({ primary, secondary }, [arr.buffer]);
+  }
+}
+
+export type MapTimelapseItem = {
+  date: MapDate;
+  primary: Uint8Array;
+  secondary: Uint8Array;
+  country: Uint8Array;
+};
+
+let mapCursor: TimelapseIter | undefined;
+export function mapTimelapseNext(): MapTimelapseItem | undefined {
+  const item = mapCursor?.next();
+  if (item === undefined || mapCursor === undefined) {
+    mapCursor?.free();
+    return undefined;
+  }
+
+  const date = item.date() as MapDate;
+  const arr = item.data();
+  const parts = mapCursor.parts();
+  if (parts == 2) {
+    const primary = arr.subarray(0, arr.length / parts);
+    const secondary = arr.subarray(arr.length / parts);
+    const country = primary;
+    return transfer({ date, primary, secondary, country }, [arr.buffer]);
+  } else if (parts == 3) {
+    const primary = arr.subarray(0, arr.length / parts);
+    const secondary = arr.subarray(
+      arr.length / parts,
+      (arr.length * 2) / parts
+    );
+    const country = arr.subarray((arr.length * 2) / parts);
+    return transfer({ date, primary, secondary, country }, [arr.buffer]);
+  } else {
+    throw new Error("unexpected parts");
+  }
+}
+
+export function mapTimelapse(payload: {
+  kind: "political" | "religion";
+  interval: "year" | "month" | "week" | "day";
+  start: number | null;
+}) {
+  mapCursor = wasm.save.map_cursor(payload);
 }
 
 export function eu4GetCountries(): EnhancedCountryInfo[] {
@@ -294,19 +357,16 @@ export function eu4DaysToDate(s: number): string {
   return wasm.save.days_to_date(s);
 }
 
-export function eu4IncrementDate(days: number, increment: string): MapDate {
-  return wasm.save.increment_date(days, increment);
-}
-
-export function eu4GetProvinceDeteails(id: number): ProvinceDetails {
+export function eu4GetProvinceDeteails(id: number): ProvinceDetails | null {
   return wasm.save.get_province_details(id);
 }
 
 export function eu4GetMapTooltip(
   province: number,
-  payload: MapPayload["kind"]
+  payload: MapPayload["kind"],
+  date: number | undefined
 ): QuickTipPayload | null {
-  return wasm.save.map_quick_tip(province, payload) ?? null;
+  return wasm.save.map_quick_tip(province, payload, date) ?? null;
 }
 
 export async function eu4SaveHash(): Promise<string> {

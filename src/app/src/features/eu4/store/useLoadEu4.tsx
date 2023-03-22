@@ -248,13 +248,12 @@ async function loadEu4Save(
   const rect = document.body.getBoundingClientRect();
   map.resize(rect.width, rect.height);
 
-  const [primary, secondary] = await runTask(dispatch, {
+  const { primary, secondary } = await runTask(dispatch, {
     fn: () =>
       worker.eu4MapColors({
         date: null,
         kind: "political",
         paintSubjectInOverlordHue: false,
-        showSecondaryColor: false,
         tagFilter: initialEu4CountryFilter,
       }),
     name: "calculate political map",
@@ -274,6 +273,7 @@ async function loadEu4Save(
     meta,
     achievements,
     countries,
+    initialPoliticalMapColors: primary,
     defaultSelectedCountry: defaultSelectedTag,
     saveInfo,
   };

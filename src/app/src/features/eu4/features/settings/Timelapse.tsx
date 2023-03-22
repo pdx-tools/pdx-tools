@@ -22,22 +22,18 @@ import { downloadData } from "@/lib/downloadData";
 import { ToggleRow } from "./ToggleRow";
 import { IMG_HEIGHT, IMG_WIDTH } from "@/map/map";
 import { useIsDeveloper } from "@/features/account";
-import { dates, TimelapseEncoder } from "./TimelapseEncoder";
+import { mapTimelapseCursor, TimelapseEncoder } from "./TimelapseEncoder";
 import { transcode } from "./WebMTranscoder";
 import { captureException } from "@/features/errors";
-import { getEu4Worker } from "../../worker";
 import {
-  initialEu4CountryFilter,
-  selectMapPayload,
   useEu4Actions,
   useEu4Context,
   useEu4Map,
-  useEu4Meta,
+  useEu4MapMode,
   useIsDatePickerEnabled,
   useSaveFilename,
   useSelectedDate,
 } from "../../store";
-import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
 
 interface MapState {
   focusPoint: [number, number];
@@ -47,7 +43,6 @@ interface MapState {
 }
 
 export const Timelapse = () => {
-  const meta = useEu4Meta();
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscoding, setIsTranscoding] = useState(false);
@@ -56,8 +51,8 @@ export const Timelapse = () => {
   const [exportAsMp4, setExportAsMp4] = useState(false);
   const [freezeFrameSeconds, setFreezeFrameSeconds] = useState(0);
   const [intervalSelection, setIntervalSelection] = useState<
-    "Year" | "Month" | "Week" | "Day"
-  >("Year");
+    "year" | "month" | "week" | "day"
+  >("year");
   const currentMapDate = useSelectedDate();
   const [form] = Form.useForm();
   const isDeveloper = useIsDeveloper();
@@ -68,42 +63,34 @@ export const Timelapse = () => {
   const [progress, setProgress] = useState("");
   const map = useEu4Map();
   const timelapseEnabled = useIsDatePickerEnabled();
-  const { setSelectedDate } = useEu4Actions();
+  const { updateMap, updateProvinceColors } = useEu4Actions();
   const store = useEu4Context();
-  const storeRef = useRef(store);
-  useIsomorphicLayoutEffect(() => {
-    storeRef.current = store;
-  });
-
-  const startTimelapseDate = () =>
-    currentMapDate.days == meta.total_days
-      ? {
-          days: 0,
-          text: meta.start_date,
-        }
-      : currentMapDate;
+  const mapMode = useEu4MapMode();
+  const timelapsePayload = {
+    kind: mapMode == "religion" ? "religion" : "political",
+    interval: intervalSelection,
+    start: currentMapDate.enabledDays ?? 0,
+  } as const;
 
   const startTimelapse = async () => {
     setIsPlaying(true);
     stopTimelapseReq.current = false;
 
-    const startDate = startTimelapseDate();
-    const endDate = { days: meta.total_days, text: meta.date };
-    for await (const date of dates(
-      getEu4Worker(),
-      startDate,
-      endDate,
-      intervalSelection
-    )) {
-      setSelectedDate(date);
-
-      await new Promise((res) => setTimeout(res, 1000 / maxFps));
-      if (stopTimelapseReq.current) {
-        break;
+    try {
+      for await (const frame of mapTimelapseCursor(timelapsePayload)) {
+        updateMap(frame);
+        map.redrawMapImage();
+        await new Promise((res) => setTimeout(res, 1000 / maxFps));
+        if (stopTimelapseReq.current) {
+          return;
+        }
       }
-    }
 
-    setIsPlaying(false);
+      await updateProvinceColors();
+      map.redrawMapNow();
+    } finally {
+      setIsPlaying(false);
+    }
   };
 
   const stopTimelapse = () => {
@@ -140,33 +127,17 @@ export const Timelapse = () => {
       }
     };
 
-    const showCountryBorders = map.showCountryBorders;
-    map.showCountryBorders = false;
-    const showMapModeBorders = map.showMapModeBorders;
-    map.showMapModeBorders = false;
-
-    const payload = selectMapPayload(storeRef.current.getState());
     try {
       const encoder = await TimelapseEncoder.create({
         map,
-        worker: getEu4Worker(),
+        frames: mapTimelapseCursor(timelapsePayload),
         fps: maxFps,
-        interval: intervalSelection,
-        startDate: startTimelapseDate(),
-        endDate: { days: meta.total_days, text: meta.date },
-        mapPayload: {
-          ...payload,
-          showSecondaryColor: payload.kind == "religion",
-          tagFilter: initialEu4CountryFilter,
-        },
         freezeFrame: freezeFrameSeconds,
+        store,
       });
       encoderRef.current = encoder;
 
-      for await (const date of encoder.timelapse()) {
-        setProgress(`recording: ${date.text}`);
-      }
-
+      await encoder.encodeTimelapse();
       const out = encoder.finish();
       const blob = new Blob([out], {
         type: exportAsMp4 ? "video/mp4" : "video/webm",
@@ -182,12 +153,8 @@ export const Timelapse = () => {
       setIsRecording(false);
       restoreMapState();
 
-      map.showCountryBorders = showCountryBorders;
-      map.showMapModeBorders = showMapModeBorders;
-
-      const [primary, secondary] = await getEu4Worker().eu4MapColors(payload);
-      map.updateProvinceColors(primary, secondary);
-      map.redrawMapNow();
+      await updateProvinceColors();
+      map.redrawMapImage();
 
       if (exportAsMp4) {
         setProgress("transcoding into MP4");
@@ -289,19 +256,19 @@ export const Timelapse = () => {
             options={[
               {
                 label: "Year",
-                value: "Year",
+                value: "year",
               },
               {
                 label: "Month",
-                value: "Month",
+                value: "month",
               },
               {
                 label: "Week",
-                value: "Week",
+                value: "week",
               },
               {
                 label: "Day",
-                value: "Day",
+                value: "day",
               },
             ]}
           />
@@ -325,24 +292,10 @@ export const Timelapse = () => {
           >
             <Radio.Group
               optionType="button"
-              options={[
-                {
-                  label: "None",
-                  value: "None",
-                },
-                {
-                  label: "8x",
-                  value: "8x",
-                },
-                {
-                  label: "4x",
-                  value: "4x",
-                },
-                {
-                  label: "2x",
-                  value: "2x",
-                },
-              ]}
+              options={["None", "8x", "4x", "2x"].map((x) => ({
+                label: x,
+                value: x,
+              }))}
             />
           </Form.Item>
         )}
