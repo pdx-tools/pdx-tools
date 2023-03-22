@@ -3,6 +3,7 @@ import Image from "next/image";
 import political from "./images/mapmode_political.png";
 import religion from "./images/mapmode_religion.png";
 import development from "./images/mapmode_development.png";
+import battles from "./images/mapmode_battles.png";
 import technology from "./images/mapmode_tech.png";
 import terrain from "./images/mapmode_terrain.png";
 import { MapControls } from "../../types/map";
@@ -16,6 +17,7 @@ export const MapModeButtonGroup = () => {
     political,
     religion,
     development,
+    battles,
     technology,
     terrain,
   };

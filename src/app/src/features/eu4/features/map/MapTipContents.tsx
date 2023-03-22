@@ -2,6 +2,8 @@ import { Descriptions, Divider } from "antd";
 import { QuickTipPayload } from "../../types/map";
 import { FlagAvatarCore } from "../../components/avatars";
 import classes from "./MapTipContents.module.css";
+import { formatInt } from "@/lib/format";
+import { LocalizedTag } from "../../types/models";
 
 interface MapTipContentsProps {
   tip: QuickTipPayload;
@@ -23,32 +25,42 @@ const MapTipFlag = ({ tag, name }: MapTipFlagProps) => {
   );
 };
 
-const MapTipsTable = ({ tip }: MapTipContentsProps) => {
-  const items = [
-    <Descriptions.Item label="Owner" key="Owner">
-      <MapTipFlag tag={tip.owner.tag} name={tip.owner.name} />
-    </Descriptions.Item>,
-    ...(tip.owner.tag != tip.controller.tag
-      ? [
-          <Descriptions.Item label="Controller" key="Controller">
-            <MapTipFlag tag={tip.controller.tag} name={tip.controller.name} />
-          </Descriptions.Item>,
-        ]
-      : []),
-  ];
+const mapTagDescriptions = ({
+  owner,
+  controller,
+}: {
+  owner: LocalizedTag;
+  controller: LocalizedTag;
+}) => {
+  const controllerItem =
+    owner.tag != controller.tag ? (
+      <Descriptions.Item label="Controller" key="Controller">
+        <MapTipFlag tag={controller.tag} name={controller.name} />
+      </Descriptions.Item>
+    ) : null;
 
+  return [
+    <Descriptions.Item label="Owner" key="Owner">
+      <MapTipFlag tag={owner.tag} name={owner.name} />
+    </Descriptions.Item>,
+    controllerItem,
+  ];
+};
+
+const MapTipsTable = ({ tip }: MapTipContentsProps) => {
+  const items: React.ReactNode[] = [];
   switch (tip.kind) {
     case "political": {
       return (
         <Descriptions column={1} size="small">
-          {items}
+          {mapTagDescriptions(tip)}
         </Descriptions>
       );
     }
     case "religion": {
       return (
         <Descriptions column={1} size="small">
-          {items}
+          {mapTagDescriptions(tip)}
           <Descriptions.Item label="State Religion">
             {tip.stateReligion.name}
           </Descriptions.Item>
@@ -61,7 +73,7 @@ const MapTipsTable = ({ tip }: MapTipContentsProps) => {
     case "development": {
       return (
         <Descriptions column={1} size="small">
-          {items}
+          {mapTagDescriptions(tip)}
           <Descriptions.Item
             label={`Development (${
               tip.baseManpower + tip.baseProduction + tip.baseTax
@@ -72,10 +84,22 @@ const MapTipsTable = ({ tip }: MapTipContentsProps) => {
         </Descriptions>
       );
     }
+    case "battles": {
+      return (
+        <Descriptions column={1} size="small">
+          <Descriptions.Item label="Battles">
+            {formatInt(tip.battles)}
+          </Descriptions.Item>
+          <Descriptions.Item label="Casualties">
+            {formatInt(tip.losses)}
+          </Descriptions.Item>
+        </Descriptions>
+      );
+    }
     case "technology": {
       return (
         <Descriptions column={1} size="small">
-          {items}
+          {mapTagDescriptions(tip)}
           <Descriptions.Item label="Tech">
             {`${tip.admTech} / ${tip.dipTech} / ${tip.milTech}`}
           </Descriptions.Item>

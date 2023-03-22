@@ -71,6 +71,11 @@ export function eu4MapColors(payload: MapPayload): MapColors {
     const secondary = arr.subarray(arr.length / 2);
     const country = primary;
     return transfer({ primary, secondary, country }, [arr.buffer]);
+  } else if (payload.kind == "battles") {
+    const primary = arr.subarray(0, arr.length / 3);
+    const secondary = arr.subarray(arr.length / 3, (arr.length * 2) / 3);
+    const country = arr.subarray((arr.length * 2) / 3);
+    return transfer({ primary, secondary, country }, [arr.buffer]);
   } else if (payload.date != null && payload.kind == "religion") {
     const primary = arr.subarray(0, arr.length / 3);
     const secondary = arr.subarray(arr.length / 3, (arr.length * 2) / 3);
@@ -120,7 +125,7 @@ export function mapTimelapseNext(): MapTimelapseItem | undefined {
 }
 
 export function mapTimelapse(payload: {
-  kind: "political" | "religion";
+  kind: "political" | "religion" | "battles";
   interval: "year" | "month" | "week" | "day";
   start: number | null;
 }) {

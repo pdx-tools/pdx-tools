@@ -10,6 +10,7 @@ type MapMode =
   | "political"
   | "religion"
   | "development"
+  | "battles"
   | "technology"
   | "terrain";
 
@@ -49,6 +50,14 @@ export interface DevelopmentQuickTip {
   baseManpower: number;
 }
 
+export interface BattlesQuickTip {
+  kind: "battles";
+  provinceName: string;
+  provinceId: number;
+  battles: number;
+  losses: number;
+}
+
 export interface TechnologyQuickTip {
   kind: "technology";
   owner: LocalizedTag;
@@ -64,6 +73,7 @@ export type QuickTipPayload =
   | PoliticalQuickTip
   | ReligionQuickTip
   | DevelopmentQuickTip
+  | BattlesQuickTip
   | TechnologyQuickTip;
 
 // Controls that don't need to reach out to wasm

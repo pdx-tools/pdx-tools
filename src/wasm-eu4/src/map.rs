@@ -19,6 +19,7 @@ pub enum MapPayloadKind {
     Political,
     Religion,
     Development,
+    Battles,
     Technology,
     Terrain,
 }
@@ -37,6 +38,7 @@ pub struct MapPayload {
 pub enum MapCursorPayloadKind {
     Political,
     Religion,
+    Battles,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -55,7 +57,7 @@ pub struct MapCursorPayload {
     start: Option<i32>,
 }
 
-pub const WASTELAND: [u8; 4] = [61, 61, 61, 255];
+pub const WASTELAND: [u8; 4] = [61, 61, 61, 0];
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -87,6 +89,14 @@ pub enum MapQuickTipPayload {
         base_tax: f32,
         base_production: f32,
         base_manpower: f32,
+    },
+
+    #[serde(rename_all = "camelCase")]
+    Battles {
+        province_id: ProvinceId,
+        province_name: String,
+        battles: usize,
+        losses: i32,
     },
 
     #[serde(rename_all = "camelCase")]
@@ -319,6 +329,44 @@ impl SaveFileImpl {
                     mil_tech: owner.technology.mil_tech,
                 })
             }
+
+            MapPayloadKind::Battles => {
+                let previous_events = self
+                    .query
+                    .save()
+                    .game
+                    .previous_wars
+                    .iter()
+                    .flat_map(|war| war.history.events.iter());
+                let active_events = self
+                    .query
+                    .save()
+                    .game
+                    .active_wars
+                    .iter()
+                    .flat_map(|war| war.history.events.iter());
+                let war_events = previous_events.chain(active_events);
+
+                let battles = war_events.filter_map(|(date, event)| match event {
+                    eu4save::models::WarEvent::Battle(b) => {
+                        Some((b.location, date, b.attacker.losses + b.defender.losses))
+                    }
+                    _ => None,
+                });
+
+                let (battles, losses) = battles
+                    .filter(|(location, _, _)| *location == province_id)
+                    .filter(|(_, date, _)| requested_date.map_or(true, |x| **date <= x))
+                    .map(|(_, _, losses)| losses)
+                    .fold((0, 0), |(count, losses), x| (count + 1, losses + x));
+
+                Some(MapQuickTipPayload::Battles {
+                    province_id,
+                    province_name: province.name.clone(),
+                    battles,
+                    losses,
+                })
+            }
             _ => None,
         }
     }
@@ -326,7 +374,7 @@ impl SaveFileImpl {
     pub fn map_colors(&self, payload: MapPayload) -> Vec<u8> {
         if matches!(
             payload.kind,
-            MapPayloadKind::Political | MapPayloadKind::Religion
+            MapPayloadKind::Political | MapPayloadKind::Religion | MapPayloadKind::Battles
         ) {
             let date = payload
                 .date
@@ -512,6 +560,16 @@ impl SaveFileImpl {
                 }
             }
 
+            MapPayloadKind::Battles => {
+                let mut timelapse = BattleTimelapse::new(&self);
+                let final_date = self.query.save().meta.date;
+                let prep_date = final_date
+                    .add_days(-365)
+                    .max(self.query.save().game.start_date);
+                let _ = timelapse.advance_to(prep_date);
+                return timelapse.advance_to(final_date);
+            }
+
             MapPayloadKind::Technology => {
                 let min_color = [127., 0., 0.];
                 let diff_color = [0. - 127., 212. - 0., 144. - 0.];
@@ -587,6 +645,12 @@ impl SaveFileImpl {
                 let mut timelapse = ReligionTimelapse::new(self);
                 timelapse.advance_to(date)
             }
+            MapPayloadKind::Battles => {
+                let mut timelapse = BattleTimelapse::new(self);
+                let prep_date = date.add_days(-365).max(self.query.save().game.start_date);
+                let _ = timelapse.advance_to(prep_date);
+                return timelapse.advance_to(date);
+            }
             _ => {
                 let mut timelapse = PoliticalTimelapse::new(self);
                 timelapse.advance_to(date)
@@ -598,9 +662,10 @@ impl SaveFileImpl {
         let timelapse = match payload.kind {
             MapCursorPayloadKind::Political => Timelapse::Political(PoliticalTimelapse::new(self)),
             MapCursorPayloadKind::Religion => Timelapse::Religion(ReligionTimelapse::new(self)),
+            MapCursorPayloadKind::Battles => Timelapse::Battles(BattleTimelapse::new(self)),
         };
 
-        TimelapseIter {
+        let mut result = TimelapseIter {
             save_start: self.query.save().game.start_date,
             start: self
                 .query
@@ -612,7 +677,15 @@ impl SaveFileImpl {
             end: self.query.save().meta.date,
             interval: payload.interval,
             timelapse,
+        };
+
+        if matches!(payload.kind, MapCursorPayloadKind::Battles) {
+            // battle map mode marks battles since last interval
+            // so the first interval is a bit wonky, so we skip it
+            let _ = result.next();
         }
+
+        result
     }
 }
 
@@ -649,6 +722,7 @@ fn timelapse_country_colors(save: &SaveFileImpl) -> TimelapseCountryColors {
 enum Timelapse {
     Political(PoliticalTimelapse),
     Religion(ReligionTimelapse),
+    Battles(BattleTimelapse),
 }
 
 impl Timelapse {
@@ -656,6 +730,7 @@ impl Timelapse {
         match self {
             Timelapse::Political(x) => x.advance_to(date),
             Timelapse::Religion(x) => x.advance_to(date),
+            Timelapse::Battles(x) => x.advance_to(date),
         }
     }
 
@@ -664,7 +739,7 @@ impl Timelapse {
     fn parts(&self) -> usize {
         match self {
             Timelapse::Political(_) => 2,
-            Timelapse::Religion(_) => 3,
+            _ => 3,
         }
     }
 }
@@ -1223,6 +1298,176 @@ impl ReligionTimelapse {
             primary[offset..offset + 4].copy_from_slice(primary_color);
             secondary[offset..offset + 4].copy_from_slice(secondary_color);
             country_colors[offset..offset + 4].copy_from_slice(country_color);
+        }
+
+        result
+    }
+}
+
+struct BattleEvent {
+    date: Eu4Date,
+    province: ProvinceId,
+    kind: BattleEventKind,
+}
+
+#[derive(Debug)]
+enum BattleEventKind {
+    Owner(CountryTag),
+    Battle { losses: i32 },
+}
+
+struct BattleTimelapse {
+    wasm: &'static SaveFileImpl,
+    country_colors: HashMap<CountryTag, [u8; 4]>,
+
+    current_losses: Vec<i32>,
+    current_owners: Vec<(Eu4Date, CountryTag)>,
+    event_index: usize,
+    events: Vec<BattleEvent>,
+}
+
+impl BattleTimelapse {
+    pub fn new(wasm: &SaveFileImpl) -> Self {
+        let (country_colors, current_owners) = timelapse_country_colors(wasm);
+
+        let mut events =
+            Vec::with_capacity(wasm.province_owners.changes.len() + wasm.game.total_provinces());
+
+        for (id, prov) in wasm.query.save().game.provinces.iter() {
+            let extend = prov
+                .history
+                .events
+                .iter()
+                .filter_map(|(date, event)| match event {
+                    eu4save::models::ProvinceEvent::Owner(new_owner) => Some(BattleEvent {
+                        date: *date,
+                        province: *id,
+                        kind: BattleEventKind::Owner(*new_owner),
+                    }),
+                    _ => None,
+                });
+            events.extend(extend);
+        }
+
+        let previous_events = wasm
+            .query
+            .save()
+            .game
+            .previous_wars
+            .iter()
+            .flat_map(|war| war.history.events.iter());
+        let active_events = wasm
+            .query
+            .save()
+            .game
+            .active_wars
+            .iter()
+            .flat_map(|war| war.history.events.iter());
+        let war_events = previous_events.chain(active_events);
+
+        let battles = war_events.filter_map(|(date, event)| match event {
+            eu4save::models::WarEvent::Battle(b) => {
+                Some((*date, b.location, b.attacker.losses + b.defender.losses))
+            }
+            _ => None,
+        });
+
+        let battle_events = battles.map(|(date, province, losses)| BattleEvent {
+            date,
+            province,
+            kind: BattleEventKind::Battle { losses: losses },
+        });
+
+        events.extend(battle_events);
+        events.sort_by(|a, b| a.date.cmp(&b.date));
+
+        let current_losses = vec![0; current_owners.len()];
+        Self {
+            current_owners,
+            current_losses,
+            country_colors,
+            events,
+            wasm: unsafe { std::mem::transmute(wasm) },
+            event_index: 0,
+        }
+    }
+
+    fn advance_to(&mut self, date: Eu4Date) -> Vec<u8> {
+        let result_len = self.wasm.province_id_to_color_index.len() * 4;
+        let mut result: Vec<u8> = vec![0; result_len * 3];
+        let resolver = self.wasm.tag_resolver.at(date);
+        let (religion_colors, country_colors) = result.split_at_mut(result_len * 2);
+        let (primary, secondary) = religion_colors.split_at_mut(result_len);
+
+        let remaingin_events = &self.events[self.event_index..];
+        let pos = remaingin_events
+            .iter()
+            .position(|event| event.date > date)
+            .unwrap_or(remaingin_events.len());
+        let events = &remaingin_events[..pos];
+        self.event_index += pos;
+
+        let mut province_battles = Vec::with_capacity((events.len() / 2).min(8));
+        for event in events {
+            let ind = usize::from(event.province.as_u16());
+
+            match event.kind {
+                BattleEventKind::Owner(new_owner) => {
+                    self.current_owners[ind] = (event.date, new_owner);
+                }
+                BattleEventKind::Battle { losses } => {
+                    province_battles.push(event.province);
+                    self.current_losses[ind] += losses;
+                }
+            }
+        }
+
+        let max_losses = self.current_losses.iter().max().copied().unwrap_or(0);
+        let min_color = [203., 213., 225.];
+        let diff_color = [244. - 203., 63. - 213., 94. - 225.];
+
+        for province in self.wasm.game.provinces() {
+            let prov_ind = usize::from(province.id.as_u16());
+            let (primary_color, country_color) = 'color: {
+                if !province.is_habitable() {
+                    break 'color (WASTELAND, &WASTELAND);
+                }
+
+                let Some((date, owner)) = self.current_owners.get(prov_ind) else {
+                    break 'color (WASTELAND, &WASTELAND);
+                };
+
+                let tag = resolver
+                    .resolve(*owner, *date)
+                    .map(|x| x.stored)
+                    .unwrap_or(*owner);
+
+                let losses = self.current_losses.get(prov_ind).copied().unwrap_or(0);
+                let ratio = losses as f64 / max_losses as f64;
+                let battle_color = [
+                    (min_color[0] + ratio * diff_color[0]).round() as u8,
+                    (min_color[1] + ratio * diff_color[1]).round() as u8,
+                    (min_color[2] + ratio * diff_color[2]).round() as u8,
+                    255,
+                ];
+
+                let country_color = self.country_colors.get(&tag).unwrap_or(&[94, 94, 94, 128]);
+                (battle_color, country_color)
+            };
+
+            let secondary_color = primary_color;
+            let ind = self.wasm.province_id_to_color_index[prov_ind];
+            let offset = usize::from(ind) * 4;
+            primary[offset..offset + 4].copy_from_slice(&primary_color);
+            secondary[offset..offset + 4].copy_from_slice(&secondary_color);
+            country_colors[offset..offset + 4].copy_from_slice(country_color);
+        }
+
+        for province in province_battles {
+            let prov_ind = usize::from(province.as_u16());
+            let ind = self.wasm.province_id_to_color_index[prov_ind];
+            let offset = usize::from(ind) * 4;
+            secondary[offset..offset + 4].copy_from_slice(&[15, 23, 42, 255]);
         }
 
         result
