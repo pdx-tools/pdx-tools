@@ -29,7 +29,7 @@ export const MapExportMenu = ({ setIsExporting }: MapExportMenuProps) => {
 
   const colorCb = useCallback(async () => {
     const mapPayload = selectMapPayload(store.getState());
-    const [primary, _] = await getEu4Worker().eu4MapColors(mapPayload);
+    const { primary } = await getEu4Worker().eu4MapColors(mapPayload);
     downloadData(new Uint8Array(primary.buffer), "color-data.bin");
   }, [store]);
 
