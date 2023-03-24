@@ -1246,6 +1246,7 @@ impl ReligionTimelapse {
             }
         }
 
+        let noone = "---".parse::<CountryTag>().unwrap();
         for province in self.wasm.game.provinces() {
             let prov_ind = usize::from(province.id.as_u16());
             let (primary_color, country_color) = 'color: {
@@ -1256,6 +1257,10 @@ impl ReligionTimelapse {
                 let Some((date, owner)) = self.current_owners.get(prov_ind) else {
                     break 'color (&WASTELAND, &WASTELAND);
                 };
+
+                if *owner == noone {
+                    break 'color (&[94, 94, 94, 128], &[94, 94, 94, 128]);
+                }
 
                 let tag = resolver
                     .resolve(*owner, *date)
