@@ -55,7 +55,7 @@ export const DiploRow = <T,>({
         <div className={rowClass}>
           {relations.map((x) => (
             <TagFlag key={x.tag} tag={x.tag} size="large">
-              <div className="text-left">{children(x)}</div>
+              {children(x)}
             </TagFlag>
           ))}
         </div>

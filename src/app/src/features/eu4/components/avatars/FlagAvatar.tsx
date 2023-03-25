@@ -91,7 +91,7 @@ export const TagFlag = ({
       className="cursor-pointer border-none bg-transparent p-1 hover:bg-gray-200 active:bg-gray-300"
       onClick={() => setSelectedTag(tag)}
     >
-      <div className="flex gap-x-2">
+      <div className="flex gap-x-2 text-left">
         <FlagAvatarCore tag={tag} size={size} />
         {children}
       </div>
