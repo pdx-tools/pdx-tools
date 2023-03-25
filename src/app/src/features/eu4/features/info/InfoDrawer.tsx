@@ -10,6 +10,7 @@ import {
   AchievementAvatar,
   FlagAvatar,
   FlagAvatarCore,
+  TagFlag,
 } from "@/features/eu4/components/avatars";
 import { Aar } from "./Aar";
 import { FlipBook, StringFlipBook } from "../../components/flip-book";
@@ -118,7 +119,9 @@ export const InfoDrawer = () => {
           <List.Item key={item.latest}>
             <Card
               title={
-                <FlagAvatar tag={item.latest} name={item.name} size="large" />
+                <TagFlag tag={item.latest} size="large">
+                  {item.name}
+                </TagFlag>
               }
               extra={
                 <div className="flex items-center gap-2">

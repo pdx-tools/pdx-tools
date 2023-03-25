@@ -55,10 +55,13 @@ type Eu4State = Eu4StateProps & {
   showCountryBorders: boolean;
   showMapModeBorders: boolean;
   selectedTag: string;
+  countryDrawerVisible: boolean;
   selectedDate: MapDate;
   showOneTimeLineItems: boolean;
   prefereredValueFormat: "absolute" | "percent";
   actions: {
+    closeCountryDrawer: () => void;
+    openCountryDrawer: () => void;
     panToTag: (tag: string, offset?: number) => Promise<void>;
     setMapMode: (mode: Eu4State["mapMode"]) => Promise<void>;
     setMapShowStripes: (enabled: boolean) => Promise<void>;
@@ -100,6 +103,7 @@ export const createEu4Store = async ({
     showProvinceBorders: true,
     showCountryBorders: true,
     showMapModeBorders: false,
+    countryDrawerVisible: false,
   } as const;
 
   const defaultDate = {
@@ -133,6 +137,8 @@ export const createEu4Store = async ({
     selectedTag: save.defaultSelectedCountry,
     selectedDate: defaultDate,
     actions: {
+      closeCountryDrawer: () => set({ countryDrawerVisible: false }),
+      openCountryDrawer: () => set({ countryDrawerVisible: true }),
       panToTag: async (tag, offset?: number) => {
         const pos = await getEu4Worker().eu4MapPositionOf(tag);
         map.scale = map.maxScale * (1 / 2);
@@ -209,7 +215,8 @@ export const createEu4Store = async ({
         get().map.redrawMapImage();
       },
 
-      setSelectedTag: (tag: string) => set({ selectedTag: tag }),
+      setSelectedTag: (tag: string) =>
+        set({ selectedTag: tag, countryDrawerVisible: true }),
       setPrefersPercents: (checked: boolean) =>
         set({ prefereredValueFormat: checked ? "percent" : "absolute" }),
       setShowOneTimeLineItems: (checked: boolean) =>
@@ -307,6 +314,8 @@ export const useValueFormatPreference = () =>
   useEu4Store((x) => x.prefereredValueFormat);
 export const useShowOnetimeLineItems = () =>
   useEu4Store((x) => x.showOneTimeLineItems);
+export const useCountryDrawerVisible = () =>
+  useEu4Store((x) => x.countryDrawerVisible);
 
 export function useEu4ModList() {
   const meta = useEu4Meta();

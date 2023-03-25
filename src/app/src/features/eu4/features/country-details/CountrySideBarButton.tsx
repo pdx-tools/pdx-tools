@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   SideBarButton,
   SideBarButtonProps,
@@ -7,25 +7,23 @@ import { VisualizationProvider } from "@/components/viz/visualization-context";
 import { CountryDetailsDrawer } from "./CountryDetailsDrawer";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
 import { Tooltip } from "antd";
+import { useEu4Actions } from "../../store";
 
 export const CountrySideBarButton = ({
   children,
   ...props
 }: SideBarButtonProps) => {
-  const [drawerVisible, setDrawerVisible] = useState(false);
+  const { openCountryDrawer } = useEu4Actions();
 
   return (
     <>
       <VisualizationProvider>
         <SideBarContainerProvider>
-          <CountryDetailsDrawer
-            visible={drawerVisible}
-            closeDrawer={() => setDrawerVisible(false)}
-          />
+          <CountryDetailsDrawer />
         </SideBarContainerProvider>
       </VisualizationProvider>
       <Tooltip title="Country view" placement="left">
-        <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
+        <SideBarButton {...props} onClick={openCountryDrawer}>
           {children}
         </SideBarButton>
       </Tooltip>

@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from "react";
-import { Button, Divider, Drawer, Grid, Tabs } from "antd";
+import { Button, Divider, Drawer, Grid, Tabs, Tooltip } from "antd";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   QuestionCircleOutlined,
+  ZoomInOutlined,
 } from "@ant-design/icons";
 import { FinancialHelp } from "../charts/FinancialHelp";
 import { CountryBudget } from "./CountryBudget";
@@ -24,24 +25,21 @@ import { CountryDiplomacy } from "./CountryDiplomacy";
 import { CountryStates } from "./CountryStates";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { useSideBarPanTag } from "../../hooks/useSideBarPanTag";
-import { useEu4Actions, useSelectedTag } from "../../store";
+import {
+  useCountryDrawerVisible,
+  useEu4Actions,
+  useSelectedTag,
+} from "../../store";
 
 const { TabPane } = Tabs;
 const { useBreakpoint } = Grid;
 
-interface CountryDetailsProps {
-  visible: boolean;
-  closeDrawer: () => void;
-}
-
-export const CountryDetailsDrawer = ({
-  visible,
-  closeDrawer,
-}: CountryDetailsProps) => {
+export const CountryDetailsDrawer = () => {
   const { md } = useBreakpoint();
   const [expanded, setExpanded] = useState(false);
   const selectedTag = useSelectedTag();
-  const { setSelectedTag } = useEu4Actions();
+  const visible = useCountryDrawerVisible();
+  const { setSelectedTag, closeCountryDrawer } = useEu4Actions();
   const [helpVisible, setHelpVisible] = useState(false);
   const sideBarContainerRef = useSideBarContainerRef();
   const panTag = useSideBarPanTag();
@@ -66,7 +64,7 @@ export const CountryDetailsDrawer = ({
       mask={false}
       push={false}
       maskClosable={false}
-      onClose={closeDrawerPropagation(closeDrawer, visible)}
+      onClose={closeDrawerPropagation(closeCountryDrawer, visible)}
       width={!expanded ? "min(800px, 100%)" : "100%"}
       title={
         <div className="flex items-center gap-2">
@@ -78,7 +76,7 @@ export const CountryDetailsDrawer = ({
           )}
 
           <CountrySelect
-            ai="alive"
+            ai="all"
             value={selectedTag}
             className="w-64"
             onChange={(x: any) => {
@@ -86,6 +84,13 @@ export const CountryDetailsDrawer = ({
               panTag(x as string);
             }}
           />
+
+          <Tooltip title="Zoom and pan map to country">
+            <Button
+              onClick={() => panTag(selectedTag)}
+              icon={<ZoomInOutlined />}
+            />
+          </Tooltip>
 
           <Button
             onClick={() => setHelpVisible(true)}

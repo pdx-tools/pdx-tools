@@ -1,7 +1,7 @@
 import React from "react";
 import { Avatar, Tooltip } from "antd";
 import { useInEu4Analysis } from "../SideBarContainer";
-import { useSideBarPanTag } from "../../hooks/useSideBarPanTag";
+import { useEu4Actions } from "../../store";
 
 type AvatarProps = React.ComponentProps<typeof Avatar>;
 interface FlagAvatarCoreProps {
@@ -49,57 +49,22 @@ const InGameFlagAvatar = ({
   size,
   condensed = false,
 }: FlagAvatarProps) => {
-  const panTag = useSideBarPanTag();
-  if (!condensed) {
-    return (
-      <Tooltip title={tag}>
-        <button
-          className="cursor-pointer border-none bg-transparent p-1 hover:bg-gray-200 active:bg-gray-300"
-          onClick={() => panTag(tag)}
-        >
-          <div className="flex items-center space-x-2 text-start">
-            <FlagAvatarCore tag={tag} size={size} />
-            <span>{name}</span>
-          </div>
-        </button>
-      </Tooltip>
-    );
-  } else {
-    return (
-      <Tooltip title={`${name} (${tag})`}>
-        <button
-          className="cursor-pointer border-none bg-transparent p-1 hover:bg-gray-200 active:bg-gray-300"
-          onClick={() => panTag(tag)}
-        >
-          <FlagAvatarCore tag={tag} size={size} />
-        </button>
-      </Tooltip>
-    );
-  }
+  return (
+    <TagFlag tag={tag} size={size} tooltip={condensed ? { name } : "tag"}>
+      {!condensed ? <span>{name}</span> : null}
+    </TagFlag>
+  );
 };
 
-const OutOfGameFlagAvatar = ({
-  tag,
-  name,
-  size,
-  condensed = false,
-}: FlagAvatarProps) => {
-  if (!condensed) {
-    return (
-      <Tooltip title={tag}>
-        <div className="flex items-center space-x-2 text-start">
-          <FlagAvatarCore tag={tag} size={size} />
-          <span>{name}</span>
-        </div>
-      </Tooltip>
-    );
-  } else {
-    return (
-      <Tooltip title={`${name} (${tag})`}>
+const OutOfGameFlagAvatar = ({ tag, name, size }: FlagAvatarProps) => {
+  return (
+    <Tooltip title={tag}>
+      <div className="flex items-center space-x-2 text-start">
         <FlagAvatarCore tag={tag} size={size} />
-      </Tooltip>
-    );
-  }
+        <span>{name}</span>
+      </div>
+    </Tooltip>
+  );
 };
 
 export const FlagAvatar = (props: FlagAvatarProps) => {
@@ -108,5 +73,40 @@ export const FlagAvatar = (props: FlagAvatarProps) => {
     return <InGameFlagAvatar {...props} />;
   } else {
     return <OutOfGameFlagAvatar {...props} />;
+  }
+};
+
+export const TagFlag = ({
+  tag,
+  size,
+  tooltip,
+  children,
+}: React.PropsWithChildren<
+  FlagAvatarCoreProps & { tooltip?: "tag" | { name: string } }
+>) => {
+  const { setSelectedTag } = useEu4Actions();
+
+  const content = (
+    <button
+      className="cursor-pointer border-none bg-transparent p-1 hover:bg-gray-200 active:bg-gray-300"
+      onClick={() => setSelectedTag(tag)}
+    >
+      <div className="flex gap-x-2">
+        <FlagAvatarCore tag={tag} size={size} />
+        {children}
+      </div>
+    </button>
+  );
+
+  switch (tooltip) {
+    case undefined: {
+      return content;
+    }
+    case "tag": {
+      return <Tooltip title={tag}>{content}</Tooltip>;
+    }
+    default: {
+      return <Tooltip title={`${tooltip.name} (${tag})`}>{content}</Tooltip>;
+    }
   }
 };
