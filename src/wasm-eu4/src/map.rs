@@ -143,8 +143,37 @@ impl SaveFileImpl {
         let requested_date = days.map(|x| self.query.save().game.start_date.add_days(x));
         let reb = "REB".parse::<CountryTag>().unwrap();
         let noone = "---".parse::<CountryTag>().unwrap();
-        let controller_tag = 'controller: {
-            let Some(date) = requested_date else { break 'controller province.controller.unwrap_or(noone) };
+        let sq = SaveGameQuery::new(&self.query, &self.game);
+
+        let local_controller = 'controller: {
+            let Some(date) = requested_date else {
+                let current_controller = province.controller.unwrap_or(noone);
+                if current_controller == noone {
+                    return None;
+                }
+
+                if let Some(rebels) = province.occupying_rebel_faction.as_ref() {
+                    let rebel_name = self.query.save().game.rebel_factions.iter().find_map(|x| if x.id.id == rebels.id {
+                        Some(x.name.clone())
+                    } else {
+                        None
+                    });
+
+                    if let Some(rebel_name) = rebel_name {
+                        break 'controller LocalizedTag {
+                            name: rebel_name,
+                            tag: current_controller,
+                        }
+                    }
+                };
+
+
+                break 'controller LocalizedTag {
+                    name: sq.localize_country(&current_controller),
+                    tag: current_controller,
+                };
+            };
+
             let resolver = self.tag_resolver.at(date);
             let controller_events = province
                 .history
@@ -169,16 +198,21 @@ impl SaveFileImpl {
                 }
             }
 
-            resolver
+            let current_controller = resolver
                 .resolve(controller_tag, controller_date)
                 .or_else(|| province.history.owner.and_then(|x| resolver.initial(x)))
                 .map(|x| x.current)
-                .unwrap_or(noone)
-        };
+                .unwrap_or(noone);
 
-        if controller_tag == noone {
-            return None;
-        }
+            if current_controller == noone {
+                return None;
+            } else {
+                LocalizedTag {
+                    name: sq.localize_country(&current_controller),
+                    tag: current_controller,
+                }
+            }
+        };
 
         let (owner_tag, stored_owner_tag) = 'owner: {
             let Some(date) = requested_date else {
@@ -223,15 +257,9 @@ impl SaveFileImpl {
             return None;
         }
 
-        let sq = SaveGameQuery::new(&self.query, &self.game);
         let local_owner = LocalizedTag {
             name: sq.localize_country(&owner_tag),
             tag: owner_tag,
-        };
-
-        let local_controller = LocalizedTag {
-            name: sq.localize_country(&controller_tag),
-            tag: controller_tag,
         };
 
         match payload {

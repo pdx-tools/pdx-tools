@@ -1637,10 +1637,32 @@ impl SaveFileImpl {
             name: save_game_query.localize_country(tag),
         });
 
-        let controller = province.controller.as_ref().map(|tag| LocalizedTag {
-            tag: *tag,
-            name: save_game_query.localize_country(tag),
-        });
+        let controller = province
+            .occupying_rebel_faction
+            .as_ref()
+            .and_then(|x| {
+                self.query
+                    .save()
+                    .game
+                    .rebel_factions
+                    .iter()
+                    .find_map(|reb| {
+                        if reb.id.id == x.id {
+                            Some(LocalizedTag {
+                                tag: "REB".parse::<CountryTag>().unwrap(),
+                                name: reb.name.clone(),
+                            })
+                        } else {
+                            None
+                        }
+                    })
+            })
+            .or_else(|| {
+                province.controller.as_ref().map(|tag| LocalizedTag {
+                    tag: *tag,
+                    name: save_game_query.localize_country(tag),
+                })
+            });
 
         let cores = province
             .cores
