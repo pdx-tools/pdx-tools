@@ -24,6 +24,10 @@ export const ProvinceSelectListener = () => {
         setDrawerVisible(false);
       }
     };
+
+    return () => {
+      map.onProvinceSelection = undefined;
+    }
   }, [map]);
 
   return (
