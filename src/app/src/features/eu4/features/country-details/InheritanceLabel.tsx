@@ -1,16 +1,21 @@
-import { Button, Drawer } from "antd";
+import { Button, Drawer, Tooltip } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { CountryDetails } from "../../types/models";
 import classes from "./InheritanceLabel.module.css";
 import { useIsJuniorPartner } from "./detailHooks";
 import { useEu4Meta } from "../../store";
+import { formatInt } from "@/lib/format";
 
 export interface InheranticeLabelProps {
+  isJuniorPartner: boolean;
   details: CountryDetails;
 }
 
-export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
+export const InheritanceLabel = ({
+  details,
+  isJuniorPartner,
+}: InheranticeLabelProps) => {
   const { inheritance, tag, num_cities } = details;
   const [drawerVisible, setDrawerVisible] = useState(false);
   const meta = useEu4Meta();
@@ -30,20 +35,74 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
           <h2>Inheritance Value Breakdown</h2>
           <table className="mb-4 w-full">
             <tbody>
-              {inheritance.calculations.map((x) => (
-                <tr key={x.name}>
-                  <td>
-                    {x.name}
-                    {x.dependency != "Independent"
-                      ? ` (${x.dependency.Dependent})`
-                      : ``}
+              <tr>
+                <td>
+                  HRE Ruler ID ({inheritance.calculations.hre.emperor_tag})
+                </td>
+                <td>{formatInt(inheritance.calculations.hre.ruler_id)}</td>
+              </tr>
+              <tr>
+                <td>
+                  Curia Controller Nation ID (
+                  {inheritance.calculations.curia.controller_tag})
+                </td>
+                <td
+                  className={
+                    inheritance.calculations.curia.enabled ? "" : "line-through"
+                  }
+                >
+                  <Tooltip
+                    placement="topRight"
+                    title="Only applies to Catholic nations"
+                  >
+                    {formatInt(inheritance.calculations.curia.controller_id)}
+                  </Tooltip>
+                </td>
+              </tr>
+              <tr>
+                <td>Nation ID ({details.tag})</td>
+                <td>{formatInt(inheritance.calculations.nation_id)}</td>
+              </tr>
+              <tr>
+                <td>Ruler ID ({details.tag})</td>
+                <td>{formatInt(inheritance.calculations.ruler_id)}</td>
+              </tr>
+              {isJuniorParter ? (
+                <tr>
+                  <td>Heir ID ({details.tag})</td>
+                  <td
+                    className={
+                      inheritance.calculations.heir.enabled
+                        ? ""
+                        : "line-through"
+                    }
+                  >
+                    <Tooltip
+                      placement="topRight"
+                      title="Only if the heir is younger than 15 years old"
+                    >
+                      {formatInt(inheritance.calculations.heir.heir_id ?? 0)}
+                    </Tooltip>
                   </td>
-                  <td>{x.value}</td>
                 </tr>
-              ))}
+              ) : null}
+              <tr>
+                <td>Previous Rulers ({details.tag})</td>
+                <td>
+                  {formatInt(inheritance.calculations.previous_ruler_ids)}
+                </td>
+              </tr>
+              <tr>
+                <td>Capital Province ({details.tag})</td>
+                <td>{formatInt(inheritance.calculations.capital_province)}</td>
+              </tr>
+              <tr>
+                <td>Owned Provinces ({details.tag})</td>
+                <td>{formatInt(inheritance.calculations.owned_provinces)}</td>
+              </tr>
               <tr className="bg-gray-200">
                 <td>Subtotal</td>
-                <td>{inheritance.subtotal}</td>
+                <td>{formatInt(inheritance.subtotal)}</td>
               </tr>
               <tr>
                 <td>Save year</td>
@@ -51,7 +110,13 @@ export const InheritanceLabel = ({ details }: InheranticeLabelProps) => {
               </tr>
               <tr className="bg-gray-200">
                 <td>Inheritance Value</td>
-                <td>{inheritance.inheritance_value}</td>
+                <td>
+                  {formatInt(
+                    isJuniorParter
+                      ? inheritance.pu_inheritance_value
+                      : inheritance.inheritance_value
+                  )}
+                </td>
               </tr>
             </tbody>
           </table>

@@ -147,14 +147,28 @@ export interface Inheritance {
   start_t2_year: number;
   end_t2_year: number;
   inheritance_value: number;
+  pu_inheritance_value: number;
   subtotal: number;
-  calculations: InheritanceCalculation[];
-}
-
-export interface InheritanceCalculation {
-  name: string;
-  value: number;
-  dependency: { Dependent: string } | "Independent";
+  calculations: {
+    hre: {
+      emperor_tag: string;
+      ruler_id: number;
+    };
+    curia: {
+      enabled: boolean;
+      controller_tag: string;
+      controller_id: number;
+    };
+    heir: {
+      enabled: boolean;
+      heir_id: number | null;
+    };
+    nation_id: number;
+    ruler_id: number;
+    previous_ruler_ids: number;
+    capital_province: number;
+    owned_provinces: number;
+  };
 }
 
 export type DiplomacySubsidy = {

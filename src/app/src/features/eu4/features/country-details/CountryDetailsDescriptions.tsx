@@ -14,7 +14,7 @@ export const CountryDetailsDescriptions = ({
   details,
 }: CountryDetailsProps) => {
   const { ruler, technology, ideas } = details;
-  const isJuniorParter = useIsJuniorPartner(details);
+  const isJuniorPartner = useIsJuniorPartner(details);
   let ideaElem = ideas.map(([name, count]) => {
     name = name.substring(0, name.length - "_ideas".length);
     let ideaMarkers = [];
@@ -72,14 +72,23 @@ export const CountryDetailsDescriptions = ({
         </table>
       </Descriptions.Item>
       <Descriptions.Item
-        label={<InheritanceLabel details={details} />}
+        label={
+          <InheritanceLabel
+            isJuniorPartner={isJuniorPartner}
+            details={details}
+          />
+        }
         span={3}
       >
         <div className="no-break flex flex-col">
-          {!isJuniorParter && (
+          {!isJuniorPartner && (
             <div>{`Window: [${details.inheritance.start_t1_year} - ${details.inheritance.end_t1_year}]`}</div>
           )}
-          <div>{`Inheritance Value: ${details.inheritance.inheritance_value}`}</div>
+          <div>{`Inheritance Value: ${
+            !isJuniorPartner
+              ? details.inheritance.inheritance_value
+              : details.inheritance.pu_inheritance_value
+          }`}</div>
         </div>
       </Descriptions.Item>
 

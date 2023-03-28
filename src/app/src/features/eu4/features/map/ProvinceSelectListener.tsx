@@ -27,7 +27,7 @@ export const ProvinceSelectListener = () => {
 
     return () => {
       map.onProvinceSelection = undefined;
-    }
+    };
   }, [map]);
 
   return (

@@ -17,6 +17,7 @@ The chance to PU, inherit a country, or inherit an existing junior partner is de
 - The curia controller's [nation ID](https://eu4.paradoxwikis.com/Countries#List_of_tags) (only if the junior partner is not catholic or if the curia is disabled).
 - The target nation's current and past rulers
 - The target nation's capital [province ID](https://eu4.paradoxwikis.com/Geographical_list_of_provinces)
+- Whether the target nation's heir is of age (used for inheriting junior partner)
 - How many provinces the target nation owns
 - Year
 
@@ -150,3 +151,49 @@ To build an intuition for how the mechanics work, here are some scenarios to try
   ```
   kill fly
   ```
+- Saxony will inherit Thuringia only if its heir isn't of age:
+  ```
+  tag SAX
+  date 1524.11.11
+  age_heir 1
+  kill
+  ```
+
+## Appendix
+
+[Johan shared the inheritance code](https://forum.paradoxplaza.com/forum/threads/how-junior-partner-inheritance-really-works-hint-it-is-not-a-dice-roll.1508465/post-28723263), and is copied below for posterity:
+
+```cpp
+int CCountry::CalcMonarchDeathOutcome() const
+{
+    int nOutcome = GetCurrentMonarch()->GetID().GetID() + _Tag.GetIndex() + CCurrentGameState::AccessInstance()->GetCurrentDate().GetYear();
+
+    if ( _pCurrentHeir->IsValid() )
+    {
+        nOutcome += _pCurrentHeir->GetID().GetID();
+    }
+
+    if ( CCurrentGameState::AccessInstance()->AccessEmpire().GetElectors().GetSize() > 0 )
+    {
+        nOutcome += CCurrentGameState::AccessInstance()->AccessEmpire().GetEmperor().GetCountry().GetCurrentMonarch()->GetID().GetID();
+    }
+
+    const CPapacy* pPapacy = _pReligion->GetPapacy();
+    if ( pPapacy )
+    {
+        nOutcome += pPapacy->GetInstanceData().GetCuriaController().GetIndex();
+    }
+
+    nOutcome += _OwnedProvinces.GetSize();
+    nOutcome += _nCapital;
+
+    for ( auto pRuler : _PreviousMonarchs )
+    {
+        nOutcome += pRuler->GetID().GetID();
+    }
+
+    nOutcome = nOutcome % 100;
+
+    return nOutcome;
+}
+```
