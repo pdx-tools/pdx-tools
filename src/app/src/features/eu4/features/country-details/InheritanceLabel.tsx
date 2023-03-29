@@ -166,7 +166,7 @@ export const InheritanceLabel = ({
           ) : (
             <p>
               Inheritance occurs when the inheritance chance (shown in game) is
-              greater than inheritance value ({inheritance.inheritance_value})
+              greater than inheritance value ({inheritance.pu_inheritance_value})
             </p>
           )}
 
