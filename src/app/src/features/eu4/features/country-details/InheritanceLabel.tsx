@@ -102,7 +102,13 @@ export const InheritanceLabel = ({
               </tr>
               <tr className="bg-gray-200">
                 <td>Subtotal</td>
-                <td>{formatInt(inheritance.subtotal)}</td>
+                <td>
+                  {formatInt(
+                    isJuniorParter
+                      ? inheritance.pu_subtotal
+                      : inheritance.subtotal
+                  )}
+                </td>
               </tr>
               <tr>
                 <td>Save year</td>
@@ -166,7 +172,8 @@ export const InheritanceLabel = ({
           ) : (
             <p>
               Inheritance occurs when the inheritance chance (shown in game) is
-              greater than inheritance value ({inheritance.pu_inheritance_value})
+              greater than inheritance value ({inheritance.pu_inheritance_value}
+              )
             </p>
           )}
 

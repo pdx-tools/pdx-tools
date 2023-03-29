@@ -149,6 +149,7 @@ export interface Inheritance {
   inheritance_value: number;
   pu_inheritance_value: number;
   subtotal: number;
+  pu_subtotal: number;
   calculations: {
     hre: {
       emperor_tag: string;
