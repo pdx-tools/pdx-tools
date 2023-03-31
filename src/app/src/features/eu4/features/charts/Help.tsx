@@ -85,12 +85,12 @@ export const Help = ({ module }: HelpProps) => {
         <>
           <p>
             The health grid depicts multiple facets of a nation in a single
-            view. Since each facet has a different range of values: (eg:
-            prestige: [-100, 100], power projection: [0, 100], treasury: (-inf,
-            inf), corruption: [0, 100]) and different interpretation of the
-            ranges: (eg: a prestige of 100 is good while a corruption of 100 is
-            horrible), this visualization abstracts away the concrete values in
-            favor of a color representing good (blue) or bad (red).
+            view. Since each facet has a different range of values: (eg: income
+            [0, inf) treasury: (-inf, inf), corruption: [0, 100]) and different
+            interpretation of the ranges: (eg: professionalism of 100 is good
+            while a corruption of 100 is horrible), this visualization abstracts
+            away the concrete values in favor of a color representing good
+            (blue) or bad (red).
           </p>
           <p>
             Several of the facets are relative to other nations in the health
@@ -106,46 +106,6 @@ export const Help = ({ module }: HelpProps) => {
             major war breaks out plunging many nations into a deficient, then a
             small deficient won't be colored so harshly.
           </p>
-          <p>Below are definitions of some of the fields</p>
-          <dl>
-            <dt>pp</dt>
-            <dd>"pp" is short for power projection</dd>
-
-            <dt>treasury</dt>
-            <dd>
-              Treasury is calculated by taking the countries current balance and
-              subtracting any outstanding debt. Treasury color is relative to
-              other countries in the grid
-            </dd>
-
-            <dt>inflation</dt>
-            <dd>
-              Inflation is considered good to neutral until 15 when it starts
-              turning bad (capped at 30)
-            </dd>
-
-            <dt>corruption</dt>
-            <dd>
-              Corruption is considered good to neutral until 10 when it starts
-              turning bad (capped at 20)
-            </dd>
-
-            <dt>manpower</dt>
-            <dd>
-              Manpower is calculated by taking the countries current manpower
-              reserves and subtracting men needed for reinforcements. Manpower
-              color is relative to other countries in the grid
-            </dd>
-
-            <dt>adm / dip / mil tech</dt>
-            <dd>
-              Administration (adm), Diplomatic (dip), and Military (mil) tech
-              are calculated relative to the other countries in the grid. A
-              country's tech is considered good to neutral while it is less than
-              3 techs behind the leader. More than 3 techs behind is considered
-              bad (capped at 6 behind)
-            </dd>
-          </dl>
         </>
       );
     }
