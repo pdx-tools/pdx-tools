@@ -8,8 +8,8 @@ use eu4save::{
     eu4_start_date,
     file::Eu4Binary,
     models::{
-        Country, CountryColors, CountryEvent, Eu4Save, GameplayOptions, Province, ProvinceEvent,
-        ProvinceEventValue, WarEvent,
+        Country, CountryColors, CountryEvent, CountryTechnology, Eu4Save, GameplayOptions, Leader,
+        Province, ProvinceEvent, ProvinceEventValue, WarEvent,
     },
     query::{
         BuildingConstruction, CountryExpenseLedger, CountryIncomeLedger, LedgerPoint,
@@ -136,26 +136,6 @@ pub enum ProvinceHistoryEventKind {
     Owner(LocalizedTag),
     Constructed(GfxObj),
     Demolished(GfxObj),
-}
-
-#[derive(Serialize, Clone, Debug)]
-pub struct HealthData {
-    pub data: Vec<LocalizedHealthDatum>,
-}
-
-#[derive(Serialize, Clone, Debug)]
-pub struct HealthDatum {
-    pub tag: CountryTag,
-    pub color: i16,
-    pub value: i32,
-    pub value_type: String,
-}
-
-#[derive(Serialize, Clone, Debug)]
-pub struct LocalizedHealthDatum {
-    #[serde(flatten)]
-    pub datum: HealthDatum,
-    pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -456,7 +436,7 @@ impl SaveFile {
 
     pub fn get_health(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.get_health(payload))
+        self.0.get_health(payload)
     }
 
     pub fn get_countries(&self) -> JsValue {
@@ -1348,7 +1328,37 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn get_health(&self, payload: TagFilterPayloadRaw) -> HealthData {
+    pub fn get_health(&self, payload: TagFilterPayloadRaw) -> JsValue {
+        struct CountryHealthDatum {
+            tag: CountryTag,
+            name: String,
+
+            // economy
+            core_income: f32,
+            treasury_balance: f32,
+            development: f32,
+            buildings: usize,
+            inflation: f32,
+
+            // army
+            best_general: Option<Leader>,
+            army_tradition: f32,
+            manpower_balance: f32,
+            standard_regiments: usize,
+            professionalism: f32,
+
+            // navy
+            best_admiral: Option<Leader>,
+            navy_tradition: f32,
+            ships: usize,
+
+            // other
+            stability: f32,
+            technology: CountryTechnology,
+            ideas: i32,
+            corruption: f32,
+        }
+
         let sgq = SaveGameQuery::new(&self.query, &self.game);
         let tags = self.filter_stored_tags(payload, 30);
         let countries: Vec<_> = self
@@ -1358,208 +1368,370 @@ impl SaveFileImpl {
             .countries
             .iter()
             .filter(|(tag, country)| country.num_of_cities > 0 && tags.contains(tag))
-            .collect();
+            .map(|(tag, country)| {
+                let income = self.query.country_income_breakdown(country);
+                let core_income = income.taxation + income.production + income.trade + income.gold;
 
-        let max_development = countries
-            .iter()
-            .map(|(_, x)| x.development)
-            .fold(f32::NEG_INFINITY, |a, b| a.max(b));
+                let loan_total = country.loans.iter().map(|x| x.amount).sum::<i32>() as f32;
+                let treasury_balance = country.treasury - loan_total;
 
-        let max_dip_tech = countries
-            .iter()
-            .map(|(_, x)| x.technology.dip_tech)
-            .max()
-            .unwrap_or(0) as i16;
+                let buildings = self
+                    .query
+                    .save()
+                    .game
+                    .provinces
+                    .values()
+                    .filter(|x| x.owner.as_ref().map_or(false, |o| o == tag))
+                    .map(|x| x.buildings.len())
+                    .sum::<usize>();
 
-        let max_adm_tech = countries
-            .iter()
-            .map(|(_, x)| x.technology.adm_tech)
-            .max()
-            .unwrap_or(0) as i16;
+                let active_leaders: HashSet<_> = country.leaders.iter().map(|x| x.id).collect();
 
-        let max_mil_tech = countries
-            .iter()
-            .map(|(_, x)| x.technology.mil_tech)
-            .max()
-            .unwrap_or(0) as i16;
+                let (best_general, best_admiral) = country
+                    .history
+                    .events
+                    .iter()
+                    .filter_map(|(_, event)| event.as_leader())
+                    .filter(|leader| {
+                        leader
+                            .id
+                            .as_ref()
+                            .map_or(false, |x| active_leaders.contains(&x.id))
+                    })
+                    .fold((None, None), |(general, admiral), leader| {
+                        match leader.kind {
+                            eu4save::models::LeaderKind::General
+                            | eu4save::models::LeaderKind::Conquistador => {
+                                if general.map_or(true, |b: &eu4save::models::Leader| {
+                                    leader.fire + leader.shock + leader.manuever + leader.siege
+                                        > b.fire + b.shock + b.manuever + b.siege
+                                }) {
+                                    (Some(leader), admiral)
+                                } else {
+                                    (general, admiral)
+                                }
+                            }
+                            eu4save::models::LeaderKind::Admiral
+                            | eu4save::models::LeaderKind::Explorer => {
+                                if admiral.map_or(true, |b: &eu4save::models::Leader| {
+                                    leader.fire + leader.shock + leader.manuever
+                                        > b.fire + b.shock + b.manuever
+                                }) {
+                                    (general, Some(leader))
+                                } else {
+                                    (general, admiral)
+                                }
+                            }
+                        }
+                    });
 
-        let manpower: Vec<_> = countries
-            .iter()
-            .map(|(_, x)| {
-                x.manpower
-                    - x.armies
-                        .iter()
-                        .flat_map(|a| a.regiments.iter().map(|r| (1.0 - r.strength)))
-                        .sum::<f32>()
+                let ships = country.navies.iter().flat_map(|x| x.ships.iter()).count();
+
+                let (regiment_count, regiment_strength) = country
+                    .armies
+                    .iter()
+                    .flat_map(|x| x.regiments.iter())
+                    .fold((0, 0.), |(count, strength), reg| {
+                        (count + 1, reg.strength + strength)
+                    });
+                let manpower_deficiet = (regiment_count as f32) - regiment_strength;
+                let manpower_balance = (country.manpower - manpower_deficiet) * 1000.0;
+
+                let ideas = country
+                    .active_idea_groups
+                    .iter()
+                    .map(|(_name, count)| i32::from(*count))
+                    .sum::<i32>();
+
+                CountryHealthDatum {
+                    tag: *tag,
+                    name: sgq.localize_country(tag),
+                    core_income,
+                    treasury_balance,
+                    development: country.development,
+                    buildings,
+                    inflation: country.inflation,
+                    best_general: best_general.cloned(),
+                    army_tradition: country.army_tradition,
+                    manpower_balance,
+                    standard_regiments: regiment_count,
+                    professionalism: country.army_professionalism,
+                    best_admiral: best_admiral.cloned(),
+                    navy_tradition: country.navy_tradition,
+                    ships,
+                    stability: country.stability,
+                    technology: country.technology.clone(),
+                    ideas,
+                    corruption: country.corruption,
+                }
             })
             .collect();
-        let min_manpower = manpower
-            .iter()
-            .fold(f32::INFINITY, |a, &b| a.min(b))
-            .min(-1.0);
-        let max_manpower = manpower
-            .iter()
-            .fold(f32::NEG_INFINITY, |a, &b| a.max(b))
-            .max(1.0);
 
-        let sailors: Vec<_> = countries
+        let max_income = countries.iter().map(|x| x.core_income).fold(0., f32::max);
+        let max_treasury_balance = countries
             .iter()
-            .map(|(_, x)| {
-                x.sailors
-                    - x.navies
-                        .iter()
-                        .flat_map(|a| a.ships.iter().map(|r| (1.0 - r.strength)))
-                        .sum::<f32>()
-            })
-            .collect();
-        let min_sailors = sailors
+            .map(|x| x.treasury_balance)
+            .fold(0., f32::max);
+        let min_treasury_balance = countries
             .iter()
-            .fold(f32::INFINITY, |a, &b| a.min(b))
-            .min(-1.0);
-        let max_sailors = sailors
-            .iter()
-            .fold(f32::NEG_INFINITY, |a, &b| a.max(b))
-            .max(1.0);
+            .map(|x| x.treasury_balance)
+            .fold(0., f32::min);
 
-        let treasuries: Vec<_> = countries
-            .iter()
-            .map(|(_, x)| x.treasury - (x.loans.iter().map(|x| x.amount).sum::<i32>() as f32))
-            .collect();
-        let min_treasury = treasuries.iter().fold(f32::INFINITY, |a, &b| a.min(b));
-        let min_treasury = min_treasury.min(-1.0);
-        let max_treasury = treasuries.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
-        let max_treasury = max_treasury.max(1.0);
+        let max_development = countries.iter().map(|x| x.development).fold(100., f32::max);
+        let max_buildings = countries.iter().map(|x| x.buildings).fold(0, usize::max);
+        let max_inflation = countries.iter().map(|x| x.inflation).fold(20., f32::max);
 
+        let best_general = countries
+            .iter()
+            .filter_map(|x| x.best_general.as_ref())
+            .map(|x| x.fire + x.shock + x.manuever + x.siege)
+            .fold(10, u16::max) as f32;
+
+        let max_manpower_balance = countries
+            .iter()
+            .map(|x| x.manpower_balance)
+            .fold(0., f32::max);
+
+        let min_manpower_balance = countries
+            .iter()
+            .map(|x| x.manpower_balance)
+            .fold(0., f32::min);
+
+        let max_standard_regiments = countries
+            .iter()
+            .map(|x| x.standard_regiments)
+            .fold(0, usize::max);
+
+        let best_admiral = countries
+            .iter()
+            .filter_map(|x| x.best_admiral.as_ref())
+            .map(|x| x.fire + x.shock + x.manuever)
+            .fold(10, u16::max) as f32;
+        let max_ships = countries.iter().map(|x| x.ships).fold(0, usize::max);
+
+        let max_tech = countries
+            .iter()
+            .map(|x| x.technology.adm_tech + x.technology.dip_tech + x.technology.mil_tech)
+            .fold(0, u8::max);
+
+        let max_ideas = countries.iter().map(|x| x.ideas).fold(0, i32::max);
+        let max_corruption = countries.iter().map(|x| x.inflation).fold(15., f32::max);
+
+        #[derive(Serialize, Clone, Debug)]
+        struct HealthDatum {
+            color: u8,
+            value: f32,
+        }
+
+        #[derive(Serialize, Clone, Debug)]
+        struct LeaderDatum {
+            color: u8,
+            value: f32,
+            fire: u16,
+            shock: u16,
+            manuever: u16,
+            siege: u16,
+        }
+
+        #[derive(Serialize, Clone, Debug)]
+        struct HealthTechnology {
+            color: u8,
+            value: f32,
+            adm: u8,
+            dip: u8,
+            mil: u8,
+        }
+
+        #[derive(Serialize, Clone, Debug)]
+        #[serde(rename_all = "camelCase")]
+        struct CountryHealth {
+            tag: CountryTag,
+            name: String,
+
+            // economy
+            core_income: HealthDatum,
+            treasury_balance: HealthDatum,
+            development: HealthDatum,
+            buildings: HealthDatum,
+            inflation: HealthDatum,
+
+            // army
+            best_general: LeaderDatum,
+            army_tradition: HealthDatum,
+            manpower_balance: HealthDatum,
+            standard_regiments: HealthDatum,
+            professionalism: HealthDatum,
+
+            // navy
+            best_admiral: LeaderDatum,
+            navy_tradition: HealthDatum,
+            ships: HealthDatum,
+
+            // other
+            stability: HealthDatum,
+            technology: HealthTechnology,
+            ideas: HealthDatum,
+            corruption: HealthDatum,
+        }
+
+        // 0 is dark red / 15 is dark blue
+        let blue_max = 15.0;
+        let blue_min = 7.0;
         let health: Vec<_> = countries
-            .iter()
-            .flat_map(|(tag, country)| {
-                let tag = *tag;
-                let treasury: f32 =
-                    country.treasury - (country.loans.iter().map(|x| x.amount).sum::<i32>() as f32);
-                let treasury_color = if treasury < 0.0 {
-                    (-100.0 / min_treasury) * treasury
+            .into_iter()
+            .map(|country| {
+                let treasury_balance_color = if country.treasury_balance > 0. {
+                    country.treasury_balance * (blue_max - blue_min) / (max_treasury_balance)
+                        + blue_min
                 } else {
-                    (100.0 / max_treasury) * treasury
+                    blue_min - (country.treasury_balance * blue_min / min_treasury_balance)
                 };
 
-                let manpower: f32 = country.manpower
-                    - country
-                        .armies
-                        .iter()
-                        .flat_map(|a| a.regiments.iter().map(|r| (1.0 - r.strength)))
-                        .sum::<f32>();
-                let manpower_color = if manpower < 0.0 {
-                    (-100.0 / min_manpower) * manpower
+                let manpower_balance_color = if country.manpower_balance > 0. {
+                    country.manpower_balance * (blue_max - blue_min) / (max_manpower_balance)
+                        + blue_min
                 } else {
-                    (100.0 / max_manpower) * manpower
+                    blue_min - (country.manpower_balance * blue_min / min_manpower_balance)
                 };
 
-                let sailors: f32 = country.sailors
-                    - country
-                        .navies
-                        .iter()
-                        .flat_map(|a| a.ships.iter().map(|r| (1.0 - r.strength)))
-                        .sum::<f32>();
-                let sailor_color = if sailors < 0.0 {
-                    (-100.0 / min_sailors) * sailors
-                } else {
-                    (100.0 / max_sailors) * sailors
-                };
+                let tech_total = (country.technology.adm_tech
+                    + country.technology.dip_tech
+                    + country.technology.mil_tech) as f32;
 
-                vec![
-                    HealthDatum {
-                        tag,
-                        color: country.prestige.round() as i16,
-                        value: country.prestige.round() as i32,
-                        value_type: String::from("prestige"),
+                CountryHealth {
+                    tag: country.tag,
+                    name: country.name,
+                    core_income: HealthDatum {
+                        value: country.core_income,
+                        color: (country.core_income * blue_max / max_income) as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: country.stability as i16 * 33,
-                        value: country.stability as i32,
-                        value_type: String::from("stability"),
+                    treasury_balance: HealthDatum {
+                        value: country.treasury_balance,
+                        color: treasury_balance_color as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: country.current_power_projection as i16,
-                        value: country.current_power_projection as i32,
-                        value_type: String::from("pp"),
+                    development: HealthDatum {
+                        value: country.development,
+                        color: (country.development * blue_max / max_development) as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: (country.development / max_development * 100.0) as i16,
-                        value: country.development as i32,
-                        value_type: String::from("development"),
+                    buildings: HealthDatum {
+                        value: country.buildings as f32,
+                        color: (country.buildings as f32 * blue_max / max_buildings as f32) as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: treasury_color as i16,
-                        value: treasury as i32,
-                        value_type: String::from("treasury"),
+                    inflation: HealthDatum {
+                        value: country.inflation,
+                        color: (blue_max - (country.inflation * blue_max / max_inflation)) as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: -(-100.0 + (200.0 / 30.0) * country.inflation.min(30.0)) as i16,
-                        value: country.inflation as i32,
-                        value_type: String::from("inflation"),
+                    best_general: country
+                        .best_general
+                        .map(|x| {
+                            let total = (x.fire + x.shock + x.manuever + x.siege) as f32;
+                            LeaderDatum {
+                                value: total,
+                                fire: x.fire,
+                                shock: x.shock,
+                                manuever: x.manuever,
+                                siege: x.siege,
+                                color: ((12. - (best_general - total).min(12.)) * (blue_max / 12.))
+                                    as u8,
+                            }
+                        })
+                        .unwrap_or_else(|| LeaderDatum {
+                            value: 0.,
+                            fire: 0,
+                            shock: 0,
+                            manuever: 0,
+                            siege: 0,
+                            color: 0,
+                        }),
+
+                    army_tradition: HealthDatum {
+                        value: country.army_tradition,
+                        color: (country.army_tradition * blue_max / 100.) as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: -(-100.0 + (200.0 / 20.0) * country.corruption.min(20.0)) as i16,
-                        value: country.corruption as i32,
-                        value_type: String::from("corruption"),
+
+                    manpower_balance: HealthDatum {
+                        value: country.manpower_balance,
+                        color: manpower_balance_color as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: manpower_color as i16,
-                        value: (manpower * 1000.0) as i32,
-                        value_type: String::from("manpower"),
+
+                    standard_regiments: HealthDatum {
+                        value: country.standard_regiments as f32,
+                        color: (country.standard_regiments as f32 * blue_max
+                            / max_standard_regiments as f32) as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: sailor_color as i16,
-                        value: (sailors) as i32,
-                        value_type: String::from("sailors"),
+
+                    professionalism: HealthDatum {
+                        value: country.professionalism,
+                        color: (country.professionalism * blue_max) as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: (country.technology.adm_tech as i16 - max_adm_tech + 3) * 33,
-                        value: country.technology.adm_tech as i32,
-                        value_type: String::from("adm tech"),
+
+                    best_admiral: country
+                        .best_admiral
+                        .map(|x| {
+                            let total = (x.fire + x.shock + x.manuever) as f32;
+                            LeaderDatum {
+                                value: total,
+                                fire: x.fire,
+                                shock: x.shock,
+                                manuever: x.manuever,
+                                siege: x.siege,
+                                color: ((9. - (best_admiral - total).min(9.)) * (blue_max / 9.))
+                                    as u8,
+                            }
+                        })
+                        .unwrap_or_else(|| LeaderDatum {
+                            value: 0.,
+                            fire: 0,
+                            shock: 0,
+                            manuever: 0,
+                            siege: 0,
+                            color: 0,
+                        }),
+
+                    navy_tradition: HealthDatum {
+                        value: country.navy_tradition,
+                        color: (country.navy_tradition * blue_max / 100.) as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: (country.technology.dip_tech as i16 - max_dip_tech + 3) * 33,
-                        value: country.technology.dip_tech as i32,
-                        value_type: String::from("dip tech"),
+
+                    ships: HealthDatum {
+                        value: country.ships as f32,
+                        color: (country.ships as f32 * blue_max / max_ships as f32) as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: (country.technology.mil_tech as i16 - max_mil_tech + 3) * 33,
-                        value: country.technology.mil_tech as i32,
-                        value_type: String::from("mil tech"),
+
+                    stability: HealthDatum {
+                        value: country.stability,
+                        color: ((country.stability - -3.) * blue_max / (3. - -3.)) as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: country.innovativeness as i16,
-                        value: country.innovativeness as i32,
-                        value_type: String::from("innovativeness"),
+
+                    ideas: HealthDatum {
+                        value: country.ideas as f32,
+                        color: ((12. - ((max_ideas - country.ideas).min(12) as f32))
+                            * (blue_max / 12.)) as u8,
                     },
-                    HealthDatum {
-                        tag,
-                        color: -(-100.0 + (200.0 / 20.0) * country.overextension.min(20.0)) as i16,
-                        value: country.overextension as i32,
-                        value_type: String::from("overextension"),
+
+                    technology: HealthTechnology {
+                        value: tech_total,
+                        adm: country.technology.adm_tech,
+                        dip: country.technology.dip_tech,
+                        mil: country.technology.mil_tech,
+                        color: ((12. - ((max_tech as f32) - tech_total).min(12.))
+                            * (blue_max / 12.)) as u8,
                     },
-                ]
-            })
-            .map(|datum| LocalizedHealthDatum {
-                name: sgq.localize_country(&datum.tag),
-                datum,
+
+                    corruption: HealthDatum {
+                        value: country.corruption,
+                        color: (blue_max - (country.corruption * blue_max / max_corruption)) as u8,
+                    },
+                }
             })
             .collect();
 
-        HealthData { data: health }
+        #[derive(Serialize, Clone, Debug)]
+        struct HealthData {
+            data: Vec<CountryHealth>,
+        }
+
+        to_json_value(&HealthData { data: health })
     }
 
     pub fn get_province_details(&self, province_id: u16) -> Option<ProvinceDetails> {

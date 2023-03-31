@@ -236,8 +236,7 @@ export function eu4GetAnnualInflationData(
 }
 
 export function eu4GetHealth(filter: CountryMatcher): HealthData {
-  const data = wasm.save.get_health(filter) as HealthData;
-  return data;
+  return wasm.save.get_health(filter) as HealthData;
 }
 
 export function eu4GetCountriesIncome(

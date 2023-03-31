@@ -73,15 +73,49 @@ export interface LedgerDatum {
 }
 
 export interface HealthData {
-  data: HealthDatum[];
+  data: CountryHealth[];
+}
+
+export interface CountryHealth {
+  tag: string;
+  name: string;
+  coreIncome: HealthDatum;
+  treasuryBalance: HealthDatum;
+  development: HealthDatum;
+  buildings: HealthDatum;
+  inflation: HealthDatum;
+  bestGeneral: LeaderHealth;
+  armyTradition: HealthDatum;
+  manpowerBalance: HealthDatum;
+  standardRegiments: HealthDatum;
+  professionalism: HealthDatum;
+  bestAdmiral: LeaderHealth;
+  navyTradition: HealthDatum;
+  ships: HealthDatum;
+  stability: HealthDatum;
+  technology: {
+    color: number;
+    value: number;
+    adm: number;
+    dip: number;
+    mil: number;
+  };
+  ideas: HealthDatum;
+  corruption: HealthDatum;
+}
+
+export interface LeaderHealth {
+  color: number;
+  value: number;
+  fire: number;
+  shock: number;
+  manuever: number;
+  siege: number;
 }
 
 export interface HealthDatum {
-  tag: string;
-  name: string;
   color: number;
   value: number;
-  value_type: string;
 }
 
 export interface IronmanAchievements {

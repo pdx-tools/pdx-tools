@@ -2,7 +2,6 @@ import dynamic from "next/dynamic";
 import React, { ComponentType } from "react";
 import type {
   LineConfig as LineConfigImpl,
-  HeatmapConfig,
   PieConfig,
   BarConfig,
   Treemap as TreemapImpl,
@@ -30,13 +29,6 @@ export const LineImpl: ComponentType<LineConfigImpl> = React.memo(
 export const Line = ({ ...props }: LineConfig) => {
   return <LineImpl {...props} />;
 };
-
-export const Heatmap: ComponentType<HeatmapConfig> = React.memo(
-  dynamic(() => import("@ant-design/plots").then((mod) => mod.Heatmap), {
-    ssr: false,
-    loading: () => <VisualizationLoader />,
-  })
-);
 
 export const Pie: ComponentType<PieConfig> = React.memo(
   dynamic(() => import("@ant-design/plots").then((mod) => mod.Pie), {
@@ -70,4 +62,4 @@ export {
 export * from "./LegendColor";
 export * from "./PieTable";
 
-export type { LineConfig, HeatmapConfig, PieConfig, BarConfig };
+export type { LineConfig, PieConfig, BarConfig };
