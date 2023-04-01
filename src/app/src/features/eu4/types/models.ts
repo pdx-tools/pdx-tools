@@ -223,6 +223,10 @@ export type DiplomacyEntry = {
       subject_type: string;
     }
   | {
+      kind: "JuniorPartner";
+      pu_inheritance_value: number;
+    }
+  | {
       kind:
         | "Alliance"
         | "RoyalMarriage"

@@ -158,6 +158,9 @@ pub enum DiplomacyKind {
     Dependency {
         subject_type: String,
     },
+    JuniorPartner {
+        pu_inheritance_value: u8,
+    },
     Alliance,
     RoyalMarriage,
     Warning,
@@ -321,13 +324,27 @@ impl SaveFileImpl {
             .dependencies
             .iter()
             .filter(|x| x.first == country_tag || x.second == country_tag)
-            .map(|x| DiplomacyEntry {
-                first: self.localize_tag(x.first),
-                second: self.localize_tag(x.second),
-                start_date: x.start_date,
-                kind: DiplomacyKind::Dependency {
-                    subject_type: x.subject_type.clone(),
-                },
+            .map(|x| {
+                let kind = if x.subject_type == "personal_union" && x.first == country_tag {
+                    DiplomacyKind::JuniorPartner {
+                        pu_inheritance_value: self
+                            .query
+                            .save_country(&x.second)
+                            .map(|x| self.query.inherit(&x).pu_inheritance_value)
+                            .unwrap_or_default(),
+                    }
+                } else {
+                    DiplomacyKind::Dependency {
+                        subject_type: x.subject_type.clone(),
+                    }
+                };
+
+                DiplomacyEntry {
+                    first: self.localize_tag(x.first),
+                    second: self.localize_tag(x.second),
+                    start_date: x.start_date,
+                    kind,
+                }
             });
 
         diplomacy_entries.extend(dependencies);

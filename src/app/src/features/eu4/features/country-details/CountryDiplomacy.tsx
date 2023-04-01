@@ -74,10 +74,8 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
     () =>
       details.diplomacy
         .filter(
-          (x) =>
-            x.kind === "Dependency" &&
-            x.first.tag == details.tag &&
-            x.subject_type === "personal_union"
+          (x): x is DiplomacyEntry & { pu_inheritance_value: number } =>
+            x.kind === "JuniorPartner"
         )
         .map((x) => ({ ...x, ...notMe(x) })),
     [details, notMe]
@@ -270,7 +268,17 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         </DiploRow>
 
         <DiploRow title="Junior Partners" relations={juniorPartners}>
-          {(x) => <RelationshipSince x={x} />}
+          {(x) => (
+            <div>
+              <p className="m-0 text-sm">{`${x.name} (${x.tag})`}</p>
+              <p className="m-0 text-sm">
+                Inheritance Value: {x.pu_inheritance_value}
+              </p>
+              {x.start_date && (
+                <p className="m-0 text-sm">Since: {x.start_date}</p>
+              )}
+            </div>
+          )}
         </DiploRow>
 
         <DiploRow title="Warning" relations={warned}>
