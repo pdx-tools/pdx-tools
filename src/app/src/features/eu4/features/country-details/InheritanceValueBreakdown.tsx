@@ -2,28 +2,26 @@ import { Button, Drawer, Tooltip } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { CountryDetails } from "../../types/models";
-import classes from "./InheritanceLabel.module.css";
+import classes from "./InheritanceValueBreakdown.module.css";
 import { useIsJuniorPartner } from "./detailHooks";
 import { useEu4Meta } from "../../store";
 import { formatInt } from "@/lib/format";
 
 export interface InheranticeLabelProps {
-  isJuniorPartner: boolean;
   details: CountryDetails;
 }
 
-export const InheritanceLabel = ({
+export const InheritanceValueBreakdown = ({
   details,
-  isJuniorPartner,
 }: InheranticeLabelProps) => {
-  const { inheritance, tag, num_cities } = details;
+  const { inheritance } = details;
   const [drawerVisible, setDrawerVisible] = useState(false);
   const meta = useEu4Meta();
   const saveYear = +meta.date.split("-")[0];
   const isJuniorParter = useIsJuniorPartner(details);
 
   return (
-    <div className="flex items-center gap-2">
+    <>
       <Drawer
         placement="right"
         closable={true}
@@ -190,11 +188,10 @@ export const InheritanceLabel = ({
           </p>
         </div>
       </Drawer>
-      <div>Inheritance</div>
       <Button
         onClick={() => setDrawerVisible(true)}
         icon={<QuestionCircleOutlined />}
       />
-    </div>
+    </>
   );
 };

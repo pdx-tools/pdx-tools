@@ -148,7 +148,18 @@ export interface CountryInfo {
 
 export interface CountryDetails {
   tag: string;
-  ruler: Ruler;
+  ruler: {
+    name: string;
+    ascended: string;
+    reign_years: number;
+    age: number;
+    culture: string;
+    religion: string;
+    personalities: LocalizedObj[];
+    adm: number;
+    dip: number;
+    mil: number;
+  };
   base_tax: number;
   development: number;
   raw_development: number;
@@ -157,6 +168,8 @@ export interface CountryDetails {
   treasury: number;
   inflation: number;
   corruption: number;
+  overextension: number;
+  innovativeness: number;
   religion: string;
   primary_culture: string;
   technology: Technology;
@@ -171,6 +184,28 @@ export interface CountryDetails {
   ideas: [string, number][];
   inheritance: Inheritance;
   diplomacy: DiplomacyEntry[];
+  best_general: CountryLeader | undefined;
+  best_admiral: CountryLeader | undefined;
+  infantry_units: LandUnitStrength;
+  cavalry_units: LandUnitStrength;
+  artillery_units: LandUnitStrength;
+  mercenary_units: number;
+  heavy_ship_units: number;
+  light_ship_units: number;
+  galley_units: number;
+  transport_units: number;
+  manpower: number;
+  max_manpower: number;
+  professionalism: number;
+  army_tradition: number;
+  navy_tradition: number;
+  power_projection: number;
+  religious_unity: number;
+}
+
+export interface LandUnitStrength {
+  count: number;
+  strength: number;
 }
 
 export interface Inheritance {
@@ -307,10 +342,6 @@ export interface CountryExpenseLedger {
 
 export type LocalizedCountryExpense = {
   expenses: CountryExpenseLedger;
-  name: string;
-};
-
-export type Ruler = MonarchStats & {
   name: string;
 };
 

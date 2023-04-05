@@ -67,6 +67,41 @@ table Religion {
   color: Rgb (required);
 }
 
+enum LandUnitKind: ubyte {
+  Infantry,
+  Cavalry,
+  Artillery,
+}
+
+table LandUnit {
+  name: string (key, required);
+  kind: LandUnitKind;
+  maneuver: ubyte;
+  offensive_morale: ubyte;
+  defensive_morale: ubyte;
+  offensive_fire: ubyte;
+  defensive_fire: ubyte;
+  offensive_shock: ubyte;
+  defensive_shock: ubyte;
+}
+
+enum NavalUnitKind: ubyte {
+  HeavyShip,
+  LightShip,
+  Galley,
+  Transport,
+}
+
+table NavalUnit {
+  name: string (key, required);
+  kind: NavalUnitKind;
+  hull_size: ubyte;
+  base_cannons: ubyte;
+  blockade: ubyte;
+  sail_speed: float;
+  sailors: uint16;
+}
+
 table Game {
   countries:[Country];
 
@@ -85,6 +120,8 @@ table Game {
   personalities:[EntryString];
   advisors:[EntryString];
   religions:[Religion];
+  land_units:[LandUnit];
+  naval_units:[NavalUnit];
 }
 
 root_type Game;

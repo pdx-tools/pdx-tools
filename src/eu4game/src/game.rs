@@ -17,6 +17,33 @@ pub struct GameReligion<'a> {
 }
 
 #[derive(Debug)]
+pub struct LandUnit<'a> {
+    pub name: &'a str,
+    pub kind: LandUnitKind,
+}
+
+#[derive(Debug)]
+pub enum LandUnitKind {
+    Infantry,
+    Cavalry,
+    Artillery,
+}
+
+#[derive(Debug)]
+pub struct NavalUnit<'a> {
+    pub name: &'a str,
+    pub kind: NavalUnitKind,
+}
+
+#[derive(Debug)]
+pub enum NavalUnitKind {
+    HeavyShip,
+    LightShip,
+    Galley,
+    Transport,
+}
+
+#[derive(Debug)]
 pub struct EntryStringList<'a> {
     pub key: &'a str,
     pub list: Vec<&'a str>,
@@ -265,6 +292,29 @@ impl<'a> Game<'a> {
         self.areas()
             .flat_map(|(area, provs)| provs.map(move |p| (p, area)))
             .collect()
+    }
+
+    pub fn land_units(&self) -> impl Iterator<Item = LandUnit> {
+        self.data.land_units().unwrap().iter().map(|x| LandUnit {
+            name: x.name(),
+            kind: match x.kind() {
+                schemas::eu4::LandUnitKind::Cavalry => LandUnitKind::Cavalry,
+                schemas::eu4::LandUnitKind::Artillery => LandUnitKind::Artillery,
+                _ => LandUnitKind::Infantry,
+            },
+        })
+    }
+
+    pub fn naval_units(&self) -> impl Iterator<Item = NavalUnit> {
+        self.data.naval_units().unwrap().iter().map(|x| NavalUnit {
+            name: x.name(),
+            kind: match x.kind() {
+                schemas::eu4::NavalUnitKind::HeavyShip => NavalUnitKind::HeavyShip,
+                schemas::eu4::NavalUnitKind::LightShip => NavalUnitKind::LightShip,
+                schemas::eu4::NavalUnitKind::Galley => NavalUnitKind::Galley,
+                _ => NavalUnitKind::Transport,
+            },
+        })
     }
 }
 

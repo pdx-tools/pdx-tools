@@ -1,7 +1,7 @@
 use crate::{hex_color, to_json_value, LocalizedObj, LocalizedTag, SaveFileImpl};
 use eu4game::SaveGameQuery;
 use eu4save::{
-    models::{CountryEvent, CountryTechnology, Leader, LeaderKind, Province},
+    models::{Country, CountryEvent, CountryTechnology, Leader, LeaderKind, Province},
     query::{CountryExpenseLedger, CountryIncomeLedger, CountryManaUsage, Inheritance},
     CountryTag, Eu4Date, PdsDate, ProvinceId,
 };
@@ -20,10 +20,12 @@ pub struct CountryDetails {
     pub treasury: f32,
     pub inflation: f32,
     pub corruption: f32,
+    pub overextension: f32,
+    pub innovativeness: f32,
     pub religion: String,
     pub primary_culture: String,
     pub technology: CountryTechnology,
-    pub ruler: FrontendMonarch,
+    pub ruler: CountryMonarch,
     pub loans: usize,
     pub debt: i32,
     pub income: CountryIncomeLedger,
@@ -34,15 +36,44 @@ pub struct CountryDetails {
     pub ideas: Vec<(String, i32)>,
     pub num_cities: i32,
     pub inheritance: Inheritance,
+    pub best_general: Option<Leader>,
+    pub best_admiral: Option<Leader>,
     pub diplomacy: Vec<DiplomacyEntry>,
+    pub infantry_units: LandUnitStrength,
+    pub cavalry_units: LandUnitStrength,
+    pub artillery_units: LandUnitStrength,
+    pub mercenary_units: usize,
+    pub heavy_ship_units: usize,
+    pub light_ship_units: usize,
+    pub galley_units: usize,
+    pub transport_units: usize,
+    pub manpower: f32,
+    pub max_manpower: f32,
+    pub professionalism: f32,
+    pub army_tradition: f32,
+    pub navy_tradition: f32,
+    pub power_projection: f32,
+    pub religious_unity: f32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FrontendMonarch {
-    pub name: String,
-    pub adm: u16,
-    pub dip: u16,
-    pub mil: u16,
+#[derive(Serialize, Debug)]
+pub struct CountryMonarch {
+    name: String,
+    ascended: Eu4Date,
+    reign_years: i32,
+    age: i32,
+    culture: String,
+    religion: String,
+    personalities: Vec<LocalizedObj>,
+    adm: u16,
+    dip: u16,
+    mil: u16,
+}
+
+#[derive(Debug, Serialize, Default)]
+pub struct LandUnitStrength {
+    pub count: usize,
+    pub strength: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -208,48 +239,56 @@ impl SaveFileImpl {
         };
 
         let country = save_country.country;
-        let ruler = if let Some(ruler_id) = &country.monarch {
-            country
-                .history
-                .events
-                .iter()
-                .filter_map(|(_, x)| x.as_monarch())
-                .find(|x| x.id.id == ruler_id.id)
-                .map(|x| FrontendMonarch {
-                    name: x.name.clone(),
-                    adm: x.adm as u16,
-                    dip: x.dip as u16,
-                    mil: x.mil as u16,
-                })
-                .unwrap_or_else(|| FrontendMonarch {
-                    name: "Interregnum".to_string(),
-                    adm: 0,
-                    dip: 0,
-                    mil: 0,
-                })
-        } else {
-            country
-                .history
-                .events
-                .iter()
-                .filter_map(|(_, x)| match x {
-                    CountryEvent::Monarch(mon) => Some(mon),
-                    _ => None,
-                })
-                .last()
-                .map(|x| FrontendMonarch {
-                    name: x.name.clone(),
-                    adm: x.adm as u16,
-                    dip: x.dip as u16,
-                    mil: x.mil as u16,
-                })
-                .unwrap_or_else(|| FrontendMonarch {
-                    name: "Interregnum".to_string(),
-                    adm: 0,
-                    dip: 0,
-                    mil: 0,
-                })
-        };
+        let ruler = country
+            .history
+            .events
+            .iter()
+            .filter_map(|(date, event)| event.as_monarch().map(|x| (date, x)))
+            .find(|(_date, x)| {
+                country
+                    .monarch
+                    .as_ref()
+                    .map_or(true, |ruler| ruler.id == x.id.id)
+            })
+            .map(|(ascended, x)| CountryMonarch {
+                name: x.name.clone(),
+                ascended: *ascended,
+                reign_years: ascended.days_until(&self.query.save().meta.date) / 365,
+                age: x.birth_date.days_until(&self.query.save().meta.date) / 365,
+                culture: x
+                    .culture
+                    .as_ref()
+                    .map(|x| self.game.localize(x).unwrap_or(x))
+                    .map(String::from)
+                    .unwrap_or_else(|| String::from("unknown")),
+                religion: x
+                    .religion
+                    .clone()
+                    .unwrap_or_else(|| String::from("unknown")),
+                personalities: x
+                    .personalities
+                    .iter()
+                    .map(|(personality, _)| LocalizedObj {
+                        id: personality.clone(),
+                        name: self.game.localize_personality(personality),
+                    })
+                    .collect(),
+                adm: x.adm as u16,
+                dip: x.dip as u16,
+                mil: x.mil as u16,
+            })
+            .unwrap_or_else(|| CountryMonarch {
+                name: "Interregnum".to_string(),
+                ascended: Eu4Date::from_ymd(1, 1, 1),
+                reign_years: 0,
+                age: 0,
+                personalities: Vec::new(),
+                culture: String::from("unknown"),
+                religion: String::from("unknown"),
+                adm: 0,
+                dip: 0,
+                mil: 0,
+            });
 
         let religion = country
             .religion
@@ -314,6 +353,67 @@ impl SaveFileImpl {
             .iter()
             .map(|(name, v)| (name.clone(), i32::from(*v)))
             .collect();
+
+        let game_land_units: HashMap<_, _> =
+            self.game.land_units().map(|x| (x.name, x.kind)).collect();
+        let units = country
+            .armies
+            .iter()
+            .filter(|x| x.mercenary_company.is_none())
+            .flat_map(|x| x.regiments.iter())
+            .filter_map(|x| game_land_units.get(x._type.as_str()).map(|unit| (unit, x)));
+
+        let mut infantry = LandUnitStrength::default();
+        let mut cavalry = LandUnitStrength::default();
+        let mut artillery = LandUnitStrength::default();
+
+        for (unit, regiment) in units {
+            match unit {
+                eu4game::game::LandUnitKind::Infantry => {
+                    infantry.count += 1;
+                    infantry.strength += regiment.strength;
+                }
+                eu4game::game::LandUnitKind::Cavalry => {
+                    cavalry.count += 1;
+                    cavalry.strength += regiment.strength;
+                }
+                eu4game::game::LandUnitKind::Artillery => {
+                    artillery.count += 1;
+                    artillery.strength += regiment.strength;
+                }
+            }
+        }
+
+        let mercenary_units: usize = country
+            .armies
+            .iter()
+            .filter(|x| x.mercenary_company.is_some())
+            .map(|x| x.regiments.len())
+            .sum();
+
+        let game_naval_units: HashMap<_, _> =
+            self.game.naval_units().map(|x| (x.name, x.kind)).collect();
+        let ships = country
+            .navies
+            .iter()
+            .flat_map(|x| x.ships.iter())
+            .filter_map(|x| game_naval_units.get(x._type.as_str()).map(|unit| (unit, x)));
+
+        let mut heavy_ship = 0;
+        let mut light_ship = 0;
+        let mut galley = 0;
+        let mut transport = 0;
+
+        for (unit, _regiment) in ships {
+            match unit {
+                eu4game::game::NavalUnitKind::HeavyShip => heavy_ship += 1,
+                eu4game::game::NavalUnitKind::LightShip => light_ship += 1,
+                eu4game::game::NavalUnitKind::Galley => galley += 1,
+                eu4game::game::NavalUnitKind::Transport => transport += 1,
+            }
+        }
+
+        let (best_general, best_admiral) = country_best_leaders(country);
 
         let inheritance = self.query.inherit(&save_country);
 
@@ -455,6 +555,8 @@ impl SaveFileImpl {
             treasury: country.treasury,
             inflation: country.inflation,
             corruption: country.corruption,
+            overextension: country.overextension,
+            innovativeness: country.innovativeness,
             technology: country.technology.clone(),
             num_cities: country.num_of_cities,
             ideas,
@@ -469,6 +571,23 @@ impl SaveFileImpl {
             building_count: buildings,
             inheritance,
             diplomacy: diplomacy_entries,
+            best_admiral: best_admiral.cloned(),
+            best_general: best_general.cloned(),
+            infantry_units: infantry,
+            cavalry_units: cavalry,
+            artillery_units: artillery,
+            mercenary_units,
+            heavy_ship_units: heavy_ship,
+            light_ship_units: light_ship,
+            galley_units: galley,
+            transport_units: transport,
+            manpower: country.manpower,
+            max_manpower: country.max_manpower,
+            professionalism: country.army_professionalism,
+            army_tradition: country.army_tradition,
+            navy_tradition: country.navy_tradition,
+            power_projection: country.current_power_projection,
+            religious_unity: country.religious_unity,
         };
 
         to_json_value(&details)
@@ -1127,4 +1246,46 @@ impl SaveFileImpl {
         result.sort_unstable_by(|a, b| a.state.name.cmp(&b.state.name));
         result
     }
+}
+
+pub(crate) fn country_best_leaders(country: &Country) -> (Option<&Leader>, Option<&Leader>) {
+    let active_leaders: HashSet<_> = country.leaders.iter().map(|x| x.id).collect();
+
+    let (best_general, best_admiral) = country
+        .history
+        .events
+        .iter()
+        .filter_map(|(_, event)| event.as_leader())
+        .filter(|leader| {
+            leader
+                .id
+                .as_ref()
+                .map_or(false, |x| active_leaders.contains(&x.id))
+        })
+        .fold((None, None), |(general, admiral), leader| {
+            match leader.kind {
+                eu4save::models::LeaderKind::General
+                | eu4save::models::LeaderKind::Conquistador => {
+                    if general.map_or(true, |b: &eu4save::models::Leader| {
+                        leader.fire + leader.shock + leader.manuever + leader.siege
+                            > b.fire + b.shock + b.manuever + b.siege
+                    }) {
+                        (Some(leader), admiral)
+                    } else {
+                        (general, admiral)
+                    }
+                }
+                eu4save::models::LeaderKind::Admiral | eu4save::models::LeaderKind::Explorer => {
+                    if admiral.map_or(true, |b: &eu4save::models::Leader| {
+                        leader.fire + leader.shock + leader.manuever > b.fire + b.shock + b.manuever
+                    }) {
+                        (general, Some(leader))
+                    } else {
+                        (general, admiral)
+                    }
+                }
+            }
+        });
+
+    (best_general, best_admiral)
 }
