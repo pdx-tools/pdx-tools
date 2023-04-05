@@ -1385,46 +1385,7 @@ impl SaveFileImpl {
                     .map(|x| x.buildings.len())
                     .sum::<usize>();
 
-                let active_leaders: HashSet<_> = country.leaders.iter().map(|x| x.id).collect();
-
-                let (best_general, best_admiral) = country
-                    .history
-                    .events
-                    .iter()
-                    .filter_map(|(_, event)| event.as_leader())
-                    .filter(|leader| {
-                        leader
-                            .id
-                            .as_ref()
-                            .map_or(false, |x| active_leaders.contains(&x.id))
-                    })
-                    .fold((None, None), |(general, admiral), leader| {
-                        match leader.kind {
-                            eu4save::models::LeaderKind::General
-                            | eu4save::models::LeaderKind::Conquistador => {
-                                if general.map_or(true, |b: &eu4save::models::Leader| {
-                                    leader.fire + leader.shock + leader.manuever + leader.siege
-                                        > b.fire + b.shock + b.manuever + b.siege
-                                }) {
-                                    (Some(leader), admiral)
-                                } else {
-                                    (general, admiral)
-                                }
-                            }
-                            eu4save::models::LeaderKind::Admiral
-                            | eu4save::models::LeaderKind::Explorer => {
-                                if admiral.map_or(true, |b: &eu4save::models::Leader| {
-                                    leader.fire + leader.shock + leader.manuever
-                                        > b.fire + b.shock + b.manuever
-                                }) {
-                                    (general, Some(leader))
-                                } else {
-                                    (general, admiral)
-                                }
-                            }
-                        }
-                    });
-
+                let (best_general, best_admiral) = country_details::country_best_leaders(country);
                 let ships = country.navies.iter().flat_map(|x| x.ships.iter()).count();
 
                 let (regiment_count, regiment_strength) = country

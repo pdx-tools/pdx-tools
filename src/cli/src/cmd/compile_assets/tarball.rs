@@ -372,6 +372,68 @@ pub fn parse_game_dir(
         localization.push(entry);
     }
 
+    // UNITS
+    let units = extract_units(tmp_game_dir)?;
+    let mut land_units = Vec::new();
+    let mut naval_units = Vec::new();
+    for (unit_name, unit) in units {
+        let unit_name = buffer.create_string(&unit_name);
+        match unit._type {
+            UnitKind::Infantry | UnitKind::Cavalry | UnitKind::Artillery => {
+                let kind = match unit._type {
+                    UnitKind::Infantry => schemas::eu4::LandUnitKind::Infantry,
+                    UnitKind::Cavalry => schemas::eu4::LandUnitKind::Cavalry,
+                    UnitKind::Artillery => schemas::eu4::LandUnitKind::Artillery,
+                    _ => unreachable!(),
+                };
+
+                let unit = schemas::eu4::LandUnit::create(
+                    &mut buffer,
+                    &schemas::eu4::LandUnitArgs {
+                        name: Some(unit_name),
+                        kind,
+                        maneuver: unit.maneuver,
+                        offensive_morale: unit.offensive_morale,
+                        defensive_morale: unit.defensive_morale,
+                        offensive_fire: unit.offensive_fire,
+                        defensive_fire: unit.defensive_fire,
+                        offensive_shock: unit.offensive_shock,
+                        defensive_shock: unit.defensive_shock,
+                    },
+                );
+
+                land_units.push(unit);
+            }
+            _ => {
+                let kind = match unit._type {
+                    UnitKind::HeavyShip => schemas::eu4::NavalUnitKind::HeavyShip,
+                    UnitKind::LightShip => schemas::eu4::NavalUnitKind::LightShip,
+                    UnitKind::Galley => schemas::eu4::NavalUnitKind::Galley,
+                    UnitKind::Transport => schemas::eu4::NavalUnitKind::Transport,
+                    _ => unreachable!(),
+                };
+
+                let unit = schemas::eu4::NavalUnit::create(
+                    &mut buffer,
+                    &schemas::eu4::NavalUnitArgs {
+                        name: Some(unit_name),
+                        kind,
+                        hull_size: unit.hull_size,
+                        base_cannons: unit.base_cannons,
+                        blockade: unit.blockade,
+                        sail_speed: unit.sail_speed,
+                        sailors: unit.sailors,
+                    },
+                );
+
+                naval_units.push(unit);
+            }
+        }
+    }
+
+    let land_units = buffer.create_vector(&land_units);
+    let naval_units = buffer.create_vector(&naval_units);
+
     let localization = buffer.create_vector(&localization);
 
     // GAME
@@ -391,6 +453,8 @@ pub fn parse_game_dir(
             personalities: Some(personalities),
             advisors: Some(advisors),
             religions: Some(religions),
+            land_units: Some(land_units),
+            naval_units: Some(naval_units),
         },
     );
 
@@ -1104,4 +1168,69 @@ pub fn translate_map(
         .collect();
 
     Ok(center_locations)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum UnitKind {
+    Infantry,
+    Cavalry,
+    Artillery,
+    HeavyShip,
+    LightShip,
+    Galley,
+    Transport,
+}
+
+#[derive(Deserialize)]
+struct UnitFile {
+    #[serde(alias = "type")]
+    _type: UnitKind,
+    #[serde(default)]
+    maneuver: u8,
+    #[serde(default)]
+    offensive_morale: u8,
+    #[serde(default)]
+    defensive_morale: u8,
+    #[serde(default)]
+    offensive_fire: u8,
+    #[serde(default)]
+    defensive_fire: u8,
+    #[serde(default)]
+    offensive_shock: u8,
+    #[serde(default)]
+    defensive_shock: u8,
+
+    #[serde(default)]
+    hull_size: u8,
+    #[serde(default)]
+    base_cannons: u8,
+    #[serde(default)]
+    blockade: u8,
+    #[serde(default)]
+    sail_speed: f32,
+    #[serde(default)]
+    sailors: u16,
+}
+
+fn extract_units(tmp_game_dir: &Path) -> anyhow::Result<Vec<(String, UnitFile)>> {
+    let units_dir = tmp_game_dir.join("common").join("units");
+    let unit_files = WalkDir::new(&units_dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|x| !x.path().is_dir());
+
+    let mut units = Vec::new();
+    for unit_file in unit_files {
+        let data = fs::read(unit_file.path())?;
+        let unit: UnitFile = jomini::text::de::from_windows1252_slice(&data)?;
+        let filename = unit_file
+            .path()
+            .file_stem()
+            .context("unable to get file prefix")?
+            .to_str()
+            .context("unable to convert file name")?;
+        units.push((String::from(filename), unit));
+    }
+    Ok(units)
 }

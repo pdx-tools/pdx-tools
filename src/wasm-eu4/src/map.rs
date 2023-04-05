@@ -589,7 +589,7 @@ impl SaveFileImpl {
             }
 
             MapPayloadKind::Battles => {
-                let mut timelapse = BattleTimelapse::new(&self);
+                let mut timelapse = BattleTimelapse::new(self);
                 let final_date = self.query.save().meta.date;
                 let prep_date = final_date
                     .add_days(-365)
@@ -677,7 +677,7 @@ impl SaveFileImpl {
                 let mut timelapse = BattleTimelapse::new(self);
                 let prep_date = date.add_days(-365).max(self.query.save().game.start_date);
                 let _ = timelapse.advance_to(prep_date);
-                return timelapse.advance_to(date);
+                timelapse.advance_to(date)
             }
             _ => {
                 let mut timelapse = PoliticalTimelapse::new(self);
@@ -1408,7 +1408,7 @@ impl BattleTimelapse {
         let battle_events = battles.map(|(date, province, losses)| BattleEvent {
             date,
             province,
-            kind: BattleEventKind::Battle { losses: losses },
+            kind: BattleEventKind::Battle { losses },
         });
 
         events.extend(battle_events);
