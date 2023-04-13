@@ -510,7 +510,12 @@ pub fn achievements() -> Vec<Achievement> {
             name: String::from("Hanukkah Mutapa"),
             description: String::from("Starting as Mutapa, convert to Judaism and celebrate a festival."),
             difficulty: Difficulty::Medium,
-        },  Achievement {
+        }, Achievement {
+            id: 348,
+            name: String::from("Mehmet's Ambition"),
+            description: String::from("Starting as The Ottomans, own or have Core Eyalets own all the provinces required to form the Roman Empire before 1500."),
+            difficulty: Difficulty::VeryHard,
+        }, Achievement {
             id: 10000,
             name: String::from("Form the Roman Empire"),
             description: String::from("Custom achievement where one needs to form the Roman Empire"),
@@ -870,6 +875,7 @@ impl<'a> AchievementHunter<'a> {
             self.hannukah_mutapa(),
             self.prester_john(),
             self.a_blessed_nation(),
+            self.mehmet_ambition(),
             //            self.gothic_invasion(),
         ]
     }
@@ -3047,6 +3053,71 @@ impl<'a> AchievementHunter<'a> {
         let blessings = self.country.blessings.len() >= 5;
         let desc = "have 5 active blessings";
         result.and(AchievementCondition::new(blessings, desc));
+
+        result
+    }
+
+    pub fn mehmet_ambition(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(348);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+
+        let starter = self.starting_country == "TUR".parse().unwrap();
+        let desc = "started as the Ottomans";
+        result.and(AchievementCondition::new(starter, desc));
+
+        result.and(AchievementCondition::new(
+            self.save.meta.date.year() < 1500,
+            "year is before 1500",
+        ));
+
+        let has_all_provinces = if result.completed() {
+            let self_core_eyalets: HashSet<_> = self
+                .save
+                .game
+                .diplomacy
+                .dependencies
+                .iter()
+                .filter_map(|x| {
+                    if x.subject_type == "core_eyalet" {
+                        Some(x.second)
+                    } else {
+                        None
+                    }
+                })
+                .chain(std::iter::once(self.tag))
+                .collect();
+
+            [343, 341, 361, 236, 245, 96, 134].iter().all(|&id| {
+                self.save
+                    .game
+                    .provinces
+                    .get(&ProvinceId::new(id))
+                    .and_then(|prov| prov.owner.as_ref())
+                    .map_or(false, |owner| self_core_eyalets.contains(owner))
+            }) && [
+                "italy_region",
+                "france_region",
+                "iberia_region",
+                "balkan_region",
+                "anatolia_region",
+                "mashriq_region",
+            ]
+            .iter()
+            .all(|region| {
+                self.all_provs_in_region(region, |province| {
+                    province
+                        .owner
+                        .as_ref()
+                        .map_or(false, |o| self_core_eyalets.contains(o))
+                })
+            })
+        } else {
+            false
+        };
+
+        let desc = "Has all provinces to form Roman Empire";
+        result.and(AchievementCondition::new(has_all_provinces, desc));
 
         result
     }

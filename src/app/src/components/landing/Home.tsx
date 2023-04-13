@@ -17,6 +17,7 @@ import classes from "./Home.module.css";
 import { ImageGallery } from "./ImageGallery";
 import { useRouter } from "next/router";
 import { useEngineActions } from "@/features/engine";
+import { AchievementAvatar } from "@/features/eu4/components/avatars";
 
 interface HomeProps {
   subtitle?: React.ReactNode;
@@ -69,9 +70,22 @@ export const Home = ({ subtitle }: HomeProps) => {
             modern save file analyzer that will unlock hidden EU4 insights
             without the save leaving your browser.
           </p>
-          <p className="mb-0 max-w-prose text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
-            Ready to explore maps, timelapses, and charts?
-          </p>
+
+          <div className="flex max-w-prose items-center gap-4 rounded-lg bg-teal-600 p-4 shadow">
+            <div>
+              <AchievementAvatar size={64} id={348} />
+            </div>
+            <p className="mb-0">
+              1.35 Domination is out! Will you be the first to achieve{" "}
+              <Link
+                className="text-teal-200 underline"
+                href="/eu4/achievements/348"
+              >
+                Mehmet's Ambition
+              </Link>
+              ? If not the first, can you complete it at an earlier date?
+            </p>
+          </div>
 
           <div className="mt-4 flex flex-col items-center justify-center gap-2 lg:justify-start">
             <label

@@ -103,7 +103,49 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
             x.second.tag === details.tag &&
             (x.subject_type === "vassal" ||
               x.subject_type == "personal_union" ||
+              x.subject_type == "core_eyalet" ||
+              x.subject_type == "eyalet" ||
+              x.subject_type == "appanage" ||
               isColony(x.subject_type))
+        )
+        .map((x) => ({ ...x, ...notMe(x) })),
+    [details, notMe]
+  );
+
+  const coreEyalets = useMemo(
+    () =>
+      details.diplomacy
+        .filter(
+          (x) =>
+            x.kind === "Dependency" &&
+            x.first.tag === details.tag &&
+            x.subject_type === "core_eyalet"
+        )
+        .map((x) => ({ ...x, ...notMe(x) })),
+    [details, notMe]
+  );
+
+  const eyalets = useMemo(
+    () =>
+      details.diplomacy
+        .filter(
+          (x) =>
+            x.kind === "Dependency" &&
+            x.first.tag === details.tag &&
+            x.subject_type === "eyalet"
+        )
+        .map((x) => ({ ...x, ...notMe(x) })),
+    [details, notMe]
+  );
+
+  const appanages = useMemo(
+    () =>
+      details.diplomacy
+        .filter(
+          (x) =>
+            x.kind === "Dependency" &&
+            x.first.tag === details.tag &&
+            x.subject_type === "appanage"
         )
         .map((x) => ({ ...x, ...notMe(x) })),
     [details, notMe]
@@ -250,6 +292,18 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         </DiploRow>
 
         <DiploRow title="Vassals" relations={vassals}>
+          {(x) => <RelationshipSince x={x} />}
+        </DiploRow>
+
+        <DiploRow title="Appanage" relations={appanages}>
+          {(x) => <RelationshipSince x={x} />}
+        </DiploRow>
+
+        <DiploRow title="Core Eyalets" relations={coreEyalets}>
+          {(x) => <RelationshipSince x={x} />}
+        </DiploRow>
+
+        <DiploRow title="Eyalets" relations={eyalets}>
           {(x) => <RelationshipSince x={x} />}
         </DiploRow>
 
