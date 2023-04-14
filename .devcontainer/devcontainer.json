@@ -2,7 +2,8 @@
 {
   "name": "app",
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "cacheFrom": "ghcr.io/pdx-tools/devcontainer"
   },
   "runArgs": ["--network", "host"],
   "mounts": [

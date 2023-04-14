@@ -7,20 +7,8 @@ on:
     branches: [master]
 
 jobs:
-  dev:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: 'recursive'
-    - run: npm install -g @devcontainers/cli
-    - run: devcontainer build --workspace-folder .
-
   build:
-    # run on ubuntu-20.04 as 22.04 has glibc 2.35 and our production debian
-    # bullseye only has 2.31. So we want to compile the napi module with a
-    # compatible glibc in production
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: "!github.event.pull_request.head.repo.fork || contains(github.event.pull_request.labels.*.name, 'safe to test')"
     env:
       CARGO_TERM_VERBOSE: true
@@ -28,28 +16,13 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
-    - uses: actions/setup-node@v3
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
       with:
-        node-version: 18
-
-    - name: Install Just
-      run: |
-        cd ${{ env.RUNNER_TEMP }}
-        curl -O -L "https://github.com/casey/just/releases/download/1.2.0/just-1.2.0-x86_64-unknown-linux-musl.tar.gz"
-        mkdir just
-        tar -C just -xzf just-1.2.0-x86_64-unknown-linux-musl.tar.gz
-        mv just/just /usr/local/bin/.
-
-    - name: Install dependencies
-      run: just setup
-
-    - name: Setup environment
-      env:
-        ASSETS_ACCESS_KEY: ${{ secrets.ASSETS_ACCESS_KEY }}
-        ASSETS_SECRET_KEY: ${{ secrets.ASSETS_SECRET_KEY }}
-      run: |
-        echo "ASSETS_ACCESS_KEY=$ASSETS_ACCESS_KEY" >> .env
-        echo "ASSETS_SECRET_KEY=$ASSETS_SECRET_KEY" >> .env
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Cache assets
       uses: actions/cache@v3
@@ -69,22 +42,24 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
-    - name: Retrieve assets
-      run: just admin-sync-assets
-    - name: Unpack assets
-      run: just package-all
-    - name: Run tests
-      run: just build-wasm-dev && just build-napi && just test
-    - name: Build
-      run: just build
-
-    - name: Log in to the Container registry
-      if: github.ref == 'refs/heads/master'
-      uses: docker/login-action@v2
+    - name: Build and run Dev Container task
+      uses: devcontainers/ci@v0.3
+      env:
+        ASSETS_ACCESS_KEY: ${{ secrets.ASSETS_ACCESS_KEY }}
+        ASSETS_SECRET_KEY: ${{ secrets.ASSETS_SECRET_KEY }}
       with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        imageName: ghcr.io/pdx-tools/devcontainer
+        env: |
+          ASSETS_ACCESS_KEY
+          ASSETS_SECRET_KEY
+        runCmd: |
+          just admin-sync-assets
+          just package-all
+          just build-wasm-dev
+          just build-napi
+          just test
+          just build
 
     - name: Push to container registry
+      if: github.ref == 'refs/heads/master'
       run: docker push ghcr.io/pdx-tools/pdx-tools:nightly
