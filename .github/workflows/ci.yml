@@ -53,11 +53,11 @@ jobs:
           ASSETS_ACCESS_KEY
           ASSETS_SECRET_KEY
         runCmd: |
-          just admin-sync-assets
-          just package-all
-          just build-wasm-dev
-          just build-napi
-          just test
+          just admin-sync-assets && \
+          just package-all && \
+          just build-wasm-dev && \
+          just build-napi && \
+          just test && \
           just build
 
     - name: Push to container registry
