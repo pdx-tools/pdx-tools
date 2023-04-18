@@ -76,14 +76,15 @@ export const Home = ({ subtitle }: HomeProps) => {
               <AchievementAvatar size={64} id={348} />
             </div>
             <p className="mb-0">
-              1.35 Domination is out! Will you be the first to achieve{" "}
+              1.35 Domination is out! Will you be first on{" "}
               <Link
                 className="text-teal-200 underline"
                 href="/eu4/achievements/348"
               >
-                Mehmet's Ambition
+                Mehmet's Ambition leaderboard
               </Link>
-              ? If not the first, can you complete it at an earlier date?
+              ? Or can you beat the competition and achieve it at an earlier
+              date?
             </p>
           </div>
 
