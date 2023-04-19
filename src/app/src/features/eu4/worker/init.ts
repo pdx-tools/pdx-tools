@@ -1,6 +1,5 @@
 import { check } from "@/lib/isPresent";
-import { log, logMs } from "@/lib/log";
-import { timeit } from "@/lib/timeit";
+import { timeSync, timeit } from "@/lib/timeit";
 import { transfer } from "comlink";
 import {
   Achievements,
@@ -12,13 +11,26 @@ import { wasm } from "./common";
 import * as mod from "../../../../../wasm-eu4/pkg/wasm_eu4";
 import { fetchOk } from "@/lib/fetch";
 import { type Eu4SaveInput } from "../store";
+import { log, logMs } from "@/lib/log";
+import { captureException } from "@/features/errors";
 
 export const initializeWasm = wasm.initializeModule;
 export async function fetchData(save: Eu4SaveInput) {
   switch (save.kind) {
-    case "local": {
+    case "handle": {
+      const file = await save.file.getFile();
+      const lastModified = file.lastModified;
+      const data = await file.arrayBuffer();
+      wasm.stash(new Uint8Array(data), {
+        kind: "handle",
+        file: save.file,
+        lastModified,
+      });
+      return;
+    }
+    case "file": {
       const data = await save.file.arrayBuffer();
-      wasm.stash(new Uint8Array(data), { kind: "local", file: save.file });
+      wasm.stash(new Uint8Array(data), { kind: "file", file: save.file });
       return;
     }
     case "server": {
@@ -130,4 +142,28 @@ function eu4DefaultSelectedTag(meta: EnhancedMeta): string {
   }
 
   throw new Error("unable to determine default selected country");
+}
+
+export function supportsFileObserver() {
+  return wasm.supportsFileObserver();
+}
+
+let observer: ReturnType<typeof wasm["startFileObserver"]>;
+export function startFileObserver<T>(
+  cb: (save: { meta: EnhancedMeta; achievements: Achievements }) => T
+) {
+  observer = wasm.startFileObserver(async (data) => {
+    try {
+      const timings = timeSync(() => wasm.save.reparse(data));
+      logMs(timings, "reparsed save");
+      const achievements = wasm.save.get_achievements();
+      cb({ meta: getMeta(wasm.save), achievements });
+    } catch (ex) {
+      captureException(ex, { tags: { msg: "file-watcher" }})
+    }
+  });
+}
+
+export function stopFileObserver() {
+  observer.stopObserver();
 }

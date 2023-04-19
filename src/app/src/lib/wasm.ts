@@ -1,6 +1,8 @@
 import { fetchOk } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import { transfer } from "comlink";
+import { timeit } from "./timeit";
+import { logMs } from "./log";
 
 type Allocated = {
   free(): void;
@@ -14,8 +16,13 @@ type Wasm<P> = {
 
 type StashOp =
   | {
-      kind: "local";
+      kind: "file";
       file: File;
+    }
+  | {
+      kind: "handle";
+      file: FileSystemFileHandle;
+      lastModified: number;
     }
   | { kind: "remote"; url: string };
 
@@ -62,8 +69,13 @@ export function createWasmGame<
       switch (stashed?.kind) {
         case undefined:
           throw new Error("expected raw data to exist");
-        case "local":
+        case "file":
           return stashed.file.arrayBuffer().then((x) => new Uint8Array(x));
+        case "handle":
+          return stashed.file
+            .getFile()
+            .then((x) => x.arrayBuffer())
+            .then((x) => new Uint8Array());
         case "remote":
           return fetchOk(stashed.url, { cache: "force-cache" })
             .then((x) => x.arrayBuffer())
@@ -80,6 +92,47 @@ export function createWasmGame<
     stash(data: Uint8Array, stashOp: StashOp) {
       bytes = data;
       stashed = stashOp;
+    }
+
+    supportsFileObserver() {
+      return stashed?.kind === "handle";
+    }
+
+    startFileObserver(callback: (data: Uint8Array) => Promise<void>) {
+      if (stashed?.kind !== "handle") {
+        throw new Error("file observer not supported");
+      }
+
+      const handle = stashed.file;
+      let lastModified = stashed.lastModified;
+      let timeoutHandle: ReturnType<typeof setTimeout>;
+
+      function intervalCheck() {
+        poll();
+        timeoutHandle = setTimeout(() => intervalCheck(), 5000);
+      }
+
+      async function poll() {
+        const file = await timeit(() => handle.getFile());
+        logMs(file, "poll file");
+        if (file.data.lastModified <= lastModified) {
+          return;
+        }
+
+        lastModified = file.data.lastModified;
+        stashed = { kind: "handle", file: handle, lastModified };
+        const bytes = await timeit(() => file.data.arrayBuffer());
+        logMs(bytes, "read polled file");
+        await callback(new Uint8Array(bytes.data));
+      }
+
+      intervalCheck();
+
+      return {
+        stopObserver() {
+          clearTimeout(timeoutHandle);
+        },
+      };
     }
 
     viewStash() {

@@ -29,7 +29,8 @@ import {
 } from "./eu4Store";
 
 export type Eu4SaveInput =
-  | { kind: "local"; file: File }
+  | { kind: "file"; file: File }
+  | { kind: "handle"; file: FileSystemFileHandle; name: string }
   | { kind: "server"; saveId: string }
   | { kind: "skanderbeg"; skanId: string };
 
@@ -108,8 +109,10 @@ function getSaveInfo(
   switch (save.kind) {
     case "server":
       return { kind: "async", saveId: save.saveId };
-    case "local":
+    case "file":
       return { kind: "sync", data: save.file.name };
+    case "handle":
+      return { kind: "sync", data: save.name };
     case "skanderbeg":
       return { kind: "sync", data: "savegame.eu4" };
   }

@@ -16,6 +16,7 @@
     "@prisma/client": "4.11.0",
     "@sentry/nextjs": "7.40.0",
     "@tanstack/react-query": "4.24.10",
+    "@types/wicg-file-system-access": "^2020.9.6",
     "antd": "4.22.8",
     "aws-sdk": "2.1328.0",
     "comlink": "4.4.1",

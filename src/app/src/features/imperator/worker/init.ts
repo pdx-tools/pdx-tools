@@ -4,7 +4,7 @@ import { ImperatorMetadata } from "./types";
 export const initializeWasm = wasm.initializeModule;
 export async function fetchData(file: File) {
   const data = await file.arrayBuffer().then((x) => new Uint8Array(x));
-  wasm.stash(data, { kind: "local", file });
+  wasm.stash(data, { kind: "file", file });
 }
 
 export async function parseImperator() {

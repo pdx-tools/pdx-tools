@@ -6,8 +6,18 @@ function containsFiles(e: DragEvent): boolean {
   return arr?.length === 1 && arr[0].kind === "file";
 }
 
+export type FileKind =
+  | {
+      kind: "file";
+      file: File;
+    }
+  | {
+      kind: "handle";
+      file: FileSystemFileHandle;
+    };
+
 export interface FileDropProps {
-  onFile: (file: File) => void | Promise<void>;
+  onFile: (input: FileKind) => void | Promise<void>;
   enabled?: boolean;
 }
 
@@ -23,7 +33,7 @@ export function useFileDrop({ onFile, enabled = true }: FileDropProps) {
   const onFileRef = useRef(onFile);
   useIsomorphicLayoutEffect(() => {
     enabledRef.current = enabled;
-    onFileRef.current = (file: File) => {
+    onFileRef.current = (file: FileKind) => {
       try {
         onFile(file);
       } finally {
@@ -33,7 +43,7 @@ export function useFileDrop({ onFile, enabled = true }: FileDropProps) {
   });
 
   useEffect(() => {
-    function dragDrop(e: DragEvent) {
+    async function dragDrop(e: DragEvent) {
       if (!enabledRef.current || !containsFiles(e)) {
         return;
       }
@@ -42,24 +52,36 @@ export function useFileDrop({ onFile, enabled = true }: FileDropProps) {
       e.stopPropagation();
       setHovering(false);
 
-      if (e.dataTransfer && e.dataTransfer.files) {
+      if (e.dataTransfer && e.dataTransfer.items) {
         const items = e.dataTransfer.items;
         if (items.length !== 1) {
           throw Error("unexpected one file drop");
         }
+
+        if ("getAsFileSystemHandle" in items[0]) {
+          let handle = await items[0].getAsFileSystemHandle();
+          if (handle !== null) {
+            if (handle.kind === "file") {
+              let file = handle as FileSystemFileHandle;
+              onFileRef.current({ kind: "handle", file });
+              return;
+            }
+          }
+        }
+
         const file = items[0].getAsFile();
         if (file === null) {
           throw Error("bad dropped file");
         }
 
-        onFileRef.current(file);
+        onFileRef.current({ kind: "file", file });
       } else if (e.dataTransfer && e.dataTransfer.files) {
         const files = e.dataTransfer.files;
         if (files.length !== 1) {
           throw Error("unexpected one file drop");
         }
 
-        onFileRef.current(files[0]);
+        onFileRef.current({ kind: "file", file: files[0] });
       } else {
         throw Error("unexpected data transfer");
       }

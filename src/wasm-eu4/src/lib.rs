@@ -340,6 +340,10 @@ pub struct SaveFile(SaveFileImpl);
 
 #[wasm_bindgen]
 impl SaveFile {
+    pub fn reparse(&mut self, save_data: Vec<u8>) -> Result<(), JsValue> {
+        self.0.reparse(save_data)
+    }
+
     pub fn get_meta_raw(&self) -> JsValue {
         self.0.get_meta_raw()
     }
@@ -610,6 +614,26 @@ pub struct SaveFileImpl {
 }
 
 impl SaveFileImpl {
+    pub fn reparse(&mut self, save_data: Vec<u8>) -> Result<(), JsValue> {
+        let tokens = tokens::get_tokens();
+        let save = match eu4game::shared::parse_save_with_tokens(&save_data, tokens) {
+            Ok((save, _)) => save,
+            Err(e) => {
+                return Err(JsValue::from_str(e.to_string().as_str()))
+            }
+        };
+
+        self.query = Query::from_save(save);
+        self.province_owners = self.query.province_owners();
+        self.nation_events = self.query.nation_events(&self.province_owners);
+        self.player_histories = self.query.player_histories(&self.nation_events);
+        self.tag_resolver = self.query.tag_resolver(&self.nation_events);
+        self.war_participants = self.query.resolved_war_participants(&self.tag_resolver);
+        self.religion_lookup = self.query.religion_lookup();
+
+        Ok(())
+    }
+
     pub fn get_meta_raw(&self) -> JsValue {
         to_json_value(&self.query.save().meta)
     }

@@ -79,6 +79,11 @@ type Eu4State = Eu4StateProps & {
     updateProvinceColors: () => Promise<void>;
     updateMap: (frame: MapTimelapseItem) => void;
     updateTagFilter: (matcher: Partial<CountryMatcher>) => Promise<void>;
+    updateSave: (save: {
+      meta: EnhancedMeta;
+      achievements: Achievements;
+      countries: EnhancedCountryInfo[];
+    }) => Promise<void>;
     zoomIn: () => void;
     zoomOut: () => void;
   };
@@ -106,11 +111,6 @@ export const createEu4Store = async ({
     countryDrawerVisible: false,
   } as const;
 
-  const defaultDate = {
-    text: save.meta.date,
-    days: save.meta.total_days,
-  };
-
   const syncMapSettings = (state: Eu4State) => {
     const report = compatibilityReport().webgl2;
     state.map.renderTerrain =
@@ -135,7 +135,7 @@ export const createEu4Store = async ({
     map,
     ...settings,
     selectedTag: save.defaultSelectedCountry,
-    selectedDate: defaultDate,
+    selectedDate: selectDefaultDate(save.meta),
     actions: {
       closeCountryDrawer: () => set({ countryDrawerVisible: false }),
       openCountryDrawer: () => set({ countryDrawerVisible: true }),
@@ -199,7 +199,7 @@ export const createEu4Store = async ({
         if (date !== null) {
           set({ selectedDate: date });
         } else {
-          set({ selectedDate: defaultDate });
+          set({ selectedDate: selectDefaultDate(get().save.meta) });
         }
       },
       setSelectedDateDay: async (days: number) => {
@@ -248,6 +248,20 @@ export const createEu4Store = async ({
           : frame.primary;
         get().map.updateProvinceColors(frame.primary, stripes);
       },
+      async updateSave({ meta, achievements, countries }) {
+        set({
+          save: {
+            ...get().save,
+            meta,
+            achievements,
+            countries,
+          },
+          selectedDate: selectDefaultDate(meta),
+        });
+
+        await get().actions.updateProvinceColors();
+        get().map.redrawMapImage();
+      },
       zoomIn: () => {
         get().map.zoomIn();
         get().map.redrawViewport();
@@ -268,6 +282,11 @@ export const createEu4Store = async ({
   await state.actions.updateProvinceColors();
   return store;
 };
+
+const selectDefaultDate = (meta: EnhancedMeta) => ({
+  text: meta.date,
+  days: meta.total_days,
+});
 
 const selectSaveVersion = (state: Eu4State) =>
   `${state.save.meta.savegame_version.first}.${state.save.meta.savegame_version.second}`;

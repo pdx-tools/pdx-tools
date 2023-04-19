@@ -1,26 +1,38 @@
+import { FileKind } from "@/hooks/useFileDrop";
 import { extensionType, SaveGameInput, useEngineActions } from "../engineStore";
 
-export type AnalyzeInput = { file: File };
+type AnalyzeInput = FileKind;
 
-function inputSaveGame(input: AnalyzeInput): SaveGameInput {
+async function inputSaveGame(input: AnalyzeInput): Promise<SaveGameInput> {
   const game = extensionType(input.file.name);
   if (game === "eu4") {
-    return {
-      kind: game,
-      data: {
-        kind: "local",
-        file: input.file,
-      },
-    };
+    if (input.kind === "handle") {
+      const name = (await input.file.getFile()).name;
+      return {
+        kind: game,
+        data: {
+          kind: "handle",
+          file: input.file,
+          name,
+        },
+      };
+    } else {
+      return {
+        kind: game,
+        data: input,
+      };
+    }
   } else {
+    const file =
+      input.kind === "handle" ? await input.file.getFile() : input.file;
     return {
       kind: game,
-      file: input.file,
+      file,
     };
   }
 }
 
 export function useFilePublisher() {
   const { fileInput } = useEngineActions();
-  return (input: AnalyzeInput) => fileInput(inputSaveGame(input));
+  return (input: AnalyzeInput) => inputSaveGame(input).then(fileInput);
 }

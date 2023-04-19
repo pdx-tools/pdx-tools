@@ -7,7 +7,7 @@ import { useFileDrop } from "@/hooks/useFileDrop";
 export const DropHighlight = () => {
   const filePublisher = useFilePublisher();
   const { isHovering } = useFileDrop({
-    onFile: (file) => filePublisher({ file }),
+    onFile: (file) => filePublisher(file),
   });
 
   return (
