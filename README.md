@@ -42,7 +42,7 @@ The next step is deciding on how to communicate EU4 assets during the compilatio
   ```diff
   -    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
   +    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
-  +    "source=${localEnv:HOME}/.steam/steam/SteamApps/common/Europa Universalis IV,target=/tmp/eu4,type=bind,consistency=cached,readonly"
+  +    "source=${localEnv:HOME}/.steam/steam/steamapps/common/Europa Universalis IV,target=/tmp/eu4,type=bind,consistency=cached,readonly"
   ```
   After saving, reload the project. You know it's successful once `/tmp/eu4` is visible within the container terminal.
 - Alternatively, copy the entire EU4 installation into the cloned directory
