@@ -88,13 +88,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             </p>
           </div>
 
-          <div className="mt-4 flex flex-col items-center justify-center gap-2 lg:justify-start">
-            <label
-              htmlFor="analyze-box-file-input"
-              className="mx-2 cursor-pointer rounded-xl border-4 border-solid border-white px-6 py-3 text-xl font-bold text-white transition-colors duration-150 hover:border-blue-500 hover:text-blue-200"
-            >
-              Select save file
-            </label>
+          <div className="flex flex-col items-center justify-center gap-2 lg:justify-start">
             <div className="text-base text-gray-300">
               No save?{" "}
               <Link
