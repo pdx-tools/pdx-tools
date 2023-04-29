@@ -933,6 +933,8 @@ pub fn translate_flags(tmp_game_dir: &Path, options: &PackageOptions) -> anyhow:
 
         let child = Command::new("convert")
             .arg(file_path)
+            .arg("-alpha")
+            .arg("Off")
             .arg("-auto-orient")
             .arg(&out_path)
             .output()?;
