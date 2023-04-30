@@ -19,15 +19,28 @@ pub fn request<S: AsRef<str>>(input: S) -> Vec<u8> {
             "https://eu4saves-test-cases.s3.us-west-002.backblazeb2.com/{}",
             reffed
         );
-        let resp = attohttpc::get(&url).send().unwrap();
 
-        if !resp.is_success() {
-            panic!("expected a 200 code from s3");
-        } else {
-            let data = resp.bytes().unwrap();
-            std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
-            std::fs::write(&cache, &data).unwrap();
-            data
+        let mut attempts = 0;
+        loop {
+            match attohttpc::get(&url).send() {
+                Ok(resp) => {
+                    if !resp.is_success() {
+                        panic!("expected a 200 code from s3");
+                    } else {
+                        let data = resp.bytes().unwrap();
+                        std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
+                        std::fs::write(&cache, &data).unwrap();
+                        return data;
+                    }
+                }
+                Err(e) => {
+                    if attempts > 4 {
+                        panic!("errored retrieving from s3: {:?}", e)
+                    } else {
+                        attempts += 1;
+                    }
+                }
+            }
         }
     }
 }
