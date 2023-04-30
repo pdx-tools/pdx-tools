@@ -753,6 +753,7 @@ export interface CountryStateDetails {
     progress: number;
     date: string;
   };
+  provinces: [string, number][];
   centralized: number;
   capital_state: boolean;
   prosperity: number;

@@ -217,6 +217,7 @@ pub struct ProgressDate {
 pub struct CountryState {
     state: LocalizedObj,
     capital_state: bool,
+    provinces: Vec<(String, f32)>,
     total_dev: f32,
     total_gc: f32,
     centralizing: Option<ProgressDate>,
@@ -1089,6 +1090,13 @@ impl SaveFileImpl {
             provs.push((*id, prov));
         }
 
+        let has_administrative_efficiency = country.active_idea_groups.iter().any(|(idea_group, progress)| idea_group == "infrastructure_ideas" && *progress >= 5);
+        let administrative_efficiency_modifier = if has_administrative_efficiency {
+            0.1
+        } else {
+            0.0
+        };
+
         let mut result: Vec<_> = province_states
             .iter()
             .map(|(state, provinces)| {
@@ -1139,7 +1147,7 @@ impl SaveFileImpl {
                     .max()
                     .unwrap_or(0);
 
-                let total_gc = provinces
+                let provinces_gc: Vec<_> = provinces
                     .iter()
                     .map(|(_, prov)| {
                         let dev = prov.base_manpower + prov.base_production + prov.base_tax;
@@ -1191,14 +1199,17 @@ impl SaveFileImpl {
 
                         gc_modifier -= 0.2 * centralized as f32;
                         gc_modifier += 0.1 * prov.expand_infrastructure as f32;
+                        gc_modifier -= administrative_efficiency_modifier;
 
                         let base = (dev * gc_modifier).max(dev * 0.01);
 
                         flat += 15.0 * (prov.expand_infrastructure as f32);
 
-                        (base + flat).max(0.0)
+                        (prov.name.clone(), (base + flat).max(0.0))
                     })
-                    .sum();
+                    .collect();
+
+                let total_gc = provinces_gc.iter().map(|(_, gc)| gc).sum();
 
                 let centralizing = provinces
                     .iter()
@@ -1232,6 +1243,7 @@ impl SaveFileImpl {
                         name: String::from(name),
                     },
                     capital_state: is_capital_state,
+                    provinces: provinces_gc,
                     total_gc,
                     total_dev,
                     centralizing,
