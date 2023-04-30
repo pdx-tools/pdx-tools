@@ -65,25 +65,38 @@ export const HeroFileInput = () => {
   } else {
     return (
       <div className="leading-relaxed">
-        <button className={className} onClick={async () => {
-          try {
-            var [fileHandle] = await window.showOpenFilePicker({
-              multiple: false,
-              types: [{
-                description: "PDX Files",
-                accept: {
-                  "application/pdx": [".eu4", ".ck3", ".hoi4", ".rome", ".v3"]
-                }
-              }]
-            })
-          } catch (ex) {
-            // User closing without selecting a file throws an exception
-            // so we swallow it.
-            return;
-          }
+        <button
+          className={className}
+          onClick={async () => {
+            try {
+              var [fileHandle] = await window.showOpenFilePicker({
+                multiple: false,
+                types: [
+                  {
+                    description: "PDX Files",
+                    accept: {
+                      "application/pdx": [
+                        ".eu4",
+                        ".ck3",
+                        ".hoi4",
+                        ".rome",
+                        ".v3",
+                      ],
+                    },
+                  },
+                ],
+              });
+            } catch (ex) {
+              // User closing without selecting a file throws an exception
+              // so we swallow it.
+              return;
+            }
 
-          publishFile({ kind: "handle", file: fileHandle });
-        }}>{children}</button>
+            publishFile({ kind: "handle", file: fileHandle });
+          }}
+        >
+          {children}
+        </button>
       </div>
     );
   }

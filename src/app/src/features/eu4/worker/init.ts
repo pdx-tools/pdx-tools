@@ -159,7 +159,7 @@ export function startFileObserver<T>(
       const achievements = wasm.save.get_achievements();
       cb({ meta: getMeta(wasm.save), achievements });
     } catch (ex) {
-      captureException(ex, { tags: { msg: "file-watcher" }})
+      captureException(ex, { tags: { msg: "file-watcher" } });
     }
   });
 }

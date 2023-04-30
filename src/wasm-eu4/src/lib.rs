@@ -618,9 +618,7 @@ impl SaveFileImpl {
         let tokens = tokens::get_tokens();
         let save = match eu4game::shared::parse_save_with_tokens(&save_data, tokens) {
             Ok((save, _)) => save,
-            Err(e) => {
-                return Err(JsValue::from_str(e.to_string().as_str()))
-            }
+            Err(e) => return Err(JsValue::from_str(e.to_string().as_str())),
         };
 
         self.query = Query::from_save(save);
