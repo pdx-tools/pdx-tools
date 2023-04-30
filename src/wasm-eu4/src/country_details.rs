@@ -1090,7 +1090,10 @@ impl SaveFileImpl {
             provs.push((*id, prov));
         }
 
-        let has_administrative_efficiency = country.active_idea_groups.iter().any(|(idea_group, progress)| idea_group == "infrastructure_ideas" && *progress >= 5);
+        let has_administrative_efficiency = country
+            .active_idea_groups
+            .iter()
+            .any(|(idea_group, progress)| idea_group == "infrastructure_ideas" && *progress >= 5);
         let administrative_efficiency_modifier = if has_administrative_efficiency {
             0.1
         } else {

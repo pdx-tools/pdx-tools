@@ -1,5 +1,8 @@
 use anyhow::{bail, Context};
-use aws_sdk_s3::{Client, Config, Credentials, Region};
+use aws_sdk_s3::{
+    config::{Credentials, Region},
+    Client, Config,
+};
 use chrono::{DateTime, TimeZone, Utc};
 use clap::Args;
 use log::info;
