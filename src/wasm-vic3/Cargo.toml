@@ -16,7 +16,7 @@ libdeflate = ["vic3save/libdeflate"]
 jomini = "0.21"
 schemas = { path = "../schemas" }
 wasm-bindgen = { version = "0.2" }
-serde-wasm-bindgen = "0.4"
+serde-wasm-bindgen = "0.5"
 serde = { version = "1", features = ["derive"] }
 vic3save = { path = "../vic3save" }
 js-sys = "0.3"

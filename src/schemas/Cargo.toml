@@ -8,7 +8,7 @@ publish = false
 inline = []
 
 [dependencies]
-flatbuffers = "22"
+flatbuffers = "23.1.21"
 jomini = { version = "0.21" }
 
 [build-dependencies]

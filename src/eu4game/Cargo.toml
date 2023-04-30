@@ -18,12 +18,12 @@ schemas = { path = "../schemas", features = ["inline"] }
 tarsave = { path = "../tarsave" }
 serde = { version = "1", features = ["derive"] }
 serde_path_to_error = "0.1"
-highway = "0.8"
+highway = "1"
 base64 = "0.13"
 thiserror = "1"
 
 [dev-dependencies]
-attohttpc = "0.24"
+attohttpc = "0.25"
 walkdir = "2"
 zip = { version =  "0.6", default-features = false, features = ["deflate"] }
 
