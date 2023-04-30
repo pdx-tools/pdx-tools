@@ -184,13 +184,11 @@ package-all *opts: admin-tokenize-all
   LAST_BUNDLE=$(ls assets/game-bundles/eu4-* | grep -v common | sort -n | tail -n1)
   for BUNDLE in $(ls assets/game-bundles/eu4-* | grep -v common | sort -n); do
     if [ "$BUNDLE" = "$LAST_BUNDLE" ]; then
-      package "$@" "$BUNDLE" &
+      package "$@" "$BUNDLE"
     else
-      package "$@" --skip-common "$BUNDLE" &
+      package "$@" --skip-common "$BUNDLE"
     fi;
   done;
-
-  wait
 
 pdx cmd *args:
   cargo run --release --package pdx --features {{replace(cmd, "-", "_")}} -- "$@"
