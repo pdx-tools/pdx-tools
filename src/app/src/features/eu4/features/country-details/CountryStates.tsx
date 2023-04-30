@@ -50,7 +50,21 @@ const CountryStateDetails = ({ data }: { data: CountryStateDetails[] }) => {
       align: "right",
       sorter: (a: CountryStateDetails, b: CountryStateDetails) =>
         a.total_gc - b.total_gc,
-      render: (x: number) => `${formatFloat(x, 2)}`,
+      render: (gc: number, details: CountryStateDetails) => (
+        <Tooltip
+          title={
+            <div>
+              {details.provinces.map(([name, gc]) => (
+                <div key={name}>
+                  {name}: {formatFloat(gc, 2)}
+                </div>
+              ))}
+            </div>
+          }
+        >
+          {formatFloat(gc, 2)}
+        </Tooltip>
+      ),
     },
     {
       title: "Centralizing",
