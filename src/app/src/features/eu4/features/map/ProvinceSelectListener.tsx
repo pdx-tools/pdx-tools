@@ -1,7 +1,7 @@
 import { Drawer } from "antd";
 import { useEffect, useState } from "react";
 import { ProvinceDetailsDescriptions } from "./ProvinceDetailsDescriptions";
-import { SideBarContainerProvider } from "../../components/SideBarContainer";
+import { SideBarContainerProvider, closeDrawerPropagation } from "../../components/SideBarContainer";
 import { useEu4Map } from "../../store";
 import { ProvinceDetails } from "../../types/models";
 import { getEu4Worker } from "../../worker";
@@ -30,12 +30,13 @@ export const ProvinceSelectListener = () => {
     };
   }, [map]);
 
+  const visible = drawerVisible && !!data;
   return (
     <Drawer
       title="Province Details"
       placement="right"
-      onClose={() => setDrawerVisible(false)}
-      visible={drawerVisible && !!data}
+      onClose={closeDrawerPropagation(() => setDrawerVisible(false), visible)}
+      visible={visible}
       mask={false}
       closable={true}
       width="min(400px, 100%)"
