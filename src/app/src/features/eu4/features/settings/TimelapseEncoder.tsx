@@ -181,7 +181,7 @@ export class TimelapseEncoder {
             framerate: fps,
           });
 
-          if (support.supported) {
+          if (support.supported && support.config) {
             return { ...codec, ...support.config };
           }
         } catch (ex) {}
