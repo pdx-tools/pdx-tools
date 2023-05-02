@@ -39,7 +39,7 @@ export const OwnedDevelopmentStatesTree = () => {
           territories: row.territories,
         }));
 
-        const keys: (keyof typeof csv[number])[] = [
+        const keys: (keyof (typeof csv)[number])[] = [
           "name",
           "tag",
           "full_cores",
@@ -121,7 +121,7 @@ function CountryStateDevelopmentTree({
     data,
     colorField: "name",
     color(datum, defaultColor) {
-      let x = datum as typeof devs[number];
+      let x = datum as (typeof devs)[number];
       switch (x.name) {
         case "Full Cores":
           return "#6D93F4";

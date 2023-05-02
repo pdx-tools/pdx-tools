@@ -148,7 +148,7 @@ export function supportsFileObserver() {
   return wasm.supportsFileObserver();
 }
 
-let observer: ReturnType<typeof wasm["startFileObserver"]>;
+let observer: ReturnType<(typeof wasm)["startFileObserver"]>;
 export function startFileObserver<T>(
   cb: (save: { meta: EnhancedMeta; achievements: Achievements }) => T
 ) {

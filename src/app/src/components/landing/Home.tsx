@@ -121,7 +121,7 @@ export const Home = ({ subtitle }: HomeProps) => {
           <h2 className="m-0 text-center text-3xl font-extrabold tracking-tight text-white xl:text-4xl">
             Questions? Answered.
           </h2>
-          <p className="mt-3 mb-6 text-center text-xl">
+          <p className="mb-6 mt-3 text-center text-xl">
             PDX Tools can help you answer these EU4 questions
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-y-6 xl:grid-cols-4">

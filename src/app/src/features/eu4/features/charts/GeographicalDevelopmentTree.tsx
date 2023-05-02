@@ -74,7 +74,7 @@ export const GeographicalDevelopmentTree = () => {
           )
         );
 
-        const keys: (keyof typeof csv[number])[] = [
+        const keys: (keyof (typeof csv)[number])[] = [
           "continent",
           "superregion",
           "region",
