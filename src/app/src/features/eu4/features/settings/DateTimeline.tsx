@@ -1,6 +1,6 @@
 import { Input, Slider } from "antd";
 import React, { useMemo } from "react";
-import { throttle } from "../../../../map/throttle";
+import { throttle } from "map";
 import {
   useEu4Actions,
   useEu4Meta,

@@ -1,5 +1,5 @@
 import WebMMuxer from "webm-muxer";
-import { WebGLMap } from "@/map/map";
+import { WebGLMap } from "map";
 import { Eu4Worker, getEu4Worker } from "../../worker";
 import { Eu4Store } from "../../store";
 

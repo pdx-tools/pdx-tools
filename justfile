@@ -274,8 +274,6 @@ prep-frontend:
     touch -a assets/tokens/$game.bin assets/tokens/$game.txt
   done;
 
-  mkdir -p src/app/src/map && cp src/map/src/* src/app/src/map/.
-
   OUTPUT=src/app/src/lib/game_gen.ts
   rm -f "$OUTPUT"
 

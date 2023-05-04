@@ -3,9 +3,11 @@ import {
   loadImage,
   StaticResources,
   TerrainOverlayResources,
-} from "../../../../map/staticResources";
-import type { OnScreenWegblContext, ShaderSource } from "../../../../map/types";
-import { glContextOptions, WebGLMap } from "../../../../map/map";
+  type OnScreenWegblContext,
+  type ShaderSource,
+  glContextOptions,
+  WebGLMap,
+} from "map";
 import { MapOnlyControls } from "../../types/map";
 import { fetchOk } from "@/lib/fetch";
 

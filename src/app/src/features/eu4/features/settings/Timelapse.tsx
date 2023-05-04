@@ -20,7 +20,7 @@ import {
 } from "@ant-design/icons";
 import { downloadData } from "@/lib/downloadData";
 import { ToggleRow } from "./ToggleRow";
-import { IMG_HEIGHT, IMG_WIDTH } from "@/map/map";
+import { IMG_HEIGHT, IMG_WIDTH } from "map";
 import { useIsDeveloper } from "@/features/account";
 import { mapTimelapseCursor, TimelapseEncoder } from "./TimelapseEncoder";
 import { transcode } from "./WebMTranscoder";

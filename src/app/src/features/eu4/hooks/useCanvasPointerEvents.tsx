@@ -1,4 +1,4 @@
-import { WebGLMap } from "@/map/map";
+import { WebGLMap } from "map";
 import { useEffect } from "react";
 
 export function useCanvasPointerEvents(map: WebGLMap) {

@@ -4,12 +4,14 @@ import { check } from "@/lib/isPresent";
 import { logMs } from "@/lib/log";
 import { emitEvent } from "@/lib/plausible";
 import { timeit, timeSync } from "@/lib/timeit";
-import { GLResources } from "@/map/glResources";
-import { WebGLMap } from "@/map/map";
-import { MapShader } from "@/map/mapShader";
-import { ProvinceFinder } from "@/map/ProvinceFinder";
-import { startCompilation } from "@/map/shaderCompiler";
-import { XbrShader } from "@/map/xbrShader";
+import {
+  GLResources,
+  WebGLMap,
+  MapShader,
+  ProvinceFinder,
+  startCompilation,
+  XbrShader,
+} from "map";
 import { captureException } from "@sentry/nextjs";
 import { Dispatch, useRef, useEffect, useReducer } from "react";
 import {

@@ -6,6 +6,7 @@ let nextConfig = {
   // disabled until https://github.com/ant-design/ant-design/issues/26136
   // reactStrictMode: true,
   output: "standalone",
+  transpilePackages: ["map"],
   webpack: (config, { webpack }) => {
     const experiments = config.experiments || {};
     config.experiments = { ...experiments, asyncWebAssembly: true };

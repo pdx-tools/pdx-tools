@@ -1,6 +1,6 @@
 import { compatibilityReport } from "@/lib/compatibility";
 import { check } from "@/lib/isPresent";
-import { IMG_HEIGHT, IMG_WIDTH, WebGLMap } from "@/map/map";
+import { IMG_HEIGHT, IMG_WIDTH, WebGLMap } from "map";
 import { useSaveQuery } from "@/services/appApi";
 import { createContext, useContext, useMemo } from "react";
 import { StoreApi, createStore, useStore } from "zustand";
