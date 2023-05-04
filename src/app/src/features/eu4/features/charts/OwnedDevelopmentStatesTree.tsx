@@ -54,7 +54,7 @@ export const OwnedDevelopmentStatesTree = () => {
     });
   }, [data, visualizationDispatch]);
 
-  if (data === undefined) {
+  if (data?.[0] === undefined) {
     return null;
   }
 

@@ -11,9 +11,7 @@ type ReprocessEntry = {
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const saves: ReprocessEntry[] = req.body;
 
-  for (let i = 0; i < saves.length; i++) {
-    const save = saves[i];
-
+  for (const save of saves) {
     await db.save.update({
       where: { id: save.saveId },
       data: fromApiSave(save.save),

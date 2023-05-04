@@ -37,8 +37,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const playthroughIds = new Set();
   const outSaves: string[] = [];
 
-  for (let i = 0; i < saves.length; i++) {
-    const save = saves[i];
+  for (const save of saves) {
     if (
       campaignIds.has(save.campaign_id) ||
       (save.playthrough_id && playthroughIds.has(save.playthrough_id))

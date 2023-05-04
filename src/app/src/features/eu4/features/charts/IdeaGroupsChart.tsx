@@ -54,8 +54,7 @@ export const IdeaGroupsChart = () => {
       const ideas = new Map<string, afaf>(
         seedIdeas.map((x) => [x, { count: 0, completed: 0 }])
       );
-      for (let i = 0; i < rawIdeas.length; i++) {
-        const idea = rawIdeas[i];
+      for (const idea of rawIdeas) {
         const name = idea.groupName;
         const group = ideas.get(name) || { count: 0, completed: 0 };
         group.count += 1;

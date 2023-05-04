@@ -28,12 +28,11 @@ const unitTypes: [string, keyof Losses, keyof Losses][] = [
 
 function createSideSummary(participants: WarParticipant[]) {
   const summaries: JSX.Element[] = Array(unitTypes.length * 2).fill(<></>);
-  for (let i = 0; i < unitTypes.length; i++) {
-    const [_title, battle, attrition] = unitTypes[i];
+  for (const [i, unitType] of unitTypes.entries()) {
+    const [_title, battle, attrition] = unitType;
     let battleTotal = 0;
     let attritionTotal = 0;
-    for (let j = 0; j < participants.length; j++) {
-      const participant = participants[j];
+    for (const participant of participants) {
       battleTotal += participant.losses[battle];
       attritionTotal += participant.losses[attrition];
     }
@@ -149,9 +148,9 @@ export const BattleView = ({ warName }: BattleViewProps) => {
       async (worker) => {
         const war = await worker.eu4GetWarInfo(warName);
         const battles = war.battles;
-        const [landBattleInfos, navalBattleInfos]: BattleInfo[][] = [[], []];
-        for (let i = 0; i < battles.length; i++) {
-          const battle = battles[i];
+        const navalBattleInfos: BattleInfo[] = [];
+        const landBattleInfos: BattleInfo[] = [];
+        for (const battle of battles) {
           if (
             battle.attacker.infantry +
               battle.attacker.cavalry +

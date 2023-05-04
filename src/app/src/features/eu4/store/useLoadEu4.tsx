@@ -4,7 +4,6 @@ import { check } from "@/lib/isPresent";
 import { logMs } from "@/lib/log";
 import { emitEvent } from "@/lib/plausible";
 import { timeit, timeSync } from "@/lib/timeit";
-import { getDataUrls } from "@/lib/urls";
 import { GLResources } from "@/map/glResources";
 import { WebGLMap } from "@/map/map";
 import { MapShader } from "@/map/mapShader";
@@ -27,6 +26,7 @@ import {
   focusCameraOn,
   createEu4Store,
 } from "./eu4Store";
+import { dataUrls, gameVersion } from "@/lib/game_gen";
 
 export type Eu4SaveInput =
   | { kind: "file"; file: File }
@@ -166,7 +166,7 @@ async function loadEu4Save(
   const [gameData, provincesUniqueIndex] = await Promise.all([
     runTask(dispatch, {
       fn: () =>
-        fetchOk(getDataUrls(version))
+        fetchOk(dataUrls[gameVersion(version)])
           .then((x) => x.arrayBuffer())
           .then((x) => new Uint8Array(x)),
       name: `fetch game data (${version})`,

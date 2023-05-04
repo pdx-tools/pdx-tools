@@ -1,4 +1,4 @@
-import { defaultVersion, resources } from "@/lib/url_gen";
+import { gameVersion, resources } from "@/lib/game_gen";
 import {
   loadImage,
   StaticResources,
@@ -40,8 +40,7 @@ export async function shaderUrls(): Promise<ShaderSource[]> {
 export async function loadTerrainOverlayImages(
   version: string
 ): Promise<TerrainOverlayResources> {
-  const url = resources[version] ?? resources[defaultVersion];
-
+  const url = resources[gameVersion(version)];
   const promises = {
     colorMap: loadImage(url.colorMap),
     sea: loadImage(url.sea),
@@ -74,15 +73,15 @@ export async function loadTerrainOverlayImages(
 export async function fetchProvinceUniqueIndex(
   version: string
 ): Promise<Uint16Array> {
-  const url = resources[version] ?? resources[defaultVersion];
+  const url = resources[gameVersion(version)];
+
   return fetchOk(url.provincesUniqueIndex)
     .then((x) => x.arrayBuffer())
     .then((x) => new Uint16Array(x));
 }
 
 export async function resourceUrls(version: string): Promise<StaticResources> {
-  const url = resources[version] ?? resources[defaultVersion];
-
+  const url = resources[gameVersion(version)];
   const promises = {
     provinces1: loadImage(url.provinces1),
     provinces2: loadImage(url.provinces2),
@@ -124,7 +123,7 @@ export function provinceIdToColorIndexInvert(
 ) {
   const colorIndexToProvinceId = new Uint16Array(provinceIdToColorIndex.length);
   for (let i = 0; i < provinceIdToColorIndex.length; i++) {
-    colorIndexToProvinceId[provinceIdToColorIndex[i]] = i;
+    colorIndexToProvinceId[provinceIdToColorIndex[i]!] = i;
   }
   return colorIndexToProvinceId;
 }

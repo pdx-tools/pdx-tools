@@ -7,14 +7,15 @@ export function startCompilation(
   sources: ShaderSource[]
 ) {
   const ext = gl.getExtension("KHR_parallel_shader_compile");
-  const shaders = sources.map(({ vertex, fragment }) => [
-    createShader(gl, gl.VERTEX_SHADER, vertex),
-    createShader(gl, gl.FRAGMENT_SHADER, fragment),
-  ]);
-
-  const programs = shaders.map(([vertex, fragment]) =>
-    createProgram(gl, vertex, fragment)
-  );
+  const programs = sources.map(({ vertex, fragment }) => {
+    const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertex);
+    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragment);
+    return {
+      program: createProgram(gl, vertexShader, fragmentShader),
+      vertexShader,
+      fragmentShader,
+    };
+  });
 
   // Prefer COMPLETION_STATUS_KHR if available
   // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices#prefer_khr_parallel_shader_compile
@@ -42,8 +43,7 @@ export function startCompilation(
     nonBlocking: !!ext,
     compilationCompletion: () =>
       Promise.all(
-        programs.map((program, i) => {
-          const [vertexShader, fragmentShader] = shaders[i];
+        programs.map(({ program, vertexShader, fragmentShader }) => {
           return programStatus(program).then((isSuccess) => {
             if (isSuccess) {
               return Promise.resolve(program);

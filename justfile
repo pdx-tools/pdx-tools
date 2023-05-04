@@ -276,54 +276,62 @@ prep-frontend:
 
   mkdir -p src/app/src/map && cp src/map/src/* src/app/src/map/.
 
-  # Auto generate URLs for game data and resource files. We split them into two
-  # files as one called from a web worker while the other is on the UI thread
-  # and webpack errors with:
-  #   "The "path" argument must be of type string. Received undefined
-  # Solution appears to ensure that the web worker and main app don't intersect
-  # with local imports
+  OUTPUT=src/app/src/lib/game_gen.ts
+  rm -f "$OUTPUT"
 
-  RESOURCE_OUTPUT=src/app/src/lib/url_gen.ts
-  DATA_OUTPUT=src/app/src/lib/data_gen.ts
-  rm -f "$RESOURCE_OUTPUT"
-  rm -f "$DATA_OUTPUT"
+  readarray -t VERSIONS < <(ls assets/game/eu4/ | grep -v common | sort -n)
 
-  echo "import type { ResourceUrls } from \"./url_types\"" >> "$RESOURCE_OUTPUT"
-  echo "export const resources: Record<string, ResourceUrls> = {" >> "$RESOURCE_OUTPUT"
+  echo "import type { ResourceUrls } from \"./url_types\"" >> "$OUTPUT"
+  echo -n "export type GameVersion = \"${VERSIONS[0]}\"" >> "$OUTPUT"
+  for VERSION in "${VERSIONS[@]:1}"; do
+    echo -n " | \"$VERSION\"" >> "$OUTPUT"
+  done;
+  echo ";" >> "$OUTPUT";
 
-  echo "export const dataUrls: Record<string, string> = {" >> "$DATA_OUTPUT"
+  echo "export function gameVersion(x: string): GameVersion {" >> "$OUTPUT"
+  echo "  switch (x) {" >> "$OUTPUT"
+  for VERSION in "${VERSIONS[@]}"; do
+    echo "    case \"$VERSION\":" >> "$OUTPUT";
+  done;
+  echo "      return x;" >> "$OUTPUT";
+  echo "    default: return defaultVersion" >> "$OUTPUT";
+  echo "  }" >> "$OUTPUT";
+  echo "}" >> "$OUTPUT";
 
-  for VERSION in $(ls assets/game/eu4/ | grep -v common | sort -n); do
-    cat >> "$RESOURCE_OUTPUT" << EOF
+  echo "export const resources: { [index in GameVersion]: ResourceUrls } = {" >> "$OUTPUT"
+  for VERSION in "${VERSIONS[@]}"; do
+    cat >> "$OUTPUT" << EOF
     "$VERSION": {
-    provinces1: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-1.png\`),
-    provinces2: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-2.png\`),
-    colorMap: require(\`../../../../assets/game/eu4/$VERSION/map/colormap_summer.webp\`),
-    sea: require(\`../../../../assets/game/eu4/$VERSION/map/colormap_water.webp\`),
-    normal: require(\`../../../../assets/game/eu4/$VERSION/map/world_normal.webp\`),
-    terrain1: require(\`../../../../assets/game/eu4/$VERSION/map/terrain-1.png\`),
-    terrain2: require(\`../../../../assets/game/eu4/$VERSION/map/terrain-2.png\`),
-    rivers1: require(\`../../../../assets/game/eu4/$VERSION/map/rivers-1.png\`),
-    rivers2: require(\`../../../../assets/game/eu4/$VERSION/map/rivers-2.png\`),
-    stripes: require(\`../../../../assets/game/eu4/$VERSION/map/occupation.png\`),
-    water: require(\`../../../../assets/game/eu4/$VERSION/map/noise-2d.webp\`),
-    surfaceRock: require(\`../../../../assets/game/eu4/$VERSION/map/atlas0_rock.webp\`),
-    surfaceGreen: require(\`../../../../assets/game/eu4/$VERSION/map/atlas0_green.webp\`),
-    surfaceNormalRock: require(\`../../../../assets/game/eu4/$VERSION/map/atlas_normal0_rock.webp\`),
-    surfaceNormalGreen: require(\`../../../../assets/game/eu4/$VERSION/map/atlas_normal0_green.webp\`),
-    heightmap: require(\`../../../../assets/game/eu4/$VERSION/map/heightmap.webp\`),
-    provincesUniqueColor: require(\`../../../../assets/game/eu4/$VERSION/map/color-order.bin\`),
-    provincesUniqueIndex: require(\`../../../../assets/game/eu4/$VERSION/map/color-index.bin\`),
-  },
-  EOF
-
-  cat >> "$DATA_OUTPUT" << EOF
-  "$VERSION": require(\`../../../../assets/game/eu4/$VERSION/data.bin\`),
+      provinces1: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-1.png\`),
+      provinces2: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-2.png\`),
+      colorMap: require(\`../../../../assets/game/eu4/$VERSION/map/colormap_summer.webp\`),
+      sea: require(\`../../../../assets/game/eu4/$VERSION/map/colormap_water.webp\`),
+      normal: require(\`../../../../assets/game/eu4/$VERSION/map/world_normal.webp\`),
+      terrain1: require(\`../../../../assets/game/eu4/$VERSION/map/terrain-1.png\`),
+      terrain2: require(\`../../../../assets/game/eu4/$VERSION/map/terrain-2.png\`),
+      rivers1: require(\`../../../../assets/game/eu4/$VERSION/map/rivers-1.png\`),
+      rivers2: require(\`../../../../assets/game/eu4/$VERSION/map/rivers-2.png\`),
+      stripes: require(\`../../../../assets/game/eu4/$VERSION/map/occupation.png\`),
+      water: require(\`../../../../assets/game/eu4/$VERSION/map/noise-2d.webp\`),
+      surfaceRock: require(\`../../../../assets/game/eu4/$VERSION/map/atlas0_rock.webp\`),
+      surfaceGreen: require(\`../../../../assets/game/eu4/$VERSION/map/atlas0_green.webp\`),
+      surfaceNormalRock: require(\`../../../../assets/game/eu4/$VERSION/map/atlas_normal0_rock.webp\`),
+      surfaceNormalGreen: require(\`../../../../assets/game/eu4/$VERSION/map/atlas_normal0_green.webp\`),
+      heightmap: require(\`../../../../assets/game/eu4/$VERSION/map/heightmap.webp\`),
+      provincesUniqueColor: require(\`../../../../assets/game/eu4/$VERSION/map/color-order.bin\`),
+      provincesUniqueIndex: require(\`../../../../assets/game/eu4/$VERSION/map/color-index.bin\`),
+    },
   EOF
 
   done;
-  echo "}" >> "$RESOURCE_OUTPUT"
-  echo export const defaultVersion = \"$VERSION\" >> "$RESOURCE_OUTPUT";
+  echo "}" >> "$OUTPUT"
+  echo export const defaultVersion = \"$VERSION\" >> "$OUTPUT";
 
-  echo "}" >> "$DATA_OUTPUT"
-  echo export const defaultVersion = \"$VERSION\" >> "$DATA_OUTPUT";
+  echo "export const dataUrls: { [index in GameVersion]: string } = {" >> "$OUTPUT"
+  for VERSION in "${VERSIONS[@]}"; do
+    cat >> "$OUTPUT" << EOF
+    "$VERSION": require(\`../../../../assets/game/eu4/$VERSION/data.bin\`),
+  EOF
+  done;
+  echo "}" >> "$OUTPUT"
+
