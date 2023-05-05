@@ -1,5 +1,9 @@
 /wrangler-dist
-/src/map
+public/assets
+public/blog
+public/changelog
+public/docs
+public/img
 *_gen.ts
 src/server-lib/*.node
 

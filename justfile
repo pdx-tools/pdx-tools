@@ -73,8 +73,8 @@ publish-frontend-dev: (wrangler "publish" "--env" "dev")
 
 build-app: prep-frontend
   cd src/docs && npm run build
+  cd src/docs/build && cp -r assets blog changelog docs img ../../app/public/.
   cd src/app && npm run build
-  cd src/docs/build && cp -r assets blog changelog docs img ../../app/out/.
 
 build-docker:
   docker build -t ghcr.io/pdx-tools/pdx-tools:nightly -f ./dev/app.dockerfile ./src/app
