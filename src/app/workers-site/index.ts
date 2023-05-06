@@ -192,7 +192,7 @@ function withSecurityHeaders(response: Response, pathname: string) {
   newResponse.headers.set(
     "Content-Security-Policy",
     "default-src 'self';" +
-      "connect-src 'self' blob: https://skanderbeg.pm/api.php https://a.pdx.tools/api/event https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.10.0/;" +
+      "connect-src 'self' blob: https://skanderbeg.pm/api.php https://a.pdx.tools/api/event;" +
       "img-src 'self' data:;" +
       // unsafe-eval needed for webassembly on safari
       "script-src 'self' 'unsafe-eval' blob: https://a.pdx.tools/js/index.js;" +

@@ -1,4 +1,8 @@
-import WebMMuxer from "webm-muxer";
+import {
+  Muxer as WebMMuxer,
+  ArrayBufferTarget as WebmTarget,
+} from "webm-muxer";
+import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4Target } from "mp4-muxer";
 import { WebGLMap } from "map";
 import { Eu4Worker, getEu4Worker } from "../../worker";
 import { Eu4Store } from "../../store";
@@ -14,21 +18,20 @@ export async function* mapTimelapseCursor(
   }
 }
 
-type EncoderConfig = VideoEncoderConfig & {
-  webmCodec: "V_VP8" | "V_VP9";
-};
+type EncoderConfig = VideoEncoderConfig;
+type VideoEncoding = "mp4" | "webm";
 
 type TimelapseEncoderOptions = {
   map: WebGLMap;
   fps: number;
   frames: ReturnType<typeof mapTimelapseCursor>;
+  encoding: VideoEncoding;
   freezeFrame: number;
   store: Eu4Store;
 };
 
 export class TimelapseEncoder {
   private error: DOMException | undefined;
-  private muxer: WebMMuxer;
   private encoder: VideoEncoder;
   private timestamp: number = 0;
   private frameCount: number = 0;
@@ -37,6 +40,9 @@ export class TimelapseEncoder {
   private constructor(
     private map: WebGLMap,
     config: EncoderConfig,
+    private muxer:
+      | { kind: "webm"; mux: WebMMuxer<WebmTarget> }
+      | { kind: "mp4"; mux: Mp4Muxer<Mp4Target> },
     private ctx2d: CanvasRenderingContext2D,
     private frames: ReturnType<typeof mapTimelapseCursor>,
     private fontFamily: string,
@@ -44,17 +50,8 @@ export class TimelapseEncoder {
     private freezeFrame: number,
     private store: Eu4Store
   ) {
-    this.muxer = new WebMMuxer({
-      target: "buffer",
-      video: {
-        codec: config.webmCodec,
-        width: ctx2d.canvas.width,
-        height: ctx2d.canvas.height,
-      },
-    });
-
     this.encoder = new VideoEncoder({
-      output: (chunk, meta) => this.muxer.addVideoChunk(chunk, meta),
+      output: (chunk, meta) => this.muxer.mux.addVideoChunk(chunk, meta),
       error: (e) => (this.error = e),
     });
 
@@ -141,13 +138,16 @@ export class TimelapseEncoder {
   }
 
   finish() {
-    const out = this.muxer.finalize();
+    this.muxer.mux.finalize();
+    const out = this.muxer.mux.target.buffer;
     if (out == null) {
       throw new Error("empty muxer");
     }
     this.encoder.close();
 
-    return out;
+    return new Blob([out], {
+      type: this.muxer.kind == "mp4" ? "video/mp4" : "video/webm",
+    });
   }
 
   static isSupported() {
@@ -157,32 +157,42 @@ export class TimelapseEncoder {
   static async create({
     map,
     frames,
+    encoding,
     fps,
     freezeFrame,
     store,
   }: TimelapseEncoderOptions) {
-    async function findSupportedEncoder() {
-      const codecs = [
-        { codec: "vp09.00.10.08", webmCodec: "V_VP9" },
-        { codec: "vp8", webmCodec: "V_VP8" },
-      ] as const;
+    // H264 only supports even sized frames.
+    const { height, width } =
+      encoding == "mp4"
+        ? {
+            width: 2 * Math.round((map.gl.canvas.width + 1) / 2),
+            height: 2 * Math.round((map.gl.canvas.height + 1) / 2),
+          }
+        : {
+            width: map.gl.canvas.width,
+            height: map.gl.canvas.height,
+          };
 
-      for (const codec of codecs) {
+    async function findSupportedEncoder(
+      codecs: Readonly<Readonly<[string, string]>[]>
+    ) {
+      for (const [codec, muxCodec] of codecs) {
         try {
           const canvasRate =
             (recordingCanvas.height * recordingCanvas.width) / 4;
           const bitrate = canvasRate * (fps / 15) + 200_000;
           const support = await VideoEncoder.isConfigSupported({
-            codec: codec.codec,
-            height: recordingCanvas.height,
-            width: recordingCanvas.width,
+            codec: codec,
+            height,
+            width,
             bitrateMode: "variable",
             bitrate: Math.min(bitrate, 2_000_000),
             framerate: fps,
           });
 
-          if (support.supported && support.config) {
-            return { ...codec, ...support.config };
+          if (support.config) {
+            return { config: support.config, muxCodec };
           }
         } catch (ex) {}
       }
@@ -191,10 +201,17 @@ export class TimelapseEncoder {
     }
 
     const recordingCanvas = document.createElement("canvas");
-    recordingCanvas.width = map.gl.canvas.width;
-    recordingCanvas.height = map.gl.canvas.height;
+    recordingCanvas.width = width;
+    recordingCanvas.height = height;
 
-    const config = await findSupportedEncoder();
+    const codecs =
+      encoding == "mp4"
+        ? ([["avc1.424034", "avc"]] as const)
+        : ([
+            ["vp09.00.10.08", "V_VP9"],
+            ["vp8", "V_VP8"],
+          ] as const);
+    const { config, muxCodec } = await findSupportedEncoder(codecs);
 
     // get 2d context without alpha:
     // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas#turn_off_transparency
@@ -203,11 +220,39 @@ export class TimelapseEncoder {
       throw new Error("expected recording canvas 2d contex to be defined");
     }
 
+    const muxer =
+      encoding == "mp4"
+        ? ({
+            kind: "mp4",
+            mux: new Mp4Muxer({
+              target: new Mp4Target(),
+              firstTimestampBehavior: "offset",
+              video: {
+                codec: "avc",
+                width: ctx2d.canvas.width,
+                height: ctx2d.canvas.height,
+              },
+            }),
+          } as const)
+        : ({
+            kind: "webm",
+            mux: new WebMMuxer({
+              target: new WebmTarget(),
+              firstTimestampBehavior: "offset",
+              video: {
+                codec: muxCodec,
+                width: ctx2d.canvas.width,
+                height: ctx2d.canvas.height,
+              },
+            }),
+          } as const);
+
     const fontFamily = getComputedStyle(document.body).fontFamily;
 
     return new TimelapseEncoder(
       map,
       config,
+      muxer,
       ctx2d,
       frames,
       fontFamily,
