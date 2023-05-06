@@ -9,6 +9,7 @@ publish = false
 default = ["embedded", "miniz"]
 miniz = ["eu4save/miniz"]
 libdeflate = ["eu4save/libdeflate"]
+zstd-fat-lto = ["zstd/fat-lto"]
 embedded = []
 
 [dependencies]
@@ -21,6 +22,7 @@ serde_path_to_error = "0.1"
 highway = "1"
 base64 = "0.13"
 thiserror = "1"
+zstd = { version = "0.12.3", default-features = false }
 
 [dev-dependencies]
 attohttpc = "0.25"

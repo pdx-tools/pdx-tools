@@ -17,6 +17,9 @@ mod reprocess;
 #[cfg(feature = "tokenize")]
 #[path = "cmd/tokenize.rs"]
 mod tokenize;
+#[cfg(feature = "admin")]
+#[path = "cmd/transcode.rs"]
+mod transcode;
 
 /* Fun commands */
 
@@ -70,6 +73,8 @@ enum Commands {
     Reprocess(reprocess::ReprocessArgs),
     #[cfg(feature = "tokenize")]
     Tokenize(tokenize::TokenizeArgs),
+    #[cfg(feature = "admin")]
+    Transcode(transcode::TranscodeArgs),
     #[cfg(feature = "fun")]
     AiDevelopment(ai_development::AiDevelopmentArgs),
     #[cfg(feature = "compile_assets")]
@@ -99,6 +104,8 @@ fn main() -> ExitCode {
         Commands::Reprocess(x) => x.run(),
         #[cfg(feature = "tokenize")]
         Commands::Tokenize(x) => x.run(),
+        #[cfg(feature = "admin")]
+        Commands::Transcode(x) => x.run(),
         #[cfg(feature = "fun")]
         Commands::AiDevelopment(x) => x.run(),
         #[cfg(feature = "compile_assets")]

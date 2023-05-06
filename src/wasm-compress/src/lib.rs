@@ -1,9 +1,6 @@
 use std::io::{Cursor, Read, Write};
 use wasm_bindgen::prelude::*;
-
-fn new_brotli<W: Write>(writer: W) -> brotli::CompressorWriter<W> {
-    brotli::CompressorWriter::new(writer, 4096, 9, 22)
-}
+use zip_next as zip;
 
 struct ProgressReader<'a, R> {
     reader: R,
@@ -67,53 +64,42 @@ fn _recompress(
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let reader = Cursor::new(data);
     if let Ok(mut zip) = zip::ZipArchive::new(reader) {
-        let out = Vec::with_capacity(data.len() / 2);
-
-        let compressor = new_brotli(out);
-        let mut archive = tar::Builder::new(compressor);
-
-        if zip.offset() != 0 {
-            let mut header = tar::Header::new_gnu();
-            header.set_path("__leading_data")?;
-            header.set_size(zip.offset());
-            header.set_mtime(0);
-            header.set_cksum();
-            archive.append(&header, &data[..zip.offset() as usize])?;
-        }
-
-        let mut total_size = 0;
-        for index in 0..zip.len() {
-            let file = zip.by_index(index)?;
+        let mut inflated_size: u64 = 0;
+        let mut total_size: usize = 0;
+        for i in 0..zip.len() {
+            let file = zip.by_index(i)?;
+            inflated_size += file.compressed_size();
             total_size += file.size() as usize;
         }
 
-        let mut current_size = 0;
-        for index in 0..zip.len() {
-            let file = zip.by_index(index)?;
-            let file_size = file.size() as usize;
-            let mut header = tar::Header::new_gnu();
-            header.set_path(file.name())?;
-            header.set_size(file.size());
-            header.set_mtime(0);
-            header.set_cksum();
+        let out: Vec<u8> = Vec::with_capacity((inflated_size + zip.offset()) as usize);
+        let mut writer = Cursor::new(out);
+        writer.write_all(&data[..zip.offset() as usize])?;
+        let mut out_zip = zip::ZipWriter::new(writer);
+        let options = zip::write::FileOptions::default()
+            .compression_level(Some(7))
+            .compression_method(zip::CompressionMethod::Zstd);
 
-            let reader = ProgressReader::start_at(file, total_size, current_size, f);
-            archive.append(&header, reader)?;
+        let mut current_size = 0;
+        for i in 0..zip.len() {
+            let file = zip.by_index(i)?;
+            let file_size = file.size() as usize;
+            out_zip
+                .start_file(String::from(file.name()), options)
+                .unwrap();
+            let mut reader = ProgressReader::start_at(file, total_size, current_size, f);
+            std::io::copy(&mut reader, &mut out_zip)?;
             current_size += file_size;
         }
 
-        archive.finish()?;
-        let data = archive.into_inner()?.into_inner();
-        Ok(data)
+        Ok(out_zip.finish().unwrap().into_inner())
     } else {
+        let out = Cursor::new(Vec::with_capacity(data.len() / 10));
         let inner = Cursor::new(data);
         let mut reader = ProgressReader::new(inner, data.len(), f);
-        let out = Vec::with_capacity(data.len() / 10);
-        let cursor = Cursor::new(out);
-        let mut compressor = new_brotli(cursor);
-        std::io::copy(&mut reader, &mut compressor)?;
-        let data = compressor.into_inner().into_inner();
-        Ok(data)
+        let mut encoder = zstd::Encoder::new(out, 7).unwrap();
+        std::io::copy(&mut reader, &mut encoder)?;
+        Ok(encoder.finish()?.into_inner())
     }
 }
 
@@ -122,7 +108,7 @@ pub fn recompress(data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
 }
 
 #[wasm_bindgen]
-pub fn brotli_compress(data: &[u8], f: &js_sys::Function) -> Result<Vec<u8>, JsValue> {
+pub fn compress(data: &[u8], f: &js_sys::Function) -> Result<Vec<u8>, JsValue> {
     _recompress(data, Some(f)).map_err(|e| JsValue::from_str(e.to_string().as_str()))
 }
 
@@ -130,8 +116,8 @@ pub fn brotli_compress(data: &[u8], f: &js_sys::Function) -> Result<Vec<u8>, JsV
 pub fn recompressed_meta(data: &[u8]) -> String {
     let reader = Cursor::new(data);
     if zip::ZipArchive::new(reader).is_ok() {
-        String::from(r#"{"content_type":"application/x-tar", "content_encoding": "br"}"#)
+        String::from(r#"{"content_type":"application/zip"}"#)
     } else {
-        String::from(r#"{"content_type":"text/plain", "content_encoding": "br"}"#)
+        String::from(r#"{"content_type":"application/zstd"}"#)
     }
 }

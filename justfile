@@ -47,7 +47,7 @@ staging: build-napi build-app prep-dev-app
     "PORT=3001 node_modules/.bin/next start" \
     "wrangler dev --port 3003 --local --local-upstream localhost:3001 --var AWS_S3_HOST:localhost --var AWS_S3_PORT:$S3_PORT --var AWS_S3_BUCKET:$S3_BUCKET --var AWS_DEFAULT_REGION:$S3_REGION --var AWS_ACCESS_KEY_ID:$S3_ACCESS_KEY --var AWS_SECRET_ACCESS_KEY:$S3_SECRET_KEY"
 
-test: (cargo "test" "--all-features") test-app
+test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-eu4") (cargo "test" "-p" "pdx" "--all-features") (cargo "test" "-p" "wasm-eu4") test-app
 
 setup:
   #!/usr/bin/env bash
@@ -150,7 +150,7 @@ build-wasm: build-wasm-dev
     mv "$MY_TMP" "$1"
   }
 
-  optimize src/wasm-br/pkg/wasm_br_bg.wasm &
+  optimize src/wasm-compress/pkg/wasm_compress_bg.wasm &
   optimize src/wasm-ck3/pkg/wasm_ck3_bg.wasm &
   optimize src/wasm-eu4/pkg/wasm_eu4_bg.wasm &
   optimize src/wasm-hoi4/pkg/wasm_hoi4_bg.wasm &
@@ -159,7 +159,7 @@ build-wasm: build-wasm-dev
   wait
 
 build-wasm-dev:
-  wasm-pack build -t web src/wasm-br
+  wasm-pack build -t web src/wasm-compress
   wasm-pack build -t web src/wasm-ck3
   wasm-pack build -t web src/wasm-eu4
   wasm-pack build -t web src/wasm-hoi4

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import { useBrotli } from "@/features/brotli";
+import { useCompression } from "@/features/compress";
 import { SavePostResponse } from "@/pages/api/saves";
 import { getEu4Worker } from "../../worker";
 import { useSaveFilename } from "../../store";
@@ -114,7 +114,7 @@ interface UploadFormValues {
 }
 
 export const useFileUpload = () => {
-  const brotli = useBrotli();
+  const compression = useCompression();
   const { dispatch } = useUpload();
   const uploadRequestRef = useRef<XMLHttpRequest | undefined>(undefined);
   const filename = useSaveFilename();
@@ -139,7 +139,7 @@ export const useFileUpload = () => {
         dispatch({ kind: "progress", progress });
       };
 
-      const fileData = await brotli.compress(
+      const fileData = await compression.compress(
         new Uint8Array(rawFileData),
         compressProgress
       );
@@ -206,6 +206,6 @@ export const useFileUpload = () => {
 
       request.send(data);
     },
-    [brotli, uploadRequestRef, dispatch, filename]
+    [compression, uploadRequestRef, dispatch, filename]
   );
 };
