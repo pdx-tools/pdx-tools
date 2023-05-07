@@ -16,9 +16,9 @@ export const GreatAdvisorsList = ({
         return (
           <AdvisorAvatar
             key={x.occupation.id}
-            enabled={!!x.trigger_date}
+            enabled={!!x.triggerDate}
             localized={x.occupation}
-            triggerDate={x.trigger_date}
+            triggerDate={x.triggerDate}
           />
         );
       })}
