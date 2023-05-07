@@ -492,8 +492,8 @@ impl SaveFile {
         to_json_value(&self.0.get_country_rulers(tag))
     }
 
-    pub fn get_country_great_advisors(&self, tag: &str) -> JsValue {
-        to_json_value(&self.0.get_country_great_advisors(tag))
+    pub fn get_country_advisors(&self, tag: &str) -> JsValue {
+        to_json_value(&self.0.get_country_advisors(tag))
     }
 
     pub fn get_country_province_religion(&self, tag: &str) -> JsValue {

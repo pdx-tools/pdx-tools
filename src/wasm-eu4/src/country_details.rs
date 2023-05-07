@@ -107,7 +107,15 @@ pub struct FailedHeir {
     mil: u16,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CountryAdvisors {
+    radical_reforms: Option<Eu4Date>,
+    great_advisors: Vec<GreatAdvisor>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GreatAdvisor {
     occupation: LocalizedObj,
     trigger_date: Option<Eu4Date>,
@@ -757,9 +765,15 @@ impl SaveFileImpl {
         result
     }
 
-    pub fn get_country_great_advisors(&self, tag: &str) -> Vec<GreatAdvisor> {
+    pub fn get_country_advisors(&self, tag: &str) -> CountryAdvisors {
         let tag = tag.parse::<CountryTag>().unwrap();
         let country = self.query.country(&tag).unwrap();
+
+        let radical_reforms = country
+            .flags
+            .iter()
+            .find(|(flag, _)| flag == "radical_mercantilist_reforms")
+            .map(|(_, date)| *date);
 
         let mut great_advisors = Vec::new();
         for advisor_id in self.game.advisor_ids() {
@@ -782,7 +796,10 @@ impl SaveFileImpl {
         }
 
         great_advisors.sort_unstable_by(|a, b| a.occupation.name.cmp(&b.occupation.name));
-        great_advisors
+        CountryAdvisors {
+            radical_reforms,
+            great_advisors,
+        }
     }
 
     pub fn get_country_province_religion(&self, tag: &str) -> Vec<CountryReligion> {

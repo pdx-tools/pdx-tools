@@ -35,6 +35,7 @@ import type {
   War,
   WarInfo,
   WarRaw,
+  CountryAdvisors,
 } from "../types/models";
 import { MapPayload, QuickTipPayload } from "../types/map";
 import { LedgerDataRaw, workLedgerData } from "../utils/ledger";
@@ -152,9 +153,9 @@ export function eu4GetCountryRulers(tag: string): RunningMonarch[] {
   return save.get_country_rulers(tag) as RunningMonarch[];
 }
 
-export function eu4GetCountryGreatAdvisors(tag: string): GreatAdvisor[] {
+export function eu4GetCountryAdvisors(tag: string): CountryAdvisors {
   const save = wasm.save;
-  return save.get_country_great_advisors(tag) as GreatAdvisor[];
+  return save.get_country_advisors(tag);
 }
 
 export function eu4GetCountryProvinceReligion(tag: string): CountryReligion[] {

@@ -44,14 +44,14 @@ export const CountryDetailsDrawer = () => {
   const sideBarContainerRef = useSideBarContainerRef();
   const panTag = useSideBarPanTag();
 
-  const { data: [country, rulers, greatAdvisors] = [undefined, [], []] } =
+  const { data: [country, rulers, advisors] = [undefined, [], undefined] } =
     useEu4Worker(
       useCallback(
         (worker) =>
           Promise.all([
             worker.eu4GetCountry(selectedTag),
             worker.eu4GetCountryRulers(selectedTag),
-            worker.eu4GetCountryGreatAdvisors(selectedTag),
+            worker.eu4GetCountryAdvisors(selectedTag),
           ]),
         [selectedTag]
       )
@@ -141,6 +141,9 @@ export const CountryDetailsDrawer = () => {
             )}
           </TabPane>
           <TabPane tab="Advisors" key="Advisors">
+            <div>
+              Radical reforms completed: {advisors?.radicalReforms || "no"}
+            </div>
             <Divider orientation="left">
               One Time Advisor Events (
               <a
@@ -151,7 +154,9 @@ export const CountryDetailsDrawer = () => {
               </a>
               )
             </Divider>
-            <GreatAdvisorsList greatAdvisors={greatAdvisors} />
+            {advisors?.greatAdvisors && (
+              <GreatAdvisorsList greatAdvisors={advisors.greatAdvisors} />
+            )}
           </TabPane>
           <TabPane tab="Rulers" key="Rulers">
             <Divider orientation="left">Past Rulers and Failed Heirs</Divider>

@@ -671,9 +671,14 @@ export interface FailedHeir {
   mil: number;
 }
 
+export interface CountryAdvisors {
+  radicalReforms?: string;
+  greatAdvisors: GreatAdvisor[];
+}
+
 export interface GreatAdvisor {
   occupation: LocalizedObj;
-  trigger_date?: string;
+  triggerDate?: string;
 }
 
 export interface CountryReligion {
