@@ -23,7 +23,6 @@ import { ToggleRow } from "./ToggleRow";
 import { IMG_HEIGHT, IMG_WIDTH } from "map";
 import { useIsDeveloper } from "@/features/account";
 import { mapTimelapseCursor, TimelapseEncoder } from "./TimelapseEncoder";
-import { transcode } from "./WebMTranscoder";
 import { captureException } from "@/features/errors";
 import {
   useEu4Actions,
@@ -45,7 +44,6 @@ interface MapState {
 export const Timelapse = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [isTranscoding, setIsTranscoding] = useState(false);
   const [recordingFrame, setRecordingFrame] = useState("None");
   const [maxFps, setMaxFps] = useState(8);
   const [exportAsMp4, setExportAsMp4] = useState(false);
@@ -128,8 +126,10 @@ export const Timelapse = () => {
     };
 
     try {
+      const encoding = exportAsMp4 ? "mp4" : "webm";
       const encoder = await TimelapseEncoder.create({
         map,
+        encoding,
         frames: mapTimelapseCursor(timelapsePayload),
         fps: maxFps,
         freezeFrame: freezeFrameSeconds,
@@ -138,17 +138,12 @@ export const Timelapse = () => {
       encoderRef.current = encoder;
 
       await encoder.encodeTimelapse();
-      const out = encoder.finish();
-      const blob = new Blob([out], {
-        type: exportAsMp4 ? "video/mp4" : "video/webm",
-      });
-
-      const extension = exportAsMp4 ? "mp4" : "webm";
+      const blob = encoder.finish();
       const nameInd = filename.lastIndexOf(".");
       const outputName =
         nameInd == -1
-          ? `${filename}.${extension}`
-          : `${filename.substring(0, nameInd)}.${extension}`;
+          ? `${filename}.${encoding}`
+          : `${filename.substring(0, nameInd)}.${encoding}`;
 
       setIsRecording(false);
       restoreMapState();
@@ -156,15 +151,7 @@ export const Timelapse = () => {
       await updateProvinceColors();
       map.redrawMapImage();
 
-      if (exportAsMp4) {
-        setProgress("transcoding into MP4");
-        setIsTranscoding(true);
-        const blobBuffer = new Uint8Array(out);
-        const output = await transcode(blobBuffer, isDeveloper);
-        downloadData(output, outputName);
-      } else {
-        downloadData(blob, outputName);
-      }
+      downloadData(blob, outputName);
     } catch (ex) {
       captureException(ex);
       Modal.error({
@@ -174,7 +161,6 @@ export const Timelapse = () => {
     } finally {
       restoreMapState();
       setProgress("");
-      setIsTranscoding(false);
       setIsRecording(false);
     }
   };
@@ -197,7 +183,6 @@ export const Timelapse = () => {
         <Tooltip title={!isPlaying ? "Start recording" : "Stop recording"}>
           <Button
             shape="circle"
-            loading={isTranscoding}
             disabled={!(timelapseEnabled && recordingSupported)}
             icon={
               !isRecording ? <VideoCameraOutlined /> : <VideoCameraTwoTone />
@@ -318,10 +303,10 @@ export const Timelapse = () => {
 
       {recordingSupported && (
         <ToggleRow
-          text="Export as MP4 (slow)"
+          text="Export as MP4"
           onChange={setExportAsMp4}
           value={exportAsMp4}
-          help="After the recording is finished, it will be transcoded into an mp4. May take several minutes"
+          help="Export the recording as an MP4 instead of Webm"
         />
       )}
     </>
