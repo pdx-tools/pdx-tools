@@ -766,6 +766,21 @@ export interface CountryStateDetails {
   state_house: boolean;
 }
 
+export interface Estate {
+  kind: string;
+  loyalty: number;
+  territory: number;
+  completedAgendas: number;
+  privileges: [string, string][];
+  influenceModifiers: InfludenceModifier[];
+}
+
+export interface InfludenceModifier {
+  value: number;
+  desc: string;
+  date: string;
+}
+
 export type Development = {
   tax: number;
   production: number;

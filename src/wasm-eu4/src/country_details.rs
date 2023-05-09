@@ -1278,6 +1278,78 @@ impl SaveFileImpl {
         result.sort_unstable_by(|a, b| a.state.name.cmp(&b.state.name));
         result
     }
+
+    pub fn get_country_estates(&self, tag: &str) -> JsValue {
+        let tag = tag.parse::<CountryTag>().unwrap();
+        let country = self.query.country(&tag).unwrap();
+
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct FrontendEstate<'a> {
+            kind: &'a str,
+            loyalty: f32,
+            territory: f32,
+            completed_agendas: i32,
+            privileges: Vec<(String, Eu4Date)>,
+            influence_modifiers: Vec<FrontendModifier>,
+        }
+
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct FrontendModifier {
+            value: f32,
+            desc: String,
+            date: Eu4Date,
+        }
+
+        let estates: Vec<_> = country
+            .estates
+            .iter()
+            .map(|x| {
+                let mut privileges: Vec<_> = x
+                    .granted_privileges
+                    .iter()
+                    .map(|(privilege, date)| {
+                        (
+                            privilege
+                                .trim_start_matches(&x._type)
+                                .trim_start_matches('_')
+                                .replace('_', " "),
+                            *date,
+                        )
+                    })
+                    .collect();
+
+                privileges.sort_by(|(privilege, _), (bprivilege, _)| privilege.cmp(&bprivilege));
+
+                let mut influence_modifiers: Vec<_> = x
+                    .influence_modifiers
+                    .iter()
+                    .map(|modifier| FrontendModifier {
+                        value: modifier.value,
+                        desc: modifier
+                            .desc
+                            .trim_start_matches("EST_VAL_")
+                            .replace('_', " "),
+                        date: modifier.date,
+                    })
+                    .collect();
+
+                influence_modifiers.sort_by_key(|x| x.date);
+
+                FrontendEstate {
+                    kind: x._type.trim_start_matches("estate_"),
+                    loyalty: x.loyalty,
+                    territory: x.territory,
+                    privileges,
+                    influence_modifiers,
+                    completed_agendas: x.num_of_estate_agendas_completed,
+                }
+            })
+            .collect();
+
+        to_json_value(&estates)
+    }
 }
 
 pub(crate) fn country_best_leaders(country: &Country) -> (Option<&Leader>, Option<&Leader>) {

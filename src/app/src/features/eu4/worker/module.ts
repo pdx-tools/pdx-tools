@@ -36,6 +36,7 @@ import type {
   WarInfo,
   WarRaw,
   CountryAdvisors,
+  Estate,
 } from "../types/models";
 import { MapPayload, QuickTipPayload } from "../types/map";
 import { LedgerDataRaw, workLedgerData } from "../utils/ledger";
@@ -176,6 +177,11 @@ export function eu4GetCountryLeaders(tag: string): CountryLeader[] {
 export function eu4GetCountryStates(tag: string): CountryStateDetails[] {
   const save = wasm.save;
   return save.get_country_states(tag) as CountryStateDetails[];
+}
+
+export function eu4GetCountryEstates(tag: string): Estate[] {
+  const save = wasm.save;
+  return save.get_country_estates(tag) as Estate[];
 }
 
 export function eu4InitialMapPosition() {

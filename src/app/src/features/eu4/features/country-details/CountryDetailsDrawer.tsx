@@ -23,6 +23,7 @@ import { CountryLeaders } from "./CountryLeaders";
 import { CountryCultures } from "./CountryCultures";
 import { CountryDiplomacy } from "./CountryDiplomacy";
 import { CountryStates } from "./CountryStates";
+import { CountryEstates } from "./CountryEstates";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { useSideBarPanTag } from "../../hooks/useSideBarPanTag";
 import {
@@ -182,6 +183,9 @@ export const CountryDetailsDrawer = () => {
           </TabPane>
           <TabPane tab="States" key="States">
             {country && <CountryStates details={country} />}
+          </TabPane>
+          <TabPane tab="Estates" key="Estates">
+            {country && <CountryEstates details={country} />}
           </TabPane>
         </Tabs>
       </div>

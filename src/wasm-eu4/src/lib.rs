@@ -512,6 +512,10 @@ impl SaveFile {
         to_json_value(&self.0.get_country_states(tag))
     }
 
+    pub fn get_country_estates(&self, tag: &str) -> JsValue {
+        self.0.get_country_estates(tag)
+    }
+
     pub fn get_nation_idea_groups(&self, payload: JsValue) -> JsValue {
         let payload = serde_wasm_bindgen::from_value(payload).unwrap();
         to_json_value(&self.0.get_nation_idea_groups(payload))
