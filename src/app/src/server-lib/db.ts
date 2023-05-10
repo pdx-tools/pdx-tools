@@ -6,6 +6,7 @@ import { GameDifficulty, SaveEncoding, SaveFile } from "@/services/appApi";
 import { log } from "./logging";
 import { metrics } from "./metrics";
 import { eu4DaysToDate, ParsedFile } from "./pool";
+export { type User };
 
 // add prisma to the NodeJS global type
 // @ts-ignore
