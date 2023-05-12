@@ -717,124 +717,55 @@ impl SaveFileImpl {
     }
 }
 
-type TimelapseCountryColors = (HashMap<CountryTag, [u8; 4]>, Vec<(Eu4Date, CountryTag)>);
-fn timelapse_country_colors(save: &SaveFileImpl) -> TimelapseCountryColors {
-    let no_owner = "---".parse::<CountryTag>().unwrap();
-    let country_colors = {
-        let mut colors: HashMap<CountryTag, [u8; 4]> = save
-            .query
-            .save()
-            .game
-            .countries
-            .iter()
-            .map(|(tag, country)| {
-                let c = &country.colors.map_color;
-                (*tag, [c[0], c[1], c[2], 255])
-            })
-            .collect();
-
-        colors.insert(no_owner, [94, 94, 94, 128]);
-        colors
-    };
-
-    let current_owners: Vec<_> = save
-        .province_owners
-        .initial
-        .iter()
-        .map(|x| (Eu4Date::from_ymd(1, 1, 1), x.unwrap_or(no_owner)))
-        .collect();
-
-    (country_colors, current_owners)
+enum ProvinceTracking {
+    OnlyOwner,
+    OwnerAndController,
 }
 
-enum Timelapse {
-    Political(PoliticalTimelapse),
-    Religion(ReligionTimelapse),
-    Battles(BattleTimelapse),
-}
-
-impl Timelapse {
-    fn advance_to(&mut self, date: Eu4Date) -> Vec<u8> {
-        match self {
-            Timelapse::Political(x) => x.advance_to(date),
-            Timelapse::Religion(x) => x.advance_to(date),
-            Timelapse::Battles(x) => x.advance_to(date),
-        }
-    }
-
-    // The number of parts that color is data is divided into. Will be 2 if the
-    // primary color and country color is the same.
-    fn parts(&self) -> usize {
-        match self {
-            Timelapse::Political(_) => 2,
-            _ => 3,
-        }
-    }
-}
-
-struct PoliticalEvent {
-    date: Eu4Date,
-    kind: PoliticalEventKind,
-}
-
-#[derive(Debug)]
-enum PoliticalEventKind {
-    Owner {
-        province: ProvinceId,
-        new_owner: CountryTag,
-    },
-    Controller {
-        province: ProvinceId,
-        new_controller: CountryTag,
-    },
-    WarEnded {
-        participants: Vec<(CountryTag, CountryTag)>,
-    },
-}
-
-struct PoliticalTimelapse {
+struct OwnerTimelapse {
     wasm: &'static SaveFileImpl,
     country_colors: HashMap<CountryTag, [u8; 4]>,
-
-    conflicts: HashMap<(CountryTag, CountryTag), Vec<ProvinceId>>,
-    current_controllers: Vec<(Eu4Date, CountryTag)>,
     current_owners: Vec<(Eu4Date, CountryTag)>,
-    events: Vec<PoliticalEvent>,
+    current_controllers: Vec<(Eu4Date, CountryTag)>,
+    conflicts: HashMap<(CountryTag, CountryTag), Vec<ProvinceId>>,
     event_index: usize,
+    tracking: ProvinceTracking,
+    events: Vec<PoliticalEvent>,
 }
 
-impl PoliticalTimelapse {
-    pub fn new(wasm: &SaveFileImpl) -> Self {
-        let (country_colors, current_owners) = timelapse_country_colors(wasm);
-        let current_controllers = current_owners.clone();
+impl OwnerTimelapse {
+    pub fn new(wasm: &SaveFileImpl, tracking: ProvinceTracking) -> Self {
+        let no_owner = "---".parse::<CountryTag>().unwrap();
+        let country_colors = {
+            let mut colors: HashMap<CountryTag, [u8; 4]> = wasm
+                .query
+                .save()
+                .game
+                .countries
+                .iter()
+                .map(|(tag, country)| {
+                    let c = country.colors.color.unwrap_or(country.colors.map_color);
+                    (*tag, [c[0], c[1], c[2], 255])
+                })
+                .collect();
 
-        // Saves do not record when a rebel occupied province is lifted
-        let rebels = "REB".parse::<CountryTag>().unwrap();
-        let controller_changes = wasm
-            .query
-            .save()
-            .game
-            .provinces
+            colors.insert(no_owner, [94, 94, 94, 128]);
+
+            colors
+        };
+
+        let current_owners: Vec<_> = wasm
+            .province_owners
+            .initial
             .iter()
-            .flat_map(|(id, p)| {
-                p.history
-                    .events
-                    .iter()
-                    .map(move |(date, event)| (id, date, event))
-            })
-            .filter_map(|(id, date, event)| match event {
-                eu4save::models::ProvinceEvent::Controller(x) if x.tag != rebels => {
-                    Some((*id, *date, x.tag))
-                }
-                _ => None,
-            })
-            .map(|(id, date, tag)| PoliticalEvent {
-                date,
-                kind: PoliticalEventKind::Controller {
-                    province: id,
-                    new_controller: tag,
-                },
-            });
+            .map(|x| (Eu4Date::from_ymd(1, 1, 1), x.unwrap_or(no_owner)))
+            .collect();
+
+        let current_controllers = if matches!(tracking, ProvinceTracking::OwnerAndController) {
+            current_owners.clone()
+        } else {
+            Vec::new()
+        };
 
         let owner_changes = wasm
             .province_owners
@@ -848,73 +779,131 @@ impl PoliticalTimelapse {
                 },
             });
 
-        let wars = wasm.query.save().game.previous_wars.iter().map(|war| {
-            let ended = war
-                .history
-                .events
-                .last()
-                .map(|(date, _)| *date)
-                .unwrap_or(wasm.query.save().meta.date);
-            let attackers: Vec<_> = war
-                .history
-                .events
-                .iter()
-                .filter_map(|(_, event)| match event {
-                    eu4save::models::WarEvent::AddAttacker(x) => Some(*x),
-                    _ => None,
-                })
-                .collect();
-
-            let defenders: Vec<_> = war
-                .history
-                .events
-                .iter()
-                .filter_map(|(_, event)| match event {
-                    eu4save::models::WarEvent::AddDefender(x) => Some(*x),
-                    _ => None,
-                })
-                .collect();
-
-            let participants: Vec<_> = attackers
-                .into_iter()
-                .flat_map(|attacker| {
-                    defenders.iter().map(move |defender| {
-                        if attacker > *defender {
-                            (*defender, attacker)
-                        } else {
-                            (attacker, *defender)
-                        }
+        let color_changes = wasm
+            .query
+            .save()
+            .game
+            .countries
+            .iter()
+            .flat_map(|(tag, c)| {
+                c.history
+                    .events
+                    .iter()
+                    .filter_map(|(date, event)| match event {
+                        CountryEvent::ChangedCountryMapColorFrom(c) => Some(PoliticalEvent {
+                            date: *date,
+                            kind: PoliticalEventKind::ColorChange {
+                                tag: *tag,
+                                color: [c[0], c[1], c[2], 255],
+                            },
+                        }),
+                        _ => None,
                     })
+            });
+
+        let mut events: Vec<_> = if matches!(tracking, ProvinceTracking::OwnerAndController) {
+            // Saves do not record when a rebel occupied province is lifted
+            let rebels = "REB".parse::<CountryTag>().unwrap();
+            let controller_changes = wasm
+                .query
+                .save()
+                .game
+                .provinces
+                .iter()
+                .flat_map(|(id, p)| {
+                    p.history
+                        .events
+                        .iter()
+                        .map(move |(date, event)| (id, date, event))
                 })
-                .collect();
+                .filter_map(|(id, date, event)| match event {
+                    eu4save::models::ProvinceEvent::Controller(x) if x.tag != rebels => {
+                        Some((*id, *date, x.tag))
+                    }
+                    _ => None,
+                })
+                .map(|(id, date, tag)| PoliticalEvent {
+                    date,
+                    kind: PoliticalEventKind::Controller {
+                        province: id,
+                        new_controller: tag,
+                    },
+                });
 
-            PoliticalEvent {
-                date: ended,
-                kind: PoliticalEventKind::WarEnded { participants },
-            }
-        });
+            let wars = wasm.query.save().game.previous_wars.iter().map(|war| {
+                let ended = war
+                    .history
+                    .events
+                    .last()
+                    .map(|(date, _)| *date)
+                    .unwrap_or(wasm.query.save().meta.date);
+                let attackers: Vec<_> = war
+                    .history
+                    .events
+                    .iter()
+                    .filter_map(|(_, event)| match event {
+                        eu4save::models::WarEvent::AddAttacker(x) => Some(*x),
+                        _ => None,
+                    })
+                    .collect();
 
-        let mut events: Vec<_> = controller_changes
-            .chain(owner_changes)
-            .chain(wars)
-            .collect();
+                let defenders: Vec<_> = war
+                    .history
+                    .events
+                    .iter()
+                    .filter_map(|(_, event)| match event {
+                        eu4save::models::WarEvent::AddDefender(x) => Some(*x),
+                        _ => None,
+                    })
+                    .collect();
+
+                let participants: Vec<_> = attackers
+                    .into_iter()
+                    .flat_map(|attacker| {
+                        defenders.iter().map(move |defender| {
+                            if attacker > *defender {
+                                (*defender, attacker)
+                            } else {
+                                (attacker, *defender)
+                            }
+                        })
+                    })
+                    .collect();
+
+                PoliticalEvent {
+                    date: ended,
+                    kind: PoliticalEventKind::WarEnded { participants },
+                }
+            });
+
+            owner_changes
+                .chain(color_changes)
+                .chain(controller_changes)
+                .chain(wars)
+                .collect()
+        } else {
+            owner_changes.chain(color_changes).collect()
+        };
+
         events.sort_by(|a, b| a.date.cmp(&b.date));
-        Self {
+
+        OwnerTimelapse {
+            country_colors,
             current_owners,
             current_controllers,
+            tracking,
             events,
-            country_colors,
             wasm: unsafe { std::mem::transmute(wasm) },
             event_index: 0,
             conflicts: HashMap::new(),
         }
     }
 
-    fn advance_to(&mut self, date: Eu4Date) -> Vec<u8> {
-        let result_len = self.wasm.province_id_to_color_index.len() * 4;
-        let mut result: Vec<u8> = vec![0; result_len * 2];
+    fn advance_to(&mut self, date: Eu4Date) {
+        // let result_len = self.wasm.province_id_to_color_index.len() * 4;
+        // let mut result: Vec<u8> = vec![0; result_len * 2];
         let resolver = self.wasm.tag_resolver.at(date);
-        let (primary, secondary) = result.split_at_mut(result_len);
+        // let (primary, secondary) = result.split_at_mut(result_len);
 
         let remaining_events = &self.events[self.event_index..];
         let pos = remaining_events
@@ -926,6 +915,10 @@ impl PoliticalTimelapse {
 
         for event in events {
             match &event.kind {
+                PoliticalEventKind::ColorChange { tag, color } => {
+                    self.country_colors.insert(*tag, *color);
+                }
+
                 PoliticalEventKind::Owner {
                     province,
                     new_owner,
@@ -956,7 +949,10 @@ impl PoliticalTimelapse {
                     // ```
                     let ind = usize::from(province.as_u16());
                     self.current_owners[ind] = (event.date, *new_owner);
-                    self.current_controllers[ind] = (event.date, *new_owner);
+
+                    if matches!(self.tracking, ProvinceTracking::OwnerAndController) {
+                        self.current_controllers[ind] = (event.date, *new_owner);
+                    }
                 }
                 PoliticalEventKind::Controller {
                     province,
@@ -1011,6 +1007,79 @@ impl PoliticalTimelapse {
                 }
             }
         }
+    }
+}
+
+enum Timelapse {
+    Political(PoliticalTimelapse),
+    Religion(ReligionTimelapse),
+    Battles(BattleTimelapse),
+}
+
+impl Timelapse {
+    fn advance_to(&mut self, date: Eu4Date) -> Vec<u8> {
+        match self {
+            Timelapse::Political(x) => x.advance_to(date),
+            Timelapse::Religion(x) => x.advance_to(date),
+            Timelapse::Battles(x) => x.advance_to(date),
+        }
+    }
+
+    // The number of parts that color is data is divided into. Will be 2 if the
+    // primary color and country color is the same.
+    fn parts(&self) -> usize {
+        match self {
+            Timelapse::Political(_) => 2,
+            _ => 3,
+        }
+    }
+}
+
+struct PoliticalEvent {
+    date: Eu4Date,
+    kind: PoliticalEventKind,
+}
+
+#[derive(Debug)]
+enum PoliticalEventKind {
+    Owner {
+        province: ProvinceId,
+        new_owner: CountryTag,
+    },
+    Controller {
+        province: ProvinceId,
+        new_controller: CountryTag,
+    },
+    WarEnded {
+        participants: Vec<(CountryTag, CountryTag)>,
+    },
+    ColorChange {
+        tag: CountryTag,
+        color: [u8; 4],
+    },
+}
+
+struct PoliticalTimelapse {
+    wasm: &'static SaveFileImpl,
+    owners: OwnerTimelapse,
+}
+
+impl PoliticalTimelapse {
+    pub fn new(wasm: &SaveFileImpl) -> Self {
+        let owners = OwnerTimelapse::new(wasm, ProvinceTracking::OwnerAndController);
+
+        Self {
+            wasm: unsafe { std::mem::transmute(wasm) },
+            owners,
+        }
+    }
+
+    fn advance_to(&mut self, date: Eu4Date) -> Vec<u8> {
+        let result_len = self.wasm.province_id_to_color_index.len() * 4;
+        let mut result: Vec<u8> = vec![0; result_len * 2];
+        let resolver = self.wasm.tag_resolver.at(date);
+        let (primary, secondary) = result.split_at_mut(result_len);
+        self.owners.advance_to(date);
 
         for province in self.wasm.game.provinces() {
             let prov_ind = usize::from(province.id.as_u16());
@@ -1019,7 +1088,7 @@ impl PoliticalTimelapse {
                     break 'color &WASTELAND;
                 }
 
-                let Some((date, owner)) = self.current_owners.get(prov_ind) else {
+                let Some((date, owner)) = self.owners.current_owners.get(prov_ind) else {
                     break 'color &WASTELAND;
                 };
 
@@ -1028,7 +1097,10 @@ impl PoliticalTimelapse {
                     .map(|x| x.current)
                     .unwrap_or(*owner);
 
-                self.country_colors.get(&tag).unwrap_or(&[94, 94, 94, 128])
+                self.owners
+                    .country_colors
+                    .get(&tag)
+                    .unwrap_or(&[94, 94, 94, 128])
             };
 
             let secondary_color = 'color: {
@@ -1036,7 +1108,7 @@ impl PoliticalTimelapse {
                     break 'color &WASTELAND;
                 }
 
-                let Some((date, tag)) = self.current_controllers.get(prov_ind) else {
+                let Some((date, tag)) = self.owners.current_controllers.get(prov_ind) else {
                     break 'color &WASTELAND;
                 };
 
@@ -1045,7 +1117,10 @@ impl PoliticalTimelapse {
                     .map(|x| x.current)
                     .unwrap_or(*tag);
 
-                self.country_colors.get(&tag).unwrap_or(&[94, 94, 94, 128])
+                self.owners
+                    .country_colors
+                    .get(&tag)
+                    .unwrap_or(&[94, 94, 94, 128])
             };
 
             let ind = self.wasm.province_id_to_color_index[prov_ind];
@@ -1065,10 +1140,6 @@ struct ReligionEvent {
 
 #[derive(Debug)]
 enum ReligionEventKind {
-    Owner {
-        province: ProvinceId,
-        new_owner: CountryTag,
-    },
     ProvReligion {
         province: ProvinceId,
         new_religion: ReligionIndex,
@@ -1081,19 +1152,18 @@ enum ReligionEventKind {
 
 struct ReligionTimelapse {
     wasm: &'static SaveFileImpl,
+    owners: OwnerTimelapse,
     country_religions: HashMap<CountryTag, ReligionIndex>,
-    country_colors: HashMap<CountryTag, [u8; 4]>,
     religion_colors: HashMap<ReligionIndex, [u8; 4]>,
 
     current_religions: Vec<ReligionIndex>,
-    current_owners: Vec<(Eu4Date, CountryTag)>,
     event_index: usize,
     events: Vec<ReligionEvent>,
 }
 
 impl ReligionTimelapse {
     pub fn new(wasm: &SaveFileImpl) -> Self {
-        let (country_colors, current_owners) = timelapse_country_colors(wasm);
+        let owners = OwnerTimelapse::new(wasm, ProvinceTracking::OnlyOwner);
 
         let religion_colors = wasm
             .query
@@ -1159,13 +1229,6 @@ impl ReligionTimelapse {
                 .events
                 .iter()
                 .filter_map(|(date, event)| match event {
-                    eu4save::models::ProvinceEvent::Owner(new_owner) => Some(ReligionEvent {
-                        date: *date,
-                        kind: ReligionEventKind::Owner {
-                            province: *id,
-                            new_owner: *new_owner,
-                        },
-                    }),
                     eu4save::models::ProvinceEvent::Religion(new_religion) => wasm
                         .religion_lookup
                         .index(new_religion)
@@ -1212,7 +1275,7 @@ impl ReligionTimelapse {
                 wasm.religion_lookup.index(first_religion).unwrap()
             });
 
-        let mut current_religions = vec![default_religion; current_owners.len()];
+        let mut current_religions = vec![default_religion; owners.current_owners.len()];
         for (id, prov) in &wasm.query.save().game.provinces {
             let first_religion = prov
                 .history
@@ -1226,10 +1289,9 @@ impl ReligionTimelapse {
         }
 
         Self {
-            current_owners,
+            owners,
             current_religions,
             country_religions,
-            country_colors,
             religion_colors,
             events,
             wasm: unsafe { std::mem::transmute(wasm) },
@@ -1244,23 +1306,18 @@ impl ReligionTimelapse {
         let (religion_colors, country_colors) = result.split_at_mut(result_len * 2);
         let (primary, secondary) = religion_colors.split_at_mut(result_len);
 
-        let remaingin_events = &self.events[self.event_index..];
-        let pos = remaingin_events
+        self.owners.advance_to(date);
+
+        let remaining_events = &self.events[self.event_index..];
+        let pos = remaining_events
             .iter()
             .position(|event| event.date > date)
-            .unwrap_or(remaingin_events.len());
-        let events = &remaingin_events[..pos];
+            .unwrap_or(remaining_events.len());
+        let events = &remaining_events[..pos];
         self.event_index += pos;
 
         for event in events {
             match event.kind {
-                ReligionEventKind::Owner {
-                    province,
-                    new_owner,
-                } => {
-                    let ind = usize::from(province.as_u16());
-                    self.current_owners[ind] = (event.date, new_owner);
-                }
                 ReligionEventKind::ProvReligion {
                     province,
                     new_religion,
@@ -1282,7 +1339,7 @@ impl ReligionTimelapse {
                     break 'color (&WASTELAND, &WASTELAND);
                 }
 
-                let Some((date, owner)) = self.current_owners.get(prov_ind) else {
+                let Some((date, owner)) = self.owners.current_owners.get(prov_ind) else {
                     break 'color (&WASTELAND, &WASTELAND);
                 };
 
@@ -1301,7 +1358,11 @@ impl ReligionTimelapse {
                     .and_then(|religion| self.religion_colors.get(religion))
                     .unwrap_or(&[94, 94, 94, 128]);
 
-                let country_color = self.country_colors.get(&tag).unwrap_or(&[94, 94, 94, 128]);
+                let country_color = self
+                    .owners
+                    .country_colors
+                    .get(&tag)
+                    .unwrap_or(&[94, 94, 94, 128]);
                 (owner_religion_color, country_color)
             };
 
@@ -1345,42 +1406,20 @@ struct BattleEvent {
 
 #[derive(Debug)]
 enum BattleEventKind {
-    Owner(CountryTag),
     Battle { losses: i32 },
 }
 
 struct BattleTimelapse {
     wasm: &'static SaveFileImpl,
-    country_colors: HashMap<CountryTag, [u8; 4]>,
-
+    owners: OwnerTimelapse,
     current_losses: Vec<i32>,
-    current_owners: Vec<(Eu4Date, CountryTag)>,
     event_index: usize,
     events: Vec<BattleEvent>,
 }
 
 impl BattleTimelapse {
     pub fn new(wasm: &SaveFileImpl) -> Self {
-        let (country_colors, current_owners) = timelapse_country_colors(wasm);
-
-        let mut events =
-            Vec::with_capacity(wasm.province_owners.changes.len() + wasm.game.total_provinces());
-
-        for (id, prov) in wasm.query.save().game.provinces.iter() {
-            let extend = prov
-                .history
-                .events
-                .iter()
-                .filter_map(|(date, event)| match event {
-                    eu4save::models::ProvinceEvent::Owner(new_owner) => Some(BattleEvent {
-                        date: *date,
-                        province: *id,
-                        kind: BattleEventKind::Owner(*new_owner),
-                    }),
-                    _ => None,
-                });
-            events.extend(extend);
-        }
+        let owners = OwnerTimelapse::new(wasm, ProvinceTracking::OnlyOwner);
 
         let previous_events = wasm
             .query
@@ -1405,20 +1444,20 @@ impl BattleTimelapse {
             _ => None,
         });
 
-        let battle_events = battles.map(|(date, province, losses)| BattleEvent {
-            date,
-            province,
-            kind: BattleEventKind::Battle { losses },
-        });
+        let mut events: Vec<_> = battles
+            .map(|(date, province, losses)| BattleEvent {
+                date,
+                province,
+                kind: BattleEventKind::Battle { losses },
+            })
+            .collect();
 
-        events.extend(battle_events);
         events.sort_by(|a, b| a.date.cmp(&b.date));
 
-        let current_losses = vec![0; current_owners.len()];
+        let current_losses = vec![0; owners.current_owners.len()];
         Self {
-            current_owners,
+            owners,
             current_losses,
-            country_colors,
             events,
             wasm: unsafe { std::mem::transmute(wasm) },
             event_index: 0,
@@ -1432,12 +1471,14 @@ impl BattleTimelapse {
         let (religion_colors, country_colors) = result.split_at_mut(result_len * 2);
         let (primary, secondary) = religion_colors.split_at_mut(result_len);
 
-        let remaingin_events = &self.events[self.event_index..];
-        let pos = remaingin_events
+        self.owners.advance_to(date);
+
+        let remaining_events = &self.events[self.event_index..];
+        let pos = remaining_events
             .iter()
             .position(|event| event.date > date)
-            .unwrap_or(remaingin_events.len());
-        let events = &remaingin_events[..pos];
+            .unwrap_or(remaining_events.len());
+        let events = &remaining_events[..pos];
         self.event_index += pos;
 
         let mut province_battles = Vec::with_capacity((events.len() / 2).min(8));
@@ -1445,9 +1486,6 @@ impl BattleTimelapse {
             let ind = usize::from(event.province.as_u16());
 
             match event.kind {
-                BattleEventKind::Owner(new_owner) => {
-                    self.current_owners[ind] = (event.date, new_owner);
-                }
                 BattleEventKind::Battle { losses } => {
                     province_battles.push(event.province);
                     self.current_losses[ind] += losses;
@@ -1466,7 +1504,7 @@ impl BattleTimelapse {
                     break 'color (WASTELAND, &WASTELAND);
                 }
 
-                let Some((date, owner)) = self.current_owners.get(prov_ind) else {
+                let Some((date, owner)) = self.owners.current_owners.get(prov_ind) else {
                     break 'color (WASTELAND, &WASTELAND);
                 };
 
@@ -1484,7 +1522,11 @@ impl BattleTimelapse {
                     255,
                 ];
 
-                let country_color = self.country_colors.get(&tag).unwrap_or(&[94, 94, 94, 128]);
+                let country_color = self
+                    .owners
+                    .country_colors
+                    .get(&tag)
+                    .unwrap_or(&[94, 94, 94, 128]);
                 (battle_color, country_color)
             };
 
