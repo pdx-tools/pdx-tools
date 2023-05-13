@@ -2083,14 +2083,14 @@ impl<'a> AchievementHunter<'a> {
             "no countries in the HRE",
         ));
 
-        let hrl_tag = self
+        let hlr_tag = self
             .query
-            .country(&"HRL".parse().unwrap())
+            .country(&"HLR".parse().unwrap())
             .map_or(true, |x| x.num_of_cities == 0);
 
         result.and(AchievementCondition::new(
-            hrl_tag,
-            "is HRL tag doesn't exist",
+            hlr_tag,
+            "is HLR tag doesn't exist",
         ));
         result
     }
