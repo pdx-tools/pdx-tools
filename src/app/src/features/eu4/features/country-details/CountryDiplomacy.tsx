@@ -106,6 +106,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
               x.subject_type == "core_eyalet" ||
               x.subject_type == "eyalet" ||
               x.subject_type == "appanage" ||
+              x.subject_type == "tributary_state" ||
               isColony(x.subject_type))
         )
         .map((x) => ({ ...x, ...notMe(x) })),
@@ -146,6 +147,19 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
             x.kind === "Dependency" &&
             x.first.tag === details.tag &&
             x.subject_type === "appanage"
+        )
+        .map((x) => ({ ...x, ...notMe(x) })),
+    [details, notMe]
+  );
+
+  const tributaries = useMemo(
+    () =>
+      details.diplomacy
+        .filter(
+          (x) =>
+            x.kind === "Dependency" &&
+            x.first.tag === details.tag &&
+            x.subject_type === "tributary_state"
         )
         .map((x) => ({ ...x, ...notMe(x) })),
     [details, notMe]
@@ -304,6 +318,10 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         </DiploRow>
 
         <DiploRow title="Eyalets" relations={eyalets}>
+          {(x) => <RelationshipSince x={x} />}
+        </DiploRow>
+
+        <DiploRow title="Tributaries" relations={tributaries}>
           {(x) => <RelationshipSince x={x} />}
         </DiploRow>
 
