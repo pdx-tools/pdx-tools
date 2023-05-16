@@ -7,8 +7,10 @@ import { PrivateUserInfo, ProfileResponse } from "@/services/appApi";
 
 function getAccount(user: User): PrivateUserInfo["account"] {
   switch (user.account) {
-    case "ADMIN": return "admin";
-    case "FREE": return "free";
+    case "ADMIN":
+      return "admin";
+    case "FREE":
+      return "free";
   }
 }
 
