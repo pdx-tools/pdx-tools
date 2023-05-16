@@ -1,6 +1,6 @@
 import { ValidationError } from "./errors";
 
-export type UploadType = "gzipText" | "brText" | "brTar" | "zip";
+export type UploadType = "gzipText" | "brText" | "brTar" | "zip" | "zstd";
 export function deduceUploadType(
   type: string,
   encoding: string | null
@@ -17,6 +17,8 @@ export function deduceUploadType(
     }
   } else if (type.toLowerCase() === "application/zip") {
     return "zip";
+  } else if (type.toLowerCase() === "application/zstd") {
+    return "zstd";
   } else {
     throw new ValidationError("unknown content and encoding combination");
   }
@@ -46,6 +48,8 @@ export function uploadContentType(upload: UploadType): string {
     case "brTar":
       return "application/x-tar";
     case "zip":
-      return "application/octet-stream";
+      return "application/zip";
+    case "zstd":
+      return "application/zstd";
   }
 }

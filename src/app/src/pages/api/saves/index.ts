@@ -70,6 +70,7 @@ const unwrapSave = async (fp: string, upload: UploadType): Promise<string> => {
     case "brText":
       inflater = createBrotliDecompress();
       break;
+    case "zstd":
     case "zip":
       return fp;
   }

@@ -1,5 +1,5 @@
 [package]
-name = "wasm-br"
+name = "wasm-compress"
 version = "0.1.0"
 authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
 edition = "2021"
@@ -10,9 +10,8 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 wasm-bindgen = { version = "0.2" }
-brotli = "3"
-zip = { version = "0.6", default-features = false, features = ["deflate"] }
-tar = "0.4"
+zip_next = { git = "https://github.com/nickbabcock/zip-rs.git", branch = "disable-default-zstd2", default-features = false, features = ["deflate", "zstd"] }
+zstd = { version = "0.12", default-features = false }
 js-sys = "0.3"
 
 [package.metadata.wasm-pack.profile.release]

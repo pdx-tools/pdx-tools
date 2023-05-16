@@ -89,7 +89,7 @@ A quick intro into how the repo is structured.
 - **map**: Project that contains the WebGL2 map shaders and logic for interacting with shaders. It is a standalone module, so that contributors can quickly iterate on shader and WebGL2 implementations without instantiating a dev environment.
 - **schemas**: flatbuffer schema for communicating game data efficiently to the browser
 - **tarsave**: Utility crate that detects if a eu4 save file has been converted into a tarsave. A tarsave, much like it sounds, is a [tarball](https://en.wikipedia.org/wiki/Tar_(computing)) with every file from a zip transferred into the archive. Tarsaves allow us to transfer the save over the network with a content encoding that can leverage the browser's natively implemented brotli decompression engine, which is faster at inflating than our Wasm zip decompression while having a much better compression ratio.   
-- **wasm-br**: Wasm package that takes in a byte array, brotli deflates it, and returns the deflated bytes. This is a standalone package due to how large brotli encoding consumes. Brotli encoding is used when users upload and since most users don't upload, we only want to pay the price to load the brotli module when needed. Maybe one day browsers will expose a JS api so we can use a native brotli deflate implementation.
+- **wasm-compress**: Wasm package that takes in a byte array and compresses it 
 - **wasm-{{game}}**: Wasm packages dedicated to translating the Rust logic into a Wasm (ie: browser) environment. Each game is a separate package so that users don't need to pay the cost of downloading the logic for every game if they only ever analzye one game.
 
 ## Manual Build Environment

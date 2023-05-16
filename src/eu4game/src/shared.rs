@@ -1,3 +1,5 @@
+use std::io::Cursor;
+
 use crate::Eu4GameError;
 use eu4save::{
     file::{Eu4Binary, Eu4FileEntryName, Eu4ParsedFile, Eu4Text},
@@ -195,6 +197,19 @@ where
         let meta_file = Eu4File::from_slice(tsave.meta)?;
         let parsed_meta = meta_file.parse(&mut zip_sink)?;
         Ok(parsed_meta.deserializer(resolver).deserialize()?)
+    } else if data.get(..4) == Some(&[0x28, 0xb5, 0x2f, 0xfd]) {
+        let mut cursor = Cursor::new(Vec::with_capacity(data.len() * 10));
+        zstd::stream::copy_decode(data, &mut cursor).unwrap();
+        let inflated = cursor.into_inner();
+        if inflated.get(.."EU4txt".len()) == Some(b"EU4txt") {
+            let parsed_file = Eu4Text::from_slice(&inflated)?;
+            let meta: Meta = parsed_file.deserializer().deserialize()?;
+            Ok(meta)
+        } else {
+            let parsed_file = Eu4Binary::from_slice(&inflated)?;
+            let meta: Meta = parsed_file.deserializer(resolver).deserialize()?;
+            Ok(meta)
+        }
     } else {
         let file = Eu4File::from_slice(data)?;
         if file.size() > 300 * 1024 * 1024 {
@@ -292,6 +307,23 @@ pub fn parse_save_raw<'a>(
                     meta: Eu4ParsedFile::from(meta),
                     game: Eu4ParsedFile::from(game),
                 },
+            })
+        }
+    } else if data.get(..4) == Some(&[0x28, 0xb5, 0x2f, 0xfd]) {
+        let mut cursor = Cursor::new(zip_sink);
+        zstd::stream::copy_decode(data, &mut cursor).unwrap();
+        let inflated = cursor.into_inner();
+        if inflated.get(.."EU4txt".len()) == Some(b"EU4txt") {
+            let parsed_file = Eu4ParsedFile::from(Eu4Text::from_slice(inflated)?);
+            Ok(Eu4RemoteFile {
+                encoding: Encoding::Text,
+                kind: Eu4RemoteFileKind::Unified(parsed_file),
+            })
+        } else {
+            let parsed_file = Eu4ParsedFile::from(Eu4Binary::from_slice(inflated)?);
+            Ok(Eu4RemoteFile {
+                encoding: Encoding::Binary,
+                kind: Eu4RemoteFileKind::Unified(parsed_file),
             })
         }
     } else {

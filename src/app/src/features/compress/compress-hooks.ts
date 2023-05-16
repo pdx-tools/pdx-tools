@@ -1,10 +1,10 @@
 import { wrap, Remote, transfer, releaseProxy, proxy } from "comlink";
 import { useEffect, useMemo, useRef } from "react";
-import type { BrotliProgressCb, BrotliWorker } from "./brotli-worker";
+import type { ProgressCb, CompressionWorker } from "./compress-worker";
 
-export const useBrotli = () => {
+export const useCompression = () => {
   const worker = useRef<Worker>();
-  const client = useRef<Remote<BrotliWorker>>();
+  const client = useRef<Remote<CompressionWorker>>();
 
   useEffect(() => {
     return () => {
@@ -15,15 +15,15 @@ export const useBrotli = () => {
 
   const ret = useMemo(
     () => ({
-      compress: async (data: Uint8Array, cb: BrotliProgressCb) => {
+      compress: async (data: Uint8Array, cb: ProgressCb) => {
         if (!worker.current) {
           worker.current = new Worker(
-            new URL("./brotli-worker", import.meta.url)
+            new URL("./compress-worker", import.meta.url)
           );
         }
 
         if (!client.current) {
-          const workerApi = wrap<BrotliWorker>(worker.current);
+          const workerApi = wrap<CompressionWorker>(worker.current);
           await workerApi.loadWasm();
           client.current = workerApi;
         }
