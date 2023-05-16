@@ -94,5 +94,6 @@ export function useCanvasPointerEvents(map: WebGLMap) {
     canvas.addEventListener("wheel", handleMouseWheel);
     canvas.addEventListener("pointerdown", handleMouseDown);
     canvas.addEventListener("pointerup", handleMouseUp);
+    canvas.addEventListener("pointerleave", handleMouseUp);
   }, [map]);
 }
