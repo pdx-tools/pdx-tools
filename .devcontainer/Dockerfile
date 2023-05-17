@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
       imagemagick \
       netcat \
       openssl \
+      zstd \
     && \
     rm -rf /var/lib/apt/lists/* && \
     # Install just
