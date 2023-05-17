@@ -12,6 +12,7 @@ import {
   SaveFile,
   UserSaves,
 } from "@/services/appApi";
+import { tmpPath } from "@/server-lib/tmp";
 
 jest.setTimeout(60000);
 
@@ -474,14 +475,18 @@ test("chinese supplementary", async () => {
 
 test("plain saves", async () => {
   const client = await HttpClient.create();
-  const path = "Granada1468_05_09.eu4.gz";
+  const path = "Granada1468_05_09.eu4.zst";
   const upload = await client.uploadSave(path, {
-    content_type: "plain/text",
-    content_encoding: "gzip",
+    content_type: "application/zstd",
   });
   const data = await client.getReq(`/api/saves/${upload.save_id}/file`);
-  const resp = await data.text();
-  expect(resp.slice(0, 6)).toBe("EU4txt");
+  const fp = await tmpPath();
+  await promises.writeFile(fp, Buffer.from(await data.arrayBuffer()));
+  const save = await pool.parseFile(fp);
+  expect(save.kind).not.toBe("InvalidPath");
+  if (save.kind == "Parsed") {
+    expect(save.encoding).toBe("TEXT");
+  }
 });
 
 test("get profile", async () => {
@@ -541,11 +546,10 @@ test("admin rebalance", async () => {
 
 test("api post new save", async () => {
   const client = await HttpClient.create();
-  const path = "Granada1468_05_09.eu4.gz";
+  const path = "Granada1468_05_09.eu4.zst";
   const upload = await client.uploadSaveHeaders(path, {
     "rakaly-filename": "granada.eu4",
-    "Content-Type": "text/plain; charset=windows-1252",
-    "Content-Encoding": "gzip",
+    "Content-Type": "application/zstd",
   });
 
   expect(upload.save_id).toBeDefined();

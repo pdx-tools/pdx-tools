@@ -1,9 +1,6 @@
 import { NextApiResponse } from "next";
 import multer from "multer";
 import fs, { createReadStream, createWriteStream } from "fs";
-import { promisify } from "util";
-import crypto from "crypto";
-import os from "os";
 import { pipeline } from "stream/promises";
 import path from "path";
 import { db } from "@/server-lib/db";
@@ -17,8 +14,8 @@ import { withCoreMiddleware } from "@/server-lib/middlware";
 import { getOptionalString, getString } from "@/server-lib/valiation";
 import { deduceUploadType, UploadType } from "@/server-lib/models";
 import { nanoid } from "nanoid";
+import { tmpDir, tmpPath } from "@/server-lib/tmp";
 
-const tmpDir = process.env["TMPDIR"] || os.tmpdir();
 const upload = multer({ dest: tmpDir });
 
 interface UploadMetadata {
@@ -51,14 +48,6 @@ const parseMetadata = (data: any): UploadMetadata => {
     uploadType: deduceUploadType(contentType, contentEncoding),
   };
 };
-
-// Get random, temporary file name. Same algorithm used by multer:
-// https://github.com/expressjs/multer/blob/4f4326a6687635411a69d70f954f48abb4bce58a/storage/disk.js#L7-L11
-const randomBytes = promisify(crypto.randomBytes);
-const tmpPath = () =>
-  randomBytes(16)
-    .then((x) => x.toString("hex"))
-    .then((x) => path.join(tmpDir, x));
 
 const unwrapSave = async (fp: string, upload: UploadType): Promise<string> => {
   let inflater;
