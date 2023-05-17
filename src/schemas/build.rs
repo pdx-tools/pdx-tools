@@ -8,9 +8,8 @@ use std::{
 fn main() {
     if std::env::var("XARGO_HOME").is_err() {
         println!("cargo:rerun-if-changed=src/eu4.fbs");
-        println!("cargo:rerun-if-changed=src/tokens.fbs");
         flatc_rust::run(flatc_rust::Args {
-            inputs: &[Path::new("src/eu4.fbs"), Path::new("src/tokens.fbs")],
+            inputs: &[Path::new("src/eu4.fbs")],
             out_dir: Path::new("target/flatbuffers/"),
             ..Default::default()
         })
@@ -37,7 +36,7 @@ fn main() {
             r#"
 #[cfg(feature = "inline")]
 pub struct {pascal}FlatBufferTokens {{
-    resolver: FlatBufferResolver<'static>,
+    resolver: FlatResolver<'static>,
 }}
 
 #[cfg(feature = "inline")]
@@ -46,14 +45,14 @@ impl {pascal}FlatBufferTokens {{
     pub fn new() -> Self {{
         let data = include_bytes!("{token_path}");
         Self {{
-            resolver: FlatBufferResolver::from_slice(data),
+            resolver: FlatResolver::from_slice(data),
         }}
     }}
 
     #[cfg(not({game}_tokens))]
     pub fn new() -> Self {{
         Self {{
-            resolver: FlatBufferResolver {{
+            resolver: FlatResolver {{
                 values: Vec::new(),
                 breakpoint: 0,
             }},
