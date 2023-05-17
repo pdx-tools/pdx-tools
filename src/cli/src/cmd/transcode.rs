@@ -83,6 +83,8 @@ impl TranscodeArgs {
                 }
 
                 out_zip.finish().unwrap().into_inner()
+            } else if inflated.get(..4) == Some(&[0x28, 0xb5, 0x2f, 0xfd])  {
+                continue;
             } else {
                 zstd::bulk::compress(&inflated, 7).context("zstd failure")?
             };
