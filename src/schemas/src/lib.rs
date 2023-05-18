@@ -10,5 +10,5 @@ pub mod resolver;
 
 pub use eu4_flatbuffers::rakaly::eu_4 as eu4;
 pub use flatbuffers;
-pub use resolver::FlatBufferResolver;
+pub use resolver::{FlatResolver, BREAKPOINT};
 pub use tokens_flatbuffers::rakaly::tokens;

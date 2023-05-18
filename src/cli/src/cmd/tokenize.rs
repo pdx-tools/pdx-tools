@@ -4,7 +4,7 @@ use clap::Args;
 use log::{debug, info};
 use std::{
     fs::File,
-    io::{self, BufRead, BufReader},
+    io::{self, BufRead, BufReader, Cursor, Write},
     path::{Path, PathBuf},
     process::ExitCode,
 };
@@ -74,7 +74,7 @@ where
     tokenize(reader, writer, name)
 }
 
-fn tokenize<R, W>(reader: R, mut writer: W, name: &str) -> anyhow::Result<()>
+fn tokenize<R, W>(reader: R, mut top_writer: W, name: &str) -> anyhow::Result<()>
 where
     R: io::Read,
     W: io::Write,
@@ -113,8 +113,20 @@ where
         line.clear();
     }
 
-    let refs = tokens.iter().map(|x| x.as_ref()).collect::<Vec<_>>();
-    let raw = schemas::FlatBufferResolver::create_data(refs);
+    let mut writer = Cursor::new(Vec::new());
+    writer.write_all(&(u16::try_from(tokens.len())?).to_le_bytes())?;
+    writer.write_all(&breakpoint.to_le_bytes())?;
+
+    let toks = tokens[..usize::from(breakpoint)]
+        .iter()
+        .chain(tokens[usize::from(schemas::BREAKPOINT)..].iter());
+
+    for token in toks {
+        writer.write_all(&u8::try_from(token.len())?.to_le_bytes())?;
+        writer.write_all(token.as_bytes())?;
+    }
+
+    let raw = writer.into_inner();
     info!(
         "{}: tokens: {}, breakpoint: {} empty: {}, empty ranges: {}, byte size: {}",
         name,
@@ -124,6 +136,6 @@ where
         empty_ranges,
         raw.len()
     );
-    writer.write_all(&raw)?;
+    top_writer.write_all(&raw)?;
     Ok(())
 }

@@ -8,11 +8,11 @@ use flatbuffers::{ForwardsUOffset, Vector};
 use jomini::binary::TokenResolver;
 use rand::{thread_rng, Rng};
 
-pub struct FlatbufferResolver<'a> {
+pub struct FlatResolver<'a> {
     data: Vec<&'a str>,
 }
 
-impl<'a> FlatbufferResolver<'a> {
+impl<'a> FlatResolver<'a> {
     pub fn from_slice(data: &'a [u8]) -> Self {
         let xb = schemas::tokens::root_as_tokens(data).unwrap();
         let values = xb.values().unwrap();
@@ -21,7 +21,7 @@ impl<'a> FlatbufferResolver<'a> {
     }
 }
 
-impl<'a> jomini::binary::TokenResolver for FlatbufferResolver<'a> {
+impl<'a> jomini::binary::TokenResolver for FlatResolver<'a> {
     fn resolve(&self, token: u16) -> Option<&str> {
         self.data
             .get(usize::from(token))
@@ -29,11 +29,11 @@ impl<'a> jomini::binary::TokenResolver for FlatbufferResolver<'a> {
     }
 }
 
-pub struct FlatbufferResolverRaw<'a> {
+pub struct FlatResolverRaw<'a> {
     data: Vector<'a, ForwardsUOffset<&'a str>>,
 }
 
-impl<'a> FlatbufferResolverRaw<'a> {
+impl<'a> FlatResolverRaw<'a> {
     pub fn from_slice(data: &'a [u8]) -> Self {
         let xb = schemas::tokens::root_as_tokens(data).unwrap();
         let values = xb.values().unwrap();
@@ -41,7 +41,7 @@ impl<'a> FlatbufferResolverRaw<'a> {
     }
 }
 
-impl<'a> jomini::binary::TokenResolver for FlatbufferResolverRaw<'a> {
+impl<'a> jomini::binary::TokenResolver for FlatResolverRaw<'a> {
     fn resolve(&self, token: u16) -> Option<&str> {
         let s = self.data.get(usize::from(token));
 
@@ -103,7 +103,7 @@ fn token_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("resolve");
     group.bench_function("vec", |b| {
         let mut i = 0;
-        let resolver = FlatbufferResolver::from_slice(data);
+        let resolver = FlatResolver::from_slice(data);
 
         b.iter(|| {
             let res = resolver.resolve(arr[i % 1024]);
@@ -114,7 +114,7 @@ fn token_benchmark(c: &mut Criterion) {
 
     group.bench_function("current", |b| {
         let mut i = 0;
-        let resolver = schemas::FlatBufferResolver::from_slice(data);
+        let resolver = schemas::FlatResolver::from_slice(data);
 
         b.iter(|| {
             let res = resolver.resolve(arr[i % 1024]);
@@ -125,7 +125,7 @@ fn token_benchmark(c: &mut Criterion) {
 
     group.bench_function("raw", |b| {
         let mut i = 0;
-        let resolver = FlatbufferResolverRaw::from_slice(data);
+        let resolver = FlatResolverRaw::from_slice(data);
 
         b.iter(|| {
             let res = resolver.resolve(arr[i % 1024]);
@@ -171,7 +171,7 @@ fn token_creation_benchmark(c: &mut Criterion) {
     let data = include_bytes!("../../../assets/tokens/eu4-raw.bin");
 
     c.bench_function("creation", |b| {
-        b.iter(|| FlatbufferResolver::from_slice(data))
+        b.iter(|| FlatResolver::from_slice(data))
     });
 }
 
