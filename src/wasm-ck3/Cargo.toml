@@ -9,7 +9,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["miniz"]
+default = ["miniz", "zstd/fat-lto"]
 miniz = ["ck3save/miniz"]
 libdeflate = ["ck3save/libdeflate"]
 
@@ -21,6 +21,7 @@ serde-wasm-bindgen = "0.5"
 serde = { version = "1", features = ["derive"] }
 ck3save = { git = "https://github.com/rakaly/ck3save.git" }
 js-sys = "0.3"
+zstd = { version = "0.12.3", default-features = false }
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false

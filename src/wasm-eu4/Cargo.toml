@@ -9,7 +9,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["miniz"]
+default = ["miniz", "zstd/fat-lto"]
 miniz = ["eu4save/miniz", "eu4game/miniz"]
 libdeflate = ["eu4save/libdeflate", "eu4game/libdeflate"]
 
@@ -21,11 +21,12 @@ wasm-bindgen = { version = "0.2" }
 serde-wasm-bindgen = "0.5"
 serde = { version = "1", features = ["derive"] }
 eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["zstd"] }
-eu4game = { path = "../eu4game", default-features = false, features = ["zstd-fat-lto"] }
+eu4game = { path = "../eu4game", default-features = false }
 schemas = { path = "../schemas" }
 tarsave = { path = "../tarsave" }
 tar = "0.4"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
+zstd = { version = "0.12.3", default-features = false }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.0"

@@ -9,9 +9,9 @@ admin = ["create_bundle", "fetch_assets", "tokenize", "dep:applib", "dep:eu4game
 fun = ["compile_assets", "dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2"]
 
 create_bundle = ["dep:zstd"]
-compile_assets = ["dep:attohttpc", "dep:brotli", "dep:eu4save", "dep:jomini", "dep:oxipng", "dep:schemas", "schemas?/inline", "dep:zstd"]
+compile_assets = ["dep:attohttpc", "dep:eu4save", "dep:jomini", "dep:oxipng", "dep:schemas", "schemas?/inline", "dep:zstd"]
 fetch_assets = ["dep:aws-config", "dep:aws-sdk-s3", "dep:tokio", "dep:tokio-stream"]
-tokenize = ["dep:brotli", "dep:schemas"]
+tokenize = ["dep:zstd", "dep:schemas"]
 
 [dependencies]
 anyhow = "1.0"
@@ -19,7 +19,6 @@ applib = { path = "../applib", optional = true }
 attohttpc = { version = "0.25", features = ["json"], optional = true }
 aws-config = { version = "0.55.1", optional = true }
 aws-sdk-s3 = { version = "0.26.0", optional = true }
-brotli = { version = "3.3", optional = true }
 chrono = "0.4"
 clap = { version = "4.1", features = ["derive", "env"] }
 csv = { version = "1.1" }

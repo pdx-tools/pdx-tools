@@ -1,4 +1,4 @@
-use crate::brotli_tee::BrotliTee;
+use crate::zstd_tee::ZstdTee;
 use anyhow::Context;
 use clap::Args;
 use log::{debug, info};
@@ -69,9 +69,11 @@ where
     std::fs::create_dir_all(&out_dir).context("unable to create token directory")?;
 
     let out = out_dir.join(name);
-    let writer = BrotliTee::create(out)?;
+    let mut writer = ZstdTee::create(out)?;
 
-    tokenize(reader, writer, name)
+    tokenize(reader, &mut writer, name)?;
+    writer.flush()?;
+    Ok(())
 }
 
 fn tokenize<R, W>(reader: R, mut top_writer: W, name: &str) -> anyhow::Result<()>

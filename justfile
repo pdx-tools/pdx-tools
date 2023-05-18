@@ -47,7 +47,10 @@ staging: build-napi build-app prep-dev-app
     "PORT=3001 node_modules/.bin/next start" \
     "wrangler dev --port 3003 --local --local-upstream localhost:3001 --var AWS_S3_HOST:localhost --var AWS_S3_PORT:$S3_PORT --var AWS_S3_BUCKET:$S3_BUCKET --var AWS_DEFAULT_REGION:$S3_REGION --var AWS_ACCESS_KEY_ID:$S3_ACCESS_KEY --var AWS_SECRET_ACCESS_KEY:$S3_SECRET_KEY"
 
-test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-eu4") (cargo "test" "-p" "pdx" "--all-features") (cargo "test" "-p" "wasm-eu4") test-app
+test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-*") test-wasm (cargo "test" "-p" "pdx" "--all-features") test-app
+
+# Disable zstd fat-lto which cause linking issues for tests
+test-wasm: (cargo "test" "--no-default-features" "--features" "miniz" "-p" "wasm-*")
 
 setup:
   #!/usr/bin/env bash
