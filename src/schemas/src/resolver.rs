@@ -23,12 +23,12 @@ impl<'a> FlatResolver<'a> {
         let breakpoint = u16::from_le_bytes([data[2], data[3]]);
         let mut values = vec![""; total_tokens];
         let mut data = &data[4..];
-        for i in 0..total_tokens {
+        for value in values.iter_mut() {
             if let Some((&len, rest)) = data.split_first() {
                 let len = usize::from(len);
                 if len != 0 && rest.len() >= len {
                     let (s, rest) = rest.split_at(len);
-                    values[i] = unsafe { std::str::from_utf8_unchecked(s) };
+                    *value = unsafe { std::str::from_utf8_unchecked(s) };
                     data = rest;
                 } else {
                     data = rest;
