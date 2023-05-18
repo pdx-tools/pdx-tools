@@ -56,15 +56,6 @@ let nextConfig = {
           }
         ],
       },
-      {
-        source: "/:path*.bin",
-        headers: [
-          {
-            key: "Content-Encoding",
-            value: "br",
-          },
-        ],
-      },
     ];
   },
   async rewrites() {

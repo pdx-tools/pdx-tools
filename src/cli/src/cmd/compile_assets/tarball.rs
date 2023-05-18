@@ -2,8 +2,8 @@ use super::{
     achievements, area, assets, continents, cultures, localization, mapper, personalities, regions,
     religion, sprites, superregion,
 };
-use crate::brotli_tee::BrotliTee;
 use crate::rawbmp::{self, Pixels, Rgb};
+use crate::zstd_tee::ZstdTee;
 use anyhow::{bail, Context};
 use eu4save::{CountryTag, Eu4File, ProvinceId};
 use mapper::GameProvince;
@@ -11,7 +11,7 @@ use schemas::resolver::Eu4FlatBufferTokens;
 use serde::{de::IgnoredAny, Deserialize};
 use std::collections::HashMap;
 use std::fs;
-use std::io::Write;
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::{collections::HashSet, process::Command};
 use walkdir::WalkDir;
@@ -461,7 +461,7 @@ pub fn parse_game_dir(
     buffer.finish(game, None);
     let raw = buffer.finished_data();
 
-    let mut writer = BrotliTee::create(out_game_dir.join("data"))?;
+    let mut writer = ZstdTee::create(out_game_dir.join("data"))?;
     writer.write_all(raw)?;
     writer.flush()?;
 
@@ -1122,14 +1122,16 @@ pub fn translate_map(
         .collect();
     provs.sort_unstable_by_key(|(&&id, _index)| id);
 
-    let mut color_order_writer = BrotliTee::create(out_game_dir.join("map").join("color-order"))?;
-
+    // These files don't compress that well (and are small), so we skip compression
+    let color_order_file = fs::File::create(out_game_dir.join("map").join("color-order.bin"))?;
+    let mut color_order_writer = BufWriter::new(color_order_file);
     for (rgb, _prov_id) in &definitions {
         color_order_writer.write_all(&[rgb.r, rgb.g, rgb.b])?;
     }
     color_order_writer.flush()?;
 
-    let mut color_index_writer = BrotliTee::create(out_game_dir.join("map").join("color-index"))?;
+    let color_index_file = fs::File::create(out_game_dir.join("map").join("color-index.bin"))?;
+    let mut color_index_writer = BufWriter::new(color_index_file);
     for (_prov_id, index) in &provs {
         let val = *index as u16;
         let data = val.to_le_bytes();

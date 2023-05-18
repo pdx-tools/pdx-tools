@@ -170,9 +170,7 @@ fn token_benchmark(c: &mut Criterion) {
 fn token_creation_benchmark(c: &mut Criterion) {
     let data = include_bytes!("../../../assets/tokens/eu4-raw.bin");
 
-    c.bench_function("creation", |b| {
-        b.iter(|| FlatResolver::from_slice(data))
-    });
+    c.bench_function("creation", |b| b.iter(|| FlatResolver::from_slice(data)));
 }
 
 criterion_group!(benches, token_benchmark, token_creation_benchmark);

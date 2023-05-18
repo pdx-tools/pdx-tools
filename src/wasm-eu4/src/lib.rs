@@ -3246,6 +3246,8 @@ pub fn _initial_save(
     let save = eu4game::shared::parse_save_raw(&save_data, &mut zip_data)?;
     let save: Eu4RemoteFile<'static> = unsafe { std::mem::transmute(save) };
 
+    let game_data = zstd::bulk::decompress(&game_data, 1024 * 1024).unwrap();
+
     // Cast away the lifetime so that we can store it in a wasm-bindgen compatible struct
     let game = Game::from_flatbuffer(&game_data);
     let game: Game<'static> = unsafe { std::mem::transmute(game) };

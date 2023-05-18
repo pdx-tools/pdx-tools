@@ -140,6 +140,7 @@ function calcCacheControl(event: FetchEvent) {
     "bin",
     "frag",
     "vert",
+    "bin",
   ];
   const isCacheable = extension && cacheable.indexOf(extension) !== -1;
   return isCacheable ? assetCacheControl : undefined;
@@ -213,22 +214,12 @@ async function handleEvent(event: FetchEvent) {
   }
 
   const cacheControl = calcCacheControl(event);
-  let resp = await getAssetFromKV(event, {
+  const resp = await getAssetFromKV(event, {
     mapRequestToAsset: assetRequest,
     cacheControl,
   });
-  if (event.request.url.endsWith(".bin")) {
-    // https://stackoverflow.com/a/64849685/433785
-    resp = new Response(resp.body, {
-      status: resp.status,
-      headers: resp.headers,
-      encodeBody: "manual",
-    });
-    resp.headers.set("Content-Encoding", "br");
-    return resp;
-  } else {
-    return withSecurityHeaders(resp, parsedUrl.pathname);
-  }
+
+  return withSecurityHeaders(resp, parsedUrl.pathname);
 }
 
 function isDocsUrl(path: string) {
