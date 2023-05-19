@@ -3,7 +3,6 @@ import multer from "multer";
 import fs, { createReadStream, createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import path from "path";
-import { db } from "@/server-lib/db";
 import { log } from "@/server-lib/logging";
 import { fileChecksum, parseFile } from "@/server-lib/pool";
 import { uploadFileToS3 } from "@/server-lib/s3";
@@ -15,6 +14,8 @@ import { getOptionalString, getString } from "@/server-lib/valiation";
 import { deduceUploadType, UploadType } from "@/server-lib/models";
 import { nanoid } from "nanoid";
 import { tmpDir, tmpPath } from "@/server-lib/tmp";
+import { NewSave, db, table } from "@/server-lib/db";
+import { eq, sql } from "drizzle-orm";
 
 const upload = multer({ dest: tmpDir });
 
@@ -175,13 +176,12 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
     savePath = await unwrapSave(requestPath, metadata.uploadType);
     const checksum = await fileChecksum(savePath);
 
-    const existingSaves = await db.save.count({
-      where: {
-        hash: checksum,
-      },
-    });
+    const existingSaves = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(table.saves)
+      .where(eq(table.saves.hash, checksum));
 
-    if (existingSaves > 0) {
+    if (existingSaves[0].count > 0) {
       throw new ValidationError("save already exists");
     }
 
@@ -192,38 +192,38 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
 
     await uploadFileToS3(requestPath, saveId, metadata.uploadType);
 
-    await db.save.create({
-      data: {
-        id: saveId,
-        userId: uid,
-        encoding: out.encoding,
-        filename: metadata.filename,
-        hash: checksum,
-        date: out.date,
-        days: out.days,
-        score_days: out.score_days,
-        player: out.player_tag,
-        displayedCountryName: out.player_tag_name,
-        campaignId: out.campaign_id,
-        campaignLength: out.campaign_length,
-        ironman: out.is_ironman,
-        multiplayer: out.is_multiplayer,
-        observer: out.is_observer,
-        dlc: out.dlc_ids,
-        saveVersionFirst: out.patch.first,
-        saveVersionSecond: out.patch.second,
-        saveVersionThird: out.patch.third,
-        saveVersionFourth: out.patch.fourth,
-        checksum: out.checksum,
-        achieveIds: out.achievements || [],
-        players: out.player_names,
-        playerStartTag: out.player_start_tag,
-        playerStartTagName: out.player_start_tag_name,
-        gameDifficulty: out.game_difficulty,
-        aar: metadata.aar,
-        playthroughId: out.playthrough_id,
-      },
-    });
+    const newSave: NewSave = {
+      id: saveId,
+      userId: uid,
+      encoding: out.encoding,
+      filename: metadata.filename,
+      hash: checksum,
+      date: out.date,
+      days: out.days,
+      scoreDays: out.score_days,
+      player: out.player_tag,
+      displayedCountryName: out.player_tag_name,
+      campaignId: out.campaign_id,
+      campaignLength: out.campaign_length,
+      ironman: out.is_ironman,
+      multiplayer: out.is_multiplayer,
+      observer: out.is_observer,
+      dlc: out.dlc_ids,
+      saveVersionFirst: out.patch.first,
+      saveVersionSecond: out.patch.second,
+      saveVersionThird: out.patch.third,
+      saveVersionFourth: out.patch.fourth,
+      checksum: out.checksum,
+      achieveIds: out.achievements || [],
+      players: out.player_names,
+      playerStartTag: out.player_start_tag,
+      playerStartTagName: out.player_start_tag_name,
+      gameDifficulty: out.game_difficulty,
+      aar: metadata.aar,
+      playthroughId: out.playthrough_id,
+    };
+
+    await db.insert(table.saves).values(newSave);
 
     const response: SavePostResponse = {
       save_id: saveId,

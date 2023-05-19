@@ -1,8 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { db } from "@/server-lib/db";
+import { eq } from "drizzle-orm";
 import { getEnv, isLocal } from "@/server-lib/env";
 import { withLogger } from "@/server-lib/logging";
 import { withHttpSession } from "@/server-lib/session";
+import { db, table } from "@/server-lib/db";
 
 export const STEAM_URL = "https://steamcommunity.com/openid/login";
 const TEST_UID = "100";
@@ -12,19 +13,16 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const user = req.session.user;
 
     if (!user?.uid) {
-      const user = await db.user.findUnique({
-        where: {
-          userId: TEST_UID,
-        },
-      });
-
+      const users = await db
+        .select()
+        .from(table.users)
+        .where(eq(table.users.userId, TEST_UID));
+      const user = users[0];
       if (!user) {
-        await db.user.create({
-          data: {
-            userId: TEST_UID,
-            steamId: "1000",
-            steamName: "my-steam-name",
-          },
+        await db.insert(table.users).values({
+          userId: TEST_UID,
+          steamId: "1000",
+          steamName: "my-steam-name",
         });
       }
 

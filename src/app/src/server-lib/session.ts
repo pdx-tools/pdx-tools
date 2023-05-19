@@ -2,7 +2,8 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getEnv } from "./env";
 import { withIronSessionApiRoute } from "iron-session/next";
 import { getIronSession, IronSession } from "iron-session";
-import { apiKeyAtRest, db } from "./db";
+import { apiKeyAtRest, db, table } from "./db";
+import { eq } from "drizzle-orm";
 
 declare module "iron-session" {
   interface IronSessionData {
@@ -85,14 +86,11 @@ export const withSession = (
         return;
       }
 
-      const user = await db.user.findUnique({
-        where: {
-          userId: creds.username,
-        },
-        select: {
-          apiKey: true,
-        },
-      });
+      const users = await db
+        .select({ apiKey: table.users.apiKey })
+        .from(table.users)
+        .where(eq(table.users.userId, creds.username));
+      const user = users[0];
 
       if (user?.apiKey !== apiKeyAtRest(creds.password)) {
         res.status(401).json({ msg: "invalid credentials" });

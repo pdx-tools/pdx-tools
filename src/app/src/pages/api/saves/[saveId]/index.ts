@@ -1,14 +1,16 @@
-import { Save, User, Prisma } from "@prisma/client";
 import { NextApiRequest, NextApiResponse } from "next";
-import { db, toApiSave } from "@/server-lib/db";
 import { ValidationError } from "@/server-lib/errors";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { deleteFile } from "@/server-lib/s3";
 import { NextSessionRequest, withSession } from "@/server-lib/session";
-import { getOptionalString, getString } from "@/server-lib/valiation";
+import { getString } from "@/server-lib/valiation";
+import { Save, User, db, table, toApiSaveUser } from "@/server-lib/db";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
 
 interface SaveRequest {
-  save: Save & { user: User };
+  save: Save;
+  user: User;
 }
 
 function withSave<R extends NextApiRequest, T extends R & SaveRequest>(
@@ -16,14 +18,16 @@ function withSave<R extends NextApiRequest, T extends R & SaveRequest>(
 ) {
   return async (req: R, res: NextApiResponse) => {
     const saveId = getString(req.query, "saveId");
-    const save = await db.save.findUnique({
-      where: { id: saveId },
-      include: { user: true },
-    });
-    if (save === null) {
+    const saves = await db
+      .select()
+      .from(table.saves)
+      .where(eq(table.saves.id, saveId))
+      .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
+    const save = saves[0];
+    if (save === undefined) {
       res.status(404).json({ msg: "save does not exist" });
     } else {
-      await handler({ ...req, save } as T, res);
+      await handler({ ...req, save: save.saves, user: save.users } as T, res);
     }
   };
 }
@@ -33,9 +37,12 @@ function withPrivilegedSave<T extends NextSessionRequest & SaveRequest>(
 ) {
   return async (req: T, res: NextApiResponse) => {
     const uid = req.sessionUid;
-    if (req.save.userId !== uid) {
-      const user = await db.user.findUnique({ where: { userId: uid } });
-      if (user === null || user.account !== "ADMIN") {
+    if (req.user.userId !== uid) {
+      const users = await db
+        .select()
+        .from(table.users)
+        .where(eq(table.users.userId, uid));
+      if (users[0]?.account !== "admin") {
         res.status(403).json({ msg: "forbidden from performing action" });
         return;
       }
@@ -50,7 +57,7 @@ const _deleteHandler = async (
 ) => {
   const save = req.save;
   await deleteFile(save.id);
-  await db.save.delete({ where: { id: save.id } });
+  await db.delete(table.saves).where(eq(table.saves.id, save.id));
   res.status(200).send("");
 };
 
@@ -58,35 +65,34 @@ const _getHandler = async (
   req: NextApiRequest & SaveRequest,
   res: NextApiResponse
 ) => {
-  const result = toApiSave(req.save);
+  const result = toApiSaveUser(req.save, req.user);
   res.json(result);
 };
+
+const PatchBody = z.object({
+  aar: z
+    .string()
+    .nullish()
+    .transform((x) => x ?? undefined),
+  filename: z
+    .string()
+    .nullish()
+    .transform((x) => x ?? undefined),
+});
 
 const _patchHandler = async (
   req: NextSessionRequest & SaveRequest,
   res: NextApiResponse
 ) => {
-  let data: Prisma.SaveUpdateInput = {};
-  try {
-    const aar = getOptionalString(req.body, "aar");
-    if (aar != null) {
-      data.aar = aar;
-    }
-
-    const filename = getOptionalString(req.body, "filename");
-    if (filename != null) {
-      data.filename = filename;
-    }
-  } catch (ex) {
+  const data = PatchBody.safeParse(req.body);
+  if (!data.success) {
     throw new ValidationError("unable to parse patch props");
   }
 
-  await db.save.update({
-    where: {
-      id: req.save.id,
-    },
-    data,
-  });
+  await db
+    .update(table.saves)
+    .set(data.data)
+    .where(eq(table.saves.id, req.save.id));
   res.status(200).send("");
 };
 

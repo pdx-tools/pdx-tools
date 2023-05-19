@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { withCoreMiddleware } from "../../server-lib/middlware";
-import { db, toApiSave } from "../../server-lib/db";
-import { SaveFile } from "@/services/appApi";
+import { withCoreMiddleware } from "@/server-lib/middlware";
+import { db, table, toApiSave } from "@/server-lib/db";
+import { eq, lt, desc } from "drizzle-orm";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "GET") {
@@ -13,27 +13,24 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const cursor = req.query?.cursor;
   let timestamp: Date | undefined = undefined;
   if (cursor && !Array.isArray(cursor)) {
-    const row = await db.save.findUnique({
-      where: {
-        id: cursor,
-      },
-      select: {
-        createdOn: true,
-      },
-    });
-    timestamp = row?.createdOn;
+    const row = await db
+      .select({ createdOn: table.saves.createdOn })
+      .from(table.saves)
+      .where(eq(table.saves.id, cursor));
+    timestamp = row[0]?.createdOn;
   }
 
-  const saves = await db.save.findMany({
-    take: pageSize,
-    where: {
-      ...(timestamp !== undefined ? { createdOn: { lt: timestamp } } : {}),
-    },
-    include: { user: true },
-    orderBy: { createdOn: "desc" },
-  });
+  let query = db
+    .select()
+    .from(table.saves)
+    .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
 
-  const result: SaveFile[] = saves.map(toApiSave);
+  if (timestamp !== undefined) {
+    query = query.where(lt(table.saves.createdOn, timestamp));
+  }
+
+  const saves = await query.orderBy(desc(table.saves.createdOn));
+  const result = saves.map(toApiSave);
   const cursorRes = result.length < pageSize ? undefined : result.at(-1)?.id;
   res.json({ saves: result, cursor: cursorRes });
 };

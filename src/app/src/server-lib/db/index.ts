@@ -1,55 +1,20 @@
-// https://www.prisma.io/docs/support/help-articles/nextjs-prisma-client-dev-practices
-import { PrismaClient, Save, User } from "@prisma/client";
 import crypto from "crypto";
 import dayjs from "dayjs";
-import { GameDifficulty, SaveEncoding, SaveFile } from "@/services/appApi";
-import { log } from "./logging";
-import { metrics } from "./metrics";
-import { eu4DaysToDate, ParsedFile } from "./pool";
-export { type User };
+import { GameDifficulty, SaveFile } from "@/services/appApi";
+import { eu4DaysToDate, ParsedFile } from "../pool";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import { Save, User, saves, users } from "./schema";
+export {
+  type User,
+  type Save,
+  type SaveEncoding,
+  type GameDifficulty,
+  type NewSave,
+} from "./schema";
 
-// add prisma to the NodeJS global type
-// @ts-ignore
-interface CustomNodeJsGlobal extends NodeJS.Global {
-  prisma: PrismaClient;
-}
-
-// Prevent multiple instances of Prisma Client in development
-declare const global: CustomNodeJsGlobal;
-
-const prisma = global.prisma || new PrismaClient();
-
-const dbHistogram = new metrics.Histogram({
-  name: "db_query",
-  help: "db query middleware",
-  labelNames: ["model", "action"] as const,
-});
-
-if (!global.prisma) {
-  prisma.$use(async (params, next) => {
-    const end = dbHistogram.startTimer({
-      model: params.model,
-      action: params.action,
-    });
-    const result = await next(params);
-    const elapse = end();
-    log.info({
-      model: params.model,
-      action: params.action,
-      elapsedMs: (elapse * 1000).toFixed(2),
-    });
-    return result;
-  });
-}
-
-if (process.env.NODE_ENV === "development") {
-  global.prisma = prisma;
-}
-
-export const db = prisma;
-
-export const toApiSave = (save: Save & { user: User }): SaveFile => {
-  return toApiSaveUser(save, save.user);
+export const toApiSave = (save: { saves: Save; users: User }): SaveFile => {
+  return toApiSaveUser(save.saves, save.users);
 };
 
 function reverseRecord<T extends PropertyKey, U extends PropertyKey>(
@@ -60,13 +25,13 @@ function reverseRecord<T extends PropertyKey, U extends PropertyKey>(
   ) as Record<U, T>;
 }
 
-const difficultyTable: Record<GameDifficulty, Save["gameDifficulty"]> = {
-  VeryEasy: "VERY_EASY",
-  Easy: "EASY",
-  Normal: "NORMAL",
-  Hard: "HARD",
-  VeryHard: "VERY_HARD",
-};
+const difficultyTable = {
+  VeryEasy: "very_easy",
+  Easy: "easy",
+  Normal: "normal",
+  Hard: "hard",
+  VeryHard: "very_hard",
+} as const;
 
 const dbDifficultyTable = reverseRecord(difficultyTable);
 
@@ -75,31 +40,15 @@ export const dbDifficulty = (dbDiff: Save["gameDifficulty"]): GameDifficulty =>
 export const toDbDifficulty = (diff: GameDifficulty): Save["gameDifficulty"] =>
   difficultyTable[diff];
 
-const encodingTable: Record<SaveEncoding, Save["encoding"]> = {
-  text: "TEXT",
-  binzip: "BINZIP",
-  textzip: "TEXTZIP",
-};
-
-const dbEncodingTable = reverseRecord(encodingTable);
-
-export const dbEncoding = (dbEncoding: Save["encoding"]): SaveEncoding =>
-  dbEncodingTable[dbEncoding];
-export const toDbEncoding = (encoding: SaveEncoding): Save["encoding"] =>
-  encodingTable[encoding];
-
 export const apiKeyAtRest = (key: crypto.BinaryLike) => {
   return crypto.createHash("sha256").update(key).digest().toString("base64url");
 };
 
 export const toApiSaveUser = (save: Save, user: User): SaveFile => {
-  const difficulty = dbDifficulty(save.gameDifficulty);
-  const encoding = dbEncoding(save.encoding);
-
-  const weightedScore = save.score_days
+  const weightedScore = save.scoreDays
     ? {
-        days: save.score_days,
-        date: eu4DaysToDate(save.score_days),
+        days: save.scoreDays,
+        date: eu4DaysToDate(save.scoreDays),
       }
     : null;
 
@@ -122,7 +71,7 @@ export const toApiSaveUser = (save: Save, user: User): SaveFile => {
     dlc: save.dlc,
     achievements: save.achieveIds,
     weighted_score: weightedScore,
-    game_difficulty: difficulty,
+    game_difficulty: dbDifficulty(save.gameDifficulty),
     aar: save.aar,
     version: {
       first: save.saveVersionFirst,
@@ -130,7 +79,7 @@ export const toApiSaveUser = (save: Save, user: User): SaveFile => {
       third: save.saveVersionThird,
       fourth: save.saveVersionFourth,
     },
-    encoding,
+    encoding: save.encoding,
   };
 };
 
@@ -158,4 +107,18 @@ export const fromApiSave = (save: Partial<ParsedFile>): Partial<Save> => {
     ...(save.checksum && { checksum: save.checksum }),
     ...(save.encoding && { encoding: save.encoding }),
   };
+};
+
+const pool = new Pool({
+  connectionString: process.env["DATABASE_URL"],
+});
+
+export async function dbDisconnect() {
+  await pool.end();
+}
+
+export const db = drizzle(pool);
+export const table = {
+  users,
+  saves,
 };

@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { SaveFile } from "@/services/appApi";
-import { db, toApiSave } from "@/server-lib/db";
 import { ValidationError } from "@/server-lib/errors";
 import { getAchievement } from "@/server-lib/pool";
 import { AchievementView } from "@/services/appApi";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { getNumber } from "@/server-lib/valiation";
+import { db, table, toApiSave } from "@/server-lib/db";
+import { sql, eq, asc, inArray } from "drizzle-orm";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "GET") {
@@ -19,19 +19,17 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     throw new ValidationError("achievement not found");
   }
 
-  type LeaderboardSave = {
-    id: string;
-    campaign_id: string;
-    playthrough_id: string;
-  };
-  const achievementNeedle = `{${achieveId}}`;
-  const saves = await db.$queryRaw<LeaderboardSave[]>`
-    SELECT saves.id, saves.campaign_id, saves.playthrough_id, RANK() OVER(
+  const saves = await db
+    .select({
+      id: table.saves.id,
+      campaignId: table.saves.campaignId,
+      playthroughId: table.saves.playthroughId,
+      rank: sql<number>`RANK() OVER(
         ORDER BY score_days, created_on ASC
-      ) rank
-    FROM saves
-    WHERE achieve_ids @> ${achievementNeedle}::int[]
-  `;
+      )`,
+    })
+    .from(table.saves)
+    .where(sql`${table.saves.achieveIds} @> Array[${[achieveId]}]::int[]`);
 
   const campaignIds = new Set();
   const playthroughIds = new Set();
@@ -39,30 +37,26 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   for (const save of saves) {
     if (
-      campaignIds.has(save.campaign_id) ||
-      (save.playthrough_id && playthroughIds.has(save.playthrough_id))
+      campaignIds.has(save.campaignId) ||
+      (save.playthroughId && playthroughIds.has(save.playthroughId))
     ) {
       continue;
     }
 
-    campaignIds.add(save.campaign_id);
-    playthroughIds.add(save.playthrough_id);
+    campaignIds.add(save.campaignId);
+    playthroughIds.add(save.playthroughId);
     outSaves.push(save.id);
   }
 
-  const result = await db.save.findMany({
-    where: {
-      id: {
-        in: outSaves,
-      },
-    },
-    include: {
-      user: true,
-    },
-    orderBy: {
-      score_days: "asc",
-    },
-  });
+  const result =
+    outSaves.length > 0
+      ? await db
+          .select()
+          .from(table.saves)
+          .innerJoin(table.users, eq(table.users.userId, table.saves.userId))
+          .where(inArray(table.saves.id, outSaves))
+          .orderBy(asc(table.saves.scoreDays))
+      : [];
 
   const out: AchievementView = {
     achievement: {

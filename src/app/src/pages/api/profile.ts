@@ -1,18 +1,10 @@
 import dayjs from "dayjs";
 import { NextApiRequest, NextApiResponse } from "next";
-import { db, User } from "@/server-lib/db";
+import { eq } from "drizzle-orm";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { extractSession } from "@/server-lib/session";
-import { PrivateUserInfo, ProfileResponse } from "@/services/appApi";
-
-function getAccount(user: User): PrivateUserInfo["account"] {
-  switch (user.account) {
-    case "ADMIN":
-      return "admin";
-    case "FREE":
-      return "free";
-  }
-}
+import { ProfileResponse } from "@/services/appApi";
+import { db, table } from "@/server-lib/db";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "GET") {
@@ -28,8 +20,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return;
   }
 
-  const user = await db.user.findUnique({ where: { userId: uid } });
-  if (user === null) {
+  const users = await db
+    .select()
+    .from(table.users)
+    .where(eq(table.users.userId, uid));
+  const user = users[0];
+  if (!user) {
     session.destroy();
     res.json(guest);
     return;
@@ -41,7 +37,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       user_id: uid,
       steam_id: user.steamId ?? "unknown",
       user_name: user.display,
-      account: getAccount(user),
+      account: user.account,
       created_on: dayjs(user.createdOn).toISOString(),
     },
   };
