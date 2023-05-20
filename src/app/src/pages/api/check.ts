@@ -1,15 +1,16 @@
 import { CheckRequest, CheckResponse } from "@/services/appApi";
 import { NextApiResponse } from "next";
-import { db, toApiSave } from "../../server-lib/db";
-import { withCoreMiddleware } from "../../server-lib/middlware";
-import * as pool from "../../server-lib/pool";
-import { NextSessionRequest, withSession } from "../../server-lib/session";
+import { withCoreMiddleware } from "@/server-lib/middlware";
+import * as pool from "@/server-lib/pool";
+import { NextSessionRequest, withSession } from "@/server-lib/session";
 import {
   getArray,
   getNumber,
   getString,
   narrowNumber,
-} from "../../server-lib/valiation";
+} from "@/server-lib/valiation";
+import { db, table, toApiSave } from "@/server-lib/db";
+import { eq } from "drizzle-orm";
 
 const parseCheck = (data: any): CheckRequest => {
   return {
@@ -33,7 +34,6 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
     return;
   }
 
-  const uid = req.sessionUid;
   const body = parseCheck(req.body);
   const validPatch = pool.validPatch(body.patch.first, body.patch.second);
   if (!validPatch) {
@@ -45,16 +45,13 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
     return;
   }
 
-  const existingSaves = await db.save.findMany({
-    where: {
-      hash: body.hash,
-    },
-    include: {
-      user: true,
-    },
-  });
+  const existingSaves = await db
+    .select()
+    .from(table.saves)
+    .innerJoin(table.users, eq(table.users.userId, table.saves.userId))
+    .where(eq(table.saves.hash, body.hash));
 
-  const saves = await Promise.all(existingSaves.map(toApiSave));
+  const saves = existingSaves.map(toApiSave);
   const response: CheckResponse = {
     saves,
     valid_patch: validPatch,

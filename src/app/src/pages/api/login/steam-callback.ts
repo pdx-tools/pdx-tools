@@ -1,31 +1,31 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { nanoid } from "nanoid";
-import { db } from "@/server-lib/db";
 import { getEnv } from "@/server-lib/env";
 import { ValidationError } from "@/server-lib/errors";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { NextSessionRequest, withHttpSession } from "@/server-lib/session";
 import { STEAM_URL } from "./steam";
+import { db, table } from "@/server-lib/db";
+import { eq } from "drizzle-orm";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const steamUid = await loginVerify(req.query);
   const steamName = await getPlayerName(steamUid);
-  const user = await db.user.findUnique({ where: { steamId: steamUid } });
+  const users = await db
+    .select({ userId: table.users.userId })
+    .from(table.users)
+    .where(eq(table.users.steamId, steamUid));
+  const user = users[0];
 
-  let userId;
-  if (user === null) {
-    // An id that is a tad longer than 64 bits in length so that the hash collision is
-    // still manageable.
-    userId = nanoid(12);
-    await db.user.create({
-      data: {
-        userId,
-        steamId: steamUid,
-        steamName: steamName,
-      },
+  // An id that is a tad longer than 64 bits in length so that the hash
+  // collision is still manageable.
+  const userId = user?.userId ?? nanoid(12);
+  if (!user) {
+    await db.insert(table.users).values({
+      userId,
+      steamId: steamUid,
+      steamName: steamName,
     });
-  } else {
-    userId = user.userId;
   }
 
   req.session.user = { uid: userId };

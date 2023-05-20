@@ -1,13 +1,13 @@
 import path from "path";
 import getConfig from "next/config";
-import { GameDifficulty, SaveEncoding } from "@prisma/client";
 import {
   WeightedScore,
   Achievement,
   SaveEncoding as ApiSaveEncoding,
   GameDifficulty as ApiGameDifficulty,
 } from "@/services/appApi";
-import { toDbDifficulty, toDbEncoding } from "./db";
+import { toDbDifficulty } from "./db";
+import { GameDifficulty, SaveEncoding } from "./db";
 const { dlopen } = require("process");
 let nextRoot = getConfig()?.serverRuntimeConfig?.PROJECT_ROOT;
 nextRoot = nextRoot && process.env.NODE_ENV === "production" ? "." : nextRoot;
@@ -76,7 +76,6 @@ function nativeParseToDb(x: ParseResultNative): ParseResult {
   if (x.kind == "Parsed") {
     return {
       ...x,
-      encoding: toDbEncoding(x.encoding),
       game_difficulty: toDbDifficulty(x.game_difficulty),
     };
   } else {

@@ -1,10 +1,11 @@
 import { NextApiResponse } from "next";
-import { db } from "../../../server-lib/db";
-import { getEnv } from "../../../server-lib/env";
-import { log } from "../../../server-lib/logging";
-import { withCoreMiddleware } from "../../../server-lib/middlware";
-import { NextSessionRequest, withSession } from "../../../server-lib/session";
-import { SkanUserSaves } from "../../../services/appApi";
+import { getEnv } from "@/server-lib/env";
+import { log } from "@/server-lib/logging";
+import { withCoreMiddleware } from "@/server-lib/middlware";
+import { NextSessionRequest, withSession } from "@/server-lib/session";
+import { SkanUserSaves } from "@/services/appApi";
+import { db, table } from "@/server-lib/db";
+import { eq } from "drizzle-orm";
 
 const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
   if (req.method !== "GET") {
@@ -13,11 +14,11 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
   }
 
   const apiKey = getEnv("SKAN_API_KEY");
-  const query = await db.user.findUnique({
-    where: { userId: req.sessionUid },
-    select: { steamId: true },
-  });
-  const steamId = query?.steamId;
+  const query = await db
+    .select({ steamId: table.users.steamId })
+    .from(table.users)
+    .where(eq(table.users.userId, req.sessionUid));
+  const steamId = query[0]?.steamId;
   if (!steamId) {
     res
       .status(404)

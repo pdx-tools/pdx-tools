@@ -1,4 +1,4 @@
-import { rankDisplay } from "../src/lib/ranks";
+import { rankDisplay } from "@/lib/ranks";
 
 test("rank display", () => {
   expect(rankDisplay(1)).toBe("1st");

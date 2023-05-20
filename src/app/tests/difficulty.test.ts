@@ -1,4 +1,4 @@
-import { difficultyNum, difficultyText } from "../src/lib/difficulty";
+import { difficultyNum, difficultyText } from "@/lib/difficulty";
 
 test("difficulty text", () => {
   expect(difficultyText("VeryEasy")).toBe("Very Easy");

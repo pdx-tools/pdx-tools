@@ -1,8 +1,7 @@
 import { existsSync, writeFileSync, promises } from "fs";
-import { db } from "../src/server-lib/db";
-import { BUCKET, deleteFile, s3client } from "../src/server-lib/s3";
-import * as pool from "../src/server-lib/pool";
-import { SavePostResponse } from "../src/pages/api/saves";
+import { BUCKET, deleteFile, s3client } from "@/server-lib/s3";
+import * as pool from "@/server-lib/pool";
+import { SavePostResponse } from "@/pages/api/saves";
 import {
   AchievementView,
   CheckRequest,
@@ -13,14 +12,13 @@ import {
   UserSaves,
 } from "@/services/appApi";
 import { tmpPath } from "@/server-lib/tmp";
+import { dbDisconnect, db, table } from "@/server-lib/db";
 
 jest.setTimeout(60000);
 
 beforeEach(async () => {
-  const deleteSaves = db.save.deleteMany();
-  const deleteUsers = db.user.deleteMany();
-
-  await db.$transaction([deleteSaves, deleteUsers]);
+  await db.delete(table.saves);
+  await db.delete(table.users);
 });
 
 beforeEach(async () => {
@@ -39,7 +37,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  await db.$disconnect();
+  await dbDisconnect();
 });
 
 const pdxUrl = (path: string) => `http://localhost:3000${path}`;
@@ -485,7 +483,7 @@ test("plain saves", async () => {
   const save = await pool.parseFile(fp);
   expect(save.kind).not.toBe("InvalidPath");
   if (save.kind == "Parsed") {
-    expect(save.encoding).toBe("TEXT");
+    expect(save.encoding).toBe("text");
   }
 });
 

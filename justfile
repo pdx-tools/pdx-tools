@@ -102,8 +102,7 @@ dev-app: prep-frontend prep-dev-app
   set -euxo pipefail
   . src/app/.env.development
   . dev/.env.dev
-  export DATABASE_URL=postgresql://postgres:$DATABASE_ADMIN_PASSWORD@localhost:$DATABASE_PORT
-  (cd src/app && npx prisma migrate dev --name init)
+  cat src/app/migrations/*.sql | just dev-environment exec -u postgres --no-TTY db psql
 
   npx --yes concurrently@latest \
     "PORT=3001 src/app/node_modules/.bin/next dev src/app" \
@@ -125,8 +124,7 @@ test-app *cmd: prep-frontend prep-test-app
 
   . src/app/.env.test
   . dev/.env.test
-  export DATABASE_URL=postgresql://postgres:$DATABASE_ADMIN_PASSWORD@localhost:$DATABASE_PORT
-  (cd src/app && npx prisma migrate dev --name init)
+  cat src/app/migrations/*.sql | just test-environment exec -u postgres --no-TTY db psql
   (cd src/app && npm test -- "$@")
 
 prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "-d")

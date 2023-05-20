@@ -1,10 +1,12 @@
 import { NextApiResponse } from "next";
 import crypto from "crypto";
-import { withCoreMiddleware } from "../../server-lib/middlware";
-import { NextSessionRequest, withSession } from "../../server-lib/session";
-import { NewKeyResponse } from "../../services/appApi";
-import { apiKeyAtRest, db } from "@/server-lib/db";
+import { withCoreMiddleware } from "@/server-lib/middlware";
+import { NextSessionRequest, withSession } from "@/server-lib/session";
+import { NewKeyResponse } from "@/services/appApi";
+import { apiKeyAtRest } from "@/server-lib/db";
 import { log } from "@/server-lib/logging";
+import { db, table } from "@/server-lib/db";
+import { eq } from "drizzle-orm";
 
 const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
   if (req.method !== "POST") {
@@ -31,10 +33,10 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
     .replaceAll(/[-_]/g, (...args) => String.fromCharCode(65 + args[1]));
 
   const newKey = `pdx_${raw}`;
-  await db.user.update({
-    where: { userId: req.sessionUid },
-    data: { apiKey: apiKeyAtRest(newKey) },
-  });
+  await db
+    .update(table.users)
+    .set({ apiKey: apiKeyAtRest(newKey) })
+    .where(eq(table.users.userId, req.sessionUid));
 
   const result: NewKeyResponse = {
     api_key: newKey,

@@ -1,4 +1,4 @@
-import { userAgentCompatibility } from "../src/lib/compatibility";
+import { userAgentCompatibility } from "@/lib/compatibility";
 
 test("user-agent: chrome on old ios", () => {
   const actual = userAgentCompatibility(

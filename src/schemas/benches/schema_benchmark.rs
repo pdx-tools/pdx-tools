@@ -1,7 +1,7 @@
-use schemas::FlatResolver;
 use criterion::{criterion_group, criterion_main, Criterion};
 use jomini::binary::TokenResolver;
 use rand::{thread_rng, Rng};
+use schemas::FlatResolver;
 
 fn token_benchmark(c: &mut Criterion) {
     let data = include_bytes!("../../../assets/tokens/eu4-raw.bin");
