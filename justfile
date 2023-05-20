@@ -130,16 +130,14 @@ test-app *cmd: prep-frontend prep-test-app
 prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "-d")
   #!/usr/bin/env bash
   set -euxo pipefail
-  . src/app/.env.test
-  . dev/.env.test
-  timeout 5 sh -c 'sleep 1; until nc -z $0 $1; do sleep 1; done' localhost $DATABASE_PORT
+  CONTAINER=$(just test-environment ps -q db)
+  timeout 5 sh -c 'until docker exec $0 pg_isready; do sleep 0.5; done' $CONTAINER
 
 prep-dev-app: (dev-environment "build") (dev-environment "up" "--no-start") (dev-environment "up" "-d")
   #!/usr/bin/env bash
   set -euxo pipefail
-  . src/app/.env.development
-  . dev/.env.dev
-  timeout 5 sh -c 'sleep 1; until nc -z $0 $1; do sleep 1; done' localhost $DATABASE_PORT
+  CONTAINER=$(just dev-environment ps -q db)
+  timeout 5 sh -c 'until docker exec $0 pg_isready; do sleep 0.5; done' $CONTAINER
 
 build-wasm: build-wasm-dev
   #!/usr/bin/env bash
