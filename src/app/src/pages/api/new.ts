@@ -29,7 +29,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     query = query.where(lt(table.saves.createdOn, timestamp));
   }
 
-  const saves = await query.orderBy(desc(table.saves.createdOn));
+  const saves = await query
+    .orderBy(desc(table.saves.createdOn))
+    .limit(pageSize);
   const result = saves.map(toApiSave);
   const cursorRes = result.length < pageSize ? undefined : result.at(-1)?.id;
   res.json({ saves: result, cursor: cursorRes });
