@@ -217,7 +217,7 @@ export interface CountryDetails {
         value: number;
       }
     | {
-        kind: "Repbulic";
+        kind: "Republic";
         value: number;
       }
     | {

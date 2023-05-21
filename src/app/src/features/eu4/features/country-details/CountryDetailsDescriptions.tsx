@@ -99,7 +99,7 @@ const GovernmentStrength = ({
           <span className="grow">{formatInt(government_strength.value)}</span>
         </div>
       );
-    case "Repbulic":
+    case "Republic":
       return (
         <div className="flex text-right">
           <RepublicanTraditionIcon />
