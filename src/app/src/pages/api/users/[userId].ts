@@ -16,7 +16,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const usersSaves = await db
     .select()
     .from(table.saves)
-    .rightJoin(table.users, eq(table.users.userId, userId))
+    .rightJoin(table.users, eq(table.users.userId, table.saves.userId))
+    .where(eq(table.users.userId, userId))
     .orderBy(desc(table.saves.createdOn));
 
   const user = usersSaves[0]?.users;
