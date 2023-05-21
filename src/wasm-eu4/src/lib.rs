@@ -2647,7 +2647,7 @@ impl SaveFileImpl {
                 .map(|(_, event)| event);
 
             let merc_leaders = country
-                .mercenary_companries
+                .mercenary_companies
                 .iter()
                 .flat_map(|x| x.leader.as_ref());
             for merc in merc_leaders {

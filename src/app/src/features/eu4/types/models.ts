@@ -201,6 +201,40 @@ export interface CountryDetails {
   navy_tradition: number;
   power_projection: number;
   religious_unity: number;
+  adm_mana: number;
+  dip_mana: number;
+  mil_mana: number;
+  absolutism: number;
+  mercantilism: number;
+  splendor: number;
+  merchants: number;
+  diplomats: number;
+  colonists: number;
+  missionaries: number;
+  government_strength:
+    | {
+        kind: "Legitimacy";
+        value: number;
+      }
+    | {
+        kind: "Repbulic";
+        value: number;
+      }
+    | {
+        kind: "Devotion";
+        value: number;
+      }
+    | {
+        kind: "Horde";
+        value: number;
+      }
+    | {
+        kind: "Meritocracy";
+        value: number;
+      }
+    | {
+        kind: "Native";
+      };
 }
 
 export interface LandUnitStrength {

@@ -24,6 +24,9 @@ pub struct CountryDetails {
     pub innovativeness: f32,
     pub religion: String,
     pub primary_culture: String,
+    pub adm_mana: i16,
+    pub dip_mana: i16,
+    pub mil_mana: i16,
     pub technology: CountryTechnology,
     pub ruler: CountryMonarch,
     pub loans: usize,
@@ -54,6 +57,25 @@ pub struct CountryDetails {
     pub navy_tradition: f32,
     pub power_projection: f32,
     pub religious_unity: f32,
+    pub mercantilism: f32,
+    pub absolutism: f32,
+    pub splendor: f32,
+    pub merchants: usize,
+    pub diplomats: usize,
+    pub colonists: usize,
+    pub missionaries: usize,
+    pub government_strength: GovernmentStrength,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(tag = "kind")]
+pub enum GovernmentStrength {
+    Legitimacy { value: f32 },
+    Republic { value: f32 },
+    Meritocracy { value: f32 },
+    Devotion { value: f32 },
+    Horde { value: f32 },
+    Native,
 }
 
 #[derive(Serialize, Debug)]
@@ -553,6 +575,21 @@ impl SaveFileImpl {
             });
         diplomacy_entries.extend(steer_trades);
 
+        let government_strength = match (
+            country.legitimacy,
+            country.republican_tradition,
+            country.devotion,
+            country.meritocracy,
+            country.horde_unity,
+        ) {
+            (value, _, _, _, _) if value > 0.0 => GovernmentStrength::Legitimacy { value },
+            (_, value, _, _, _) if value > 0.0 => GovernmentStrength::Republic { value },
+            (_, _, value, _, _) if value > 0.0 => GovernmentStrength::Devotion { value },
+            (_, _, _, value, _) if value > 0.0 => GovernmentStrength::Meritocracy { value },
+            (_, _, _, _, value) if value > 0.0 => GovernmentStrength::Horde { value },
+            _ => GovernmentStrength::Native,
+        };
+
         let details = CountryDetails {
             tag: country_tag,
             ruler,
@@ -573,6 +610,9 @@ impl SaveFileImpl {
             religion,
             loans,
             debt,
+            adm_mana: country.powers[0],
+            dip_mana: country.powers[1],
+            mil_mana: country.powers[2],
             income: self.query.country_income_breakdown(country),
             expenses: self.query.country_expense_breakdown(country),
             total_expenses: self.query.country_total_expense_breakdown(country),
@@ -597,6 +637,14 @@ impl SaveFileImpl {
             navy_tradition: country.navy_tradition,
             power_projection: country.current_power_projection,
             religious_unity: country.religious_unity,
+            mercantilism: country.mercantilism,
+            absolutism: country.absolutism,
+            splendor: country.splendor,
+            merchants: country.merchants.envoys.len(),
+            diplomats: country.diplomats.envoys.len(),
+            colonists: country.colonists.envoys.len(),
+            missionaries: country.missionaries.envoys.len(),
+            government_strength,
         };
 
         to_json_value(&details)

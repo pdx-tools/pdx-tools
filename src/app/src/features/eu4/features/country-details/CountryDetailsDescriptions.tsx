@@ -41,6 +41,18 @@ import {
   AutonomyDevelopmentIcon,
   AverageAutonomyIcon,
   ProvincesIcon,
+  LegitimacyIcon,
+  RepublicanTraditionIcon,
+  DevotionIcon,
+  HordeUnityIcon,
+  MeritocracyIcon,
+  AbsolutismIcon,
+  MercantilismIcon,
+  SplendorIcon,
+  MerchantIcon,
+  ColonistIcon,
+  DiplomatIcon,
+  MissionaryIcon,
 } from "../../components/icons";
 import { PersonalityAvatar } from "../../components/avatars";
 
@@ -76,6 +88,55 @@ const IdeasTable = ({ ideas }: Pick<CountryDetails, "ideas">) => {
   );
 };
 
+const GovernmentStrength = ({
+  government_strength,
+}: Pick<CountryDetails, "government_strength">) => {
+  switch (government_strength.kind) {
+    case "Legitimacy":
+      return (
+        <div className="flex text-right">
+          <LegitimacyIcon />
+          <span className="grow">{formatInt(government_strength.value)}</span>
+        </div>
+      );
+    case "Repbulic":
+      return (
+        <div className="flex text-right">
+          <RepublicanTraditionIcon />
+          <span className="grow">{formatInt(government_strength.value)}</span>
+        </div>
+      );
+    case "Devotion":
+      return (
+        <div className="flex text-right">
+          <DevotionIcon />
+          <span className="grow">{formatInt(government_strength.value)}</span>
+        </div>
+      );
+    case "Horde":
+      return (
+        <div className="flex text-right">
+          <HordeUnityIcon />
+          <span className="grow">{formatInt(government_strength.value)}</span>
+        </div>
+      );
+    case "Meritocracy":
+      return (
+        <div className="flex text-right">
+          <MeritocracyIcon />
+          <span className="grow">{formatInt(government_strength.value)}</span>
+        </div>
+      );
+    case "Native":
+      return (
+        <div className="flex text-right">
+          <LegitimacyIcon />
+          <span className="grow">---</span>
+        </div>
+      );
+  }
+};
+
 export const CountryDetailsDescriptions = ({
   details,
 }: CountryDetailsProps) => {
@@ -84,9 +145,14 @@ export const CountryDetailsDescriptions = ({
 
   return (
     <div className="flex flex-wrap justify-center gap-8">
-      <div className="flex w-72 flex-col gap-4 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
-        <div className="grid grid-cols-2 gap-8">
+      <div className="flex w-80 flex-col gap-4 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+        <div className="grid grid-cols-3 gap-4">
           <div>
+            <div className="flex text-right">
+              <AdminManaIcon />
+              <span className="grow">{formatInt(details.adm_mana)}</span>
+            </div>
+
             <div className="flex text-right">
               <GoldIcon />
               <span className="grow">{formatInt(details.treasury)}</span>
@@ -98,20 +164,8 @@ export const CountryDetailsDescriptions = ({
             </div>
 
             <div className="flex text-right">
-              <StabilityIcon />
-              <span className="grow">{formatInt(details.stability)}</span>
-            </div>
-
-            <div className="flex text-right">
               <InnovativenessIcon />
               <span className="grow">{formatInt(details.innovativeness)}</span>
-            </div>
-
-            <div className="flex text-right">
-              <PowerProjectionIcon />
-              <span className="grow">
-                {formatInt(details.power_projection)}
-              </span>
             </div>
 
             <div className="flex text-right">
@@ -122,35 +176,73 @@ export const CountryDetailsDescriptions = ({
               <ProvincesIcon />
               <span className="grow">{formatInt(details.num_cities)}</span>
             </div>
+            <div className="flex text-right">
+              <AbsolutismIcon />
+              <span className="grow">{formatInt(details.absolutism)}</span>
+            </div>
+            <div className="flex text-right">
+              <AdminTechIcon />
+              <span className="grow">
+                {formatInt(details.technology.adm_tech)}
+              </span>
+            </div>
           </div>
 
           <div>
+            <div className="flex text-right">
+              <DiplomaticManaIcon />
+              <span className="grow">{formatInt(details.dip_mana)}</span>
+            </div>
             <div className="flex text-right">
               <DebtIcon />
               <span className="grow">{formatInt(details.debt)}</span>
             </div>
             <div className="flex text-right">
-              <InflationIcon />
-              <span className="grow">{formatFloat(details.inflation, 2)}%</span>
+              <StabilityIcon />
+              <span className="grow">{formatInt(details.stability)}</span>
             </div>
             <div className="flex text-right">
               <CorruptionIcon />
               <span className="grow">{formatInt(details.corruption)}</span>
             </div>
             <div className="flex text-right">
+              <AutonomyDevelopmentIcon />
+              <span className="grow">{formatInt(details.development)}</span>
+            </div>
+            <div className="flex text-right">
               <OverextensionIcon />
               <span className="grow">{formatInt(details.overextension)}%</span>
             </div>
             <div className="flex text-right">
-              <ReligiousUnityIcon />
-              <span className="grow">
-                {formatInt(details.religious_unity * 100)}%
-              </span>
+              <MercantilismIcon />
+              <span className="grow">{formatInt(details.mercantilism)}</span>
             </div>
             <div className="flex text-right">
-              <AutonomyDevelopmentIcon />
-              <span className="grow">{formatInt(details.development)}</span>
+              <DiplomaticTechIcon />
+              <span className="grow">
+                {formatInt(details.technology.dip_tech)}
+              </span>
             </div>
+          </div>
+
+          <div>
+            <div className="flex text-right">
+              <MilitaryManaIcon />
+              <span className="grow">{formatInt(details.mil_mana)}</span>
+            </div>
+            <div className="flex text-right">
+              <InflationIcon />
+              <span className="grow">{formatFloat(details.inflation, 2)}%</span>
+            </div>
+            <div className="flex text-right">
+              <PowerProjectionIcon />
+              <span className="grow">
+                {formatInt(details.power_projection)}
+              </span>
+            </div>
+            <GovernmentStrength
+              government_strength={details.government_strength}
+            />
             <div className="flex text-right">
               <AverageAutonomyIcon />
               <span className="grow">
@@ -161,21 +253,41 @@ export const CountryDetailsDescriptions = ({
                 %
               </span>
             </div>
+            <div className="flex text-right">
+              <ReligiousUnityIcon />
+              <span className="grow">
+                {formatInt(details.religious_unity * 100)}%
+              </span>
+            </div>
+            <div className="flex text-right">
+              <SplendorIcon />
+              <span className="grow">{formatInt(details.splendor)}</span>
+            </div>
+            <div className="flex text-right">
+              <MilitaryTechIcon />
+              <span className="grow">
+                {formatInt(details.technology.mil_tech)}
+              </span>
+            </div>
           </div>
         </div>
 
         <div className="flex justify-around">
           <div className="flex items-center gap-1">
-            <AdminTechIcon />
-            <div>{formatInt(details.technology.adm_tech)}</div>
+            <MerchantIcon />
+            <div>{formatInt(details.merchants)}</div>
           </div>
           <div className="flex items-center gap-1">
-            <DiplomaticTechIcon />
-            <div>{formatInt(details.technology.dip_tech)}</div>
+            <ColonistIcon />
+            <div>{formatInt(details.colonists)}</div>
           </div>
           <div className="flex items-center gap-1">
-            <MilitaryTechIcon />
-            <div>{formatInt(details.technology.mil_tech)}</div>
+            <DiplomatIcon />
+            <div>{formatInt(details.diplomats)}</div>
+          </div>
+          <div className="flex items-center gap-1">
+            <MissionaryIcon />
+            <div>{formatInt(details.missionaries)}</div>
           </div>
         </div>
 
