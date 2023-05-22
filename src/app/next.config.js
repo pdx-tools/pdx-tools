@@ -80,6 +80,9 @@ if (process.env.SENTRY_DSN) {
       sentry: {
         widenClientFileUpload: true,
         hideSourceMaps: true,
+        autoInstrumentAppDirectory: false,
+        autoInstrumentMiddleware: false,
+        autoInstrumentServerFunctions: false,
       },
     },
     { silent: true, dryRun: process.env.PDX_RELEASE !== "1" }
