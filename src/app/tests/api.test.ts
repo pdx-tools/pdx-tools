@@ -1,5 +1,5 @@
 import { existsSync, writeFileSync, promises } from "fs";
-import { BUCKET, deleteFile, s3client } from "@/server-lib/s3";
+import { BUCKET, deleteFile, s3Fetch, s3FetchOk } from "@/server-lib/s3";
 import * as pool from "@/server-lib/pool";
 import { SavePostResponse } from "@/pages/api/saves";
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/services/appApi";
 import { tmpPath } from "@/server-lib/tmp";
 import { dbDisconnect, db, table } from "@/server-lib/db";
+globalThis.crypto = require("node:crypto").webcrypto;
 
 jest.setTimeout(60000);
 
@@ -22,18 +23,17 @@ beforeEach(async () => {
 });
 
 beforeEach(async () => {
-  const buckets = await s3client.listBuckets().promise();
-  const hasBucket = (buckets.Buckets || []).find((x) => x.Name === BUCKET);
-  if (!hasBucket) {
-    await s3client.createBucket({ Bucket: BUCKET }).promise();
-  } else {
-    const objs = await s3client.listObjectsV2({ Bucket: BUCKET }).promise();
-    const deletes = (objs.Contents || []).map((x) => {
-      deleteFile(x.Key!);
-    });
-
-    await Promise.all(deletes);
+  const headBucket = await s3Fetch(BUCKET, { method: "HEAD" });
+  if (!headBucket.ok) {
+    await s3FetchOk(BUCKET, { method: "PUT" });
   }
+
+  const objsData = await s3FetchOk(`${BUCKET}?list-type=2`);
+  const objText = await objsData.text();
+  const keys = [...objText.matchAll(/<Key>(.*?)<\/Key>/g)].map(([_, key]) =>
+    deleteFile(key)
+  );
+  await Promise.all(keys);
 });
 
 afterAll(async () => {
@@ -477,9 +477,10 @@ test("plain saves", async () => {
   const upload = await client.uploadSave(path, {
     content_type: "application/zstd",
   });
-  const data = await client.getReq(`/api/saves/${upload.save_id}/file`);
+  const fileReq = await client.getReq(`/api/saves/${upload.save_id}/file`);
+  const data = await fileReq.arrayBuffer();
   const fp = await tmpPath();
-  await promises.writeFile(fp, Buffer.from(await data.arrayBuffer()));
+  await promises.writeFile(fp, Buffer.from(data));
   const save = await pool.parseFile(fp);
   expect(save.kind).not.toBe("InvalidPath");
   if (save.kind == "Parsed") {
