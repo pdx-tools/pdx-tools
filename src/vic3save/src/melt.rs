@@ -173,7 +173,7 @@ where
                 if !reencode_float_token {
                     wtr.write_f64(flavor.visit_f64(*x))?;
                 } else {
-                    wtr.write_f64(flavor.visit_f64(*x) * 100_000.0)?;
+                    wtr.write_f64((flavor.visit_f64(*x) * 100_000.0).round())?;
                     reencode_float_token = false;
                 }
             }
@@ -198,6 +198,7 @@ where
                             | "loyalists_political_strength"
                             | "population_total_coastal"
                             | "population_incorporated_coastal"
+                            | "votes"
                     );
                     wtr.write_unquoted(id.as_bytes())?;
                 }
