@@ -116,6 +116,7 @@ where
     let mut token_idx = 0;
     let mut known_number = false;
     let mut known_date = false;
+    let mut reencode_float_token = false;
     let tokens = melter.tape.tokens();
 
     while let Some(token) = tokens.get(token_idx) {
@@ -168,7 +169,14 @@ where
                 wtr.write_unquoted(x.as_bytes())?;
             }
             BinaryToken::F32(x) => wtr.write_f32(flavor.visit_f32(*x))?,
-            BinaryToken::F64(x) => wtr.write_f64(flavor.visit_f64(*x))?,
+            BinaryToken::F64(x) => {
+                if !reencode_float_token {
+                    wtr.write_f64(flavor.visit_f64(*x))?;
+                } else {
+                    wtr.write_f64(flavor.visit_f64(*x) * 100_000.0)?;
+                    reencode_float_token = false;
+                }
+            }
             BinaryToken::Token(x) => match resolver.resolve(*x) {
                 Some(id) => {
                     if !melter.verbatim && id == "is_ironman" && wtr.expecting_key() {
@@ -177,6 +185,20 @@ where
 
                     known_number = id == "seed";
                     known_date = id == "real_date";
+                    reencode_float_token = matches!(
+                        id,
+                        "workforce"
+                            | "dependents"
+                            | "num_literate"
+                            | "population_total"
+                            | "population_incorporated"
+                            | "current_manpower"
+                            | "political_strength"
+                            | "radicals_political_strength"
+                            | "loyalists_political_strength"
+                            | "population_total_coastal"
+                            | "population_incorporated_coastal"
+                    );
                     wtr.write_unquoted(id.as_bytes())?;
                 }
                 None => match melter.on_failed_resolve {
