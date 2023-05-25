@@ -243,7 +243,14 @@ backup-saves ENVIRONMENT:
 backup-config ENVIRONMENT:
   ssh pdx-tools-{{ENVIRONMENT}} 'tar -c -C /opt/pdx-tools .' > config-{{ENVIRONMENT}}.tar
 
-admin-sync-assets:
+admin-sync-tokens:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  rm -rf assets/tokens
+  git clone https://${GH_PAT:+"$GH_PAT@"}github.com/pdx-tools/tokens.git assets/tokens
+  (cd assets/tokens && ln -s tokens/* .)
+
+admin-sync-assets: admin-sync-tokens
   just pdx fetch-assets --access-key "${ASSETS_ACCESS_KEY}" --secret-key "${ASSETS_SECRET_KEY}"
 
 admin-tokenize-all: (tokenize 

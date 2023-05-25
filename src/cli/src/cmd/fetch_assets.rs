@@ -115,21 +115,6 @@ impl FetchAssetsArgs {
             }
         }
 
-        let object_list = client
-            .list_objects_v2()
-            .bucket("pdx-tools-build")
-            .prefix("tokens/")
-            .send()
-            .await
-            .context("unable to list objects")?;
-
-        for object in object_list.contents().unwrap_or_default() {
-            let key = object.key().context("expected key to be defined")?;
-            download_object(&client, key)
-                .await
-                .with_context(|| format!("unable to download {}", key))?;
-        }
-
         Ok(())
     }
 }

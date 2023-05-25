@@ -47,11 +47,13 @@ jobs:
       env:
         ASSETS_ACCESS_KEY: ${{ secrets.ASSETS_ACCESS_KEY }}
         ASSETS_SECRET_KEY: ${{ secrets.ASSETS_SECRET_KEY }}
+        GH_PAT: ${{ secrets.GH_PATH }}
       with:
         imageName: ghcr.io/pdx-tools/devcontainer
         env: |
           ASSETS_ACCESS_KEY
           ASSETS_SECRET_KEY
+          GH_PAT
         runCmd: |
           just admin-sync-assets && \
           just package-all && \
