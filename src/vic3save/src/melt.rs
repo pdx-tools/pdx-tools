@@ -117,6 +117,7 @@ where
     let mut known_number = false;
     let mut known_date = false;
     let mut reencode_float_token = false;
+    let mut reencode_float_token_block = None;
     let tokens = melter.tape.tokens();
 
     while let Some(token) = tokens.get(token_idx) {
@@ -133,7 +134,11 @@ where
             BinaryToken::Array(_) => {
                 wtr.write_array_start()?;
             }
-            BinaryToken::End(_) => {
+            BinaryToken::End(start) => {
+                if reencode_float_token_block == Some(*start) {
+                    reencode_float_token_block = None;
+                }
+
                 wtr.write_end()?;
             }
             BinaryToken::Bool(x) => wtr.write_bool(*x)?,
@@ -174,13 +179,17 @@ where
                     wtr.write_f64(flavor.visit_f64(*x))?;
                 } else {
                     wtr.write_f64((flavor.visit_f64(*x) * 100_000.0).round())?;
-                    reencode_float_token = false;
+                    reencode_float_token = reencode_float_token_block.is_some();
                 }
             }
             BinaryToken::Token(x) => match resolver.resolve(*x) {
                 Some(id) => {
                     if !melter.verbatim && id == "is_ironman" && wtr.expecting_key() {
                         continue;
+                    }
+
+                    if id == "pop_statistics" {
+                        reencode_float_token_block = Some(token_idx + 1);
                     }
 
                     known_number = id == "seed";
@@ -200,6 +209,7 @@ where
                             | "population_incorporated_coastal"
                             | "votes"
                     );
+                    reencode_float_token |= reencode_float_token_block.is_some();
                     wtr.write_unquoted(id.as_bytes())?;
                 }
                 None => match melter.on_failed_resolve {
