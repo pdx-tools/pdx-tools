@@ -168,7 +168,7 @@ async function loadEu4Save(
   const [gameData, provincesUniqueIndex] = await Promise.all([
     runTask(dispatch, {
       fn: () =>
-        fetchOk(dataUrls[gameVersion(version)])
+        fetchOk(dataUrls(gameVersion(version)))
           .then((x) => x.arrayBuffer())
           .then((x) => new Uint8Array(x)),
       name: `fetch game data (${version})`,

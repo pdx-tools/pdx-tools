@@ -42,7 +42,7 @@ export async function shaderUrls(): Promise<ShaderSource[]> {
 export async function loadTerrainOverlayImages(
   version: string
 ): Promise<TerrainOverlayResources> {
-  const url = resources[gameVersion(version)];
+  const url = resources(gameVersion(version));
   const promises = {
     colorMap: loadImage(url.colorMap),
     sea: loadImage(url.sea),
@@ -75,7 +75,7 @@ export async function loadTerrainOverlayImages(
 export async function fetchProvinceUniqueIndex(
   version: string
 ): Promise<Uint16Array> {
-  const url = resources[gameVersion(version)];
+  const url = resources(gameVersion(version));
 
   return fetchOk(url.provincesUniqueIndex)
     .then((x) => x.arrayBuffer())
@@ -83,7 +83,7 @@ export async function fetchProvinceUniqueIndex(
 }
 
 export async function resourceUrls(version: string): Promise<StaticResources> {
-  const url = resources[gameVersion(version)];
+  const url = resources(gameVersion(version));
   const promises = {
     provinces1: loadImage(url.provinces1),
     provinces2: loadImage(url.provinces2),

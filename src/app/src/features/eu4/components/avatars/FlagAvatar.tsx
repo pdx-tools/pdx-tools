@@ -17,11 +17,15 @@ interface FlagAvatarProps {
 }
 
 export const FlagAvatarCore = ({ tag, size }: FlagAvatarCoreProps) => {
-  let flag_src = "";
+  let src: string;
   try {
-    flag_src = require(`@/images/eu4/flags/${tag}.png`);
+    src = require(`@/images/eu4/flags/${tag}.png`);
   } catch {
-    flag_src = require(`@/images/eu4/flags/REB.png`);
+    try {
+      src = require(`@/images/eu4/flags/REB.png`);
+    } catch {
+      return null;
+    }
   }
 
   // We need create a small border around flag avatars as some countries
@@ -34,12 +38,7 @@ export const FlagAvatarCore = ({ tag, size }: FlagAvatarCoreProps) => {
   };
 
   return (
-    <Avatar
-      shape="square"
-      size={size || "small"}
-      src={flag_src}
-      style={style}
-    />
+    <Avatar shape="square" size={size || "small"} src={src} style={style} />
   );
 };
 

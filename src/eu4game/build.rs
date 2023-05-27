@@ -1,9 +1,8 @@
+use regex::Regex;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::{env, fs};
-
-use regex::Regex;
 
 fn main() {
     let entries = fs::read_dir("../../assets/game/eu4").unwrap();
@@ -22,6 +21,10 @@ fn main() {
         let major: i32 = captures.get(1).unwrap().as_str().parse().unwrap();
         let minor: i32 = captures.get(2).unwrap().as_str().parse().unwrap();
         versions.push((major, minor));
+    }
+
+    if versions.is_empty() {
+        return;
     }
 
     versions.sort_unstable();

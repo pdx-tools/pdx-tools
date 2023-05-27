@@ -284,6 +284,13 @@ prep-frontend:
   rm -f "$OUTPUT"
 
   readarray -t VERSIONS < <(ls assets/game/eu4/ | grep -v common | sort -n)
+  if [[ "${#VERSIONS[@]}" == '0' ]]; then
+    echo "const msg = 'EU4 assets not found, have you forgot to compile assets';" >> $"$OUTPUT"
+    echo "export const gameVersion = (x: string): any => { throw new Error(msg); } " >> "$OUTPUT"
+    echo "export const resources = (x: any): any => { throw new Error(msg); }" >> "$OUTPUT"
+    echo "export const dataUrls = (x: any): any => { throw new Error(msg); }" >> "$OUTPUT"
+    exit
+  fi
 
   echo "import type { ResourceUrls } from \"./url_types\"" >> "$OUTPUT"
   echo -n "export type GameVersion = \"${VERSIONS[0]}\"" >> "$OUTPUT"
@@ -302,10 +309,11 @@ prep-frontend:
   echo "  }" >> "$OUTPUT";
   echo "}" >> "$OUTPUT";
 
-  echo "export const resources: { [index in GameVersion]: ResourceUrls } = {" >> "$OUTPUT"
+  echo "export const resources = (x: GameVersion): ResourceUrls => {" >> "$OUTPUT"
+  echo "  switch(x) {" >> "$OUTPUT"
   for VERSION in "${VERSIONS[@]}"; do
     cat >> "$OUTPUT" << EOF
-    "$VERSION": {
+    case "$VERSION": return {
       provinces1: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-1.png\`),
       provinces2: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-2.png\`),
       colorMap: require(\`../../../../assets/game/eu4/$VERSION/map/colormap_summer.webp\`),
@@ -324,18 +332,19 @@ prep-frontend:
       heightmap: require(\`../../../../assets/game/eu4/$VERSION/map/heightmap.webp\`),
       provincesUniqueColor: require(\`../../../../assets/game/eu4/$VERSION/map/color-order.bin\`),
       provincesUniqueIndex: require(\`../../../../assets/game/eu4/$VERSION/map/color-index.bin\`),
-    },
+    }
   EOF
 
   done;
-  echo "}" >> "$OUTPUT"
+  echo "}}" >> "$OUTPUT"
   echo export const defaultVersion = \"$VERSION\" >> "$OUTPUT";
 
-  echo "export const dataUrls: { [index in GameVersion]: string } = {" >> "$OUTPUT"
+  echo "export const dataUrls = (x: GameVersion): string => {" >> "$OUTPUT"
+  echo "  switch(x) {" >> "$OUTPUT"
   for VERSION in "${VERSIONS[@]}"; do
     cat >> "$OUTPUT" << EOF
-    "$VERSION": require(\`../../../../assets/game/eu4/$VERSION/data.bin\`),
+    case "$VERSION": return require(\`../../../../assets/game/eu4/$VERSION/data.bin\`)
   EOF
   done;
-  echo "}" >> "$OUTPUT"
+  echo "}}" >> "$OUTPUT"
 

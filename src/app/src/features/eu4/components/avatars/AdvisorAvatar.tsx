@@ -13,17 +13,13 @@ export const AdvisorAvatar = ({
   localized,
   enabled,
 }: AdvisorAvatarProps) => {
-  let image;
   try {
-    image = require(`@/images/eu4/advisors/${localized.id}.png`);
-  } catch {}
-
-  if (image) {
+    const src: string = require(`@/images/eu4/advisors/${localized.id}.png`);
     const style = enabled ? {} : { filter: "grayscale(1)" };
     return (
       <Tooltip title={`${localized.id}`}>
         <div className="flex items-center gap-x-2">
-          <Avatar shape="square" size={48} src={image} style={style} />
+          <Avatar shape="square" size={48} src={src} style={style} />
           <div>
             <div>{`${localized.name}`}</div>
             <div className="no-break date">{triggerDate || " "}</div>
@@ -31,7 +27,7 @@ export const AdvisorAvatar = ({
         </div>
       </Tooltip>
     );
-  } else {
+  } catch {
     return <div>{localized.id}</div>;
   }
 };

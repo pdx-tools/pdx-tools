@@ -1,14 +1,10 @@
 import React from "react";
-import { Avatar, Space, Tooltip } from "antd";
+import { Avatar, Tooltip } from "antd";
 import { LocalizedObj } from "@/features/eu4/types/models";
 
 export const TcInvestmentAvatar = ({ id, name }: LocalizedObj) => {
-  let imageSrc;
   try {
-    imageSrc = require(`@/images/eu4/tc-investments/${id}.png`);
-  } catch {}
-
-  if (imageSrc) {
+    const imageSrc: string = require(`@/images/eu4/tc-investments/${id}.png`);
     return (
       <Tooltip title={`${name}`}>
         <div className="space-x-2">
@@ -16,7 +12,7 @@ export const TcInvestmentAvatar = ({ id, name }: LocalizedObj) => {
         </div>
       </Tooltip>
     );
-  } else {
+  } catch {
     return <div>{id}</div>;
   }
 };

@@ -3,12 +3,8 @@ import { Avatar, Tooltip } from "antd";
 import { LocalizedObj } from "@/features/eu4/types/models";
 
 export const PersonalityAvatar = ({ id, name }: LocalizedObj) => {
-  let imageSrc;
   try {
-    imageSrc = require(`@/images/eu4/personalities/${id}.png`);
-  } catch {}
-
-  if (imageSrc) {
+    const imageSrc: string = require(`@/images/eu4/personalities/${id}.png`);
     return (
       <Tooltip title={`${name}`}>
         <div className="space-x-2">
@@ -16,7 +12,7 @@ export const PersonalityAvatar = ({ id, name }: LocalizedObj) => {
         </div>
       </Tooltip>
     );
-  } else {
+  } catch {
     return <div>{id}</div>;
   }
 };

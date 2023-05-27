@@ -10,13 +10,14 @@ type AchievementAvatarProps = Pick<
 };
 
 export const AchievementAvatar = ({ id, size }: AchievementAvatarProps) => {
-  return (
-    <Link key={id} href={`/eu4/achievements/${id}`}>
-      <Avatar
-        size={size || "small"}
-        shape="square"
-        src={require(`@/images/eu4/achievements/${id}.png`)}
-      />
-    </Link>
-  );
+  try {
+    const src: string = require(`@/images/eu4/achievements/${id}.png`);
+    return (
+      <Link key={id} href={`/eu4/achievements/${id}`}>
+        <Avatar size={size || "small"} shape="square" src={src} />
+      </Link>
+    );
+  } catch {
+    return null;
+  }
 };
