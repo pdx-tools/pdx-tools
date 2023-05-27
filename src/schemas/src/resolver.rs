@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     pub fn test_eu4_resolver() {
-        let resolver = Eu4FlatBufferTokens::new();
+        let resolver = Eu4FlatTokens::new();
         assert_eq!(resolver.resolve(0x1b), Some("name"));
         assert_eq!(resolver.resolve(0x337f), Some("campaign_id"));
         assert_eq!(resolver.resolve(0x1000), None);

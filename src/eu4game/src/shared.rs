@@ -184,7 +184,7 @@ where
 
 #[cfg(feature = "embedded")]
 pub fn parse_save(data: &[u8]) -> Result<(Eu4Save, Encoding), Eu4GameError> {
-    let tokens = schemas::resolver::Eu4FlatBufferTokens::new();
+    let tokens = schemas::resolver::Eu4FlatTokens::new();
     parse_save_with_tokens(data, &tokens)
 }
 

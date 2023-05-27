@@ -7,7 +7,7 @@ use crate::zstd_tee::ZstdTee;
 use anyhow::{bail, Context};
 use eu4save::{CountryTag, Eu4File, ProvinceId};
 use mapper::GameProvince;
-use schemas::resolver::Eu4FlatBufferTokens;
+use schemas::resolver::Eu4FlatTokens;
 use serde::{de::IgnoredAny, Deserialize};
 use std::collections::HashMap;
 use std::fs;
@@ -739,7 +739,7 @@ fn write_provinces_csv(
 
     let data = assets::request(format!("terrain/terrain-{}.eu4", game_version));
     let save_file = Eu4File::from_slice(&data)?;
-    let tokens = Eu4FlatBufferTokens::new();
+    let tokens = Eu4FlatTokens::new();
     let save = save_file.parse_save(&tokens)?;
     let mut provs: Vec<_> = save.game.provinces.iter().collect();
     provs.sort_unstable_by_key(|(k, _v)| *k);

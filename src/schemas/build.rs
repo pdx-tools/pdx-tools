@@ -35,12 +35,12 @@ fn main() {
             writer,
             r#"
 #[cfg(feature = "inline")]
-pub struct {pascal}FlatBufferTokens {{
+pub struct {pascal}FlatTokens {{
     resolver: FlatResolver<'static>,
 }}
 
 #[cfg(feature = "inline")]
-impl {pascal}FlatBufferTokens {{
+impl {pascal}FlatTokens {{
     #[cfg({game}_tokens)]
     pub fn new() -> Self {{
         let data = include_bytes!("{token_path}");
@@ -61,14 +61,14 @@ impl {pascal}FlatBufferTokens {{
 }}
 
 #[cfg(feature = "inline")]
-impl Default for {pascal}FlatBufferTokens {{
+impl Default for {pascal}FlatTokens {{
     fn default() -> Self {{
         Self::new()
     }}
 }}
 
 #[cfg(feature = "inline")]
-impl jomini::binary::TokenResolver for {pascal}FlatBufferTokens {{
+impl jomini::binary::TokenResolver for {pascal}FlatTokens {{
     fn resolve(&self, token: u16) -> Option<&str> {{
         self.resolver.resolve(token)
     }}
