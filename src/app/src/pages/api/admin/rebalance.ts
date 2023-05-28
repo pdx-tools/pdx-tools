@@ -1,5 +1,5 @@
 import { withCoreMiddleware } from "@/server-lib/middlware";
-import { latestEu4MinorPatch } from "@/server-lib/pool";
+import { latestEu4MinorPatch } from "@/server-lib/game";
 import { db, table } from "@/server-lib/db";
 import { sql } from "drizzle-orm";
 import { NextApiRequest, NextApiResponse } from "next";

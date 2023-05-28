@@ -1,18 +1,13 @@
 use eu4game::{
     achievements::{AchievementHunter, WeightedScore},
-    shared::parse_save,
+    shared::{parse_save, save_checksum},
 };
-use eu4save::{
-    eu4_start_date,
-    models::{Eu4Save, GameDifficulty},
-    Encoding, PdsDate,
-};
-use memmap::Mmap;
+use eu4save::{eu4_start_date, models::GameDifficulty, Encoding, PdsDate};
 use serde::Serialize;
+use specta::Type;
 use std::io;
-use std::{fs::File, path::Path};
 
-#[derive(Debug, Serialize, PartialEq, Clone, Copy)]
+#[derive(Type, Debug, Serialize, PartialEq, Clone, Copy)]
 pub struct SavePatch {
     pub first: u16,
     pub second: u16,
@@ -20,22 +15,22 @@ pub struct SavePatch {
     pub fourth: u16,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Type, Debug, Serialize)]
 pub struct InvalidPatch {
     patch_shorthand: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Type, Debug, Serialize)]
 #[serde(tag = "kind")]
 pub enum ParseResult {
     InvalidPatch(InvalidPatch),
     Parsed(Box<ParsedFile>),
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Type, Debug, Serialize, Clone)]
 pub struct ParsedFile {
     pub patch: SavePatch,
-    pub encoding: String,
+    pub encoding: Encoding,
     pub playthrough_id: Option<String>,
     pub game_difficulty: GameDifficulty,
     pub campaign_id: String,
@@ -56,6 +51,9 @@ pub struct ParsedFile {
     pub dlc_ids: Vec<i32>,
     pub checksum: String,
     pub patch_shorthand: String,
+
+    /// Highwayhash of save data
+    pub hash: String,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -63,28 +61,13 @@ pub enum ParseFileError {
     #[error("unable to open save file: {0}")]
     InvalidFile(io::Error),
 
-    #[error("unable to memory map file: {0}")]
-    Mmap(io::Error),
-
     #[error("unable to parse file: {0}")]
     Parse(#[from] eu4game::Eu4GameError),
 }
 
-pub fn parse_path<P: AsRef<Path>>(fp: P) -> Result<ParseResult, ParseFileError> {
-    let f = File::open(fp.as_ref()).map_err(ParseFileError::InvalidFile)?;
-    parse_file(f)
-}
-
-pub fn extract_save(f: File) -> Result<(Eu4Save, Encoding), ParseFileError> {
-    let mmap = unsafe { Mmap::map(&f).map_err(ParseFileError::Mmap)? };
-    parse_save(&mmap[..]).map_err(|e| e.into())
-}
-
-pub fn save_to_parse_result(
-    save: Eu4Save,
-    encoding: Encoding,
-) -> Result<ParseResult, ParseFileError> {
-    let out_encoding = String::from(encoding.as_str());
+pub fn parse_save_data(data: &[u8]) -> Result<ParseResult, ParseFileError> {
+    let hash = save_checksum(data);
+    let (save, encoding) = parse_save(data)?;
 
     let patch_shorthand = format!(
         "{}.{}",
@@ -143,7 +126,7 @@ pub fn save_to_parse_result(
             third: meta.savegame_version.third,
             fourth: meta.savegame_version.fourth,
         },
-        encoding: out_encoding,
+        encoding,
         campaign_id: meta.campaign_id.clone(),
         campaign_length: meta.campaign_length,
         is_ironman: meta.is_ironman,
@@ -164,10 +147,6 @@ pub fn save_to_parse_result(
         patch_shorthand,
         score_date: weighted_score.date,
         score_days: weighted_score.days,
+        hash,
     })))
-}
-
-pub fn parse_file(f: File) -> Result<ParseResult, ParseFileError> {
-    let (save, encoding) = extract_save(f)?;
-    save_to_parse_result(save, encoding)
 }

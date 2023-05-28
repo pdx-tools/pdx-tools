@@ -5,7 +5,7 @@ public/changelog
 public/docs
 public/img
 *_gen.ts
-src/server-lib/*.node
+src/server-lib/save-parsing-types.ts
 
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 

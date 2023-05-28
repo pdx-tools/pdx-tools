@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { ValidationError } from "@/server-lib/errors";
-import { getAchievement } from "@/server-lib/pool";
+import { getAchievement } from "@/server-lib/game";
 import { AchievementView } from "@/services/appApi";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { db, table, toApiSave } from "@/server-lib/db";

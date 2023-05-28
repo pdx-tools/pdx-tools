@@ -1,4 +1,5 @@
 use crate::GameProvince;
+pub use eu4game_data::LATEST_MINOR;
 use eu4save::{CountryTag, ProvinceId};
 use schemas::flatbuffers::{Follow, Vector};
 use std::{cmp::Ordering, collections::HashMap};
@@ -54,9 +55,12 @@ pub struct Game<'a> {
     data: schemas::eu4::Game<'a>,
 }
 
-include!(concat!(env!("OUT_DIR"), "/embedded_game.rs"));
-
 impl<'a> Game<'a> {
+    #[cfg(feature = "embedded")]
+    pub fn new(version: &eu4save::models::SavegameVersion) -> Self {
+        Self::from_flatbuffer(eu4game_data::game_data(version.second))
+    }
+
     pub fn from_flatbuffer(data: &'a [u8]) -> Self {
         let fb = schemas::eu4::root_as_game(data).unwrap();
         Self { data: fb }
@@ -347,32 +351,28 @@ mod tests {
     use super::*;
     #[test]
     fn test_129_game() {
-        let data = &include_bytes!(concat!(env!("OUT_DIR"), "/129/data.bin"))[..];
-        let game = Game::from_flatbuffer(data);
+        let game = Game::from_flatbuffer(eu4game_data::game_data(29));
         assert_eq!(game.total_provinces(), 4693);
         assert_eq!(game.provinces().count(), 3677);
     }
 
     #[test]
     fn test_130_game() {
-        let data = &include_bytes!(concat!(env!("OUT_DIR"), "/130/data.bin"))[..];
-        let game = Game::from_flatbuffer(data);
+        let game = Game::from_flatbuffer(eu4game_data::game_data(30));
         assert_eq!(game.total_provinces(), 4789);
         assert_eq!(game.provinces().count(), 3722);
     }
 
     #[test]
     fn test_131_game() {
-        let data = &include_bytes!(concat!(env!("OUT_DIR"), "/131/data.bin"))[..];
-        let game = Game::from_flatbuffer(data);
+        let game = Game::from_flatbuffer(eu4game_data::game_data(31));
         assert_eq!(game.total_provinces(), 4941);
         assert_eq!(game.provinces().count(), 3925);
     }
 
     #[test]
     fn test_132_game() {
-        let data = &include_bytes!(concat!(env!("OUT_DIR"), "/132/data.bin"))[..];
-        let game = Game::from_flatbuffer(data);
+        let game = Game::from_flatbuffer(eu4game_data::game_data(32));
         assert_eq!(game.total_provinces(), 4941);
         assert_eq!(game.provinces().count(), 3925);
     }

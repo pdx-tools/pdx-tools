@@ -5,7 +5,7 @@ import { Root, WebPage } from "@/components/layout";
 import { AchievementPage } from "@/features/eu4/AchievementPage";
 import { Achievement } from "@/services/appApi";
 import { GetStaticProps } from "next";
-import { getAchievement, loadAchievements } from "@/server-lib/pool";
+import { getAchievement, loadAchievements } from "@/server-lib/game";
 
 interface StaticAchievement {
   achievement?: Achievement;

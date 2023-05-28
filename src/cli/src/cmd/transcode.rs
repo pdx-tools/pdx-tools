@@ -5,8 +5,6 @@ use walkdir::WalkDir;
 use zip::CompressionMethod;
 use zip_next as zip;
 
-use crate::remote_parse::inflate_file;
-
 /// Re-encode save container format
 #[derive(Args)]
 pub struct TranscodeArgs {
@@ -28,11 +26,10 @@ impl TranscodeArgs {
 
         for file in files {
             let path = file.path();
-            let file = std::fs::File::open(path)
+            let raw = std::fs::read(path)
                 .with_context(|| format!("unable to open: {}", path.display()))?;
-            let inflated = inflate_file(&file)?;
 
-            let data = if let Ok(mut z) = zip::ZipArchive::new(Cursor::new(&inflated)) {
+            let data = if let Ok(mut z) = zip::ZipArchive::new(Cursor::new(&raw)) {
                 let mut inflated_size: u64 = 0;
                 let mut is_encoded = true;
                 for name in &["meta", "gamestate", "ai"] {
@@ -60,16 +57,16 @@ impl TranscodeArgs {
                 }
 
                 out_zip.finish().unwrap().into_inner()
-            } else if inflated.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
+            } else if raw.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
                 continue;
             } else {
-                zstd::bulk::compress(&inflated, 7).context("zstd failure")?
+                zstd::bulk::compress(&raw, 7).context("zstd failure")?
             };
 
             let out_path = self.dest.join(path.file_name().unwrap());
             std::fs::write(&out_path, &data)
                 .with_context(|| format!("unable to write to {}", out_path.display()))?;
-            println!("{} {}/{}", out_path.display(), inflated.len(), data.len());
+            println!("{} {}/{}", out_path.display(), raw.len(), data.len());
         }
 
         Ok(ExitCode::SUCCESS)

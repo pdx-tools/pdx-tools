@@ -41,9 +41,6 @@ mod smallest_province;
 #[allow(dead_code)]
 #[cfg(any(feature = "compile_assets", feature = "fun"))]
 mod rawbmp;
-#[cfg(any(feature = "admin", feature = "fun"))]
-#[path = "storage/remote_parse.rs"]
-mod remote_parse;
 #[cfg(any(feature = "tokenize", feature = "compile_assets"))]
 #[path = "storage/zstd_tee.rs"]
 mod zstd_tee;

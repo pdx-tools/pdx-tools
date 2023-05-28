@@ -1,6 +1,4 @@
 use eu4save::PdsDate;
-
-pub mod hasher;
 pub mod parser;
 
 pub fn eu4_days_to_date(days: i32) -> String {

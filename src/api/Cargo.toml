@@ -1,0 +1,14 @@
+[package]
+name = "pdx-tools-api"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = { version = "0.6.18" }
+tokio = { version = "1.28.2", features = ["rt", "macros", "rt-multi-thread", "signal"] }
+applib = { path = "../applib" }
+eu4game = { path = "../eu4game" }
+tower-http = { version = "0.4.0", features = ["trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

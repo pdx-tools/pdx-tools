@@ -1,4 +1,3 @@
-use crate::remote_parse::remote_parse;
 use anyhow::Context;
 use clap::Args;
 use eu4save::{
@@ -26,7 +25,9 @@ impl AiDevelopmentArgs {
 
         for file in files {
             let path = file.path();
-            let (save, _encoding) = remote_parse(path)
+            let save_data = std::fs::read(path)
+                .with_context(|| format!("unable to read: {}", path.display()))?;
+            let (save, _encoding) = eu4game::shared::parse_save(&save_data)
                 .with_context(|| format!("unable to parse: {}", path.display()))?;
 
             if save.meta.multiplayer {

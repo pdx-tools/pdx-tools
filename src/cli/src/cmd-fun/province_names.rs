@@ -1,4 +1,4 @@
-use crate::remote_parse::remote_parse;
+use anyhow::Context;
 use clap::Args;
 use std::{collections::HashMap, path::PathBuf, process::ExitCode};
 
@@ -11,7 +11,9 @@ pub struct ProvinceNamesArgs {
 
 impl ProvinceNamesArgs {
     pub fn run(&self) -> anyhow::Result<ExitCode> {
-        let (save, _encoding) = remote_parse(&self.file)?;
+        let save_data = std::fs::read(&self.file)
+            .with_context(|| format!("unable to read: {}", self.file.display()))?;
+        let (save, _encoding) = eu4game::shared::parse_save(&save_data)?;
         let game = eu4game::game::Game::new(&save.meta.savegame_version);
 
         let mut characters: HashMap<_, usize> = HashMap::new();

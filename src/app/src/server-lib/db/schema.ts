@@ -23,6 +23,7 @@ export const saveEncoding = pgEnum("save_encoding", [
   "text",
   "textzip",
   "binzip",
+  "binary",
 ]);
 
 const timestampColumn = () =>

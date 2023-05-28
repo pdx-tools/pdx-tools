@@ -555,19 +555,6 @@ pub struct RootTree {
     uncolonized_manpower: f32,
 }
 
-#[derive(Tsify, Serialize)]
-#[tsify(into_wasm_abi)]
-pub enum SaveEncoding {
-    #[serde(rename = "text")]
-    Text,
-    #[serde(rename = "textzip")]
-    TextZip,
-    #[serde(rename = "binzip")]
-    BinaryZip,
-    #[serde(rename = "binary")]
-    Binary,
-}
-
 // Struct created to help compiler debugging as the wasm_bindgen macro can cause opaque errors.
 pub struct SaveFileImpl {
     pub query: Query,
@@ -1229,13 +1216,8 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn save_encoding(&self) -> SaveEncoding {
-        match self.encoding {
-            Encoding::Text => SaveEncoding::Text,
-            Encoding::TextZip => SaveEncoding::TextZip,
-            Encoding::BinaryZip => SaveEncoding::BinaryZip,
-            Encoding::Binary => SaveEncoding::Binary,
-        }
+    pub fn save_encoding(&self) -> Encoding {
+        self.encoding
     }
 
     pub fn save_mode(&self) -> SaveMode {

@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { withCoreMiddleware } from "@/server-lib/middlware";
-import { ParsedFile } from "@/server-lib/pool";
-import { fromApiSave } from "@/server-lib/db";
+import { fromParsedSave } from "@/server-lib/db";
 import { db, table } from "@/server-lib/db";
 import { eq } from "drizzle-orm";
+import { ParsedFile } from "@/server-lib/save-parser";
 
 type ReprocessEntry = {
   saveId: string;
@@ -16,7 +16,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   for (const save of saves) {
     await db
       .update(table.saves)
-      .set(fromApiSave(save.save))
+      .set(fromParsedSave(save.save))
       .where(eq(table.saves.id, save.saveId));
   }
 

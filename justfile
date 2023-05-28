@@ -30,14 +30,14 @@ release:
     echo "pdx-tools-prod not found in ssh config, please add it and then run just publish-backend"
   fi
 
-build: build-wasm build-napi build-app build-docker
+build: build-wasm build-app build-api build-docker
 
 build-rust:
   cargo build --all
 
-dev: build-wasm-dev build-napi dev-app
+dev: build-wasm-dev build-api dev-app
 
-staging: build-napi build-app prep-dev-app
+staging: build-app build-api prep-dev-app
   #!/usr/bin/env bash
   set -euxo pipefail
   cd src/app
@@ -65,8 +65,14 @@ npm-ci:
   (cd src/app && npm ci)
   (cd src/app/workers-site && npm ci)
 
+publish-api:
+  docker build -t us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly -f ./dev/api.dockerfile ./target/x86_64-unknown-linux-musl/release/
+  docker push us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
+  gcloud run deploy api --region=us-west1 --project=$GCLOUD_PROJECT --image=us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
+
 publish-backend:
   docker image save ghcr.io/pdx-tools/pdx-tools:nightly | gzip | ssh pdx-tools-prod 'docker load && /opt/pdx-tools/docker-compose.sh up -d api'
+  just publish-api
 
 wrangler +cmd:
   cd src/app && wrangler "$@"
@@ -82,20 +88,27 @@ build-app: prep-frontend
 build-docker:
   docker build -t ghcr.io/pdx-tools/pdx-tools:nightly -f ./dev/app.dockerfile ./src/app
 
+build-api:
+  just cargo run -p applib --bin types
+  just cross --package pdx-tools-api --release
+
 build-admin:
+  just cross --package pdx --features admin --release
+
+cargo *cmd:
+  cargo "$@"
+
+cross *cmd:
   #!/usr/bin/env bash
   set -euxo pipefail
   if [[ $REMOTE_CONTAINERS == "true" ]]; then
     # If we're within the dev container then we need to use special cross within
     # docker instructions, and workaround how the devcontainer uses "host"
     # networking so `hostname` doesn't return the name of the container.
-    HOSTNAME=$(docker ps | grep vsc-pdx-tools | cut -d' ' -f 1) cross build --package pdx --features admin --release --target x86_64-unknown-linux-musl
+    HOSTNAME=$(docker ps | grep vsc-pdx-tools | cut -d' ' -f 1) cross build --target x86_64-unknown-linux-musl "$@" 
   else
-    cargo build --package pdx --features admin
+    cargo build "$@"
   fi
-
-cargo *cmd:
-  cargo "$@"
 
 dev-app: prep-frontend prep-dev-app
   #!/usr/bin/env bash
@@ -149,6 +162,7 @@ build-wasm: build-wasm-dev
     mv "$MY_TMP" "$1"
   }
 
+  optimize src/wasm-app/pkg/wasm_app_bg.wasm &
   optimize src/wasm-compress/pkg/wasm_compress_bg.wasm &
   optimize src/wasm-ck3/pkg/wasm_ck3_bg.wasm &
   optimize src/wasm-eu4/pkg/wasm_eu4_bg.wasm &
@@ -158,16 +172,13 @@ build-wasm: build-wasm-dev
   wait
 
 build-wasm-dev:
+  wasm-pack build -t web src/wasm-app
   wasm-pack build -t web src/wasm-compress
   wasm-pack build -t web src/wasm-ck3
   wasm-pack build -t web src/wasm-eu4
   wasm-pack build -t web src/wasm-hoi4
   wasm-pack build -t web src/wasm-imperator
   wasm-pack build -t web src/wasm-vic3
-
-build-napi:
-  cargo build --release -p applib-node
-  cp -f ./target/release/libapplib_node.so ./src/app/src/server-lib/applib.node
 
 package-all *opts: admin-tokenize-all
   #!/usr/bin/env bash

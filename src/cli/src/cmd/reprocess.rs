@@ -1,9 +1,8 @@
-use crate::remote_parse::remote_parse;
 use anyhow::{bail, Context};
-use applib::parser::{save_to_parse_result, ParseResult, ParsedFile, SavePatch};
+use applib::parser::{ParseResult, ParsedFile, SavePatch};
 use clap::Args;
 use csv::{Reader, StringRecord};
-use eu4save::models::GameDifficulty;
+use eu4save::{models::GameDifficulty, Encoding};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::{
     collections::HashMap,
@@ -45,9 +44,10 @@ impl ReprocessArgs {
 
         for file in files {
             let path = file.path();
-            let (save, encoding) = remote_parse(path)
-                .with_context(|| format!("unable to parse: {}", path.display()))?;
-            let save = save_to_parse_result(save, encoding)?;
+
+            let save_data = std::fs::read(path)
+                .with_context(|| format!("unable to read: {}", path.display()))?;
+            let save = applib::parser::parse_save_data(&save_data)?;
 
             let save = match save {
                 ParseResult::InvalidPatch(_) => bail!("unable parse patch"),
@@ -92,7 +92,7 @@ struct UpdateSave {
     #[serde(skip_serializing_if = "Option::is_none")]
     patch: Option<SavePatch>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    encoding: Option<String>,
+    encoding: Option<Encoding>,
     #[serde(skip_serializing_if = "Option::is_none")]
     playthrough_id: Option<Option<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -198,8 +198,8 @@ struct FlatSave<'a> {
     // locked: &'a str,
     // filename: &'a str,
     // user_id: &'a str,
-    encoding: &'a str,
-    // hash: &'a str,
+    encoding: Encoding,
+    hash: &'a str,
     date: &'a str,
     days: i32,
     score_days: Option<i32>,
@@ -393,7 +393,7 @@ fn enhance_flat(x: &FlatSave) -> anyhow::Result<ParsedFile> {
             third: x.save_version_third,
             fourth: x.save_version_fourth,
         },
-        encoding: String::from(x.encoding),
+        encoding: x.encoding,
         playthrough_id: x
             .playthrough_id
             .ne("")
@@ -423,6 +423,7 @@ fn enhance_flat(x: &FlatSave) -> anyhow::Result<ParsedFile> {
         dlc_ids,
         checksum: String::from(x.checksum),
         patch_shorthand,
+        hash: String::from(x.hash),
     })
 }
 
