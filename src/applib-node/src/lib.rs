@@ -40,19 +40,3 @@ pub fn eu4_days_to_date(days: i32) -> String {
 pub fn latest_eu4_minor_patch() -> u16 {
     eu4game::game::LATEST_MINOR
 }
-
-#[napi]
-pub fn valid_patch(first: i32, second: i32) -> Result<bool> {
-    let first = to_u16(first)?;
-    let second = to_u16(second)?;
-    Ok(eu4game::achievements::valid_patch(first, second))
-}
-
-fn to_u16(input: i32) -> Result<u16> {
-    input.try_into().map_err(|_| {
-        Error::new(
-            Status::InvalidArg,
-            String::from("Unable to convert into short"),
-        )
-    })
-}

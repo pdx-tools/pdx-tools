@@ -583,10 +583,6 @@ pub fn weighted_factor(major: u16, minor: u16) -> Option<f64> {
     }
 }
 
-pub fn valid_patch(major: u16, minor: u16) -> bool {
-    weighted_factor(major, minor).is_some()
-}
-
 fn owned_and_cored_by(prov: &Province, tag: CountryTag) -> bool {
     let cored = prov.cores.contains(&tag);
     let owned = prov.owner.map_or(false, |owner| owner == tag);

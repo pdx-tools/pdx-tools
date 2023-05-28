@@ -4,8 +4,6 @@ import * as pool from "@/server-lib/pool";
 import { SavePostResponse } from "@/pages/api/saves";
 import {
   AchievementView,
-  CheckRequest,
-  CheckResponse,
   NewKeyResponse,
   ProfileResponse,
   SaveFile,
@@ -230,9 +228,7 @@ async function fetchEu4Save(save: string) {
 }
 
 test("same campaign", async () => {
-  // This test will ensure that given three saves of the same campaign that
-  // checking them all initially will allow an upload. Then uploading the middle
-  // save will only allow the earliest save to be uploaded.
+  // Uploading 3 saves from the same campaign
   const client = await HttpClient.create();
 
   let startPath = "ita2.eu4";
@@ -254,66 +250,13 @@ test("same campaign", async () => {
   expect(startHash).not.toBe(midHash);
   expect(midHash).not.toBe(endHash);
 
-  const startCheckReq: CheckRequest = {
-    hash: startHash,
-    playthrough_id: start.playthrough_id,
-    achievement_ids: start.achievements || [],
-    campaign_id: start.campaign_id,
-    patch: start.patch,
-    score: start.days,
-  };
-
-  {
-    const resp = await client.post<CheckResponse>("/api/check", startCheckReq);
-    expect(resp.saves).toHaveLength(0);
-    expect(resp.valid_patch).toBe(true);
-  }
-
-  const midCheckReq: CheckRequest = {
-    hash: midHash,
-    playthrough_id: mid.playthrough_id,
-    achievement_ids: mid.achievements || [],
-    campaign_id: mid.campaign_id,
-    patch: mid.patch,
-    score: mid.days,
-  };
-
-  {
-    const resp = await client.post<CheckResponse>("/api/check", midCheckReq);
-    expect(resp.saves).toHaveLength(0);
-    expect(resp.valid_patch).toBe(true);
-  }
-
-  const endCheckReq: CheckRequest = {
-    hash: endHash,
-    playthrough_id: end.playthrough_id,
-    achievement_ids: end.achievements || [],
-    campaign_id: end.campaign_id,
-    patch: end.patch,
-    score: end.days,
-  };
-
-  {
-    const resp = await client.post<CheckResponse>("/api/check", endCheckReq);
-    expect(resp.saves).toHaveLength(0);
-    expect(resp.valid_patch).toBe(true);
-  }
-
   // Now upload the halfway save. We should still be able to upload the later one
   const midUpload = await client.uploadSave(midPath);
   expect(midUpload.save_id).toBeDefined();
 
-  {
-    const resp = await client.post<CheckResponse>("/api/check", endCheckReq);
-    expect(resp.saves).toHaveLength(0);
-    expect(resp.valid_patch).toBe(true);
-  }
-
-  // Ensure that upload matches check behavior
   const endUpload = await client.uploadSave(endPath);
   expect(endUpload.save_id).toBeDefined();
 
-  // But we can still upload the earliest save
   const startUpload = await client.uploadSave(startPath);
   expect(startUpload.save_id).toBeDefined();
 
@@ -324,7 +267,7 @@ test("same campaign", async () => {
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(startUpload.save_id);
 
-  // But both saves will be exposed when viewing user saves
+  // But all saves will be exposed when viewing user saves
   let userProfile = await client.get<UserSaves>("/api/users/100");
   expect(userProfile.saves).toHaveLength(3);
   expect(userProfile.saves[0].id).toEqual(startUpload.save_id);
@@ -386,28 +329,12 @@ test("same playthrough disjoint set", async () => {
 
   const tatar = await parseFile(tatarPath);
   const golden = await parseFile(goldenPath);
-  const goldenHash = await pool.fileChecksum(eu4SaveLocation(goldenPath));
 
   // sanity check to ensure we're dealing with the files with same playthrough id
   expect(tatar.playthrough_id).toBe(golden.playthrough_id);
 
   const tatarUpload = await client.uploadSave(tatarPath);
   expect(tatarUpload.save_id).toBeDefined();
-
-  const endCheckReq: CheckRequest = {
-    hash: goldenHash,
-    playthrough_id: golden.playthrough_id,
-    achievement_ids: golden.achievements || [],
-    campaign_id: golden.campaign_id,
-    patch: golden.patch,
-    score: golden.days,
-  };
-
-  {
-    const resp = await client.post<CheckResponse>("/api/check", endCheckReq);
-    expect(resp.saves).toHaveLength(0);
-    expect(resp.valid_patch).toBe(true);
-  }
 
   const goldenUpload = await client.uploadSave(goldenPath);
   expect(goldenUpload.save_id).toBeDefined();

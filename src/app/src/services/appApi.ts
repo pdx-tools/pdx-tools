@@ -132,37 +132,6 @@ export type SkanUserSaves = {
   version: string;
 };
 
-export type CheckRequest = {
-  hash: string;
-  patch: GameVersion;
-  campaign_id: string;
-  score: number;
-  achievement_ids: number[];
-  playthrough_id: string | null;
-};
-
-export type CheckResponse = {
-  saves: SaveFile[];
-  valid_patch: boolean;
-};
-
-export async function checkSave(req: CheckRequest): Promise<CheckResponse> {
-  const body = JSON.stringify(req);
-  const request = await fetch("/api/check", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body,
-  });
-
-  const response = await request.json();
-  if (!request.ok) {
-    throw Error(response.msg);
-  }
-  return response as CheckResponse;
-}
-
 export async function fetchSaveMeta(saveId: string): Promise<SaveFile> {
   return fetchOk(`/api/saves/${saveId}`).then((x) => x.json());
 }

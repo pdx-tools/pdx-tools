@@ -119,10 +119,6 @@ export function eu4DaysToDate(days: number): string {
   return nativeModule.exports.eu4DaysToDate(days);
 }
 
-export function validPatch(major: number, minor: number): boolean {
-  return nativeModule.exports.validPatch(major, minor);
-}
-
 export function latestEu4MinorPatch(): number {
   return nativeModule.exports.latestEu4MinorPatch();
 }
