@@ -160,6 +160,7 @@ count < 2
 scope:attacker.primary_title.tier <= tier_county
 a != b
 start_date == 1066.9.15
+c:RUS ?= this
 ```
 
 These operators are typically reserved for game files (save files only use equals).
