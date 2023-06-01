@@ -76,14 +76,15 @@ fn _recompress(
         let mut writer = Cursor::new(out);
         writer.write_all(&data[..zip.offset() as usize])?;
         let mut out_zip = zip::ZipWriter::new(writer);
-        let options = zip::write::FileOptions::default()
-            .compression_level(Some(7))
-            .compression_method(zip::CompressionMethod::Zstd);
 
         let mut current_size = 0;
         for i in 0..zip.len() {
             let file = zip.by_index(i)?;
             let file_size = file.size() as usize;
+            let options = zip::write::FileOptions::default()
+                .compression_level(Some(7))
+                .compression_method(zip::CompressionMethod::Zstd);
+
             out_zip
                 .start_file(String::from(file.name()), options)
                 .unwrap();

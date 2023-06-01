@@ -10,7 +10,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 wasm-bindgen = { version = "0.2" }
-zip_next = { git = "https://github.com/nickbabcock/zip-rs.git", branch = "disable-default-zstd2", default-features = false, features = ["deflate", "zstd"] }
+zip_next = { version = "0.10.0", default-features = false, features = ["deflate", "zstd"] }
 zstd = { version = "0.12.3", default-features = false }
 js-sys = "0.3"
 

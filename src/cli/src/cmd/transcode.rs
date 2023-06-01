@@ -41,15 +41,15 @@ impl TranscodeArgs {
                 let out = Vec::with_capacity(len as usize);
                 let writer = Cursor::new(out);
                 let mut out_zip = zip::ZipWriter::new(writer);
-                let options = zip::write::FileOptions::default()
-                    .compression_level(Some(7))
-                    .compression_method(zip::CompressionMethod::Zstd);
 
                 for (name, data) in &[
                     ("meta", tar.meta),
                     ("gamestate", tar.gamestate),
                     ("ai", tar.ai),
                 ] {
+                    let options = zip::write::FileOptions::default()
+                        .compression_level(Some(7))
+                        .compression_method(zip::CompressionMethod::Zstd);
                     out_zip.start_file(String::from(*name), options).unwrap();
                     out_zip.write_all(data).unwrap();
                 }
@@ -71,11 +71,11 @@ impl TranscodeArgs {
                 let out = Vec::with_capacity(inflated_size as usize);
                 let writer = Cursor::new(out);
                 let mut out_zip = zip::ZipWriter::new(writer);
-                let options = zip::write::FileOptions::default()
-                    .compression_level(Some(7))
-                    .compression_method(zip::CompressionMethod::Zstd);
 
                 for name in &["meta", "gamestate", "ai"] {
+                    let options = zip::write::FileOptions::default()
+                        .compression_level(Some(7))
+                        .compression_method(zip::CompressionMethod::Zstd);
                     let mut file = z.by_name(name).context("unable to find file in zip")?;
                     out_zip.start_file(String::from(*name), options).unwrap();
                     std::io::copy(&mut file, &mut out_zip)

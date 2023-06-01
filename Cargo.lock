@@ -3329,8 +3329,9 @@ dependencies = [
 
 [[package]]
 name = "zip_next"
-version = "0.7.3"
-source = "git+https://github.com/nickbabcock/zip-rs.git?branch=disable-default-zstd2#822a734ae4522fee4eaeeebd7a7668eb49c3e1db"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96407bcd7895dd82b44687de62c41b0977acb5955b362afe90b22ba8578b3aba"
 dependencies = [
  "arbitrary",
  "byteorder",
