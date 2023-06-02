@@ -19,11 +19,7 @@ use eu4save::{
     TagResolver,
 };
 use serde::{Deserialize, Serialize};
-use std::io::Write;
-use std::{
-    collections::{HashMap, HashSet},
-    io::Cursor,
-};
+use std::collections::{HashMap, HashSet};
 use tag_filter::{AiTagsState, TagFilterPayload, TagFilterPayloadRaw};
 use tarsave::TarSave;
 use wasm_bindgen::prelude::*;
@@ -3383,34 +3379,4 @@ pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
             .map(|x| js_sys::Uint8Array::from(x.data()))
             .map_err(|e| JsValue::from_str(e.to_string().as_str()))
     }
-}
-
-#[wasm_bindgen]
-pub fn data_offset(data: &[u8]) -> Option<usize> {
-    if tarsave::extract_tarsave(data).is_some() {
-        None
-    } else {
-        Some(0)
-    }
-}
-
-#[wasm_bindgen]
-pub fn download_transformation(data: &[u8]) -> Vec<u8> {
-    let out = Vec::with_capacity(data.len() / 5);
-    let writer = Cursor::new(out);
-    let mut out_zip = zip::ZipWriter::new(writer);
-    let options =
-        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-
-    if let Some(tar) = tarsave::extract_tarsave(data) {
-        for (name, data) in &[
-            ("meta", tar.meta),
-            ("gamestate", tar.gamestate),
-            ("ai", tar.ai),
-        ] {
-            out_zip.start_file(String::from(*name), options).unwrap();
-            out_zip.write_all(data).unwrap();
-        }
-    }
-    out_zip.finish().unwrap().into_inner()
 }

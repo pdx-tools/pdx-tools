@@ -122,3 +122,40 @@ pub fn recompressed_meta(data: &[u8]) -> String {
         String::from(r#"{"content_type":"application/zstd"}"#)
     }
 }
+
+#[wasm_bindgen]
+pub fn data_offset(data: &[u8]) -> Option<usize> {
+    if tarsave::extract_tarsave(data).is_some() || zip::ZipArchive::new(Cursor::new(data)).is_ok() {
+        None
+    } else {
+        Some(0)
+    }
+}
+
+#[wasm_bindgen]
+pub fn download_transformation(data: &[u8]) -> Vec<u8> {
+    let out = Vec::with_capacity(data.len() / 5);
+    let writer = Cursor::new(out);
+    let mut out_zip = zip::ZipWriter::new(writer);
+    let options =
+        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    if let Some(tar) = tarsave::extract_tarsave(data) {
+        for (name, data) in &[
+            ("meta", tar.meta),
+            ("gamestate", tar.gamestate),
+            ("ai", tar.ai),
+        ] {
+            out_zip
+                .start_file(String::from(*name), options.clone())
+                .unwrap();
+            out_zip.write_all(data).unwrap();
+        }
+    } else if let Ok(mut x) = zip::ZipArchive::new(Cursor::new(data)) {
+        for i in 0..x.len() {
+            let mut file = x.by_index(i).unwrap();
+            out_zip.start_file(file.name(), options.clone()).unwrap();
+            std::io::copy(&mut file, &mut out_zip).unwrap();
+        }
+    }
+    out_zip.finish().unwrap().into_inner()
+}

@@ -5,9 +5,11 @@ import { downloadData } from "@/lib/downloadData";
 import { useIsMounted } from "@/hooks/useIsMounted";
 import { getEu4Worker } from "../../worker";
 import { useSaveFilename } from "../../store";
+import { useCompression } from "@/features/compress";
 
 export const DownloadButton = () => {
   const [loading, setLoading] = useState(false);
+  const compressWorker = useCompression();
   const filename = useSaveFilename();
   const isMounted = useIsMounted();
 
@@ -15,7 +17,8 @@ export const DownloadButton = () => {
     try {
       setLoading(true);
       emitEvent({ kind: "download", game: "eu4" });
-      const data = await getEu4Worker().eu4DownloadData();
+      const raw = await getEu4Worker().getRawData();
+      const data = await compressWorker.transform(raw);
       downloadData(data, filename);
     } finally {
       if (isMounted()) {

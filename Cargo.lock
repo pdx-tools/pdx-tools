@@ -3011,6 +3011,7 @@ name = "wasm-compress"
 version = "0.1.0"
 dependencies = [
  "js-sys",
+ "tarsave",
  "wasm-bindgen",
  "zip_next",
  "zstd",
@@ -3028,11 +3029,9 @@ dependencies = [
  "schemas",
  "serde",
  "serde-wasm-bindgen",
- "tar",
  "tarsave",
  "wasm-bindgen",
  "wasm-bindgen-test",
- "zip",
  "zstd",
 ]
 

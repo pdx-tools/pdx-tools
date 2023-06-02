@@ -383,13 +383,3 @@ export function eu4GetMapTooltip(
 export async function eu4SaveHash(): Promise<string> {
   return wasm.module.save_checksum(await wasm.viewData());
 }
-
-export async function eu4DownloadData(): Promise<Uint8Array> {
-  const data = await wasm.viewData();
-  const dataOffset = wasm.module.data_offset(data);
-  const out =
-    dataOffset === undefined
-      ? wasm.module.download_transformation(data)
-      : data.subarray(dataOffset);
-  return transfer(out, [out.buffer]);
-}

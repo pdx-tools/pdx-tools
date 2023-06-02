@@ -29,6 +29,16 @@ const obj = {
       [deflated.data.buffer]
     );
   },
+
+  transform(data: Uint8Array): Uint8Array {
+    const dataOffset = wasmModule.data_offset(data);
+
+    const out =
+      dataOffset === undefined
+        ? wasmModule.download_transformation(data)
+        : data.subarray(dataOffset);
+    return transfer(out, [out.buffer]);
+  },
 };
 
 expose(obj);
