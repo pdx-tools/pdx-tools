@@ -9,7 +9,7 @@ inline = []
 
 [dependencies]
 flatbuffers = "23.1.21"
-jomini = { version = "0.21" }
+jomini = { version = "0.22.0" }
 
 [build-dependencies]
 flatc-rust = "*"

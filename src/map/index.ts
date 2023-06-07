@@ -149,7 +149,6 @@ async function main() {
   const glResourcesInit = GLResources.create(
     gl,
     staticResources,
-    primaryPoliticalColors
   );
   const [mapProgram, xbrProgram] = await linkedPrograms.compilationCompletion();
   const glResources = new GLResources(

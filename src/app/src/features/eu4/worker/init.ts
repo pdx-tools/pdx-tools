@@ -51,33 +51,14 @@ export async function fetchData(save: Eu4SaveInput) {
   }
 }
 
-let initialSave: mod.InitialSave | undefined;
-
-function getInitialSave() {
-  return check(initialSave, "initial save is undefined");
-}
-
-export async function eu4InitialParse(
+export async function eu4GameParse(
   gameData: Uint8Array,
   provinceIdToColorIndex: Uint16Array
 ) {
-  const parse = await timeit(() =>
-    wasm.module.initial_save(wasm.takeStash(), gameData, provinceIdToColorIndex)
-  );
-  initialSave = parse.data;
-}
-
-export async function eu4InitialMapColors() {
-  const result = getInitialSave().initial_primary_colors();
-  return transfer(result, [result.buffer]);
-}
-
-export async function eu4GameParse() {
-  const savefile = getInitialSave().full_parse();
-
-  const meta = getMeta(savefile);
-  wasm.save = savefile;
-  const achievements: Achievements = savefile.get_achievements();
+  const data = wasm.takeStash();
+  wasm.save = wasm.module.parse_save(data, gameData, provinceIdToColorIndex);
+  const meta = getMeta(wasm.save);
+  const achievements: Achievements = wasm.save.get_achievements();
   const defaultSelectedTag = eu4DefaultSelectedTag(meta);
   return { meta, achievements, defaultSelectedTag };
 }
