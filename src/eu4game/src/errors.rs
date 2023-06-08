@@ -9,6 +9,9 @@ pub enum Eu4GameError {
     #[error("eu4 deserialization error: {0}")]
     DeserializeDebug(String),
 
+    #[error("eu4 deserialization error: {0}")]
+    Deserialize(#[from] jomini::Error),
+
     #[error("No meta file detected")]
     NoMeta,
 

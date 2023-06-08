@@ -187,31 +187,14 @@ async function loadEu4Save(
     progress: 7,
   });
 
-  await runTask(dispatch, {
-    fn: () => worker.eu4InitialParse(gameData, provincesUniqueIndex),
-    name: "save parsed",
-    progress: 20,
-  });
-
-  const provinceCountryColors = await runTask(dispatch, {
-    fn: () => worker.eu4InitialMapColors(),
-    name: "initial map colors",
-    progress: 3,
-  });
-
   const saveTask = runTask(dispatch, {
-    fn: () => worker.eu4GameParse(),
+    fn: () => worker.eu4GameParse(gameData, provincesUniqueIndex),
     name: "save deserialized",
-    progress: 20,
+    progress: 40,
   });
 
   const resources = await resourceTask;
-  const glResourcesInit = GLResources.create(
-    gl,
-    resources,
-    provinceCountryColors
-  );
-
+  const glResourcesInit = GLResources.create(gl, resources);
   const [mapProgram, xbrProgram] = await runTask(dispatch, {
     fn: () => compileTask.data.compilationCompletion(),
     name: "shader linkage",
@@ -264,6 +247,7 @@ async function loadEu4Save(
     name: "calculate political map",
     progress: 4,
   });
+  map.updateCountryProvinceColors(primary);
   map.updateProvinceColors(primary, secondary);
 
   if (!meta.multiplayer) {

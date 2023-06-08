@@ -70,11 +70,7 @@ export class GLResources {
     gl.bindVertexArray(null);
   }
 
-  static create(
-    gl: OnScreenWegblContext,
-    staticRes: StaticResources,
-    provincesCountryColor: Uint8Array
-  ) {
+  static create(gl: OnScreenWegblContext, staticRes: StaticResources) {
     let provinceCount = staticRes.provincesUniqueColor.length / 3;
 
     let rawMapFramebuffer1 = notNull(gl.createFramebuffer());
@@ -192,17 +188,14 @@ export class GLResources {
         gl,
         gl.RGBA,
         provinceCount,
-        provincesCountryColor
       ),
       setupProvinceCustomColorsTexture(
         gl,
         provinceCount,
-        provincesCountryColor
       ),
       setupProvinceCustomColorsTexture(
         gl,
         provinceCount,
-        provincesCountryColor
       ),
       initializeGeometry(gl),
       xbrPositionBuffer,
@@ -352,7 +345,7 @@ function setupProvinceColorsTexture(
   gl: WebGL2RenderingContext,
   type: GLenum,
   provinceCount: number,
-  data: Uint8Array
+  data?: Uint8Array
 ) {
   const texture = gl.createTexture();
   if (texture === null) {
@@ -373,7 +366,9 @@ function setupProvinceColorsTexture(
   const total =
     MAX_TEXTURE_SIZE * (Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1) * 4;
   const buffed = new Uint8Array(total);
-  buffed.set(data);
+  if (data) {
+    buffed.set(data);
+  }
 
   gl.texImage2D(
     gl.TEXTURE_2D,
@@ -393,7 +388,6 @@ function setupProvinceColorsTexture(
 function setupProvinceCustomColorsTexture(
   gl: WebGL2RenderingContext,
   provinceCount: number,
-  data: Uint8Array
 ) {
   const texture = gl.createTexture();
   if (texture === null) {
@@ -414,7 +408,6 @@ function setupProvinceCustomColorsTexture(
   const total =
     MAX_TEXTURE_SIZE * (Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1) * 4;
   const buffed = new Uint8Array(total);
-  buffed.set(data);
 
   gl.texImage2D(
     gl.TEXTURE_2D,

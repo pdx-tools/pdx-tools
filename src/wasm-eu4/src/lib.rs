@@ -1,15 +1,15 @@
 use eu4game::{
     achievements::{Achievement, AchievementHunter},
     game::Game,
-    shared::{playthrough_id, Eu4RemoteFile},
-    Eu4GameError, SaveGameQuery,
+    shared::playthrough_id,
+    SaveGameQuery,
 };
 use eu4save::{
     eu4_start_date,
-    file::Eu4Binary,
+    file::Eu4ParsedBinary,
     models::{
-        Country, CountryColors, CountryEvent, CountryTechnology, Eu4Save, GameplayOptions, Leader,
-        Province, ProvinceEvent, ProvinceEventValue, WarEvent,
+        Country, CountryEvent, CountryTechnology, Eu4Save, GameplayOptions, Leader, Province,
+        ProvinceEvent, ProvinceEventValue, WarEvent,
     },
     query::{
         BuildingConstruction, CountryExpenseLedger, CountryIncomeLedger, LedgerPoint,
@@ -3180,136 +3180,22 @@ pub fn parse_meta(data: &[u8]) -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn parse_save(data: &[u8]) -> Result<SaveFileParsed, JsValue> {
+pub fn parse_save(
+    save_data: Vec<u8>,
+    game_data: Vec<u8>,
+    province_id_to_color_index: Vec<u16>,
+) -> Result<SaveFile, JsValue> {
     let tokens = tokens::get_tokens();
-    match eu4game::shared::parse_save_with_tokens(data, tokens) {
+    let save = match eu4game::shared::parse_save_with_tokens(&save_data, tokens) {
         Ok((save, encoding)) => Ok(SaveFileParsed(save, encoding)),
         Err(_) => {
-            let err = eu4game::shared::parse_save_with_tokens_full(data, tokens, true).unwrap_err();
+            let err =
+                eu4game::shared::parse_save_with_tokens_full(&save_data, tokens, true).unwrap_err();
             Err(JsValue::from_str(err.to_string().as_str()))
         }
-    }
-}
+    }?;
 
-#[wasm_bindgen]
-pub struct InitialSave {
-    save: Eu4RemoteFile<'static>,
-    province_id_to_color_index: Vec<u16>,
-    primary_colors: Vec<u8>,
-    _zip_data: Vec<u8>,
-    _game_data: Vec<u8>,
-    _save_data: Vec<u8>,
-}
-
-#[wasm_bindgen]
-impl InitialSave {
-    pub fn initial_primary_colors(&mut self) -> Vec<u8> {
-        self.primary_colors.drain(..).collect()
-    }
-
-    pub fn full_parse(self) -> Result<SaveFile, JsValue> {
-        let tokens = tokens::get_tokens();
-        let save = match self.save.parse_full_save(tokens, false) {
-            Ok((save, encoding)) => Ok(SaveFileParsed(save, encoding)),
-            Err(_) => {
-                let err = self.save.parse_full_save(tokens, true).unwrap_err();
-                Err(JsValue::from_str(err.to_string().as_str()))
-            }
-        }?;
-
-        game_save(save, self._game_data, self.province_id_to_color_index)
-    }
-}
-
-#[wasm_bindgen]
-pub fn initial_save(
-    save_data: Vec<u8>,
-    game_data: Vec<u8>,
-    province_id_to_color_index: Vec<u16>,
-) -> Result<InitialSave, JsValue> {
-    _initial_save(save_data, game_data, province_id_to_color_index)
-        .map_err(|e| JsValue::from_str(e.to_string().as_str()))
-}
-
-pub fn _initial_save(
-    save_data: Vec<u8>,
-    game_data: Vec<u8>,
-    province_id_to_color_index: Vec<u16>,
-) -> Result<InitialSave, Eu4GameError> {
-    use eu4game::shared::Eu4RemoteFileKind;
-
-    let mut zip_data = Vec::new();
-    let save = eu4game::shared::parse_save_raw(&save_data, &mut zip_data)?;
-    let save: Eu4RemoteFile<'static> = unsafe { std::mem::transmute(save) };
-
-    let game_data = zstd::bulk::decompress(&game_data, 1024 * 1024).unwrap();
-
-    // Cast away the lifetime so that we can store it in a wasm-bindgen compatible struct
-    let game = Game::from_flatbuffer(&game_data);
-    let game: Game<'static> = unsafe { std::mem::transmute(game) };
-
-    #[derive(Deserialize)]
-    struct SkinnyGame {
-        #[serde(default, deserialize_with = "eu4save::de::deserialize_vec_pair")]
-        countries: Vec<(CountryTag, SkinnyCountry)>,
-        #[serde(default, deserialize_with = "eu4save::de::deserialize_vec_pair")]
-        provinces: Vec<(ProvinceId, SkinnyProvince)>,
-    }
-
-    #[derive(Deserialize)]
-    struct SkinnyCountry {
-        colors: CountryColors,
-    }
-
-    #[derive(Deserialize)]
-    struct SkinnyProvince {
-        owner: Option<CountryTag>,
-    }
-
-    let (Eu4RemoteFileKind::Disjoint {
-        game: gamestate, ..
-    }
-    | Eu4RemoteFileKind::Unified(gamestate)) = &save.kind;
-    let skinny_game: SkinnyGame = gamestate.deserializer(tokens::get_tokens()).deserialize()?;
-    let country_colors: HashMap<&CountryTag, [u8; 4]> = skinny_game
-        .countries
-        .iter()
-        .map(|(tag, country)| {
-            let c = &country.colors.map_color;
-            (tag, [c[0], c[1], c[2], 255])
-        })
-        .collect();
-
-    let result_len: usize = province_id_to_color_index.len() * 4;
-    let mut primary: Vec<u8> = vec![0; result_len];
-
-    for (id, prov) in &skinny_game.provinces {
-        let offset = match province_id_to_color_index.get(usize::from(id.as_u16())) {
-            Some(&x) => x as usize * 4,
-            None => continue,
-        };
-
-        let primary_color = &mut primary[offset..offset + 4];
-        primary_color.copy_from_slice(&map::WASTELAND);
-        if let Some(owner_tag) = prov.owner.as_ref() {
-            if let Some(known_color) = country_colors.get(owner_tag) {
-                primary_color.copy_from_slice(known_color);
-            }
-        } else if let Some(prov) = game.get_province(id) {
-            if prov.is_habitable() {
-                primary_color.copy_from_slice(&[94, 94, 94, 128]);
-            }
-        }
-    }
-
-    Ok(InitialSave {
-        save,
-        province_id_to_color_index,
-        primary_colors: primary,
-        _zip_data: zip_data,
-        _game_data: game_data,
-        _save_data: save_data,
-    })
+    game_save(save, game_data, province_id_to_color_index)
 }
 
 pub fn game_save(
@@ -3317,6 +3203,8 @@ pub fn game_save(
     game_data: Vec<u8>,
     province_id_to_color_index: Vec<u16>,
 ) -> Result<SaveFile, JsValue> {
+    let game_data = zstd::bulk::decompress(&game_data, 1024 * 1024)
+        .map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
     let game = Game::from_flatbuffer(&game_data);
     // Cast away the lifetime so that we can store it in a wasm-bindgen compatible struct
     let game: Game<'static> = unsafe { std::mem::transmute(game) };
@@ -3350,9 +3238,9 @@ pub fn save_checksum(data: &[u8]) -> JsValue {
 }
 
 fn melt_tar(tsave: TarSave) -> Result<js_sys::Uint8Array, Box<dyn std::error::Error>> {
-    let meta = Eu4Binary::from_slice(tsave.meta)?;
-    let gamestate = Eu4Binary::from_slice(tsave.gamestate)?;
-    let ai = Eu4Binary::from_slice(tsave.ai)?;
+    let meta = Eu4ParsedBinary::from_slice(tsave.meta)?;
+    let gamestate = Eu4ParsedBinary::from_slice(tsave.gamestate)?;
+    let ai = Eu4ParsedBinary::from_slice(tsave.ai)?;
 
     let out = Eu4Melter::from_entries(&meta, &gamestate, &ai)
         .on_failed_resolve(FailedResolveStrategy::Ignore)

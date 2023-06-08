@@ -13,7 +13,7 @@ miniz = ["imperator-save/miniz"]
 libdeflate = ["imperator-save/libdeflate"]
 
 [dependencies]
-jomini = "0.21"
+jomini = "0.22"
 schemas = { path = "../schemas" }
 wasm-bindgen = { version = "0.2" }
 serde-wasm-bindgen = "0.5"
