@@ -2,7 +2,7 @@ use std::io::Cursor;
 
 use crate::Eu4GameError;
 use eu4save::{
-    file::{Eu4Binary, Eu4Text, Eu4FileKind, Eu4ParsedText},
+    file::{Eu4Binary, Eu4FileKind, Eu4ParsedText, Eu4Text},
     models::{CountryEvent, Eu4Save, GameState, Meta, Monarch},
     query::Query,
     Encoding, Eu4Date, Eu4File,
@@ -270,7 +270,7 @@ where
                     let mut deser = file.ondemand_deserializer(resolver);
                     let meta: Meta = if debug {
                         serde_path_to_error::deserialize(&mut deser)
-                        .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?
+                            .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?
                     } else {
                         deser.deserialize()?
                     };
@@ -281,7 +281,7 @@ where
                     let mut deser = file.ondemand_deserializer(resolver);
                     let game: GameState = if debug {
                         serde_path_to_error::deserialize(&mut deser)
-                        .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?
+                            .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?
                     } else {
                         deser.deserialize()?
                     };
@@ -334,14 +334,14 @@ where
                 let meta: Meta = serde_path_to_error::deserialize(&deser)
                     .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
                 Ok(meta)
-            },
+            }
             Eu4FileKind::Binary(x) => {
                 let parsed = x.parse()?;
                 let deser = parsed.deserializer(resolver);
                 let meta: Meta = serde_path_to_error::deserialize(&deser)
                     .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
                 Ok(meta)
-            },
+            }
             Eu4FileKind::Zip(zip) => {
                 let meta_file = zip.meta_file()?;
                 let mut zip_sink = vec![0; meta_file.size()];
@@ -351,16 +351,16 @@ where
                     let parsed = text.parse()?;
                     let deser = parsed.deserializer();
                     let meta: Meta = serde_path_to_error::deserialize(&deser)
-                    .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
+                        .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
                     Ok(meta)
                 } else {
                     let bin = Eu4Binary::from_slice(&zip_sink)?;
                     let mut deser = bin.ondemand_deserializer(resolver);
                     let meta: Meta = serde_path_to_error::deserialize(&mut deser)
-                    .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
+                        .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
                     Ok(meta)
                 }
-            },
+            }
         }
     }
 }

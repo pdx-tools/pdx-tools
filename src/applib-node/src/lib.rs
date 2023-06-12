@@ -2,7 +2,6 @@ use hasher::FileHasher;
 use napi::bindgen_prelude::*;
 use napi_derive::*;
 use parser::FileParser;
-use std::convert::TryInto;
 
 mod hasher;
 mod parser;

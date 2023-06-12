@@ -184,19 +184,9 @@ export class GLResources {
         provinceCount,
         staticRes.provincesUniqueColor
       ),
-      setupProvinceColorsTexture(
-        gl,
-        gl.RGBA,
-        provinceCount,
-      ),
-      setupProvinceCustomColorsTexture(
-        gl,
-        provinceCount,
-      ),
-      setupProvinceCustomColorsTexture(
-        gl,
-        provinceCount,
-      ),
+      setupProvinceColorsTexture(gl, gl.RGBA, provinceCount),
+      setupProvinceCustomColorsTexture(gl, provinceCount),
+      setupProvinceCustomColorsTexture(gl, provinceCount),
       initializeGeometry(gl),
       xbrPositionBuffer,
       initializeRawMapTexCoords1(gl),
@@ -387,7 +377,7 @@ function setupProvinceColorsTexture(
 
 function setupProvinceCustomColorsTexture(
   gl: WebGL2RenderingContext,
-  provinceCount: number,
+  provinceCount: number
 ) {
   const texture = gl.createTexture();
   if (texture === null) {
