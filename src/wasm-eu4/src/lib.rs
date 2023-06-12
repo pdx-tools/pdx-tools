@@ -407,6 +407,10 @@ impl SaveFile {
         to_json_value(&self.0.get_player_histories())
     }
 
+    pub fn get_lucky_countries(&self) -> JsValue {
+        to_json_value(&self.0.get_lucky_countries())
+    }
+
     pub fn get_alive_countries(&self) -> JsValue {
         to_json_value(&self.0.get_alive_countries())
     }
@@ -1245,6 +1249,25 @@ impl SaveFileImpl {
                 .collect(),
             })
             .collect()
+    }
+
+    pub fn get_lucky_countries(&self) -> Vec<LocalizedTag> {
+        let save_game_query = SaveGameQuery::new(&self.query, &self.game);
+        let mut v: Vec<_> = self
+            .query
+            .save()
+            .game
+            .countries
+            .iter()
+            .filter_map(|(tag, country)| {
+                country.luck.then(|| LocalizedTag {
+                    tag: *tag,
+                    name: save_game_query.localize_country(&tag),
+                })
+            })
+            .collect();
+        v.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+        v
     }
 
     pub fn get_alive_countries(&self) -> Vec<&CountryTag> {

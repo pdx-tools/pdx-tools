@@ -199,6 +199,10 @@ export function eu4GetPlayerHistories(): PlayerHistory[] {
   return save.get_player_histories() as PlayerHistory[];
 }
 
+export function eu4GetLuckyCountries(): LocalizedTag[] {
+  return wasm.save.get_lucky_countries() as LocalizedTag[];
+}
+
 export function eu4MatchingCountries(matcher: CountryMatcher): LocalizedTag[] {
   const save = wasm.save;
   return save.matching_countries(matcher) as LocalizedTag[];
