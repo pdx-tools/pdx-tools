@@ -39,6 +39,7 @@ const TagDescription = (play: TagTransition) => {
 };
 
 const playerHistoriesFn = (worker: Eu4Worker) => worker.eu4GetPlayerHistories();
+const luckyCountriesFn = (worker: Eu4Worker) => worker.eu4GetLuckyCountries();
 
 export const InfoDrawer = () => {
   const mods = useEu4ModList();
@@ -46,6 +47,7 @@ export const InfoDrawer = () => {
   const achievements = useAchievements();
   const serverFile = useServerSaveFile();
   const playerHistories = useEu4Worker(playerHistoriesFn);
+  const luckyCountries = useEu4Worker(luckyCountriesFn);
   const sideBarContainerRef = useSideBarContainerRef();
   const [filteredTag, setFilteredTag] = useState<string | undefined>(undefined);
   const [initialTagFilter] = useState(useTagFilter());
@@ -171,6 +173,16 @@ export const InfoDrawer = () => {
           </List.Item>
         )}
       />
+      {luckyCountries.data && luckyCountries.data.length > 0 ? (
+        <>
+          <Divider orientation="left">Lucky Countries</Divider>
+          <div className="grid grid-cols-5 gap-2">
+            {luckyCountries.data.map((x) => (
+              <FlagAvatar key={x.tag} tag={x.tag} name={x.name} size="large" />
+            ))}
+          </div>
+        </>
+      ) : null}
       {(serverFile?.aar || isPrivileged) && (
         <>
           <Divider orientation="left">AAR</Divider>
