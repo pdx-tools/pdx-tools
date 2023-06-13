@@ -178,21 +178,7 @@ where
     Q: TokenResolver,
 {
     let zip_sink = Vec::new();
-    if let Some(tsave) = tarsave::extract_tarsave(data) {
-        if tsave.meta.starts_with(b"EU4txt") {
-            let meta_data = Eu4Text::from_slice(tsave.meta)?.parse()?;
-            let game_data = Eu4Text::from_slice(tsave.gamestate)?.parse()?;
-            let meta: Meta = meta_data.deserializer().deserialize()?;
-            let game: GameState = game_data.deserializer().deserialize()?;
-            Ok((Eu4Save { meta, game }, Encoding::TextZip))
-        } else {
-            let meta_data = Eu4Binary::from_slice(tsave.meta)?.parse()?;
-            let game_data = Eu4Binary::from_slice(tsave.gamestate)?.parse()?;
-            let meta: Meta = meta_data.deserializer(resolver).deserialize()?;
-            let game: GameState = game_data.deserializer(resolver).deserialize()?;
-            Ok((Eu4Save { meta, game }, Encoding::BinaryZip))
-        }
-    } else if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
+    if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
         let mut cursor = Cursor::new(zip_sink);
         zstd::stream::copy_decode(data, &mut cursor).unwrap();
         let inflated = cursor.into_inner();
@@ -303,12 +289,7 @@ pub fn parse_meta<Q>(data: &[u8], resolver: &Q) -> Result<Meta, Eu4GameError>
 where
     Q: TokenResolver,
 {
-    if let Some(tsave) = tarsave::extract_tarsave(data) {
-        let mut zip_sink = Vec::new();
-        let meta_file = Eu4File::from_slice(tsave.meta)?;
-        let parsed_meta = meta_file.parse(&mut zip_sink)?;
-        Ok(parsed_meta.deserializer(resolver).deserialize()?)
-    } else if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
+    if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
         let mut cursor = Cursor::new(Vec::with_capacity(data.len() * 10));
         zstd::stream::copy_decode(data, &mut cursor).unwrap();
         let inflated = cursor.into_inner();

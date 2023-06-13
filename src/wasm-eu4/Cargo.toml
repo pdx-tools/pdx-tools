@@ -23,7 +23,6 @@ serde = { version = "1", features = ["derive"] }
 eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["zstd"] }
 eu4game = { path = "../eu4game", default-features = false }
 schemas = { path = "../schemas" }
-tarsave = { path = "../tarsave" }
 zstd = { version = "0.12.3", default-features = false }
 
 [dev-dependencies]

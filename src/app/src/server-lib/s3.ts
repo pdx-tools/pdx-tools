@@ -3,7 +3,7 @@ import { AwsClient } from "aws4fetch";
 import { metrics } from "./metrics";
 import { getEnv } from "./env";
 import { log } from "./logging";
-import { uploadContentEncoding, uploadContentType, UploadType } from "./models";
+import { uploadContentType, UploadType } from "./models";
 
 export const BUCKET = getEnv("S3_BUCKET");
 const defaultHeaders = { service: "s3", region: getEnv("S3_REGION") };
@@ -63,7 +63,6 @@ export async function uploadFileToS3(
   filename: string,
   upload: UploadType
 ): Promise<void> {
-  const contentEncoding = uploadContentEncoding(upload);
   const contentType = uploadContentType(upload);
 
   const end = timeHistogram.startTimer();
@@ -74,11 +73,6 @@ export async function uploadFileToS3(
     body,
     headers: {
       "Content-Type": contentType,
-      ...(contentEncoding
-        ? {
-            "Content-Encoding": contentEncoding,
-          }
-        : {}),
     },
   });
 

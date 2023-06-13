@@ -31,12 +31,7 @@ const obj = {
   },
 
   transform(data: Uint8Array): Uint8Array {
-    const dataOffset = wasmModule.data_offset(data);
-
-    const out =
-      dataOffset === undefined
-        ? wasmModule.download_transformation(data)
-        : data.subarray(dataOffset);
+    const out = wasmModule.download_transformation(data);
     return transfer(out, [out.buffer]);
   },
 };

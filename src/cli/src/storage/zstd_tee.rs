@@ -5,7 +5,7 @@ use std::{
     path::Path,
 };
 
-/// Writes to a raw file and to a brotli compressed one
+/// Writes to a raw file and to a zstd compressed one
 pub struct ZstdTee {
     compressor: zstd::stream::write::AutoFinishEncoder<'static, File>,
     raw: BufWriter<File>,

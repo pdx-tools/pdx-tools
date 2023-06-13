@@ -15,7 +15,6 @@ embedded = []
 jomini = { version = "0.22.0" }
 eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false }
 schemas = { path = "../schemas", features = ["inline"] }
-tarsave = { path = "../tarsave" }
 serde = { version = "1", features = ["derive"] }
 serde_path_to_error = "0.1"
 highway = "1"
