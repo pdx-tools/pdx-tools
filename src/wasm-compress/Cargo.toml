@@ -13,7 +13,6 @@ wasm-bindgen = { version = "0.2" }
 zip_next = { version = "0.10.0", default-features = false, features = ["deflate", "zstd"] }
 zstd = { version = "0.12.3", default-features = false }
 js-sys = "0.3"
-tarsave = { path = "../tarsave" }
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false

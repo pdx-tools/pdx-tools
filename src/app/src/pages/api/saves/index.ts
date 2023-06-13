@@ -1,16 +1,15 @@
 import { NextApiResponse } from "next";
 import multer from "multer";
-import fs, { createReadStream, createWriteStream } from "fs";
+import fs, { createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import path from "path";
 import { log } from "@/server-lib/logging";
 import { fileChecksum, parseFile } from "@/server-lib/pool";
 import { uploadFileToS3 } from "@/server-lib/s3";
 import { ValidationError } from "@/server-lib/errors";
-import { createBrotliDecompress, createGunzip } from "zlib";
 import { NextSessionRequest, withSession } from "@/server-lib/session";
 import { withCoreMiddleware } from "@/server-lib/middlware";
-import { getOptionalString, getString } from "@/server-lib/valiation";
+import { getString } from "@/server-lib/valiation";
 import { deduceUploadType, UploadType } from "@/server-lib/models";
 import { nanoid } from "nanoid";
 import { tmpDir, tmpPath } from "@/server-lib/tmp";
@@ -41,41 +40,12 @@ const parseMetadata = (data: any): UploadMetadata => {
   }
 
   const contentType = getString(data, "content_type");
-  const contentEncoding = getOptionalString(data, "content_encoding");
 
   return {
     aar,
     filename,
-    uploadType: deduceUploadType(contentType, contentEncoding),
+    uploadType: deduceUploadType(contentType),
   };
-};
-
-const unwrapSave = async (fp: string, upload: UploadType): Promise<string> => {
-  let inflater;
-  switch (upload) {
-    case "gzipText":
-      inflater = createGunzip();
-      break;
-    case "brTar":
-    case "brText":
-      inflater = createBrotliDecompress();
-      break;
-    case "zstd":
-    case "zip":
-      return fp;
-  }
-
-  const destinationPath = await tmpPath();
-  try {
-    const source = createReadStream(fp);
-    const destination = createWriteStream(destinationPath);
-    await pipeline(source, inflater, destination);
-    return destinationPath;
-  } catch (ex) {
-    log.exception(ex, { msg: "unable to inflate file" });
-    attemptUnlink(destinationPath);
-    throw new ValidationError("unable to inflate file");
-  }
 };
 
 export interface SavePostResponse {
@@ -114,14 +84,13 @@ const uploadRawFile = async (
   const filename =
     req.headers["pdx-tools-filename"] ?? req.headers["rakaly-filename"];
   const contentType = req.headers["content-type"];
-  const contentEncoding = req.headers["content-encoding"];
 
   // Detect if it is a raw file upload
   if (typeof filename !== "string" || typeof contentType !== "string") {
     return null;
   }
 
-  const uploadType = deduceUploadType(contentType, contentEncoding ?? null);
+  const uploadType = deduceUploadType(contentType);
   const sinkPath = await tmpPath();
   try {
     const sink = createWriteStream(sinkPath);
@@ -168,12 +137,10 @@ const handleUpload = async (
 
 const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
   const uid = req.sessionUid;
-  const [requestPath, metadata] = await handleUpload(req, res);
-  let savePath: string | undefined;
+  const [savePath, metadata] = await handleUpload(req, res);
 
   try {
     const saveId = nanoid();
-    savePath = await unwrapSave(requestPath, metadata.uploadType);
     const checksum = await fileChecksum(savePath);
 
     const existingSaves = await db
@@ -190,7 +157,7 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
       throw new ValidationError(`unsupported patch: ${out.patch_shorthand}`);
     }
 
-    await uploadFileToS3(requestPath, saveId, metadata.uploadType);
+    await uploadFileToS3(savePath, saveId, metadata.uploadType);
 
     const newSave: NewSave = {
       id: saveId,
@@ -231,10 +198,7 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
 
     res.json(response);
   } finally {
-    attemptUnlink(requestPath);
-    if (savePath && savePath !== requestPath) {
-      attemptUnlink(savePath);
-    }
+    attemptUnlink(savePath);
   }
 };
 

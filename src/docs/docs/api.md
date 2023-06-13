@@ -50,17 +50,6 @@ curl "https://pdx.tools/api/saves" \
   --user "yourUserId"
 ```
 
-An example request to upload save that is plaintext
-
-```bash
-gzip < ita1.eu4 | curl "https://pdx.tools/api/saves" \
-  --header "rakaly-filename: ita1.eu4" \
-  --header "Content-Type: text/plain; charset=windows-1252" \
-  --header "Content-Encoding: gzip" \
-  --data-binary @- \
-  --user "yourUserId"
-```
-
 Setting the content type header to plain text is not required for the
 request to be accepted but is recommended to be future proof.
 

@@ -1,10 +1,6 @@
 use anyhow::Context;
 use clap::Args;
-use std::{
-    io::{Cursor, Write},
-    path::PathBuf,
-    process::ExitCode,
-};
+use std::{io::Cursor, path::PathBuf, process::ExitCode};
 use walkdir::WalkDir;
 use zip::CompressionMethod;
 use zip_next as zip;
@@ -36,26 +32,7 @@ impl TranscodeArgs {
                 .with_context(|| format!("unable to open: {}", path.display()))?;
             let inflated = inflate_file(&file)?;
 
-            let data = if let Some(tar) = tarsave::extract_tarsave(&inflated) {
-                let len = file.metadata().map_or(0, |x| x.len() / 5);
-                let out = Vec::with_capacity(len as usize);
-                let writer = Cursor::new(out);
-                let mut out_zip = zip::ZipWriter::new(writer);
-
-                for (name, data) in &[
-                    ("meta", tar.meta),
-                    ("gamestate", tar.gamestate),
-                    ("ai", tar.ai),
-                ] {
-                    let options = zip::write::FileOptions::default()
-                        .compression_level(Some(7))
-                        .compression_method(zip::CompressionMethod::Zstd);
-                    out_zip.start_file(String::from(*name), options).unwrap();
-                    out_zip.write_all(data).unwrap();
-                }
-
-                out_zip.finish().unwrap().into_inner()
-            } else if let Ok(mut z) = zip::ZipArchive::new(Cursor::new(&inflated)) {
+            let data = if let Ok(mut z) = zip::ZipArchive::new(Cursor::new(&inflated)) {
                 let mut inflated_size: u64 = 0;
                 let mut is_encoded = true;
                 for name in &["meta", "gamestate", "ai"] {
