@@ -751,12 +751,16 @@ impl<'a> AchievementHunter<'a> {
 
     fn all_provs_in_area<T>(&self, area: &str, f: T) -> bool
     where
-        T: Fn(&Province) -> bool,
+        T: Fn(&Province, ProvinceId) -> bool,
     {
         match self.game.area_provinces(area) {
-            Some(mut prov_ids) => {
-                prov_ids.all(|prov_id| self.save.game.provinces.get(&prov_id).map_or(false, &f))
-            }
+            Some(mut prov_ids) => prov_ids.all(|prov_id| {
+                self.save
+                    .game
+                    .provinces
+                    .get(&prov_id)
+                    .map_or(false, |p| f(p, prov_id))
+            }),
             None => {
                 broken_invariant!("{} area not recognized", area);
                 false
@@ -766,7 +770,7 @@ impl<'a> AchievementHunter<'a> {
 
     fn all_provs_in_region<T>(&self, region: &str, f: T) -> bool
     where
-        T: Fn(&Province) -> bool,
+        T: Fn(&Province, ProvinceId) -> bool,
     {
         match self.game.region_areas(region) {
             Some(mut areas) => areas.all(|a| self.all_provs_in_area(a, &f)),
@@ -977,7 +981,7 @@ impl<'a> AchievementHunter<'a> {
             ]
             .iter()
             .all(|region| {
-                self.all_provs_in_region(region, |province| {
+                self.all_provs_in_region(region, |province, _| {
                     province
                         .religion
                         .as_ref()
@@ -1131,7 +1135,7 @@ impl<'a> AchievementHunter<'a> {
                 "dulkadir_area",
             ]
             .iter()
-            .all(|area| self.all_provs_in_area(area, |prov| owned_and_cored_by(prov, self.tag)))
+            .all(|area| self.all_provs_in_area(area, |prov, _| owned_and_cored_by(prov, self.tag)))
         } else {
             false
         };
@@ -1165,7 +1169,7 @@ impl<'a> AchievementHunter<'a> {
                 "tirol_area",
             ]
             .iter()
-            .all(|area| self.all_provs_in_area(area, |prov| owned_and_cored_by(prov, self.tag)))
+            .all(|area| self.all_provs_in_area(area, |prov, _| owned_and_cored_by(prov, self.tag)))
         } else {
             false
         };
@@ -1345,7 +1349,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(playing, desc));
 
         let has_provinces = if result.completed() {
-            self.all_provs_in_region("france_region", |province| {
+            self.all_provs_in_region("france_region", |province, _| {
                 owned_and_cored_by(province, self.tag)
             })
         } else {
@@ -1401,7 +1405,7 @@ impl<'a> AchievementHunter<'a> {
             ["russia_region", "ural_region", "crimea_region"]
                 .iter()
                 .all(|x| {
-                    self.all_provs_in_region(x, |province| {
+                    self.all_provs_in_region(x, |province, _| {
                         province
                             .religion
                             .as_ref()
@@ -1484,7 +1488,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(playing, desc));
 
         let has_provinces = if result.completed() {
-            self.all_provs_in_region("balkan_region", |province| {
+            self.all_provs_in_region("balkan_region", |province, _| {
                 owned_and_cored_by(province, self.tag)
             })
         } else {
@@ -1515,7 +1519,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(irish, desc));
 
         let has_provinces = if result.completed() {
-            self.all_provs_in_region("british_isles_region", |province| {
+            self.all_provs_in_region("british_isles_region", |province, _| {
                 owned_and_cored_by(province, self.tag)
             })
         } else {
@@ -1768,7 +1772,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(starter, desc));
 
         let has_provs = if result.completed() {
-            self.all_provs_in_region("british_isles_region", |province| {
+            self.all_provs_in_region("british_isles_region", |province, _| {
                 province.owner.map_or(false, |x| x == self.tag)
             })
         } else {
@@ -2016,7 +2020,7 @@ impl<'a> AchievementHunter<'a> {
         let owns_india = if result.completed() {
             match self.game.superregion_regions("india_superregion") {
                 Some(mut regions) => regions.all(|region| {
-                    self.all_provs_in_region(region, |prov| {
+                    self.all_provs_in_region(region, |prov, _| {
                         prov.owner
                             .as_ref()
                             .map_or(false, |x| self.self_and_subjects.contains(x))
@@ -2116,7 +2120,7 @@ impl<'a> AchievementHunter<'a> {
             ]
             .iter()
             .all(|area| {
-                self.all_provs_in_area(area, |prov| {
+                self.all_provs_in_area(area, |prov, _| {
                     prov.owner.map_or(false, |x| x == self.starting_country)
                 })
             })
@@ -2143,7 +2147,7 @@ impl<'a> AchievementHunter<'a> {
 
         let has_all_provinces = if result.completed() {
             ["iberia_region", "caucasia_region"].iter().all(|region| {
-                self.all_provs_in_region(region, |prov| {
+                self.all_provs_in_region(region, |prov, _| {
                     prov.owner
                         .as_ref()
                         .map_or(false, |x| self.self_and_subjects.contains(x))
@@ -2318,7 +2322,7 @@ impl<'a> AchievementHunter<'a> {
 
         let has_all_provinces = if result.completed() {
             ["anatolia_region", "egypt_region"].iter().all(|region| {
-                self.all_provs_in_region(region, |province| {
+                self.all_provs_in_region(region, |province, _| {
                     province.owner.map_or(false, |x| x == self.tag)
                         && province.cores.contains(&self.tag)
                 })
@@ -2331,7 +2335,7 @@ impl<'a> AchievementHunter<'a> {
             ["morea_area", "northern_greece_area", "macedonia_area"]
                 .iter()
                 .all(|region| {
-                    self.all_provs_in_area(region, |province| {
+                    self.all_provs_in_area(region, |province, _| {
                         province.owner.map_or(false, |x| x == self.tag)
                             && province.cores.contains(&self.tag)
                     })
@@ -2425,7 +2429,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(playing, desc));
 
         let owns_baltic = if result.completed() {
-            self.all_provs_in_region("baltic_region", |p| owned_and_cored_by(p, riga))
+            self.all_provs_in_region("baltic_region", |p, _| owned_and_cored_by(p, riga))
         } else {
             false
         };
@@ -2460,7 +2464,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(romanian, desc));
 
         let owns_balkan = if result.completed() {
-            self.all_provs_in_region("balkan_region", |p| {
+            self.all_provs_in_region("balkan_region", |p, _| {
                 self.owns_or_non_sovereign_subject_of_province(p)
             })
         } else {
@@ -2544,7 +2548,7 @@ impl<'a> AchievementHunter<'a> {
                 ]
                 .iter()
                 .all(|x| {
-                    self.all_provs_in_area(x, |province| {
+                    self.all_provs_in_area(x, |province, _| {
                         self.owns_or_non_sovereign_subject_of_province(province)
                     })
                 })
@@ -2592,7 +2596,7 @@ impl<'a> AchievementHunter<'a> {
             ]
             .iter()
             .all(|id| self.owns_core_province_id(ProvinceId::from(*id)))
-                && self.all_provs_in_region("carribeans_region", |prov| {
+                && self.all_provs_in_region("carribeans_region", |prov, _| {
                     prov.owner.map_or(false, |x| x == self.starting_country)
                 })
         } else {
@@ -2639,7 +2643,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(playing, desc));
 
         let provinces = if result.completed() {
-            self.all_provs_in_region("australia_region", |p| {
+            self.all_provs_in_region("australia_region", |p, _| {
                 p.religion.as_ref() == self.country.religion.as_ref()
             })
         } else {
@@ -2683,7 +2687,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(aspect_active, desc));
 
         let province_religions = if result.completed() {
-            self.all_provs_in_region("egypt_region", |p| {
+            self.all_provs_in_region("egypt_region", |p, _| {
                 p.religion.as_ref().map_or(false, |x| x == "jewish")
             })
         } else {
@@ -2741,7 +2745,7 @@ impl<'a> AchievementHunter<'a> {
             ["moluccas_region", "indonesia_region"]
                 .iter()
                 .all(|region| {
-                    self.all_provs_in_region(region, |p| {
+                    self.all_provs_in_region(region, |p, _| {
                         p.religion.as_ref() == self.country.religion.as_ref()
                     })
                 })
@@ -2849,7 +2853,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(playing, desc));
 
         let owns_baltic = if result.completed() {
-            self.all_provs_in_region("iberia_region", |p| owned_and_cored_by(p, adu))
+            self.all_provs_in_region("iberia_region", |p, _| owned_and_cored_by(p, adu))
         } else {
             false
         };
@@ -2880,7 +2884,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(reform, desc));
 
         let territory = if result.completed() {
-            self.all_provs_in_region("scandinavia_region", |p| owned_and_cored_by(p, denmark))
+            self.all_provs_in_region("scandinavia_region", |p, _| owned_and_cored_by(p, denmark))
         } else {
             false
         };
@@ -2960,12 +2964,16 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(current, desc));
 
         let territory = if result.completed() {
-            self.all_provs_in_area("east_prussia_area", |p| owned_and_cored_by(p, self.tag))
-                && self.all_provs_in_area("west_prussia_area", |p| owned_and_cored_by(p, self.tag))
-                && self.all_provs_in_area("silesia_area", |p| owned_and_cored_by(p, self.tag))
-                && self.all_provs_in_area("bohemia_area", |p| owned_and_cored_by(p, self.tag))
-                && self.all_provs_in_area("moravia_area", |p| owned_and_cored_by(p, self.tag))
-                && self.all_provs_in_area("erzgebirge_area", |p| owned_and_cored_by(p, self.tag))
+            self.all_provs_in_area("east_prussia_area", |p, _| owned_and_cored_by(p, self.tag))
+                && self
+                    .all_provs_in_area("west_prussia_area", |p, _| owned_and_cored_by(p, self.tag))
+                && self.all_provs_in_area("silesia_area", |p, _| owned_and_cored_by(p, self.tag))
+                && self.all_provs_in_region("north_german_region", |p, id| {
+                    owned_and_cored_by(p, self.tag)
+                        || self.game.province_area(&id).map_or(false, |a| {
+                            matches!(a, "bohemia_area" | "moravia_area" | "erzgebirge_area")
+                        })
+                })
                 && self.owns_core_province_id(ProvinceId::from(1859))
                 && self.owns_core_province_id(ProvinceId::from(4523))
                 && self.owns_core_province_id(ProvinceId::from(4526))
@@ -3101,7 +3109,7 @@ impl<'a> AchievementHunter<'a> {
             ]
             .iter()
             .all(|region| {
-                self.all_provs_in_region(region, |province| {
+                self.all_provs_in_region(region, |province, _| {
                     province
                         .owner
                         .as_ref()
