@@ -78,7 +78,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             <div className="text-base text-gray-300">
               No save?{" "}
               <Link
-                href="/eu4/saves/_9Hcw32JWTZRx6zK3FVuz"
+                href="/eu4/saves/l3mDIfueYIB-gjB0gOliK"
                 className="text-gray-300 underline hover:text-white"
               >
                 Load sample
