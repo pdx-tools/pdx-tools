@@ -70,23 +70,9 @@ export const Home = ({ subtitle }: HomeProps) => {
             modern save file analyzer that will unlock hidden EU4 insights
             without the save leaving your browser.
           </p>
-
-          <div className="flex max-w-prose items-center gap-4 rounded-lg bg-teal-600 p-4 shadow">
-            <div>
-              <AchievementAvatar size={64} id={348} />
-            </div>
-            <p className="mb-0">
-              1.35 Domination is out! Will you be first on{" "}
-              <Link
-                className="text-teal-200 underline"
-                href="/eu4/achievements/348"
-              >
-                Mehmet's Ambition leaderboard
-              </Link>
-              ? Or can you beat the competition and achieve it at an earlier
-              date?
-            </p>
-          </div>
+          <p className="mb-0 max-w-prose text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
+            Ready to explore maps, timelapses, and charts?
+          </p>
 
           <div className="flex flex-col items-center justify-center gap-2 lg:justify-start">
             <div className="text-base text-gray-300">
