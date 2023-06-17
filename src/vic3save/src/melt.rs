@@ -18,6 +18,11 @@ pub(crate) enum MelterError {
     InvalidDate(i32),
 }
 
+enum FormatOverride {
+    ReencodeScalar(usize),
+    ReencodeBlock(usize),
+}
+
 /// Output from melting a binary save to plaintext
 pub struct MeltedDocument {
     data: Vec<u8>,
@@ -116,13 +121,17 @@ where
     let mut token_idx = 0;
     let mut known_number = false;
     let mut known_date = false;
-    let mut reencode_float_token = false;
-    let mut reencode_float_token_block = None;
+    let mut format_override = None;
     let tokens = melter.tape.tokens();
 
     while let Some(token) = tokens.get(token_idx) {
         match token {
             BinaryToken::Object(_) => {
+                // Promote scalar override to a block override.
+                if matches!(format_override, Some(FormatOverride::ReencodeScalar(_))) {
+                    format_override = Some(FormatOverride::ReencodeBlock(token_idx));
+                }
+
                 wtr.write_object_start()?;
             }
             BinaryToken::MixedContainer => {
@@ -132,11 +141,17 @@ where
                 wtr.write_operator(jomini::text::Operator::Equal)?;
             }
             BinaryToken::Array(_) => {
+                // Promote scalar override to a block override.
+                if matches!(format_override, Some(FormatOverride::ReencodeScalar(_))) {
+                    format_override = Some(FormatOverride::ReencodeBlock(token_idx));
+                }
+
                 wtr.write_array_start()?;
             }
             BinaryToken::End(start) => {
-                if reencode_float_token_block == Some(*start) {
-                    reencode_float_token_block = None;
+                if matches!(format_override, Some(FormatOverride::ReencodeBlock(x)) if x == *start)
+                {
+                    format_override = None;
                 }
 
                 wtr.write_end()?;
@@ -175,11 +190,13 @@ where
             }
             BinaryToken::F32(x) => wtr.write_f32(flavor.visit_f32(*x))?,
             BinaryToken::F64(x) => {
-                if !reencode_float_token {
+                if !matches!(
+                    format_override,
+                    Some(FormatOverride::ReencodeScalar(_) | FormatOverride::ReencodeBlock(_))
+                ) {
                     wtr.write_f64(flavor.visit_f64(*x))?;
                 } else {
                     wtr.write_f64((flavor.visit_f64(*x) * 100_000.0).round())?;
-                    reencode_float_token = reencode_float_token_block.is_some();
                 }
             }
             BinaryToken::Token(x) => match resolver.resolve(*x) {
@@ -188,13 +205,9 @@ where
                         continue;
                     }
 
-                    if id == "pop_statistics" {
-                        reencode_float_token_block = Some(token_idx + 1);
-                    }
-
                     known_number = id == "seed";
                     known_date = id == "real_date";
-                    reencode_float_token = matches!(
+                    if matches!(
                         id,
                         "workforce"
                             | "dependents"
@@ -208,8 +221,9 @@ where
                             | "population_total_coastal"
                             | "population_incorporated_coastal"
                             | "votes"
-                    );
-                    reencode_float_token |= reencode_float_token_block.is_some();
+                    ) {
+                        format_override = Some(FormatOverride::ReencodeScalar(token_idx));
+                    }
                     wtr.write_unquoted(id.as_bytes())?;
                 }
                 None => match melter.on_failed_resolve {
@@ -234,6 +248,10 @@ where
                 wtr.write_u32(color.b)?;
                 wtr.write_end()?;
             }
+        }
+
+        if matches!(format_override, Some(FormatOverride::ReencodeScalar(x)) if x != token_idx) {
+            format_override = None;
         }
 
         token_idx += 1;
