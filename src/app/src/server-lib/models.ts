@@ -1,9 +1,7 @@
 import { ValidationError } from "./errors";
 
 export type UploadType = "zip" | "zstd";
-export function deduceUploadType(
-  type: string,
-): UploadType {
+export function deduceUploadType(type: string): UploadType {
   if (type.toLowerCase() === "application/zip") {
     return "zip";
   } else if (type.toLowerCase() === "application/zstd") {

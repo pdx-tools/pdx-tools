@@ -6,6 +6,7 @@ import {
   GlobalOutlined,
   FlagOutlined,
   MenuOutlined,
+  FileSyncOutlined,
 } from "@ant-design/icons";
 import { HeaderSideBarButton } from "./components/HeaderSideBarButton";
 import { SaveWarnings } from "./components/SaveWarnings";
@@ -25,14 +26,18 @@ import {
   useEu4Meta,
   useIsServerSaveFile,
   useSaveFilename,
+  useWatcher,
 } from "./store";
 import { useCanvasPointerEvents } from "./hooks/useCanvasPointerEvents";
+import { WatchSideBarButton } from "./features/watch";
+import { Tooltip } from "antd";
 
 export const Eu4CanvasOverlay = () => {
   const serverFile = useIsServerSaveFile();
   const meta = useEu4Meta();
   const filename = useSaveFilename();
   const map = useEu4Map();
+  const watcher = useWatcher();
   useCanvasPointerEvents(map);
 
   const buttons = [
@@ -78,6 +83,19 @@ export const Eu4CanvasOverlay = () => {
         <GlobalOutlined />
       </MapSettingsSideBarButton>
     ),
+    ...(serverFile
+      ? []
+      : [
+          (i: number) => (
+            <WatchSideBarButton
+              key="watch"
+              index={i}
+              className="h-[60px] w-[60px]"
+            >
+              <FileSyncOutlined />
+            </WatchSideBarButton>
+          ),
+        ]),
   ];
 
   return (
@@ -96,6 +114,13 @@ export const Eu4CanvasOverlay = () => {
           {buttons.map((x, i) => x(i))}
         </div>
       </div>
+      {watcher.status != "idle" ? (
+        <Tooltip title={`Save watcher: ${watcher.status}`}>
+          <div className="fixed bottom-0 left-0 touch-none select-none border-2 border-solid border-black bg-gray-800 p-1">
+            <div className="h-[56px] w-[56px] rounded-full bg-teal-500"></div>
+          </div>
+        </Tooltip>
+      ) : null}
       <MapZoomSideBar />
       <MapModeSideBar />
       <ProvinceSelectListener />

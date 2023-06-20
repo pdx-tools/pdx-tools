@@ -37,6 +37,7 @@ import type {
   WarRaw,
   CountryAdvisors,
   Estate,
+  Eu4Date,
 } from "../types/models";
 import { MapPayload, QuickTipPayload } from "../types/map";
 import { LedgerDataRaw, workLedgerData } from "../utils/ledger";
@@ -362,6 +363,13 @@ export function eu4GetWarInfo(war: string): WarInfo {
       losses: expandLosses(x.losses),
     })),
   };
+}
+
+export function eu4MonitoringData(): {
+  date: Eu4Date;
+  countries: CountryDetails[];
+} {
+  return wasm.save.monitoring_data();
 }
 
 export function eu4DateToDays(s: string): number {

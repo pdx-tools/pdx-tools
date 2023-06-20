@@ -9,7 +9,7 @@ import {
 import { VizModules } from "../../types/visualizations";
 import { CountryFilterButton } from "../country-filter";
 import { downloadData } from "@/lib/downloadData";
-import { useSaveFilename } from "../../store";
+import { useSaveFilenameWith } from "../../store";
 
 const { useBreakpoint } = Grid;
 const { Option } = Select;
@@ -32,7 +32,7 @@ export const ChartDrawerTitle = ({
   const { md } = useBreakpoint();
   const isLoading = useIsLoading();
   const viz = useVisualization();
-  const filename = useSaveFilename();
+  const filename = useSaveFilenameWith(`-${selectedViz}.csv`);
 
   return (
     <div className="flex items-center gap-2">
@@ -123,17 +123,7 @@ export const ChartDrawerTitle = ({
           icon={<ProfileOutlined />}
           onClick={async () => {
             const csvData = await viz.getCsvData();
-
-            const nameInd = filename.lastIndexOf(".");
-            const outputName =
-              nameInd == -1
-                ? `${filename}`
-                : `${filename.substring(0, nameInd)}`;
-
-            downloadData(
-              new Blob([csvData], { type: "text/csv" }),
-              `${outputName}-${selectedViz}.csv`
-            );
+            downloadData(new Blob([csvData], { type: "text/csv" }), filename);
           }}
         />
       </Tooltip>

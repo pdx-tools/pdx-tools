@@ -15,6 +15,7 @@ import {
 } from "../types/models";
 import { getEu4Worker } from "../worker";
 import type { MapTimelapseItem } from "../worker/module";
+import { proxy } from "comlink";
 
 export const emptyEu4CountryFilter: CountryMatcher = {
   players: "none",
@@ -59,6 +60,9 @@ type Eu4State = Eu4StateProps & {
   selectedDate: MapDate;
   showOneTimeLineItems: boolean;
   prefereredValueFormat: "absolute" | "percent";
+  watcher: {
+    status: "idle" | "running" | "working";
+  };
   actions: {
     closeCountryDrawer: () => void;
     openCountryDrawer: () => void;
@@ -76,6 +80,8 @@ type Eu4State = Eu4StateProps & {
     setSelectedDate: (date: Eu4State["selectedDate"] | null) => void;
     setSelectedDateDay: (days: number) => Promise<void>;
     setSelectedDateText: (text: string) => Promise<void>;
+    startWatcher: (frequency: string) => void;
+    stopWatcher: () => void;
     updateProvinceColors: () => Promise<void>;
     updateMap: (frame: MapTimelapseItem) => void;
     updateTagFilter: (matcher: Partial<CountryMatcher>) => Promise<void>;
@@ -136,6 +142,9 @@ export const createEu4Store = async ({
     ...settings,
     selectedTag: save.defaultSelectedCountry,
     selectedDate: selectDefaultDate(save.meta),
+    watcher: {
+      status: "idle",
+    },
     actions: {
       closeCountryDrawer: () => set({ countryDrawerVisible: false }),
       openCountryDrawer: () => set({ countryDrawerVisible: true }),
@@ -221,6 +230,25 @@ export const createEu4Store = async ({
         set({ prefereredValueFormat: checked ? "percent" : "absolute" }),
       setShowOneTimeLineItems: (checked: boolean) =>
         set({ showOneTimeLineItems: checked }),
+      startWatcher: (frequency: string) => {
+        getEu4Worker().startFileObserver(
+          frequency,
+          proxy(async ({ meta, achievements }) => {
+            get().actions.updateSave({
+              meta,
+              achievements,
+              countries: await getEu4Worker().eu4GetCountries(),
+            });
+          })
+        );
+
+        set({ watcher: { ...get().watcher, status: "running" } });
+      },
+
+      stopWatcher: async () => {
+        await getEu4Worker().stopFileObserver();
+        set({ watcher: { ...get().watcher, status: "idle" } });
+      },
 
       updateTagFilter: async (matcher: Partial<CountryMatcher>) => {
         const newFilter = { ...get().countryFilter, ...matcher };
@@ -335,6 +363,7 @@ export const useShowOnetimeLineItems = () =>
   useEu4Store((x) => x.showOneTimeLineItems);
 export const useCountryDrawerVisible = () =>
   useEu4Store((x) => x.countryDrawerVisible);
+export const useWatcher = () => useEu4Store((x) => x.watcher);
 
 export function useEu4ModList() {
   const meta = useEu4Meta();
@@ -364,6 +393,15 @@ export const useSaveFilename = () => {
   } else {
     return serverFile?.filename ?? "savegame.eu4";
   }
+};
+
+export const useSaveFilenameWith = (suffix: string) => {
+  const filename = useSaveFilename();
+  const nameInd = filename.lastIndexOf(".");
+  const outputName =
+    nameInd == -1 ? `${filename}` : `${filename.substring(0, nameInd)}`;
+
+  return `${outputName}${suffix}`;
 };
 
 export const useCountryNameLookup = () => {
