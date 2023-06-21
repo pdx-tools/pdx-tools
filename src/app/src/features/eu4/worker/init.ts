@@ -129,14 +129,28 @@ export function supportsFileObserver() {
   return wasm.supportsFileObserver();
 }
 
+type Reparse =
+  | {
+      kind: "tooSoon";
+      date: string;
+    }
+  | { kind: "updated" };
 let observer: ReturnType<(typeof wasm)["startFileObserver"]>;
 export function startFileObserver<T>(
+  frequency: string,
   cb: (save: { meta: EnhancedMeta; achievements: Achievements }) => T
 ) {
   observer = wasm.startFileObserver(async (data) => {
     try {
-      const timings = timeSync(() => wasm.save.reparse(data));
-      logMs(timings, "reparsed save");
+      const reparse = timeSync(
+        () => wasm.save.reparse(frequency, data) as Reparse
+      );
+      if (reparse.data.kind === "tooSoon") {
+        logMs(reparse, `save date too soon to update: ${reparse.data.date}`);
+        return;
+      }
+
+      logMs(reparse, "reparsed save");
       const achievements = wasm.save.get_achievements();
       cb({ meta: getMeta(wasm.save), achievements });
     } catch (ex) {

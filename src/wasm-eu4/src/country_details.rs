@@ -2,7 +2,9 @@ use crate::{hex_color, to_json_value, LocalizedObj, LocalizedTag, SaveFileImpl};
 use eu4game::SaveGameQuery;
 use eu4save::{
     models::{Country, CountryEvent, CountryTechnology, Leader, LeaderKind, Province},
-    query::{CountryExpenseLedger, CountryIncomeLedger, CountryManaUsage, Inheritance},
+    query::{
+        CountryExpenseLedger, CountryIncomeLedger, CountryManaUsage, Inheritance, SaveCountry,
+    },
     CountryTag, Eu4Date, PdsDate, ProvinceId,
 };
 use serde::{Deserialize, Serialize};
@@ -12,6 +14,7 @@ use wasm_bindgen::JsValue;
 #[derive(Serialize, Debug)]
 pub struct CountryDetails {
     pub tag: CountryTag,
+    pub name: String,
     pub base_tax: f32,
     pub development: f32,
     pub raw_development: f32,
@@ -269,6 +272,11 @@ impl SaveFileImpl {
             None => return to_json_value(&None::<CountryDetails>),
         };
 
+        to_json_value(&self.get_country_details(save_country))
+    }
+
+    pub fn get_country_details(&self, save_country: SaveCountry) -> CountryDetails {
+        let country_tag = save_country.tag;
         let country = save_country.country;
         let ruler = country
             .history
@@ -590,8 +598,10 @@ impl SaveFileImpl {
             _ => GovernmentStrength::Native,
         };
 
-        let details = CountryDetails {
+        let save_game_query = SaveGameQuery::new(&self.query, &self.game);
+        CountryDetails {
             tag: country_tag,
+            name: save_game_query.localize_country(&country_tag),
             ruler,
             base_tax: country.base_tax,
             development: country.development,
@@ -645,9 +655,7 @@ impl SaveFileImpl {
             colonists: country.colonists.envoys.len(),
             missionaries: country.missionaries.envoys.len(),
             government_strength,
-        };
-
-        to_json_value(&details)
+        }
     }
 
     pub fn get_country_rulers(&self, tag: &str) -> Vec<RunningMonarch> {

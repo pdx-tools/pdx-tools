@@ -148,6 +148,7 @@ export interface CountryInfo {
 
 export interface CountryDetails {
   tag: string;
+  name: string;
   ruler: {
     name: string;
     ascended: string;

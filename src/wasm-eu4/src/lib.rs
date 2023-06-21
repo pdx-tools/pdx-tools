@@ -1,8 +1,9 @@
+use country_details::CountryDetails;
 use eu4game::{
     achievements::{Achievement, AchievementHunter},
     game::Game,
     shared::playthrough_id,
-    SaveGameQuery,
+    Eu4GameError, SaveGameQuery,
 };
 use eu4save::{
     eu4_start_date,
@@ -329,13 +330,30 @@ pub struct LocalizedLedger {
     pub localization: Vec<LocalizedTag>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum Reparse {
+    TooSoon { date: Eu4Date },
+    Updated,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Monitor {
+    date: Eu4Date,
+    countries: Vec<CountryDetails>,
+}
+
 #[wasm_bindgen]
 pub struct SaveFile(SaveFileImpl);
 
 #[wasm_bindgen]
 impl SaveFile {
-    pub fn reparse(&mut self, save_data: Vec<u8>) -> Result<(), JsValue> {
-        self.0.reparse(save_data)
+    pub fn reparse(&mut self, frequency: String, save_data: Vec<u8>) -> Result<JsValue, JsValue> {
+        self.0
+            .reparse(&frequency, save_data)
+            .map(|x| to_json_value(&x))
+            .map_err(js_err)
     }
 
     pub fn get_meta_raw(&self) -> JsValue {
@@ -596,6 +614,10 @@ impl SaveFile {
         let res = self.0.get_war(&name);
         to_json_value(&res)
     }
+
+    pub fn monitoring_data(&self) -> JsValue {
+        self.0.monitoring_data()
+    }
 }
 
 // Struct created to help compiler debugging as the wasm_bindgen macro can cause opaque errors.
@@ -616,13 +638,24 @@ pub struct SaveFileImpl {
 }
 
 impl SaveFileImpl {
-    pub fn reparse(&mut self, save_data: Vec<u8>) -> Result<(), JsValue> {
+    pub fn reparse(
+        &mut self,
+        frequency: &str,
+        save_data: Vec<u8>,
+    ) -> Result<Reparse, Eu4GameError> {
         let tokens = tokens::get_tokens();
-        let save = match eu4game::shared::parse_save_with_tokens(&save_data, tokens) {
-            Ok((save, _)) => save,
-            Err(e) => return Err(JsValue::from_str(e.to_string().as_str())),
-        };
 
+        let meta = eu4game::shared::parse_meta(&save_data, tokens)?;
+
+        let prev_date = self.query.save().meta.date;
+        if frequency == "yearly" && meta.date.year() == prev_date.year()
+            || frequency == "monthly" && meta.date.month() == prev_date.month()
+            || meta.date == prev_date
+        {
+            return Ok(Reparse::TooSoon { date: meta.date });
+        }
+
+        let (save, _) = eu4game::shared::parse_save_with_tokens(&save_data, tokens)?;
         self.query = Query::from_save(save);
         self.province_owners = self.query.province_owners();
         self.nation_events = self.query.nation_events(&self.province_owners);
@@ -631,7 +664,7 @@ impl SaveFileImpl {
         self.war_participants = self.query.resolved_war_participants(&self.tag_resolver);
         self.religion_lookup = self.query.religion_lookup();
 
-        Ok(())
+        Ok(Reparse::Updated)
     }
 
     pub fn get_meta_raw(&self) -> JsValue {
@@ -2996,6 +3029,20 @@ impl SaveFileImpl {
             attacker_participants,
             defender_participants,
         }
+    }
+
+    pub fn monitoring_data(&self) -> JsValue {
+        let players: HashSet<_> = self.all_players().drain(..).collect();
+        let country_data = players
+            .iter()
+            .filter_map(|x| self.query.save_country(x))
+            .map(|c| self.get_country_details(c))
+            .collect();
+
+        to_json_value(&Monitor {
+            date: self.query.save().meta.date,
+            countries: country_data,
+        })
     }
 }
 

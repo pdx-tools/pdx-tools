@@ -30,7 +30,7 @@ import {
   useEu4Map,
   useEu4MapMode,
   useIsDatePickerEnabled,
-  useSaveFilename,
+  useSaveFilenameWith,
   useSelectedDate,
 } from "../../store";
 
@@ -54,7 +54,7 @@ export const Timelapse = () => {
   const currentMapDate = useSelectedDate();
   const [form] = Form.useForm();
   const isDeveloper = useIsDeveloper();
-  const filename = useSaveFilename();
+  const filename = useSaveFilenameWith(exportAsMp4 ? ".mp4" : ".webm");
   const encoderRef = useRef<TimelapseEncoder | undefined>(undefined);
   const stopTimelapseReq = useRef<boolean>(false);
   const [recordingSupported] = useState(() => TimelapseEncoder.isSupported());
@@ -139,11 +139,6 @@ export const Timelapse = () => {
 
       await encoder.encodeTimelapse();
       const blob = encoder.finish();
-      const nameInd = filename.lastIndexOf(".");
-      const outputName =
-        nameInd == -1
-          ? `${filename}.${encoding}`
-          : `${filename.substring(0, nameInd)}.${encoding}`;
 
       setIsRecording(false);
       restoreMapState();
@@ -151,7 +146,7 @@ export const Timelapse = () => {
       await updateProvinceColors();
       map.redrawMapImage();
 
-      downloadData(blob, outputName);
+      downloadData(blob, filename);
     } catch (ex) {
       captureException(ex);
       Modal.error({
