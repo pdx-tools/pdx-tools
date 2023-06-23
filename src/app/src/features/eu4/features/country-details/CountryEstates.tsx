@@ -18,24 +18,28 @@ const CountryEstate = ({ estate }: { estate: Estate }) => {
       <div>
         Privileges:
         <table className="ml-4 border-separate border-spacing-x-2">
-          {estate.privileges.map(([privilege, date]) => (
-            <tr key={privilege}>
-              <td>{privilege}</td>
-              <td className="no-break">{date}</td>
-            </tr>
-          ))}
+          <tbody>
+            {estate.privileges.map(([privilege, date]) => (
+              <tr key={privilege}>
+                <td>{privilege}</td>
+                <td className="no-break">{date}</td>
+              </tr>
+            ))}
+          </tbody>
         </table>
         <ul></ul>
         <div>
           Influence modifiers:
           <table className="ml-4 border-separate border-spacing-x-2">
-            {estate.influenceModifiers.map((modifier) => (
-              <tr key={`${modifier.desc}-${modifier.date}`}>
-                <td className="mr-2 text-right">{modifier.value}</td>
-                <td className="no-break">{modifier.date}</td>
-                <td>{modifier.desc}</td>
-              </tr>
-            ))}
+            <tbody>
+              {estate.influenceModifiers.map((modifier) => (
+                <tr key={`${modifier.desc}-${modifier.date}`}>
+                  <td className="mr-2 text-right">{modifier.value}</td>
+                  <td className="no-break">{modifier.date}</td>
+                  <td>{modifier.desc}</td>
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       </div>
