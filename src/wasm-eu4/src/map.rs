@@ -1,6 +1,5 @@
 use crate::{
     tag_filter::{TagFilterPayload, TagFilterPayloadRaw},
-    utils::to_json_value,
     LocalizedObj, LocalizedTag, SaveFileImpl,
 };
 use eu4game::SaveGameQuery;
@@ -11,10 +10,12 @@ use eu4save::{
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};
+use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+#[tsify(from_wasm_abi)]
 pub enum MapPayloadKind {
     Political,
     Religion,
@@ -24,8 +25,9 @@ pub enum MapPayloadKind {
     Terrain,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(tag = "kind", rename_all = "camelCase")]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+#[tsify(from_wasm_abi)]
 pub struct MapPayload {
     kind: MapPayloadKind,
     tag_filter: TagFilterPayloadRaw,
@@ -50,7 +52,8 @@ enum Interval {
     Day,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Tsify, Serialize, Deserialize)]
+#[tsify(from_wasm_abi)]
 pub struct MapCursorPayload {
     kind: MapCursorPayloadKind,
     interval: Interval,
@@ -59,8 +62,9 @@ pub struct MapCursorPayload {
 
 pub const WASTELAND: [u8; 4] = [61, 61, 61, 0];
 
-#[derive(Serialize, Deserialize)]
+#[derive(Tsify, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
+#[tsify(into_wasm_abi)]
 pub enum MapQuickTipPayload {
     #[serde(rename_all = "camelCase")]
     Political {
@@ -1607,7 +1611,8 @@ impl TimelapseIter {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Tsify, Debug, Clone, Serialize)]
+#[tsify(into_wasm_abi)]
 pub struct MapDate {
     pub days: i32,
     #[serde(rename(serialize = "text"))]
@@ -1623,8 +1628,8 @@ pub struct TimelapseItem {
 #[wasm_bindgen]
 impl TimelapseItem {
     #[wasm_bindgen]
-    pub fn date(&self) -> JsValue {
-        to_json_value(&self.date)
+    pub fn date(&self) -> MapDate {
+        self.date.clone()
     }
 
     #[wasm_bindgen]

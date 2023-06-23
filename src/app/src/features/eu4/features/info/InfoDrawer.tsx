@@ -93,7 +93,7 @@ export const InfoDrawer = () => {
           {difficultyText(meta.gameplayOptions.difficulty)}
         </Descriptions.Item>
         <Descriptions.Item label="Achievements">
-          {achievements.kind == "compatible" &&
+          {achievements.kind == "Compatible" &&
             (achievements.achievements.length == 0 ? (
               <span>[none]</span>
             ) : (

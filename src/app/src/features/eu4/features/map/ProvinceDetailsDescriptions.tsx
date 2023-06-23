@@ -59,15 +59,18 @@ export const ProvinceDetailsDescriptions = ({
           value: "Demolished",
         },
       ],
-      onFilter: (value, record) => record.kind == value,
+      onFilter: (value, record) => record.data.kind == value,
     },
     {
       dataIndex: [],
       render: (_undef: undefined, event: ProvinceEventIndex) => {
-        if (event.kind == "Owner") {
-          return <FlagAvatar tag={event.tag} name={event.name} />;
-        } else if (event.kind == "Demolished" || event.kind == "Constructed") {
-          return <BuildingAvatar {...event} />;
+        if (event.data.kind == "Owner") {
+          return <FlagAvatar tag={event.data.tag} name={event.data.name} />;
+        } else if (
+          event.data.kind == "Demolished" ||
+          event.data.kind == "Constructed"
+        ) {
+          return <BuildingAvatar {...event.data} />;
         }
       },
     },

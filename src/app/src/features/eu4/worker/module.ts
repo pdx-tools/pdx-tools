@@ -5,42 +5,22 @@ import {
 } from "../utils/budget";
 import type {
   CountryCulture,
-  CountryDetails,
   CountryExpenses,
   CountryIncome,
-  CountryInfo,
-  CountryLeader,
   CountryLosses,
-  CountryLossesRaw,
   CountryMatcher,
   CountryReligion,
   CountryStateDetails,
   EnhancedCountryInfo,
-  GreatAdvisor,
   HealthData,
-  IdeaGroup,
   LedgerDatum,
-  LocalizedCountryExpense,
-  LocalizedCountryIncome,
   LocalizedTag,
   MapDate,
-  PlayerHistory,
-  ProvinceDetails,
   OwnedDevelopmentStates,
-  RawWarInfo,
-  RunningMonarch,
-  SingleCountryWarCasualties,
-  SingleCountryWarCasualtiesRaw,
-  GeographicalDevelopment,
-  War,
-  WarInfo,
-  WarRaw,
   CountryAdvisors,
-  Estate,
-  Eu4Date,
 } from "../types/models";
 import { MapPayload, QuickTipPayload } from "../types/map";
-import { LedgerDataRaw, workLedgerData } from "../utils/ledger";
+import { workLedgerData } from "../utils/ledger";
 import { expandLosses } from "../utils/losses";
 import { wasm } from "./common";
 import { TimelapseIter } from "../../../../../wasm-eu4/pkg/wasm_eu4";
@@ -106,7 +86,7 @@ export function mapTimelapseNext(): MapTimelapseItem | undefined {
     return undefined;
   }
 
-  const date = item.date() as MapDate;
+  const date = item.date();
   const arr = item.data();
   const parts = mapCursor.parts();
   if (parts == 2) {
@@ -130,13 +110,13 @@ export function mapTimelapseNext(): MapTimelapseItem | undefined {
 export function mapTimelapse(payload: {
   kind: "political" | "religion" | "battles";
   interval: "year" | "month" | "week" | "day";
-  start: number | null;
+  start: number | undefined;
 }) {
   mapCursor = wasm.save.map_cursor(payload);
 }
 
 export function eu4GetCountries(): EnhancedCountryInfo[] {
-  const countries = wasm.save.get_countries() as CountryInfo[];
+  const countries = wasm.save.get_countries();
 
   // name with accents and diacritics removed (eg: Lübeck -> Lubeck)
   // https://stackoverflow.com/a/37511463/433785
@@ -147,108 +127,89 @@ export function eu4GetCountries(): EnhancedCountryInfo[] {
 }
 
 export function eu4GetCountry(tag: string) {
-  return wasm.save.get_country(tag) as CountryDetails;
+  return wasm.save.get_country(tag);
 }
 
-export function eu4GetCountryRulers(tag: string): RunningMonarch[] {
-  const save = wasm.save;
-  return save.get_country_rulers(tag) as RunningMonarch[];
+export function eu4GetCountryRulers(tag: string) {
+  return wasm.save.get_country_rulers(tag);
 }
 
 export function eu4GetCountryAdvisors(tag: string): CountryAdvisors {
-  const save = wasm.save;
-  return save.get_country_advisors(tag);
+  return wasm.save.get_country_advisors(tag);
 }
 
 export function eu4GetCountryProvinceReligion(tag: string): CountryReligion[] {
-  const save = wasm.save;
-  return save.get_country_province_religion(tag) as CountryReligion[];
+  return wasm.save.get_country_province_religion(tag);
 }
 
 export function eu4GetCountryProvinceCulture(tag: string): CountryCulture[] {
-  const save = wasm.save;
-  return save.get_country_province_culture(tag) as CountryCulture[];
+  return wasm.save.get_country_province_culture(tag);
 }
 
-export function eu4GetCountryLeaders(tag: string): CountryLeader[] {
-  const save = wasm.save;
-  return save.get_country_leaders(tag) as CountryLeader[];
+export function eu4GetCountryLeaders(tag: string) {
+  return wasm.save.get_country_leaders(tag);
 }
 
 export function eu4GetCountryStates(tag: string): CountryStateDetails[] {
-  const save = wasm.save;
-  return save.get_country_states(tag) as CountryStateDetails[];
+  return wasm.save.get_country_states(tag);
 }
 
-export function eu4GetCountryEstates(tag: string): Estate[] {
-  const save = wasm.save;
-  return save.get_country_estates(tag) as Estate[];
+export function eu4GetCountryEstates(tag: string) {
+  return wasm.save.get_country_estates(tag);
 }
 
-export function eu4InitialMapPosition() {
+export function eu4InitialMapPosition(): [number, number] {
   const result = wasm.save.initial_map_position();
-  return result as [number, number];
+  return [result[0], result[1]];
 }
 
-export function eu4MapPositionOf(tag: string) {
+export function eu4MapPositionOf(tag: string): [number, number] {
   const result = wasm.save.map_position_of_tag(tag);
-  return result as [number, number];
+  return [result[0], result[1]];
 }
 
-export function eu4GetPlayerHistories(): PlayerHistory[] {
-  const save = wasm.save;
-  return save.get_player_histories() as PlayerHistory[];
+export function eu4GetPlayerHistories() {
+  return wasm.save.get_player_histories();
 }
 
 export function eu4GetLuckyCountries(): LocalizedTag[] {
-  return wasm.save.get_lucky_countries() as LocalizedTag[];
+  return wasm.save.get_lucky_countries();
 }
 
 export function eu4MatchingCountries(matcher: CountryMatcher): LocalizedTag[] {
-  const save = wasm.save;
-  return save.matching_countries(matcher) as LocalizedTag[];
+  return wasm.save.matching_countries(matcher);
 }
 
-export function eu4GetNationIdeaGroups(matcher: CountryMatcher): IdeaGroup[] {
-  const result = wasm.save.get_nation_idea_groups(matcher) as [
-    number,
-    string,
-    number
-  ][];
-
-  return result.map(([groupRank, groupName, completedIdeas]) => ({
-    groupRank,
-    groupName,
-    completedIdeas,
-  }));
+export function eu4GetNationIdeaGroups(matcher: CountryMatcher) {
+  return wasm.save.get_nation_idea_groups(matcher);
 }
 
 export function eu4GetAnnualIncomeData(filter: CountryMatcher): LedgerDatum[] {
-  const data = wasm.save.get_annual_income_ledger(filter) as LedgerDataRaw;
+  const data = wasm.save.get_annual_income_ledger(filter);
   return workLedgerData(data);
 }
 
 export function eu4GetAnnualNationSizeData(
   filter: CountryMatcher
 ): LedgerDatum[] {
-  const data = wasm.save.get_annual_nation_size_ledger(filter) as LedgerDataRaw;
+  const data = wasm.save.get_annual_nation_size_ledger(filter);
   return workLedgerData(data);
 }
 
 export function eu4GetAnnualScoreData(filter: CountryMatcher): LedgerDatum[] {
-  const data = wasm.save.get_annual_score_ledger(filter) as LedgerDataRaw;
+  const data = wasm.save.get_annual_score_ledger(filter);
   return workLedgerData(data);
 }
 
 export function eu4GetAnnualInflationData(
   filter: CountryMatcher
 ): LedgerDatum[] {
-  const data = wasm.save.get_annual_inflation_ledger(filter) as LedgerDataRaw;
+  const data = wasm.save.get_annual_inflation_ledger(filter);
   return workLedgerData(data);
 }
 
 export function eu4GetHealth(filter: CountryMatcher): HealthData {
-  return wasm.save.get_health(filter) as HealthData;
+  return wasm.save.get_health(filter);
 }
 
 export function eu4GetCountriesIncome(
@@ -256,11 +217,7 @@ export function eu4GetCountriesIncome(
   percent: boolean,
   recurringOnly: boolean
 ): CountryIncome[] {
-  const data = wasm.save.get_countries_income(filter) as Record<
-    string,
-    LocalizedCountryIncome
-  >;
-
+  const data = wasm.save.get_countries_income(filter);
   return reduceToTableLedger(data, percent, recurringOnly);
 }
 
@@ -269,11 +226,7 @@ export function eu4GetCountriesExpenses(
   percent: boolean,
   recurringOnly: boolean
 ): CountryExpenses[] {
-  const data = wasm.save.get_countries_expenses(filter) as Record<
-    string,
-    LocalizedCountryExpense
-  >;
-
+  const data = wasm.save.get_countries_expenses(filter);
   return reduceToTableExpenseLedger(data, percent, recurringOnly);
 }
 
@@ -282,17 +235,11 @@ export function eu4GetCountriesTotalExpenses(
   percent: boolean,
   recurringOnly: boolean
 ): CountryExpenses[] {
-  const data = wasm.save.get_countries_total_expenses(filter) as Record<
-    string,
-    LocalizedCountryExpense
-  >;
-
+  const data = wasm.save.get_countries_total_expenses(filter);
   return reduceToTableExpenseLedger(data, percent, recurringOnly);
 }
 
-export function eu4GeographicalDevelopment(
-  filter: CountryMatcher
-): GeographicalDevelopment {
+export function eu4GeographicalDevelopment(filter: CountryMatcher) {
   return wasm.save.geographical_development(filter);
 }
 
@@ -305,7 +252,7 @@ export function eu4OwnedDevelopmentStates(
 export function eu4GetCountriesWarLosses(
   filter: CountryMatcher
 ): CountryLosses[] {
-  const result = wasm.save.countries_war_losses(filter) as CountryLossesRaw[];
+  const result = wasm.save.countries_war_losses(filter);
 
   return result.map(({ losses, ...rest }) => {
     return {
@@ -315,20 +262,21 @@ export function eu4GetCountriesWarLosses(
   });
 }
 
-export function eu4GetSingleCountryCasualties(
-  tag: string
-): SingleCountryWarCasualties[] {
-  const raw = wasm.save.get_country_casualties(
-    tag
-  ) as SingleCountryWarCasualtiesRaw[];
+export type SingleCountryWarCasualties = ReturnType<
+  typeof eu4GetSingleCountryCasualties
+>[number];
+export function eu4GetSingleCountryCasualties(tag: string) {
+  const raw = wasm.save.get_country_casualties(tag);
   return raw.map((x) => ({
     ...x,
     losses: expandLosses(x.losses),
   }));
 }
 
-export function eu4GetWars(filter: CountryMatcher): War[] {
-  const data = wasm.save.wars(filter) as WarRaw[];
+export type War = ReturnType<typeof eu4GetWars>[number];
+export type WarSide = War["attackers"];
+export function eu4GetWars(filter: CountryMatcher) {
+  const data = wasm.save.wars(filter);
   return data.map((x) => {
     const attackerLosses = expandLosses(x.attackers.losses);
     const defenderLosses = expandLosses(x.defenders.losses);
@@ -346,12 +294,15 @@ export function eu4GetWars(filter: CountryMatcher): War[] {
         ...x.defenders,
         losses: expandLosses(x.defenders.losses),
       },
-    } as War;
+    };
   });
 }
 
-export function eu4GetWarInfo(war: string): WarInfo {
-  const raw = wasm.save.get_war(war) as RawWarInfo;
+export type WarInfo = ReturnType<typeof eu4GetWarInfo>;
+export type BattleInfo = WarInfo["battles"][number];
+export type WarParticipant = WarInfo["attacker_participants"][number];
+export function eu4GetWarInfo(war: string) {
+  const raw = wasm.save.get_war(war);
   return {
     ...raw,
     attacker_participants: raw.attacker_participants.map((x) => ({
@@ -365,22 +316,19 @@ export function eu4GetWarInfo(war: string): WarInfo {
   };
 }
 
-export function eu4MonitoringData(): {
-  date: Eu4Date;
-  countries: CountryDetails[];
-} {
+export function eu4MonitoringData() {
   return wasm.save.monitoring_data();
 }
 
-export function eu4DateToDays(s: string): number {
+export function eu4DateToDays(s: string) {
   return wasm.save.date_to_days(s);
 }
 
-export function eu4DaysToDate(s: number): string {
+export function eu4DaysToDate(s: number) {
   return wasm.save.days_to_date(s);
 }
 
-export function eu4GetProvinceDeteails(id: number): ProvinceDetails | null {
+export function eu4GetProvinceDeteails(id: number) {
   return wasm.save.get_province_details(id);
 }
 

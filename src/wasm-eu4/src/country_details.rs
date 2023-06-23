@@ -1,4 +1,4 @@
-use crate::{hex_color, to_json_value, LocalizedObj, LocalizedTag, SaveFileImpl};
+use crate::{hex_color, LocalizedObj, LocalizedTag, SaveFileImpl};
 use eu4game::SaveGameQuery;
 use eu4save::{
     models::{Country, CountryEvent, CountryTechnology, Leader, LeaderKind, Province},
@@ -9,9 +9,10 @@ use eu4save::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use wasm_bindgen::JsValue;
+use tsify::Tsify;
 
-#[derive(Serialize, Debug)]
+#[derive(Tsify, Serialize, Debug)]
+#[tsify(into_wasm_abi)]
 pub struct CountryDetails {
     pub tag: CountryTag,
     pub name: String,
@@ -70,7 +71,7 @@ pub struct CountryDetails {
     pub government_strength: GovernmentStrength,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Tsify, Serialize, Debug)]
 #[serde(tag = "kind")]
 pub enum GovernmentStrength {
     Legitimacy { value: f32 },
@@ -81,7 +82,7 @@ pub enum GovernmentStrength {
     Native,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Tsify, Serialize, Debug)]
 pub struct CountryMonarch {
     name: String,
     ascended: Eu4Date,
@@ -95,13 +96,13 @@ pub struct CountryMonarch {
     mil: u16,
 }
 
-#[derive(Debug, Serialize, Default)]
+#[derive(Tsify, Debug, Serialize, Default)]
 pub struct LandUnitStrength {
     pub count: usize,
     pub strength: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Tsify, Debug, Clone, Serialize, Deserialize)]
 pub struct RunningMonarch {
     name: String,
     country: LocalizedTag,
@@ -121,7 +122,7 @@ pub struct RunningMonarch {
     avg_dur_mil: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Tsify, Debug, Clone, Serialize, Deserialize)]
 pub struct FailedHeir {
     name: String,
     country: LocalizedTag,
@@ -132,24 +133,25 @@ pub struct FailedHeir {
     mil: u16,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Tsify, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[tsify(into_wasm_abi)]
 pub struct CountryAdvisors {
     radical_reforms: Option<Eu4Date>,
     great_advisors: Vec<GreatAdvisor>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Tsify, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GreatAdvisor {
     occupation: LocalizedObj,
     trigger_date: Option<Eu4Date>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Tsify, Debug, Serialize, Deserialize)]
 pub struct CountryReligion {
-    #[serde(flatten)]
-    religion: LocalizedObj,
+    id: String,
+    name: String,
     color: String,
     provinces: usize,
     provinces_percent: f64,
@@ -157,17 +159,17 @@ pub struct CountryReligion {
     development_percent: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Tsify, Debug, Serialize, Deserialize)]
 pub enum CultureTolerance {
     Primary,
     Accepted,
     None,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Tsify, Debug, Serialize, Deserialize)]
 pub struct CountryCulture {
-    #[serde(flatten)]
-    culture: LocalizedObj,
+    id: String,
+    name: String,
     group: Option<String>,
     tolerance: CultureTolerance,
 
@@ -185,14 +187,14 @@ pub struct CountryCulture {
     conversions_development: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Tsify, Debug, Clone, Serialize, Deserialize)]
 struct MonarchStats {
     adm: u16,
     dip: u16,
     mil: u16,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Tsify, Debug, Clone, Serialize, Deserialize)]
 pub struct CountryLeader {
     id: u32,
     name: String,
@@ -207,16 +209,15 @@ pub struct CountryLeader {
     monarch_stats: Option<MonarchStats>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Tsify, Debug, Clone, Serialize)]
 pub struct DiplomacyEntry {
     pub first: LocalizedTag,
     pub second: LocalizedTag,
     pub start_date: Option<Eu4Date>,
-    #[serde(flatten)]
-    pub kind: DiplomacyKind,
+    pub data: DiplomacyKind,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Tsify, Debug, Clone, Serialize)]
 #[serde(tag = "kind")]
 pub enum DiplomacyKind {
     Dependency {
@@ -240,14 +241,14 @@ pub enum DiplomacyKind {
     },
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Tsify, Debug, Clone, Serialize)]
 pub struct ProgressDate {
     progress: f32,
     date: Eu4Date,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct CountryState {
+#[derive(Tsify, Debug, Clone, Serialize)]
+pub struct CountryStateDetails {
     state: LocalizedObj,
     capital_state: bool,
     provinces: Vec<(String, f32)>,
@@ -260,19 +261,35 @@ pub struct CountryState {
     state_house: bool,
 }
 
+#[derive(Tsify, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Estate<'a> {
+    kind: &'a str,
+    loyalty: f32,
+    territory: f32,
+    completed_agendas: i32,
+    privileges: Vec<(String, Eu4Date)>,
+    influence_modifiers: Vec<InfluenceModifier>,
+}
+
+#[derive(Tsify, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct InfluenceModifier {
+    value: f32,
+    desc: String,
+    date: Eu4Date,
+}
+
 impl SaveFileImpl {
-    pub fn get_country(&self, tag: JsValue) -> JsValue {
+    pub fn get_country(&self, tag: String) -> CountryDetails {
         let country_tag = tag
-            .as_string()
-            .and_then(|x| x.parse::<CountryTag>().ok())
+            .parse::<CountryTag>()
             .expect("Country tags should only be strings");
-
-        let save_country = match self.query.save_country(&country_tag) {
-            Some(x) => x,
-            None => return to_json_value(&None::<CountryDetails>),
-        };
-
-        to_json_value(&self.get_country_details(save_country))
+        let save_country = self
+            .query
+            .save_country(&country_tag)
+            .expect("Country to exist");
+        self.get_country_details(save_country)
     }
 
     pub fn get_country_details(&self, save_country: SaveCountry) -> CountryDetails {
@@ -482,7 +499,7 @@ impl SaveFileImpl {
                     first: self.localize_tag(x.first),
                     second: self.localize_tag(x.second),
                     start_date: x.start_date,
-                    kind,
+                    data: kind,
                 }
             });
 
@@ -496,7 +513,7 @@ impl SaveFileImpl {
                 first: self.localize_tag(x.first),
                 second: self.localize_tag(x.second),
                 start_date: x.start_date,
-                kind: DiplomacyKind::Alliance,
+                data: DiplomacyKind::Alliance,
             });
         diplomacy_entries.extend(alliances);
 
@@ -508,7 +525,7 @@ impl SaveFileImpl {
                 first: self.localize_tag(x.first),
                 second: self.localize_tag(x.second),
                 start_date: x.start_date,
-                kind: DiplomacyKind::RoyalMarriage,
+                data: DiplomacyKind::RoyalMarriage,
             });
         diplomacy_entries.extend(royal_marriages);
 
@@ -520,7 +537,7 @@ impl SaveFileImpl {
                 first: self.localize_tag(x.first),
                 second: self.localize_tag(x.second),
                 start_date: x.start_date,
-                kind: DiplomacyKind::Warning,
+                data: DiplomacyKind::Warning,
             });
         diplomacy_entries.extend(warnings);
 
@@ -532,7 +549,7 @@ impl SaveFileImpl {
                 first: self.localize_tag(x.first),
                 second: self.localize_tag(x.second),
                 start_date: x.start_date,
-                kind: DiplomacyKind::Subsidy {
+                data: DiplomacyKind::Subsidy {
                     amount: x.amount,
                     duration: x.duration,
                     total: x.start_date.map(|start| {
@@ -553,7 +570,7 @@ impl SaveFileImpl {
                 first: self.localize_tag(x.first),
                 second: self.localize_tag(x.second),
                 start_date: x.start_date,
-                kind: DiplomacyKind::Reparations {
+                data: DiplomacyKind::Reparations {
                     end_date: x.end_date,
                 },
             });
@@ -567,7 +584,7 @@ impl SaveFileImpl {
                 first: self.localize_tag(x.first),
                 second: self.localize_tag(x.second),
                 start_date: x.start_date,
-                kind: DiplomacyKind::TransferTrade,
+                data: DiplomacyKind::TransferTrade,
             });
         diplomacy_entries.extend(transfer_trade_powers);
 
@@ -579,7 +596,7 @@ impl SaveFileImpl {
                 first: self.localize_tag(x.first),
                 second: self.localize_tag(x.second),
                 start_date: x.start_date,
-                kind: DiplomacyKind::SteerTrade,
+                data: DiplomacyKind::SteerTrade,
             });
         diplomacy_entries.extend(steer_trades);
 
@@ -900,10 +917,8 @@ impl SaveFileImpl {
                 .unwrap_or_else(|| String::from(religion_id));
 
             result.push(CountryReligion {
-                religion: LocalizedObj {
-                    id: String::from(religion_id),
-                    name,
-                },
+                id: String::from(religion_id),
+                name,
                 color: hex_color(color),
                 provinces: tally.count,
                 provinces_percent: (tally.count as f64) / (total_provinces as f64) * 100.0,
@@ -912,7 +927,7 @@ impl SaveFileImpl {
             })
         }
 
-        result.sort_unstable_by(|a, b| a.religion.name.cmp(&b.religion.name));
+        result.sort_unstable_by(|a, b| a.name.cmp(&b.name));
         result
     }
 
@@ -933,7 +948,7 @@ impl SaveFileImpl {
                 let cultural_union = country
                     .primary_culture
                     .as_ref()
-                    .and_then(|culture| culture_to_group.get(culture.as_str()))
+                    .and_then(|culture: &String| culture_to_group.get(culture.as_str()))
                     .and_then(|group| self.game.culture_group_cultures(group))
                     .into_iter()
                     .flatten()
@@ -1035,10 +1050,8 @@ impl SaveFileImpl {
             };
 
             result.push(CountryCulture {
-                culture: LocalizedObj {
-                    id: String::from(culture_id),
-                    name,
-                },
+                id: String::from(culture_id),
+                name,
                 group: culture_to_group
                     .get(culture_id.as_str())
                     .map(|&x| String::from(x)),
@@ -1059,7 +1072,7 @@ impl SaveFileImpl {
             })
         }
 
-        result.sort_unstable_by(|a, b| a.culture.name.cmp(&b.culture.name));
+        result.sort_unstable_by(|a, b| a.name.cmp(&b.name));
         result
     }
 
@@ -1143,7 +1156,7 @@ impl SaveFileImpl {
         result
     }
 
-    pub fn get_country_states(&self, tag: &str) -> Vec<CountryState> {
+    pub fn get_country_states(&self, tag: &str) -> Vec<CountryStateDetails> {
         let tag = tag.parse::<CountryTag>().unwrap();
         let country = self.query.country(&tag).unwrap();
         let state_lookup = self.game.province_area_lookup();
@@ -1313,7 +1326,7 @@ impl SaveFileImpl {
                     None
                 };
 
-                CountryState {
+                CountryStateDetails {
                     state: LocalizedObj {
                         id: String::from(*state),
                         name: String::from(name),
@@ -1335,28 +1348,9 @@ impl SaveFileImpl {
         result
     }
 
-    pub fn get_country_estates(&self, tag: &str) -> JsValue {
+    pub fn get_country_estates(&self, tag: &str) -> Vec<Estate> {
         let tag = tag.parse::<CountryTag>().unwrap();
         let country = self.query.country(&tag).unwrap();
-
-        #[derive(Serialize)]
-        #[serde(rename_all = "camelCase")]
-        struct FrontendEstate<'a> {
-            kind: &'a str,
-            loyalty: f32,
-            territory: f32,
-            completed_agendas: i32,
-            privileges: Vec<(String, Eu4Date)>,
-            influence_modifiers: Vec<FrontendModifier>,
-        }
-
-        #[derive(Serialize)]
-        #[serde(rename_all = "camelCase")]
-        struct FrontendModifier {
-            value: f32,
-            desc: String,
-            date: Eu4Date,
-        }
 
         let estates: Vec<_> = country
             .estates
@@ -1381,7 +1375,7 @@ impl SaveFileImpl {
                 let mut influence_modifiers: Vec<_> = x
                     .influence_modifiers
                     .iter()
-                    .map(|modifier| FrontendModifier {
+                    .map(|modifier| InfluenceModifier {
                         value: modifier.value,
                         desc: modifier
                             .desc
@@ -1393,7 +1387,7 @@ impl SaveFileImpl {
 
                 influence_modifiers.sort_by_key(|x| x.date);
 
-                FrontendEstate {
+                Estate {
                     kind: x._type.trim_start_matches("estate_"),
                     loyalty: x.loyalty,
                     territory: x.territory,
@@ -1404,7 +1398,7 @@ impl SaveFileImpl {
             })
             .collect();
 
-        to_json_value(&estates)
+        estates
     }
 }
 

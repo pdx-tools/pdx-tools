@@ -1,17 +1,10 @@
-import { check } from "@/lib/isPresent";
-import { timeSync, timeit } from "@/lib/timeit";
-import { transfer } from "comlink";
-import {
-  Achievements,
-  EnhancedMeta,
-  GameplayOptions,
-  Meta,
-} from "../types/models";
+import { timeSync } from "@/lib/timeit";
+import { AchievementsScore } from "../types/models";
 import { wasm } from "./common";
 import * as mod from "../../../../../wasm-eu4/pkg/wasm_eu4";
 import { fetchOk } from "@/lib/fetch";
 import { type Eu4SaveInput } from "../store";
-import { log, logMs } from "@/lib/log";
+import { logMs } from "@/lib/log";
 import { captureException } from "@/features/errors";
 
 export const initializeWasm = wasm.initializeModule;
@@ -58,34 +51,36 @@ export async function eu4GameParse(
   const data = wasm.takeStash();
   wasm.save = wasm.module.parse_save(data, gameData, provinceIdToColorIndex);
   const meta = getMeta(wasm.save);
-  const achievements: Achievements = wasm.save.get_achievements();
+  const achievements = wasm.save.get_achievements();
   const defaultSelectedTag = eu4DefaultSelectedTag(meta);
   return { meta, achievements, defaultSelectedTag };
 }
 
 export async function parseMeta() {
-  const meta = wasm.module.parse_meta(wasm.viewStash()) as Meta;
+  const meta = wasm.module.parse_meta(wasm.viewStash());
   const version = `${meta.savegame_version.first}.${meta.savegame_version.second}`;
   return { meta, version };
 }
 
-export function getMeta(savefile: mod.SaveFile): EnhancedMeta {
-  const meta = savefile.get_meta_raw() as Meta;
-  const starting_tag = savefile.get_starting_country();
-  const starting_tag_name =
-    starting_tag !== null ? savefile.localize_country(starting_tag) : null;
+export type EnhancedMeta = ReturnType<typeof getMeta>;
+export function getMeta(savefile: mod.SaveFile) {
+  const meta = savefile.get_meta_raw();
+  const starting_tag = savefile.get_starting_country() ?? null;
+  const starting_tag_name = starting_tag
+    ? savefile.localize_country(starting_tag)
+    : null;
 
-  const start_date = savefile.get_start_date() as string;
+  const start_date = savefile.get_start_date();
   const total_days = savefile.get_total_days();
   const player_tag_name = savefile.localize_country(meta.player);
   const dlc = savefile.get_dlc_ids();
   const encoding = savefile.save_encoding();
-  const players = savefile.get_players() as Record<string, string>;
-  const aliveCountries = savefile.get_alive_countries() as string[];
+  const players = savefile.get_players();
+  const aliveCountries = savefile.get_alive_countries();
   const playthroughId = savefile.playthrough_id();
   const mode = savefile.save_mode();
-  const gameplayOptions = savefile.gameplay_options() as GameplayOptions;
-  const warnings = savefile.savefile_warnings() as string[];
+  const gameplayOptions = savefile.gameplay_options();
+  const warnings = savefile.savefile_warnings();
 
   return {
     start_date,
@@ -129,22 +124,14 @@ export function supportsFileObserver() {
   return wasm.supportsFileObserver();
 }
 
-type Reparse =
-  | {
-      kind: "tooSoon";
-      date: string;
-    }
-  | { kind: "updated" };
 let observer: ReturnType<(typeof wasm)["startFileObserver"]>;
 export function startFileObserver<T>(
   frequency: string,
-  cb: (save: { meta: EnhancedMeta; achievements: Achievements }) => T
+  cb: (save: { meta: EnhancedMeta; achievements: AchievementsScore }) => T
 ) {
   observer = wasm.startFileObserver(async (data) => {
     try {
-      const reparse = timeSync(
-        () => wasm.save.reparse(frequency, data) as Reparse
-      );
+      const reparse = timeSync(() => wasm.save.reparse(frequency, data));
       if (reparse.data.kind === "tooSoon") {
         logMs(reparse, `save date too soon to update: ${reparse.data.date}`);
         return;

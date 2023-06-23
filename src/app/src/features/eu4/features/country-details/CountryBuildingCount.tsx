@@ -8,7 +8,7 @@ interface CountryBuildingCountProps {
 }
 
 const CountryBuildingCountImpl = ({ details }: CountryBuildingCountProps) => {
-  const data = Object.entries(details.building_count).map(([key, val]) => ({
+  const data = Array.from(details.building_count.entries(), ([key, val]) => ({
     label: key,
     value: val,
   }));

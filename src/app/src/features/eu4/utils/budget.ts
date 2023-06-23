@@ -10,18 +10,20 @@ import {
 } from "../types/models";
 
 export const reduceToTableLedger = (
-  data: Record<string, LocalizedCountryIncome>,
+  data: Map<string, LocalizedCountryIncome>,
   percent: boolean,
   recurringOnly: boolean
 ): CountryIncome[] => {
-  let entries = Object.entries(data);
-
-  if (recurringOnly) {
-    entries = entries.map(([key, value]) => [
-      key,
-      { ...value, income: filterToRecurringIncome(value.income) },
-    ]);
-  }
+  const entries = recurringOnly
+    ? Array.from(
+        data.entries(),
+        ([key, value]) =>
+          [
+            key,
+            { ...value, income: filterToRecurringIncome(value.income) },
+          ] as const
+      )
+    : Array.from(data.entries());
 
   const tableData = entries.map(([tag, { name, income }]) => {
     const total = Object.values(income).reduce((acc, x) => x + acc, 0);
@@ -46,18 +48,20 @@ export const reduceToTableLedger = (
 };
 
 export const reduceToTableExpenseLedger = (
-  data: Record<string, LocalizedCountryExpense>,
+  data: Map<string, LocalizedCountryExpense>,
   percent: boolean,
   recurringOnly: boolean
 ): CountryExpenses[] => {
-  let entries = Object.entries(data);
-
-  if (recurringOnly) {
-    entries = entries.map(([key, value]) => [
-      key,
-      { ...value, expenses: filterToRecurringExpenses(value.expenses) },
-    ]);
-  }
+  const entries = recurringOnly
+    ? Array.from(
+        data.entries(),
+        ([key, value]) =>
+          [
+            key,
+            { ...value, expenses: filterToRecurringExpenses(value.expenses) },
+          ] as const
+      )
+    : Array.from(data.entries());
 
   const tableData = entries.map(([tag, { name, expenses }]) => {
     const total = Object.values(expenses).reduce((acc, x) => x + acc, 0);

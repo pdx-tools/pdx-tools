@@ -3,7 +3,6 @@ import { Input, Table } from "antd";
 import { PlusCircleTwoTone, MinusCircleTwoTone } from "@ant-design/icons";
 import { ColumnGroupType, ColumnType } from "antd/lib/table";
 import { BattleView } from "./BattleView";
-import { War, WarSide } from "../../types/models";
 import { ExpandableConfig } from "rc-table/lib/interface";
 import { FilterIcon } from "@/components/icons";
 import { formatInt } from "@/lib/format";
@@ -13,6 +12,7 @@ import { useVisualizationDispatch } from "@/components/viz";
 import { useTablePagination } from "@/features/ui-controls";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { useTagFilter } from "../../store";
+import { War, WarSide } from "../../worker/module";
 
 interface WarSideData extends WarSide {
   original_name: string;

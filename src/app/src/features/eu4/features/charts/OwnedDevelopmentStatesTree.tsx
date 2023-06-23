@@ -7,7 +7,10 @@ import {
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { createCsv } from "@/lib/csv";
 import { useTagFilter } from "../../store";
-import { OwnedDevelopmentStates, Development } from "../../types/models";
+import {
+  OwnedDevelopmentStates,
+  ProvinceDevelopment,
+} from "../../types/models";
 import { FlagAvatar } from "../../components/avatars";
 import { formatInt } from "@/lib/format";
 
@@ -68,7 +71,7 @@ export const OwnedDevelopmentStatesTree = () => {
   );
 };
 
-function provinceDevelopmentTotal(x: Development) {
+function provinceDevelopmentTotal(x: ProvinceDevelopment) {
   return x.tax + x.production + x.manpower;
 }
 
