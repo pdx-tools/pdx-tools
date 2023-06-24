@@ -1,7 +1,3 @@
-use crate::{
-    tag_filter::{TagFilterPayload, TagFilterPayloadRaw},
-    LocalizedObj, LocalizedTag, SaveFileImpl,
-};
 use eu4game::SaveGameQuery;
 use eu4save::{
     models::{CountryEvent, Province},
@@ -12,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
+
+use super::{LocalizedObj, LocalizedTag, SaveFileImpl, TagFilterPayload, TagFilterPayloadRaw};
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

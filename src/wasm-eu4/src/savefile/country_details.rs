@@ -1,4 +1,3 @@
-use crate::{hex_color, LocalizedObj, LocalizedTag, SaveFileImpl};
 use eu4game::SaveGameQuery;
 use eu4save::{
     models::{Country, CountryEvent, CountryTechnology, Leader, LeaderKind, Province},
@@ -10,6 +9,10 @@ use eu4save::{
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use tsify::Tsify;
+
+use crate::savefile::hex_color;
+
+use super::{LocalizedObj, LocalizedTag, SaveFileImpl};
 
 #[derive(Tsify, Serialize, Debug)]
 #[tsify(into_wasm_abi)]

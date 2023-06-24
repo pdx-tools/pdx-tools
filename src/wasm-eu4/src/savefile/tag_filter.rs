@@ -1,9 +1,10 @@
-use crate::{LocalizedTag, SaveFileImpl};
 use eu4game::SaveGameQuery;
 use eu4save::CountryTag;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use tsify::Tsify;
+
+use super::{LocalizedTag, SaveFileImpl};
 
 #[derive(Tsify, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum TagsState {
