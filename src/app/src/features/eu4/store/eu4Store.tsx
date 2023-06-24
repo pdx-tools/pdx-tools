@@ -8,13 +8,12 @@ import { loadTerrainOverlayImages } from "../features/map/resources";
 import { MapPayload } from "../types/map";
 import {
   CountryMatcher,
-  EnhancedMeta,
-  Achievements,
+  AchievementsScore,
   EnhancedCountryInfo,
   MapDate,
 } from "../types/models";
 import { getEu4Worker } from "../worker";
-import type { MapTimelapseItem } from "../worker/module";
+import type { EnhancedMeta, MapTimelapseItem } from "../worker/module";
 import { proxy } from "comlink";
 
 export const emptyEu4CountryFilter: CountryMatcher = {
@@ -35,7 +34,7 @@ export const initialEu4CountryFilter: CountryMatcher = {
 type Eu4StateProps = {
   save: {
     meta: EnhancedMeta;
-    achievements: Achievements;
+    achievements: AchievementsScore;
     countries: EnhancedCountryInfo[];
     defaultSelectedCountry: string;
     saveInfo:
@@ -87,7 +86,7 @@ type Eu4State = Eu4StateProps & {
     updateTagFilter: (matcher: Partial<CountryMatcher>) => Promise<void>;
     updateSave: (save: {
       meta: EnhancedMeta;
-      achievements: Achievements;
+      achievements: AchievementsScore;
       countries: EnhancedCountryInfo[];
     }) => Promise<void>;
     zoomIn: () => void;
@@ -219,6 +218,10 @@ export const createEu4Store = async ({
       },
       setSelectedDateText: async (text: string) => {
         const days = await getEu4Worker().eu4DateToDays(text);
+        if (!days) {
+          return;
+        }
+
         get().actions.setSelectedDate({ days, text });
         await get().actions.updateProvinceColors();
         get().map.redrawMapImage();
@@ -444,7 +447,7 @@ const selectDate = (
       kind: "disabled",
       days: meta.total_days,
       text: meta.date,
-      enabledDays: null,
+      enabledDays: undefined,
     } as const;
   }
 
@@ -452,7 +455,7 @@ const selectDate = (
   return {
     ...date,
     kind: isCustom ? "custom" : "latest",
-    enabledDays: isCustom ? date.days : null,
+    enabledDays: isCustom ? date.days : undefined,
   } as const;
 };
 

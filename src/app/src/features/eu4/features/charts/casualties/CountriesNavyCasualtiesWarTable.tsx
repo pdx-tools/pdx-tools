@@ -3,9 +3,9 @@ import { Table, Tooltip } from "antd";
 import { ColumnGroupType, ColumnType } from "antd/lib/table";
 import { TableLosses } from "./hooks";
 import { useIsLoading } from "@/components/viz";
-import { SingleCountryWarCasualties } from "@/features/eu4/types/models";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { formatInt } from "@/lib/format";
+import { type SingleCountryWarCasualties } from "@/features/eu4/worker/module";
 
 interface CountryNavyCasualtiesWarTableProps {
   record: TableLosses;

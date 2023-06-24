@@ -239,7 +239,7 @@ async function loadEu4Save(
   const { primary, secondary } = await runTask(dispatch, {
     fn: () =>
       worker.eu4MapColors({
-        date: null,
+        date: undefined,
         kind: "political",
         paintSubjectInOverlordHue: false,
         tagFilter: initialEu4CountryFilter,

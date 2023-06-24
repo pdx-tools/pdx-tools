@@ -6,9 +6,9 @@ export const useIsJuniorPartner = (details: CountryDetails) => {
     () =>
       details.diplomacy.find(
         (x) =>
-          x.kind === "Dependency" &&
+          x.data.kind === "Dependency" &&
           x.second.tag === details.tag &&
-          x.subject_type === "personal_union"
+          x.data.subject_type === "personal_union"
       ) !== undefined,
     [details]
   );

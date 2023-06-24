@@ -2,10 +2,11 @@ import React, { useCallback, useRef } from "react";
 import { Table, Tooltip } from "antd";
 import { ColumnGroupType, ColumnType } from "antd/lib/table";
 import { useIsLoading } from "@/components/viz/visualization-context";
-import { BattleInfo, Losses, WarParticipant } from "../../types/models";
+import { Losses } from "../../types/models";
 import { formatInt } from "@/lib/format";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { useEu4Worker } from "@/features/eu4/worker";
+import { BattleInfo, WarParticipant } from "../../worker/module";
 
 interface BattleViewProps {
   warName: string;

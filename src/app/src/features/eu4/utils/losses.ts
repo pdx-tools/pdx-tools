@@ -1,6 +1,5 @@
-import { Losses } from "../types/models";
-
-export function expandLosses(data: number[]): Losses {
+export type Losses = ReturnType<typeof expandLosses>;
+export function expandLosses(data: number[]) {
   const [
     infantryBattle,
     infantryAttrition,

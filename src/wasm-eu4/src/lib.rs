@@ -1,9 +1,15 @@
-use country_details::CountryDetails;
+use crate::{
+    country_details::CountryAdvisors,
+    map::{MapPayload, MapPayloadKind},
+    utils::to_json_value,
+};
+use country_details::{
+    CountryCulture, CountryDetails, CountryLeader, CountryReligion, CountryStateDetails, Estate,
+    RunningMonarch,
+};
 use eu4game::{
-    achievements::{Achievement, AchievementHunter},
-    game::Game,
-    shared::playthrough_id,
-    Eu4GameError, SaveGameQuery,
+    achievements::AchievementHunter, game::Game, shared::playthrough_id, Eu4GameError,
+    SaveGameQuery,
 };
 use eu4save::{
     eu4_start_date,
@@ -18,9 +24,11 @@ use eu4save::{
     CountryTag, Encoding, Eu4Date, Eu4File, FailedResolveStrategy, PdsDate, ProvinceId,
     TagResolver,
 };
+use map::{MapCursorPayload, MapQuickTipPayload};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use tag_filter::{AiTagsState, TagFilterPayload, TagFilterPayloadRaw};
+use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
 mod country_details;
@@ -32,21 +40,24 @@ mod utils;
 
 pub use tokens::*;
 
-use crate::utils::to_json_value;
+#[wasm_bindgen(typescript_custom_section)]
+const COUNTRY_TAG_TYPE: &'static str = r#"export type CountryTag = string;"#;
+#[wasm_bindgen(typescript_custom_section)]
+const EU4_DATE_TYPE: &'static str = r#"export type Eu4Date = string;"#;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
 pub struct LocalizedObj {
     pub id: String,
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
 pub struct LocalizedTag {
     pub tag: CountryTag,
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
 pub struct GfxObj {
     pub id: String,
     pub name: String,
@@ -59,7 +70,7 @@ pub enum CountryQuery {
     Greats,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
 pub struct CountryInfo {
     pub tag: String,
     pub name: String,
@@ -68,7 +79,8 @@ pub struct CountryInfo {
     pub color: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Debug)]
+#[tsify(into_wasm_abi)]
 pub struct ProvinceDetails {
     pub id: ProvinceId,
     pub name: String,
@@ -91,7 +103,7 @@ pub struct ProvinceDetails {
     pub history: Vec<ProvinceHistoryEvent>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Debug)]
 pub struct MapAreaDetails {
     pub area_id: String,
     pub area_name: String,
@@ -99,33 +111,31 @@ pub struct MapAreaDetails {
     pub investments: Vec<TradeCompanyInvestments>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Debug)]
 pub struct CountryState {
     pub country: LocalizedTag,
     pub prosperity: f32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Debug)]
 pub struct ProvinceCountryImprovement {
     pub country: LocalizedTag,
     pub improvements: i32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Debug)]
 pub struct TradeCompanyInvestments {
     pub country: LocalizedTag,
     pub investments: Vec<LocalizedObj>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Debug)]
 pub struct ProvinceHistoryEvent {
     pub date: String,
-
-    #[serde(flatten)]
-    pub kind: ProvinceHistoryEventKind,
+    pub data: ProvinceHistoryEventKind,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Debug)]
 #[serde(tag = "kind")]
 pub enum ProvinceHistoryEventKind {
     Owner(LocalizedTag),
@@ -154,7 +164,7 @@ pub struct AnnualLedgers {
     pub size: LedgerData,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Tsify, Debug, Serialize)]
 pub struct GameVersion {
     pub first: u16,
     pub second: u16,
@@ -162,12 +172,25 @@ pub struct GameVersion {
     pub fourth: u16,
 }
 
-#[derive(Debug, Serialize)]
-pub struct JsAchievements {
-    pub kind: &'static str,
+#[derive(Tsify, Debug, Serialize)]
+pub enum AchievementCompatibility {
+    Compatible,
+    Incompatible,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct CompletedAchievement {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+#[tsify(into_wasm_abi)]
+pub struct AchievementsScore {
+    pub kind: AchievementCompatibility,
     pub patch: GameVersion,
     pub score: i32,
-    pub achievements: Vec<Achievement>,
+    pub achievements: Vec<CompletedAchievement>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -184,48 +207,49 @@ pub struct NationSizeHistory {
     pub count: i32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FrontendWar {
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
+pub struct War {
     pub name: String,
     pub start_date: String,
     pub end_date: Option<String>,
     pub days: i32,
-    pub attackers: FrontendWarSide,
-    pub defenders: FrontendWarSide,
+    pub attackers: WarSide,
+    pub defenders: WarSide,
     pub battles: i32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FrontendWarSide {
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
+pub struct WarSide {
     pub original: CountryTag,
     pub original_name: String,
     pub members: Vec<CountryTag>,
     pub losses: [u32; 21],
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FrontendWarInfo {
-    pub battles: Vec<FrontendBattleInfo>,
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
+#[tsify(into_wasm_abi)]
+pub struct WarInfo {
+    pub battles: Vec<BattleInfo>,
     pub attacker_participants: Vec<WarParticipant>,
     pub defender_participants: Vec<WarParticipant>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FrontendBattleInfo {
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
+pub struct BattleInfo {
     pub name: String,
     pub date: String,
     pub location: u16,
     pub attacker_won: bool,
-    pub attacker: FrontendBattleSide,
-    pub defender: FrontendBattleSide,
+    pub attacker: BattleSide,
+    pub defender: BattleSide,
     pub winner_alliance: f32,
     pub loser_alliance: f32,
     pub losses: i32,
     pub forces: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FrontendBattleSide {
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
+pub struct BattleSide {
     pub cavalry: u32,
     pub infantry: u32,
     pub artillery: u32,
@@ -240,7 +264,7 @@ pub struct FrontendBattleSide {
     pub commander_stats: Option<String>,
 }
 
-impl FrontendBattleSide {
+impl BattleSide {
     pub fn forces(&self) -> u32 {
         self.infantry
             + self.cavalry
@@ -252,7 +276,7 @@ impl FrontendBattleSide {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
 pub struct WarParticipant {
     pub tag: CountryTag,
     pub name: String,
@@ -263,7 +287,7 @@ pub struct WarParticipant {
     pub exited: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
 pub struct SingleCountryWarCasualties {
     pub war: String,
     pub losses: [u32; 21],
@@ -273,8 +297,8 @@ pub struct SingleCountryWarCasualties {
     pub end: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct PlayerHistoryView {
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
+pub struct PlayerHistory {
     pub name: String,
     pub latest: CountryTag,
     pub annexed: Option<Eu4Date>,
@@ -283,33 +307,34 @@ pub struct PlayerHistoryView {
     pub player_names: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
 pub struct TagTransition {
     pub name: String,
     pub tag: CountryTag,
     pub date: Eu4Date,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Tsify, Debug, Serialize, Deserialize)]
 pub struct LocalizedCountryIncome {
     income: CountryIncomeLedger,
     name: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Tsify, Debug, Serialize, Deserialize)]
 pub struct LocalizedCountryExpense {
     expenses: CountryExpenseLedger,
     name: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LocalizedCasualties {
+#[derive(Tsify, Debug, Serialize, Deserialize)]
+pub struct CountryCasualties {
     tag: CountryTag,
     name: String,
     losses: [u32; 21],
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Tsify, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[tsify(into_wasm_abi)]
 pub enum SaveMode {
     Normal,
     Multiplayer,
@@ -317,31 +342,295 @@ pub enum SaveMode {
     IronmanNo,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Tsify, Debug, Clone, Serialize)]
 pub struct OptionalLedgerPoint {
     pub tag: CountryTag,
     pub year: u16,
     pub value: Option<i32>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Tsify, Debug, Clone, Serialize)]
+#[tsify(into_wasm_abi)]
 pub struct LocalizedLedger {
     pub points: Vec<OptionalLedgerPoint>,
     pub localization: Vec<LocalizedTag>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Tsify, Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
+#[tsify(into_wasm_abi)]
 pub enum Reparse {
     TooSoon { date: Eu4Date },
     Updated,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Tsify, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[tsify(into_wasm_abi)]
 pub struct Monitor {
     date: Eu4Date,
     countries: Vec<CountryDetails>,
+}
+
+/// Looks like bindgen doesn't include generics in the typescript signature
+/// so we create concrete types for all the return types
+macro_rules! wasm_wrapper {
+    ($name:ident,$ty:ty) => {
+        #[derive(Tsify, Serialize)]
+        #[tsify(into_wasm_abi)]
+        #[serde(transparent)]
+        pub struct $name($ty);
+        impl Into<$name> for $ty {
+            fn into(self) -> $name {
+                $name(self)
+            }
+        }
+    };
+}
+
+wasm_wrapper!(CountryReligions, Vec<CountryReligion>);
+wasm_wrapper!(CountryCultures, Vec<CountryCulture>);
+wasm_wrapper!(StringList, Vec<String>);
+wasm_wrapper!(I32List, Vec<i32>);
+wasm_wrapper!(CountriesIncome, HashMap<CountryTag, LocalizedCountryIncome>);
+wasm_wrapper!(CountriesExpenses, HashMap<CountryTag, LocalizedCountryExpense>);
+wasm_wrapper!(Estates, Vec<Estate<'static>>);
+wasm_wrapper!(OwnedDevelopmentStatesList, Vec<OwnedDevelopmentStates>);
+wasm_wrapper!(CountriesCasualties, Vec<CountryCasualties>);
+wasm_wrapper!(LocalizedTags, Vec<LocalizedTag>);
+wasm_wrapper!(CountryStateDetailsList, Vec<CountryStateDetails>);
+wasm_wrapper!(CountryTags, Vec<CountryTag>);
+wasm_wrapper!(CountryInfoList, Vec<CountryInfo>);
+wasm_wrapper!(RunningMonarchs, Vec<RunningMonarch>);
+wasm_wrapper!(CountryLeaders, Vec<CountryLeader>);
+wasm_wrapper!(
+    SingleCountryWarCasualtiesList,
+    Vec<SingleCountryWarCasualties>
+);
+wasm_wrapper!(Wars, Vec<War>);
+wasm_wrapper!(PlayerHistories, Vec<PlayerHistory>);
+wasm_wrapper!(IdeaGroups, Vec<IdeaGroup>);
+wasm_wrapper!(MetaRef, &'static eu4save::models::Meta);
+wasm_wrapper!(OptionalCountryTag, Option<CountryTag>);
+wasm_wrapper!(StaticMap, HashMap<&'static str, &'static str>);
+
+#[derive(Tsify, Serialize, Clone, Debug)]
+struct HealthDatum {
+    color: u8,
+    value: f32,
+}
+
+#[derive(Tsify, Serialize, Clone, Debug)]
+struct LeaderDatum {
+    color: u8,
+    value: f32,
+    fire: u16,
+    shock: u16,
+    manuever: u16,
+    siege: u16,
+}
+
+#[derive(Tsify, Serialize, Clone, Debug)]
+struct HealthTechnology {
+    color: u8,
+    value: f32,
+    adm: u8,
+    dip: u8,
+    mil: u8,
+}
+
+#[derive(Tsify, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+struct CountryHealth {
+    tag: CountryTag,
+    name: String,
+
+    // economy
+    core_income: HealthDatum,
+    treasury_balance: HealthDatum,
+    development: HealthDatum,
+    buildings: HealthDatum,
+    inflation: HealthDatum,
+
+    // army
+    best_general: LeaderDatum,
+    army_tradition: HealthDatum,
+    manpower_balance: HealthDatum,
+    standard_regiments: HealthDatum,
+    professionalism: HealthDatum,
+
+    // navy
+    best_admiral: LeaderDatum,
+    navy_tradition: HealthDatum,
+    ships: HealthDatum,
+
+    // other
+    stability: HealthDatum,
+    technology: HealthTechnology,
+    ideas: HealthDatum,
+    corruption: HealthDatum,
+}
+
+#[derive(Tsify, Serialize, Clone, Debug)]
+#[tsify(into_wasm_abi)]
+pub struct HealthData {
+    data: Vec<CountryHealth>,
+}
+
+#[derive(Tsify, Serialize, Clone, Debug, Default)]
+pub struct ProvinceDevelopment {
+    tax: f32,
+    production: f32,
+    manpower: f32,
+}
+
+impl ProvinceDevelopment {
+    fn total(&self) -> f32 {
+        self.tax + self.production + self.manpower
+    }
+}
+
+impl std::ops::AddAssign<&Province> for ProvinceDevelopment {
+    fn add_assign(&mut self, rhs: &Province) {
+        self.tax += rhs.base_tax;
+        self.production += rhs.base_production;
+        self.manpower += rhs.base_manpower;
+    }
+}
+
+#[derive(Tsify, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OwnedDevelopmentStates {
+    country: LocalizedTag,
+    full_cores: ProvinceDevelopment,
+    half_states: ProvinceDevelopment,
+    territories: ProvinceDevelopment,
+    no_core: ProvinceDevelopment,
+    tc: ProvinceDevelopment,
+}
+
+impl OwnedDevelopmentStates {
+    fn total(&self) -> f32 {
+        self.full_cores.total()
+            + self.half_states.total()
+            + self.territories.total()
+            + self.no_core.total()
+            + self.tc.total()
+    }
+}
+
+#[derive(Tsify, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct IdeaGroup {
+    group_rank: usize,
+    group_name: String,
+    completed_ideas: u8,
+}
+
+#[derive(Tsify, Serialize)]
+struct ProvinceIdDevelopment {
+    name: String,
+    id: ProvinceId,
+    tax: f32,
+    production: f32,
+    manpower: f32,
+    value: f32,
+}
+
+#[derive(Tsify, Default, Serialize)]
+struct AreaDevelopmentValue {
+    value: f32,
+    tax: f32,
+    production: f32,
+    manpower: f32,
+    children: Vec<ProvinceIdDevelopment>,
+}
+
+#[derive(Tsify, Default, Serialize)]
+struct AreaDevelopment {
+    name: String,
+    value: f32,
+    tax: f32,
+    production: f32,
+    manpower: f32,
+    children: Vec<ProvinceIdDevelopment>,
+}
+
+#[derive(Tsify, Default, Serialize)]
+struct RegionDevelopmentValue {
+    value: f32,
+    tax: f32,
+    production: f32,
+    manpower: f32,
+    children: Vec<AreaDevelopment>,
+}
+
+#[derive(Tsify, Default, Serialize)]
+struct RegionDevelopment {
+    name: String,
+    value: f32,
+    tax: f32,
+    production: f32,
+    manpower: f32,
+    children: Vec<AreaDevelopment>,
+}
+
+#[derive(Tsify, Default, Serialize)]
+struct SuperRegionDevelopmentValue {
+    value: f32,
+    tax: f32,
+    production: f32,
+    manpower: f32,
+    children: Vec<RegionDevelopment>,
+}
+
+#[derive(Tsify, Default, Serialize)]
+struct SuperRegionDevelopment {
+    name: String,
+    value: f32,
+    tax: f32,
+    production: f32,
+    manpower: f32,
+    children: Vec<RegionDevelopment>,
+}
+
+#[derive(Tsify, Default, Serialize)]
+struct ContinentDevelopment {
+    name: String,
+    value: f32,
+    tax: f32,
+    production: f32,
+    manpower: f32,
+    children: Vec<SuperRegionDevelopment>,
+}
+
+#[derive(Tsify, Serialize)]
+#[tsify(into_wasm_abi)]
+pub struct RootTree {
+    name: &'static str,
+    children: Vec<ContinentDevelopment>,
+    world_tax: f32,
+    world_production: f32,
+    world_manpower: f32,
+    filtered_tax: f32,
+    filtered_production: f32,
+    filtered_manpower: f32,
+    uncolonized_tax: f32,
+    uncolonized_production: f32,
+    uncolonized_manpower: f32,
+}
+
+#[derive(Tsify, Serialize)]
+#[tsify(into_wasm_abi)]
+pub enum SaveEncoding {
+    #[serde(rename = "text")]
+    Text,
+    #[serde(rename = "textzip")]
+    TextZip,
+    #[serde(rename = "binzip")]
+    BinaryZip,
+    #[serde(rename = "binary")]
+    Binary,
 }
 
 #[wasm_bindgen]
@@ -349,151 +638,135 @@ pub struct SaveFile(SaveFileImpl);
 
 #[wasm_bindgen]
 impl SaveFile {
-    pub fn reparse(&mut self, frequency: String, save_data: Vec<u8>) -> Result<JsValue, JsValue> {
-        self.0
-            .reparse(&frequency, save_data)
-            .map(|x| to_json_value(&x))
-            .map_err(js_err)
+    pub fn reparse(&mut self, frequency: String, save_data: Vec<u8>) -> Result<Reparse, JsValue> {
+        self.0.reparse(&frequency, save_data).map_err(js_err)
     }
 
-    pub fn get_meta_raw(&self) -> JsValue {
-        self.0.get_meta_raw()
+    pub fn get_meta_raw(&self) -> MetaRef {
+        MetaRef(unsafe { std::mem::transmute(self.0.get_meta_raw()) })
     }
 
-    pub fn gameplay_options(&self) -> JsValue {
-        to_json_value(&self.0.gameplay_options())
+    pub fn gameplay_options(&self) -> GameplayOptions {
+        self.0.gameplay_options().clone()
     }
 
-    pub fn savefile_warnings(&self) -> JsValue {
-        to_json_value(&self.0.savefile_warnings())
+    pub fn savefile_warnings(&self) -> StringList {
+        self.0.savefile_warnings().into()
     }
 
-    pub fn get_annual_income_ledger(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.get_annual_income_ledger(payload))
+    pub fn get_annual_income_ledger(&self, payload: TagFilterPayloadRaw) -> LocalizedLedger {
+        self.0.get_annual_income_ledger(payload)
     }
 
-    pub fn get_annual_nation_size_ledger(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.get_annual_nation_size_ledger(payload))
+    pub fn get_annual_nation_size_ledger(&self, payload: TagFilterPayloadRaw) -> LocalizedLedger {
+        self.0.get_annual_nation_size_ledger(payload)
     }
 
-    pub fn get_annual_score_ledger(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.get_annual_score_ledger(payload))
+    pub fn get_annual_score_ledger(&self, payload: TagFilterPayloadRaw) -> LocalizedLedger {
+        self.0.get_annual_score_ledger(payload)
     }
 
-    pub fn get_annual_inflation_ledger(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.get_annual_inflation_ledger(payload))
+    pub fn get_annual_inflation_ledger(&self, payload: TagFilterPayloadRaw) -> LocalizedLedger {
+        self.0.get_annual_inflation_ledger(payload)
     }
 
-    pub fn get_achievements(&self) -> Result<JsValue, JsValue> {
+    pub fn get_achievements(&self) -> AchievementsScore {
         self.0.get_achievements()
     }
 
-    pub fn get_starting_country(&self) -> JsValue {
-        self.0.get_starting_country()
+    pub fn get_starting_country(&self) -> OptionalCountryTag {
+        self.0.get_starting_country().into()
     }
 
-    pub fn get_start_date(&self) -> JsValue {
+    pub fn get_start_date(&self) -> String {
         self.0.get_start_date()
     }
 
-    pub fn get_total_days(&self) -> JsValue {
+    pub fn get_total_days(&self) -> i32 {
         self.0.get_total_days()
     }
 
-    pub fn days_to_date(&self, days: f64) -> JsValue {
-        JsValue::from_str(&self.0.days_to_date(days))
+    pub fn days_to_date(&self, days: f64) -> String {
+        self.0.days_to_date(days)
     }
 
-    pub fn date_to_days(&self, date: &str) -> JsValue {
-        self.0
-            .date_to_days(date)
-            .map(|x| JsValue::from_f64(x as f64))
-            .unwrap_or_else(JsValue::null)
+    pub fn date_to_days(&self, date: &str) -> Option<f64> {
+        self.0.date_to_days(date).map(|x| x as f64)
     }
 
-    pub fn get_players(&self) -> JsValue {
-        to_json_value(&self.0.get_players())
+    pub fn get_players(&self) -> StaticMap {
+        StaticMap(unsafe { std::mem::transmute(self.0.get_players()) })
     }
 
-    pub fn get_player_histories(&self) -> JsValue {
-        to_json_value(&self.0.get_player_histories())
+    pub fn get_player_histories(&self) -> PlayerHistories {
+        self.0.get_player_histories().into()
     }
 
-    pub fn get_lucky_countries(&self) -> JsValue {
-        to_json_value(&self.0.get_lucky_countries())
+    pub fn get_lucky_countries(&self) -> LocalizedTags {
+        self.0.get_lucky_countries().into()
     }
 
-    pub fn get_alive_countries(&self) -> JsValue {
-        to_json_value(&self.0.get_alive_countries())
+    pub fn get_alive_countries(&self) -> CountryTags {
+        self.0.get_alive_countries().into()
     }
 
-    pub fn localize_country(&self, tag: JsValue) -> JsValue {
+    pub fn localize_country(&self, tag: String) -> String {
         self.0.localize_country(tag)
     }
 
-    pub fn get_dlc_ids(&self) -> JsValue {
-        self.0.get_dlc_ids()
+    pub fn get_dlc_ids(&self) -> I32List {
+        self.0.get_dlc_ids().into()
     }
 
-    pub fn playthrough_id(&self) -> JsValue {
-        self.0
-            .playthrough_id()
-            .map(|x| JsValue::from_str(&x))
-            .unwrap_or(JsValue::NULL)
+    pub fn playthrough_id(&self) -> Option<String> {
+        self.0.playthrough_id()
     }
 
-    pub fn save_encoding(&self) -> JsValue {
+    pub fn save_encoding(&self) -> SaveEncoding {
         self.0.save_encoding()
     }
 
-    pub fn save_mode(&self) -> JsValue {
-        to_json_value(&self.0.save_mode())
+    pub fn save_mode(&self) -> SaveMode {
+        self.0.save_mode()
     }
 
-    pub fn get_health(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+    pub fn get_health(&self, payload: TagFilterPayloadRaw) -> HealthData {
         self.0.get_health(payload)
     }
 
-    pub fn get_countries(&self) -> JsValue {
-        self.0.get_countries()
+    pub fn get_countries(&self) -> CountryInfoList {
+        self.0.get_countries().into()
     }
 
-    pub fn get_country(&self, tag: JsValue) -> JsValue {
+    pub fn get_country(&self, tag: String) -> CountryDetails {
         self.0.get_country(tag)
     }
 
-    pub fn get_countries_income(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.get_countries_income(payload))
+    pub fn get_countries_income(&self, payload: TagFilterPayloadRaw) -> CountriesIncome {
+        self.0.get_countries_income(payload).into()
     }
 
-    pub fn get_countries_expenses(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.get_countries_expenses(payload))
+    pub fn get_countries_expenses(&self, payload: TagFilterPayloadRaw) -> CountriesExpenses {
+        self.0.get_countries_expenses(payload).into()
     }
 
-    pub fn get_countries_total_expenses(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.get_countries_total_expenses(payload))
+    pub fn get_countries_total_expenses(&self, payload: TagFilterPayloadRaw) -> CountriesExpenses {
+        self.0.get_countries_total_expenses(payload).into()
     }
 
-    pub fn geographical_development(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
+    pub fn geographical_development(&self, payload: TagFilterPayloadRaw) -> RootTree {
         self.0.geographical_development(payload)
     }
 
-    pub fn get_province_details(&self, province_id: u16) -> JsValue {
-        to_json_value(&self.0.get_province_details(province_id))
+    pub fn get_province_details(&self, province_id: u16) -> Option<ProvinceDetails> {
+        self.0.get_province_details(province_id)
     }
 
-    pub fn owned_development_states(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        self.0.owned_development_states(payload)
+    pub fn owned_development_states(
+        &self,
+        payload: TagFilterPayloadRaw,
+    ) -> OwnedDevelopmentStatesList {
+        self.0.owned_development_states(payload).into()
     }
 
     pub fn get_building_history(&self) -> JsValue {
@@ -504,37 +777,38 @@ impl SaveFile {
         self.0.get_nation_size_statistics()
     }
 
-    pub fn get_country_rulers(&self, tag: &str) -> JsValue {
-        to_json_value(&self.0.get_country_rulers(tag))
+    pub fn get_country_rulers(&self, tag: &str) -> RunningMonarchs {
+        self.0.get_country_rulers(tag).into()
     }
 
-    pub fn get_country_advisors(&self, tag: &str) -> JsValue {
-        to_json_value(&self.0.get_country_advisors(tag))
+    pub fn get_country_advisors(&self, tag: &str) -> CountryAdvisors {
+        self.0.get_country_advisors(tag)
     }
 
-    pub fn get_country_province_religion(&self, tag: &str) -> JsValue {
-        to_json_value(&self.0.get_country_province_religion(tag))
+    pub fn get_country_province_religion(&self, tag: &str) -> CountryReligions {
+        self.0.get_country_province_religion(tag).into()
     }
 
-    pub fn get_country_province_culture(&self, tag: &str) -> JsValue {
-        to_json_value(&self.0.get_country_province_culture(tag))
+    pub fn get_country_province_culture(&self, tag: &str) -> CountryCultures {
+        self.0.get_country_province_culture(tag).into()
     }
 
-    pub fn get_country_leaders(&self, tag: &str) -> JsValue {
-        to_json_value(&self.0.get_country_leaders(tag))
+    pub fn get_country_leaders(&self, tag: &str) -> CountryLeaders {
+        self.0.get_country_leaders(tag).into()
     }
 
-    pub fn get_country_states(&self, tag: &str) -> JsValue {
-        to_json_value(&self.0.get_country_states(tag))
+    pub fn get_country_states(&self, tag: &str) -> CountryStateDetailsList {
+        self.0.get_country_states(tag).into()
     }
 
-    pub fn get_country_estates(&self, tag: &str) -> JsValue {
-        self.0.get_country_estates(tag)
+    pub fn get_country_estates(&self, tag: &str) -> Estates {
+        let result = self.0.get_country_estates(tag);
+        let trans: Vec<Estate<'static>> = unsafe { std::mem::transmute(result) };
+        trans.into()
     }
 
-    pub fn get_nation_idea_groups(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.get_nation_idea_groups(payload))
+    pub fn get_nation_idea_groups(&self, payload: TagFilterPayloadRaw) -> IdeaGroups {
+        self.0.get_nation_idea_groups(payload).into()
     }
 
     pub fn province_nation_owner_color(
@@ -563,59 +837,54 @@ impl SaveFile {
         )
     }
 
-    pub fn map_colors(&self, payload: JsValue) -> Result<Vec<u8>, JsValue> {
-        let payload = serde_wasm_bindgen::from_value(payload).map_err(js_err)?;
+    pub fn map_colors(&self, payload: MapPayload) -> Result<Vec<u8>, JsValue> {
         Ok(self.0.map_colors(payload))
     }
 
-    pub fn map_cursor(&self, payload: JsValue) -> Result<map::TimelapseIter, JsValue> {
-        let payload = serde_wasm_bindgen::from_value(payload).map_err(js_err)?;
+    pub fn map_cursor(&self, payload: MapCursorPayload) -> Result<map::TimelapseIter, JsValue> {
         Ok(self.0.map_cursor(payload))
     }
 
-    pub fn map_quick_tip(&self, province_id: i32, payload: JsValue, days: Option<i32>) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.map_quick_tip(province_id, payload, days))
+    pub fn map_quick_tip(
+        &self,
+        province_id: i32,
+        payload: MapPayloadKind,
+        days: Option<i32>,
+    ) -> Option<MapQuickTipPayload> {
+        self.0.map_quick_tip(province_id, payload, days)
     }
 
-    pub fn initial_map_position(&self) -> JsValue {
+    pub fn initial_map_position(&self) -> js_sys::Uint16Array {
         let (x, y) = self.0.initial_map_position();
-        let result = vec![x, y];
-        to_json_value(&result)
+        js_sys::Uint16Array::from(&[x, y][..])
     }
 
-    pub fn map_position_of_tag(&self, tag: &str) -> JsValue {
+    pub fn map_position_of_tag(&self, tag: &str) -> js_sys::Uint16Array {
         let (x, y) = self.0.map_position_of_tag(tag);
-        let result = vec![x, y];
-        to_json_value(&result)
+        js_sys::Uint16Array::from(&[x, y][..])
     }
 
-    pub fn matching_countries(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.matching_countries(payload))
+    pub fn matching_countries(&self, payload: TagFilterPayloadRaw) -> LocalizedTags {
+        self.0.matching_countries(payload).into()
     }
 
-    pub fn countries_war_losses(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.countries_war_losses(payload))
+    pub fn countries_war_losses(&self, payload: TagFilterPayloadRaw) -> CountriesCasualties {
+        self.0.countries_war_losses(payload).into()
     }
 
-    pub fn wars(&self, payload: JsValue) -> JsValue {
-        let payload = serde_wasm_bindgen::from_value(payload).unwrap();
-        to_json_value(&self.0.wars(payload))
+    pub fn wars(&self, payload: TagFilterPayloadRaw) -> Wars {
+        self.0.wars(payload).into()
     }
 
-    pub fn get_country_casualties(&self, tag: &str) -> JsValue {
-        to_json_value(&self.0.get_country_casualties(tag))
+    pub fn get_country_casualties(&self, tag: &str) -> SingleCountryWarCasualtiesList {
+        self.0.get_country_casualties(tag).into()
     }
 
-    pub fn get_war(&self, war_name: JsValue) -> JsValue {
-        let name = war_name.as_string().unwrap();
-        let res = self.0.get_war(&name);
-        to_json_value(&res)
+    pub fn get_war(&self, war_name: String) -> WarInfo {
+        self.0.get_war(&war_name)
     }
 
-    pub fn monitoring_data(&self) -> JsValue {
+    pub fn monitoring_data(&self) -> Monitor {
         self.0.monitoring_data()
     }
 }
@@ -667,11 +936,11 @@ impl SaveFileImpl {
         Ok(Reparse::Updated)
     }
 
-    pub fn get_meta_raw(&self) -> JsValue {
-        to_json_value(&self.query.save().meta)
+    pub fn get_meta_raw(&self) -> &'_ eu4save::models::Meta {
+        &self.query.save().meta
     }
 
-    pub fn gameplay_options(&self) -> &GameplayOptions {
+    pub fn gameplay_options(&self) -> &'_ GameplayOptions {
         &self.query.save().game.gameplay_settings.options
     }
 
@@ -814,7 +1083,7 @@ impl SaveFileImpl {
         self.localize_ledger_points(ledger)
     }
 
-    pub fn get_achievements(&self) -> Result<JsValue, JsValue> {
+    pub fn get_achievements(&self) -> AchievementsScore {
         let achieves = AchievementHunter::create(
             self.encoding,
             &self.query,
@@ -831,7 +1100,7 @@ impl SaveFileImpl {
 
         let score = eu4_start_date().days_until(&self.query.save().meta.date);
 
-        let res = match achieves {
+        match achieves {
             Some(results) => {
                 let list = eu4game::achievements::achievements();
                 let completed: Vec<_> = results
@@ -839,35 +1108,35 @@ impl SaveFileImpl {
                     .into_iter()
                     .filter(|x| x.completed())
                     .filter_map(|x| list.iter().find(|y| x.id == y.id))
-                    .cloned()
+                    .map(|x| CompletedAchievement {
+                        id: x.id,
+                        name: x.name.clone(),
+                    })
                     .collect();
 
-                JsAchievements {
-                    kind: "compatible",
+                AchievementsScore {
+                    kind: AchievementCompatibility::Compatible,
                     patch,
                     score,
                     achievements: completed,
                 }
             }
-            None => JsAchievements {
-                kind: "incompatible",
+            None => AchievementsScore {
+                kind: AchievementCompatibility::Incompatible,
                 patch,
                 score,
                 achievements: Vec::with_capacity(0),
             },
-        };
-
-        Ok(to_json_value(&res))
+        }
     }
 
     pub fn playthrough_id(&self) -> Option<String> {
         playthrough_id(&self.query)
     }
 
-    pub fn get_countries(&self) -> JsValue {
+    pub fn get_countries(&self) -> Vec<CountryInfo> {
         let blank: CountryTag = "---".parse().unwrap();
-        let countries: Vec<_> = self
-            .query
+        self.query
             .countries()
             .filter(|x| x.tag != blank)
             .map(|x| {
@@ -886,9 +1155,7 @@ impl SaveFileImpl {
                     is_human: x.country.human,
                 }
             })
-            .collect();
-
-        to_json_value(&countries)
+            .collect()
     }
 
     pub fn get_countries_income(
@@ -958,7 +1225,7 @@ impl SaveFileImpl {
             .collect()
     }
 
-    pub fn geographical_development(&self, payload: TagFilterPayloadRaw) -> JsValue {
+    pub fn geographical_development(&self, payload: TagFilterPayloadRaw) -> RootTree {
         let payload = TagFilterPayload::from(payload);
         let filter = self.matching_tags(&payload);
 
@@ -975,83 +1242,6 @@ impl SaveFileImpl {
             .superregions()
             .flat_map(|(superregion, regions)| regions.map(move |x| (x, superregion)))
             .collect();
-
-        #[derive(Serialize)]
-        struct ProvinceIdDevelopment {
-            name: String,
-            id: ProvinceId,
-            tax: f32,
-            production: f32,
-            manpower: f32,
-            value: f32,
-        }
-
-        #[derive(Default, Serialize)]
-        struct AreaDevelopmentValue {
-            value: f32,
-            tax: f32,
-            production: f32,
-            manpower: f32,
-            children: Vec<ProvinceIdDevelopment>,
-        }
-
-        #[derive(Default, Serialize)]
-        struct AreaDevelopment {
-            name: String,
-            value: f32,
-            tax: f32,
-            production: f32,
-            manpower: f32,
-            children: Vec<ProvinceIdDevelopment>,
-        }
-
-        #[derive(Default, Serialize)]
-        struct RegionDevelopmentValue {
-            value: f32,
-            tax: f32,
-            production: f32,
-            manpower: f32,
-            children: Vec<AreaDevelopment>,
-        }
-
-        #[derive(Default, Serialize)]
-        struct RegionDevelopment {
-            name: String,
-            value: f32,
-            tax: f32,
-            production: f32,
-            manpower: f32,
-            children: Vec<AreaDevelopment>,
-        }
-
-        #[derive(Default, Serialize)]
-        struct SuperRegionDevelopmentValue {
-            value: f32,
-            tax: f32,
-            production: f32,
-            manpower: f32,
-            children: Vec<RegionDevelopment>,
-        }
-
-        #[derive(Default, Serialize)]
-        struct SuperRegionDevelopment {
-            name: String,
-            value: f32,
-            tax: f32,
-            production: f32,
-            manpower: f32,
-            children: Vec<RegionDevelopment>,
-        }
-
-        #[derive(Default, Serialize)]
-        struct ContinentDevelopment {
-            name: String,
-            value: f32,
-            tax: f32,
-            production: f32,
-            manpower: f32,
-            children: Vec<SuperRegionDevelopment>,
-        }
 
         let (world_tax, world_production, world_manpower) =
             self.query.save().game.provinces.values().fold(
@@ -1205,22 +1395,7 @@ impl SaveFileImpl {
                     )
                 });
 
-        #[derive(Serialize)]
-        struct RootTree {
-            name: &'static str,
-            children: Vec<ContinentDevelopment>,
-            world_tax: f32,
-            world_production: f32,
-            world_manpower: f32,
-            filtered_tax: f32,
-            filtered_production: f32,
-            filtered_manpower: f32,
-            uncolonized_tax: f32,
-            uncolonized_production: f32,
-            uncolonized_manpower: f32,
-        }
-
-        to_json_value(&RootTree {
+        RootTree {
             name: "root",
             children: continents,
             world_tax,
@@ -1232,7 +1407,7 @@ impl SaveFileImpl {
             uncolonized_tax,
             uncolonized_production,
             uncolonized_manpower,
-        })
+        }
     }
 
     pub fn get_players(&self) -> HashMap<&str, &str> {
@@ -1246,12 +1421,12 @@ impl SaveFileImpl {
             .collect()
     }
 
-    pub fn get_player_histories(&self) -> Vec<PlayerHistoryView> {
+    pub fn get_player_histories(&self) -> Vec<PlayerHistory> {
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
         self.query
             .player_histories(&self.nation_events)
             .iter()
-            .map(|x| PlayerHistoryView {
+            .map(|x| PlayerHistory {
                 name: save_game_query.localize_country(&x.history.latest),
                 latest: x.history.latest,
                 player_names: x.player_names.clone(),
@@ -1301,7 +1476,7 @@ impl SaveFileImpl {
         v
     }
 
-    pub fn get_alive_countries(&self) -> Vec<&CountryTag> {
+    pub fn get_alive_countries(&self) -> Vec<CountryTag> {
         self.query
             .save()
             .game
@@ -1309,21 +1484,18 @@ impl SaveFileImpl {
             .iter()
             .filter(|(_tag, c)| c.num_of_cities > 0)
             .map(|(tag, _)| tag)
+            .copied()
             .collect()
     }
 
-    pub fn get_starting_country(&self) -> JsValue {
-        self.query
-            .starting_country(&self.player_histories)
-            .map(|x| JsValue::from_str(x.as_str()))
-            .unwrap_or_else(JsValue::null)
+    pub fn get_starting_country(&self) -> Option<CountryTag> {
+        self.query.starting_country(&self.player_histories)
     }
 
-    pub fn localize_country(&self, tag: JsValue) -> JsValue {
-        if let Some(tag) = tag.as_string().and_then(|x| x.parse::<CountryTag>().ok()) {
+    pub fn localize_country(&self, tag: String) -> String {
+        if let Some(tag) = tag.parse::<CountryTag>().ok() {
             let save_game_query = SaveGameQuery::new(&self.query, &self.game);
-            let localized = save_game_query.localize_country(&tag);
-            JsValue::from_str(localized.as_str())
+            save_game_query.localize_country(&tag)
         } else {
             panic!("Country tags should only be strings");
         }
@@ -1335,31 +1507,26 @@ impl SaveFileImpl {
         LocalizedTag { tag, name }
     }
 
-    pub fn get_dlc_ids(&self) -> JsValue {
-        let dlc: Vec<_> = self
-            .query
+    pub fn get_dlc_ids(&self) -> Vec<i32> {
+        self.query
             .save()
             .meta
             .dlc_enabled
             .iter()
             .filter_map(|x| eu4save::dlc_id(x.as_str()))
-            .collect();
-        to_json_value(&dlc)
+            .collect()
     }
 
-    pub fn get_start_date(&self) -> JsValue {
-        let start_date = self.query.save().game.start_date.iso_8601().to_string();
-        JsValue::from_str(&start_date)
+    pub fn get_start_date(&self) -> String {
+        self.query.save().game.start_date.iso_8601().to_string()
     }
 
-    pub fn get_total_days(&self) -> JsValue {
-        let days = self
-            .query
+    pub fn get_total_days(&self) -> i32 {
+        self.query
             .save()
             .game
             .start_date
-            .days_until(&self.query.save().meta.date);
-        JsValue::from_f64(days as f64)
+            .days_until(&self.query.save().meta.date)
     }
 
     pub fn days_to_date(&self, days: f64) -> String {
@@ -1383,8 +1550,13 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn save_encoding(&self) -> JsValue {
-        JsValue::from_str(self.encoding.as_str())
+    pub fn save_encoding(&self) -> SaveEncoding {
+        match self.encoding {
+            Encoding::Text => SaveEncoding::Text,
+            Encoding::TextZip => SaveEncoding::TextZip,
+            Encoding::BinaryZip => SaveEncoding::BinaryZip,
+            Encoding::Binary => SaveEncoding::Binary,
+        }
     }
 
     pub fn save_mode(&self) -> SaveMode {
@@ -1404,7 +1576,7 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn get_health(&self, payload: TagFilterPayloadRaw) -> JsValue {
+    pub fn get_health(&self, payload: TagFilterPayloadRaw) -> HealthData {
         struct CountryHealthDatum {
             tag: CountryTag,
             name: String,
@@ -1553,63 +1725,6 @@ impl SaveFileImpl {
 
         let max_ideas = countries.iter().map(|x| x.ideas).fold(0, i32::max);
         let max_corruption = countries.iter().map(|x| x.inflation).fold(15., f32::max);
-
-        #[derive(Serialize, Clone, Debug)]
-        struct HealthDatum {
-            color: u8,
-            value: f32,
-        }
-
-        #[derive(Serialize, Clone, Debug)]
-        struct LeaderDatum {
-            color: u8,
-            value: f32,
-            fire: u16,
-            shock: u16,
-            manuever: u16,
-            siege: u16,
-        }
-
-        #[derive(Serialize, Clone, Debug)]
-        struct HealthTechnology {
-            color: u8,
-            value: f32,
-            adm: u8,
-            dip: u8,
-            mil: u8,
-        }
-
-        #[derive(Serialize, Clone, Debug)]
-        #[serde(rename_all = "camelCase")]
-        struct CountryHealth {
-            tag: CountryTag,
-            name: String,
-
-            // economy
-            core_income: HealthDatum,
-            treasury_balance: HealthDatum,
-            development: HealthDatum,
-            buildings: HealthDatum,
-            inflation: HealthDatum,
-
-            // army
-            best_general: LeaderDatum,
-            army_tradition: HealthDatum,
-            manpower_balance: HealthDatum,
-            standard_regiments: HealthDatum,
-            professionalism: HealthDatum,
-
-            // navy
-            best_admiral: LeaderDatum,
-            navy_tradition: HealthDatum,
-            ships: HealthDatum,
-
-            // other
-            stability: HealthDatum,
-            technology: HealthTechnology,
-            ideas: HealthDatum,
-            corruption: HealthDatum,
-        }
 
         // 0 is dark red / 15 is dark blue
         let blue_max = 15.0;
@@ -1763,12 +1878,7 @@ impl SaveFileImpl {
             })
             .collect();
 
-        #[derive(Serialize, Clone, Debug)]
-        struct HealthData {
-            data: Vec<CountryHealth>,
-        }
-
-        to_json_value(&HealthData { data: health })
+        HealthData { data: health }
     }
 
     pub fn get_province_details(&self, province_id: u16) -> Option<ProvinceDetails> {
@@ -1914,7 +2024,7 @@ impl SaveFileImpl {
                 ProvinceEvent::Owner(x) => {
                     history.push(ProvinceHistoryEvent {
                         date: date.iso_8601().to_string(),
-                        kind: ProvinceHistoryEventKind::Owner(LocalizedTag {
+                        data: ProvinceHistoryEventKind::Owner(LocalizedTag {
                             tag: *x,
                             name: save_game_query.localize_country(x),
                         }),
@@ -1930,7 +2040,7 @@ impl SaveFileImpl {
                         if *value {
                             history.push(ProvinceHistoryEvent {
                                 date: date.iso_8601().to_string(),
-                                kind: ProvinceHistoryEventKind::Constructed(GfxObj {
+                                data: ProvinceHistoryEventKind::Constructed(GfxObj {
                                     id: key.clone(),
                                     name,
                                     gfx: String::from("westerngfx"),
@@ -1939,7 +2049,7 @@ impl SaveFileImpl {
                         } else {
                             history.push(ProvinceHistoryEvent {
                                 date: date.iso_8601().to_string(),
-                                kind: ProvinceHistoryEventKind::Demolished(GfxObj {
+                                data: ProvinceHistoryEventKind::Demolished(GfxObj {
                                     id: key.clone(),
                                     name,
                                     gfx: String::from("westerngfx"),
@@ -1998,7 +2108,10 @@ impl SaveFileImpl {
         })
     }
 
-    pub fn owned_development_states(&self, payload: TagFilterPayloadRaw) -> JsValue {
+    pub fn owned_development_states(
+        &self,
+        payload: TagFilterPayloadRaw,
+    ) -> Vec<OwnedDevelopmentStates> {
         let filter = self.filter_stored_tags(payload, 12);
         let mut devs: HashMap<CountryTag, CountryDevelopment> = HashMap::new();
         let prov_area = self.game.province_area_lookup();
@@ -2055,51 +2168,9 @@ impl SaveFileImpl {
             tc: ProvinceDevelopment,
         }
 
-        #[derive(Serialize, Clone, Debug, Default)]
-        pub struct ProvinceDevelopment {
-            tax: f32,
-            production: f32,
-            manpower: f32,
-        }
-
-        impl ProvinceDevelopment {
-            fn total(&self) -> f32 {
-                self.tax + self.production + self.manpower
-            }
-        }
-
-        impl std::ops::AddAssign<&Province> for ProvinceDevelopment {
-            fn add_assign(&mut self, rhs: &Province) {
-                self.tax += rhs.base_tax;
-                self.production += rhs.base_production;
-                self.manpower += rhs.base_manpower;
-            }
-        }
-
-        #[derive(Serialize, Clone, Debug)]
-        #[serde(rename_all = "camelCase")]
-        pub struct CountryDevelopmentTypes {
-            country: LocalizedTag,
-            full_cores: ProvinceDevelopment,
-            half_states: ProvinceDevelopment,
-            territories: ProvinceDevelopment,
-            no_core: ProvinceDevelopment,
-            tc: ProvinceDevelopment,
-        }
-
-        impl CountryDevelopmentTypes {
-            fn total(&self) -> f32 {
-                self.full_cores.total()
-                    + self.half_states.total()
-                    + self.territories.total()
-                    + self.no_core.total()
-                    + self.tc.total()
-            }
-        }
-
         let mut results: Vec<_> = devs
             .into_iter()
-            .map(|(tag, dev)| CountryDevelopmentTypes {
+            .map(|(tag, dev)| OwnedDevelopmentStates {
                 country: self.localize_tag(tag),
                 full_cores: dev.full_cores,
                 half_states: dev.half_states,
@@ -2110,7 +2181,7 @@ impl SaveFileImpl {
             .collect();
 
         results.sort_unstable_by(|a, b| a.total().total_cmp(&b.total()).reverse());
-        to_json_value(&results)
+        results
     }
 
     pub fn get_building_history(&self) -> JsValue {
@@ -2249,8 +2320,7 @@ impl SaveFileImpl {
         to_json_value(&result)
     }
 
-    /// returns vec of group rank, group name, and completed ideas in group
-    pub fn get_nation_idea_groups(&self, payload: TagFilterPayloadRaw) -> Vec<(usize, &str, u8)> {
+    pub fn get_nation_idea_groups(&self, payload: TagFilterPayloadRaw) -> Vec<IdeaGroup> {
         let payload = TagFilterPayload::from(payload);
         let tags = self.matching_tags(&payload);
         self.query
@@ -2265,8 +2335,10 @@ impl SaveFileImpl {
                     .iter()
                     .enumerate()
                     .skip(1)
-                    .map(|(idx, (idea, count))| {
-                        (idx, &idea[..idea.len() - "_idea".len() - 1], *count)
+                    .map(|(idx, (idea, count))| IdeaGroup {
+                        group_rank: idx,
+                        group_name: String::from(&idea[..idea.len() - "_idea".len() - 1]),
+                        completed_ideas: *count,
                     })
             })
             .collect()
@@ -2419,7 +2491,7 @@ impl SaveFileImpl {
         )
     }
 
-    pub fn countries_war_losses(&self, payload: TagFilterPayloadRaw) -> Vec<LocalizedCasualties> {
+    pub fn countries_war_losses(&self, payload: TagFilterPayloadRaw) -> Vec<CountryCasualties> {
         let payload = TagFilterPayload::from(payload);
         let countries = self.matching_tags(&payload);
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
@@ -2430,7 +2502,7 @@ impl SaveFileImpl {
             .countries
             .iter()
             .filter(|(tag, _)| countries.contains(tag))
-            .map(|(tag, c)| LocalizedCasualties {
+            .map(|(tag, c)| CountryCasualties {
                 tag: *tag,
                 name: save_game_query.localize_country(tag),
                 losses: SaveFileImpl::create_losses(&c.losses.members),
@@ -2452,7 +2524,7 @@ impl SaveFileImpl {
         values
     }
 
-    fn active_wars(&self, wars: &mut Vec<FrontendWar>, tags: &HashSet<CountryTag>) {
+    fn active_wars(&self, wars: &mut Vec<War>, tags: &HashSet<CountryTag>) {
         let mut attackers = HashSet::new();
         let mut defenders = HashSet::new();
         let mut attackers_date = Vec::new();
@@ -2530,19 +2602,19 @@ impl SaveFileImpl {
                 continue;
             }
 
-            let war = FrontendWar {
+            let war = War {
                 name: war.name.clone(),
                 start_date: start.iso_8601().to_string(),
                 end_date: None,
                 days: start.days_until(&self.query.save().meta.date),
                 battles,
-                attackers: FrontendWarSide {
+                attackers: WarSide {
                     original: war.original_attacker,
                     original_name: save_game_query.localize_country(&war.original_attacker),
                     losses: attacker_losses,
                     members: attackers.iter().map(|&&x| x).collect(),
                 },
-                defenders: FrontendWarSide {
+                defenders: WarSide {
                     original: war.original_defender,
                     original_name: save_game_query.localize_country(&war.original_defender),
                     losses: defender_losses,
@@ -2554,7 +2626,7 @@ impl SaveFileImpl {
         }
     }
 
-    fn previous_wars(&self, wars: &mut Vec<FrontendWar>, tags: &HashSet<CountryTag>) {
+    fn previous_wars(&self, wars: &mut Vec<War>, tags: &HashSet<CountryTag>) {
         let mut attackers = HashSet::new();
         let mut defenders = HashSet::new();
         let mut attackers_date = Vec::new();
@@ -2641,19 +2713,19 @@ impl SaveFileImpl {
                 continue;
             }
 
-            let war = FrontendWar {
+            let war = War {
                 name: war.name.clone(),
                 start_date: start.iso_8601().to_string(),
                 end_date: end_date.map(|x| x.iso_8601().to_string()),
                 days: start.days_until(&end_date.unwrap_or(self.query.save().meta.date)),
                 battles,
-                attackers: FrontendWarSide {
+                attackers: WarSide {
                     original: war.original_attacker,
                     original_name: save_game_query.localize_country(&war.original_attacker),
                     losses: attacker_losses,
                     members: attackers.iter().map(|&&x| x).collect(),
                 },
-                defenders: FrontendWarSide {
+                defenders: WarSide {
                     original: war.original_defender,
                     original_name: save_game_query.localize_country(&war.original_defender),
                     losses: defender_losses,
@@ -2665,7 +2737,7 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn wars(&self, payload: TagFilterPayloadRaw) -> Vec<FrontendWar> {
+    pub fn wars(&self, payload: TagFilterPayloadRaw) -> Vec<War> {
         let filter = TagFilterPayload::from(payload);
         let tags = self.matching_tags(&filter);
         let previous_wars = &self.query.save().game.previous_wars;
@@ -2762,7 +2834,7 @@ impl SaveFileImpl {
         result
     }
 
-    pub fn get_war(&self, name: &str) -> FrontendWarInfo {
+    pub fn get_war(&self, name: &str) -> WarInfo {
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
         let active_war = self
             .query
@@ -2867,7 +2939,7 @@ impl SaveFileImpl {
                         None => None,
                     };
 
-                    let attacker = FrontendBattleSide {
+                    let attacker = BattleSide {
                         infantry: b.attacker.infantry,
                         cavalry: b.attacker.cavalry,
                         artillery: b.attacker.artillery,
@@ -2882,7 +2954,7 @@ impl SaveFileImpl {
                         commander_stats: attacker_commander_stats,
                     };
 
-                    let defender = FrontendBattleSide {
+                    let defender = BattleSide {
                         infantry: b.defender.infantry,
                         cavalry: b.defender.cavalry,
                         artillery: b.defender.artillery,
@@ -2897,7 +2969,7 @@ impl SaveFileImpl {
                         commander_stats: defender_commander_stats,
                     };
 
-                    let x = FrontendBattleInfo {
+                    let x = BattleInfo {
                         name: b.name.clone(),
                         date: date.iso_8601().to_string(),
                         location: b.location.as_u16(),
@@ -3024,14 +3096,14 @@ impl SaveFileImpl {
             }
         }
 
-        FrontendWarInfo {
+        WarInfo {
             battles,
             attacker_participants,
             defender_participants,
         }
     }
 
-    pub fn monitoring_data(&self) -> JsValue {
+    pub fn monitoring_data(&self) -> Monitor {
         let players: HashSet<_> = self.all_players().drain(..).collect();
         let country_data = players
             .iter()
@@ -3039,10 +3111,10 @@ impl SaveFileImpl {
             .map(|c| self.get_country_details(c))
             .collect();
 
-        to_json_value(&Monitor {
+        Monitor {
             date: self.query.save().meta.date,
             countries: country_data,
-        })
+        }
     }
 }
 
@@ -3239,12 +3311,9 @@ fn js_err(err: impl std::error::Error) -> JsValue {
 pub struct SaveFileParsed(Eu4Save, Encoding);
 
 #[wasm_bindgen]
-pub fn parse_meta(data: &[u8]) -> Result<JsValue, JsValue> {
+pub fn parse_meta(data: &[u8]) -> Result<eu4save::models::Meta, JsValue> {
     let tokens = tokens::get_tokens();
-    match eu4game::shared::parse_meta(data, tokens) {
-        Ok(meta) => Ok(to_json_value(&meta)),
-        Err(err) => Err(JsValue::from_str(err.to_string().as_str())),
-    }
+    eu4game::shared::parse_meta(data, tokens).map_err(js_err)
 }
 
 #[wasm_bindgen]
@@ -3300,9 +3369,8 @@ pub fn game_save(
 }
 
 #[wasm_bindgen]
-pub fn save_checksum(data: &[u8]) -> JsValue {
-    let res = eu4game::shared::save_checksum(data);
-    JsValue::from_str(res.as_str())
+pub fn save_checksum(data: &[u8]) -> String {
+    eu4game::shared::save_checksum(data)
 }
 
 #[wasm_bindgen]
