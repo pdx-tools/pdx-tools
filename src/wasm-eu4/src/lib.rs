@@ -344,15 +344,11 @@ pub fn parse_save(
     province_id_to_color_index: Vec<u16>,
 ) -> Result<SaveFile, JsValue> {
     let tokens = tokens::get_tokens();
-    let save = match eu4game::shared::parse_save_with_tokens(&save_data, tokens) {
-        Ok((save, encoding)) => Ok(SaveFileParsed(save, encoding)),
-        Err(_) => {
-            let err =
-                eu4game::shared::parse_save_with_tokens_full(&save_data, tokens, true).unwrap_err();
-            Err(JsValue::from_str(err.to_string().as_str()))
-        }
-    }?;
+    let (save, encoding) = eu4game::shared::parse_save_with_tokens(&save_data, tokens)
+        .or_else(|_| eu4game::shared::parse_save_with_tokens_full(&save_data, tokens, true))
+        .map_err(js_err)?;
 
+    let save = SaveFileParsed(save, encoding);
     game_save(save, game_data, province_id_to_color_index)
 }
 
