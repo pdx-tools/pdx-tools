@@ -33,7 +33,7 @@ pub struct MapPayload {
     date: Option<i32>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum MapCursorPayloadKind {
     Political,
@@ -41,7 +41,7 @@ pub enum MapCursorPayloadKind {
     Battles,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 enum Interval {
     Year,

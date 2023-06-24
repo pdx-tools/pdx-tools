@@ -1030,7 +1030,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#ab7e5f9effe7115aa9d3a9d09fdad3a072056358"
+source = "git+https://github.com/rakaly/eu4save.git#164db74510e3d6feb4b1b36b2e66fe9b5a977510"
 dependencies = [
  "jomini",
  "libdeflater",
@@ -3018,7 +3018,6 @@ dependencies = [
  "once_cell",
  "schemas",
  "serde",
- "serde-wasm-bindgen",
  "tsify",
  "wasm-bindgen",
  "wasm-bindgen-test",

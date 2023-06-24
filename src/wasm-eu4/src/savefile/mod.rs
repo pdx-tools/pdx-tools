@@ -1,4 +1,4 @@
-use crate::{tokens, utils::to_json_value};
+use crate::tokens;
 use eu4game::{
     achievements::AchievementHunter, game::Game, shared::playthrough_id, Eu4GameError,
     SaveGameQuery,
@@ -10,8 +10,8 @@ use eu4save::{
         ProvinceEventValue, WarEvent,
     },
     query::{
-        BuildingConstruction, CountryExpenseLedger, CountryIncomeLedger, LedgerPoint,
-        NationEventKind, NationEvents, Query,
+        CountryExpenseLedger, CountryIncomeLedger, LedgerPoint, NationEventKind, NationEvents,
+        Query,
     },
     CountryTag, Encoding, Eu4Date, PdsDate, ProvinceId, TagResolver,
 };
@@ -1861,142 +1861,6 @@ impl SaveFileImpl {
 
         results.sort_unstable_by(|a, b| a.total().total_cmp(&b.total()).reverse());
         results
-    }
-
-    pub fn get_building_history(&self) -> JsValue {
-        let buildings = self.query.save().game.provinces.values().fold(
-            HashMap::new(),
-            |mut result: HashMap<_, i32>, prov| {
-                for event in self.query.province_building_history(prov) {
-                    let inc = if event.action == BuildingConstruction::Constructed {
-                        1
-                    } else {
-                        -1
-                    };
-
-                    *result
-                        .entry((event.building, event.date.year()))
-                        .or_default() += inc;
-                }
-                result
-            },
-        );
-
-        let mut histories: Vec<BuildingHistory> = buildings
-            .iter()
-            .map(|((building, year), &count)| BuildingHistory {
-                building: self.game.localize_building(building).unwrap_or(building),
-                year: i32::from(*year),
-                count,
-            })
-            .collect();
-
-        histories
-            .sort_unstable_by(|a, b| a.building.cmp(b.building).then_with(|| a.year.cmp(&b.year)));
-
-        let mut result = Vec::with_capacity(histories.len() * 5);
-        let mut current_building = None;
-        let mut acc = 0;
-        let start_year = i32::from(self.query.save().game.start_date.year());
-        let mut year = start_year;
-        let end_year = i32::from(self.query.save().meta.date.year());
-        for event in histories.into_iter() {
-            let count = event.count;
-            let new_year = event.year;
-            if current_building.map_or(false, |x| x == event.building) {
-                for i in year + 1..event.year {
-                    result.push(BuildingHistory {
-                        building: event.building,
-                        year: i,
-                        count: acc,
-                    })
-                }
-
-                result.push(BuildingHistory {
-                    building: event.building,
-                    year: event.year,
-                    count: event.count + acc,
-                })
-            } else {
-                if let Some(building) = current_building {
-                    for i in year + 1..=end_year {
-                        result.push(BuildingHistory {
-                            building,
-                            year: i,
-                            count: acc,
-                        })
-                    }
-                }
-
-                for i in start_year..event.year {
-                    result.push(BuildingHistory {
-                        building: event.building,
-                        year: i,
-                        count: 0,
-                    })
-                }
-
-                current_building = Some(event.building);
-                acc = 0;
-                result.push(event);
-            }
-            acc += count;
-            year = new_year;
-        }
-
-        if let Some(building) = current_building {
-            for i in year + 1..=end_year {
-                result.push(BuildingHistory {
-                    building,
-                    year: i,
-                    count: acc,
-                })
-            }
-        }
-
-        result
-            .sort_unstable_by(|a, b| a.year.cmp(&b.year).then_with(|| b.building.cmp(a.building)));
-        to_json_value(&result)
-    }
-
-    pub fn get_nation_size_statistics(&self) -> JsValue {
-        let stats = &self.query.save().game.nation_size_statistics.ledger;
-
-        let mut exploded: Vec<(CountryTag, u16, i32)> = stats
-            .iter()
-            .flat_map(|x| x.data.iter().map(move |(year, val)| (x.name, *year, *val)))
-            .collect();
-
-        exploded.sort_unstable_by_key(|(x, year, val)| (*year, -*val, *x));
-
-        let mut indices = Vec::with_capacity(400);
-        let mut cur_year = 0;
-        for (i, year) in exploded.iter().map(|(_, year, _)| *year).enumerate() {
-            if cur_year != year {
-                cur_year = year;
-                indices.push(i);
-            }
-        }
-
-        let mut sink = Vec::with_capacity(indices.len() * 25);
-        for window in indices.windows(2) {
-            let year_len = window[1] - window[0];
-            let year_range = &mut exploded[window[0]..window[1]];
-            let cutoff = &mut year_range[..std::cmp::min(25, year_len)];
-
-            // reverse is needed to order the g2plot such that the country with the most provinces is at the top
-            cutoff.reverse();
-            sink.extend_from_slice(cutoff);
-        }
-
-        let mut result = Vec::with_capacity(sink.len());
-        let mapped =
-            sink.drain(..)
-                .map(|(tag, year, count)| NationSizeHistory { tag, year, count });
-
-        result.extend(mapped);
-
-        to_json_value(&result)
     }
 
     pub fn get_nation_idea_groups(&self, payload: TagFilterPayloadRaw) -> Vec<IdeaGroup> {

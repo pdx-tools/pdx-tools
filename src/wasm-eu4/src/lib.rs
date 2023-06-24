@@ -21,7 +21,6 @@ use wasm_bindgen::prelude::*;
 mod log;
 mod savefile;
 mod tokens;
-mod utils;
 
 pub use tokens::*;
 
@@ -29,6 +28,8 @@ pub use tokens::*;
 const COUNTRY_TAG_TYPE: &'static str = r#"export type CountryTag = string;"#;
 #[wasm_bindgen(typescript_custom_section)]
 const EU4_DATE_TYPE: &'static str = r#"export type Eu4Date = string;"#;
+#[wasm_bindgen(typescript_custom_section)]
+const PROVINCE_ID_TYPE: &'static str = r#"export type ProvinceId = number;"#;
 
 /// Looks like bindgen doesn't include generics in the typescript signature
 /// so we create concrete types for all the return types
@@ -208,14 +209,6 @@ impl SaveFile {
         self.0.owned_development_states(payload).into()
     }
 
-    pub fn get_building_history(&self) -> JsValue {
-        self.0.get_building_history()
-    }
-
-    pub fn get_nation_size_statistics(&self) -> JsValue {
-        self.0.get_nation_size_statistics()
-    }
-
     pub fn get_country_rulers(&self, tag: &str) -> RunningMonarchs {
         self.0.get_country_rulers(tag).into()
     }
@@ -328,173 +321,6 @@ impl SaveFile {
 
     pub fn monitoring_data(&self) -> Monitor {
         self.0.monitoring_data()
-    }
-}
-
-#[inline]
-fn memcmp_three(a: &[u8], b: &[u8]) -> bool {
-    a[0] == b[0] && a[1] == b[1] && a[2] == b[2]
-}
-
-#[wasm_bindgen]
-pub fn map_fill_borders(
-    data: &mut [u8],
-    provinces: &[u16],
-    primary: &[u8],
-    secondary: &[u8],
-    fill: &str,
-) {
-    let height: usize = 2048;
-    let width: usize = 5632;
-
-    if fill == "None" {
-        if secondary.len() == primary.len() {
-            for (row_idx, row) in data.chunks_exact_mut(width * 4).enumerate() {
-                for (pixel, x) in row.chunks_exact_mut(4).enumerate() {
-                    let i = row_idx * width + pixel;
-                    let province_id = usize::from(provinces[i]);
-                    let province_offset = province_id * 3;
-                    x[3] = 255;
-                    if (pixel + row_idx) % 6 < 3 {
-                        x[0..3].copy_from_slice(&secondary[province_offset..province_offset + 3]);
-                    } else {
-                        x[0..3].copy_from_slice(&primary[province_offset..province_offset + 3]);
-                    }
-                }
-            }
-        } else {
-            for (i, x) in data.chunks_exact_mut(4).enumerate() {
-                let province_id = usize::from(provinces[i]);
-                let province_offset = province_id * 3;
-                x[0..3].copy_from_slice(&primary[province_offset..province_offset + 3]);
-                x[3] = 255;
-            }
-        }
-    } else if fill == "Provinces" {
-        for y in 0..height - 1 {
-            for x in 0..width {
-                let pixel = y * width + x;
-                let data_offset = pixel * 4;
-
-                let prov_id = usize::from(provinces[pixel]);
-                let prov_down = usize::from(provinces[pixel + width]);
-                let prov_right = usize::from(provinces[pixel + 1]);
-                let mut is_edge = false;
-
-                if prov_id != prov_down {
-                    data[data_offset + 3 + width * 4] = 1;
-                    is_edge = true;
-                }
-
-                if prov_id != prov_right {
-                    data[data_offset + 3 + 4] = 1;
-                    is_edge = true;
-                }
-
-                if is_edge || data[data_offset + 3] == 1 {
-                    data[data_offset] = 30;
-                    data[data_offset + 1] = 30;
-                    data[data_offset + 2] = 30;
-                    data[data_offset + 3] = 255;
-                } else if secondary.len() == primary.len() && (y + x) % 6 < 3 {
-                    let province_offset = prov_id * 3;
-                    data[data_offset] = secondary[province_offset];
-                    data[data_offset + 1] = secondary[province_offset + 1];
-                    data[data_offset + 2] = secondary[province_offset + 2];
-                    data[data_offset + 3] = 255;
-                } else {
-                    let province_offset = prov_id * 3;
-                    data[data_offset] = primary[province_offset];
-                    data[data_offset + 1] = primary[province_offset + 1];
-                    data[data_offset + 2] = primary[province_offset + 2];
-                    data[data_offset + 3] = 255;
-                }
-            }
-        }
-
-        for x in 0..width {
-            let pixel = (height - 1) * width + x;
-            let prov_id = usize::from(provinces[pixel]);
-            let data_offset = pixel * 4;
-            if data[data_offset + 3] == 1 {
-                data[data_offset] = 30;
-                data[data_offset + 1] = 30;
-                data[data_offset + 2] = 30;
-                data[data_offset + 3] = 255;
-            } else {
-                let province_offset = prov_id * 3;
-                data[data_offset] = primary[province_offset];
-                data[data_offset + 1] = primary[province_offset + 1];
-                data[data_offset + 2] = primary[province_offset + 2];
-                data[data_offset + 3] = 255;
-            }
-        }
-    } else if fill == "Countries" {
-        for y in 0..height - 1 {
-            for x in 0..width {
-                let pixel = y * width + x;
-                let data_offset = pixel * 4;
-
-                let prov_id = usize::from(provinces[pixel]);
-                let prov_down = usize::from(provinces[pixel + width]);
-                let prov_right = usize::from(provinces[pixel + 1]);
-                let province_offset = prov_id * 3;
-                let mut is_edge = false;
-
-                if prov_id != prov_down {
-                    let prov_down_offset = prov_down * 3;
-                    if !memcmp_three(&primary[province_offset..], &primary[prov_down_offset..]) {
-                        data[data_offset + 3 + width * 4] = 1;
-                        is_edge = true;
-                    }
-                }
-
-                if prov_id != prov_right {
-                    let prov_right_offset = prov_right * 3;
-                    if !memcmp_three(&primary[province_offset..], &primary[prov_right_offset..]) {
-                        data[data_offset + 3 + 4] = 1;
-                        is_edge = true;
-                    }
-                }
-
-                if is_edge || data[data_offset + 3] == 1 {
-                    data[data_offset] = 30;
-                    data[data_offset + 1] = 30;
-                    data[data_offset + 2] = 30;
-                    data[data_offset + 3] = 255;
-                } else if secondary.len() == primary.len() && (y + x) % 6 < 3 {
-                    let province_offset = prov_id * 3;
-                    data[data_offset] = secondary[province_offset];
-                    data[data_offset + 1] = secondary[province_offset + 1];
-                    data[data_offset + 2] = secondary[province_offset + 2];
-                    data[data_offset + 3] = 255;
-                } else {
-                    let province_offset = prov_id * 3;
-                    data[data_offset] = primary[province_offset];
-                    data[data_offset + 1] = primary[province_offset + 1];
-                    data[data_offset + 2] = primary[province_offset + 2];
-                    data[data_offset + 3] = 255;
-                }
-            }
-        }
-
-        for x in 0..width {
-            let pixel = (height - 1) * width + x;
-            let prov_id = usize::from(provinces[pixel]);
-            let data_offset = pixel * 4;
-            if data[data_offset + 3] == 1 {
-                data[data_offset] = 30;
-                data[data_offset + 1] = 30;
-                data[data_offset + 2] = 30;
-                data[data_offset + 3] = 255;
-            } else {
-                let province_offset = prov_id * 3;
-                data[data_offset] = primary[province_offset];
-                data[data_offset + 1] = primary[province_offset + 1];
-                data[data_offset + 2] = primary[province_offset + 2];
-                data[data_offset + 3] = 255;
-            }
-        }
     }
 }
 
