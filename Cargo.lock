@@ -3002,6 +3002,8 @@ name = "wasm-compress"
 version = "0.1.0"
 dependencies = [
  "js-sys",
+ "serde",
+ "tsify",
  "wasm-bindgen",
  "zip_next",
  "zstd",

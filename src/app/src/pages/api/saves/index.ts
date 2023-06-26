@@ -2,52 +2,62 @@ import { NextApiResponse } from "next";
 import multer from "multer";
 import fs, { createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
-import path from "path";
 import { log } from "@/server-lib/logging";
 import { fileChecksum, parseFile } from "@/server-lib/pool";
 import { uploadFileToS3 } from "@/server-lib/s3";
 import { ValidationError } from "@/server-lib/errors";
 import { NextSessionRequest, withSession } from "@/server-lib/session";
 import { withCoreMiddleware } from "@/server-lib/middlware";
-import { getString } from "@/server-lib/valiation";
 import { deduceUploadType, UploadType } from "@/server-lib/models";
 import { nanoid } from "nanoid";
 import { tmpDir, tmpPath } from "@/server-lib/tmp";
 import { NewSave, db, table } from "@/server-lib/db";
 import { eq, sql } from "drizzle-orm";
+import { z } from "zod";
 
 const upload = multer({ dest: tmpDir });
 
-interface UploadMetadata {
-  aar: string;
-  filename: string;
-  uploadType: UploadType;
-}
+// https://github.com/sindresorhus/filename-reserved-regex/blob/main/index.js
+const filename = () =>
+  z
+    .string()
+    .max(255)
+    .refine((path) => !/[<>:"/\\|?*\u0000-\u001F]/g.test(path), {
+      message: "invalid file path characters",
+    });
 
-const parseMetadata = (data: any): UploadMetadata => {
-  const aar = data?.aar ?? "";
-  if (typeof aar !== "string" || aar.length > 5000) {
-    throw new ValidationError(
-      "expected aar to be a string of less than 5000 characters"
-    );
-  }
+const contentType = () =>
+  z.string().transform((val, ctx) => {
+    const deduced = deduceUploadType(val);
+    if (deduced === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Unrecognized upload type",
+      });
 
-  let filename: string;
-  try {
-    filename = path.parse(data?.filename).base;
-  } catch (e) {
-    throw new ValidationError("unable to parse filename");
-  }
+      return z.NEVER;
+    } else {
+      return deduced;
+    }
+  });
 
-  const contentType = getString(data, "content_type");
+const uploadMetadata = z
+  .object({
+    aar: z
+      .string()
+      .max(5000)
+      .nullish()
+      .transform((x) => x ?? ""),
+    filename: filename(),
+    content_type: contentType(),
+  })
+  .transform(({ content_type, ...rest }) => ({
+    ...rest,
+    uploadType: content_type,
+  }));
 
-  return {
-    aar,
-    filename,
-    uploadType: deduceUploadType(contentType),
-  };
-};
-
+export type UploadMetadaInput = z.input<typeof uploadMetadata>;
+export type UploadMetadata = z.infer<typeof uploadMetadata>;
 export interface SavePostResponse {
   save_id: string;
 }
@@ -78,32 +88,39 @@ const attemptUnlink = async (filepath: string) => {
   }
 };
 
+const headerMetadata = z
+  .object({
+    "pdx-tools-filename": filename().optional(),
+    "rakaly-filename": filename().optional(),
+    "content-type": contentType(),
+  })
+  .transform((val, ctx) => {
+    const filename = val["pdx-tools-filename"] ?? val["rakaly-filename"];
+    if (!filename) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "must provide filename",
+      });
+
+      return z.NEVER;
+    }
+
+    return {
+      aar: "",
+      filename,
+      uploadType: val["content-type"],
+    };
+  });
+
 const uploadRawFile = async (
   req: NextSessionRequest
-): Promise<[string, UploadMetadata] | null> => {
-  const filename =
-    req.headers["pdx-tools-filename"] ?? req.headers["rakaly-filename"];
-  const contentType = req.headers["content-type"];
-
-  // Detect if it is a raw file upload
-  if (typeof filename !== "string" || typeof contentType !== "string") {
-    return null;
-  }
-
-  const uploadType = deduceUploadType(contentType);
+): Promise<[string, UploadMetadata]> => {
+  const headers = headerMetadata.parse(req.headers);
   const sinkPath = await tmpPath();
   try {
     const sink = createWriteStream(sinkPath);
     await pipeline(req, sink);
-
-    return [
-      sinkPath,
-      {
-        aar: "",
-        filename,
-        uploadType,
-      },
-    ];
+    return [sinkPath, headers];
   } catch (ex) {
     attemptUnlink(sinkPath);
     throw ex;
@@ -117,17 +134,12 @@ const handleUpload = async (
   const requestFile = await uploadFile(req, res);
 
   if (!requestFile) {
-    const rawUpload = await uploadRawFile(req);
-    if (rawUpload) {
-      return rawUpload;
-    } else {
-      throw new ValidationError("request file not found");
-    }
+    return await uploadRawFile(req);
   }
 
   try {
     const metadataObj = JSON.parse(req.body?.metadata || "{}");
-    const metadata = parseMetadata(metadataObj);
+    const metadata = uploadMetadata.parse(metadataObj);
     return [requestFile.path, metadata];
   } catch (ex) {
     attemptUnlink(requestFile.path);

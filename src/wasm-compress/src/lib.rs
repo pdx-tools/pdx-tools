@@ -1,4 +1,6 @@
+use serde::Serialize;
 use std::io::{Cursor, Read, Write};
+use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 use zip_next as zip;
 
@@ -58,69 +60,111 @@ where
     }
 }
 
-fn _recompress(
-    data: &[u8],
-    f: Option<&js_sys::Function>,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let reader = Cursor::new(data);
-    if let Ok(mut zip) = zip::ZipArchive::new(reader) {
-        let mut inflated_size: u64 = 0;
-        let mut total_size: usize = 0;
-        for i in 0..zip.len() {
-            let file = zip.by_index(i)?;
-            inflated_size += file.compressed_size();
-            total_size += file.size() as usize;
-        }
-
-        let out: Vec<u8> = Vec::with_capacity((inflated_size + zip.offset()) as usize);
-        let mut writer = Cursor::new(out);
-        writer.write_all(&data[..zip.offset() as usize])?;
-        let mut out_zip = zip::ZipWriter::new(writer);
-
-        let mut current_size = 0;
-        for i in 0..zip.len() {
-            let file = zip.by_index(i)?;
-            let file_size = file.size() as usize;
-            let options = zip::write::FileOptions::default()
-                .compression_level(Some(7))
-                .compression_method(zip::CompressionMethod::Zstd);
-
-            out_zip
-                .start_file(String::from(file.name()), options)
-                .unwrap();
-            let mut reader = ProgressReader::start_at(file, total_size, current_size, f);
-            std::io::copy(&mut reader, &mut out_zip)?;
-            current_size += file_size;
-        }
-
-        Ok(out_zip.finish().unwrap().into_inner())
-    } else {
-        let out = Cursor::new(Vec::with_capacity(data.len() / 10));
-        let inner = Cursor::new(data);
-        let mut reader = ProgressReader::new(inner, data.len(), f);
-        let mut encoder = zstd::Encoder::new(out, 7).unwrap();
-        std::io::copy(&mut reader, &mut encoder)?;
-        Ok(encoder.finish()?.into_inner())
-    }
-}
-
-pub fn recompress(data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    _recompress(data, None)
+#[wasm_bindgen]
+pub fn init_compression(data: Vec<u8>) -> Compression {
+    Compression::new(data)
 }
 
 #[wasm_bindgen]
-pub fn compress(data: &[u8], f: &js_sys::Function) -> Result<Vec<u8>, JsValue> {
-    _recompress(data, Some(f)).map_err(|e| JsValue::from_str(e.to_string().as_str()))
+pub struct Compression {
+    content: Reader,
+}
+
+impl Compression {
+    fn new(data: Vec<u8>) -> Compression {
+        let reader = Cursor::new(&data);
+        if let Ok(zip) = zip::ZipArchive::new(reader) {
+            let offset = zip.offset();
+            let prelude = zip.into_inner().get_ref()[0..offset as usize].to_vec();
+            let zip = zip::ZipArchive::new(Cursor::new(data)).unwrap();
+            Compression {
+                content: Reader::Zip { zip, prelude },
+            }
+        } else {
+            Compression {
+                content: Reader::Data(data),
+            }
+        }
+    }
+
+    fn _compress_cb(
+        self,
+        f: Option<js_sys::Function>,
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        match self.content {
+            Reader::Zip { mut zip, prelude } => {
+                let mut inflated_size: u64 = 0;
+                let mut total_size: usize = 0;
+                for i in 0..zip.len() {
+                    let file = zip.by_index(i)?;
+                    inflated_size += file.compressed_size();
+                    total_size += file.size() as usize;
+                }
+
+                let out: Vec<u8> = Vec::with_capacity((inflated_size + zip.offset()) as usize);
+                let mut writer = Cursor::new(out);
+                writer.write_all(&prelude)?;
+                let mut out_zip = zip::ZipWriter::new(writer);
+
+                let mut current_size = 0;
+                for i in 0..zip.len() {
+                    let file = zip.by_index(i)?;
+                    let file_size = file.size() as usize;
+                    let options = zip::write::FileOptions::default()
+                        .compression_level(Some(7))
+                        .compression_method(zip::CompressionMethod::Zstd);
+
+                    out_zip.start_file(String::from(file.name()), options)?;
+                    let mut reader =
+                        ProgressReader::start_at(file, total_size, current_size, f.as_ref());
+                    std::io::copy(&mut reader, &mut out_zip)?;
+                    current_size += file_size;
+                }
+
+                Ok(out_zip.finish()?.into_inner())
+            }
+            Reader::Data(data) => {
+                let out = Cursor::new(Vec::with_capacity(data.len() / 10));
+                let inner = Cursor::new(data.as_slice());
+                let mut reader = ProgressReader::new(inner, data.len(), f.as_ref());
+                let mut encoder = zstd::Encoder::new(out, 7).unwrap();
+                std::io::copy(&mut reader, &mut encoder)?;
+                Ok(encoder.finish()?.into_inner())
+            }
+        }
+    }
 }
 
 #[wasm_bindgen]
-pub fn recompressed_meta(data: &[u8]) -> String {
-    let reader = Cursor::new(data);
-    if zip::ZipArchive::new(reader).is_ok() {
-        String::from(r#"{"content_type":"application/zip"}"#)
-    } else {
-        String::from(r#"{"content_type":"application/zstd"}"#)
+impl Compression {
+    pub fn content_type(&self) -> ContentType {
+        match &self.content {
+            Reader::Zip { .. } => ContentType::Zip,
+            Reader::Data(_) => ContentType::Zstd,
+        }
     }
+
+    pub fn compress_cb(self, f: Option<js_sys::Function>) -> Result<Vec<u8>, JsValue> {
+        self._compress_cb(f)
+            .map_err(|err| JsValue::from(err.to_string()))
+    }
+}
+
+enum Reader {
+    Zip {
+        zip: zip::ZipArchive<Cursor<Vec<u8>>>,
+        prelude: Vec<u8>,
+    },
+    Data(Vec<u8>),
+}
+
+#[derive(Tsify, Serialize)]
+#[tsify(into_wasm_abi)]
+pub enum ContentType {
+    #[serde(rename = "application/zip")]
+    Zip,
+    #[serde(rename = "application/zstd")]
+    Zstd,
 }
 
 #[wasm_bindgen]

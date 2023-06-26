@@ -1,13 +1,13 @@
 import { ValidationError } from "./errors";
 
 export type UploadType = "zip" | "zstd";
-export function deduceUploadType(type: string): UploadType {
+export function deduceUploadType(type: string): UploadType | null {
   if (type.toLowerCase() === "application/zip") {
     return "zip";
   } else if (type.toLowerCase() === "application/zstd") {
     return "zstd";
   } else {
-    throw new ValidationError("unknown content and encoding combination");
+    return null;
   }
 }
 

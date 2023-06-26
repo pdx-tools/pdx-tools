@@ -1,6 +1,7 @@
 import { toErrorWithMessage } from "@/lib/getErrorMessage";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import { ValidationError } from "./errors";
+import { ZodError } from "zod";
 
 export interface LogMessage {
   [x: string]: any;
@@ -73,6 +74,11 @@ export const withLogger = (handler: NextApiHandler): NextApiHandler => {
 
       if (err.name === ValidationError.name) {
         res.status(400).json(obj);
+      } else if (err instanceof ZodError) {
+        res.status(400).json({
+          name: "ValidationError",
+          msg: JSON.stringify(err.flatten().fieldErrors),
+        });
       } else {
         log.exception(err, { msg: "unexpected exception" });
         res.status(500).json(obj);

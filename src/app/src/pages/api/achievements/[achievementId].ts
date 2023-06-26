@@ -3,17 +3,18 @@ import { ValidationError } from "@/server-lib/errors";
 import { getAchievement } from "@/server-lib/pool";
 import { AchievementView } from "@/services/appApi";
 import { withCoreMiddleware } from "@/server-lib/middlware";
-import { getNumber } from "@/server-lib/valiation";
 import { db, table, toApiSave } from "@/server-lib/db";
 import { sql, eq, asc, inArray } from "drizzle-orm";
+import { z } from "zod";
 
+const paramSchema = z.object({ achievementId: z.coerce.number() });
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "GET") {
     res.status(405).json({ msg: "method not allowed" });
     return;
   }
 
-  const achieveId = getNumber(req.query, "achievementId");
+  const achieveId = paramSchema.parse(req.query).achievementId;
   const achievement = getAchievement(achieveId);
   if (achievement === undefined) {
     throw new ValidationError("achievement not found");

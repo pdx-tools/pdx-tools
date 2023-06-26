@@ -1,23 +1,24 @@
 import dayjs from "dayjs";
 import { NextApiRequest, NextApiResponse } from "next";
 import { withCoreMiddleware } from "@/server-lib/middlware";
-import { getString } from "@/server-lib/valiation";
 import { SaveFile, UserSaves } from "@/services/appApi";
 import { db, table, toApiSaveUser } from "@/server-lib/db";
 import { eq, desc } from "drizzle-orm";
+import { z } from "zod";
 
+const paramSchema = z.object({ userId: z.string() });
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "GET") {
     res.status(405).json({ msg: "method not allowed" });
     return;
   }
 
-  const userId = getString(req.query, "userId");
+  const params = paramSchema.parse(req.query);
   const usersSaves = await db
     .select()
     .from(table.saves)
     .rightJoin(table.users, eq(table.users.userId, table.saves.userId))
-    .where(eq(table.users.userId, userId))
+    .where(eq(table.users.userId, params.userId))
     .orderBy(desc(table.saves.createdOn));
 
   const user = usersSaves[0]?.users;

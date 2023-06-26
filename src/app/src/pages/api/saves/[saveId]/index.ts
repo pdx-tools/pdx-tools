@@ -3,7 +3,6 @@ import { ValidationError } from "@/server-lib/errors";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { deleteFile } from "@/server-lib/s3";
 import { NextSessionRequest, withSession } from "@/server-lib/session";
-import { getString } from "@/server-lib/valiation";
 import { Save, User, db, table, toApiSaveUser } from "@/server-lib/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -13,15 +12,16 @@ interface SaveRequest {
   user: User;
 }
 
+const saveSchema = z.object({ saveId: z.string() });
 function withSave<R extends NextApiRequest, T extends R & SaveRequest>(
   handler: (req: T, res: NextApiResponse) => Promise<void> | void
 ) {
   return async (req: R, res: NextApiResponse) => {
-    const saveId = getString(req.query, "saveId");
+    const params = saveSchema.parse(req.query);
     const saves = await db
       .select()
       .from(table.saves)
-      .where(eq(table.saves.id, saveId))
+      .where(eq(table.saves.id, params.saveId))
       .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
     const save = saves[0];
     if (save === undefined) {

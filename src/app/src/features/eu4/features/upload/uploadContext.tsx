@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { useCompression } from "@/features/compress";
-import { SavePostResponse } from "@/pages/api/saves";
+import type { SavePostResponse, UploadMetadaInput } from "@/pages/api/saves";
 import { getEu4Worker } from "../../worker";
 import { useSaveFilename } from "../../store";
 import { invalidateSaves } from "@/services/appApi";
@@ -152,9 +152,8 @@ export const useFileUpload = () => {
       const metadata = JSON.stringify({
         aar: values.aar,
         filename,
-        content_encoding: fileData.contentEncoding,
         content_type: fileData.contentType,
-      });
+      } satisfies UploadMetadaInput);
 
       data.append("file", blob);
       data.append("metadata", metadata);
@@ -162,7 +161,6 @@ export const useFileUpload = () => {
       const request = new XMLHttpRequest();
       uploadRequestRef.current = request;
       request.open("POST", "/api/saves");
-      request.setRequestHeader("Content-Encoding", fileData.contentEncoding);
 
       request.upload.addEventListener("progress", function (e) {
         const percent_complete = (e.loaded / e.total) * 100;
