@@ -339,7 +339,3 @@ export function eu4GetMapTooltip(
 ): QuickTipPayload | null {
   return wasm.save.map_quick_tip(province, payload, date) ?? null;
 }
-
-export async function eu4SaveHash(): Promise<string> {
-  return wasm.module.save_checksum(await wasm.viewData());
-}
