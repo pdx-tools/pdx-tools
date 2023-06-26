@@ -386,11 +386,6 @@ pub fn game_save(
 }
 
 #[wasm_bindgen]
-pub fn save_checksum(data: &[u8]) -> String {
-    eu4game::shared::save_checksum(data)
-}
-
-#[wasm_bindgen]
 pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
     let mut zip_sink = Vec::new();
     Eu4File::from_slice(data)
