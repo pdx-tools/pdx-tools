@@ -23,6 +23,7 @@ release:
 
   just build
   just publish-frontend
+  just publish-api
 
   if [[ $(grep -c pdx-tools-prod ~/.ssh/config || echo "0") -gt 0 ]]; then
     just publish-backend
@@ -72,7 +73,6 @@ publish-api:
 
 publish-backend:
   docker image save ghcr.io/pdx-tools/pdx-tools:nightly | gzip | ssh pdx-tools-prod 'docker load && /opt/pdx-tools/docker-compose.sh up -d api'
-  just publish-api
 
 wrangler +cmd:
   cd src/app && wrangler "$@"
