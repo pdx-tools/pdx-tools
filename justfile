@@ -118,7 +118,7 @@ dev-app: prep-frontend prep-dev-app
   cat src/app/migrations/*.sql | just dev-environment exec -u postgres --no-TTY db psql
 
   npx --yes concurrently@latest \
-    "PORT=3001 src/app/node_modules/.bin/next dev src/app" \
+    "cd src/app && PORT=3001 node_modules/.bin/next dev" \
     "cd src/docs && npm run docusaurus -- start --no-open"
 
 test-app *cmd: prep-frontend prep-test-app
@@ -172,7 +172,7 @@ build-wasm: build-wasm-dev
   wait
 
 build-wasm-dev:
-  wasm-pack build -t web src/wasm-app
+  wasm-pack build -t web src/wasm-app --out-dir {{justfile_directory()}}/src/app/src/server-lib/wasm
   wasm-pack build -t web src/wasm-compress
   wasm-pack build -t web src/wasm-ck3
   wasm-pack build -t web src/wasm-eu4

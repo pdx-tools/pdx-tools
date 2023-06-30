@@ -6,15 +6,15 @@ import {
   eu4_days_to_date,
   latest_eu4_minor_patch,
   type Achievement,
-} from "../../../wasm-app/pkg/wasm_app";
+} from "./wasm/wasm_app";
 
 function compileWasm() {
   // https://vercel.com/docs/concepts/functions/serverless-functions/runtimes#including-additional-files
   const file = path.join(
     process.cwd(),
     "src",
-    "wasm-app",
-    "pkg",
+    "server-lib",
+    "wasm",
     "wasm_app_bg.wasm"
   );
   initSync(fs.readFileSync(file));
