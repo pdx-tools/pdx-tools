@@ -55,13 +55,12 @@ fn main() {
         std::fs::copy(p, out_path).unwrap();
     }
 
-    let _ = writeln!(embedded_file, "impl<'a> crate::game::Game<'a> {{");
     let _ = writeln!(embedded_file, r#"#[cfg(feature = "embedded")]"#);
     let _ = writeln!(
         embedded_file,
-        "pub fn new(version: &eu4save::models::SavegameVersion) -> Self {{"
+        "pub fn game_data(minor_version: u16) -> &'static [u8] {{"
     );
-    let _ = writeln!(embedded_file, "let data: &[u8] = match version.second {{");
+    let _ = writeln!(embedded_file, "match minor_version {{");
 
     for (i, (major, minor)) in versions.iter().enumerate() {
         let version = format!("{}.{}", major, minor);
@@ -80,8 +79,6 @@ fn main() {
         );
     }
 
-    let _ = writeln!(embedded_file, "}};");
-    let _ = writeln!(embedded_file, "Self::from_flatbuffer(data)");
     let _ = writeln!(embedded_file, "}}");
     let _ = writeln!(embedded_file, "}}");
 }

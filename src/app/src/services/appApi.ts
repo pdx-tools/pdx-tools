@@ -1,25 +1,22 @@
 import { epochOf } from "@/lib/dates";
 import { fetchOk, fetchOkJson } from "@/lib/fetch";
+import { GameDifficulty, SavePatch } from "@/server-lib/save-parsing-types";
 import {
   QueryClient,
   useInfiniteQuery,
   useMutation,
   useQuery,
 } from "@tanstack/react-query";
+export type { GameDifficulty };
 
-export type SaveEncoding = "text" | "textzip" | "binzip";
+export type SaveEncoding = "text" | "textzip" | "binzip" | "binary";
 
 export type WeightedScore = {
   days: number;
   date: string;
 };
 
-export type GameVersion = {
-  first: number;
-  second: number;
-  third: number;
-  fourth: number;
-};
+export type GameVersion = SavePatch;
 
 export type SaveFile = {
   id: string;
@@ -45,13 +42,6 @@ export type SaveFile = {
   version: GameVersion;
   encoding: SaveEncoding;
 };
-
-export type GameDifficulty =
-  | "VeryEasy"
-  | "Easy"
-  | "Normal"
-  | "Hard"
-  | "VeryHard";
 
 export type UserSaves = {
   saves: SaveFile[];

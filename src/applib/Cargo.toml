@@ -11,7 +11,7 @@ libdeflate = ["eu4save/libdeflate", "eu4game/libdeflate"]
 
 [dependencies]
 serde = {version = "1", features = ["derive"]}
-memmap = "0.7"
-eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["serialize", "zstd"] }
+eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["serialize", "zstd", "specta"] }
 eu4game = { path = "../eu4game", default-features = false, features = ["embedded"] }
 thiserror = "1"
+specta = { version = "1.0.4", features = ["typescript", "export"] }

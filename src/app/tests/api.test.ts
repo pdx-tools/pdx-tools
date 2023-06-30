@@ -1,6 +1,5 @@
-import { existsSync, writeFileSync, promises } from "fs";
+import { promises } from "fs";
 import { BUCKET, deleteFile, s3Fetch, s3FetchOk } from "@/server-lib/s3";
-import * as pool from "@/server-lib/pool";
 import { SavePostResponse } from "@/pages/api/saves";
 import {
   AchievementView,
@@ -9,8 +8,8 @@ import {
   SaveFile,
   UserSaves,
 } from "@/services/appApi";
-import { tmpPath } from "@/server-lib/tmp";
 import { dbDisconnect, db, table } from "@/server-lib/db";
+import { parseSave } from "@/server-lib/save-parser";
 globalThis.crypto = require("node:crypto").webcrypto;
 
 jest.setTimeout(60000);
@@ -56,8 +55,7 @@ class HttpClient {
   private constructor(private cookies: string) {}
 
   async uploadSaveHeaders(filepath: string, headers: RequestInit["headers"]) {
-    await fetchEu4Save(filepath);
-    const data = await promises.readFile(eu4SaveLocation(filepath));
+    const data = await fetchEu4Save(filepath);
     const file = new Blob([data], { type: "application/octet-stream" });
 
     const resp = await fetch(pdxUrl("/api/saves"), {
@@ -197,9 +195,9 @@ class HttpClient {
   }
 }
 
-async function parseFile(path: string): Promise<pool.ParsedFile> {
-  await fetchEu4Save(path);
-  const data = await pool.parseFile(eu4SaveLocation(path));
+async function parseFile(path: string) {
+  const fileData = await fetchEu4Save(path);
+  const data = await parseSave(fileData);
 
   if (data.kind !== "Parsed") {
     throw new Error("unable to parse");
@@ -215,15 +213,18 @@ function eu4SaveLocation(save: string) {
 async function fetchEu4Save(save: string) {
   const fp = eu4SaveLocation(save);
 
-  if (!existsSync(fp)) {
+  try {
+    return promises.readFile(fp);
+  } catch {
     const resp = await fetch(
       `https://eu4saves-test-cases.s3.us-west-002.backblazeb2.com/${save}`
     );
     if (!resp.ok) {
       throw new Error(`unable to retrieve: ${save}`);
     }
-    let buf = await resp.arrayBuffer();
-    writeFileSync(fp, Buffer.from(buf));
+    const buf = Buffer.from(await resp.arrayBuffer());
+    await promises.writeFile(fp, buf);
+    return buf;
   }
 }
 
@@ -244,11 +245,8 @@ test("same campaign", async () => {
   expect(mid.campaign_id).toBe(end.campaign_id);
 
   // Sanity check that these are separate files
-  const startHash = await pool.fileChecksum(eu4SaveLocation(startPath));
-  const midHash = await pool.fileChecksum(eu4SaveLocation(midPath));
-  const endHash = await pool.fileChecksum(eu4SaveLocation(endPath));
-  expect(startHash).not.toBe(midHash);
-  expect(midHash).not.toBe(endHash);
+  expect(start.hash).not.toBe(mid.hash);
+  expect(mid.hash).not.toBe(end.hash);
 
   // Now upload the halfway save. We should still be able to upload the later one
   const midUpload = await client.uploadSave(midPath);
@@ -405,11 +403,8 @@ test("plain saves", async () => {
     content_type: "application/zstd",
   });
   const fileReq = await client.getReq(`/api/saves/${upload.save_id}/file`);
-  const data = await fileReq.arrayBuffer();
-  const fp = await tmpPath();
-  await promises.writeFile(fp, Buffer.from(data));
-  const save = await pool.parseFile(fp);
-  expect(save.kind).not.toBe("InvalidPath");
+  const save = await parseSave(await fileReq.arrayBuffer());
+  expect(save.kind).toBe("Parsed");
   if (save.kind == "Parsed") {
     expect(save.encoding).toBe("text");
   }

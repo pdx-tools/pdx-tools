@@ -1,10 +1,11 @@
 import crypto from "crypto";
 import dayjs from "dayjs";
 import { GameDifficulty, SaveFile } from "@/services/appApi";
-import { eu4DaysToDate, ParsedFile } from "../pool";
+import { eu4DaysToDate } from "../game";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { Save, User, saves, users } from "./schema";
+import { ParsedFile } from "../save-parser";
 export {
   type User,
   type Save,
@@ -83,7 +84,7 @@ export const toApiSaveUser = (save: Save, user: User): SaveFile => {
   };
 };
 
-export const fromApiSave = (save: Partial<ParsedFile>): Partial<Save> => {
+export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
   return {
     ...(save.date && { date: save.date }),
     ...(save.days && { days: save.days }),
@@ -99,13 +100,16 @@ export const fromApiSave = (save: Partial<ParsedFile>): Partial<Save> => {
     ...(save.is_ironman && { ironman: save.is_ironman }),
     ...(save.is_multiplayer && { multiplayer: save.is_multiplayer }),
     ...(save.achievements && { achieveIds: save.achievements }),
-    ...(save.game_difficulty && { gameDifficulty: save.game_difficulty }),
+    ...(save.game_difficulty && {
+      gameDifficulty: toDbDifficulty(save.game_difficulty),
+    }),
     ...(save.patch?.first && { saveVersionFirst: save.patch.first }),
     ...(save.patch?.second && { saveVersionFirst: save.patch.second }),
     ...(save.patch?.third && { saveVersionFirst: save.patch.third }),
     ...(save.patch?.fourth && { saveVersionFirst: save.patch.fourth }),
     ...(save.checksum && { checksum: save.checksum }),
     ...(save.encoding && { encoding: save.encoding }),
+    ...(save.hash && { hash: save.hash }),
   };
 };
 

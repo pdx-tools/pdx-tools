@@ -4,7 +4,7 @@ import { HtmlHead } from "@/components/head";
 import { Root, WebPage } from "@/components/layout";
 import { Achievement } from "@/services/appApi";
 import { AchievementsPage } from "@/features/eu4/AchievementsPage";
-import { loadAchievements } from "@/server-lib/pool";
+import { loadAchievements } from "@/server-lib/game";
 
 interface StaticAchievements {
   achievements?: Achievement[];

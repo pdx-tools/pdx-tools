@@ -3,17 +3,17 @@ import multer from "multer";
 import fs, { createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import { log } from "@/server-lib/logging";
-import { fileChecksum, parseFile } from "@/server-lib/pool";
 import { uploadFileToS3 } from "@/server-lib/s3";
 import { ValidationError } from "@/server-lib/errors";
 import { NextSessionRequest, withSession } from "@/server-lib/session";
 import { withCoreMiddleware } from "@/server-lib/middlware";
-import { deduceUploadType, UploadType } from "@/server-lib/models";
+import { deduceUploadType } from "@/server-lib/models";
 import { nanoid } from "nanoid";
 import { tmpDir, tmpPath } from "@/server-lib/tmp";
-import { NewSave, db, table } from "@/server-lib/db";
+import { NewSave, db, table, toDbDifficulty } from "@/server-lib/db";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { parseSave } from "@/server-lib/save-parser";
 
 const upload = multer({ dest: tmpDir });
 
@@ -153,20 +153,20 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
 
   try {
     const saveId = nanoid();
-    const checksum = await fileChecksum(savePath);
+    const data = await fs.promises.readFile(savePath);
+    const out = await parseSave(data);
+
+    if (out.kind === "InvalidPatch") {
+      throw new ValidationError(`unsupported patch: ${out.patch_shorthand}`);
+    }
 
     const existingSaves = await db
       .select({ count: sql<number>`count(*)` })
       .from(table.saves)
-      .where(eq(table.saves.hash, checksum));
+      .where(eq(table.saves.hash, out.hash));
 
     if (existingSaves[0].count > 0) {
       throw new ValidationError("save already exists");
-    }
-
-    const out = await parseFile(savePath);
-    if (out.kind === "InvalidPatch") {
-      throw new ValidationError(`unsupported patch: ${out.patch_shorthand}`);
     }
 
     await uploadFileToS3(savePath, saveId, metadata.uploadType);
@@ -176,7 +176,7 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
       userId: uid,
       encoding: out.encoding,
       filename: metadata.filename,
-      hash: checksum,
+      hash: out.hash,
       date: out.date,
       days: out.days,
       scoreDays: out.score_days,
@@ -197,7 +197,7 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
       players: out.player_names,
       playerStartTag: out.player_start_tag,
       playerStartTagName: out.player_start_tag_name,
-      gameDifficulty: out.game_difficulty,
+      gameDifficulty: toDbDifficulty(out.game_difficulty),
       aar: metadata.aar,
       playthroughId: out.playthrough_id,
     };

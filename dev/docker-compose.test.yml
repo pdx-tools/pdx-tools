@@ -12,6 +12,13 @@ services:
       - POSTGRES_PASSWORD=${DATABASE_ADMIN_PASSWORD}
       - DATABASE_BACKUP_PASSWORD=${DATABASE_BACKUP_PASSWORD}
 
+  api:
+    build:
+      dockerfile: ../../../dev/api.dockerfile
+      context: ../target/x86_64-unknown-linux-musl/release
+    ports:
+      - "${PARSE_API_PORT}:8080"
+
   s3:
     image: minio/minio@sha256:c92f04149c93010eefc4e4581b18fb4b9ea46af8e9f658291c377388b7691828
     environment:

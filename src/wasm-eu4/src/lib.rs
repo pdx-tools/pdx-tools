@@ -10,8 +10,7 @@ use savefile::{
     IdeaGroup, LocalizedCountryExpense, LocalizedCountryIncome, LocalizedLedger, LocalizedTag,
     MapCursorPayload, MapPayload, MapPayloadKind, MapQuickTipPayload, Monitor,
     OwnedDevelopmentStates, PlayerHistory, ProvinceDetails, Reparse, RootTree, RunningMonarch,
-    SaveEncoding, SaveFileImpl, SaveMode, SingleCountryWarCasualties, TagFilterPayloadRaw, War,
-    WarInfo,
+    SaveFileImpl, SaveMode, SingleCountryWarCasualties, TagFilterPayloadRaw, War, WarInfo,
 };
 use serde::Serialize;
 use std::collections::HashMap;
@@ -162,7 +161,7 @@ impl SaveFile {
         self.0.playthrough_id()
     }
 
-    pub fn save_encoding(&self) -> SaveEncoding {
+    pub fn save_encoding(&self) -> Encoding {
         self.0.save_encoding()
     }
 
