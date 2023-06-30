@@ -14,6 +14,7 @@ import { NewSave, db, table, toDbDifficulty } from "@/server-lib/db";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { parseSave } from "@/server-lib/save-parser";
+import { timeit } from "@/lib/timeit";
 
 const upload = multer({ dest: tmpDir });
 
@@ -154,7 +155,14 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
   try {
     const saveId = nanoid();
     const data = await fs.promises.readFile(savePath);
-    const out = await parseSave(data);
+
+    const { data: out, elapsedMs } = await timeit(() => parseSave(data));
+    log.info({
+      key: saveId,
+      user: uid,
+      msg: "parsed file",
+      elapsedMs: elapsedMs.toFixed(2),
+    });
 
     if (out.kind === "InvalidPatch") {
       throw new ValidationError(`unsupported patch: ${out.patch_shorthand}`);
