@@ -160,17 +160,16 @@ export const pdxKeys = {
 export const useProfileQuery = () => {
   return useQuery({
     queryKey: pdxKeys.profile(),
-    queryFn: () =>
-      fetchOkJson("/api/profile").then((x) => x as ProfileResponse),
+    queryFn: () => fetchOkJson<ProfileResponse>("/api/profile"),
   });
 };
 
 export const useLogoutMutation = () => {
   return useMutation({
     mutationFn: () =>
-      fetchOkJson("/api/logout", {
+      fetchOkJson<ProfileResponse>("/api/logout", {
         method: "POST",
-      }).then((x) => x as ProfileResponse),
+      }),
     onSuccess: (data) => {
       queryClient.setQueryData(pdxKeys.profile(), data);
     },
@@ -181,7 +180,7 @@ export const useNewestSavesQuery = () => {
   return useInfiniteQuery({
     queryKey: pdxKeys.newSaves(),
     queryFn: ({ pageParam }) =>
-      fetchOkJson(
+      fetchOkJson<{ saves: SaveFile[]; cursor: string | undefined }>(
         "/api/new?" +
           new URLSearchParams(
             pageParam
@@ -190,7 +189,7 @@ export const useNewestSavesQuery = () => {
                 }
               : {}
           )
-      ).then((x) => x as { saves: SaveFile[]; cursor: string | undefined }),
+      ),
     getNextPageParam: (lastPage, _pages) => lastPage.cursor,
     onSuccess: (data) =>
       data.pages.forEach((page) =>
@@ -216,16 +215,14 @@ export const useSaveQuery = (id: string, opts?: Partial<SaveQueryProps>) => {
 export const useAchievementQuery = (id: string) => {
   return useQuery({
     queryKey: pdxKeys.achievement(id),
-    queryFn: () =>
-      fetchOkJson(`/api/achievements/${id}`).then((x) => x as AchievementView),
+    queryFn: () => fetchOkJson<AchievementView>(`/api/achievements/${id}`),
   });
 };
 
 export const useUserQuery = (userId: string) => {
   return useQuery({
     queryKey: pdxKeys.user(userId),
-    queryFn: () =>
-      fetchOkJson(`/api/users/${userId}`).then((x) => x as UserSaves),
+    queryFn: () => fetchOkJson<UserSaves>(`/api/users/${userId}`),
     onSuccess: (data) =>
       data.saves.forEach((x) =>
         queryClient.setQueryData(pdxKeys.save(x.id), x)
@@ -248,8 +245,7 @@ export const useUserSkanderbegSaves = () => {
       : undefined;
   return useQuery({
     queryKey: pdxKeys.skanderbegUser(userId ?? ""),
-    queryFn: () =>
-      fetchOkJson(`/api/skan/user`).then((x) => x as SkanUserSaves[]),
+    queryFn: () => fetchOkJson<SkanUserSaves[]>(`/api/skan/user`),
     enabled: !!userId,
     select: (data) => {
       const saves = data.map((obj) => ({
@@ -278,9 +274,7 @@ export const useSaveDeletion = (id: string) => {
 export const useNewApiKeyRequest = (onSuccess: (key: string) => void) => {
   return useMutation({
     mutationFn: () =>
-      fetchOkJson(`/api/key`, { method: "POST" }).then(
-        (x) => x as NewKeyResponse
-      ),
+      fetchOkJson<NewKeyResponse>(`/api/key`, { method: "POST" }),
     onSuccess: (data) => onSuccess(data.api_key),
   });
 };
