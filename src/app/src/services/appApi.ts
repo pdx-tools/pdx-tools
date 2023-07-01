@@ -1,47 +1,18 @@
 import { epochOf } from "@/lib/dates";
 import { fetchOk, fetchOkJson } from "@/lib/fetch";
-import { GameDifficulty, SavePatch } from "@/server-lib/save-parsing-types";
 import {
   QueryClient,
   useInfiniteQuery,
   useMutation,
   useQuery,
 } from "@tanstack/react-query";
-export type { GameDifficulty };
+import type { SaveFile } from "@/server-lib/db";
+import type { Achievement, Difficulty } from "@/server-lib/wasm/wasm_app";
+export type { Achievement, SaveFile, Difficulty as AchievementDifficulty };
 
-export type SaveEncoding = "text" | "textzip" | "binzip" | "binary";
-
-export type WeightedScore = {
-  days: number;
-  date: string;
-};
-
-export type GameVersion = SavePatch;
-
-export type SaveFile = {
-  id: string;
-  filename: string;
-  upload_time: string;
-  user_name: string;
-  user_id: string;
-  date: string;
-  days: number;
-  player: string;
-  displayed_country_name: string;
-  player_start_tag: string | null;
-  player_start_tag_name: string | null;
-  campaign_id: string;
-  ironman: boolean;
-  multiplayer: boolean;
-  patch: string;
-  dlc: number[];
-  achievements: number[];
-  weighted_score: WeightedScore | null;
-  game_difficulty: GameDifficulty;
-  aar: string | undefined | null;
-  version: GameVersion;
-  encoding: SaveEncoding;
-};
+export type GameDifficulty = SaveFile["game_difficulty"];
+export type SaveEncoding = SaveFile["encoding"];
+export type WeightedScore = SaveFile["weighted_score"];
 
 export type UserSaves = {
   saves: SaveFile[];
@@ -74,21 +45,6 @@ export type ProfileResponse =
 export type ApiAchievementsResponse = {
   achievements: Achievement[];
   saves: SaveFile[];
-};
-
-export type AchievementDifficulty =
-  | "VeryEasy"
-  | "Easy"
-  | "Medium"
-  | "Hard"
-  | "VeryHard"
-  | "Insane";
-
-export type Achievement = {
-  id: number;
-  name: string;
-  description: string;
-  difficulty: AchievementDifficulty;
 };
 
 export type AchievementView = {

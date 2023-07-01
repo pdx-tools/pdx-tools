@@ -1,6 +1,5 @@
 import crypto from "crypto";
 import dayjs from "dayjs";
-import { GameDifficulty, SaveFile } from "@/services/appApi";
 import { eu4DaysToDate } from "../game";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -14,38 +13,8 @@ export {
   type NewSave,
 } from "./schema";
 
-export const toApiSave = (save: { saves: Save; users: User }): SaveFile => {
-  return toApiSaveUser(save.saves, save.users);
-};
-
-function reverseRecord<T extends PropertyKey, U extends PropertyKey>(
-  input: Record<T, U>
-) {
-  return Object.fromEntries(
-    Object.entries(input).map(([key, value]) => [value, key])
-  ) as Record<U, T>;
-}
-
-const difficultyTable = {
-  VeryEasy: "very_easy",
-  Easy: "easy",
-  Normal: "normal",
-  Hard: "hard",
-  VeryHard: "very_hard",
-} as const;
-
-const dbDifficultyTable = reverseRecord(difficultyTable);
-
-export const dbDifficulty = (dbDiff: Save["gameDifficulty"]): GameDifficulty =>
-  dbDifficultyTable[dbDiff];
-export const toDbDifficulty = (diff: GameDifficulty): Save["gameDifficulty"] =>
-  difficultyTable[diff];
-
-export const apiKeyAtRest = (key: crypto.BinaryLike) => {
-  return crypto.createHash("sha256").update(key).digest().toString("base64url");
-};
-
-export const toApiSaveUser = (save: Save, user: User): SaveFile => {
+export type SaveFile = ReturnType<typeof toApiSaveUser>;
+export const toApiSaveUser = (save: Save, user: User) => {
   const weightedScore = save.scoreDays
     ? {
         days: save.scoreDays,
@@ -82,6 +51,37 @@ export const toApiSaveUser = (save: Save, user: User): SaveFile => {
     },
     encoding: save.encoding,
   };
+};
+
+export const toApiSave = (save: { saves: Save; users: User }): SaveFile => {
+  return toApiSaveUser(save.saves, save.users);
+};
+
+function reverseRecord<T extends PropertyKey, U extends PropertyKey>(
+  input: Record<T, U>
+) {
+  return Object.fromEntries(
+    Object.entries(input).map(([key, value]) => [value, key])
+  ) as Record<U, T>;
+}
+
+const difficultyTable = {
+  VeryEasy: "very_easy",
+  Easy: "easy",
+  Normal: "normal",
+  Hard: "hard",
+  VeryHard: "very_hard",
+} as const;
+
+const dbDifficultyTable = reverseRecord(difficultyTable);
+
+export const dbDifficulty = (dbDiff: Save["gameDifficulty"]) =>
+  dbDifficultyTable[dbDiff];
+export const toDbDifficulty = (diff: SaveFile["game_difficulty"]) =>
+  difficultyTable[diff];
+
+export const apiKeyAtRest = (key: crypto.BinaryLike) => {
+  return crypto.createHash("sha256").update(key).digest().toString("base64url");
 };
 
 export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
