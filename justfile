@@ -132,10 +132,12 @@ test-app *cmd: prep-frontend prep-test-app
   trap 'rm -rf -- "$APP_OUT.stdout" "$APP_OUT.stderr"' EXIT
 
   # TODO: I need the naked `next` else killing pid doesn't kill next 
-  src/app/node_modules/.bin/next dev src/app > "$APP_OUT.stdout" 2> "$APP_OUT.stderr" &
+  cd src/app
+  ./node_modules/.bin/next dev > "$APP_OUT.stdout" 2> "$APP_OUT.stderr" &
   APP_PID=$!
   trap 'kill "$APP_PID"' EXIT
 
+  cd {{justfile_directory()}}
   . src/app/.env.test
   . dev/.env.test
   cat src/app/migrations/*.sql | just test-environment exec -u postgres --no-TTY db psql
