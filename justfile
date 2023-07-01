@@ -105,10 +105,9 @@ cross *cmd:
     # If we're within the dev container then we need to use special cross within
     # docker instructions, and workaround how the devcontainer uses "host"
     # networking so `hostname` doesn't return the name of the container.
-    HOSTNAME=$(docker ps | grep vsc-pdx-tools | cut -d' ' -f 1) cross build --target x86_64-unknown-linux-musl "$@" 
-  else
-    cargo build "$@"
+    export HOSTNAME=$(docker ps | grep vsc-pdx-tools | cut -d' ' -f 1)
   fi
+  cross build --target x86_64-unknown-linux-musl "$@"
 
 dev-app: prep-frontend prep-dev-app
   #!/usr/bin/env bash
