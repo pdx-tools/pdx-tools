@@ -214,7 +214,7 @@ async function fetchEu4Save(save: string) {
   const fp = eu4SaveLocation(save);
 
   try {
-    return promises.readFile(fp);
+    return await promises.readFile(fp);
   } catch {
     const resp = await fetch(
       `https://eu4saves-test-cases.s3.us-west-002.backblazeb2.com/${save}`
