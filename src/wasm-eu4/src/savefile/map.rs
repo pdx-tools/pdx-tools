@@ -1540,10 +1540,12 @@ impl BattleTimelapse {
             country_colors[offset..offset + 4].copy_from_slice(country_color);
         }
 
-        for province in province_battles {
-            let prov_ind = usize::from(province.as_u16());
-            let ind = self.wasm.province_id_to_color_index[prov_ind];
-            let offset = usize::from(ind) * 4;
+        for ind in province_battles.iter().filter_map(|p| {
+            self.wasm
+                .province_id_to_color_index
+                .get(usize::from(p.as_u16()))
+        }) {
+            let offset = usize::from(*ind) * 4;
             secondary[offset..offset + 4].copy_from_slice(&[15, 23, 42, 255]);
         }
 
