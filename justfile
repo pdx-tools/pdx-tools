@@ -106,7 +106,7 @@ cross *cmd:
     # docker instructions, and workaround how the devcontainer uses "host"
     # networking so `hostname` doesn't return the name of the container.
     export HOSTNAME=$(docker ps | grep vsc-pdx-tools | cut -d' ' -f 1)
-  elif [[ "${CI:-}" == "true" ]]; then
+  elif [[ -n "${GH_PAT:-}" ]]; then
     export HOSTNAME=$(docker ps | tail -n1 | cut -d' ' -f 1)
   fi
   cross build --target x86_64-unknown-linux-musl "$@"
