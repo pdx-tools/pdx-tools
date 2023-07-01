@@ -101,7 +101,7 @@ cargo *cmd:
 cross *cmd:
   #!/usr/bin/env bash
   set -euxo pipefail
-  if [[ $REMOTE_CONTAINERS == "true" ]]; then
+  if [[ "${REMOTE_CONTAINERS:-}" == "true" ]]; then
     # If we're within the dev container then we need to use special cross within
     # docker instructions, and workaround how the devcontainer uses "host"
     # networking so `hostname` doesn't return the name of the container.
