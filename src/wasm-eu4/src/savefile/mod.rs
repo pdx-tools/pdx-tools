@@ -1,7 +1,9 @@
 use crate::tokens;
 use eu4game::{
-    achievements::AchievementHunter, game::Game, shared::playthrough_id, Eu4GameError,
-    SaveGameQuery,
+    achievements::AchievementHunter,
+    game::Game,
+    shared::{playthrough_id, Eu4Parser},
+    Eu4GameError, SaveGameQuery,
 };
 use eu4save::{
     eu4_start_date,
@@ -590,7 +592,7 @@ impl SaveFileImpl {
             return Ok(Reparse::TooSoon { date: meta.date });
         }
 
-        let (save, _) = eu4game::shared::parse_save_with_tokens(&save_data, tokens)?;
+        let save = Eu4Parser::new().parse_with(&save_data, tokens)?.save;
         self.query = Query::from_save(save);
         self.province_owners = self.query.province_owners();
         self.nation_events = self.query.nation_events(&self.province_owners);

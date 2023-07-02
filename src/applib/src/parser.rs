@@ -1,6 +1,6 @@
 use eu4game::{
     achievements::{AchievementHunter, WeightedScore},
-    shared::{parse_save, save_checksum},
+    shared::Eu4Parser,
 };
 use eu4save::{eu4_start_date, models::GameDifficulty, Encoding, PdsDate};
 use serde::Serialize;
@@ -66,9 +66,9 @@ pub enum ParseFileError {
 }
 
 pub fn parse_save_data(data: &[u8]) -> Result<ParseResult, ParseFileError> {
-    let hash = save_checksum(data);
-    let (save, encoding) = parse_save(data)?;
-
+    let output = Eu4Parser::new().with_hash(true).parse(data)?;
+    let save = output.save;
+    let encoding = output.encoding;
     let patch_shorthand = format!(
         "{}.{}",
         save.meta.savegame_version.first, save.meta.savegame_version.second
@@ -147,6 +147,6 @@ pub fn parse_save_data(data: &[u8]) -> Result<ParseResult, ParseFileError> {
         patch_shorthand,
         score_date: weighted_score.date,
         score_days: weighted_score.days,
-        hash,
+        hash: output.hash.unwrap(),
     })))
 }

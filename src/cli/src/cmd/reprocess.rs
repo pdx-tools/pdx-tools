@@ -133,6 +133,8 @@ struct UpdateSave {
     checksum: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     patch_shorthand: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    hash: Option<String>,
 }
 
 impl From<ParsedFile> for UpdateSave {
@@ -160,6 +162,7 @@ impl From<ParsedFile> for UpdateSave {
             dlc_ids: Some(x.dlc_ids),
             checksum: Some(x.checksum),
             patch_shorthand: Some(x.patch_shorthand),
+            hash: Some(x.hash),
         }
     }
 }
@@ -188,6 +191,7 @@ impl UpdateSave {
             || self.dlc_ids.is_some()
             || self.checksum.is_some()
             || self.patch_shorthand.is_some()
+            || self.hash.is_some()
     }
 }
 
@@ -344,6 +348,7 @@ fn diff_saves(a: &ParsedFile, b: &ParsedFile) -> UpdateSave {
             .patch_shorthand
             .ne(&b.patch_shorthand)
             .then(|| b.patch_shorthand.clone()),
+        hash: a.hash.ne(&b.hash).then(|| b.hash.clone()),
     }
 }
 

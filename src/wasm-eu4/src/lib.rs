@@ -1,4 +1,4 @@
-use eu4game::game::Game;
+use eu4game::{game::Game, shared::Eu4Parser};
 use eu4save::{
     models::{Eu4Save, GameplayOptions},
     query::Query,
@@ -343,11 +343,13 @@ pub fn parse_save(
     province_id_to_color_index: Vec<u16>,
 ) -> Result<SaveFile, JsValue> {
     let tokens = tokens::get_tokens();
-    let (save, encoding) = eu4game::shared::parse_save_with_tokens(&save_data, tokens)
-        .or_else(|_| eu4game::shared::parse_save_with_tokens_full(&save_data, tokens, true))
+    let mut parser = Eu4Parser::new();
+    let out = parser
+        .parse_with(&save_data, tokens)
+        .or_else(|_| parser.with_debug(true).parse_with(&save_data, tokens))
         .map_err(js_err)?;
 
-    let save = SaveFileParsed(save, encoding);
+    let save = SaveFileParsed(out.save, out.encoding);
     game_save(save, game_data, province_id_to_color_index)
 }
 
