@@ -109,6 +109,7 @@ export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
     ...(save.patch?.fourth && { saveVersionFirst: save.patch.fourth }),
     ...(save.checksum && { checksum: save.checksum }),
     ...(save.encoding && { encoding: save.encoding }),
+    ...(save.score_days && { scoreDays: save.score_days }),
     ...(save.hash && { hash: save.hash }),
   };
 };
