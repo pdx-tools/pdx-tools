@@ -33,40 +33,31 @@ fn copy_hash_output_to_byte_array(data: [u64; 4]) -> [u8; 4 * std::mem::size_of:
 
 #[derive(Debug)]
 pub struct SaveCheckSummer {
-    pub hasher: HighwayHasher,
-}
-
-impl Default for SaveCheckSummer {
-    fn default() -> Self {
-        Self::new()
-    }
+    hasher: Option<HighwayHasher>,
 }
 
 impl SaveCheckSummer {
-    pub fn new() -> Self {
+    pub fn new(enabled: bool) -> Self {
         Self {
-            hasher: HighwayHasher::new(new_key()),
+            hasher: enabled.then(|| HighwayHasher::new(new_key())),
         }
     }
 
     pub fn append(&mut self, data: &[u8]) {
-        self.hasher.append(data);
+        if let Some(hasher) = self.hasher.as_mut() {
+            hasher.append(data)
+        }
     }
 
-    pub fn finish(self) -> String {
-        let hash = self.hasher.finalize256();
-        let bytes = copy_hash_output_to_byte_array(hash);
-        base64::encode(bytes)
+    pub fn finish(self) -> Option<String> {
+        if let Some(hasher) = self.hasher {
+            let hash = hasher.finalize256();
+            let bytes = copy_hash_output_to_byte_array(hash);
+            Some(base64::encode(bytes))
+        } else {
+            None
+        }
     }
-}
-
-// Compute the checksum of the save using highway hash. This is not sophisticated at all. It's
-// meant to be a fast, best effort check to know if save is already uploaded. Note that this is
-// easily circumvented by modifying a single character or re-zipping the save.
-pub fn save_checksum(body: &[u8]) -> String {
-    let mut hash = SaveCheckSummer::new();
-    hash.append(body);
-    hash.finish()
 }
 
 // The playthrough id of a save is calculated from:
@@ -159,130 +150,221 @@ pub fn hash_countries(hash: &mut impl HighwayHash, content_date: Eu4Date, save: 
     }
 }
 
-pub fn parse_save_with_tokens<Q>(
-    data: &[u8],
-    resolver: &Q,
-) -> Result<(Eu4Save, Encoding), Eu4GameError>
-where
-    Q: TokenResolver,
-{
-    parse_save_with_tokens_full(data, resolver, false)
+#[derive(Debug)]
+pub struct Eu4SaveOutput {
+    pub save: Eu4Save,
+    pub encoding: Encoding,
+    pub hash: Option<String>,
 }
 
-pub fn parse_save_with_tokens_full<Q>(
-    data: &[u8],
-    resolver: &Q,
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Eu4Parser {
     debug: bool,
-) -> Result<(Eu4Save, Encoding), Eu4GameError>
-where
-    Q: TokenResolver,
-{
-    let zip_sink = Vec::new();
-    if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-        let mut cursor = Cursor::new(zip_sink);
-        zstd::stream::copy_decode(data, &mut cursor).unwrap();
-        let inflated = cursor.into_inner();
-        if let Ok(data) = Eu4Text::from_slice(&inflated) {
-            let parsed = data.parse()?;
-            let save = Eu4Save::from_deserializer(&parsed.deserializer())?;
-            Ok((save, Encoding::Text))
-        } else {
-            let data = Eu4Binary::from_slice(&inflated)?;
-            let parsed = data.parse()?;
-            let deser = parsed.deserializer(resolver);
-            let save = Eu4Save::from_deserializer(&deser)?;
-            Ok((save, Encoding::Binary))
-        }
-    } else {
-        let file = Eu4File::from_slice(data)?;
-        if file.size() > 300 * 1024 * 1024 {
-            return Err(Eu4GameError::TooLarge(file.size()));
-        }
+    hash: bool,
+}
 
-        let encoding = file.encoding();
-        match file.kind() {
-            Eu4FileKind::Text(x) => {
-                let parsed = x.parse()?;
-                if debug {
-                    let deser = parsed.deserializer();
-                    let meta: Meta = serde_path_to_error::deserialize(&deser)
-                        .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
-                    let game: GameState = serde_path_to_error::deserialize(&deser)
-                        .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
-                    Ok((Eu4Save { meta, game }, encoding))
-                } else {
-                    let save = Eu4Save::from_deserializer(&parsed.deserializer())?;
-                    Ok((save, encoding))
-                }
+impl Eu4Parser {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_debug(&mut self, debug: bool) -> &mut Self {
+        self.debug = debug;
+        self
+    }
+
+    pub fn with_hash(&mut self, hash: bool) -> &mut Self {
+        self.hash = hash;
+        self
+    }
+
+    #[cfg(feature = "embedded")]
+    pub fn parse(&self, data: &[u8]) -> Result<Eu4SaveOutput, Eu4GameError> {
+        let tokens = schemas::resolver::Eu4FlatTokens::new();
+        self.parse_with(data, &tokens)
+    }
+
+    pub fn parse_with<Q>(&self, data: &[u8], resolver: &Q) -> Result<Eu4SaveOutput, Eu4GameError>
+    where
+        Q: TokenResolver,
+    {
+        let zip_sink = Vec::new();
+        let mut hasher = SaveCheckSummer::new(self.hash);
+        if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
+            let mut cursor = Cursor::new(zip_sink);
+            zstd::stream::copy_decode(data, &mut cursor).unwrap();
+            let inflated = cursor.into_inner();
+
+            hasher.append(&inflated);
+            let hash = hasher.finish();
+
+            if let Ok(data) = Eu4Text::from_slice(&inflated) {
+                let parsed = data.parse()?;
+                let save = Eu4Save::from_deserializer(&parsed.deserializer())?;
+                Ok(Eu4SaveOutput {
+                    save,
+                    encoding: Encoding::Text,
+                    hash,
+                })
+            } else {
+                let data = Eu4Binary::from_slice(&inflated)?;
+                let parsed = data.parse()?;
+                let deser = parsed.deserializer(resolver);
+                let save = Eu4Save::from_deserializer(&deser)?;
+                Ok(Eu4SaveOutput {
+                    save,
+                    encoding: Encoding::Binary,
+                    hash,
+                })
             }
-            Eu4FileKind::Binary(x) => {
-                let parsed = x.parse()?;
-                if debug {
-                    let deser = parsed.deserializer(resolver);
-                    let meta: Meta = serde_path_to_error::deserialize(&deser)
-                        .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
-                    let game: GameState = serde_path_to_error::deserialize(&deser)
-                        .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
-                    Ok((Eu4Save { meta, game }, encoding))
-                } else {
-                    let save = Eu4Save::from_deserializer(&parsed.deserializer(resolver))?;
-                    Ok((save, encoding))
-                }
+        } else {
+            let file = Eu4File::from_slice(data)?;
+            if file.size() > 300 * 1024 * 1024 {
+                return Err(Eu4GameError::TooLarge(file.size()));
             }
-            Eu4FileKind::Zip(zip) => {
-                if zip.is_text() {
-                    let mut zip_sink = Vec::new();
-                    zip.read_to_end(&mut zip_sink)?;
-                    let parsed = Eu4ParsedText::from_slice(&zip_sink)?;
-                    if debug {
+
+            let encoding = file.encoding();
+            match file.kind() {
+                Eu4FileKind::Text(x) => {
+                    hasher.append(data);
+                    let hash = hasher.finish();
+
+                    let parsed = x.parse()?;
+                    if self.debug {
                         let deser = parsed.deserializer();
                         let meta: Meta = serde_path_to_error::deserialize(&deser)
                             .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
                         let game: GameState = serde_path_to_error::deserialize(&deser)
                             .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
-                        Ok((Eu4Save { meta, game }, encoding))
+                        let save = Eu4Save { meta, game };
+                        Ok(Eu4SaveOutput {
+                            save,
+                            encoding,
+                            hash,
+                        })
                     } else {
                         let save = Eu4Save::from_deserializer(&parsed.deserializer())?;
-                        Ok((save, encoding))
+                        Ok(Eu4SaveOutput {
+                            save,
+                            encoding,
+                            hash,
+                        })
                     }
-                } else {
+                }
+                Eu4FileKind::Binary(x) => {
+                    hasher.append(data);
+                    let hash = hasher.finish();
+
+                    let parsed = x.parse()?;
+                    if self.debug {
+                        let deser = parsed.deserializer(resolver);
+                        let meta: Meta = serde_path_to_error::deserialize(&deser)
+                            .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
+                        let game: GameState = serde_path_to_error::deserialize(&deser)
+                            .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
+                        let save = Eu4Save { meta, game };
+                        Ok(Eu4SaveOutput {
+                            save,
+                            encoding,
+                            hash,
+                        })
+                    } else {
+                        let save = Eu4Save::from_deserializer(&parsed.deserializer(resolver))?;
+                        Ok(Eu4SaveOutput {
+                            save,
+                            encoding,
+                            hash,
+                        })
+                    }
+                }
+                Eu4FileKind::Zip(zip) => {
                     let meta_file = zip.meta_file()?;
                     let gamestate_file = zip.gamestate_file()?;
-                    let mut zip_sink = vec![0; meta_file.size().max(gamestate_file.size())];
+                    let ai_file = zip.ai_file()?;
+                    let max_size = meta_file
+                        .size()
+                        .max(gamestate_file.size())
+                        .max(ai_file.size());
+                    let mut zip_sink = vec![0; max_size];
+                    if zip.is_text() {
+                        let meta_data = &mut zip_sink[..meta_file.size()];
+                        meta_file.read_exact(meta_data)?;
+                        hasher.append(meta_data);
 
-                    let meta_data = &mut zip_sink[..meta_file.size()];
-                    meta_file.read_exact(meta_data)?;
-                    let file = Eu4Binary::from_slice(meta_data)?;
-                    let mut deser = file.ondemand_deserializer(resolver);
-                    let meta: Meta = if debug {
-                        serde_path_to_error::deserialize(&mut deser)
-                            .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?
+                        let file = Eu4ParsedText::from_slice(meta_data)?;
+                        let deser = file.deserializer();
+                        let meta: Meta = if self.debug {
+                            serde_path_to_error::deserialize(&deser)
+                                .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?
+                        } else {
+                            deser.deserialize()?
+                        };
+
+                        let gamestate_data = &mut zip_sink[..gamestate_file.size()];
+                        gamestate_file.read_exact(gamestate_data)?;
+                        hasher.append(gamestate_data);
+
+                        let file = Eu4ParsedText::from_slice(gamestate_data)?;
+                        let deser = file.deserializer();
+                        let game: GameState = if self.debug {
+                            serde_path_to_error::deserialize(&deser)
+                                .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?
+                        } else {
+                            deser.deserialize()?
+                        };
+
+                        let ai_data = &mut zip_sink[..ai_file.size()];
+                        ai_file.read_exact(ai_data)?;
+                        hasher.append(ai_data);
+
+                        let save = Eu4Save { meta, game };
+                        Ok(Eu4SaveOutput {
+                            save,
+                            encoding,
+                            hash: hasher.finish(),
+                        })
                     } else {
-                        deser.deserialize()?
-                    };
+                        let meta_data = &mut zip_sink[..meta_file.size()];
+                        meta_file.read_exact(meta_data)?;
+                        hasher.append(meta_data);
 
-                    let gamestate_data = &mut zip_sink[..gamestate_file.size()];
-                    gamestate_file.read_exact(gamestate_data)?;
-                    let file = Eu4Binary::from_slice(gamestate_data)?;
-                    let mut deser = file.ondemand_deserializer(resolver);
-                    let game: GameState = if debug {
-                        serde_path_to_error::deserialize(&mut deser)
-                            .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?
-                    } else {
-                        deser.deserialize()?
-                    };
+                        let file = Eu4Binary::from_slice(meta_data)?;
+                        let mut deser = file.ondemand_deserializer(resolver);
+                        let meta: Meta = if self.debug {
+                            serde_path_to_error::deserialize(&mut deser)
+                                .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?
+                        } else {
+                            deser.deserialize()?
+                        };
 
-                    Ok((Eu4Save { meta, game }, encoding))
+                        let gamestate_data = &mut zip_sink[..gamestate_file.size()];
+                        gamestate_file.read_exact(gamestate_data)?;
+                        hasher.append(gamestate_data);
+
+                        let file = Eu4Binary::from_slice(gamestate_data)?;
+                        let mut deser = file.ondemand_deserializer(resolver);
+                        let game: GameState = if self.debug {
+                            serde_path_to_error::deserialize(&mut deser)
+                                .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?
+                        } else {
+                            deser.deserialize()?
+                        };
+
+                        let ai_data = &mut zip_sink[..ai_file.size()];
+                        ai_file.read_exact(ai_data)?;
+                        hasher.append(ai_data);
+
+                        let save = Eu4Save { meta, game };
+                        Ok(Eu4SaveOutput {
+                            save,
+                            encoding,
+                            hash: hasher.finish(),
+                        })
+                    }
                 }
             }
         }
     }
-}
-
-#[cfg(feature = "embedded")]
-pub fn parse_save(data: &[u8]) -> Result<(Eu4Save, Encoding), Eu4GameError> {
-    let tokens = schemas::resolver::Eu4FlatTokens::new();
-    parse_save_with_tokens(data, &tokens)
 }
 
 pub fn parse_meta<Q>(data: &[u8], resolver: &Q) -> Result<Meta, Eu4GameError>

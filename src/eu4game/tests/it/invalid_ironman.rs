@@ -1,5 +1,5 @@
 use crate::utils;
-use eu4game::shared::parse_save;
+use eu4game::shared::{Eu4Parser, Eu4SaveOutput};
 use eu4game::{achievements::AchievementHunter, game::Game};
 use eu4save::{models::SavegameVersion, query::Query};
 use std::error::Error;
@@ -7,7 +7,7 @@ use std::error::Error;
 #[test]
 pub fn old_saves_are_invalid() -> Result<(), Box<dyn Error>> {
     let data = utils::request("Ruskies.eu4");
-    let (save, encoding) = parse_save(&data)?;
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data)?;
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     assert_eq!(

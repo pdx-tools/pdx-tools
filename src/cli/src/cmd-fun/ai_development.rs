@@ -1,5 +1,6 @@
 use anyhow::Context;
 use clap::Args;
+use eu4game::shared::Eu4Parser;
 use eu4save::{
     query::{NationEventKind, Query},
     CountryTag, PdsDate,
@@ -27,8 +28,10 @@ impl AiDevelopmentArgs {
             let path = file.path();
             let save_data = std::fs::read(path)
                 .with_context(|| format!("unable to read: {}", path.display()))?;
-            let (save, _encoding) = eu4game::shared::parse_save(&save_data)
-                .with_context(|| format!("unable to parse: {}", path.display()))?;
+            let save = Eu4Parser::new()
+                .parse(&save_data)
+                .with_context(|| format!("unable to parse: {}", path.display()))?
+                .save;
 
             if save.meta.multiplayer {
                 continue;

@@ -1,5 +1,5 @@
 use crate::utils;
-use eu4game::shared::parse_save;
+use eu4game::shared::{Eu4Parser, Eu4SaveOutput};
 use eu4game::{achievements::AchievementHunter, game::Game, SaveGameQuery};
 use eu4save::query::Query;
 use std::collections::{HashMap, HashSet};
@@ -29,7 +29,7 @@ pub fn ironman_saves_detected() -> Result<(), Box<dyn Error>> {
         let path = file.path();
         println!("parsing {}", path.display());
         let data = fs::read(&path)?;
-        let (save, _) = parse_save(&data)?;
+        let save = Eu4Parser::new().parse(&data)?.save;
         let query = Query::from_save(save);
         if let Some(playthrough_id) = eu4game::shared::playthrough_id(&query) {
             let e = playthrough_ids
@@ -80,7 +80,7 @@ pub fn ironman_saves_detected() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_je_maintiendrai() {
     let data = utils::request("Dutch_WC.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -97,7 +97,7 @@ fn test_je_maintiendrai() {
 #[test]
 fn test_never_say_nevers() {
     let data = utils::request("nevers.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -113,7 +113,7 @@ fn test_never_say_nevers() {
 #[test]
 fn test_tale_test_with_voltaire_false_positive() {
     let data = utils::request("TaleOfTwo.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -134,7 +134,7 @@ fn test_tale_test_with_voltaire_false_positive() {
 fn test_patch130_start() {
     // This one is weird as there is history that is one day in the future
     let data = utils::request("patch130.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let save_game_query = SaveGameQuery::new(&query, &game);
@@ -149,7 +149,7 @@ fn test_patch130_start() {
 #[test]
 fn test_cilli() {
     let data = utils::request("cilli.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let save_game_query = SaveGameQuery::new(&query, &game);
@@ -170,7 +170,7 @@ fn test_cilli() {
 #[test]
 fn test_godtier() {
     let data = utils::request("switzer_godtier.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -191,7 +191,7 @@ fn test_true_heir_of_timur() {
     // country detection is working correctly.
     // https://www.reddit.com/r/eu4/comments/hnwnd2/sistan_true_heir_of_timur_in_1508/
     let data = utils::request("sis.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -207,7 +207,7 @@ fn test_true_heir_of_timur() {
 #[test]
 fn test_luck_of_the_irish() {
     let data = utils::request("tryone.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -223,7 +223,7 @@ fn test_luck_of_the_irish() {
 #[test]
 fn test_a_heros_welcome() {
     let data = utils::request("rummy3.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -234,7 +234,7 @@ fn test_a_heros_welcome() {
 #[test]
 fn test_rise_of_the_white_sheep() {
     let data = utils::request("aq.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -245,7 +245,7 @@ fn test_rise_of_the_white_sheep() {
 #[test]
 fn test_shahanshah() {
     let data = utils::request("arda-shahansha.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -256,7 +256,7 @@ fn test_shahanshah() {
 #[test]
 fn test_this_is_persia() {
     let data = utils::request("arda-persia.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -267,7 +267,7 @@ fn test_this_is_persia() {
 #[test]
 fn test_form_rome() {
     let data = utils::request("Basileus.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -283,7 +283,7 @@ fn test_form_rome() {
 #[test]
 fn test_golden_horde() {
     let data = utils::request("tartar-gold.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -299,7 +299,7 @@ fn test_golden_horde() {
 #[test]
 fn test_tatarstan() {
     let data = utils::request("tartartar.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -315,7 +315,7 @@ fn test_tatarstan() {
 #[test]
 fn test_african_power() {
     let data = utils::request("King_of_Africa.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -331,7 +331,7 @@ fn test_african_power() {
 #[test]
 fn test_african_power2() {
     let data = utils::request("kongo2.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -347,7 +347,7 @@ fn test_african_power2() {
 #[test]
 fn test_stern_des_sudens() {
     let data = utils::request("Stern_des_Sudens.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -363,7 +363,7 @@ fn test_stern_des_sudens() {
 #[test]
 fn test_terra_mariana() {
     let data = utils::request("riga-terra-mariana.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -379,7 +379,7 @@ fn test_terra_mariana() {
 #[test]
 fn patch_1_31_0_is_valid() {
     let data = utils::request("1.31.0.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -395,7 +395,7 @@ fn patch_1_31_0_is_valid() {
 #[test]
 fn patch_1_32_0_is_valid() {
     let data = utils::request("patch132.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -411,7 +411,7 @@ fn patch_1_32_0_is_valid() {
 #[test]
 fn test_eat_your_greens() {
     let data = utils::request("eat-your-greens.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -427,7 +427,7 @@ fn test_eat_your_greens() {
 #[test]
 fn test_spaghetti_western() {
     let data = utils::request("Bologna.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -443,7 +443,7 @@ fn test_spaghetti_western() {
 #[test]
 fn test_spaghetti_western2() {
     let data = utils::request("SpaghettiWestern.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -459,7 +459,7 @@ fn test_spaghetti_western2() {
 #[test]
 fn test_dracula() {
     let data = utils::request("dracula3.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -475,7 +475,7 @@ fn test_dracula() {
 #[test]
 fn test_not_just_pizza() {
     let data = utils::request("naples.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -491,7 +491,7 @@ fn test_not_just_pizza() {
 #[test]
 fn test_re_reconquista() {
     let data = utils::request("gra.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -507,7 +507,7 @@ fn test_re_reconquista() {
 #[test]
 fn test_empire_of_mann() {
     let data = utils::request("EmpireofMannEnd.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
@@ -523,7 +523,7 @@ fn test_empire_of_mann() {
 #[test]
 fn test_purify_the_temple() {
     let data = utils::request("riga.eu4");
-    let (save, encoding) = parse_save(&data).unwrap();
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
