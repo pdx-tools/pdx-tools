@@ -1,10 +1,6 @@
 import React, { useMemo } from "react";
-import { PageHeader, Typography, Spin } from "antd";
-import type { Route } from "antd/es/breadcrumb/Breadcrumb";
-import Link from "next/link";
 import { RecordTable } from "./components/RecordTable";
 import { Achievement, useAchievementQuery } from "@/services/appApi";
-const { Paragraph } = Typography;
 
 interface AchievementRoute {
   achievementId: string;
@@ -30,28 +26,7 @@ export const AchievementPage = ({
   achievementId,
   staticAchievement,
 }: AchievementRoute) => {
-  const { isFetching, achievement, saves } = useAchievement(achievementId);
-
-  const routes = [
-    {
-      path: "/eu4/achievements",
-      breadcrumbName: "Achievements",
-    },
-  ];
-
-  const itemRender = (
-    route: Route,
-    params: any,
-    routes: Route[],
-    paths: string[]
-  ) => {
-    return <Link href={`/${paths.join("/")}`}>{route.breadcrumbName}</Link>;
-  };
-
-  let extras = [];
-  if (isFetching) {
-    extras.push(<Spin key="spinner" size="small" />);
-  }
+  const { achievement, saves } = useAchievement(achievementId);
 
   const title = achievement?.name ?? staticAchievement?.name ?? "";
   const table = saves === undefined ? null : <RecordTable records={saves} />;
@@ -59,20 +34,11 @@ export const AchievementPage = ({
     achievement?.description ?? staticAchievement?.description ?? "";
 
   return (
-    <PageHeader
-      avatar={{
-        size: "large",
-        shape: "square",
-        src: require(`../../images/eu4/achievements/${achievementId}.png`),
-      }}
-      title={title}
-      breadcrumb={{ routes, itemRender }}
-      subTitle={`Achievement id: ${achievementId}`}
-      extra={[extras]}
-      style={{ maxWidth: "1200px", margin: "0 auto" }}
-    >
-      <Paragraph>{description}</Paragraph>
-      {table}
-    </PageHeader>
+    <div className="mx-auto max-w-7xl p-5">
+      <h1 className="text-4xl">{title}</h1>
+      <p>Achievement id: {achievementId}</p>
+      <p>{description}</p>
+      <div className="mt-5">{table}</div>
+    </div>
   );
 };
