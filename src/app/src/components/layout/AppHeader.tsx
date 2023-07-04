@@ -1,12 +1,10 @@
 import React from "react";
 import Link from "next/link";
-import { Layout } from "antd";
 import { AppSvg } from "../icons/AppIcon";
 import { CoreMenu } from "./CoreMenu";
 import { MobileMenu } from "./MobileMenu";
 import { AnnouncementBar } from "./AnnouncementBar";
 import { useEngineActions } from "@/features/engine";
-const { Header } = Layout;
 
 const HeaderMenu = () => {
   return (
@@ -30,7 +28,7 @@ export const AppHeader = () => {
         </AnnouncementBar>
       )}
 
-      <Header style={{ padding: "0 16px" }}>
+      <div className="h-16 px-4 bg-[#001529]">
         <div className="mx-auto flex h-full w-full items-center">
           <Link
             href="/"
@@ -44,7 +42,7 @@ export const AppHeader = () => {
           </Link>
           <HeaderMenu />
         </div>
-      </Header>
+      </div>
     </div>
   );
 };
