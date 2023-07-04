@@ -385,12 +385,8 @@ fn enhance_flat(x: &FlatSave) -> anyhow::Result<ParsedFile> {
         .collect::<Result<Vec<_>, _>>()
         .with_context(|| format!("unable to parse dlc: {}", x.dlc))?;
 
-    let (score_date, score_days) = if let Some(days) = x.score_days {
-        (applib::eu4_days_to_date(days), days)
-    } else {
-        (String::from(""), 0)
-    };
-
+    let score_days = x.score_days.unwrap_or(0);
+    let score_date = applib::eu4_days_to_date(score_days);
     Ok(ParsedFile {
         patch: SavePatch {
             first: x.save_version_first,

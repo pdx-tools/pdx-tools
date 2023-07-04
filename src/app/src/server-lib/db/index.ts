@@ -85,33 +85,35 @@ export const apiKeyAtRest = (key: crypto.BinaryLike) => {
 };
 
 export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
-  return {
-    ...(save.date && { date: save.date }),
-    ...(save.days && { days: save.days }),
-    ...(save.player_tag && { player: save.player_tag }),
-    ...(save.player_names && { players: save.player_names }),
-    ...(save.player_start_tag && { playerStartTag: save.player_start_tag }),
-    ...(save.player_start_tag_name && {
-      playerStartTagName: save.player_start_tag_name,
-    }),
-    ...(save.dlc_ids && { dlc: save.dlc_ids }),
-    ...(save.campaign_id && { campaignId: save.campaign_id }),
-    ...(save.playthrough_id && { campaignId: save.playthrough_id }),
-    ...(save.is_ironman && { ironman: save.is_ironman }),
-    ...(save.is_multiplayer && { multiplayer: save.is_multiplayer }),
-    ...(save.achievements && { achieveIds: save.achievements }),
-    ...(save.game_difficulty && {
-      gameDifficulty: toDbDifficulty(save.game_difficulty),
-    }),
-    ...(save.patch?.first && { saveVersionFirst: save.patch.first }),
-    ...(save.patch?.second && { saveVersionFirst: save.patch.second }),
-    ...(save.patch?.third && { saveVersionFirst: save.patch.third }),
-    ...(save.patch?.fourth && { saveVersionFirst: save.patch.fourth }),
-    ...(save.checksum && { checksum: save.checksum }),
-    ...(save.encoding && { encoding: save.encoding }),
-    ...(save.score_days && { scoreDays: save.score_days }),
-    ...(save.hash && { hash: save.hash }),
+  const result: Partial<Save> = {
+    date: save.date,
+    days: save.days,
+    player: save.player_tag,
+    displayedCountryName: save.player_tag_name,
+    playerStartTag: save.player_start_tag,
+    playerStartTagName: save.player_start_tag_name,
+    players: save.player_names,
+    dlc: save.dlc_ids,
+    campaignId: save.campaign_id,
+    playthroughId: save.playthrough_id,
+    ironman: save.is_ironman,
+    multiplayer: save.is_multiplayer,
+    achieveIds: save.achievements == null ? [] : save.achievements,
+    gameDifficulty:
+      save.game_difficulty && toDbDifficulty(save.game_difficulty),
+    saveVersionFirst: save.patch?.first,
+    saveVersionSecond: save.patch?.second,
+    saveVersionThird: save.patch?.third,
+    saveVersionFourth: save.patch?.fourth,
+    checksum: save.checksum,
+    encoding: save.encoding,
+    scoreDays: save.score_days,
+    hash: save.hash,
   };
+
+  return Object.fromEntries(
+    Object.entries(result).filter(([_, v]) => v !== undefined)
+  );
 };
 
 const pool = new Pool({
