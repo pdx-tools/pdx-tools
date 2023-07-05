@@ -22,6 +22,7 @@ release:
   fi
 
   just build
+  just cross build --package pdx-tools-api --release
   just publish-frontend
   just publish-api
 
@@ -31,14 +32,14 @@ release:
     echo "pdx-tools-prod not found in ssh config, please add it and then run just publish-backend"
   fi
 
-build: build-wasm build-app build-api build-docker
+build: build-wasm build-app build-docker
 
 build-rust:
   cargo build --all
 
-dev: build-wasm-dev build-api dev-app
+dev: build-wasm-dev dev-app
 
-staging: build-app build-api prep-dev-app
+staging: build-app prep-dev-app
   #!/usr/bin/env bash
   set -euxo pipefail
   cd src/app
@@ -88,10 +89,6 @@ build-app: prep-frontend
 build-docker:
   docker build -t ghcr.io/pdx-tools/pdx-tools:nightly -f ./dev/app.dockerfile ./src/app
 
-build-api:
-  just cargo run -p applib --bin types
-  just cross --package pdx-tools-api --release
-
 build-admin:
   just cross --package pdx --features admin --release
 
@@ -120,28 +117,21 @@ dev-app: prep-frontend prep-dev-app
 
   npx --yes concurrently@latest \
     "cd src/app && PORT=3001 node_modules/.bin/next dev" \
-    "cd src/docs && npm run docusaurus -- start --no-open"
+    "cd src/docs && npm run docusaurus -- start --no-open" \
+    "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api"
 
-test-app *cmd: prep-frontend prep-test-app build-api
+test-app *cmd: prep-frontend prep-test-app
   #!/usr/bin/env bash
   set -euxo pipefail
 
-  export NODE_ENV=test
-  APP_OUT="$(mktemp)"
-  trap 'cat "$APP_OUT.stdout" "$APP_OUT.stderr"' ERR
-  trap 'rm -rf -- "$APP_OUT.stdout" "$APP_OUT.stderr"' EXIT
-
-  # TODO: I need the naked `next` else killing pid doesn't kill next 
-  cd src/app
-  ./node_modules/.bin/next dev > "$APP_OUT.stdout" 2> "$APP_OUT.stderr" &
-  APP_PID=$!
-  trap 'kill "$APP_PID"' EXIT
-
-  cd {{justfile_directory()}}
   . src/app/.env.test
   . dev/.env.test
+  just cargo build -p pdx-tools-api
   cat src/app/migrations/*.sql | just test-environment exec -u postgres --no-TTY db psql
-  (cd src/app && npm test -- "$@")
+  cd src/app && npx --yes concurrently@latest --kill-others --success command-2 --passthrough-arguments \
+    "NODE_ENV=test node_modules/.bin/next dev" \
+    "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api" \
+    "npm test -- {@}" -- "$@"
 
 prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "-d")
   #!/usr/bin/env bash
@@ -287,6 +277,9 @@ format:
 prep-frontend:
   #!/usr/bin/env bash
   set -euxo pipefail
+
+  # Generate typescript types from rust code
+  just cargo run -p applib --bin types
 
   # Create empty token files for devs without them
   mkdir -p assets/tokens
