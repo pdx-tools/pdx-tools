@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Spin, Dropdown, Button, Divider } from "antd";
+import { Spin, Dropdown, Button } from "antd";
 import { DownOutlined } from "@ant-design/icons";
 import { MapModeButtonGroup } from "../../components/map-modes";
 import { CountryFilterButton } from "../country-filter";
@@ -17,6 +17,7 @@ import {
   useShowCountryBorders,
   useShowMapModeBorders,
 } from "../../store";
+import { Divider } from "@/components/Divider";
 
 const TerrainToggleRow = () => {
   const data = useTerrainOverlay();
@@ -123,10 +124,10 @@ export const MapSettings = () => {
       <CountryBordersToggleRow />
       <MapModeBordersToggleRow />
 
-      <Divider orientation="left">Date Controls</Divider>
+      <Divider>Date Controls</Divider>
       <DateTimeline />
 
-      <Divider orientation="left">Timelapse</Divider>
+      <Divider>Timelapse</Divider>
       <Timelapse />
     </>
   );

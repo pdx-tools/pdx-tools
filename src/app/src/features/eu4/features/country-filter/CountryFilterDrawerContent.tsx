@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Divider } from "antd";
+import { Button } from "antd";
 import {
   useCountryFilterDispatch,
   useCountryFilterState,
@@ -7,6 +7,7 @@ import {
 import { CountryFilterForm } from "./CountryFilterForm";
 import { CountrySelect } from "../../components/country-select";
 import { useEu4Actions } from "../../store";
+import { Divider } from "@/components/Divider";
 
 interface CountryFilterDrawerContent {
   closeDrawer: () => void;
@@ -23,7 +24,7 @@ export const CountryFilterDrawerContent = ({
 
   return (
     <>
-      <Divider orientation="left">{`Computed Selection (${filter.countries.length})`}</Divider>
+      <Divider>{`Computed Selection (${filter.countries.length})`}</Divider>
       <div style={{ height: "150px" }}>
         {!forceShowFiltered && manySelectedTags && (
           <Button
@@ -47,7 +48,7 @@ export const CountryFilterDrawerContent = ({
           />
         )}
       </div>
-      <Divider orientation="left">Options</Divider>
+      <Divider>Options</Divider>
       <CountryFilterForm
         initialValues={filter.matcher}
         onChange={(x) => {

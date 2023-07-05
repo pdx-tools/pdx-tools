@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import { Divider, Switch, Table } from "antd";
+import { Switch, Table } from "antd";
 import { ColumnProps } from "antd/lib/table";
 import { incomeLedgerAliases } from "../country-details/data";
 import { CountryIncome } from "../../types/models";
@@ -108,14 +108,13 @@ export const CountriesIncomeTable = () => {
   return (
     <>
       <div className="flex flex-col space-y-6">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-8">
           <div className="flex items-center space-x-2">
             <span>Show as percentages:</span>
 
             <Switch checked={doShowPercent} onChange={setPrefersPercents} />
           </div>
 
-          <Divider type="vertical" />
           <div className="flex items-center space-x-2">
             <span>Recurring expenses only:</span>
             <Switch

@@ -1,16 +1,6 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
-import {
-  Button,
-  Radio,
-  Tooltip,
-  Form,
-  InputNumber,
-  Modal,
-  Row,
-  Col,
-  Slider,
-} from "antd";
+import { Button, Radio, Tooltip, Form, InputNumber, Modal, Slider } from "antd";
 import {
   CaretRightOutlined,
   PauseOutlined,
@@ -275,8 +265,8 @@ export const Timelapse = () => {
         )}
       </Form>
       {recordingSupported && (
-        <Row className="flex items-center">
-          <Col span={4}>
+        <div className="flex items-center">
+          <div className="basis-1/6">
             <InputNumber
               min={0}
               max={8}
@@ -285,9 +275,9 @@ export const Timelapse = () => {
               onChange={(x) => setFreezeFrameSeconds(x ?? 0)}
               style={{ width: "calc(100% - 5px)" }}
             />
-          </Col>
-          <Col span={24 - 4}>Seconds of final freeze frame</Col>
-        </Row>
+          </div>
+          <div>Seconds of final freeze frame</div>
+        </div>
       )}
 
       {recordingSupported && (

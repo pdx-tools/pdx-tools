@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Drawer, Button, Divider } from "antd";
+import { Drawer, Button } from "antd";
 import { SteamButton } from "./SteamButton";
 
 export const SteamRegister = () => {
@@ -22,8 +22,7 @@ export const SteamRegister = () => {
           needed.
         </p>
         <SteamButton />
-        <Divider />
-        <h3 className="text-xl">What does signing up get me?</h3>
+        <h3 className="mt-12 text-xl">What does signing up get me?</h3>
         <p>
           Signing up automatically grants one a free basic account. Basic
           account features:

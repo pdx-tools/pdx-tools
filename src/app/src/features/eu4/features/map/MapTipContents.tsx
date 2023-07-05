@@ -1,4 +1,4 @@
-import { Descriptions, Divider } from "antd";
+import { Descriptions } from "antd";
 import { QuickTipPayload } from "../../types/map";
 import { FlagAvatarCore } from "../../components/avatars";
 import classes from "./MapTipContents.module.css";
@@ -112,11 +112,9 @@ const MapTipsTable = ({ tip }: MapTipContentsProps) => {
 export const MapTipContents = ({ tip }: MapTipContentsProps) => {
   return (
     <div
-      className={`${classes["tooltip-contents"]} no-break rounded-2xl border-2 border-solid border-gray-300 bg-white p-4 pt-0`}
+      className={`${classes["tooltip-contents"]} no-break rounded-2xl border-2 border-solid border-gray-300 bg-white p-4`}
     >
-      <Divider orientation="left">
-        {`${tip.provinceName} (${tip.provinceId})`}
-      </Divider>
+      <div className="mb-2 text-lg">{`${tip.provinceName} (${tip.provinceId})`}</div>
       <MapTipsTable tip={tip} />
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Button, Divider, Drawer, Grid, Tabs, Tooltip } from "antd";
+import { Button, Drawer, Grid, Tabs, Tooltip } from "antd";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -31,6 +31,7 @@ import {
   useEu4Actions,
   useSelectedTag,
 } from "../../store";
+import { Divider } from "@/components/Divider";
 
 const { TabPane } = Tabs;
 const { useBreakpoint } = Grid;
@@ -136,7 +137,7 @@ export const CountryDetailsDrawer = () => {
             {country && (
               <>
                 <CountryDetailsDescriptions details={country} />
-                <Divider orientation="left">Diplomacy</Divider>
+                <Divider>Diplomacy</Divider>
                 <CountryDiplomacy details={country} />
               </>
             )}
@@ -145,7 +146,7 @@ export const CountryDetailsDrawer = () => {
             <div>
               Radical reforms completed: {advisors?.radicalReforms || "no"}
             </div>
-            <Divider orientation="left">
+            <Divider>
               One Time Advisor Events (
               <a
                 target="_blank"
@@ -160,7 +161,7 @@ export const CountryDetailsDrawer = () => {
             )}
           </TabPane>
           <TabPane tab="Rulers" key="Rulers">
-            <Divider orientation="left">Past Rulers and Failed Heirs</Divider>
+            <Divider>Past Rulers and Failed Heirs</Divider>
             <CountryRulersTable rulers={rulers} />
           </TabPane>
           <TabPane tab="Leaders" key="Leaders">

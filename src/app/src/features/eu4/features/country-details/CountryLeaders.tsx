@@ -1,9 +1,9 @@
 import { useEu4Worker } from "@/features/eu4/worker";
 import { useTablePagination } from "@/features/ui-controls";
-import { Tag } from "antd";
 import Table, { ColumnGroupType, ColumnType } from "antd/lib/table";
 import { useCallback } from "react";
 import { CountryDetails, CountryLeader } from "../../types/models";
+import { Badge } from "@/components/Badge";
 
 export interface CountryLeadersProps {
   details: CountryDetails;
@@ -38,14 +38,14 @@ export const CountryLeaders = ({ details }: CountryLeadersProps) => {
       title: "Tags",
       render: (_: any, x: CountryLeader) => (
         <>
-          {x.active && <Tag color="green">ACTIVE</Tag>}
+          {x.active && <Badge variant="green">ACTIVE</Badge>}
           {(x.kind == "Admiral" || x.kind == "Explorer") && (
-            <Tag color="geekblue">{x.kind.toUpperCase()}</Tag>
+            <Badge variant="blue">{x.kind.toUpperCase()}</Badge>
           )}
           {(x.kind == "General" || x.kind == "Conquistador") && (
-            <Tag color="default">{x.kind.toUpperCase()}</Tag>
+            <Badge variant="default">{x.kind.toUpperCase()}</Badge>
           )}
-          {!!x.monarch_stats && <Tag color="gold">RULER</Tag>}
+          {!!x.monarch_stats && <Badge variant="gold">RULER</Badge>}
         </>
       ),
       filters: [

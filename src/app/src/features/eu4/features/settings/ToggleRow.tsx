@@ -1,5 +1,5 @@
-import React from "react";
-import { Col, Row, Switch } from "antd";
+import React, { useId } from "react";
+import { Switch } from "antd";
 import { HelpTooltip } from "@/components/HelpTooltip";
 
 export interface ToggleRowProps {
@@ -17,29 +17,27 @@ export const ToggleRow = ({
   disabled = false,
   help,
 }: ToggleRowProps) => {
-  const controlSpan = 4;
-  const labelSpan = 24 - controlSpan;
-
+  const id = useId();
   return (
-    <Row>
-      <Col span={controlSpan}>
-        <Switch disabled={disabled} checked={value} onChange={onChange} />
-      </Col>
-      <Col
-        aria-disabled={disabled}
-        span={labelSpan}
-        className={`select-none ${
-          disabled ? "cursor-not-allowed text-gray-400" : "cursor-pointer"
-        }`}
-        onClick={disabled ? () => {} : () => onChange(!value)}
+    <div className="flex gap-4">
+      <Switch
+        className="peer"
+        disabled={disabled}
+        id={id}
+        checked={value}
+        onChange={onChange}
+      />
+      <label
+        htmlFor={id}
+        className="cursor-pointer select-none peer-disabled:cursor-not-allowed peer-disabled:text-gray-400"
       >
         {text}
-        {help && (
-          <span className="ml-1">
-            <HelpTooltip help={help} />
-          </span>
-        )}
-      </Col>
-    </Row>
+      </label>
+      {help && (
+        <span className="ml-1">
+          <HelpTooltip help={help} />
+        </span>
+      )}
+    </div>
   );
 };

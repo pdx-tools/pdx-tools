@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { EyeOutlined } from "@ant-design/icons";
-import { Button, Descriptions, Divider, Tooltip } from "antd";
+import { Button, Descriptions, Tooltip } from "antd";
 import Link from "next/link";
 import { TimeAgo } from "@/components/TimeAgo";
 import { difficultyText } from "@/lib/difficulty";
@@ -28,6 +28,7 @@ import {
   useTagFilter,
 } from "../../store";
 import { cx } from "class-variance-authority";
+import { Divider } from "@/components/Divider";
 
 const TagDescription = (play: TagTransition) => {
   return (
@@ -148,7 +149,7 @@ export const InfoDrawer = () => {
           </div>
         ) : null}
       </div>
-      <Divider orientation="left">Countries</Divider>
+      <Divider>Countries</Divider>
       <div className="grid gap-8 md:grid-cols-2">
         {playerHistories.data?.map((item) => (
           <div
@@ -205,7 +206,7 @@ export const InfoDrawer = () => {
       </div>
       {luckyCountries.data && luckyCountries.data.length > 0 ? (
         <>
-          <Divider orientation="left">Lucky Countries</Divider>
+          <Divider>Lucky Countries</Divider>
           <div className="grid grid-cols-5 gap-2">
             {luckyCountries.data.map((x) => (
               <FlagAvatar key={x.tag} tag={x.tag} name={x.name} size="large" />
@@ -215,7 +216,7 @@ export const InfoDrawer = () => {
       ) : null}
       {(serverFile?.aar || isPrivileged) && (
         <>
-          <Divider orientation="left">AAR</Divider>
+          <Divider>AAR</Divider>
           <Aar
             defaultValue={serverFile?.aar || ""}
             editMode={isPrivileged ? "privileged" : "never"}
