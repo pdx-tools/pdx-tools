@@ -73,54 +73,88 @@ export const InfoDrawer = () => {
   const descriptionStyle = { verticalAlign: "middle" };
   return (
     <div ref={sideBarContainerRef}>
-      <Descriptions>
-        {serverFile && (
-          <Descriptions.Item label="Uploaded">
-            <TimeAgo date={serverFile.upload_time} />
-          </Descriptions.Item>
-        )}
-
-        {serverFile && (
-          <Descriptions.Item label="By">
-            <Link href={`/users/${serverFile.user_id}`}>
-              {serverFile.user_name}
-            </Link>
-          </Descriptions.Item>
-        )}
-        <Descriptions.Item label="Date">{meta.date}</Descriptions.Item>
-        <Descriptions.Item label="Start">{meta.start_date}</Descriptions.Item>
-        <Descriptions.Item label="Patch">{patch}</Descriptions.Item>
-        <Descriptions.Item label="Difficulty">
-          {difficultyText(meta.gameplayOptions.difficulty)}
-        </Descriptions.Item>
-        <Descriptions.Item label="Achievements">
-          {achievements.kind == "Compatible" &&
-            (achievements.achievements.length == 0 ? (
-              <span>[none]</span>
-            ) : (
-              achievements.achievements.map((x) => (
-                <Tooltip key={x.id} title={x.name}>
-                  <div>
-                    <AchievementAvatar size="large" id={x.id} />
-                  </div>
-                </Tooltip>
-              ))
-            ))}
-        </Descriptions.Item>
-        <Descriptions.Item label={`Mods ${mods.length}`}>
-          <ModList />
-        </Descriptions.Item>
-        <Descriptions.Item label="DLC">
-          <DlcList dlc_enabled={meta.dlc} />
-        </Descriptions.Item>
-      </Descriptions>
+      <div className="flex flex-wrap justify-center gap-8">
+        <div className="w-80 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+          <table className="table w-full">
+            <tbody>
+              <tr>
+                <td>Date:</td>
+                <td>{meta.date}</td>
+              </tr>
+              {meta.start_date != "1444-11-11" && (
+                <tr>
+                  <td>Start:</td>
+                  <td>{meta.start_date}</td>
+                </tr>
+              )}
+              <tr>
+                <td>Patch:</td>
+                <td>{patch}</td>
+              </tr>
+              <tr>
+                <td>Difficulty:</td>
+                <td>{difficultyText(meta.gameplayOptions.difficulty)}</td>
+              </tr>
+              {serverFile && (
+                <>
+                  <tr>
+                    <td>Author:</td>
+                    <td>
+                      <Link href={`/users/${serverFile.user_id}`}>
+                        {serverFile.user_name}
+                      </Link>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Uploaded:</td>
+                    <td>
+                      <TimeAgo date={serverFile.upload_time} />
+                    </td>
+                  </tr>
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="w-80 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+          <div className="space-y-2">
+            <div className="text-center text-lg">DLC</div>
+            <DlcList dlc_enabled={meta.dlc} />
+          </div>
+        </div>
+        {achievements.kind === "Compatible" &&
+        achievements.achievements.length > 0 ? (
+          <div className="w-80 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+            <div className="space-y-2">
+              <div className="text-center text-lg">Achievements</div>
+              <div className="flex flex-wrap place-content-center space-x-2">
+                {achievements.achievements.map((x) => (
+                  <Tooltip key={x.id} title={x.name}>
+                    <div>
+                      <AchievementAvatar size="large" id={x.id} />
+                    </div>
+                  </Tooltip>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {mods.length > 0 ? (
+          <div className="min-w-[320px] max-w-xl rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+            <div className="space-y-2">
+              <div className="text-center text-lg">Mods {mods.length}</div>
+              <ModList />
+            </div>
+          </div>
+        ) : null}
+      </div>
       <Divider orientation="left">Countries</Divider>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-8 md:grid-cols-2">
         {playerHistories.data?.map((item) => (
           <div
             key={item.latest}
             className={cx(
-              "space-y-5 border border-solid border-gray-200 p-4",
+              "space-y-5 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg",
               item.annexed && "bg-rose-100",
               !item.is_human && !item.annexed && "bg-gray-100"
             )}
