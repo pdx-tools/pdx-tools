@@ -58,7 +58,6 @@ jobs:
           just admin-sync-assets && \
           just package-all && \
           just build-wasm-dev && \
-          just build-api && \
           just test && \
           just build
 

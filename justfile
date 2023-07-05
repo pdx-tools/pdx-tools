@@ -22,7 +22,6 @@ release:
   fi
 
   just build
-  just cross build --package pdx-tools-api --release
   just publish-frontend
   just publish-api
 
@@ -32,7 +31,7 @@ release:
     echo "pdx-tools-prod not found in ssh config, please add it and then run just publish-backend"
   fi
 
-build: build-wasm build-app build-docker
+build: build-wasm build-app (cross "--package" "pdx-tools-api" "--release") build-docker
 
 build-rust:
   cargo build --all
