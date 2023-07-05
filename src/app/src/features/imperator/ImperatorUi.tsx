@@ -6,8 +6,9 @@ import { getImperatorWorker } from "./worker";
 import { MeltButton } from "@/components/MeltButton";
 import { ImperatorMetadata } from "./worker/types";
 import { captureException } from "../errors";
-import { Alert } from "antd";
 import { emitEvent } from "@/lib/plausible";
+import { Alert, AlertDescription } from "@/components/Alert";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 
 export type ImperatorSaveFile = { save: { file: File } };
 type ImperatorPageProps = ImperatorSaveFile & { meta: ImperatorMetadata };
@@ -138,7 +139,11 @@ export const ImperatorUi = (props: ImperatorSaveFile) => {
 
   return (
     <>
-      {error && <Alert type="error" closable message={`${error}`} />}
+      {error && (
+        <Alert variant="error" className="px-4 py-2">
+          <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+        </Alert>
+      )}
       {data && <ImperatorPage {...props} meta={data} />}
     </>
   );

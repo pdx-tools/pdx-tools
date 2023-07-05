@@ -2,10 +2,11 @@ import { useEffect, forwardRef, memo } from "react";
 import { Eu4CanvasOverlay } from "./Eu4CanvasOverlay";
 import { AppLoading } from "@/components/AppLoading";
 import { ProgressBar } from "@/components/ProgressBar";
-import { Alert } from "antd";
 import { developerLog } from "@/lib/log";
 import { Eu4SaveInput, useLoadEu4, Eu4StoreProvider } from "./store";
 import { BrowserCheck } from "@/components/landing/BrowserCheck";
+import { Alert, AlertDescription } from "@/components/Alert";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 
 type Eu4UiProps = {
   save: Eu4SaveInput;
@@ -51,7 +52,9 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
           <ProgressBar height={32} value={loading.percent ?? 0} />
         ) : null}
         {error !== null ? (
-          <Alert type="error" closable message={`${error}`} />
+          <Alert className="px-2 py-4" variant="error">
+            <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+          </Alert>
         ) : null}
         <BrowserCheck />
       </div>

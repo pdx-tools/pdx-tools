@@ -5,9 +5,10 @@ import Head from "next/head";
 import { getCk3Worker } from "./worker";
 import { MeltButton } from "@/components/MeltButton";
 import { Ck3Metadata } from "./worker/types";
-import { Alert } from "antd";
 import { captureException } from "@sentry/nextjs";
 import { emitEvent } from "@/lib/plausible";
+import { Alert, AlertDescription } from "@/components/Alert";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 
 export type Ck3SaveFile = { save: { file: File } };
 
@@ -139,7 +140,11 @@ export const Ck3Ui = (props: Ck3SaveFile) => {
 
   return (
     <>
-      {error && <Alert type="error" closable message={`${error}`} />}
+      {error && (
+        <Alert variant="error" className="px-4 py-2">
+          <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+        </Alert>
+      )}
       {data && <Ck3Page {...props} meta={data} />}
     </>
   );

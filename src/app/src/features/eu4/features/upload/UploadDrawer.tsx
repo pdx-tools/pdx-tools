@@ -1,13 +1,15 @@
 import React from "react";
-import { Drawer } from "antd";
+import { Drawer, Typography } from "antd";
 import { useUploadProgress, useUploadResponse } from "./uploadContext";
 import { UploadDrawerContent } from "./UploadDrawerContent";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import { ProgressBar } from "@/components/ProgressBar";
 import { SaveMode } from "../../components/save-mode";
-import { SuccessAlert } from "../../components/SuccessAlert";
 import { closeDrawerPropagation } from "../../components/SideBarContainer";
 import { useEu4Meta, useSaveFilename } from "../../store";
+import { Alert, AlertDescription } from "@/components/Alert";
+import Link from "next/link";
+const { Text } = Typography;
 
 interface UploadDrawerProps {
   visible: boolean;
@@ -26,7 +28,26 @@ export const UploadDrawerTitle = () => {
       <HelpTooltip help="Upload the save to PDX Tools servers so you can share a link with the world" />
       <span className="grow">
         {progress !== undefined && <ProgressBar height={30} value={progress} />}
-        {uploadResponse && <SuccessAlert newSaveId={uploadResponse.save_id} />}
+        {uploadResponse ? (
+          <Alert
+            key={uploadResponse.save_id}
+            className="px-2 py-1"
+            variant="success"
+          >
+            <AlertDescription>
+              <Text
+                copyable={{
+                  text: `${location.origin}/eu4/saves/${uploadResponse.save_id}`,
+                }}
+              >
+                {`Save successfully uploaded! `}
+                <Link href={`/eu4/saves/${uploadResponse.save_id}`}>
+                  Permalink
+                </Link>
+              </Text>
+            </AlertDescription>
+          </Alert>
+        ) : null}
       </span>
     </div>
   );

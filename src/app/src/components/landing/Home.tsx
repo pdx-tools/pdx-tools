@@ -17,7 +17,6 @@ import classes from "./Home.module.css";
 import { ImageGallery } from "./ImageGallery";
 import { useRouter } from "next/router";
 import { useEngineActions } from "@/features/engine";
-import { AchievementAvatar } from "@/features/eu4/components/avatars";
 
 interface HomeProps {
   subtitle?: React.ReactNode;

@@ -1,6 +1,6 @@
 import { compatibilityReport } from "@/lib/compatibility";
-import { Alert } from "antd";
 import { useEffect, useState } from "react";
+import { Alert, AlertDescription } from "../Alert";
 
 export const BrowserCheck = () => {
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -41,19 +41,15 @@ export const BrowserCheck = () => {
   }
 
   return (
-    <Alert
-      type="error"
-      closable
-      message={
-        <div>
-          Your browser is not supported due to:
-          <ul className="m-0">
-            {warnings.map((x) => (
-              <li key={x}>{x}</li>
-            ))}
-          </ul>
-        </div>
-      }
-    />
+    <Alert variant="error" className="p-4">
+      <AlertDescription>
+        Your browser is not supported due to:
+        <ul className="m-0">
+          {warnings.map((x) => (
+            <li key={x}>{x}</li>
+          ))}
+        </ul>
+      </AlertDescription>
+    </Alert>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
-import { Alert } from "antd";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { useTagFilter } from "../../store";
+import { Alert, AlertDescription } from "@/components/Alert";
 
 type DisplayLimitAlertProps = {
   displayLimit: number;
@@ -19,11 +19,12 @@ export const DisplayLimitAlert = ({ displayLimit }: DisplayLimitAlertProps) => {
 
   if (limitExceeded) {
     return (
-      <Alert
-        type="warning"
-        message="Too many countries in filter, display limited to players and great countries"
-        closable
-      />
+      <Alert variant="warning" className="px-4 py-2">
+        <AlertDescription>
+          Too many countries in filter, display limited to players and great
+          countries
+        </AlertDescription>
+      </Alert>
     );
   } else {
     return null;

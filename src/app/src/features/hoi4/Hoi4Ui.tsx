@@ -5,9 +5,10 @@ import Head from "next/head";
 import { getHoi4Worker } from "./worker";
 import { MeltButton } from "@/components/MeltButton";
 import { Hoi4Metadata } from "./worker/types";
-import { Alert } from "antd";
 import { captureException } from "@sentry/nextjs";
 import { emitEvent } from "@/lib/plausible";
+import { Alert, AlertDescription } from "@/components/Alert";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 
 export type Hoi4SaveFile = { save: { file: File } };
 type Hoi4PageProps = Hoi4SaveFile & { meta: Hoi4Metadata };
@@ -138,7 +139,11 @@ export const Hoi4Ui = (props: Hoi4SaveFile) => {
 
   return (
     <>
-      {error && <Alert type="error" closable message={`${error}`} />}
+      {error && (
+        <Alert variant="error" className="px-4 py-2">
+          <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+        </Alert>
+      )}
       {data && <Hoi4Page {...props} meta={data} />}
     </>
   );

@@ -17,6 +17,7 @@
     "@types/wicg-file-system-access": "2020.9.6",
     "antd": "4.22.8",
     "aws4fetch": "1.0.17",
+    "class-variance-authority": "0.6.1",
     "comlink": "4.4.1",
     "dayjs": "1.11.7",
     "drizzle-orm": "0.25.4",

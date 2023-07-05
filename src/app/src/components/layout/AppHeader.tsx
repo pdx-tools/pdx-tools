@@ -28,7 +28,7 @@ export const AppHeader = () => {
         </AnnouncementBar>
       )}
 
-      <div className="h-16 px-4 bg-[#001529]">
+      <div className="h-16 bg-[#001529] px-4">
         <div className="mx-auto flex h-full w-full items-center">
           <Link
             href="/"

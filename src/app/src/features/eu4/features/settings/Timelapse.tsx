@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import {
-  Alert,
   Button,
   Radio,
   Tooltip,
@@ -33,6 +32,7 @@ import {
   useSaveFilenameWith,
   useSelectedDate,
 } from "../../store";
+import { Alert, AlertDescription } from "@/components/Alert";
 
 interface MapState {
   focusPoint: [number, number];
@@ -58,7 +58,6 @@ export const Timelapse = () => {
   const encoderRef = useRef<TimelapseEncoder | undefined>(undefined);
   const stopTimelapseReq = useRef<boolean>(false);
   const [recordingSupported] = useState(() => TimelapseEncoder.isSupported());
-  const [progress, setProgress] = useState("");
   const map = useEu4Map();
   const timelapseEnabled = useIsDatePickerEnabled();
   const { updateMap, updateProvinceColors } = useEu4Actions();
@@ -155,7 +154,6 @@ export const Timelapse = () => {
       });
     } finally {
       restoreMapState();
-      setProgress("");
       setIsRecording(false);
     }
   };
@@ -187,31 +185,27 @@ export const Timelapse = () => {
         </Tooltip>
       </div>
       {!recordingSupported && (
-        <Alert
-          type="info"
-          message={
-            <>
-              Browser does not support timelapse recording.{" "}
-              <a
-                target="_blank"
-                rel="noreferrer"
-                href="https://caniuse.com/mdn-api_videoencoder"
-              >
-                See supported browsers
-              </a>{" "}
-              like Chrome.{" "}
-              <Link
-                target="_blank"
-                href="/blog/a-new-timelapse-video-recorder"
-                aria-label="Read more about new video encoder"
-              >
-                Read more
-              </Link>
-            </>
-          }
-        />
+        <Alert variant="info" className="px-4 py-2">
+          <AlertDescription>
+            Browser does not support timelapse recording.{" "}
+            <a
+              target="_blank"
+              rel="noreferrer"
+              href="https://caniuse.com/mdn-api_videoencoder"
+            >
+              See supported browsers
+            </a>{" "}
+            like Chrome.{" "}
+            <Link
+              target="_blank"
+              href="/blog/a-new-timelapse-video-recorder"
+              aria-label="Read more about new video encoder"
+            >
+              Read more
+            </Link>
+          </AlertDescription>
+        </Alert>
       )}
-      {progress && <Alert type="info" message={progress} />}
       <Form
         form={form}
         layout="vertical"
