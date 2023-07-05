@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { EyeOutlined } from "@ant-design/icons";
-import { Button, Card, Descriptions, Divider, List, Tooltip } from "antd";
+import { Button, Descriptions, Divider, Tooltip } from "antd";
 import Link from "next/link";
 import { TimeAgo } from "@/components/TimeAgo";
 import { difficultyText } from "@/lib/difficulty";
@@ -27,6 +27,7 @@ import {
   useServerSaveFile,
   useTagFilter,
 } from "../../store";
+import { cx } from "class-variance-authority";
 
 const TagDescription = (play: TagTransition) => {
   return (
@@ -114,65 +115,60 @@ export const InfoDrawer = () => {
         </Descriptions.Item>
       </Descriptions>
       <Divider orientation="left">Countries</Divider>
-      <List
-        grid={{ gutter: 16, xs: 1, sm: 1, md: 2, lg: 2, xl: 2, xxl: 2 }}
-        dataSource={playerHistories.data}
-        renderItem={(item) => (
-          <List.Item key={item.latest}>
-            <Card
-              title={
+      <div className="grid gap-4 md:grid-cols-2">
+        {playerHistories.data?.map((item) => (
+          <div
+            key={item.latest}
+            className={cx(
+              "space-y-5 border border-solid border-gray-200 p-4",
+              item.annexed && "bg-rose-100",
+              !item.is_human && !item.annexed && "bg-gray-100"
+            )}
+          >
+            <div className="flex">
+              <div className="grow">
                 <TagFlag tag={item.latest} size="large">
                   {item.name}
                 </TagFlag>
-              }
-              extra={
-                <div className="flex items-center gap-2">
-                  {!item.annexed && (
-                    <Tooltip title={`Show only ${item.name} on the map`}>
-                      <Button
-                        key="visibility-change"
-                        icon={<EyeOutlined />}
-                        onClick={() => {
-                          visibleTag(item.latest);
-                        }}
-                      ></Button>
-                    </Tooltip>
-                  )}
-                </div>
-              }
-              style={{
-                backgroundColor: !item.annexed
-                  ? item.is_human
-                    ? undefined
-                    : "rgba(0, 0, 0, 0.05)"
-                  : "#fff2f0",
-              }}
-            >
-              <Descriptions column={1} labelStyle={{ alignSelf: "center" }}>
-                <Descriptions.Item
-                  style={descriptionStyle}
-                  label={`${item.annexed ? "Annexed" : "Status"}`}
-                >
-                  {item.annexed ?? (item.is_human ? "online" : "offline")}
-                </Descriptions.Item>
+              </div>
+              <div className="flex items-center gap-2">
+                {!item.annexed && (
+                  <Tooltip title={`Show only ${item.name} on the map`}>
+                    <Button
+                      icon={<EyeOutlined />}
+                      onClick={() => {
+                        visibleTag(item.latest);
+                      }}
+                    ></Button>
+                  </Tooltip>
+                )}
+              </div>
+            </div>
+            <div className="border border-solid border-gray-200"></div>
+            <Descriptions column={1} labelStyle={{ alignSelf: "center" }}>
+              <Descriptions.Item
+                style={descriptionStyle}
+                label={`${item.annexed ? "Annexed" : "Status"}`}
+              >
+                {item.annexed ?? (item.is_human ? "online" : "offline")}
+              </Descriptions.Item>
 
-                <Descriptions.Item
-                  style={descriptionStyle}
-                  label={`Player${item.player_names.length == 1 ? "" : "s"}`}
-                >
-                  <StringFlipBook items={item.player_names} />
-                </Descriptions.Item>
-                <Descriptions.Item style={descriptionStyle} label={`History`}>
-                  <FlipBook
-                    items={item.transitions}
-                    itemRender={(play) => <TagDescription {...play} />}
-                  />
-                </Descriptions.Item>
-              </Descriptions>
-            </Card>
-          </List.Item>
-        )}
-      />
+              <Descriptions.Item
+                style={descriptionStyle}
+                label={`Player${item.player_names.length == 1 ? "" : "s"}`}
+              >
+                <StringFlipBook items={item.player_names} />
+              </Descriptions.Item>
+              <Descriptions.Item style={descriptionStyle} label={`History`}>
+                <FlipBook
+                  items={item.transitions}
+                  itemRender={(play) => <TagDescription {...play} />}
+                />
+              </Descriptions.Item>
+            </Descriptions>
+          </div>
+        ))}
+      </div>
       {luckyCountries.data && luckyCountries.data.length > 0 ? (
         <>
           <Divider orientation="left">Lucky Countries</Divider>
