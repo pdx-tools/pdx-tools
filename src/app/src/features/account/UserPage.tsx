@@ -1,5 +1,4 @@
 import React from "react";
-import { Descriptions } from "antd";
 import { UserSaveTable } from "./UserSaveTable";
 import { TimeAgo } from "../../components/TimeAgo";
 import { useIsPrivileged, useUserQuery } from "../../services/appApi";
@@ -27,13 +26,11 @@ export const UserPage = ({ userId }: UserRouteProps) => {
         <h1 className="text-4xl">
           {user.user_info.user_name || `User: ${userId}`}
         </h1>
-        <Descriptions size="small" column={3}>
-          <Descriptions.Item label="Joined">
-            <TimeAgo date={user.user_info.created_on} />
-          </Descriptions.Item>
-        </Descriptions>
+        <div className="mb-4 space-x-2">
+          <span>Joined:</span>
+          <TimeAgo date={user.user_info.created_on} />
+        </div>
 
-        <div className="mt-5"></div>
         <UserSaveTable isPrivileged={isPrivileged} records={user.saves} />
       </div>
     </div>

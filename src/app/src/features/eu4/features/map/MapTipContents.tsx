@@ -1,4 +1,3 @@
-import { Descriptions } from "antd";
 import { QuickTipPayload } from "../../types/map";
 import { FlagAvatarCore } from "../../components/avatars";
 import classes from "./MapTipContents.module.css";
@@ -32,78 +31,100 @@ const mapTagDescriptions = ({
   owner: LocalizedTag;
   controller: LocalizedTag;
 }) => {
-  const controllerItem =
-    owner.tag != controller.tag ? (
-      <Descriptions.Item label="Controller" key="Controller">
-        <MapTipFlag tag={controller.tag} name={controller.name} />
-      </Descriptions.Item>
-    ) : null;
+  return (
+    <>
+      {owner.tag != controller.tag ? (
+        <tr>
+          <td>Controller:</td>
+          <td className="pl-2">
+            <MapTipFlag tag={controller.tag} name={controller.name} />
+          </td>
+        </tr>
+      ) : null}
 
-  return [
-    <Descriptions.Item label="Owner" key="Owner">
-      <MapTipFlag tag={owner.tag} name={owner.name} />
-    </Descriptions.Item>,
-    controllerItem,
-  ];
+      <tr>
+        <td>Owner:</td>
+        <td className="pl-2">
+          <MapTipFlag tag={owner.tag} name={owner.name} />
+        </td>
+      </tr>
+    </>
+  );
 };
 
 const MapTipsTable = ({ tip }: MapTipContentsProps) => {
-  const items: React.ReactNode[] = [];
   switch (tip.kind) {
     case "political": {
       return (
-        <Descriptions column={1} size="small">
-          {mapTagDescriptions(tip)}
-        </Descriptions>
+        <table>
+          <tbody>{mapTagDescriptions(tip)}</tbody>
+        </table>
       );
     }
     case "religion": {
       return (
-        <Descriptions column={1} size="small">
-          {mapTagDescriptions(tip)}
-          <Descriptions.Item label="State Religion">
-            {tip.stateReligion.name}
-          </Descriptions.Item>
-          <Descriptions.Item label="Province Religion">
-            {tip.religionInProvince.name}
-          </Descriptions.Item>
-        </Descriptions>
+        <table>
+          <tbody>
+            {mapTagDescriptions(tip)}
+            <tr>
+              <td>{tip.owner.name}:</td>
+              <td className="pl-2">{tip.stateReligion.name}</td>
+            </tr>
+            <tr>
+              <td>Province:</td>
+              <td className="pl-2">{tip.religionInProvince.name}</td>
+            </tr>
+          </tbody>
+        </table>
       );
     }
     case "development": {
       return (
-        <Descriptions column={1} size="small">
-          {mapTagDescriptions(tip)}
-          <Descriptions.Item
-            label={`Development (${
-              tip.baseManpower + tip.baseProduction + tip.baseTax
-            })`}
-          >
-            {`${tip.baseTax} / ${tip.baseProduction} / ${tip.baseManpower}`}
-          </Descriptions.Item>
-        </Descriptions>
+        <table>
+          <tbody>
+            {mapTagDescriptions(tip)}
+            <tr>
+              <td>
+                Development (
+                {tip.baseManpower + tip.baseProduction + tip.baseTax}):
+              </td>
+              <td className="pl-2">
+                {tip.baseTax} / {tip.baseProduction} / {tip.baseManpower}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       );
     }
     case "battles": {
       return (
-        <Descriptions column={1} size="small">
-          <Descriptions.Item label="Battles">
-            {formatInt(tip.battles)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Casualties">
-            {formatInt(tip.losses)}
-          </Descriptions.Item>
-        </Descriptions>
+        <table>
+          <tbody>
+            <tr>
+              <td>Battles:</td>
+              <td className="pl-2">{formatInt(tip.battles)}</td>
+            </tr>
+            <tr>
+              <td>Losses:</td>
+              <td className="pl-2">{formatInt(tip.losses)}</td>
+            </tr>
+          </tbody>
+        </table>
       );
     }
     case "technology": {
       return (
-        <Descriptions column={1} size="small">
-          {mapTagDescriptions(tip)}
-          <Descriptions.Item label="Tech">
-            {`${tip.admTech} / ${tip.dipTech} / ${tip.milTech}`}
-          </Descriptions.Item>
-        </Descriptions>
+        <table>
+          <tbody>
+            {mapTagDescriptions(tip)}
+            <tr>
+              <td>Tech:</td>
+              <td className="pl-2">
+                {tip.admTech} / {tip.dipTech} / {tip.milTech}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       );
     }
   }

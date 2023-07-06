@@ -1,5 +1,5 @@
 import React from "react";
-import { Descriptions, Table, Tooltip } from "antd";
+import { Table, Tooltip } from "antd";
 import { ColumnType } from "antd/lib/table";
 import {
   CountryState,
@@ -124,75 +124,119 @@ export const ProvinceDetailsDescriptions = ({
 
   return (
     <div className="flex flex-col gap-2" ref={sideBarContainerRef}>
-      <Descriptions column={1} bordered size="small">
-        <Descriptions.Item label="Id">{province.id}</Descriptions.Item>
-        <Descriptions.Item label="Name">{province.name}</Descriptions.Item>
-        <Descriptions.Item label="Development">
-          <Tooltip title="tax / production / manpower">
-            {`${province.base_tax} / ${province.base_production} / ${province.base_manpower}`}
-          </Tooltip>
-        </Descriptions.Item>
-        <Descriptions.Item label="Owner">
-          {province.owner ? (
-            <FlagAvatar tag={province.owner.tag} name={province.owner.name} />
-          ) : (
-            "---"
-          )}
-        </Descriptions.Item>
-        <Descriptions.Item label="Controller">
-          {province.controller ? (
-            <FlagAvatar
-              tag={province.controller.tag}
-              name={province.controller.name}
-            />
-          ) : (
-            "---"
-          )}
-        </Descriptions.Item>
-        <Descriptions.Item label="Cores">
-          {province.cores.map((core) => (
-            <FlagAvatar
-              key={core.tag}
-              tag={core.tag}
-              name={core.name}
-              condensed={true}
-            />
-          ))}
-        </Descriptions.Item>
-        <Descriptions.Item label="Claims">
-          {province.claims.map((claim) => (
-            <FlagAvatar
-              key={claim.tag}
-              tag={claim.tag}
-              name={claim.name}
-              condensed={true}
-            />
-          ))}
-        </Descriptions.Item>
-        <Descriptions.Item label="Religion">
-          {province.religion || "---"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Culture">
-          {province.culture || "---"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Devastation">
-          {formatFloat(province.devastation)}
-        </Descriptions.Item>
-        <Descriptions.Item label="Trade Goods">
-          {province.trade_goods || "---"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Latent Trade Goods">
-          {province.latent_trade_goods.join(", ")}
-        </Descriptions.Item>
-        <Descriptions.Item label="In Trade Company">
-          {province.is_in_trade_company ? "yes" : "no"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Buildings">
-          {province.buildings.map((building) => (
-            <BuildingAvatar condensed={true} key={building.id} {...building} />
-          ))}
-        </Descriptions.Item>
-      </Descriptions>
+      <table>
+        <tbody>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Id:</th>
+            <td className="py-2">{province.id}</td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Name:</th>
+            <td className="py-2">{province.name}</td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Development:</th>
+            <td className="py-2">
+              <Tooltip title="tax / production / manpower">
+                {`${province.base_tax} / ${province.base_production} / ${province.base_manpower}`}
+              </Tooltip>
+            </td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Owner:</th>
+            <td className="py-2">
+              {province.owner ? (
+                <FlagAvatar
+                  tag={province.owner.tag}
+                  name={province.owner.name}
+                />
+              ) : (
+                "---"
+              )}
+            </td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Controller:</th>
+            <td className="py-2">
+              {province.controller ? (
+                <FlagAvatar
+                  tag={province.controller.tag}
+                  name={province.controller.name}
+                />
+              ) : (
+                "---"
+              )}
+            </td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Cores:</th>
+            <td className="py-2">
+              {province.cores.map((core) => (
+                <FlagAvatar
+                  key={core.tag}
+                  tag={core.tag}
+                  name={core.name}
+                  condensed={true}
+                />
+              ))}
+            </td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Claims:</th>
+            <td className="py-2">
+              {province.claims.map((claim) => (
+                <FlagAvatar
+                  key={claim.tag}
+                  tag={claim.tag}
+                  name={claim.name}
+                  condensed={true}
+                />
+              ))}
+            </td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Religion:</th>
+            <td className="py-2">{province.religion || "---"}</td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Culture:</th>
+            <td className="py-2">{province.culture || "---"}</td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Devastation:</th>
+            <td className="py-2">{formatFloat(province.devastation)}</td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Trade Goods:</th>
+            <td className="py-2">{province.trade_goods || "---"}</td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Latent Trade Goods:</th>
+            <td className="py-2">{province.latent_trade_goods.join(", ")}</td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">In Trade Company:</th>
+            <td className="py-2">
+              {province.is_in_trade_company ? "yes" : "no"}
+            </td>
+          </tr>
+          <tr className="odd:bg-white even:bg-slate-50">
+            <th className="py-2 text-left">Buildings:</th>
+            <td className="py-2">
+              <div className="flex flex-wrap gap-2">
+                {province.buildings.map((building) => (
+                  <BuildingAvatar
+                    condensed={true}
+                    key={building.id}
+                    {...building}
+                  />
+                ))}
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
       <Table
         title={() => "Developments"}
         size="small"

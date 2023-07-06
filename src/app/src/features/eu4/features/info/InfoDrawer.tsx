@@ -71,7 +71,6 @@ export const InfoDrawer = () => {
 
   const version = meta.savegame_version;
   const patch = `${version.first}.${version.second}.${version.third}.${version.fourth}`;
-  const descriptionStyle = { verticalAlign: "middle" };
   return (
     <div ref={sideBarContainerRef}>
       <div className="flex flex-wrap justify-center gap-8">
@@ -180,27 +179,35 @@ export const InfoDrawer = () => {
               </div>
             </div>
             <div className="border border-solid border-gray-200"></div>
-            <Descriptions column={1} labelStyle={{ alignSelf: "center" }}>
-              <Descriptions.Item
-                style={descriptionStyle}
-                label={`${item.annexed ? "Annexed" : "Status"}`}
-              >
-                {item.annexed ?? (item.is_human ? "online" : "offline")}
-              </Descriptions.Item>
-
-              <Descriptions.Item
-                style={descriptionStyle}
-                label={`Player${item.player_names.length == 1 ? "" : "s"}`}
-              >
-                <StringFlipBook items={item.player_names} />
-              </Descriptions.Item>
-              <Descriptions.Item style={descriptionStyle} label={`History`}>
-                <FlipBook
-                  items={item.transitions}
-                  itemRender={(play) => <TagDescription {...play} />}
-                />
-              </Descriptions.Item>
-            </Descriptions>
+            <table>
+              <tbody>
+                <tr>
+                  <td className="py-1">
+                    {item.annexed ? "Annexed:" : "Status:"}
+                  </td>
+                  <td className="py-1">
+                    {item.annexed ?? (item.is_human ? "online" : "offline")}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1">
+                    Player{item.player_names.length == 1 ? "" : "s"}:
+                  </td>
+                  <td className="py-1">
+                    <StringFlipBook items={item.player_names} />
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1">History:</td>
+                  <td className="py-1">
+                    <FlipBook
+                      items={item.transitions}
+                      itemRender={(play) => <TagDescription {...play} />}
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         ))}
       </div>

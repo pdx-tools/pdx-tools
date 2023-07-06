@@ -1,17 +1,12 @@
 import { AlertDescription, Alert } from "@/components/Alert";
-import { useNewApiKeyRequest, useProfileQuery } from "@/services/appApi";
-import { Button, Descriptions, Typography } from "antd";
+import { PrivateUserInfo, useNewApiKeyRequest } from "@/services/appApi";
+import { Button, Typography } from "antd";
 import React, { useState } from "react";
 const { Text } = Typography;
 
-export const AccountContent = () => {
-  const profileQuery = useProfileQuery();
+export const AccountContent = ({ info }: { info: PrivateUserInfo }) => {
   const [key, setKey] = useState<string | undefined>();
   const newKey = useNewApiKeyRequest(setKey);
-
-  if (profileQuery.data === undefined || profileQuery.data.kind == "guest") {
-    return null;
-  }
 
   return (
     <>
@@ -25,23 +20,15 @@ export const AccountContent = () => {
           </AlertDescription>
         </Alert>
       ) : null}
-      <Descriptions
-        bordered
-        column={{ xxl: 1, xl: 1, lg: 1, md: 1, sm: 1, xs: 1 }}
-      >
-        <Descriptions.Item label="PDX Tools User Id">
-          <Text copyable>{profileQuery.data.user.user_id}</Text>
-        </Descriptions.Item>
-        <Descriptions.Item label="New API Key">
-          <p>
-            Generate a new API key for 3rd party apps. Previous API key is
-            overwritten
-          </p>
-          <Button loading={newKey.isLoading} onClick={() => newKey.mutate()}>
-            Generate
-          </Button>
-        </Descriptions.Item>
-      </Descriptions>
+      <div>
+        <p>
+          Generate a new API key for 3rd party apps. Previous API key is
+          overwritten
+        </p>
+        <Button loading={newKey.isLoading} onClick={() => newKey.mutate()}>
+          Generate
+        </Button>
+      </div>
     </>
   );
 };
