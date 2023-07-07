@@ -6,7 +6,7 @@ import { getVic3Worker } from "./worker";
 import { MeltButton } from "@/components/MeltButton";
 import { Vic3Metadata } from "./worker/types";
 import { captureException } from "../errors";
-import { Alert, AlertDescription } from "@/components/Alert";
+import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { emitEvent } from "@/lib/plausible";
 
@@ -142,7 +142,7 @@ export const Vic3Ui = (props: Vic3SaveFile) => {
     <>
       {error && (
         <Alert variant="error" className="px-4 py-2">
-          <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+          <Alert.Description>{getErrorMessage(error)}</Alert.Description>
         </Alert>
       )}
       {data && <Vic3Page {...props} meta={data} />}

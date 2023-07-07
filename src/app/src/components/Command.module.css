@@ -1,0 +1,30 @@
+.heading [cmdk-group-heading] {
+  @apply text-xs text-gray-400;
+  padding: theme(spacing[1.5]) theme(spacing.2);
+  font-weight: theme(fontWeight.medium);
+}
+
+.dialog [cmdk-group-heading] {
+  @apply text-sky-800;
+  padding: 0 theme(spacing.2);
+  font-weight: theme(fontWeight.medium);
+}
+
+.dialog [cmdk-group]:not([hidden]) ~ [cmdk-group] {
+  padding-top: 0;
+}
+
+.dialog [cmdk-group] {
+  padding: 0 theme(spacing.2);
+}
+
+.dialog [cmdk-input-wrapper] svg,
+.dialog [cmdk-item] svg {
+  height: theme(height.5);
+  width: theme(height.5);
+}
+
+.dialog [cmdk-input] {
+  height: theme(height.12);
+  padding: theme(spacing.3) theme(spacing.2);
+}

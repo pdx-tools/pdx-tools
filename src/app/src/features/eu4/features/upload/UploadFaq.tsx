@@ -1,34 +1,34 @@
-import Link from "next/link";
+import { Link } from "@/components/Link";
 import React from "react";
 
 export const UploadFaq = () => {
   return (
-    <dl>
-      <dt className="font-bold">What files can I upload?</dt>
+    <dl className="max-w-prose">
+      <dt className="mt-4 font-bold">What files can I upload?</dt>
       <dd>
         Any EU4 save that can be understood: normal games, multiplayer games,
         ironman games with and without achievement compatibility. Even modded
         games can be uploaded, though support for those can be limited.
       </dd>
-      <dt className="font-bold">Can I delete files I upload?</dt>
+      <dt className="mt-4 font-bold">Can I delete files I upload?</dt>
       <dd>
         Yes you are free to do with the saves as you please. After deleting a
         save it will no longer be accessible to you or others. You can choose to
         reupload it at a later date, but it won't be accessible at the previous
         URL.
       </dd>
-      <dt className="font-bold">
+      <dt className="mt-4 font-bold">
         Can I download a file on PDX Tools and continue it locally?
       </dt>
       <dd>
         Yes! In fact, PDX Tools losslessly re-encodes saves with a higher
         compression ratio so downloaded saves will be smaller than the original.
       </dd>
-      <dt className="font-bold">What are the limits on uploads?</dt>
+      <dt className="mt-4 font-bold">What are the limits on uploads?</dt>
       <dd>
         Compressed saves must not exceed 20MB and 200MB when uncompressed.
       </dd>
-      <dt className="font-bold">
+      <dt className="mt-4 font-bold">
         Can I get on an achievement leaderboard with an older patch?
       </dt>
       <dd>
@@ -40,7 +40,7 @@ export const UploadFaq = () => {
         with all the bugfixes and balancing changes brought by patches, are
         feasible.
       </dd>
-      <dt className="font-bold">
+      <dt className="mt-4 font-bold">
         My save has achievements that aren't recognized
       </dt>
       <dd>
@@ -56,7 +56,7 @@ export const UploadFaq = () => {
         gained but then "lost" (ie: tag switching, vassal annexation, etc) won't
         be detected.
       </dd>
-      <dt className="font-bold">
+      <dt className="mt-4 font-bold">
         What happens to runs where I gain multiple achievements?
       </dt>
       <dd>
@@ -67,15 +67,17 @@ export const UploadFaq = () => {
         uploaded without using a save slot, and the earlier completion date will
         knock the old save off the leaderboard.
       </dd>
-      <dt className="font-bold">Can I mark the uploaded files as private?</dt>
+      <dt className="mt-4 font-bold">
+        Can I mark the uploaded files as private?
+      </dt>
       <dd>No, all uploaded files are public.</dd>
-      <dt className="font-bold">
+      <dt className="mt-4 font-bold">
         I have a suggestion or a question that isn't answered here
       </dt>
       <dd>
         Feel free to get in contact via{" "}
-        <a href="https://discord.gg/rCpNWQW">Discord</a> or email hi [(at)]
-        pdx.tools
+        <Link href="https://discord.gg/rCpNWQW">Discord</Link> or email hi
+        [(at)] pdx.tools
       </dd>
     </dl>
   );

@@ -4,7 +4,7 @@ import { useEu4Worker } from "./useEu4Worker";
 import { Eu4Worker } from "./bridge";
 
 export const useAnalysisWorker = <T>(cb: (arg0: Eu4Worker) => Promise<T>) => {
-  const { isLoading, data } = useEu4Worker(cb);
+  const { isLoading, data, error } = useEu4Worker(cb);
   const visualizationDispatch = useVisualizationDispatch();
   useEffect(() => {
     if (isLoading) {
@@ -14,5 +14,5 @@ export const useAnalysisWorker = <T>(cb: (arg0: Eu4Worker) => Promise<T>) => {
     }
   }, [isLoading, visualizationDispatch]);
 
-  return { data };
+  return { data, error };
 };

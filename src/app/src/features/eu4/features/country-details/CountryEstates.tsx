@@ -3,6 +3,7 @@ import { CountryDetails, Estate } from "../../types/models";
 import { useEu4Worker } from "../../worker";
 import React from "react";
 import { formatInt } from "@/lib/format";
+import { Alert } from "@/components/Alert";
 
 const CountryEstate = ({ estate }: { estate: Estate }) => {
   return (
@@ -27,21 +28,20 @@ const CountryEstate = ({ estate }: { estate: Estate }) => {
             ))}
           </tbody>
         </table>
-        <ul></ul>
-        <div>
-          Influence modifiers:
-          <table className="ml-4 border-separate border-spacing-x-2">
-            <tbody>
-              {estate.influenceModifiers.map((modifier) => (
-                <tr key={`${modifier.desc}-${modifier.date}`}>
-                  <td className="mr-2 text-right">{modifier.value}</td>
-                  <td className="no-break">{modifier.date}</td>
-                  <td>{modifier.desc}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      </div>
+      <div>
+        Influence modifiers:
+        <table className="ml-4 border-separate border-spacing-x-2">
+          <tbody>
+            {estate.influenceModifiers.map((modifier) => (
+              <tr key={`${modifier.desc}-${modifier.date}`}>
+                <td className="mr-2 text-right">{modifier.value}</td>
+                <td className="no-break">{modifier.date}</td>
+                <td>{modifier.desc}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -73,12 +73,16 @@ export interface CountryEstatesProps {
 }
 
 export const CountryEstates = ({ details }: CountryEstatesProps) => {
-  const { data = [] } = useEu4Worker(
+  const { data = [], error } = useEu4Worker(
     useCallback(
       (worker) => worker.eu4GetCountryEstates(details.tag),
       [details.tag]
     )
   );
+
+  if (error) {
+    return <Alert.Error msg={error} />;
+  }
 
   if (data.length == 0) {
     return <div>No estates</div>;

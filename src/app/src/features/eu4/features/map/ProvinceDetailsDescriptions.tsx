@@ -1,144 +1,118 @@
 import React from "react";
-import { Table, Tooltip } from "antd";
-import { ColumnType } from "antd/lib/table";
 import {
   CountryState,
-  LocalizedObj,
-  LocalizedTag,
   ProvinceCountryImprovement,
   ProvinceDetails,
   ProvinceHistoryEvent,
   TradeCompanyInvestments,
 } from "../../types/models";
-import { diff } from "@/lib/dates";
 import {
   TcInvestmentAvatar,
   BuildingAvatar,
   FlagAvatar,
 } from "@/features/eu4/components/avatars";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
-import { formatFloat } from "@/lib/format";
+import { formatFloat, formatInt } from "@/lib/format";
+import { Tooltip } from "@/components/Tooltip";
+import { createColumnHelper } from "@tanstack/react-table";
+import { DataTable } from "@/components/DataTable";
 
 interface ProvinceDetailsProps {
   province: ProvinceDetails;
 }
 
-type ProvinceEventIndex = { index: number } & ProvinceHistoryEvent;
+const devColumnHelper = createColumnHelper<ProvinceCountryImprovement>();
+const devColumns = [
+  devColumnHelper.accessor("country", {
+    header: "Country",
+    cell: (info) => <FlagAvatar {...info.getValue()} />,
+  }),
+
+  devColumnHelper.accessor("improvements", {
+    header: "Dev Count",
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+];
+
+const stateColumnHelper = createColumnHelper<CountryState>();
+const stateColumns = [
+  stateColumnHelper.accessor("country", {
+    header: "Country",
+    cell: (info) => <FlagAvatar {...info.getValue()} />,
+  }),
+
+  stateColumnHelper.accessor("prosperity", {
+    header: "Prosperity",
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+];
+
+const investmentColumnHelper = createColumnHelper<TradeCompanyInvestments>();
+const investmentColumns = [
+  investmentColumnHelper.accessor("country", {
+    header: "Country",
+    cell: (info) => <FlagAvatar {...info.getValue()} />,
+  }),
+
+  investmentColumnHelper.accessor("investments", {
+    header: "Investments",
+    cell: (info) => {
+      <ul className="flex">
+        {info.getValue().map((investment) => (
+          <li key={investment.id}>
+            <TcInvestmentAvatar {...investment} />
+          </li>
+        ))}
+      </ul>;
+    },
+  }),
+];
+
+const historyColumnHelper = createColumnHelper<ProvinceHistoryEvent>();
+const historyColumns = [
+  historyColumnHelper.accessor("date", {
+    header: "Date",
+    meta: { className: "no-break" },
+  }),
+
+  historyColumnHelper.accessor("data", {
+    header: "Event",
+    cell: (info) => info.getValue().kind,
+  }),
+
+  historyColumnHelper.display({
+    id: "graphics",
+    cell: (info) => {
+      const event = info.row.original.data;
+      if (event.kind == "Owner") {
+        return <FlagAvatar tag={event.tag} name={event.name} />;
+      } else if (event.kind == "Demolished" || event.kind == "Constructed") {
+        return <BuildingAvatar {...event} />;
+      }
+    },
+  }),
+];
 
 export const ProvinceDetailsDescriptions = ({
   province,
 }: ProvinceDetailsProps) => {
   const sideBarContainerRef = useSideBarContainerRef();
-  const events: ProvinceEventIndex[] = province.history.map((x, i) => ({
-    index: i,
-    ...x,
-  }));
-
-  const columns: ColumnType<ProvinceEventIndex>[] = [
-    {
-      title: "Date",
-      dataIndex: "date",
-      className: "no-break",
-      sorter: (a: ProvinceEventIndex, b: ProvinceEventIndex) =>
-        diff(a.date, b.date),
-    },
-    {
-      title: "Event",
-      dataIndex: "kind",
-      filters: [
-        {
-          text: "Owner",
-          value: "Owner",
-        },
-        {
-          text: "Constructed",
-          value: "Constructed",
-        },
-        {
-          text: "Demolished",
-          value: "Demolished",
-        },
-      ],
-      onFilter: (value, record) => record.data.kind == value,
-    },
-    {
-      dataIndex: [],
-      render: (_undef: undefined, event: ProvinceEventIndex) => {
-        if (event.data.kind == "Owner") {
-          return <FlagAvatar tag={event.data.tag} name={event.data.name} />;
-        } else if (
-          event.data.kind == "Demolished" ||
-          event.data.kind == "Constructed"
-        ) {
-          return <BuildingAvatar {...event.data} />;
-        }
-      },
-    },
-  ];
-
-  const stateColumns: ColumnType<CountryState>[] = [
-    {
-      title: "Country",
-      dataIndex: "country",
-      render: (country: LocalizedTag) => (
-        <FlagAvatar tag={country.tag} name={country.name} />
-      ),
-    },
-    {
-      title: "Prosperity",
-      dataIndex: "prosperity",
-    },
-  ];
-
-  const investmentColumns: ColumnType<TradeCompanyInvestments>[] = [
-    {
-      title: "Country",
-      dataIndex: "country",
-      render: (country: LocalizedTag) => (
-        <FlagAvatar tag={country.tag} name={country.name} />
-      ),
-    },
-    {
-      title: "Investments",
-      dataIndex: "investments",
-      render: (investments: LocalizedObj[]) =>
-        investments.map((investment) => (
-          <TcInvestmentAvatar key={investment.id} {...investment} />
-        )),
-    },
-  ];
-
-  const improvementColumns: ColumnType<ProvinceCountryImprovement>[] = [
-    {
-      title: "Country",
-      dataIndex: "country",
-      render: (country: LocalizedTag) => (
-        <FlagAvatar tag={country.tag} name={country.name} />
-      ),
-    },
-    {
-      title: "Devved",
-      dataIndex: "improvements",
-    },
-  ];
 
   return (
-    <div className="flex flex-col gap-2" ref={sideBarContainerRef}>
+    <div className="flex max-h-full flex-col gap-12" ref={sideBarContainerRef}>
       <table>
         <tbody>
           <tr className="odd:bg-white even:bg-slate-50">
-            <th className="py-2 text-left">Id:</th>
-            <td className="py-2">{province.id}</td>
-          </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
-            <th className="py-2 text-left">Name:</th>
-            <td className="py-2">{province.name}</td>
-          </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
             <th className="py-2 text-left">Development:</th>
             <td className="py-2">
-              <Tooltip title="tax / production / manpower">
-                {`${province.base_tax} / ${province.base_production} / ${province.base_manpower}`}
+              <Tooltip>
+                <Tooltip.Trigger>
+                  {province.base_tax} / {province.base_production} /{" "}
+                  {province.base_manpower}
+                </Tooltip.Trigger>
+                <Tooltip.Content>tax / production / manpower</Tooltip.Content>
               </Tooltip>
             </td>
           </tr>
@@ -171,27 +145,33 @@ export const ProvinceDetailsDescriptions = ({
           <tr className="odd:bg-white even:bg-slate-50">
             <th className="py-2 text-left">Cores:</th>
             <td className="py-2">
-              {province.cores.map((core) => (
-                <FlagAvatar
-                  key={core.tag}
-                  tag={core.tag}
-                  name={core.name}
-                  condensed={true}
-                />
-              ))}
+              <ul className="flex flex-wrap gap-2">
+                {province.cores.map((core) => (
+                  <li key={core.tag}>
+                    <FlagAvatar
+                      tag={core.tag}
+                      name={core.name}
+                      condensed={true}
+                    />
+                  </li>
+                ))}
+              </ul>
             </td>
           </tr>
           <tr className="odd:bg-white even:bg-slate-50">
             <th className="py-2 text-left">Claims:</th>
             <td className="py-2">
-              {province.claims.map((claim) => (
-                <FlagAvatar
-                  key={claim.tag}
-                  tag={claim.tag}
-                  name={claim.name}
-                  condensed={true}
-                />
-              ))}
+              <ul className="flex flex-wrap gap-2">
+                {province.claims.map((claim) => (
+                  <li key={claim.tag}>
+                    <FlagAvatar
+                      tag={claim.tag}
+                      name={claim.name}
+                      condensed={true}
+                    />
+                  </li>
+                ))}
+              </ul>
             </td>
           </tr>
           <tr className="odd:bg-white even:bg-slate-50">
@@ -223,62 +203,45 @@ export const ProvinceDetailsDescriptions = ({
           <tr className="odd:bg-white even:bg-slate-50">
             <th className="py-2 text-left">Buildings:</th>
             <td className="py-2">
-              <div className="flex flex-wrap gap-2">
+              <ul className="flex flex-wrap gap-2">
                 {province.buildings.map((building) => (
-                  <BuildingAvatar
-                    condensed={true}
-                    key={building.id}
-                    {...building}
-                  />
+                  <li key={building.id}>
+                    <BuildingAvatar condensed={true} {...building} />
+                  </li>
                 ))}
-              </div>
+              </ul>
             </td>
           </tr>
         </tbody>
       </table>
 
-      <Table
-        title={() => "Developments"}
-        size="small"
-        rowKey={(row) => row.country.tag}
-        dataSource={province.improvements}
-        columns={improvementColumns}
-        pagination={false}
-      />
-      <Table
-        title={() => "Province History"}
-        size="small"
-        rowKey="index"
-        dataSource={events}
-        columns={columns}
-        pagination={false}
-      />
+      <div>
+        <div>Developments</div>
+        <DataTable columns={devColumns} data={province.improvements} />
+      </div>
+
       {!province.map_area ? null : (
-        <>
-          <Table
-            key="area-state"
-            title={() => `${province.map_area?.area_name} States`}
-            size="small"
-            rowKey={(row) => row.country.tag}
-            dataSource={province.map_area.states}
-            columns={stateColumns}
-            pagination={false}
-          />
+        <div>
+          <div>{province.map_area?.area_name} States</div>
+          <DataTable columns={stateColumns} data={province.map_area.states} />
           {province.map_area.investments.length == 0 ? null : (
-            <Table
-              key="area-investments"
-              title={() =>
-                `${province.map_area?.area_name} Trade Company Investments`
-              }
-              size="small"
-              rowKey={(row) => row.country.tag}
-              dataSource={province.map_area.investments}
-              columns={investmentColumns}
-              pagination={false}
-            />
+            <>
+              <div>
+                {province.map_area?.area_name} Trade Company Investments
+              </div>
+              <DataTable
+                columns={investmentColumns}
+                data={province.map_area.investments}
+              />
+            </>
           )}
-        </>
+        </div>
       )}
+
+      <div>
+        <div>Province History</div>
+        <DataTable columns={historyColumns} data={province.history} />
+      </div>
     </div>
   );
 };

@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import { Switch } from "antd";
 import type { BarConfig } from "@ant-design/charts";
 import {
   expenseLedgerColorPalette,
@@ -10,6 +9,7 @@ import {
 import { formatInt } from "@/lib/format";
 import { CountryDetails } from "../../types/models";
 import { Bar, PieTable } from "@/components/viz";
+import { Switch } from "@/components/Switch";
 
 type CountryBudgetCountProps = {
   details: CountryDetails;
@@ -94,7 +94,7 @@ export const CountryBudget = ({ details }: CountryBudgetCountProps) => {
         <span>Recurring income / expenses only:</span>
         <Switch
           checked={showRecurringOnly}
-          onChange={(checked: boolean) => setRecurOnly(checked)}
+          onCheckedChange={(checked) => setRecurOnly(checked)}
         />
       </div>
       <div>

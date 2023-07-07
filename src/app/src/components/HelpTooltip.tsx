@@ -1,15 +1,20 @@
 import React from "react";
 import { QuestionCircleOutlined } from "@ant-design/icons";
-import { Tooltip } from "antd";
+import { IconButton } from "./IconButton";
 
 interface HelpTooltipProps {
   help: string;
+  className?: string;
 }
 
-export const HelpTooltip = ({ help }: HelpTooltipProps) => {
+export const HelpTooltip = ({ help, className }: HelpTooltipProps) => {
   return (
-    <Tooltip title={help}>
-      <QuestionCircleOutlined className="cursor-help text-gray-500" />
-    </Tooltip>
+    <IconButton
+      shape="none"
+      variant="ghost"
+      className={className}
+      icon={<QuestionCircleOutlined className="cursor-help text-gray-500" />}
+      tooltip={help}
+    />
   );
 };

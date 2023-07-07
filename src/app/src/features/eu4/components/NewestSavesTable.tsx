@@ -1,119 +1,111 @@
-import { Button, Table } from "antd";
-import Link from "next/link";
-import React from "react";
-import { TimeAgo } from "../../../components/TimeAgo";
-import { diff } from "../../../lib/dates";
-import { difficultyText, difficultyNum } from "../../../lib/difficulty";
-import {
-  GameDifficulty,
-  SaveFile,
-  useNewestSavesQuery,
-} from "@/services/appApi";
+import React, { useMemo } from "react";
+import { TimeAgo } from "@/components/TimeAgo";
+import { Button } from "@/components/Button";
+import { difficultyText, difficultySort } from "@/lib/difficulty";
+import { SaveFile, useNewestSavesQuery } from "@/services/appApi";
 import {
   FlagAvatar,
   AchievementAvatar,
 } from "@/features/eu4/components/avatars";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Table } from "@/components/Table";
+import { DataTable } from "@/components/DataTable";
+import { Link } from "@/components/Link";
+
+const columnHelper = createColumnHelper<SaveFile>();
+const columns = [
+  columnHelper.accessor("upload_time", {
+    sortingFn: "datetime",
+    cell: (info) => <TimeAgo date={info.getValue()} />,
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Uploaded" />
+    ),
+  }),
+  columnHelper.accessor("user_name", {
+    sortingFn: "text",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Player" />
+    ),
+    cell: (info) => (
+      <Link href={`/users/${info.row.original.user_id}`}>
+        {info.getValue()}
+      </Link>
+    ),
+  }),
+  columnHelper.accessor("days", {
+    sortingFn: "basic",
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Date" />,
+    cell: (info) => <div className="no-break">{info.row.original.date}</div>,
+  }),
+  columnHelper.accessor("player_start_tag_name", {
+    sortingFn: "text",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Starting" />
+    ),
+    cell: ({ row }) =>
+      row.original.player_start_tag && row.original.player_start_tag_name ? (
+        <FlagAvatar
+          tag={row.original.player_start_tag}
+          name={row.original.player_start_tag_name}
+        />
+      ) : (
+        "Multiplayer"
+      ),
+  }),
+  columnHelper.accessor("player_tag_name", {
+    sortingFn: "text",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Current" />
+    ),
+    cell: ({ row }) => (
+      <FlagAvatar
+        tag={row.original.player_tag}
+        name={row.original.player_tag_name}
+      />
+    ),
+  }),
+  columnHelper.accessor("patch", {
+    sortingFn: "text",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Patch" />
+    ),
+  }),
+  columnHelper.accessor("game_difficulty", {
+    sortingFn: difficultySort,
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Difficulty" />
+    ),
+    cell: (info) => difficultyText(info.getValue()),
+  }),
+  columnHelper.display({
+    id: "Achievements",
+    header: "Achievements",
+    cell: (info) => (
+      <ul className="flex space-x-1">
+        {info.row.original.achievements.map((x) => (
+          <li className="flex" key={x}>
+            <AchievementAvatar id={x} className="h-10 w-10 shrink-0" />
+          </li>
+        ))}
+      </ul>
+    ),
+  }),
+  columnHelper.display({
+    id: "actions",
+    cell: (info) => (
+      <Link href={`/eu4/saves/${info.row.original.id}`}>View</Link>
+    ),
+  }),
+];
 
 export const NewestSavesTable = () => {
   const { data, isFetching, hasNextPage, fetchNextPage } =
     useNewestSavesQuery();
 
-  const columns = [
-    {
-      title: "Uploaded",
-      dataIndex: "upload_time",
-      render: (upload: string) => <TimeAgo date={upload} />,
-      sorter: (a: SaveFile, b: SaveFile) => diff(a.upload_time, b.upload_time),
-    },
-    {
-      title: "Player",
-      dataIndex: "user_name",
-      render: (name: string, x: SaveFile) => (
-        <Link href={`/users/${x.user_id}`}>{name}</Link>
-      ),
-      sorter: (a: SaveFile, b: SaveFile) =>
-        a.user_name.localeCompare(b.user_name),
-    },
-    {
-      title: "Date",
-      dataIndex: "date",
-      className: "no-break",
-      sorter: (a: SaveFile, b: SaveFile) => a.days - b.days,
-    },
-    {
-      title: "Starting",
-      dataIndex: "player_start_tag_name",
-      render: (start_tag_name: string, record: SaveFile) =>
-        record.player_start_tag && record.player_start_tag_name ? (
-          <FlagAvatar
-            tag={record.player_start_tag}
-            name={record.player_start_tag_name}
-            size="large"
-          />
-        ) : (
-          "Multiplayer"
-        ),
-      sorter: (a: SaveFile, b: SaveFile) =>
-        (a.player_start_tag_name || "").localeCompare(
-          b.player_start_tag_name || ""
-        ),
-    },
-    {
-      title: "Current",
-      dataIndex: "player_tag",
-      render: (player: string, record: SaveFile) => (
-        <FlagAvatar
-          tag={record.player_tag}
-          name={record.player_tag_name}
-          size="large"
-        />
-      ),
-      sorter: (a: SaveFile, b: SaveFile) =>
-        a.player_tag_name.localeCompare(b.player_tag_name),
-    },
-    {
-      title: "Patch",
-      dataIndex: "patch",
-      sorter: (a: SaveFile, b: SaveFile) => a.patch.localeCompare(b.patch),
-    },
-    {
-      title: "Difficulty",
-      dataIndex: "game_difficulty",
-      render: (difficulty: GameDifficulty) => difficultyText(difficulty),
-      sorter: (a: SaveFile, b: SaveFile) =>
-        difficultyNum(a.game_difficulty) - difficultyNum(b.game_difficulty),
-    },
-    {
-      title: "Achievements",
-      dataIndex: "achievements",
-      render: (achievements: string[]) => (
-        <div className="flex space-x-1">
-          {achievements.map((x) => (
-            <AchievementAvatar id={x} key={x} size="large" />
-          ))}
-        </div>
-      ),
-    },
-    {
-      title: "",
-      dataIndex: "id",
-      render: (id: string) => {
-        return <Link href={`/eu4/saves/${id}`}>View</Link>;
-      },
-    },
-  ];
-
+  const saves = useMemo(() => data?.pages.flatMap((x) => x.saves), [data]);
   return (
     <div className="flex flex-col space-y-4">
-      <Table
-        size="small"
-        pagination={false}
-        loading={isFetching}
-        rowKey="id"
-        dataSource={data?.pages.flatMap((x) => x.saves)}
-        columns={columns}
-        scroll={{ x: 1000 }}
-      />
+      <DataTable columns={columns} data={saves ?? []} />
       <Button
         className="self-center"
         disabled={!hasNextPage || isFetching}

@@ -1,7 +1,8 @@
 import { useProfileQuery } from "@/services/appApi";
-import { Button, Input, Tooltip } from "antd";
 import { useFileUpload, useUploadProgress } from "./uploadContext";
-const { TextArea } = Input;
+import { Button } from "@/components/Button";
+import { Tooltip } from "@/components/Tooltip";
+import { UploadFaq } from "./UploadFaq";
 
 export const UploadForm = () => {
   const fileUpload = useFileUpload();
@@ -10,7 +11,7 @@ export const UploadForm = () => {
 
   return (
     <form
-      className="flex flex-col"
+      className="flex flex-col gap-3"
       onSubmit={(ev) => {
         ev.preventDefault();
         const values = Object.fromEntries(new FormData(ev.currentTarget));
@@ -19,41 +20,48 @@ export const UploadForm = () => {
     >
       <label>
         <div>AAR (optional):</div>
-        <TextArea
-          name="aar"
-          autoSize={{ minRows: 8 }}
+        <textarea
           maxLength={5000}
-          showCount={true}
+          name="aar"
+          rows={8}
+          className="w-full border"
         />
       </label>
-      <div className="text-center">
-        {/* The workaround to display a tooltip on a disabled button:
-              https://github.com/react-component/tooltip/issues/18#issuecomment-650864750
-          */}
-        {profileQuery.data && profileQuery.data.kind == "user" ? (
-          <Button
-            htmlType="submit"
-            type="primary"
-            className="w-48"
-            disabled={progress != undefined}
-          >
-            Upload
-          </Button>
-        ) : (
-          <Tooltip title="Register an account to upload">
-            <span className="cursor-not-allowed">
-              <Button
-                htmlType="submit"
-                type="primary"
-                className="pointer-events-none w-48"
-                disabled={true}
-              >
-                Upload
-              </Button>
-            </span>
-          </Tooltip>
-        )}
+      <div className="flex justify-center">
+        <div>
+          {profileQuery.data && profileQuery.data.kind == "user" ? (
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-48 justify-center"
+              disabled={progress != undefined}
+            >
+              Upload
+            </Button>
+          ) : (
+            <Tooltip>
+              <Tooltip.Trigger asChild>
+                <span tabIndex={0}>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="pointer-events-none w-48 justify-center"
+                    disabled={true}
+                  >
+                    Upload
+                  </Button>
+                </span>
+              </Tooltip.Trigger>
+              <Tooltip.Content>Register an account to upload</Tooltip.Content>
+            </Tooltip>
+          )}
+        </div>
       </div>
+
+      <details>
+        <summary>FAQ</summary>
+        <UploadFaq />
+      </details>
     </form>
   );
 };

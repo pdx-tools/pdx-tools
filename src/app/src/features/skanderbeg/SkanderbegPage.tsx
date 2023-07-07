@@ -1,19 +1,16 @@
-import React from "react";
-import { Input } from "antd";
+import React, { useMemo } from "react";
 import { SkanUserSavesTable } from "./SkanUserSavesTable";
 import { useRouter } from "next/router";
 import { extractSaveId } from "./skanUrl";
 import { useProfileQuery, useUserSkanderbegSaves } from "../../services/appApi";
-const { Search } = Input;
+import { Button } from "@/components/Button";
+import { Input } from "@/components/Input";
+import { Link } from "@/components/Link";
 
 function SkanTable() {
   const skanQuery = useUserSkanderbegSaves();
-  return (
-    <SkanUserSavesTable
-      loading={skanQuery.isFetching}
-      records={skanQuery.data ?? []}
-    />
-  );
+  const data = useMemo(() => skanQuery.data ?? [], [skanQuery.data]);
+  return <SkanUserSavesTable records={data} />;
 }
 
 export const SkanderbegPage = () => {
@@ -28,22 +25,28 @@ export const SkanderbegPage = () => {
       <h1 className="text-4xl">Skanderbeg</h1>
       <div className="space-y-5">
         <p className="max-w-prose">
-          <a href="https://skanderbeg.pm">Skanderbeg</a> is site dedicated to
-          generating beautiful maps and insightful data tables. To analyze a
+          <Link href="https://skanderbeg.pm">Skanderbeg</Link> is site dedicated
+          to generating beautiful maps and insightful data tables. To analyze a
           Skanderbeg save in PDX Tools, upload the save to Skanderbeg and copy
           and paste either a Skanderbeg URL or the save id. Ironman saves
           uploaded to Skanderbeg will not work in PDX Tools.
         </p>
         <div className="flex flex-col gap-2">
-          <Search
-            className="max-w-prose"
-            placeholder="Skanderbeg URL or id"
-            enterButton="Analyze"
-            size="large"
-            onSearch={(inp: string) =>
-              router.push(`/eu4/skanderbeg/${extractSaveId(inp)}`)
-            }
-          />
+          <form
+            className="flex max-w-prose space-x-2"
+            onSubmit={(ev) => {
+              ev.preventDefault();
+              const values = Object.fromEntries(new FormData(ev.currentTarget));
+              router.push(
+                `/eu4/skanderbeg/${extractSaveId(values["id"] as string)}`
+              );
+            }}
+          >
+            <Input name="id" placeholder="Skanderbeg URL or id" />
+            <Button type="submit" variant="primary">
+              Analyze
+            </Button>
+          </form>
           {isLoggedInUser ? <SkanTable /> : null}
         </div>
       </div>

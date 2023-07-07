@@ -1,5 +1,4 @@
 import React, { useCallback } from "react";
-import { Menu } from "antd";
 import { downloadData } from "@/lib/downloadData";
 import { provinceIdToColorIndexInvert } from "@/features/eu4/features/map/resources";
 import { useIsDeveloper } from "@/features/account";
@@ -12,8 +11,8 @@ import {
   useEu4Meta,
   useTerrainOverlay,
 } from "../../store";
-
-type Items = React.ComponentProps<typeof Menu>["items"];
+import { DropdownMenu } from "@/components/DropdownMenu";
+import { Button } from "@/components/Button";
 
 interface MapExportMenuProps {
   setIsExporting: (arg: boolean) => void;
@@ -80,36 +79,46 @@ export const MapExportMenu = ({ setIsExporting }: MapExportMenuProps) => {
     downloadDataFile(data, "map-3x");
   };
 
-  const items: Items = [
-    { key: "1", onClick: exportView, label: "View" },
-    { key: "2", onClick: exportFullView, label: "World" },
-    { key: "3", onClick: exportFullView2x, label: "World (2x)" },
-  ];
-
-  if (isDeveloper) {
-    items.push(
-      ...[
-        {
-          key: "5",
-          onClick: exportFullView3x,
-          label: "World (3x)",
-          className: "bg-amber-200",
-        },
-        {
-          key: "6",
-          onClick: colorCb,
-          label: "Color Data",
-          className: "bg-amber-200",
-        },
-        {
-          key: "7",
-          onClick: indicesCb,
-          label: "Index Data",
-          className: "bg-amber-200",
-        },
-      ]
-    );
-  }
-
-  return <Menu items={items}></Menu>;
+  return (
+    <>
+      <DropdownMenu.Item asChild>
+        <Button variant="default" className="w-full" onClick={exportView}>
+          View
+        </Button>
+      </DropdownMenu.Item>
+      <DropdownMenu.Item asChild>
+        <Button variant="default" className="w-full" onClick={exportFullView}>
+          World
+        </Button>
+      </DropdownMenu.Item>
+      <DropdownMenu.Item asChild>
+        <Button variant="default" className="w-full" onClick={exportFullView2x}>
+          World (2x)
+        </Button>
+      </DropdownMenu.Item>
+      {isDeveloper ? (
+        <>
+          <DropdownMenu.Item asChild>
+            <Button
+              variant="default"
+              className="w-full"
+              onClick={exportFullView3x}
+            >
+              World (3x)
+            </Button>
+          </DropdownMenu.Item>
+          <DropdownMenu.Item asChild>
+            <Button variant="default" className="w-full" onClick={colorCb}>
+              Color Data
+            </Button>
+          </DropdownMenu.Item>
+          <DropdownMenu.Item asChild>
+            <Button variant="default" className="w-full" onClick={indicesCb}>
+              Index Data
+            </Button>
+          </DropdownMenu.Item>
+        </>
+      ) : null}
+    </>
+  );
 };

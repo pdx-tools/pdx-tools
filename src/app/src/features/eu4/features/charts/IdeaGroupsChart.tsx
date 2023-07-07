@@ -4,6 +4,7 @@ import { useAnalysisWorker, Eu4Worker } from "@/features/eu4/worker";
 import { Bar, useVisualizationDispatch } from "@/components/viz";
 import { createCsv } from "@/lib/csv";
 import { useEu4Meta, useTagFilter } from "../../store";
+import { Alert } from "@/components/Alert";
 
 interface IdeaGroupDatum {
   name: string;
@@ -80,7 +81,7 @@ export const IdeaGroupsChart = () => {
     [countryFilter, meta.savegame_version.second]
   );
 
-  const { data: ideaGroups = [] } = useAnalysisWorker(cb);
+  const { data: ideaGroups = [], error } = useAnalysisWorker(cb);
 
   useEffect(() => {
     visualizationDispatch({
@@ -115,7 +116,8 @@ export const IdeaGroupsChart = () => {
   };
 
   return (
-    <div className="h-full">
+    <div className="h-[calc(100%-1px)]">
+      <Alert.Error msg={error} />
       <Bar {...config} />
     </div>
   );

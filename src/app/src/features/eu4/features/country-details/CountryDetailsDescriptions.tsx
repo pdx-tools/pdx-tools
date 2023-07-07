@@ -297,7 +297,7 @@ export const CountryDetailsDescriptions = ({
         </div>
       </div>
 
-      <div className="flex w-72 flex-col gap-4 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
+      <div className="flex w-80 flex-col gap-4 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
         <div className="flex justify-around">
           <div className="flex items-center gap-1">
             <ManpowerIcon />
@@ -396,11 +396,11 @@ export const CountryDetailsDescriptions = ({
           <div>
             <div>BEST LEADERS:</div>
             {details.best_general ? (
-              <div className="ml-2 flex">
+              <div className="ml-2 flex gap-2">
                 <div className="grow">
                   {details.best_general.kind} {details.best_general.name}
                 </div>
-                <div>
+                <div className="no-break">
                   ({details.best_general.fire} / {details.best_general.shock} /{" "}
                   {details.best_general.manuever} / {details.best_general.siege}
                   )
@@ -408,11 +408,11 @@ export const CountryDetailsDescriptions = ({
               </div>
             ) : null}
             {details.best_admiral ? (
-              <div className="ml-2 flex">
+              <div className="ml-2 flex gap-2">
                 <div className="grow">
                   {details.best_admiral.kind} {details.best_admiral.name}
                 </div>
-                <div>
+                <div className="no-break">
                   ({details.best_admiral.fire} / {details.best_admiral.shock} /{" "}
                   {details.best_admiral.manuever})
                 </div>

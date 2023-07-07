@@ -1,64 +1,61 @@
-import React from "react";
-import { Table } from "antd";
-import Link from "next/link";
-import {
-  difficultyColor,
-  difficultyComparator,
-  difficultyText,
-} from "@/lib/difficulty";
-import { AchievementDifficulty, Achievement } from "@/services/appApi";
+import React, { useMemo } from "react";
+import { difficultySort, difficultyText } from "@/lib/difficulty";
+import { Achievement } from "@/services/appApi";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
-
-interface TableEntry {
-  achievement: Achievement;
-}
+import { createColumnHelper } from "@tanstack/react-table";
+import { Table } from "@/components/Table";
+import { DataTable } from "@/components/DataTable";
+import { Link } from "@/components/Link";
 
 interface AchievementsTableProps {
-  achievements: TableEntry[];
+  achievements: {
+    achievement: Achievement;
+  }[];
 }
 
-export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
-  const columns = [
-    {
-      title: "Name",
-      dataIndex: ["achievement", "name"],
-      sorter: (a: TableEntry, b: TableEntry) =>
-        a.achievement.name.localeCompare(b.achievement.name),
-      render: (name: string, record: TableEntry) => (
-        <div className="flex items-center space-x-2">
-          <AchievementAvatar size={64} id={record.achievement.id} />
-          <div className="flex flex-col space-y-2">
-            <span className="font-bold">
-              <Link href={`/eu4/achievements/${record.achievement.id}`}>
-                {name}
-              </Link>
-            </span>
-            <span className="hidden md:block">
-              {record.achievement.description}
-            </span>
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "Difficulty",
-      dataIndex: ["achievement", "difficulty"],
-      width: 120,
-      sorter: (a: TableEntry, b: TableEntry) =>
-        difficultyComparator(a.achievement, b.achievement),
-      onCell: (record: TableEntry) => ({
-        className: difficultyColor(record.achievement.difficulty),
-      }),
-      render: (difficulty: AchievementDifficulty) => difficultyText(difficulty),
-    },
-  ];
+const columnHelper = createColumnHelper<Achievement>();
 
-  return (
-    <Table
-      rowKey={(record) => record.achievement.id}
-      pagination={false}
-      dataSource={achievements}
-      columns={columns}
-    />
+const columns = [
+  columnHelper.accessor("name", {
+    cell: (info) => (
+      <div className="flex items-center space-x-2">
+        <AchievementAvatar
+          className="h-16 w-16 flex-shrink-0"
+          id={info.row.original.id}
+        />
+        <div className="flex flex-col space-y-2">
+          <Link
+            className="font-bold"
+            href={`/eu4/achievements/${info.row.original.id}`}
+          >
+            {info.row.original.name}
+          </Link>
+          <span className="hidden md:block">
+            {info.row.original.description}
+          </span>
+        </div>
+      </div>
+    ),
+    sortingFn: "text",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Achievement" />
+    ),
+  }),
+
+  columnHelper.accessor("difficulty", {
+    sortingFn: difficultySort,
+    cell: (info) => difficultyText(info.getValue()),
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Difficulty" />
+    ),
+  }),
+];
+
+export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
+  const data = useMemo(
+    () => achievements.map((x) => x.achievement),
+    [achievements]
   );
+
+  return <DataTable columns={columns} data={data} />;
 };

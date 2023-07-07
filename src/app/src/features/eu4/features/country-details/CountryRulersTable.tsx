@@ -1,248 +1,238 @@
-import { Table } from "antd";
-import { ColumnGroupType, ColumnType } from "antd/lib/table";
-import { PlusCircleTwoTone, MinusCircleTwoTone } from "@ant-design/icons";
-import { FailedHeir, LocalizedObj, RunningMonarch } from "../../types/models";
+import { FailedHeir, RunningMonarch } from "../../types/models";
 import { formatFloat, formatInt } from "@/lib/format";
 import {
   FlagAvatar,
   PersonalityAvatar,
 } from "@/features/eu4/components/avatars";
+import { createColumnHelper } from "@tanstack/react-table";
+import { DataTable } from "@/components/DataTable";
+import { HelpTooltip } from "@/components/HelpTooltip";
+import { SheetExpansion } from "../../components/SheetExpansion";
 
 interface CountryRulersTableProps {
   rulers: RunningMonarch[];
 }
 
+const columnHelper = createColumnHelper<RunningMonarch>();
+const columns = [
+  columnHelper.display({
+    id: "actions",
+    cell: ({ row }) =>
+      row.original.failed_heirs.length == 0 ? null : (
+        <SheetExpansion
+          title={`Abdicated or deceased heirs before ${row.original.name}`}
+        >
+          <DataTable columns={heirColumns} data={row.original.failed_heirs} />
+        </SheetExpansion>
+      ),
+  }),
+
+  columnHelper.accessor("name", {
+    header: "Name",
+    meta: { className: "min-w-[150px]" },
+  }),
+
+  columnHelper.accessor("start", {
+    header: "Start",
+    meta: { className: "no-break text-right" },
+  }),
+
+  columnHelper.accessor("end", {
+    header: "End",
+    meta: { className: "no-break text-right" },
+    cell: (info) => info.getValue() ?? "---",
+  }),
+
+  columnHelper.accessor("reign", {
+    header: "Reign (months)",
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+
+  columnHelper.accessor("country", {
+    header: "Tag",
+    cell: (info) => (
+      <FlagAvatar
+        name={info.getValue().name}
+        tag={info.getValue().tag}
+        condensed={true}
+      />
+    ),
+  }),
+
+  columnHelper.accessor("personalities", {
+    header: "Personalities",
+    cell: (info) => (
+      <ul className="flex items-center">
+        {info.getValue().map((personality) => (
+          <li key={personality.id}>
+            <PersonalityAvatar {...personality} />
+          </li>
+        ))}
+      </ul>
+    ),
+  }),
+
+  columnHelper.group({
+    header: "Stats",
+    columns: [
+      columnHelper.accessor("adm", {
+        header: "ADM",
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+      columnHelper.accessor("dip", {
+        header: "DIP",
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+      columnHelper.accessor("mil", {
+        header: "MIL",
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+      columnHelper.accessor((x) => x.adm + x.dip + x.mil, {
+        header: "Total",
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+    ],
+  }),
+
+  columnHelper.group({
+    id: "Running Average Stats",
+    header: () => (
+      <div>
+        Running Average Stats
+        <HelpTooltip
+          className="ml-1"
+          help="Not accurate for election governments"
+        />
+      </div>
+    ),
+    columns: [
+      columnHelper.accessor("avg_adm", {
+        header: "ADM",
+        meta: { className: "text-right" },
+        cell: (info) => formatFloat(info.getValue(), 2),
+      }),
+      columnHelper.accessor("avg_dip", {
+        header: "DIP",
+        meta: { className: "text-right" },
+        cell: (info) => formatFloat(info.getValue(), 2),
+      }),
+      columnHelper.accessor("avg_mil", {
+        header: "MIL",
+        meta: { className: "text-right" },
+        cell: (info) => formatFloat(info.getValue(), 2),
+      }),
+      columnHelper.accessor((x) => x.avg_adm + x.avg_dip + x.avg_mil, {
+        id: "avg_total",
+        header: "Total",
+        meta: { className: "text-right" },
+        cell: (info) => formatFloat(info.getValue(), 2),
+      }),
+    ],
+  }),
+
+  columnHelper.group({
+    id: "Reign Weighted Running Average Stats",
+    header: () => (
+      <div>
+        Reign Weighted Running Average Stats
+        <HelpTooltip
+          className="ml-1"
+          help="Not accurate for election governments"
+        />
+      </div>
+    ),
+    columns: [
+      columnHelper.accessor("avg_dur_adm", {
+        header: "ADM",
+        meta: { className: "text-right" },
+        cell: (info) => formatFloat(info.getValue(), 2),
+      }),
+      columnHelper.accessor("avg_dur_dip", {
+        header: "DIP",
+        meta: { className: "text-right" },
+        cell: (info) => formatFloat(info.getValue(), 2),
+      }),
+      columnHelper.accessor("avg_dur_mil", {
+        header: "MIL",
+        meta: { className: "text-right" },
+        cell: (info) => formatFloat(info.getValue(), 2),
+      }),
+      columnHelper.accessor(
+        (x) => x.avg_dur_adm + x.avg_dur_dip + x.avg_dur_mil,
+        {
+          id: "avg_dur_total",
+          header: "Total",
+          meta: { className: "text-right" },
+          cell: (info) => formatFloat(info.getValue(), 2),
+        }
+      ),
+    ],
+  }),
+];
+
+const heirColumnsHelper = createColumnHelper<FailedHeir>();
+const heirColumns = [
+  heirColumnsHelper.accessor("name", {
+    header: "Heir",
+    meta: { className: "min-w-[150px]" },
+  }),
+
+  heirColumnsHelper.accessor("birth", {
+    header: "Birth",
+    meta: { className: "no-break text-right" },
+  }),
+
+  heirColumnsHelper.accessor("country", {
+    header: "Tag",
+    cell: (info) => (
+      <FlagAvatar
+        name={info.getValue().name}
+        tag={info.getValue().tag}
+        condensed={true}
+      />
+    ),
+  }),
+
+  heirColumnsHelper.accessor("personalities", {
+    header: "Personalities",
+    cell: (info) => (
+      <ul className="flex items-center">
+        {info.getValue().map((personality) => (
+          <li key={personality.id}>
+            <PersonalityAvatar {...personality} />
+          </li>
+        ))}
+      </ul>
+    ),
+  }),
+
+  heirColumnsHelper.accessor("adm", {
+    header: "ADM",
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+  heirColumnsHelper.accessor("dip", {
+    header: "DIP",
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+  heirColumnsHelper.accessor("mil", {
+    header: "MIL",
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+  heirColumnsHelper.accessor((x) => x.adm + x.dip + x.mil, {
+    header: "Total",
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+];
+
 export const CountryRulersTable = ({ rulers }: CountryRulersTableProps) => {
-  const columns: (
-    | ColumnGroupType<RunningMonarch>
-    | ColumnType<RunningMonarch>
-  )[] = [
-    {
-      title: "Name",
-      dataIndex: "name",
-    },
-    {
-      title: "Start",
-      dataIndex: "start",
-      className: "no-break",
-    },
-    {
-      title: "End",
-      dataIndex: "end",
-      className: "no-break",
-      render: (end) => end ?? "---",
-    },
-    {
-      title: "Reign (months)",
-      dataIndex: "reign",
-      align: "right",
-      render: (reign: number) => formatInt(reign),
-    },
-    {
-      title: "Tag",
-      dataIndex: "country",
-      render: (country: RunningMonarch["country"]) => (
-        <FlagAvatar
-          name={country.name}
-          tag={country.tag}
-          condensed={true}
-          size="default"
-        />
-      ),
-    },
-    {
-      title: "Personalities",
-      dataIndex: "personalities",
-      render: (personalities: LocalizedObj[]) => (
-        <div className="flex items-center">
-          {personalities.map((personality) => (
-            <PersonalityAvatar key={personality.id} {...personality} />
-          ))}
-        </div>
-      ),
-    },
-    {
-      title: "Stats",
-      children: [
-        {
-          title: "ADM",
-          dataIndex: "adm",
-          align: "right",
-        },
-        {
-          title: "DIP",
-          dataIndex: "dip",
-          align: "right",
-        },
-        {
-          title: "MIL",
-          dataIndex: "mil",
-          align: "right",
-        },
-        {
-          title: "Total",
-          dataIndex: "adm",
-          key: "total",
-          align: "right",
-          render: (_x, monarch) => monarch.adm + monarch.dip + monarch.mil,
-          className: "antd-column-separator",
-        },
-      ],
-    },
-    {
-      title: "Running Average Stats",
-      children: [
-        {
-          title: "ADM",
-          dataIndex: "avg_adm",
-          render: (x: number) => formatFloat(x, 2),
-          align: "right",
-        },
-        {
-          title: "DIP",
-          dataIndex: "avg_dip",
-          render: (x: number) => formatFloat(x, 2),
-          align: "right",
-        },
-        {
-          title: "MIL",
-          dataIndex: "avg_mil",
-          render: (x: number) => formatFloat(x, 2),
-          align: "right",
-        },
-        {
-          title: "Total",
-          dataIndex: "avg_adm",
-          key: "total-average",
-          render: (_x, monarch) =>
-            formatFloat(monarch.avg_adm + monarch.avg_dip + monarch.avg_mil, 2),
-          className: "antd-column-separator",
-          align: "right",
-        },
-      ],
-    },
-    {
-      title: "Reign Weighted Running Average Stats",
-      children: [
-        {
-          title: "ADM",
-          dataIndex: "avg_dur_adm",
-          render: (x: number) => formatFloat(x, 2),
-          align: "right",
-        },
-        {
-          title: "DIP",
-          dataIndex: "avg_dur_dip",
-          render: (x: number) => formatFloat(x, 2),
-          align: "right",
-        },
-        {
-          title: "MIL",
-          dataIndex: "avg_dur_mil",
-          render: (x: number) => formatFloat(x, 2),
-          align: "right",
-        },
-        {
-          title: "Total",
-          dataIndex: "avg_dur_adm",
-          key: "total-reign-average",
-          render: (_x, monarch) =>
-            formatFloat(
-              monarch.avg_dur_adm + monarch.avg_dur_dip + monarch.avg_dur_mil,
-              2
-            ),
-          align: "right",
-        },
-      ],
-    },
-  ];
-
-  const heirColumns: ColumnType<FailedHeir>[] = [
-    {
-      title: "Name",
-      dataIndex: "name",
-    },
-    {
-      title: "Birth",
-      dataIndex: "birth",
-      className: "no-break",
-    },
-    {
-      title: "Tag",
-      dataIndex: "country",
-      render: (country: FailedHeir["country"]) => (
-        <FlagAvatar
-          name={country.name}
-          tag={country.tag}
-          condensed={true}
-          size="small"
-        />
-      ),
-    },
-    {
-      title: "Personalities",
-      dataIndex: "personalities",
-      render: (personalities: LocalizedObj[]) =>
-        personalities.map((personality) => (
-          <PersonalityAvatar key={personality.id} {...personality} />
-        )),
-    },
-    {
-      title: "ADM",
-      dataIndex: "adm",
-      align: "right",
-    },
-    {
-      title: "DIP",
-      dataIndex: "dip",
-      align: "right",
-    },
-    {
-      title: "MIL",
-      dataIndex: "mil",
-      align: "right",
-    },
-    {
-      title: "Total",
-      dataIndex: "adm",
-      key: "total",
-      align: "right",
-      render: (_x, monarch) => monarch.adm + monarch.dip + monarch.mil,
-    },
-  ];
-
-  return (
-    <Table
-      size="small"
-      rowKey={(record) => `${record.name}-${record.start}`}
-      dataSource={rulers}
-      scroll={{ x: true }}
-      pagination={false}
-      columns={columns}
-      title={() =>
-        "Running totals are not accurate for election governments. Expand row for failed heirs"
-      }
-      expandable={{
-        rowExpandable: (record) => record.failed_heirs.length > 0,
-        expandIcon: ({ expanded, onExpand, record }) =>
-          expanded ? (
-            <MinusCircleTwoTone onClick={(e) => onExpand(record, e)} />
-          ) : record.failed_heirs.length > 0 ? (
-            <PlusCircleTwoTone onClick={(e) => onExpand(record, e)} />
-          ) : undefined,
-        expandedRowRender: (record: RunningMonarch) => (
-          <Table
-            size="small"
-            rowKey={(record) => `${record.name}-${record.birth}`}
-            dataSource={record.failed_heirs}
-            pagination={false}
-            columns={heirColumns}
-            title={() =>
-              "Heirs that did not take the throne (eg: disinherit / hunting accident)"
-            }
-          />
-        ),
-      }}
-    />
-  );
+  return <DataTable columns={columns} data={rulers} />;
 };

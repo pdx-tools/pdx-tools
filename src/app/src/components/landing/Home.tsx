@@ -5,7 +5,7 @@ import achievement from "./achievement.png";
 import melted from "./melted.webp";
 import games from "./games.webp";
 import { HeroFileInput } from "./HeroFileInput";
-import Link from "next/link";
+import { Link } from "@/components/Link";
 import { BrowserCheck } from "./BrowserCheck";
 import {
   ChromeIcon,
@@ -64,23 +64,20 @@ export const Home = ({ subtitle }: HomeProps) => {
             Explore the world
             <span className="block italic">you created</span>
           </h1>
-          <p className="mb-0 max-w-prose text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
+          <p className="mt-8 grid max-w-prose gap-4 text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
             Save files contain a treasure trove of information. PDX Tools is a
             modern save file analyzer that will unlock hidden EU4 insights
             without the save leaving your browser.
           </p>
-          <p className="mb-0 max-w-prose text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
+          <p className="grid max-w-prose gap-4 text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
             Ready to explore maps, timelapses, and charts?
           </p>
 
           <div className="flex flex-col items-center justify-center gap-2 lg:justify-start">
             <div className="text-base text-gray-300">
               No save?{" "}
-              <Link
-                href="/eu4/saves/l3mDIfueYIB-gjB0gOliK"
-                className="text-gray-300 underline hover:text-white"
-              >
-                Load sample
+              <Link href="/eu4/saves/l3mDIfueYIB-gjB0gOliK" variant="light">
+                Checkout a sample
               </Link>
             </div>
           </div>
@@ -103,7 +100,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <div className="max-w-7xl">
-          <h2 className="m-0 text-center text-3xl font-extrabold tracking-tight text-white xl:text-4xl">
+          <h2 className="text-center text-3xl font-extrabold tracking-tight text-white xl:text-4xl">
             Questions? Answered.
           </h2>
           <p className="mb-6 mt-3 text-center text-xl">
@@ -111,56 +108,56 @@ export const Home = ({ subtitle }: HomeProps) => {
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-y-6 xl:grid-cols-4">
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="m-0 text-center text-2xl">
+              <p className="text-center text-2xl">
                 Could a royal marriage cause a{" "}
                 <abbr title="Personal Union">PU</abbr> or inheritance?
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="m-0 text-center text-2xl">
+              <p className="text-center text-2xl">
                 How much mana was spent developing provinces?
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white sm:col-span-2">
-              <p className="m-0 text-center text-2xl">
+              <p className="text-center text-2xl">
                 How much more dev is needed for religious rebels to change the
                 state religion?
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="m-0 text-center text-2xl">
+              <p className="text-center text-2xl">
                 How fast did the reformation spread?
               </p>
             </div>
 
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="m-0 text-center text-2xl">
+              <p className="text-center text-2xl">
                 What one time advisor events remain?
               </p>
             </div>
 
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white sm:col-span-2">
-              <p className="m-0 text-center text-2xl">
+              <p className="text-center text-2xl">
                 What is the reign weighted running average of monarch power?
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="m-0 text-center text-2xl">
+              <p className="text-center text-2xl">
                 How much more dev is needed to culture shift?
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="m-0 text-center text-2xl">
+              <p className="text-center text-2xl">
                 What wars were wars of attrition?
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="m-0 text-center text-2xl">
+              <p className="text-center text-2xl">
                 What heirs failed to take the throne?
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-4 text-white">
-              <p className="m-0 text-center text-2xl">
+              <p className="text-center text-2xl">
                 What are the most popular idea groups?
               </p>
             </div>
@@ -172,7 +169,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <section>
-          <div className="max-w-prose">
+          <div className="grid max-w-prose gap-4">
             <h2 className="text-2xl font-bold">
               BYOB (Bring your own browser)
             </h2>
@@ -186,7 +183,7 @@ export const Home = ({ subtitle }: HomeProps) => {
               updated
             </p>
             <div className="flex flex-col gap-y-2">
-              <div className="flex items-center gap-x-1">
+              <div className="flex items-center gap-x-2">
                 <FirefoxIcon className="fill-gray-300" />
                 <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
                 <ChromeIcon className="fill-gray-300" />
@@ -201,7 +198,7 @@ export const Home = ({ subtitle }: HomeProps) => {
               </div>
             </div>
           </div>
-          <div>
+          <div className="flex justify-center">
             <span
               className="drop-shadow-xl"
               style={{ fontSize: "200px", lineHeight: "1" }}
@@ -216,7 +213,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <section>
-          <div className="max-w-prose">
+          <div className="grid max-w-prose gap-4">
             <h2 className="text-2xl font-bold">Melting Support</h2>
             <p>
               PDX Tools can convert (aka melt) ironman and binary saves into
@@ -243,7 +240,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <section>
-          <div className="max-w-prose">
+          <div className="grid max-w-prose gap-4">
             <h2 className="text-2xl font-bold">Fresh Competition</h2>
             <p>
               An advanced achievement engine uses the game's logic to check if a
@@ -262,7 +259,7 @@ export const Home = ({ subtitle }: HomeProps) => {
               while allowing exceptional runs to bask in glory forever
             </p>
           </div>
-          <div>
+          <div className="flex justify-center">
             <Image
               src={achievement}
               height={325}
@@ -279,7 +276,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <section>
-          <div className="max-w-prose">
+          <div className="grid max-w-prose gap-4">
             <h2 className="text-2xl font-bold">More Games!</h2>
             <p>The following games can be loaded:</p>
             <ul>
@@ -307,16 +304,18 @@ export const Home = ({ subtitle }: HomeProps) => {
         className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
       >
         <section>
-          <div className="max-w-prose">
+          <div className="grid max-w-prose gap-4">
             <h2 className="text-2xl font-bold">Community</h2>
             <p>PDX Tools is powered by community use and feedback</p>
             <p>
               Have ideas, questions, or bug reports? Join the{" "}
-              <a href="https://discord.gg/rCpNWQW">discord!</a>
+              <Link href="https://discord.gg/rCpNWQW">discord!</Link>
             </p>
             <p>
               See PDX Tools on{" "}
-              <a href="https://github.com/pdx-tools/pdx-tools">our Github</a>{" "}
+              <Link href="https://github.com/pdx-tools/pdx-tools">
+                our Github
+              </Link>{" "}
               and help contribute!
             </p>
           </div>

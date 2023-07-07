@@ -1,16 +1,108 @@
 import React from "react";
 import Link from "next/link";
 import { AppSvg } from "../icons/AppIcon";
-import { CoreMenu } from "./CoreMenu";
-import { MobileMenu } from "./MobileMenu";
 import { AnnouncementBar } from "./AnnouncementBar";
 import { useEngineActions } from "@/features/engine";
+import { NavigationMenu } from "@/components/NavigationMenu";
+import { useLogoutMutation, useProfileQuery } from "@/services/appApi";
+import { SignInButtons } from "./auth";
+import { Button } from "@/components/Button";
+import { UserOutlined } from "@ant-design/icons";
 
 const HeaderMenu = () => {
+  const logout = useLogoutMutation();
+  const profileQuery = useProfileQuery();
+
   return (
     <>
-      <CoreMenu mode="horizontal" className="hidden md:flex" />
-      <MobileMenu />
+      <NavigationMenu>
+        <NavigationMenu.List>
+          <NavigationMenu.Item>
+            <NavigationMenu.Trigger className="px-4 py-2">
+              EU4
+            </NavigationMenu.Trigger>
+            <NavigationMenu.Content className="bg-[#001529] p-4">
+              <NavigationMenu.Link variant="button" asChild>
+                <Link href="/eu4">Recent saves</Link>
+              </NavigationMenu.Link>
+              <NavigationMenu.Link variant="button" asChild>
+                <Link href="/eu4/achievements">Achievements</Link>
+              </NavigationMenu.Link>
+              <NavigationMenu.Link variant="button" asChild>
+                <Link href="/eu4/skanderbeg">Skanderbeg</Link>
+              </NavigationMenu.Link>
+            </NavigationMenu.Content>
+          </NavigationMenu.Item>
+          <NavigationMenu.Item>
+            <NavigationMenu.Trigger className="px-4 py-2">
+              About
+            </NavigationMenu.Trigger>
+            <NavigationMenu.Content className="bg-[#001529] p-4">
+              <NavigationMenu.Link asChild variant="button">
+                <Link href="/changelog">Changelog</Link>
+              </NavigationMenu.Link>
+              <NavigationMenu.Link variant="button" asChild>
+                <Link href="/docs">Docs</Link>
+              </NavigationMenu.Link>
+              <NavigationMenu.Link variant="button" asChild>
+                <Link href="https://discord.gg/rCpNWQW">Discord</Link>
+              </NavigationMenu.Link>
+              <NavigationMenu.Link variant="button" asChild>
+                <Link href="https://github.com/pdx-tools">Github</Link>
+              </NavigationMenu.Link>
+              <NavigationMenu.Link variant="button" asChild>
+                <Link href="/blog">Blog</Link>
+              </NavigationMenu.Link>
+
+              <NavigationMenu.Link variant="button" asChild>
+                <Link href="https://github.com/sponsors/nickbabcock">
+                  Donate
+                </Link>
+              </NavigationMenu.Link>
+            </NavigationMenu.Content>
+          </NavigationMenu.Item>
+        </NavigationMenu.List>
+      </NavigationMenu>
+
+      <div className="flex grow justify-end self-center text-end">
+        {profileQuery.data?.kind === "guest" ? (
+          <SignInButtons />
+        ) : profileQuery.data?.kind === "user" ? (
+          <NavigationMenu>
+            <NavigationMenu.List>
+              <NavigationMenu.Item className="mr-16 xl:mr-0">
+                <NavigationMenu.Trigger asChild>
+                  <Button shape="circle">
+                    <UserOutlined className=" text-black" />
+                    <span className="sr-only">Account</span>
+                  </Button>
+                </NavigationMenu.Trigger>
+
+                <NavigationMenu.Content className="items-center bg-[#001529] p-4">
+                  <NavigationMenu.Link variant="button" asChild>
+                    <Link href="/account">Accout</Link>
+                  </NavigationMenu.Link>
+
+                  <NavigationMenu.Link
+                    variant="button"
+                    asChild
+                    className="no-break"
+                  >
+                    <Link href={`/users/${profileQuery.data.user.user_id}`}>
+                      My Saves
+                    </Link>
+                  </NavigationMenu.Link>
+                  <NavigationMenu.Link variant="button" asChild>
+                    <button type="button" onClick={() => logout.mutate()}>
+                      Logout
+                    </button>
+                  </NavigationMenu.Link>
+                </NavigationMenu.Content>
+              </NavigationMenu.Item>
+            </NavigationMenu.List>
+          </NavigationMenu>
+        ) : null}
+      </div>
     </>
   );
 };
@@ -29,7 +121,7 @@ export const AppHeader = () => {
       )}
 
       <div className="h-16 bg-[#001529] px-4">
-        <div className="mx-auto flex h-full w-full items-center">
+        <div className="mx-auto flex h-full w-full max-w-screen-xl items-center">
           <Link
             href="/"
             className="mr-3 flex items-center gap-1 text-3xl text-white hover:text-white hover:underline"
@@ -38,7 +130,7 @@ export const AppHeader = () => {
             <span className="float-left inline-flex">
               <AppSvg width={48} height={48} />
             </span>
-            PDX Tools
+            <span className="hidden sm:block">PDX Tools</span>
           </Link>
           <HeaderMenu />
         </div>

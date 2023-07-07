@@ -1,18 +1,21 @@
 import React from "react";
-import { Avatar, Tooltip } from "antd";
+import Image from "next/image";
 import { useInEu4Analysis } from "../SideBarContainer";
 import { useEu4Actions } from "../../store";
+import { Tooltip } from "@/components/Tooltip";
+import { cx } from "class-variance-authority";
+import { Button } from "@/components/Button";
 
-type AvatarProps = React.ComponentProps<typeof Avatar>;
+type AvatarSize = "small" | "base" | "large";
 interface FlagAvatarCoreProps {
   tag: string;
-  size?: AvatarProps["size"];
+  size?: AvatarSize;
 }
 
 interface FlagAvatarProps {
   tag: string;
   name: string;
-  size?: AvatarProps["size"];
+  size?: AvatarSize;
   condensed?: boolean;
 }
 
@@ -28,17 +31,28 @@ export const FlagAvatarCore = ({ tag, size }: FlagAvatarCoreProps) => {
     }
   }
 
+  let dims = "h-10 w-10";
+  if (size === "small") {
+    dims = "h-8 w-8";
+  } else if (size === "large") {
+    dims = "h-12 w-12";
+  }
+
   // We need create a small border around flag avatars as some countries
   // are white at the edges (like austria). Using a 1px border resulted
   // in a weird gap in chrome so we have to use outline with a negative
   // offset to account for the avatar's border radius.
-  const style = {
-    outline: "1px solid #666",
-    outlineOffset: "-1px",
-  };
-
   return (
-    <Avatar shape="square" size={size || "small"} src={src} style={style} />
+    <Image
+      alt=""
+      width={128}
+      height={128}
+      className={cx(
+        dims,
+        "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500"
+      )}
+      src={src}
+    />
   );
 };
 
@@ -57,11 +71,12 @@ const InGameFlagAvatar = ({
 
 const OutOfGameFlagAvatar = ({ tag, name, size }: FlagAvatarProps) => {
   return (
-    <Tooltip title={tag}>
-      <div className="flex items-center space-x-2 text-start">
+    <Tooltip>
+      <Tooltip.Trigger className="inline-block gap-2 text-start">
         <FlagAvatarCore tag={tag} size={size} />
-        <span>{name}</span>
-      </div>
+        <span className="text-left">{name}</span>
+      </Tooltip.Trigger>
+      <Tooltip.Content>{tag}</Tooltip.Content>
     </Tooltip>
   );
 };
@@ -86,15 +101,20 @@ export const TagFlag = ({
   const { setSelectedTag } = useEu4Actions();
 
   const content = (
-    <button
-      className="cursor-pointer border-none bg-transparent p-1 hover:bg-gray-200 active:bg-gray-300"
+    <Button
+      variant="ghost"
+      shape="none"
+      className={cx(
+        `w-max flex-shrink-0 rounded-r-md p-0 hover:bg-gray-200/70 active:bg-gray-300`,
+        children && "pr-4"
+      )}
       onClick={() => setSelectedTag(tag)}
     >
-      <div className="flex gap-x-2 text-left">
+      <div className="flex flex-shrink-0 gap-x-2 text-left">
         <FlagAvatarCore tag={tag} size={size} />
-        {children}
+        {children && <span>{children}</span>}
       </div>
-    </button>
+    </Button>
   );
 
   switch (tooltip) {
@@ -102,10 +122,22 @@ export const TagFlag = ({
       return content;
     }
     case "tag": {
-      return <Tooltip title={tag}>{content}</Tooltip>;
+      return (
+        <Tooltip>
+          <Tooltip.Trigger asChild>{content}</Tooltip.Trigger>
+          <Tooltip.Content>{tag}</Tooltip.Content>
+        </Tooltip>
+      );
     }
     default: {
-      return <Tooltip title={`${tooltip.name} (${tag})`}>{content}</Tooltip>;
+      return (
+        <Tooltip>
+          <Tooltip.Trigger asChild>{content}</Tooltip.Trigger>
+          <Tooltip.Content>
+            {tooltip.name} ({tag})
+          </Tooltip.Content>
+        </Tooltip>
+      );
     }
   }
 };

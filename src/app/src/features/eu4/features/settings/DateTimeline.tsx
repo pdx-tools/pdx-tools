@@ -1,4 +1,3 @@
-import { Input, Slider } from "antd";
 import React, { useMemo } from "react";
 import { throttle } from "map";
 import {
@@ -7,6 +6,8 @@ import {
   useIsDatePickerEnabled,
   useSelectedDate,
 } from "../../store";
+import { Slider } from "@/components/Slider";
+import { Input } from "@/components/Input";
 
 export const DateTimeline = () => {
   const meta = useEu4Meta();
@@ -20,43 +21,23 @@ export const DateTimeline = () => {
   );
 
   return (
-    <div className="flex flex-col gap-2">
-      <label>
+    <div className="flex gap-4">
+      <label className="flex w-36 basis-5/12 items-center gap-2">
         Date:
         <Input
           value={mapDate.text}
           disabled={!datePickerEnabled}
-          className="ml-2 w-32"
           maxLength={10}
           onChange={(e) => setSelectedDateText(e.target.value)}
         />
       </label>
 
       <Slider
-        value={mapDate.days}
+        value={[mapDate.days]}
         disabled={!datePickerEnabled}
         max={meta.total_days}
-        onChange={dayChange}
-        className="grow select-none"
-        tooltipVisible={false}
-        marks={{
-          0: {
-            label: meta.start_date,
-            style: {
-              transform: "translateX(0%)",
-              left: "0%",
-              whiteSpace: "nowrap",
-            },
-          },
-          [meta.total_days]: {
-            label: meta.date,
-            style: {
-              transform: "translateX(-100%)",
-              left: "100%",
-              whiteSpace: "nowrap",
-            },
-          },
-        }}
+        onValueChange={(v) => dayChange(v[0])}
+        className="basis-7/12"
       />
     </div>
   );

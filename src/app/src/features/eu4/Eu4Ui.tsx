@@ -5,7 +5,7 @@ import { ProgressBar } from "@/components/ProgressBar";
 import { developerLog } from "@/lib/log";
 import { Eu4SaveInput, useLoadEu4, Eu4StoreProvider } from "./store";
 import { BrowserCheck } from "@/components/landing/BrowserCheck";
-import { Alert, AlertDescription } from "@/components/Alert";
+import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { MapTip } from "./features/map/MapTip";
 
@@ -67,7 +67,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
         ) : null}
         {error !== null ? (
           <Alert className="px-2 py-4" variant="error">
-            <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+            <Alert.Description>{getErrorMessage(error)}</Alert.Description>
           </Alert>
         ) : null}
         <BrowserCheck />

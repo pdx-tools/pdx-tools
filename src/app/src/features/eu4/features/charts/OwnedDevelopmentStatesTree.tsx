@@ -11,12 +11,13 @@ import {
   OwnedDevelopmentStates,
   ProvinceDevelopment,
 } from "../../types/models";
-import { FlagAvatar } from "../../components/avatars";
+import { FlagAvatarCore } from "../../components/avatars";
 import { formatInt } from "@/lib/format";
+import { Alert } from "@/components/Alert";
 
 export const OwnedDevelopmentStatesTree = () => {
   const countryFilter = useTagFilter();
-  const { data } = useAnalysisWorker(
+  const { data, error } = useAnalysisWorker(
     useCallback(
       (worker) => worker.eu4OwnedDevelopmentStates(countryFilter),
       [countryFilter]
@@ -56,6 +57,10 @@ export const OwnedDevelopmentStatesTree = () => {
       },
     });
   }, [data, visualizationDispatch]);
+
+  if (error) {
+    return <Alert.Error msg={error} />;
+  }
 
   if (data?.[0] === undefined) {
     return null;
@@ -154,12 +159,10 @@ function CountryStateDevelopmentTree({
   return (
     <div>
       <div className="flex items-center space-x-2">
-        <FlagAvatar
-          name={dev.country.name}
-          tag={dev.country.tag}
-          size="large"
-        />
-        <span>({formatInt(total)})</span>
+        <FlagAvatarCore tag={dev.country.tag} size="large" />
+        <span>
+          {dev.country.name} ({formatInt(total)})
+        </span>
       </div>
       <div style={{ height: `${dimension}px`, width: `${dimension}px` }}>
         <Treemap {...config} />

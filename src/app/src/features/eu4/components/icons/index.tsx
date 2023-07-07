@@ -1,4 +1,4 @@
-import { Tooltip } from "antd";
+import { Tooltip } from "@/components/Tooltip";
 import Image from "next/image";
 
 type GameIconProps = {
@@ -10,8 +10,17 @@ type GameIconProps = {
 
 const GameIcon = ({ src, alt, height = 27, width = 27 }: GameIconProps) => {
   return (
-    <Tooltip title={alt}>
-      <Image src={src} alt={alt} height={height} width={width} />
+    <Tooltip>
+      <Tooltip.Trigger className="w-max">
+        <Image
+          style={{ height, width }}
+          src={src}
+          alt={alt}
+          height={height}
+          width={width}
+        />
+      </Tooltip.Trigger>
+      <Tooltip.Content>{alt}</Tooltip.Content>
     </Tooltip>
   );
 };

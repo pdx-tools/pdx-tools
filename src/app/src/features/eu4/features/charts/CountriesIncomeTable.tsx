@@ -1,39 +1,34 @@
-import React, { useCallback, useEffect, useRef } from "react";
-import { Switch, Table } from "antd";
-import { ColumnProps } from "antd/lib/table";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { incomeLedgerAliases } from "../country-details/data";
 import { CountryIncome } from "../../types/models";
-import {
-  useIsLoading,
-  useVisualizationDispatch,
-} from "../../../../components/viz/visualization-context";
-import { countryColumnFilter } from "./countryColumnFilter";
+import { useVisualizationDispatch } from "../../../../components/viz/visualization-context";
 import { formatFloat } from "@/lib/format";
 import { useAnalysisWorker } from "../../worker/useAnalysisWorker";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { createCsv } from "@/lib/csv";
-import { useTablePagination } from "@/features/ui-controls";
 import {
   useEu4Actions,
   useShowOnetimeLineItems,
   useTagFilter,
   useValueFormatPreference,
 } from "../../store";
+import { Switch } from "@/components/Switch";
+import { Alert } from "@/components/Alert";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Table } from "@/components/Table";
+import { DataTable } from "@/components/DataTable";
 
 type CountryIncomeRecord = CountryIncome;
 const aliases = incomeLedgerAliases();
 
 export const CountriesIncomeTable = () => {
   const { setShowOneTimeLineItems, setPrefersPercents } = useEu4Actions();
-  const isLoading = useIsLoading();
   const doShowPercent = useValueFormatPreference() === "percent";
   const showRecurringOnly = !useShowOnetimeLineItems();
   const countryFilter = useTagFilter();
-  const selectFilterRef = useRef(null);
   const visualizationDispatch = useVisualizationDispatch();
-  const tablePagination = useTablePagination();
 
-  const { data = [] } = useAnalysisWorker(
+  const { data = [], error } = useAnalysisWorker(
     useCallback(
       (worker) =>
         worker.eu4GetCountriesIncome(
@@ -60,78 +55,65 @@ export const CountriesIncomeTable = () => {
     });
   }, [data, visualizationDispatch]);
 
-  const mapping = aliases;
+  const columns = useMemo(() => {
+    const columnHelper = createColumnHelper<CountryIncomeRecord>();
+    const numRenderer = doShowPercent
+      ? (x: number) => `${x}%`
+      : (x: number) => formatFloat(x, 2);
 
-  const numRenderer = doShowPercent
-    ? (x: number) => `${x}%`
-    : (x: number) => formatFloat(x, 2);
-
-  const dataColumns: ColumnProps<CountryIncomeRecord>[] = mapping.map(
-    ([key, text]) => ({
-      title: text,
-      dataIndex: key,
-      render: numRenderer,
-      align: "right",
-      width: 25 + text.length * 8,
-      sorter: (a: any, b: any) => a[key] - b[key],
-    })
-  );
-
-  const columns: ColumnProps<CountryIncomeRecord>[] = [
-    {
-      title: "Country",
-      dataIndex: "name",
-      fixed: "left",
-      width: 175,
-      render: (name: string, x: CountryIncome) => (
-        <FlagAvatar tag={x.tag} name={x.name} size="large" />
+    return [
+      columnHelper.accessor("name", {
+        sortingFn: "text",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Country" />
+        ),
+        cell: ({ row }) => (
+          <FlagAvatar tag={row.original.tag} name={row.original.name} />
+        ),
+      }),
+      columnHelper.accessor("total", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Total" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatFloat(info.getValue(), 2),
+      }),
+      ...aliases.map(([key, text]) =>
+        columnHelper.accessor(key, {
+          sortingFn: "basic",
+          header: ({ column }) => (
+            <Table.ColumnHeader column={column} title={text} />
+          ),
+          meta: { className: "text-right" },
+          cell: (info) => numRenderer(info.getValue()),
+        })
       ),
-      sorter: (a: CountryIncome, b: CountryIncome) =>
-        a.name.localeCompare(b.name),
-      ...countryColumnFilter(selectFilterRef, (record) => record.tag),
-    },
-    ...dataColumns,
-  ];
-
-  if (!doShowPercent) {
-    columns.push({
-      title: "Total",
-      dataIndex: "total",
-      fixed: "right",
-      align: "right",
-      width: 100,
-      render: numRenderer,
-      sorter: (a: CountryIncome, b: CountryIncome) => a.total - b.total,
-    });
-  }
+    ];
+  }, [doShowPercent]);
 
   return (
     <>
+      <Alert.Error msg={error} />
       <div className="flex flex-col space-y-6">
         <div className="flex items-center space-x-8">
           <div className="flex items-center space-x-2">
             <span>Show as percentages:</span>
-
-            <Switch checked={doShowPercent} onChange={setPrefersPercents} />
+            <Switch
+              checked={doShowPercent}
+              onCheckedChange={setPrefersPercents}
+            />
           </div>
 
           <div className="flex items-center space-x-2">
             <span>Recurring expenses only:</span>
             <Switch
               checked={showRecurringOnly}
-              onChange={(checked: boolean) => setShowOneTimeLineItems(!checked)}
+              onCheckedChange={(checked) => setShowOneTimeLineItems(!checked)}
             />
           </div>
         </div>
-        <Table
-          size="small"
-          rowKey="name"
-          loading={isLoading}
-          dataSource={data}
-          columns={columns}
-          pagination={tablePagination}
-          scroll={{ x: true }}
-        />
+        <DataTable columns={columns} data={data} pagination={true} />
       </div>
     </>
   );

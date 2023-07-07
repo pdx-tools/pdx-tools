@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Tooltip, Button } from "antd";
+import { LoadingOutlined } from "@ant-design/icons";
 import { downloadData } from "@/lib/downloadData";
 import { emitEvent } from "@/lib/plausible";
 import { DetectedDataType } from "@/features/engine";
 import { useIsMounted } from "@/hooks/useIsMounted";
+import { Button } from "./Button";
+import { Tooltip } from "./Tooltip";
 
 type MeltProps = {
   filename: string;
@@ -54,10 +56,15 @@ export const MeltButton = ({ filename, worker, game }: MeltProps) => {
   };
 
   return (
-    <Tooltip title="Convert (melt) an ironman save into a normal save">
-      <Button loading={loading} onClick={melt}>
-        Melt
-      </Button>
+    <Tooltip>
+      <Tooltip.Trigger asChild>
+        <Button className="flex gap-2" onClick={melt}>
+          {loading ? <LoadingOutlined /> : null} <span>Melt</span>
+        </Button>
+      </Tooltip.Trigger>
+      <Tooltip.Content>
+        Convert (melt) an ironman save into a normal save
+      </Tooltip.Content>
     </Tooltip>
   );
 };

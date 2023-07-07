@@ -1,12 +1,15 @@
 import React, { useCallback, useMemo } from "react";
 import { PieConfig } from "@ant-design/charts";
-import { Table, Tooltip } from "antd";
-import { ColumnType } from "antd/lib/table";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryDetails, CountryReligion } from "../../types/models";
 import { Pie, LegendColor } from "@/components/viz";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { useEu4Worker } from "@/features/eu4/worker";
+import { Tooltip } from "@/components/Tooltip";
+import { Alert } from "@/components/Alert";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Table } from "@/components/Table";
+import { DataTable } from "@/components/DataTable";
 
 export interface CountryReligionsProps {
   details: CountryDetails;
@@ -17,49 +20,74 @@ export interface CountryReligionVizProps {
   largeLayout: boolean;
 }
 
+const columnHelper = createColumnHelper<CountryReligion>();
+
+const columns = [
+  columnHelper.accessor("name", {
+    sortingFn: "text",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Religion" />
+    ),
+    cell: ({ row }) => (
+      <Tooltip>
+        <Tooltip.Trigger className="flex items-center gap-2">
+          <LegendColor color={row.original.color}></LegendColor>
+          {row.original.name}
+        </Tooltip.Trigger>
+        <Tooltip.Content>{row.original.id}</Tooltip.Content>
+      </Tooltip>
+    ),
+  }),
+
+  columnHelper.group({
+    header: "Provinces",
+    columns: [
+      columnHelper.accessor("provinces", {
+        sortingFn: "basic",
+        header: "Value",
+        cell: (info) => (
+          <div className="text-right">{formatInt(info.getValue())}</div>
+        ),
+      }),
+      columnHelper.accessor("provinces_percent", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="%" />
+        ),
+        cell: (info) => (
+          <div className="text-right">{formatFloat(info.getValue(), 2)}%</div>
+        ),
+      }),
+    ],
+  }),
+
+  columnHelper.group({
+    header: "Development",
+    columns: [
+      columnHelper.accessor("development", {
+        sortingFn: "basic",
+        header: "Value",
+        cell: (info) => (
+          <div className="text-right">{formatInt(info.getValue())}</div>
+        ),
+      }),
+      columnHelper.accessor("development_percent", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="%" />
+        ),
+        cell: (info) => (
+          <div className="text-right">{formatFloat(info.getValue(), 2)}%</div>
+        ),
+      }),
+    ],
+  }),
+];
+
 const CountryReligionVizImpl = ({
   data,
   largeLayout,
 }: CountryReligionVizProps) => {
-  const columns: ColumnType<CountryReligion>[] = [
-    {
-      title: "Religion",
-      dataIndex: ["religion", "name"],
-      render: (_name: string, x: CountryReligion) => (
-        <Tooltip title={x.id}>
-          <div className="flex items-center gap-2">
-            <LegendColor color={x.color}></LegendColor>
-            {x.name}
-          </div>
-        </Tooltip>
-      ),
-      sorter: (a: CountryReligion, b: CountryReligion) =>
-        a.name.localeCompare(b.name),
-    },
-    {
-      title: "Provinces",
-      dataIndex: "provinces",
-      align: "right",
-      sorter: (a: CountryReligion, b: CountryReligion) =>
-        a.provinces - b.provinces,
-      render: (_: number, x) =>
-        `${formatInt(x.provinces)} (${formatFloat(x.provinces_percent, 2)}%)`,
-    },
-    {
-      title: "Development",
-      dataIndex: "development",
-      defaultSortOrder: "descend",
-      align: "right",
-      sorter: (a: CountryReligion, b: CountryReligion) =>
-        a.development - b.development,
-      render: (_: number, x) =>
-        `${formatInt(x.development)} (${formatFloat(
-          x.development_percent,
-          2
-        )}%)`,
-    },
-  ];
-
   const palette = useMemo(
     () => new Map(data.map((x) => [x.name, x.color])),
     [data]
@@ -98,13 +126,10 @@ const CountryReligionVizImpl = ({
       className="flex items-center gap-2"
       style={{ flexDirection: largeLayout ? "row" : "column" }}
     >
-      <Table
-        size="small"
-        rowKey={(record) => `${record.id}`}
-        dataSource={data}
-        scroll={{ x: true }}
-        pagination={false}
+      <DataTable
+        data={data}
         columns={columns}
+        initialSorting={[{ id: "development_percent", desc: true }]}
       />
       <Pie {...chartConfig} />
     </div>
@@ -115,12 +140,17 @@ const CountryReligionViz = React.memo(CountryReligionVizImpl);
 
 export const CountryReligions = ({ details }: CountryReligionsProps) => {
   const isMd = useBreakpoint("md");
-  const { data = [] } = useEu4Worker(
+  const { data = [], error } = useEu4Worker(
     useCallback(
       (worker) => worker.eu4GetCountryProvinceReligion(details.tag),
       [details.tag]
     )
   );
 
-  return <CountryReligionViz data={data} largeLayout={isMd} />;
+  return (
+    <>
+      <Alert.Error msg={error} />
+      <CountryReligionViz data={data} largeLayout={isMd} />
+    </>
+  );
 };

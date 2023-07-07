@@ -1,15 +1,17 @@
 import React from "react";
-import { Avatar, Tooltip } from "antd";
+import Image from "next/image";
 import { LocalizedObj } from "@/features/eu4/types/models";
+import { Tooltip } from "@/components/Tooltip";
 
 export const TcInvestmentAvatar = ({ id, name }: LocalizedObj) => {
   try {
-    const imageSrc: string = require(`@/images/eu4/tc-investments/${id}.png`);
+    const src: string = require(`@/images/eu4/tc-investments/${id}.png`);
     return (
-      <Tooltip title={`${name}`}>
-        <div className="space-x-2">
-          <Avatar shape="square" size={48} src={imageSrc} />
-        </div>
+      <Tooltip>
+        <Tooltip.Trigger className="h-12 w-12">
+          <Image src={src} width={48} height={48} alt={name} />
+        </Tooltip.Trigger>
+        <Tooltip.Content>{name}</Tooltip.Content>
       </Tooltip>
     );
   } catch {

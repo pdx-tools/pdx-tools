@@ -1,43 +1,47 @@
-import React from "react";
-import { Modal, Button } from "antd";
-import type { ButtonProps } from "antd/lib/button";
-import { ExclamationCircleOutlined } from "@ant-design/icons";
-import { useRouter } from "next/router";
+import React, { useState } from "react";
+import { LoadingOutlined } from "@ant-design/icons";
 import { useSaveDeletion } from "@/services/appApi";
-const { confirm } = Modal;
+import { Button, type ButtonProps } from "@/components/Button";
+import { Dialog } from "@/components/Dialog";
 
-interface DeleteSaveProps {
+interface DeleteSaveProps extends ButtonProps {
   saveId: string;
-  type?: ButtonProps["type"];
-  redirect?: boolean;
 }
 
-export const DeleteSave = ({ saveId, type, redirect }: DeleteSaveProps) => {
-  const router = useRouter();
+export const DeleteSave = ({ saveId, ...rest }: DeleteSaveProps) => {
+  const [open, setOpen] = useState(false);
   const saveDeletion = useSaveDeletion(saveId);
-  const showDeleteConfirm = () => {
-    confirm({
-      title: "Are you sure this save should be deleted?",
-      icon: <ExclamationCircleOutlined />,
-      content:
-        "The save will no longer be accessible and any records will be removed",
-      okText: "Yes, Delete",
-      okType: "danger",
-      cancelText: "No",
-      async onOk() {
-        await saveDeletion.mutateAsync();
-        if (redirect && router) {
-          router.back();
-        }
-      },
-      onCancel() {},
-    });
-  };
   return (
-    <>
-      <Button type={type} onClick={showDeleteConfirm} danger>
-        Delete
-      </Button>
-    </>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog.Trigger asChild>
+        <Button {...rest}>Delete</Button>
+      </Dialog.Trigger>
+      <Dialog.Content>
+        <Dialog.Header>
+          <Dialog.Title>Are you sure this save should be deleted?</Dialog.Title>
+          <Dialog.Description>
+            The save will no longer be accessible and any records will be
+            removed
+          </Dialog.Description>
+        </Dialog.Header>
+
+        <Dialog.Footer>
+          <Dialog.Close asChild>
+            <Button>No</Button>
+          </Dialog.Close>
+          <Button
+            className="items-center gap-2"
+            variant="danger"
+            onClick={() =>
+              saveDeletion.mutate(undefined, {
+                onSuccess: () => setOpen(false),
+              })
+            }
+          >
+            {saveDeletion.isLoading ? <LoadingOutlined /> : null} Yes, Delete
+          </Button>
+        </Dialog.Footer>
+      </Dialog.Content>
+    </Dialog>
   );
 };

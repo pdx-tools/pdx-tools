@@ -1,6 +1,4 @@
 import { useRef, useState } from "react";
-import Link from "next/link";
-import { Button, Radio, Tooltip, InputNumber, Modal, Slider } from "antd";
 import {
   CaretRightOutlined,
   PauseOutlined,
@@ -21,7 +19,13 @@ import {
   useSaveFilenameWith,
   useSelectedDate,
 } from "../../store";
-import { Alert, AlertDescription } from "@/components/Alert";
+import { Alert } from "@/components/Alert";
+import { IconButton } from "@/components/IconButton";
+import { Input } from "@/components/Input";
+import { Button } from "@/components/Button";
+import { ToggleGroup } from "@/components/ToggleGroup";
+import { Slider } from "@/components/Slider";
+import { Link } from "@/components/Link";
 
 interface MapState {
   focusPoint: [number, number];
@@ -29,6 +33,7 @@ interface MapState {
   width: number;
   height: number;
 }
+type Interval = "year" | "month" | "week" | "day";
 
 export const Timelapse = () => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -37,9 +42,7 @@ export const Timelapse = () => {
   const [maxFps, setMaxFps] = useState(8);
   const [exportAsMp4, setExportAsMp4] = useState(false);
   const [freezeFrameSeconds, setFreezeFrameSeconds] = useState(0);
-  const [intervalSelection, setIntervalSelection] = useState<
-    "year" | "month" | "week" | "day"
-  >("year");
+  const [intervalSelection, setIntervalSelection] = useState<Interval>("year");
   const currentMapDate = useSelectedDate();
   const filename = useSaveFilenameWith(exportAsMp4 ? ".mp4" : ".webm");
   const encoderRef = useRef<TimelapseEncoder | undefined>(undefined);
@@ -50,6 +53,7 @@ export const Timelapse = () => {
   const { updateMap, updateProvinceColors } = useEu4Actions();
   const store = useEu4Context();
   const mapMode = useEu4MapMode();
+  const [timelapseError, setTimelapseError] = useState<unknown | null>(null);
   const timelapsePayload = {
     kind: mapMode == "battles" || mapMode == "religion" ? mapMode : "political",
     interval: intervalSelection,
@@ -131,14 +135,10 @@ export const Timelapse = () => {
 
       await updateProvinceColors();
       map.redrawMapImage();
-
       downloadData(blob, filename);
     } catch (ex) {
       captureException(ex);
-      Modal.error({
-        title: "The timelapse engine encountered an error",
-        content: `${ex}`,
-      });
+      setTimelapseError(ex);
     } finally {
       restoreMapState();
       setIsRecording(false);
@@ -152,28 +152,31 @@ export const Timelapse = () => {
   return (
     <>
       <div className="flex items-center justify-center gap-2">
-        <Tooltip title={!isPlaying ? "Start timelapse" : "Stop timelapse"}>
-          <Button
-            shape="circle"
-            icon={!isPlaying ? <CaretRightOutlined /> : <PauseOutlined />}
-            onClick={!isPlaying ? startTimelapse : stopTimelapse}
-            disabled={!timelapseEnabled}
-          />
-        </Tooltip>
-        <Tooltip title={!isPlaying ? "Start recording" : "Stop recording"}>
-          <Button
-            shape="circle"
-            disabled={!(timelapseEnabled && recordingSupported)}
-            icon={
-              !isRecording ? <VideoCameraOutlined /> : <VideoCameraTwoTone />
-            }
-            onClick={!isRecording ? startRecording : stopRecording}
-          />
-        </Tooltip>
+        <IconButton
+          shape="circle"
+          disabled={!timelapseEnabled}
+          onClick={!isPlaying ? startTimelapse : stopTimelapse}
+          icon={!isPlaying ? <CaretRightOutlined /> : <PauseOutlined />}
+          tooltip={!isPlaying ? "Start timelapse" : "Stop timelapse"}
+        />
+
+        <IconButton
+          shape="circle"
+          disabled={!(timelapseEnabled && recordingSupported)}
+          onClick={!isRecording ? startRecording : stopRecording}
+          icon={!isRecording ? <VideoCameraOutlined /> : <VideoCameraTwoTone />}
+          tooltip={!isRecording ? "Start recording" : "Stop recording"}
+        />
       </div>
+      {timelapseError !== null && (
+        <Alert variant="error" className="px-4 py-2">
+          <Alert.Title>The timelapse engine encountered an error</Alert.Title>
+          <Alert.Description>{`${timelapseError}`}</Alert.Description>
+        </Alert>
+      )}
       {!recordingSupported && (
         <Alert variant="info" className="px-4 py-2">
-          <AlertDescription>
+          <Alert.Description>
             Browser does not support timelapse recording.{" "}
             <a
               target="_blank"
@@ -190,69 +193,102 @@ export const Timelapse = () => {
             >
               Read more
             </Link>
-          </AlertDescription>
+          </Alert.Description>
         </Alert>
       )}
-      <label>
-        <div>Interval:</div>
-        <Radio.Group
-          value={intervalSelection}
-          onChange={(e) => setIntervalSelection(e.target.value)}
-          optionType="button"
-          options={[
-            {
-              label: "Year",
-              value: "year",
-            },
-            {
-              label: "Month",
-              value: "month",
-            },
-            {
-              label: "Week",
-              value: "week",
-            },
-            {
-              label: "Day",
-              value: "day",
-            },
-          ]}
-        />
-      </label>
-      <label>
-        <div>Max intervals per second:</div>
-        <Slider
-          value={maxFps}
-          onChange={(v) => setMaxFps(v)}
-          min={5}
-          max={30}
-          marks={{ 5: "5", 10: "10", 15: "15", 20: "20", 25: "25", 30: "30" }}
-        />
-      </label>
-      {recordingSupported && (
+      <ToggleGroup
+        type="single"
+        className="inline-flex self-center"
+        value={intervalSelection}
+        onValueChange={(e) => setIntervalSelection(e as Interval)}
+      >
+        <ToggleGroup.Item value="year" asChild>
+          <Button shape="none" className="px-4 py-2">
+            Year
+          </Button>
+        </ToggleGroup.Item>
+        <ToggleGroup.Item value="month" asChild>
+          <Button shape="none" className="px-4 py-2">
+            Month
+          </Button>
+        </ToggleGroup.Item>
+        <ToggleGroup.Item value="week" asChild>
+          <Button shape="none" className="px-4 py-2">
+            Week
+          </Button>
+        </ToggleGroup.Item>
+        <ToggleGroup.Item value="day" asChild>
+          <Button shape="none" className="px-4 py-2">
+            Day
+          </Button>
+        </ToggleGroup.Item>
+      </ToggleGroup>
+      <div>
         <label>
-          <div>Recording Frame:</div>
-          <Radio.Group
-            value={recordingFrame}
-            onChange={(e) => setRecordingFrame(e.target.value)}
-            optionType="button"
-            options={["None", "8x", "4x", "2x"].map((x) => ({
-              label: x,
-              value: x,
-            }))}
+          <div>Max intervals per second:</div>
+          <Slider
+            className="mt-1"
+            value={[maxFps]}
+            min={5}
+            max={30}
+            onValueChange={(v) => setMaxFps(v[0])}
           />
         </label>
+        <div className="flex justify-between">
+          {[5, 10, 15, 20, 25, 30].map((x) => (
+            <Button
+              shape="none"
+              variant="ghost"
+              className="first:ml-2"
+              key={x}
+              onClick={() => setMaxFps(x)}
+            >
+              {x}
+            </Button>
+          ))}
+        </div>
+      </div>
+      {recordingSupported && (
+        <div>
+          <div>Recording Frame:</div>
+          <ToggleGroup
+            type="single"
+            className="inline-flex"
+            value={recordingFrame}
+            onValueChange={(e) => setRecordingFrame(e)}
+          >
+            <ToggleGroup.Item value="None" asChild>
+              <Button shape="none" className="px-4 py-2">
+                None
+              </Button>
+            </ToggleGroup.Item>
+            <ToggleGroup.Item value="8x" asChild>
+              <Button shape="none" className="px-4 py-2">
+                8x
+              </Button>
+            </ToggleGroup.Item>
+            <ToggleGroup.Item value="4x" asChild>
+              <Button shape="none" className="px-4 py-2">
+                4x
+              </Button>
+            </ToggleGroup.Item>
+            <ToggleGroup.Item value="2x" asChild>
+              <Button shape="none" className="px-4 py-2">
+                2x
+              </Button>
+            </ToggleGroup.Item>
+          </ToggleGroup>
+        </div>
       )}
       {recordingSupported && (
-        <div className="flex items-center">
-          <div className="basis-1/6">
-            <InputNumber
+        <div className="flex items-center gap-3">
+          <div className="w-12">
+            <Input
+              type="number"
               min={0}
               max={8}
-              defaultValue={0}
               value={freezeFrameSeconds}
-              onChange={(x) => setFreezeFrameSeconds(x ?? 0)}
-              style={{ width: "calc(100% - 5px)" }}
+              onChange={(x) => setFreezeFrameSeconds(+x.target.value ?? 0)}
             />
           </div>
           <div>Seconds of final freeze frame</div>

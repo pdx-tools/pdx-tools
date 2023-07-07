@@ -1,60 +1,51 @@
 import React from "react";
-import { Table } from "antd";
 import type { SkanSave } from "./skanTypes";
 import { TimeAgo } from "@/components/TimeAgo";
-import Link from "next/link";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Table } from "@/components/Table";
+import { DataTable } from "@/components/DataTable";
+import { Link } from "@/components/Link";
 
 interface SkanUserSavesProp {
   records: SkanSave[];
-  loading: boolean;
 }
 
-export const SkanUserSavesTable = ({ records, loading }: SkanUserSavesProp) => {
-  const columns = [
-    {
-      title: "Uploaded",
-      dataIndex: "timestamp",
-      render: (timestamp: string) => <TimeAgo date={timestamp} />,
-      sorter: (a: SkanSave, b: SkanSave) =>
-        a.timestamp_epoch - b.timestamp_epoch,
-    },
-    {
-      title: "Name",
-      dataIndex: "name",
-      sorter: (a: SkanSave, b: SkanSave) => a.name.localeCompare(b.name),
-    },
-    {
-      title: "Date",
-      dataIndex: "date",
-      className: "no-break",
-    },
-    {
-      title: "Player",
-      dataIndex: "player_tag",
-      sorter: (a: SkanSave, b: SkanSave) => a.player.localeCompare(b.player),
-    },
-    {
-      title: "Patch",
-      dataIndex: "version",
-      sorter: (a: SkanSave, b: SkanSave) => a.version.localeCompare(b.version),
-    },
-    {
-      title: "",
-      dataIndex: "hash",
-      render: (hash: string) => {
-        return <Link href={`/eu4/skanderbeg/${hash}`}>View</Link>;
-      },
-    },
-  ];
+const columnHelper = createColumnHelper<SkanSave>();
 
-  return (
-    <Table
-      title={() => "Your Skanderbeg Saves"}
-      size="small"
-      rowKey="hash"
-      loading={loading}
-      dataSource={records}
-      columns={columns}
-    />
-  );
+const columns = [
+  columnHelper.accessor("timestamp", {
+    sortingFn: "datetime",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Uploaded" />
+    ),
+    cell: (info) => <TimeAgo date={info.getValue()} />,
+  }),
+  columnHelper.accessor("name", {
+    sortingFn: "text",
+    header: "Name",
+  }),
+  columnHelper.accessor("date", {
+    header: "Date",
+    meta: { className: "no-break" },
+  }),
+  columnHelper.accessor("player", {
+    sortingFn: "text",
+    header: "Player",
+    meta: { className: "no-break" },
+  }),
+  columnHelper.accessor("version", {
+    sortingFn: "alphanumeric",
+    header: "Patch",
+    meta: { className: "no-break" },
+  }),
+  columnHelper.display({
+    id: "actions",
+    cell: ({ row }) => (
+      <Link href={`/eu4/skanderbeg/${row.original.hash}`}>View</Link>
+    ),
+  }),
+];
+
+export const SkanUserSavesTable = ({ records }: SkanUserSavesProp) => {
+  return <DataTable columns={columns} data={records} />;
 };

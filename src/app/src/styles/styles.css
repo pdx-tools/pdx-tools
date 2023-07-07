@@ -2,32 +2,9 @@
   height: 100%;
 }
 
-/* To put the close icon of a select on the left side */
-.ant-select-selection-item {
-  flex-direction: row-reverse;
-  gap: 4px;
-}
-
-.antd-center-list-items div.ant-row {
-  justify-content: center;
-}
-
-/*
-  To prevent long save names from overflowing the drawer:
-  https://stackoverflow.com/questions/36230944/prevent-flex-items-from-overflowing-a-container
-*/
-.ant-drawer-title {
-  max-width: 100%;
-  min-width: 0px;
-}
-
 .no-break {
   hyphens: none;
   white-space: nowrap;
-}
-
-.antd-column-separator {
-  border-right: rgb(240, 240, 240) 1px solid;
 }
 
 /* https://github.com/csstools/sanitize.css/blob/092d0d85922bfa72d28e9e8d25d80a5437c8df44/assets.css */

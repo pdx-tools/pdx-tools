@@ -1,5 +1,5 @@
 import React from "react";
-import { Button } from "antd";
+import { Button } from "@/components/Button";
 import Link from "next/link";
 import { NewestSavesTable } from "./components/NewestSavesTable";
 
@@ -9,10 +9,10 @@ export const Eu4GamePage = () => {
       <h1 className="text-4xl">Latest EU4 Saves</h1>
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <Button size="large">
+          <Button asChild className="hover:bg-slate-200 active:bg-slate-300">
             <Link href="/">Analyze EU4 Saves</Link>
           </Button>
-          <Button size="large">
+          <Button asChild className="hover:bg-slate-200 active:bg-slate-300">
             <Link href="/eu4/achievements">Available Achievements</Link>
           </Button>
         </div>

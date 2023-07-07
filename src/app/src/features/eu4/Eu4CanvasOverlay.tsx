@@ -29,12 +29,12 @@ import {
 } from "./store";
 import { useCanvasPointerEvents } from "./hooks/useCanvasPointerEvents";
 import { WatchSideBarButton } from "./features/watch";
-import { Tooltip } from "antd";
 import { useEngineActions } from "../engine";
 import { SideBarButton } from "./components/SideBarButton";
 import { MapModeImage } from "./components/map-modes/MapModeImage";
 import { MapModeButtonGroup } from "./components/map-modes";
 import { useRouter } from "next/router";
+import { Tooltip } from "@/components/Tooltip";
 
 export const Eu4CanvasOverlay = () => {
   const router = useRouter();
@@ -136,10 +136,13 @@ export const Eu4CanvasOverlay = () => {
         </div>
       </div>
       {watcher.status != "idle" ? (
-        <Tooltip title={`Save watcher: ${watcher.status}`}>
-          <div className="fixed bottom-0 left-0 touch-none select-none border-2 border-solid border-black bg-gray-800 p-1">
-            <div className="h-[56px] w-[56px] rounded-full bg-teal-500"></div>
-          </div>
+        <Tooltip>
+          <Tooltip.Trigger>
+            <div className="fixed bottom-0 left-0 touch-none select-none border-2 border-solid border-black bg-gray-800 p-1">
+              <div className="h-[56px] w-[56px] rounded-full bg-teal-500"></div>
+            </div>
+          </Tooltip.Trigger>
+          <Tooltip.Content>Save watcher: {watcher.status}</Tooltip.Content>
         </Tooltip>
       ) : null}
       <ProvinceSelectListener />

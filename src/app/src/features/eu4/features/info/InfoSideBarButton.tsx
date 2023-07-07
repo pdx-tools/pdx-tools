@@ -1,30 +1,27 @@
-import React, { useState } from "react";
-import { Drawer, Tooltip } from "antd";
+import React from "react";
 import { InfoDrawer } from "./InfoDrawer";
 import { SaveMode } from "../../components/save-mode";
 import {
   SideBarButtonProps,
   SideBarButton,
 } from "../../components/SideBarButton";
-import {
-  closeDrawerPropagation,
-  SideBarContainerProvider,
-} from "../../components/SideBarContainer";
+import { SideBarContainerProvider } from "../../components/SideBarContainer";
 import { DownloadButton } from "./DownloadButton";
 import { MeltButton } from "@/components/MeltButton";
 import { getEu4Worker } from "../../worker";
 import { useEu4Meta, useSaveFilename, useServerSaveFile } from "../../store";
+import { Sheet } from "@/components/Sheet";
 
 const InfoSideBarTitle = () => {
   const meta = useEu4Meta();
   const remoteFile = useServerSaveFile();
   const filename = useSaveFilename();
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex grow items-center gap-2">
       <SaveMode mode={meta.mode} />
-      <span className="overflow-hidden text-ellipsis">
+      <Sheet.Title className="overflow-hidden text-ellipsis">
         {meta.save_game || "EU4 Save Game"}
-      </span>
+      </Sheet.Title>
       <div className="drawer-extras mr-4 flex grow items-center justify-end gap-2">
         {remoteFile && <DownloadButton />}
         {!meta.encoding.includes("text") && (
@@ -39,30 +36,26 @@ export const InfoSideBarButton = ({
   children,
   ...props
 }: SideBarButtonProps) => {
-  const [drawerVisible, setDrawerVisible] = useState(false);
   return (
-    <>
-      <Drawer
-        title={<InfoSideBarTitle />}
-        placement="right"
-        closable={true}
-        mask={false}
-        maskClosable={false}
-        destroyOnClose={true} /* to reset initial map payload */
-        onClose={closeDrawerPropagation(
-          () => setDrawerVisible(false),
-          drawerVisible
-        )}
-        visible={drawerVisible}
-        width="min(800px, 100%)"
-      >
-        <SideBarContainerProvider>
-          <InfoDrawer />
-        </SideBarContainerProvider>
-      </Drawer>
-      <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
-        {children}
-      </SideBarButton>
-    </>
+    <Sheet modal={false}>
+      <Sheet.Trigger asChild>
+        <SideBarButton {...props}>{children}</SideBarButton>
+      </Sheet.Trigger>
+      <SideBarContainerProvider>
+        <Sheet.Content
+          onInteractOutside={(e) => e.preventDefault()}
+          side="right"
+          className="flex w-[800px] max-w-full flex-col bg-white pt-4"
+        >
+          <Sheet.Header className="z-10 px-4 pb-4 shadow-md">
+            <Sheet.Close />
+            <InfoSideBarTitle />
+          </Sheet.Header>
+          <Sheet.Body className="px-4 py-6">
+            <InfoDrawer />
+          </Sheet.Body>
+        </Sheet.Content>
+      </SideBarContainerProvider>
+    </Sheet>
   );
 };
