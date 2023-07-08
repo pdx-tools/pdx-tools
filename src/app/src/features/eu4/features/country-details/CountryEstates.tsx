@@ -6,7 +6,7 @@ import { formatInt } from "@/lib/format";
 
 const CountryEstate = ({ estate }: { estate: Estate }) => {
   return (
-    <div className="flex w-96 flex-col gap-2 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+    <div className="flex w-96 flex-col gap-2 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
       <div className="flex">
         <h3 className="inline-block grow">{estate.kind}</h3>
         <span className="flex gap-4">

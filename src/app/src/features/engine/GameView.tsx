@@ -91,7 +91,6 @@ const FullscreenPage = ({
   hasBackdrop,
 }: React.PropsWithChildren<{ hasBackdrop: boolean }>) => {
   const ref = useRef<HTMLDivElement>(null);
-  const { resetSaveAnalysis } = useEngineActions();
 
   useEffect(() => {
     document.body.classList.toggle("overflow-hidden");
@@ -99,27 +98,6 @@ const FullscreenPage = ({
       document.body.classList.toggle("overflow-hidden");
     };
   }, []);
-
-  useEffect(() => {
-    if (!hasBackdrop) {
-      return;
-    }
-
-    function out(ev: KeyboardEvent) {
-      if (ev.key === "Escape") {
-        ref.current?.addEventListener("animationend", resetSaveAnalysis, {
-          once: true,
-        });
-
-        ref.current?.classList.add(classes["slide-out"]);
-      }
-    }
-
-    window.addEventListener("keydown", out);
-    return () => {
-      window.removeEventListener("keydown", out);
-    };
-  }, [hasBackdrop, resetSaveAnalysis]);
 
   return (
     <div ref={ref} className={`fixed inset-0 bg-white ${classes["slide-in"]}`}>

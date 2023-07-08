@@ -6,6 +6,9 @@ module.exports = {
     preflight: false,
   },
   content: [path.join(__dirname, "./src/**/*.{js,ts,jsx,tsx}")],
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     extend: {},
   },

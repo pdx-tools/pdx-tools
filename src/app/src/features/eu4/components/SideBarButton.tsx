@@ -1,24 +1,14 @@
 import React from "react";
-import classes from "./SideBarButton.module.css";
 
 export interface SideBarButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   index?: number;
 }
 
-export const SideBarButton = ({
-  index,
-  children,
-  style,
-  className,
-  ...rest
-}: SideBarButtonProps) => {
-  const duration = { "--slide-duration": 1 - 0.1 * ((index ?? 0) + 1) };
-  const durationStyle = duration as React.CSSProperties;
+export const SideBarButton = ({ children, ...rest }: SideBarButtonProps) => {
   return (
     <button
-      style={{ ...style, ...durationStyle }}
-      className={`${className} ${classes["slide-in"]} border-1 border-solid border-black bg-rose-800 drop-shadow-md active:bg-rose-900`}
+      className={`inline-flex items-center justify-end gap-3 rounded-lg border-0 bg-transparent p-0 px-2 py-2 opacity-60 transition-opacity duration-100 hover:bg-sky-900 hover:opacity-100`}
       {...rest}
     >
       {children}

@@ -5,98 +5,49 @@ import {
   AreaChartOutlined,
   GlobalOutlined,
   FlagOutlined,
-  MenuOutlined,
   FileSyncOutlined,
+  HomeOutlined,
 } from "@ant-design/icons";
-import { HeaderSideBarButton } from "./components/HeaderSideBarButton";
 import { SaveWarnings } from "./components/SaveWarnings";
-import { MapModeSideBar } from "./components/map-modes/MapModeBar";
 import { InfoSideBarButton } from "@/features/eu4/features/info";
 import { ChartSideBarButton } from "@/features/eu4/features/charts";
 import { CountrySideBarButton } from "@/features/eu4/features/country-details";
 import { ProvinceSelectListener } from "./features/map/ProvinceSelectListener";
 import { UploadSideBarButton } from "@/features/eu4/features/upload";
 import { MapSettingsSideBarButton } from "@/features/eu4/features/settings";
-import { MapTip } from "./features/map/MapTip";
 import { MapZoomSideBar } from "./components/zoom";
-import { DateOverlay } from "./components/DateOverlay";
 import Head from "next/head";
 import {
+  useEu4Actions,
   useEu4Map,
+  useEu4MapMode,
   useEu4Meta,
   useIsServerSaveFile,
   useSaveFilename,
+  useSelectedDate,
   useWatcher,
 } from "./store";
 import { useCanvasPointerEvents } from "./hooks/useCanvasPointerEvents";
 import { WatchSideBarButton } from "./features/watch";
 import { Tooltip } from "antd";
+import { useEngineActions } from "../engine";
+import { SideBarButton } from "./components/SideBarButton";
+import { MapModeImage } from "./components/map-modes/MapModeImage";
+import { MapModeButtonGroup } from "./components/map-modes";
+import { useRouter } from "next/router";
 
 export const Eu4CanvasOverlay = () => {
+  const router = useRouter();
   const serverFile = useIsServerSaveFile();
+  const mapDate = useSelectedDate();
   const meta = useEu4Meta();
   const filename = useSaveFilename();
   const map = useEu4Map();
   const watcher = useWatcher();
+  const actions = useEngineActions();
+  const mapMode = useEu4MapMode();
+  const eu4Actions = useEu4Actions();
   useCanvasPointerEvents(map);
-
-  const buttons = [
-    (i: number) => (
-      <HeaderSideBarButton key="header" index={i} className="h-[60px] w-[60px]">
-        <MenuOutlined />
-      </HeaderSideBarButton>
-    ),
-    (i: number) => (
-      <InfoSideBarButton key="info" index={i} className="h-[60px] w-[60px]">
-        <InfoCircleOutlined />
-      </InfoSideBarButton>
-    ),
-    ...(serverFile
-      ? []
-      : [
-          (i: number) => (
-            <UploadSideBarButton
-              key="upload"
-              index={i}
-              className="h-[60px] w-[60px]"
-            >
-              <UploadOutlined />
-            </UploadSideBarButton>
-          ),
-        ]),
-    (i: number) => (
-      <ChartSideBarButton key="chart" index={i} className="h-[60px] w-[60px]">
-        <AreaChartOutlined />
-      </ChartSideBarButton>
-    ),
-    (i: number) => (
-      <CountrySideBarButton key="data" index={i} className="h-[60px] w-[60px]">
-        <FlagOutlined />
-      </CountrySideBarButton>
-    ),
-    (i: number) => (
-      <MapSettingsSideBarButton
-        key="settings"
-        index={i}
-        className="h-[60px] w-[60px]"
-      >
-        <GlobalOutlined />
-      </MapSettingsSideBarButton>
-    ),
-    ...(serverFile
-      ? []
-      : [
-          (i: number) => (
-            <WatchSideBarButton
-              key="watch"
-              index={i}
-              className="h-[60px] w-[60px]"
-            >
-              <FileSyncOutlined />
-            </WatchSideBarButton>
-          ),
-        ]),
-  ];
 
   return (
     <>
@@ -107,11 +58,81 @@ export const Eu4CanvasOverlay = () => {
           meta.savegame_version.third
         }) - PDX Tools`}</title>
       </Head>
-      <MapTip />
-      <DateOverlay />
-      <div className="fixed right-0 touch-none select-none">
-        <div className="flex flex-col gap-2 text-4xl text-white">
-          {buttons.map((x, i) => x(i))}
+      <div className="flex h-full flex-col gap-2 py-4 text-white">
+        <div className="flex justify-end overflow-hidden whitespace-nowrap">
+          <SideBarButton
+            key="header"
+            onClick={() => {
+              actions.resetSaveAnalysis();
+              router.push("/");
+            }}
+          >
+            <span className="text-base">Close Save</span>
+            <div className="flex h-8 w-8 items-center justify-center">
+              <HomeOutlined className="text-[24px]" />
+            </div>
+          </SideBarButton>
+        </div>
+
+        <div className="flex justify-end overflow-hidden whitespace-nowrap px-1.5 text-base opacity-60">
+          {mapDate.text.slice(0, mapDate.text.indexOf("-"))}
+        </div>
+
+        <div className="flex justify-end overflow-hidden whitespace-nowrap">
+          <InfoSideBarButton key="info">
+            <span className="text-base">Save Info</span>
+            <InfoCircleOutlined className="text-[32px]" />
+          </InfoSideBarButton>
+        </div>
+
+        {!serverFile ? (
+          <div className="flex justify-end overflow-hidden whitespace-nowrap">
+            <UploadSideBarButton key="upload">
+              <span className="text-base">Upload save</span>
+              <UploadOutlined className="text-[32px]" />
+            </UploadSideBarButton>
+          </div>
+        ) : null}
+
+        <div className="flex justify-end overflow-hidden whitespace-nowrap">
+          <ChartSideBarButton key="chart">
+            <span className="text-base">World charts</span>
+            <AreaChartOutlined className="text-[32px]" />
+          </ChartSideBarButton>
+        </div>
+
+        <div className="flex justify-end overflow-hidden whitespace-nowrap">
+          <CountrySideBarButton key="data">
+            <span className="text-base">Country breakdown</span>
+            <FlagOutlined className="text-[32px]" />
+          </CountrySideBarButton>
+        </div>
+
+        <div className="flex justify-end overflow-hidden whitespace-nowrap">
+          <MapSettingsSideBarButton key="settings">
+            <span className="text-base">Map / timelapse settings</span>
+            <GlobalOutlined className="text-[32px]" />
+          </MapSettingsSideBarButton>
+        </div>
+
+        {!serverFile ? (
+          <div className="flex justify-end overflow-hidden whitespace-nowrap">
+            <WatchSideBarButton key="watch">
+              <span className="text-base">Watch save</span>
+              <FileSyncOutlined className="text-[32px]" />
+            </WatchSideBarButton>
+          </div>
+        ) : null}
+
+        <div className="grow"></div>
+        <MapZoomSideBar />
+        <div className="flex justify-end overflow-hidden whitespace-nowrap">
+          <MapModeButtonGroup />
+          <MapModeImage
+            className="mx-1 transition-all duration-100 hover:brightness-200"
+            mode={mapMode}
+            onClick={() => eu4Actions.nextMapMode()}
+          />
         </div>
       </div>
       {watcher.status != "idle" ? (
@@ -121,8 +142,6 @@ export const Eu4CanvasOverlay = () => {
           </div>
         </Tooltip>
       ) : null}
-      <MapZoomSideBar />
-      <MapModeSideBar />
       <ProvinceSelectListener />
       <SaveWarnings />
     </>

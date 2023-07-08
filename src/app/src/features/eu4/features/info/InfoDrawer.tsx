@@ -74,7 +74,7 @@ export const InfoDrawer = () => {
   return (
     <div ref={sideBarContainerRef}>
       <div className="flex flex-wrap justify-center gap-8">
-        <div className="w-80 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+        <div className="w-80 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
           <table className="table w-full">
             <tbody>
               <tr>
@@ -116,7 +116,7 @@ export const InfoDrawer = () => {
             </tbody>
           </table>
         </div>
-        <div className="w-80 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+        <div className="w-80 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
           <div className="space-y-2">
             <div className="text-center text-lg">DLC</div>
             <DlcList dlc_enabled={meta.dlc} />
@@ -124,7 +124,7 @@ export const InfoDrawer = () => {
         </div>
         {achievements.kind === "Compatible" &&
         achievements.achievements.length > 0 ? (
-          <div className="w-80 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+          <div className="w-80 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
             <div className="space-y-2">
               <div className="text-center text-lg">Achievements</div>
               <div className="flex flex-wrap place-content-center space-x-2">
@@ -140,7 +140,7 @@ export const InfoDrawer = () => {
           </div>
         ) : null}
         {mods.length > 0 ? (
-          <div className="min-w-[320px] max-w-xl rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+          <div className="min-w-[320px] max-w-xl rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
             <div className="space-y-2">
               <div className="text-center text-lg">Mods {mods.length}</div>
               <ModList />
@@ -154,7 +154,7 @@ export const InfoDrawer = () => {
           <div
             key={item.latest}
             className={cx(
-              "space-y-5 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg",
+              "space-y-5 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md",
               item.annexed && "bg-rose-100",
               !item.is_human && !item.annexed && "bg-gray-100"
             )}

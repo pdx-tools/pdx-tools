@@ -8,11 +8,7 @@ export const ZoomInSideBarButton = ({
   const { zoomIn } = useEu4Actions();
 
   return (
-    <SideBarButton
-      {...props}
-      className="h-[30px] w-[30px] border-b-0 p-0 text-lg text-white"
-      onClick={zoomIn}
-    >
+    <SideBarButton {...props} onClick={zoomIn}>
       {children}
     </SideBarButton>
   );
