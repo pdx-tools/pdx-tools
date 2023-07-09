@@ -1,4 +1,3 @@
-import { Tooltip } from "antd";
 import React, { useState } from "react";
 import {
   SideBarButtonProps,
@@ -21,11 +20,9 @@ export const WatchSideBarButton = ({
           closeDrawer={() => setDrawerVisible(false)}
         />
       </SideBarContainerProvider>
-      <Tooltip title="Watch savefile for changes" placement="left">
-        <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
-          {children}
-        </SideBarButton>
-      </Tooltip>
+      <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
+        {children}
+      </SideBarButton>
     </>
   );
 };

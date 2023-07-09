@@ -60,11 +60,9 @@ export const InfoSideBarButton = ({
           <InfoDrawer />
         </SideBarContainerProvider>
       </Drawer>
-      <Tooltip title="Save info" placement="left">
-        <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
-          {children}
-        </SideBarButton>
-      </Tooltip>
+      <SideBarButton {...props} onClick={() => setDrawerVisible(true)}>
+        {children}
+      </SideBarButton>
     </>
   );
 };

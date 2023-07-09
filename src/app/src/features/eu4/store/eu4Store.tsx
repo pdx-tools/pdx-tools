@@ -5,7 +5,7 @@ import { useSaveQuery } from "@/services/appApi";
 import { createContext, useContext, useMemo } from "react";
 import { StoreApi, createStore, useStore } from "zustand";
 import { loadTerrainOverlayImages } from "../features/map/resources";
-import { MapPayload } from "../types/map";
+import { MapPayload, mapModes } from "../types/map";
 import {
   CountryMatcher,
   AchievementsScore,
@@ -66,6 +66,7 @@ type Eu4State = Eu4StateProps & {
     closeCountryDrawer: () => void;
     openCountryDrawer: () => void;
     panToTag: (tag: string, offset?: number) => Promise<void>;
+    nextMapMode: () => void;
     setMapMode: (mode: Eu4State["mapMode"]) => Promise<void>;
     setMapShowStripes: (enabled: boolean) => Promise<void>;
     setPaintSubjectInOverlordHue: (enabled: boolean) => Promise<void>;
@@ -152,6 +153,10 @@ export const createEu4Store = async ({
         map.scale = map.maxScale * (1 / 2);
         focusCameraOn(map, pos, { offsetX: offset });
         map.redrawViewport();
+      },
+      nextMapMode: () => {
+        const index = mapModes.indexOf(get().mapMode);
+        get().actions.setMapMode(mapModes[index + 1] ?? mapModes[0]);
       },
       setMapMode: async (mode: Eu4State["mapMode"]) => {
         if (!dateEnabledMapMode(mode) && dateEnabledMapMode(get().mapMode)) {

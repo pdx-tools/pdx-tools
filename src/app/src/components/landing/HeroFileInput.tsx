@@ -33,7 +33,7 @@ export const HeroFileInput = () => {
     <>
       <Image
         src={filetypes}
-        className="mb-6 drop-shadow-xl"
+        className="mb-6 shadow-xl"
         height={269}
         width={300}
         alt="Country budgetary breakdown"

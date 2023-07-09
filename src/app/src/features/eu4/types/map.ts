@@ -2,14 +2,15 @@ import { CountryMatcher } from "@/features/eu4/types/models";
 export type { MapQuickTipPayload as QuickTipPayload } from "../../../../../wasm-eu4/pkg";
 
 export type BorderFill = "None" | "Provinces" | "Countries";
-
-type MapMode =
-  | "political"
-  | "religion"
-  | "development"
-  | "battles"
-  | "technology"
-  | "terrain";
+export const mapModes = [
+  "political",
+  "religion",
+  "development",
+  "battles",
+  "technology",
+  "terrain",
+] as const;
+type MapMode = (typeof mapModes)[number];
 
 export interface MapPayload {
   kind: MapMode;

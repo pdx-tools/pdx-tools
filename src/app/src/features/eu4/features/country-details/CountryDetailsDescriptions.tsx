@@ -145,7 +145,7 @@ export const CountryDetailsDescriptions = ({
 
   return (
     <div className="flex flex-wrap justify-center gap-8">
-      <div className="flex w-80 flex-col gap-4 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+      <div className="flex w-80 flex-col gap-4 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
         <div className="grid grid-cols-3 gap-4">
           <div>
             <div className="flex text-right">
@@ -297,7 +297,7 @@ export const CountryDetailsDescriptions = ({
         </div>
       </div>
 
-      <div className="flex w-72 flex-col gap-4 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+      <div className="flex w-72 flex-col gap-4 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
         <div className="flex justify-around">
           <div className="flex items-center gap-1">
             <ManpowerIcon />
@@ -422,7 +422,7 @@ export const CountryDetailsDescriptions = ({
         ) : null}
       </div>
 
-      <div className="flex w-64 flex-col gap-2 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+      <div className="flex w-64 flex-col gap-2 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
         <div className="flex items-center gap-2">
           <div>
             <RulerIcon />
@@ -474,7 +474,7 @@ export const CountryDetailsDescriptions = ({
         </div>
       </div>
 
-      <div className="flex w-64 flex-col gap-2 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md drop-shadow-lg">
+      <div className="flex w-64 flex-col gap-2 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
         <div className="flex gap-2">
           <IdeaGroupsIcon />
           <div className="grow text-lg">Ideas</div>

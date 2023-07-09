@@ -6,7 +6,6 @@ import {
 import { VisualizationProvider } from "@/components/viz/visualization-context";
 import { CountryDetailsDrawer } from "./CountryDetailsDrawer";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
-import { Tooltip } from "antd";
 import { useEu4Actions } from "../../store";
 
 export const CountrySideBarButton = ({
@@ -22,11 +21,9 @@ export const CountrySideBarButton = ({
           <CountryDetailsDrawer />
         </SideBarContainerProvider>
       </VisualizationProvider>
-      <Tooltip title="Country view" placement="left">
-        <SideBarButton {...props} onClick={openCountryDrawer}>
-          {children}
-        </SideBarButton>
-      </Tooltip>
+      <SideBarButton {...props} onClick={openCountryDrawer}>
+        {children}
+      </SideBarButton>
     </>
   );
 };

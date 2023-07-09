@@ -78,7 +78,7 @@ const DesktopImageGallery = () => {
         </div>
         {selected.src.endsWith("mp4") ? (
           <video
-            className="aspect-video w-full drop-shadow-xl"
+            className="aspect-video w-full shadow-xl"
             src={selected.src}
             autoPlay
             loop
@@ -88,7 +88,7 @@ const DesktopImageGallery = () => {
         ) : (
           <Image
             src={selected.src}
-            className="drop-shadow-xl"
+            className="shadow-xl"
             priority={selectedIndex == 0}
             width={1920}
             height={1080}
@@ -110,7 +110,7 @@ const MobileImageGallery = () => {
             <p>{x.description}</p>
             {x.src.endsWith("mp4") ? (
               <video
-                className="aspect-video w-full drop-shadow-xl"
+                className="aspect-video w-full shadow-xl"
                 src={x.src}
                 autoPlay
                 loop
@@ -120,7 +120,7 @@ const MobileImageGallery = () => {
             ) : (
               <Image
                 src={x.mobile ?? x.src}
-                className="drop-shadow-xl"
+                className="shadow-xl"
                 width={1920}
                 height={1080}
                 alt={x.alt}

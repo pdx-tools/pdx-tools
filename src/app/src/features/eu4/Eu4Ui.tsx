@@ -7,6 +7,7 @@ import { Eu4SaveInput, useLoadEu4, Eu4StoreProvider } from "./store";
 import { BrowserCheck } from "@/components/landing/BrowserCheck";
 import { Alert, AlertDescription } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
+import { MapTip } from "./features/map/MapTip";
 
 type Eu4UiProps = {
   save: Eu4SaveInput;
@@ -39,14 +40,27 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
   return (
     <>
       {loadingIcon}
-      <div className="absolute inset-0 overflow-hidden" ref={mapContainer}>
+
+      {data !== null ? (
+        <div className="absolute inset-0 bg-[#001529]"></div>
+      ) : null}
+
+      <div
+        className="absolute inset-0 right-12 overflow-hidden rounded-r-3xl"
+        ref={mapContainer}
+      >
         <TrackingCanvas ref={mapCanvas} />
       </div>
+
       {data !== null ? (
         <Eu4StoreProvider store={data}>
-          <Eu4CanvasOverlay />
+          <div className="group absolute bottom-0 right-0 top-0 w-12 bg-[#001529] transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">
+            <Eu4CanvasOverlay />
+          </div>
+          <MapTip />
         </Eu4StoreProvider>
       ) : null}
+
       <div className="absolute w-full">
         {loading !== null ? (
           <ProgressBar height={32} value={loading.percent ?? 0} />

@@ -5,7 +5,7 @@ const alert = cva("relative w-full border-2 border-solid flex", {
   variants: {
     variant: {
       success: "bg-green-100 border-green-200",
-      error: "bg-rose-100 border-rose-200",
+      error: "bg-rose-100 border-rose-200 text-gray-900",
       info: "bg-sky-100 border-sky-200",
       warning: "bg-amber-100 border-amber-200",
     },
