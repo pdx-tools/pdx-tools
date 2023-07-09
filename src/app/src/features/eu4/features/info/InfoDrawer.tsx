@@ -214,7 +214,7 @@ export const InfoDrawer = () => {
       {luckyCountries.data && luckyCountries.data.length > 0 ? (
         <>
           <Divider>Lucky Countries</Divider>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
             {luckyCountries.data.map((x) => (
               <FlagAvatar key={x.tag} tag={x.tag} name={x.name} size="large" />
             ))}
