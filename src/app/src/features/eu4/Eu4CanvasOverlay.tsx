@@ -74,7 +74,7 @@ export const Eu4CanvasOverlay = () => {
           </SideBarButton>
         </div>
 
-        <div className="flex justify-end overflow-hidden whitespace-nowrap px-1.5 text-base opacity-60">
+        <div className="flex justify-end overflow-hidden whitespace-nowrap pr-3 text-base opacity-60">
           {mapDate.text.slice(0, mapDate.text.indexOf("-"))}
         </div>
 
@@ -129,7 +129,7 @@ export const Eu4CanvasOverlay = () => {
         <div className="flex justify-end overflow-hidden whitespace-nowrap">
           <MapModeButtonGroup />
           <MapModeImage
-            className="mx-1 transition-all duration-100 hover:brightness-200"
+            className="mx-2 transition-all duration-100 hover:brightness-200"
             mode={mapMode}
             onClick={() => eu4Actions.nextMapMode()}
           />

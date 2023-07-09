@@ -46,7 +46,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
       ) : null}
 
       <div
-        className="absolute inset-0 right-12 overflow-hidden rounded-r-3xl"
+        className="absolute inset-0 right-14 overflow-hidden rounded-r-3xl"
         ref={mapContainer}
       >
         <TrackingCanvas ref={mapCanvas} />
@@ -54,7 +54,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
 
       {data !== null ? (
         <Eu4StoreProvider store={data}>
-          <div className="group absolute bottom-0 right-0 top-0 w-12 bg-[#001529] transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">
+          <div className="group absolute bottom-0 right-0 top-0 w-14 bg-[#001529] transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">
             <Eu4CanvasOverlay />
           </div>
           <MapTip />
