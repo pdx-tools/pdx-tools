@@ -38,7 +38,7 @@ export const toApiSaveUser = (save: Save, user: User) => {
     ironman: save.ironman,
     multiplayer: save.multiplayer || false,
     patch: `${save.saveVersionFirst}.${save.saveVersionSecond}.${save.saveVersionThird}.${save.saveVersionFourth}`,
-    dlc: save.dlc,
+    playthrough_id: save.playthroughId,
     achievements: save.achieveIds,
     weighted_score: weightedScore,
     game_difficulty: dbDifficulty(save.gameDifficulty),

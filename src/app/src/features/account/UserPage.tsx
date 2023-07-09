@@ -31,7 +31,7 @@ export const UserPage = ({ userId }: UserRouteProps) => {
           <TimeAgo date={user.user_info.created_on} />
         </div>
 
-        <UserSaveTable isPrivileged={isPrivileged} records={user.saves} />
+        <UserSaveTable isPrivileged={isPrivileged} saves={user.saves} />
       </div>
     </div>
   );
