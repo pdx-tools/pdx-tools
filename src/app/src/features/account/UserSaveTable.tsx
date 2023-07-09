@@ -1,43 +1,80 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Table } from "antd";
 import { TimeAgo } from "@/components/TimeAgo";
 import { GameDifficulty, SaveFile } from "@/services/appApi";
 import { diff } from "@/lib/dates";
-import { difficultyNum, difficultyText } from "@/lib/difficulty";
+import { difficultyText } from "@/lib/difficulty";
 import Link from "next/link";
 import { DeleteSave } from "../eu4/components/DeleteSave";
 import {
   AchievementAvatar,
   FlagAvatar,
 } from "@/features/eu4/components/avatars";
+import { groupBy } from "@/lib/groupBy";
 
 interface UserSaveTableProps {
-  records: SaveFile[];
+  saves: SaveFile[];
   isPrivileged: boolean;
 }
 
-export const UserSaveTable = ({
-  records,
-  isPrivileged,
-}: UserSaveTableProps) => {
+export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
+  const data = useMemo(() => {
+    const fileGroup = groupBy(saves, (x) => x.filename);
+
+    // File names that map to one playthrough id
+    const elgibleFilenames = [...fileGroup.entries()].flatMap(
+      ([filename, saves]) => {
+        const playthroughIds = new Set(saves.map((x) => x.playthrough_id));
+        return playthroughIds.size === 1 ? [filename] : [];
+      }
+    );
+    const uniqnames = new Set(elgibleFilenames);
+
+    const groups = groupBy(saves, (x) => x.playthrough_id);
+    const playthroughs = [...groups.entries()].map(([group, saves]) => {
+      // Check if all grouped saves have the same filename
+      const filenames = new Set(saves.map((x) => x.filename));
+      const allSameName = filenames.size === 1;
+      const filename = saves[0].filename;
+
+      // Playthrough name: if all saves in the group have the same name
+      // then use the filename unless other saves outside the group also
+      // share the same name.
+      const name =
+        allSameName && uniqnames.has(filename)
+          ? filename
+          : playthroughName(group ?? saves[0].id);
+
+      saves.sort((a, b) => b.days - a.days);
+      return saves.map((x, i) => ({
+        ...x,
+        name,
+        rowSpan: i == 0 ? saves.length : 0,
+      }));
+    });
+
+    playthroughs.sort((a, b) => -diff(a[0].upload_time, b[0].upload_time));
+
+    return playthroughs.flat();
+  }, [saves]);
+
+  type Data = (typeof data)[number];
+
   const columns = [
+    {
+      title: "Playthrough",
+      dataIndex: "name",
+      onCell: (data: Data) => ({ rowSpan: data.rowSpan }),
+    },
     {
       title: "Uploaded",
       dataIndex: "upload_time",
       render: (upload: string) => <TimeAgo date={upload} />,
-      sorter: (a: SaveFile, b: SaveFile) => diff(a.upload_time, b.upload_time),
-    },
-    {
-      title: "Filename",
-      dataIndex: "filename",
-      sorter: (a: SaveFile, b: SaveFile) =>
-        a.filename.localeCompare(b.filename),
     },
     {
       title: "Date",
       dataIndex: "date",
       className: "no-break",
-      sorter: (a: SaveFile, b: SaveFile) => a.days - b.days,
     },
     {
       title: "Starting",
@@ -52,10 +89,6 @@ export const UserSaveTable = ({
         ) : (
           "Multiplayer"
         ),
-      sorter: (a: SaveFile, b: SaveFile) =>
-        (a.player_start_tag_name || "").localeCompare(
-          b.player_start_tag_name || ""
-        ),
     },
     {
       title: "Current",
@@ -67,20 +100,15 @@ export const UserSaveTable = ({
           size="large"
         />
       ),
-      sorter: (a: SaveFile, b: SaveFile) =>
-        a.displayed_country_name.localeCompare(b.displayed_country_name),
     },
     {
       title: "Patch",
       dataIndex: "patch",
-      sorter: (a: SaveFile, b: SaveFile) => a.patch.localeCompare(b.patch),
     },
     {
       title: "Difficulty",
       dataIndex: "game_difficulty",
       render: (difficulty: GameDifficulty) => difficultyText(difficulty),
-      sorter: (a: SaveFile, b: SaveFile) =>
-        difficultyNum(a.game_difficulty) - difficultyNum(b.game_difficulty),
     },
     {
       title: "Achievements",
@@ -114,13 +142,382 @@ export const UserSaveTable = ({
   ];
 
   return (
-    <Table
-      size="small"
-      rowKey="id"
-      pagination={false}
-      dataSource={records}
-      columns={columns}
-      scroll={{ x: 1000 }}
-    />
+    <>
+      <Table
+        size="small"
+        rowKey="id"
+        pagination={false}
+        dataSource={data}
+        columns={columns}
+        scroll={{ x: 1000 }}
+      />
+    </>
   );
 };
+
+function playthroughName(playthroughId: string) {
+  const start = playthroughId.slice(0, Math.floor(playthroughId.length / 2));
+  const end = playthroughId.slice(Math.floor(playthroughId.length / 2));
+  return `${nameHash(start, left)} ${nameHash(end, right)}`;
+}
+
+/// https://stackoverflow.com/a/8831937
+function nameHash(str: string, names: string[]) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    let chr = str.charCodeAt(i);
+    hash = (hash << 5) - hash + chr;
+    hash |= 0;
+  }
+  return names[Math.abs(hash) % names.length];
+}
+
+const left = [
+  "admiring",
+  "adoring",
+  "affectionate",
+  "agitated",
+  "amazing",
+  "angry",
+  "awesome",
+  "beautiful",
+  "blissful",
+  "bold",
+  "boring",
+  "brave",
+  "busy",
+  "charming",
+  "clever",
+  "compassionate",
+  "competent",
+  "condescending",
+  "confident",
+  "cool",
+  "cranky",
+  "crazy",
+  "dazzling",
+  "determined",
+  "distracted",
+  "dreamy",
+  "eager",
+  "ecstatic",
+  "elastic",
+  "elated",
+  "elegant",
+  "eloquent",
+  "epic",
+  "exciting",
+  "fervent",
+  "festive",
+  "flamboyant",
+  "focused",
+  "friendly",
+  "frosty",
+  "funny",
+  "gallant",
+  "gifted",
+  "goofy",
+  "gracious",
+  "great",
+  "happy",
+  "hardcore",
+  "heuristic",
+  "hopeful",
+  "hungry",
+  "infallible",
+  "inspiring",
+  "intelligent",
+  "interesting",
+  "jolly",
+  "jovial",
+  "keen",
+  "kind",
+  "laughing",
+  "loving",
+  "lucid",
+  "magical",
+  "modest",
+  "musing",
+  "mystifying",
+  "naughty",
+  "nervous",
+  "nice",
+  "nifty",
+  "nostalgic",
+  "objective",
+  "optimistic",
+  "peaceful",
+  "pedantic",
+  "pensive",
+  "practical",
+  "priceless",
+  "quirky",
+  "quizzical",
+  "recursing",
+  "relaxed",
+  "reverent",
+  "romantic",
+  "sad",
+  "serene",
+  "sharp",
+  "silly",
+  "sleepy",
+  "stoic",
+  "strange",
+  "stupefied",
+  "suspicious",
+  "sweet",
+  "tender",
+  "thirsty",
+  "trusting",
+  "unruffled",
+  "upbeat",
+  "vibrant",
+  "vigilant",
+  "vigorous",
+  "wizardly",
+  "wonderful",
+  "xenodochial",
+  "youthful",
+  "zealous",
+  "zen",
+];
+
+const right = [
+  "agnesi",
+  "albattani",
+  "allen",
+  "almeida",
+  "antonelli",
+  "archimedes",
+  "ardinghelli",
+  "aryabhata",
+  "austin",
+  "babbage",
+  "banach",
+  "banzai",
+  "bardeen",
+  "bartik",
+  "bassi",
+  "beaver",
+  "bell",
+  "benz",
+  "bhabha",
+  "bhaskara",
+  "black",
+  "blackburn",
+  "blackwell",
+  "bohr",
+  "booth",
+  "borg",
+  "bose",
+  "bouman",
+  "boyd",
+  "brahmagupta",
+  "brattain",
+  "brown",
+  "buck",
+  "burnell",
+  "cannon",
+  "carson",
+  "cartwright",
+  "carver",
+  "cerf",
+  "chandrasekhar",
+  "chaplygin",
+  "chatelet",
+  "chatterjee",
+  "chaum",
+  "chebyshev",
+  "clarke",
+  "cohen",
+  "colden",
+  "cori",
+  "cray",
+  "curie",
+  "curran",
+  "darwin",
+  "davinci",
+  "dewdney",
+  "dhawan",
+  "diffie",
+  "dijkstra",
+  "dirac",
+  "driscoll",
+  "dubinsky",
+  "easley",
+  "edison",
+  "einstein",
+  "elbakyan",
+  "elgamal",
+  "elion",
+  "ellis",
+  "engelbart",
+  "euclid",
+  "euler",
+  "faraday",
+  "feistel",
+  "fermat",
+  "fermi",
+  "feynman",
+  "franklin",
+  "gagarin",
+  "galileo",
+  "galois",
+  "ganguly",
+  "gates",
+  "gauss",
+  "germain",
+  "goldberg",
+  "goldstine",
+  "goldwasser",
+  "golick",
+  "goodall",
+  "gould",
+  "greider",
+  "grothendieck",
+  "haibt",
+  "hamilton",
+  "haslett",
+  "hawking",
+  "heisenberg",
+  "hellman",
+  "hermann",
+  "herschel",
+  "hertz",
+  "heyrovsky",
+  "hodgkin",
+  "hofstadter",
+  "hoover",
+  "hopper",
+  "hugle",
+  "hypatia",
+  "ishizaka",
+  "jackson",
+  "jang",
+  "jemison",
+  "jennings",
+  "jepsen",
+  "johnson",
+  "joliot",
+  "jones",
+  "kalam",
+  "kapitsa",
+  "kare",
+  "keldysh",
+  "keller",
+  "kepler",
+  "khayyam",
+  "khorana",
+  "kilby",
+  "kirch",
+  "knuth",
+  "kowalevski",
+  "lalande",
+  "lamarr",
+  "lamport",
+  "leakey",
+  "leavitt",
+  "lederberg",
+  "lehmann",
+  "lewin",
+  "lichterman",
+  "liskov",
+  "lovelace",
+  "lumiere",
+  "mahavira",
+  "margulis",
+  "matsumoto",
+  "maxwell",
+  "mayer",
+  "mccarthy",
+  "mcclintock",
+  "mclaren",
+  "mclean",
+  "mcnulty",
+  "meitner",
+  "mendel",
+  "mendeleev",
+  "meninsky",
+  "merkle",
+  "mestorf",
+  "mirzakhani",
+  "montalcini",
+  "moore",
+  "morse",
+  "moser",
+  "murdock",
+  "napier",
+  "nash",
+  "neumann",
+  "newton",
+  "nightingale",
+  "nobel",
+  "noether",
+  "northcutt",
+  "noyce",
+  "panini",
+  "pare",
+  "pascal",
+  "pasteur",
+  "payne",
+  "perlman",
+  "pike",
+  "poincare",
+  "poitras",
+  "proskuriakova",
+  "ptolemy",
+  "raman",
+  "ramanujan",
+  "rhodes",
+  "ride",
+  "ritchie",
+  "robinson",
+  "roentgen",
+  "rosalind",
+  "rubin",
+  "saha",
+  "sammet",
+  "sanderson",
+  "satoshi",
+  "shamir",
+  "shannon",
+  "shaw",
+  "shirley",
+  "shockley",
+  "shtern",
+  "sinoussi",
+  "snyder",
+  "solomon",
+  "spence",
+  "stonebraker",
+  "sutherland",
+  "swanson",
+  "swartz",
+  "swirles",
+  "taussig",
+  "tesla",
+  "tharp",
+  "thompson",
+  "torvalds",
+  "tu",
+  "turing",
+  "varahamihira",
+  "vaughan",
+  "villani",
+  "visvesvaraya",
+  "volhard",
+  "wescoff",
+  "wilbur",
+  "wiles",
+  "williams",
+  "williamson",
+  "wilson",
+  "wing",
+  "wozniak",
+  "wright",
+  "wu",
+  "yalow",
+  "yonath",
+  "zhukovsky",
+];
