@@ -60,16 +60,16 @@ export const NewestSavesTable = () => {
     },
     {
       title: "Current",
-      dataIndex: "player",
+      dataIndex: "player_tag",
       render: (player: string, record: SaveFile) => (
         <FlagAvatar
-          tag={record.player}
-          name={record.displayed_country_name}
+          tag={record.player_tag}
+          name={record.player_tag_name}
           size="large"
         />
       ),
       sorter: (a: SaveFile, b: SaveFile) =>
-        a.displayed_country_name.localeCompare(b.displayed_country_name),
+        a.player_tag_name.localeCompare(b.player_tag_name),
     },
     {
       title: "Patch",

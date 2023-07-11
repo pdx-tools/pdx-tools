@@ -90,7 +90,7 @@ impl SaveCheckSummer {
 // 40,000 combinations per patch is good, but it's not enough for me to sleep
 // easy. PDXU informed me that the REB decision_seed is appears to uniquely
 // identify a run and so it is added to the mix.
-pub fn playthrough_id(query: &Query) -> Option<String> {
+pub fn playthrough_id(query: &Query) -> String {
     let start_date = query.save().game.start_date;
     let monarch_content_date = start_date.add_days(1);
     let mut hash = HighwayHasher::new(new_key());
@@ -105,7 +105,7 @@ pub fn playthrough_id(query: &Query) -> Option<String> {
 
     let output = hash.finalize256();
     let bytes = copy_hash_output_to_byte_array(output);
-    Some(base64::encode(bytes))
+    base64::encode(bytes)
 }
 
 pub fn hash_countries(hash: &mut impl HighwayHash, content_date: Eu4Date, save: &Eu4Save) {

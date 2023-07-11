@@ -31,13 +31,10 @@ pub enum ParseResult {
 pub struct ParsedFile {
     pub patch: SavePatch,
     pub encoding: Encoding,
-    pub playthrough_id: Option<String>,
+    pub playthrough_id: String,
     pub game_difficulty: GameDifficulty,
-    pub campaign_id: String,
-    pub campaign_length: i32,
     pub is_ironman: bool,
     pub is_multiplayer: bool,
-    pub is_observer: bool,
     pub player_names: Vec<String>,
     pub player_tag: String,
     pub player_tag_name: String,
@@ -48,8 +45,6 @@ pub struct ParsedFile {
     pub score_date: String,
     pub score_days: i32,
     pub achievements: Option<Vec<i32>>,
-    pub dlc_ids: Vec<i32>,
-    pub checksum: String,
     pub patch_shorthand: String,
 
     /// Highwayhash of save data
@@ -113,12 +108,6 @@ pub fn parse_save_data(data: &[u8]) -> Result<ParseResult, ParseFileError> {
                 .collect::<Vec<_>>()
         });
 
-    let dlc: Vec<_> = meta
-        .dlc_enabled
-        .iter()
-        .filter_map(|x| eu4save::dlc_id(x.as_str()))
-        .collect();
-
     Ok(ParseResult::Parsed(Box::new(ParsedFile {
         patch: SavePatch {
             first: meta.savegame_version.first,
@@ -127,11 +116,8 @@ pub fn parse_save_data(data: &[u8]) -> Result<ParseResult, ParseFileError> {
             fourth: meta.savegame_version.fourth,
         },
         encoding,
-        campaign_id: meta.campaign_id.clone(),
-        campaign_length: meta.campaign_length,
         is_ironman: meta.is_ironman,
         is_multiplayer: meta.multiplayer,
-        is_observer: !meta.not_observer,
         playthrough_id,
         game_difficulty,
         player_names,
@@ -142,8 +128,6 @@ pub fn parse_save_data(data: &[u8]) -> Result<ParseResult, ParseFileError> {
         date: meta.date.iso_8601().to_string(),
         days,
         achievements,
-        dlc_ids: dlc,
-        checksum: meta.checksum.clone(),
         patch_shorthand,
         score_date: weighted_score.date,
         score_days: weighted_score.days,
