@@ -23,7 +23,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const saves = await db
     .select({
       id: table.saves.id,
-      campaignId: table.saves.campaignId,
       playthroughId: table.saves.playthroughId,
       rank: sql<number>`RANK() OVER(
         ORDER BY score_days, created_on ASC
@@ -32,19 +31,14 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     .from(table.saves)
     .where(sql`${table.saves.achieveIds} @> Array[${[achieveId]}]::int[]`);
 
-  const campaignIds = new Set();
   const playthroughIds = new Set();
   const outSaves: string[] = [];
 
   for (const save of saves) {
-    if (
-      campaignIds.has(save.campaignId) ||
-      (save.playthroughId && playthroughIds.has(save.playthroughId))
-    ) {
+    if (playthroughIds.has(save.playthroughId)) {
       continue;
     }
 
-    campaignIds.add(save.campaignId);
     playthroughIds.add(save.playthroughId);
     outSaves.push(save.id);
   }

@@ -30,7 +30,7 @@ export const SkanUserSavesTable = ({ records, loading }: SkanUserSavesProp) => {
     },
     {
       title: "Player",
-      dataIndex: "player",
+      dataIndex: "player_tag",
       sorter: (a: SkanSave, b: SkanSave) => a.player.localeCompare(b.player),
     },
     {

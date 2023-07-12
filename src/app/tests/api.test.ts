@@ -241,8 +241,8 @@ test("same campaign", async () => {
   let end = await parseFile(endPath);
 
   // sanity check to ensure we're dealing with the files from the same campaign
-  expect(start.campaign_id).toBe(mid.campaign_id);
-  expect(mid.campaign_id).toBe(end.campaign_id);
+  expect(start.playthrough_id).toBe(mid.playthrough_id);
+  expect(mid.playthrough_id).toBe(end.playthrough_id);
 
   // Sanity check that these are separate files
   expect(start.hash).not.toBe(mid.hash);
@@ -298,7 +298,6 @@ test("same playthrough id", async () => {
 
   // sanity check to ensure we're dealing with the files that have different
   // campaign id but same playthrough_id
-  expect(start.campaign_id).not.toBe(mid.campaign_id);
   expect(start.playthrough_id).toBe(mid.playthrough_id);
 
   const shahansha = await client.uploadSave(startPath);
@@ -393,7 +392,7 @@ test("chinese supplementary", async () => {
   const path = "chinese-supplementary.eu4";
   const newSave = await client.uploadSave(path);
   const meta = await client.get<SaveFile>(`/api/saves/${newSave.save_id}`);
-  expect(meta.displayed_country_name).toBe("Saluzzo");
+  expect(meta.player_tag_name).toBe("Saluzzo");
 });
 
 test("plain saves", async () => {

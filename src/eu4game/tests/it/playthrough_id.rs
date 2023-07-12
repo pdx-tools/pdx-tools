@@ -15,8 +15,8 @@ fn test_playthrough_id() {
 
     assert_eq!(playthrough_id1, playthrough_id2);
     assert_eq!(
-        playthrough_id1.as_deref(),
-        Some("QO8JMpQzsK9ZhSs/awsKQi7CyeP83ld/ZzvKbmk4tWs=")
+        playthrough_id1.as_str(),
+        "QO8JMpQzsK9ZhSs/awsKQi7CyeP83ld/ZzvKbmk4tWs="
     );
 }
 

@@ -11,7 +11,6 @@ import type { Achievement, Difficulty } from "@/server-lib/wasm/wasm_app";
 export type { Achievement, SaveFile, Difficulty as AchievementDifficulty };
 
 export type GameDifficulty = SaveFile["game_difficulty"];
-export type SaveEncoding = SaveFile["encoding"];
 export type WeightedScore = SaveFile["weighted_score"];
 
 export type UserSaves = {

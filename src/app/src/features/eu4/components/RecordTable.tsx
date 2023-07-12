@@ -85,16 +85,16 @@ export const RecordTable = ({ records }: RecordTableProps) => {
     },
     {
       title: "Current",
-      dataIndex: "player",
+      dataIndex: "player_tag",
       render: (player: string, record: RankedSaveFile) => (
         <FlagAvatar
-          tag={record.player}
-          name={record.displayed_country_name}
+          tag={record.player_tag}
+          name={record.player_tag_name}
           size="large"
         />
       ),
       sorter: (a: RankedSaveFile, b: RankedSaveFile) =>
-        a.displayed_country_name.localeCompare(b.displayed_country_name),
+        a.player_tag_name.localeCompare(b.player_tag_name),
     },
     {
       title: "Patch",

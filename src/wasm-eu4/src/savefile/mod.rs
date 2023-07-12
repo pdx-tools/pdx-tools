@@ -798,7 +798,7 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn playthrough_id(&self) -> Option<String> {
+    pub fn playthrough_id(&self) -> String {
         playthrough_id(&self.query)
     }
 

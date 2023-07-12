@@ -157,7 +157,7 @@ impl SaveFile {
         self.0.get_dlc_ids().into()
     }
 
-    pub fn playthrough_id(&self) -> Option<String> {
+    pub fn playthrough_id(&self) -> String {
         self.0.playthrough_id()
     }
 

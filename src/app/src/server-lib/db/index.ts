@@ -8,7 +8,6 @@ import { ParsedFile } from "../save-parser";
 export {
   type User,
   type Save,
-  type SaveEncoding,
   type GameDifficulty,
   type NewSave,
 } from "./schema";
@@ -26,17 +25,14 @@ export const toApiSaveUser = (save: Save, user: User) => {
     id: save.id,
     filename: save.filename,
     upload_time: dayjs(save.createdOn).toISOString(),
-    user_name: user.display || user.steamName || "unknown",
+    user_name: user.display ?? user.steamName ?? "unknown",
     user_id: user.userId,
     date: save.date,
     days: save.days,
-    player: save.player,
-    displayed_country_name: save.displayedCountryName || save.player,
+    player_tag: save.playerTag,
+    player_tag_name: save.playerTagName ?? save.playerTag,
     player_start_tag: save.playerStartTag,
     player_start_tag_name: save.playerStartTagName,
-    campaign_id: save.campaignId,
-    ironman: save.ironman,
-    multiplayer: save.multiplayer || false,
     patch: `${save.saveVersionFirst}.${save.saveVersionSecond}.${save.saveVersionThird}.${save.saveVersionFourth}`,
     playthrough_id: save.playthroughId,
     achievements: save.achieveIds,
@@ -49,7 +45,6 @@ export const toApiSaveUser = (save: Save, user: User) => {
       third: save.saveVersionThird,
       fourth: save.saveVersionFourth,
     },
-    encoding: save.encoding,
   };
 };
 
@@ -88,16 +83,12 @@ export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
   const result: Partial<Save> = {
     date: save.date,
     days: save.days,
-    player: save.player_tag,
-    displayedCountryName: save.player_tag_name,
+    playerTag: save.player_tag,
+    playerTagName: save.player_tag_name,
     playerStartTag: save.player_start_tag,
     playerStartTagName: save.player_start_tag_name,
     players: save.player_names,
-    dlc: save.dlc_ids,
-    campaignId: save.campaign_id,
     playthroughId: save.playthrough_id,
-    ironman: save.is_ironman,
-    multiplayer: save.is_multiplayer,
     achieveIds: save.achievements == null ? [] : save.achievements,
     gameDifficulty:
       save.game_difficulty && toDbDifficulty(save.game_difficulty),
@@ -105,8 +96,6 @@ export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
     saveVersionSecond: save.patch?.second,
     saveVersionThird: save.patch?.third,
     saveVersionFourth: save.patch?.fourth,
-    checksum: save.checksum,
-    encoding: save.encoding,
     scoreDays: save.score_days,
     hash: save.hash,
   };

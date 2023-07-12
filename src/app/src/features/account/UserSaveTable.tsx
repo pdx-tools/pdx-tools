@@ -43,7 +43,7 @@ export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
       const name =
         allSameName && uniqnames.has(filename)
           ? filename
-          : playthroughName(group ?? saves[0].id);
+          : playthroughName(group);
 
       saves.sort((a, b) => b.days - a.days);
       return saves.map((x, i) => ({
@@ -92,11 +92,11 @@ export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
     },
     {
       title: "Current",
-      dataIndex: "player",
+      dataIndex: "player_tag",
       render: (player: string, record: SaveFile) => (
         <FlagAvatar
-          tag={record.player}
-          name={record.displayed_country_name}
+          tag={record.player_tag}
+          name={record.player_tag_name}
           size="large"
         />
       ),
