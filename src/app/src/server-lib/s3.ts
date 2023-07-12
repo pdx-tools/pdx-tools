@@ -44,12 +44,11 @@ export async function s3Presigned(saveId: string): Promise<string> {
 }
 
 export async function uploadFileToS3(
-  filePath: string,
+  body: Buffer,
   filename: string,
   upload: UploadType
 ): Promise<void> {
   const contentType = uploadContentType(upload);
-  const body = await fs.promises.readFile(filePath);
   const put = await timeit(() =>
     s3FetchOk(`${BUCKET}/${filename}`, {
       method: "PUT",

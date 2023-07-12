@@ -1,7 +1,5 @@
 import { NextApiResponse } from "next";
 import multer from "multer";
-import fs, { createWriteStream } from "fs";
-import { pipeline } from "stream/promises";
 import { log } from "@/server-lib/logging";
 import { uploadFileToS3 } from "@/server-lib/s3";
 import { ValidationError } from "@/server-lib/errors";
@@ -9,14 +7,18 @@ import { NextSessionRequest, withSession } from "@/server-lib/session";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { deduceUploadType } from "@/server-lib/models";
 import { nanoid } from "nanoid";
-import { tmpDir, tmpPath } from "@/server-lib/tmp";
 import { NewSave, db, table, toDbDifficulty } from "@/server-lib/db";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { parseSave } from "@/server-lib/save-parser";
 import { timeit } from "@/lib/timeit";
 
-const upload = multer({ dest: tmpDir });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 20 * 1024 * 1024,
+  },
+});
 
 // https://github.com/sindresorhus/filename-reserved-regex/blob/main/index.js
 const filename = () =>
@@ -81,14 +83,6 @@ const uploadFile = (
   });
 };
 
-const attemptUnlink = async (filepath: string) => {
-  try {
-    await fs.promises.unlink(filepath);
-  } catch (innerEx) {
-    log.exception(innerEx, { msg: "unable to clean up temporary file" });
-  }
-};
-
 const headerMetadata = z
   .object({
     "pdx-tools-filename": filename().optional(),
@@ -115,103 +109,89 @@ const headerMetadata = z
 
 const uploadRawFile = async (
   req: NextSessionRequest
-): Promise<[string, UploadMetadata]> => {
+): Promise<[Buffer, UploadMetadata]> => {
   const headers = headerMetadata.parse(req.headers);
-  const sinkPath = await tmpPath();
-  try {
-    const sink = createWriteStream(sinkPath);
-    await pipeline(req, sink);
-    return [sinkPath, headers];
-  } catch (ex) {
-    attemptUnlink(sinkPath);
-    throw ex;
+  const buffers = [];
+  for await (const data of req) {
+    buffers.push(data);
   }
+
+  return [Buffer.concat(buffers), headers];
 };
 
 const handleUpload = async (
   req: NextSessionRequest,
   res: NextApiResponse
-): Promise<[string, UploadMetadata]> => {
+): Promise<[Buffer, UploadMetadata]> => {
   const requestFile = await uploadFile(req, res);
 
   if (!requestFile) {
     return await uploadRawFile(req);
   }
 
-  try {
-    const metadataObj = JSON.parse(req.body?.metadata || "{}");
-    const metadata = uploadMetadata.parse(metadataObj);
-    return [requestFile.path, metadata];
-  } catch (ex) {
-    attemptUnlink(requestFile.path);
-    throw ex;
-  }
+  const metadataObj = JSON.parse(req.body?.metadata || "{}");
+  const metadata = uploadMetadata.parse(metadataObj);
+  return [requestFile.buffer, metadata];
 };
 
 const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
   const uid = req.sessionUid;
-  const [savePath, metadata] = await handleUpload(req, res);
+  const [saveData, metadata] = await handleUpload(req, res);
 
-  try {
-    const saveId = nanoid();
-    const data = await fs.promises.readFile(savePath);
+  const saveId = nanoid();
+  const { data: out, elapsedMs } = await timeit(() => parseSave(saveData));
+  log.info({
+    key: saveId,
+    user: uid,
+    msg: "parsed file",
+    elapsedMs: elapsedMs.toFixed(2),
+  });
 
-    const { data: out, elapsedMs } = await timeit(() => parseSave(data));
-    log.info({
-      key: saveId,
-      user: uid,
-      msg: "parsed file",
-      elapsedMs: elapsedMs.toFixed(2),
-    });
-
-    if (out.kind === "InvalidPatch") {
-      throw new ValidationError(`unsupported patch: ${out.patch_shorthand}`);
-    }
-
-    const existingSaves = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(table.saves)
-      .where(eq(table.saves.hash, out.hash));
-
-    if (existingSaves[0].count > 0) {
-      throw new ValidationError("save already exists");
-    }
-
-    await uploadFileToS3(savePath, saveId, metadata.uploadType);
-
-    const newSave: NewSave = {
-      id: saveId,
-      userId: uid,
-      filename: metadata.filename,
-      hash: out.hash,
-      date: out.date,
-      days: out.days,
-      scoreDays: out.score_days,
-      playerTag: out.player_tag,
-      playerTagName: out.player_tag_name,
-      saveVersionFirst: out.patch.first,
-      saveVersionSecond: out.patch.second,
-      saveVersionThird: out.patch.third,
-      saveVersionFourth: out.patch.fourth,
-      achieveIds: out.achievements || [],
-      players: out.player_names,
-      playerStartTag: out.player_start_tag,
-      playerStartTagName: out.player_start_tag_name,
-      gameDifficulty: toDbDifficulty(out.game_difficulty),
-      aar: metadata.aar,
-      playthroughId: out.playthrough_id,
-    };
-
-    await db.insert(table.saves).values(newSave);
-
-    const response: SavePostResponse = {
-      save_id: saveId,
-    };
-
-    res.json(response);
-  } finally {
-    attemptUnlink(savePath);
+  if (out.kind === "InvalidPatch") {
+    throw new ValidationError(`unsupported patch: ${out.patch_shorthand}`);
   }
+
+  const existingSaves = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(table.saves)
+    .where(eq(table.saves.hash, out.hash));
+
+  if (existingSaves[0].count > 0) {
+    throw new ValidationError("save already exists");
+  }
+
+  await uploadFileToS3(saveData, saveId, metadata.uploadType);
+
+  const newSave: NewSave = {
+    id: saveId,
+    userId: uid,
+    filename: metadata.filename,
+    hash: out.hash,
+    date: out.date,
+    days: out.days,
+    scoreDays: out.score_days,
+    playerTag: out.player_tag,
+    playerTagName: out.player_tag_name,
+    saveVersionFirst: out.patch.first,
+    saveVersionSecond: out.patch.second,
+    saveVersionThird: out.patch.third,
+    saveVersionFourth: out.patch.fourth,
+    achieveIds: out.achievements || [],
+    players: out.player_names,
+    playerStartTag: out.player_start_tag,
+    playerStartTagName: out.player_start_tag_name,
+    gameDifficulty: toDbDifficulty(out.game_difficulty),
+    aar: metadata.aar,
+    playthroughId: out.playthrough_id,
+  };
+
+  await db.insert(table.saves).values(newSave);
+
+  const response: SavePostResponse = {
+    save_id: saveId,
+  };
+
+  res.json(response);
 };
 
 export const config = {
