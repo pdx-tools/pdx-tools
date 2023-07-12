@@ -58,7 +58,7 @@ const _deleteHandler = async (
   const save = req.save;
   await deleteFile(save.id);
   await db.delete(table.saves).where(eq(table.saves.id, save.id));
-  res.status(200).send("");
+  res.status(204).end();
 };
 
 const _getHandler = async (
@@ -93,7 +93,7 @@ const _patchHandler = async (
     .update(table.saves)
     .set(data.data)
     .where(eq(table.saves.id, req.save.id));
-  res.status(200).send("");
+  res.status(204).end();
 };
 
 const getHandler = withSave(_getHandler);
