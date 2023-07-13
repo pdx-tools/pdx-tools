@@ -1,61 +1,54 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Button } from "antd";
-import {
-  useCountryFilterDispatch,
-  useCountryFilterState,
-} from "./countryFilterContext";
 import { CountryFilterForm } from "./CountryFilterForm";
 import { CountrySelect } from "../../components/country-select";
-import { useEu4Actions } from "../../store";
 import { Divider } from "@/components/Divider";
+import { useEu4Actions, useTagFilter } from "../../store";
+import { useEu4Worker } from "../../worker";
 
-interface CountryFilterDrawerContent {
-  closeDrawer: () => void;
-}
-
-export const CountryFilterDrawerContent = ({
-  closeDrawer,
-}: CountryFilterDrawerContent) => {
-  const { updateTagFilter } = useEu4Actions();
+export const CountryFilterDrawerContent = () => {
   const [forceShowFiltered, setForceShowFiltered] = useState(false);
-  const filter = useCountryFilterState();
-  const localDispatch = useCountryFilterDispatch();
-  const manySelectedTags = filter.countries.length > 50;
+  const filter = useTagFilter();
+  const { updateTagFilter } = useEu4Actions();
+  const { data: countries = [] } = useEu4Worker(
+    useCallback((worker) => worker.eu4MatchingCountries(filter), [filter])
+  );
 
+  const manySelectedTags = countries.length > 50;
   return (
     <>
-      <Divider>{`Computed Selection (${filter.countries.length})`}</Divider>
-      <div style={{ height: "150px" }}>
+      <Divider>{`Computed Selection (${countries.length})`}</Divider>
+      <div className="h-40">
         {!forceShowFiltered && manySelectedTags && (
           <Button
             type="link"
             onClick={() => setForceShowFiltered(true)}
-          >{`Show all ${filter.countries.length} selected countries`}</Button>
+          >{`Show all ${countries.length} selected countries`}</Button>
         )}
         {(forceShowFiltered || !manySelectedTags) && (
           <CountrySelect
             ai="all"
             mode="multiple"
-            value={filter.countries.map((x) => x.tag)}
+            value={countries.map((x) => x.tag)}
             allowClear
-            style={{ width: "100%", maxHeight: "150px", overflow: "auto" }}
-            onDeselect={(input: any) =>
-              localDispatch({ kind: "exclude-tag", tag: input as string })
-            }
-            onSelect={(input: any) =>
-              localDispatch({ kind: "include-tag", tag: input as string })
-            }
+            className="max-h-40 w-full overflow-auto"
+            onDeselect={(input: any) => {
+              const tag = input as string;
+              if (filter.exclude.indexOf(tag) === -1) {
+                updateTagFilter({ exclude: [...filter.exclude, tag] });
+              }
+            }}
+            onSelect={(input: any) => {
+              const tag = input as string;
+              if (filter.include.indexOf(tag) === -1) {
+                updateTagFilter({ include: [...filter.include, tag] });
+              }
+            }}
           />
         )}
       </div>
       <Divider>Options</Divider>
-      <CountryFilterForm
-        initialValues={filter.matcher}
-        onChange={(x) => {
-          closeDrawer();
-          updateTagFilter(x);
-        }}
-      />
+      <CountryFilterForm />
     </>
   );
 };

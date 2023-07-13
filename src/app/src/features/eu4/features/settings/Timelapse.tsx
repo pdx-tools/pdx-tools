@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { Button, Radio, Tooltip, Form, InputNumber, Modal, Slider } from "antd";
+import { Button, Radio, Tooltip, InputNumber, Modal, Slider } from "antd";
 import {
   CaretRightOutlined,
   PauseOutlined,
@@ -10,7 +10,6 @@ import {
 import { downloadData } from "@/lib/downloadData";
 import { ToggleRow } from "./ToggleRow";
 import { IMG_HEIGHT, IMG_WIDTH } from "map";
-import { useIsDeveloper } from "@/features/account";
 import { mapTimelapseCursor, TimelapseEncoder } from "./TimelapseEncoder";
 import { captureException } from "@/features/errors";
 import {
@@ -42,8 +41,6 @@ export const Timelapse = () => {
     "year" | "month" | "week" | "day"
   >("year");
   const currentMapDate = useSelectedDate();
-  const [form] = Form.useForm();
-  const isDeveloper = useIsDeveloper();
   const filename = useSaveFilenameWith(exportAsMp4 ? ".mp4" : ".webm");
   const encoderRef = useRef<TimelapseEncoder | undefined>(undefined);
   const stopTimelapseReq = useRef<boolean>(false);
@@ -196,74 +193,56 @@ export const Timelapse = () => {
           </AlertDescription>
         </Alert>
       )}
-      <Form
-        form={form}
-        layout="vertical"
-        onFieldsChange={(_e, x) => {
-          const find = (field: string) =>
-            x.find((prop) => Array.isArray(prop.name) && prop.name[0] == field)
-              ?.value;
-
-          setIntervalSelection(find("interval"));
-          setRecordingFrame(find("frame"));
-          setMaxFps(+find("maxFps"));
-        }}
-        initialValues={{
-          interval: intervalSelection,
-          frame: recordingFrame,
-          maxFps,
-        }}
-      >
-        <Form.Item label="Interval" name="interval">
+      <label>
+        <div>Interval:</div>
+        <Radio.Group
+          value={intervalSelection}
+          onChange={(e) => setIntervalSelection(e.target.value)}
+          optionType="button"
+          options={[
+            {
+              label: "Year",
+              value: "year",
+            },
+            {
+              label: "Month",
+              value: "month",
+            },
+            {
+              label: "Week",
+              value: "week",
+            },
+            {
+              label: "Day",
+              value: "day",
+            },
+          ]}
+        />
+      </label>
+      <label>
+        <div>Max intervals per second:</div>
+        <Slider
+          value={maxFps}
+          onChange={(v) => setMaxFps(v)}
+          min={5}
+          max={30}
+          marks={{ 5: "5", 10: "10", 15: "15", 20: "20", 25: "25", 30: "30" }}
+        />
+      </label>
+      {recordingSupported && (
+        <label>
+          <div>Recording Frame:</div>
           <Radio.Group
+            value={recordingFrame}
+            onChange={(e) => setRecordingFrame(e.target.value)}
             optionType="button"
-            options={[
-              {
-                label: "Year",
-                value: "year",
-              },
-              {
-                label: "Month",
-                value: "month",
-              },
-              {
-                label: "Week",
-                value: "week",
-              },
-              {
-                label: "Day",
-                value: "day",
-              },
-            ]}
+            options={["None", "8x", "4x", "2x"].map((x) => ({
+              label: x,
+              value: x,
+            }))}
           />
-        </Form.Item>
-        <Form.Item
-          label="Max intervals per second"
-          name="maxFps"
-          tooltip="The number of intervals to step through per second."
-        >
-          <Slider
-            min={5}
-            max={30}
-            marks={{ 5: "5", 10: "10", 15: "15", 20: "20", 25: "25", 30: "30" }}
-          />
-        </Form.Item>
-        {recordingSupported && (
-          <Form.Item
-            label="Recording Frame"
-            name="frame"
-            tooltip="Determines the size of the map for recording. 'None' will record the current view in the browser. The other numerical options represent the zoom level of the map and will temporarily resize the map so that the entire map is visible at the zoom level. The 2x zoom level is recommended as a good mix between quality and render times."
-          >
-            <Radio.Group
-              optionType="button"
-              options={["None", "8x", "4x", "2x"].map((x) => ({
-                label: x,
-                value: x,
-              }))}
-            />
-          </Form.Item>
-        )}
-      </Form>
+        </label>
+      )}
       {recordingSupported && (
         <div className="flex items-center">
           <div className="basis-1/6">

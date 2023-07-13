@@ -1,16 +1,8 @@
-import React, { useEffect, useRef } from "react";
-import { Form, Radio, Switch, Checkbox, Button } from "antd";
-import {
-  useCountryFilterDispatch,
-  useCountryFilterState,
-} from "./countryFilterContext";
+import React from "react";
+import { Radio, Switch, Checkbox } from "antd";
 import { CountrySelect } from "../../components/country-select";
 import { CountryMatcher } from "../../types/models";
-
-interface CountryFilterFormProps {
-  initialValues: CountryMatcher;
-  onChange: (filter: CountryMatcher) => void;
-}
+import { useEu4Actions, useTagFilter } from "../../store";
 
 const superregions = [
   "india",
@@ -39,63 +31,22 @@ const superregionOptions = () =>
     return { label, value };
   });
 
-export const CountryFilterForm = ({
-  initialValues,
-  onChange,
-}: CountryFilterFormProps) => {
-  const initVals = useRef(initialValues);
-  const filter = useCountryFilterState();
-  const dispatch = useCountryFilterDispatch();
-  const [form] = Form.useForm();
+export const CountryFilterForm = () => {
+  const { updateTagFilter } = useEu4Actions();
+  const filter = useTagFilter();
 
-  useEffect(() => {
-    form.setFields([
-      {
-        name: ["exclude"],
-        value: filter.matcher.exclude,
-      },
-      {
-        name: ["include"],
-        value: filter.matcher.include,
-      },
-    ]);
-  }, [form, filter.matcher]);
-
-  const resetForm = () => {
-    form.resetFields();
-    dispatch({ kind: "set-matcher", matcher: initVals.current });
-  };
-
-  const onFormFinish = (x: CountryMatcher) => {
-    initVals.current = x;
-    onChange(x);
+  const setM = (x: Partial<CountryMatcher>) => {
+    updateTagFilter(x);
   };
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={onFormFinish}
-      onFieldsChange={(_e, x) => {
-        const find = (field: string) =>
-          x.find((prop) => Array.isArray(prop.name) && prop.name[0] == field)
-            ?.value;
-
-        const matcher = {
-          players: find("players"),
-          ai: find("ai"),
-          subcontinents: find("subcontinents"),
-          include: find("include"),
-          exclude: find("exclude"),
-          includeSubjects: find("includeSubjects"),
-        };
-
-        dispatch({ kind: "set-matcher", matcher });
-      }}
-      initialValues={initVals.current}
-    >
-      <Form.Item label="Humans" name="players">
+    <form className="flex flex-col gap-4">
+      <label>
+        <div>Humans</div>
         <Radio.Group
+          value={filter.players}
+          onChange={(e) => setM({ players: e.target.value })}
+          defaultValue={filter.players}
           options={[
             {
               label: "All",
@@ -116,10 +67,13 @@ export const CountryFilterForm = ({
           ]}
           optionType="button"
         />
-      </Form.Item>
+      </label>
 
-      <Form.Item label="AI" name="ai">
+      <label>
+        <div>AI</div>
         <Radio.Group
+          value={filter.ai}
+          onChange={(e) => setM({ ai: e.target.value })}
           options={[
             {
               label: "All",
@@ -144,40 +98,45 @@ export const CountryFilterForm = ({
           ]}
           optionType="button"
         />
-      </Form.Item>
+      </label>
 
-      <Form.Item
-        label="Subcontinent"
-        name="subcontinents"
-        tooltip="Restrict selection to countries with their capital on the given subcontinent (super region)"
-      >
-        <Checkbox.Group options={superregionOptions()}></Checkbox.Group>
-      </Form.Item>
+      <label>
+        <div>Subcontinent</div>
+        <Checkbox.Group
+          value={filter.subcontinents}
+          onChange={(e) => setM({ subcontinents: e as string[] })}
+          options={superregionOptions()}
+        ></Checkbox.Group>
+      </label>
 
-      <Form.Item label="Include" name="include">
-        <CountrySelect ai="all" mode="multiple" className="w-full" />
-      </Form.Item>
+      <label>
+        <div>Include</div>
+        <CountrySelect
+          value={filter.include}
+          onChange={(e) => setM({ include: e as string[] })}
+          ai="all"
+          mode="multiple"
+          className="w-full"
+        />
+      </label>
 
-      <Form.Item label="Exclude" name="exclude">
-        <CountrySelect ai="all" mode="multiple" className="w-full" />
-      </Form.Item>
-      <Form.Item
-        label="Include Subjects"
-        name="includeSubjects"
-        valuePropName="checked"
-      >
-        <Switch />
-      </Form.Item>
-      <Form.Item>
-        <div className="flex items-center gap-2">
-          <Button htmlType="submit" type="primary" className="w-full">
-            Apply
-          </Button>
-          <Button className="w-full" onClick={resetForm}>
-            Reset
-          </Button>
-        </div>
-      </Form.Item>
-    </Form>
+      <label>
+        <div>Exclude</div>
+        <CountrySelect
+          value={filter.exclude}
+          onChange={(e) => setM({ exclude: e as string[] })}
+          ai="all"
+          mode="multiple"
+          className="w-full"
+        />
+      </label>
+      <label className="flex gap-3">
+        <span>Include Subjects</span>
+        <Switch
+          checked={filter.includeSubjects}
+          onChange={(e) => setM({ includeSubjects: e })}
+        />
+      </label>
+    </form>
   );
 };

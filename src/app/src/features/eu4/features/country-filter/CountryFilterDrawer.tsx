@@ -1,9 +1,7 @@
 import React from "react";
 import { Drawer } from "antd";
 import { CountryFilterDrawerContent } from "./CountryFilterDrawerContent";
-import { CountryFilterProvider } from "./countryFilterContext";
 import { HelpTooltip } from "@/components/HelpTooltip";
-import { useTagFilter } from "../../store";
 
 type CountryFilterDrawerProps = {
   visible: boolean;
@@ -14,8 +12,6 @@ export const CountryFilterDrawer = ({
   visible,
   closeDrawer,
 }: CountryFilterDrawerProps) => {
-  const countryFilter = useTagFilter();
-
   return (
     <Drawer
       visible={visible}
@@ -28,9 +24,7 @@ export const CountryFilterDrawer = ({
         </div>
       }
     >
-      <CountryFilterProvider initialValues={countryFilter}>
-        <CountryFilterDrawerContent closeDrawer={closeDrawer} />
-      </CountryFilterProvider>
+      <CountryFilterDrawerContent />
     </Drawer>
   );
 };

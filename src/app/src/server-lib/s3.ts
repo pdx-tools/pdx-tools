@@ -1,4 +1,3 @@
-import fs from "fs";
 import { AwsClient } from "aws4fetch";
 import { getEnv } from "./env";
 import { log } from "./logging";

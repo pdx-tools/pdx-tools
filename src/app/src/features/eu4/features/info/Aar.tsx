@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Button, Form, Input } from "antd";
+import { Button, Input } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import { useServerSaveFile } from "../../store";
 import { useSavePatch } from "@/services/appApi";
@@ -19,35 +19,32 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
   const serverFile = useServerSaveFile();
 
   const handleSubmit = useCallback(
-    (values: { aar: string }) => {
+    (ev: React.FormEvent<HTMLFormElement>) => {
+      ev.preventDefault();
+      const values = Object.fromEntries(new FormData(ev.currentTarget));
       setIsEditing(false);
       const id = serverFile?.id;
       if (id === undefined) {
         throw new Error("server file id can't be undefined");
       }
-      patchSave.mutate({ id, aar: values.aar });
+      patchSave.mutate({ id, aar: values.aar as string });
     },
     [serverFile, patchSave]
   );
 
   return (
-    <Form
-      layout="vertical"
-      className="flex flex-col"
-      initialValues={{ aar: defaultValue }}
-      onFinish={handleSubmit}
-    >
+    <form className="flex flex-col" onSubmit={handleSubmit}>
       <div className="flex items-center">
-        <Form.Item name="aar" noStyle>
-          <TextArea
-            autoSize={{ minRows: 8 }}
-            maxLength={5000}
-            showCount={isEditing}
-            bordered={isEditing}
-            readOnly={!isEditing}
-            className="grow"
-          />
-        </Form.Item>
+        <TextArea
+          name="aar"
+          defaultValue={defaultValue}
+          autoSize={{ minRows: 8 }}
+          maxLength={5000}
+          showCount={isEditing}
+          bordered={isEditing}
+          readOnly={!isEditing}
+          className="grow"
+        />
 
         {editMode == "privileged" && (
           <Button
@@ -63,6 +60,6 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
           Update
         </Button>
       )}
-    </Form>
+    </form>
   );
 };
