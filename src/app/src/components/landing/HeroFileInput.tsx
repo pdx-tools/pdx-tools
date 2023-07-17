@@ -29,14 +29,15 @@ export const HeroFileInput = () => {
       : "bg-black/10 text-blue-200 outline-blue-500"
   }`;
 
+  const acceptedFiles = [".eu4", ".ck3", ".hoi4", ".rome", ".v3"];
   const children = (
     <>
       <Image
         src={filetypes}
-        className="mb-6 shadow-xl"
+        className="mb-6"
         height={269}
         width={300}
-        alt="Country budgetary breakdown"
+        alt={`Supported files: ${acceptedFiles.join(", ")}`}
         priority
       />
       <p className="mb-2 text-2xl leading-loose">
@@ -75,13 +76,7 @@ export const HeroFileInput = () => {
                   {
                     description: "PDX Files",
                     accept: {
-                      "application/pdx": [
-                        ".eu4",
-                        ".ck3",
-                        ".hoi4",
-                        ".rome",
-                        ".v3",
-                      ],
+                      "application/pdx": acceptedFiles,
                     },
                   },
                 ],
