@@ -345,5 +345,28 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
       });
   }, [save]);
 
+  useEffect(() => {
+    const canvas = mapCanvas.current;
+    if (canvas === null) {
+      return;
+    }
+
+    function glLost(e: Event) {
+      const evt = e as WebGLContextEvent;
+      const error = new Error(
+        `PDX Tools map crashed with webgl context lost.${
+          evt.statusMessage && ` Additional info: ${evt.statusMessage}.`
+        } This may indicate an issue in PDX Tools or browser. To help diagnose the bug, consider trying other browsers and attaching WebGL report (https://webglreport.com/?v=2) and GPU status (ie: \`chrome://gpu\`).`
+      );
+      dispatch({ kind: "error", error });
+      captureException(error);
+    }
+
+    canvas.addEventListener("webglcontextlost", glLost);
+    return () => {
+      canvas.removeEventListener("webglcontextlost", glLost);
+    };
+  }, [mapCanvas]);
+
   return { loading, data, error, mapCanvas, mapContainer };
 };
