@@ -350,7 +350,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           {(x) => (
             <div>
               <p className="m-0 text-sm">{`${x.name} (${x.tag})`}</p>
-              <p className="m-0 text-sm">Monthly amount: {x.amount}</p>
+              <p className="m-0 text-sm">Monthly amount: {formatInt(x.amount)}</p>
               {x.start_date && (
                 <p className="m-0 text-sm">{`Since ${x.start_date}${
                   x.total !== undefined && `: ${formatInt(x.total)}`
