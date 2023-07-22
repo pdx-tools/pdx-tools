@@ -23,7 +23,7 @@ export const HeroFileInput = () => {
     }
   };
 
-  const className = `w-full m-2 flex cursor-pointer flex-col items-center rounded-2xl border-0 p-4 text-center outline-dashed outline-8 transition-all duration-150 hover:bg-black/10 hover:text-blue-200 hover:outline-blue-500 peer-focus:text-blue-200 peer-focus:outline-blue-500 lg:p-8 ${
+  const className = `w-full m-8 flex cursor-pointer flex-col items-center rounded-2xl border-0 p-4 text-center outline-dashed outline-8 transition-all duration-150 hover:bg-black/10 hover:text-blue-200 hover:outline-blue-500 peer-focus:text-blue-200 peer-focus:outline-blue-500 lg:p-8 ${
     !isHovering
       ? "bg-black/20 text-white outline-white"
       : "bg-black/10 text-blue-200 outline-blue-500"
@@ -48,7 +48,7 @@ export const HeroFileInput = () => {
 
   if (!fileSystemAccessApiEnabled) {
     return (
-      <div className="leading-relaxed">
+      <div className="flex leading-relaxed">
         <input
           id="analyze-box-file-input"
           ref={fileInputRef}
@@ -65,7 +65,7 @@ export const HeroFileInput = () => {
     );
   } else {
     return (
-      <div className="leading-relaxed">
+      <div className="flex leading-relaxed">
         <button
           className={className}
           onClick={async () => {
