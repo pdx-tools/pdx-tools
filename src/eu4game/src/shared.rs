@@ -69,23 +69,21 @@ impl SaveCheckSummer {
 //
 // On 1.30.4 1444 start date, there are 73 countries with names randomly
 // generated. Taking a randomly selected country, ZWI (Zuni), there are 16
-// dynasty names and 9 male names. That leaves 144 start combinations for
-// Zuni. Taking this as the average (it's not, as I would suspect this to be
-// on the lower side), gives a total of 10,512 starting combinations. We need
-// to find more entropy as the birthday problem states that one will easily
-// find a collision given such a small pool. We can include the randomly
-// generated adm, dip, and mil points for the ruler, but there are events that
-// increase these (see hindu events, well advised events, elections) and it
-// seems overly difficult to track this. Personalities seem to be the better
-// option. Even rulers predefined at the start will often get assigned a
-// random personality (and there are about 50 personalities and 600 rulers
-// that are assigned personalities). Using just the first personality nets us
-// another 30,000 combinations. The reason we use only the first personality
-// is that all rulers should at least one EXCEPT for regencies, and councils,
-// and if the player does not enable rights of man (and who doesn't have
-// rights of man enabled?). IDs are also used in the calculation as while
-// these don't change for a given patch, there is a high likelihood of them
-// changing per patch.
+// dynasty names and 9 male names. That leaves 144 start combinations for Zuni.
+// Taking this as the average (it's not, as I would suspect this to be on the
+// lower side), gives a total of 10,512 starting combinations. We need to find
+// more entropy as the birthday problem states that one will easily find a
+// collision given such a small pool. We can include the randomly generated adm,
+// dip, and mil points for the ruler, but there are events that increase these
+// (see hindu events, well advised events, elections) and it seems overly
+// difficult to track this. Personalities seem to be the better option. Even
+// rulers predefined at the start will often get assigned a random personality
+// (and there are about 50 personalities and 600 rulers that are assigned
+// personalities). Using just the first personality nets us another 30,000
+// combinations. Unfortunately, there are some saves where personalities change
+// (there are events that change personalities). IDs are also used in the
+// calculation as while these don't change for a given patch, there is a high
+// likelihood of them changing per patch.
 //
 // 40,000 combinations per patch is good, but it's not enough for me to sleep
 // easy. PDXU informed me that the REB decision_seed is appears to uniquely
@@ -144,9 +142,6 @@ pub fn hash_countries(hash: &mut impl HighwayHash, content_date: Eu4Date, save: 
     for monarch in monarchs {
         hash.append(&monarch.id.id.to_le_bytes());
         hash.append(monarch.name.as_bytes());
-        if let Some((personality, _)) = monarch.personalities.first() {
-            hash.append(personality.as_bytes());
-        }
     }
 }
 

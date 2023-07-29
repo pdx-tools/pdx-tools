@@ -16,7 +16,7 @@ fn test_playthrough_id() {
     assert_eq!(playthrough_id1, playthrough_id2);
     assert_eq!(
         playthrough_id1.as_str(),
-        "QO8JMpQzsK9ZhSs/awsKQi7CyeP83ld/ZzvKbmk4tWs="
+        "9Y4PpPTHNWtK4rOn/bfWGUwP9yuFA6fK6yVbav8A+JY="
     );
 }
 
@@ -61,6 +61,20 @@ fn test_playthrough_id4() {
     let playthrough_id1 = eu4game::shared::playthrough_id(&Query::from_save(save));
 
     let data = utils::request("tartar-gold.eu4");
+    let save = Eu4Parser::new().parse(&data).unwrap().save;
+    let playthrough_id2 = eu4game::shared::playthrough_id(&Query::from_save(save));
+
+    assert_eq!(playthrough_id1, playthrough_id2);
+}
+
+#[test]
+fn test_playthrough_id5() {
+    let data = utils::request("PREMADE1.eu4.zst");
+    let save = Eu4Parser::new().parse(&data).unwrap().save;
+
+    let playthrough_id1 = eu4game::shared::playthrough_id(&Query::from_save(save));
+
+    let data = utils::request("PREMADE2.eu4");
     let save = Eu4Parser::new().parse(&data).unwrap().save;
     let playthrough_id2 = eu4game::shared::playthrough_id(&Query::from_save(save));
 
