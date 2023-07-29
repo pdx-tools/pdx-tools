@@ -231,7 +231,7 @@ fn diff_saves(db: &FlatSave, a: ParsedFile) -> anyhow::Result<UpdateSave> {
     let achievements = postgres_split(&db.achieve_ids)
         .unwrap_or_default()
         .into_iter()
-        .map(|y| y.parse())
+        .map(|y| y.parse::<i32>())
         .collect::<Result<Vec<_>, _>>()
         .with_context(|| format!("unable to parse achievements: {}", db.achieve_ids))?;
     let score_days = db.score_days.unwrap_or(0);
@@ -249,38 +249,35 @@ fn diff_saves(db: &FlatSave, a: ParsedFile) -> anyhow::Result<UpdateSave> {
         playthrough_id: a
             .playthrough_id
             .ne(&db.playthrough_id)
-            .then(|| db.playthrough_id.clone()),
+            .then_some(a.playthrough_id),
         game_difficulty: a
             .game_difficulty
             .ne(&db.game_difficulty)
-            .then_some(db.game_difficulty),
-        player_names: a.player_names.ne(&player_names).then_some(player_names),
-        player_tag: a
-            .player_tag
-            .ne(&db.player_tag)
-            .then(|| db.player_tag.clone()),
+            .then_some(a.game_difficulty),
+        player_names: a.player_names.ne(&player_names).then_some(a.player_names),
+        player_tag: a.player_tag.ne(&db.player_tag).then_some(a.player_tag),
         player_tag_name: a
             .player_tag_name
             .ne(&db.player_tag_name)
-            .then(|| db.player_tag_name.clone()),
+            .then_some(a.player_tag_name),
         player_start_tag: a
             .player_start_tag
             .ne(&db.player_start_tag)
-            .then(|| db.player_start_tag.clone()),
+            .then_some(a.player_start_tag),
         player_start_tag_name: a
             .player_start_tag_name
             .ne(&db.player_start_tag_name)
-            .then(|| db.player_start_tag_name.clone()),
-        date: a.date.ne(&db.date).then(|| db.date.clone()),
-        days: a.days.ne(&db.days).then_some(db.days),
-        score_date: a.score_date.ne(&score_date).then_some(score_date),
-        score_days: a.score_days.ne(&score_days).then_some(score_days),
-        achievements: a_achievements.ne(&achievements).then_some(achievements),
+            .then_some(a.player_start_tag_name),
+        date: a.date.ne(&db.date).then_some(a.date),
+        days: a.days.ne(&db.days).then_some(a.days),
+        score_date: a.score_date.ne(&score_date).then_some(a.score_date),
+        score_days: a.score_days.ne(&score_days).then_some(a.score_days),
+        achievements: a_achievements.ne(&achievements).then_some(a_achievements),
         patch_shorthand: a
             .patch_shorthand
             .ne(&patch_shorthand)
-            .then_some(patch_shorthand),
-        hash: a.hash.ne(&db.hash).then(|| db.hash.clone()),
+            .then_some(a.patch_shorthand),
+        hash: a.hash.ne(&db.hash).then_some(a.hash),
     })
 }
 
