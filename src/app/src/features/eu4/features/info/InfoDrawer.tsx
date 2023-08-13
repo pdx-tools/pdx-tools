@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import { EyeOutlined } from "@ant-design/icons";
-import { Button, Descriptions, Tooltip } from "antd";
-import Link from "next/link";
 import { TimeAgo } from "@/components/TimeAgo";
 import { difficultyText } from "@/lib/difficulty";
 import { DlcList } from "@/features/eu4/components/dlc-list";
@@ -20,19 +18,23 @@ import { useEu4Worker, Eu4Worker } from "@/features/eu4/worker";
 import { useIsPrivileged } from "@/services/appApi";
 import {
   emptyEu4CountryFilter,
+  initialEu4CountryFilter,
   useAchievements,
   useEu4Actions,
   useEu4Meta,
   useEu4ModList,
   useServerSaveFile,
-  useTagFilter,
 } from "../../store";
 import { cx } from "class-variance-authority";
 import { Divider } from "@/components/Divider";
+import { Tooltip } from "@/components/Tooltip";
+import { IconButton } from "@/components/IconButton";
+import { Alert } from "@/components/Alert";
+import { Link } from "@/components/Link";
 
 const TagDescription = (play: TagTransition) => {
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-start">
       <FlagAvatarCore tag={play.tag} size="large" />
       <div>{play.name}</div>
       <div>{play.date}</div>
@@ -52,13 +54,12 @@ export const InfoDrawer = () => {
   const luckyCountries = useEu4Worker(luckyCountriesFn);
   const sideBarContainerRef = useSideBarContainerRef();
   const [filteredTag, setFilteredTag] = useState<string | undefined>(undefined);
-  const [initialTagFilter] = useState(useTagFilter());
-  const { updateTagFilter: updateTagFilter } = useEu4Actions();
+  const { updateTagFilter } = useEu4Actions();
   const isPrivileged = useIsPrivileged(serverFile?.user_id);
 
   const visibleTag = async (tag: string) => {
     if (tag === filteredTag) {
-      updateTagFilter(initialTagFilter);
+      updateTagFilter(initialEu4CountryFilter);
       setFilteredTag(undefined);
     } else {
       updateTagFilter({
@@ -129,10 +130,11 @@ export const InfoDrawer = () => {
               <div className="text-center text-lg">Achievements</div>
               <div className="flex flex-wrap place-content-center space-x-2">
                 {achievements.achievements.map((x) => (
-                  <Tooltip key={x.id} title={x.name}>
-                    <div>
-                      <AchievementAvatar size="large" id={x.id} />
-                    </div>
+                  <Tooltip key={x.id}>
+                    <Tooltip.Trigger className="flex">
+                      <AchievementAvatar className="h-10 w-10" id={x.id} />
+                    </Tooltip.Trigger>
+                    <Tooltip.Content>{x.name}</Tooltip.Content>
                   </Tooltip>
                 ))}
               </div>
@@ -149,6 +151,7 @@ export const InfoDrawer = () => {
         ) : null}
       </div>
       <Divider>Countries</Divider>
+      <Alert.Error msg={playerHistories.error} />
       <div className="grid gap-8 md:grid-cols-2">
         {playerHistories.data?.map((item) => (
           <div
@@ -160,29 +163,27 @@ export const InfoDrawer = () => {
             )}
           >
             <div className="flex">
-              <div className="grow">
-                <TagFlag tag={item.latest} size="large">
-                  {item.name}
-                </TagFlag>
-              </div>
-              <div className="flex items-center gap-2">
+              <TagFlag tag={item.latest} size="large">
+                {item.name}
+              </TagFlag>
+              <div className="flex grow items-center justify-end">
                 {!item.annexed && (
-                  <Tooltip title={`Show only ${item.name} on the map`}>
-                    <Button
-                      icon={<EyeOutlined />}
-                      onClick={() => {
-                        visibleTag(item.latest);
-                      }}
-                    ></Button>
-                  </Tooltip>
+                  <IconButton
+                    shape="square"
+                    icon={<EyeOutlined />}
+                    tooltip={`Show only ${item.name} on the map`}
+                    onClick={() => {
+                      visibleTag(item.latest);
+                    }}
+                  />
                 )}
               </div>
             </div>
             <div className="border border-solid border-gray-200"></div>
-            <table>
+            <table className="w-full">
               <tbody>
                 <tr>
-                  <td className="py-1">
+                  <td className="w-20 py-1">
                     {item.annexed ? "Annexed:" : "Status:"}
                   </td>
                   <td className="py-1">
@@ -190,7 +191,7 @@ export const InfoDrawer = () => {
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-1">
+                  <td className="w-20 py-1">
                     Player{item.player_names.length == 1 ? "" : "s"}:
                   </td>
                   <td className="py-1">
@@ -198,7 +199,7 @@ export const InfoDrawer = () => {
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-1">History:</td>
+                  <td className="w-20 py-1">History:</td>
                   <td className="py-1">
                     <FlipBook
                       items={item.transitions}
@@ -211,10 +212,11 @@ export const InfoDrawer = () => {
           </div>
         ))}
       </div>
+      <Alert.Error msg={luckyCountries.error} />
       {luckyCountries.data && luckyCountries.data.length > 0 ? (
         <>
           <Divider>Lucky Countries</Divider>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
             {luckyCountries.data.map((x) => (
               <FlagAvatar key={x.tag} tag={x.tag} name={x.name} size="large" />
             ))}

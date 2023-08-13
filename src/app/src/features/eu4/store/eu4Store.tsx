@@ -63,8 +63,7 @@ type Eu4State = Eu4StateProps & {
     status: "idle" | "running" | "working";
   };
   actions: {
-    closeCountryDrawer: () => void;
-    openCountryDrawer: () => void;
+    setCountryDrawer: (open: boolean) => void;
     panToTag: (tag: string, offset?: number) => Promise<void>;
     nextMapMode: () => void;
     setMapMode: (mode: Eu4State["mapMode"]) => Promise<void>;
@@ -146,8 +145,7 @@ export const createEu4Store = async ({
       status: "idle",
     },
     actions: {
-      closeCountryDrawer: () => set({ countryDrawerVisible: false }),
-      openCountryDrawer: () => set({ countryDrawerVisible: true }),
+      setCountryDrawer: (open: boolean) => set({ countryDrawerVisible: open }),
       panToTag: async (tag, offset?: number) => {
         const pos = await getEu4Worker().eu4MapPositionOf(tag);
         map.scale = map.maxScale * (1 / 2);
@@ -413,25 +411,25 @@ export const useSaveFilenameWith = (suffix: string) => {
 };
 
 export const useCountryNameLookup = () => {
-  const countries = useEu4Store((x) => x.save.countries);
+  const countries = useEu4Countries();
   return useMemo(
     () => new Map(countries.map((x) => [x.normalizedName, x])),
     [countries]
   );
 };
 
+export const useEu4Countries = () => useEu4Store((x) => x.save.countries);
 const useCountryFiltering = (cb: (arg: EnhancedCountryInfo) => boolean) => {
-  const countries = useEu4Store((x) => x.save.countries).filter(cb);
-  countries.sort((a, b) => a.tag.localeCompare(b.tag));
-  return countries;
+  const countries = useEu4Countries();
+  return useMemo(() => countries.filter(cb), [countries, cb]);
 };
 
 const isHumanFilter = (x: EnhancedCountryInfo) => x.is_human;
 export const useHumanCountries = () => useCountryFiltering(isHumanFilter);
 const isAiFilter = (x: EnhancedCountryInfo) => !x.is_human;
 export const useAiCountries = () => useCountryFiltering(isAiFilter);
-const isAliveAiFilter = (x: EnhancedCountryInfo) => !x.is_human && x.is_alive;
-export const useAliveAiCountries = () => useCountryFiltering(isAliveAiFilter);
+const isAliveAiFilter = (x: EnhancedCountryInfo) => !x.is_human && x.existed;
+export const useExistedAiCountries = () => useCountryFiltering(isAliveAiFilter);
 
 export const useIsDatePickerEnabled = () => {
   const mode = useEu4MapMode();

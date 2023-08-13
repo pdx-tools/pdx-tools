@@ -1,10 +1,9 @@
 import React, { useCallback, useState } from "react";
-import { Button, Input } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import { useServerSaveFile } from "../../store";
 import { useSavePatch } from "@/services/appApi";
-
-const { TextArea } = Input;
+import { Button } from "@/components/Button";
+import { cx } from "class-variance-authority";
 
 interface AarProps {
   defaultValue?: string;
@@ -33,30 +32,31 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
   );
 
   return (
-    <form className="flex flex-col" onSubmit={handleSubmit}>
+    <form className="flex flex-col gap-y-2" onSubmit={handleSubmit}>
       <div className="flex items-center">
-        <TextArea
+        <textarea
           name="aar"
           defaultValue={defaultValue}
-          autoSize={{ minRows: 8 }}
+          rows={8}
           maxLength={5000}
-          showCount={isEditing}
-          bordered={isEditing}
           readOnly={!isEditing}
-          className="grow"
+          className={cx("grow", isEditing ? "border" : "")}
         />
 
         {editMode == "privileged" && (
-          <Button
-            type="text"
-            onClick={() => setIsEditing(!isEditing)}
-            icon={<EditOutlined />}
-          />
+          <Button variant="ghost" onClick={() => setIsEditing(!isEditing)}>
+            <EditOutlined />
+            <span className="sr-only">Toggle AAR edit</span>
+          </Button>
         )}
       </div>
 
       {isEditing && (
-        <Button htmlType="submit" type="primary">
+        <Button
+          type="submit"
+          variant="primary"
+          className="w-48 justify-center self-center"
+        >
           Update
         </Button>
       )}

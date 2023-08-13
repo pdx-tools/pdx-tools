@@ -1,6 +1,6 @@
 import React from "react";
-import { Tooltip } from "antd";
 import { display, timeAgo } from "@/lib/dates";
+import { Tooltip } from "./Tooltip";
 
 interface TimeAgoProps {
   date: string;
@@ -8,8 +8,9 @@ interface TimeAgoProps {
 
 export const TimeAgo = ({ date }: TimeAgoProps) => {
   return (
-    <Tooltip title={display(date)}>
-      <span>{timeAgo(date)}</span>
+    <Tooltip>
+      <Tooltip.Trigger>{timeAgo(date)}</Tooltip.Trigger>
+      <Tooltip.Content>{display(date)}</Tooltip.Content>
     </Tooltip>
   );
 };

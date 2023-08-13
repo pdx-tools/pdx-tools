@@ -11,7 +11,7 @@ export const FinancialHelp = () => {
       <p>The game can reset accumulated expenses on tag switches</p>
       <p>Below are definitions of some of the fields</p>
       <dl>
-        <dt>interest</dt>
+        <dt className="mt-2 font-semibold">interest</dt>
         <dd>
           When talking about income, it's the amount in loans the given country
           has recently drawn. In this way the in-game ledger is bit of a
@@ -19,7 +19,7 @@ export const FinancialHelp = () => {
           it as interest. When talking about expenses, interest is properly
           named.
         </dd>
-        <dt>recurring income / expense</dt>
+        <dt className="mt-2 font-semibold">recurring income / expense</dt>
         <dd>
           EU4 records onetime payments in the income ledger. Examples of onetime
           payments are events, gifts, and even taking out loans. Since onetime

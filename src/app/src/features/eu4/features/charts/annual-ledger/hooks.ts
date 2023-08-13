@@ -8,10 +8,9 @@ export type LedgerSelection = (
   filter: CountryMatcher
 ) => Promise<LedgerDatum[]>;
 
-export function useLedgerData(fn: LedgerSelection): LedgerDatum[] {
+export function useLedgerData(fn: LedgerSelection) {
   const countryFilter = useTagFilter();
-  const { data } = useAnalysisWorker(
+  return useAnalysisWorker(
     useCallback((worker) => fn(worker, countryFilter), [fn, countryFilter])
   );
-  return data ?? [];
 }

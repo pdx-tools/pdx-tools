@@ -7,7 +7,7 @@ import { MeltButton } from "@/components/MeltButton";
 import { Hoi4Metadata } from "./worker/types";
 import { captureException } from "@sentry/nextjs";
 import { emitEvent } from "@/lib/plausible";
-import { Alert, AlertDescription } from "@/components/Alert";
+import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 
 export type Hoi4SaveFile = { save: { file: File } };
@@ -141,7 +141,7 @@ export const Hoi4Ui = (props: Hoi4SaveFile) => {
     <>
       {error && (
         <Alert variant="error" className="px-4 py-2">
-          <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+          <Alert.Description>{getErrorMessage(error)}</Alert.Description>
         </Alert>
       )}
       {data && <Hoi4Page {...props} meta={data} />}

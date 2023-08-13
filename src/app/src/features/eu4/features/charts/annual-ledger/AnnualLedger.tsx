@@ -3,6 +3,8 @@ import { Line, LineConfig, useVisualizationDispatch } from "@/components/viz";
 import { LedgerDatum } from "@/features/eu4/types/models";
 import { createCsv } from "@/lib/csv";
 import { useCountryNameLookup } from "@/features/eu4/store";
+import { useLedgerData } from "./hooks";
+import { Alert } from "@/components/Alert";
 
 interface LedgerProps {
   ledger: LedgerDatum[];
@@ -34,10 +36,14 @@ const AnnualLedgerPropped = React.memo(({ ledger, lookup }: MemoProps) => {
     },
   };
 
-  return <Line style={{ height: "100%" }} {...config} />;
+  return <Line {...config} />;
 });
 
-export const AnnualLedger = ({ ledger }: LedgerProps) => {
+export const AnnualLedger = ({
+  ledger: { data = [], error },
+}: {
+  ledger: ReturnType<typeof useLedgerData>;
+}) => {
   const lookup = useCountryNameLookup();
   const visualizationDispatch = useVisualizationDispatch();
 
@@ -46,10 +52,17 @@ export const AnnualLedger = ({ ledger }: LedgerProps) => {
       type: "update-csv-data",
       getCsvData: async () => {
         const keys: (keyof LedgerDatum)[] = ["tag", "name", "year", "value"];
-        return createCsv(ledger, keys);
+        return createCsv(data, keys);
       },
     });
-  }, [ledger, visualizationDispatch]);
+  }, [data, visualizationDispatch]);
 
-  return <AnnualLedgerPropped ledger={ledger} lookup={lookup} />;
+  return (
+    <>
+      <Alert.Error msg={error} />
+      <div className="h-[calc(100%-1px)]">
+        <AnnualLedgerPropped ledger={data} lookup={lookup} />
+      </div>
+    </>
+  );
 };

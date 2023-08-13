@@ -1,3 +1,4 @@
+import { Link } from "@/components/Link";
 import { VizModules } from "../../types/visualizations";
 import { FinancialHelp } from "./FinancialHelp";
 
@@ -59,9 +60,9 @@ export const Help = ({ module }: HelpProps) => {
         <>
           <p>
             The Idea Groups chart shows how popular certain{" "}
-            <a href="https://eu4.paradoxwikis.com/Idea_groups">
+            <Link href="https://eu4.paradoxwikis.com/Idea_groups">
               EU4 idea groups
-            </a>{" "}
+            </Link>{" "}
             are among the world and players
           </p>
           <p>
@@ -150,7 +151,7 @@ export const Help = ({ module }: HelpProps) => {
     case "wars": {
       return (
         <>
-          <ul>
+          <ul className="space-y-2">
             <li>
               Participants that are a part of a war since the start are denoted
               with "---"
@@ -161,7 +162,7 @@ export const Help = ({ module }: HelpProps) => {
             </li>
           </ul>
           <b>Battle Help</b>
-          <ul>
+          <ul className="space-y-2">
             <li>The side that won the battle is highlighted</li>
             <li>
               Which side defended in a battle is not recorded so the attacker /

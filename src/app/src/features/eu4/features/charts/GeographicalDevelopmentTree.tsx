@@ -8,6 +8,7 @@ import { useAnalysisWorker } from "@/features/eu4/worker";
 import { formatInt } from "@/lib/format";
 import { createCsv } from "@/lib/csv";
 import { useTagFilter } from "../../store";
+import { Alert } from "@/components/Alert";
 
 type DevelopmentStatisticProps = {
   title: string;
@@ -39,7 +40,7 @@ const DevelopmentStatistic = ({
 
 export const GeographicalDevelopmentTree = () => {
   const countryFilter = useTagFilter();
-  const { data } = useAnalysisWorker(
+  const { data, error } = useAnalysisWorker(
     useCallback(
       (worker) => worker.eu4GeographicalDevelopment(countryFilter),
       [countryFilter]
@@ -129,6 +130,10 @@ export const GeographicalDevelopmentTree = () => {
     animation: {},
   };
 
+  if (error !== undefined) {
+    <Alert.Error msg={error} />;
+  }
+
   if (data === undefined) {
     return null;
   }
@@ -155,7 +160,7 @@ export const GeographicalDevelopmentTree = () => {
           title="Uncolonized Development"
         />
       </div>
-      <div className="h-full grow">
+      <div className="h-[calc(100%-1px)]">
         <Treemap {...config} />
       </div>
     </div>

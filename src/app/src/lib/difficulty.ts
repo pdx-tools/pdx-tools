@@ -1,5 +1,6 @@
 import { GameDifficulty } from "@/services/appApi";
 import { AchievementDifficulty } from "../services/appApi";
+import { SortingFn } from "@tanstack/react-table";
 
 export const difficultyText = (
   diff: AchievementDifficulty | GameDifficulty
@@ -58,3 +59,7 @@ interface DiffProp {
 export const difficultyComparator = (a: DiffProp, b: DiffProp): number => {
   return difficultyNum(a.difficulty) - difficultyNum(b.difficulty);
 };
+
+export const difficultySort: SortingFn<any> = (rowA, rowB, columnId) =>
+  difficultyNum(rowA.getValue(columnId)) -
+  difficultyNum(rowB.getValue(columnId));

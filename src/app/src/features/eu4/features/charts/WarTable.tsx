@@ -1,18 +1,17 @@
 import React, { useCallback, useEffect } from "react";
-import { Input, Table } from "antd";
-import { PlusCircleTwoTone, MinusCircleTwoTone } from "@ant-design/icons";
-import { ColumnGroupType, ColumnType } from "antd/lib/table";
 import { BattleView } from "./BattleView";
-import { ExpandableConfig } from "rc-table/lib/interface";
-import { FilterIcon } from "@/components/icons";
 import { formatInt } from "@/lib/format";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { createCsv } from "@/lib/csv";
 import { useVisualizationDispatch } from "@/components/viz";
-import { useTablePagination } from "@/features/ui-controls";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { useTagFilter } from "../../store";
 import { War, WarSide } from "../../worker/module";
+import { Alert } from "@/components/Alert";
+import { createColumnHelper } from "@tanstack/react-table";
+import { SheetExpansion } from "../../components/SheetExpansion";
+import { Table } from "@/components/Table";
+import { DataTable } from "@/components/DataTable";
 
 interface WarSideData extends WarSide {
   original_name: string;
@@ -24,12 +23,170 @@ interface WarTableData extends War {
   defenders: WarSideData;
 }
 
+const columnHelper = createColumnHelper<WarTableData>();
+const columns = [
+  columnHelper.display({
+    id: "actions",
+    cell: ({ row }) => (
+      <SheetExpansion title={`${row.original.name} Breakdown`}>
+        <BattleView warName={row.original.name} />
+      </SheetExpansion>
+    ),
+  }),
+
+  columnHelper.accessor("name", {
+    sortingFn: "text",
+    meta: { className: "min-w-[180px]" },
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Name" />,
+  }),
+
+  columnHelper.accessor("start_date", {
+    sortingFn: "alphanumeric",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Start" />
+    ),
+    meta: { className: "text-right no-break" },
+    cell: (info) => info.getValue() ?? "---",
+  }),
+
+  columnHelper.accessor("end_date", {
+    sortingFn: "alphanumeric",
+    header: ({ column }) => <Table.ColumnHeader column={column} title="End" />,
+    meta: { className: "text-right no-break" },
+    cell: (info) => info.getValue() ?? "---",
+  }),
+
+  columnHelper.accessor("days", {
+    sortingFn: "basic",
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Days" />,
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+
+  columnHelper.accessor("attackers.original", {
+    header: "Attackers",
+    cell: (info) => {
+      const additional = info.row.original.attackers.members.length - 1;
+      const elem =
+        additional == 0 ? null : (
+          <span className="block">{`+ ${additional}`}</span>
+        );
+      return (
+        <>
+          <FlagAvatar
+            tag={info.getValue()}
+            name={info.row.original.attackers.original_name}
+          />
+          {elem}
+        </>
+      );
+    },
+  }),
+
+  columnHelper.accessor("defenders.original", {
+    header: "Defenders",
+    cell: (info) => {
+      const additional = info.row.original.defenders.members.length - 1;
+      const elem =
+        additional == 0 ? null : (
+          <span className="block">{`+ ${additional}`}</span>
+        );
+      return (
+        <>
+          <FlagAvatar
+            tag={info.getValue()}
+            name={info.row.original.defenders.original_name}
+          />
+          {elem}
+        </>
+      );
+    },
+  }),
+
+  columnHelper.accessor("battles", {
+    sortingFn: "basic",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Battles" />
+    ),
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+
+  columnHelper.group({
+    header: "Total Losses",
+    columns: [
+      columnHelper.accessor("totalBattleLosses", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Battle" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      columnHelper.accessor("totalAttritionLosses", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Attrition" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+    ],
+  }),
+
+  columnHelper.group({
+    header: "Attacker Losses",
+    columns: [
+      columnHelper.accessor("attackers.losses.totalBattle", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Battle" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      columnHelper.accessor("attackers.losses.totalAttrition", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Attrition" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+    ],
+  }),
+
+  columnHelper.group({
+    header: "Defender Losses",
+    columns: [
+      columnHelper.accessor("defenders.losses.totalBattle", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Battle" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      columnHelper.accessor("defenders.losses.totalAttrition", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Attrition" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+    ],
+  }),
+];
+
 export const WarTable = () => {
   const filter = useTagFilter();
-  const tablePagination = useTablePagination();
   const visualizationDispatch = useVisualizationDispatch();
 
-  const { data = [] } = useEu4Worker(
+  const { data = [], error } = useEu4Worker(
     useCallback(
       async (worker) => {
         const data = await worker.eu4GetWars(filter);
@@ -81,194 +238,15 @@ export const WarTable = () => {
     });
   }, [data, visualizationDispatch]);
 
-  const columns: (ColumnGroupType<WarTableData> | ColumnType<WarTableData>)[] =
-    [
-      {
-        title: "War",
-        dataIndex: "name",
-        fixed: "left",
-        width: 175,
-        sorter: (a: WarTableData, b: WarTableData) =>
-          a.name.localeCompare(b.name),
-        filterDropdown: ({
-          setSelectedKeys,
-          selectedKeys,
-          confirm,
-          clearFilters,
-        }) => (
-          <div>
-            <Input
-              value={selectedKeys[0]}
-              onChange={(e) => {
-                setSelectedKeys(e.target.value ? [e.target.value] : []);
-              }}
-              onPressEnter={() => {
-                if (!selectedKeys[0] && clearFilters) {
-                  clearFilters();
-                }
-                confirm({
-                  closeDropdown: true,
-                });
-              }}
-            />
-          </div>
-        ),
-        filterIcon: (filtered) => <FilterIcon filtered={filtered} />,
-        onFilter: (value: string | number | boolean, record: WarTableData) =>
-          record.name.toLowerCase().includes((value as string).toLowerCase()),
-      },
-      {
-        title: "Start",
-        dataIndex: "start_date",
-        className: "no-break",
-        sorter: (a: WarTableData, b: WarTableData) =>
-          a.start_date.localeCompare(b.start_date),
-      },
-      {
-        title: "End",
-        dataIndex: "end_date",
-        className: "no-break",
-        defaultSortOrder: "descend",
-        render: (date: string) => date || "---",
-        sorter: (a: WarTableData, b: WarTableData) =>
-          (a.end_date || "9999").localeCompare(b.end_date || "9999"),
-      },
-      {
-        title: "Days",
-        dataIndex: "days",
-        render: (days) => formatInt(days),
-        sorter: (a: WarTableData, b: WarTableData) => a.days - b.days,
-      },
-      {
-        title: "Attackers",
-        dataIndex: ["attackers", "original"],
-        render: (original: string, x: WarTableData) => {
-          const additional = x.attackers.members.length - 1;
-          const elem =
-            additional == 0 ? null : (
-              <span className="block">{`+ ${additional}`}</span>
-            );
-          return (
-            <>
-              <FlagAvatar tag={original} name={x.attackers.original_name} />
-              {elem}
-            </>
-          );
-        },
-        sorter: (a: WarTableData, b: WarTableData) =>
-          a.attackers.members.length - b.attackers.members.length,
-      },
-      {
-        title: "Defenders",
-        dataIndex: ["defenders", "original"],
-        render: (original: string, x: WarTableData) => {
-          const additional = x.defenders.members.length - 1;
-          const elem =
-            additional == 0 ? null : (
-              <span className="block">{`+ ${additional}`}</span>
-            );
-          return (
-            <>
-              <FlagAvatar tag={original} name={x.defenders.original_name} />
-              {elem}
-            </>
-          );
-        },
-        sorter: (a: WarTableData, b: WarTableData) =>
-          a.defenders.members.length - b.defenders.members.length,
-      },
-      {
-        title: "Battles",
-        dataIndex: "battles",
-        className: "antd-column-separator",
-        sorter: (a: WarTableData, b: WarTableData) => a.battles - b.battles,
-      },
-      {
-        title: "Total Losses",
-        className: "antd-column-separator",
-        children: [
-          {
-            title: "Battle",
-            dataIndex: "totalBattleLosses",
-            render: (x) => formatInt(x),
-            sorter: (a: WarTableData, b: WarTableData) =>
-              a.totalBattleLosses - b.totalBattleLosses,
-          },
-          {
-            title: "Attrition",
-            dataIndex: "totalAttritionLosses",
-            className: "antd-column-separator",
-            render: (x) => formatInt(x),
-            sorter: (a: WarTableData, b: WarTableData) =>
-              a.totalAttritionLosses - b.totalAttritionLosses,
-          },
-        ],
-      },
-      {
-        title: "Attacker Losses",
-        className: "antd-column-separator",
-        children: [
-          {
-            title: "Battle",
-            dataIndex: ["attackers", "losses", "totalBattle"],
-            render: (x) => formatInt(x),
-            sorter: (a: WarTableData, b: WarTableData) =>
-              a.attackers.losses.totalBattle - b.attackers.losses.totalBattle,
-          },
-          {
-            title: "Attrition",
-            dataIndex: ["attackers", "losses", "totalAttrition"],
-            className: "antd-column-separator",
-            render: (x) => formatInt(x),
-            sorter: (a: WarTableData, b: WarTableData) =>
-              a.attackers.losses.totalAttrition -
-              b.attackers.losses.totalAttrition,
-          },
-        ],
-      },
-      {
-        title: "Defender Losses",
-        children: [
-          {
-            title: "Battle",
-            dataIndex: ["defenders", "losses", "totalBattle"],
-            render: (x) => formatInt(x),
-            sorter: (a: WarTableData, b: WarTableData) =>
-              a.defenders.losses.totalBattle - b.defenders.losses.totalBattle,
-          },
-          {
-            title: "Attrition",
-            dataIndex: ["defenders", "losses", "totalAttrition"],
-            render: (x) => formatInt(x),
-            sorter: (a: WarTableData, b: WarTableData) =>
-              a.defenders.losses.totalAttrition -
-              b.defenders.losses.totalAttrition,
-          },
-        ],
-      },
-    ];
-
-  const expandable: ExpandableConfig<WarTableData> = {
-    expandedRowRender: (record: WarTableData) => (
-      <BattleView warName={record.name} />
-    ),
-    expandIcon: ({ expanded, onExpand, record }) =>
-      expanded ? (
-        <MinusCircleTwoTone onClick={(e) => onExpand(record, e)} />
-      ) : (
-        <PlusCircleTwoTone onClick={(e) => onExpand(record, e)} />
-      ),
-  };
-
   return (
-    <Table
-      size="small"
-      rowKey="name"
-      scroll={{ x: true }}
-      dataSource={data}
-      columns={columns}
-      pagination={tablePagination}
-      expandable={expandable}
-    />
+    <>
+      <Alert.Error msg={error} />
+      <DataTable
+        columns={columns}
+        data={data}
+        pagination={true}
+        initialSorting={[{ id: "totalBattleLosses", desc: true }]}
+      />
+    </>
   );
 };

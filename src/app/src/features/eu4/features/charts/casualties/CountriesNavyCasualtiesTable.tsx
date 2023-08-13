@@ -1,16 +1,15 @@
-import React, { useEffect, useRef } from "react";
-import { Table } from "antd";
-import { ColumnGroupType, ColumnType } from "antd/lib/table";
-import { PlusCircleTwoTone, MinusCircleTwoTone } from "@ant-design/icons";
+import React, { useEffect } from "react";
 import { TableLosses, useCountryCasualtyData } from "./hooks";
-import { ExpandableConfig } from "antd/lib/table/interface";
 import { CountriesNavyCasualtiesWarTable } from "./CountriesNavyCasualtiesWarTable";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
-import { useIsLoading, useVisualizationDispatch } from "@/components/viz";
+import { useVisualizationDispatch } from "@/components/viz";
 import { formatInt } from "@/lib/format";
-import { countryColumnFilter } from "../countryColumnFilter";
 import { createCsv } from "@/lib/csv";
-import { useTablePagination } from "@/features/ui-controls";
+import { Alert } from "@/components/Alert";
+import { createColumnHelper } from "@tanstack/react-table";
+import { SheetExpansion } from "../../../components/SheetExpansion";
+import { Table } from "@/components/Table";
+import { DataTable } from "@/components/DataTable";
 
 const unitTypes = [
   ["Heavy", "heavyShip"],
@@ -18,14 +17,95 @@ const unitTypes = [
   ["Galley", "galleyShip"],
   ["Trnsprt", "transportShip"],
   ["Total", "navyTotal"],
+] as const;
+
+const columnHelper = createColumnHelper<TableLosses>();
+const columns = [
+  columnHelper.display({
+    id: "actions",
+    cell: ({ row }) => (
+      <SheetExpansion title={`${row.original.name} Casualty Breakdown`}>
+        <CountriesNavyCasualtiesWarTable record={row.original} />
+      </SheetExpansion>
+    ),
+  }),
+
+  columnHelper.accessor("name", {
+    sortingFn: "text",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Country" />
+    ),
+    cell: ({ row }) => (
+      <FlagAvatar tag={row.original.tag} name={row.original.name} />
+    ),
+  }),
+
+  columnHelper.group({
+    header: "Battle Losses",
+    columns: unitTypes.map(([title, type]) =>
+      columnHelper.accessor(`${type}Battle`, {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title={title} />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      })
+    ),
+  }),
+
+  columnHelper.group({
+    header: "Attrition Losses",
+    columns: unitTypes.map(([title, type]) =>
+      columnHelper.accessor(`${type}Attrition`, {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title={title} />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      })
+    ),
+  }),
+
+  columnHelper.group({
+    header: "Losses from Captured Ships",
+    columns: unitTypes.map(([title, type]) =>
+      columnHelper.accessor(`${type}Capture`, {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title={title} />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      })
+    ),
+  }),
+
+  columnHelper.accessor((x) => (x.navyTotalAttrition / x.navyTotal) * 100, {
+    id: "attrition",
+    sortingFn: "basic",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="% from Attrition" />
+    ),
+    meta: { className: "text-right" },
+    cell: (info) =>
+      isNaN(info.getValue()) ? "0%" : formatInt(info.getValue()) + "%",
+  }),
+
+  columnHelper.accessor("navyTotal", {
+    sortingFn: "basic",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Total Losses" />
+    ),
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
 ];
 
 export const CountriesNavyCasualtiesTable = () => {
-  const data = useCountryCasualtyData();
-  const isLoading = useIsLoading();
-  const selectFilterRef = useRef(null);
+  const casualties = useCountryCasualtyData();
   const visualizationDispatch = useVisualizationDispatch();
-  const tablePagination = useTablePagination();
 
   useEffect(() => {
     visualizationDispatch({
@@ -43,102 +123,20 @@ export const CountriesNavyCasualtiesTable = () => {
           ),
           "navyTotal",
         ];
-        return createCsv(data, keys);
+        return createCsv(casualties.data, keys);
       },
     });
-  }, [data, visualizationDispatch]);
-
-  const numRenderer = (x: number) => formatInt(x);
-  const battleColumns: ColumnType<TableLosses>[] = unitTypes.map(
-    ([title, type]) => ({
-      title,
-      dataIndex: `${type}Battle`,
-      align: "right",
-      render: numRenderer,
-      sorter: (a: any, b: any) => a[`${type}Battle`] - b[`${type}Battle`],
-      className: title === "Total" ? "antd-column-separator" : undefined,
-    })
-  );
-
-  const captureColumns: ColumnType<TableLosses>[] = unitTypes.map(
-    ([title, type]) => ({
-      title,
-      dataIndex: `${type}Capture`,
-      align: "right",
-      render: numRenderer,
-      sorter: (a: any, b: any) => a[`${type}Capture`] - b[`${type}Capture`],
-      className: title === "Total" ? "antd-column-separator" : undefined,
-    })
-  );
-
-  const attritionColumns: ColumnType<TableLosses>[] = unitTypes.map(
-    ([title, type]) => ({
-      title,
-      dataIndex: `${type}Attrition`,
-      align: "right",
-      render: numRenderer,
-      sorter: (a: any, b: any) => a[`${type}Attrition`] - b[`${type}Attrition`],
-      className: title === "Total" ? "antd-column-separator" : undefined,
-    })
-  );
-
-  const columns: (ColumnGroupType<TableLosses> | ColumnType<TableLosses>)[] = [
-    {
-      title: "Country",
-      dataIndex: "name",
-      fixed: "left",
-      width: 175,
-      render: (_name: string, x: TableLosses) => (
-        <FlagAvatar tag={x.tag} name={x.name} size="large" />
-      ),
-      sorter: (a: TableLosses, b: TableLosses) => a.name.localeCompare(b.name),
-      ...countryColumnFilter(selectFilterRef, (record) => record.tag),
-    },
-    {
-      title: "Battle Losses",
-      children: battleColumns,
-    },
-    {
-      title: "Attrition Losses",
-      children: attritionColumns,
-    },
-    {
-      title: "Losses from Captured Ships",
-      children: captureColumns,
-    },
-    {
-      title: "Total Losses",
-      dataIndex: "navyTotal",
-      align: "right",
-      render: numRenderer,
-      defaultSortOrder: "descend",
-      sorter: (a: TableLosses, b: TableLosses) =>
-        a[`navyTotal`] - b[`navyTotal`],
-    },
-  ];
-
-  const expandable: ExpandableConfig<TableLosses> = {
-    expandedRowRender: (record: TableLosses) => (
-      <CountriesNavyCasualtiesWarTable record={record} />
-    ),
-    expandIcon: ({ expanded, onExpand, record }) =>
-      expanded ? (
-        <MinusCircleTwoTone onClick={(e) => onExpand(record, e)} />
-      ) : (
-        <PlusCircleTwoTone onClick={(e) => onExpand(record, e)} />
-      ),
-  };
+  }, [casualties.data, visualizationDispatch]);
 
   return (
-    <Table
-      size="small"
-      rowKey="name"
-      loading={isLoading}
-      scroll={{ x: true }}
-      dataSource={data}
-      columns={columns}
-      pagination={tablePagination}
-      expandable={expandable}
-    />
+    <>
+      <Alert.Error msg={casualties.error} />
+      <DataTable
+        columns={columns}
+        data={casualties.data}
+        pagination={true}
+        initialSorting={[{ id: "navyTotal", desc: true }]}
+      />
+    </>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useId } from "react";
-import { Switch } from "antd";
 import { HelpTooltip } from "@/components/HelpTooltip";
+import { Switch } from "@/components/Switch";
 
 export interface ToggleRowProps {
   value: boolean;
@@ -25,7 +25,7 @@ export const ToggleRow = ({
         disabled={disabled}
         id={id}
         checked={value}
-        onChange={onChange}
+        onCheckedChange={onChange}
       />
       <label
         htmlFor={id}
@@ -33,11 +33,7 @@ export const ToggleRow = ({
       >
         {text}
       </label>
-      {help && (
-        <span className="ml-1">
-          <HelpTooltip help={help} />
-        </span>
-      )}
+      {help && <HelpTooltip className="ml-1" help={help} />}
     </div>
   );
 };

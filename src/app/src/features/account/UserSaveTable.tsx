@@ -1,21 +1,29 @@
 import React, { useMemo } from "react";
-import { Table } from "antd";
 import { TimeAgo } from "@/components/TimeAgo";
-import { GameDifficulty, SaveFile } from "@/services/appApi";
+import { SaveFile } from "@/services/appApi";
 import { diff } from "@/lib/dates";
 import { difficultyText } from "@/lib/difficulty";
-import Link from "next/link";
 import { DeleteSave } from "../eu4/components/DeleteSave";
 import {
   AchievementAvatar,
   FlagAvatar,
 } from "@/features/eu4/components/avatars";
 import { groupBy } from "@/lib/groupBy";
+import { createColumnHelper } from "@tanstack/react-table";
+import { DataTable } from "@/components/DataTable";
+import { Link } from "@/components/Link";
 
 interface UserSaveTableProps {
   saves: SaveFile[];
   isPrivileged: boolean;
 }
+
+type SaveRow = SaveFile & {
+  name: string;
+  rowSpan: number;
+};
+
+const columnHelper = createColumnHelper<SaveRow>();
 
 export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
   const data = useMemo(() => {
@@ -58,101 +66,94 @@ export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
     return playthroughs.flat();
   }, [saves]);
 
-  type Data = (typeof data)[number];
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("name", {
+        header: "Playthrough",
+      }),
 
-  const columns = [
-    {
-      title: "Playthrough",
-      dataIndex: "name",
-      onCell: (data: Data) => ({ rowSpan: data.rowSpan }),
-    },
-    {
-      title: "Uploaded",
-      dataIndex: "upload_time",
-      render: (upload: string) => <TimeAgo date={upload} />,
-    },
-    {
-      title: "Date",
-      dataIndex: "date",
-      className: "no-break",
-    },
-    {
-      title: "Starting",
-      dataIndex: "player_start_tag_name",
-      render: (start_tag_name: string, record: SaveFile) =>
-        record.player_start_tag && record.player_start_tag_name ? (
-          <FlagAvatar
-            tag={record.player_start_tag}
-            name={record.player_start_tag_name}
-            size="large"
-          />
-        ) : (
-          "Multiplayer"
+      columnHelper.accessor("upload_time", {
+        cell: (info) => <TimeAgo date={info.getValue()} />,
+        header: "Uploaded",
+      }),
+
+      columnHelper.accessor("days", {
+        header: "Date",
+        cell: (info) => (
+          <div className="no-break">{info.row.original.date}</div>
         ),
-    },
-    {
-      title: "Current",
-      dataIndex: "player_tag",
-      render: (player: string, record: SaveFile) => (
-        <FlagAvatar
-          tag={record.player_tag}
-          name={record.player_tag_name}
-          size="large"
-        />
-      ),
-    },
-    {
-      title: "Patch",
-      dataIndex: "patch",
-    },
-    {
-      title: "Difficulty",
-      dataIndex: "game_difficulty",
-      render: (difficulty: GameDifficulty) => difficultyText(difficulty),
-    },
-    {
-      title: "Achievements",
-      dataIndex: "achievements",
-      render: (achievements: string[]) => (
-        <div className="flex space-x-1">
-          {achievements.map((x) => (
-            <AchievementAvatar id={x} key={x} size="large" />
-          ))}
-        </div>
-      ),
-    },
-    {
-      title: "",
-      dataIndex: "id",
-      render: (id: string) => {
-        const link = <Link href={`/eu4/saves/${id}`}>View</Link>;
-        let deleteEle = null;
-        if (isPrivileged) {
-          deleteEle = <DeleteSave saveId={id} type="link" />;
-        }
+      }),
 
-        return (
-          <div className="flex items-center space-x-2">
-            {link}
-            {deleteEle}
-          </div>
-        );
-      },
-    },
-  ];
+      columnHelper.accessor("player_start_tag_name", {
+        header: "Starting",
+        cell: ({ row }) =>
+          row.original.player_start_tag &&
+          row.original.player_start_tag_name ? (
+            <FlagAvatar
+              tag={row.original.player_start_tag}
+              name={row.original.player_start_tag_name}
+            />
+          ) : (
+            "Multiplayer"
+          ),
+      }),
+      columnHelper.accessor("player_tag_name", {
+        header: "Current",
+        cell: ({ row }) => (
+          <FlagAvatar
+            tag={row.original.player_tag}
+            name={row.original.player_tag_name}
+          />
+        ),
+      }),
+      columnHelper.accessor("patch", {
+        header: "Patch",
+      }),
+      columnHelper.accessor("game_difficulty", {
+        header: "Difficulty",
+        cell: (info) => difficultyText(info.getValue()),
+      }),
+      columnHelper.display({
+        header: "Achievements",
+        cell: (info) => (
+          <ul className="flex space-x-1">
+            {info.row.original.achievements.map((x) => (
+              <li className="flex" key={x}>
+                <AchievementAvatar id={x} className="h-10 w-10 shrink-0" />
+              </li>
+            ))}
+          </ul>
+        ),
+      }),
+      columnHelper.display({
+        id: "actions",
+        cell: (info) => {
+          const data = info.row.original;
+          const link = <Link href={`/eu4/saves/${data.id}`}>View</Link>;
+          let deleteEle = null;
+          if (isPrivileged) {
+            deleteEle = (
+              <DeleteSave
+                variant="ghost"
+                className="text-rose-500 underline-offset-4 hover:underline"
+                saveId={data.id}
+              />
+            );
+          }
 
-  return (
-    <>
-      <Table
-        size="small"
-        rowKey="id"
-        pagination={false}
-        dataSource={data}
-        columns={columns}
-        scroll={{ x: 1000 }}
-      />
-    </>
+          return (
+            <div className="flex items-center space-x-2">
+              {link}
+              {deleteEle}
+            </div>
+          );
+        },
+      }),
+    ],
+    [isPrivileged]
   );
+
+  return <DataTable columns={columns} data={data} />;
 };
 
 function playthroughName(playthroughId: string) {

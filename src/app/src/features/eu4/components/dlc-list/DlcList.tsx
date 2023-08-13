@@ -1,6 +1,7 @@
 import React from "react";
-import { Tooltip } from "antd";
 import Image from "next/image";
+import { Tooltip } from "@/components/Tooltip";
+import { cx } from "class-variance-authority";
 
 const dlc = [
   [10, "Conquest of Paradise", require("./dlc-images/10_s.png")],
@@ -33,10 +34,11 @@ export const DlcList = ({ dlc_enabled }: DlcListProps) => {
   const list = dlc.map(([id, name, imgPath]) => {
     const disabled = dlc_enabled.find((x) => x === id) === undefined;
     return (
-      <Tooltip key={id} title={name}>
-        <span style={disabled ? { filter: "grayscale(1)" } : undefined}>
+      <Tooltip key={id}>
+        <Tooltip.Trigger className={cx(disabled && "grayscale")}>
           <Image alt={`${name} icon`} src={imgPath} width={24} height={24} />
-        </span>
+        </Tooltip.Trigger>
+        <Tooltip.Content>{name}</Tooltip.Content>
       </Tooltip>
     );
   });

@@ -1,20 +1,17 @@
-import React, { useCallback, useRef } from "react";
-import { Table, Tooltip } from "antd";
-import { ColumnGroupType, ColumnType } from "antd/lib/table";
-import { useIsLoading } from "@/components/viz/visualization-context";
+import React, { useCallback } from "react";
 import { Losses } from "../../types/models";
-import { formatInt } from "@/lib/format";
+import { formatFloat, formatInt } from "@/lib/format";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { BattleInfo, WarParticipant } from "../../worker/module";
+import { Tooltip } from "@/components/Tooltip";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Table } from "@/components/Table";
+import { DataTable } from "@/components/DataTable";
 
 interface BattleViewProps {
   warName: string;
 }
-
-const winnerStyle = {
-  backgroundColor: "#b7eb8f",
-};
 
 const unitTypes: [string, keyof Losses, keyof Losses][] = [
   ["Inf", "infantryBattle", "infantryAttrition"],
@@ -27,124 +24,484 @@ const unitTypes: [string, keyof Losses, keyof Losses][] = [
   ["Total", "totalBattle", "totalAttrition"],
 ];
 
-function createSideSummary(participants: WarParticipant[]) {
-  const summaries: JSX.Element[] = Array(unitTypes.length * 2).fill(<></>);
-  for (const [i, unitType] of unitTypes.entries()) {
-    const [_title, battle, attrition] = unitType;
-    let battleTotal = 0;
-    let attritionTotal = 0;
-    for (const participant of participants) {
-      battleTotal += participant.losses[battle];
-      attritionTotal += participant.losses[attrition];
-    }
+const NumberCell = ({ children }: { children: number }) => (
+  <Table.Cell className="text-right">{formatInt(children)}</Table.Cell>
+);
 
-    summaries[i] = (
-      <Table.Summary.Cell key={4 + i} index={4 + i} align="right">
-        {formatInt(battleTotal)}
-      </Table.Summary.Cell>
-    );
-    summaries[i + unitTypes.length] = (
-      <Table.Summary.Cell key={12 + i} index={12 + i} align="right">
-        {formatInt(attritionTotal)}
-      </Table.Summary.Cell>
-    );
-  }
+const ParticipantsSummary = ({
+  participants,
+}: {
+  participants: WarParticipant[];
+}) => {
+  const fieldSum = (k: keyof Losses) =>
+    participants.reduce((acc, x) => acc + x.losses[k], 0);
 
-  return () => (
-    <Table.Summary.Row>
-      <Table.Summary.Cell key="total-label" index={0} colSpan={4}>
-        Total
-      </Table.Summary.Cell>
-      {summaries}
-    </Table.Summary.Row>
+  return (
+    <Table.Row>
+      <Table.Cell colSpan={4}>Total</Table.Cell>
+      <NumberCell>{fieldSum("infantryBattle")}</NumberCell>
+      <NumberCell>{fieldSum("cavalryBattle")}</NumberCell>
+      <NumberCell>{fieldSum("artilleryBattle")}</NumberCell>
+      <NumberCell>{fieldSum("heavyShipBattle")}</NumberCell>
+      <NumberCell>{fieldSum("lightShipBattle")}</NumberCell>
+      <NumberCell>{fieldSum("galleyShipBattle")}</NumberCell>
+      <NumberCell>{fieldSum("transportShipBattle")}</NumberCell>
+      <NumberCell>{fieldSum("totalBattle")}</NumberCell>
+      <NumberCell>{fieldSum("infantryAttrition")}</NumberCell>
+      <NumberCell>{fieldSum("cavalryAttrition")}</NumberCell>
+      <NumberCell>{fieldSum("artilleryAttrition")}</NumberCell>
+      <NumberCell>{fieldSum("heavyShipAttrition")}</NumberCell>
+      <NumberCell>{fieldSum("lightShipAttrition")}</NumberCell>
+      <NumberCell>{fieldSum("galleyShipAttrition")}</NumberCell>
+      <NumberCell>{fieldSum("transportShipAttrition")}</NumberCell>
+      <NumberCell>{fieldSum("totalAttrition")}</NumberCell>
+    </Table.Row>
   );
-}
+};
 
-function createSideColumn(): (
-  | ColumnGroupType<WarParticipant>
-  | ColumnType<WarParticipant>
-)[] {
-  const battleColumns: ColumnType<WarParticipant>[] = unitTypes.map(
-    ([title, column, _c]) => ({
-      title,
-      align: "right",
-      dataIndex: ["losses", column],
-      render: (x: number) => formatInt(x),
-      className: column == "totalBattle" ? "antd-column-separator" : "",
-      sorter: (a: WarParticipant, b: WarParticipant) =>
-        a.losses[column] - b.losses[column],
-    })
-  );
+const columnHelper = createColumnHelper<WarParticipant>();
 
-  const attritionColumns: ColumnType<WarParticipant>[] = unitTypes.map(
-    ([title, _c, column]) => ({
-      title,
-      align: "right",
-      dataIndex: ["losses", column],
-      render: (x: number) => formatInt(x),
-      sorter: (a: WarParticipant, b: WarParticipant) =>
-        a.losses[column] - b.losses[column],
-    })
-  );
+const participantColumns = [
+  columnHelper.accessor("name", {
+    sortingFn: "text",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Country" />
+    ),
+    cell: ({ row }) => (
+      <FlagAvatar tag={row.original.tag} name={row.original.name} />
+    ),
+  }),
 
-  return [
-    {
-      title: "Country",
-      dataIndex: ["name"],
-      render: (_name: string, x: WarParticipant) => (
-        <FlagAvatar tag={x.tag} name={x.name} />
-      ),
-      sorter: (a: WarParticipant, b: WarParticipant) =>
-        a.name.localeCompare(b.name),
-    },
-    {
-      title: "Participation",
-      dataIndex: "participation",
-      render: (_name: string, x: WarParticipant) => (
-        <Tooltip title={x.participation}>{`${formatInt(
-          x.participation_percent * 100
-        )}%`}</Tooltip>
-      ),
-      sorter: (a: WarParticipant, b: WarParticipant) =>
-        a.participation - b.participation,
-    },
-    {
-      title: "Joined",
-      dataIndex: "joined",
-      className: "no-break",
-      render: (date: string) => date || "---",
-    },
-    {
-      title: "Exited",
-      dataIndex: "exited",
-      className: "antd-column-separator no-break",
-      render: (date: string) => date || "---",
-    },
-    {
-      title: "Battle Casualties",
-      className: "antd-column-separator",
-      children: battleColumns,
-    },
-    {
-      title: "Attrition Casualties",
-      children: attritionColumns,
-    },
-  ];
-}
+  columnHelper.accessor("participation", {
+    sortingFn: "basic",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Participation" />
+    ),
+    meta: { className: "text-right" },
+    cell: ({ row }) => (
+      <Tooltip>
+        <Tooltip.Trigger>
+          {formatInt(row.original.participation_percent * 100)}%
+        </Tooltip.Trigger>
+        <Tooltip.Content>
+          {formatFloat(row.original.participation)}
+        </Tooltip.Content>
+      </Tooltip>
+    ),
+  }),
+
+  columnHelper.accessor("joined", {
+    sortingFn: "alphanumeric",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Joined" />
+    ),
+    meta: { className: "text-right no-break" },
+    cell: (info) => info.getValue() ?? "---",
+  }),
+
+  columnHelper.accessor("exited", {
+    sortingFn: "alphanumeric",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Exited" />
+    ),
+    meta: { className: "text-right no-break" },
+    cell: (info) => info.getValue() ?? "---",
+  }),
+
+  columnHelper.group({
+    header: "Battle Casualties",
+    columns: unitTypes.map(([title, column, _c]) =>
+      columnHelper.accessor(`losses.${column}`, {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title={title} />
+        ),
+        meta: { className: "text-right no-break" },
+        cell: (info) => formatInt(info.getValue()),
+      })
+    ),
+  }),
+
+  columnHelper.group({
+    header: "Attrition Casualties",
+    columns: unitTypes.map(([title, _c, column]) =>
+      columnHelper.accessor(`losses.${column}`, {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title={title} />
+        ),
+        meta: { className: "text-right no-break" },
+        cell: (info) => formatInt(info.getValue()),
+      })
+    ),
+  }),
+];
+
+const battleColumnHelper = createColumnHelper<BattleInfo>();
+const landColumns2 = [
+  battleColumnHelper.accessor("date", {
+    sortingFn: "alphanumeric",
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Date" />,
+    meta: { className: "text-right no-break" },
+    cell: (info) => info.getValue() ?? "---",
+  }),
+
+  battleColumnHelper.accessor("name", {
+    sortingFn: "text",
+    header: "Location",
+  }),
+
+  battleColumnHelper.accessor("attacker", {
+    header: "Attacker",
+    cell: (info) => (
+      <div className={info.row.original.attacker_won ? "bg-lime-200" : ""}>
+        <FlagAvatar
+          tag={info.getValue().country}
+          name={info.getValue().country_name}
+        />
+      </div>
+    ),
+  }),
+
+  battleColumnHelper.accessor("defender", {
+    header: "Defender",
+    cell: (info) => (
+      <div className={!info.row.original.attacker_won ? "bg-lime-200" : ""}>
+        <FlagAvatar
+          tag={info.getValue().country}
+          name={info.getValue().country_name}
+        />
+      </div>
+    ),
+  }),
+
+  battleColumnHelper.accessor("forces", {
+    sortingFn: "basic",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Forces" />
+    ),
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+
+  battleColumnHelper.accessor("losses", {
+    sortingFn: "basic",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Losses" />
+    ),
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+
+  battleColumnHelper.group({
+    header: "Attacker",
+    columns: [
+      battleColumnHelper.accessor("attacker.commander", {
+        header: "Commander",
+        cell: ({ row }) =>
+          !row.original.attacker.commander ? (
+            "---"
+          ) : (
+            <Tooltip>
+              <Tooltip.Trigger>
+                {row.original.attacker.commander_stats}
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                {row.original.attacker.commander}
+              </Tooltip.Content>
+            </Tooltip>
+          ),
+      }),
+
+      battleColumnHelper.accessor("attacker.infantry", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Inf" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("attacker.cavalry", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Cav" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("attacker.artillery", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Art" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("attacker.losses", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Losses" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+    ],
+  }),
+
+  battleColumnHelper.group({
+    header: "Defender",
+    columns: [
+      battleColumnHelper.accessor("defender.commander", {
+        header: "Commander",
+        cell: ({ row }) =>
+          !row.original.defender.commander ? (
+            "---"
+          ) : (
+            <Tooltip>
+              <Tooltip.Trigger>
+                {row.original.defender.commander_stats}
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                {row.original.defender.commander}
+              </Tooltip.Content>
+            </Tooltip>
+          ),
+      }),
+
+      battleColumnHelper.accessor("defender.infantry", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Inf" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("defender.cavalry", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Cav" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("defender.artillery", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Art" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("defender.losses", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Losses" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+    ],
+  }),
+];
+
+const navyColumns2 = [
+  battleColumnHelper.accessor("date", {
+    sortingFn: "alphanumeric",
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Date" />,
+    meta: { className: "text-right no-break" },
+    cell: (info) => info.getValue() ?? "---",
+  }),
+
+  battleColumnHelper.accessor("name", {
+    sortingFn: "text",
+    header: "Location",
+  }),
+
+  battleColumnHelper.accessor("attacker", {
+    header: "Attacker",
+    cell: (info) => (
+      <div className={info.row.original.attacker_won ? "bg-lime-200" : ""}>
+        <FlagAvatar
+          tag={info.getValue().country}
+          name={info.getValue().country_name}
+        />
+      </div>
+    ),
+  }),
+
+  battleColumnHelper.accessor("defender", {
+    header: "Defender",
+    cell: (info) => (
+      <div className={!info.row.original.attacker_won ? "bg-lime-200" : ""}>
+        <FlagAvatar
+          tag={info.getValue().country}
+          name={info.getValue().country_name}
+        />
+      </div>
+    ),
+  }),
+
+  battleColumnHelper.accessor("forces", {
+    sortingFn: "basic",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Forces" />
+    ),
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+
+  battleColumnHelper.accessor("losses", {
+    sortingFn: "basic",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Losses" />
+    ),
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
+
+  battleColumnHelper.group({
+    header: "Attacker",
+    columns: [
+      battleColumnHelper.accessor("attacker.commander", {
+        header: "Commander",
+        cell: ({ row }) =>
+          !row.original.attacker.commander ? (
+            "---"
+          ) : (
+            <Tooltip>
+              <Tooltip.Trigger>
+                {row.original.attacker.commander_stats}
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                {row.original.attacker.commander}
+              </Tooltip.Content>
+            </Tooltip>
+          ),
+      }),
+
+      battleColumnHelper.accessor("attacker.heavy_ship", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Heavy" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("attacker.light_ship", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Light" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("attacker.galley", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Galley" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("attacker.transport", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Trnspt" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("attacker.losses", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Losses" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+    ],
+  }),
+
+  battleColumnHelper.group({
+    header: "Defender",
+    columns: [
+      battleColumnHelper.accessor("defender.commander", {
+        header: "Commander",
+        cell: ({ row }) =>
+          !row.original.defender.commander ? (
+            "---"
+          ) : (
+            <Tooltip>
+              <Tooltip.Trigger>
+                {row.original.defender.commander_stats}
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                {row.original.defender.commander}
+              </Tooltip.Content>
+            </Tooltip>
+          ),
+      }),
+
+      battleColumnHelper.accessor("defender.heavy_ship", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Heavy" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("defender.light_ship", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Light" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("defender.galley", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Galley" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("defender.transport", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Trnspt" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+
+      battleColumnHelper.accessor("defender.losses", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Losses" />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+    ],
+  }),
+];
 
 export const BattleView = ({ warName }: BattleViewProps) => {
-  const isLoading = useIsLoading();
-
-  // These are references instead of state as setState functions
-  // were weirdly expensive like calling setStates on an 8 year old
-  // ultrabook would take a full second. Perhaps this is due to next.js
-  // debug (ie: hot module reload) shenaningans
-  const navalBattles = useRef<BattleInfo[]>([]);
-  const landBattles = useRef<BattleInfo[]>([]);
-  const attackers = useRef<WarParticipant[]>([]);
-  const defenders = useRef<WarParticipant[]>([]);
-
-  useEu4Worker(
+  const { data } = useEu4Worker(
     useCallback(
       async (worker) => {
         const war = await worker.eu4GetWarInfo(warName);
@@ -164,391 +521,33 @@ export const BattleView = ({ warName }: BattleViewProps) => {
           }
         }
 
-        attackers.current = war.attacker_participants;
-        defenders.current = war.defender_participants;
-        navalBattles.current = navalBattleInfos;
-        landBattles.current = landBattleInfos;
+        return {
+          attackers: war.attacker_participants,
+          defenders: war.defender_participants,
+          navalBattles: navalBattleInfos,
+          landBattles: landBattleInfos,
+        };
       },
       [warName]
     )
   );
 
-  const navalColumns: (ColumnGroupType<BattleInfo> | ColumnType<BattleInfo>)[] =
-    [
-      {
-        title: "Date",
-        dataIndex: "date",
-        className: "no-break",
-        sorter: (a: BattleInfo, b: BattleInfo) => a.date.localeCompare(b.date),
-      },
-      {
-        title: "Location",
-        dataIndex: "name",
-        className: "no-break",
-        render: (_x: string, record: BattleInfo) =>
-          `${record.name} (${record.location})`,
-      },
-      {
-        title: "Attacker",
-        dataIndex: ["attacker", "country"],
-        render: (_name: string, x: BattleInfo) => (
-          <FlagAvatar tag={x.attacker.country} name={x.attacker.country_name} />
-        ),
-        onCell: (record: BattleInfo) => ({
-          record,
-          style: record.attacker_won ? winnerStyle : undefined,
-        }),
-        sorter: (a: BattleInfo, b: BattleInfo) =>
-          a.attacker.country.localeCompare(b.attacker.country),
-      },
-      {
-        title: "Defender",
-        dataIndex: ["defender", "country"],
-        render: (_name: string, x: BattleInfo) => (
-          <FlagAvatar tag={x.defender.country} name={x.defender.country_name} />
-        ),
-        onCell: (record: BattleInfo) => ({
-          record,
-          style: !record.attacker_won ? winnerStyle : undefined,
-        }),
-        sorter: (a: BattleInfo, b: BattleInfo) =>
-          a.defender.country.localeCompare(b.defender.country),
-      },
-      {
-        title: "Forces",
-        align: "right",
-        dataIndex: "forces",
-        render: (x: number) => formatInt(x),
-        sorter: (a: BattleInfo, b: BattleInfo) => a.forces - b.forces,
-      },
-      {
-        title: "Losses",
-        align: "right",
-        dataIndex: "losses",
-        className: "antd-column-separator",
-        render: (x: number) => formatInt(x),
-        sorter: (a: BattleInfo, b: BattleInfo) => a.losses - b.losses,
-      },
-      {
-        title: "Attacker",
-        children: [
-          {
-            title: "Commander",
-            dataIndex: ["attacker", "commander"],
-            render: (commander: string | null, x: BattleInfo) =>
-              !commander ? (
-                "---"
-              ) : (
-                <Tooltip title={commander}>
-                  {x.attacker.commander_stats}
-                </Tooltip>
-              ),
-          },
-          {
-            title: "Heavy",
-            align: "right",
-            dataIndex: ["attacker", "heavy_ship"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              a.attacker.heavy_ship - b.attacker.heavy_ship,
-          },
-          {
-            title: "Light",
-            align: "right",
-            dataIndex: ["attacker", "light_ship"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              a.attacker.light_ship - b.attacker.light_ship,
-          },
-          {
-            title: "Galley",
-            align: "right",
-            dataIndex: ["attacker", "galley"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              a.attacker.galley - b.attacker.galley,
-          },
-          {
-            title: "Trnspt",
-            align: "right",
-            dataIndex: ["attacker", "transport"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              a.attacker.transport - b.attacker.transport,
-          },
-          {
-            title: "Losses",
-            align: "right",
-            dataIndex: ["attacker", "losses"],
-            className: "antd-column-separator",
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              (a.attacker.losses || 0) - (b.attacker.losses || 0),
-          },
-        ],
-      },
-      {
-        title: "Defender",
-        children: [
-          {
-            title: "Commander",
-            align: "right",
-            dataIndex: ["defender", "commander"],
-            render: (commander: string | null, x: BattleInfo) =>
-              !commander ? (
-                "---"
-              ) : (
-                <Tooltip title={commander}>
-                  {x.defender.commander_stats}
-                </Tooltip>
-              ),
-          },
-          {
-            title: "Heavy",
-            align: "right",
-            dataIndex: ["defender", "heavy_ship"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              (a.defender.heavy_ship || 0) - (b.defender.heavy_ship || 0),
-          },
-          {
-            title: "Light",
-            align: "right",
-            dataIndex: ["defender", "light_ship"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              (a.defender.light_ship || 0) - (b.defender.light_ship || 0),
-          },
-          {
-            title: "Galley",
-            align: "right",
-            dataIndex: ["defender", "galley"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              (a.defender.galley || 0) - (b.defender.galley || 0),
-          },
-          {
-            title: "Trnspt",
-            align: "right",
-            dataIndex: ["defender", "transport"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              (a.defender.transport || 0) - (b.defender.transport || 0),
-          },
-          {
-            title: "Losses",
-            align: "right",
-            dataIndex: ["defender", "losses"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              (a.defender.losses || 0) - (b.defender.losses || 0),
-          },
-        ],
-      },
-    ];
-
-  const landColumns: (ColumnGroupType<BattleInfo> | ColumnType<BattleInfo>)[] =
-    [
-      {
-        title: "Date",
-        dataIndex: "date",
-        className: "no-break",
-        sorter: (a: BattleInfo, b: BattleInfo) => a.date.localeCompare(b.date),
-      },
-      {
-        title: "Location",
-        dataIndex: "name",
-        className: "no-break",
-        render: (_x: string, record: BattleInfo) =>
-          `${record.name} (${record.location})`,
-      },
-      {
-        title: "Attacker",
-        dataIndex: ["attacker", "country"],
-        render: (_name: string, x: BattleInfo) => (
-          <FlagAvatar tag={x.attacker.country} name={x.attacker.country_name} />
-        ),
-        onCell: (record: BattleInfo) => ({
-          record,
-          style: record.attacker_won ? winnerStyle : undefined,
-        }),
-        sorter: (a: BattleInfo, b: BattleInfo) =>
-          a.attacker.country.localeCompare(b.attacker.country),
-      },
-      {
-        title: "Defender",
-        dataIndex: ["defender", "country"],
-        render: (_name: string, x: BattleInfo) => (
-          <FlagAvatar tag={x.defender.country} name={x.defender.country_name} />
-        ),
-        onCell: (record: BattleInfo) => ({
-          record,
-          style: !record.attacker_won ? winnerStyle : undefined,
-        }),
-        sorter: (a: BattleInfo, b: BattleInfo) =>
-          a.defender.country.localeCompare(b.defender.country),
-      },
-      {
-        title: "Forces",
-        align: "right",
-        dataIndex: "forces",
-        render: (x: number) => formatInt(x),
-        sorter: (a: BattleInfo, b: BattleInfo) => a.forces - b.forces,
-      },
-      {
-        title: "Losses",
-        align: "right",
-        dataIndex: "losses",
-        className: "antd-column-separator",
-        render: (x: number) => formatInt(x),
-        sorter: (a: BattleInfo, b: BattleInfo) => a.losses - b.losses,
-      },
-      {
-        title: "Attacker",
-        className: "antd-column-separator",
-        children: [
-          {
-            title: "Commander",
-            dataIndex: ["attacker", "commander"],
-            render: (commander: string | null, x: BattleInfo) =>
-              !commander ? (
-                "---"
-              ) : (
-                <Tooltip title={commander}>
-                  {x.attacker.commander_stats}
-                </Tooltip>
-              ),
-          },
-          {
-            title: "Inf",
-            align: "right",
-            dataIndex: ["attacker", "infantry"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              (a.attacker.infantry || 0) - (b.attacker.infantry || 0),
-          },
-          {
-            title: "Cav",
-            align: "right",
-            dataIndex: ["attacker", "cavalry"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              (a.attacker.cavalry || 0) - (b.attacker.cavalry || 0),
-          },
-          {
-            title: "Art",
-            align: "right",
-            dataIndex: ["attacker", "artillery"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              a.attacker.artillery - b.attacker.artillery,
-          },
-          {
-            title: "Losses",
-            align: "right",
-            dataIndex: ["attacker", "losses"],
-            render: (x: number) => formatInt(x),
-            className: "antd-column-separator",
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              a.attacker.losses - b.attacker.losses,
-          },
-        ],
-      },
-      {
-        title: "Defender",
-        children: [
-          {
-            title: "Commander",
-            dataIndex: ["defender", "commander"],
-            render: (commander: string | null, x: BattleInfo) =>
-              !commander ? (
-                "---"
-              ) : (
-                <Tooltip title={commander}>
-                  {x.defender.commander_stats}
-                </Tooltip>
-              ),
-          },
-          {
-            title: "Inf",
-            align: "right",
-            dataIndex: ["defender", "infantry"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              a.defender.infantry - b.defender.infantry,
-          },
-          {
-            title: "Cav",
-            align: "right",
-            dataIndex: ["defender", "cavalry"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              a.defender.cavalry - b.defender.cavalry,
-          },
-          {
-            title: "Art",
-            align: "right",
-            dataIndex: ["defender", "artillery"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              a.defender.artillery - b.defender.artillery,
-          },
-          {
-            title: "Losses",
-            align: "right",
-            dataIndex: ["defender", "losses"],
-            render: (x: number) => formatInt(x),
-            sorter: (a: BattleInfo, b: BattleInfo) =>
-              a.defender.losses - b.defender.losses,
-          },
-        ],
-      },
-    ];
-
   return (
     <div className="grid grid-cols-1 gap-12">
-      <Table
-        size="small"
-        title={() => "Attackers"}
-        rowKey="name"
-        loading={isLoading}
-        pagination={false}
-        scroll={{ x: true }}
-        dataSource={attackers.current}
-        columns={createSideColumn()}
-        summary={createSideSummary(attackers.current)}
+      <DataTable
+        initialSorting={[{ id: "participation", desc: true }]}
+        data={data?.attackers ?? []}
+        columns={participantColumns}
+        summary={<ParticipantsSummary participants={data?.attackers ?? []} />}
       />
-      <Table
-        size="small"
-        title={() => "Defenders"}
-        rowKey="name"
-        loading={isLoading}
-        pagination={false}
-        scroll={{ x: true }}
-        dataSource={defenders.current}
-        columns={createSideColumn()}
-        summary={createSideSummary(defenders.current)}
+      <DataTable
+        initialSorting={[{ id: "participation", desc: true }]}
+        data={data?.defenders ?? []}
+        columns={participantColumns}
+        summary={<ParticipantsSummary participants={data?.attackers ?? []} />}
       />
-      <Table
-        size="small"
-        title={() => "Land Battles"}
-        rowKey={(record) => `${record.date} - ${record.location}`}
-        loading={isLoading}
-        pagination={false}
-        scroll={{ x: true }}
-        dataSource={landBattles.current}
-        columns={landColumns}
-      />
-      <Table
-        size="small"
-        title={() => "Naval Battles"}
-        rowKey={(record) => `${record.date} - ${record.location}`}
-        loading={isLoading}
-        pagination={false}
-        scroll={{ x: true }}
-        dataSource={navalBattles.current}
-        columns={navalColumns}
-      />
+      <DataTable data={data?.landBattles ?? []} columns={landColumns2} />
+      <DataTable data={data?.navalBattles ?? []} columns={navyColumns2} />
     </div>
   );
 };

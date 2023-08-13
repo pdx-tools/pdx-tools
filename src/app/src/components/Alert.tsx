@@ -1,4 +1,4 @@
-import * as React from "react";
+import React from "react";
 import { cva, type VariantProps, cx } from "class-variance-authority";
 
 const alert = cva("relative w-full border-2 border-solid flex", {
@@ -12,7 +12,7 @@ const alert = cva("relative w-full border-2 border-solid flex", {
   },
 });
 
-export const Alert = React.forwardRef<
+const AlertRoot = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alert>
 >(function Alert({ className, variant, children, ...props }, ref) {
@@ -40,20 +40,30 @@ export const Alert = React.forwardRef<
   );
 });
 
-export const AlertTitle = React.forwardRef<
+export const Alert = AlertRoot as typeof AlertRoot & {
+  Title: typeof AlertTitle;
+  Description: typeof AlertDescription;
+  Error: typeof AlertError;
+};
+
+const AlertTitle = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLHeadingElement>
 >(function AlertTitle({ className, ...props }, ref) {
   return (
     <h5
       ref={ref}
-      className={cx("mb-1 font-medium leading-none tracking-tight", className)}
+      className={cx(
+        "mb-1 text-base font-medium leading-none tracking-tight",
+        className
+      )}
       {...props}
     />
   );
 });
+Alert.Title = AlertTitle;
 
-export const AlertDescription = React.forwardRef<
+const AlertDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(function AlertDescription({ className, ...props }, ref) {
@@ -65,3 +75,23 @@ export const AlertDescription = React.forwardRef<
     />
   );
 });
+Alert.Description = AlertDescription;
+
+const AlertError = ({
+  msg,
+  className,
+}: {
+  msg: string | undefined;
+  className?: string | undefined;
+}) => {
+  if (!msg) {
+    return null;
+  }
+
+  return (
+    <Alert variant="error" className={className}>
+      <AlertDescription>{msg}</AlertDescription>
+    </Alert>
+  );
+};
+Alert.Error = AlertError;

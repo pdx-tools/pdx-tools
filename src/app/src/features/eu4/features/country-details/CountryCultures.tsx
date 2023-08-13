@@ -1,11 +1,13 @@
 import React, { useCallback } from "react";
-import { Table, Tooltip } from "antd";
-import { ColumnType, ColumnGroupType } from "antd/lib/table";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryDetails, CountryCulture } from "../../types/models";
 import { StarTwoTone } from "@ant-design/icons";
-import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { useEu4Worker } from "@/features/eu4/worker";
+import { Tooltip } from "@/components/Tooltip";
+import { Alert } from "@/components/Alert";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Table } from "@/components/Table";
+import { DataTable } from "@/components/DataTable";
 
 export interface CountryCulturesProps {
   details: CountryDetails;
@@ -13,7 +15,6 @@ export interface CountryCulturesProps {
 
 export interface CountryCultureVizProps {
   data: CountryCulture[];
-  largeLayout: boolean;
 }
 
 const CultureStar = ({
@@ -31,123 +32,175 @@ const CultureStar = ({
   }
 };
 
-const CountryCultureVizImpl = ({
-  data,
-  largeLayout,
-}: CountryCultureVizProps) => {
-  const columns: (
-    | ColumnType<CountryCulture>
-    | ColumnGroupType<CountryCulture>
-  )[] = [
-    {
-      title: "Culture",
-      dataIndex: "name",
-      render: (_name: string, x: CountryCulture) => (
-        <Tooltip
-          title={`${x.id}${x.tolerance !== "None" ? ` (${x.tolerance})` : ""}`}
-        >
-          <CultureStar tolerance={x.tolerance} /> {x.name}
-        </Tooltip>
-      ),
-      sorter: (a: CountryCulture, b: CountryCulture) =>
-        a.name.localeCompare(b.name),
-    },
-    {
-      title: "Group",
-      dataIndex: "group",
-      sorter: (a: CountryCulture, b: CountryCulture) =>
-        (a.group ?? "---").localeCompare(b.group ?? "---"),
-    },
-    {
-      title: "Provinces",
-      children: [
-        {
-          title: "Count",
-          dataIndex: "provinces",
-          align: "right",
-          sorter: (a: CountryCulture, b: CountryCulture) =>
-            a.provinces - b.provinces,
-          render: (_: number, x) =>
-            `${formatInt(x.provinces)} (${formatFloat(
-              x.provinces_percent,
-              2
-            )}%)`,
-        },
-        {
-          title: "Dev",
-          dataIndex: "development",
-          align: "right",
-          sorter: (a: CountryCulture, b: CountryCulture) =>
-            a.development - b.development,
-          render: (_: number, x) =>
-            `${formatInt(x.development)} (${formatFloat(
-              x.development_percent,
-              2
-            )}%)`,
-        },
-      ],
-    },
-    {
-      title: "Stated Provinces",
-      children: [
-        {
-          title: "Count",
-          dataIndex: "stated_provs",
-          align: "right",
-          sorter: (a: CountryCulture, b: CountryCulture) =>
-            a.stated_provs - b.stated_provs,
-          render: (_: number, x) =>
-            `${formatInt(x.stated_provs)} (${formatFloat(
-              x.stated_provs_percent,
-              2
-            )}%)`,
-        },
-        {
-          title: "Dev",
-          dataIndex: "stated_provs_development",
-          defaultSortOrder: "descend",
-          align: "right",
-          sorter: (a: CountryCulture, b: CountryCulture) =>
-            a.stated_provs_development - b.stated_provs_development,
-          render: (_: number, x) =>
-            `${formatInt(x.stated_provs_development)} (${formatFloat(
-              x.stated_provs_development_percent,
-              2
-            )}%)`,
-        },
-      ],
-    },
-    {
-      title: "Ongoing Conversions",
-      children: [
-        {
-          title: "Count",
-          dataIndex: "conversions",
-          align: "right",
-          sorter: (a: CountryCulture, b: CountryCulture) =>
-            a.conversions - b.conversions,
-          render: (_: number, x) => formatInt(x.conversions),
-        },
-        {
-          title: "Dev",
-          dataIndex: "conversions_development",
-          align: "right",
-          sorter: (a: CountryCulture, b: CountryCulture) =>
-            a.conversions_development - b.conversions_development,
-          render: (_: number, x) => formatInt(x.conversions_development),
-        },
-      ],
-    },
-  ];
+const columnHelper = createColumnHelper<CountryCulture>();
+const columns = [
+  columnHelper.accessor("name", {
+    sortingFn: "text",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Culture" />
+    ),
+    size: 200,
+    cell: ({ row }) => (
+      <Tooltip>
+        <Tooltip.Trigger className="flex min-w-[150px] items-center gap-2">
+          <span>{row.original.name}</span>{" "}
+          <CultureStar tolerance={row.original.tolerance} />
+        </Tooltip.Trigger>
+        <Tooltip.Content>
+          {row.original.id}
+          {row.original.tolerance !== "None"
+            ? ` (${row.original.tolerance})`
+            : ""}
+        </Tooltip.Content>
+      </Tooltip>
+    ),
+  }),
 
+  columnHelper.accessor("group", {
+    sortingFn: "text",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Group" />
+    ),
+  }),
+
+  columnHelper.group({
+    header: "Provinces",
+    columns: [
+      columnHelper.group({
+        header: "Count",
+        columns: [
+          columnHelper.accessor("provinces", {
+            sortingFn: "basic",
+            header: "Value",
+            cell: (info) => (
+              <div className="text-right">{formatInt(info.getValue())}</div>
+            ),
+          }),
+          columnHelper.accessor("provinces_percent", {
+            sortingFn: "basic",
+            header: ({ column }) => (
+              <Table.ColumnHeader column={column} title="%" />
+            ),
+            cell: (info) => (
+              <div className="text-right">
+                {formatFloat(info.getValue(), 2)}%
+              </div>
+            ),
+          }),
+        ],
+      }),
+
+      columnHelper.group({
+        header: "Development",
+        columns: [
+          columnHelper.accessor("development", {
+            sortingFn: "basic",
+            header: "Value",
+            cell: (info) => (
+              <div className="text-right">{formatInt(info.getValue())}</div>
+            ),
+          }),
+          columnHelper.accessor("development_percent", {
+            sortingFn: "basic",
+            header: ({ column }) => (
+              <Table.ColumnHeader column={column} title="%" />
+            ),
+            cell: (info) => (
+              <div className="text-right">
+                {formatFloat(info.getValue(), 2)}%
+              </div>
+            ),
+          }),
+        ],
+      }),
+    ],
+  }),
+
+  columnHelper.group({
+    header: "Stated Provinces",
+    columns: [
+      columnHelper.group({
+        header: "Count",
+        columns: [
+          columnHelper.accessor("stated_provs", {
+            sortingFn: "basic",
+            header: "Value",
+            cell: (info) => (
+              <div className="text-right">{formatInt(info.getValue())}</div>
+            ),
+          }),
+          columnHelper.accessor("stated_provs_percent", {
+            sortingFn: "basic",
+            header: ({ column }) => (
+              <Table.ColumnHeader column={column} title="%" />
+            ),
+            cell: (info) => (
+              <div className="text-right">
+                {formatFloat(info.getValue(), 2)}%
+              </div>
+            ),
+          }),
+        ],
+      }),
+
+      columnHelper.group({
+        header: "Development",
+        columns: [
+          columnHelper.accessor("stated_provs_development", {
+            sortingFn: "basic",
+            header: "Value",
+            cell: (info) => (
+              <div className="text-right">{formatInt(info.getValue())}</div>
+            ),
+          }),
+          columnHelper.accessor("stated_provs_development_percent", {
+            sortingFn: "basic",
+            header: ({ column }) => (
+              <Table.ColumnHeader column={column} title="%" />
+            ),
+            cell: (info) => (
+              <div className="text-right">
+                {formatFloat(info.getValue(), 2)}%
+              </div>
+            ),
+          }),
+        ],
+      }),
+    ],
+  }),
+
+  columnHelper.group({
+    header: "Ongoing Conversions",
+    columns: [
+      columnHelper.accessor("conversions", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Count" />
+        ),
+        cell: (info) => (
+          <div className="text-right">{formatInt(info.getValue())}</div>
+        ),
+      }),
+      columnHelper.accessor("conversions_development", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Dev" />
+        ),
+        cell: (info) => (
+          <div className="text-right">{formatInt(info.getValue())}</div>
+        ),
+      }),
+    ],
+  }),
+];
+
+const CountryCultureVizImpl = ({ data }: CountryCultureVizProps) => {
   return (
-    <Table
-      size="small"
-      rowKey={(record) => `${record.id}`}
-      dataSource={data}
-      scroll={{ x: true }}
-      pagination={false}
+    <DataTable
+      data={data}
       columns={columns}
+      pagination={true}
+      initialSorting={[{ id: "stated_provs_development_percent", desc: true }]}
     />
   );
 };
@@ -155,12 +208,16 @@ const CountryCultureVizImpl = ({
 const CountryCultureViz = React.memo(CountryCultureVizImpl);
 
 export const CountryCultures = ({ details }: CountryCulturesProps) => {
-  const isMd = useBreakpoint("md");
-  const { data = [] } = useEu4Worker(
+  const { data = [], error } = useEu4Worker(
     useCallback(
       (worker) => worker.eu4GetCountryProvinceCulture(details.tag),
       [details.tag]
     )
   );
-  return <CountryCultureViz data={data} largeLayout={isMd} />;
+  return (
+    <>
+      <Alert.Error msg={error} />
+      <CountryCultureViz data={data} />
+    </>
+  );
 };

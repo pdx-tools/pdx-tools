@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Button } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { Button } from "@/components/Button";
 
 interface FlipBookProps<T> {
   items: T[];
@@ -20,18 +20,22 @@ export function FlipBook<T>({
     return (
       <div className="flex items-center space-x-2">
         <Button
-          icon={<LeftOutlined />}
-          type="text"
+          variant="ghost"
           disabled={ind == 0}
           onClick={() => setInd(ind - 1)}
-        ></Button>
+        >
+          <LeftOutlined />
+          <span className="sr-only">Previous</span>
+        </Button>
         {itemRender(items[ind])}
         <Button
-          type="text"
-          icon={<RightOutlined />}
+          variant="ghost"
           disabled={ind == items.length - 1}
           onClick={() => setInd(ind + 1)}
-        ></Button>
+        >
+          <RightOutlined />
+          <span className="sr-only">Next</span>
+        </Button>
       </div>
     );
   }

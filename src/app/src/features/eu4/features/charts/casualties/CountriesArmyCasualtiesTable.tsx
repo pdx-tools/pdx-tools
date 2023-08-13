@@ -1,34 +1,96 @@
-import React, { useEffect, useRef } from "react";
-import { Table } from "antd";
-import { ColumnGroupType, ColumnType } from "antd/lib/table";
-import { PlusCircleTwoTone, MinusCircleTwoTone } from "@ant-design/icons";
+import React, { useEffect } from "react";
 import { TableLosses, useCountryCasualtyData } from "./hooks";
-import {
-  useIsLoading,
-  useVisualizationDispatch,
-} from "@/components/viz/visualization-context";
+import { useVisualizationDispatch } from "@/components/viz/visualization-context";
 import { formatInt } from "@/lib/format";
-import { ExpandableConfig } from "antd/lib/table/interface";
-import { CountriesArmyCasualtiesWarTable } from "./CountriesArmyCasualtiesWarTable";
 import { FlagAvatar } from "@/features/eu4/components/avatars";
-import { countryColumnFilter } from "../countryColumnFilter";
 import { createCsv } from "@/lib/csv";
-import { useTablePagination } from "@/features/ui-controls";
+import { Alert } from "@/components/Alert";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Table } from "@/components/Table";
+import { DataTable } from "@/components/DataTable";
+import { SheetExpansion } from "../../../components/SheetExpansion";
+import { CountriesArmyCasualtiesWarTable } from "./CountriesArmyCasualtiesWarTable";
 
 const unitTypes = [
   ["Inf", "infantry"],
   ["Cav", "cavalry"],
   ["Art", "artillery"],
   ["Total", "landTotal"],
+] as const;
+
+const columnHelper = createColumnHelper<TableLosses>();
+const columns = [
+  columnHelper.display({
+    id: "actions",
+    cell: ({ row }) => (
+      <SheetExpansion title={`${row.original.name} Casualty Breakdown`}>
+        <CountriesArmyCasualtiesWarTable record={row.original} />
+      </SheetExpansion>
+    ),
+  }),
+
+  columnHelper.accessor("name", {
+    sortingFn: "text",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Country" />
+    ),
+    cell: ({ row }) => (
+      <FlagAvatar tag={row.original.tag} name={row.original.name} />
+    ),
+  }),
+
+  columnHelper.group({
+    header: "Battle Losses",
+    columns: unitTypes.map(([title, type]) =>
+      columnHelper.accessor(`${type}Battle`, {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title={title} />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      })
+    ),
+  }),
+
+  columnHelper.group({
+    header: "Attrition Losses",
+    columns: unitTypes.map(([title, type]) =>
+      columnHelper.accessor(`${type}Attrition`, {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title={title} />
+        ),
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      })
+    ),
+  }),
+
+  columnHelper.accessor((x) => (x.landTotalAttrition / x.landTotal) * 100, {
+    id: "attrition",
+    sortingFn: "basic",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="% from Attrition" />
+    ),
+    meta: { className: "text-right" },
+    cell: (info) =>
+      isNaN(info.getValue()) ? "0%" : formatInt(info.getValue()) + "%",
+  }),
+
+  columnHelper.accessor("landTotal", {
+    sortingFn: "basic",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Total Losses" />
+    ),
+    meta: { className: "text-right" },
+    cell: (info) => formatInt(info.getValue()),
+  }),
 ];
 
 export const CountriesArmyCasualtiesTable = () => {
-  const data = useCountryCasualtyData();
-  const isLoading = useIsLoading();
-  const numRenderer = (x: number) => formatInt(x);
-  const selectFilterRef = useRef(null);
+  const casualties = useCountryCasualtyData();
   const visualizationDispatch = useVisualizationDispatch();
-  const tablePagination = useTablePagination();
 
   useEffect(() => {
     visualizationDispatch({
@@ -43,102 +105,20 @@ export const CountriesArmyCasualtiesTable = () => {
           ),
           "landTotal",
         ];
-        return createCsv(data, keys);
+        return createCsv(casualties.data, keys);
       },
     });
-  }, [data, visualizationDispatch]);
-
-  const battleColumns: ColumnType<TableLosses>[] = unitTypes.map(
-    ([title, type]) => ({
-      title,
-      dataIndex: `${type}Battle`,
-      align: "right",
-      render: numRenderer,
-      sorter: (a: any, b: any) => a[`${type}Battle`] - b[`${type}Battle`],
-      className: title === "Total" ? "antd-column-separator" : undefined,
-    })
-  );
-
-  const attritionColumns: ColumnType<TableLosses>[] = unitTypes.map(
-    ([title, type]) => ({
-      title,
-      dataIndex: `${type}Attrition`,
-      align: "right",
-      render: numRenderer,
-      sorter: (a: any, b: any) => a[`${type}Attrition`] - b[`${type}Attrition`],
-      className: title === "Total" ? "antd-column-separator" : undefined,
-    })
-  );
-
-  const columns: (ColumnGroupType<TableLosses> | ColumnType<TableLosses>)[] = [
-    {
-      title: "Country",
-      dataIndex: "name",
-      fixed: "left",
-      width: 175,
-      render: (_name: string, x: TableLosses) => (
-        <FlagAvatar tag={x.tag} name={x.name} size="large" />
-      ),
-      sorter: (a: TableLosses, b: TableLosses) => a.name.localeCompare(b.name),
-      ...countryColumnFilter(selectFilterRef, (record) => record.tag),
-    },
-    {
-      title: "Battle Losses",
-      children: battleColumns,
-    },
-    {
-      title: "Attrition Losses",
-      children: attritionColumns,
-    },
-    {
-      title: "% from Attrition",
-      key: "percent-attrition",
-      align: "right",
-      render: (_x: any, x: TableLosses) =>
-        `${formatInt((x.landTotalAttrition / x.landTotal) * 100)}%`,
-      sorter: {
-        multiple: 2,
-        compare: (a: TableLosses, b: TableLosses) =>
-          a.landTotalAttrition / a.landTotal -
-          b.landTotalAttrition / b.landTotal,
-      },
-    },
-    {
-      title: "Total Losses",
-      dataIndex: "landTotal",
-      align: "right",
-      render: numRenderer,
-      defaultSortOrder: "descend",
-      sorter: {
-        multiple: 1,
-        compare: (a: TableLosses, b: TableLosses) =>
-          a[`landTotal`] - b[`landTotal`],
-      },
-    },
-  ];
-
-  const expandable: ExpandableConfig<TableLosses> = {
-    expandedRowRender: (record: TableLosses) => (
-      <CountriesArmyCasualtiesWarTable record={record} />
-    ),
-    expandIcon: ({ expanded, onExpand, record }) =>
-      expanded ? (
-        <MinusCircleTwoTone onClick={(e) => onExpand(record, e)} />
-      ) : (
-        <PlusCircleTwoTone onClick={(e) => onExpand(record, e)} />
-      ),
-  };
+  }, [casualties.data, visualizationDispatch]);
 
   return (
-    <Table
-      size="small"
-      rowKey="name"
-      loading={isLoading}
-      scroll={{ x: true }}
-      dataSource={data}
-      columns={columns}
-      pagination={tablePagination}
-      expandable={expandable}
-    />
+    <>
+      <Alert.Error msg={casualties.error} />
+      <DataTable
+        columns={columns}
+        data={casualties.data}
+        pagination={true}
+        initialSorting={[{ id: "landTotal", desc: true }]}
+      />
+    </>
   );
 };

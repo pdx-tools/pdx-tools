@@ -1,13 +1,10 @@
-import { Drawer } from "antd";
 import { useEffect, useState } from "react";
 import { ProvinceDetailsDescriptions } from "./ProvinceDetailsDescriptions";
-import {
-  SideBarContainerProvider,
-  closeDrawerPropagation,
-} from "../../components/SideBarContainer";
+import { SideBarContainerProvider } from "../../components/SideBarContainer";
 import { useEu4Map } from "../../store";
 import { ProvinceDetails } from "../../types/models";
 import { getEu4Worker } from "../../worker";
+import { Sheet } from "@/components/Sheet";
 
 export const ProvinceSelectListener = () => {
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -35,18 +32,28 @@ export const ProvinceSelectListener = () => {
 
   const visible = drawerVisible && !!data;
   return (
-    <Drawer
-      title="Province Details"
-      placement="right"
-      onClose={closeDrawerPropagation(() => setDrawerVisible(false), visible)}
-      visible={visible}
-      mask={false}
-      closable={true}
-      width="min(400px, 100%)"
-    >
-      <SideBarContainerProvider>
-        {data ? <ProvinceDetailsDescriptions province={data} /> : null}
-      </SideBarContainerProvider>
-    </Drawer>
+    <Sheet modal={false} open={visible} onOpenChange={setDrawerVisible}>
+      <Sheet.Content
+        side="right"
+        className="flex w-[480px] max-w-full flex-col bg-white"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        <SideBarContainerProvider>
+          {data ? (
+            <>
+              <Sheet.Header className="z-10 p-4 shadow-md">
+                <Sheet.Close />
+                <Sheet.Title>
+                  {data.id}: {data.name}
+                </Sheet.Title>
+              </Sheet.Header>
+              <Sheet.Body className="px-4 py-6">
+                <ProvinceDetailsDescriptions province={data} />
+              </Sheet.Body>
+            </>
+          ) : null}
+        </SideBarContainerProvider>
+      </Sheet.Content>
+    </Sheet>
   );
 };

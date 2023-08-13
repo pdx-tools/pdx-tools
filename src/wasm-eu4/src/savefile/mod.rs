@@ -55,6 +55,7 @@ pub struct CountryInfo {
     pub name: String,
     pub is_human: bool,
     pub is_alive: bool,
+    pub existed: bool,
     pub color: String,
 }
 
@@ -804,7 +805,8 @@ impl SaveFileImpl {
 
     pub fn get_countries(&self) -> Vec<CountryInfo> {
         let blank: CountryTag = "---".parse().unwrap();
-        self.query
+        let mut results: Vec<_> = self
+            .query
             .countries()
             .filter(|x| x.tag != blank)
             .map(|x| {
@@ -821,9 +823,13 @@ impl SaveFileImpl {
                     color,
                     is_alive: x.country.num_of_cities > 0,
                     is_human: x.country.human,
+                    existed: x.country.monarch.is_some(),
                 }
             })
-            .collect()
+            .collect();
+
+        results.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+        results
     }
 
     pub fn get_countries_income(

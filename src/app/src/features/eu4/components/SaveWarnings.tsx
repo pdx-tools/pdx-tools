@@ -1,6 +1,6 @@
 import React from "react";
 import { useEu4Meta } from "../store";
-import { Alert, AlertDescription } from "@/components/Alert";
+import { Alert } from "@/components/Alert";
 
 export const SaveWarnings = () => {
   const meta = useEu4Meta();
@@ -11,11 +11,11 @@ export const SaveWarnings = () => {
 
   return (
     <Alert variant="warning" className="fixed w-full px-4 py-2">
-      <AlertDescription>
+      <Alert.Description>
         {meta.warnings.map((x) => (
           <div key={x}>{x}</div>
         ))}
-      </AlertDescription>
+      </Alert.Description>
     </Alert>
   );
 };

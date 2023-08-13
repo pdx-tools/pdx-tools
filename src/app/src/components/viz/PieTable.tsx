@@ -1,12 +1,13 @@
-import React from "react";
-import { Table } from "antd";
+import React, { useMemo } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
-import { LegendColor, useIsLoading, Pie, PieConfig } from "@/components/viz";
+import { LegendColor, Pie, PieConfig } from "@/components/viz";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Table } from "@/components/Table";
+import { DataTable } from "@/components/DataTable";
 
 interface BudgetRow {
   key: string;
   value: number;
-  [index: string]: string | number;
 }
 
 interface PieTableProps {
@@ -52,76 +53,84 @@ const PieTablePieImpl = ({ rows, palette }: PieTablePieProps) => {
 
 const PieTablePie = React.memo(PieTablePieImpl);
 
+const columnHelper = createColumnHelper<BudgetRow & { percent: number }>();
+
 export const PieTable = ({
   rows,
   title,
   palette,
   paginate,
-  wholeNumbers,
+  wholeNumbers = false,
 }: PieTableProps) => {
-  const isLoading = useIsLoading();
-  const numFormatter =
-    wholeNumbers || false
-      ? (x: number) => formatInt(x)
-      : (x: number) => formatFloat(x);
-
-  let pag = paginate ? undefined : false;
+  const numFormatter = wholeNumbers ? formatInt : formatFloat;
   const total = rows.reduce((acc, x) => acc + x.value, 0);
+
+  const data = useMemo(
+    () =>
+      rows
+        .map((x) => ({
+          ...x,
+          percent: x.value / total,
+        }))
+        .sort((a, b) => b.value - a.value),
+    [total, rows]
+  );
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("key", {
+        sortingFn: "text",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Class" />
+        ),
+        cell: (info) => (
+          <div className="flex items-center space-x-2">
+            <LegendColor color={palette.get(info.getValue())} />
+            <span>{info.getValue()}</span>
+          </div>
+        ),
+      }),
+
+      columnHelper.accessor("value", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Class" />
+        ),
+        cell: (info) => (
+          <div className="text-right">{numFormatter(info.getValue())}</div>
+        ),
+      }),
+      columnHelper.accessor("percent", {
+        sortingFn: "basic",
+        header: ({ column }) => (
+          <Table.ColumnHeader column={column} title="Percent" />
+        ),
+        cell: (info) => (
+          <div className="text-right">{formatFloat(info.getValue())}%</div>
+        ),
+      }),
+    ],
+    [palette, numFormatter]
+  );
+
   return (
     <div className="flex gap-6">
-      {isLoading ? null : (
-        <Table
-          size="small"
-          pagination={pag}
-          dataSource={rows}
-          title={() => title}
-          summary={(_rows: readonly BudgetRow[]) => {
-            const cells = [
-              //@ts-ignore
-              <Table.Summary.Cell key="total-label">Total</Table.Summary.Cell>,
-              //@ts-ignore
-              <Table.Summary.Cell key="total-value" className="text-right">
-                <span>{numFormatter(total)}</span>
-              </Table.Summary.Cell>,
-            ];
-
-            return <Table.Summary.Row>{cells}</Table.Summary.Row>;
-          }}
-          columns={[
-            {
-              title: "Class",
-              dataIndex: "key",
-              render: (className: string) => {
-                return (
-                  <div className="flex items-center space-x-2">
-                    <LegendColor color={palette.get(className)} />
-                    <span>{`${className}`}</span>
-                  </div>
-                );
-              },
-              sorter: (a: BudgetRow, b: BudgetRow) =>
-                a.key.localeCompare(b.key),
-            },
-            {
-              title: "Value",
-              dataIndex: "value",
-              align: "right",
-              defaultSortOrder: "descend",
-              render: (value: number) => `${numFormatter(value)}`,
-              sorter: (a: BudgetRow, b: BudgetRow) => a.value - b.value,
-            },
-            {
-              title: "Percent",
-              dataIndex: "value",
-              key: "percent",
-              align: "right",
-              render: (value: number) =>
-                `${((value / total) * 100).toFixed(2)}%`,
-              sorter: (a: BudgetRow, b: BudgetRow) => a.value - b.value,
-            },
-          ]}
+      <div>
+        <h3>{title}</h3>
+        <DataTable
+          columns={columns}
+          data={data}
+          pagination={paginate}
+          summary={
+            <Table.Row>
+              <Table.Cell>Total</Table.Cell>
+              <Table.Cell className="text-right">
+                {formatFloat(total)}
+              </Table.Cell>
+            </Table.Row>
+          }
         />
-      )}
+      </div>
       <PieTablePie rows={rows} palette={palette} />
     </div>
   );

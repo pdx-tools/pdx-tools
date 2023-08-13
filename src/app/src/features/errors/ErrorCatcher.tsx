@@ -1,7 +1,7 @@
 import React, { ErrorInfo } from "react";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { captureException } from "./captureException";
-import { AlertDescription, Alert } from "@/components/Alert";
+import { Alert } from "@/components/Alert";
 
 interface ErrorCatcherProps {
   children: React.ReactNode;
@@ -37,11 +37,11 @@ export class ErrorCatcher extends React.Component<
     if (this.state.error) {
       return (
         <Alert className="px-4 py-2" variant="error">
-          <AlertDescription>
+          <Alert.Description>
             Error encountered: {getErrorMessage(this.state.error)}. Recommended
             to refresh. If the error continues, please report the issue via
             Discord
-          </AlertDescription>
+          </Alert.Description>
         </Alert>
       );
     }

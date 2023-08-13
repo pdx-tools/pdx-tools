@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { Spin, Dropdown, Button } from "antd";
-import { DownOutlined } from "@ant-design/icons";
 import { MapModeButtonGroup } from "../../components/map-modes";
-import { CountryFilterButton } from "../country-filter";
 import { DateTimeline } from "./DateTimeline";
 import { MapExportMenu } from "./MapExportMenu";
 import { ToggleRow } from "./ToggleRow";
 import { Timelapse } from "./Timelapse";
+import { Button } from "@/components/Button";
 import {
   useEu4Actions,
   useEu4MapMode,
@@ -18,6 +16,8 @@ import {
   useShowMapModeBorders,
 } from "../../store";
 import { Divider } from "@/components/Divider";
+import { DropdownMenu } from "@/components/DropdownMenu";
+import { CountryFilterButton } from "../../components/CountryFilterButton";
 
 const TerrainToggleRow = () => {
   const data = useTerrainOverlay();
@@ -105,16 +105,17 @@ export const MapSettings = () => {
       <div>
         <MapModeButtonGroup />
       </div>
-      <div className="flex items-center gap-2">
-        <CountryFilterButton>Filter Countries</CountryFilterButton>
+      <div className="flex items-center gap-3">
+        <CountryFilterButton />
 
-        <Spin delay={50} spinning={isExporting}>
-          <Dropdown overlay={<MapExportMenu setIsExporting={setIsExporting} />}>
-            <Button>
-              Export <DownOutlined />
-            </Button>
-          </Dropdown>
-        </Spin>
+        <DropdownMenu>
+          <DropdownMenu.Trigger asChild>
+            <Button variant="default">Export</Button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Content>
+            <MapExportMenu setIsExporting={setIsExporting} />
+          </DropdownMenu.Content>
+        </DropdownMenu>
       </div>
 
       <TerrainToggleRow />

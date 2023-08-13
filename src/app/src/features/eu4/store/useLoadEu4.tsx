@@ -123,7 +123,8 @@ function getSaveInfo(
 async function loadEu4Save(
   save: Eu4SaveInput,
   mapCanvas: HTMLCanvasElement,
-  dispatch: Dispatch<Eu4LoadActions>
+  dispatch: Dispatch<Eu4LoadActions>,
+  dimensions: { width: number; height: number }
 ) {
   dispatch({ kind: "start" });
   const worker = getEu4Worker();
@@ -233,8 +234,7 @@ async function loadEu4Save(
   ]);
 
   const map = new WebGLMap(gl, glResources, finder);
-  const rect = document.body.getBoundingClientRect();
-  map.resize(rect.width, rect.height);
+  map.resize(dimensions.width, dimensions.height);
 
   const { primary, secondary } = await runTask(dispatch, {
     fn: () =>
@@ -313,11 +313,12 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
   const mapContainer = useMapContainer(data?.getState().map);
 
   useEffect(() => {
-    if (mapCanvas.current === null) {
+    if (mapCanvas.current === null || mapContainer.current === null) {
       return;
     }
 
-    loadEu4Save(save, mapCanvas.current, dispatch)
+    const dimensions = mapContainer.current.getBoundingClientRect();
+    loadEu4Save(save, mapCanvas.current, dispatch, dimensions)
       .then(async ({ map, ...rest }) => {
         const store = await createEu4Store({
           store: storeRef.current,
@@ -343,7 +344,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
         dispatch({ kind: "error", error });
         captureException(error);
       });
-  }, [save]);
+  }, [save, mapContainer]);
 
   useEffect(() => {
     const canvas = mapCanvas.current;

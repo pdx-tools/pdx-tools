@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Eu4Worker, useEu4Worker } from "../../worker";
 import { useEu4Actions, useWatcher } from "../../store";
-import { Button, Radio } from "antd";
+import { Button } from "@/components/Button";
 import { WatchCountryDetails } from "./WatchCountryDetails";
+import { ToggleGroup } from "@/components/ToggleGroup";
+import { Alert } from "@/components/Alert";
 
 const FallbackMessage = () => {
   return (
@@ -29,6 +31,10 @@ export const WatchContent = () => {
   const defaultFrequency = "monthly";
   const [updateFrequency, setUpdateFrequency] = useState(defaultFrequency);
 
+  if (supported.error) {
+    return <Alert.Error msg={supported.error} />;
+  }
+
   if (supported.data !== true) {
     return <FallbackMessage />;
   }
@@ -42,15 +48,30 @@ export const WatchContent = () => {
         on in-game settings.
       </p>
       <div className="flex gap-12">
-        <Radio.Group
+        <ToggleGroup
+          type="single"
           disabled={watcher.status !== "idle"}
-          onChange={(e) => setUpdateFrequency(e.target.value)}
+          className="inline-flex self-center"
           defaultValue={defaultFrequency}
+          onValueChange={setUpdateFrequency}
+          aria-label="update frequency"
         >
-          <Radio.Button value="daily">Daily</Radio.Button>
-          <Radio.Button value="monthly">Monthly</Radio.Button>
-          <Radio.Button value="yearly">Yearly</Radio.Button>
-        </Radio.Group>
+          <ToggleGroup.Item value="daily" asChild>
+            <Button shape="none" className="px-4 py-2">
+              Daily
+            </Button>
+          </ToggleGroup.Item>
+          <ToggleGroup.Item value="monthly" asChild>
+            <Button shape="none" className="px-4 py-2">
+              Monthly
+            </Button>
+          </ToggleGroup.Item>
+          <ToggleGroup.Item value="yearly" asChild>
+            <Button shape="none" className="px-4 py-2">
+              Yearly
+            </Button>
+          </ToggleGroup.Item>
+        </ToggleGroup>
         <div className="flex gap-2">
           <Button
             onClick={() => actions.startWatcher(updateFrequency)}

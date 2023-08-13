@@ -1,8 +1,7 @@
-import { AlertDescription, Alert } from "@/components/Alert";
+import { Alert } from "@/components/Alert";
 import { PrivateUserInfo, useNewApiKeyRequest } from "@/services/appApi";
-import { Button, Typography } from "antd";
+import { Button } from "@/components/Button";
 import React, { useState } from "react";
-const { Text } = Typography;
 
 export const AccountContent = ({ info }: { info: PrivateUserInfo }) => {
   const [key, setKey] = useState<string | undefined>();
@@ -12,12 +11,9 @@ export const AccountContent = ({ info }: { info: PrivateUserInfo }) => {
     <>
       {key ? (
         <Alert key={key} variant="info" className="p-4">
-          <AlertDescription>
-            <Text copyable={{ text: key || "" }}>
-              Your new API Key: <pre className="inline">{key}</pre>. Keep it
-              safe
-            </Text>
-          </AlertDescription>
+          <Alert.Description>
+            Your new API Key: <pre className="inline">{key}</pre>. Keep it safe
+          </Alert.Description>
         </Alert>
       ) : null}
       <div>
@@ -25,7 +21,7 @@ export const AccountContent = ({ info }: { info: PrivateUserInfo }) => {
           Generate a new API key for 3rd party apps. Previous API key is
           overwritten
         </p>
-        <Button loading={newKey.isLoading} onClick={() => newKey.mutate()}>
+        <Button className="mt-2" onClick={() => newKey.mutate()}>
           Generate
         </Button>
       </div>
