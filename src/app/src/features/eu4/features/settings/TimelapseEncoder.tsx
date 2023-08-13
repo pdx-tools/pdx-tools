@@ -51,7 +51,7 @@ export class TimelapseEncoder {
     private store: Eu4Store
   ) {
     this.encoder = new VideoEncoder({
-      output: (chunk, meta) => this.muxer.mux.addVideoChunk(chunk, meta),
+      output: (chunk, meta) => this.muxer.mux.addVideoChunk(chunk, meta ?? {}),
       error: (e) => (this.error = e),
     });
 
