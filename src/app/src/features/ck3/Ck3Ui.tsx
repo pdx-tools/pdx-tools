@@ -61,7 +61,7 @@ type Ck3LoadActions =
 
 const loadStateReducer = (
   state: Ck3LoadState,
-  action: Ck3LoadActions
+  action: Ck3LoadActions,
 ): Ck3LoadState => {
   switch (action.kind) {
     case "start": {

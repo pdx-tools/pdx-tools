@@ -43,8 +43,8 @@ export const GeographicalDevelopmentTree = () => {
   const { data, error } = useAnalysisWorker(
     useCallback(
       (worker) => worker.eu4GeographicalDevelopment(countryFilter),
-      [countryFilter]
-    )
+      [countryFilter],
+    ),
   );
   const visualizationDispatch = useVisualizationDispatch();
 
@@ -69,10 +69,10 @@ export const GeographicalDevelopmentTree = () => {
                   tax: prov.tax,
                   production: prov.production,
                   manpower: prov.manpower,
-                }))
-              )
-            )
-          )
+                })),
+              ),
+            ),
+          ),
         );
 
         const keys: (keyof (typeof csv)[number])[] = [
@@ -112,9 +112,9 @@ export const GeographicalDevelopmentTree = () => {
         return {
           name: v.name,
           value: `${formatInt(datum.value)} (${formatInt(
-            (datum.value / root.value) * 100
+            (datum.value / root.value) * 100,
           )}%) (${formatInt(datum.tax)} / ${formatInt(
-            datum.production
+            datum.production,
           )} / ${formatInt(datum.manpower)})`,
         };
       },

@@ -52,7 +52,7 @@ type Eu4LoadActions =
 
 const loadStateReducer = (
   state: Eu4LoadState,
-  action: Eu4LoadActions
+  action: Eu4LoadActions,
 ): Eu4LoadState => {
   switch (action.kind) {
     case "start": {
@@ -96,7 +96,7 @@ type Task<T> = {
 
 function runTask<T>(
   dispatch: Dispatch<Eu4LoadActions>,
-  { fn, name, progress }: Task<T>
+  { fn, name, progress }: Task<T>,
 ) {
   return timeit(fn).then((res) => {
     logMs(res, name);
@@ -106,7 +106,7 @@ function runTask<T>(
 }
 
 function getSaveInfo(
-  save: Eu4SaveInput
+  save: Eu4SaveInput,
 ): { kind: "async"; saveId: string } | { kind: "sync"; data: string } {
   switch (save.kind) {
     case "server":
@@ -124,7 +124,7 @@ async function loadEu4Save(
   save: Eu4SaveInput,
   mapCanvas: HTMLCanvasElement,
   dispatch: Dispatch<Eu4LoadActions>,
-  dimensions: { width: number; height: number }
+  dimensions: { width: number; height: number },
 ) {
   dispatch({ kind: "start" });
   const worker = getEu4Worker();
@@ -156,7 +156,7 @@ async function loadEu4Save(
   dispatch({ kind: "progress", value: 3 });
   logMs(
     compileTask,
-    `init shader compilation - non-blocking: ${compileTask.data.nonBlocking}`
+    `init shader compilation - non-blocking: ${compileTask.data.nonBlocking}`,
   );
 
   await initTasks;
@@ -205,7 +205,7 @@ async function loadEu4Save(
   const glResources = new GLResources(
     ...glResourcesInit,
     MapShader.create(gl, mapProgram),
-    XbrShader.create(gl, xbrProgram)
+    XbrShader.create(gl, xbrProgram),
   );
 
   const colorIndexToProvinceId =
@@ -215,7 +215,7 @@ async function loadEu4Save(
     resources.provinces1,
     resources.provinces2,
     resources.provincesUniqueColor,
-    colorIndexToProvinceId
+    colorIndexToProvinceId,
   );
 
   const { meta, achievements, defaultSelectedTag } = await saveTask;
@@ -332,7 +332,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
               requestAnimationFrame(() => {
                 map.onDraw = () => res(void 0);
                 map.redrawMapImage();
-              })
+              }),
             ),
           name: "first render",
           progress: 4,
@@ -357,7 +357,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
       const error = new Error(
         `PDX Tools map crashed with webgl context lost.${
           evt.statusMessage && ` Additional info: ${evt.statusMessage}.`
-        } This may indicate an issue in PDX Tools or browser. To help diagnose the bug, consider trying other browsers and attaching WebGL report (https://webglreport.com/?v=2) and GPU status (ie: \`chrome://gpu\`).`
+        } This may indicate an issue in PDX Tools or browser. To help diagnose the bug, consider trying other browsers and attaching WebGL report (https://webglreport.com/?v=2) and GPU status (ie: \`chrome://gpu\`).`,
       );
       dispatch({ kind: "error", error });
       captureException(error);

@@ -28,7 +28,7 @@ beforeEach(async () => {
   const objsData = await s3FetchOk(`${BUCKET}?list-type=2`);
   const objText = await objsData.text();
   const keys = [...objText.matchAll(/<Key>(.*?)<\/Key>/g)].map(([_, key]) =>
-    deleteFile(key)
+    deleteFile(key),
   );
   await Promise.all(keys);
 });
@@ -217,7 +217,7 @@ async function fetchEu4Save(save: string) {
     return await promises.readFile(fp);
   } catch {
     const resp = await fetch(
-      `https://eu4saves-test-cases.s3.us-west-002.backblazeb2.com/${save}`
+      `https://eu4saves-test-cases.s3.us-west-002.backblazeb2.com/${save}`,
     );
     if (!resp.ok) {
       throw new Error(`unable to retrieve: ${save}`);
@@ -260,7 +260,7 @@ test("same campaign", async () => {
 
   // When retrieving the achievements, we should only see the save with the earliest date
   let achievementLeaderboard = await client.get<AchievementView>(
-    "/api/achievements/18"
+    "/api/achievements/18",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(startUpload.save_id);
@@ -306,7 +306,7 @@ test("same playthrough id", async () => {
 
   // When retrieving the shahanshah achievement we should only see the start data
   let achievementLeaderboard = await client.get<AchievementView>(
-    "/api/achievements/89"
+    "/api/achievements/89",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(shahansha.save_id);
@@ -371,7 +371,7 @@ test("set aar", async () => {
   const initAar = "hello world";
   const uploadResponse = await client.uploadSave(ita1Path, { aar: initAar });
   const uploadedSave = await client.get<SaveFile>(
-    `/api/saves/${uploadResponse.save_id}`
+    `/api/saves/${uploadResponse.save_id}`,
   );
   expect(uploadedSave.aar).toBe(initAar);
 
@@ -381,7 +381,7 @@ test("set aar", async () => {
   });
 
   const updatedSave = await client.get<SaveFile>(
-    `/api/saves/${uploadResponse.save_id}`
+    `/api/saves/${uploadResponse.save_id}`,
   );
   expect(updatedSave.aar).toBe("goodbye");
   expect(updatedSave.filename).toBe("hello world.eu4");
@@ -451,12 +451,12 @@ test("admin rebalance", async () => {
 
   // test with empty database
   const resp2 = await client.postReq(
-    "/api/admin/rebalance?__patch_override_for_testing=243"
+    "/api/admin/rebalance?__patch_override_for_testing=243",
   );
   expect(resp2.status).toBe(200);
 
   let achievementLeaderboard = await client.get<AchievementView>(
-    "/api/achievements/18"
+    "/api/achievements/18",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].patch).toBe("1.29.6.0");

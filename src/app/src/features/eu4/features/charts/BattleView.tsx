@@ -118,7 +118,7 @@ const participantColumns = [
         ),
         meta: { className: "text-right no-break" },
         cell: (info) => formatInt(info.getValue()),
-      })
+      }),
     ),
   }),
 
@@ -132,7 +132,7 @@ const participantColumns = [
         ),
         meta: { className: "text-right no-break" },
         cell: (info) => formatInt(info.getValue()),
-      })
+      }),
     ),
   }),
 ];
@@ -528,8 +528,8 @@ export const BattleView = ({ warName }: BattleViewProps) => {
           landBattles: landBattleInfos,
         };
       },
-      [warName]
-    )
+      [warName],
+    ),
   );
 
   return (

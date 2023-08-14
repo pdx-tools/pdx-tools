@@ -17,7 +17,7 @@ export const DateTimeline = () => {
 
   const dayChange = useMemo(
     () => throttle(setSelectedDateDay, 100),
-    [setSelectedDateDay]
+    [setSelectedDateDay],
   );
 
   return (

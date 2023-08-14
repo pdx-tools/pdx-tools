@@ -24,7 +24,7 @@ const TrackingCanvas = memo(
     // Need touch-none for pointermove events to work
     // ref: https://stackoverflow.com/a/48254578/433785
     return <canvas className="touch-none" ref={ref} />;
-  })
+  }),
 );
 
 export const Eu4Ui = ({ save }: Eu4UiProps) => {

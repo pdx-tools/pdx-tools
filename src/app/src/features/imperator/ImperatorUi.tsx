@@ -86,7 +86,7 @@ type ImperatorLoadActions =
 
 const loadStateReducer = (
   state: ImperatorLoadState,
-  action: ImperatorLoadActions
+  action: ImperatorLoadActions,
 ): ImperatorLoadState => {
   switch (action.kind) {
     case "start": {

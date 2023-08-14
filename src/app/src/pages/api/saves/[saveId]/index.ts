@@ -14,7 +14,7 @@ interface SaveRequest {
 
 const saveSchema = z.object({ saveId: z.string() });
 function withSave<R extends NextApiRequest, T extends R & SaveRequest>(
-  handler: (req: T, res: NextApiResponse) => Promise<void> | void
+  handler: (req: T, res: NextApiResponse) => Promise<void> | void,
 ) {
   return async (req: R, res: NextApiResponse) => {
     const params = saveSchema.parse(req.query);
@@ -33,7 +33,7 @@ function withSave<R extends NextApiRequest, T extends R & SaveRequest>(
 }
 
 function withPrivilegedSave<T extends NextSessionRequest & SaveRequest>(
-  handler: (req: T, res: NextApiResponse) => Promise<void> | void
+  handler: (req: T, res: NextApiResponse) => Promise<void> | void,
 ) {
   return async (req: T, res: NextApiResponse) => {
     const uid = req.sessionUid;
@@ -53,7 +53,7 @@ function withPrivilegedSave<T extends NextSessionRequest & SaveRequest>(
 
 const _deleteHandler = async (
   req: NextSessionRequest & SaveRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) => {
   const save = req.save;
   await deleteFile(save.id);
@@ -63,7 +63,7 @@ const _deleteHandler = async (
 
 const _getHandler = async (
   req: NextApiRequest & SaveRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) => {
   const result = toApiSaveUser(req.save, req.user);
   res.json(result);
@@ -82,7 +82,7 @@ const PatchBody = z.object({
 
 const _patchHandler = async (
   req: NextSessionRequest & SaveRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) => {
   const data = PatchBody.safeParse(req.body);
   if (!data.success) {

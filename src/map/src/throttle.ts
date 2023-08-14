@@ -1,7 +1,7 @@
 // throttle with leading and trailing executions
 export function throttle<T extends Array<any>>(
   func: (...args: T) => any,
-  timeFrame: number
+  timeFrame: number,
 ) {
   let lastTime = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;

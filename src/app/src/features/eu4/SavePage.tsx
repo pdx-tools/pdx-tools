@@ -6,6 +6,6 @@ type SaveProps = {
 };
 
 export const SavePage = ({ saveId }: SaveProps) => {
-  const save = useMemo(() => ({ kind: "server", saveId } as const), [saveId]);
+  const save = useMemo(() => ({ kind: "server", saveId }) as const, [saveId]);
   return <Eu4Ui save={save} />;
 };

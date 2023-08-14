@@ -20,8 +20,8 @@ export const OwnedDevelopmentStatesTree = () => {
   const { data, error } = useAnalysisWorker(
     useCallback(
       (worker) => worker.eu4OwnedDevelopmentStates(countryFilter),
-      [countryFilter]
-    )
+      [countryFilter],
+    ),
   );
   const visualizationDispatch = useVisualizationDispatch();
 

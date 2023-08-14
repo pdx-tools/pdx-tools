@@ -87,7 +87,7 @@ type Vic3LoadActions =
 
 const loadStateReducer = (
   state: Vic3LoadState,
-  action: Vic3LoadActions
+  action: Vic3LoadActions,
 ): Vic3LoadState => {
   switch (action.kind) {
     case "start": {

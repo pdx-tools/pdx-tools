@@ -150,8 +150,8 @@ export const CountryStates = ({ details }: CountryStatesProps) => {
   const { data = [], error } = useEu4Worker(
     useCallback(
       (worker) => worker.eu4GetCountryStates(details.tag),
-      [details.tag]
-    )
+      [details.tag],
+    ),
   );
   return (
     <>

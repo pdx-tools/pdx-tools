@@ -12,7 +12,7 @@ import {
 export const reduceToTableLedger = (
   data: Map<string, LocalizedCountryIncome>,
   percent: boolean,
-  recurringOnly: boolean
+  recurringOnly: boolean,
 ): CountryIncome[] => {
   const entries = recurringOnly
     ? Array.from(
@@ -21,7 +21,7 @@ export const reduceToTableLedger = (
           [
             key,
             { ...value, income: filterToRecurringIncome(value.income) },
-          ] as const
+          ] as const,
       )
     : Array.from(data.entries());
 
@@ -33,7 +33,7 @@ export const reduceToTableLedger = (
           Object.entries(income).map(([key, value]) => [
             key,
             Math.round((value / total) * 100),
-          ])
+          ]),
         );
 
     return {
@@ -50,7 +50,7 @@ export const reduceToTableLedger = (
 export const reduceToTableExpenseLedger = (
   data: Map<string, LocalizedCountryExpense>,
   percent: boolean,
-  recurringOnly: boolean
+  recurringOnly: boolean,
 ): CountryExpenses[] => {
   const entries = recurringOnly
     ? Array.from(
@@ -59,7 +59,7 @@ export const reduceToTableExpenseLedger = (
           [
             key,
             { ...value, expenses: filterToRecurringExpenses(value.expenses) },
-          ] as const
+          ] as const,
       )
     : Array.from(data.entries());
 
@@ -71,7 +71,7 @@ export const reduceToTableExpenseLedger = (
           Object.entries(expenses).map(([key, value]) => [
             key,
             Math.round((value / total) * 100),
-          ])
+          ]),
         );
 
     return {

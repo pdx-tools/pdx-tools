@@ -129,11 +129,11 @@ export const WatchCountryDetails = () => {
             ...x,
             rowSpan: i == 0 ? monitor.countries.length : 0,
             date: monitor.date,
-          }))
+          })),
         );
         return newData;
       });
-    }, [])
+    }, []),
   );
 
   return (
@@ -174,7 +174,7 @@ export const WatchCountryDetails = () => {
 
             downloadData(
               new Blob([csvData], { type: "text/csv" }),
-              csvFilename
+              csvFilename,
             );
           }}
         />

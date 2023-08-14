@@ -10,8 +10,8 @@ export function useCountryCasualtyData() {
   const { data = [], error } = useAnalysisWorker(
     useCallback(
       (worker) => worker.eu4GetCountriesWarLosses(countryFilter),
-      [countryFilter]
-    )
+      [countryFilter],
+    ),
   );
   return { data, error };
 }

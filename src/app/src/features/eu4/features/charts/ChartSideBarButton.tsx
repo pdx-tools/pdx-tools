@@ -37,7 +37,7 @@ const DEFAULT_VIZUALIZATION_SELECTION = "monthly-income";
 
 export const ChartContent = () => {
   const [selectedViz, setSelectedViz] = useState<VizModules>(
-    DEFAULT_VIZUALIZATION_SELECTION
+    DEFAULT_VIZUALIZATION_SELECTION,
   );
   const [expanded, setExpanded] = useState(false);
   const sideBarContainerRef = useSideBarContainerRef();
@@ -49,7 +49,7 @@ export const ChartContent = () => {
       onInteractOutside={(e) => e.preventDefault()}
       className={cx(
         "flex flex-col bg-white pt-4 transition-[width] duration-200",
-        expanded ? "w-full" : "w-[800px] max-w-full"
+        expanded ? "w-full" : "w-[800px] max-w-full",
       )}
     >
       <Sheet.Header className="z-10 px-4 pb-4 shadow-md">

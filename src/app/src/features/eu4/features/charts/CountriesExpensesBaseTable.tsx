@@ -41,15 +41,15 @@ export const CountriesExpensesBaseTable = ({
           ? worker.eu4GetCountriesExpenses(
               countryFilter,
               doShowPercent,
-              showRecurringOnly
+              showRecurringOnly,
             )
           : worker.eu4GetCountriesTotalExpenses(
               countryFilter,
               doShowPercent,
-              showRecurringOnly
+              showRecurringOnly,
             ),
-      [countryFilter, doShowPercent, showRecurringOnly, monthlyExpenses]
-    )
+      [countryFilter, doShowPercent, showRecurringOnly, monthlyExpenses],
+    ),
   );
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export const CountriesExpensesBaseTable = ({
           ),
           meta: { className: "text-right" },
           cell: (info) => numRenderer(info.getValue()),
-        })
+        }),
       ),
     ];
   }, [doShowPercent, monthlyExpenses]);

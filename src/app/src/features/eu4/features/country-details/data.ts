@@ -40,7 +40,7 @@ export const incomeLedgerColorPalette = (): [string, string][] => [
 
 export const incomeLedgerAliases = (): [
   keyof CountryIncomeLedger,
-  string
+  string,
 ][] => [
   ["taxation", "Taxation"],
   ["production", "Production"],
@@ -102,7 +102,7 @@ export const expenseLedgerColorPalette = (): [string, string][] => [
 
 export const expenseLedgerAliases = (): [
   keyof CountryExpenseLedger,
-  string
+  string,
 ][] => [
   ["advisor_maintenance", "Advisor Maintenance"],
   ["state_maintenance", "State Maintenance"],
@@ -240,7 +240,7 @@ export const manaSpendColorPalette = (): [string, string][] => [
 ];
 
 export const filterToRecurringIncome = (
-  value: CountryIncomeLedger
+  value: CountryIncomeLedger,
 ): CountryIncomeLedger => ({
   ...value,
   ...{
@@ -257,7 +257,7 @@ export const filterToRecurringIncome = (
 
 export function filterIncome(
   entries: CountryIncomeLedger,
-  showRecurringOnly: boolean
+  showRecurringOnly: boolean,
 ) {
   const incomeAliases: Map<string, string> = new Map(incomeLedgerAliases());
 
@@ -270,7 +270,7 @@ export function filterIncome(
 }
 
 export const filterToRecurringExpenses = (
-  value: CountryExpenseLedger
+  value: CountryExpenseLedger,
 ): CountryExpenseLedger => ({
   ...value,
   ...{
@@ -294,7 +294,7 @@ export const filterToRecurringExpenses = (
 
 export function filterExpenses(
   entries: CountryExpenseLedger,
-  showRecurringOnly: boolean
+  showRecurringOnly: boolean,
 ) {
   const expenseAliases: Map<string, string> = new Map(expenseLedgerAliases());
 

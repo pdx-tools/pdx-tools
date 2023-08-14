@@ -7,8 +7,8 @@ type SkanRoute = {
 
 export const SkanderbegSavePage = ({ skanId }: SkanRoute) => {
   const save = useMemo(
-    () => ({ kind: "skanderbeg", skanId } as const),
-    [skanId]
+    () => ({ kind: "skanderbeg", skanId }) as const,
+    [skanId],
   );
   return <Eu4Ui save={save} />;
 };

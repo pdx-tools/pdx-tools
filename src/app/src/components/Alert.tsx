@@ -55,7 +55,7 @@ const AlertTitle = React.forwardRef<
       ref={ref}
       className={cx(
         "mb-1 text-base font-medium leading-none tracking-tight",
-        className
+        className,
       )}
       {...props}
     />

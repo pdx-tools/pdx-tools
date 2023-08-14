@@ -8,8 +8,8 @@ export const useIsJuniorPartner = (details: CountryDetails) => {
         (x) =>
           x.data.kind === "Dependency" &&
           x.second.tag === details.tag &&
-          x.data.subject_type === "personal_union"
+          x.data.subject_type === "personal_union",
       ) !== undefined,
-    [details]
+    [details],
   );
 };

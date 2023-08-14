@@ -73,7 +73,7 @@ const columns = [
         ),
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
-      })
+      }),
     ),
   }),
 
@@ -87,7 +87,7 @@ const columns = [
         ),
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
-      })
+      }),
     ),
   }),
 
@@ -101,7 +101,7 @@ const columns = [
         ),
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
-      })
+      }),
     ),
   }),
 
@@ -116,7 +116,7 @@ const columns = [
       meta: { className: "text-right" },
       cell: (info) =>
         isNaN(info.getValue()) ? "0%" : formatInt(info.getValue()) + "%",
-    }
+    },
   ),
 
   columnHelper.accessor("losses.navyTotal", {
@@ -135,8 +135,8 @@ export const CountriesNavyCasualtiesWarTable = ({
   const { data: wars = [], error } = useAnalysisWorker(
     useCallback(
       (worker) => worker.eu4GetSingleCountryCasualties(record.tag),
-      [record.tag]
-    )
+      [record.tag],
+    ),
   );
 
   const fieldSum = (k: keyof Losses) =>
@@ -195,7 +195,7 @@ export const CountriesNavyCasualtiesWarTable = ({
             </Table.Cell>
             <Table.Cell className="text-right">
               {formatInt(
-                record.transportShipAttrition - transportShipAttrition
+                record.transportShipAttrition - transportShipAttrition,
               )}
             </Table.Cell>
             <Table.Cell className="text-right">
@@ -220,7 +220,7 @@ export const CountriesNavyCasualtiesWarTable = ({
               {formatInt(
                 ((record.navyTotalAttrition - totalAttrition) /
                   (record.navyTotal - total)) *
-                  100
+                  100,
               )}
               %
             </Table.Cell>

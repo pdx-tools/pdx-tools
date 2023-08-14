@@ -4,7 +4,7 @@ export class ProvinceFinder {
     provinces1: ImageBitmap,
     provinces2: ImageBitmap,
     private sortedColors: Uint8Array,
-    private provinceColorIndex: Uint16Array
+    private provinceColorIndex: Uint16Array,
   ) {
     const provinceCanvas = document.createElement("canvas");
     provinceCanvas.width = provinces1.width * 2;
@@ -20,7 +20,7 @@ export class ProvinceFinder {
       provinces1.width,
       0,
       provinces2.width,
-      provinces2.height
+      provinces2.height,
     );
   }
 
@@ -75,7 +75,7 @@ function binarySearch(colors: Uint8Array, rgb: [number, number, number]) {
 function comparePixel(
   colors: Uint8Array,
   ind: number,
-  rgb: [number, number, number]
+  rgb: [number, number, number],
 ) {
   if (colors[ind] - rgb[0] !== 0) {
     return rgb[0] - colors[ind];

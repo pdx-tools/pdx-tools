@@ -41,7 +41,7 @@ const TableHeader = React.forwardRef<
       ref={ref}
       className={cx(
         "[&_tr]:border-0 [&_tr]:border-b [&_tr]:border-solid",
-        className
+        className,
       )}
       {...props}
     />
@@ -82,7 +82,7 @@ const TableRow = React.forwardRef<
       ref={ref}
       className={cx(
         "border-0 border-b border-solid transition-colors hover:bg-gray-200/50 data-[state=selected]:bg-gray-200",
-        className
+        className,
       )}
       {...props}
     />
@@ -99,7 +99,7 @@ const TableHead = React.forwardRef<
       ref={ref}
       className={cx(
         "h-12 px-4 text-left align-middle font-medium text-gray-800 [&:has([role=checkbox])]:pr-0",
-        className
+        className,
       )}
       {...props}
     />
@@ -116,7 +116,7 @@ const TableCell = React.forwardRef<
       ref={ref}
       className={cx(
         "p-4 align-middle [&:has([role=checkbox])]:pr-0",
-        className
+        className,
       )}
       {...props}
     />
@@ -146,7 +146,7 @@ interface ColumnHeaderProps<TData, TValue>
 
 function ColumnHeaderInner<TData, TValue>(
   { column, title, className, ...rest }: ColumnHeaderProps<TData, TValue>,
-  ref: React.ForwardedRef<HTMLButtonElement>
+  ref: React.ForwardedRef<HTMLButtonElement>,
 ) {
   if (!column.getCanSort()) {
     throw new Error("eeeK");
@@ -158,7 +158,7 @@ function ColumnHeaderInner<TData, TValue>(
       {...rest}
       className={cx(
         "h-full w-full justify-between gap-2 font-semibold",
-        className
+        className,
       )}
       variant="ghost"
       shape="none"
@@ -185,7 +185,7 @@ const SortIcon = ({ sorted }: { sorted: false | SortDirection }) => {
 const ColumnHeader = React.forwardRef(ColumnHeaderInner) as <TData, TValue>(
   props: ColumnHeaderProps<TData, TValue> & {
     ref?: React.ForwardedRef<HTMLButtonElement>;
-  }
+  },
 ) => ReturnType<typeof ColumnHeaderInner>;
 
 Table.ColumnHeader = ColumnHeader;

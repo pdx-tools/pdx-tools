@@ -50,7 +50,7 @@ export function closeDrawerPropagation(fn: () => void, visible: boolean) {
 }
 
 export function getSideBarContainerWidth(
-  x: ReturnType<typeof useSideBarContainer>
+  x: ReturnType<typeof useSideBarContainer>,
 ) {
   if (!x.containerRef.current) {
     throw new Error("side bar container element is undefined");

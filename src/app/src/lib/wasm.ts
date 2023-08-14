@@ -29,7 +29,7 @@ type StashOp =
 export function createWasmGame<
   WasmModule extends Wasm<P>,
   SaveFile extends Allocated,
-  P
+  P,
 >(mod: WasmModule, wasmPath: P, tokenPath: string) {
   let _save: SaveFile | undefined;
   let bytes = new Uint8Array();

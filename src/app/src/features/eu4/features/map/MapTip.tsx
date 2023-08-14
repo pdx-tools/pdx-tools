@@ -27,7 +27,7 @@ export const MapTip = () => {
 
     function pointerMove(e: PointerEvent) {
       setPointerDisplay(
-        !isDown && e.target instanceof Element && e.target.nodeName == "CANVAS"
+        !isDown && e.target instanceof Element && e.target.nodeName == "CANVAS",
       );
       setPointer({ x: e.x, y: e.y });
     }
@@ -72,12 +72,12 @@ export const MapTip = () => {
 
     const x = Math.min(
       document.documentElement.clientWidth - rect.width - 5,
-      pointer.x + 10
+      pointer.x + 10,
     );
 
     let y = Math.min(
       document.documentElement.clientHeight - rect.height - 5,
-      pointer.y + 10
+      pointer.y + 10,
     );
 
     // Make the map tip above the cursor when at the bottom of the page to avoid

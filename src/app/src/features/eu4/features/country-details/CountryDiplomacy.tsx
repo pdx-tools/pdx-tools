@@ -63,19 +63,19 @@ export const DiploRow = <T,>({
 export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
   const dip = useMemo(
     () => details.diplomacy.map(({ data, ...rest }) => ({ ...rest, ...data })),
-    [details.diplomacy]
+    [details.diplomacy],
   );
 
   const notMe = useCallback(
     (x: Pick<DiplomacyEntry, "first" | "second">) =>
       x.first.tag === details.tag ? x.second : x.first,
-    [details.tag]
+    [details.tag],
   );
 
   const juniorPartners = useMemo(
     () =>
       dip.filter(isOfType("JuniorPartner")).map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe]
+    [dip, notMe],
   );
 
   const vassals = useMemo(
@@ -85,10 +85,10 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           (x) =>
             x.kind === "Dependency" &&
             x.first.tag === details.tag &&
-            x.subject_type === "vassal"
+            x.subject_type === "vassal",
         )
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const overlord = useMemo(
@@ -104,10 +104,10 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
               x.subject_type == "eyalet" ||
               x.subject_type == "appanage" ||
               x.subject_type == "tributary_state" ||
-              isColony(x.subject_type))
+              isColony(x.subject_type)),
         )
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const coreEyalets = useMemo(
@@ -117,10 +117,10 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           (x) =>
             x.kind === "Dependency" &&
             x.first.tag === details.tag &&
-            x.subject_type === "core_eyalet"
+            x.subject_type === "core_eyalet",
         )
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const eyalets = useMemo(
@@ -130,10 +130,10 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           (x) =>
             x.kind === "Dependency" &&
             x.first.tag === details.tag &&
-            x.subject_type === "eyalet"
+            x.subject_type === "eyalet",
         )
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const appanages = useMemo(
@@ -143,10 +143,10 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           (x) =>
             x.kind === "Dependency" &&
             x.first.tag === details.tag &&
-            x.subject_type === "appanage"
+            x.subject_type === "appanage",
         )
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const tributaries = useMemo(
@@ -156,10 +156,10 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           (x) =>
             x.kind === "Dependency" &&
             x.first.tag === details.tag &&
-            x.subject_type === "tributary_state"
+            x.subject_type === "tributary_state",
         )
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const colonies = useMemo(
@@ -168,7 +168,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         .filter(isOfType("Dependency"))
         .filter((x) => x.first.tag === details.tag && isColony(x.subject_type))
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const allies = useMemo(
@@ -176,7 +176,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
       dip
         .filter((x) => x.kind === "Alliance")
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe]
+    [dip, notMe],
   );
 
   const marriages = useMemo(
@@ -184,7 +184,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
       dip
         .filter((x) => x.kind === "RoyalMarriage")
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe]
+    [dip, notMe],
   );
 
   const warned = useMemo(
@@ -192,7 +192,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
       dip
         .filter((x) => x.kind === "Warning" && x.first.tag === details.tag)
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const warnedBy = useMemo(
@@ -200,7 +200,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
       dip
         .filter((x) => x.kind === "Warning" && x.second.tag === details.tag)
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const subsidizing = useMemo(
@@ -209,7 +209,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         .filter(isOfType("Subsidy"))
         .filter((x) => x.first.tag === details.tag)
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const subsidized = useMemo(
@@ -218,7 +218,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         .filter(isOfType("Subsidy"))
         .filter((x) => x.second.tag === details.tag)
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const reparationsReceiving = useMemo(
@@ -227,7 +227,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         .filter(isOfType("Reparations"))
         .filter((x) => x.second.tag === details.tag)
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const reparationsGiving = useMemo(
@@ -236,27 +236,27 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         .filter(isOfType("Reparations"))
         .filter((x) => x.first.tag === details.tag)
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const tradePowerReceiving = useMemo(
     () =>
       dip
         .filter(
-          (x) => x.kind === "TransferTrade" && x.second.tag === details.tag
+          (x) => x.kind === "TransferTrade" && x.second.tag === details.tag,
         )
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const tradePowerGiving = useMemo(
     () =>
       dip
         .filter(
-          (x) => x.kind === "TransferTrade" && x.first.tag === details.tag
+          (x) => x.kind === "TransferTrade" && x.first.tag === details.tag,
         )
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const steerTradeReceiving = useMemo(
@@ -264,7 +264,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
       dip
         .filter((x) => x.kind === "SteerTrade" && x.second.tag === details.tag)
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   const steerTradeGiving = useMemo(
@@ -272,7 +272,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
       dip
         .filter((x) => x.kind === "SteerTrade" && x.first.tag === details.tag)
         .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag]
+    [dip, notMe, details.tag],
   );
 
   return (

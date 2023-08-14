@@ -16,7 +16,7 @@ export const useCompression = () => {
   const getWasmClient = async () => {
     if (!worker.current) {
       worker.current = new Worker(
-        new URL("./compress-worker", import.meta.url)
+        new URL("./compress-worker", import.meta.url),
       );
     }
 
@@ -41,7 +41,7 @@ export const useCompression = () => {
         return wasm.transform(transfer(data, [data.buffer]));
       },
     }),
-    []
+    [],
   );
 
   return ret;

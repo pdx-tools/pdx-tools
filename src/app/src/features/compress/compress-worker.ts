@@ -27,7 +27,7 @@ const obj = {
         contentType: content_type,
         data: deflated.data,
       },
-      [deflated.data.buffer]
+      [deflated.data.buffer],
     );
   },
 

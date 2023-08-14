@@ -159,7 +159,7 @@ export const createEu4Store = async ({
       setMapMode: async (mode: Eu4State["mapMode"]) => {
         if (!dateEnabledMapMode(mode) && dateEnabledMapMode(get().mapMode)) {
           get().map.updateCountryProvinceColors(
-            get().save.initialPoliticalMapColors
+            get().save.initialPoliticalMapColors,
           );
         }
 
@@ -245,7 +245,7 @@ export const createEu4Store = async ({
               achievements,
               countries: await getEu4Worker().eu4GetCountries(),
             });
-          })
+          }),
         );
 
         set({ watcher: { ...get().watcher, status: "running" } });
@@ -339,7 +339,7 @@ export function useEu4Context() {
 
 function useEu4Store<T>(
   selector: (state: Eu4State) => T,
-  equalityFn?: (left: T, right: T) => boolean
+  equalityFn?: (left: T, right: T) => boolean,
 ): T {
   return useStore(useEu4Context(), selector, equalityFn);
 }
@@ -414,7 +414,7 @@ export const useCountryNameLookup = () => {
   const countries = useEu4Countries();
   return useMemo(
     () => new Map(countries.map((x) => [x.normalizedName, x])),
-    [countries]
+    [countries],
   );
 };
 
@@ -443,7 +443,7 @@ const dateEnabledMapMode = (mode: MapPayload["kind"]) => {
 const selectDate = (
   mode: MapPayload["kind"],
   meta: EnhancedMeta,
-  date: MapDate
+  date: MapDate,
 ) => {
   if (!dateEnabledMapMode(mode)) {
     return {
@@ -468,7 +468,7 @@ export const useSelectedDate = () => {
   const meta = useEu4Meta();
   return useMemo(
     () => selectDate(mode, meta, selectedDate),
-    [mode, meta, selectedDate]
+    [mode, meta, selectedDate],
   );
 };
 
@@ -491,7 +491,7 @@ function persistMapSettings(settings: PersistedMapSettings) {
 function loadSettings(): PersistedMapSettings {
   const deprecatedSettings = {
     renderTerrain: !!JSON.parse(
-      localStorage.getItem("map-show-terrain") ?? "false"
+      localStorage.getItem("map-show-terrain") ?? "false",
     ),
   };
 
@@ -511,7 +511,7 @@ type FocusCameraOnProps = {
 export function focusCameraOn(
   map: WebGLMap,
   [x, y]: number[],
-  options?: Partial<FocusCameraOnProps>
+  options?: Partial<FocusCameraOnProps>,
 ) {
   const width = options?.width ?? map.gl.canvas.width;
   const height = options?.height ?? map.gl.canvas.height;

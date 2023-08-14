@@ -53,10 +53,10 @@ export const toApiSave = (save: { saves: Save; users: User }): SaveFile => {
 };
 
 function reverseRecord<T extends PropertyKey, U extends PropertyKey>(
-  input: Record<T, U>
+  input: Record<T, U>,
 ) {
   return Object.fromEntries(
-    Object.entries(input).map(([key, value]) => [value, key])
+    Object.entries(input).map(([key, value]) => [value, key]),
   ) as Record<U, T>;
 }
 
@@ -101,7 +101,7 @@ export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
   };
 
   return Object.fromEntries(
-    Object.entries(result).filter(([_, v]) => v !== undefined)
+    Object.entries(result).filter(([_, v]) => v !== undefined),
   );
 };
 

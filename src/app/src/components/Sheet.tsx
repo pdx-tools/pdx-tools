@@ -35,7 +35,7 @@ const SheetOverlay = React.forwardRef<
     <SheetPrimitive.Overlay
       className={cx(
         "fixed inset-0 z-50 bg-sky-900/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        className
+        className,
       )}
       {...props}
       ref={ref}
@@ -60,7 +60,7 @@ const sheetVariants = cva(
     defaultVariants: {
       side: "right",
     },
-  }
+  },
 );
 
 interface SheetContentProps
@@ -72,7 +72,7 @@ const SheetContent = React.forwardRef<
   SheetContentProps
 >(function SheetContent(
   { side = "right", className, children, ...props },
-  ref
+  ref,
 ) {
   return (
     <Sheet.Portal>
@@ -100,7 +100,7 @@ const SheetClose = React.forwardRef<
       asChild
       className={cx(
         className,
-        "rounded-sm border-0 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-rose-500"
+        "rounded-sm border-0 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-rose-500",
       )}
     >
       <Button variant="ghost" style={{ outline: "0" }}>
@@ -138,7 +138,7 @@ const SheetFooter = ({
   <div
     className={cx(
       "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-      className
+      className,
     )}
     {...props}
   />

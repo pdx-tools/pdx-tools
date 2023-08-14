@@ -169,7 +169,7 @@ const columns = [
           header: "Total",
           meta: { className: "text-right" },
           cell: (info) => formatFloat(info.getValue(), 2),
-        }
+        },
       ),
     ],
   }),

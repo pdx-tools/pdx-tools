@@ -15,7 +15,7 @@ export const Link = React.forwardRef<
       className={cx(
         variant == "dark" ? "text-sky-600" : "text-teal-400",
         "underline-offset-4 hover:underline",
-        className
+        className,
       )}
       href={href}
       ref={ref}

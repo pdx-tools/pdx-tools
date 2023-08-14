@@ -15,12 +15,12 @@ const VisualizationContext = React.createContext<
   VisualizationState | undefined
 >(undefined);
 const VisualizationDispatchContext = React.createContext<Dispatch | undefined>(
-  undefined
+  undefined,
 );
 
 function visualizationReducer(
   state: VisualizationState,
-  action: Action
+  action: Action,
 ): VisualizationState {
   switch (action.type) {
     case "enqueue-loading":

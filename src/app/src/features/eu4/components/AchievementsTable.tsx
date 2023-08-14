@@ -54,7 +54,7 @@ const columns = [
 export const AchievementsTable = ({ achievements }: AchievementsTableProps) => {
   const data = useMemo(
     () => achievements.map((x) => x.achievement),
-    [achievements]
+    [achievements],
   );
 
   return <DataTable columns={columns} data={data} />;

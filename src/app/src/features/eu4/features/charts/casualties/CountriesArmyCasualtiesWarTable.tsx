@@ -72,7 +72,7 @@ const columns = [
         ),
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
-      })
+      }),
     ),
   }),
 
@@ -86,7 +86,7 @@ const columns = [
         ),
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
-      })
+      }),
     ),
   }),
 
@@ -101,7 +101,7 @@ const columns = [
       meta: { className: "text-right" },
       cell: (info) =>
         isNaN(info.getValue()) ? "0" : formatInt(info.getValue()) + "%",
-    }
+    },
   ),
 
   columnHelper.accessor("losses.landTotal", {
@@ -120,8 +120,8 @@ export const CountriesArmyCasualtiesWarTable = ({
   const { data: wars = [], error } = useAnalysisWorker(
     useCallback(
       (worker) => worker.eu4GetSingleCountryCasualties(record.tag),
-      [record.tag]
-    )
+      [record.tag],
+    ),
   );
 
   const fieldSum = (k: keyof Losses) =>
@@ -174,7 +174,7 @@ export const CountriesArmyCasualtiesWarTable = ({
               {formatInt(
                 ((record.landTotalAttrition - totalAttrition) /
                   (record.landTotal - total)) *
-                  100
+                  100,
               )}
               %
             </Table.Cell>

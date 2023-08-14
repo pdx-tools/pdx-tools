@@ -14,16 +14,16 @@ import { fetchOk } from "@/lib/fetch";
 export async function shaderUrls(): Promise<ShaderSource[]> {
   const promises = {
     mapVertexShader: fetchOk(
-      require(`../../../../../../map/assets/shaders/map.vert`)
+      require(`../../../../../../map/assets/shaders/map.vert`),
     ).then((x) => x.text()),
     mapFargmentShader: fetchOk(
-      require(`../../../../../../map/assets/shaders/map.frag`)
+      require(`../../../../../../map/assets/shaders/map.frag`),
     ).then((x) => x.text()),
     xbrVertexShader: fetchOk(
-      require(`../../../../../../map/assets/shaders/xbr.vert`)
+      require(`../../../../../../map/assets/shaders/xbr.vert`),
     ).then((x) => x.text()),
     xbrFargmentShader: fetchOk(
-      require(`../../../../../../map/assets/shaders/xbr.frag`)
+      require(`../../../../../../map/assets/shaders/xbr.frag`),
     ).then((x) => x.text()),
   };
 
@@ -40,7 +40,7 @@ export async function shaderUrls(): Promise<ShaderSource[]> {
 }
 
 export async function loadTerrainOverlayImages(
-  version: string
+  version: string,
 ): Promise<TerrainOverlayResources> {
   const url = resources(gameVersion(version));
   const promises = {
@@ -73,7 +73,7 @@ export async function loadTerrainOverlayImages(
 }
 
 export async function fetchProvinceUniqueIndex(
-  version: string
+  version: string,
 ): Promise<Uint16Array> {
   const url = resources(gameVersion(version));
 
@@ -107,7 +107,7 @@ export async function resourceUrls(version: string): Promise<StaticResources> {
 
 export function glContext(
   canvas: HTMLCanvasElement,
-  options?: WebGLContextAttributes
+  options?: WebGLContextAttributes,
 ): OnScreenWegblContext | null {
   const arg = { ...glContextOptions(), ...options };
   return canvas.getContext("webgl2", arg) as OnScreenWegblContext;
@@ -121,7 +121,7 @@ export function setMapControls(map: WebGLMap, controls: MapOnlyControls) {
 }
 
 export function provinceIdToColorIndexInvert(
-  provinceIdToColorIndex: Uint16Array
+  provinceIdToColorIndex: Uint16Array,
 ) {
   const colorIndexToProvinceId = new Uint16Array(provinceIdToColorIndex.length);
   for (let i = 0; i < provinceIdToColorIndex.length; i++) {

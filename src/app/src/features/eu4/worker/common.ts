@@ -7,5 +7,5 @@ export const Eu4WasmModule = mod;
 export const wasm = createWasmGame<typeof mod, mod.SaveFile, typeof wasmPath>(
   mod,
   wasmPath,
-  tokenPath
+  tokenPath,
 );

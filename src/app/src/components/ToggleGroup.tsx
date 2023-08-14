@@ -16,7 +16,7 @@ const ToggleGroupItem = React.forwardRef<
       ref={ref}
       className={cx(
         "border-r-0 first:rounded-l-md last:rounded-r-md last:border-r focus-visible:z-10 data-[state=on]:bg-sky-100 data-[state=on]:text-sky-800",
-        className
+        className,
       )}
       {...props}
     />

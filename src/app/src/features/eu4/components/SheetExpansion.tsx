@@ -25,7 +25,7 @@ export const SheetExpansion = ({
         side="right"
         className={cx(
           "flex flex-col bg-white pt-4 transition-[width] duration-200",
-          expanded ? "w-full" : "w-[800px] max-w-full"
+          expanded ? "w-full" : "w-[800px] max-w-full",
         )}
       >
         <Sheet.Header className="z-[1] flex gap-2 px-4 pb-4 shadow-md">

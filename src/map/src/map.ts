@@ -91,7 +91,7 @@ export class WebGLMap {
   constructor(
     public readonly gl: OnScreenWegblContext,
     private glResources: GLResources,
-    private provinceFinder: ProvinceFinder
+    private provinceFinder: ProvinceFinder,
   ) {
     this.focusPoint = [0, 0];
     this.scale = 1;
@@ -131,7 +131,7 @@ export class WebGLMap {
 
     gl.canvas.addEventListener("dblclick", (evt) => this.onDblClick(evt));
     gl.canvas.addEventListener("pointermove", (evt) =>
-      this.throttledMouseMove(evt)
+      this.throttledMouseMove(evt),
     );
   }
 
@@ -153,7 +153,7 @@ export class WebGLMap {
 
   static create(
     glResources: GLResources,
-    provinceFinder: ProvinceFinder
+    provinceFinder: ProvinceFinder,
   ): WebGLMap {
     return new WebGLMap(glResources.gl, glResources, provinceFinder);
   }
@@ -180,20 +180,20 @@ export class WebGLMap {
   private applyMapShaderParameters() {
     this.glResources.mapShaderProgram.setTextures(this.glResources);
     this.glResources.mapShaderProgram.setRenderProvinceBorders(
-      this.showProvinceBorders
+      this.showProvinceBorders,
     );
     this.glResources.mapShaderProgram.setRenderMapmodeBorders(
-      this.showMapModeBorders
+      this.showMapModeBorders,
     );
     this.glResources.mapShaderProgram.setRenderCountryBorders(
-      this.showCountryBorders
+      this.showCountryBorders,
     );
     this.glResources.mapShaderProgram.setProvinceCount(
-      this.glResources.provinceCount
+      this.glResources.provinceCount,
     );
     this.glResources.mapShaderProgram.setTextureSize(
       IMG_PADDED_WIDTH,
-      IMG_HEIGHT
+      IMG_HEIGHT,
     );
   }
 
@@ -279,11 +279,11 @@ export class WebGLMap {
     this.glResources.xbrShaderProgram.setRenderTerrain(this.renderTerrain);
     this.glResources.xbrShaderProgram.setResolution(
       gl.canvas.width,
-      gl.canvas.height
+      gl.canvas.height,
     );
     this.glResources.xbrShaderProgram.setTextureSize(
       IMG_PADDED_WIDTH,
-      IMG_HEIGHT
+      IMG_HEIGHT,
     );
     this.glResources.xbrShaderProgram.setUsedTextureSize(IMG_WIDTH, IMG_HEIGHT);
     this.glResources.xbrShaderProgram.setTextures(this.glResources);
@@ -321,7 +321,7 @@ export class WebGLMap {
       gl.COLOR_ATTACHMENT0,
       gl.TEXTURE_2D,
       fbTexture,
-      0
+      0,
     );
     gl.bindTexture(gl.TEXTURE_2D, fbTexture);
 
@@ -334,14 +334,14 @@ export class WebGLMap {
     this.glResources.xbrShaderProgram.setFocusPoint([0, 0]);
     this.glResources.xbrShaderProgram.setScale(1.0);
     this.glResources.xbrShaderProgram.setMaxScale(
-      this.maxViewWidth / IMG_WIDTH
+      this.maxViewWidth / IMG_WIDTH,
     );
     this.glResources.xbrShaderProgram.setResolution(width, height);
     this.glResources.xbrShaderProgram.setFlipY(true);
     this.glResources.xbrShaderProgram.setRenderTerrain(this.renderTerrain);
     this.glResources.xbrShaderProgram.setTextureSize(
       IMG_PADDED_WIDTH,
-      IMG_HEIGHT
+      IMG_HEIGHT,
     );
     this.glResources.xbrShaderProgram.setUsedTextureSize(IMG_WIDTH, IMG_HEIGHT);
     this.glResources.xbrShaderProgram.setTextures(this.glResources);
@@ -430,10 +430,10 @@ export class WebGLMap {
       this.glResources.fillSecondaryProvinceColorsTexture(newSecondary);
     } else {
       this.glResources.fillPrimaryProvinceColorsTexture(
-        this.originalPrimaryColor
+        this.originalPrimaryColor,
       );
       this.glResources.fillSecondaryProvinceColorsTexture(
-        this.originalSecondaryColor
+        this.originalSecondaryColor,
       );
     }
   }
@@ -508,7 +508,7 @@ export class WebGLMap {
     const clampedY = Math.max(-30, Math.min(30, e.deltaY));
     this.scale *= Math.pow(
       2,
-      clampedY * -0.01 * (Math.min(eventDiff, 64) / 64)
+      clampedY * -0.01 * (Math.min(eventDiff, 64) / 64),
     );
 
     this.scale = Math.max(this.minScale, this.scale);

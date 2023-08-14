@@ -197,7 +197,7 @@ function withSecurityHeaders(response: Response, pathname: string) {
       "img-src 'self' data:;" +
       // unsafe-eval needed for webassembly on safari
       "script-src 'self' 'unsafe-eval' blob: https://a.pdx.tools/js/index.js;" +
-      "style-src 'self' 'unsafe-inline'"
+      "style-src 'self' 'unsafe-inline'",
   );
   newResponse.headers.set("X-XSS-Protection", "1; mode=block");
   newResponse.headers.set("X-Content-Type-Options", "nosniff");

@@ -34,24 +34,24 @@ function timeModule<T>(fn: () => Promise<T>, module: string): () => Promise<T> {
 }
 
 const DynamicEu4: ComponentType<ComponentProps<typeof Eu4Ui>> = dynamic(
-  timeModule(() => import("@/features/eu4/Eu4Ui"), "eu4")
+  timeModule(() => import("@/features/eu4/Eu4Ui"), "eu4"),
 );
 
 const DynamicCk3: ComponentType<ComponentProps<typeof Ck3Ui>> = dynamic(
-  timeModule(() => import("@/features/ck3/Ck3Ui"), "ck3")
+  timeModule(() => import("@/features/ck3/Ck3Ui"), "ck3"),
 );
 
 const DynamicHoi4: ComponentType<ComponentProps<typeof Hoi4Ui>> = dynamic(
-  timeModule(() => import("@/features/hoi4/Hoi4Ui"), "hoi4")
+  timeModule(() => import("@/features/hoi4/Hoi4Ui"), "hoi4"),
 );
 
 const DynamicImperator: ComponentType<ComponentProps<typeof ImperatorUi>> =
   dynamic(
-    timeModule(() => import("@/features/imperator/ImperatorUi"), "imperator")
+    timeModule(() => import("@/features/imperator/ImperatorUi"), "imperator"),
   );
 
 const DynamicVic3: ComponentType<ComponentProps<typeof Vic3Ui>> = dynamic(
-  timeModule(() => import("@/features/vic3/vic3Ui"), "vic3")
+  timeModule(() => import("@/features/vic3/vic3Ui"), "vic3"),
 );
 
 const gameRenderer = (savegame: SaveGameInput | null) => {

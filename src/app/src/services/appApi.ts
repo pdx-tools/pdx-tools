@@ -142,15 +142,15 @@ export const useNewestSavesQuery = () => {
               ? {
                   cursor: pageParam,
                 }
-              : {}
-          )
+              : {},
+          ),
       ),
     getNextPageParam: (lastPage, _pages) => lastPage.cursor,
     onSuccess: (data) =>
       data.pages.forEach((page) =>
         page.saves.forEach((x) =>
-          queryClient.setQueryData(pdxKeys.save(x.id), x)
-        )
+          queryClient.setQueryData(pdxKeys.save(x.id), x),
+        ),
       ),
   });
 };
@@ -180,7 +180,7 @@ export const useUserQuery = (userId: string) => {
     queryFn: () => fetchOkJson<UserSaves>(`/api/users/${userId}`),
     onSuccess: (data) =>
       data.saves.forEach((x) =>
-        queryClient.setQueryData(pdxKeys.save(x.id), x)
+        queryClient.setQueryData(pdxKeys.save(x.id), x),
       ),
   });
 };

@@ -49,7 +49,7 @@ const columns = [
         ),
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
-      })
+      }),
     ),
   }),
 
@@ -63,7 +63,7 @@ const columns = [
         ),
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
-      })
+      }),
     ),
   }),
 
@@ -101,7 +101,7 @@ export const CountriesArmyCasualtiesTable = () => {
           "name",
           ...unitTypes.map(([_, type]) => `${type}Battle` as keyof TableLosses),
           ...unitTypes.map(
-            ([_, type]) => `${type}Attrition` as keyof TableLosses
+            ([_, type]) => `${type}Attrition` as keyof TableLosses,
           ),
           "landTotal",
         ];

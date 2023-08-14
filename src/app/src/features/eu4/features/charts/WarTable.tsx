@@ -195,8 +195,8 @@ export const WarTable = () => {
           key: i,
         }));
       },
-      [filter]
-    )
+      [filter],
+    ),
   );
 
   useEffect(() => {

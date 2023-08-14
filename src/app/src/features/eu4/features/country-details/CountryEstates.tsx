@@ -53,7 +53,7 @@ const CountryEstateDetails = ({ data }: { data: Estate[] }) => {
       <div className="w-96 text-center">
         Crownland:{" "}
         {formatInt(
-          data.map((x) => x.territory).reduce((acc, x) => acc - x, 100)
+          data.map((x) => x.territory).reduce((acc, x) => acc - x, 100),
         )}
         %
       </div>
@@ -76,8 +76,8 @@ export const CountryEstates = ({ details }: CountryEstatesProps) => {
   const { data = [], error } = useEu4Worker(
     useCallback(
       (worker) => worker.eu4GetCountryEstates(details.tag),
-      [details.tag]
-    )
+      [details.tag],
+    ),
   );
 
   if (error) {

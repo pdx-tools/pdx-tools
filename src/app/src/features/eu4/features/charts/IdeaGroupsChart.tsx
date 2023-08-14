@@ -53,7 +53,7 @@ export const IdeaGroupsChart = () => {
 
       type afaf = { count: number; completed: number };
       const ideas = new Map<string, afaf>(
-        seedIdeas.map((x) => [x, { count: 0, completed: 0 }])
+        seedIdeas.map((x) => [x, { count: 0, completed: 0 }]),
       );
       for (const idea of rawIdeas) {
         const name = idea.groupName;
@@ -78,7 +78,7 @@ export const IdeaGroupsChart = () => {
 
       return data.sort((a, b) => a.name.localeCompare(b.name));
     },
-    [countryFilter, meta.savegame_version.second]
+    [countryFilter, meta.savegame_version.second],
   );
 
   const { data: ideaGroups = [], error } = useAnalysisWorker(cb);

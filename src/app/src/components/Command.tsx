@@ -15,7 +15,7 @@ const CommandRoot = React.forwardRef<
       ref={ref}
       className={cx(
         "flex h-full w-full flex-col overflow-hidden rounded-md bg-white",
-        className
+        className,
       )}
       {...props}
     />
@@ -57,7 +57,7 @@ const CommandInput = React.forwardRef<
         ref={ref}
         className={cx(
           "flex h-11 w-full rounded-md bg-white px-2 py-3 text-sm outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50",
-          className
+          className,
         )}
         {...props}
       />
@@ -75,7 +75,7 @@ const CommandList = React.forwardRef<
       ref={ref}
       className={cx(
         "max-h-[300px] overflow-y-auto overflow-x-hidden",
-        className
+        className,
       )}
       {...props}
     />
@@ -134,7 +134,7 @@ const CommandItem = React.forwardRef<
       ref={ref}
       className={cx(
         "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-sky-100 aria-selected:text-sky-800 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-        className
+        className,
       )}
       {...props}
     />

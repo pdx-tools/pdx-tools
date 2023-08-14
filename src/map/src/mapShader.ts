@@ -22,7 +22,7 @@ export class MapShader {
     private uCountryProvinceColor: WebGLUniformLocation,
     private uPrimaryProvinceColor: WebGLUniformLocation,
     private uSecondaryProvinceColor: WebGLUniformLocation,
-    private uTextureSize: WebGLUniformLocation
+    private uTextureSize: WebGLUniformLocation,
   ) {}
 
   static create(gl: WebGL2RenderingContext, program: WebGLProgram) {
@@ -46,7 +46,7 @@ export class MapShader {
       notNull(gl.getUniformLocation(program, "u_countryProvincesColorImage")),
       notNull(gl.getUniformLocation(program, "u_primaryProvincesColorImage")),
       notNull(gl.getUniformLocation(program, "u_secondaryProvincesColorImage")),
-      notNull(gl.getUniformLocation(program, "u_textureSize"))
+      notNull(gl.getUniformLocation(program, "u_textureSize")),
     );
   }
 

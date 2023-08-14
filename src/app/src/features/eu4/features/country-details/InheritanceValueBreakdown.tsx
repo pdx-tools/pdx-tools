@@ -64,7 +64,7 @@ export const InheritanceValueBreakdown = ({
                     <Tooltip>
                       <Tooltip.Trigger>
                         {formatInt(
-                          inheritance.calculations.curia.controller_id
+                          inheritance.calculations.curia.controller_id,
                         )}
                       </Tooltip.Trigger>
                       <Tooltip.Content>
@@ -94,7 +94,7 @@ export const InheritanceValueBreakdown = ({
                       <Tooltip>
                         <Tooltip.Trigger>
                           {formatInt(
-                            inheritance.calculations.heir.heir_id ?? 0
+                            inheritance.calculations.heir.heir_id ?? 0,
                           )}
                         </Tooltip.Trigger>
                         <Tooltip.Content>
@@ -126,7 +126,7 @@ export const InheritanceValueBreakdown = ({
                     {formatInt(
                       isJuniorParter
                         ? inheritance.pu_subtotal
-                        : inheritance.subtotal
+                        : inheritance.subtotal,
                     )}
                   </td>
                 </tr>
@@ -140,7 +140,7 @@ export const InheritanceValueBreakdown = ({
                     {formatInt(
                       isJuniorParter
                         ? inheritance.pu_inheritance_value
-                        : inheritance.inheritance_value
+                        : inheritance.inheritance_value,
                     )}
                   </td>
                 </tr>

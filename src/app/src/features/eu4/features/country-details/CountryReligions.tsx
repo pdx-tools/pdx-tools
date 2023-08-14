@@ -90,7 +90,7 @@ const CountryReligionVizImpl = ({
 }: CountryReligionVizProps) => {
   const palette = useMemo(
     () => new Map(data.map((x) => [x.name, x.color])),
-    [data]
+    [data],
   );
 
   const chartConfig: PieConfig = {
@@ -143,8 +143,8 @@ export const CountryReligions = ({ details }: CountryReligionsProps) => {
   const { data = [], error } = useEu4Worker(
     useCallback(
       (worker) => worker.eu4GetCountryProvinceReligion(details.tag),
-      [details.tag]
-    )
+      [details.tag],
+    ),
   );
 
   return (

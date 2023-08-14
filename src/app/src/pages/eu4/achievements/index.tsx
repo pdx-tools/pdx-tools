@@ -30,7 +30,7 @@ export const Eu4Achievements = ({ achievements }: StaticAchievements) => {
 export default Eu4Achievements;
 
 export const getStaticProps: GetStaticProps<StaticAchievements> = async (
-  _context
+  _context,
 ) => {
   const achievements: Achievement[] = loadAchievements();
   const result = achievements.map((achievement) => ({

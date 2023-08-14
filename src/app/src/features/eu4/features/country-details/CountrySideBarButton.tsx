@@ -87,8 +87,8 @@ const CountryDetailsContent = () => {
           worker.eu4GetCountryRulers(selectedTag),
           worker.eu4GetCountryAdvisors(selectedTag),
         ]),
-      [selectedTag]
-    )
+      [selectedTag],
+    ),
   );
 
   return (
@@ -98,7 +98,7 @@ const CountryDetailsContent = () => {
       onInteractOutside={(e) => e.preventDefault()}
       className={cx(
         "flex flex-col bg-white pt-4 transition-[width] duration-200",
-        expanded ? "w-full" : "w-[850px] max-w-full"
+        expanded ? "w-full" : "w-[850px] max-w-full",
       )}
     >
       <Sheet.Header className="px-4">
@@ -252,7 +252,7 @@ const CountrySelect = () => {
       panTag(tag);
       setOpen(false);
     },
-    [setSelectedTag, panTag]
+    [setSelectedTag, panTag],
   );
 
   return (
@@ -315,7 +315,7 @@ const CountrySelectGroup = React.memo(function CountrySelectGroup({
           <CheckOutlined
             className={cx(
               "mr-2 h-4 w-4 opacity-0 data-[selected]:opacity-100",
-              selected === x.tag ? "opacity-100" : "opacity-0"
+              selected === x.tag ? "opacity-100" : "opacity-0",
             )}
           />
           {x.name} ({x.tag})

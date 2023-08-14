@@ -77,7 +77,7 @@ async function getPlayerName(steamUid: string) {
     ["steamids", steamUid],
   ]);
   const request = fetch(
-    `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002?${params}`
+    `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002?${params}`,
   );
 
   const response = await request;

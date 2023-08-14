@@ -38,7 +38,7 @@ export const SkanderbegPage = () => {
               ev.preventDefault();
               const values = Object.fromEntries(new FormData(ev.currentTarget));
               router.push(
-                `/eu4/skanderbeg/${extractSaveId(values["id"] as string)}`
+                `/eu4/skanderbeg/${extractSaveId(values["id"] as string)}`,
               );
             }}
           >

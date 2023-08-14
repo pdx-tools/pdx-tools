@@ -7,7 +7,7 @@ export function isPresent<T>(t: T | undefined | null | void): t is T {
 export function isOfType<
   GenericType extends string,
   Union extends { kind: GenericType },
-  SpecificType extends GenericType
+  SpecificType extends GenericType,
 >(val: SpecificType) {
   return (obj: Union): obj is Extract<Union, { kind: SpecificType }> =>
     obj.kind === val;

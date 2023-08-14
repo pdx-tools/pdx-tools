@@ -136,7 +136,7 @@ export const CountryManaUsage = ({ details }: CountryManaProps) => {
       Object.entries(details.mana_usage.adm)
         .filter(([_key, value]) => value !== 0.0)
         .map(([key, value]) => ({ key: aliases.get(key) || key, value })),
-    [details]
+    [details],
   );
 
   const dip_mana = useMemo(
@@ -144,7 +144,7 @@ export const CountryManaUsage = ({ details }: CountryManaProps) => {
       Object.entries(details.mana_usage.dip)
         .filter(([_key, value]) => value !== 0.0)
         .map(([key, value]) => ({ key: aliases.get(key) || key, value })),
-    [details]
+    [details],
   );
 
   const mil_mana = useMemo(
@@ -152,7 +152,7 @@ export const CountryManaUsage = ({ details }: CountryManaProps) => {
       Object.entries(details.mana_usage.mil)
         .filter(([_key, value]) => value !== 0.0)
         .map(([key, value]) => ({ key: aliases.get(key) || key, value })),
-    [details]
+    [details],
   );
 
   return (

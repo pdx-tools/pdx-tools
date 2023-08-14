@@ -34,10 +34,10 @@ export const CountriesIncomeTable = () => {
         worker.eu4GetCountriesIncome(
           countryFilter,
           doShowPercent,
-          showRecurringOnly
+          showRecurringOnly,
         ),
-      [countryFilter, doShowPercent, showRecurringOnly]
-    )
+      [countryFilter, doShowPercent, showRecurringOnly],
+    ),
   );
 
   useEffect(() => {
@@ -87,7 +87,7 @@ export const CountriesIncomeTable = () => {
           ),
           meta: { className: "text-right" },
           cell: (info) => numRenderer(info.getValue()),
-        })
+        }),
       ),
     ];
   }, [doShowPercent]);

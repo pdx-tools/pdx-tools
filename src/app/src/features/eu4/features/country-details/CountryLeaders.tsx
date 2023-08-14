@@ -175,8 +175,8 @@ export const CountryLeaders = ({ details }: CountryLeadersProps) => {
           total: x.fire + x.shock + x.manuever + x.siege,
         }));
       },
-      [details.tag]
-    )
+      [details.tag],
+    ),
   );
 
   return (

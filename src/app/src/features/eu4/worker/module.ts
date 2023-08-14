@@ -32,7 +32,7 @@ export const melt = () => wasm.melt();
 let provinceIdToColorIndex = new Uint16Array();
 
 export function eu4SetProvinceIdToColorIndex(
-  _provinceIdToColorIndex: Uint16Array
+  _provinceIdToColorIndex: Uint16Array,
 ) {
   provinceIdToColorIndex = _provinceIdToColorIndex;
 }
@@ -98,7 +98,7 @@ export function mapTimelapseNext(): MapTimelapseItem | undefined {
     const primary = arr.subarray(0, arr.length / parts);
     const secondary = arr.subarray(
       arr.length / parts,
-      (arr.length * 2) / parts
+      (arr.length * 2) / parts,
     );
     const country = arr.subarray((arr.length * 2) / parts);
     return transfer({ date, primary, secondary, country }, [arr.buffer]);
@@ -190,7 +190,7 @@ export function eu4GetAnnualIncomeData(filter: CountryMatcher): LedgerDatum[] {
 }
 
 export function eu4GetAnnualNationSizeData(
-  filter: CountryMatcher
+  filter: CountryMatcher,
 ): LedgerDatum[] {
   const data = wasm.save.get_annual_nation_size_ledger(filter);
   return workLedgerData(data);
@@ -202,7 +202,7 @@ export function eu4GetAnnualScoreData(filter: CountryMatcher): LedgerDatum[] {
 }
 
 export function eu4GetAnnualInflationData(
-  filter: CountryMatcher
+  filter: CountryMatcher,
 ): LedgerDatum[] {
   const data = wasm.save.get_annual_inflation_ledger(filter);
   return workLedgerData(data);
@@ -215,7 +215,7 @@ export function eu4GetHealth(filter: CountryMatcher): HealthData {
 export function eu4GetCountriesIncome(
   filter: CountryMatcher,
   percent: boolean,
-  recurringOnly: boolean
+  recurringOnly: boolean,
 ): CountryIncome[] {
   const data = wasm.save.get_countries_income(filter);
   return reduceToTableLedger(data, percent, recurringOnly);
@@ -224,7 +224,7 @@ export function eu4GetCountriesIncome(
 export function eu4GetCountriesExpenses(
   filter: CountryMatcher,
   percent: boolean,
-  recurringOnly: boolean
+  recurringOnly: boolean,
 ): CountryExpenses[] {
   const data = wasm.save.get_countries_expenses(filter);
   return reduceToTableExpenseLedger(data, percent, recurringOnly);
@@ -233,7 +233,7 @@ export function eu4GetCountriesExpenses(
 export function eu4GetCountriesTotalExpenses(
   filter: CountryMatcher,
   percent: boolean,
-  recurringOnly: boolean
+  recurringOnly: boolean,
 ): CountryExpenses[] {
   const data = wasm.save.get_countries_total_expenses(filter);
   return reduceToTableExpenseLedger(data, percent, recurringOnly);
@@ -244,13 +244,13 @@ export function eu4GeographicalDevelopment(filter: CountryMatcher) {
 }
 
 export function eu4OwnedDevelopmentStates(
-  filter: CountryMatcher
+  filter: CountryMatcher,
 ): OwnedDevelopmentStates[] {
   return wasm.save.owned_development_states(filter);
 }
 
 export function eu4GetCountriesWarLosses(
-  filter: CountryMatcher
+  filter: CountryMatcher,
 ): CountryLosses[] {
   const result = wasm.save.countries_war_losses(filter);
 
@@ -335,7 +335,7 @@ export function eu4GetProvinceDeteails(id: number) {
 export function eu4GetMapTooltip(
   province: number,
   payload: MapPayload["kind"],
-  date: number | undefined
+  date: number | undefined,
 ): QuickTipPayload | null {
   return wasm.save.map_quick_tip(province, payload, date) ?? null;
 }

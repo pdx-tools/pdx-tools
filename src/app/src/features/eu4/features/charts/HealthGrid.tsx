@@ -112,7 +112,7 @@ const columns = [
       return general.value === 0
         ? "---"
         : `(${formatInt(general.fire)} / ${formatInt(
-            general.shock
+            general.shock,
           )} / ${formatInt(general.manuever)} / ${formatInt(general.siege)})`;
     },
   }),
@@ -193,7 +193,7 @@ const columns = [
       return general.value === 0
         ? "---"
         : `(${formatInt(general.fire)} / ${formatInt(
-            general.shock
+            general.shock,
           )} / ${formatInt(general.manuever)})`;
     },
   }),
@@ -239,7 +239,7 @@ const columns = [
     cell: (info) => {
       const tech = info.getValue();
       return `(${formatInt(tech.adm)} / ${formatInt(tech.dip)} / ${formatInt(
-        tech.mil
+        tech.mil,
       )})`;
     },
   }),
@@ -308,8 +308,8 @@ export const HealthGrid = () => {
   const { data = [], error } = useAnalysisWorker(
     useCallback(
       (worker) => worker.eu4GetHealth(countryFilter).then((x) => x.data),
-      [countryFilter]
-    )
+      [countryFilter],
+    ),
   );
 
   const table = useReactTable({
@@ -362,7 +362,7 @@ export const HealthGrid = () => {
               ["mil_tech", x.technology.mil],
               ["ideas", x.ideas.value],
               ["corruption", x.corruption.value],
-            ] as const
+            ] as const,
         );
 
         const csvData = columns.map((x) => Object.fromEntries(x));
@@ -385,7 +385,7 @@ export const HealthGrid = () => {
                     ? null
                     : flexRender(
                         header.column.columnDef.header,
-                        header.getContext()
+                        header.getContext(),
                       )}
                 </Table.Head>
               ))}
@@ -408,7 +408,7 @@ export const HealthGrid = () => {
                       (cell.column.columnDef?.meta as any)?.className,
                       value instanceof Object && "color" in value
                         ? colorToClass(value.color as number)
-                        : ""
+                        : "",
                     )}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

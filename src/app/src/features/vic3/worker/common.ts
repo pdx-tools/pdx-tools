@@ -6,5 +6,5 @@ import tokenPath from "../../../../../../assets/tokens/vic3.bin";
 export const wasm = createWasmGame<typeof mod, mod.SaveFile, typeof wasmPath>(
   mod,
   wasmPath,
-  tokenPath
+  tokenPath,
 );

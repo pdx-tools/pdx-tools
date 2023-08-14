@@ -69,7 +69,7 @@ const fileuploader = upload.single("file");
 
 const uploadFile = (
   req: NextSessionRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ): Promise<Express.Multer.File | undefined> => {
   return new Promise((resolve, reject) => {
     const r = req as any;
@@ -108,7 +108,7 @@ const headerMetadata = z
   });
 
 const uploadRawFile = async (
-  req: NextSessionRequest
+  req: NextSessionRequest,
 ): Promise<[Buffer, UploadMetadata]> => {
   const headers = headerMetadata.parse(req.headers);
   const buffers = [];
@@ -121,7 +121,7 @@ const uploadRawFile = async (
 
 const handleUpload = async (
   req: NextSessionRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ): Promise<[Buffer, UploadMetadata]> => {
   const requestFile = await uploadFile(req, res);
 

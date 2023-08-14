@@ -38,7 +38,7 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
       columnFilters,
       ...(!pagination && { pageIndex: 0, pageSize: 100000 }),
     }),
-    [sorting, columnFilters, pagination]
+    [sorting, columnFilters, pagination],
   );
 
   const table = useReactTable({
@@ -65,7 +65,7 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
                 <Table.Head
                   colSpan={header.colSpan}
                   className={cx(
-                    header.colSpan > 1 && "border-l border-r text-center"
+                    header.colSpan > 1 && "border-l border-r text-center",
                   )}
                   key={header.id}
                 >
@@ -73,7 +73,7 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
                     ? null
                     : flexRender(
                         header.column.columnDef.header,
-                        header.getContext()
+                        header.getContext(),
                       )}
                 </Table.Head>
               ))}
@@ -94,15 +94,15 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
                       rowSpan={i == 0 ? cell.row.original.rowSpan : undefined}
                       className={cx(
                         cell.column.getIsSorted() && "bg-gray-50",
-                        (cell.column.columnDef?.meta as any)?.className
+                        (cell.column.columnDef?.meta as any)?.className,
                       )}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </Table.Cell>
-                  )
+                  ),
                 )}
               </Table.Row>
             ))

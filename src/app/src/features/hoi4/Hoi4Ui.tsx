@@ -86,7 +86,7 @@ type Hoi4LoadActions =
 
 const loadStateReducer = (
   state: Hoi4LoadState,
-  action: Hoi4LoadActions
+  action: Hoi4LoadActions,
 ): Hoi4LoadState => {
   switch (action.kind) {
     case "start": {

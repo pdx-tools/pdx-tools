@@ -34,7 +34,7 @@ export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
       ([filename, saves]) => {
         const playthroughIds = new Set(saves.map((x) => x.playthrough_id));
         return playthroughIds.size === 1 ? [filename] : [];
-      }
+      },
     );
     const uniqnames = new Set(elgibleFilenames);
 
@@ -150,7 +150,7 @@ export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
         },
       }),
     ],
-    [isPrivileged]
+    [isPrivileged],
   );
 
   return <DataTable columns={columns} data={data} />;

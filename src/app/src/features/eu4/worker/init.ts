@@ -46,7 +46,7 @@ export async function fetchData(save: Eu4SaveInput) {
 
 export async function eu4GameParse(
   gameData: Uint8Array,
-  provinceIdToColorIndex: Uint16Array
+  provinceIdToColorIndex: Uint16Array,
 ) {
   const data = wasm.takeStash();
   wasm.save = wasm.module.parse_save(data, gameData, provinceIdToColorIndex);
@@ -127,7 +127,7 @@ export function supportsFileObserver() {
 let observer: ReturnType<(typeof wasm)["startFileObserver"]>;
 export function startFileObserver<T>(
   frequency: string,
-  cb: (save: { meta: EnhancedMeta; achievements: AchievementsScore }) => T
+  cb: (save: { meta: EnhancedMeta; achievements: AchievementsScore }) => T,
 ) {
   observer = wasm.startFileObserver(async (data) => {
     try {

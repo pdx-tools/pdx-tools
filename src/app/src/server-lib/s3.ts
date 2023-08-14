@@ -45,7 +45,7 @@ export async function s3Presigned(saveId: string): Promise<string> {
 export async function uploadFileToS3(
   body: Buffer,
   filename: string,
-  upload: UploadType
+  upload: UploadType,
 ): Promise<void> {
   const contentType = uploadContentType(upload);
   const put = await timeit(() =>
@@ -55,7 +55,7 @@ export async function uploadFileToS3(
       headers: {
         "Content-Type": contentType,
       },
-    })
+    }),
   );
 
   log.info({

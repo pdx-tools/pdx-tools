@@ -15,7 +15,7 @@ function compileWasm() {
     "src",
     "server-lib",
     "wasm",
-    "wasm_app_bg.wasm"
+    "wasm_app_bg.wasm",
   );
   initSync(fs.readFileSync(file));
 }
@@ -34,10 +34,10 @@ const withWasm = <T extends Array<any>, U>(fn: (...args: T) => U) => {
 
 let achMemo: Achievement[] | undefined;
 export const loadAchievements = withWasm(
-  () => achMemo ?? (achMemo = achievements())
+  () => achMemo ?? (achMemo = achievements()),
 );
 export const getAchievement = withWasm((id: number) =>
-  loadAchievements().find((x) => x.id == id)
+  loadAchievements().find((x) => x.id == id),
 );
 export const eu4DaysToDate = withWasm((days: number) => eu4_days_to_date(days));
 export const latestEu4MinorPatch = withWasm(() => latest_eu4_minor_patch());

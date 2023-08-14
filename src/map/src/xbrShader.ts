@@ -27,7 +27,7 @@ export class XbrShader {
     private uSurfaceRock: WebGLUniformLocation,
     private uSurfaceGreen: WebGLUniformLocation,
     private uSurfaceNormalRock: WebGLUniformLocation,
-    private uSurfaceNormalGreen: WebGLUniformLocation
+    private uSurfaceNormalGreen: WebGLUniformLocation,
   ) {}
 
   static create(gl: WebGL2RenderingContext, program: WebGLProgram) {
@@ -56,7 +56,7 @@ export class XbrShader {
       notNull(gl.getUniformLocation(program, "u_surfaceRockImage")),
       notNull(gl.getUniformLocation(program, "u_surfaceGreenImage")),
       notNull(gl.getUniformLocation(program, "u_surfaceNormalRockImage")),
-      notNull(gl.getUniformLocation(program, "u_surfaceNormalGreenImage"))
+      notNull(gl.getUniformLocation(program, "u_surfaceNormalGreenImage")),
     );
   }
 

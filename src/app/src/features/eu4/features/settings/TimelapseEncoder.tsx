@@ -48,7 +48,7 @@ export class TimelapseEncoder {
     private fontFamily: string,
     private fps: number,
     private freezeFrame: number,
-    private store: Eu4Store
+    private store: Eu4Store,
   ) {
     this.encoder = new VideoEncoder({
       output: (chunk, meta) => this.muxer.mux.addVideoChunk(chunk, meta ?? {}),
@@ -70,7 +70,7 @@ export class TimelapseEncoder {
       recordingCanvas.width - 130 * scale,
       0,
       130 * scale,
-      50 * scale
+      50 * scale,
     );
 
     ctx2d.fillStyle = "#ffffff";
@@ -175,7 +175,7 @@ export class TimelapseEncoder {
           };
 
     async function findSupportedEncoder(
-      codecs: Readonly<Readonly<[string, string]>[]>
+      codecs: Readonly<Readonly<[string, string]>[]>,
     ) {
       for (const [codec, muxCodec] of codecs) {
         try {
@@ -258,7 +258,7 @@ export class TimelapseEncoder {
       fontFamily,
       fps,
       freezeFrame,
-      store
+      store,
     );
   }
 }

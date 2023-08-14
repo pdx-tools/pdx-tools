@@ -11,9 +11,9 @@ export function useSideBarPanTag() {
       setSelectedTag(tag);
       panToTag(
         tag,
-        sidebarContainer.containerRef.current?.getBoundingClientRect().width
+        sidebarContainer.containerRef.current?.getBoundingClientRect().width,
       );
     },
-    [panToTag, sidebarContainer, setSelectedTag]
+    [panToTag, sidebarContainer, setSelectedTag],
   );
 }

@@ -3,7 +3,7 @@ import { AchievementDifficulty } from "../services/appApi";
 import { SortingFn } from "@tanstack/react-table";
 
 export const difficultyText = (
-  diff: AchievementDifficulty | GameDifficulty
+  diff: AchievementDifficulty | GameDifficulty,
 ): string => {
   switch (diff) {
     case "VeryEasy":
@@ -16,7 +16,7 @@ export const difficultyText = (
 };
 
 export const difficultyNum = (
-  diff: AchievementDifficulty | GameDifficulty
+  diff: AchievementDifficulty | GameDifficulty,
 ): number => {
   switch (diff) {
     case "VeryEasy":

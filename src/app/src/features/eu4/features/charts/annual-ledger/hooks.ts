@@ -5,12 +5,12 @@ import { useTagFilter } from "@/features/eu4/store";
 
 export type LedgerSelection = (
   worker: Eu4Worker,
-  filter: CountryMatcher
+  filter: CountryMatcher,
 ) => Promise<LedgerDatum[]>;
 
 export function useLedgerData(fn: LedgerSelection) {
   const countryFilter = useTagFilter();
   return useAnalysisWorker(
-    useCallback((worker) => fn(worker, countryFilter), [fn, countryFilter])
+    useCallback((worker) => fn(worker, countryFilter), [fn, countryFilter]),
   );
 }

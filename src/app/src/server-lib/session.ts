@@ -30,7 +30,7 @@ export const sessionOptions = {
 
 export async function extractSession(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ): Promise<IronSession> {
   return await getIronSession(req, res, sessionOptions);
 }
@@ -66,7 +66,7 @@ export function parseBasicAuth(header: string): AuthCredentials | null {
 
 type Handler = Parameters<typeof withIronSessionApiRoute>[0];
 export const withHttpSession = (
-  handler: Handler
+  handler: Handler,
 ): ReturnType<typeof withIronSessionApiRoute> => {
   return withIronSessionApiRoute(handler, sessionOptions);
 };
@@ -74,8 +74,8 @@ export const withHttpSession = (
 export const withSession = (
   handler: (
     req: NextSessionRequest,
-    res: NextApiResponse
-  ) => void | Promise<void>
+    res: NextApiResponse,
+  ) => void | Promise<void>,
 ) => {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     const header = req.headers.authorization;

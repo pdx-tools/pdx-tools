@@ -248,7 +248,7 @@ export const CountryDetailsDescriptions = ({
               <span className="grow">
                 {formatInt(
                   100 - (details.development / details.raw_development) * 100 ||
-                    0
+                    0,
                 )}
                 %
               </span>
@@ -312,7 +312,7 @@ export const CountryDetailsDescriptions = ({
                   details.artillery_units.count -
                   details.infantry_units.strength -
                   details.cavalry_units.strength -
-                  details.artillery_units.strength
+                  details.artillery_units.strength,
               )}
               K
             </div>

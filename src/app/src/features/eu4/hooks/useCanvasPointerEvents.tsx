@@ -46,7 +46,7 @@ export function useCanvasPointerEvents(map: WebGLMap) {
       const b = secondaryPointer;
 
       const dist = Math.sqrt(
-        (b.clientX - a.clientX) ** 2 + (b.clientY - a.clientY) ** 2
+        (b.clientX - a.clientX) ** 2 + (b.clientY - a.clientY) ** 2,
       );
 
       if (pointerDiff != 0) {
@@ -66,7 +66,7 @@ export function useCanvasPointerEvents(map: WebGLMap) {
     }
 
     function handleMouseDown(
-      e: PointerEvent & { preventDefault: () => void; button: number }
+      e: PointerEvent & { preventDefault: () => void; button: number },
     ) {
       e.preventDefault();
       if (e.button === 0) {

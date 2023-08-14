@@ -38,7 +38,7 @@ export const useEu4Worker = <T>(cb: (arg0: Eu4Worker) => Promise<T>) => {
       return () => {
         mounted = false;
       };
-    }, [cb])
+    }, [cb]),
   );
 
   return { isLoading, data, error };

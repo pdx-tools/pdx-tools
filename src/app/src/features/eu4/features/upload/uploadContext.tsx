@@ -42,7 +42,7 @@ interface UploadContextData {
 }
 
 const UploadContext = React.createContext<UploadContextData | undefined>(
-  undefined
+  undefined,
 );
 
 const uploadReducer = (_state: UploadState, action: Action): UploadState => {
@@ -141,7 +141,7 @@ export const useFileUpload = () => {
 
       const fileData = await compression.compress(
         new Uint8Array(rawFileData),
-        compressProgress
+        compressProgress,
       );
       dispatch({ kind: "progress", progress: 50 });
 
@@ -204,6 +204,6 @@ export const useFileUpload = () => {
 
       request.send(data);
     },
-    [compression, uploadRequestRef, dispatch, filename]
+    [compression, uploadRequestRef, dispatch, filename],
   );
 };

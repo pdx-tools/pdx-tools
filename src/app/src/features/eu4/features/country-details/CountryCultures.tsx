@@ -211,8 +211,8 @@ export const CountryCultures = ({ details }: CountryCulturesProps) => {
   const { data = [], error } = useEu4Worker(
     useCallback(
       (worker) => worker.eu4GetCountryProvinceCulture(details.tag),
-      [details.tag]
-    )
+      [details.tag],
+    ),
   );
   return (
     <>

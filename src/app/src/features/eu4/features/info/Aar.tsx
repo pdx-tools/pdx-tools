@@ -12,7 +12,7 @@ interface AarProps {
 
 export const Aar = ({ defaultValue, editMode }: AarProps) => {
   const [isEditing, setIsEditing] = useState(
-    editMode == "always" || !defaultValue
+    editMode == "always" || !defaultValue,
   );
   const patchSave = useSavePatch();
   const serverFile = useServerSaveFile();
@@ -28,7 +28,7 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
       }
       patchSave.mutate({ id, aar: values.aar as string });
     },
-    [serverFile, patchSave]
+    [serverFile, patchSave],
   );
 
   return (

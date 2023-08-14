@@ -73,7 +73,7 @@ export const PieTable = ({
           percent: x.value / total,
         }))
         .sort((a, b) => b.value - a.value),
-    [total, rows]
+    [total, rows],
   );
 
   const columns = useMemo(
@@ -110,7 +110,7 @@ export const PieTable = ({
         ),
       }),
     ],
-    [palette, numFormatter]
+    [palette, numFormatter],
   );
 
   return (

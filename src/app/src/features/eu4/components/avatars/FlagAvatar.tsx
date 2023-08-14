@@ -49,7 +49,7 @@ export const FlagAvatarCore = ({ tag, size }: FlagAvatarCoreProps) => {
       height={128}
       className={cx(
         dims,
-        "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500"
+        "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500",
       )}
       src={src}
     />
@@ -106,7 +106,7 @@ export const TagFlag = ({
       shape="none"
       className={cx(
         `w-max flex-shrink-0 rounded-r-md p-0 hover:bg-gray-200/70 active:bg-gray-300`,
-        children && "pr-4"
+        children && "pr-4",
       )}
       onClick={() => setSelectedTag(tag)}
     >

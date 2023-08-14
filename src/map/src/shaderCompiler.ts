@@ -4,7 +4,7 @@ import { ShaderSource } from "./types";
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices#compile_shaders_and_link_programs_in_parallel
 export function startCompilation(
   gl: WebGL2RenderingContext,
-  sources: ShaderSource[]
+  sources: ShaderSource[],
 ) {
   const ext = gl.getExtension("KHR_parallel_shader_compile");
   const programs = sources.map(({ vertex, fragment }) => {
@@ -21,7 +21,7 @@ export function startCompilation(
   // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices#prefer_khr_parallel_shader_compile
   const resolveStatus = (
     program: WebGLProgram,
-    resolve: (value: boolean) => void
+    resolve: (value: boolean) => void,
   ) => {
     if (ext && gl.getProgramParameter(program, ext.COMPLETION_STATUS_KHR)) {
       resolve(gl.getProgramParameter(program, gl.LINK_STATUS));
@@ -52,14 +52,14 @@ export function startCompilation(
             return Promise.reject(
               new Error(
                 `Link failed: ${gl.getProgramInfoLog(
-                  program
+                  program,
                 )} | vs info: ${gl.getShaderInfoLog(
-                  vertexShader
-                )} | fs info: ${gl.getShaderInfoLog(fragmentShader)}`
-              )
+                  vertexShader,
+                )} | fs info: ${gl.getShaderInfoLog(fragmentShader)}`,
+              ),
             );
           });
-        })
+        }),
       ),
   };
 }
@@ -67,7 +67,7 @@ export function startCompilation(
 function createShader(
   gl: WebGL2RenderingContext,
   type: number,
-  source: string
+  source: string,
 ) {
   const shader = gl.createShader(type);
   if (shader === null) {
@@ -81,7 +81,7 @@ function createShader(
 function createProgram(
   gl: WebGL2RenderingContext,
   vertexShader: WebGLShader,
-  fragmentShader: WebGLShader
+  fragmentShader: WebGLShader,
 ) {
   const program = gl.createProgram();
   if (program === null) {

@@ -16,7 +16,7 @@ const useAchievement = (achievementId: string) => {
         ...x,
         rank: i + 1,
       })),
-    [achievementQuery.data]
+    [achievementQuery.data],
   );
 
   return { isFetching: achievementQuery.isFetching, achievement, saves };

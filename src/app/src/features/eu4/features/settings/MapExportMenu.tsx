@@ -36,7 +36,7 @@ export const MapExportMenu = ({ setIsExporting }: MapExportMenuProps) => {
     const provinceIdToColorIndex =
       await getEu4Worker().eu4GetProvinceIdToColorIndex();
     const colorIndexToProvinceId = provinceIdToColorIndexInvert(
-      provinceIdToColorIndex
+      provinceIdToColorIndex,
     );
     downloadData(colorIndexToProvinceId, "color-index.bin");
   }, []);

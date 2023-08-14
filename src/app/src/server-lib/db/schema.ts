@@ -39,7 +39,7 @@ export const users = pgTable(
   },
   (users) => ({
     steamIdIndex: uniqueIndex("idx_users_steam_id").on(users.steamId),
-  })
+  }),
 );
 export type User = InferModel<typeof users>;
 export type Account = User["account"];
@@ -78,9 +78,9 @@ export const saves = pgTable(
     hashIndex: index("idx_save_hash").on(saves.hash),
     playersIndex: index("idx_save_players").on(saves.players),
     playthroughIdIndex: index("idx_saves_playthrough_id").on(
-      saves.playthroughId
+      saves.playthroughId,
     ),
-  })
+  }),
 );
 export type Save = InferModel<typeof saves>;
 export type NewSave = InferModel<typeof saves, "insert">;

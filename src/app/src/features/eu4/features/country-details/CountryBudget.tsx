@@ -67,22 +67,22 @@ const BudgetBar = React.memo(
     };
 
     return <Bar {...overviewConfig} />;
-  }
+  },
 );
 
 export const CountryBudget = ({ details }: CountryBudgetCountProps) => {
   const [showRecurringOnly, setRecurOnly] = useState(false);
   const income = useMemo(
     () => filterIncome(details.income, showRecurringOnly),
-    [details.income, showRecurringOnly]
+    [details.income, showRecurringOnly],
   );
   const expenses = useMemo(
     () => filterExpenses(details.expenses, showRecurringOnly),
-    [details.expenses, showRecurringOnly]
+    [details.expenses, showRecurringOnly],
   );
   const totalExpenses = useMemo(
     () => filterExpenses(details.total_expenses, showRecurringOnly),
-    [details.total_expenses, showRecurringOnly]
+    [details.total_expenses, showRecurringOnly],
   );
 
   const totalIncome = income.reduce((acc, x) => x.value + acc, 0);
