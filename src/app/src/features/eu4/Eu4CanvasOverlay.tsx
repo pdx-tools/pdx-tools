@@ -1,13 +1,4 @@
 import React from "react";
-import {
-  InfoCircleOutlined,
-  UploadOutlined,
-  AreaChartOutlined,
-  GlobalOutlined,
-  FlagOutlined,
-  FileSyncOutlined,
-  HomeOutlined,
-} from "@ant-design/icons";
 import { SaveWarnings } from "./components/SaveWarnings";
 import { InfoSideBarButton } from "@/features/eu4/features/info";
 import { ChartSideBarButton } from "@/features/eu4/features/charts";
@@ -35,6 +26,15 @@ import { MapModeImage } from "./components/map-modes/MapModeImage";
 import { MapModeButtonGroup } from "./components/map-modes";
 import { useRouter } from "next/router";
 import { Tooltip } from "@/components/Tooltip";
+import {
+  ArrowUpTrayIcon,
+  FlagIcon,
+  HomeIcon,
+  InformationCircleIcon,
+  MapIcon,
+} from "@heroicons/react/24/outline";
+import { ChartAreaIcon } from "@/components/icons/ChartAreaIcon";
+import { FileSyncIcon } from "@/components/icons/FileSyncIcon";
 
 export const Eu4CanvasOverlay = () => {
   const router = useRouter();
@@ -69,7 +69,7 @@ export const Eu4CanvasOverlay = () => {
           >
             <span className="text-base">Close Save</span>
             <div className="flex h-8 w-8 items-center justify-center">
-              <HomeOutlined className="text-[24px]" />
+              <HomeIcon className="h-8 w-8 stroke-2" />
             </div>
           </SideBarButton>
         </div>
@@ -81,7 +81,7 @@ export const Eu4CanvasOverlay = () => {
         <div className="flex justify-end overflow-hidden whitespace-nowrap">
           <InfoSideBarButton key="info">
             <span className="text-base">Save Info</span>
-            <InfoCircleOutlined className="text-[32px]" />
+            <InformationCircleIcon className="h-8 w-8 stroke-2" />
           </InfoSideBarButton>
         </div>
 
@@ -89,7 +89,7 @@ export const Eu4CanvasOverlay = () => {
           <div className="flex justify-end overflow-hidden whitespace-nowrap">
             <UploadSideBarButton key="upload">
               <span className="text-base">Upload save</span>
-              <UploadOutlined className="text-[32px]" />
+              <ArrowUpTrayIcon className="h-8 w-8 stroke-2" />
             </UploadSideBarButton>
           </div>
         ) : null}
@@ -97,21 +97,21 @@ export const Eu4CanvasOverlay = () => {
         <div className="flex justify-end overflow-hidden whitespace-nowrap">
           <ChartSideBarButton key="chart">
             <span className="text-base">World charts</span>
-            <AreaChartOutlined className="text-[32px]" />
+            <ChartAreaIcon className="h-8 w-8" />
           </ChartSideBarButton>
         </div>
 
         <div className="flex justify-end overflow-hidden whitespace-nowrap">
           <CountrySideBarButton key="data">
             <span className="text-base">Country breakdown</span>
-            <FlagOutlined className="text-[32px]" />
+            <FlagIcon className="h-8 w-8 stroke-2" />
           </CountrySideBarButton>
         </div>
 
         <div className="flex justify-end overflow-hidden whitespace-nowrap">
           <MapSettingsSideBarButton key="settings">
             <span className="text-base">Map / timelapse settings</span>
-            <GlobalOutlined className="text-[32px]" />
+            <MapIcon className="h-8 w-8 stroke-2" />
           </MapSettingsSideBarButton>
         </div>
 
@@ -119,7 +119,7 @@ export const Eu4CanvasOverlay = () => {
           <div className="flex justify-end overflow-hidden whitespace-nowrap">
             <WatchSideBarButton key="watch">
               <span className="text-base">Watch save</span>
-              <FileSyncOutlined className="text-[32px]" />
+              <FileSyncIcon className="h-8 w-8" />
             </WatchSideBarButton>
           </div>
         ) : null}

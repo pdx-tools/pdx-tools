@@ -1,4 +1,3 @@
-import { QuestionCircleOutlined } from "@ant-design/icons";
 import { CountryDetails } from "../../types/models";
 import classes from "./InheritanceValueBreakdown.module.css";
 import { useIsJuniorPartner } from "./detailHooks";
@@ -8,6 +7,7 @@ import { Button } from "@/components/Button";
 import { Tooltip } from "@/components/Tooltip";
 import { Sheet } from "@/components/Sheet";
 import { Link } from "@/components/Link";
+import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 
 export interface InheranticeLabelProps {
   details: CountryDetails;
@@ -25,7 +25,7 @@ export const InheritanceValueBreakdown = ({
     <Sheet modal={true}>
       <Sheet.Trigger asChild>
         <Button shape="square">
-          <QuestionCircleOutlined />
+          <QuestionMarkCircleIcon className="h-4 w-4" />
           <span className="sr-only">open inheritance drawer</span>
         </Button>
       </Sheet.Trigger>

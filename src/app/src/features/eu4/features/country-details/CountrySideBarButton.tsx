@@ -1,11 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
-import {
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  CheckOutlined,
-  QuestionCircleOutlined,
-  CaretDownOutlined,
-} from "@ant-design/icons";
+import React, { useCallback, useState } from "react";
 import {
   SideBarButton,
   SideBarButtonProps,
@@ -17,7 +10,6 @@ import {
 } from "../../components/SideBarContainer";
 import { Sheet } from "@/components/Sheet";
 import {
-  useAiCountries,
   useCountryDrawerVisible,
   useEu4Actions,
   useEu4Countries,
@@ -49,6 +41,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/Popover";
 import { Command } from "@/components/Command";
 import { EnhancedCountryInfo } from "../../types/models";
 import { Link } from "@/components/Link";
+import { CheckIcon, QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
+import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
+import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
+import { PlayIcon } from "@heroicons/react/20/solid";
 
 export const CountrySideBarButton = ({
   children,
@@ -109,14 +105,18 @@ const CountryDetailsContent = () => {
             onClick={() => setExpanded(!expanded)}
             className="hidden md:flex"
           >
-            {expanded ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            {expanded ? (
+              <MenuUnfoldIcon className="h-4 w-4" />
+            ) : (
+              <MenuFoldIcon className="h-4 w-4" />
+            )}
             <span className="sr-only">{expanded ? "Fold" : "Expand"}</span>
           </Button>
           <CountrySelect />
           <Sheet modal={true}>
             <Sheet.Trigger asChild>
               <Button shape="square">
-                <QuestionCircleOutlined />
+                <QuestionMarkCircleIcon className="h-4 w-4" />
                 <span className="sr-only">Help</span>
               </Button>
             </Sheet.Trigger>
@@ -266,7 +266,7 @@ const CountrySelect = () => {
           {selectedCountry
             ? `${selectedCountry.name} (${selectedCountry.tag})`
             : "unknown selection"}
-          <CaretDownOutlined className="h-4 w-4 opacity-50" />
+          <PlayIcon className="h-3 w-3 rotate-90 opacity-50 self-center" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="max-h-96 w-64 overflow-auto">
@@ -312,7 +312,7 @@ const CountrySelectGroup = React.memo(function CountrySelectGroup({
           value={x.normalizedName + x.tag}
           onSelect={() => onSelect(x.tag)}
         >
-          <CheckOutlined
+          <CheckIcon
             className={cx(
               "mr-2 h-4 w-4 opacity-0 data-[selected]:opacity-100",
               selected === x.tag ? "opacity-100" : "opacity-0",

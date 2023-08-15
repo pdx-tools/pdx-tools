@@ -1,9 +1,10 @@
 import React, { ReactNode, useState } from "react";
-import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
-import { PlusCircleTwoTone } from "@ant-design/icons";
 import { Sheet } from "@/components/Sheet";
 import { Button } from "@/components/Button";
 import { cx } from "class-variance-authority";
+import { PlusCircleIcon } from "@heroicons/react/24/solid";
+import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
+import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
 
 export const SheetExpansion = ({
   children,
@@ -18,7 +19,7 @@ export const SheetExpansion = ({
       <Sheet.Trigger asChild>
         <Button variant="ghost" shape="none">
           <span className="sr-only">{title}</span>
-          <PlusCircleTwoTone />
+          <PlusCircleIcon className="h-5 w-5 fill-sky-400/50" />
         </Button>
       </Sheet.Trigger>
       <Sheet.Content
@@ -35,7 +36,11 @@ export const SheetExpansion = ({
             onClick={() => setExpanded(!expanded)}
             className="hidden md:flex"
           >
-            {expanded ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            {expanded ? (
+              <MenuUnfoldIcon className="h-4 w-4" />
+            ) : (
+              <MenuFoldIcon className="h-4 w-4" />
+            )}
             <span className="sr-only">{expanded ? "Fold" : "Expand"}</span>
           </Button>
           <Sheet.Title>{title}</Sheet.Title>

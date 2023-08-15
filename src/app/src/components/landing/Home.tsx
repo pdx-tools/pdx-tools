@@ -184,13 +184,13 @@ export const Home = ({ subtitle }: HomeProps) => {
             </p>
             <div className="flex flex-col gap-y-2">
               <div className="flex items-center gap-x-2">
-                <FirefoxIcon className="fill-gray-300" />
+                <FirefoxIcon className="text-gray-300 h-8 w-8" />
                 <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
-                <ChromeIcon className="fill-gray-300" />
+                <ChromeIcon className="text-gray-300 h-8 w-8" />
                 <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
-                <EdgeIcon className="fill-gray-300" />
+                <EdgeIcon className="text-gray-300 h-8 w-8" />
                 <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
-                <SafariIcon className="fill-gray-300" />
+                <SafariIcon className="text-gray-300 h-8 w-8" />
               </div>
               <div className="text-xs">
                 Recommended: Chrome (88+), Edge (88+).

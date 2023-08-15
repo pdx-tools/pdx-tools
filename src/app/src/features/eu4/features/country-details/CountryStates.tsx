@@ -1,10 +1,4 @@
 import { formatFloat, formatInt } from "@/lib/format";
-import {
-  StarTwoTone,
-  CaretUpFilled,
-  CaretDownFilled,
-  MinusOutlined,
-} from "@ant-design/icons";
 import React, { useCallback } from "react";
 import { CountryDetails, CountryStateDetails } from "../../types/models";
 import { useEu4Worker } from "@/features/eu4/worker";
@@ -13,6 +7,8 @@ import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
+import { MinusIcon, StarIcon } from "@heroicons/react/24/outline";
+import { PlayIcon } from "@heroicons/react/20/solid";
 
 export interface CountryStatesProps {
   details: CountryDetails;
@@ -36,7 +32,7 @@ const columns = [
         {row.original.capital_state && (
           <Tooltip>
             <Tooltip.Trigger className="flex items-center">
-              <StarTwoTone twoToneColor="#BABABA" />
+              <StarIcon className="h-4 w-4 text-gray-300" />
             </Tooltip.Trigger>
             <Tooltip.Content>is capital state</Tooltip.Content>
           </Tooltip>
@@ -125,9 +121,15 @@ const columns = [
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
         <span className="grow">{formatInt(row.original.prosperity)}</span>
-        {row.original.prosperity_mode === true && <CaretUpFilled />}
-        {row.original.prosperity_mode === false && <CaretDownFilled />}
-        {row.original.prosperity_mode === undefined && <MinusOutlined />}
+        {row.original.prosperity_mode === true && (
+          <PlayIcon className="h-3 w-3 -rotate-90 text-gray-800/80" />
+        )}
+        {row.original.prosperity_mode === false && (
+          <PlayIcon className="h-3 w-3 rotate-90 text-gray-800/80" />
+        )}
+        {row.original.prosperity_mode === undefined && (
+          <MinusIcon className="h-3 w-3" />
+        )}
       </div>
     ),
   }),

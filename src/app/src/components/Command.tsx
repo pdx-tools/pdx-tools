@@ -1,7 +1,7 @@
 import React from "react";
 import { DialogProps } from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
-import { SearchOutlined } from "@ant-design/icons";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { Dialog } from "@/components/Dialog";
 import { cx } from "class-variance-authority";
 import styles from "./Command.module.css";
@@ -52,7 +52,7 @@ const CommandInput = React.forwardRef<
 >(function CommandInput({ className, ...props }, ref) {
   return (
     <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-      <SearchOutlined className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+      <MagnifyingGlassIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
       <CommandPrimitive.Input
         ref={ref}
         className={cx(

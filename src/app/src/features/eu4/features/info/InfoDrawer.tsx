@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { EyeOutlined } from "@ant-design/icons";
 import { TimeAgo } from "@/components/TimeAgo";
 import { difficultyText } from "@/lib/difficulty";
 import { DlcList } from "@/features/eu4/components/dlc-list";
@@ -31,6 +30,7 @@ import { Tooltip } from "@/components/Tooltip";
 import { IconButton } from "@/components/IconButton";
 import { Alert } from "@/components/Alert";
 import { Link } from "@/components/Link";
+import { EyeIcon } from "@heroicons/react/24/outline";
 
 const TagDescription = (play: TagTransition) => {
   return (
@@ -170,7 +170,7 @@ export const InfoDrawer = () => {
                 {!item.annexed && (
                   <IconButton
                     shape="square"
-                    icon={<EyeOutlined />}
+                    icon={<EyeIcon className="h-5 w-5" />}
                     tooltip={`Show only ${item.name} on the map`}
                     onClick={() => {
                       visibleTag(item.latest);

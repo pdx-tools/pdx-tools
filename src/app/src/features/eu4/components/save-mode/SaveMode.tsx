@@ -1,10 +1,10 @@
 import React from "react";
-import { TeamOutlined, UserOutlined } from "@ant-design/icons";
 import Image from "next/image";
 import { SaveMode as Mode } from "../../types/models";
 import ironmanNo from "./ironman-no.png";
 import ironmanOk from "./ironman-ok.png";
 import { Tooltip } from "@/components/Tooltip";
+import { UserIcon, UsersIcon } from "@heroicons/react/24/outline";
 
 export interface SaveModeProps {
   mode: Mode;
@@ -16,7 +16,7 @@ export const SaveMode = ({ mode }: SaveModeProps) => {
       return (
         <Tooltip>
           <Tooltip.Trigger>
-            <UserOutlined />
+            <UserIcon className="h-6 w-6" />
           </Tooltip.Trigger>
           <Tooltip.Content>Normal mode</Tooltip.Content>
         </Tooltip>
@@ -26,7 +26,7 @@ export const SaveMode = ({ mode }: SaveModeProps) => {
       return (
         <Tooltip>
           <Tooltip.Trigger>
-            <TeamOutlined />
+            <UsersIcon className="h-6 w-6" />
           </Tooltip.Trigger>
           <Tooltip.Content>Multiplayer</Tooltip.Content>
         </Tooltip>

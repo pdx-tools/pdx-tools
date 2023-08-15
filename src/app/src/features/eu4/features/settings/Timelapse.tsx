@@ -1,10 +1,4 @@
 import { useRef, useState } from "react";
-import {
-  CaretRightOutlined,
-  PauseOutlined,
-  VideoCameraOutlined,
-  VideoCameraTwoTone,
-} from "@ant-design/icons";
 import { downloadData } from "@/lib/downloadData";
 import { ToggleRow } from "./ToggleRow";
 import { IMG_HEIGHT, IMG_WIDTH } from "map";
@@ -26,6 +20,8 @@ import { Button } from "@/components/Button";
 import { ToggleGroup } from "@/components/ToggleGroup";
 import { Slider } from "@/components/Slider";
 import { Link } from "@/components/Link";
+import { PauseIcon, PlayIcon } from "@heroicons/react/24/solid";
+import { StopIcon, VideoCameraIcon } from "@heroicons/react/24/outline";
 
 interface MapState {
   focusPoint: [number, number];
@@ -156,7 +152,13 @@ export const Timelapse = () => {
           shape="circle"
           disabled={!timelapseEnabled}
           onClick={!isPlaying ? startTimelapse : stopTimelapse}
-          icon={!isPlaying ? <CaretRightOutlined /> : <PauseOutlined />}
+          icon={
+            !isPlaying ? (
+              <PlayIcon className="h-4 w-4 opacity-75" />
+            ) : (
+              <PauseIcon className="h-4 w-4" />
+            )
+          }
           tooltip={!isPlaying ? "Start timelapse" : "Stop timelapse"}
         />
 
@@ -164,7 +166,13 @@ export const Timelapse = () => {
           shape="circle"
           disabled={!(timelapseEnabled && recordingSupported)}
           onClick={!isRecording ? startRecording : stopRecording}
-          icon={!isRecording ? <VideoCameraOutlined /> : <VideoCameraTwoTone />}
+          icon={
+            !isRecording ? (
+              <VideoCameraIcon className="h-4 w-4" />
+            ) : (
+              <StopIcon className="h-4 w-4" />
+            )
+          }
           tooltip={!isRecording ? "Start recording" : "Stop recording"}
         />
       </div>

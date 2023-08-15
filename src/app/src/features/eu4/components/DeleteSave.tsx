@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { LoadingOutlined } from "@ant-design/icons";
 import { useSaveDeletion } from "@/services/appApi";
 import { Button, type ButtonProps } from "@/components/Button";
 import { Dialog } from "@/components/Dialog";
+import { LoadingIcon } from "@/components/icons/LoadingIcon";
 
 interface DeleteSaveProps extends ButtonProps {
   saveId: string;
@@ -38,7 +38,10 @@ export const DeleteSave = ({ saveId, ...rest }: DeleteSaveProps) => {
               })
             }
           >
-            {saveDeletion.isLoading ? <LoadingOutlined /> : null} Yes, Delete
+            {saveDeletion.isLoading ? (
+              <LoadingIcon className="h-4 w-4 text-gray-800" />
+            ) : null}{" "}
+            Yes, Delete
           </Button>
         </Dialog.Footer>
       </Dialog.Content>

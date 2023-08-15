@@ -1,6 +1,6 @@
-import { PlusOutlined, MinusOutlined } from "@ant-design/icons";
 import { ZoomInSideBarButton } from "./ZoomInSideBarButton";
 import { ZoomOutSideBarButton } from "./ZoomOutSideBarButton";
+import { MinusIcon, PlusIcon } from "@heroicons/react/24/outline";
 
 export const MapZoomSideBar = () => {
   return (
@@ -9,7 +9,7 @@ export const MapZoomSideBar = () => {
         <ZoomInSideBarButton key="zoom-in">
           <span className="text-base">Zoom in</span>
           <div className="flex h-8 w-8 items-center justify-center">
-            <PlusOutlined className="text-[24px]" />
+            <PlusIcon className="h-6 w-6" />
           </div>
         </ZoomInSideBarButton>
       </div>
@@ -17,7 +17,7 @@ export const MapZoomSideBar = () => {
         <ZoomOutSideBarButton key="zoom-out">
           <span className="text-base">Zoom out</span>
           <div className="flex h-8 w-8 items-center justify-center">
-            <MinusOutlined className="text-[24px]" />
+            <MinusIcon className="h-6 w-6" />
           </div>
         </ZoomOutSideBarButton>
       </div>

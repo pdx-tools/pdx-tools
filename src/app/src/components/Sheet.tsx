@@ -1,8 +1,8 @@
 import React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
-import { CloseOutlined } from "@ant-design/icons";
 import { cva, cx, type VariantProps } from "class-variance-authority";
 import { Button } from "./Button";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 
 export const Sheet = SheetPrimitive.Root as typeof SheetPrimitive.Root & {
   Trigger: typeof SheetPrimitive.Trigger;
@@ -104,7 +104,7 @@ const SheetClose = React.forwardRef<
       )}
     >
       <Button variant="ghost" style={{ outline: "0" }}>
-        <CloseOutlined />
+        <XMarkIcon className="h-5 w-5" />
         <span className="sr-only">Close</span>
       </Button>
     </SheetPrimitive.Close>

@@ -1,6 +1,6 @@
 import React from "react";
-import { QuestionCircleOutlined } from "@ant-design/icons";
 import { IconButton } from "./IconButton";
+import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 
 interface HelpTooltipProps {
   help: string;
@@ -13,7 +13,9 @@ export const HelpTooltip = ({ help, className }: HelpTooltipProps) => {
       shape="none"
       variant="ghost"
       className={className}
-      icon={<QuestionCircleOutlined className="cursor-help text-gray-500" />}
+      icon={
+        <QuestionMarkCircleIcon className="h-4 w-4 cursor-help text-gray-500" />
+      }
       tooltip={help}
     />
   );

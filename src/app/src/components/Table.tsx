@@ -2,9 +2,11 @@ import * as React from "react";
 import { Column, SortDirection } from "@tanstack/react-table";
 import { cx } from "class-variance-authority";
 import { Button } from "./Button";
-import { CaretSortIcon } from "./icons/CaretSortIcon";
-import { CaretUpIcon } from "./icons/CaretUpIcon";
-import { CaretDownIcon } from "./icons/CaretDownIcon";
+import {
+  ChevronDownIcon,
+  ChevronUpDownIcon,
+  ChevronUpIcon,
+} from "@heroicons/react/20/solid";
 
 const TableImpl = React.forwardRef<
   HTMLTableElement,
@@ -174,11 +176,11 @@ function ColumnHeaderInner<TData, TValue>(
 const SortIcon = ({ sorted }: { sorted: false | SortDirection }) => {
   switch (sorted) {
     case false:
-      return <CaretSortIcon />;
+      return <ChevronUpDownIcon className="h-3 w-3" />;
     case "asc":
-      return <CaretUpIcon />;
+      return <ChevronUpIcon className="h-3 w-3" />;
     case "desc":
-      return <CaretDownIcon />;
+      return <ChevronDownIcon className="h-3 w-3" />;
   }
 };
 

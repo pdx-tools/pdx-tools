@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { Table } from "./Table";
 import {
   ColumnDef,
@@ -12,7 +13,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Button } from "./Button";
-import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { cx } from "class-variance-authority";
 
 interface DataTableProps<TData> {
@@ -125,7 +125,7 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
               disabled={!table.getCanPreviousPage()}
             >
               <span className="sr-only">Go to previous page</span>
-              <LeftOutlined className="h-4 w-4" />
+              <ChevronLeftIcon className="h-4 w-4" />
             </Button>
             <div className="flex items-center justify-center text-sm font-medium">
               Page {table.getState().pagination.pageIndex + 1} of{" "}
@@ -137,7 +137,7 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
               disabled={!table.getCanNextPage()}
             >
               <span className="sr-only">Go to next page</span>
-              <RightOutlined className="h-4 w-4" />
+              <ChevronRightIcon className="h-4 w-4" />
             </Button>
           </div>
         </div>

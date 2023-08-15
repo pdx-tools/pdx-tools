@@ -1,13 +1,13 @@
 import React, { useCallback } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryDetails, CountryCulture } from "../../types/models";
-import { StarTwoTone } from "@ant-design/icons";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { Tooltip } from "@/components/Tooltip";
 import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
+import { StarIcon } from "@heroicons/react/24/outline";
 
 export interface CountryCulturesProps {
   details: CountryDetails;
@@ -24,9 +24,9 @@ const CultureStar = ({
 }) => {
   switch (tolerance) {
     case "Primary":
-      return <StarTwoTone twoToneColor="#FFDE4C" />;
+      return <StarIcon className="h-4 w-4 text-amber-300" />;
     case "Accepted":
-      return <StarTwoTone twoToneColor="#BABABA" />;
+      return <StarIcon className="h-4 w-4 text-gray-300" />;
     case "None":
       return null;
   }

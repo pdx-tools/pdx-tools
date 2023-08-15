@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from "react";
-import { EditOutlined } from "@ant-design/icons";
 import { useServerSaveFile } from "../../store";
 import { useSavePatch } from "@/services/appApi";
 import { Button } from "@/components/Button";
 import { cx } from "class-variance-authority";
+import { PencilSquareIcon } from "@heroicons/react/24/outline";
 
 interface AarProps {
   defaultValue?: string;
@@ -45,7 +45,7 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
 
         {editMode == "privileged" && (
           <Button variant="ghost" onClick={() => setIsEditing(!isEditing)}>
-            <EditOutlined />
+            <PencilSquareIcon className="h-4 w-4" />
             <span className="sr-only">Toggle AAR edit</span>
           </Button>
         )}

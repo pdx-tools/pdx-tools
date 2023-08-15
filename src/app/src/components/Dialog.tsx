@@ -1,7 +1,7 @@
 import React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { CloseOutlined } from "@ant-design/icons";
 import { cx } from "class-variance-authority";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 
 export const Dialog = DialogPrimitive.Root as typeof DialogPrimitive.Root & {
   Close: typeof DialogPrimitive.Close;
@@ -59,7 +59,7 @@ const DialogContent = React.forwardRef<
       >
         {children}
         <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm border-0 bg-transparent opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-sky-100 data-[state=open]:text-sky-500">
-          <CloseOutlined className="h-4 w-4" />
+          <XMarkIcon className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>

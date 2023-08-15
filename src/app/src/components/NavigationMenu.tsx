@@ -1,7 +1,6 @@
 import React from "react";
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu";
 import { VariantProps, cva, cx } from "class-variance-authority";
-import { DownOutlined } from "@ant-design/icons";
 
 const NavigationMenuRoot = React.forwardRef<
   React.ElementRef<typeof NavigationMenuPrimitive.Root>,

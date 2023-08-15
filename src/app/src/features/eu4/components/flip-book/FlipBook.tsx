@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { Button } from "@/components/Button";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
 interface FlipBookProps<T> {
   items: T[];
@@ -24,7 +24,7 @@ export function FlipBook<T>({
           disabled={ind == 0}
           onClick={() => setInd(ind - 1)}
         >
-          <LeftOutlined />
+          <ChevronLeftIcon className="h-4 w-4" />
           <span className="sr-only">Previous</span>
         </Button>
         {itemRender(items[ind])}
@@ -33,7 +33,7 @@ export function FlipBook<T>({
           disabled={ind == items.length - 1}
           onClick={() => setInd(ind + 1)}
         >
-          <RightOutlined />
+          <ChevronRightIcon className="h-4 w-4" />
           <span className="sr-only">Next</span>
         </Button>
       </div>

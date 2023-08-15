@@ -1,4 +1,3 @@
-import { ProfileOutlined } from "@ant-design/icons";
 import { useEu4Worker } from "../../worker";
 import { CountryDetails, Eu4Date } from "../../types/models";
 import { FlagAvatar } from "../../components/avatars";
@@ -24,6 +23,7 @@ import { IconButton } from "@/components/IconButton";
 import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";
 import { DataTable } from "@/components/DataTable";
+import { TableCellsIcon } from "@heroicons/react/24/outline";
 
 type MonitorRow = CountryDetails & { date: Eu4Date; rowSpan: number };
 
@@ -143,7 +143,7 @@ export const WatchCountryDetails = () => {
         <div className="text-md grow font-bold">Ledger</div>
         <IconButton
           shape="square"
-          icon={<ProfileOutlined />}
+          icon={<TableCellsIcon className="h-4 w-4" />}
           tooltip="download data as csv"
           onClick={async () => {
             const outData = data.map((x) => ({

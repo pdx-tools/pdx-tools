@@ -1,5 +1,4 @@
 import React from "react";
-import { StopOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryDetails } from "@/features/eu4/types/models";
 import { InheritanceValueBreakdown } from "./InheritanceValueBreakdown";
@@ -55,6 +54,7 @@ import {
   MissionaryIcon,
 } from "../../components/icons";
 import { PersonalityAvatar } from "../../components/avatars";
+import { CheckCircleIcon } from "@heroicons/react/24/outline";
 
 interface CountryDetailsProps {
   details: CountryDetails;
@@ -66,10 +66,15 @@ const IdeasTable = ({ ideas }: Pick<CountryDetails, "ideas">) => {
     let ideaMarkers = [];
     let i = 0;
     for (; i < count; i++) {
-      ideaMarkers.push(<CheckCircleOutlined key={i} />);
+      ideaMarkers.push(<CheckCircleIcon className="w-4 h-4" key={i} />);
     }
     for (; i < 7; i++) {
-      ideaMarkers.push(<StopOutlined key={i} />);
+      ideaMarkers.push(
+        <div
+          key={i}
+          className="w-4 h-4 outline outline-1 -outline-offset-2 rounded-full"
+        />,
+      );
     }
     return (
       <tr key={name}>

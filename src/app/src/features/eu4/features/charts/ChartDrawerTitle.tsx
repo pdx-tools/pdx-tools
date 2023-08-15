@@ -1,12 +1,5 @@
 import { useVisualization } from "@/components/viz";
 import { Button } from "@/components/Button";
-import {
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  QuestionCircleOutlined,
-  ProfileOutlined,
-  CaretDownOutlined,
-} from "@ant-design/icons";
 import { VizModules } from "../../types/visualizations";
 import { downloadData } from "@/lib/downloadData";
 import { useSaveFilenameWith } from "../../store";
@@ -15,6 +8,13 @@ import { Select } from "@/components/Select";
 import { Sheet } from "@/components/Sheet";
 import { Help } from "./Help";
 import { CountryFilterButton } from "../../components/CountryFilterButton";
+import {
+  QuestionMarkCircleIcon,
+  TableCellsIcon,
+} from "@heroicons/react/24/outline";
+import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
+import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
+import { PlayIcon } from "@heroicons/react/20/solid";
 
 const vizModuleDisplayLimit = (module: VizModules) => {
   switch (module) {
@@ -56,7 +56,11 @@ export const ChartDrawerTitle = ({
         onClick={() => setExpanded(!expanded)}
         className="hidden md:flex"
       >
-        {expanded ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+        {expanded ? (
+          <MenuUnfoldIcon className="h-4 w-4" />
+        ) : (
+          <MenuFoldIcon className="h-4 w-4" />
+        )}
         <span className="sr-only">{expanded ? "Fold" : "Expand"}</span>
       </Button>
 
@@ -68,7 +72,7 @@ export const ChartDrawerTitle = ({
           <Button>
             <Select.Value />
             <Select.Icon asChild>
-              <CaretDownOutlined className="h-4 w-4 opacity-50" />
+              <PlayIcon className="h-3 w-3 rotate-90 opacity-50 self-center" />
             </Select.Icon>
           </Button>
         </Select.Trigger>
@@ -114,7 +118,7 @@ export const ChartDrawerTitle = ({
       <CountryFilterButton />
       <IconButton
         shape="square"
-        icon={<ProfileOutlined />}
+        icon={<TableCellsIcon className="h-4 w-4" />}
         tooltip="Download data as csv"
         onClick={async () => {
           const csvData = await viz.getCsvData();
@@ -124,7 +128,7 @@ export const ChartDrawerTitle = ({
       <Sheet modal={true}>
         <Sheet.Trigger asChild>
           <Button shape="square">
-            <QuestionCircleOutlined />
+            <QuestionMarkCircleIcon className="h-4 w-4" />
             <span className="sr-only">Help</span>
           </Button>
         </Sheet.Trigger>

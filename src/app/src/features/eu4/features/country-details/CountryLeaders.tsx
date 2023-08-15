@@ -1,5 +1,4 @@
 import { useEu4Worker } from "@/features/eu4/worker";
-import { CaretDownOutlined } from "@ant-design/icons";
 import { useCallback, useState } from "react";
 import { CountryDetails, CountryLeader } from "../../types/models";
 import { Badge } from "@/components/Badge";
@@ -10,6 +9,7 @@ import { Table } from "@/components/Table";
 import { Button } from "@/components/Button";
 import { Select } from "@/components/Select";
 import { formatInt } from "@/lib/format";
+import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
 export interface CountryLeadersProps {
   details: CountryDetails;
@@ -39,7 +39,7 @@ const TagsSelect = ({
         <Button>
           <Select.Value placeholder="Tags" />
           <Select.Icon asChild>
-            <CaretDownOutlined className="h-4 w-4 opacity-50" />
+            <ChevronDownIcon className="h-4 w-4 opacity-50 self-end" />
           </Select.Icon>
         </Button>
       </Select.Trigger>

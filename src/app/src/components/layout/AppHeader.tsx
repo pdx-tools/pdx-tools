@@ -7,7 +7,7 @@ import { NavigationMenu } from "@/components/NavigationMenu";
 import { useLogoutMutation, useProfileQuery } from "@/services/appApi";
 import { SignInButtons } from "./auth";
 import { Button } from "@/components/Button";
-import { UserOutlined } from "@ant-design/icons";
+import { UserIcon } from "@heroicons/react/24/outline";
 
 const HeaderMenu = () => {
   const logout = useLogoutMutation();
@@ -73,7 +73,7 @@ const HeaderMenu = () => {
               <NavigationMenu.Item className="mr-16 xl:mr-0">
                 <NavigationMenu.Trigger asChild>
                   <Button shape="circle">
-                    <UserOutlined className=" text-black" />
+                    <UserIcon className="h-4 w-4 text-black" />
                     <span className="sr-only">Account</span>
                   </Button>
                 </NavigationMenu.Trigger>
