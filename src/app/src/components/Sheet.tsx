@@ -4,7 +4,12 @@ import { cva, cx, type VariantProps } from "class-variance-authority";
 import { Button } from "./Button";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 
-export const Sheet = SheetPrimitive.Root as typeof SheetPrimitive.Root & {
+// https://github.com/shadcn-ui/ui/issues/399
+const SheetRoot = (props: React.ComponentProps<typeof SheetPrimitive.Root>) => (
+  <SheetPrimitive.Root {...props} />
+);
+
+export const Sheet = SheetRoot as typeof SheetRoot & {
   Trigger: typeof SheetPrimitive.Trigger;
   Portal: typeof SheetPortal;
   Overlay: typeof SheetOverlay;
