@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import type { BarConfig } from "@ant-design/charts";
 import {
   expenseLedgerColorPalette,
   filterExpenses,
@@ -8,7 +7,7 @@ import {
 } from "./data";
 import { formatInt } from "@/lib/format";
 import { CountryDetails } from "../../types/models";
-import { Bar, PieTable } from "@/components/viz";
+import { Bar, BarConfig, PieTable } from "@/components/viz";
 import { Switch } from "@/components/Switch";
 
 type CountryBudgetCountProps = {

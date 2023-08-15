@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect } from "react";
-import type { BarConfig } from "@ant-design/charts";
 import { useAnalysisWorker, Eu4Worker } from "@/features/eu4/worker";
-import { Bar, useVisualizationDispatch } from "@/components/viz";
+import { Bar, BarConfig, useVisualizationDispatch } from "@/components/viz";
 import { createCsv } from "@/lib/csv";
 import { useEu4Meta, useTagFilter } from "../../store";
 import { Alert } from "@/components/Alert";

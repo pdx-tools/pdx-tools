@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
-import type { BarConfig } from "@ant-design/charts";
 import { manaSpendAliases, manaSpendColorPalette } from "./data";
-import { Bar, PieTable } from "@/components/viz";
+import { Bar, BarConfig, PieTable } from "@/components/viz";
 import { CountryDetails } from "../../types/models";
 
 interface CountryManaProps {

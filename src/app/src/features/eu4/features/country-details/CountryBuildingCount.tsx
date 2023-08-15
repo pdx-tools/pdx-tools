@@ -1,7 +1,6 @@
 import React from "react";
-import { BarConfig } from "@ant-design/charts";
 import { CountryDetails } from "../../types/models";
-import { Bar } from "@/components/viz";
+import { Bar, BarConfig } from "@/components/viz";
 
 interface CountryBuildingCountProps {
   details: CountryDetails;

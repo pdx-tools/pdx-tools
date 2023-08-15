@@ -1,8 +1,7 @@
 import React, { useCallback, useMemo } from "react";
-import { PieConfig } from "@ant-design/charts";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryDetails, CountryReligion } from "../../types/models";
-import { Pie, LegendColor } from "@/components/viz";
+import { Pie, LegendColor, PieConfig } from "@/components/viz";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { Tooltip } from "@/components/Tooltip";
