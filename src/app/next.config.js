@@ -4,7 +4,7 @@ const { withSentryConfig } = require("@sentry/nextjs");
 /** @type {import('next').NextConfig} */
 let nextConfig = {
   reactStrictMode: true,
-  output: "standalone",
+  output: process.env.NEXT_OUTPUT,
   transpilePackages: ["map"],
   webpack: (config, { webpack }) => {
     const experiments = config.experiments || {};
@@ -31,45 +31,61 @@ let nextConfig = {
     disableStaticImages: true,
     unoptimized: true,
   },
-  async headers() {
-    return [
-      {
-        source: "/:path*",
-        // If these headers are updated, make sure to update workers
-        headers: [
-          {
-            key: "Cross-Origin-Embedder-Policy",
-            value: "require-corp",
-          },
-          {
-            key: "Cross-Origin-Opener-Policy",
-            value: "same-origin",
-          },
-          {
-            key: "Content-Security-Policy",
-            value: "default-src 'self';" +
-              "connect-src 'self' blob: https://skanderbeg.pm/api.php https://a.pdx.tools/api/event " + (process.env.NODE_ENV !== "production" ? " http://localhost:9000;" : ";") +
-              "img-src 'self' data:;" +
-              "script-src 'self' 'unsafe-eval' blob: https://a.pdx.tools/js/index.js;" +
-              "style-src 'self' 'unsafe-inline'"
-          }
-        ],
-      },
-    ];
-  },
-  async rewrites() {
-    return {
-      fallback: [
+
+  headers: () => [
+    {
+      source: "/:path*",
+      // If these headers are updated, make sure to update workers
+      headers: [
         {
-          source: '/:path*',
-          destination: `http://localhost:3000/:path*`,
+          key: "Cross-Origin-Embedder-Policy",
+          value: "require-corp",
+        },
+        {
+          key: "Cross-Origin-Opener-Policy",
+          value: "same-origin",
+        },
+        {
+          key: "Content-Security-Policy",
+          value:
+            "default-src 'self';" +
+            `connect-src 'self' blob: https://skanderbeg.pm/api.php https://a.pdx.tools/api/event;` +
+            "img-src 'self' data:;" +
+            "script-src 'self' 'unsafe-eval' blob: https://a.pdx.tools/js/index.js;" +
+            "style-src 'self' 'unsafe-inline'",
         },
       ],
-    }
-  },
-  serverRuntimeConfig: {
-    PROJECT_ROOT: __dirname,
-  },
+    },
+  ],
+
+  rewrites: async () => ({
+    beforeFiles: process.env.PROXY_NODE_URL
+      ? [
+          "/api/achievements/:path*",
+          "/api/admin/:path*",
+          "/api/key",
+          "/api/login/steam-callback",
+          "/api/new",
+          "/api/saves",
+          "/api/saves/:slug",
+          "/api/skan/:path*",
+          "/api/users/:path*",
+        ].map((source) => ({
+          source,
+          destination: `${process.env.PROXY_NODE_URL}${source}`,
+        }))
+      : undefined,
+
+    fallback:
+      process.env.NODE_ENV !== "production"
+        ? [
+            {
+              source: "/:path*",
+              destination: `http://localhost:3000/:path*`,
+            },
+          ]
+        : undefined,
+  }),
 };
 
 if (process.env.SENTRY_DSN) {
@@ -82,6 +98,7 @@ if (process.env.SENTRY_DSN) {
         autoInstrumentAppDirectory: false,
         autoInstrumentMiddleware: false,
         autoInstrumentServerFunctions: false,
+        tunnelRoute: "/api/tunnel"
       },
     },
     { silent: true, dryRun: process.env.PDX_RELEASE !== "1" }

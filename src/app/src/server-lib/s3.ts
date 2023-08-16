@@ -26,8 +26,9 @@ export async function s3FetchOk(
   ...args: Parameters<(typeof s3client)["fetch"]>
 ) {
   const res = await s3Fetch(...args);
-  if (!res.ok) {
-    throw new Error(await res.text());
+  if (res.status >= 400) {
+    const body = await res.text();
+    throw new Error(`s3 responded with ${res.status}: ${body}`);
   }
 
   return res;
@@ -43,7 +44,7 @@ export async function s3Presigned(saveId: string): Promise<string> {
 }
 
 export async function uploadFileToS3(
-  body: Buffer,
+  body: Buffer | Uint8Array,
   filename: string,
   upload: UploadType,
 ): Promise<void> {
@@ -54,6 +55,7 @@ export async function uploadFileToS3(
       body,
       headers: {
         "Content-Type": contentType,
+        "Content-Length": `${body.length}`,
       },
     }),
   );

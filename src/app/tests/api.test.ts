@@ -1,6 +1,5 @@
 import { promises } from "fs";
 import { BUCKET, deleteFile, s3Fetch, s3FetchOk } from "@/server-lib/s3";
-import { SavePostResponse } from "@/pages/api/saves";
 import {
   AchievementView,
   NewKeyResponse,
@@ -8,15 +7,20 @@ import {
   SaveFile,
   UserSaves,
 } from "@/services/appApi";
-import { dbDisconnect, db, table } from "@/server-lib/db";
+import { dbDisconnect, table, useDb } from "@/server-lib/db";
 import { parseSave } from "@/server-lib/save-parser";
+import { SavePostResponse } from "@/server-lib/models";
+import { fetchOk, fetchOkJson, sendJson } from "@/lib/fetch";
+import { check } from "@/lib/isPresent";
 globalThis.crypto = require("node:crypto").webcrypto;
 
 jest.setTimeout(60000);
 
 beforeEach(async () => {
-  await db.delete(table.saves);
-  await db.delete(table.users);
+  await useDb(async (db) => {
+    await db.delete(table.saves);
+    await db.delete(table.users);
+  });
 });
 
 beforeEach(async () => {
@@ -40,15 +44,11 @@ afterAll(async () => {
 const pdxUrl = (path: string) => `http://localhost:3000${path}`;
 
 async function getNewCookies(): Promise<string> {
-  const resp = await fetch(pdxUrl("/api/login/steam"), {
+  const resp = await fetchOk(pdxUrl("/api/login/steam"), {
     method: "POST",
     redirect: "manual",
   });
-  const result = resp.headers.get("set-cookie");
-  if (result === null) {
-    throw new Error("did not get cookie");
-  }
-  return result;
+  return check(resp.headers.get("set-cookie"));
 }
 
 class HttpClient {
@@ -58,7 +58,7 @@ class HttpClient {
     const data = await fetchEu4Save(filepath);
     const file = new Blob([data], { type: "application/octet-stream" });
 
-    const resp = await fetch(pdxUrl("/api/saves"), {
+    return await fetchOkJson<SavePostResponse>(pdxUrl("/api/saves"), {
       method: "POST",
       body: file,
       headers: {
@@ -66,12 +66,6 @@ class HttpClient {
         cookie: this.cookies,
       },
     });
-
-    if (!resp.ok) {
-      throw new Error("unable to upload save");
-    }
-
-    return (await resp.json()) as SavePostResponse;
   }
 
   async uploadSaveCore(filepath: string, metadata?: any) {
@@ -103,7 +97,8 @@ class HttpClient {
     const resp = await this.uploadSaveCore(filepath, metadata);
 
     if (!resp.ok) {
-      throw new Error("unable to upload save");
+      const body = await resp.text();
+      throw new Error(`failed to upload (${resp.status}): ${body}`);
     }
 
     return (await resp.json()) as SavePostResponse;
@@ -122,59 +117,29 @@ class HttpClient {
   }
 
   public async get<T>(path: string): Promise<T> {
-    const resp = await this.getReq(path);
-
-    if (!resp.ok) {
-      throw new Error(`unable to get ${path}`);
-    }
-
-    return (await resp.json()) as T;
+    return fetchOkJson(pdxUrl(path), { headers: { cookie: this.cookies } });
   }
 
-  public async postReq(path: string, data?: any) {
-    return await fetch(pdxUrl(path), {
-      method: "POST",
-      body: data !== undefined ? JSON.stringify(data) : undefined,
+  public async post<T>(path: string, data?: any): Promise<T> {
+    return await sendJson<T>(pdxUrl(path), {
+      body: data ? JSON.stringify(data) : data,
       headers: {
-        "Content-Type": "application/json",
         Cookie: this.cookies,
       },
     });
-  }
-
-  public async post<T>(path: string, data: any): Promise<T> {
-    const resp = await fetch(pdxUrl(path), {
-      method: "POST",
-      body: JSON.stringify(data),
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: this.cookies,
-      },
-    });
-
-    if (!resp.ok) {
-      throw new Error("unable to post");
-    }
-
-    return (await resp.json()) as T;
   }
 
   public async delete<T>(path: string): Promise<void> {
-    const resp = await fetch(pdxUrl(path), {
+    await fetchOk(pdxUrl(path), {
       method: "DELETE",
       headers: {
         Cookie: this.cookies,
       },
     });
-
-    await resp.text();
-    if (!resp.ok) {
-      throw new Error("unable to delete");
-    }
   }
 
-  public async patch<T>(path: string, data: any): Promise<void> {
-    const resp = await fetch(pdxUrl(path), {
+  public async patch(path: string, data: any): Promise<void> {
+    await fetchOk(pdxUrl(path), {
       method: "PATCH",
       body: JSON.stringify(data),
       headers: {
@@ -182,16 +147,11 @@ class HttpClient {
         Cookie: this.cookies,
       },
     });
-
-    await resp.text();
-    if (!resp.ok) {
-      throw new Error("unable to patch");
-    }
   }
 
   public static async create() {
     const cookie = await getNewCookies();
-    return new HttpClient(cookie);
+    return new HttpClient(cookie.substring(0, cookie.indexOf(";") + 1));
   }
 }
 
@@ -286,7 +246,7 @@ test("invalid ironman", async () => {
 
 test("same playthrough id", async () => {
   // This test will ensure that content id will catch two saves from the
-  // same playthought with differing campaign id and not allow
+  // same playthrough with differing campaign id and not allow
   // duplicated achievements to be detected.
 
   const client = await HttpClient.create();
@@ -424,7 +384,7 @@ test("get profile with api key", async () => {
   const kandy = await client.uploadSave(kandyPath);
   expect(kandy.save_id).toBeDefined();
 
-  const req = await fetch(pdxUrl(`/api/saves/${kandy.save_id}`), {
+  await fetchOk(pdxUrl(`/api/saves/${kandy.save_id}`), {
     method: "DELETE",
     headers: {
       Authorization:
@@ -432,7 +392,6 @@ test("get profile with api key", async () => {
     },
   });
 
-  expect(req.ok).toEqual(true);
   const newest = await client.get<{ saves: SaveFile[] }>("/api/new");
   expect(newest.saves).toHaveLength(0);
 });
@@ -441,8 +400,7 @@ test("admin rebalance", async () => {
   const client = await HttpClient.create();
 
   // test with empty database
-  const resp1 = await client.postReq("/api/admin/rebalance");
-  expect(resp1.status).toBe(200);
+  await client.post("/api/admin/rebalance");
 
   // upload a save at patch 1.29 and recalculate the score
   // if EU4 ever gets to 1.243
@@ -450,10 +408,7 @@ test("admin rebalance", async () => {
   expect(midUpload.save_id).toBeDefined();
 
   // test with empty database
-  const resp2 = await client.postReq(
-    "/api/admin/rebalance?__patch_override_for_testing=243",
-  );
-  expect(resp2.status).toBe(200);
+  await client.post("/api/admin/rebalance?__patch_override_for_testing=243");
 
   let achievementLeaderboard = await client.get<AchievementView>(
     "/api/achievements/18",

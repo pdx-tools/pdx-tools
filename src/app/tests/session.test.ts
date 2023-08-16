@@ -1,4 +1,4 @@
-import { parseBasicAuth } from "@/server-lib/session";
+import { parseBasicAuth } from "@/server-lib/auth/basic";
 
 describe("basic auth test", () => {
   it.each([

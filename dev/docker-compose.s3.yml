@@ -9,14 +9,6 @@ services:
       - MINIO_ROOT_PASSWORD=${S3_SECRET_KEY}
     volumes:
       - s3data:/data
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=web"
-      - "traefik.http.routers.router-s3.entrypoints=websecure"
-      - "traefik.http.routers.router-s3.rule=Host(`s3.${PUBLIC_HOST}`)"
-      - "traefik.http.routers.router-s3.tls.certresolver=cloudflareresolver"
-      - "traefik.http.routers.router-s3.service=service-s3"
-      - "traefik.http.services.service-s3.loadbalancer.server.port=9000"
     command: server /data
 
   createbuckets:

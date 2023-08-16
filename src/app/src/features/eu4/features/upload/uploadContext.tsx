@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { useCompression } from "@/features/compress";
-import type { SavePostResponse, UploadMetadaInput } from "@/pages/api/saves";
 import { getEu4Worker } from "../../worker";
 import { useSaveFilename } from "../../store";
 import { invalidateSaves } from "@/services/appApi";
+import { SavePostResponse, UploadMetadaInput } from "@/server-lib/models";
 
 type Action =
   | {

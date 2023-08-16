@@ -3,10 +3,6 @@ services:
   db:
     image: postgres:14
     restart: 'unless-stopped'
-    ports:
-      # So that we can expose it over a forwarded ssh connection and perform
-      # migrations
-      - "127.0.0.1:${DATABASE_EXPOSED_LOCAL_PORT}:5432"
     environment:
       - DATABASE_APP_USER=${DATABASE_USER}
       - DATABASE_APP_USER_PASSWORD=${DATABASE_PASSWORD}
@@ -42,20 +38,24 @@ services:
       -c max_parallel_workers=2
       -c max_parallel_maintenance_workers=1
 
-  api:
+  app:
     image: ghcr.io/pdx-tools/pdx-tools:nightly
     restart: 'unless-stopped'
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.tls=true"
-      - "traefik.http.routers.api.tls.certresolver=cloudflareresolver"
-      - "traefik.http.routers.api.rule=Host(`${PUBLIC_HOST}`) && !PathPrefix(`/api/admin`)"
-      - "traefik.http.middlewares.max-upload-size.buffering.maxRequestBodyBytes=20000000"
-      - "traefik.http.routers.api.middlewares=max-upload-size@docker"
+      - "traefik.http.routers.app.tls=true"
+      - "traefik.http.routers.app.tls.certresolver=myresolver"
+      - "traefik.http.routers.app.rule=Host(`${PUBLIC_HOST}`)"
     volumes:
       - ./.env.app:/app/.env.production:ro
     logging:
       driver: journald
+
+  api:
+    image: ghcr.io/pdx-tools/api:nightly
+    restart: 'unless-stopped'
+    expose:
+      - 8080
 
 volumes:
   pgdata:

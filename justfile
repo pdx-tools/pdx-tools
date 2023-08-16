@@ -21,8 +21,8 @@ release:
     exit 1
   fi
 
-  just build
-  just publish-frontend
+  NEXT_OUTPUT=standalone just build
+  PROXY_NODE_URL=$PRODUCTION_PROXY_NODE_URL just publish-app
   just publish-api
 
   if [[ $(grep -c pdx-tools-prod ~/.ssh/config || echo "0") -gt 0 ]]; then
@@ -33,9 +33,6 @@ release:
 
 build: build-wasm build-app (cross "--package" "pdx-tools-api" "--release") build-docker
 
-build-rust:
-  cargo build --all
-
 dev: build-wasm-dev dev-app
 
 staging: build-app prep-dev-app
@@ -43,10 +40,7 @@ staging: build-app prep-dev-app
   set -euxo pipefail
   cd src/app
   . .env.production
-  
-  npx --yes concurrently@latest \
-    "PORT=3001 node_modules/.bin/next start" \
-    "wrangler dev --port 3003 --local --local-upstream localhost:3001 --var AWS_S3_HOST:localhost --var AWS_S3_PORT:$S3_PORT --var AWS_S3_BUCKET:$S3_BUCKET --var AWS_DEFAULT_REGION:$S3_REGION --var AWS_ACCESS_KEY_ID:$S3_ACCESS_KEY --var AWS_SECRET_ACCESS_KEY:$S3_SECRET_KEY"
+  PORT=3001 node_modules/.bin/next start
 
 test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-*") test-wasm (cargo "test" "-p" "pdx" "--all-features") test-app
 
@@ -64,21 +58,19 @@ setup:
 npm-ci:
   (cd src/docs && npm ci)
   (cd src/app && npm ci)
-  (cd src/app/workers-site && npm ci)
 
 publish-api:
-  docker build -t us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly -f ./dev/api.dockerfile ./target/x86_64-unknown-linux-musl/release/
+  docker tag ghcr.io/pdx-tools/api:nightly us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
   docker push us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
-  gcloud run deploy api --region=us-west1 --project=$GCLOUD_PROJECT --image=us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
+  gcloud run deploy api --region=us-east4 --project=$GCLOUD_PROJECT --image=us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
 
 publish-backend:
-  docker image save ghcr.io/pdx-tools/pdx-tools:nightly | gzip | ssh pdx-tools-prod 'docker load && /opt/pdx-tools/docker-compose.sh up -d api'
+  docker image save ghcr.io/pdx-tools/pdx-tools:nightly | gzip | ssh pdx-tools-prod 'docker load && pdx-tools/docker-compose.sh up -d app'
 
-wrangler +cmd:
-  cd src/app && wrangler "$@"
+vercel +cmd:
+  cd src/app && vercel "$@"
 
-publish-frontend: (wrangler "publish")
-publish-frontend-dev: (wrangler "publish" "--env" "dev")
+publish-app: (vercel "build" "--prod") (vercel "deploy" "--prod" "--prebuilt")
 
 build-app: prep-frontend
   cd src/docs && npm run build
@@ -87,6 +79,7 @@ build-app: prep-frontend
 
 build-docker:
   docker build -t ghcr.io/pdx-tools/pdx-tools:nightly -f ./dev/app.dockerfile ./src/app
+  docker build -t ghcr.io/pdx-tools/api:nightly -f ./dev/api.dockerfile ./target/x86_64-unknown-linux-musl/release/
 
 build-admin:
   just cross --package pdx --features admin --release
