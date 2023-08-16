@@ -17,30 +17,33 @@ type Task<T> = {
   name: string;
 };
 
-function runTask<T>({ fn, name }: Task<T>) {
-  return timeit(fn).then((res) => {
-    logMs(res, name);
-    return res.data;
-  });
-}
+async function loadCk3Save(file: File, signal: AbortSignal) {
+  const run = async <T,>({ fn, name }: Task<T>) => {
+    signal.throwIfAborted();
+    const result = await timeit(fn).then((res) => {
+      logMs(res, name);
+      return res.data;
+    });
+    signal.throwIfAborted();
+    return result;
+  };
 
-async function loadCk3Save(file: File) {
   const worker = getCk3Worker();
   emitEvent({ kind: "parse", game: "ck3" });
 
   await Promise.all([
-    runTask({
+    run({
       fn: () => worker.initializeWasm(),
       name: "initialized ck3 wasm",
     }),
 
-    runTask({
+    run({
       fn: () => worker.fetchData(file),
       name: "save data read",
     }),
   ]);
 
-  const { meta } = await runTask({
+  const { meta } = await run({
     fn: () => worker.parseCk3(),
     name: "parse ck3 file",
   });
@@ -96,14 +99,22 @@ function useLoadCk3(input: Ck3SaveFile) {
 
   useEffect(() => {
     dispatch({ kind: "start" });
-    loadCk3Save(input.save.file)
+    const controller = new AbortController();
+    loadCk3Save(input.save.file, controller.signal)
       .then(({ meta }) => {
         dispatch({ kind: "data", data: meta });
       })
       .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
         dispatch({ kind: "error", error });
         captureException(error);
       });
+    return () => {
+      controller.abort("cancelling save load");
+    };
   }, [input]);
 
   return { loading, data, error };
@@ -118,8 +129,8 @@ const Ck3Page = ({ save, meta }: Ck3PageProps) => {
           meta.version
         }) - PDX Tools`}</title>
       </Head>
-      <div className="mx-auto max-w-prose">
-        <h2>CK3</h2>
+      <div className="mx-auto max-w-prose flex flex-col gap-4">
+        <h2 className="text-2xl font-bold">CK3</h2>
         <p>
           {`A CK3 save was detected (version ${meta.version}). At this time, CK3 functionality is limited but one can still melt binary ironman saves into plaintext`}
         </p>

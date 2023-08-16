@@ -21,8 +21,8 @@ export const Vic3Page = ({ save, meta }: Vic3PageProps) => {
           meta.date
         }) - PDX Tools`}</title>
       </Head>
-      <div className="mx-auto max-w-prose">
-        <h2>Vic3</h2>
+      <div className="mx-auto max-w-prose flex flex-col gap-4">
+        <h2 className="text-2xl font-bold">Vic3</h2>
         <p>
           {`A Vic3 save was detected (date ${meta.date}). At this time, Vic3 functionality is limited but one can still melt binary saves into plaintext`}
         </p>
@@ -43,30 +43,33 @@ type Task<T> = {
   name: string;
 };
 
-function runTask<T>({ fn, name }: Task<T>) {
-  return timeit(fn).then((res) => {
-    logMs(res, name);
-    return res.data;
-  });
-}
+async function loadVic3Save(file: File, signal: AbortSignal) {
+  const run = async <T,>({ fn, name }: Task<T>) => {
+    signal.throwIfAborted();
+    const result = await timeit(fn).then((res) => {
+      logMs(res, name);
+      return res.data;
+    });
+    signal.throwIfAborted();
+    return result;
+  };
 
-async function loadVic3Save(file: File) {
   const worker = getVic3Worker();
   emitEvent({ kind: "parse", game: "vic3" });
 
   await Promise.all([
-    runTask({
+    run({
       fn: () => worker.initializeWasm(),
       name: "initialized vic3 wasm",
     }),
 
-    runTask({
+    run({
       fn: () => worker.fetchData(file),
       name: "save data read",
     }),
   ]);
 
-  const { meta } = await runTask({
+  const { meta } = await run({
     fn: () => worker.parseVic3(),
     name: "parse vic3 file",
   });
@@ -122,14 +125,22 @@ function useLoadVic3(input: Vic3SaveFile) {
 
   useEffect(() => {
     dispatch({ kind: "start" });
-    loadVic3Save(input.save.file)
+    const controller = new AbortController();
+    loadVic3Save(input.save.file, controller.signal)
       .then(({ meta }) => {
         dispatch({ kind: "data", data: meta });
       })
       .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
         dispatch({ kind: "error", error });
         captureException(error);
       });
+    return () => {
+      controller.abort("cancelling save load");
+    };
   }, [input]);
 
   return { loading, data, error };

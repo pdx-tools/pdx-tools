@@ -3,8 +3,7 @@ const { withSentryConfig } = require("@sentry/nextjs");
 // @ts-check
 /** @type {import('next').NextConfig} */
 let nextConfig = {
-  // disabled until https://github.com/ant-design/ant-design/issues/26136
-  // reactStrictMode: true,
+  reactStrictMode: true,
   output: "standalone",
   transpilePackages: ["map"],
   webpack: (config, { webpack }) => {

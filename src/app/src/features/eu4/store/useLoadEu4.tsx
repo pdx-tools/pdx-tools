@@ -1,7 +1,7 @@
 import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
 import { fetchOk } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
-import { logMs } from "@/lib/log";
+import { log, logMs } from "@/lib/log";
 import { emitEvent } from "@/lib/plausible";
 import { timeit, timeSync } from "@/lib/timeit";
 import {
@@ -125,26 +125,34 @@ async function loadEu4Save(
   mapCanvas: HTMLCanvasElement,
   dispatch: Dispatch<Eu4LoadActions>,
   dimensions: { width: number; height: number },
+  signal: AbortSignal,
 ) {
+  const run = async <T,>(task: Task<T>) => {
+    signal.throwIfAborted();
+    const result = await runTask(dispatch, task);
+    signal.throwIfAborted();
+    return result;
+  };
+
   dispatch({ kind: "start" });
   const worker = getEu4Worker();
   emitEvent({ kind: "parse", game: "eu4" });
   const gl = check(glContext(mapCanvas), "unable to acquire webgl2 context");
 
-  const shadersTask = runTask(dispatch, {
+  const shadersTask = run({
     fn: () => shaderUrls(),
     name: "fetch shaders",
     progress: 3,
   });
 
   const initTasks = Promise.all([
-    runTask(dispatch, {
+    run({
       fn: () => worker.initializeWasm(),
       name: "initialized eu4 wasm",
       progress: 7,
     }),
 
-    runTask(dispatch, {
+    run({
       fn: () => worker.fetchData(save),
       name: "save data read",
       progress: 7,
@@ -160,14 +168,14 @@ async function loadEu4Save(
   );
 
   await initTasks;
-  const { version } = await runTask(dispatch, {
+  const { version } = await run({
     fn: () => worker.parseMeta(),
     name: "parsed eu4 metadata",
     progress: 5,
   });
 
   const [gameData, provincesUniqueIndex] = await Promise.all([
-    runTask(dispatch, {
+    run({
       fn: () =>
         fetchOk(dataUrls(gameVersion(version)))
           .then((x) => x.arrayBuffer())
@@ -175,20 +183,20 @@ async function loadEu4Save(
       name: `fetch game data (${version})`,
       progress: 3,
     }),
-    runTask(dispatch, {
+    run({
       fn: () => fetchProvinceUniqueIndex(version),
       name: "fetch province unique index",
       progress: 3,
     }),
   ]);
 
-  const resourceTask = runTask(dispatch, {
+  const resourceTask = run({
     fn: () => resourceUrls(version),
     name: "textures fetched and bitmapped",
     progress: 7,
   });
 
-  const saveTask = runTask(dispatch, {
+  const saveTask = run({
     fn: () => worker.eu4GameParse(gameData, provincesUniqueIndex),
     name: "save deserialized",
     progress: 40,
@@ -196,7 +204,7 @@ async function loadEu4Save(
 
   const resources = await resourceTask;
   const glResourcesInit = GLResources.create(gl, resources);
-  const [mapProgram, xbrProgram] = await runTask(dispatch, {
+  const [mapProgram, xbrProgram] = await run({
     fn: () => compileTask.data.compilationCompletion(),
     name: "shader linkage",
     progress: 5,
@@ -220,13 +228,13 @@ async function loadEu4Save(
 
   const { meta, achievements, defaultSelectedTag } = await saveTask;
   const [countries, mapPosition] = await Promise.all([
-    runTask(dispatch, {
+    run({
       fn: () => worker.eu4GetCountries(),
       name: "get countries",
       progress: 3,
     }),
 
-    runTask(dispatch, {
+    run({
       fn: () => worker.eu4InitialMapPosition(),
       name: "initial map position",
       progress: 3,
@@ -236,7 +244,7 @@ async function loadEu4Save(
   const map = new WebGLMap(gl, glResources, finder);
   map.resize(dimensions.width, dimensions.height);
 
-  const { primary, secondary } = await runTask(dispatch, {
+  const { primary, secondary } = await run({
     fn: () =>
       worker.eu4MapColors({
         date: undefined,
@@ -317,8 +325,15 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
       return;
     }
 
+    const controller = new AbortController();
     const dimensions = mapContainer.current.getBoundingClientRect();
-    loadEu4Save(save, mapCanvas.current, dispatch, dimensions)
+    loadEu4Save(
+      save,
+      mapCanvas.current,
+      dispatch,
+      dimensions,
+      controller.signal,
+    )
       .then(async ({ map, ...rest }) => {
         const store = await createEu4Store({
           store: storeRef.current,
@@ -341,9 +356,18 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
         dispatch({ kind: "data", data: store });
       })
       .catch((error) => {
+        if (controller.signal.aborted) {
+          log("ignoring signal abortion");
+          return;
+        }
+
         dispatch({ kind: "error", error });
         captureException(error);
       });
+
+    return () => {
+      controller.abort("cancelling save load");
+    };
   }, [save, mapContainer]);
 
   useEffect(() => {

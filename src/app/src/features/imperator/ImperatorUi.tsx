@@ -20,8 +20,8 @@ export const ImperatorPage = ({ save, meta }: ImperatorPageProps) => {
           meta.date
         }) - PDX Tools`}</title>
       </Head>
-      <div className="mx-auto max-w-prose">
-        <h2>Imperator</h2>
+      <div className="mx-auto max-w-prose flex flex-col gap-4">
+        <h2 className="text-2xl font-bold">Imperator</h2>
         <p>
           {`An Imperator save was detected (date ${meta.date}). At this time, Imperator functionality is limited but one can still melt binary saves into plaintext`}
         </p>
@@ -42,30 +42,33 @@ type Task<T> = {
   name: string;
 };
 
-function runTask<T>({ fn, name }: Task<T>) {
-  return timeit(fn).then((res) => {
-    logMs(res, name);
-    return res.data;
-  });
-}
+async function loadImperatorSave(file: File, signal: AbortSignal) {
+  const run = async <T,>({ fn, name }: Task<T>) => {
+    signal.throwIfAborted();
+    const result = await timeit(fn).then((res) => {
+      logMs(res, name);
+      return res.data;
+    });
+    signal.throwIfAborted();
+    return result;
+  };
 
-async function loadImperatorSave(file: File) {
   const worker = getImperatorWorker();
   emitEvent({ kind: "parse", game: "imperator" });
 
   await Promise.all([
-    runTask({
+    run({
       fn: () => worker.initializeWasm(),
       name: "initialized Imperator wasm",
     }),
 
-    runTask({
+    run({
       fn: () => worker.fetchData(file),
       name: "save data read",
     }),
   ]);
 
-  const { meta } = await runTask({
+  const { meta } = await run({
     fn: () => worker.parseImperator(),
     name: "parse Imperator file",
   });
@@ -121,14 +124,22 @@ function useLoadImperator(input: ImperatorSaveFile) {
 
   useEffect(() => {
     dispatch({ kind: "start" });
-    loadImperatorSave(input.save.file)
+    const controller = new AbortController();
+    loadImperatorSave(input.save.file, controller.signal)
       .then(({ meta }) => {
         dispatch({ kind: "data", data: meta });
       })
       .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
         dispatch({ kind: "error", error });
         captureException(error);
       });
+    return () => {
+      controller.abort("cancelling save load");
+    };
   }, [input]);
 
   return { loading, data, error };

@@ -58,7 +58,7 @@ export const MeltButton = ({ filename, worker, game }: MeltProps) => {
   return (
     <Tooltip>
       <Tooltip.Trigger asChild>
-        <Button className="flex gap-2" onClick={melt}>
+        <Button className="flex gap-2 self-start" onClick={melt}>
           {loading ? <LoadingIcon className="h-4 w-4 text-gray-800" /> : null}{" "}
           <span>Melt</span>
         </Button>
