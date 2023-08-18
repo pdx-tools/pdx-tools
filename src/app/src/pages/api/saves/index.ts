@@ -6,12 +6,12 @@ import { ValidationError } from "@/server-lib/errors";
 import { NextSessionRequest, withSession } from "@/server-lib/session";
 import { withCoreMiddleware } from "@/server-lib/middlware";
 import { deduceUploadType } from "@/server-lib/models";
-import { nanoid } from "nanoid";
 import { NewSave, db, table, toDbDifficulty } from "@/server-lib/db";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { parseSave } from "@/server-lib/save-parser";
 import { timeit } from "@/lib/timeit";
+import { genId } from "@/server-lib/id";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -138,7 +138,7 @@ const handler = async (req: NextSessionRequest, res: NextApiResponse) => {
   const uid = req.sessionUid;
   const [saveData, metadata] = await handleUpload(req, res);
 
-  const saveId = nanoid();
+  const saveId = genId(12);
   const { data: out, elapsedMs } = await timeit(() => parseSave(saveData));
   log.info({
     key: saveId,

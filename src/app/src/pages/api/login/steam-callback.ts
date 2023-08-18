@@ -1,5 +1,4 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { nanoid } from "nanoid";
 import { getEnv } from "@/server-lib/env";
 import { ValidationError } from "@/server-lib/errors";
 import { withCoreMiddleware } from "@/server-lib/middlware";
@@ -7,6 +6,7 @@ import { NextSessionRequest, withHttpSession } from "@/server-lib/session";
 import { STEAM_URL } from "./steam";
 import { db, table } from "@/server-lib/db";
 import { eq } from "drizzle-orm";
+import { genId } from "@/server-lib/id";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const steamUid = await loginVerify(req.query);
@@ -17,9 +17,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     .where(eq(table.users.steamId, steamUid));
   const user = users[0];
 
-  // An id that is a tad longer than 64 bits in length so that the hash
-  // collision is still manageable.
-  const userId = user?.userId ?? nanoid(12);
+  const userId = user?.userId ?? genId(12);
   if (!user) {
     await db.insert(table.users).values({
       userId,
