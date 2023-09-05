@@ -18,8 +18,8 @@ RUN apt-get update && apt-get install -y \
 COPY library-scripts/*.sh /tmp/library-scripts/
 RUN bash /tmp/library-scripts/dependencies.sh
 
-# https://github.com/devcontainers/ci/issues/257
-RUN delgroup nvm
+# https://github.com/devcontainers/ci/issues/257#issuecomment-1700051575
+RUN delgroup npm
 
 USER node
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile minimal --component rustfmt --component clippy -y && \
