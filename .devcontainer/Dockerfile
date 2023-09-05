@@ -18,12 +18,13 @@ RUN apt-get update && apt-get install -y \
 COPY library-scripts/*.sh /tmp/library-scripts/
 RUN bash /tmp/library-scripts/dependencies.sh
 
+# https://github.com/devcontainers/ci/issues/257
+RUN delgroup nvm
+
 USER node
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile minimal --component rustfmt --component clippy -y && \
     . $HOME/.cargo/env && \
     tmp/library-scripts/npm-dependencies.sh && \
     tmp/library-scripts/opt-dependencies.sh
 
-# https://github.com/devcontainers/ci/issues/257
-RUN delgroup nvm
 EXPOSE 3001 3003
