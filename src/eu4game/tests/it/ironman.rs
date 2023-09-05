@@ -61,7 +61,7 @@ pub fn ironman_saves_detected() -> Result<(), Box<dyn Error>> {
         }
 
         if values.len() == 2
-            && values.contains(&String::from("PREMADE1"))
+            && values.contains(&String::from("PREMADE1.eu4"))
             && values.contains(&String::from("PREMADE2"))
         {
             continue;
