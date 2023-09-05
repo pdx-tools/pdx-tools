@@ -24,4 +24,6 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profi
     tmp/library-scripts/npm-dependencies.sh && \
     tmp/library-scripts/opt-dependencies.sh
 
+# https://github.com/devcontainers/ci/issues/257
+RUN delgroup nvm
 EXPOSE 3001 3003
