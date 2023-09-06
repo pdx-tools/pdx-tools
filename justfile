@@ -80,7 +80,7 @@ build-app: prep-frontend
 build-docker:
   #!/usr/bin/env bash
   set -euxo pipefail
-  [[ -f ./src/app/next/standalone ]] && docker build -t ghcr.io/pdx-tools/pdx-tools:nightly -f ./dev/app.dockerfile ./src/app
+  [[ -d ./src/app/.next/standalone/ ]] && docker build -t ghcr.io/pdx-tools/pdx-tools:nightly -f ./dev/app.dockerfile ./src/app
   docker build -t ghcr.io/pdx-tools/api:nightly -f ./dev/api.dockerfile ./target/x86_64-unknown-linux-musl/release/
 
 build-admin:
