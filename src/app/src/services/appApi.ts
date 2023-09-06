@@ -1,5 +1,5 @@
 import { epochOf } from "@/lib/dates";
-import { fetchOk, fetchOkJson } from "@/lib/fetch";
+import { fetchOk, fetchOkJson, sendJson } from "@/lib/fetch";
 import {
   QueryClient,
   useInfiniteQuery,
@@ -27,9 +27,7 @@ export type PublicUserInfo = {
 export type PrivateUserInfo = {
   user_id: string;
   steam_id: string;
-  user_name: string | null;
   account: "free" | "admin";
-  created_on: string;
 };
 
 export type ProfileResponse =
@@ -237,13 +235,7 @@ export const useNewApiKeyRequest = (onSuccess: (key: string) => void) => {
 export const useSavePatch = () => {
   return useMutation({
     mutationFn: ({ id, ...rest }: SavePatchProps) =>
-      fetchOkJson(`/api/saves/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(rest),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }),
+      sendJson(`/api/saves/${id}`, { body: rest, method: "PATCH" }),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries(pdxKeys.save(id));
     },

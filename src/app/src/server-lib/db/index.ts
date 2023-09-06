@@ -1,10 +1,10 @@
-import crypto from "crypto";
 import dayjs from "dayjs";
 import { eu4DaysToDate } from "../game";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { Save, User, saves, users } from "./schema";
 import { ParsedFile } from "../save-parser";
+import { NextRequest, NextResponse } from "next/server";
 export {
   type User,
   type Save,
@@ -75,8 +75,10 @@ export const dbDifficulty = (dbDiff: Save["gameDifficulty"]) =>
 export const toDbDifficulty = (diff: SaveFile["game_difficulty"]) =>
   difficultyTable[diff];
 
-export const apiKeyAtRest = (key: crypto.BinaryLike) => {
-  return crypto.createHash("sha256").update(key).digest().toString("base64url");
+export const apiKeyAtRest = async (key: string) => {
+  const data = new TextEncoder().encode(key);
+  const digest = await crypto.subtle.digest({ name: "SHA-256" }, data);
+  return Buffer.from(digest).toString("base64url");
 };
 
 export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
@@ -105,15 +107,47 @@ export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
   );
 };
 
-const pool = new Pool({
-  connectionString: process.env["DATABASE_URL"],
-});
-
-export async function dbDisconnect() {
-  await pool.end();
+export async function useDb<T>(
+  fn: (db: ReturnType<typeof drizzle>) => Promise<T>,
+) {
+  return fn(dbPool().orm);
 }
 
-export const db = drizzle(pool);
+type DbDrizzle = ReturnType<typeof drizzle>;
+export type DbRoute = { dbConn: Promise<ReturnType<typeof drizzle>> };
+
+function createDbPool() {
+  const pool = new Pool({ connectionString: process.env["DATABASE_URL"] });
+  return {
+    pool,
+    orm: drizzle(pool),
+  };
+}
+
+let dbDrizzle: { orm: DbDrizzle; pool: Pool } | undefined;
+function dbPool() {
+  return (dbDrizzle ??= createDbPool());
+}
+
+export function withDb<T = unknown, R = {}>(
+  fn: (
+    req: NextRequest,
+    context: R & DbRoute,
+  ) => Promise<NextResponse<T> | Response>,
+) {
+  return async (
+    req: NextRequest,
+    ctxt: R,
+  ): Promise<NextResponse<T> | Response> => {
+    const dbConn = Promise.resolve(dbPool().orm);
+    return await fn(req, { ...ctxt, dbConn });
+  };
+}
+
+export async function dbDisconnect() {
+  await dbPool().pool.end();
+}
+
 export const table = {
   users,
   saves,

@@ -13,8 +13,6 @@ RUN groupadd --system --gid 1001 nextjs \
     && useradd --system --create-home --uid 1001 --gid 1001 nextjs
 
 COPY .next/standalone .
-COPY next.config.js ./
-COPY public ./public
 COPY --chown=nextjs:nextjs .next ./.next
 
 USER nextjs

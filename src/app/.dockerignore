@@ -1,5 +1,2 @@
 .next/cache
 node_modules
-**/*.png
-**/*.webp
-**/*.bin

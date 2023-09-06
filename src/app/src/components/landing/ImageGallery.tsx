@@ -107,8 +107,8 @@ const MobileImageGallery = () => {
     <div className="grid gap-28">
       {images.map((x) => {
         return (
-          <div key={x.src}>
-            <h2>{x.title}</h2>
+          <div className="grid gap-4" key={x.src}>
+            <h2 className="text-2xl font-semibold tracking-tight">{x.title}</h2>
             <p>{x.description}</p>
             {x.src.endsWith("mp4") ? (
               <video

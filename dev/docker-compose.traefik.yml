@@ -1,7 +1,7 @@
 # used as an override on top of prod to provide host entrypoints
 services:
   traefik:
-    image: "traefik:v2.5"
+    image: "traefik:v2.10.4"
     restart: 'unless-stopped'
     container_name: "traefik"
     command:
@@ -11,15 +11,14 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--providers.docker"
       - "--providers.docker.exposedbydefault=false"
-      - "--certificatesresolvers.cloudflareresolver.acme.dnschallenge=true"
-      - "--certificatesresolvers.cloudflareresolver.acme.dnschallenge.provider=cloudflare"
-      - "--certificatesresolvers.cloudflareresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=${CF_API_EMAIL}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
       - "80:80"
       - "443:443"
     environment:
       - "CF_API_EMAIL=${CF_API_EMAIL}"
-      - "CF_API_KEY=${CF_API_KEY}"
     volumes:
       - "./letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
