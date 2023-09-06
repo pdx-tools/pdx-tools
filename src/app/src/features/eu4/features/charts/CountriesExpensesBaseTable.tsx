@@ -126,7 +126,12 @@ export const CountriesExpensesBaseTable = ({
           />
         </div>
       </div>
-      <DataTable columns={columns} data={data} pagination={true} />
+      <DataTable
+        columns={columns}
+        data={data}
+        pagination={true}
+        initialSorting={[{ id: "total", desc: true }]}
+      />
     </div>
   );
 };
