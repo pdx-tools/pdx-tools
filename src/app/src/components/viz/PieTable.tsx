@@ -106,7 +106,9 @@ export const PieTable = ({
           <Table.ColumnHeader column={column} title="Percent" />
         ),
         cell: (info) => (
-          <div className="text-right">{formatFloat(info.getValue())}%</div>
+          <div className="text-right">
+            {formatFloat(info.getValue() * 100, 2)}%
+          </div>
         ),
       }),
     ],
@@ -125,7 +127,7 @@ export const PieTable = ({
             <Table.Row>
               <Table.Cell>Total</Table.Cell>
               <Table.Cell className="text-right">
-                {formatFloat(total)}
+                {numFormatter(total)}
               </Table.Cell>
             </Table.Row>
           }

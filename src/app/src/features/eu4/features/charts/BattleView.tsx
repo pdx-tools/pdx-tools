@@ -8,6 +8,7 @@ import { Tooltip } from "@/components/Tooltip";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
+import { Divider } from "@/components/Divider";
 
 interface BattleViewProps {
   warName: string;
@@ -138,7 +139,7 @@ const participantColumns = [
 ];
 
 const battleColumnHelper = createColumnHelper<BattleInfo>();
-const landColumns2 = [
+const landColumns = [
   battleColumnHelper.accessor("date", {
     sortingFn: "alphanumeric",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Date" />,
@@ -154,7 +155,9 @@ const landColumns2 = [
   battleColumnHelper.accessor("attacker", {
     header: "Attacker",
     cell: (info) => (
-      <div className={info.row.original.attacker_won ? "bg-lime-200" : ""}>
+      <div
+        className={info.row.original.attacker_won ? "flex bg-green-300" : ""}
+      >
         <FlagAvatar
           tag={info.getValue().country}
           name={info.getValue().country_name}
@@ -166,7 +169,9 @@ const landColumns2 = [
   battleColumnHelper.accessor("defender", {
     header: "Defender",
     cell: (info) => (
-      <div className={!info.row.original.attacker_won ? "bg-lime-200" : ""}>
+      <div
+        className={!info.row.original.attacker_won ? "flex bg-green-300" : ""}
+      >
         <FlagAvatar
           tag={info.getValue().country}
           name={info.getValue().country_name}
@@ -310,7 +315,7 @@ const landColumns2 = [
   }),
 ];
 
-const navyColumns2 = [
+const navyColumns = [
   battleColumnHelper.accessor("date", {
     sortingFn: "alphanumeric",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Date" />,
@@ -534,20 +539,36 @@ export const BattleView = ({ warName }: BattleViewProps) => {
 
   return (
     <div className="grid grid-cols-1 gap-12">
-      <DataTable
-        initialSorting={[{ id: "participation", desc: true }]}
-        data={data?.attackers ?? []}
-        columns={participantColumns}
-        summary={<ParticipantsSummary participants={data?.attackers ?? []} />}
-      />
-      <DataTable
-        initialSorting={[{ id: "participation", desc: true }]}
-        data={data?.defenders ?? []}
-        columns={participantColumns}
-        summary={<ParticipantsSummary participants={data?.attackers ?? []} />}
-      />
-      <DataTable data={data?.landBattles ?? []} columns={landColumns2} />
-      <DataTable data={data?.navalBattles ?? []} columns={navyColumns2} />
+      <div>
+        <Divider>Attackers</Divider>
+
+        <DataTable
+          initialSorting={[{ id: "participation", desc: true }]}
+          data={data?.attackers ?? []}
+          columns={participantColumns}
+          summary={<ParticipantsSummary participants={data?.attackers ?? []} />}
+        />
+      </div>
+
+      <div>
+        <Divider>Defenders</Divider>
+        <DataTable
+          initialSorting={[{ id: "participation", desc: true }]}
+          data={data?.defenders ?? []}
+          columns={participantColumns}
+          summary={<ParticipantsSummary participants={data?.defenders ?? []} />}
+        />
+      </div>
+
+      <div>
+        <Divider>Land Battles</Divider>
+        <DataTable data={data?.landBattles ?? []} columns={landColumns} />
+      </div>
+
+      <div>
+        <Divider>Naval Battles</Divider>
+        <DataTable data={data?.navalBattles ?? []} columns={navyColumns} />
+      </div>
     </div>
   );
 };
