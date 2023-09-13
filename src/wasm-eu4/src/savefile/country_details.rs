@@ -17,6 +17,7 @@ use super::{LocalizedObj, LocalizedTag, SaveFileImpl};
 #[derive(Tsify, Serialize, Debug)]
 #[tsify(into_wasm_abi)]
 pub struct CountryDetails {
+    pub id: usize,
     pub tag: CountryTag,
     pub name: String,
     pub base_tax: f32,
@@ -620,6 +621,7 @@ impl SaveFileImpl {
 
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
         CountryDetails {
+            id: save_country.id,
             tag: country_tag,
             name: save_game_query.localize_country(&country_tag),
             ruler,

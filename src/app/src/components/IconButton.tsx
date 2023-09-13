@@ -13,7 +13,7 @@ export const IconButton = ({ tooltip, icon, ...rest }: IconButtonProps) => {
       <Tooltip.Trigger asChild>
         <Button {...rest}>{icon}</Button>
       </Tooltip.Trigger>
-      <Tooltip.Content>{tooltip}</Tooltip.Content>
+      <Tooltip.Content className="max-w-xs">{tooltip}</Tooltip.Content>
     </Tooltip>
   );
 };

@@ -55,6 +55,7 @@ import {
 } from "../../components/icons";
 import { PersonalityAvatar } from "../../components/avatars";
 import { CheckCircleIcon } from "@heroicons/react/24/outline";
+import { HelpTooltip } from "@/components/HelpTooltip";
 
 interface CountryDetailsProps {
   details: CountryDetails;
@@ -299,6 +300,10 @@ export const CountryDetailsDescriptions = ({
         <div>
           <div>Religion: {details.religion}</div>
           <div>Primary culture: {details.primary_culture}</div>
+          <div className="flex gap-1">
+            Country ID: {details.id}{" "}
+            <HelpTooltip help="Lowest country ID decides which army arrives first in case of a tie" />
+          </div>
         </div>
       </div>
 
