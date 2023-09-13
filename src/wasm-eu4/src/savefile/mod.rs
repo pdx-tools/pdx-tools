@@ -948,7 +948,9 @@ impl SaveFileImpl {
         for (continent, provs) in self.game.continents() {
             let provs = provs
                 .filter_map(|id| {
-                    let Some(prov) = self.query.save().game.provinces.get(&id) else { return None };
+                    let Some(prov) = self.query.save().game.provinces.get(&id) else {
+                        return None;
+                    };
                     let owned = prov
                         .owner
                         .as_ref()

@@ -155,20 +155,21 @@ impl SaveFileImpl {
                 }
 
                 if let Some(rebels) = province.occupying_rebel_faction.as_ref() {
-                    let rebel_name = self.query.save().game.rebel_factions.iter().find_map(|x| if x.id.id == rebels.id {
-                        Some(x.name.clone())
-                    } else {
-                        None
+                    let rebel_name = self.query.save().game.rebel_factions.iter().find_map(|x| {
+                        if x.id.id == rebels.id {
+                            Some(x.name.clone())
+                        } else {
+                            None
+                        }
                     });
 
                     if let Some(rebel_name) = rebel_name {
                         break 'controller LocalizedTag {
                             name: rebel_name,
                             tag: current_controller,
-                        }
+                        };
                     }
                 };
-
 
                 break 'controller LocalizedTag {
                     name: sq.localize_country(&current_controller),
@@ -219,7 +220,7 @@ impl SaveFileImpl {
         let (owner_tag, stored_owner_tag) = 'owner: {
             let Some(date) = requested_date else {
                 let owner = province.owner.as_ref()?;
-                break 'owner (*owner, *owner)
+                break 'owner (*owner, *owner);
             };
 
             let resolver = self.tag_resolver.at(date);
@@ -274,7 +275,9 @@ impl SaveFileImpl {
 
             MapPayloadKind::Religion => {
                 let religion_in_province_id = 'prov_religion: {
-                    let Some(date) = requested_date else { break 'prov_religion province.religion.clone()? };
+                    let Some(date) = requested_date else {
+                        break 'prov_religion province.religion.clone()?;
+                    };
                     let latest_religion = province
                         .history
                         .events
@@ -296,7 +299,9 @@ impl SaveFileImpl {
 
                 let owner = self.query.country(&stored_owner_tag)?;
                 let state_religion_id = 'state_religion: {
-                    let Some(date) = requested_date else { break 'state_religion owner.religion.clone()? };
+                    let Some(date) = requested_date else {
+                        break 'state_religion owner.religion.clone()?;
+                    };
                     let latest_religion = owner
                         .history
                         .events
@@ -1285,8 +1290,12 @@ impl ReligionTimelapse {
                 .as_ref()
                 .and_then(|x| wasm.religion_lookup.index(x));
 
-            let Some(first_religion) = first_religion else { continue };
-            let Some(religion) = current_religions.get_mut(usize::from(id.as_u16())) else { continue };
+            let Some(first_religion) = first_religion else {
+                continue;
+            };
+            let Some(religion) = current_religions.get_mut(usize::from(id.as_u16())) else {
+                continue;
+            };
             *religion = first_religion;
         }
 

@@ -20,7 +20,7 @@ impl ProvinceNamesArgs {
         let mut characters: HashMap<_, usize> = HashMap::new();
         for (id, prov) in save.game.provinces.iter() {
             let Some(game_prov) = game.get_province(id) else {
-                continue
+                continue;
             };
 
             if !game_prov.is_habitable() {

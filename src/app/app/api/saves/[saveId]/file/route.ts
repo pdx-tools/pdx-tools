@@ -10,7 +10,7 @@ export const GET = withCore(
   async (_req: NextRequest, { params }: { params: { saveId: string } }) => {
     const save = saveSchema.parse(params);
     const resp = await s3FetchOk(`${BUCKET}/${save.saveId}`, {
-      cache: "no-store"
+      cache: "no-store",
     });
 
     return new Response(resp.body, {
