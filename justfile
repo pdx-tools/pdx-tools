@@ -16,6 +16,14 @@ release:
   set -euxo pipefail
   export PDX_RELEASE=1
 
+  just vercel whoami
+  just vercel link --yes --project pdx-tools
+  just vercel pull
+  if [[ "$(gcloud config get-value account 2>&1)" = "(unset)" ]]; then
+    gcloud auth login
+  fi
+  gcloud auth configure-docker us-west1-docker.pkg.dev
+
   if [[ $(git status --porcelain --untracked-files=no) ]]; then
     echo "Address uncommitted changes before release"
     exit 1
@@ -68,7 +76,7 @@ publish-backend:
   docker image save ghcr.io/pdx-tools/pdx-tools:nightly | gzip | ssh pdx-tools-prod 'docker load && pdx-tools/docker-compose.sh up -d app'
 
 vercel +cmd:
-  cd src/app && vercel "$@"
+  vercel --cwd src/app "$@"
 
 publish-app: (vercel "build" "--prod") (vercel "deploy" "--prod" "--prebuilt")
 
