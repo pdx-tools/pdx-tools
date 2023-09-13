@@ -10,12 +10,14 @@ export const SaveWarnings = () => {
   }
 
   return (
-    <Alert variant="warning" className="fixed w-full px-4 py-2">
-      <Alert.Description>
-        {meta.warnings.map((x) => (
-          <div key={x}>{x}</div>
-        ))}
-      </Alert.Description>
-    </Alert>
+    <div className="fixed left-0 top-0 w-full">
+      <Alert variant="warning" className="w-full px-4 py-2">
+        <Alert.Description>
+          {meta.warnings.map((x) => (
+            <div key={x}>{x}</div>
+          ))}
+        </Alert.Description>
+      </Alert>
+    </div>
   );
 };
