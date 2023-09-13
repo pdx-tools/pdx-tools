@@ -270,7 +270,17 @@ const CountrySelect = () => {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="max-h-96 w-64 overflow-auto">
-        <Command>
+        <Command
+          filter={(value, search) => {
+            if (search.length == 0) {
+              return 1;
+            } else if (search.length <= 3) {
+              return value.includes(search, value.length - 3) ? 1 : 0;
+            } else {
+              return value.includes(search) ? 1 : 0;
+            }
+          }}
+        >
           <Command.Input placeholder="Search countries" />
           <Command.Empty>No countries found.</Command.Empty>
           <CountrySelectGroup
