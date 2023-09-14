@@ -12,9 +12,11 @@ pub struct LocalizedCountry {
 
 #[derive(Debug)]
 pub struct GameReligion<'a> {
+    pub index: usize,
     pub id: &'a str,
     pub name: &'a str,
     pub color: [u8; 3],
+    pub allowed_conversions: Vec<&'a str>,
 }
 
 #[derive(Debug)]
@@ -159,9 +161,11 @@ impl<'a> Game<'a> {
         let res = religions.get(idx);
 
         Some(GameReligion {
+            index: idx,
             id: res.key(),
             name: res.name(),
             color: res.color().0,
+            allowed_conversions: res.allowed_conversion().iter().flatten().collect(),
         })
     }
 

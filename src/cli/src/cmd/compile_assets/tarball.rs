@@ -312,12 +312,21 @@ pub fn parse_game_dir(
         let name = buffer.create_string(&religion.name);
         let color =
             schemas::eu4::Rgb::new(religion.colors[0], religion.colors[1], religion.colors[2]);
+
+        let strs = religion
+            .allowed_conversions
+            .iter()
+            .map(|x| buffer.create_string(x.as_str()))
+            .collect::<Vec<_>>();
+        let allowed_conversions = buffer.create_vector(&strs);
+
         let entry = schemas::eu4::Religion::create(
             &mut buffer,
             &schemas::eu4::ReligionArgs {
                 key: Some(key),
                 name: Some(name),
                 color: Some(&color),
+                allowed_conversion: Some(allowed_conversions),
             },
         );
         religions.push(entry);

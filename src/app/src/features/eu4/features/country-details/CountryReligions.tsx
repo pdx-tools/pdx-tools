@@ -139,7 +139,7 @@ const CountryReligionViz = React.memo(CountryReligionVizImpl);
 
 export const CountryReligions = ({ details }: CountryReligionsProps) => {
   const isMd = useBreakpoint("md");
-  const { data = [], error } = useEu4Worker(
+  const { data, error } = useEu4Worker(
     useCallback(
       (worker) => worker.eu4GetCountryProvinceReligion(details.tag),
       [details.tag],
@@ -149,7 +149,114 @@ export const CountryReligions = ({ details }: CountryReligionsProps) => {
   return (
     <>
       <Alert.Error msg={error} />
-      <CountryReligionViz data={data} largeLayout={isMd} />
+      {data ? (
+        <>
+          <CountryReligionViz data={data.religions} largeLayout={isMd} />
+          <div className="flex flex-col gap-4">
+            <p className="max-w-prose">
+              State religion:
+              <span className="font-semibold"> {details.religion}</span>
+              {data.allowedConversions.length > 1 ? (
+                <>
+                  can directly convert to{" "}
+                  {data.allowedConversions.map((x, i) => (
+                    <React.Fragment key={x.id}>
+                      {i != 0
+                        ? i == data.allowedConversions.length - 1
+                          ? " and "
+                          : ", "
+                        : ""}
+                      <span key={x.id} className="font-semibold">
+                        {x.name}
+                      </span>
+                    </React.Fragment>
+                  ))}
+                  .
+                </>
+              ) : null}
+            </p>
+
+            {data.rebel ? (
+              <>
+                <p className="max-w-prose">
+                  To change the state religion to{" "}
+                  <span className="font-semibold">
+                    {data.rebel.religion.name}
+                  </span>
+                  , accept religious rebel demands once{" "}
+                  <span className="font-semibold">
+                    {data.rebel.religion.name}
+                  </span>{" "}
+                  has reached a <span className="font-semibold">plurality</span>{" "}
+                  of development.{" "}
+                </p>
+                <div className="max-w-prose">
+                  {data.rebel.until_plurality > 0 ? (
+                    <>
+                      <span className="font-semibold">
+                        {data.rebel.religion.name}
+                      </span>{" "}
+                      needs{" "}
+                      <span className="font-semibold">
+                        {Number.isInteger(data.rebel.until_plurality)
+                          ? formatInt(data.rebel.until_plurality)
+                          : formatFloat(data.rebel.until_plurality, 2)}
+                      </span>{" "}
+                      additional development to reach{" "}
+                      <span className="font-semibold">plurality</span>.
+                    </>
+                  ) : (
+                    <div className="text-emerald-700">
+                      <span className="font-semibold">
+                        {data.rebel.religion.name}
+                      </span>{" "}
+                      elgible to be new state religion on rebel acceptance.
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="max-w-prose">
+                    Techniques to influence amount needed to reach plurality:
+                  </p>
+                  <ul className="list-disc list-inside pl-3">
+                    {data.rebel.more_popular.map((x) => (
+                      <li key={x.id}>
+                        <span className="font-semibold">
+                          ({formatInt(x.exploitable)} / {formatInt(x.provinces)}
+                          )
+                        </span>{" "}
+                        {x.name} provinces with exploitable development
+                      </li>
+                    ))}
+                    <li>
+                      Allow religious rebels to siege down additional provinces
+                    </li>
+                    <li>
+                      Develop{" "}
+                      <span className="font-semibold">
+                        {formatInt(data.rebel.religion.provinces)}
+                      </span>{" "}
+                      <span className="font-semibold">
+                        {data.rebel.religion.name}
+                      </span>{" "}
+                      provinces with{" "}
+                      <span className="font-semibold">
+                        {formatInt(
+                          Math.max(details.adm_mana, 0) +
+                            Math.max(details.dip_mana, 0) +
+                            Math.max(details.mil_mana, 0),
+                        )}
+                      </span>{" "}
+                      available mana
+                    </li>
+                    <li>Release vassals and sell provinces</li>
+                  </ul>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </>
+      ) : null}
     </>
   );
 };

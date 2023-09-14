@@ -152,12 +152,30 @@ pub struct GreatAdvisor {
     trigger_date: Option<Eu4Date>,
 }
 
-#[derive(Tsify, Debug, Serialize, Deserialize)]
+#[derive(Tsify, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[tsify(into_wasm_abi)]
+pub struct CountryReligions {
+    allowed_conversions: Vec<LocalizedObj>,
+    religions: Vec<CountryReligion>,
+    rebel: Option<RebelReligion>,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct RebelReligion {
+    religion: CountryReligion,
+    until_plurality: f32,
+    more_popular: Vec<CountryReligion>,
+}
+
+#[derive(Tsify, Debug, Serialize, Clone)]
 pub struct CountryReligion {
+    index: Option<usize>,
     id: String,
     name: String,
     color: String,
     provinces: usize,
+    exploitable: usize,
     provinces_percent: f64,
     development: f32,
     development_percent: f64,
@@ -352,7 +370,13 @@ impl SaveFileImpl {
 
         let religion = country
             .religion
-            .clone()
+            .as_ref()
+            .map(|x| {
+                self.game
+                    .religion(x)
+                    .map(|r| String::from(r.name))
+                    .unwrap_or_else(|| String::from(x))
+            })
             .unwrap_or_else(|| String::from("noreligion"));
 
         let primary_culture = country
@@ -880,8 +904,28 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn get_country_province_religion(&self, tag: &str) -> Vec<CountryReligion> {
+    pub fn get_country_province_religion(&self, tag: &str) -> CountryReligions {
         let tag = tag.parse::<CountryTag>().unwrap();
+
+        let state_religion = self
+            .query
+            .country(&tag)
+            .and_then(|x| x.religion.as_ref())
+            .and_then(|x| self.game.religion(x));
+
+        let allowed_conversions = state_religion
+            .as_ref()
+            .map(|x| {
+                x.allowed_conversions
+                    .iter()
+                    .filter_map(|r| self.game.religion(r))
+                    .map(|r| LocalizedObj {
+                        id: String::from(r.id),
+                        name: String::from(r.name),
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
 
         let owned_provinces = self
             .query
@@ -896,6 +940,7 @@ impl SaveFileImpl {
         struct ProvinceCount {
             count: usize,
             development: f32,
+            exploitable: usize,
         }
 
         let mut province_counts: HashMap<_, ProvinceCount> = HashMap::new();
@@ -903,6 +948,18 @@ impl SaveFileImpl {
             let entry = province_counts.entry(religion).or_default();
             entry.count += 1;
             entry.development += prov.base_manpower + prov.base_production + prov.base_tax;
+
+            // Can't exploit production of inland provinces, but this hasn't been setup,
+            // so just rely on either tax or manpower being above 2.
+            let exploited_recently = prov.exploit_date.map_or(false, |x| {
+                x.add_days(365 * 20) > self.query.save().meta.date
+            });
+            entry.exploitable +=
+                if (prov.base_tax >= 2.0 || prov.base_manpower >= 2.0) && !exploited_recently {
+                    1
+                } else {
+                    0
+                }
         }
 
         let mut total_provinces = 0;
@@ -922,6 +979,7 @@ impl SaveFileImpl {
                 .unwrap_or_else(|| String::from(religion_id));
 
             result.push(CountryReligion {
+                index: religion.as_ref().map(|x| x.index),
                 id: String::from(religion_id),
                 name,
                 color: hex_color(color),
@@ -929,11 +987,60 @@ impl SaveFileImpl {
                 provinces_percent: (tally.count as f64) / (total_provinces as f64) * 100.0,
                 development: tally.development,
                 development_percent: f64::from(tally.development) / total_development * 100.0,
+                exploitable: tally.exploitable,
             })
         }
 
         result.sort_unstable_by(|a, b| a.name.cmp(&b.name));
-        result
+
+        let all_religions: HashSet<_> = result.iter().map(|x| &x.id).collect();
+        let direct_religions: HashSet<_> = allowed_conversions.iter().map(|x| &x.id).collect();
+
+        let rebel = all_religions
+            .difference(&direct_religions)
+            .filter(|x| {
+                state_religion
+                    .as_ref()
+                    .map_or(false, |r| r.id != x.as_str())
+            })
+            .filter_map(|x| result.iter().find(|r| x == &&r.id))
+            .max_by(|a, b| a.development.partial_cmp(&b.development).unwrap())
+            .map(|leader| {
+                let most_popular = result
+                    .iter()
+                    .max_by(|a, b| {
+                        a.development
+                            .partial_cmp(&b.development)
+                            .unwrap()
+                            .then_with(|| a.index.cmp(&b.index).reverse())
+                    })
+                    .unwrap();
+
+                let more_popular = result
+                    .iter()
+                    .filter(|x| x.id != leader.id && (x.development > leader.development || (x.development == leader.development && x.index.map_or(true, |a| leader.index.map_or(true, |b| a < b)))))
+                    .cloned()
+                    .collect::<Vec<_>>();
+
+                let plurality_offset = if matches!((leader.index, most_popular.index), (Some(x), Some(y)) if x <= y) {
+                    0f32
+                } else {
+                    1f32
+                };
+
+                let until_plurality = most_popular.development - leader.development + plurality_offset;
+                RebelReligion {
+                    religion: leader.clone(),
+                    until_plurality,
+                    more_popular,
+                }
+            });
+
+        CountryReligions {
+            allowed_conversions,
+            religions: result,
+            rebel,
+        }
     }
 
     pub fn get_country_province_culture(&self, tag: &str) -> Vec<CountryCulture> {

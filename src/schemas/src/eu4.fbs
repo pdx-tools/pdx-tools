@@ -64,6 +64,7 @@ table EntryStringList {
 table Religion {
   key: string (key);
   name: string (required);
+  allowed_conversion: [string];
   color: Rgb (required);
 }
 

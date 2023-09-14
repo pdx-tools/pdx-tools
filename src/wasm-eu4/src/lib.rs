@@ -6,7 +6,7 @@ use eu4save::{
 };
 use savefile::{
     AchievementsScore, CountryAdvisors, CountryCasualties, CountryCulture, CountryDetails,
-    CountryInfo, CountryLeader, CountryReligion, CountryStateDetails, Estate,
+    CountryInfo, CountryLeader, CountryReligions, CountryStateDetails, Estate,
     FileObservationFrequency, HealthData, IdeaGroup, LocalizedCountryExpense,
     LocalizedCountryIncome, LocalizedLedger, LocalizedTag, MapCursorPayload, MapPayload,
     MapPayloadKind, MapQuickTipPayload, Monitor, OwnedDevelopmentStates, PlayerHistory,
@@ -47,7 +47,6 @@ macro_rules! wasm_wrapper {
     };
 }
 
-wasm_wrapper!(CountryReligions, Vec<CountryReligion>);
 wasm_wrapper!(CountryCultures, Vec<CountryCulture>);
 wasm_wrapper!(StringList, Vec<String>);
 wasm_wrapper!(I32List, Vec<i32>);

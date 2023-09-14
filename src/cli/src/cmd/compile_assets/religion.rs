@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -5,12 +6,26 @@ pub struct Religion {
     pub id: String,
     pub name: String,
     pub colors: [u8; 3],
+    pub allowed_conversions: Vec<String>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct RawReligion {
     pub id: String,
     pub colors: [u8; 3],
+    pub allowed_conversions: Vec<String>,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+pub struct ReligionBody {
+    pub color: [u8; 3],
+    #[serde(default, alias = "allowed_conversion")]
+    pub allowed_conversions: Vec<String>,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+pub struct MaybeReligion {
+    pub color: Option<[u8; 3]>,
 }
 
 pub fn parse_enhanced_religions(
@@ -23,6 +38,7 @@ pub fn parse_enhanced_religions(
             id: religion.id.clone(),
             name: String::from(localization.get(&religion.id).unwrap()),
             colors: religion.colors,
+            allowed_conversions: religion.allowed_conversions,
         })
         .collect()
 }
@@ -36,20 +52,17 @@ pub fn parse_religions(data: &[u8]) -> Vec<RawReligion> {
             for (key, _, value) in religion_group.fields() {
                 let religion_name = key.read_str();
                 if let Ok(religion) = value.read_object() {
-                    for (key, _, value) in religion.fields() {
-                        if key.read_str() == "color" {
-                            let mut color = [0u8; 3];
-                            let colors = value.read_array().unwrap();
-                            for (channel, reader) in color.iter_mut().zip(colors.values()) {
-                                *channel = reader.read_scalar().unwrap().to_u64().unwrap() as u8;
-                            }
-
-                            result.push(RawReligion {
-                                id: religion_name.to_string(),
-                                colors: color,
-                            })
-                        }
+                    let de: MaybeReligion = religion.deserialize().unwrap();
+                    if de.color.is_none() {
+                        continue;
                     }
+
+                    let de: ReligionBody = religion.deserialize().unwrap();
+                    result.push(RawReligion {
+                        id: religion_name.to_string(),
+                        colors: de.color,
+                        allowed_conversions: de.allowed_conversions,
+                    });
                 }
             }
         }
@@ -98,6 +111,7 @@ mod tests {
             vec![RawReligion {
                 id: String::from("jewish"),
                 colors: [153, 25, 102],
+                allowed_conversions: Vec::new(),
             }]
         );
     }

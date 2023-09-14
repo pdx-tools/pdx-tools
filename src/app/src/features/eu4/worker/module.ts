@@ -9,7 +9,6 @@ import type {
   CountryIncome,
   CountryLosses,
   CountryMatcher,
-  CountryReligion,
   CountryStateDetails,
   EnhancedCountryInfo,
   HealthData,
@@ -138,7 +137,7 @@ export function eu4GetCountryAdvisors(tag: string): CountryAdvisors {
   return wasm.save.get_country_advisors(tag);
 }
 
-export function eu4GetCountryProvinceReligion(tag: string): CountryReligion[] {
+export function eu4GetCountryProvinceReligion(tag: string) {
   return wasm.save.get_country_province_religion(tag);
 }
 
