@@ -155,7 +155,7 @@ export const CountryReligions = ({ details }: CountryReligionsProps) => {
           <div className="flex flex-col gap-4">
             <p className="max-w-prose">
               State religion:
-              <span className="font-semibold"> {details.religion}</span>
+              <span className="font-semibold"> {details.religion} </span>
               {data.allowedConversions.length > 1 ? (
                 <>
                   can directly convert to{" "}
