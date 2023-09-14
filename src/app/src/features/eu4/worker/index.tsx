@@ -4,6 +4,7 @@ import { type Eu4WorkerModule } from "./bridge";
 export { useEu4Worker } from "./useEu4Worker";
 export { useAnalysisWorker } from "./useAnalysisWorker";
 export { type Eu4Worker } from "./bridge";
+export { type FileObservationFrequency } from "./init";
 
 function createWorker() {
   if (typeof window === "undefined") {

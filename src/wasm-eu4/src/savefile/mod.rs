@@ -542,6 +542,15 @@ struct ContinentDevelopment {
     children: Vec<SuperRegionDevelopment>,
 }
 
+#[derive(Tsify, Serialize, Deserialize)]
+#[tsify(from_wasm_abi)]
+pub enum FileObservationFrequency {
+    EverySave,
+    Daily,
+    Monthly,
+    Yearly,
+}
+
 #[derive(Tsify, Serialize)]
 #[tsify(into_wasm_abi)]
 pub struct RootTree {
@@ -578,7 +587,7 @@ pub struct SaveFileImpl {
 impl SaveFileImpl {
     pub fn reparse(
         &mut self,
-        frequency: &str,
+        frequency: FileObservationFrequency,
         save_data: Vec<u8>,
     ) -> Result<Reparse, Eu4GameError> {
         let tokens = tokens::get_tokens();
@@ -586,11 +595,19 @@ impl SaveFileImpl {
         let meta = eu4game::shared::parse_meta(&save_data, tokens)?;
 
         let prev_date = self.query.save().meta.date;
-        if frequency == "yearly" && meta.date.year() == prev_date.year()
-            || frequency == "monthly" && meta.date.month() == prev_date.month()
-            || meta.date == prev_date
-        {
-            return Ok(Reparse::TooSoon { date: meta.date });
+
+        let too_soon = Ok(Reparse::TooSoon { date: meta.date });
+        use FileObservationFrequency as FOF;
+        match frequency {
+            FOF::Daily if meta.date == prev_date => return too_soon,
+            FOF::Monthly
+                if meta.date.year() == prev_date.year()
+                    && meta.date.month() == prev_date.month() =>
+            {
+                return too_soon
+            }
+            FOF::Yearly if meta.date.year() == prev_date.year() => return too_soon,
+            _ => {}
         }
 
         let save = Eu4Parser::new().parse_with(&save_data, tokens)?.save;

@@ -13,7 +13,11 @@ import {
   MapDate,
 } from "../types/models";
 import { getEu4Worker } from "../worker";
-import type { EnhancedMeta, MapTimelapseItem } from "../worker/module";
+import type {
+  EnhancedMeta,
+  FileObservationFrequency,
+  MapTimelapseItem,
+} from "../worker/module";
 import { proxy } from "comlink";
 
 export const emptyEu4CountryFilter: CountryMatcher = {
@@ -79,7 +83,7 @@ type Eu4State = Eu4StateProps & {
     setSelectedDate: (date: Eu4State["selectedDate"] | null) => void;
     setSelectedDateDay: (days: number) => Promise<void>;
     setSelectedDateText: (text: string) => Promise<void>;
-    startWatcher: (frequency: string) => void;
+    startWatcher: (frequency: FileObservationFrequency) => void;
     stopWatcher: () => void;
     updateProvinceColors: () => Promise<void>;
     updateMap: (frame: MapTimelapseItem) => void;
@@ -236,7 +240,7 @@ export const createEu4Store = async ({
         set({ prefereredValueFormat: checked ? "percent" : "absolute" }),
       setShowOneTimeLineItems: (checked: boolean) =>
         set({ showOneTimeLineItems: checked }),
-      startWatcher: (frequency: string) => {
+      startWatcher: (frequency: FileObservationFrequency) => {
         getEu4Worker().startFileObserver(
           frequency,
           proxy(async ({ meta, achievements }) => {

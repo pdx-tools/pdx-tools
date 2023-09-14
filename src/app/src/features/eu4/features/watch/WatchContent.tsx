@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { Eu4Worker, useEu4Worker } from "../../worker";
+import {
+  Eu4Worker,
+  FileObservationFrequency,
+  useEu4Worker,
+} from "../../worker";
 import { useEu4Actions, useWatcher } from "../../store";
 import { Button } from "@/components/Button";
 import { WatchCountryDetails } from "./WatchCountryDetails";
@@ -28,8 +32,9 @@ export const WatchContent = () => {
   const supported = useEu4Worker(supportedFn);
   const watcher = useWatcher();
   const actions = useEu4Actions();
-  const defaultFrequency = "monthly";
-  const [updateFrequency, setUpdateFrequency] = useState(defaultFrequency);
+  const defaultFrequency = "Monthly";
+  const [updateFrequency, setUpdateFrequency] =
+    useState<FileObservationFrequency>(defaultFrequency);
 
   if (supported.error) {
     return <Alert.Error msg={supported.error} />;
@@ -41,32 +46,56 @@ export const WatchContent = () => {
 
   return (
     <div className="flex flex-col gap-10">
-      <p className="mb-0 max-w-prose">
-        Watching a save will update PDX Tools whenever the choosen elapsed
-        amount of time has passed in the loaded save. Ironman files will
-        automatically update every 3 months. Watching an autosave is dependent
-        on in-game settings.
-      </p>
+      <div className="mb-0 max-w-prose space-y-4">
+        <p>
+          Watching a save will update PDX Tools whenever the choosen elapsed
+          amount of time has passed in the loaded save.
+        </p>
+        <p>{"“Every Save” will update whenever the save file is written"}</p>
+        <p>
+          Ironman files will automatically update every 3 months. Watching an
+          autosave is dependent on in-game settings.
+        </p>
+      </div>
       <div className="flex gap-12">
         <ToggleGroup
           type="single"
           disabled={watcher.status !== "idle"}
           className="inline-flex self-center"
           defaultValue={defaultFrequency}
-          onValueChange={setUpdateFrequency}
+          onValueChange={(x) =>
+            setUpdateFrequency(x as FileObservationFrequency)
+          }
           aria-label="update frequency"
         >
-          <ToggleGroup.Item value="daily" asChild>
+          <ToggleGroup.Item
+            value={"EverySave" satisfies FileObservationFrequency}
+            asChild
+          >
+            <Button shape="none" className="px-4 py-2">
+              Every Save
+            </Button>
+          </ToggleGroup.Item>
+          <ToggleGroup.Item
+            value={"Daily" satisfies FileObservationFrequency}
+            asChild
+          >
             <Button shape="none" className="px-4 py-2">
               Daily
             </Button>
           </ToggleGroup.Item>
-          <ToggleGroup.Item value="monthly" asChild>
+          <ToggleGroup.Item
+            value={"Monthly" satisfies FileObservationFrequency}
+            asChild
+          >
             <Button shape="none" className="px-4 py-2">
               Monthly
             </Button>
           </ToggleGroup.Item>
-          <ToggleGroup.Item value="yearly" asChild>
+          <ToggleGroup.Item
+            value={"Yearly" satisfies FileObservationFrequency}
+            asChild
+          >
             <Button shape="none" className="px-4 py-2">
               Yearly
             </Button>

@@ -6,11 +6,12 @@ use eu4save::{
 };
 use savefile::{
     AchievementsScore, CountryAdvisors, CountryCasualties, CountryCulture, CountryDetails,
-    CountryInfo, CountryLeader, CountryReligion, CountryStateDetails, Estate, HealthData,
-    IdeaGroup, LocalizedCountryExpense, LocalizedCountryIncome, LocalizedLedger, LocalizedTag,
-    MapCursorPayload, MapPayload, MapPayloadKind, MapQuickTipPayload, Monitor,
-    OwnedDevelopmentStates, PlayerHistory, ProvinceDetails, Reparse, RootTree, RunningMonarch,
-    SaveFileImpl, SaveMode, SingleCountryWarCasualties, TagFilterPayloadRaw, War, WarInfo,
+    CountryInfo, CountryLeader, CountryReligion, CountryStateDetails, Estate,
+    FileObservationFrequency, HealthData, IdeaGroup, LocalizedCountryExpense,
+    LocalizedCountryIncome, LocalizedLedger, LocalizedTag, MapCursorPayload, MapPayload,
+    MapPayloadKind, MapQuickTipPayload, Monitor, OwnedDevelopmentStates, PlayerHistory,
+    ProvinceDetails, Reparse, RootTree, RunningMonarch, SaveFileImpl, SaveMode,
+    SingleCountryWarCasualties, TagFilterPayloadRaw, War, WarInfo,
 };
 use serde::Serialize;
 use std::collections::HashMap;
@@ -77,8 +78,12 @@ pub struct SaveFile(SaveFileImpl);
 
 #[wasm_bindgen]
 impl SaveFile {
-    pub fn reparse(&mut self, frequency: String, save_data: Vec<u8>) -> Result<Reparse, JsValue> {
-        self.0.reparse(&frequency, save_data).map_err(js_err)
+    pub fn reparse(
+        &mut self,
+        frequency: FileObservationFrequency,
+        save_data: Vec<u8>,
+    ) -> Result<Reparse, JsValue> {
+        self.0.reparse(frequency, save_data).map_err(js_err)
     }
 
     pub fn get_meta_raw(&self) -> MetaRef {

@@ -124,9 +124,10 @@ export function supportsFileObserver() {
   return wasm.supportsFileObserver();
 }
 
+export type FileObservationFrequency = Parameters<typeof wasm.save.reparse>[0];
 let observer: ReturnType<(typeof wasm)["startFileObserver"]>;
 export function startFileObserver<T>(
-  frequency: string,
+  frequency: FileObservationFrequency,
   cb: (save: { meta: EnhancedMeta; achievements: AchievementsScore }) => T,
 ) {
   observer = wasm.startFileObserver(async (data) => {
