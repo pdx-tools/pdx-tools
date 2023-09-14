@@ -9,6 +9,7 @@ import { captureException } from "../errors";
 import { emitEvent } from "@/lib/plausible";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
+import { pdxAbortController } from "@/lib/abortController";
 
 export type ImperatorSaveFile = { save: { file: File } };
 type ImperatorPageProps = ImperatorSaveFile & { meta: ImperatorMetadata };
@@ -124,7 +125,7 @@ function useLoadImperator(input: ImperatorSaveFile) {
 
   useEffect(() => {
     dispatch({ kind: "start" });
-    const controller = new AbortController();
+    const controller = pdxAbortController();
     loadImperatorSave(input.save.file, controller.signal)
       .then(({ meta }) => {
         dispatch({ kind: "data", data: meta });

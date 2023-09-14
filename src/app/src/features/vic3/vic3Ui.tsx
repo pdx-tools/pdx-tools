@@ -9,6 +9,7 @@ import { captureException } from "../errors";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { emitEvent } from "@/lib/plausible";
+import { pdxAbortController } from "@/lib/abortController";
 
 export type Vic3SaveFile = { save: { file: File } };
 type Vic3PageProps = Vic3SaveFile & { meta: Vic3Metadata };
@@ -125,7 +126,7 @@ function useLoadVic3(input: Vic3SaveFile) {
 
   useEffect(() => {
     dispatch({ kind: "start" });
-    const controller = new AbortController();
+    const controller = pdxAbortController();
     loadVic3Save(input.save.file, controller.signal)
       .then(({ meta }) => {
         dispatch({ kind: "data", data: meta });

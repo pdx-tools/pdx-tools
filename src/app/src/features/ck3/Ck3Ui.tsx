@@ -9,6 +9,7 @@ import { captureException } from "@sentry/nextjs";
 import { emitEvent } from "@/lib/plausible";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
+import { pdxAbortController } from "@/lib/abortController";
 
 export type Ck3SaveFile = { save: { file: File } };
 
@@ -99,7 +100,7 @@ function useLoadCk3(input: Ck3SaveFile) {
 
   useEffect(() => {
     dispatch({ kind: "start" });
-    const controller = new AbortController();
+    const controller = pdxAbortController();
     loadCk3Save(input.save.file, controller.signal)
       .then(({ meta }) => {
         dispatch({ kind: "data", data: meta });

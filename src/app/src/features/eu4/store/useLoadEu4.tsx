@@ -29,6 +29,7 @@ import {
   createEu4Store,
 } from "./eu4Store";
 import { dataUrls, gameVersion } from "@/lib/game_gen";
+import { pdxAbortController } from "@/lib/abortController";
 
 export type Eu4SaveInput =
   | { kind: "file"; file: File }
@@ -325,7 +326,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
       return;
     }
 
-    const controller = new AbortController();
+    const controller = pdxAbortController();
     const dimensions = mapContainer.current.getBoundingClientRect();
     loadEu4Save(
       save,

@@ -9,6 +9,7 @@ import { captureException } from "@sentry/nextjs";
 import { emitEvent } from "@/lib/plausible";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
+import { pdxAbortController } from "@/lib/abortController";
 
 export type Hoi4SaveFile = { save: { file: File } };
 type Hoi4PageProps = Hoi4SaveFile & { meta: Hoi4Metadata };
@@ -124,7 +125,7 @@ function useLoadHoi4(input: Hoi4SaveFile) {
 
   useEffect(() => {
     dispatch({ kind: "start" });
-    const controller = new AbortController();
+    const controller = pdxAbortController();
     loadHoi4Save(input.save.file, controller.signal)
       .then(({ meta }) => {
         dispatch({ kind: "data", data: meta });
