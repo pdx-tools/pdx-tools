@@ -129,10 +129,10 @@ const columns = [
     ),
   }),
 
-  columnHelper.accessor("manuever", {
+  columnHelper.accessor("maneuver", {
     sortingFn: "basic",
     header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Manuever" />
+      <Table.ColumnHeader column={column} title="Maneuver" />
     ),
     cell: (info) => (
       <div className="text-right">{formatInt(info.getValue())}</div>
@@ -172,7 +172,7 @@ export const CountryLeaders = ({ details }: CountryLeadersProps) => {
             x.kind,
             ...(!!x.monarch_stats ? (["ruler"] as const) : []),
           ],
-          total: x.fire + x.shock + x.manuever + x.siege,
+          total: x.fire + x.shock + x.maneuver + x.siege,
         }));
       },
       [details.tag],

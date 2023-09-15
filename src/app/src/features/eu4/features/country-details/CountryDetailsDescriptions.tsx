@@ -412,7 +412,7 @@ export const CountryDetailsDescriptions = ({
                 </div>
                 <div className="no-break">
                   ({details.best_general.fire} / {details.best_general.shock} /{" "}
-                  {details.best_general.manuever} / {details.best_general.siege}
+                  {details.best_general.maneuver} / {details.best_general.siege}
                   )
                 </div>
               </div>
@@ -424,7 +424,7 @@ export const CountryDetailsDescriptions = ({
                 </div>
                 <div className="no-break">
                   ({details.best_admiral.fire} / {details.best_admiral.shock} /{" "}
-                  {details.best_admiral.manuever})
+                  {details.best_admiral.maneuver})
                 </div>
               </div>
             ) : null}

@@ -172,7 +172,7 @@ export const Help = ({ module }: HelpProps) => {
             <li>Hovering over a commander will show the commander name.</li>
             <li>
               Commander stats are written in the order of (fire / shock /
-              manuever / siege).
+              maneuver / siege).
             </li>
             <li>
               Dead mercenary commanders are wiped from history (RIP). Their

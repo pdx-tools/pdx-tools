@@ -113,7 +113,7 @@ const columns = [
         ? "---"
         : `(${formatInt(general.fire)} / ${formatInt(
             general.shock,
-          )} / ${formatInt(general.manuever)} / ${formatInt(general.siege)})`;
+          )} / ${formatInt(general.maneuver)} / ${formatInt(general.siege)})`;
     },
   }),
 
@@ -194,7 +194,7 @@ const columns = [
         ? "---"
         : `(${formatInt(general.fire)} / ${formatInt(
             general.shock,
-          )} / ${formatInt(general.manuever)})`;
+          )} / ${formatInt(general.maneuver)})`;
     },
   }),
 
@@ -345,7 +345,7 @@ export const HealthGrid = () => {
               ["inflation", x.inflation.value],
               ["general_fire", x.bestGeneral.fire],
               ["general_shock", x.bestGeneral.shock],
-              ["general_manuever", x.bestGeneral.manuever],
+              ["general_maneuver", x.bestGeneral.maneuver],
               ["general_siege", x.bestGeneral.siege],
               ["army_tradition", x.armyTradition.value],
               ["manpower_balance", x.manpowerBalance.value],
@@ -353,7 +353,7 @@ export const HealthGrid = () => {
               ["professionalism", x.professionalism.value],
               ["admiral_fire", x.bestAdmiral.fire],
               ["admiral_shock", x.bestAdmiral.shock],
-              ["admiral_manuever", x.bestAdmiral.manuever],
+              ["admiral_maneuver", x.bestAdmiral.maneuver],
               ["navy_tradition", x.navyTradition.value],
               ["ships", x.ships.value],
               ["stability", x.stability.value],

@@ -222,7 +222,7 @@ pub struct CountryLeader {
     name: String,
     fire: u16,
     shock: u16,
-    manuever: u16,
+    maneuver: u16,
     siege: u16,
     kind: LeaderKind,
     active: bool,
@@ -1235,7 +1235,7 @@ impl SaveFileImpl {
                 name: x.leader.name.clone(),
                 fire: x.leader.fire,
                 shock: x.leader.shock,
-                manuever: x.leader.manuever,
+                maneuver: x.leader.maneuver,
                 siege: x.leader.siege,
                 kind: x.leader.kind.clone(),
                 active: x
@@ -1533,8 +1533,8 @@ pub(crate) fn country_best_leaders(country: &Country) -> (Option<&Leader>, Optio
                 eu4save::models::LeaderKind::General
                 | eu4save::models::LeaderKind::Conquistador => {
                     if general.map_or(true, |b: &eu4save::models::Leader| {
-                        leader.fire + leader.shock + leader.manuever + leader.siege
-                            > b.fire + b.shock + b.manuever + b.siege
+                        leader.fire + leader.shock + leader.maneuver + leader.siege
+                            > b.fire + b.shock + b.maneuver + b.siege
                     }) {
                         (Some(leader), admiral)
                     } else {
@@ -1543,7 +1543,7 @@ pub(crate) fn country_best_leaders(country: &Country) -> (Option<&Leader>, Optio
                 }
                 eu4save::models::LeaderKind::Admiral | eu4save::models::LeaderKind::Explorer => {
                     if admiral.map_or(true, |b: &eu4save::models::Leader| {
-                        leader.fire + leader.shock + leader.manuever > b.fire + b.shock + b.manuever
+                        leader.fire + leader.shock + leader.maneuver > b.fire + b.shock + b.maneuver
                     }) {
                         (general, Some(leader))
                     } else {

@@ -364,7 +364,7 @@ struct LeaderDatum {
     value: f32,
     fire: u16,
     shock: u16,
-    manuever: u16,
+    maneuver: u16,
     siege: u16,
 }
 
@@ -1381,7 +1381,7 @@ impl SaveFileImpl {
         let best_general = countries
             .iter()
             .filter_map(|x| x.best_general.as_ref())
-            .map(|x| x.fire + x.shock + x.manuever + x.siege)
+            .map(|x| x.fire + x.shock + x.maneuver + x.siege)
             .fold(10, u16::max) as f32;
 
         let max_manpower_balance = countries
@@ -1402,7 +1402,7 @@ impl SaveFileImpl {
         let best_admiral = countries
             .iter()
             .filter_map(|x| x.best_admiral.as_ref())
-            .map(|x| x.fire + x.shock + x.manuever)
+            .map(|x| x.fire + x.shock + x.maneuver)
             .fold(10, u16::max) as f32;
         let max_ships = countries.iter().map(|x| x.ships).fold(0, usize::max);
 
@@ -1464,12 +1464,12 @@ impl SaveFileImpl {
                     best_general: country
                         .best_general
                         .map(|x| {
-                            let total = (x.fire + x.shock + x.manuever + x.siege) as f32;
+                            let total = (x.fire + x.shock + x.maneuver + x.siege) as f32;
                             LeaderDatum {
                                 value: total,
                                 fire: x.fire,
                                 shock: x.shock,
-                                manuever: x.manuever,
+                                maneuver: x.maneuver,
                                 siege: x.siege,
                                 color: ((12. - (best_general - total).min(12.)) * (blue_max / 12.))
                                     as u8,
@@ -1479,7 +1479,7 @@ impl SaveFileImpl {
                             value: 0.,
                             fire: 0,
                             shock: 0,
-                            manuever: 0,
+                            maneuver: 0,
                             siege: 0,
                             color: 0,
                         }),
@@ -1508,12 +1508,12 @@ impl SaveFileImpl {
                     best_admiral: country
                         .best_admiral
                         .map(|x| {
-                            let total = (x.fire + x.shock + x.manuever) as f32;
+                            let total = (x.fire + x.shock + x.maneuver) as f32;
                             LeaderDatum {
                                 value: total,
                                 fire: x.fire,
                                 shock: x.shock,
-                                manuever: x.manuever,
+                                maneuver: x.maneuver,
                                 siege: x.siege,
                                 color: ((9. - (best_admiral - total).min(9.)) * (blue_max / 9.))
                                     as u8,
@@ -1523,7 +1523,7 @@ impl SaveFileImpl {
                             value: 0.,
                             fire: 0,
                             shock: 0,
-                            manuever: 0,
+                            maneuver: 0,
                             siege: 0,
                             color: 0,
                         }),
@@ -2328,7 +2328,7 @@ impl SaveFileImpl {
                 if merc.name == commander {
                     return format!(
                         "({} / {} / {} / {})",
-                        merc.fire, merc.shock, merc.manuever, merc.siege
+                        merc.fire, merc.shock, merc.maneuver, merc.siege
                     );
                 }
             }
@@ -2338,7 +2338,7 @@ impl SaveFileImpl {
                     CountryEvent::Leader(x) if x.name == commander => {
                         return format!(
                             "({} / {} / {} / {})",
-                            x.fire, x.shock, x.manuever, x.siege
+                            x.fire, x.shock, x.maneuver, x.siege
                         );
                     }
                     CountryEvent::Heir(x) | CountryEvent::Queen(x) | CountryEvent::Monarch(x) => {
@@ -2346,7 +2346,7 @@ impl SaveFileImpl {
                             if l.name == commander {
                                 return format!(
                                     "({} / {} / {} / {})",
-                                    l.fire, l.shock, l.manuever, l.siege
+                                    l.fire, l.shock, l.maneuver, l.siege
                                 );
                             }
                         }
