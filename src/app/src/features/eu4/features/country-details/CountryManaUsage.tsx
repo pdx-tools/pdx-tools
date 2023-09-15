@@ -156,6 +156,7 @@ export const CountryManaUsage = ({ details }: CountryManaProps) => {
 
   return (
     <div className="flex flex-col space-y-6">
+      <h3>Mana Expenditure</h3>
       <div className="flex space-x-2">
         <TotalManaBar
           adm={adm_mana.reduce((acc, x) => acc + x.value, 0)}
