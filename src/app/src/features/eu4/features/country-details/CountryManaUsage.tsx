@@ -59,8 +59,8 @@ const ManaCategoryBarsImpl = ({ details }: CountryManaProps) => {
   const data = [
     {
       label: "Ideas",
-      type: "MIL",
-      value: details.mana_usage.mil.buy_idea,
+      type: "ADM",
+      value: details.mana_usage.adm.buy_idea,
     },
     {
       label: "Ideas",
@@ -69,13 +69,13 @@ const ManaCategoryBarsImpl = ({ details }: CountryManaProps) => {
     },
     {
       label: "Ideas",
-      type: "ADM",
-      value: details.mana_usage.adm.buy_idea,
+      type: "MIL",
+      value: details.mana_usage.mil.buy_idea,
     },
     {
       label: "Advance Tech",
-      type: "MIL",
-      value: details.mana_usage.mil.advance_tech,
+      type: "ADM",
+      value: details.mana_usage.adm.advance_tech,
     },
     {
       label: "Advance Tech",
@@ -84,8 +84,8 @@ const ManaCategoryBarsImpl = ({ details }: CountryManaProps) => {
     },
     {
       label: "Advance Tech",
-      type: "ADM",
-      value: details.mana_usage.adm.advance_tech,
+      type: "MIL",
+      value: details.mana_usage.mil.advance_tech,
     },
     {
       label: "Develop Prov",
