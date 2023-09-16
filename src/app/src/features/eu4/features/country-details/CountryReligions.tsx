@@ -232,14 +232,13 @@ export const CountryReligions = ({ details }: CountryReligionsProps) => {
                       Allow religious rebels to siege down additional provinces
                     </li>
                     <li>
-                      Develop{" "}
                       <span className="font-semibold">
                         {formatInt(data.rebel.religion.provinces)}
                       </span>{" "}
                       <span className="font-semibold">
                         {data.rebel.religion.name}
                       </span>{" "}
-                      provinces with{" "}
+                      provinces can be developed with{" "}
                       <span className="font-semibold">
                         {formatInt(
                           Math.max(details.adm_mana, 0) +
