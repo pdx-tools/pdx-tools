@@ -9,6 +9,8 @@ import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
+import { RebelReligion } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+import { Link } from "@/components/Link";
 
 export interface CountryReligionsProps {
   details: CountryDetails;
@@ -135,6 +137,78 @@ const CountryReligionVizImpl = ({
   );
 };
 
+const EmojiKey = ({ value }: { value: boolean | undefined }) => {
+  switch (value) {
+    case true:
+      return "✔️";
+    case false:
+      return "❌";
+    case undefined:
+      return "❔";
+  }
+};
+
+const RebelConvert = ({ rebel }: { rebel: RebelReligion }) => {
+  const religion = rebel.religion;
+  let dev = Number.isInteger(rebel.until_plurality)
+    ? formatInt(rebel.until_plurality)
+    : formatFloat(rebel.until_plurality, 2);
+
+  if (
+    religion.force_convert_on_break === false &&
+    religion.negotiate_convert_on_dominant_religion === false
+  ) {
+    return (
+      <p className="max-w-prose">
+        It is not possible to change the state religion to{" "}
+        <span className="font-semibold">{religion.name}</span> via rebels.
+      </p>
+    );
+  }
+
+  return (
+    <p className="max-w-prose">
+      How to change the state religion to{" "}
+      <span className="font-semibold">{religion.name}</span> via rebels:
+      <ul className="pl-3">
+        <li>
+          <EmojiKey value={rebel.until_plurality <= 0} />{" "}
+          {rebel.until_plurality <= 0 ? (
+            <>
+              <span className="font-semibold">{rebel.religion.name}</span> has
+              reached a plurality of development
+            </>
+          ) : (
+            <>
+              <span className="font-semibold">{rebel.religion.name}</span> needs{" "}
+              <span className="font-semibold">{dev}</span> additional
+              development to reach{" "}
+              <span className="font-semibold">plurality</span>
+            </>
+          )}
+        </li>
+        <li className="pt-1">
+          Afterwards, the following actions will change the state religion:
+          <ul className="pl-3">
+            <li>
+              <EmojiKey
+                value={religion.negotiate_convert_on_dominant_religion}
+              />{" "}
+              Accept <span className="font-semibold">{religion.name}</span>{" "}
+              rebel demands
+            </li>
+            <li>
+              <EmojiKey value={religion.force_convert_on_break} /> Wait for{" "}
+              <span className="font-semibold">{religion.name}</span> rebels to
+              enforce demands
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </p>
+  );
+};
+
 const CountryReligionViz = React.memo(CountryReligionVizImpl);
 
 export const CountryReligions = ({ details }: CountryReligionsProps) => {
@@ -178,79 +252,67 @@ export const CountryReligions = ({ details }: CountryReligionsProps) => {
 
             {data.rebel ? (
               <>
-                <p className="max-w-prose">
-                  To change the state religion to{" "}
-                  <span className="font-semibold">
-                    {data.rebel.religion.name}
-                  </span>
-                  , accept religious rebel demands once{" "}
-                  <span className="font-semibold">
-                    {data.rebel.religion.name}
-                  </span>{" "}
-                  has reached a <span className="font-semibold">plurality</span>{" "}
-                  of development.{" "}
-                </p>
-                <div className="max-w-prose">
-                  {data.rebel.until_plurality > 0 ? (
-                    <>
-                      <span className="font-semibold">
-                        {data.rebel.religion.name}
-                      </span>{" "}
-                      needs{" "}
-                      <span className="font-semibold">
-                        {Number.isInteger(data.rebel.until_plurality)
-                          ? formatInt(data.rebel.until_plurality)
-                          : formatFloat(data.rebel.until_plurality, 2)}
-                      </span>{" "}
-                      additional development to reach{" "}
-                      <span className="font-semibold">plurality</span>.
-                    </>
-                  ) : (
-                    <div className="text-emerald-700">
-                      <span className="font-semibold">
-                        {data.rebel.religion.name}
-                      </span>{" "}
-                      elgible to be new state religion on rebel acceptance.
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <p className="max-w-prose">
-                    Techniques to influence amount needed to reach plurality:
-                  </p>
-                  <ul className="list-disc list-inside pl-3">
-                    {data.rebel.more_popular.map((x) => (
-                      <li key={x.id}>
-                        <span className="font-semibold">
-                          ({formatInt(x.exploitable)} / {formatInt(x.provinces)}
-                          )
-                        </span>{" "}
-                        {x.name} provinces with exploitable development
+                <RebelConvert rebel={data.rebel} />
+                {data.rebel.religion.force_convert_on_break !== false ||
+                data.rebel.religion.negotiate_convert_on_dominant_religion !==
+                  false ? (
+                  <div>
+                    <p className="max-w-prose">
+                      Techniques to influence amount needed to reach plurality:
+                    </p>
+                    <ul className="list-disc list-inside pl-3">
+                      {data.rebel.more_popular.map((x) => (
+                        <li key={x.id}>
+                          <span className="font-semibold">
+                            ({formatInt(x.exploitable)} /{" "}
+                            {formatInt(x.provinces)})
+                          </span>{" "}
+                          {x.name} provinces with exploitable development
+                        </li>
+                      ))}
+                      <li>
+                        Allow{" "}
+                        <Link href="https://eu4.paradoxwikis.com/Rebellion#All_faction_types">
+                          religious rebels
+                        </Link>{" "}
+                        to spawn and siege down additional provinces
                       </li>
-                    ))}
-                    <li>
-                      Allow religious rebels to siege down additional provinces
-                    </li>
-                    <li>
-                      <span className="font-semibold">
-                        {formatInt(data.rebel.religion.provinces)}
-                      </span>{" "}
-                      <span className="font-semibold">
-                        {data.rebel.religion.name}
-                      </span>{" "}
-                      provinces can be developed with{" "}
-                      <span className="font-semibold">
-                        {formatInt(
-                          Math.max(details.adm_mana, 0) +
-                            Math.max(details.dip_mana, 0) +
-                            Math.max(details.mil_mana, 0),
-                        )}
-                      </span>{" "}
-                      available mana
-                    </li>
-                    <li>Release vassals and sell provinces</li>
-                  </ul>
-                </div>
+                      {data.rebel.until_plurality > 0 ? (
+                        <li>
+                          Conquer{" "}
+                          <span className="font-semibold">
+                            {data.rebel.religion.name}
+                          </span>{" "}
+                          provinces worth{" "}
+                          <span className="font-semibold">
+                            {Number.isInteger(data.rebel.until_plurality)
+                              ? formatInt(data.rebel.until_plurality)
+                              : formatFloat(data.rebel.until_plurality, 2)}
+                          </span>{" "}
+                          development
+                        </li>
+                      ) : null}
+                      <li>
+                        <span className="font-semibold">
+                          {formatInt(data.rebel.religion.provinces)}
+                        </span>{" "}
+                        <span className="font-semibold">
+                          {data.rebel.religion.name}
+                        </span>{" "}
+                        provinces can be developed with{" "}
+                        <span className="font-semibold">
+                          {formatInt(
+                            Math.max(details.adm_mana, 0) +
+                              Math.max(details.dip_mana, 0) +
+                              Math.max(details.mil_mana, 0),
+                          )}
+                        </span>{" "}
+                        available mana
+                      </li>
+                      <li>Release vassals and sell provinces</li>
+                    </ul>
+                  </div>
+                ) : null}
               </>
             ) : null}
           </div>

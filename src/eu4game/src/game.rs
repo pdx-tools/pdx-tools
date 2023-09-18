@@ -17,6 +17,8 @@ pub struct GameReligion<'a> {
     pub name: &'a str,
     pub color: [u8; 3],
     pub allowed_conversions: Vec<&'a str>,
+    pub negotiate_convert_on_dominant_religion: bool,
+    pub force_convert_on_break: bool,
 }
 
 #[derive(Debug)]
@@ -166,6 +168,8 @@ impl<'a> Game<'a> {
             name: res.name(),
             color: res.color().0,
             allowed_conversions: res.allowed_conversion().iter().flatten().collect(),
+            force_convert_on_break: res.force_convert_on_break(),
+            negotiate_convert_on_dominant_religion: res.negotiate_convert_on_dominant_religion(),
         })
     }
 

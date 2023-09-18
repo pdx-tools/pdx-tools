@@ -63,8 +63,11 @@ table EntryStringList {
 
 table Religion {
   key: string (key);
+  group: string;
   name: string (required);
   allowed_conversion: [string];
+  negotiate_convert_on_dominant_religion: bool;
+  force_convert_on_break: bool;
   color: Rgb (required);
 }
 

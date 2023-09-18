@@ -179,6 +179,8 @@ pub struct CountryReligion {
     provinces_percent: f64,
     development: f32,
     development_percent: f64,
+    negotiate_convert_on_dominant_religion: Option<bool>,
+    force_convert_on_break: Option<bool>,
 }
 
 #[derive(Tsify, Debug, Serialize, Deserialize)]
@@ -988,6 +990,10 @@ impl SaveFileImpl {
                 development: tally.development,
                 development_percent: f64::from(tally.development) / total_development * 100.0,
                 exploitable: tally.exploitable,
+                force_convert_on_break: religion.as_ref().map(|x| x.force_convert_on_break),
+                negotiate_convert_on_dominant_religion: religion
+                    .as_ref()
+                    .map(|x| x.negotiate_convert_on_dominant_religion),
             })
         }
 

@@ -1,3 +1,4 @@
+use super::religion::religion_rebels;
 use super::{
     achievements, area, assets, continents, cultures, localization, mapper, personalities, regions,
     religion, sprites, superregion,
@@ -306,10 +307,20 @@ pub fn parse_game_dir(
     let mut data = religion::parse_enhanced_religions(&data, &localization);
     data.sort_unstable_by(|a, b| a.id.cmp(&b.id));
 
+    let religious_rebels: HashMap<_, _> =
+        WalkDir::new(Path::new(tmp_game_dir).join("common").join("rebel_types"))
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|x| !x.file_type().is_dir())
+            .filter_map(|e| religion_rebels(&std::fs::read(e.path()).unwrap()))
+            .map(|x| (x.religion.clone(), x))
+            .collect();
+
     let mut religions = Vec::new();
     for religion in data.iter() {
         let key = buffer.create_string(&religion.id);
         let name = buffer.create_string(&religion.name);
+        let group = buffer.create_string(&religion.group);
         let color =
             schemas::eu4::Rgb::new(religion.colors[0], religion.colors[1], religion.colors[2]);
 
@@ -320,13 +331,18 @@ pub fn parse_game_dir(
             .collect::<Vec<_>>();
         let allowed_conversions = buffer.create_vector(&strs);
 
+        let rebels = religious_rebels.get(&religion.id);
         let entry = schemas::eu4::Religion::create(
             &mut buffer,
             &schemas::eu4::ReligionArgs {
                 key: Some(key),
+                group: Some(group),
                 name: Some(name),
                 color: Some(&color),
                 allowed_conversion: Some(allowed_conversions),
+                negotiate_convert_on_dominant_religion: rebels
+                    .map_or(false, |x| x.negotiate_convert_on_dominant_religion),
+                force_convert_on_break: rebels.map_or(false, |x| x.force_convert_on_break),
             },
         );
         religions.push(entry);
