@@ -51,7 +51,11 @@ export const WatchContent = () => {
           Watching a save will update PDX Tools whenever the choosen elapsed
           amount of time has passed in the loaded save.
         </p>
-        <p>{"“Every Save” will update whenever the save file is written"}</p>
+        <p>
+          {
+            "“Any Modification” will update whenever the save file is written (eg: exploit dev and then save the game)."
+          }
+        </p>
         <p>
           Ironman files will automatically update every 3 months. Watching an
           autosave is dependent on in-game settings.
@@ -73,7 +77,7 @@ export const WatchContent = () => {
             asChild
           >
             <Button shape="none" className="px-4 py-2">
-              Every Save
+              Any Modification
             </Button>
           </ToggleGroup.Item>
           <ToggleGroup.Item
