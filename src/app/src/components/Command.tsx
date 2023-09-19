@@ -118,7 +118,7 @@ const CommandSeparator = React.forwardRef<
   return (
     <CommandPrimitive.Separator
       ref={ref}
-      className={cx("bg-border -mx-1 h-px", className)}
+      className={cx("-mx-1 h-px", className)}
       {...props}
     />
   );

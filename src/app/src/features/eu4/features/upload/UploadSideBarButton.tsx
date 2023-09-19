@@ -34,7 +34,7 @@ export const UploadSideBarButton = ({
           onInteractOutside={(e) => e.preventDefault()}
         >
           <SideBarContainerProvider>
-            <Sheet.Header className="z-10 px-4 pb-4 shadow-md">
+            <Sheet.Header className="z-10 px-4 pb-4 shadow-md items-center">
               <Sheet.Close />
               <UploadDrawerTitle />
             </Sheet.Header>

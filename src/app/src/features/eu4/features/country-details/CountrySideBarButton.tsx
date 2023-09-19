@@ -13,8 +13,6 @@ import {
   useCountryDrawerVisible,
   useEu4Actions,
   useEu4Countries,
-  useExistedAiCountries,
-  useHumanCountries,
   useSelectedTag,
 } from "../../store";
 import { useSideBarPanTag } from "../../hooks/useSideBarPanTag";
@@ -37,14 +35,11 @@ import { CountryBuildingCount } from "./CountryBuildingCount";
 import { CountryEstates } from "./CountryEstates";
 import { Tabs } from "@/components/Tabs";
 import { Alert } from "@/components/Alert";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/Popover";
-import { Command } from "@/components/Command";
-import { EnhancedCountryInfo } from "../../types/models";
 import { Link } from "@/components/Link";
-import { CheckIcon, QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
+import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
 import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
-import { PlayIcon } from "@heroicons/react/20/solid";
+import { CountrySelect } from "../../components/CountrySelect";
 
 export const CountrySideBarButton = ({
   children,
@@ -112,7 +107,7 @@ const CountryDetailsContent = () => {
             )}
             <span className="sr-only">{expanded ? "Fold" : "Expand"}</span>
           </Button>
-          <CountrySelect />
+          <CountryViewSelect />
           <Sheet modal={true}>
             <Sheet.Trigger asChild>
               <Button shape="square">
@@ -121,7 +116,7 @@ const CountryDetailsContent = () => {
               </Button>
             </Sheet.Trigger>
             <Sheet.Content side="right" className="w-96 bg-white">
-              <Sheet.Header className="z-10 p-4 shadow-md">
+              <Sheet.Header className="z-10 p-4 shadow-md items-center">
                 <Sheet.Close />
                 <Sheet.Title>Help</Sheet.Title>
               </Sheet.Header>
@@ -235,102 +230,32 @@ const CountryDetailsContent = () => {
   );
 };
 
-const CountrySelect = () => {
-  const [open, setOpen] = useState(false);
-  const humanCountries = useHumanCountries();
-  const aiCountries = useExistedAiCountries();
+const CountryViewSelect = () => {
   const { setSelectedTag } = useEu4Actions();
   const panTag = useSideBarPanTag();
   const selectedTag = useSelectedTag();
-
   const countries = useEu4Countries();
   const selectedCountry = countries.find((x) => x.tag == selectedTag);
 
   const onSelect = useCallback(
-    (tag: string) => {
+    (tag: string): boolean => {
       setSelectedTag(tag);
       panTag(tag);
-      setOpen(false);
+      return false;
     },
     [setSelectedTag, panTag],
   );
 
+  const isSelected = useCallback(
+    (tag: string): boolean => tag == selectedTag,
+    [selectedTag],
+  );
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          role="combobox"
-          aria-expanded={open}
-          className="w-52 justify-between"
-        >
-          {selectedCountry
-            ? `${selectedCountry.name} (${selectedCountry.tag})`
-            : "unknown selection"}
-          <PlayIcon className="h-3 w-3 rotate-90 opacity-50 self-center" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="max-h-96 w-64 overflow-auto">
-        <Command
-          filter={(value, search) => {
-            if (search.length == 0) {
-              return 1;
-            } else if (search.length <= 3) {
-              return value.includes(search, value.length - 3) ? 1 : 0;
-            } else {
-              return value.includes(search) ? 1 : 0;
-            }
-          }}
-        >
-          <Command.Input placeholder="Search countries" />
-          <Command.Empty>No countries found.</Command.Empty>
-          <CountrySelectGroup
-            title="Players"
-            countries={humanCountries}
-            selected={selectedTag}
-            onSelect={onSelect}
-          />
-          <CountrySelectGroup
-            title="AI"
-            countries={aiCountries}
-            selected={selectedTag}
-            onSelect={onSelect}
-          />
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <CountrySelect isSelected={isSelected} onSelect={onSelect}>
+      {selectedCountry
+        ? `${selectedCountry.name} (${selectedCountry.tag})`
+        : "unknown selection"}
+    </CountrySelect>
   );
 };
-
-type CountrySelectGroupProps = {
-  title: string;
-  countries: EnhancedCountryInfo[];
-  onSelect: (tag: string) => void;
-  selected: string;
-};
-
-const CountrySelectGroup = React.memo(function CountrySelectGroup({
-  title,
-  countries,
-  onSelect,
-  selected,
-}: CountrySelectGroupProps) {
-  return (
-    <Command.Group heading={title}>
-      {countries.map((x) => (
-        <Command.Item
-          key={x.tag}
-          value={x.normalizedName + x.tag}
-          onSelect={() => onSelect(x.tag)}
-        >
-          <CheckIcon
-            className={cx(
-              "mr-2 h-4 w-4 opacity-0 data-[selected]:opacity-100",
-              selected === x.tag ? "opacity-100" : "opacity-0",
-            )}
-          />
-          {x.name} ({x.tag})
-        </Command.Item>
-      ))}
-    </Command.Group>
-  );
-});

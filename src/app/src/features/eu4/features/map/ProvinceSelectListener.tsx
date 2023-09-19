@@ -41,7 +41,7 @@ export const ProvinceSelectListener = () => {
         <SideBarContainerProvider>
           {data ? (
             <>
-              <Sheet.Header className="z-10 p-4 shadow-md">
+              <Sheet.Header className="z-10 p-4 shadow-md items-center">
                 <Sheet.Close />
                 <Sheet.Title>
                   {data.id}: {data.name}

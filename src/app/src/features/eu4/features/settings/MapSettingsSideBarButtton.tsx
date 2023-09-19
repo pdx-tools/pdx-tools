@@ -37,7 +37,7 @@ const MapSettingsContent = () => {
       onInteractOutside={(e) => e.preventDefault()}
       className="flex w-[400px] max-w-full flex-col bg-white py-4"
     >
-      <Sheet.Header className="z-10 px-4 pb-4 shadow-md">
+      <Sheet.Header className="z-10 px-4 pb-4 shadow-md items-center">
         <Sheet.Close />
         <Sheet.Title>Map Settings</Sheet.Title>
       </Sheet.Header>

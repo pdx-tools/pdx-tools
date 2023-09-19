@@ -38,7 +38,7 @@ const WatchSheetContent = () => {
       onInteractOutside={(e) => e.preventDefault()}
       className="flex w-[800px] max-w-full flex-col bg-white pt-4"
     >
-      <Sheet.Header className="z-10 px-4 pb-4 shadow-md">
+      <Sheet.Header className="z-10 px-4 pb-4 shadow-md items-center">
         <Sheet.Close />
         <Sheet.Title>Watch {filename} for changes</Sheet.Title>
       </Sheet.Header>

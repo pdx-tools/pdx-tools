@@ -31,7 +31,7 @@ export const InheritanceValueBreakdown = ({
       </Sheet.Trigger>
 
       <Sheet.Content side="right" className="w-[450px] max-w-full bg-white">
-        <Sheet.Header className="z-10 p-4 shadow-md">
+        <Sheet.Header className="z-10 p-4 shadow-md items-center">
           <Sheet.Close />
           <Sheet.Title>Inheritance Value Breakdown</Sheet.Title>
         </Sheet.Header>
