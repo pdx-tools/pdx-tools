@@ -68,7 +68,7 @@ export const WatchContent = () => {
           className="inline-flex self-center"
           defaultValue={defaultFrequency}
           onValueChange={(x) =>
-            setUpdateFrequency(x as FileObservationFrequency)
+            x && setUpdateFrequency(x as FileObservationFrequency)
           }
           aria-label="update frequency"
         >

@@ -208,7 +208,7 @@ export const Timelapse = () => {
         type="single"
         className="inline-flex self-center"
         value={intervalSelection}
-        onValueChange={(e) => setIntervalSelection(e as Interval)}
+        onValueChange={(e) => e && setIntervalSelection(e as Interval)}
       >
         <ToggleGroup.Item value="year" asChild>
           <Button shape="none" className="px-4 py-2">
@@ -263,7 +263,7 @@ export const Timelapse = () => {
             type="single"
             className="inline-flex"
             value={recordingFrame}
-            onValueChange={(e) => setRecordingFrame(e)}
+            onValueChange={(e) => e && setRecordingFrame(e)}
           >
             <ToggleGroup.Item value="None" asChild>
               <Button shape="none" className="px-4 py-2">
