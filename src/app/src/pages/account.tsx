@@ -2,6 +2,7 @@ import React from "react";
 import { HtmlHead } from "@/components/head";
 import { Root, WebPage } from "@/components/layout";
 import { Account } from "@/features/account";
+import { LoggedIn } from "@/components/LoggedIn";
 
 export const AppAcount = () => {
   return (
@@ -14,7 +15,9 @@ export const AppAcount = () => {
         ></meta>
       </HtmlHead>
       <WebPage>
-        <Account />
+        <LoggedIn>
+          <Account />
+        </LoggedIn>
       </WebPage>
     </Root>
   );

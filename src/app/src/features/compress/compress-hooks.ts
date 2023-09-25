@@ -1,48 +1,42 @@
-import { wrap, Remote, transfer, releaseProxy, proxy } from "comlink";
+import { wrap, transfer, releaseProxy, proxy } from "comlink";
 import { useEffect, useMemo, useRef } from "react";
 import type { ProgressCb, CompressionWorker } from "./compress-worker";
 
+export function createCompressionWorker() {
+  const worker = new Worker(new URL("./compress-worker", import.meta.url));
+  const workerApi = wrap<CompressionWorker>(worker);
+  return {
+    worker,
+    workerApi,
+    release: () => {
+      workerApi[releaseProxy]();
+      worker.terminate();
+    },
+    compress: async (data: Uint8Array, cb: ProgressCb) => {
+      await workerApi.loadWasm();
+      return workerApi.compress(transfer(data, [data.buffer]), proxy(cb));
+    },
+
+    transform: async (data: Uint8Array) => {
+      await workerApi.loadWasm();
+      return workerApi.transform(transfer(data, [data.buffer]));
+    },
+  };
+}
+
 export const useCompression = () => {
-  const worker = useRef<Worker>();
-  const client = useRef<Remote<CompressionWorker>>();
+  const worker = useRef<ReturnType<typeof createCompressionWorker>>();
 
   useEffect(() => {
-    return () => {
-      client.current?.[releaseProxy]();
-      worker.current?.terminate();
-    };
+    const current = worker.current;
+    return () => current?.release();
   }, []);
 
-  const getWasmClient = async () => {
-    if (!worker.current) {
-      worker.current = new Worker(
-        new URL("./compress-worker", import.meta.url),
-      );
-    }
-
-    if (!client.current) {
-      const workerApi = wrap<CompressionWorker>(worker.current);
-      await workerApi.loadWasm();
-      client.current = workerApi;
-    }
-
-    return client.current;
-  };
-
-  const ret = useMemo(
+  return useMemo(
     () => ({
-      compress: async (data: Uint8Array, cb: ProgressCb) => {
-        const wasm = await getWasmClient();
-        return wasm.compress(transfer(data, [data.buffer]), proxy(cb));
-      },
-
-      transform: async (data: Uint8Array) => {
-        const wasm = await getWasmClient();
-        return wasm.transform(transfer(data, [data.buffer]));
-      },
+      transform: async (data: Uint8Array) =>
+        (worker.current ??= createCompressionWorker()).transform(data),
     }),
     [],
   );
-
-  return ret;
 };

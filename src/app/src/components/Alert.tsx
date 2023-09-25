@@ -1,5 +1,6 @@
 import React from "react";
 import { cva, type VariantProps, cx } from "class-variance-authority";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 
 const alert = cva("relative w-full border-2 border-solid flex", {
   variants: {
@@ -81,7 +82,7 @@ const AlertError = ({
   msg,
   className,
 }: {
-  msg: string | undefined;
+  msg: string | undefined | unknown;
   className?: string | undefined;
 }) => {
   if (!msg) {
@@ -90,7 +91,7 @@ const AlertError = ({
 
   return (
     <Alert variant="error" className={className}>
-      <AlertDescription>{msg}</AlertDescription>
+      <AlertDescription>{getErrorMessage(msg)}</AlertDescription>
     </Alert>
   );
 };

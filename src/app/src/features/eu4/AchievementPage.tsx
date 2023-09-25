@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { RecordTable } from "./components/RecordTable";
-import { Achievement, useAchievementQuery } from "@/services/appApi";
+import { Achievement, pdxApi } from "@/services/appApi";
+import { Alert } from "@/components/Alert";
 
 interface AchievementRoute {
   achievementId: string;
@@ -8,7 +9,7 @@ interface AchievementRoute {
 }
 
 const useAchievement = (achievementId: string) => {
-  const achievementQuery = useAchievementQuery(achievementId);
+  const achievementQuery = pdxApi.achievement.useGet(achievementId);
   const achievement = achievementQuery.data?.achievement;
   const saves = useMemo(
     () =>
@@ -16,17 +17,22 @@ const useAchievement = (achievementId: string) => {
         ...x,
         rank: i + 1,
       })),
-    [achievementQuery.data],
+    [achievementQuery.data]
   );
 
-  return { isFetching: achievementQuery.isFetching, achievement, saves };
+  return {
+    isFetching: achievementQuery.isFetching,
+    error: achievementQuery.error,
+    achievement,
+    saves,
+  };
 };
 
 export const AchievementPage = ({
   achievementId,
   staticAchievement,
 }: AchievementRoute) => {
-  const { achievement, saves } = useAchievement(achievementId);
+  const { achievement, saves, error } = useAchievement(achievementId);
 
   const title = achievement?.name ?? staticAchievement?.name ?? "";
   const table = saves === undefined ? null : <RecordTable records={saves} />;
@@ -38,6 +44,7 @@ export const AchievementPage = ({
       <h1 className="text-4xl">{title}</h1>
       <p>Achievement id: {achievementId}</p>
       <p>{description}</p>
+      <Alert.Error className="px-4 py-2" msg={error} />
       <div className="mt-5">{table}</div>
     </div>
   );

@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { TimeAgo } from "@/components/TimeAgo";
 import { Button } from "@/components/Button";
 import { difficultyText, difficultySort } from "@/lib/difficulty";
-import { SaveFile, useNewestSavesQuery } from "@/services/appApi";
+import { SaveFile, pdxApi } from "@/services/appApi";
 import {
   FlagAvatar,
   AchievementAvatar,
@@ -11,6 +11,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { Link } from "@/components/Link";
+import { Alert } from "@/components/Alert";
 
 const columnHelper = createColumnHelper<SaveFile>();
 const columns = [
@@ -99,12 +100,13 @@ const columns = [
 ];
 
 export const NewestSavesTable = () => {
-  const { data, isFetching, hasNextPage, fetchNextPage } =
-    useNewestSavesQuery();
+  const { data, isFetching, hasNextPage, fetchNextPage, error } =
+    pdxApi.saves.useNewest();
 
   const saves = useMemo(() => data?.pages.flatMap((x) => x.saves), [data]);
   return (
     <div className="flex flex-col space-y-4">
+      <Alert.Error className="px-4 py-2" msg={error}/>
       <DataTable columns={columns} data={saves ?? []} />
       <Button
         className="self-center"
