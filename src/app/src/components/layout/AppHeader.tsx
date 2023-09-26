@@ -4,14 +4,14 @@ import { AppSvg } from "../icons/AppIcon";
 import { AnnouncementBar } from "./AnnouncementBar";
 import { useEngineActions } from "@/features/engine";
 import { NavigationMenu } from "@/components/NavigationMenu";
-import { useLogoutMutation, useProfileQuery } from "@/services/appApi";
+import { pdxApi, sessionSelect } from "@/services/appApi";
 import { SignInButtons } from "./auth";
 import { Button } from "@/components/Button";
 import { UserIcon } from "@heroicons/react/24/outline";
 
 const HeaderMenu = () => {
-  const logout = useLogoutMutation();
-  const profileQuery = useProfileQuery();
+  const logout = pdxApi.session.useLogout();
+  const session = pdxApi.session.useCurrent();
 
   return (
     <>
@@ -65,9 +65,9 @@ const HeaderMenu = () => {
       </NavigationMenu>
 
       <div className="flex grow justify-end self-center text-end">
-        {profileQuery.data?.kind === "guest" ? (
+        {!sessionSelect.isLoggedIn(session) ? (
           <SignInButtons />
-        ) : profileQuery.data?.kind === "user" ? (
+        ) : (
           <NavigationMenu>
             <NavigationMenu.List>
               <NavigationMenu.Item className="mr-16 xl:mr-0">
@@ -88,7 +88,7 @@ const HeaderMenu = () => {
                     asChild
                     className="no-break"
                   >
-                    <Link href={`/users/${profileQuery.data.user.user_id}`}>
+                    <Link href={`/users/${session.data.user.user_id}`}>
                       My Saves
                     </Link>
                   </NavigationMenu.Link>
@@ -101,7 +101,7 @@ const HeaderMenu = () => {
               </NavigationMenu.Item>
             </NavigationMenu.List>
           </NavigationMenu>
-        ) : null}
+        )}
       </div>
     </>
   );

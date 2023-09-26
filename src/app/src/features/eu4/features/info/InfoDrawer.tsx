@@ -14,7 +14,7 @@ import { FlipBook, StringFlipBook } from "../../components/flip-book";
 import { ModList } from "./ModList";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { useEu4Worker, Eu4Worker } from "@/features/eu4/worker";
-import { useIsPrivileged } from "@/services/appApi";
+import { pdxApi, sessionSelect } from "@/services/appApi";
 import {
   emptyEu4CountryFilter,
   initialEu4CountryFilter,
@@ -55,7 +55,10 @@ export const InfoDrawer = () => {
   const sideBarContainerRef = useSideBarContainerRef();
   const [filteredTag, setFilteredTag] = useState<string | undefined>(undefined);
   const { updateTagFilter } = useEu4Actions();
-  const isPrivileged = useIsPrivileged(serverFile?.user_id);
+  const session = pdxApi.session.useCurrent();
+  const isPrivileged = sessionSelect.isPrivileged(session, {
+    user_id: serverFile?.user_id,
+  });
 
   const visibleTag = async (tag: string) => {
     if (tag === filteredTag) {

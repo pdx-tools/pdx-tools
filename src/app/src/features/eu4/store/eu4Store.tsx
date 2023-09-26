@@ -1,7 +1,7 @@
 import { compatibilityReport } from "@/lib/compatibility";
 import { check } from "@/lib/isPresent";
 import { IMG_HEIGHT, IMG_WIDTH, WebGLMap } from "map";
-import { useSaveQuery } from "@/services/appApi";
+import { pdxApi } from "@/services/appApi";
 import { createContext, useContext, useMemo } from "react";
 import { StoreApi, createStore, useStore } from "zustand";
 import { loadTerrainOverlayImages } from "../features/map/resources";
@@ -391,7 +391,7 @@ export const useIsServerSaveFile = () => {
 export const useServerSaveFile = () => {
   const info = useEu4Store((x) => x.save.saveInfo);
   const id = info.kind === "async" ? info.saveId : "";
-  const saveQuery = useSaveQuery(id, { enabled: !!id });
+  const saveQuery = pdxApi.save.useGet(id, { enabled: !!id });
   return saveQuery.data;
 };
 

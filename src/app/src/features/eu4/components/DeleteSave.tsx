@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useSaveDeletion } from "@/services/appApi";
+import { pdxApi } from "@/services/appApi";
 import { Button, type ButtonProps } from "@/components/Button";
 import { Dialog } from "@/components/Dialog";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
@@ -10,7 +10,7 @@ interface DeleteSaveProps extends ButtonProps {
 
 export const DeleteSave = ({ saveId, ...rest }: DeleteSaveProps) => {
   const [open, setOpen] = useState(false);
-  const saveDeletion = useSaveDeletion(saveId);
+  const saveDeletion = pdxApi.save.useDelete();
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
@@ -33,7 +33,7 @@ export const DeleteSave = ({ saveId, ...rest }: DeleteSaveProps) => {
             className="items-center gap-2"
             variant="danger"
             onClick={() =>
-              saveDeletion.mutate(undefined, {
+              saveDeletion.mutate(saveId, {
                 onSuccess: () => setOpen(false),
               })
             }

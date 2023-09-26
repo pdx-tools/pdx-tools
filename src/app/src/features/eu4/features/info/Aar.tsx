@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { useServerSaveFile } from "../../store";
-import { useSavePatch } from "@/services/appApi";
+import { pdxApi } from "@/services/appApi";
 import { Button } from "@/components/Button";
 import { cx } from "class-variance-authority";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
@@ -14,8 +14,8 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
   const [isEditing, setIsEditing] = useState(
     editMode == "always" || !defaultValue,
   );
-  const patchSave = useSavePatch();
   const serverFile = useServerSaveFile();
+  const patchSave = pdxApi.save.useUpdate();
 
   const handleSubmit = useCallback(
     (ev: React.FormEvent<HTMLFormElement>) => {

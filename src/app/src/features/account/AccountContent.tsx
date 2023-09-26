@@ -1,11 +1,11 @@
 import { Alert } from "@/components/Alert";
-import { PrivateUserInfo, useNewApiKeyRequest } from "@/services/appApi";
+import { pdxApi } from "@/services/appApi";
 import { Button } from "@/components/Button";
 import React, { useState } from "react";
 
-export const AccountContent = ({ info }: { info: PrivateUserInfo }) => {
+export const AccountContent = () => {
   const [key, setKey] = useState<string | undefined>();
-  const newKey = useNewApiKeyRequest(setKey);
+  const newKey = pdxApi.apiKey.useGenerateKey(setKey);
 
   return (
     <>

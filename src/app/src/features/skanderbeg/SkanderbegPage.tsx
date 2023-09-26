@@ -2,23 +2,20 @@ import React, { useMemo } from "react";
 import { SkanUserSavesTable } from "./SkanUserSavesTable";
 import { useRouter } from "next/router";
 import { extractSaveId } from "./skanUrl";
-import { useProfileQuery, useUserSkanderbegSaves } from "../../services/appApi";
+import { pdxApi } from "../../services/appApi";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Link } from "@/components/Link";
+import { LoggedIn } from "@/components/LoggedIn";
 
 function SkanTable() {
-  const skanQuery = useUserSkanderbegSaves();
+  const skanQuery = pdxApi.session.useSkanderbegSaves();
   const data = useMemo(() => skanQuery.data ?? [], [skanQuery.data]);
   return <SkanUserSavesTable records={data} />;
 }
 
 export const SkanderbegPage = () => {
   const router = useRouter();
-  const profileQuery = useProfileQuery();
-  const isLoggedInUser = !(
-    profileQuery.data === undefined || profileQuery.data.kind === "guest"
-  );
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-5">
@@ -47,7 +44,9 @@ export const SkanderbegPage = () => {
               Analyze
             </Button>
           </form>
-          {isLoggedInUser ? <SkanTable /> : null}
+          <LoggedIn>
+            <SkanTable />
+          </LoggedIn>
         </div>
       </div>
     </div>
