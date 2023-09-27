@@ -114,15 +114,15 @@ const MobileImageGallery = () => {
               <video
                 className="aspect-video w-full shadow-xl"
                 src={x.src}
-                autoPlay
+                controls
                 loop
-                playsInline
                 muted
               />
             ) : (
               <Image
                 src={x.mobile ?? x.src}
                 className="shadow-xl"
+                loading="lazy"
                 width={1920}
                 height={1080}
                 alt={x.alt}
