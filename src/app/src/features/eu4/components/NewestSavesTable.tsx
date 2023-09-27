@@ -106,7 +106,7 @@ export const NewestSavesTable = () => {
   const saves = useMemo(() => data?.pages.flatMap((x) => x.saves), [data]);
   return (
     <div className="flex flex-col space-y-4">
-      <Alert.Error className="px-4 py-2" msg={error}/>
+      <Alert.Error className="px-4 py-2" msg={error} />
       <DataTable columns={columns} data={saves ?? []} />
       <Button
         className="self-center"

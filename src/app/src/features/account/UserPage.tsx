@@ -13,7 +13,7 @@ export const UserPage = ({ userId }: UserRouteProps) => {
   const userQuery = pdxApi.user.useGet(userId);
   const session = pdxApi.session.useCurrent();
   if (userQuery.error) {
-    return <Alert.Error className="px-4 py-2" msg={userQuery.error} />
+    return <Alert.Error className="px-4 py-2" msg={userQuery.error} />;
   }
 
   const user = userQuery.data;
