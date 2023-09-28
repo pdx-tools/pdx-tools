@@ -141,6 +141,7 @@ export const pdxApi = {
       useQuery({
         queryKey: pdxKeys.profile(),
         queryFn: () => fetchOkJson<ProfileResponse>("/api/profile"),
+        cacheTime: Infinity,
       }),
 
     useLogout: () =>

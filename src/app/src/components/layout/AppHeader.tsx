@@ -65,7 +65,9 @@ const HeaderMenu = () => {
       </NavigationMenu>
 
       <div className="flex grow justify-end self-center text-end">
-        {!sessionSelect.isLoggedIn(session) ? (
+        {session.data === undefined ? null : !sessionSelect.isLoggedIn(
+            session,
+          ) ? (
           <SignInButtons />
         ) : (
           <NavigationMenu>
