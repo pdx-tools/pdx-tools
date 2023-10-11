@@ -123,6 +123,13 @@ export const AdminManaIcon = () => (
   />
 );
 
+export const AdminManaFocusedIcon = () => (
+  <GameIcon
+    src={require("./icon_powers_administrative_focused.png")}
+    alt="Admin Mana (focused)"
+  />
+);
+
 export const DiplomaticManaIcon = () => (
   <GameIcon
     src={require("./icon_powers_diplomatic.png")}
@@ -130,8 +137,22 @@ export const DiplomaticManaIcon = () => (
   />
 );
 
+export const DiplomaticManaFocusedIcon = () => (
+  <GameIcon
+    src={require("./icon_powers_diplomatic_focused.png")}
+    alt="Dipolmatic Mana (focused)"
+  />
+);
+
 export const MilitaryManaIcon = () => (
   <GameIcon src={require("./icon_powers_military.png")} alt="Military Mana" />
+);
+
+export const MilitaryManaFocusedIcon = () => (
+  <GameIcon
+    src={require("./icon_powers_military_focused.png")}
+    alt="Military Mana (focused)"
+  />
 );
 
 export const AdminTechIcon = () => (

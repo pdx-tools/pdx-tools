@@ -73,6 +73,7 @@ pub struct CountryDetails {
     pub colonists: usize,
     pub missionaries: usize,
     pub government_strength: GovernmentStrength,
+    pub national_focus: Option<String>,
 }
 
 #[derive(Tsify, Serialize, Debug)]
@@ -703,6 +704,7 @@ impl SaveFileImpl {
             colonists: country.colonists.envoys.len(),
             missionaries: country.missionaries.envoys.len(),
             government_strength,
+            national_focus: country.national_focus.clone(),
         }
     }
 

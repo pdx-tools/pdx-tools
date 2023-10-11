@@ -52,6 +52,9 @@ import {
   ColonistIcon,
   DiplomatIcon,
   MissionaryIcon,
+  AdminManaFocusedIcon,
+  MilitaryManaFocusedIcon,
+  DiplomaticManaFocusedIcon,
 } from "../../components/icons";
 import { PersonalityAvatar } from "../../components/avatars";
 import { CheckCircleIcon } from "@heroicons/react/24/outline";
@@ -74,7 +77,7 @@ const IdeasTable = ({ ideas }: Pick<CountryDetails, "ideas">) => {
         <div
           key={i}
           className="w-4 h-4 outline outline-1 -outline-offset-2 rounded-full"
-        />,
+        />
       );
     }
     return (
@@ -155,7 +158,11 @@ export const CountryDetailsDescriptions = ({
         <div className="grid grid-cols-3 gap-4">
           <div>
             <div className="flex text-right">
-              <AdminManaIcon />
+              {details.national_focus === "ADM" ? (
+                <AdminManaFocusedIcon />
+              ) : (
+                <AdminManaIcon />
+              )}
               <span className="grow">{formatInt(details.adm_mana)}</span>
             </div>
 
@@ -196,7 +203,11 @@ export const CountryDetailsDescriptions = ({
 
           <div>
             <div className="flex text-right">
-              <DiplomaticManaIcon />
+              {details.national_focus === "DIP" ? (
+                <DiplomaticManaFocusedIcon />
+              ) : (
+                <DiplomaticManaIcon />
+              )}
               <span className="grow">{formatInt(details.dip_mana)}</span>
             </div>
             <div className="flex text-right">
@@ -233,7 +244,11 @@ export const CountryDetailsDescriptions = ({
 
           <div>
             <div className="flex text-right">
-              <MilitaryManaIcon />
+              {details.national_focus === "MIL" ? (
+                <MilitaryManaFocusedIcon />
+              ) : (
+                <MilitaryManaIcon />
+              )}
               <span className="grow">{formatInt(details.mil_mana)}</span>
             </div>
             <div className="flex text-right">
@@ -254,7 +269,7 @@ export const CountryDetailsDescriptions = ({
               <span className="grow">
                 {formatInt(
                   100 - (details.development / details.raw_development) * 100 ||
-                    0,
+                    0
                 )}
                 %
               </span>
@@ -322,7 +337,7 @@ export const CountryDetailsDescriptions = ({
                   details.artillery_units.count -
                   details.infantry_units.strength -
                   details.cavalry_units.strength -
-                  details.artillery_units.strength,
+                  details.artillery_units.strength
               )}
               K
             </div>
