@@ -5,6 +5,7 @@ import { Button } from "@/components/Button";
 import { FunnelIcon } from "@heroicons/react/24/outline";
 import { Sheet } from "@/components/Sheet";
 import { CountrySelect } from "./CountrySelect";
+import { ToggleRow } from "../features/settings/ToggleRow";
 
 type AiState = ReturnType<typeof useTagFilter>["ai"];
 const simpleFilter = (x: AiState) => {
@@ -82,6 +83,12 @@ export const CountryFilterButton = () => {
                 <p>Exclude Countries:</p>
                 <CountryFilterSelect action="exclude" />
               </div>
+
+              <ToggleRow
+                value={filter.includeSubjects}
+                onChange={(x) => updateTagFilter({ includeSubjects: x })}
+                text="Include Subjects"
+              />
             </Sheet.Body>
           </Sheet.Content>
         </Sheet>
