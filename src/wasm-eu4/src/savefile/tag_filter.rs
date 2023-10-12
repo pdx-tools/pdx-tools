@@ -49,7 +49,6 @@ pub struct TagFilterPayloadRaw {
 pub struct TagFilterPayload {
     pub players: TagsState,
     pub ai: AiTagsState,
-    pub subcontinents: Vec<String>,
     pub include: Vec<CountryTag>,
     pub exclude: Vec<CountryTag>,
     pub include_subjects: bool,
@@ -70,7 +69,6 @@ impl From<TagFilterPayloadRaw> for TagFilterPayload {
         TagFilterPayload {
             players: x.players,
             ai: x.ai,
-            subcontinents: x.subcontinents,
             include,
             exclude,
             include_subjects: x.include_subjects,
@@ -98,17 +96,6 @@ impl SaveFileImpl {
     }
 
     pub fn matching_tags(&self, payload: &TagFilterPayload) -> HashSet<CountryTag> {
-        let provs_in_subcontinent: HashSet<_> = payload
-            .subcontinents
-            .iter()
-            .filter_map(|superregion| self.game.superregion_regions(superregion))
-            .flatten()
-            .filter_map(|region| self.game.region_areas(region))
-            .flatten()
-            .filter_map(|area| self.game.area_provinces(area))
-            .flatten()
-            .collect();
-
         let existing_tags: HashSet<_> = self
             .province_owners
             .initial
@@ -125,8 +112,15 @@ impl SaveFileImpl {
             )
             .collect();
 
-        let mut tags: HashSet<CountryTag> = HashSet::new();
-        tags.extend(payload.include.iter());
+        let mut tags: HashSet<CountryTag> = payload.include.iter().copied().collect();
+        if payload.include_subjects {
+            let included_subjects = payload
+                .include
+                .iter()
+                .filter_map(|tag| self.query.country(tag))
+                .flat_map(|x| x.subjects.iter());
+            tags.extend(included_subjects);
+        }
 
         let players: HashSet<_> = self.all_players().into_iter().collect();
         for (tag, country) in &self.query.save().game.countries {
@@ -151,10 +145,7 @@ impl SaveFileImpl {
                 }
             };
 
-            let geographically_relevant = provs_in_subcontinent.is_empty()
-                || provs_in_subcontinent.contains(&country.capital);
-
-            if insert && geographically_relevant {
+            if insert {
                 tags.insert(*tag);
                 if payload.include_subjects {
                     tags.extend(country.subjects.iter());
