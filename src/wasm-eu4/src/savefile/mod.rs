@@ -647,16 +647,16 @@ impl SaveFileImpl {
         let payload = TagFilterPayload::from(payload);
         let tags = self.matching_tags(&payload);
         if tags.len() > limit {
-            let mut new_payload = payload;
-            if self.player_histories.len() == 1 {
-                new_payload.ai = AiTagsState::Great;
+            let ai = if self.player_histories.len() == 1 {
+                AiTagsState::Great
             } else {
-                new_payload.ai = AiTagsState::None;
+                AiTagsState::None
             };
 
-            let ntags = self.matching_tags(&new_payload);
-            let inter: HashSet<CountryTag> = tags.intersection(&ntags).cloned().collect();
+            let ntags: HashSet<CountryTag> =
+                self.matching_tags(&TagFilterPayload { ai, ..payload });
 
+            let inter: HashSet<CountryTag> = tags.intersection(&ntags).cloned().collect();
             if inter.is_empty() {
                 tags.into_iter()
                     .enumerate()
@@ -666,6 +666,13 @@ impl SaveFileImpl {
             } else {
                 inter
             }
+        } else if payload.ai == AiTagsState::Alive && self.player_histories.len() == 1 {
+            // If there are fewer AI alive than the limit, we should consider
+            // past greats to the AI that is alive
+            self.matching_tags(&TagFilterPayload {
+                ai: AiTagsState::Great,
+                ..payload
+            })
         } else {
             tags
         }

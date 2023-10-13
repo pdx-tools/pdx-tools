@@ -140,7 +140,9 @@ impl SaveFileImpl {
                     (AiTagsState::All, _) => true,
                     (AiTagsState::Dead, x) if x.num_of_cities == 0 => true,
                     (AiTagsState::Alive, x) if x.num_of_cities != 0 => true,
-                    (AiTagsState::Great, x) if x.is_great_power => true,
+                    (AiTagsState::Great, x) if x.is_great_power && x.raw_development > 100.0 => {
+                        true
+                    }
                     _ => false,
                 }
             };
@@ -151,6 +153,29 @@ impl SaveFileImpl {
                     tags.extend(country.subjects.iter());
                 }
             }
+        }
+
+        // If the user wants to view great tags but there fewer than 8 alive
+        // great powers then use the best historical great powers
+        if tags.len() < 8 && payload.ai == AiTagsState::Great {
+            let mut great_scores: Vec<_> = self
+                .query
+                .save()
+                .game
+                .countries
+                .iter()
+                .map(|(tag, c)| (c.great_power_score, tag))
+                .filter(|(score, tag)| *score > 1. && !tags.contains(tag))
+                .collect();
+            great_scores.sort_unstable_by(|(ascore, _), (bscore, _)| {
+                ascore.partial_cmp(bscore).unwrap().reverse()
+            });
+            let dead_greats = great_scores
+                .iter()
+                .map(|(_, tag)| tag)
+                .take(8 - tags.len())
+                .copied();
+            tags.extend(dead_greats)
         }
 
         for tag in &payload.exclude {
