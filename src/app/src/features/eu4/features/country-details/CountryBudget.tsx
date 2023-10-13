@@ -115,6 +115,7 @@ export const CountryBudget = ({ details }: CountryBudgetCountProps) => {
           title="Total Expense Breakdown"
           rows={totalExpenses}
           paginate={true}
+          wholeNumbers={true}
         />
       </div>
     </>
