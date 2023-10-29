@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: "!github.event.pull_request.head.repo.fork || contains(github.event.pull_request.labels.*.name, 'safe to test')"
     env:
       CARGO_TERM_VERBOSE: true
