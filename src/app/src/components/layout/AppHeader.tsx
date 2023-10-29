@@ -1,13 +1,14 @@
 import React from "react";
-import Link from "next/link";
 import { AppSvg } from "../icons/AppIcon";
 import { AnnouncementBar } from "./AnnouncementBar";
 import { useEngineActions } from "@/features/engine";
 import { NavigationMenu } from "@/components/NavigationMenu";
+import { Link } from "@/components/Link";
 import { pdxApi, sessionSelect } from "@/services/appApi";
 import { SignInButtons } from "./auth";
 import { Button } from "@/components/Button";
 import { UserIcon } from "@heroicons/react/24/outline";
+import { DiscordIcon, GithubIcon } from "../icons";
 
 const HeaderMenu = () => {
   const logout = pdxApi.session.useLogout();
@@ -44,11 +45,21 @@ const HeaderMenu = () => {
               <NavigationMenu.Link variant="button" asChild>
                 <Link href="/docs">Docs</Link>
               </NavigationMenu.Link>
-              <NavigationMenu.Link variant="button" asChild>
+              <NavigationMenu.Link
+                variant="button"
+                asChild
+                className="lg:hidden"
+              >
                 <Link href="https://discord.gg/rCpNWQW">Discord</Link>
               </NavigationMenu.Link>
-              <NavigationMenu.Link variant="button" asChild>
-                <Link href="https://github.com/pdx-tools">Github</Link>
+              <NavigationMenu.Link
+                variant="button"
+                asChild
+                className="lg:hidden"
+              >
+                <Link href="https://github.com/pdx-tools/pdx-tools">
+                  Github
+                </Link>
               </NavigationMenu.Link>
               <NavigationMenu.Link variant="button" asChild>
                 <Link href="/blog">Blog</Link>
@@ -64,7 +75,23 @@ const HeaderMenu = () => {
         </NavigationMenu.List>
       </NavigationMenu>
 
-      <div className="flex grow justify-end self-center text-end">
+      <div className="flex grow justify-end self-center text-end items-center gap-6">
+        <Link
+          href="https://github.com/pdx-tools/pdx-tools"
+          className="hidden lg:block opacity-75 hover:opacity-100 focus-visible:opacity-100"
+        >
+          <GithubIcon className="h-6 w-6 text-white" />
+          <span className="sr-only">Github repo</span>
+        </Link>
+
+        <Link
+          href="https://discord.gg/rCpNWQW"
+          className="hidden lg:block opacity-75 hover:opacity-100 focus-visible:opacity-100"
+        >
+          <DiscordIcon className="h-6 w-6" />
+          <span className="sr-only">Discord</span>
+        </Link>
+
         {session.data === undefined ? null : !sessionSelect.isLoggedIn(
             session,
           ) ? (

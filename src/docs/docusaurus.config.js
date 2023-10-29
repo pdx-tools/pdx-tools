@@ -83,14 +83,19 @@ const config = {
           { to: "/changelog", label: "Changelog", position: "left" },
           { to: "/docs/api", label: "API", position: "left" },
           {
+            href: "https://github.com/pdx-tools/pdx-tools",
+            position: "right",
+            className: "header-github-link menu-icon",
+          },
+          {
+            href: "https://discord.gg/rCpNWQW",
+            position: "right",
+            className: "header-discord-link menu-icon",
+          },
+          {
             to: "pathname:///",
             label: "Open PDX Tools",
             position: "right",
-          },
-          {
-            href: "https://github.com/pdx-tools/pdx-tools",
-            position: "right",
-            className: "header-github-link",
           },
         ],
       },
