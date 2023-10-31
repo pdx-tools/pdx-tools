@@ -4,6 +4,7 @@ import map from "./gallery-map.png";
 import mapThumbnail from "./gallery-map-thumbnail.png";
 import video from "./gallery-video.mp4";
 import videoThumbnail from "./video-thumbnail.png";
+import videoPoster from "./video-poster.png";
 import advisor from "./gallery-advisor.png";
 import mana from "./gallery-mana.png";
 import graphs from "./gallery-graphs.png";
@@ -114,6 +115,8 @@ const MobileImageGallery = () => {
               <video
                 className="aspect-video w-full shadow-xl"
                 src={x.src}
+                poster={videoPoster}
+                preload="none"
                 controls
                 loop
                 muted
