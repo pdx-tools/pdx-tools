@@ -45,7 +45,7 @@ const columns = [
     ),
   }),
 
-  columnHelper.accessor((x) => x.treasury - x.loans, {
+  columnHelper.accessor((x) => x.treasury - x.debt, {
     id: "balance",
     header: () => <GoldIcon />,
     meta: { className: "text-right" },
@@ -149,7 +149,7 @@ export const WatchCountryDetails = () => {
             const outData = data.map((x) => ({
               ...x,
               manpower: formatInt(x.manpower * 1000),
-              treasury: formatInt(x.treasury - x.loans),
+              treasury: formatInt(x.treasury - x.debt),
               development: formatInt(x.development),
               infantry_count: x.infantry_units.count,
               cavalry_count: x.cavalry_units.count,
