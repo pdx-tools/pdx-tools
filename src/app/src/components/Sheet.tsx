@@ -11,7 +11,7 @@ const SheetRoot = (props: React.ComponentProps<typeof SheetPrimitive.Root>) => (
 
 export const Sheet = SheetRoot as typeof SheetRoot & {
   Trigger: typeof SheetPrimitive.Trigger;
-  Portal: typeof SheetPortal;
+  Portal: typeof SheetPrimitive.Portal;
   Overlay: typeof SheetOverlay;
   Content: typeof SheetContent;
   Close: typeof SheetClose;
@@ -23,14 +23,7 @@ export const Sheet = SheetRoot as typeof SheetRoot & {
 };
 
 Sheet.Trigger = SheetPrimitive.Trigger;
-
-const SheetPortal = ({
-  className,
-  ...props
-}: SheetPrimitive.DialogPortalProps) => (
-  <SheetPrimitive.Portal className={cx(className)} {...props} />
-);
-Sheet.Portal = SheetPortal;
+Sheet.Portal = SheetPrimitive.Portal;
 
 const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Overlay>,

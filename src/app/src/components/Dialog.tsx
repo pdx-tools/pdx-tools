@@ -6,7 +6,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 export const Dialog = DialogPrimitive.Root as typeof DialogPrimitive.Root & {
   Close: typeof DialogPrimitive.Close;
   Trigger: typeof DialogPrimitive.Trigger;
-  Portal: typeof DialogPortal;
+  Portal: typeof DialogPrimitive.Portal;
   Overlay: typeof DialogOverlay;
   Content: typeof DialogContent;
   Header: typeof DialogHeader;
@@ -16,14 +16,7 @@ export const Dialog = DialogPrimitive.Root as typeof DialogPrimitive.Root & {
 };
 Dialog.Close = DialogPrimitive.Close;
 Dialog.Trigger = DialogPrimitive.Trigger;
-
-const DialogPortal = ({
-  className,
-  ...props
-}: DialogPrimitive.DialogPortalProps) => (
-  <DialogPrimitive.Portal className={cx(className)} {...props} />
-);
-Dialog.Portal = DialogPortal;
+Dialog.Portal = DialogPrimitive.Portal;
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
@@ -47,7 +40,7 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(function DialogContent({ className, children, ...props }, ref) {
   return (
-    <DialogPortal>
+    <Dialog.Portal>
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}
@@ -63,7 +56,7 @@ const DialogContent = React.forwardRef<
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
-    </DialogPortal>
+    </Dialog.Portal>
   );
 });
 Dialog.Content = DialogContent;
