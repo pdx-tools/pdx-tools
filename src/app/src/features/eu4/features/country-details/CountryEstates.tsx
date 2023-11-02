@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { CountryDetails, Estate } from "../../types/models";
 import { useEu4Worker } from "../../worker";
 import React from "react";
-import { formatInt } from "@/lib/format";
+import { formatInt, sentenceCasing } from "@/lib/format";
 import { Alert } from "@/components/Alert";
 
 const CountryEstate = ({ estate }: { estate: Estate }) => {
@@ -27,7 +27,7 @@ const CountryEstate = ({ estate }: { estate: Estate }) => {
           <tbody>
             {estate.privileges.map(([privilege, date]) => (
               <tr key={privilege}>
-                <td>{privilege}</td>
+                <td>{sentenceCasing(privilege)}</td>
                 <td className="no-break text-right">{date}</td>
               </tr>
             ))}
@@ -46,7 +46,7 @@ const CountryEstate = ({ estate }: { estate: Estate }) => {
           <tbody>
             {estate.influenceModifiers.map((modifier) => (
               <tr key={`${modifier.desc}-${modifier.date}`}>
-                <td>{modifier.desc}</td>
+                <td>{sentenceCasing(modifier.desc)}</td>
                 <td className="text-right pr-2">{formatInt(modifier.value)}</td>
                 <td className="no-break text-right">{modifier.date}</td>
               </tr>

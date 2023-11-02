@@ -22,3 +22,7 @@ export function formatFloat(x: number, precision?: number) {
     return floatFormatter.format(x);
   }
 }
+
+export function sentenceCasing(x: string): string {
+  return x.charAt(0).toUpperCase() + x.slice(1).toLowerCase();
+}
