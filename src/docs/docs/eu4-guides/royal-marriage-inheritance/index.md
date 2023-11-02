@@ -54,7 +54,7 @@ inheritance value = (subtotal + year) % 100
 Here's how to interpret an inheritance value if the target nation's ruler were to die heirless in the current year (broken down into tiers (T0, T1, T2)):
 
 - T0: x < 75: spread dynasty
-- T1: 75 <= x < 80: inheritance (unless succession war sparks)
+- T1: 75 \<= x < 80: inheritance (unless succession war sparks)
 - T2: x >= 80: personal union
 
 Since this may be tough to visualize or plan for, PDX tools lists out when each tier occurs

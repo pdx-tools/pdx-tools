@@ -110,7 +110,8 @@ user wants.
 To give a sample, below is an income ledger throughout time where one can
 toggle which countries are displayed (click to expand).
 
-{{< sfffig src="income-ledger.png" caption="Interactive income ledger" >}}
+[![Interactive income ledger](income-ledger.png)](income-ledger.png)
+*Interactive income ledger*
 
 This is the very tip of the iceberg even for just this chart. Imagine charting
 current rivals, past rivals, past greats, or any custom selection where you

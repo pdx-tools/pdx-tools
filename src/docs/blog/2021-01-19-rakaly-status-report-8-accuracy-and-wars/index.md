@@ -25,7 +25,8 @@ Highlights:
 
 ## Wars and Battles
 
-{{< sfffig src="war-info-1.png" caption="Screenshot of the new War Info screen" >}}
+[![Screenshot of the new War Info screen](war-info-1.png)](war-info-1.png)
+*Screenshot of the new War Info screen*
 
 In the war info screen:
 
@@ -35,7 +36,8 @@ In the war info screen:
 - Easily see when country join or exit a war
 - View stats of battle commanders
 
-{{< sfffig src="war-info-2.png" caption="Screenshot of the new Battles table" >}}
+[![Screenshot of the new Battles table](war-info-2.png)](war-info-2.png)
+*Screenshot of the new Battles table*
 
 This proved quite the challenging feature to implement, as I had been lazy early on when it came to mapping the course of a nation's trajectory through tag switches. [See my previous post for a bit more background](/blog/tracking-tag-switches-in-eu4-save-files).
 
@@ -60,11 +62,13 @@ So I set to work on rewriting the query engine to better follow tag switching, a
 
 To visualize this improvement in accuracy let's look at a deficiency in the old version of Rakaly. Below is a true heir of timur run where the player tag switched from Sistan to Delhi and then immediately from Delhi to Mughals. Since Delhi exists at the start, there would be multiple concurrent data points for monthly income even though that shouldn't be possible when playing single player.
 
-{{< sfffig src="monthly-income-bad.png" caption="Old version of Rakaly couldn't track tag switches properly" >}}
+[![Old version of Rakaly couldn't track tag switches properly](monthly-income-bad.png)](monthly-income-bad.png)
+*Old version of Rakaly couldn't track tag switches properly*
 
 This is no longer a problem with the update
 
-{{< sfffig src="monthly-income-good.png" caption="New version of Rakaly that knows exactly when tag switches happen" >}}
+[![New version of Rakaly that knows exactly when tag switches happen](monthly-income-good.png)](monthly-income-good.png)
+*New version of Rakaly that knows exactly when tag switches happen*
 
 ## Players View
 
@@ -77,4 +81,5 @@ Sometimes it's nice to have an overview of the multiplayer lobby to answer the f
 
 A player view was added to answer those questions
 
-{{< sfffig src="players-view.png" caption="New players view" >}}
+[![New players view](players-view.png)](players-view.png)
+*New players view*
