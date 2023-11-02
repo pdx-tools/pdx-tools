@@ -167,7 +167,7 @@ const RebelConvert = ({ rebel }: { rebel: RebelReligion }) => {
   }
 
   return (
-    <p className="max-w-prose">
+    <div className="max-w-prose">
       How to change the state religion to{" "}
       <span className="font-semibold">{religion.name}</span> via rebels:
       <ul className="pl-3">
@@ -205,7 +205,7 @@ const RebelConvert = ({ rebel }: { rebel: RebelReligion }) => {
           </ul>
         </li>
       </ul>
-    </p>
+    </div>
   );
 };
 
