@@ -27,7 +27,7 @@ export class ErrorCatcher extends React.Component<
   componentDidCatch(error: Error, { componentStack }: ErrorInfo) {
     const errorBoundaryError = new Error(error.message);
     errorBoundaryError.name = `React ErrorBoundary ${errorBoundaryError.name}`;
-    errorBoundaryError.stack = componentStack;
+    errorBoundaryError.stack = componentStack || undefined;
     error.cause = errorBoundaryError;
     captureException(error, { contexts: { react: { componentStack } } });
     this.setState({ error });
