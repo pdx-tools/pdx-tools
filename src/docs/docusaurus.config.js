@@ -1,6 +1,6 @@
 // @ts-check
 
-const {themes} = require('prism-react-renderer');
+const { themes } = require("prism-react-renderer");
 const lightCodeTheme = themes.github;
 const darkCodeTheme = themes.dracula;
 const repo = "https://github.com/pdx-tools/pdx-tools";
