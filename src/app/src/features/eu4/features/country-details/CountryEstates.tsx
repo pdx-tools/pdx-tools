@@ -16,33 +16,44 @@ const CountryEstate = ({ estate }: { estate: Estate }) => {
         </span>
       </div>
       <div>Completed agendas: {formatInt(estate.completedAgendas)}</div>
-      <div>
-        Privileges:
-        <table className="ml-4 border-separate border-spacing-x-2">
+      {estate.privileges.length > 0 ? (
+        <table className="w-full my-2">
+          <thead>
+            <tr>
+              <th className="text-left">Privilege:</th>
+              <th className="text-right">Since:</th>
+            </tr>
+          </thead>
           <tbody>
             {estate.privileges.map(([privilege, date]) => (
               <tr key={privilege}>
                 <td>{privilege}</td>
-                <td className="no-break">{date}</td>
+                <td className="no-break text-right">{date}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
-      <div>
-        Influence modifiers:
-        <table className="ml-4 border-separate border-spacing-x-2">
+      ) : null}
+      {estate.influenceModifiers.length > 0 ? (
+        <table className="w-full my-2">
+          <thead>
+            <tr>
+              <th className="text-left">Influence Modifier:</th>
+              <th className="text-right">Value:</th>
+              <th className="text-right">Expires:</th>
+            </tr>
+          </thead>
           <tbody>
             {estate.influenceModifiers.map((modifier) => (
               <tr key={`${modifier.desc}-${modifier.date}`}>
-                <td className="mr-2 text-right">{modifier.value}</td>
-                <td className="no-break">{modifier.date}</td>
                 <td>{modifier.desc}</td>
+                <td className="text-right pr-2">{formatInt(modifier.value)}</td>
+                <td className="no-break text-right">{modifier.date}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      ) : null}
     </div>
   );
 };
