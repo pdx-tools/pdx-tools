@@ -226,6 +226,7 @@ export class TimelapseEncoder {
             kind: "mp4",
             mux: new Mp4Muxer({
               target: new Mp4Target(),
+              fastStart: "in-memory",
               firstTimestampBehavior: "offset",
               video: {
                 codec: "avc",
