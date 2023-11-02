@@ -88,6 +88,9 @@ export const sessionSelect = {
   ): session is ProfileQuery & { data: LoggedInUser } =>
     session.data?.kind === "user",
 
+  isAdmin: (session: ProfileQuery) =>
+    sessionSelect.isLoggedIn(session) && session.data.user.account == "admin",
+
   isPrivileged: (
     session: ProfileQuery,
     { user_id }: Partial<{ user_id: string }>,
@@ -196,6 +199,12 @@ export const pdxApi = {
               queryClient.setQueryData(pdxKeys.save(x.id), x),
             ),
           ),
+      }),
+
+    useRebalance: () =>
+      useMutation({
+        mutationFn: () => fetchOk("/api/admin/rebalance", { method: "POST" }),
+        onSuccess: invalidateSaves,
       }),
 
     useAdd: () =>

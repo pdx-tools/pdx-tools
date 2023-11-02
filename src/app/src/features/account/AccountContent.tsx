@@ -1,11 +1,13 @@
 import { Alert } from "@/components/Alert";
-import { pdxApi } from "@/services/appApi";
+import { pdxApi, sessionSelect } from "@/services/appApi";
 import { Button } from "@/components/Button";
 import React, { useState } from "react";
 
 export const AccountContent = () => {
   const [key, setKey] = useState<string | undefined>();
   const newKey = pdxApi.apiKey.useGenerateKey(setKey);
+  const session = pdxApi.session.useCurrent();
+  const rebalance = pdxApi.saves.useRebalance();
 
   return (
     <>
@@ -25,6 +27,19 @@ export const AccountContent = () => {
           Generate
         </Button>
       </div>
+      {sessionSelect.isAdmin(session) ? (
+        <Button
+          variant="primary"
+          onClick={() =>
+            rebalance.mutate(undefined, {
+              onSuccess: () => alert("success"),
+              onError: () => alert("failure"),
+            })
+          }
+        >
+          Rebalance saves
+        </Button>
+      ) : null}
     </>
   );
 };
