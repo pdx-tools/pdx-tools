@@ -55,7 +55,7 @@ export const UploadDrawerContent = ({
                 type="submit"
                 variant="primary"
                 className="w-48 justify-center"
-                disabled={fileUpload.isLoading}
+                disabled={fileUpload.isPending}
               >
                 Upload
               </Button>

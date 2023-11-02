@@ -38,7 +38,7 @@ export const DeleteSave = ({ saveId, ...rest }: DeleteSaveProps) => {
               })
             }
           >
-            {saveDeletion.isLoading ? (
+            {saveDeletion.isPending ? (
               <LoadingIcon className="h-4 w-4 text-gray-800" />
             ) : null}{" "}
             Yes, Delete

@@ -144,7 +144,7 @@ export const pdxApi = {
       useQuery({
         queryKey: pdxKeys.profile(),
         queryFn: () => fetchOkJson<ProfileResponse>("/api/profile"),
-        cacheTime: Infinity,
+        gcTime: Infinity,
       }),
 
     useLogout: () =>
@@ -192,13 +192,8 @@ export const pdxApi = {
                     cursor: pageParam,
                   })}`),
           ),
+        initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage, _pages) => lastPage.cursor,
-        onSuccess: (data) =>
-          data.pages.forEach((page) =>
-            page.saves.forEach((x) =>
-              queryClient.setQueryData(pdxKeys.save(x.id), x),
-            ),
-          ),
       }),
 
     useRebalance: () =>
@@ -330,7 +325,7 @@ export const pdxApi = {
         mutationFn: ({ id, ...rest }: SavePatchProps) =>
           sendJson(`/api/saves/${id}`, { body: rest, method: "PATCH" }),
         onSuccess: (_, { id }) => {
-          queryClient.invalidateQueries(pdxKeys.save(id));
+          queryClient.invalidateQueries({ queryKey: pdxKeys.save(id) });
         },
       }),
   },
@@ -340,17 +335,13 @@ export const pdxApi = {
       useQuery({
         queryKey: pdxKeys.user(userId),
         queryFn: () => fetchOkJson<UserSaves>(`/api/users/${userId}`),
-        onSuccess: (data) =>
-          data.saves.forEach((x) =>
-            queryClient.setQueryData(pdxKeys.save(x.id), x),
-          ),
       }),
   },
 };
 
 export const invalidateSaves = () => {
-  queryClient.invalidateQueries(pdxKeys.newSaves());
-  queryClient.invalidateQueries(pdxKeys.saves());
-  queryClient.invalidateQueries(pdxKeys.achievements());
-  queryClient.invalidateQueries(pdxKeys.users());
+  queryClient.invalidateQueries({ queryKey: pdxKeys.newSaves() });
+  queryClient.invalidateQueries({ queryKey: pdxKeys.saves() });
+  queryClient.invalidateQueries({ queryKey: pdxKeys.achievements() });
+  queryClient.invalidateQueries({ queryKey: pdxKeys.users() });
 };
