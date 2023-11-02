@@ -237,7 +237,7 @@ impl<'a> Game<'a> {
         })
     }
 
-    pub fn area_provinces(&self, area: &str) -> Option<impl Iterator<Item = ProvinceId> + 'a> {
+    pub fn area_provinces(&self, area: &str) -> Option<impl Iterator<Item = ProvinceId> + '_> {
         let areas = self.data.areas().unwrap();
         let idx = binary_search_by(&areas, |x| x.key_compare_with_value(area)).ok()?;
 
@@ -247,6 +247,20 @@ impl<'a> Game<'a> {
             .unwrap()
             .iter()
             .map(|x| ProvinceId::new(x as i32));
+        Some(res)
+    }
+
+    pub fn region_provinces(&self, region: &str) -> Option<impl Iterator<Item = ProvinceId> + '_> {
+        let regions = self.data.regions().unwrap();
+        let idx = binary_search_by(&regions, |x| x.key_compare_with_value(region)).ok()?;
+
+        let res = regions
+            .get(idx)
+            .value()
+            .unwrap()
+            .iter()
+            .flat_map(|area| self.area_provinces(area))
+            .flatten();
         Some(res)
     }
 

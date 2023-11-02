@@ -2677,23 +2677,25 @@ impl<'a> AchievementHunter<'a> {
             "year is before 1500",
         ));
 
-        let has_all_provinces = if result.completed() {
-            let self_core_eyalets: HashSet<_> = self
-                .save
-                .game
-                .diplomacy
-                .dependencies
-                .iter()
-                .filter_map(|x| {
-                    if x.subject_type == "core_eyalet" {
-                        Some(x.second)
-                    } else {
-                        None
-                    }
-                })
-                .chain(std::iter::once(self.tag))
-                .collect();
+        let self_core_eyalets: HashSet<_> = self
+            .save
+            .game
+            .diplomacy
+            .dependencies
+            .iter()
+            .filter_map(|x| {
+                if x.subject_type == "core_eyalet" {
+                    Some(x.second)
+                } else {
+                    None
+                }
+            })
+            .chain(std::iter::once(self.tag))
+            .collect();
 
+        let has_all_provinces = if result.completed()
+            && self.save.meta.savegame_version.second == 35
+        {
             [343, 341, 361, 236, 245, 96, 134].iter().all(|&id| {
                 self.save
                     .game
@@ -2718,6 +2720,80 @@ impl<'a> AchievementHunter<'a> {
                         .map_or(false, |o| self_core_eyalets.contains(o))
                 })
             })
+        } else if result.completed() && self.save.meta.savegame_version.second > 35 {
+            // Hard coded list derived from BYZ_roman_empire_decision_trigger
+            // in 02_scripted_triggers_missions.txt
+            let individual = [85, 96, 343].iter().map(|x| ProvinceId::from(*x));
+
+            let regions = [
+                "anatolia_region",
+                "egypt_region",
+                "italy_region",
+                "france_region",
+                "iberia_region",
+                "mashriq_region",
+                "balkan_region",
+            ]
+            .iter()
+            .flat_map(|area| self.game.region_provinces(area))
+            .flatten();
+
+            let areas = [
+                "east_midlands_area",
+                "west_midlands_area",
+                "yorkshire_area",
+                "wessex_area",
+                "home_counties_area",
+                "east_anglia_area",
+                "wales_area",
+                "scottish_marches_area",
+                "romandie_area",
+                "upper_rhineland_area",
+                "romandie_area",
+                "alsace_area",
+                "palatinate_area",
+                "lower_rhineland_area",
+                "carinthia_area",
+                "north_brabant_area",
+                "brabant_area",
+                "flanders_area",
+                "wallonia_area",
+                "inner_austria_area",
+                "austria_proper_area",
+                "tirol_area",
+                "east_bavaria_area",
+                "lower_bavaria_area",
+                "upper_bavaria_area",
+                "upper_swabia_area",
+                "lower_swabia_area",
+                "switzerland_area",
+                "barbary_coast_area",
+                "kabylia_area",
+                "tunisia_area",
+                "djerba_area",
+                "tripolitania_area",
+                "northern_morocco_area",
+                "algiers_area",
+                "transdanubia_area",
+            ]
+            .iter()
+            .flat_map(|area| self.game.area_provinces(area))
+            .flatten();
+
+            let include_provs: HashSet<_> = individual.chain(regions).chain(areas).collect();
+            let exclude_provs: HashSet<_> = ["lower_nubia_area", "iraq_arabi_area", "basra_area"]
+                .iter()
+                .flat_map(|area| self.game.area_provinces(area))
+                .flatten()
+                .collect();
+
+            let owned_provs = include_provs
+                .difference(&exclude_provs)
+                .filter_map(|id| self.save.game.provinces.get(id))
+                .filter_map(|p| p.owner)
+                .filter(|owner| self_core_eyalets.contains(owner))
+                .count();
+            owned_provs >= 425
         } else {
             false
         };

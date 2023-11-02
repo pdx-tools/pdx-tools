@@ -122,9 +122,7 @@ const HeaderMenu = () => {
                   </NavigationMenu.Link>
                   <NavigationMenu.Link variant="button" asChild>
                     <form method="POST" action="/api/logout">
-                      <button type="submit">
-                        Logout
-                      </button>
+                      <button type="submit">Logout</button>
                     </form>
                   </NavigationMenu.Link>
                 </NavigationMenu.Content>
