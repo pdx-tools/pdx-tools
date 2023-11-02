@@ -24,6 +24,7 @@ const dlc = [
   [110, "Origins", require("./dlc-images/110_s.png")],
   [115, "Lions of the North", require("./dlc-images/115_s.png")],
   [119, "Domination", require("./dlc-images/119_s.png")],
+  [128, "King of Kings", require("./dlc-images/128_s.png")],
 ];
 
 interface DlcListProps {
