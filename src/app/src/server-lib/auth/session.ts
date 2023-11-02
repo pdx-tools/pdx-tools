@@ -41,8 +41,7 @@ export async function getSessionPayload(req: NextRequest) {
   return SessionPayloadSchema.parse(results.payload);
 }
 
-export function deleteSessionResponse(): NextResponse<ProfileResponse> {
-  const resp = NextResponse.json({ kind: "guest" } as const);
+export function withSessionDeleted<T>(resp: NextResponse<T>): NextResponse<T> {
   resp.cookies.delete(sessionCookie);
   return resp;
 }

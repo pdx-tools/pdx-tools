@@ -1,7 +1,8 @@
-import { deleteSessionResponse } from "@/server-lib/auth/session";
+import { withSessionDeleted } from "@/server-lib/auth/session";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "edge";
 
-export async function POST() {
-  return deleteSessionResponse();
+export async function POST(req: NextRequest) {
+  return withSessionDeleted(NextResponse.redirect(new URL("/", req.url)));
 }

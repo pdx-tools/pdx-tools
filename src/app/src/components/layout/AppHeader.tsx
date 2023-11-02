@@ -11,7 +11,6 @@ import { UserIcon } from "@heroicons/react/24/outline";
 import { DiscordIcon, GithubIcon } from "../icons";
 
 const HeaderMenu = () => {
-  const logout = pdxApi.session.useLogout();
   const session = pdxApi.session.useCurrent();
 
   return (
@@ -122,9 +121,11 @@ const HeaderMenu = () => {
                     </Link>
                   </NavigationMenu.Link>
                   <NavigationMenu.Link variant="button" asChild>
-                    <button type="button" onClick={() => logout.mutate()}>
-                      Logout
-                    </button>
+                    <form method="POST" action="/api/logout">
+                      <button type="submit">
+                        Logout
+                      </button>
+                    </form>
                   </NavigationMenu.Link>
                 </NavigationMenu.Content>
               </NavigationMenu.Item>

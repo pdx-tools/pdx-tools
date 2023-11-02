@@ -147,17 +147,6 @@ export const pdxApi = {
         gcTime: Infinity,
       }),
 
-    useLogout: () =>
-      useMutation({
-        mutationFn: () =>
-          fetchOkJson<ProfileResponse>("/api/logout", {
-            method: "POST",
-          }),
-        onSuccess: (data) => {
-          queryClient.setQueryData(pdxKeys.profile(), data);
-        },
-      }),
-
     useSkanderbegSaves: () =>
       useQuery({
         queryKey: pdxKeys.skanderbegUser(),

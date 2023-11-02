@@ -1,8 +1,8 @@
 import { ProfileResponse } from "@/services/appApi";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  deleteSessionResponse,
   getSessionPayload,
+  withSessionDeleted,
 } from "@/server-lib/auth/session";
 
 export const runtime = "edge";
@@ -25,6 +25,6 @@ export async function GET(
       });
     }
   } catch {
-    return deleteSessionResponse();
+    return withSessionDeleted(NextResponse.json({ kind: "guest" }));
   }
 }
