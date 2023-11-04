@@ -1,5 +1,5 @@
 import { PropsWithChildren, useCallback, useState, memo, useRef } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/Popover";
+import { Popover } from "@/components/Popover";
 import { Command } from "@/components/Command";
 import { EnhancedCountryInfo } from "../types/models";
 import { PlayIcon } from "@heroicons/react/20/solid";
@@ -35,7 +35,7 @@ export const CountrySelect = memo(function CountrySelect({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      <Popover.Trigger asChild>
         <Button
           role="combobox"
           aria-expanded={open}
@@ -44,8 +44,8 @@ export const CountrySelect = memo(function CountrySelect({
           {children}
           <PlayIcon className="h-3 w-3 rotate-90 opacity-50 self-center" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="max-h-96 w-64 overflow-auto">
+      </Popover.Trigger>
+      <Popover.Content className="max-h-96 w-72 overflow-auto">
         <Command
           filter={(value, search) => {
             if (search.length == 0) {
@@ -76,7 +76,7 @@ export const CountrySelect = memo(function CountrySelect({
             onSelect={select}
           />
         </Command>
-      </PopoverContent>
+      </Popover.Content>
     </Popover>
   );
 });

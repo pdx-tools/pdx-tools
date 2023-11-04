@@ -7,13 +7,17 @@ type IconButtonProps = ButtonProps & {
   icon: React.ReactNode;
 };
 
-export const IconButton = ({ tooltip, icon, ...rest }: IconButtonProps) => {
-  return (
-    <Tooltip>
-      <Tooltip.Trigger asChild>
-        <Button {...rest}>{icon}</Button>
-      </Tooltip.Trigger>
-      <Tooltip.Content className="max-w-xs">{tooltip}</Tooltip.Content>
-    </Tooltip>
-  );
-};
+export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
+  function IconButton({ tooltip, icon, ...rest }, ref) {
+    return (
+      <Tooltip>
+        <Tooltip.Trigger asChild>
+          <Button ref={ref} {...rest}>
+            {icon}
+          </Button>
+        </Tooltip.Trigger>
+        <Tooltip.Content className="max-w-xs">{tooltip}</Tooltip.Content>
+      </Tooltip>
+    );
+  },
+);

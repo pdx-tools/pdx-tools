@@ -5,7 +5,6 @@ import { ChartSideBarButton } from "@/features/eu4/features/charts";
 import { CountrySideBarButton } from "@/features/eu4/features/country-details";
 import { ProvinceSelectListener } from "./features/map/ProvinceSelectListener";
 import { UploadSideBarButton } from "@/features/eu4/features/upload";
-import { MapSettingsSideBarButton } from "@/features/eu4/features/settings";
 import { MapZoomSideBar } from "./components/zoom";
 import Head from "next/head";
 import {
@@ -15,7 +14,6 @@ import {
   useEu4Meta,
   useIsServerSaveFile,
   useSaveFilename,
-  useSelectedDate,
   useWatcher,
 } from "./store";
 import { useCanvasPointerEvents } from "./hooks/useCanvasPointerEvents";
@@ -31,7 +29,6 @@ import {
   FlagIcon,
   HomeIcon,
   InformationCircleIcon,
-  MapIcon,
 } from "@heroicons/react/24/outline";
 import { ChartAreaIcon } from "@/components/icons/ChartAreaIcon";
 import { FileSyncIcon } from "@/components/icons/FileSyncIcon";
@@ -39,7 +36,6 @@ import { FileSyncIcon } from "@/components/icons/FileSyncIcon";
 export const Eu4CanvasOverlay = () => {
   const router = useRouter();
   const serverFile = useIsServerSaveFile();
-  const mapDate = useSelectedDate();
   const meta = useEu4Meta();
   const filename = useSaveFilename();
   const map = useEu4Map();
@@ -74,10 +70,6 @@ export const Eu4CanvasOverlay = () => {
           </SideBarButton>
         </div>
 
-        <div className="flex justify-end overflow-hidden whitespace-nowrap pr-3 text-base opacity-60">
-          {mapDate.text.slice(0, mapDate.text.indexOf("-"))}
-        </div>
-
         <div className="flex justify-end overflow-hidden whitespace-nowrap">
           <InfoSideBarButton key="info">
             <span className="text-base">Save Info</span>
@@ -108,13 +100,6 @@ export const Eu4CanvasOverlay = () => {
           </CountrySideBarButton>
         </div>
 
-        <div className="flex justify-end overflow-hidden whitespace-nowrap">
-          <MapSettingsSideBarButton key="settings">
-            <span className="text-base">Map / timelapse settings</span>
-            <MapIcon className="h-8 w-8 stroke-2" />
-          </MapSettingsSideBarButton>
-        </div>
-
         {!serverFile ? (
           <div className="flex justify-end overflow-hidden whitespace-nowrap">
             <WatchSideBarButton key="watch">
@@ -138,7 +123,7 @@ export const Eu4CanvasOverlay = () => {
       {watcher.status != "idle" ? (
         <Tooltip>
           <Tooltip.Trigger>
-            <div className="fixed bottom-0 left-0 touch-none select-none border-2 border-solid border-black bg-gray-800 p-1">
+            <div className="fixed top-0 left-0 touch-none select-none border-2 border-solid border-black bg-gray-800 p-1">
               <div className="h-[56px] w-[56px] rounded-full bg-teal-500"></div>
             </div>
           </Tooltip.Trigger>

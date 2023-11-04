@@ -8,6 +8,7 @@ import { BrowserCheck } from "@/components/landing/BrowserCheck";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { MapTip } from "./features/map/MapTip";
+import { Timelapse } from "./features/settings/Timelapse";
 
 type Eu4UiProps = {
   save: Eu4SaveInput;
@@ -46,7 +47,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
       ) : null}
 
       <div
-        className="absolute inset-0 right-14 overflow-hidden rounded-r-3xl"
+        className="absolute inset-0 right-14 overflow-hidden rounded-tr-3xl"
         ref={mapContainer}
       >
         <TrackingCanvas ref={mapCanvas} />
@@ -54,9 +55,14 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
 
       {data !== null ? (
         <Eu4StoreProvider store={data}>
+          <div className="flex fixed bottom-0 left-0 text-white items-end w-[calc(100%-56px)]">
+            <Timelapse />
+          </div>
+
           <div className="group absolute bottom-0 right-0 top-0 w-14 bg-[#001529] transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">
             <Eu4CanvasOverlay />
           </div>
+
           <MapTip />
         </Eu4StoreProvider>
       ) : null}

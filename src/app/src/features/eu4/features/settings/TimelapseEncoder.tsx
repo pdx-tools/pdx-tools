@@ -6,6 +6,8 @@ import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4Target } from "mp4-muxer";
 import { WebGLMap } from "map";
 import { Eu4Worker, getEu4Worker } from "../../worker";
 import { Eu4Store } from "../../store";
+import { log } from "@/lib/log";
+import { formatInt } from "@/lib/format";
 
 export async function* mapTimelapseCursor(
   ...args: Parameters<Eu4Worker["mapTimelapse"]>
@@ -179,15 +181,15 @@ export class TimelapseEncoder {
     ) {
       for (const [codec, muxCodec] of codecs) {
         try {
-          const canvasRate =
-            (recordingCanvas.height * recordingCanvas.width) / 4;
-          const bitrate = canvasRate * (fps / 15) + 200_000;
+          const canvasRate = recordingCanvas.height * recordingCanvas.width;
+          const bitrate = canvasRate * (fps / 8);
+          log(`calculated bitrate: ${formatInt(bitrate / 1000)}kbps`);
           const support = await VideoEncoder.isConfigSupported({
             codec: codec,
             height,
             width,
             bitrateMode: "variable",
-            bitrate: Math.min(bitrate, 2_000_000),
+            bitrate: Math.min(bitrate, 10_000_000),
             framerate: fps,
           });
 

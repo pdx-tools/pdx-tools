@@ -19,20 +19,22 @@ export const ToggleRow = ({
 }: ToggleRowProps) => {
   const id = useId();
   return (
-    <div className="flex gap-4">
-      <Switch
-        className="peer"
-        disabled={disabled}
-        id={id}
-        checked={value}
-        onCheckedChange={onChange}
-      />
-      <label
-        htmlFor={id}
-        className="cursor-pointer select-none peer-disabled:cursor-not-allowed peer-disabled:text-gray-400"
-      >
-        {text}
-      </label>
+    <div className="flex">
+      <div className="flex gap-4">
+        <Switch
+          className="peer"
+          disabled={disabled}
+          id={id}
+          checked={value}
+          onCheckedChange={onChange}
+        />
+        <label
+          htmlFor={id}
+          className="cursor-pointer select-none peer-disabled:cursor-not-allowed peer-disabled:text-gray-400"
+        >
+          {text}
+        </label>
+      </div>
       {help && <HelpTooltip className="ml-1" help={help} />}
     </div>
   );

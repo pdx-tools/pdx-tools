@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { downloadData } from "@/lib/downloadData";
 import { provinceIdToColorIndexInvert } from "@/features/eu4/features/map/resources";
 import { useIsDeveloper } from "@/features/account";
@@ -13,18 +13,16 @@ import {
 } from "../../store";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { Button } from "@/components/Button";
+import { LoadingIcon } from "@/components/icons/LoadingIcon";
 
-interface MapExportMenuProps {
-  setIsExporting: (arg: boolean) => void;
-}
-
-export const MapExportMenu = ({ setIsExporting }: MapExportMenuProps) => {
+export const MapExportMenu = () => {
   const meta = useEu4Meta();
   const isDeveloper = useIsDeveloper();
   const map = useEu4Map();
   const terrainOverlay = useTerrainOverlay();
   const mapMode = useEu4MapMode();
   const store = useEu4Context();
+  const [isExporting, setIsExporting] = useState(false);
 
   const colorCb = useCallback(async () => {
     const mapPayload = selectMapPayload(store.getState());
@@ -80,45 +78,55 @@ export const MapExportMenu = ({ setIsExporting }: MapExportMenuProps) => {
   };
 
   return (
-    <>
-      <DropdownMenu.Item asChild>
-        <Button variant="default" className="w-full" onClick={exportView}>
-          View
+    <DropdownMenu>
+      <DropdownMenu.Trigger asChild>
+        <Button variant="default" className="text-xs">
+          {isExporting ? (
+            <LoadingIcon className="h-4 w-4 text-gray-800 mr-2" />
+          ) : null}
+          Export
         </Button>
-      </DropdownMenu.Item>
-      <DropdownMenu.Item asChild>
-        <Button variant="default" className="w-full" onClick={exportFullView}>
-          World
-        </Button>
-      </DropdownMenu.Item>
-      <DropdownMenu.Item asChild>
-        <Button variant="default" className="w-full" onClick={exportFullView2x}>
-          World (2x)
-        </Button>
-      </DropdownMenu.Item>
-      {isDeveloper ? (
-        <>
-          <DropdownMenu.Item asChild>
-            <Button
-              variant="default"
-              className="w-full"
-              onClick={exportFullView3x}
-            >
-              World (3x)
-            </Button>
-          </DropdownMenu.Item>
-          <DropdownMenu.Item asChild>
-            <Button variant="default" className="w-full" onClick={colorCb}>
-              Color Data
-            </Button>
-          </DropdownMenu.Item>
-          <DropdownMenu.Item asChild>
-            <Button variant="default" className="w-full" onClick={indicesCb}>
-              Index Data
-            </Button>
-          </DropdownMenu.Item>
-        </>
-      ) : null}
-    </>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content className="w-40">
+        <DropdownMenu.Item asChild>
+          <Button variant="ghost" className="w-full" onClick={exportView}>
+            Map
+          </Button>
+        </DropdownMenu.Item>
+        <DropdownMenu.Item asChild>
+          <Button variant="ghost" className="w-full" onClick={exportFullView}>
+            World (1:1)
+          </Button>
+        </DropdownMenu.Item>
+        <DropdownMenu.Item asChild>
+          <Button variant="ghost" className="w-full" onClick={exportFullView2x}>
+            World (2:1)
+          </Button>
+        </DropdownMenu.Item>
+        {isDeveloper ? (
+          <>
+            <DropdownMenu.Item asChild>
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={exportFullView3x}
+              >
+                World (3x)
+              </Button>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item asChild>
+              <Button variant="ghost" className="w-full" onClick={colorCb}>
+                Color Data
+              </Button>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item asChild>
+              <Button variant="ghost" className="w-full" onClick={indicesCb}>
+                Index Data
+              </Button>
+            </DropdownMenu.Item>
+          </>
+        ) : null}
+      </DropdownMenu.Content>
+    </DropdownMenu>
   );
 };

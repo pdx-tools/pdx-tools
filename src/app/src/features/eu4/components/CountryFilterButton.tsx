@@ -3,9 +3,9 @@ import { Select } from "@/components/Select";
 import { useEu4Actions, useTagFilter } from "../store";
 import { Button } from "@/components/Button";
 import { FunnelIcon } from "@heroicons/react/24/outline";
-import { Sheet } from "@/components/Sheet";
 import { CountrySelect } from "./CountrySelect";
 import { ToggleRow } from "../features/settings/ToggleRow";
+import { Dialog } from "@/components/Dialog";
 
 type AiState = ReturnType<typeof useTagFilter>["ai"];
 const simpleFilter = (x: AiState) => {
@@ -47,8 +47,7 @@ export const CountryFilterButton = () => {
         <Select.Item value="great">+ Greats</Select.Item>
         <Select.Item value="all">+ Rest</Select.Item>
 
-        <Sheet
-          modal={false}
+        <Dialog
           open={drawerOpen}
           onOpenChange={(drawerOpen) => {
             if (!drawerOpen) {
@@ -57,31 +56,27 @@ export const CountryFilterButton = () => {
             setDrawerOpen(drawerOpen);
           }}
         >
-          <Sheet.Trigger asChild>
+          <Dialog.Trigger asChild>
             <Button
               className="ml-1 mt-2 w-full justify-center"
               variant="default"
             >
               Custom
             </Button>
-          </Sheet.Trigger>
-          <Sheet.Content
-            side="right"
-            className="flex z-[1001] flex-col bg-white pt-4 w-[400px] transition-[width] duration-200"
-          >
-            <Sheet.Header className="z-[1] flex gap-2 px-4 pb-4 shadow-md items-center">
-              <Sheet.Close />
-              <Sheet.Title>Custom Country Filter</Sheet.Title>
-            </Sheet.Header>
-            <Sheet.Body className="px-4 pt-6 flex flex-col gap-2">
-              <div>
-                <p>Include Countries:</p>
-                <CountryFilterSelect action="include" />
-              </div>
+          </Dialog.Trigger>
+          <Dialog.Content>
+            <Dialog.Title>Custom Country Filter</Dialog.Title>
+            <div className="px-4 flex flex-col gap-2">
+              <div className="flex justify-between">
+                <div>
+                  <p>Include Countries:</p>
+                  <CountryFilterSelect action="include" />
+                </div>
 
-              <div>
-                <p>Exclude Countries:</p>
-                <CountryFilterSelect action="exclude" />
+                <div>
+                  <p>Exclude Countries:</p>
+                  <CountryFilterSelect action="exclude" />
+                </div>
               </div>
 
               <ToggleRow
@@ -89,9 +84,14 @@ export const CountryFilterButton = () => {
                 onChange={(x) => updateTagFilter({ includeSubjects: x })}
                 text="Include Subjects"
               />
-            </Sheet.Body>
-          </Sheet.Content>
-        </Sheet>
+            </div>
+            <div className="flex justify-end">
+              <Dialog.Close asChild>
+                <Button variant="default">Ok</Button>
+              </Dialog.Close>
+            </div>
+          </Dialog.Content>
+        </Dialog>
       </Select.Content>
     </Select>
   );

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Image from "next/image";
-import map from "./gallery-map.png";
-import mapThumbnail from "./gallery-map-thumbnail.png";
+import map from "./gallery-map.webp";
+import mapThumbnail from "./gallery-map-thumbnail.webp";
 import video from "./gallery-video.mp4";
 import videoThumbnail from "./video-thumbnail.png";
 import videoPoster from "./video-poster.png";
