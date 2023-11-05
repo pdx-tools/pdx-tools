@@ -6,6 +6,7 @@ import { FunnelIcon } from "@heroicons/react/24/outline";
 import { CountrySelect } from "./CountrySelect";
 import { ToggleRow } from "../features/settings/ToggleRow";
 import { Dialog } from "@/components/Dialog";
+import { formatList } from "@/lib/format";
 
 type AiState = ReturnType<typeof useTagFilter>["ai"];
 const simpleFilter = (x: AiState) => {
@@ -117,7 +118,7 @@ const CountryFilterSelect = ({ action }: { action: "include" | "exclude" }) => {
         return true;
       }}
     >
-      {tags.length === 0 ? "(None)" : tags.join(", ")}
+      {formatList(tags)}
     </CountrySelect>
   );
 };
