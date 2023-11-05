@@ -158,6 +158,30 @@ File storage is cost efficient when using low cost S3 compatible services like B
 
 Uploaded files are sent to S3 through the backend. This may be surprising, as when talking about uploading user content to S3, the default recommendation is to always use a presigned URL so that the user uploads directly to S3, bypassing the backend. However, the simplicity of sending files through the backend to be parsed and persisted to the database in the same step as the upload should not be underestimated. Even though this required splitting Next.js hosting between providers to avoid the Vercel body limit, this compromise has still been worth it. Read the [dedicated article](https://nickb.dev/blog/split-nextjs-across-hosting-providers-and-advocate-for-direct-s3-uploads/) for more information.
 
+## EU4 new dlc instructions
+
+ - Generate [province terrain mapping](https://pdx.tools/blog/calculating-eu4-province-terrain):
+   - Start new normal game as France
+   - [Run](https://eu4.paradoxwikis.com/Run_files) [`terrain-script.txt`](assets/game/eu4/common/terrain-script.txt)
+   - Save file as `terrain-<major.minor>.eu4`
+   - Upload file to `terrain` directory in the eu4saves-test-cases S3 bucket
+ - Generate game bundle for repo
+   - Can be done from linux or windows (I needed to launch steam from the terminal in linux with `steam -cef-disable-gpu`)
+   - Assuming EU4 is found at `/tmp/eu4`, create a game bundle:
+     ```
+     just pdx create-bundle "/tmp/eu4" assets/game-bundles
+     ```
+   - Upload the new entry in assets/game-bundles to the game-bundles directory in the pdx-tools-build S3 bucket
+   - `just package-all`
+ - Add DLC info
+   - Commit new entry in [DLC name to ID resolver](https://github.com/rakaly/eu4save/blob/master/src/dlc.rs) as found in `Europa Universalis IV/dlc`
+   - Grab updated DLC resolver in pdx-tools repo with: `cargo update -p eu4save`
+   - Re-save the small DDS DLC icon in `gfx/interface` as `<dlc-id>_s.png` in the pdx-tools `dlc-images` folder
+   - Update [DLC ID to image resolver](https://github.com/pdx-tools/pdx-tools/blob/master/src/app/src/features/eu4/components/dlc-list/DlcList.tsx)
+ - Update achievement detection logic with any changes
+ - Add new 1444 entry for patch
+ - Generate binary tokens
+
 ## Manual Build Environment
 
 If not using vscode and the Dev Container, one can setup an environment manually.
