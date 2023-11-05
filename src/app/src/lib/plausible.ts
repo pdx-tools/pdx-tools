@@ -21,44 +21,15 @@ function getPlausible() {
 
 export type Event =
   | {
-      kind: "parse";
-      game: DetectedDataType;
-    }
-  | {
-      kind: "melt";
-      game: DetectedDataType;
-    }
-  | {
-      kind: "download";
+      kind: "parse" | "melt" | "download";
       game: DetectedDataType;
     }
   | {
       kind: "webgl";
-      maxTextureSize: number | null;
+      maxSize: number | null;
       performanceCaveat: boolean | null;
     };
 
-export function emitEvent(event: Event) {
-  const plausible = getPlausible();
-
-  switch (event.kind) {
-    case "download":
-    case "melt":
-    case "parse": {
-      plausible(event.kind, { props: { game: event.game } });
-      break;
-    }
-    case "webgl": {
-      plausible(event.kind, {
-        props: {
-          maxSize: event.maxTextureSize,
-          performanceCaveat: event.performanceCaveat,
-        },
-      });
-      break;
-    }
-    default: {
-      throw new Error("unrecognized event");
-    }
-  }
+export function emitEvent({ kind, ...props }: Event) {
+  getPlausible()(kind, { props });
 }

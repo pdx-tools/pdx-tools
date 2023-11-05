@@ -122,7 +122,7 @@ function genReport(): CompatibilityReport {
   const maxTextureSize = webgl2.enabled ? webgl2.textureSize.actual : null;
   const performanceCaveat = webgl2.enabled ? webgl2.performanceCaveat : null;
 
-  emitEvent({ kind: "webgl", maxTextureSize, performanceCaveat });
+  emitEvent({ kind: "webgl", maxSize: maxTextureSize, performanceCaveat });
 
   return {
     webgl2,
