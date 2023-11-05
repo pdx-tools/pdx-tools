@@ -1,22 +1,30 @@
-import { cx } from "class-variance-authority";
+import { VariantProps, cva, cx } from "class-variance-authority";
 import LinkPrimitive from "next/link";
 import React, { ComponentPropsWithoutRef } from "react";
 
+const linkVariants = cva("underline-offset-4 hover:underline", {
+  variants: {
+    variant: {
+      light: "text-teal-400",
+      dark: "text-sky-600",
+      ghost: "",
+    },
+  },
+  defaultVariants: {
+    variant: "dark",
+  },
+});
+
 export const Link = React.forwardRef<
   HTMLAnchorElement,
-  ComponentPropsWithoutRef<typeof LinkPrimitive> & {
-    variant?: "light" | "dark";
-  }
->(function Link({ className, variant = "dark", href, ...props }, ref) {
+  ComponentPropsWithoutRef<typeof LinkPrimitive> &
+    VariantProps<typeof linkVariants>
+>(function Link({ className, variant, href, ...props }, ref) {
   const isExternal = href.toString().startsWith("http");
 
   return (
     <LinkPrimitive
-      className={cx(
-        variant == "dark" ? "text-sky-600" : "text-teal-400",
-        "underline-offset-4 hover:underline",
-        className,
-      )}
+      className={cx(linkVariants({ variant }), className)}
       href={href}
       ref={ref}
       {...props}
