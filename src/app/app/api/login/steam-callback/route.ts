@@ -18,10 +18,10 @@ const handler = async (
 
   const db = await dbConn;
   const users = await db
-    .select({ userId: table.users.userId })
+    .select({ userId: table.users.userId, account: table.users.account })
     .from(table.users)
     .where(eq(table.users.steamId, steamUid));
-  const user = users[0];
+  const user = users.at(0);
 
   const userId = user?.userId ?? genId(12);
   if (!user) {
@@ -35,7 +35,7 @@ const handler = async (
   const cookie = await newSessionCookie({
     userId,
     steamId: steamUid,
-    account: "free",
+    account: user?.account ?? "free",
   });
 
   const dest = new URL(getEnv("EXTERNAL_ADDRESS"));
