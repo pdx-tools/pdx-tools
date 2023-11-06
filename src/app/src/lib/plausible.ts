@@ -25,6 +25,17 @@ export type Event =
       game: DetectedDataType;
     }
   | {
+      kind: "play-timelapse" | "record-timelapse" | "watch-save";
+    }
+  | {
+      kind: "map-mode";
+      mode: string;
+    }
+  | {
+      kind: "country-details" | "world-details";
+      section: string;
+    }
+  | {
       kind: "webgl";
       maxSize: number | null;
       performanceCaveat: boolean | null;

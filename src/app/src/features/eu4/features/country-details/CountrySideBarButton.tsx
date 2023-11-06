@@ -40,6 +40,7 @@ import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
 import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
 import { CountrySelect } from "../../components/CountrySelect";
+import { emitEvent } from "@/lib/plausible";
 
 export const CountrySideBarButton = ({
   children,
@@ -157,7 +158,13 @@ const CountryDetailsContent = () => {
         </div>
       ) : null}
 
-      <Tabs defaultValue="General" className="flex h-full max-h-full flex-col">
+      <Tabs
+        defaultValue="General"
+        className="flex h-full max-h-full flex-col"
+        onValueChange={(section) => {
+          emitEvent({ kind: "country-details", section });
+        }}
+      >
         <Tabs.List className="mt-3 w-full max-w-full overflow-x-auto border-0 px-4 shadow-md">
           <Tabs.Trigger value="General">General</Tabs.Trigger>
           <Tabs.Trigger value="Advisors">Advisors</Tabs.Trigger>

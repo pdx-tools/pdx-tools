@@ -15,6 +15,7 @@ import {
 import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
 import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
 import { PlayIcon } from "@heroicons/react/20/solid";
+import { emitEvent } from "@/lib/plausible";
 
 const vizModuleDisplayLimit = (module: VizModules) => {
   switch (module) {
@@ -66,7 +67,10 @@ export const ChartDrawerTitle = ({
 
       <Select
         value={selectedViz}
-        onValueChange={(e: VizModules) => setSelectedViz(e)}
+        onValueChange={(e: VizModules) => {
+          emitEvent({ kind: "world-details", section: e });
+          setSelectedViz(e);
+        }}
       >
         <Select.Trigger asChild className="h-10 w-60">
           <Button>

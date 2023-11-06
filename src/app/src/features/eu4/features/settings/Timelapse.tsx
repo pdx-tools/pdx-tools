@@ -35,6 +35,7 @@ import { cx } from "class-variance-authority";
 import { ErrorDialog } from "@/components/ErrorDialog";
 import { Link } from "@/components/Link";
 import { Alert } from "@/components/Alert";
+import { emitEvent } from "@/lib/plausible";
 
 interface MapState {
   focusPoint: [number, number];
@@ -80,6 +81,7 @@ export const Timelapse = () => {
   );
 
   const startTimelapse = async () => {
+    emitEvent({ kind: "play-timelapse" });
     setIsPlaying(true);
     stopTimelapseReq.current = false;
 
@@ -106,6 +108,7 @@ export const Timelapse = () => {
   };
 
   const startRecording = async () => {
+    emitEvent({ kind: "record-timelapse" });
     setIsRecording(true);
 
     let savedMapStateRef: MapState | undefined;

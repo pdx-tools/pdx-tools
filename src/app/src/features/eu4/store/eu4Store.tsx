@@ -19,6 +19,7 @@ import type {
   MapTimelapseItem,
 } from "../worker/module";
 import { proxy } from "comlink";
+import { emitEvent } from "@/lib/plausible";
 
 export const emptyEu4CountryFilter: CountryMatcher = {
   players: "none",
@@ -168,6 +169,7 @@ export const createEu4Store = async ({
         }
 
         set({ mapMode: mode });
+        emitEvent({ kind: "map-mode", mode });
         syncMapSettings(get());
         await get().actions.updateProvinceColors();
         get().map.redrawMapImage();
@@ -244,6 +246,7 @@ export const createEu4Store = async ({
         getEu4Worker().startFileObserver(
           frequency,
           proxy(async ({ meta, achievements }) => {
+            emitEvent({ kind: "watch-save" });
             get().actions.updateSave({
               meta,
               achievements,
