@@ -35,12 +35,12 @@ export const DiploRow = <T,>({
   children,
 }: {
   title: string;
-  relations: ({ tag: string; name: string } & T)[];
+  relations: ({ tag: string; name: string } & T)[] | undefined;
   children: (arg: T) => React.ReactNode;
 }) => {
   const rowClass = `grid w-full gap-2 grid-cols-[repeat(auto-fill,_minmax(204px,_1fr))]`;
 
-  if (relations.length == 0) {
+  if (relations === undefined || relations.length == 0) {
     return null;
   }
 
@@ -60,6 +60,20 @@ export const DiploRow = <T,>({
   );
 };
 
+const genericSubjects = [
+  ["vassal", "Vassals"],
+  ["eyalet", "Eyalets"],
+  ["core_eyalet", "Core Eyalets"],
+  ["appanage", "Appanages"],
+  ["tributary_state", "Tributaries"],
+  ["hereditary_pronoia_subject_type", "Hereditary Pronoias"],
+  ["pronoia_subject_type", "Pronoias"],
+] as const;
+
+const genericSubjectTypes = new Set(
+  genericSubjects.map(([type]) => type as string),
+);
+
 export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
   const dip = useMemo(
     () => details.diplomacy.map(({ data, ...rest }) => ({ ...rest, ...data })),
@@ -72,23 +86,19 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
     [details.tag],
   );
 
+  const deps = useMemo(
+    () =>
+      dip
+        .filter(isOfType("Dependency"))
+        .filter((x) => x.first.tag === details.tag)
+        .map((x) => ({ ...x, ...x.second })),
+    [dip, details.tag],
+  );
+
   const juniorPartners = useMemo(
     () =>
       dip.filter(isOfType("JuniorPartner")).map((x) => ({ ...x, ...notMe(x) })),
     [dip, notMe],
-  );
-
-  const vassals = useMemo(
-    () =>
-      dip
-        .filter(
-          (x) =>
-            x.kind === "Dependency" &&
-            x.first.tag === details.tag &&
-            x.subject_type === "vassal",
-        )
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
   );
 
   const overlord = useMemo(
@@ -98,65 +108,9 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           (x) =>
             x.kind === "Dependency" &&
             x.second.tag === details.tag &&
-            (x.subject_type === "vassal" ||
-              x.subject_type == "personal_union" ||
-              x.subject_type == "core_eyalet" ||
-              x.subject_type == "eyalet" ||
-              x.subject_type == "appanage" ||
-              x.subject_type == "tributary_state" ||
+            (x.subject_type == "personal_union" ||
+              genericSubjectTypes.has(x.subject_type) ||
               isColony(x.subject_type)),
-        )
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
-  );
-
-  const coreEyalets = useMemo(
-    () =>
-      dip
-        .filter(
-          (x) =>
-            x.kind === "Dependency" &&
-            x.first.tag === details.tag &&
-            x.subject_type === "core_eyalet",
-        )
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
-  );
-
-  const eyalets = useMemo(
-    () =>
-      dip
-        .filter(
-          (x) =>
-            x.kind === "Dependency" &&
-            x.first.tag === details.tag &&
-            x.subject_type === "eyalet",
-        )
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
-  );
-
-  const appanages = useMemo(
-    () =>
-      dip
-        .filter(
-          (x) =>
-            x.kind === "Dependency" &&
-            x.first.tag === details.tag &&
-            x.subject_type === "appanage",
-        )
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
-  );
-
-  const tributaries = useMemo(
-    () =>
-      dip
-        .filter(
-          (x) =>
-            x.kind === "Dependency" &&
-            x.first.tag === details.tag &&
-            x.subject_type === "tributary_state",
         )
         .map((x) => ({ ...x, ...notMe(x) })),
     [dip, notMe, details.tag],
@@ -290,25 +244,15 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           {(x) => <RelationshipSince x={x} />}
         </DiploRow>
 
-        <DiploRow title="Vassals" relations={vassals}>
-          {(x) => <RelationshipSince x={x} />}
-        </DiploRow>
-
-        <DiploRow title="Appanage" relations={appanages}>
-          {(x) => <RelationshipSince x={x} />}
-        </DiploRow>
-
-        <DiploRow title="Core Eyalets" relations={coreEyalets}>
-          {(x) => <RelationshipSince x={x} />}
-        </DiploRow>
-
-        <DiploRow title="Eyalets" relations={eyalets}>
-          {(x) => <RelationshipSince x={x} />}
-        </DiploRow>
-
-        <DiploRow title="Tributaries" relations={tributaries}>
-          {(x) => <RelationshipSince x={x} />}
-        </DiploRow>
+        {genericSubjects.map(([type, name]) => (
+          <DiploRow
+            key={type}
+            title={name}
+            relations={deps.filter((x) => x.subject_type === type)}
+          >
+            {(x) => <RelationshipSince x={x} />}
+          </DiploRow>
+        ))}
 
         <DiploRow title="Colonies" relations={colonies}>
           {(x) => (
