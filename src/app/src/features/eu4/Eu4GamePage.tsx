@@ -12,6 +12,7 @@ const saves = [
   ["1.33", "/eu4/saves/o22v44qsdhif"],
   ["1.34", "/eu4/saves/6h5y5wra5lco"],
   ["1.35", "/eu4/saves/9364azxkhger"],
+  ["1.36", "/eu4/saves/2y02s2d41qa2"],
 ] as const;
 
 export const Eu4GamePage = () => {
