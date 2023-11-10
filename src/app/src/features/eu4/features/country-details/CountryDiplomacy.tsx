@@ -29,13 +29,13 @@ const RelationshipSince = ({
   );
 };
 
-export const DiploRow = <T,>({
+export const DiploRow = <T extends { tag: string; name: string }>({
   title,
   relations,
   children,
 }: {
   title: string;
-  relations: ({ tag: string; name: string } & T)[] | undefined;
+  relations: T[] | undefined;
   children: (arg: T) => React.ReactNode;
 }) => {
   const rowClass = `grid w-full gap-2 grid-cols-[repeat(auto-fill,_minmax(204px,_1fr))]`;
@@ -126,107 +126,35 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
   );
 
   const allies = useMemo(
-    () =>
-      dip
-        .filter((x) => x.kind === "Alliance")
-        .map((x) => ({ ...x, ...notMe(x) })),
+    () => dip.filter(isOfType("Alliance")).map((x) => ({ ...x, ...notMe(x) })),
     [dip, notMe],
   );
 
   const marriages = useMemo(
     () =>
-      dip
-        .filter((x) => x.kind === "RoyalMarriage")
-        .map((x) => ({ ...x, ...notMe(x) })),
+      dip.filter(isOfType("RoyalMarriage")).map((x) => ({ ...x, ...notMe(x) })),
     [dip, notMe],
   );
 
-  const warned = useMemo(
-    () =>
-      dip
-        .filter((x) => x.kind === "Warning" && x.first.tag === details.tag)
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
-  );
+  const relations = <T extends (typeof dip)[number]>(relations: T[]) => {
+    const to = relations.filter((x) => x.first.tag === details.tag);
+    const from = relations.filter((x) => x.second.tag === details.tag);
+    return [
+      to.map((x) => ({ ...x, ...x.second })),
+      from.map((x) => ({ ...x, ...x.first })),
+    ];
+  };
 
-  const warnedBy = useMemo(
-    () =>
-      dip
-        .filter((x) => x.kind === "Warning" && x.second.tag === details.tag)
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
+  const [warned, warnedBy] = relations(dip.filter(isOfType("Warning")));
+  const [subsidizing, subsidized] = relations(dip.filter(isOfType("Subsidy")));
+  const [reparationsGiving, reparationsReceiving] = relations(
+    dip.filter(isOfType("Reparations")),
   );
-
-  const subsidizing = useMemo(
-    () =>
-      dip
-        .filter(isOfType("Subsidy"))
-        .filter((x) => x.first.tag === details.tag)
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
+  const [tradePowerGiving, tradePowerReceiving] = relations(
+    dip.filter(isOfType("TransferTrade")),
   );
-
-  const subsidized = useMemo(
-    () =>
-      dip
-        .filter(isOfType("Subsidy"))
-        .filter((x) => x.second.tag === details.tag)
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
-  );
-
-  const reparationsReceiving = useMemo(
-    () =>
-      dip
-        .filter(isOfType("Reparations"))
-        .filter((x) => x.second.tag === details.tag)
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
-  );
-
-  const reparationsGiving = useMemo(
-    () =>
-      dip
-        .filter(isOfType("Reparations"))
-        .filter((x) => x.first.tag === details.tag)
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
-  );
-
-  const tradePowerReceiving = useMemo(
-    () =>
-      dip
-        .filter(
-          (x) => x.kind === "TransferTrade" && x.second.tag === details.tag,
-        )
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
-  );
-
-  const tradePowerGiving = useMemo(
-    () =>
-      dip
-        .filter(
-          (x) => x.kind === "TransferTrade" && x.first.tag === details.tag,
-        )
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
-  );
-
-  const steerTradeReceiving = useMemo(
-    () =>
-      dip
-        .filter((x) => x.kind === "SteerTrade" && x.second.tag === details.tag)
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
-  );
-
-  const steerTradeGiving = useMemo(
-    () =>
-      dip
-        .filter((x) => x.kind === "SteerTrade" && x.first.tag === details.tag)
-        .map((x) => ({ ...x, ...notMe(x) })),
-    [dip, notMe, details.tag],
+  const [steerTradeGiving, steerTradeReceiving] = relations(
+    dip.filter(isOfType("SteerTrade")),
   );
 
   return (
