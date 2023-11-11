@@ -280,7 +280,13 @@ impl Eu4Parser {
                         .size()
                         .max(gamestate_file.size())
                         .max(ai_file.size());
-                    let mut zip_sink = vec![0; max_size];
+
+                    // Previously pre-allocated with vec![0; max_size], but this
+                    // single memset was 10% in performance profile. That's why
+                    // we use this unsafe alternative.
+                    let mut zip_sink = Vec::with_capacity(max_size);
+                    unsafe { zip_sink.set_len(max_size) }
+
                     if zip.is_text() {
                         let meta_data = &mut zip_sink[..meta_file.size()];
                         meta_file.read_exact(meta_data)?;
