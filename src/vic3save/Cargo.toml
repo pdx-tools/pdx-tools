@@ -15,8 +15,8 @@ jomini = { version = "0.23", features = ["json"] }
 zip = { version =  "0.6", default-features = false }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"
-libdeflater = { version = "0.11", optional = true }
-miniz_oxide = { version = "0.6", optional = true }
+libdeflater = { version = "1.19", optional = true }
+miniz_oxide = { version = "0.7", optional = true }
 
 [dev-dependencies]
 zip = { version =  "0.6", default-features = false, features = ["deflate"] }

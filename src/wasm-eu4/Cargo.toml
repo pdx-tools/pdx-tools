@@ -23,7 +23,7 @@ eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = fa
 eu4game = { path = "../eu4game", default-features = false }
 schemas = { path = "../schemas" }
 tsify = { version = "0.4.5", default-features = false, features = ["js"] } 
-zstd = { version = "0.12.3", default-features = false }
+zstd = { version = "0.13.0", default-features = false }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.0"
