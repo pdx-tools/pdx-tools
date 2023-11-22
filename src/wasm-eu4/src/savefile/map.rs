@@ -751,7 +751,16 @@ impl OwnerTimelapse {
                 .countries
                 .iter()
                 .map(|(tag, country)| {
-                    let c = country.colors.color.unwrap_or(country.colors.map_color);
+                    let c = country
+                        .history
+                        .events
+                        .iter()
+                        .find_map(|(_, event)| match event {
+                            CountryEvent::ChangedCountryMapColorFrom(c) => Some(c),
+                            _ => None,
+                        })
+                        .unwrap_or(&country.colors.map_color);
+
                     (*tag, [c[0], c[1], c[2], 255])
                 })
                 .collect();
@@ -793,19 +802,62 @@ impl OwnerTimelapse {
             .countries
             .iter()
             .flat_map(|(tag, c)| {
-                c.history
+                let colors: Vec<_> = c
+                    .history
                     .events
                     .iter()
                     .filter_map(|(date, event)| match event {
-                        CountryEvent::ChangedCountryMapColorFrom(c) => Some(PoliticalEvent {
-                            date: *date,
-                            kind: PoliticalEventKind::ColorChange {
-                                tag: *tag,
-                                color: [c[0], c[1], c[2], 255],
-                            },
-                        }),
+                        CountryEvent::ChangedCountryMapColorFrom(c) => Some((*date, c)),
                         _ => None,
                     })
+                    .collect();
+
+                let mut events = Vec::with_capacity(colors.len());
+
+                // There is a color bug where the map color changes day 1 of the campaign.
+                // And everything needs to shift down a slot.
+                // See: https://pdx.tools/eu4/saves/UJjFWjkNuOyeECXZRGqhI
+                let has_color_bug = colors
+                    .last()
+                    .map_or(false, |(_, col)| **col == c.colors.map_color);
+
+                if has_color_bug {
+                    let event_iter = colors.iter().map(|(date, col)| PoliticalEvent {
+                        date: *date,
+                        kind: PoliticalEventKind::ColorChange {
+                            tag: *tag,
+                            color: [col[0], col[1], col[2], 255],
+                        },
+                    });
+                    events.extend(event_iter);
+                } else {
+                    // Otherwise we need to overlap the color changes so that we
+                    // can know what the color changes to on a given date.
+                    let mut colors_iter = colors.into_iter();
+                    if let Some((mut current_date, _)) = colors_iter.next() {
+                        for (date, to) in colors_iter {
+                            events.push(PoliticalEvent {
+                                date: current_date,
+                                kind: PoliticalEventKind::ColorChange {
+                                    tag: *tag,
+                                    color: [to[0], to[1], to[2], 255],
+                                },
+                            });
+                            current_date = date;
+                        }
+
+                        let col = c.colors.map_color;
+                        events.push(PoliticalEvent {
+                            date: current_date,
+                            kind: PoliticalEventKind::ColorChange {
+                                tag: *tag,
+                                color: [col[0], col[1], col[2], 255],
+                            },
+                        });
+                    }
+                }
+
+                events.into_iter()
             });
 
         let mut events: Vec<_> = if matches!(tracking, ProvinceTracking::OwnerAndController) {
