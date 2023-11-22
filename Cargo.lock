@@ -718,7 +718,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/ck3save.git#88f825e69c6704c0c0d2bc7c0bca52849a0633ea"
+source = "git+https://github.com/rakaly/ck3save.git#d6a35448baaef0e4d0e2876a7dd75cf4be6df4ae"
 dependencies = [
  "jomini",
  "libdeflater",
@@ -1074,7 +1074,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#d948709c5de081dc7fb990e98172929a867cc68e"
+source = "git+https://github.com/rakaly/eu4save.git#10b9acd27b16b872587674b9996d1c5c256e5d14"
 dependencies = [
  "jomini",
  "libdeflater",
@@ -1329,7 +1329,7 @@ dependencies = [
 [[package]]
 name = "hoi4save"
 version = "0.3.4"
-source = "git+https://github.com/rakaly/hoi4save.git#6239946a26414d65d3497d96730bab6de6e9ebe1"
+source = "git+https://github.com/rakaly/hoi4save.git#5048cdc6289c427c1004835c64df2eb97e5af2b1"
 dependencies = [
  "jomini",
  "serde",
@@ -1457,7 +1457,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/imperator-save.git#7db3cab29f137b18eda2eed9a838e12125a37de1"
+source = "git+https://github.com/rakaly/imperator-save.git#057a07cb1d6f812297b74c209bc838381d2bf085"
 dependencies = [
  "jomini",
  "libdeflater",
@@ -1540,9 +1540,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.23.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "530ec944f6d5a983e716f30bc4d0c341ac9cdb3407499e990e76592a38bb0a6c"
+checksum = "e86b12b9bb9a94d68179ba79dc5c70067556be306636568d52860c7a5ec77e36"
 dependencies = [
  "jomini_derive",
  "serde",
@@ -1551,9 +1551,9 @@ dependencies = [
 
 [[package]]
 name = "jomini_derive"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "708b3655354ca22e0ba5c70fab085f14b53da09522f68d0ae84ef5e54d432c38"
+checksum = "29d12f3fe59690eba739a86f305cd085efc9e853b10908735f5ee28f0e743aec"
 dependencies = [
  "quote",
  "syn 1.0.109",
