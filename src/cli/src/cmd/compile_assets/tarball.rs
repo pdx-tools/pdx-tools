@@ -542,8 +542,11 @@ fn generate_countries(
 fn optimize_png<P: AsRef<Path>>(input: P) -> anyhow::Result<()> {
     let fp = input.as_ref();
     let mut opts = oxipng::Options::from_preset(2);
-    opts.strip = oxipng::Headers::Safe;
-    let out = oxipng::OutFile::Path(None);
+    opts.strip = oxipng::StripChunks::Safe;
+    let out = oxipng::OutFile::Path {
+        path: None,
+        preserve_attrs: true,
+    };
     oxipng::optimize(&fp.into(), &out, &opts)
         .with_context(|| format!("unable to optimize png: {}", fp.display()))
 }
@@ -1018,14 +1021,17 @@ pub fn translate_map(
             }
 
             let mut opts = oxipng::Options::from_preset(2);
-            opts.strip = oxipng::Headers::Safe;
+            opts.strip = oxipng::StripChunks::Safe;
             if *image == "provinces.bmp" {
                 opts.bit_depth_reduction = false;
                 opts.palette_reduction = false;
                 opts.color_type_reduction = false;
             }
 
-            let out = oxipng::OutFile::Path(None);
+            let out = oxipng::OutFile::Path {
+                path: None,
+                preserve_attrs: true,
+            };
             oxipng::optimize(&out_path.clone().into(), &out, &opts)
                 .with_context(|| format!("unable to optimize png: {}", out_path.display()))?
         }
