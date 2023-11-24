@@ -1,11 +1,10 @@
-ARG NODE_VERSION=18
-FROM mcr.microsoft.com/devcontainers/javascript-node:0-${NODE_VERSION}
+ARG NODE_VERSION=20
+FROM mcr.microsoft.com/devcontainers/javascript-node:1.0-${NODE_VERSION}-bookworm
 ARG JUST_VERSION=1.5.0
 
 RUN apt-get update && apt-get install -y \
       clang \
       imagemagick \
-      netcat \
       openssl \
       zstd \
     && \
