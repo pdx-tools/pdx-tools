@@ -285,7 +285,13 @@ impl Eu4Parser {
                     // single memset was 10% in performance profile. That's why
                     // we use this unsafe alternative.
                     let mut zip_sink = Vec::with_capacity(max_size);
-                    unsafe { zip_sink.set_len(max_size) }
+
+                    // This is safe as the "read_exact" method guarantee to
+                    // initialize the entire passed in buffer.
+                    #[allow(clippy::uninit_vec)]
+                    unsafe {
+                        zip_sink.set_len(max_size)
+                    }
 
                     if zip.is_text() {
                         let meta_data = &mut zip_sink[..meta_file.size()];

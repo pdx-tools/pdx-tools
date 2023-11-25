@@ -17,7 +17,7 @@ fn main() {
     }
 
     let out_path = Path::new(&env::var("OUT_DIR").unwrap()).join("gen_tokens.rs");
-    let mut writer = BufWriter::new(File::create(&out_path).unwrap());
+    let mut writer = BufWriter::new(File::create(out_path).unwrap());
 
     for game in &["eu4", "ck3", "hoi4", "imperator", "vic3"] {
         let mut pascal = String::from(*game);

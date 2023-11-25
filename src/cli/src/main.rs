@@ -2,7 +2,7 @@ mod cli;
 
 /* Commands */
 
-#[cfg(any(feature = "compile_assets"))]
+#[cfg(feature = "compile_assets")]
 #[path = "cmd/compile_assets/mod.rs"]
 mod compile_assets;
 #[cfg(feature = "create_bundle")]

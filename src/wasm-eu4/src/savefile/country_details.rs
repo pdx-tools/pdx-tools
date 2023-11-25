@@ -1490,7 +1490,7 @@ impl SaveFileImpl {
                     })
                     .collect();
 
-                privileges.sort_by(|(privilege, _), (bprivilege, _)| privilege.cmp(&bprivilege));
+                privileges.sort_by(|(privilege, _), (bprivilege, _)| privilege.cmp(bprivilege));
 
                 let mut influence_modifiers: Vec<_> = x
                     .influence_modifiers

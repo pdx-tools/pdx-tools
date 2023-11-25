@@ -56,7 +56,7 @@ impl ReprocessArgs {
 
             let save_id = String::from(path.file_name().unwrap().to_str().unwrap());
             if let Some(existing) = existing_records.get(&save_id) {
-                let diff = diff_saves(&existing, save)?;
+                let diff = diff_saves(existing, save)?;
 
                 if diff.has_change() {
                     saves.push(ReprocessEntry {

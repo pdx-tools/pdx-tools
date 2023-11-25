@@ -129,12 +129,10 @@ impl SaveFileImpl {
             }
 
             let insert = if players.contains(tag) {
-                match (payload.players, country.num_of_cities) {
-                    (TagsState::All, _) => true,
-                    (TagsState::Dead, x) if x == 0 => true,
-                    (TagsState::Alive, x) if x != 0 => true,
-                    _ => false,
-                }
+                matches!(
+                    (payload.players, country.num_of_cities),
+                    (TagsState::All, _) | (TagsState::Dead, 0) | (TagsState::Alive, _)
+                )
             } else {
                 match (payload.ai, country) {
                     (AiTagsState::All, _) => true,

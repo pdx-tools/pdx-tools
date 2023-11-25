@@ -1116,7 +1116,6 @@ impl SaveFileImpl {
             .game
             .players_countries
             .chunks_exact(2)
-            .into_iter()
             .map(|d| (d[1].as_str(), d[0].as_str()))
             .collect()
     }
@@ -1165,11 +1164,10 @@ impl SaveFileImpl {
             .game
             .countries
             .iter()
-            .filter_map(|(tag, country)| {
-                country.luck.then(|| LocalizedTag {
-                    tag: *tag,
-                    name: save_game_query.localize_country(&tag),
-                })
+            .filter(|(_, country)| country.luck)
+            .map(|(tag, _)| LocalizedTag {
+                tag: *tag,
+                name: save_game_query.localize_country(tag),
             })
             .collect();
         v.sort_unstable_by(|a, b| a.name.cmp(&b.name));
@@ -1193,7 +1191,7 @@ impl SaveFileImpl {
     }
 
     pub fn localize_country(&self, tag: String) -> String {
-        if let Some(tag) = tag.parse::<CountryTag>().ok() {
+        if let Ok(tag) = tag.parse::<CountryTag>() {
             let save_game_query = SaveGameQuery::new(&self.query, &self.game);
             save_game_query.localize_country(&tag)
         } else {

@@ -39,6 +39,8 @@ macro_rules! wasm_wrapper {
         #[tsify(into_wasm_abi)]
         #[serde(transparent)]
         pub struct $name($ty);
+
+        #[allow(clippy::from_over_into)]
         impl Into<$name> for $ty {
             fn into(self) -> $name {
                 $name(self)
@@ -221,7 +223,7 @@ impl SaveFile {
     }
 
     pub fn get_country_province_religion(&self, tag: &str) -> CountryReligions {
-        self.0.get_country_province_religion(tag).into()
+        self.0.get_country_province_religion(tag)
     }
 
     pub fn get_country_province_culture(&self, tag: &str) -> CountryCultures {
