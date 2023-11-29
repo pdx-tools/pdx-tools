@@ -8,6 +8,7 @@ import { STEAM_URL } from "../steam/route";
 import { fetchOk, fetchOkJson } from "@/lib/fetch";
 import { genId } from "@/server-lib/id";
 import { withCore } from "@/server-lib/middleware";
+import { check } from "@/lib/isPresent";
 
 const handler = async (
   _req: NextRequest,
@@ -21,15 +22,19 @@ const handler = async (
     .select({ userId: table.users.userId, account: table.users.account })
     .from(table.users)
     .where(eq(table.users.steamId, steamUid));
-  const user = users.at(0);
+  let user = users.at(0);
 
   const userId = user?.userId ?? genId(12);
   if (!user) {
-    await db.insert(table.users).values({
-      userId,
-      steamId: steamUid,
-      steamName: steamName,
-    });
+    const [newUser] = await db
+      .insert(table.users)
+      .values({
+        userId,
+        steamId: steamUid,
+        steamName: steamName,
+      })
+      .returning();
+    user = check(newUser, "new user is not null");
   }
 
   const cookie = await newSessionCookie({

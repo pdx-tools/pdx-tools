@@ -4,6 +4,7 @@ import { table, withDb } from "@/server-lib/db";
 import { NextResponse } from "next/server";
 import { newSessionCookie } from "@/server-lib/auth/session";
 import { withCore } from "@/server-lib/middleware";
+import { check } from "@/lib/isPresent";
 
 export const runtime = isLocal() ? "nodejs" : "edge";
 
@@ -26,20 +27,24 @@ const handler = !isLocal()
           .select()
           .from(table.users)
           .where(eq(table.users.userId, TEST_UID));
-        const user = users[0];
+        let user = users[0];
 
         if (!user) {
-          await db.insert(table.users).values({
-            userId: TEST_UID,
-            steamId: "1000",
-            steamName: "my-steam-name",
-          });
+          const [newUser] = await db
+            .insert(table.users)
+            .values({
+              userId: TEST_UID,
+              steamId: "1000",
+              steamName: "my-steam-name",
+            })
+            .returning();
+          user = check(newUser, "new user is not null");
         }
 
         const cookie = await newSessionCookie({
           userId: TEST_UID,
           steamId: "1000",
-          account: "free",
+          account: user.account,
         });
         const dest = new URL("/", req.url);
         const response = NextResponse.redirect(dest, 302);
