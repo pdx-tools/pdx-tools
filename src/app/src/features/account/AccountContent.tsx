@@ -8,6 +8,7 @@ export const AccountContent = () => {
   const newKey = pdxApi.apiKey.useGenerateKey(setKey);
   const session = pdxApi.session.useCurrent();
   const rebalance = pdxApi.saves.useRebalance();
+  const reprocess = pdxApi.saves.useReprocess();
 
   return (
     <>
@@ -28,17 +29,41 @@ export const AccountContent = () => {
         </Button>
       </div>
       {sessionSelect.isAdmin(session) ? (
-        <Button
-          variant="primary"
-          onClick={() =>
-            rebalance.mutate(undefined, {
-              onSuccess: () => alert("success"),
-              onError: () => alert("failure"),
-            })
-          }
-        >
-          Rebalance saves
-        </Button>
+        <div className="flex flex-col w-60">
+          <Button
+            variant="primary"
+            onClick={() =>
+              rebalance.mutate(undefined, {
+                onSuccess: () => alert("success"),
+                onError: () => alert("failure"),
+              })
+            }
+          >
+            Rebalance saves
+          </Button>
+          <Button asChild>
+            <label>
+              Reprocess file
+              <input
+                className="absolute opacity-0"
+                type="file"
+                accept=".json"
+                onChange={async (e) => {
+                  if (e.currentTarget.files && e.currentTarget.files[0]) {
+                    const target = e.currentTarget;
+                    const file = e.currentTarget.files[0];
+                    let data = JSON.parse(await file.text());
+                    reprocess.mutate(data, {
+                      onSuccess: () => alert("success"),
+                      onError: () => alert("failure"),
+                    });
+                    target.value = "";
+                  }
+                }}
+              />
+            </label>
+          </Button>
+        </div>
       ) : null}
     </>
   );

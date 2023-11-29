@@ -191,6 +191,12 @@ export const pdxApi = {
         onSuccess: invalidateSaves,
       }),
 
+    useReprocess: () =>
+      useMutation({
+        mutationFn: (body: any) => sendJson("/api/admin/reprocess", { body }),
+        onSuccess: invalidateSaves,
+      }),
+
     useAdd: () =>
       useMutation({
         onSuccess: invalidateSaves,
