@@ -541,3 +541,19 @@ fn test_purify_the_temple() {
         .collect();
     assert!(completed_ids.contains(&344));
 }
+
+#[test]
+fn test_i_dont_like_sand() {
+    let data = utils::request("Anizah.eu4");
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
+    let game = Game::new(&save.meta.savegame_version);
+    let query = Query::from_save(save);
+    let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
+    let completed_ids: Vec<i32> = achievements
+        .achievements()
+        .iter()
+        .filter(|x| x.completed())
+        .map(|x| x.id)
+        .collect();
+    assert!(completed_ids.contains(&332));
+}

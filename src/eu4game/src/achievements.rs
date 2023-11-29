@@ -2369,8 +2369,9 @@ impl<'a> AchievementHunter<'a> {
         let most_dev = self
             .query
             .countries()
+            .filter(|x| x.tag != self.tag)
             .map(|x| x.country)
-            .all(|x| x.development < self.country.development);
+            .all(|x| x.raw_development < self.country.raw_development);
 
         let desc = "Have the most development";
         result.and(AchievementCondition::new(most_dev, desc));
