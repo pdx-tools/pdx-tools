@@ -1329,7 +1329,7 @@ dependencies = [
 [[package]]
 name = "hoi4save"
 version = "0.3.4"
-source = "git+https://github.com/rakaly/hoi4save.git#5048cdc6289c427c1004835c64df2eb97e5af2b1"
+source = "git+https://github.com/rakaly/hoi4save.git#b1e874b0bb770a5abe94192a927cecd02c1c46c6"
 dependencies = [
  "jomini",
  "serde",
@@ -3177,6 +3177,7 @@ dependencies = [
  "schemas",
  "serde",
  "serde-wasm-bindgen",
+ "tsify",
  "wasm-bindgen",
  "zstd 0.13.0",
 ]

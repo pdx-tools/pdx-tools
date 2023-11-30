@@ -1,4 +1,1 @@
-export interface Hoi4Metadata {
-  date: string;
-  isMeltable: boolean;
-}
+export type { Hoi4Metadata } from "../../../../../wasm-hoi4/pkg";

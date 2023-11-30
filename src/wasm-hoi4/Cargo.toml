@@ -19,6 +19,7 @@ serde = { version = "1", features = ["derive"] }
 hoi4save = { git = "https://github.com/rakaly/hoi4save.git" }
 js-sys = "0.3"
 zstd = { version = "0.13.0", default-features = false }
+tsify = { version = "0.4.5", default-features = false, features = ["js"] }
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false

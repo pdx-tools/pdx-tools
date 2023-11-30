@@ -12,3 +12,7 @@ export async function parseHoi4() {
   const meta: Hoi4Metadata = wasm.save.metadata();
   return { meta };
 }
+
+export async function countryDetails(tag: string) {
+  return wasm.save.country_details(tag);
+}
