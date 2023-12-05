@@ -30,6 +30,11 @@ export const CountryDetails = () => {
           {JSON.stringify(
             {
               ...data,
+              variableCategories: Object.fromEntries(
+                [...data.variableCategories.entries()]
+                  .map(([k, v]) => [k, v.map((x) => +x.toFixed(3))])
+                  .sort(),
+              ),
               variables: Object.fromEntries(
                 [...data.variables.entries()]
                   .map(([k, v]) => [k, +v.toFixed(3)])

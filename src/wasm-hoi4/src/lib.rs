@@ -1,11 +1,12 @@
 use hoi4save::{
-    models::{Country, Hoi4Save},
-    CountryTag, Encoding, FailedResolveStrategy, Hoi4Date, Hoi4Error, Hoi4File,
+    models::Hoi4Save, CountryTag, Encoding, FailedResolveStrategy, Hoi4Date, Hoi4Error, Hoi4File,
 };
 use serde::Serialize;
+use std::collections::HashMap;
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
+mod log;
 mod tokens;
 pub use tokens::*;
 
@@ -24,8 +25,13 @@ pub struct Hoi4Metadata {
 
 #[derive(Tsify, Serialize)]
 #[tsify(into_wasm_abi)]
-#[serde(transparent)]
-pub struct CountryDetails(Country);
+#[serde(rename_all = "camelCase")]
+pub struct CountryDetails {
+    stability: f64,
+    war_support: f64,
+    variable_categories: HashMap<String, Vec<f64>>,
+    variables: HashMap<String, f64>,
+}
 
 pub struct SaveFileImpl {
     save: Hoi4Save,
@@ -42,7 +48,7 @@ impl SaveFile {
     }
 
     pub fn country_details(&self, tag: String) -> CountryDetails {
-        CountryDetails(self.0.country_details(tag))
+        self.0.country_details(tag)
     }
 }
 
@@ -62,10 +68,41 @@ impl SaveFileImpl {
         matches!(self.encoding, Encoding::Binary)
     }
 
-    pub fn country_details(&self, tag: String) -> Country {
+    pub fn country_details(&self, tag: String) -> CountryDetails {
         let tag = tag.parse::<CountryTag>().unwrap();
         let (_, country) = self.save.countries.iter().find(|(t, _)| *t == tag).unwrap();
-        country.clone()
+
+        let variable_groups = country.variables.iter().filter_map(|(k, v)| {
+            k.rsplit_once("^").and_then(|(cat, ind)| {
+                if ind == "num" {
+                    None
+                } else {
+                    ind.parse::<usize>().ok().map(|ind| (cat, ind, *v))
+                }
+            })
+        });
+
+        let mut variable_group = HashMap::new();
+        for (group, index, value) in variable_groups {
+            let elems: &mut Vec<_> = variable_group.entry(group).or_default();
+            elems.push((index, value));
+        }
+
+        let variable_categories: HashMap<_, _> = variable_group
+            .into_iter()
+            .map(|(group, mut values)| {
+                values.sort_unstable_by_key(|(ind, _)| *ind);
+                let result: Vec<_> = values.into_iter().map(|(_, value)| value).collect();
+                (String::from(group), result)
+            })
+            .collect();
+
+        CountryDetails {
+            stability: country.stability,
+            war_support: country.war_support,
+            variable_categories,
+            variables: country.variables.clone(),
+        }
     }
 }
 
