@@ -19,7 +19,7 @@ const InfoSideBarTitle = () => {
   return (
     <div className="flex grow items-center gap-2">
       <SaveMode mode={meta.mode} />
-      <Sheet.Title className="overflow-hidden text-ellipsis">
+      <Sheet.Title className="overflow-hidden text-ellipsis max-w-md">
         {meta.save_game || "EU4 Save Game"}
       </Sheet.Title>
       <div className="drawer-extras mr-4 flex grow items-center justify-end gap-2">
