@@ -1,24 +1,25 @@
+use crate::models::{
+    CountriesCasualties, CountriesExpenses, CountriesIncome, CountryCultures, CountryInfoList,
+    CountryLeaders, CountryStateDetailsList, CountryTags, Estates, I32List, IdeaGroups,
+    LocalizedTags, MetaRef, OptionalCountryTag, OwnedDevelopmentStatesList, PlayerHistories,
+    RunningMonarchs, SingleCountryWarCasualtiesList, StaticMap, StringList, Wars,
+};
 use eu4game::{game::Game, shared::Eu4Parser};
 use eu4save::{
     models::{Eu4Save, GameplayOptions},
     query::Query,
-    CountryTag, Encoding, Eu4File, FailedResolveStrategy,
+    Encoding, Eu4File, FailedResolveStrategy,
 };
 use savefile::{
-    AchievementsScore, CountryAdvisors, CountryCasualties, CountryCulture, CountryDetails,
-    CountryInfo, CountryLeader, CountryReligions, CountryStateDetails, Estate,
-    FileObservationFrequency, HealthData, IdeaGroup, LocalizedCountryExpense,
-    LocalizedCountryIncome, LocalizedLedger, LocalizedTag, MapCursorPayload, MapPayload,
-    MapPayloadKind, MapQuickTipPayload, Monitor, OwnedDevelopmentStates, PlayerHistory,
-    ProvinceDetails, Reparse, RootTree, RunningMonarch, SaveFileImpl, SaveMode,
-    SingleCountryWarCasualties, TagFilterPayloadRaw, War, WarInfo,
+    AchievementsScore, CountryAdvisors, CountryDetails, CountryReligions, Estate,
+    FileObservationFrequency, HealthData, LocalizedLedger, MapCursorPayload, MapPayload,
+    MapPayloadKind, MapQuickTipPayload, Monitor, ProvinceDetails, Reparse, RootTree, SaveFileImpl,
+    SaveMode, TagFilterPayloadRaw, WarInfo,
 };
-use serde::Serialize;
-use std::collections::HashMap;
-use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
 mod log;
+mod models;
 mod savefile;
 mod tokens;
 
@@ -30,49 +31,6 @@ const COUNTRY_TAG_TYPE: &'static str = r#"export type CountryTag = string;"#;
 const EU4_DATE_TYPE: &'static str = r#"export type Eu4Date = string;"#;
 #[wasm_bindgen(typescript_custom_section)]
 const PROVINCE_ID_TYPE: &'static str = r#"export type ProvinceId = number;"#;
-
-/// Looks like bindgen doesn't include generics in the typescript signature
-/// so we create concrete types for all the return types
-macro_rules! wasm_wrapper {
-    ($name:ident,$ty:ty) => {
-        #[derive(Tsify, Serialize)]
-        #[tsify(into_wasm_abi)]
-        #[serde(transparent)]
-        pub struct $name($ty);
-
-        #[allow(clippy::from_over_into)]
-        impl Into<$name> for $ty {
-            fn into(self) -> $name {
-                $name(self)
-            }
-        }
-    };
-}
-
-wasm_wrapper!(CountryCultures, Vec<CountryCulture>);
-wasm_wrapper!(StringList, Vec<String>);
-wasm_wrapper!(I32List, Vec<i32>);
-wasm_wrapper!(CountriesIncome, HashMap<CountryTag, LocalizedCountryIncome>);
-wasm_wrapper!(CountriesExpenses, HashMap<CountryTag, LocalizedCountryExpense>);
-wasm_wrapper!(Estates, Vec<Estate<'static>>);
-wasm_wrapper!(OwnedDevelopmentStatesList, Vec<OwnedDevelopmentStates>);
-wasm_wrapper!(CountriesCasualties, Vec<CountryCasualties>);
-wasm_wrapper!(LocalizedTags, Vec<LocalizedTag>);
-wasm_wrapper!(CountryStateDetailsList, Vec<CountryStateDetails>);
-wasm_wrapper!(CountryTags, Vec<CountryTag>);
-wasm_wrapper!(CountryInfoList, Vec<CountryInfo>);
-wasm_wrapper!(RunningMonarchs, Vec<RunningMonarch>);
-wasm_wrapper!(CountryLeaders, Vec<CountryLeader>);
-wasm_wrapper!(
-    SingleCountryWarCasualtiesList,
-    Vec<SingleCountryWarCasualties>
-);
-wasm_wrapper!(Wars, Vec<War>);
-wasm_wrapper!(PlayerHistories, Vec<PlayerHistory>);
-wasm_wrapper!(IdeaGroups, Vec<IdeaGroup>);
-wasm_wrapper!(MetaRef, &'static eu4save::models::Meta);
-wasm_wrapper!(OptionalCountryTag, Option<CountryTag>);
-wasm_wrapper!(StaticMap, HashMap<&'static str, &'static str>);
 
 #[wasm_bindgen]
 pub struct SaveFile(SaveFileImpl);

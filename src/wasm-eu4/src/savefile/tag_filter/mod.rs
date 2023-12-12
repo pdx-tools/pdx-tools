@@ -1,48 +1,11 @@
+use super::{LocalizedTag, SaveFileImpl};
 use eu4game::SaveGameQuery;
 use eu4save::CountryTag;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use tsify::Tsify;
 
-use super::{LocalizedTag, SaveFileImpl};
-
-#[derive(Tsify, Serialize, Deserialize, PartialEq, Clone, Copy)]
-pub enum TagsState {
-    #[serde(rename = "all")]
-    All,
-    #[serde(rename = "alive")]
-    Alive,
-    #[serde(rename = "dead")]
-    Dead,
-    #[serde(rename = "none")]
-    None,
-}
-
-#[derive(Tsify, Serialize, Deserialize, PartialEq, Clone, Copy)]
-pub enum AiTagsState {
-    #[serde(rename = "all")]
-    All,
-    #[serde(rename = "alive")]
-    Alive,
-    #[serde(rename = "great")]
-    Great,
-    #[serde(rename = "dead")]
-    Dead,
-    #[serde(rename = "none")]
-    None,
-}
-
-#[derive(Tsify, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-#[tsify(from_wasm_abi)]
-pub struct TagFilterPayloadRaw {
-    players: TagsState,
-    ai: AiTagsState,
-    subcontinents: Vec<String>,
-    include: Vec<String>,
-    exclude: Vec<String>,
-    include_subjects: bool,
-}
+mod models;
+pub use models::*;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "kind", rename_all = "camelCase")]

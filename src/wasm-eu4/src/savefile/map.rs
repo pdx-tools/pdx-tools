@@ -1,117 +1,18 @@
+use super::{
+    LocalizedObj, LocalizedTag, MapCursorPayload, MapCursorPayloadKind, MapDate, MapPayload,
+    MapPayloadKind, MapQuickTipPayload, SaveFileImpl, TagFilterPayload,
+};
+use crate::savefile::Interval;
 use eu4game::SaveGameQuery;
 use eu4save::{
     models::{CountryEvent, Province},
     query::ReligionIndex,
     CountryTag, Eu4Date, PdsDate, ProvinceId,
 };
-use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};
-use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-use super::{LocalizedObj, LocalizedTag, SaveFileImpl, TagFilterPayload, TagFilterPayloadRaw};
-
-#[derive(Tsify, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-#[tsify(from_wasm_abi)]
-pub enum MapPayloadKind {
-    Political,
-    Religion,
-    Development,
-    Battles,
-    Technology,
-    Terrain,
-}
-
-#[derive(Tsify, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-#[tsify(from_wasm_abi)]
-pub struct MapPayload {
-    kind: MapPayloadKind,
-    tag_filter: TagFilterPayloadRaw,
-    paint_subject_in_overlord_hue: bool,
-    date: Option<i32>,
-}
-
-#[derive(Tsify, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub enum MapCursorPayloadKind {
-    Political,
-    Religion,
-    Battles,
-}
-
-#[derive(Tsify, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-enum Interval {
-    Year,
-    Month,
-    Week,
-    Day,
-}
-
-#[derive(Tsify, Serialize, Deserialize)]
-#[tsify(from_wasm_abi)]
-pub struct MapCursorPayload {
-    kind: MapCursorPayloadKind,
-    interval: Interval,
-    start: Option<i32>,
-}
-
 pub const WASTELAND: [u8; 4] = [61, 61, 61, 0];
-
-#[derive(Tsify, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
-pub enum MapQuickTipPayload {
-    #[serde(rename_all = "camelCase")]
-    Political {
-        owner: LocalizedTag,
-        controller: LocalizedTag,
-        province_id: ProvinceId,
-        province_name: String,
-    },
-
-    #[serde(rename_all = "camelCase")]
-    Religion {
-        owner: LocalizedTag,
-        controller: LocalizedTag,
-        province_id: ProvinceId,
-        province_name: String,
-        religion_in_province: LocalizedObj,
-        state_religion: LocalizedObj,
-    },
-
-    #[serde(rename_all = "camelCase")]
-    Development {
-        owner: LocalizedTag,
-        controller: LocalizedTag,
-        province_id: ProvinceId,
-        province_name: String,
-        base_tax: f32,
-        base_production: f32,
-        base_manpower: f32,
-    },
-
-    #[serde(rename_all = "camelCase")]
-    Battles {
-        province_id: ProvinceId,
-        province_name: String,
-        battles: usize,
-        losses: i32,
-    },
-
-    #[serde(rename_all = "camelCase")]
-    Technology {
-        owner: LocalizedTag,
-        controller: LocalizedTag,
-        province_id: ProvinceId,
-        province_name: String,
-        adm_tech: u8,
-        dip_tech: u8,
-        mil_tech: u8,
-    },
-}
 
 impl SaveFileImpl {
     pub fn initial_map_position(&self) -> (u16, u16) {
@@ -1670,14 +1571,6 @@ impl TimelapseIter {
     pub fn parts(&self) -> usize {
         self.timelapse.parts()
     }
-}
-
-#[derive(Tsify, Debug, Clone, Serialize)]
-#[tsify(into_wasm_abi)]
-pub struct MapDate {
-    pub days: i32,
-    #[serde(rename(serialize = "text"))]
-    pub date: Eu4Date,
 }
 
 #[wasm_bindgen]

@@ -1,37 +1,18 @@
 use hoi4save::{
-    models::Hoi4Save, CountryTag, Encoding, FailedResolveStrategy, Hoi4Date, Hoi4Error, Hoi4File,
+    models::Hoi4Save, CountryTag, Encoding, FailedResolveStrategy, Hoi4Error, Hoi4File,
 };
-use serde::Serialize;
 use std::collections::HashMap;
-use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
 mod log;
 mod tokens;
 pub use tokens::*;
 
+use crate::models::{CountryDetails, Hoi4Metadata};
+mod models;
+
 #[wasm_bindgen(typescript_custom_section)]
 const COUNTRY_TAG_TYPE: &'static str = r#"export type CountryTag = string;"#;
-
-#[derive(Tsify, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
-pub struct Hoi4Metadata {
-    date: Hoi4Date,
-    is_meltable: bool,
-    player: String,
-    countries: Vec<CountryTag>,
-}
-
-#[derive(Tsify, Serialize)]
-#[tsify(into_wasm_abi)]
-#[serde(rename_all = "camelCase")]
-pub struct CountryDetails {
-    stability: f64,
-    war_support: f64,
-    variable_categories: HashMap<String, Vec<f64>>,
-    variables: HashMap<String, f64>,
-}
 
 pub struct SaveFileImpl {
     save: Hoi4Save,
