@@ -13,7 +13,7 @@ miniz = ["vic3save/miniz"]
 libdeflate = ["vic3save/libdeflate"]
 
 [dependencies]
-jomini = "0.24"
+jomini = {version = "0.25"}
 schemas = { path = "../schemas" }
 wasm-bindgen = { version = "0.2" }
 serde-wasm-bindgen = "0.5"

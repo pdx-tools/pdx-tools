@@ -16,6 +16,7 @@ use savefile::{
     MapPayloadKind, MapQuickTipPayload, Monitor, ProvinceDetails, Reparse, RootTree, SaveFileImpl,
     SaveMode, TagFilterPayloadRaw, WarInfo,
 };
+use std::io::Cursor;
 use wasm_bindgen::prelude::*;
 
 mod log;
@@ -352,16 +353,13 @@ pub fn game_save(
 
 #[wasm_bindgen]
 pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
-    let mut zip_sink = Vec::new();
+    let mut output = Cursor::new(Vec::new());
     Eu4File::from_slice(data)
-        .and_then(|file| file.parse(&mut zip_sink))
         .and_then(|file| {
-            file.as_binary()
-                .unwrap()
-                .melter()
+            file.melter()
                 .on_failed_resolve(FailedResolveStrategy::Ignore)
-                .melt(tokens::get_tokens())
+                .melt(&mut output, tokens::get_tokens())
         })
-        .map(|x| js_sys::Uint8Array::from(x.data()))
+        .map(|_| js_sys::Uint8Array::from(output.get_ref().as_slice()))
         .map_err(|e| JsValue::from_str(e.to_string().as_str()))
 }
