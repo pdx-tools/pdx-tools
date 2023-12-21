@@ -64,3 +64,7 @@ jobs:
     - name: Push to container registry
       if: github.ref == 'refs/heads/master'
       run: docker push ghcr.io/pdx-tools/pdx-tools:nightly
+
+    - uses: preactjs/compressed-size-action@v2
+      with:
+       pattern: "./src/wasm-eu4/pkg/wasm_eu4_bg.wasm"
