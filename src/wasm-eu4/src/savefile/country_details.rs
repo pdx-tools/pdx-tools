@@ -2,7 +2,7 @@ use super::{
     CountryAdvisors, CountryCulture, CountryDetails, CountryLeader, CountryMonarch,
     CountryReligions, CountryStateDetails, DiplomacyEntry, DiplomacyKind, Estate, FailedHeir,
     GovernmentStrength, GreatAdvisor, InfluenceModifier, LandUnitStrength, LocalizedObj,
-    LocalizedTag, ProgressDate, RunningMonarch, SaveFileImpl,
+    LocalizedTag, ProgressDate, ProvinceGc, RunningMonarch, SaveFileImpl,
 };
 use crate::savefile::{hex_color, CountryReligion, CultureTolerance, MonarchStats, RebelReligion};
 use eu4game::SaveGameQuery;
@@ -1114,19 +1114,26 @@ impl SaveFileImpl {
                             }
                         }
 
-                        gc_modifier -= 0.2 * centralized as f32;
                         gc_modifier += 0.1 * prov.expand_infrastructure as f32;
                         gc_modifier -= administrative_efficiency_modifier;
+                        gc_modifier -= 0.2 * centralized as f32;
 
                         let base = (dev * gc_modifier).max(dev * 0.01);
+                        let base_if_centralized = (dev * (gc_modifier - 0.2)).max(dev * 0.01);
 
                         flat += 15.0 * (prov.expand_infrastructure as f32);
 
-                        (prov.name.clone(), (base + flat).max(0.0))
+                        ProvinceGc {
+                            name: prov.name.clone(),
+                            gc: (base + flat).max(0.0),
+                            gc_if_centralized: (base_if_centralized + flat).max(0.0),
+                        }
                     })
                     .collect();
 
-                let total_gc = provinces_gc.iter().map(|(_, gc)| gc).sum();
+                let total_gc = provinces_gc.iter().map(|prov| prov.gc).sum();
+                let total_gc_if_centralized =
+                    provinces_gc.iter().map(|prov| prov.gc_if_centralized).sum();
 
                 let centralizing = provinces
                     .iter()
@@ -1162,6 +1169,7 @@ impl SaveFileImpl {
                     capital_state: is_capital_state,
                     provinces: provinces_gc,
                     total_gc,
+                    total_gc_if_centralized,
                     total_dev,
                     centralizing,
                     centralized,

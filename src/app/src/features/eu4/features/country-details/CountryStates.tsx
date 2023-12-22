@@ -60,13 +60,24 @@ const columns = [
           {formatFloat(row.original.total_gc, 2)}
         </Tooltip.Trigger>
         <Tooltip.Content>
-          {row.original.provinces.map(([name, gc]) => (
-            <div key={name}>
-              {name}: {formatFloat(gc, 2)}
+          {row.original.provinces.map((prov) => (
+            <div key={prov.name}>
+              {prov.name}: {formatFloat(prov.gc, 2)}
             </div>
           ))}
         </Tooltip.Content>
       </Tooltip>
+    ),
+  }),
+
+  columnHelper.accessor((x) => x.total_gc - x.total_gc_if_centralized, {
+    id: "total_gc_if_centralized",
+    sortingFn: "basic",
+    header: ({ column }) => (
+      <Table.ColumnHeader column={column} title="Next Centralize Savings" />
+    ),
+    cell: (info) => (
+      <div className="text-right">{formatFloat(info.getValue(), 2)}</div>
     ),
   }),
 

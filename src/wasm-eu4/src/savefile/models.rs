@@ -811,14 +811,22 @@ pub struct ProgressDate {
 pub struct CountryStateDetails {
     pub state: LocalizedObj,
     pub capital_state: bool,
-    pub provinces: Vec<(String, f32)>,
+    pub provinces: Vec<ProvinceGc>,
     pub total_dev: f32,
     pub total_gc: f32,
+    pub total_gc_if_centralized: f32,
     pub centralizing: Option<ProgressDate>,
     pub centralized: i32,
     pub prosperity: f32,
     pub prosperity_mode: Option<bool>,
     pub state_house: bool,
+}
+
+#[derive(Tsify, Debug, Clone, Serialize)]
+pub struct ProvinceGc {
+    pub name: String,
+    pub gc: f32,
+    pub gc_if_centralized: f32,
 }
 
 #[derive(Tsify, Serialize)]
