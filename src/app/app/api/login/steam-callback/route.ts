@@ -4,11 +4,11 @@ import { getEnv } from "@/server-lib/env";
 import { ValidationError } from "@/server-lib/errors";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { STEAM_URL } from "../steam/route";
 import { fetchOk, fetchOkJson } from "@/lib/fetch";
 import { genId } from "@/server-lib/id";
 import { withCore } from "@/server-lib/middleware";
 import { check } from "@/lib/isPresent";
+import { STEAM_URL } from "@/server-lib/steam";
 
 const handler = async (
   _req: NextRequest,

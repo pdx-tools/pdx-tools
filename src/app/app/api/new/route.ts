@@ -27,7 +27,8 @@ const handler = async (
   let query = db
     .select()
     .from(table.saves)
-    .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
+    .innerJoin(table.users, eq(table.users.userId, table.saves.userId))
+    .$dynamic();
 
   if (timestamp !== undefined) {
     query = query.where(lt(table.saves.createdOn, timestamp));

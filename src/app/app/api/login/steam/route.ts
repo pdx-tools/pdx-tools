@@ -5,12 +5,11 @@ import { NextResponse } from "next/server";
 import { newSessionCookie } from "@/server-lib/auth/session";
 import { withCore } from "@/server-lib/middleware";
 import { check } from "@/lib/isPresent";
+import { STEAM_URL } from "@/server-lib/steam";
 
 export const runtime = isLocal() ? "nodejs" : "edge";
 
 const TEST_UID = "100";
-export const STEAM_URL = "https://steamcommunity.com/openid/login";
-
 const handler = !isLocal()
   ? () => {
       const externalAddress = getEnv("EXTERNAL_ADDRESS");
