@@ -7,7 +7,6 @@ use chrono::{DateTime, TimeZone, Utc};
 use clap::Args;
 use log::info;
 use std::{collections::HashMap, fs::File, io::Write, path::Path, process::ExitCode};
-use tokio_stream::StreamExt;
 use walkdir::WalkDir;
 
 /// Fetch game bundles and tokens from remote S3 bucket
@@ -40,6 +39,7 @@ impl FetchAssetsArgs {
         let b2_s3 = "https://s3.us-west-002.backblazeb2.com";
 
         let config = Config::builder()
+            .behavior_version_latest()
             .region(Region::new("us-west-002"))
             .endpoint_url(b2_s3)
             .credentials_provider(creds)
@@ -67,7 +67,7 @@ impl FetchAssetsArgs {
             })
             .collect();
 
-        for object in object_list.contents().unwrap_or_default() {
+        for object in object_list.contents() {
             let key = object.key().context("expected key to be defined")?;
             let filename = key
                 .split('/')

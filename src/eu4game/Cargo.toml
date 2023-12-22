@@ -24,7 +24,7 @@ thiserror = "1"
 zstd = { version = "0.13.0", default-features = false }
 
 [dev-dependencies]
-attohttpc = "0.25"
+attohttpc = "0.26"
 walkdir = "2"
 zip = { version =  "0.6", default-features = false, features = ["deflate"] }
 

@@ -20,4 +20,4 @@ miniz_oxide = { version = "0.7", optional = true }
 
 [dev-dependencies]
 zip = { version =  "0.6", default-features = false, features = ["deflate"] }
-attohttpc = "0.25.0"
+attohttpc = "0.26.0"
