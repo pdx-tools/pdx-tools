@@ -206,8 +206,8 @@ export const Timelapse = () => {
               !recordingSupported
                 ? "Timelapse recording is not supported by your browser"
                 : !isRecording
-                ? "Start recording timelapse"
-                : "Stop recording timelapse"
+                  ? "Start recording timelapse"
+                  : "Stop recording timelapse"
             }
           />
 

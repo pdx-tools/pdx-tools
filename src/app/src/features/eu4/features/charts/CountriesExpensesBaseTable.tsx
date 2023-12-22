@@ -72,8 +72,8 @@ export const CountriesExpensesBaseTable = ({
     const numRenderer = doShowPercent
       ? (x: number) => `${x}%`
       : monthlyExpenses
-      ? (x: number) => formatFloat(x, 2)
-      : (x: number) => formatInt(x);
+        ? (x: number) => formatFloat(x, 2)
+        : (x: number) => formatInt(x);
 
     return [
       columnHelper.accessor("name", {
