@@ -41,6 +41,7 @@ import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
 import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
 import { CountrySelect } from "../../components/CountrySelect";
 import { emitEvent } from "@/lib/plausible";
+import { CountryHistory } from "./CountryHistory";
 
 export const CountrySideBarButton = ({
   children,
@@ -90,7 +91,7 @@ const CountryDetailsContent = () => {
       onInteractOutside={(e) => e.preventDefault()}
       className={cx(
         "flex flex-col bg-white pt-4 transition-[width] duration-200",
-        expanded ? "w-full" : "w-[850px] max-w-full",
+        expanded ? "w-full" : "w-[880px] max-w-full",
       )}
     >
       <Sheet.Header className="px-4">
@@ -167,6 +168,7 @@ const CountryDetailsContent = () => {
       >
         <Tabs.List className="mt-3 w-full max-w-full overflow-x-auto border-0 px-4 shadow-md">
           <Tabs.Trigger value="General">General</Tabs.Trigger>
+          <Tabs.Trigger value="History">History</Tabs.Trigger>
           <Tabs.Trigger value="Advisors">Advisors</Tabs.Trigger>
           <Tabs.Trigger value="Rulers">Rulers</Tabs.Trigger>
           <Tabs.Trigger value="Leaders">Leaders</Tabs.Trigger>
@@ -178,7 +180,7 @@ const CountryDetailsContent = () => {
           <Tabs.Trigger value="States">States</Tabs.Trigger>
           <Tabs.Trigger value="Estates">Estates</Tabs.Trigger>
         </Tabs.List>
-        <Tabs.Content value="General" className=" flex-1 basis-0 px-4">
+        <Tabs.Content value="General" className=" flex-1 basis-0 px-4 py-6">
           {country && (
             <>
               <CountryDetailsDescriptions details={country} />
@@ -187,7 +189,10 @@ const CountryDetailsContent = () => {
             </>
           )}
         </Tabs.Content>
-        <Tabs.Content value="Advisors" className=" flex-1 basis-0 px-4">
+        <Tabs.Content value="History" className=" flex-1 basis-0 relative">
+          {country && <CountryHistory details={country} />}
+        </Tabs.Content>
+        <Tabs.Content value="Advisors" className=" flex-1 basis-0 px-4 py-6">
           <div>
             Radical reforms completed: {advisors?.radicalReforms || "no"}
           </div>
@@ -205,31 +210,31 @@ const CountryDetailsContent = () => {
             <GreatAdvisorsList greatAdvisors={advisors.greatAdvisors} />
           )}
         </Tabs.Content>
-        <Tabs.Content value="Rulers" className=" flex-1 basis-0 px-4">
+        <Tabs.Content value="Rulers" className=" flex-1 basis-0 px-4 py-6">
           <CountryRulersTable rulers={rulers} />
         </Tabs.Content>
-        <Tabs.Content value="Leaders" className=" flex-1 basis-0 px-4">
+        <Tabs.Content value="Leaders" className=" flex-1 basis-0 px-4 py-6">
           {country && <CountryLeaders details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Budget" className=" flex-1 basis-0 px-4">
+        <Tabs.Content value="Budget" className=" flex-1 basis-0 px-4 py-6">
           {country && <CountryBudget details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Mana" className=" flex-1 basis-0 px-4">
+        <Tabs.Content value="Mana" className=" flex-1 basis-0 px-4 py-6">
           {country && <CountryManaUsage details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Buildings" className=" flex-1 basis-0 px-4">
+        <Tabs.Content value="Buildings" className=" flex-1 basis-0 px-4 py-6">
           {country && <CountryBuildingCount details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Religion" className=" flex-1 basis-0 px-4">
+        <Tabs.Content value="Religion" className=" flex-1 basis-0 px-4 py-6">
           {country && <CountryReligions details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Culture" className=" flex-1 basis-0 px-4">
+        <Tabs.Content value="Culture" className=" flex-1 basis-0 px-4 py-6">
           {country && <CountryCultures details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="States" className=" flex-1 basis-0 px-4">
+        <Tabs.Content value="States" className=" flex-1 basis-0 px-4 py-6">
           {country && <CountryStates details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Estates" className=" flex-1 basis-0 px-4">
+        <Tabs.Content value="Estates" className=" flex-1 basis-0 px-4 py-6">
           {country && <CountryEstates details={country} />}
         </Tabs.Content>
       </Tabs>

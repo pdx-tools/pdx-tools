@@ -61,8 +61,8 @@ export const InflationIcon = () => (
   <GameIcon src={require("./icon_inflation.png")} alt="Inflation" />
 );
 
-export const InfantryIcon = () => (
-  <GameIcon src={require("./icon_infantry.png")} alt="Infantry" />
+export const InfantryIcon = ({ alt = "Infantry" }: { alt?: string }) => (
+  <GameIcon src={require("./icon_infantry.png")} alt={alt} />
 );
 
 export const CavalryIcon = () => (
@@ -96,8 +96,8 @@ export const ReligiousUnityIcon = () => (
   <GameIcon src={require("./icon_religious_unity.png")} alt="Religious Unity" />
 );
 
-export const HeavyShipIcon = () => (
-  <GameIcon src={require("./icon_heavy_ship.png")} alt="Heavy Ships" />
+export const HeavyShipIcon = ({ alt = "Heavy Ships" }: { alt?: string }) => (
+  <GameIcon src={require("./icon_heavy_ship.png")} alt={alt} />
 );
 
 export const LightShipIcon = () => (
@@ -279,5 +279,135 @@ export const ColonistIcon = () => (
     height={31}
     width={31}
     alt="Colonist"
+  />
+);
+
+export const CapitalIcon = () => (
+  <GameIcon
+    src={require("./icon_capital.png")}
+    alt="Capital"
+    width={32}
+    height={32}
+  />
+);
+
+export const CultureIcon = () => (
+  <GameIcon
+    src={require("./icon_culture.png")}
+    alt="Culture"
+    width={32}
+    height={32}
+  />
+);
+
+export const ReligionIcon = () => (
+  <GameIcon
+    src={require("./icon_religion.png")}
+    alt="Religion"
+    width={32}
+    height={32}
+  />
+);
+
+export const ModifierIcon = () => (
+  <GameIcon
+    src={require("./icon_modifier.png")}
+    alt="Modifier"
+    width={32}
+    height={32}
+  />
+);
+
+export const DecisionIcon = () => (
+  <GameIcon
+    src={require("./icon_decision.png")}
+    alt="Decision"
+    width={32}
+    height={32}
+  />
+);
+
+export const GeneralIcon = () => (
+  <GameIcon
+    src={require("./icon_general.png")}
+    alt="General"
+    width={32}
+    height={32}
+  />
+);
+
+export const AdmiralIcon = () => (
+  <GameIcon
+    src={require("./icon_admiral.png")}
+    alt="Admiral"
+    width={32}
+    height={32}
+  />
+);
+
+export const ConquistadorIcon = () => (
+  <GameIcon
+    src={require("./icon_conquistador.png")}
+    alt="Conquistador"
+    width={32}
+    height={32}
+  />
+);
+
+export const ExplorerIcon = () => (
+  <GameIcon
+    src={require("./icon_explorer.png")}
+    alt="Explorer"
+    width={32}
+    height={32}
+  />
+);
+
+export const HeirIcon = () => (
+  <GameIcon
+    src={require("./icon_heir.png")}
+    alt="Heir"
+    width={32}
+    height={32}
+  />
+);
+
+export const QueenIcon = () => (
+  <GameIcon
+    src={require("./icon_queen.png")}
+    alt="Queen"
+    width={32}
+    height={32}
+  />
+);
+
+export const WarIcon = () => (
+  <GameIcon src={require("./icon_war.png")} alt="War" width={32} height={32} />
+);
+
+export const PeaceIcon = () => (
+  <GameIcon
+    src={require("./icon_peace.png")}
+    alt="Peace"
+    width={32}
+    height={32}
+  />
+);
+
+export const AttritionLossesIcon = () => (
+  <GameIcon
+    src={require("./icon_attrition_losses.png")}
+    alt="Attrition losses"
+    width={27}
+    height={27}
+  />
+);
+
+export const PolicyIcon = () => (
+  <GameIcon
+    src={require("./icon_policy.png")}
+    alt="Policy"
+    width={32}
+    height={32}
   />
 );

@@ -59,6 +59,7 @@ import {
 import { PersonalityAvatar } from "../../components/avatars";
 import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { HelpTooltip } from "@/components/HelpTooltip";
+import { LeaderStats } from "../../components/LeaderStats";
 
 interface CountryDetailsProps {
   details: CountryDetails;
@@ -425,11 +426,7 @@ export const CountryDetailsDescriptions = ({
                 <div className="grow">
                   {details.best_general.kind} {details.best_general.name}
                 </div>
-                <div className="no-break">
-                  ({details.best_general.fire} / {details.best_general.shock} /{" "}
-                  {details.best_general.maneuver} / {details.best_general.siege}
-                  )
-                </div>
+                <LeaderStats {...details.best_general} />
               </div>
             ) : null}
             {details.best_admiral ? (
@@ -437,10 +434,7 @@ export const CountryDetailsDescriptions = ({
                 <div className="grow">
                   {details.best_admiral.kind} {details.best_admiral.name}
                 </div>
-                <div className="no-break">
-                  ({details.best_admiral.fire} / {details.best_admiral.shock} /{" "}
-                  {details.best_admiral.maneuver})
-                </div>
+                <LeaderStats {...details.best_admiral} />
               </div>
             ) : null}
           </div>
@@ -457,14 +451,14 @@ export const CountryDetailsDescriptions = ({
         </div>
         <div>
           <div className="flex justify-around text-2xl">
-            <div>
-              <AdminManaIcon /> {ruler.adm}
+            <div className="flex gap-1">
+              <AdminManaIcon /> <span>{ruler.adm}</span>
             </div>
-            <div>
-              <DiplomaticManaIcon /> {ruler.dip}
+            <div className="flex gap-1">
+              <DiplomaticManaIcon /> <span>{ruler.dip}</span>
             </div>
-            <div>
-              <MilitaryManaIcon /> {ruler.mil}
+            <div className="flex gap-1">
+              <MilitaryManaIcon /> <span>{ruler.mil}</span>
             </div>
           </div>
           <div className="flex justify-center">

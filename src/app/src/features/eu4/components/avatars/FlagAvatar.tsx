@@ -6,7 +6,7 @@ import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import { Button } from "@/components/Button";
 
-type AvatarSize = "small" | "base" | "large";
+type AvatarSize = "xs" | "small" | "base" | "large";
 interface FlagAvatarCoreProps {
   tag: string;
   size?: AvatarSize;
@@ -17,6 +17,7 @@ interface FlagAvatarProps {
   name: string;
   size?: AvatarSize;
   condensed?: boolean;
+  static?: boolean;
 }
 
 export const FlagAvatarCore = ({ tag, size }: FlagAvatarCoreProps) => {
@@ -32,7 +33,9 @@ export const FlagAvatarCore = ({ tag, size }: FlagAvatarCoreProps) => {
   }
 
   let dims = "h-10 w-10";
-  if (size === "small") {
+  if (size === "xs") {
+    dims = "h-5 w-5";
+  } else if (size === "small") {
     dims = "h-8 w-8";
   } else if (size === "large") {
     dims = "h-12 w-12";
@@ -69,21 +72,26 @@ const InGameFlagAvatar = ({
   );
 };
 
-const OutOfGameFlagAvatar = ({ tag, name, size }: FlagAvatarProps) => {
+const OutOfGameFlagAvatar = ({
+  tag,
+  name,
+  size,
+  condensed = false,
+}: FlagAvatarProps) => {
   return (
     <Tooltip>
       <Tooltip.Trigger className="inline-block gap-2 text-start">
         <FlagAvatarCore tag={tag} size={size} />
-        <span className="text-left">{name}</span>
+        {!condensed ? <span className="text-left">{name}</span> : null}
       </Tooltip.Trigger>
-      <Tooltip.Content>{tag}</Tooltip.Content>
+      <Tooltip.Content>{condensed ? `${name} (${tag})` : tag}</Tooltip.Content>
     </Tooltip>
   );
 };
 
 export const FlagAvatar = (props: FlagAvatarProps) => {
   // If we're using a flag avatar inside eu4 then we can pan to the map
-  if (useInEu4Analysis()) {
+  if (useInEu4Analysis() && props.static !== true) {
     return <InGameFlagAvatar {...props} />;
   } else {
     return <OutOfGameFlagAvatar {...props} />;

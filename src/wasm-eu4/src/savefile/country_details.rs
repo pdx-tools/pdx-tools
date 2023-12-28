@@ -1,14 +1,22 @@
 use super::{
-    CountryAdvisors, CountryCulture, CountryDetails, CountryLeader, CountryMonarch,
-    CountryReligions, CountryStateDetails, DiplomacyEntry, DiplomacyKind, Estate, FailedHeir,
-    GovernmentStrength, GreatAdvisor, InfluenceModifier, LandUnitStrength, LocalizedObj,
-    LocalizedTag, ProgressDate, ProvinceGc, RunningMonarch, SaveFileImpl,
+    CountryAdvisors, CountryCulture, CountryDetails, CountryHistory, CountryHistoryEvent,
+    CountryHistoryEventKind, CountryHistoryLeader, CountryHistoryMonarch, CountryLeader,
+    CountryMonarch, CountryReligions, CountryStateDetails, DiplomacyEntry, DiplomacyKind, Estate,
+    FailedHeir, GovernmentStrength, GreatAdvisor, InfluenceModifier, LandUnitStrength,
+    LocalizedObj, LocalizedTag, MonarchKind, ProgressDate, ProvinceGc, RunningMonarch,
+    SaveFileImpl, WarBattles,
 };
-use crate::savefile::{hex_color, CountryReligion, CultureTolerance, MonarchStats, RebelReligion};
+use crate::savefile::{
+    hex_color, BattleGroundProvince, CountryHistoryYear, CountryReligion, CultureTolerance,
+    MonarchStats, RebelReligion, WarEnd, WarStart,
+};
 use eu4game::SaveGameQuery;
 use eu4save::{
-    models::{Country, CountryEvent, Leader, Province},
-    query::SaveCountry,
+    models::{
+        ActiveWar, Country, CountryEvent, Leader, LeaderKind, PreviousWar, Province, WarHistory,
+        WarParticipant,
+    },
+    query::{NationEvents, SaveCountry},
     CountryTag, Eu4Date, PdsDate, ProvinceId,
 };
 use std::collections::{HashMap, HashSet};
@@ -1236,6 +1244,630 @@ impl SaveFileImpl {
 
         estates
     }
+
+    pub fn country_history(&self, tag: &str) -> CountryHistory {
+        let tag = tag.parse::<CountryTag>().expect("valid country tag");
+        let country = self.query.country(&tag).unwrap();
+        let game = &self.query.save().game;
+        let mut events = Vec::new();
+
+        let nation_events = self
+            .nation_events
+            .iter()
+            .find(|x| x.stored == tag)
+            .expect("expect tag to have a history");
+
+        let resolver = InvertedResolver::new(nation_events);
+        if nation_events.initial != nation_events.latest {
+            events.push(CountryHistoryEvent {
+                date: self.query.save().game.start_date,
+                event: CountryHistoryEventKind::Initial(self.localize_tag(nation_events.initial)),
+            });
+        }
+
+        for event in &nation_events.events {
+            match event.kind {
+                eu4save::query::NationEventKind::TagSwitch(tag) => {
+                    events.push(CountryHistoryEvent {
+                        date: event.date,
+                        event: CountryHistoryEventKind::TagSwitch(self.localize_tag(tag)),
+                    })
+                }
+                eu4save::query::NationEventKind::Appeared => events.push(CountryHistoryEvent {
+                    date: event.date,
+                    event: CountryHistoryEventKind::Appeared,
+                }),
+                eu4save::query::NationEventKind::Annexed => events.push(CountryHistoryEvent {
+                    date: event.date,
+                    event: CountryHistoryEventKind::Annexed,
+                }),
+            }
+        }
+
+        let policies = country
+            .active_policies
+            .iter()
+            .map(|policy| CountryHistoryEvent {
+                date: policy.date,
+                event: CountryHistoryEventKind::EnactedPolicy {
+                    name: policy.policy.clone(),
+                },
+            });
+        events.extend(policies);
+
+        let flags = [
+            ("radical_mercantilist_reforms", "Radical reforms"),
+            ("military_reform", "Military reforms"),
+            ("last_jousting_tournament_held", "Last jousting tournament"),
+            ("bank", "National bank"),
+            ("became_great_power_flag", "Became a great power"),
+        ];
+
+        let flag_events = flags
+            .iter()
+            .filter_map(|(flag_id, name)| {
+                country
+                    .flags
+                    .iter()
+                    .find(|(flag, _)| flag == flag_id)
+                    .map(|(_, date)| (date, name))
+            })
+            .map(|(date, name)| CountryHistoryEvent {
+                date: *date,
+                event: CountryHistoryEventKind::Flag {
+                    name: String::from(*name),
+                },
+            });
+        events.extend(flag_events);
+
+        let prosper = country
+            .flags
+            .iter()
+            .find(|(flag, _)| flag == "prosper_time_event");
+
+        if let Some((_, date)) = prosper {
+            let birth = "birth_of_a_new_city_";
+            let birth_province = game
+                .provinces
+                .iter()
+                .filter(|(_, p)| p.owner == Some(tag))
+                .find_map(|(id, p)| {
+                    p.modifiers.iter().find_map(|m| {
+                        if m.modifier.starts_with(birth) {
+                            Some((id, &p.name, m.modifier.trim_start_matches(birth)))
+                        } else {
+                            None
+                        }
+                    })
+                });
+
+            if let Some((id, name, kind)) = birth_province {
+                events.push(CountryHistoryEvent {
+                    date: *date,
+                    event: CountryHistoryEventKind::Flag {
+                        name: format!(
+                            "Birth of a new {} city in {} ({})",
+                            kind.to_uppercase(),
+                            name,
+                            id
+                        ),
+                    },
+                });
+            }
+        }
+
+        let advisors = self.get_country_advisors(tag.as_str());
+        let great_advisors = advisors.great_advisors.into_iter().filter_map(|x| {
+            x.trigger_date.map(|date| CountryHistoryEvent {
+                date,
+                event: CountryHistoryEventKind::GreatAdvisor {
+                    occupation: x.occupation,
+                },
+            })
+        });
+        events.extend(great_advisors);
+
+        if let Some(date) = country.golden_era_date {
+            events.push(CountryHistoryEvent {
+                date,
+                event: CountryHistoryEventKind::Flag {
+                    name: String::from("Golden era started"),
+                },
+            });
+        }
+
+        let starting_monarch = country
+            .history
+            .events
+            .iter()
+            .filter(|(date, event)| *date < game.start_date && event.as_monarch().is_some())
+            .filter_map(|(_date, event)| self.country_history_event(game.start_date, event))
+            .last();
+
+        if let Some(starting_monarch) = starting_monarch {
+            events.push(starting_monarch);
+        }
+
+        for (date, event) in country.history.events.iter() {
+            if game.start_date > *date {
+                continue;
+            }
+
+            // Game over eagerly records a capital change
+            if game.start_date.add_days(1) == *date && matches!(event, CountryEvent::Capital(_)) {
+                continue;
+            }
+
+            if let Some(elem) = self.country_history_event(*date, event) {
+                events.push(elem);
+            }
+        }
+
+        let mut date_leaders: HashMap<(Eu4Date, LeaderKind), Vec<CountryHistoryLeader>> =
+            HashMap::new();
+        for (date, event) in country.history.events.iter() {
+            if game.start_date > *date {
+                continue;
+            }
+
+            let leader = match event {
+                CountryEvent::Leader(leader) => leader,
+                _ => continue,
+            };
+
+            let kind = leader.kind.clone();
+            let leader = self.country_history_leader(leader);
+            let leaders = date_leaders.entry((*date, kind)).or_default();
+            leaders.push(leader);
+        }
+
+        for ((date, _), leaders) in date_leaders {
+            events.push(CountryHistoryEvent {
+                date,
+                event: CountryHistoryEventKind::Leader { leaders },
+            })
+        }
+
+        for war in &game.previous_wars {
+            self.country_history_war(&resolver, &mut events, WarInfo::from(war))
+        }
+
+        for war in &game.active_wars {
+            self.country_history_war(&resolver, &mut events, WarInfo::from(war))
+        }
+
+        events.sort_by(|a, b| a.date.cmp(&b.date));
+
+        let mut years = Vec::new();
+        for year in self.query.save().game.start_date.year()..=self.query.save().meta.date.year() {
+            let this_year = events.iter().position(|x| x.date.year() > year);
+            let mut this_year_events = Vec::with_capacity(this_year.unwrap_or(events.len()));
+            this_year_events.extend(events.drain(..this_year_events.capacity()));
+            years.push(CountryHistoryYear {
+                year,
+                events: this_year_events,
+            })
+        }
+
+        CountryHistory { data: years }
+    }
+
+    fn country_history_event(
+        &self,
+        date: Eu4Date,
+        event: &CountryEvent,
+    ) -> Option<CountryHistoryEvent> {
+        match event {
+            CountryEvent::Monarch(m)
+            | CountryEvent::MonarchHeir(m)
+            | CountryEvent::MonarchConsort(m)
+            | CountryEvent::Heir(m)
+            | CountryEvent::Queen(m) => Some(CountryHistoryEvent {
+                date,
+                event: CountryHistoryEventKind::Monarch(CountryHistoryMonarch {
+                    name: m.name.clone(),
+                    dynasty: m.dynasty.clone(),
+                    kind: match event {
+                        CountryEvent::Heir(_) => MonarchKind::Heir,
+                        CountryEvent::Queen(_) => MonarchKind::Queen,
+                        CountryEvent::MonarchConsort(_) => MonarchKind::Consort,
+                        _ => MonarchKind::Monarch,
+                    },
+                    age: m.birth_date.days_until(&date) / 365,
+                    culture: m.culture.as_ref().map(|id| LocalizedObj {
+                        id: id.clone(),
+                        name: self
+                            .game
+                            .localize(id)
+                            .map(String::from)
+                            .unwrap_or_else(|| id.clone()),
+                    }),
+                    religion: m.religion.as_ref().map(|id| LocalizedObj {
+                        id: id.clone(),
+                        name: self
+                            .game
+                            .localize(id)
+                            .map(String::from)
+                            .unwrap_or_else(|| id.clone()),
+                    }),
+                    personalities: m
+                        .personalities
+                        .iter()
+                        .map(|(personality, _)| LocalizedObj {
+                            id: personality.clone(),
+                            name: self.game.localize_personality(personality),
+                        })
+                        .collect(),
+                    adm: m.adm as u16,
+                    dip: m.dip as u16,
+                    mil: m.mil as u16,
+                    leader: m.leader.as_ref().map(|x| CountryHistoryLeader {
+                        name: x.name.clone(),
+                        fire: x.fire,
+                        shock: x.shock,
+                        maneuver: x.maneuver,
+                        siege: x.siege,
+                        kind: x.kind.clone(),
+                        activation: x.activation,
+                        personality: x.personality.as_ref().map(|personality| LocalizedObj {
+                            id: personality.clone(),
+                            name: self.game.localize_personality(personality),
+                        }),
+                    }),
+                }),
+            }),
+            CountryEvent::Capital(x) => {
+                let id = ProvinceId::new(*x as i32);
+                Some(CountryHistoryEvent {
+                    date,
+                    event: CountryHistoryEventKind::Capital {
+                        id,
+                        name: self
+                            .query
+                            .save()
+                            .game
+                            .provinces
+                            .get(&id)
+                            .map(|x| x.name.clone())
+                            .unwrap_or_else(|| String::from("unknown")),
+                    },
+                })
+            }
+            CountryEvent::Decision(id) => Some(CountryHistoryEvent {
+                date,
+                event: CountryHistoryEventKind::Decision { id: id.clone() },
+            }),
+            CountryEvent::Religion(religion_id) => {
+                let name = self
+                    .game
+                    .localize(religion_id.as_str())
+                    .map(String::from)
+                    .unwrap_or_else(|| religion_id.clone());
+                Some(CountryHistoryEvent {
+                    date,
+                    event: CountryHistoryEventKind::ChangeStateReligion(LocalizedObj {
+                        id: religion_id.clone(),
+                        name,
+                    }),
+                })
+            }
+            CountryEvent::AddAcceptedCulture(culture_id) => {
+                let name = self
+                    .game
+                    .localize(culture_id.as_str())
+                    .map(String::from)
+                    .unwrap_or_else(|| culture_id.clone());
+
+                Some(CountryHistoryEvent {
+                    date,
+                    event: CountryHistoryEventKind::AddAcceptedCulture(LocalizedObj {
+                        id: culture_id.clone(),
+                        name,
+                    }),
+                })
+            }
+            CountryEvent::RemoveAcceptedCulture(culture_id) => {
+                let name = self
+                    .game
+                    .localize(culture_id.as_str())
+                    .map(String::from)
+                    .unwrap_or_else(|| culture_id.clone());
+                Some(CountryHistoryEvent {
+                    date,
+                    event: CountryHistoryEventKind::RemoveAcceptedCulture(LocalizedObj {
+                        id: culture_id.clone(),
+                        name,
+                    }),
+                })
+            }
+            CountryEvent::PrimaryCulture(culture_id) => {
+                let name = self
+                    .game
+                    .localize(culture_id.as_str())
+                    .map(String::from)
+                    .unwrap_or_else(|| culture_id.clone());
+                Some(CountryHistoryEvent {
+                    date,
+                    event: CountryHistoryEventKind::PrimaryCulture(LocalizedObj {
+                        id: culture_id.clone(),
+                        name,
+                    }),
+                })
+            }
+            CountryEvent::NationalFocus(focus) => Some(CountryHistoryEvent {
+                date,
+                event: CountryHistoryEventKind::Focus {
+                    focus: focus.clone(),
+                },
+            }),
+            _ => None,
+        }
+    }
+
+    fn country_history_leader(&self, leader: &Leader) -> CountryHistoryLeader {
+        CountryHistoryLeader {
+            name: leader.name.clone(),
+            fire: leader.fire,
+            shock: leader.shock,
+            maneuver: leader.maneuver,
+            siege: leader.siege,
+            kind: leader.kind.clone(),
+            activation: leader.activation,
+            personality: leader.personality.as_ref().map(|personality| LocalizedObj {
+                id: personality.clone(),
+                name: self.game.localize_personality(personality),
+            }),
+        }
+    }
+
+    fn country_history_war(
+        &self,
+        resolver: &InvertedResolver,
+        events: &mut Vec<CountryHistoryEvent>,
+        war: WarInfo,
+    ) {
+        let Some(start) = war.history.events.iter().map(|(date, _)| date).min() else {
+            return;
+        };
+
+        if *start < self.query.save().game.start_date {
+            return;
+        }
+
+        let join_attackers = war
+            .history
+            .events
+            .iter()
+            .find_map(|(date, event)| match event {
+                eu4save::models::WarEvent::AddAttacker(tag) if resolver.matches(*tag, *date) => {
+                    Some((*date, *tag))
+                }
+                _ => None,
+            });
+
+        let join_defenders = war
+            .history
+            .events
+            .iter()
+            .find_map(|(date, event)| match event {
+                eu4save::models::WarEvent::AddDefender(tag) if resolver.matches(*tag, *date) => {
+                    Some((*date, *tag))
+                }
+                _ => None,
+            });
+
+        let (join_date, join_tag) = match (join_attackers, join_defenders) {
+            (None, None) => return,
+            (Some(x), _) => x,
+            (_, Some(x)) => x,
+        };
+
+        let Some(participant) = war.participants.iter().find(|x| x.tag == join_tag) else {
+            return;
+        };
+
+        let is_war_leader = join_tag == war.original_attacker || join_tag == war.original_defender;
+        let is_attacking = join_attackers.is_some();
+        let defenders = war
+            .history
+            .events
+            .iter()
+            .filter_map(|(_, evt)| match evt {
+                eu4save::models::WarEvent::AddDefender(x) => Some(*x),
+                _ => None,
+            })
+            .collect::<HashSet<_>>();
+
+        let attacking_participants = war
+            .participants
+            .iter()
+            .filter(|x| !defenders.contains(&x.tag))
+            .collect::<Vec<_>>();
+        let defending_participants = war
+            .participants
+            .iter()
+            .filter(|x| defenders.contains(&x.tag))
+            .collect::<Vec<_>>();
+
+        let attacker_tags = attacking_participants
+            .iter()
+            .map(|x| self.localize_tag(x.tag))
+            .collect::<Vec<_>>();
+        let defender_tags = defending_participants
+            .iter()
+            .map(|x| self.localize_tag(x.tag))
+            .collect::<Vec<_>>();
+
+        let attacking_participation: f32 = attacking_participants.iter().map(|x| x.value).sum();
+        let defending_participation: f32 = defending_participants.iter().map(|x| x.value).sum();
+
+        let our_participation_percent = if is_attacking {
+            participant.value / attacking_participation
+        } else {
+            participant.value / defending_participation
+        };
+
+        let our_losses = SaveFileImpl::create_losses(&participant.losses.members);
+
+        let mut attacker_losses = [0u32; 21];
+        for x in attacking_participants.iter().map(|x| &x.losses.members) {
+            let losses = SaveFileImpl::create_losses(x);
+            for (&x, y) in losses.iter().zip(attacker_losses.iter_mut()) {
+                *y += x;
+            }
+        }
+
+        let mut defender_losses = [0u32; 21];
+        for x in defending_participants.iter().map(|x| &x.losses.members) {
+            let losses = SaveFileImpl::create_losses(x);
+            for (&x, y) in losses.iter().zip(defender_losses.iter_mut()) {
+                *y += x;
+            }
+        }
+
+        let mut land_battles = self.country_history_battle(&war, true);
+
+        let mut naval_battles = self.country_history_battle(&war, false);
+
+        if !is_attacking {
+            land_battles.won = land_battles.count - land_battles.won;
+            naval_battles.won = naval_battles.count - naval_battles.won;
+        }
+
+        let peaced_out = war
+            .history
+            .events
+            .iter()
+            .find_map(|(date, event)| match event {
+                eu4save::models::WarEvent::RemoveDefender(tag)
+                | eu4save::models::WarEvent::RemoveAttacker(tag)
+                    if *tag == join_tag =>
+                {
+                    Some(*date)
+                }
+                _ => None,
+            });
+
+        events.push(CountryHistoryEvent {
+            date: join_date,
+            event: CountryHistoryEventKind::WarStart(WarStart {
+                war: String::from(war.name),
+                war_start: *start,
+                attackers: attacker_tags,
+                defenders: defender_tags,
+                is_war_leader,
+                is_attacking,
+                is_active: peaced_out.is_none(),
+                attacker_losses,
+                defender_losses,
+                our_losses,
+                our_participation: participant.value,
+                our_participation_percent,
+            }),
+        });
+
+        let Some(peaced_out) = peaced_out else {
+            return;
+        };
+
+        let end = war
+            .history
+            .events
+            .iter()
+            .map(|(date, _)| date)
+            .max()
+            .unwrap_or(&peaced_out);
+
+        events.push(CountryHistoryEvent {
+            date: peaced_out,
+            event: CountryHistoryEventKind::WarEnd(WarEnd {
+                war: String::from(war.name),
+                war_end: (!war.is_active).then_some(*end),
+                is_attacking,
+                war_duration_days: start.days_until(end),
+                our_duration_days: join_date.days_until(&peaced_out),
+                land_battles,
+                naval_battles,
+                attacker_losses,
+                defender_losses,
+                our_losses,
+                our_participation: participant.value,
+                our_participation_percent,
+            }),
+        });
+    }
+
+    fn country_history_battle(&self, war: &WarInfo, land_battle: bool) -> WarBattles {
+        #[derive(Debug, Default)]
+        struct BattleInfo {
+            count: usize,
+            attackers_won: usize,
+            attacker_losses: i32,
+            defender_losses: i32,
+        }
+
+        let battles = war
+            .history
+            .events
+            .iter()
+            .filter_map(|(_, evt)| match evt {
+                eu4save::models::WarEvent::Battle(b) => Some(b),
+                _ => None,
+            })
+            .filter(|x| {
+                let is_land_battle =
+                    x.attacker.artillery + x.attacker.infantry + x.attacker.cavalry != 0;
+                is_land_battle == land_battle
+            });
+
+        let mut battle_prov: HashMap<ProvinceId, BattleInfo> = HashMap::new();
+        for battle in battles {
+            let elem = battle_prov.entry(battle.location).or_default();
+            elem.count += 1;
+            elem.attackers_won += battle.attacker_won as usize;
+            elem.attacker_losses += battle.attacker.losses;
+            elem.defender_losses += battle.defender.losses;
+        }
+
+        let mut battle_infos = battle_prov.into_iter().collect::<Vec<_>>();
+        battle_infos.sort_by(|(_, a), (_, b)| {
+            (b.attacker_losses + b.defender_losses).cmp(&(a.attacker_losses + a.defender_losses))
+        });
+
+        let losses_threshold = if land_battle { 10_000 } else { 0 };
+        let battle_ground = match battle_infos.first() {
+            Some((id, battles))
+                if battles.count > 1
+                    && battles.attacker_losses > losses_threshold
+                    && battles.defender_losses > losses_threshold =>
+            {
+                self.query
+                    .save()
+                    .game
+                    .provinces
+                    .get(id)
+                    .map(|prov| BattleGroundProvince {
+                        id: *id,
+                        name: prov.name.clone(),
+                        battles: battles.count,
+                        total_casualties: battles.attacker_losses + battles.defender_losses,
+                    })
+            }
+            _ => None,
+        };
+
+        let count = battle_infos.iter().map(|(_, info)| info.count).sum();
+        let attackers_won = battle_infos
+            .iter()
+            .map(|(_, info)| info.attackers_won)
+            .sum();
+
+        WarBattles {
+            count,
+            won: attackers_won,
+            battle_ground,
+        }
+    }
 }
 
 pub(crate) fn country_best_leaders(country: &Country) -> (Option<&Leader>, Option<&Leader>) {
@@ -1278,4 +1910,114 @@ pub(crate) fn country_best_leaders(country: &Country) -> (Option<&Leader>, Optio
         });
 
     (best_general, best_admiral)
+}
+
+struct WarInfo<'a> {
+    history: &'a WarHistory,
+    name: &'a str,
+    participants: &'a [WarParticipant],
+    original_attacker: CountryTag,
+    original_defender: CountryTag,
+    is_active: bool,
+}
+
+impl<'a> From<&'a PreviousWar> for WarInfo<'a> {
+    fn from(value: &'a PreviousWar) -> Self {
+        WarInfo {
+            history: &value.history,
+            name: value.name.as_str(),
+            participants: &value.participants,
+            original_attacker: value.original_attacker,
+            original_defender: value.original_defender,
+            is_active: false,
+        }
+    }
+}
+
+impl<'a> From<&'a ActiveWar> for WarInfo<'a> {
+    fn from(value: &'a ActiveWar) -> Self {
+        WarInfo {
+            history: &value.history,
+            name: value.name.as_str(),
+            participants: &value.participants,
+            original_attacker: value.original_attacker,
+            original_defender: value.original_defender,
+            is_active: true,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct CountryTagDuration {
+    tag: CountryTag,
+    start: Eu4Date,
+    end: Option<Eu4Date>,
+}
+
+impl CountryTagDuration {
+    fn contains(&self, date: Eu4Date) -> bool {
+        date >= self.start
+            && match self.end {
+                Some(end) => date <= end,
+                None => true,
+            }
+    }
+}
+
+#[derive(Debug)]
+struct InvertedResolver {
+    switches: Vec<CountryTagDuration>,
+}
+
+impl InvertedResolver {
+    fn matches(&self, tag: CountryTag, date: Eu4Date) -> bool {
+        self.switches
+            .iter()
+            .any(|x| x.tag == tag && x.contains(date))
+    }
+
+    fn new(events: &NationEvents) -> Self {
+        let mut switches: Vec<CountryTagDuration> = Vec::new();
+        let existed_at_start = !events.events.first().map_or(false, |x| {
+            matches!(x.kind, eu4save::query::NationEventKind::Appeared)
+        });
+
+        if existed_at_start {
+            switches.push(CountryTagDuration {
+                tag: events.initial,
+                start: Eu4Date::from_ymd(1, 1, 1),
+                end: None,
+            })
+        }
+
+        for e in &events.events {
+            match e.kind {
+                eu4save::query::NationEventKind::TagSwitch(to) => {
+                    if let Some(x) = switches.last_mut() {
+                        x.end = Some(e.date)
+                    }
+
+                    switches.push(CountryTagDuration {
+                        tag: to,
+                        start: e.date,
+                        end: None,
+                    });
+                }
+                eu4save::query::NationEventKind::Appeared => {
+                    switches.push(CountryTagDuration {
+                        tag: events.initial,
+                        start: e.date,
+                        end: None,
+                    });
+                }
+                eu4save::query::NationEventKind::Annexed => {
+                    if let Some(x) = switches.last_mut() {
+                        x.end = Some(e.date)
+                    }
+                }
+            }
+        }
+
+        Self { switches }
+    }
 }

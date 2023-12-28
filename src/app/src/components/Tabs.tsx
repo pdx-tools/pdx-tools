@@ -50,7 +50,7 @@ const TabsContent = React.forwardRef<
     <TabsPrimitive.Content
       ref={ref}
       className={cx(
-        "max-h-full max-w-full overflow-y-auto py-6 ring-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+        "max-h-full max-w-full overflow-y-auto ring-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
         className,
       )}
       {...props}

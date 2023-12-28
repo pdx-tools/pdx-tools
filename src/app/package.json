@@ -27,6 +27,7 @@
     "@sentry/nextjs": "7.90.0",
     "@tanstack/react-query": "5.14.2",
     "@tanstack/react-table": "8.11.2",
+    "@tanstack/react-virtual": "3.0.1",
     "@types/wicg-file-system-access": "2023.10.4",
     "aws4fetch": "1.0.17",
     "class-variance-authority": "0.7.0",

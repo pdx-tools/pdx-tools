@@ -1,6 +1,6 @@
 #![allow(nonstandard_style)]
 use eu4save::{
-    models::{CountryTechnology, Leader, LeaderKind, Province},
+    models::{CountryTechnology, Leader, LeaderKind, NationalFocus, Province},
     query::{CountryExpenseLedger, CountryIncomeLedger, CountryManaUsage, Inheritance},
     CountryTag, Eu4Date, ProvinceId,
 };
@@ -608,7 +608,7 @@ pub struct CountryDetails {
     pub colonists: usize,
     pub missionaries: usize,
     pub government_strength: GovernmentStrength,
-    pub national_focus: Option<String>,
+    pub national_focus: NationalFocus,
 }
 
 #[derive(Tsify, Serialize, Debug)]
@@ -954,4 +954,129 @@ pub struct MapDate {
     pub days: i32,
     #[serde(rename(serialize = "text"))]
     pub date: Eu4Date,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+#[tsify(into_wasm_abi)]
+pub struct CountryHistory {
+    pub data: Vec<CountryHistoryYear>,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct CountryHistoryYear {
+    pub year: i16,
+    pub events: Vec<CountryHistoryEvent>,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct CountryHistoryEvent {
+    pub date: Eu4Date,
+    pub event: CountryHistoryEventKind,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum CountryHistoryEventKind {
+    Annexed,
+    Appeared,
+    Initial(LocalizedTag),
+    TagSwitch(LocalizedTag),
+    Capital { id: ProvinceId, name: String },
+    AddAcceptedCulture(LocalizedObj),
+    RemoveAcceptedCulture(LocalizedObj),
+    PrimaryCulture(LocalizedObj),
+    ChangeStateReligion(LocalizedObj),
+    Flag { name: String },
+    GreatAdvisor { occupation: LocalizedObj },
+    Decision { id: String },
+    Leader { leaders: Vec<CountryHistoryLeader> },
+    Monarch(CountryHistoryMonarch),
+    WarStart(WarStart),
+    WarEnd(WarEnd),
+    EnactedPolicy { name: String },
+    Focus { focus: NationalFocus },
+}
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct CountryHistoryLeader {
+    pub name: String,
+    pub fire: u16,
+    pub shock: u16,
+    pub maneuver: u16,
+    pub siege: u16,
+    pub activation: Option<Eu4Date>,
+    pub kind: LeaderKind,
+    pub personality: Option<LocalizedObj>,
+}
+
+#[derive(Tsify, Serialize, Debug)]
+pub struct CountryHistoryMonarch {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub kind: MonarchKind,
+    pub age: i32,
+    pub culture: Option<LocalizedObj>,
+    pub religion: Option<LocalizedObj>,
+    pub personalities: Vec<LocalizedObj>,
+    pub adm: u16,
+    pub dip: u16,
+    pub mil: u16,
+    pub leader: Option<CountryHistoryLeader>,
+    pub dynasty: Option<String>,
+}
+
+#[derive(Tsify, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum MonarchKind {
+    Monarch,
+    Heir,
+    Queen,
+    Consort,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct WarStart {
+    pub war: String,
+    pub war_start: Eu4Date,
+    pub attackers: Vec<LocalizedTag>,
+    pub defenders: Vec<LocalizedTag>,
+    pub is_war_leader: bool,
+    pub is_attacking: bool,
+    pub is_active: bool,
+    pub attacker_losses: [u32; 21],
+    pub defender_losses: [u32; 21],
+    pub our_losses: [u32; 21],
+    pub our_participation: f32,
+    pub our_participation_percent: f32,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct BattleGroundProvince {
+    pub id: ProvinceId,
+    pub name: String,
+    pub battles: usize,
+    pub total_casualties: i32,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct WarEnd {
+    pub war: String,
+    pub war_end: Option<Eu4Date>,
+    pub is_attacking: bool,
+    pub land_battles: WarBattles,
+    pub naval_battles: WarBattles,
+    pub attacker_losses: [u32; 21],
+    pub defender_losses: [u32; 21],
+    pub war_duration_days: i32,
+    pub our_duration_days: i32,
+    pub our_losses: [u32; 21],
+    pub our_participation: f32,
+    pub our_participation_percent: f32,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct WarBattles {
+    pub count: usize,
+    pub won: usize,
+    pub battle_ground: Option<BattleGroundProvince>,
 }

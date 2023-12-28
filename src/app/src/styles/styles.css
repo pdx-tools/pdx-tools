@@ -8,6 +8,10 @@
   white-space: nowrap;
 }
 
+.all-small-caps {
+  font-variant-caps: all-small-caps;
+}
+
 /* https://github.com/csstools/sanitize.css/blob/092d0d85922bfa72d28e9e8d25d80a5437c8df44/assets.css */
 :where(img) {
   height: auto;
