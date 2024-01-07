@@ -1,8 +1,11 @@
-use crate::models::{
-    CountriesCasualties, CountriesExpenses, CountriesIncome, CountryCultures, CountryInfoList,
-    CountryLeaders, CountryStateDetailsList, CountryTags, Estates, I32List, IdeaGroups,
-    LocalizedTags, MetaRef, OptionalCountryTag, OwnedDevelopmentStatesList, PlayerHistories,
-    RunningMonarchs, SingleCountryWarCasualtiesList, StaticMap, StringList, Wars,
+use crate::{
+    models::{
+        CountriesCasualties, CountriesExpenses, CountriesIncome, CountryCultures, CountryInfoList,
+        CountryLeaders, CountryStateDetailsList, CountryTags, Estates, I32List, IdeaGroups,
+        LocalizedTags, MetaRef, OptionalCountryTag, OwnedDevelopmentStatesList, PlayerHistories,
+        RunningMonarchs, SingleCountryWarCasualtiesList, StaticMap, StringList, Wars,
+    },
+    savefile::CountryHistory,
 };
 use eu4game::{game::Game, shared::Eu4Parser};
 use eu4save::{
@@ -179,6 +182,10 @@ impl SaveFile {
 
     pub fn get_country_advisors(&self, tag: &str) -> CountryAdvisors {
         self.0.get_country_advisors(tag)
+    }
+
+    pub fn get_country_history(&self, tag: &str) -> CountryHistory {
+        self.0.country_history(tag)
     }
 
     pub fn get_country_province_religion(&self, tag: &str) -> CountryReligions {

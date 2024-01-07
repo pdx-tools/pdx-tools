@@ -23,6 +23,8 @@ import { workLedgerData } from "../utils/ledger";
 import { expandLosses } from "../utils/losses";
 import { wasm } from "./common";
 import { TimelapseIter } from "../../../../../wasm-eu4/pkg/wasm_eu4";
+import { timeSync, timeit } from "@/lib/timeit";
+import { logMs } from "@/lib/log";
 export * from "./init";
 
 export const getRawData = wasm.viewData;
@@ -139,6 +141,12 @@ export function eu4GetCountryAdvisors(tag: string): CountryAdvisors {
 
 export function eu4GetCountryProvinceReligion(tag: string) {
   return wasm.save.get_country_province_religion(tag);
+}
+
+export function eu4GetCountryHistory(tag: string) {
+  const timed = timeSync(() => wasm.save.get_country_history(tag));
+  logMs(timed, "country history calculation");
+  return timed.data;
 }
 
 export function eu4GetCountryProvinceCulture(tag: string): CountryCulture[] {
