@@ -51,6 +51,10 @@ import {
   sentenceCasing,
 } from "@/lib/format";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { useEu4Actions, useEu4Meta, useSelectedDate } from "../../store";
+import { MapIcon } from "@heroicons/react/16/solid";
+import { IconButton } from "@/components/IconButton";
+import { cx } from "class-variance-authority";
 
 const CountryHistoryCard = ({
   country,
@@ -76,8 +80,11 @@ const CountryHistoryCard = ({
     case "tagSwitch":
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <FlagAvatarCore size="small" tag={evt.event.tag} />
@@ -90,8 +97,11 @@ const CountryHistoryCard = ({
     case "capital":
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <CapitalIcon />
@@ -104,8 +114,11 @@ const CountryHistoryCard = ({
     case "addAcceptedCulture":
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <CultureIcon />
@@ -117,8 +130,11 @@ const CountryHistoryCard = ({
     case "primaryCulture":
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <CultureIcon />
@@ -130,8 +146,11 @@ const CountryHistoryCard = ({
     case "removeAcceptedCulture":
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <CultureIcon />
@@ -142,8 +161,11 @@ const CountryHistoryCard = ({
     case "changeStateReligion":
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <ReligionIcon />
@@ -154,8 +176,11 @@ const CountryHistoryCard = ({
     case "flag":
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <ModifierIcon />
@@ -166,8 +191,11 @@ const CountryHistoryCard = ({
     case "decision":
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}: enacted decision
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}: enacted decision
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <DecisionIcon />
@@ -178,8 +206,11 @@ const CountryHistoryCard = ({
     case "greatAdvisor":
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <AdvisorImage
@@ -194,8 +225,11 @@ const CountryHistoryCard = ({
     case "leader":
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <div className="self-start">
@@ -222,20 +256,23 @@ const CountryHistoryCard = ({
     case "monarch":
       return (
         <Card className="pb-4">
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}:{" "}
-            {(() => {
-              switch (evt.event.type) {
-                case "monarch":
-                  return "a new ruler has ascended the throne!";
-                case "heir":
-                  return "a new heir has appeared!";
-                case "queen":
-                  return "we have a new queen!";
-                case "consort":
-                  return "a consort has appeared!";
-              }
-            })()}
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}:{" "}
+              {(() => {
+                switch (evt.event.type) {
+                  case "monarch":
+                    return "a new ruler has ascended the throne!";
+                  case "heir":
+                    return "a new heir has appeared!";
+                  case "queen":
+                    return "we have a new queen!";
+                  case "consort":
+                    return "a consort has appeared!";
+                }
+              })()}
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-start gap-4 px-4 pt-2">
             {(() => {
@@ -309,9 +346,12 @@ const CountryHistoryCard = ({
       const event = evt.event;
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}: <WarStartHeader date={evt.date} event={event} />{" "}
-            {event.is_active ? "(ongoing)" : ""}
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}: <WarStartHeader date={evt.date} event={event} />{" "}
+              {event.is_active ? "(ongoing)" : ""}
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <div className="flex self-start">
@@ -392,14 +432,18 @@ const CountryHistoryCard = ({
         : "is ongoing";
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}: {evt.event.war_end != evt.date ? "Separate" : ""} peace
-            after {formatInt(evt.event.our_duration_days)} days
-            {evt.event.war_end != evt.date
-              ? `. War ${warStatus} after ${formatInt(
-                  evt.event.war_duration_days,
-                )} days of conflict`
-              : ""}
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}: {evt.event.war_end != evt.date ? "Separate" : ""}{" "}
+              peace after {formatInt(evt.event.our_duration_days)} days
+              {evt.event.war_end != evt.date
+                ? `. War ${warStatus} after ${formatInt(
+                    evt.event.war_duration_days
+                  )} days of conflict`
+                : ""}
+            </div>
+
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <div className="flex self-start">
@@ -449,8 +493,11 @@ const CountryHistoryCard = ({
     case "enactedPolicy":
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}: enacted policy
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}: enacted policy
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <PolicyIcon />
@@ -461,8 +508,11 @@ const CountryHistoryCard = ({
     case "focus":
       return (
         <Card>
-          <div className="font-semibold text-xs text-gray-400/75 pl-2 pt-0.5">
-            {evt.date}: changed national focus
+          <div className="flex px-2 pt-0.5">
+            <div className="grow font-semibold text-xs text-gray-400/75">
+              {evt.date}: changed national focus
+            </div>
+            <HistoryMapIcon evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pt-2 pb-4">
             <NationalFocusIcon focus={evt.event.focus} />
@@ -473,6 +523,32 @@ const CountryHistoryCard = ({
         </Card>
       );
   }
+};
+
+const HistoryMapIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
+  const actions = useEu4Actions();
+  const date = useSelectedDate();
+  const meta = useEu4Meta();
+
+  return (
+    <IconButton
+      side="left"
+      className="pt-1"
+      variant="ghost"
+      shape="none"
+      onClick={() =>
+        date.text == meta.date
+          ? actions.setSelectedDateText(evt.date)
+          : actions.setSelectedDateText(meta.date)
+      }
+      tooltip={
+        date.text == meta.date
+          ? `Set map date to ${evt.date}`
+          : `Reset date to ${meta.date}`
+      }
+      icon={<MapIcon className={cx("h-4 w-4", date.text != evt.date && "text-gray-400/75" )}  />}
+    />
+  );
 };
 
 const WarBattlesSummary = ({
@@ -645,8 +721,8 @@ export const CountryHistory = ({ details }: { details: CountryDetails }) => {
   const { data, error } = useEu4Worker(
     useCallback(
       async (worker) => worker.eu4GetCountryHistory(details.tag),
-      [details.tag],
-    ),
+      [details.tag]
+    )
   );
 
   if (data === undefined) {
