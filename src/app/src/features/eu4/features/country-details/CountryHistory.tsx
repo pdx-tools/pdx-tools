@@ -537,12 +537,12 @@ const HistoryMapIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
       variant="ghost"
       shape="none"
       onClick={() =>
-        date.text == meta.date
+        date.text != evt.date
           ? actions.setSelectedDateText(evt.date)
           : actions.setSelectedDateText(meta.date)
       }
       tooltip={
-        date.text == meta.date
+        date.text != evt.date
           ? `Set map date to ${evt.date}`
           : `Reset date to ${meta.date}`
       }

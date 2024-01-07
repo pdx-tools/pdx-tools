@@ -227,7 +227,7 @@ export const createEu4Store = async ({
       },
       setSelectedDateText: async (text: string) => {
         const days = await getEu4Worker().eu4DateToDays(text);
-        if (!days) {
+        if (days === undefined) {
           return;
         }
 
