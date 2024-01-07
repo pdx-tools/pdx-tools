@@ -52,7 +52,7 @@ import {
 } from "@/lib/format";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEu4Actions, useEu4Meta, useSelectedDate } from "../../store";
-import { MapIcon } from "@heroicons/react/16/solid";
+import { MapIcon } from "@heroicons/react/24/outline";
 import { IconButton } from "@/components/IconButton";
 import { cx } from "class-variance-authority";
 
@@ -86,7 +86,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <FlagAvatarCore size="small" tag={evt.event.tag} />
             <p>
               Tag switched to {evt.event.name} ({evt.event.tag})
@@ -103,7 +103,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <CapitalIcon />
             <p>
               Changed capital to {evt.event.name} ({evt.event.id})
@@ -120,7 +120,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <CultureIcon />
 
             <p>Accepted culture: {evt.event.name}</p>
@@ -136,7 +136,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <CultureIcon />
 
             <p>Primary culture: {evt.event.name}</p>
@@ -152,7 +152,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <CultureIcon />
             <p>Removed accepted culture: {evt.event.name}</p>
           </div>
@@ -167,7 +167,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <ReligionIcon />
             <p>State religion changed to {evt.event.name}</p>
           </div>
@@ -182,7 +182,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <ModifierIcon />
             <p>{evt.event.name}</p>
           </div>
@@ -197,7 +197,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <DecisionIcon />
             <p>{sentenceCasing(evt.event.id.replaceAll("_", " "))}</p>
           </div>
@@ -212,7 +212,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <AdvisorImage
               id={evt.event.occupation.id}
               className="h-8 w-8"
@@ -231,7 +231,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <div className="self-start">
               <LeaderKindIcon kind={evt.event.leaders[0].kind} />
             </div>
@@ -274,7 +274,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-start gap-4 px-4 pt-2">
+          <div className="flex items-start gap-4 px-4">
             {(() => {
               switch (evt.event.type) {
                 case "monarch":
@@ -353,7 +353,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <div className="flex self-start">
               <WarIcon />
             </div>
@@ -438,14 +438,14 @@ const CountryHistoryCard = ({
               peace after {formatInt(evt.event.our_duration_days)} days
               {evt.event.war_end != evt.date
                 ? `. War ${warStatus} after ${formatInt(
-                    evt.event.war_duration_days
+                    evt.event.war_duration_days,
                   )} days of conflict`
                 : ""}
             </div>
 
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <div className="flex self-start">
               <PeaceIcon />
             </div>
@@ -499,7 +499,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <PolicyIcon />
             <p>{sentenceCasing(evt.event.name.replaceAll("_", " "))}</p>
           </div>
@@ -514,7 +514,7 @@ const CountryHistoryCard = ({
             </div>
             <HistoryMapIcon evt={evt} />
           </div>
-          <div className="flex items-center gap-4 px-4 pt-2 pb-4">
+          <div className="flex items-center gap-4 px-4 pb-4">
             <NationalFocusIcon focus={evt.event.focus} />
             <p>
               {evt.event.focus == "none" ? "Removed focus" : evt.event.focus}
@@ -533,7 +533,7 @@ const HistoryMapIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
   return (
     <IconButton
       side="left"
-      className="pt-1"
+      className="pt-1 group"
       variant="ghost"
       shape="none"
       onClick={() =>
@@ -546,7 +546,14 @@ const HistoryMapIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
           ? `Set map date to ${evt.date}`
           : `Reset date to ${meta.date}`
       }
-      icon={<MapIcon className={cx("h-4 w-4", date.text != evt.date && "text-gray-400/75" )}  />}
+      icon={
+        <MapIcon
+          className={cx(
+            "h-6 w-6 hover:opacity-100 transition-opacity",
+            date.text != evt.date && "opacity-50",
+          )}
+        />
+      }
     />
   );
 };
@@ -721,8 +728,8 @@ export const CountryHistory = ({ details }: { details: CountryDetails }) => {
   const { data, error } = useEu4Worker(
     useCallback(
       async (worker) => worker.eu4GetCountryHistory(details.tag),
-      [details.tag]
-    )
+      [details.tag],
+    ),
   );
 
   if (data === undefined) {
