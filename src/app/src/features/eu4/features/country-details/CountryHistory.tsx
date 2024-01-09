@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef } from "react";
+import { memo, useCallback, useMemo, useRef } from "react";
 import { CountryDetails } from "../../types/models";
 import { useEu4Worker } from "../../worker";
 import {
@@ -52,9 +52,12 @@ import {
 } from "@/lib/format";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEu4Actions, useEu4Meta, useSelectedDate } from "../../store";
-import { MapIcon } from "@heroicons/react/24/outline";
+import { MapIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { FunnelIcon } from "@heroicons/react/16/solid";
 import { IconButton } from "@/components/IconButton";
 import { cx } from "class-variance-authority";
+import { Button } from "@/components/Button";
+import { create } from "zustand";
 
 const CountryHistoryCard = ({
   country,
@@ -84,7 +87,7 @@ const CountryHistoryCard = ({
             <div className="grow font-semibold text-xs text-gray-400/75">
               {evt.date}
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <FlagAvatarCore size="small" tag={evt.event.tag} />
@@ -101,7 +104,7 @@ const CountryHistoryCard = ({
             <div className="grow font-semibold text-xs text-gray-400/75">
               {evt.date}
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <CapitalIcon />
@@ -118,7 +121,7 @@ const CountryHistoryCard = ({
             <div className="grow font-semibold text-xs text-gray-400/75">
               {evt.date}
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <CultureIcon />
@@ -134,7 +137,7 @@ const CountryHistoryCard = ({
             <div className="grow font-semibold text-xs text-gray-400/75">
               {evt.date}
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <CultureIcon />
@@ -150,7 +153,7 @@ const CountryHistoryCard = ({
             <div className="grow font-semibold text-xs text-gray-400/75">
               {evt.date}
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <CultureIcon />
@@ -165,7 +168,7 @@ const CountryHistoryCard = ({
             <div className="grow font-semibold text-xs text-gray-400/75">
               {evt.date}
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <ReligionIcon />
@@ -180,7 +183,7 @@ const CountryHistoryCard = ({
             <div className="grow font-semibold text-xs text-gray-400/75">
               {evt.date}
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <ModifierIcon />
@@ -195,7 +198,7 @@ const CountryHistoryCard = ({
             <div className="grow font-semibold text-xs text-gray-400/75">
               {evt.date}: enacted decision
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <DecisionIcon />
@@ -210,7 +213,7 @@ const CountryHistoryCard = ({
             <div className="grow font-semibold text-xs text-gray-400/75">
               {evt.date}
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <AdvisorImage
@@ -229,7 +232,7 @@ const CountryHistoryCard = ({
             <div className="grow font-semibold text-xs text-gray-400/75">
               {evt.date}
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <div className="self-start">
@@ -272,7 +275,7 @@ const CountryHistoryCard = ({
                 }
               })()}
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-start gap-4 px-4">
             {(() => {
@@ -351,7 +354,7 @@ const CountryHistoryCard = ({
               {evt.date}: <WarStartHeader date={evt.date} event={event} />{" "}
               {event.is_active ? "(ongoing)" : ""}
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <div className="flex self-start">
@@ -443,7 +446,7 @@ const CountryHistoryCard = ({
                 : ""}
             </div>
 
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <div className="flex self-start">
@@ -497,7 +500,7 @@ const CountryHistoryCard = ({
             <div className="grow font-semibold text-xs text-gray-400/75">
               {evt.date}: enacted policy
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <PolicyIcon />
@@ -512,7 +515,7 @@ const CountryHistoryCard = ({
             <div className="grow font-semibold text-xs text-gray-400/75">
               {evt.date}: changed national focus
             </div>
-            <HistoryMapIcon evt={evt} />
+            <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <NationalFocusIcon focus={evt.event.focus} />
@@ -523,6 +526,90 @@ const CountryHistoryCard = ({
         </Card>
       );
   }
+};
+
+const HistoryIcons = ({ evt }: { evt: CountryHistoryEvent }) => {
+  return (
+    <div className="flex gap-2">
+      <HistoryMapIcon evt={evt} />
+      <HistoryFilterIcon evt={evt} />
+    </div>
+  );
+};
+
+function eventToFilter(evt: CountryHistoryEvent) {
+  switch (evt.event.kind) {
+    case "annexed":
+    case "appeared":
+    case "initial":
+    case "flag":
+    case "decision":
+      return evt.event.kind;
+    case "tagSwitch":
+      return "tag switch";
+    case "capital":
+      return "change capital";
+    case "addAcceptedCulture":
+      return "add accepted culture";
+    case "removeAcceptedCulture":
+      return "remove accepted culture";
+    case "primaryCulture":
+      return "change primary culture";
+    case "changeStateReligion":
+      return "change state religion";
+    case "greatAdvisor":
+      return "great advisor";
+    case "leader": {
+      switch (evt.event.leaders[0].kind) {
+        case "Admiral":
+          return "admirals";
+        case "General":
+          return "generals";
+        case "Explorer":
+          return "explorers";
+        case "Conquistador":
+          return "conquistadors";
+      }
+    }
+    case "monarch": {
+      switch (evt.event.type) {
+        case "monarch":
+          return "ruler";
+        case "heir":
+        case "queen":
+        case "consort":
+          return evt.event.type;
+      }
+    }
+    case "warStart":
+      return "start of war";
+    case "warEnd":
+      return "peace";
+    case "enactedPolicy":
+      return "enacted policy";
+    case "focus":
+      return "change national focus";
+  }
+}
+
+const HistoryFilterIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
+  const actions = useFilterActions();
+  const filterName = eventToFilter(evt);
+  return (
+    <IconButton
+      side="left"
+      className="pt-1 group"
+      variant="ghost"
+      shape="none"
+      tooltip={`Hide similar events (${filterName})`}
+      onClick={() => {
+        actions.addFilter(filterName);
+      }}
+      icon={
+        <EyeSlashIcon className="h-6 w-6 hover:opacity-100 transition-opacity opacity-50" />
+      }
+    />
+  );
 };
 
 const HistoryMapIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
@@ -660,6 +747,30 @@ const SideCasualties = ({ losses }: { losses: Losses }) => {
   );
 };
 
+const FilterOverlay = () => {
+  const showFilter = useShowFilter();
+  const actions = useFilterActions();
+
+  if (!showFilter) {
+    return null;
+  }
+
+  return (
+    <div className="sticky left-0 flex justify-end top-0 z-10 animate-in slide-in-from-right">
+      <div className="bg-teal-900 rounded-bl shadow-md">
+        <Button
+          shape="none"
+          variant="ghost"
+          className="text-white px-4 py-2 flex gap-2"
+          onClick={() => actions.clearFilters()}
+        >
+          <FunnelIcon className="h-4 w-4" /> <span>Clear filter</span>
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const CountryHistoryVirtualList = ({
   details,
   data,
@@ -689,6 +800,7 @@ const CountryHistoryVirtualList = ({
         className="relative w-full"
         style={{ height: virtualizer.getTotalSize(), contain: "strict" }}
       >
+        <FilterOverlay />
         <div
           className="absolute top-0 left-0 w-full"
           style={{ transform: `translateY(${items[0]?.start ?? 0}px)` }}
@@ -721,7 +833,8 @@ const CountryHistoryList = memo(function CountryHistoryList({
   details: CountryDetails;
   data: CountryHistoryYear[];
 }) {
-  return <CountryHistoryVirtualList details={details} data={data} />;
+  const result = useFilteredHistory(data);
+  return <CountryHistoryVirtualList details={details} data={result} />;
 });
 
 export const CountryHistory = ({ details }: { details: CountryDetails }) => {
@@ -732,13 +845,48 @@ export const CountryHistory = ({ details }: { details: CountryDetails }) => {
     ),
   );
 
-  if (data === undefined) {
-    return null;
-  }
-
   if (error) {
     return <Alert.Error msg={error} />;
   }
 
+  if (data === undefined) {
+    return null;
+  }
+
   return <CountryHistoryList details={details} data={data.data} />;
+};
+
+type HistoryFilter = ReturnType<typeof eventToFilter>;
+
+type HistoryFilterState = {
+  filters: HistoryFilter[];
+  actions: {
+    addFilter: (arg: HistoryFilter) => void;
+    clearFilters: () => void;
+  };
+};
+
+const useFilterStore = create<HistoryFilterState>()((set, get) => ({
+  filters: [],
+  actions: {
+    addFilter: (arg) => set({ filters: [...get().filters, arg] }),
+    clearFilters: () => set({ filters: [] }),
+  },
+}));
+
+const useFilterActions = () => useFilterStore((x) => x.actions);
+const useShowFilter = () => useFilterStore((x) => x.filters.length) > 0;
+const useFilteredHistory = (data: CountryHistoryYear[]) => {
+  const rawFilters = useFilterStore((x) => x.filters);
+  const filters = useMemo(() => new Set(rawFilters), [rawFilters]);
+  return useMemo(
+    () =>
+      data.map((year) => ({
+        ...year,
+        events: year.events.filter(
+          (event) => !filters.has(eventToFilter(event)),
+        ),
+      })),
+    [data, filters],
+  );
 };
