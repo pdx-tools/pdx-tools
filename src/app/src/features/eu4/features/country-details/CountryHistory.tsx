@@ -757,11 +757,11 @@ const FilterOverlay = () => {
 
   return (
     <div className="sticky left-0 flex justify-end top-0 z-10 animate-in slide-in-from-right">
-      <div className="bg-teal-900 rounded-bl shadow-md">
+      <div className="shadow-md">
         <Button
           shape="none"
           variant="ghost"
-          className="text-white px-4 py-2 flex gap-2"
+          className="text-white bg-teal-900 hover:bg-teal-800 rounded-bl px-4 py-2 flex gap-2"
           onClick={() => actions.clearFilters()}
         >
           <FunnelIcon className="h-4 w-4" /> <span>Clear filter</span>

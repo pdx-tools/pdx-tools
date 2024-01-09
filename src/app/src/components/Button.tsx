@@ -13,7 +13,7 @@ const buttonVariants = cva(
           "border border-solid bg-white border-gray-400 text-black/80 enabled:hover:bg-slate-200 focus-visible:bg-slate-200 enabled:active:bg-slate-300",
         danger:
           "border border-solid bg-white border-rose-400 text-rose-800 enabled:hover:bg-rose-200 focus-visible:bg-rose-200 enabled:active:bg-rose-300",
-        ghost: "bg-transparent border-0 font-normal",
+        ghost: "",
       },
       shape: {
         default: "rounded-md px-4 py-2",
