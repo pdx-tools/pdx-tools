@@ -26,12 +26,19 @@ const DevelopmentStatistic = ({
   return (
     <div className="flex flex-col items-center">
       <span className="text-lg">{title}</span>
-      <span className="flex items-baseline gap-3">
+      <span className="flex items-start gap-3">
         <span className="text-2xl font-bold">
           {formatInt(tax + production + manpower)}
         </span>
         <span className="text-gray-500">
-          ({formatInt(tax)} / {formatInt(production)} / {formatInt(manpower)})
+          <div className="text-sm all-small-caps flex justify-around">
+            <span>tax</span>
+            <span>prod</span>
+            <span>man</span>
+          </div>
+          <div>
+            ({formatInt(tax)} / {formatInt(production)} / {formatInt(manpower)})
+          </div>
         </span>
       </span>
     </div>
