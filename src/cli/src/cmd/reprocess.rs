@@ -3,6 +3,7 @@ use applib::parser::{ParseResult, ParsedFile, SavePatch};
 use clap::Args;
 use csv::{Reader, StringRecord};
 use eu4save::models::GameDifficulty;
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::{
     collections::HashMap,
@@ -10,6 +11,8 @@ use std::{
     io::{self, Cursor, Read},
     path::PathBuf,
     process::ExitCode,
+    sync::mpsc::sync_channel,
+    thread,
 };
 use walkdir::WalkDir;
 
@@ -27,7 +30,6 @@ pub struct ReprocessArgs {
 
 impl ReprocessArgs {
     pub fn run(&self) -> anyhow::Result<ExitCode> {
-        let mut saves = Vec::new();
         let existing_records = if let Some(reference) = self.reference.as_ref() {
             let rdr = csv::Reader::from_path(reference)
                 .with_context(|| format!("unable to open: {}", reference.display()))?;
@@ -36,42 +38,65 @@ impl ReprocessArgs {
             HashMap::new()
         };
 
-        let files = self
-            .files
-            .iter()
-            .flat_map(|fp| WalkDir::new(fp).into_iter().filter_map(|e| e.ok()))
-            .filter(|e| e.file_type().is_file());
+        let (tx, rx) = sync_channel(1);
+        let saves = thread::scope(|scope| {
+            scope.spawn(move || {
+                let files = self
+                    .files
+                    .iter()
+                    .flat_map(|fp| WalkDir::new(fp).into_iter().filter_map(|e| e.ok()))
+                    .filter(|e| e.file_type().is_file());
 
-        for file in files {
-            let path = file.path();
+                for file in files {
+                    let path = file.path();
 
-            let save_data = std::fs::read(path)
-                .with_context(|| format!("unable to read: {}", path.display()))?;
-            let save = applib::parser::parse_save_data(&save_data)?;
+                    let save_data = std::fs::read(path)
+                        .with_context(|| format!("unable to read: {}", path.display()))
+                        .unwrap();
 
-            let save = match save {
-                ParseResult::InvalidPatch(_) => bail!("unable parse patch"),
-                ParseResult::Parsed(x) => *x,
-            };
-
-            let save_id = String::from(path.file_name().unwrap().to_str().unwrap());
-            if let Some(existing) = existing_records.get(&save_id) {
-                let diff = diff_saves(existing, save)?;
-
-                if diff.has_change() {
-                    saves.push(ReprocessEntry {
-                        save_id,
-                        save: diff,
-                    });
+                    let save_id = String::from(path.file_name().unwrap().to_str().unwrap());
+                    tx.send((save_id, save_data)).expect("to send save id");
                 }
-            } else if existing_records.is_empty() {
-                let update = UpdateSave::from(save);
-                saves.push(ReprocessEntry {
-                    save_id,
-                    save: update,
-                });
-            };
-        }
+            });
+
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(2)
+                .build()
+                .expect("threadpool to build");
+
+            pool.install(|| {
+                rx.into_iter()
+                    .par_bridge()
+                    .map(|(save_id, data)| {
+                        let save = applib::parser::parse_save_data(&data)?;
+                        let save = match save {
+                            ParseResult::InvalidPatch(_) => bail!("unable parse patch"),
+                            ParseResult::Parsed(x) => *x,
+                        };
+
+                        match existing_records.get(&save_id) {
+                            Some(existing) => {
+                                let diff = diff_saves(existing, save)?;
+                                if diff.has_change() {
+                                    Ok(Some(ReprocessEntry {
+                                        save_id,
+                                        save: diff,
+                                    }))
+                                } else {
+                                    Ok(None)
+                                }
+                            }
+                            None if existing_records.is_empty() => Ok(Some(ReprocessEntry {
+                                save_id,
+                                save: UpdateSave::from(save),
+                            })),
+                            _ => Ok(None),
+                        }
+                    })
+                    .filter_map(|entry| entry.transpose())
+                    .collect::<Result<Vec<_>, _>>()
+            })
+        })?;
 
         let stdout = io::stdout();
         let mut locked = stdout.lock();

@@ -1985,6 +1985,7 @@ dependencies = [
  "jomini",
  "log",
  "oxipng",
+ "rayon",
  "regex",
  "schemas",
  "serde",
