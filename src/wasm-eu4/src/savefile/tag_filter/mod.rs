@@ -63,8 +63,7 @@ impl SaveFileImpl {
             .province_owners
             .initial
             .iter()
-            .filter_map(|x| x.as_ref())
-            .chain(self.province_owners.changes.iter().map(|x| &x.tag))
+            .chain(self.province_owners.changes.iter().map(|x| &x.to))
             .chain(
                 self.query
                     .save()

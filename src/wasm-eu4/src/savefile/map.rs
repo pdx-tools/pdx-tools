@@ -673,7 +673,7 @@ impl OwnerTimelapse {
             .province_owners
             .initial
             .iter()
-            .map(|x| (Eu4Date::from_ymd(1, 1, 1), x.unwrap_or(CountryTag::NONE)))
+            .map(|x| (Eu4Date::from_ymd(1, 1, 1), *x))
             .collect();
 
         let current_controllers = if matches!(tracking, ProvinceTracking::OwnerAndController) {
@@ -690,7 +690,7 @@ impl OwnerTimelapse {
                 date: change.date,
                 kind: PoliticalEventKind::Owner {
                     province: change.province,
-                    new_owner: change.tag,
+                    new_owner: change.to,
                 },
             });
 

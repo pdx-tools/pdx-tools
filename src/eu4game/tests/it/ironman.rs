@@ -144,7 +144,7 @@ fn test_patch130_start() {
     let game = Game::new(&save.meta.savegame_version);
     let query = Query::from_save(save);
     let save_game_query = SaveGameQuery::new(&query, &game);
-    assert_eq!(query.save().meta.player, "CLI".parse().unwrap());
+    assert_eq!(query.save().meta.player, "CLI");
     assert_eq!(
         save_game_query.localize_country(&"CLI".parse().unwrap()),
         String::from("Cilli")
