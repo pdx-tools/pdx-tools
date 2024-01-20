@@ -286,11 +286,10 @@ impl SaveFileImpl {
     }
 
     pub fn get_countries(&self) -> Vec<CountryInfo> {
-        let blank: CountryTag = "---".parse().unwrap();
         let mut results: Vec<_> = self
             .query
             .countries()
-            .filter(|x| x.tag != blank)
+            .filter(|x| x.tag.is_some())
             .map(|x| {
                 let name = self
                     .game
@@ -1544,10 +1543,9 @@ impl SaveFileImpl {
         let mut defenders = HashSet::new();
         let mut attackers_date = Vec::new();
         let mut defenders_date = Vec::new();
-        let blank = "---".parse().unwrap();
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
         for war in &self.query.save().game.active_wars {
-            if war.name.is_empty() || war.original_attacker == blank {
+            if war.name.is_empty() || war.original_attacker.is_some() {
                 continue;
             }
 
@@ -1646,10 +1644,9 @@ impl SaveFileImpl {
         let mut defenders = HashSet::new();
         let mut attackers_date = Vec::new();
         let mut defenders_date = Vec::new();
-        let blank = "---".parse().unwrap();
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
         for war in &self.query.save().game.previous_wars {
-            if war.name.is_empty() || war.original_attacker == blank {
+            if war.name.is_empty() || war.original_attacker.is_some() {
                 continue;
             }
 

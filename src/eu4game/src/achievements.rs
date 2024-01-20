@@ -509,8 +509,8 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.owns_core_province_condition(ProvinceId::from(1948)));
         result.and(self.owns_core_province_condition(ProvinceId::from(541)));
 
-        let vij = "VIJ".parse().unwrap();
-        let bah = "BAH".parse().unwrap();
+        let vij = "VIJ";
+        let bah = "BAH";
 
         let main = if self.starting_country == bah && self.tag == bah {
             !self
@@ -559,7 +559,7 @@ impl<'a> AchievementHunter<'a> {
         let mut result = AchievementResult::new(18);
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
-        let is_italy = self.tag == "ITA".parse().unwrap();
+        let is_italy = self.tag == "ITA";
         result.and(AchievementCondition::new(is_italy, "is ITA tag"));
         result
     }
@@ -657,7 +657,7 @@ impl<'a> AchievementHunter<'a> {
         let mut result = AchievementResult::new(49);
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
-        let is_ryu = self.tag == "RYU".parse().unwrap();
+        let is_ryu = self.tag == "RYU";
         result.and(AchievementCondition::new(is_ryu, "is RYU tag"));
 
         let self_and_non_tributaries: HashSet<&CountryTag> = self
@@ -687,7 +687,7 @@ impl<'a> AchievementHunter<'a> {
         let mut result = AchievementResult::new(69);
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
-        let is_ned = self.tag == "NED".parse().unwrap();
+        let is_ned = self.tag == "NED";
         result.and(AchievementCondition::new(is_ned, "is NED tag"));
 
         let desc = "started out as a nation with dutch primary culture";
@@ -710,11 +710,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "BYZ".parse().unwrap();
+        let starter = self.starting_country == "BYZ";
         let desc = "started as Byzantium";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "BYZ".parse().unwrap();
+        let playing = self.tag == "BYZ";
         let desc = "currently Byzantium";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -755,11 +755,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let starter = self.starting_country == "HUN".parse().unwrap();
+        let starter = self.starting_country == "HUN";
         let desc = "started as Hungary";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "HUN".parse().unwrap();
+        let playing = self.tag == "HUN";
         let desc = "currently Hungary";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -789,7 +789,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let starter = self.starting_country == "SWI".parse().unwrap();
+        let starter = self.starting_country == "SWI";
         let desc = "started as Switzerland";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -848,8 +848,8 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let dtt = "DTT".parse().unwrap();
-        let dan = "DAN".parse().unwrap();
+        let dtt = CountryTag::new(*b"DTT");
+        let dan = CountryTag::new(*b"DAN");
         let starter = self.starting_country == dtt;
         let desc = "started as Dithmarschen";
         result.and(AchievementCondition::new(starter, desc));
@@ -920,7 +920,7 @@ impl<'a> AchievementHunter<'a> {
         let mut result = AchievementResult::new(34);
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
-        let is_germany = self.tag == "GER".parse().unwrap();
+        let is_germany = self.tag == "GER";
         result.and(AchievementCondition::new(is_germany, "currently Germany"));
         result
     }
@@ -929,7 +929,7 @@ impl<'a> AchievementHunter<'a> {
         let mut result = AchievementResult::new(40);
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
-        let is_hre = self.tag == "HLR".parse().unwrap();
+        let is_hre = self.tag == "HLR";
         result.and(AchievementCondition::new(
             is_hre,
             "currently Holy Roman Emperor",
@@ -942,11 +942,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "NEV".parse().unwrap();
+        let starter = self.starting_country == "NEV";
         let desc = "started as Nevers";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "NEV".parse().unwrap();
+        let playing = self.tag == "NEV";
         let desc = "currently Nevers";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -982,7 +982,7 @@ impl<'a> AchievementHunter<'a> {
             result.and(AchievementCondition::new(starter, desc));
         }
 
-        let playing = self.tag == "POL".parse().unwrap();
+        let playing = self.tag == "POL";
         let desc = "currently Poland";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -1030,11 +1030,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let starter = self.starting_country == "FRA".parse().unwrap();
+        let starter = self.starting_country == "FRA";
         let desc = "started as France";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "FRA".parse().unwrap();
+        let playing = self.tag == "FRA";
         let desc = "currently France";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -1050,11 +1050,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "PRO".parse().unwrap();
+        let starter = self.starting_country == "PRO";
         let desc = "started as Provence";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "KOJ".parse().unwrap();
+        let playing = self.tag == "KOJ";
         let desc = "currently Jerusalem";
         result.and(AchievementCondition::new(playing, desc));
         result
@@ -1069,7 +1069,7 @@ impl<'a> AchievementHunter<'a> {
         let desc = "started as Cyprus or The Knights";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "KOJ".parse().unwrap();
+        let playing = self.tag == "KOJ";
         let desc = "currently Jerusalem";
         result.and(AchievementCondition::new(playing, desc));
         result
@@ -1081,11 +1081,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let starter = self.starting_country == "SER".parse().unwrap();
+        let starter = self.starting_country == "SER";
         let desc = "started as Serbia";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "SER".parse().unwrap();
+        let playing = self.tag == "SER";
         let desc = "currently Serbia";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -1138,11 +1138,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country != "PAP".parse().unwrap();
+        let starter = self.starting_country != "PAP";
         let desc = "did not start as The Papal States";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "ROM".parse().unwrap();
+        let playing = self.tag == "ROM";
         let desc = "currently The Roman Empire";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -1198,7 +1198,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let playing = self.tag == "ROM".parse().unwrap();
+        let playing = self.tag == "ROM";
         let desc = "currently The Roman Empire";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -1210,7 +1210,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let playing = self.tag == "GLH".parse().unwrap();
+        let playing = self.tag == "GLH";
         let desc = "currently The Golden Horde";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -1256,14 +1256,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let kaz = "KAZ".parse().unwrap();
-        let nog = "NOG".parse().unwrap();
-
-        let started = self.starting_country == kaz || self.starting_country == nog;
+        let started = self.starting_country == "KAZ" || self.starting_country == "NOG";
         let desc = "started as Kazan or Nogai";
         result.and(AchievementCondition::new(started, desc));
 
-        let playing = self.tag == kaz || self.tag == nog;
+        let playing = self.tag == "KAZ" || self.tag == "NOG";
         let desc = "currently Kazan or Nogai";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -1294,11 +1291,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let starter = self.starting_country == "FRA".parse().unwrap();
+        let starter = self.starting_country == "FRA";
         let desc = "started as France";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "FRA".parse().unwrap();
+        let playing = self.tag == "FRA";
         let desc = "currently France";
         result.and(AchievementCondition::new(playing, desc));
         result.and(AchievementCondition::new(
@@ -1337,11 +1334,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let starter = self.starting_country == "CLI".parse().unwrap();
+        let starter = self.starting_country == "CLI";
         let desc = "started as Cilli";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag != "CLI".parse().unwrap();
+        let playing = self.tag != "CLI";
         let desc = "currently is not Cilli";
         result.and(AchievementCondition::new(playing, desc));
         result
@@ -1353,7 +1350,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let starter = self.starting_country == "KNI".parse().unwrap();
+        let starter = self.starting_country == "KNI";
         let desc = "started as The Knights";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -1369,7 +1366,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.tag == "LPP".parse().unwrap();
+        let starter = self.tag == "LPP";
         let desc = "currently Lippe";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -1390,7 +1387,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "BLG".parse().unwrap();
+        let starter = self.starting_country == "BLG";
         let desc = "started as Bologna";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -1473,7 +1470,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "PAP".parse().unwrap();
+        let starter = self.starting_country == "PAP";
         let desc = "started as The Papal States";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -1572,7 +1569,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "MLH".parse().unwrap();
+        let starter = self.starting_country == "MLH";
         let desc = "started as Mulhouse";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -1610,7 +1607,7 @@ impl<'a> AchievementHunter<'a> {
         let desc = "started as a subject of Timurids";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "MUG".parse().unwrap();
+        let playing = self.tag == "MUG";
         let desc = "currently Mughals";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -1645,7 +1642,7 @@ impl<'a> AchievementHunter<'a> {
         let mut result = AchievementResult::new(84);
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
-        let is_qng = self.tag == "QNG".parse().unwrap();
+        let is_qng = self.tag == "QNG";
         result.and(AchievementCondition::new(is_qng, "is QNG tag"));
 
         let desc = "started out as a nation with Jurchen primary culture";
@@ -1702,7 +1699,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "AVR".parse().unwrap();
+        let starter = self.starting_country == "AVR";
         let desc = "started as Avaria";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -1743,7 +1740,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let starter = self.starting_country == "ALB".parse().unwrap();
+        let starter = self.starting_country == "ALB";
         let desc = "started as Albania";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -1771,11 +1768,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "KAR".parse().unwrap();
+        let starter = self.starting_country == "KAR";
         let desc = "started as Karaman";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "RUM".parse().unwrap();
+        let playing = self.tag == "RUM";
         let desc = "currently Rûm";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -1787,10 +1784,10 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "AKK".parse().unwrap();
+        let starter = self.starting_country == "AKK";
         let desc = "started as Aq Qoyunlu";
         result.and(AchievementCondition::new(starter, desc));
-        let qar = "QAR".parse().unwrap();
+        let qar = CountryTag::new(*b"QAR");
 
         let owns_tabriz = self
             .save
@@ -1824,7 +1821,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "KAL".parse().unwrap();
+        let starter = self.starting_country == "KAL";
         let desc = "started as Kale";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -1868,7 +1865,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let playing = self.tag == "KOI".parse().unwrap();
+        let playing = self.tag == "KOI";
         let desc = "currently Mann";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -1902,11 +1899,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let starter = self.starting_country == "ARL".parse().unwrap();
+        let starter = self.starting_country == "ARL";
         let desc = "started as Ardabil";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "PER".parse().unwrap();
+        let playing = self.tag == "PER";
         let desc = "currently Persia";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -1918,7 +1915,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let playing = self.tag == "PER".parse().unwrap();
+        let playing = self.tag == "PER";
         let desc = "currently Persia";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -1960,7 +1957,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let kon = "KON".parse().unwrap();
+        let kon = CountryTag::new(*b"KON");
         let starter = self.starting_country == kon;
         let desc = "started as Kongo";
         result.and(AchievementCondition::new(starter, desc));
@@ -1989,11 +1986,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "UBV".parse().unwrap();
+        let starter = self.starting_country == "UBV";
         let desc = "started as Munich";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "BAV".parse().unwrap();
+        let playing = self.tag == "BAV";
         let desc = "currently Bavaria";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -2048,7 +2045,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let playing = self.tag == "RMN".parse().unwrap();
+        let playing = self.tag == "RMN";
         let desc = "currently Romania";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -2082,7 +2079,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let song = "SON".parse().unwrap();
+        let song: CountryTag = "SON".parse().unwrap();
         let desc = "started as Songhai";
         result.and(AchievementCondition::new(
             self.starting_country == song,
@@ -2092,8 +2089,8 @@ impl<'a> AchievementHunter<'a> {
         let desc = "currently Songhai";
         result.and(AchievementCondition::new(self.tag == song, desc));
 
-        let prussia = "PRU".parse().unwrap();
-        let nepal = "NPL".parse().unwrap();
+        let prussia: CountryTag = "PRU".parse().unwrap();
+        let nepal: CountryTag = "NPL".parse().unwrap();
         let prussian_march = self
             .save
             .game
@@ -2168,7 +2165,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let current = self.tag == "MGE".parse().unwrap();
+        let current = self.tag == "MGE";
         let desc = "currently the mongol empire";
         result.and(AchievementCondition::new(current, desc));
 
@@ -2187,7 +2184,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "KNI".parse().unwrap();
+        let starter = self.starting_country == "KNI";
         let desc = "started as The Knights";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -2307,7 +2304,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let current = self.tag == "SRU".parse().unwrap();
+        let current = self.tag == "SRU";
         let desc = "currently the Saruhan";
         result.and(AchievementCondition::new(current, desc));
 
@@ -2334,12 +2331,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let kilwa = "ZAN".parse().unwrap();
-        let starter = self.starting_country == kilwa;
+        let starter = self.starting_country == "ZAN";
         let desc = "started as Kilwa";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == kilwa;
+        let playing = self.tag == "ZAN";
         let desc = "currently Kilwa";
         result.and(AchievementCondition::new(playing, desc));
 
@@ -2424,8 +2420,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let naples = "NAP".parse().unwrap();
-        let starter = self.starting_country == naples;
+        let starter = self.starting_country == "NAP";
         let desc = "started as Naples";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -2445,8 +2440,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let granada = "GRA".parse().unwrap();
-        let starter = self.starting_country == granada;
+        let starter = self.starting_country == "GRA";
         let desc = "started as Granada";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -2504,11 +2498,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let starter = self.starting_country == "TEU".parse().unwrap();
+        let starter = self.starting_country == "TEU";
         let desc = "started as Teutonic Order";
         result.and(AchievementCondition::new(starter, desc));
 
-        let current = self.tag == "MGE".parse().unwrap();
+        let current = self.tag == "MGE";
         let desc = "currently Mongol Empire";
         result.and(AchievementCondition::new(current, desc));
 
@@ -2529,7 +2523,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "RIG".parse().unwrap();
+        let starter = self.starting_country == "RIG";
         let desc = "started as Riga";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -2558,11 +2552,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "LIV".parse().unwrap();
+        let starter = self.starting_country == "LIV";
         let desc = "started as Livonian Order";
         result.and(AchievementCondition::new(starter, desc));
 
-        let current = self.tag == "LVA".parse().unwrap();
+        let current = self.tag == "LVA";
         let desc = "currently Livonia";
         result.and(AchievementCondition::new(current, desc));
 
@@ -2597,7 +2591,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "ZIM".parse().unwrap();
+        let starter = self.starting_country == "ZIM";
         let desc = "started as Mutapa";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -2625,7 +2619,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "ETH".parse().unwrap();
+        let starter = self.starting_country == "ETH";
         let desc = "started as Ethiopia";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -2669,7 +2663,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let starter = self.starting_country == "TUR".parse().unwrap();
+        let starter = self.starting_country == "TUR";
         let desc = "started as the Ottomans";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -2811,11 +2805,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let starter = self.starting_country == "FEO".parse().unwrap();
+        let starter = self.starting_country == "FEO";
         let desc = "started as Theodoro";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "FEO".parse().unwrap();
+        let playing = self.tag == "FEO";
         let desc = "currently Theodoro";
         result.and(AchievementCondition::new(playing, desc));
 

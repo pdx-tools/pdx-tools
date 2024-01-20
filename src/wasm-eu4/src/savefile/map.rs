@@ -44,14 +44,13 @@ impl SaveFileImpl {
         let province_id = ProvinceId::new(province_id);
         let province = self.query.save().game.provinces.get(&province_id)?;
         let requested_date = days.map(|x| self.query.save().game.start_date.add_days(x));
-        let reb = "REB".parse::<CountryTag>().unwrap();
-        let noone = "---".parse::<CountryTag>().unwrap();
+        let reb = CountryTag::new(*b"REB");
         let sq = SaveGameQuery::new(&self.query, &self.game);
 
         let local_controller = 'controller: {
             let Some(date) = requested_date else {
-                let current_controller = province.controller.unwrap_or(noone);
-                if current_controller == noone {
+                let current_controller = province.controller.unwrap_or(CountryTag::NONE);
+                if current_controller == CountryTag::NONE {
                     return None;
                 }
 
@@ -92,7 +91,7 @@ impl SaveFileImpl {
                 .take_while(|(cdate, _c)| **cdate <= date);
 
             let mut controller_date = Eu4Date::from_ymd(1, 1, 1);
-            let mut controller_tag = province.history.owner.unwrap_or(noone);
+            let mut controller_tag = province.history.owner.unwrap_or(CountryTag::NONE);
             for (date, event) in controller_events {
                 // See political timelapse code for why we require at least a
                 // day of controllership
@@ -106,9 +105,9 @@ impl SaveFileImpl {
                 .resolve(controller_tag, controller_date)
                 .or_else(|| province.history.owner.and_then(|x| resolver.initial(x)))
                 .map(|x| x.current)
-                .unwrap_or(noone);
+                .unwrap_or(CountryTag::NONE);
 
-            if current_controller == noone {
+            if current_controller == CountryTag::NONE {
                 return None;
             } else {
                 LocalizedTag {
@@ -143,7 +142,7 @@ impl SaveFileImpl {
                 });
 
             latest_owner.unwrap_or_else(|| {
-                let fallback = province.history.owner.unwrap_or(noone);
+                let fallback = province.history.owner.unwrap_or(CountryTag::NONE);
                 resolver
                     .initial(fallback)
                     .map(|x| (x.current, x.stored))
@@ -157,7 +156,7 @@ impl SaveFileImpl {
             })
         };
 
-        if owner_tag == noone {
+        if owner_tag == CountryTag::NONE {
             return None;
         }
 
@@ -643,7 +642,6 @@ struct OwnerTimelapse {
 
 impl OwnerTimelapse {
     pub fn new(wasm: &SaveFileImpl, tracking: ProvinceTracking) -> Self {
-        let no_owner = "---".parse::<CountryTag>().unwrap();
         let country_colors = {
             let mut colors: HashMap<CountryTag, [u8; 4]> = wasm
                 .query
@@ -666,7 +664,7 @@ impl OwnerTimelapse {
                 })
                 .collect();
 
-            colors.insert(no_owner, [94, 94, 94, 128]);
+            colors.insert(CountryTag::NONE, [94, 94, 94, 128]);
 
             colors
         };
@@ -675,7 +673,7 @@ impl OwnerTimelapse {
             .province_owners
             .initial
             .iter()
-            .map(|x| (Eu4Date::from_ymd(1, 1, 1), x.unwrap_or(no_owner)))
+            .map(|x| (Eu4Date::from_ymd(1, 1, 1), x.unwrap_or(CountryTag::NONE)))
             .collect();
 
         let current_controllers = if matches!(tracking, ProvinceTracking::OwnerAndController) {
@@ -720,7 +718,7 @@ impl OwnerTimelapse {
                 // See: https://pdx.tools/eu4/saves/UJjFWjkNuOyeECXZRGqhI
                 let has_color_bug = colors
                     .last()
-                    .map_or(false, |(_, col)| **col == c.colors.map_color);
+                    .is_some_and(|(_, col)| **col == c.colors.map_color);
 
                 if has_color_bug {
                     let event_iter = colors.iter().map(|(date, col)| PoliticalEvent {
@@ -1295,7 +1293,6 @@ impl ReligionTimelapse {
             }
         }
 
-        let noone = "---".parse::<CountryTag>().unwrap();
         for province in self.wasm.game.provinces() {
             let prov_ind = usize::from(province.id.as_u16());
             let (primary_color, country_color) = 'color: {
@@ -1307,7 +1304,7 @@ impl ReligionTimelapse {
                     break 'color (&WASTELAND, &WASTELAND);
                 };
 
-                if *owner == noone {
+                if owner.is_none() {
                     break 'color (&[94, 94, 94, 128], &[94, 94, 94, 128]);
                 }
 

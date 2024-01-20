@@ -87,7 +87,7 @@ impl SaveFileImpl {
 
         let players: HashSet<_> = self.all_players().into_iter().collect();
         for (tag, country) in &self.query.save().game.countries {
-            if tag.as_bytes() == b"---" || !existing_tags.contains(tag) {
+            if tag.is_none() || !existing_tags.contains(tag) {
                 continue;
             }
 
