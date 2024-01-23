@@ -221,45 +221,67 @@ export const InfoDrawer = () => {
       </div>
 
       <Alert.Error msg={greatPowers.error} />
-      {greatPowers.data && greatPowers.data.length > 0 ? (
-        <>
-          <Divider>Great Powers</Divider>
-          <ol className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {greatPowers.data.slice(0, 8).map((x, i) => (
-              <li key={x.country.tag} className="flex">
-                <Flag tag={x.country.tag} name={x.country.name}>
-                  <Flag.Tooltip asChild>
-                    <Flag.DrawerTrigger className="gap-2 grow">
-                      <Flag.Image />
-                      <div className="self-start">(#{i + 1})</div>
-                      <div className="flex flex-col grow">
-                        <div className="self-start">
-                          <Flag.CountryName />
-                        </div>
-                        <div className="font-normal">
-                          {formatInt(x.score)} dev.
-                        </div>
-                      </div>
-                    </Flag.DrawerTrigger>
-                  </Flag.Tooltip>
-                </Flag>
-              </li>
-            ))}
-          </ol>
-        </>
-      ) : null}
-
       <Alert.Error msg={luckyCountries.error} />
-      {luckyCountries.data && luckyCountries.data.length > 0 ? (
-        <>
-          <Divider>Lucky Countries</Divider>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {luckyCountries.data.map((x) => (
-              <FlagAvatar key={x.tag} tag={x.tag} name={x.name} size="large" />
-            ))}
+
+      <div className="grid gap-8 sm:grid-cols-2">
+        {greatPowers.data && greatPowers.data.length > 0 ? (
+          <div>
+            <Divider paddingClassNames="pt-5">Great Powers</Divider>
+            <div className="pr-4">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    <th>
+                      <span className="sr-only">Country</span>
+                    </th>
+                    <th className="font-normal text-right">
+                      Great power score
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {greatPowers.data.slice(0, 8).map((x, i) => (
+                    <Flag
+                      key={x.country.tag}
+                      tag={x.country.tag}
+                      name={x.country.name}
+                    >
+                      <tr>
+                        <td className="flex mt-1">
+                          <Flag.Tooltip asChild>
+                            <Flag.DrawerTrigger className="gap-2 grow">
+                              <Flag.Image size="large" />
+                              <div>(#{i + 1})</div>
+                              <div>
+                                <Flag.CountryName />
+                              </div>
+                            </Flag.DrawerTrigger>
+                          </Flag.Tooltip>
+                        </td>
+                        <td className="text-right">{formatInt(x.score)}</td>
+                      </tr>
+                    </Flag>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </>
-      ) : null}
+        ) : null}
+
+        {luckyCountries.data && luckyCountries.data.length > 0 ? (
+          <div>
+            <Divider>Lucky Nations</Divider>
+            <ul className="flex flex-col gap-2 pl-4">
+              {luckyCountries.data.map((x) => (
+                <li key={x.tag} className="flex">
+                  <FlagAvatar tag={x.tag} name={x.name} size="large" />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+
       {(serverFile?.aar || isPrivileged) && (
         <>
           <Divider>AAR</Divider>
