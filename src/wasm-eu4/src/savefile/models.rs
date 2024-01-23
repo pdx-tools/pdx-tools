@@ -1080,3 +1080,9 @@ pub struct WarBattles {
     pub won: usize,
     pub battle_ground: Option<BattleGroundProvince>,
 }
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct GreatPower {
+    pub country: LocalizedTag,
+    pub score: f32,
+}

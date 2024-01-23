@@ -5,6 +5,7 @@ import { DlcList } from "@/features/eu4/components/dlc-list";
 import { TagTransition } from "@/features/eu4/types/models";
 import {
   AchievementAvatar,
+  Flag,
   FlagAvatar,
   FlagAvatarCore,
   TagFlag,
@@ -31,6 +32,7 @@ import { IconButton } from "@/components/IconButton";
 import { Alert } from "@/components/Alert";
 import { Link } from "@/components/Link";
 import { EyeIcon } from "@heroicons/react/24/outline";
+import { formatInt } from "@/lib/format";
 
 const TagDescription = (play: TagTransition) => {
   return (
@@ -44,6 +46,7 @@ const TagDescription = (play: TagTransition) => {
 
 const playerHistoriesFn = (worker: Eu4Worker) => worker.eu4GetPlayerHistories();
 const luckyCountriesFn = (worker: Eu4Worker) => worker.eu4GetLuckyCountries();
+const greatPowersFn = (worker: Eu4Worker) => worker.eu4GetGreatPowers();
 
 export const InfoDrawer = () => {
   const mods = useEu4ModList();
@@ -52,6 +55,7 @@ export const InfoDrawer = () => {
   const serverFile = useServerSaveFile();
   const playerHistories = useEu4Worker(playerHistoriesFn);
   const luckyCountries = useEu4Worker(luckyCountriesFn);
+  const greatPowers = useEu4Worker(greatPowersFn);
   const sideBarContainerRef = useSideBarContainerRef();
   const [filteredTag, setFilteredTag] = useState<string | undefined>(undefined);
   const { updateTagFilter } = useEu4Actions();
@@ -215,6 +219,36 @@ export const InfoDrawer = () => {
           </div>
         ))}
       </div>
+
+      <Alert.Error msg={greatPowers.error} />
+      {greatPowers.data && greatPowers.data.length > 0 ? (
+        <>
+          <Divider>Great Powers</Divider>
+          <ol className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+            {greatPowers.data.slice(0, 8).map((x, i) => (
+              <li key={x.country.tag} className="flex">
+                <Flag tag={x.country.tag} name={x.country.name}>
+                  <Flag.Tooltip asChild>
+                    <Flag.DrawerTrigger className="gap-2 grow">
+                      <Flag.Image />
+                      <div className="self-start">(#{i + 1})</div>
+                      <div className="flex flex-col grow">
+                        <div className="self-start">
+                          <Flag.CountryName />
+                        </div>
+                        <div className="font-normal">
+                          {formatInt(x.score)} dev.
+                        </div>
+                      </div>
+                    </Flag.DrawerTrigger>
+                  </Flag.Tooltip>
+                </Flag>
+              </li>
+            ))}
+          </ol>
+        </>
+      ) : null}
+
       <Alert.Error msg={luckyCountries.error} />
       {luckyCountries.data && luckyCountries.data.length > 0 ? (
         <>

@@ -1,10 +1,91 @@
-import React from "react";
+import React, { createContext, useContext } from "react";
 import Image from "next/image";
 import { useInEu4Analysis } from "../SideBarContainer";
 import { useEu4Actions } from "../../store";
 import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import { Button } from "@/components/Button";
+import { check } from "@/lib/isPresent";
+import { hasDescendant } from "@/lib/hasDescendant";
+
+type FlagContextState = { name: string; tag: string };
+const FlagContext = createContext<FlagContextState | undefined>(undefined);
+const useFlag = () =>
+  check(useContext(FlagContext), "flag context is undefined");
+
+const RootFlag = (props: React.PropsWithChildren<FlagContextState>) => {
+  return (
+    <FlagContext.Provider value={{ name: props.name, tag: props.tag }}>
+      {props.children}
+    </FlagContext.Provider>
+  );
+};
+
+export const Flag = RootFlag as typeof RootFlag & {
+  Tooltip: typeof FlagTooltip;
+  DrawerTrigger: typeof FlagDrawerTrigger;
+  Image: typeof FlagImage;
+  CountryName: typeof FlagCountryName;
+};
+
+const FlagTooltip = React.forwardRef<
+  React.ElementRef<typeof Tooltip.Trigger>,
+  React.ComponentPropsWithoutRef<typeof Tooltip.Trigger>
+>(function FlagTooltip({ children, ...props }, ref) {
+  const flag = useFlag();
+  const showingFullName = hasDescendant(children, FlagCountryName);
+  return (
+    <Tooltip>
+      <Tooltip.Trigger ref={ref} {...props}>
+        {children}
+      </Tooltip.Trigger>
+      <Tooltip.Content>
+        {showingFullName ? flag.tag : `${flag.name} (${flag.tag})`}
+      </Tooltip.Content>
+    </Tooltip>
+  );
+});
+Flag.Tooltip = FlagTooltip;
+
+const FlagDrawerTrigger = React.forwardRef<
+  React.ElementRef<typeof Button>,
+  React.ComponentPropsWithoutRef<typeof Tooltip.Trigger>
+>(function FlagDrawerTrigger({ children, className, ...props }, ref) {
+  const flag = useFlag();
+  const { setSelectedTag } = useEu4Actions();
+
+  return (
+    <Button
+      ref={ref}
+      {...props}
+      variant="ghost"
+      shape="none"
+      className={cx(
+        className,
+        `w-max flex-shrink-0 rounded-r-md p-0 hover:bg-gray-200/70 active:bg-gray-300`,
+      )}
+      onClick={() => {
+        setSelectedTag(flag.tag);
+      }}
+    >
+      {children}
+    </Button>
+  );
+});
+Flag.DrawerTrigger = FlagDrawerTrigger;
+
+type FlagImageProps = Omit<FlagAvatarCoreProps, "tag">;
+const FlagImage = (props: FlagImageProps) => {
+  const flag = useFlag();
+  return <FlagAvatarCore tag={flag.tag} {...props} />;
+};
+Flag.Image = FlagImage;
+
+const FlagCountryName = () => {
+  const flag = useFlag();
+  return <span>{flag.name}</span>;
+};
+Flag.CountryName = FlagCountryName;
 
 type AvatarSize = "xs" | "small" | "base" | "large";
 interface FlagAvatarCoreProps {

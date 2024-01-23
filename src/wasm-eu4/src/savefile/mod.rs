@@ -631,6 +631,22 @@ impl SaveFileImpl {
         v
     }
 
+    pub fn get_great_powers(&self) -> Vec<GreatPower> {
+        let mut great_powers = self
+            .query
+            .countries()
+            .filter(|x| x.country.num_of_cities > 0)
+            .filter(|x| x.country.is_great_power)
+            .map(|x| GreatPower {
+                country: self.localize_tag(x.tag),
+                score: x.country.great_power_score,
+            })
+            .collect::<Vec<_>>();
+
+        great_powers.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap().reverse());
+        great_powers
+    }
+
     pub fn get_alive_countries(&self) -> Vec<CountryTag> {
         self.query
             .save()

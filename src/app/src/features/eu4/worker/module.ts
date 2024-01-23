@@ -183,6 +183,10 @@ export function eu4GetLuckyCountries(): LocalizedTag[] {
   return wasm.save.get_lucky_countries();
 }
 
+export function eu4GetGreatPowers() {
+  return wasm.save.get_great_powers();
+}
+
 export function eu4MatchingCountries(matcher: CountryMatcher): LocalizedTag[] {
   return wasm.save.matching_countries(matcher);
 }

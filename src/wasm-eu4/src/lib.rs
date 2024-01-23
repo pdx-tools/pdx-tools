@@ -1,9 +1,10 @@
 use crate::{
     models::{
         CountriesCasualties, CountriesExpenses, CountriesIncome, CountryCultures, CountryInfoList,
-        CountryLeaders, CountryStateDetailsList, CountryTags, Estates, I32List, IdeaGroups,
-        LocalizedTags, MetaRef, OptionalCountryTag, OwnedDevelopmentStatesList, PlayerHistories,
-        RunningMonarchs, SingleCountryWarCasualtiesList, StaticMap, StringList, Wars,
+        CountryLeaders, CountryStateDetailsList, CountryTags, Estates, GreatPowers, I32List,
+        IdeaGroups, LocalizedTags, MetaRef, OptionalCountryTag, OwnedDevelopmentStatesList,
+        PlayerHistories, RunningMonarchs, SingleCountryWarCasualtiesList, StaticMap, StringList,
+        Wars,
     },
     savefile::CountryHistory,
 };
@@ -111,6 +112,10 @@ impl SaveFile {
 
     pub fn get_lucky_countries(&self) -> LocalizedTags {
         self.0.get_lucky_countries().into()
+    }
+
+    pub fn get_great_powers(&self) -> GreatPowers {
+        self.0.get_great_powers().into()
     }
 
     pub fn get_alive_countries(&self) -> CountryTags {

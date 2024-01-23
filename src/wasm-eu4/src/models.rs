@@ -7,7 +7,7 @@ use tsify::Tsify;
 
 use crate::savefile::{
     CountryCasualties, CountryCulture, CountryInfo, CountryLeader, CountryStateDetails, Estate,
-    IdeaGroup, LocalizedCountryExpense, LocalizedCountryIncome, LocalizedTag,
+    GreatPower, IdeaGroup, LocalizedCountryExpense, LocalizedCountryIncome, LocalizedTag,
     OwnedDevelopmentStates, PlayerHistory, RunningMonarch, SingleCountryWarCasualties, War,
 };
 
@@ -38,6 +38,7 @@ wasm_wrapper!(Estates, Vec<Estate<'static>>);
 wasm_wrapper!(OwnedDevelopmentStatesList, Vec<OwnedDevelopmentStates>);
 wasm_wrapper!(CountriesCasualties, Vec<CountryCasualties>);
 wasm_wrapper!(LocalizedTags, Vec<LocalizedTag>);
+wasm_wrapper!(GreatPowers, Vec<GreatPower>);
 wasm_wrapper!(CountryStateDetailsList, Vec<CountryStateDetails>);
 wasm_wrapper!(CountryTags, Vec<CountryTag>);
 wasm_wrapper!(CountryInfoList, Vec<CountryInfo>);
