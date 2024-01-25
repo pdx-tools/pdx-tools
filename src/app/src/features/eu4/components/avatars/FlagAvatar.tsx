@@ -62,7 +62,7 @@ const FlagDrawerTrigger = React.forwardRef<
       shape="none"
       className={cx(
         className,
-        `w-max flex-shrink-0 rounded-r-md p-0 hover:bg-gray-200/70 active:bg-gray-300`
+        `w-max flex-shrink-0 rounded-r-md p-0 hover:bg-gray-200/70 active:bg-gray-300`,
       )}
       onClick={() => {
         setSelectedTag(flag.tag);
@@ -141,7 +141,7 @@ export const FlagAvatarCore = ({ tag, size }: FlagAvatarCoreProps) => {
       height={128}
       className={cx(
         dims,
-        "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500"
+        "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500",
       )}
       src={src}
     />
@@ -149,9 +149,11 @@ export const FlagAvatarCore = ({ tag, size }: FlagAvatarCoreProps) => {
 };
 
 export const FlagAvatar = (props: FlagAvatarProps) => {
-  return (<Flag tag={props.tag} name={props.name}>
-    <FlagAvatar2 {...props}/>
-  </Flag>);
+  return (
+    <Flag tag={props.tag} name={props.name}>
+      <FlagAvatar2 {...props} />
+    </Flag>
+  );
 };
 
 const FlagAvatar2 = (props: FlagAvatarProps) => {
@@ -172,7 +174,5 @@ const FlagAvatar2 = (props: FlagAvatarProps) => {
     withName
   );
 
-  return (
-      <Flag.Tooltip asChild={interactive}>{withTrigger}</Flag.Tooltip>
-  );
+  return <Flag.Tooltip asChild={interactive}>{withTrigger}</Flag.Tooltip>;
 };

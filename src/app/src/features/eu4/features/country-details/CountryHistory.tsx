@@ -435,7 +435,7 @@ const CountryHistoryCard = ({
               peace after {formatInt(evt.event.our_duration_days)} days
               {evt.event.war_end != evt.date
                 ? `. War ${warStatus} after ${formatInt(
-                    evt.event.war_duration_days
+                    evt.event.war_duration_days,
                   )} days of conflict`
                 : ""}
             </div>
@@ -631,7 +631,7 @@ const HistoryMapIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
         <MapIcon
           className={cx(
             "h-6 w-6 hover:opacity-100 transition-opacity",
-            date.text != evt.date && "opacity-50"
+            date.text != evt.date && "opacity-50",
           )}
         />
       }
@@ -835,8 +835,8 @@ export const CountryHistory = ({ details }: { details: CountryDetails }) => {
   const { data, error } = useEu4Worker(
     useCallback(
       async (worker) => worker.eu4GetCountryHistory(details.tag),
-      [details.tag]
-    )
+      [details.tag],
+    ),
   );
 
   if (error) {
@@ -878,9 +878,9 @@ const useFilteredHistory = (data: CountryHistoryYear[]) => {
       data.map((year) => ({
         ...year,
         events: year.events.filter(
-          (event) => !filters.has(eventToFilter(event))
+          (event) => !filters.has(eventToFilter(event)),
         ),
       })),
-    [data, filters]
+    [data, filters],
   );
 };

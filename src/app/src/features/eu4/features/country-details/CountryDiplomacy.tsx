@@ -52,7 +52,7 @@ export const DiploRow = <T extends { tag: string; name: string }>({
           {relations.map((x) => (
             <Flag key={x.tag} tag={x.tag} name={x.name}>
               <Flag.DrawerTrigger className="gap-2 text-left pr-4">
-                <Flag.Image size="large"/>
+                <Flag.Image size="large" />
                 {children(x)}
               </Flag.DrawerTrigger>
             </Flag>

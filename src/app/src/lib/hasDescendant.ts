@@ -4,7 +4,7 @@ import React from "react";
 /// descendants contains a given component.
 export const hasDescendant = (
   children: React.ReactNode,
-  needle: (...args: any[]) => React.ReactNode
+  needle: (...args: any[]) => React.ReactNode,
 ): boolean => {
   let found = false;
   React.Children.forEach(children, (child) => {
