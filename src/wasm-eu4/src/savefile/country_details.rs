@@ -4,7 +4,7 @@ use super::{
     CountryMonarch, CountryReligions, CountryStateDetails, DiplomacyEntry, DiplomacyKind, Estate,
     FailedHeir, GovernmentStrength, GreatAdvisor, InfluenceModifier, LandUnitStrength,
     LocalizedObj, LocalizedTag, MonarchKind, ProgressDate, ProvinceGc, RunningMonarch,
-    SaveFileImpl, WarBattles,
+    SaveFileImpl, WarBattles, WarOverview,
 };
 use crate::savefile::{
     hex_color, BattleGroundProvince, CountryHistoryYear, CountryReligion, CultureTolerance,
@@ -12,10 +12,7 @@ use crate::savefile::{
 };
 use eu4game::SaveGameQuery;
 use eu4save::{
-    models::{
-        ActiveWar, Country, CountryEvent, Leader, LeaderKind, PreviousWar, Province, WarHistory,
-        WarParticipant,
-    },
+    models::{Country, CountryEvent, Leader, LeaderKind, Province},
     query::{NationEvents, SaveCountry},
     CountryTag, Eu4Date, PdsDate, ProvinceId,
 };
@@ -1429,11 +1426,11 @@ impl SaveFileImpl {
         }
 
         for war in &game.previous_wars {
-            self.country_history_war(&resolver, &mut events, WarInfo::from(war))
+            self.country_history_war(&resolver, &mut events, WarOverview::from(war))
         }
 
         for war in &game.active_wars {
-            self.country_history_war(&resolver, &mut events, WarInfo::from(war))
+            self.country_history_war(&resolver, &mut events, WarOverview::from(war))
         }
 
         events.sort_by(|a, b| a.date.cmp(&b.date));
@@ -1624,7 +1621,7 @@ impl SaveFileImpl {
         &self,
         resolver: &InvertedResolver,
         events: &mut Vec<CountryHistoryEvent>,
-        war: WarInfo,
+        war: WarOverview,
     ) {
         let Some(start) = war.history.events.iter().map(|(date, _)| date).min() else {
             return;
@@ -1797,7 +1794,7 @@ impl SaveFileImpl {
         });
     }
 
-    fn country_history_battle(&self, war: &WarInfo, land_battle: bool) -> WarBattles {
+    fn country_history_battle(&self, war: &WarOverview, land_battle: bool) -> WarBattles {
         #[derive(Debug, Default)]
         struct BattleInfo {
             count: usize,
@@ -1910,41 +1907,6 @@ pub(crate) fn country_best_leaders(country: &Country) -> (Option<&Leader>, Optio
         });
 
     (best_general, best_admiral)
-}
-
-struct WarInfo<'a> {
-    history: &'a WarHistory,
-    name: &'a str,
-    participants: &'a [WarParticipant],
-    original_attacker: CountryTag,
-    original_defender: CountryTag,
-    is_active: bool,
-}
-
-impl<'a> From<&'a PreviousWar> for WarInfo<'a> {
-    fn from(value: &'a PreviousWar) -> Self {
-        WarInfo {
-            history: &value.history,
-            name: value.name.as_str(),
-            participants: &value.participants,
-            original_attacker: value.original_attacker,
-            original_defender: value.original_defender,
-            is_active: false,
-        }
-    }
-}
-
-impl<'a> From<&'a ActiveWar> for WarInfo<'a> {
-    fn from(value: &'a ActiveWar) -> Self {
-        WarInfo {
-            history: &value.history,
-            name: value.name.as_str(),
-            participants: &value.participants,
-            original_attacker: value.original_attacker,
-            original_defender: value.original_defender,
-            is_active: true,
-        }
-    }
 }
 
 #[derive(Debug)]

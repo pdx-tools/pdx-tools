@@ -1,6 +1,9 @@
 #![allow(nonstandard_style)]
 use eu4save::{
-    models::{CountryTechnology, Leader, LeaderKind, NationalFocus, Province},
+    models::{
+        ActiveWar, CountryTechnology, Leader, LeaderKind, NationalFocus, PreviousWar, Province,
+        WarHistory,
+    },
     query::{CountryExpenseLedger, CountryIncomeLedger, CountryManaUsage, Inheritance},
     CountryTag, Eu4Date, ProvinceId,
 };
@@ -1085,4 +1088,39 @@ pub struct WarBattles {
 pub struct GreatPower {
     pub country: LocalizedTag,
     pub score: f32,
+}
+
+pub(crate) struct WarOverview<'a> {
+    pub(crate) history: &'a WarHistory,
+    pub(crate) name: &'a str,
+    pub(crate) participants: &'a [eu4save::models::WarParticipant],
+    pub(crate) original_attacker: CountryTag,
+    pub(crate) original_defender: CountryTag,
+    pub(crate) is_active: bool,
+}
+
+impl<'a> From<&'a PreviousWar> for WarOverview<'a> {
+    fn from(value: &'a PreviousWar) -> Self {
+        Self {
+            history: &value.history,
+            name: value.name.as_str(),
+            participants: value.participants.as_slice(),
+            original_attacker: value.original_attacker,
+            original_defender: value.original_defender,
+            is_active: false,
+        }
+    }
+}
+
+impl<'a> From<&'a ActiveWar> for WarOverview<'a> {
+    fn from(value: &'a ActiveWar) -> Self {
+        Self {
+            history: &value.history,
+            name: value.name.as_str(),
+            participants: value.participants.as_slice(),
+            original_attacker: value.original_attacker,
+            original_defender: value.original_defender,
+            is_active: true,
+        }
+    }
 }

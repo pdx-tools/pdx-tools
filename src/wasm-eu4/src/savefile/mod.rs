@@ -1554,215 +1554,113 @@ impl SaveFileImpl {
         values
     }
 
-    fn active_wars(&self, wars: &mut Vec<War>, tags: &HashSet<CountryTag>) {
+    fn war_info(&self, wars: &mut Vec<War>, tags: &HashSet<CountryTag>, war: WarOverview) {
         let mut attackers = HashSet::new();
         let mut defenders = HashSet::new();
         let mut attackers_date = Vec::new();
         let mut defenders_date = Vec::new();
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
-        for war in &self.query.save().game.active_wars {
-            if war.name.is_empty() || war.original_attacker.is_some() {
-                continue;
-            }
 
-            defenders_date.clear();
-            attackers_date.clear();
-            attackers.clear();
-            defenders.clear();
-            let mut battles = 0;
-            let mut start_date = None;
-
-            for (date, event) in war.history.events.iter() {
-                if matches!(&start_date, Some(x) if x > date) {
-                    start_date = Some(*date)
-                }
-
-                if start_date.is_none() {
-                    start_date = Some(*date)
-                }
-
-                match event {
-                    WarEvent::AddAttacker(x) => {
-                        attackers.insert(x);
-                        attackers_date.push((*date, *x));
-                    }
-                    WarEvent::AddDefender(x) => {
-                        defenders.insert(x);
-                        defenders_date.push((*date, *x));
-                    }
-                    WarEvent::Battle(_) => battles += 1,
-                    _ => {}
-                }
-            }
-
-            if matches!(start_date, Some(x) if x < self.query.save().game.start_date) {
-                continue;
-            }
-
-            let mut attacker_losses = [0u32; 21];
-            let mut defender_losses = [0u32; 21];
-            for participant in &war.participants {
-                let losses = SaveFileImpl::create_losses(&participant.losses.members);
-                if attackers.contains(&participant.tag) {
-                    for (&x, y) in losses.iter().zip(attacker_losses.iter_mut()) {
-                        *y += x;
-                    }
-                } else if defenders.contains(&participant.tag) {
-                    for (&x, y) in losses.iter().zip(defender_losses.iter_mut()) {
-                        *y += x;
-                    }
-                }
-            }
-
-            let start = start_date.unwrap_or_else(eu4save::eu4_start_date);
-            let filter_war = std::iter::once(&(start, war.original_attacker))
-                .chain(std::iter::once(&(start, war.original_defender)))
-                .chain(attackers_date.iter())
-                .chain(defenders_date.iter())
-                .map(|(date, tag)| {
-                    self.tag_resolver
-                        .resolve(*tag, *date)
-                        .map(|x| x.current)
-                        .unwrap_or(*tag)
-                })
-                .any(|tag| tags.contains(&tag));
-
-            if !filter_war {
-                continue;
-            }
-
-            let war = War {
-                name: war.name.clone(),
-                start_date: start.iso_8601().to_string(),
-                end_date: None,
-                days: start.days_until(&self.query.save().meta.date),
-                battles,
-                attackers: WarSide {
-                    original: war.original_attacker,
-                    original_name: save_game_query.localize_country(&war.original_attacker),
-                    losses: attacker_losses,
-                    members: attackers.iter().map(|&&x| x).collect(),
-                },
-                defenders: WarSide {
-                    original: war.original_defender,
-                    original_name: save_game_query.localize_country(&war.original_defender),
-                    losses: defender_losses,
-                    members: defenders.iter().map(|&&x| x).collect(),
-                },
-            };
-
-            wars.push(war);
+        if war.name.is_empty() || war.original_attacker.is_none() {
+            return;
         }
-    }
 
-    fn previous_wars(&self, wars: &mut Vec<War>, tags: &HashSet<CountryTag>) {
-        let mut attackers = HashSet::new();
-        let mut defenders = HashSet::new();
-        let mut attackers_date = Vec::new();
-        let mut defenders_date = Vec::new();
-        let save_game_query = SaveGameQuery::new(&self.query, &self.game);
-        for war in &self.query.save().game.previous_wars {
-            if war.name.is_empty() || war.original_attacker.is_some() {
-                continue;
+        attackers.clear();
+        defenders.clear();
+        attackers_date.clear();
+        defenders_date.clear();
+        let mut battles = 0;
+        let mut start_date = None;
+        let mut end_date = None;
+
+        for (date, event) in war.history.events.iter() {
+            if matches!(&start_date, Some(x) if x > date) {
+                start_date = Some(*date)
             }
 
-            attackers.clear();
-            defenders.clear();
-            attackers_date.clear();
-            defenders_date.clear();
-            let mut battles = 0;
-            let mut start_date = None;
-            let mut end_date = None;
-
-            for (date, event) in war.history.events.iter() {
-                if matches!(&start_date, Some(x) if x > date) {
-                    start_date = Some(*date)
-                }
-
-                if start_date.is_none() {
-                    start_date = Some(*date)
-                }
-
-                if matches!(&end_date, Some(x) if x < date) {
-                    end_date = Some(*date)
-                }
-
-                if end_date.is_none() {
-                    end_date = Some(*date)
-                }
-
-                match event {
-                    WarEvent::AddAttacker(x) => {
-                        attackers.insert(x);
-                        attackers_date.push((*date, *x));
-                    }
-                    WarEvent::AddDefender(x) => {
-                        defenders.insert(x);
-                        defenders_date.push((*date, *x));
-                    }
-                    WarEvent::Battle(_) => battles += 1,
-                    _ => {}
-                }
+            if start_date.is_none() {
+                start_date = Some(*date)
             }
 
-            if matches!(start_date, Some(x) if x < self.query.save().game.start_date) {
-                continue;
+            if matches!(&end_date, Some(x) if x < date) {
+                end_date = Some(*date)
             }
 
-            let mut attacker_losses = [0u32; 21];
-            let mut defender_losses = [0u32; 21];
-            for participant in &war.participants {
-                let losses = SaveFileImpl::create_losses(&participant.losses.members);
-                if attackers.contains(&participant.tag) {
-                    for (&x, y) in losses.iter().zip(attacker_losses.iter_mut()) {
-                        *y += x;
-                    }
-                } else if defenders.contains(&participant.tag) {
-                    for (&x, y) in losses.iter().zip(defender_losses.iter_mut()) {
-                        *y += x;
-                    }
+            if end_date.is_none() {
+                end_date = Some(*date)
+            }
+
+            match event {
+                WarEvent::AddAttacker(x) => {
+                    attackers.insert(x);
+                    attackers_date.push((*date, *x));
                 }
+                WarEvent::AddDefender(x) => {
+                    defenders.insert(x);
+                    defenders_date.push((*date, *x));
+                }
+                WarEvent::Battle(_) => battles += 1,
+                _ => {}
             }
-
-            let start = start_date.unwrap_or_else(eu4save::eu4_start_date);
-            let filter_war = std::iter::once(&(start, war.original_attacker))
-                .chain(std::iter::once(&(start, war.original_defender)))
-                .chain(attackers_date.iter())
-                .chain(defenders_date.iter())
-                .map(|(date, tag)| {
-                    self.tag_resolver
-                        .resolve(*tag, *date)
-                        .map(|x| x.current)
-                        .unwrap_or(*tag)
-                })
-                .any(|tag| tags.contains(&tag));
-
-            if !filter_war {
-                continue;
-            }
-
-            let war = War {
-                name: war.name.clone(),
-                start_date: start.iso_8601().to_string(),
-                end_date: end_date.map(|x| x.iso_8601().to_string()),
-                days: start.days_until(&end_date.unwrap_or(self.query.save().meta.date)),
-                battles,
-                attackers: WarSide {
-                    original: war.original_attacker,
-                    original_name: save_game_query.localize_country(&war.original_attacker),
-                    losses: attacker_losses,
-                    members: attackers.iter().map(|&&x| x).collect(),
-                },
-                defenders: WarSide {
-                    original: war.original_defender,
-                    original_name: save_game_query.localize_country(&war.original_defender),
-                    losses: defender_losses,
-                    members: defenders.iter().map(|&&x| x).collect(),
-                },
-            };
-
-            wars.push(war);
         }
+
+        if matches!(start_date, Some(x) if x < self.query.save().game.start_date) {
+            return;
+        }
+
+        let mut attacker_losses = [0u32; 21];
+        let mut defender_losses = [0u32; 21];
+        for participant in war.participants {
+            let losses = SaveFileImpl::create_losses(&participant.losses.members);
+            if attackers.contains(&participant.tag) {
+                for (&x, y) in losses.iter().zip(attacker_losses.iter_mut()) {
+                    *y += x;
+                }
+            } else if defenders.contains(&participant.tag) {
+                for (&x, y) in losses.iter().zip(defender_losses.iter_mut()) {
+                    *y += x;
+                }
+            }
+        }
+
+        let start = start_date.unwrap_or_else(eu4save::eu4_start_date);
+        let filter_war = std::iter::once(&(start, war.original_attacker))
+            .chain(std::iter::once(&(start, war.original_defender)))
+            .chain(attackers_date.iter())
+            .chain(defenders_date.iter())
+            .map(|(date, tag)| {
+                self.tag_resolver
+                    .resolve(*tag, *date)
+                    .map(|x| x.current)
+                    .unwrap_or(*tag)
+            })
+            .any(|tag| tags.contains(&tag));
+
+        if !filter_war {
+            return;
+        }
+
+        let war = War {
+            name: String::from(war.name),
+            start_date: start.iso_8601().to_string(),
+            end_date: end_date.map(|x| x.iso_8601().to_string()),
+            days: start.days_until(&end_date.unwrap_or(self.query.save().meta.date)),
+            battles,
+            attackers: WarSide {
+                original: war.original_attacker,
+                original_name: save_game_query.localize_country(&war.original_attacker),
+                losses: attacker_losses,
+                members: attackers.iter().map(|&&x| x).collect(),
+            },
+            defenders: WarSide {
+                original: war.original_defender,
+                original_name: save_game_query.localize_country(&war.original_defender),
+                losses: defender_losses,
+                members: defenders.iter().map(|&&x| x).collect(),
+            },
+        };
+
+        wars.push(war);
     }
 
     pub fn wars(&self, payload: TagFilterPayloadRaw) -> Vec<War> {
@@ -1771,8 +1669,15 @@ impl SaveFileImpl {
         let previous_wars = &self.query.save().game.previous_wars;
         let active_wars = &self.query.save().game.active_wars;
         let mut result = Vec::with_capacity(previous_wars.len() + active_wars.len());
-        self.previous_wars(&mut result, &tags);
-        self.active_wars(&mut result, &tags);
+
+        for war in &self.query.save().game.previous_wars {
+            self.war_info(&mut result, &tags, WarOverview::from(war))
+        }
+
+        for war in &self.query.save().game.active_wars {
+            self.war_info(&mut result, &tags, WarOverview::from(war))
+        }
+
         result
     }
 
