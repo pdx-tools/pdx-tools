@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { Losses } from "../../types/models";
 import { formatFloat, formatInt } from "@/lib/format";
-import { FlagAvatar } from "@/features/eu4/components/avatars";
+import { Flag } from "@/features/eu4/components/avatars";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { BattleInfo, WarParticipant } from "../../worker/module";
 import { Tooltip } from "@/components/Tooltip";
@@ -68,9 +68,7 @@ const participantColumns = [
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Country" />
     ),
-    cell: ({ row }) => (
-      <FlagAvatar tag={row.original.tag} name={row.original.name} />
-    ),
+    cell: ({ row }) => <Flag tag={row.original.tag} name={row.original.name} />,
   }),
 
   columnHelper.accessor("participation", {
@@ -158,7 +156,7 @@ const landColumns = [
       <div
         className={info.row.original.attacker_won ? "flex bg-green-300" : ""}
       >
-        <FlagAvatar
+        <Flag
           tag={info.getValue().country}
           name={info.getValue().country_name}
         />
@@ -172,7 +170,7 @@ const landColumns = [
       <div
         className={!info.row.original.attacker_won ? "flex bg-green-300" : ""}
       >
-        <FlagAvatar
+        <Flag
           tag={info.getValue().country}
           name={info.getValue().country_name}
         />
@@ -332,7 +330,7 @@ const navyColumns = [
     header: "Attacker",
     cell: (info) => (
       <div className={info.row.original.attacker_won ? "bg-lime-200" : ""}>
-        <FlagAvatar
+        <Flag
           tag={info.getValue().country}
           name={info.getValue().country_name}
         />
@@ -344,7 +342,7 @@ const navyColumns = [
     header: "Defender",
     cell: (info) => (
       <div className={!info.row.original.attacker_won ? "bg-lime-200" : ""}>
-        <FlagAvatar
+        <Flag
           tag={info.getValue().country}
           name={info.getValue().country_name}
         />

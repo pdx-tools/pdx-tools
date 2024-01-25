@@ -1,6 +1,6 @@
 import { useEu4Worker } from "../../worker";
 import { CountryDetails, Eu4Date } from "../../types/models";
-import { FlagAvatar } from "../../components/avatars";
+import { Flag } from "../../components/avatars";
 import { useCallback, useState } from "react";
 import {
   AdminManaIcon,
@@ -37,11 +37,7 @@ const columns = [
   columnHelper.accessor("tag", {
     header: "Tag",
     cell: ({ row }) => (
-      <FlagAvatar
-        tag={row.original.tag}
-        name={row.original.name}
-        size="small"
-      />
+      <Flag tag={row.original.tag} name={row.original.name} size="small" />
     ),
   }),
 

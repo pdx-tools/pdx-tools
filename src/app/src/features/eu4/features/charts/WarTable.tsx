@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from "react";
 import { BattleView } from "./BattleView";
 import { formatInt } from "@/lib/format";
-import { FlagAvatar } from "@/features/eu4/components/avatars";
+import { Flag } from "@/features/eu4/components/avatars";
 import { createCsv } from "@/lib/csv";
 import { useVisualizationDispatch } from "@/components/viz";
 import { useEu4Worker } from "@/features/eu4/worker";
@@ -73,7 +73,7 @@ const columns = [
         );
       return (
         <>
-          <FlagAvatar
+          <Flag
             tag={info.getValue()}
             name={info.row.original.attackers.original_name}
           />
@@ -93,7 +93,7 @@ const columns = [
         );
       return (
         <>
-          <FlagAvatar
+          <Flag
             tag={info.getValue()}
             name={info.row.original.defenders.original_name}
           />

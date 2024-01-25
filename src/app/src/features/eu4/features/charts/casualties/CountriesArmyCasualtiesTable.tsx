@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { TableLosses, useCountryCasualtyData } from "./hooks";
 import { useVisualizationDispatch } from "@/components/viz/visualization-context";
 import { formatInt } from "@/lib/format";
-import { FlagAvatar } from "@/features/eu4/components/avatars";
+import { Flag } from "@/features/eu4/components/avatars";
 import { createCsv } from "@/lib/csv";
 import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -34,9 +34,7 @@ const columns = [
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Country" />
     ),
-    cell: ({ row }) => (
-      <FlagAvatar tag={row.original.tag} name={row.original.name} />
-    ),
+    cell: ({ row }) => <Flag tag={row.original.tag} name={row.original.name} />,
   }),
 
   columnHelper.group({

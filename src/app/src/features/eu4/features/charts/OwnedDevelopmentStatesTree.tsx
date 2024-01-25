@@ -11,7 +11,7 @@ import {
   OwnedDevelopmentStates,
   ProvinceDevelopment,
 } from "../../types/models";
-import { FlagAvatarCore } from "../../components/avatars";
+import { Flag } from "../../components/avatars";
 import { formatInt } from "@/lib/format";
 import { Alert } from "@/components/Alert";
 
@@ -158,12 +158,19 @@ function CountryStateDevelopmentTree({
 
   return (
     <div>
-      <div className="flex items-center space-x-2">
-        <FlagAvatarCore tag={dev.country.tag} size="large" />
-        <span>
-          {dev.country.name} ({formatInt(total)})
-        </span>
-      </div>
+      <Flag tag={dev.country.tag} name={dev.country.name}>
+        <Flag.Tooltip asChild>
+          <Flag.DrawerTrigger className="gap-2 pr-4">
+            <Flag.Image size="large" />
+            <div className="flex flex-col items-start">
+              <Flag.CountryName />
+              <span className="font-normal">
+                Development: {formatInt(total)}
+              </span>
+            </div>
+          </Flag.DrawerTrigger>
+        </Flag.Tooltip>
+      </Flag>
       <div style={{ height: `${dimension}px`, width: `${dimension}px` }}>
         <Treemap {...config} />
       </div>

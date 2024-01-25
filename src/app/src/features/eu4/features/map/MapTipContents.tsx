@@ -1,5 +1,5 @@
 import { QuickTipPayload } from "../../types/map";
-import { FlagAvatarCore } from "../../components/avatars";
+import { Flag } from "../../components/avatars";
 import { formatInt } from "@/lib/format";
 import { LocalizedTag } from "../../types/models";
 
@@ -15,7 +15,9 @@ interface MapTipFlagProps {
 const MapTipFlag = ({ tag, name }: MapTipFlagProps) => {
   return (
     <div className="flex items-center gap-1">
-      <FlagAvatarCore tag={tag} />
+      <Flag tag={tag} name={name}>
+        <Flag.Image />
+      </Flag>
       <span>
         {name} ({tag})
       </span>

@@ -3,12 +3,7 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { difficultyText } from "@/lib/difficulty";
 import { DlcList } from "@/features/eu4/components/dlc-list";
 import { TagTransition } from "@/features/eu4/types/models";
-import {
-  AchievementAvatar,
-  Flag,
-  FlagAvatar,
-  FlagAvatarCore,
-} from "@/features/eu4/components/avatars";
+import { AchievementAvatar, Flag } from "@/features/eu4/components/avatars";
 import { Aar } from "./Aar";
 import { FlipBook, StringFlipBook } from "../../components/flip-book";
 import { ModList } from "./ModList";
@@ -36,7 +31,9 @@ import { formatInt } from "@/lib/format";
 const TagDescription = (play: TagTransition) => {
   return (
     <div className="flex flex-col items-start">
-      <FlagAvatarCore tag={play.tag} size="large" />
+      <Flag tag={play.tag} name={play.name}>
+        <Flag.Image size="large" />
+      </Flag>
       <div>{play.name}</div>
       <div>{play.date}</div>
     </div>
@@ -169,7 +166,7 @@ export const InfoDrawer = () => {
             )}
           >
             <div className="flex">
-              <FlagAvatar tag={item.latest} name={item.name} size="large" />
+              <Flag tag={item.latest} name={item.name} size="large" />
               <div className="flex grow items-center justify-end">
                 {!item.annexed && (
                   <IconButton
@@ -265,7 +262,7 @@ export const InfoDrawer = () => {
             <ul className="flex flex-col gap-2 pl-4">
               {luckyCountries.data.map((x) => (
                 <li key={x.tag} className="flex">
-                  <FlagAvatar tag={x.tag} name={x.name} size="large" />
+                  <Flag tag={x.tag} name={x.name} size="large" />
                 </li>
               ))}
             </ul>

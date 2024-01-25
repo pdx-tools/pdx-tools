@@ -1,7 +1,7 @@
 import React from "react";
 import { rankDisplay } from "@/lib/ranks";
 import { difficultySort, difficultyText } from "@/lib/difficulty";
-import { FlagAvatar } from "@/features/eu4/components/avatars";
+import { Flag } from "@/features/eu4/components/avatars";
 import { TimeAgo } from "@/components/TimeAgo";
 import { RankedSaveFile } from "@/services/appApi";
 import { formatInt } from "@/lib/format";
@@ -88,7 +88,7 @@ const columns = [
     ),
     cell: ({ row }) =>
       row.original.player_start_tag && row.original.player_start_tag_name ? (
-        <FlagAvatar
+        <Flag
           tag={row.original.player_start_tag}
           name={row.original.player_start_tag_name}
         />
@@ -102,10 +102,7 @@ const columns = [
       <Table.ColumnHeader column={column} title="Current" />
     ),
     cell: ({ row }) => (
-      <FlagAvatar
-        tag={row.original.player_tag}
-        name={row.original.player_tag_name}
-      />
+      <Flag tag={row.original.player_tag} name={row.original.player_tag_name} />
     ),
   }),
 

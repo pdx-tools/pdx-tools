@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { TableLosses, useCountryCasualtyData } from "./hooks";
 import { CountriesNavyCasualtiesWarTable } from "./CountriesNavyCasualtiesWarTable";
-import { FlagAvatar } from "@/features/eu4/components/avatars";
+import { Flag } from "@/features/eu4/components/avatars";
 import { useVisualizationDispatch } from "@/components/viz";
 import { formatInt } from "@/lib/format";
 import { createCsv } from "@/lib/csv";
@@ -35,9 +35,7 @@ const columns = [
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Country" />
     ),
-    cell: ({ row }) => (
-      <FlagAvatar tag={row.original.tag} name={row.original.name} />
-    ),
+    cell: ({ row }) => <Flag tag={row.original.tag} name={row.original.name} />,
   }),
 
   columnHelper.group({

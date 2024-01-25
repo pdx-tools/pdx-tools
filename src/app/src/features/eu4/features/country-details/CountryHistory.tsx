@@ -10,11 +10,7 @@ import {
 } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
 import { Alert } from "@/components/Alert";
 import { Card } from "@/components/Card";
-import {
-  Flag,
-  FlagAvatarCore,
-  PersonalityAvatar,
-} from "../../components/avatars";
+import { Flag, PersonalityAvatar } from "../../components/avatars";
 import {
   AdminManaFocusedIcon,
   AdminManaIcon,
@@ -74,10 +70,12 @@ const CountryHistoryCard = ({
     case "initial":
       return (
         <Card className="flex items-center gap-4 p-4">
-          <FlagAvatarCore size="small" tag={evt.event.tag} />
-          <p>
-            Started as {evt.event.name} ({evt.event.tag})
-          </p>
+          <Flag tag={evt.event.tag} name={evt.event.name}>
+            <Flag.Image size="small" />
+            <p>
+              Started as {evt.event.name} ({evt.event.tag})
+            </p>
+          </Flag>
         </Card>
       );
     case "tagSwitch":
@@ -90,10 +88,12 @@ const CountryHistoryCard = ({
             <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
-            <FlagAvatarCore size="small" tag={evt.event.tag} />
-            <p>
-              Tag switched to {evt.event.name} ({evt.event.tag})
-            </p>
+            <Flag tag={evt.event.tag} name={evt.event.name}>
+              <Flag.Image size="small" />
+              <p>
+                Started as {evt.event.name} ({evt.event.tag})
+              </p>
+            </Flag>
           </div>
         </Card>
       );

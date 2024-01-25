@@ -4,10 +4,7 @@ import { SaveFile } from "@/services/appApi";
 import { diff } from "@/lib/dates";
 import { difficultyText } from "@/lib/difficulty";
 import { DeleteSave } from "../eu4/components/DeleteSave";
-import {
-  AchievementAvatar,
-  FlagAvatar,
-} from "@/features/eu4/components/avatars";
+import { AchievementAvatar, Flag } from "@/features/eu4/components/avatars";
 import { groupBy } from "@/lib/groupBy";
 import { createColumnHelper } from "@tanstack/react-table";
 import { DataTable } from "@/components/DataTable";
@@ -89,7 +86,7 @@ export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
         cell: ({ row }) =>
           row.original.player_start_tag &&
           row.original.player_start_tag_name ? (
-            <FlagAvatar
+            <Flag
               tag={row.original.player_start_tag}
               name={row.original.player_start_tag_name}
             />
@@ -100,7 +97,7 @@ export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
       columnHelper.accessor("player_tag_name", {
         header: "Current",
         cell: ({ row }) => (
-          <FlagAvatar
+          <Flag
             tag={row.original.player_tag}
             name={row.original.player_tag_name}
           />

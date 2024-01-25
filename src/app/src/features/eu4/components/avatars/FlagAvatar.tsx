@@ -13,10 +13,11 @@ const FlagContext = createContext<FlagContextState | undefined>(undefined);
 const useFlag = () =>
   check(useContext(FlagContext), "flag context is undefined");
 
-const RootFlag = (props: React.PropsWithChildren<FlagContextState>) => {
+type CompoundProps = FlagContextState & { children: React.ReactNode };
+const RootFlag = (props: CompoundProps | FlagAvatarProps) => {
   return (
     <FlagContext.Provider value={{ name: props.name, tag: props.tag }}>
-      {props.children}
+      {"children" in props ? props.children : <FlagAvatar {...props} />}
     </FlagContext.Provider>
   );
 };
@@ -77,7 +78,7 @@ Flag.DrawerTrigger = FlagDrawerTrigger;
 type FlagImageProps = Omit<FlagAvatarCoreProps, "tag">;
 const FlagImage = (props: FlagImageProps) => {
   const flag = useFlag();
-  return <FlagAvatarCore tag={flag.tag} {...props} />;
+  return <FlagImageImpl tag={flag.tag} {...props} />;
 };
 Flag.Image = FlagImage;
 
@@ -109,7 +110,7 @@ interface FlagAvatarProps {
   condensed?: boolean;
 }
 
-export const FlagAvatarCore = ({ tag, size }: FlagAvatarCoreProps) => {
+const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
   let src: string;
   try {
     src = require(`@/images/eu4/flags/${tag}.png`);
@@ -148,17 +149,9 @@ export const FlagAvatarCore = ({ tag, size }: FlagAvatarCoreProps) => {
   );
 };
 
-export const FlagAvatar = (props: FlagAvatarProps) => {
-  return (
-    <Flag tag={props.tag} name={props.name}>
-      <FlagAvatar2 {...props} />
-    </Flag>
-  );
-};
-
-const FlagAvatar2 = (props: FlagAvatarProps) => {
+const FlagAvatar = (props: FlagAvatarProps) => {
   const interactive = useInEu4Analysis();
-  const flag = <FlagAvatarCore {...props} />;
+  const flag = <FlagImageImpl {...props} />;
   const withName = (
     <div className="flex flex-shrink-0 gap-x-2 text-left">
       {flag}

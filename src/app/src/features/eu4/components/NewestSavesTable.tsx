@@ -3,10 +3,7 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { Button } from "@/components/Button";
 import { difficultyText, difficultySort } from "@/lib/difficulty";
 import { SaveFile, pdxApi } from "@/services/appApi";
-import {
-  FlagAvatar,
-  AchievementAvatar,
-} from "@/features/eu4/components/avatars";
+import { Flag, AchievementAvatar } from "@/features/eu4/components/avatars";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
@@ -45,7 +42,7 @@ const columns = [
     ),
     cell: ({ row }) =>
       row.original.player_start_tag && row.original.player_start_tag_name ? (
-        <FlagAvatar
+        <Flag
           tag={row.original.player_start_tag}
           name={row.original.player_start_tag_name}
         />
@@ -59,10 +56,7 @@ const columns = [
       <Table.ColumnHeader column={column} title="Current" />
     ),
     cell: ({ row }) => (
-      <FlagAvatar
-        tag={row.original.player_tag}
-        name={row.original.player_tag_name}
-      />
+      <Flag tag={row.original.player_tag} name={row.original.player_tag_name} />
     ),
   }),
   columnHelper.accessor("patch", {

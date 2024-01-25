@@ -4,7 +4,7 @@ import { CountryExpenses } from "@/features/eu4/types/models";
 import { expenseLedgerAliases } from "../country-details/data";
 import { formatFloat, formatInt } from "@/lib/format";
 import { useAnalysisWorker } from "@/features/eu4/worker";
-import { FlagAvatar } from "@/features/eu4/components/avatars";
+import { Flag } from "@/features/eu4/components/avatars";
 import { createCsv } from "@/lib/csv";
 import {
   useEu4Actions,
@@ -82,7 +82,7 @@ export const CountriesExpensesBaseTable = ({
           <Table.ColumnHeader column={column} title="Country" />
         ),
         cell: ({ row }) => (
-          <FlagAvatar tag={row.original.tag} name={row.original.name} />
+          <Flag tag={row.original.tag} name={row.original.name} />
         ),
       }),
       columnHelper.accessor("total", {

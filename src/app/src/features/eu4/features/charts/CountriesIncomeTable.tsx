@@ -4,7 +4,7 @@ import { CountryIncome } from "../../types/models";
 import { useVisualizationDispatch } from "../../../../components/viz/visualization-context";
 import { formatFloat } from "@/lib/format";
 import { useAnalysisWorker } from "../../worker/useAnalysisWorker";
-import { FlagAvatar } from "@/features/eu4/components/avatars";
+import { Flag } from "@/features/eu4/components/avatars";
 import { createCsv } from "@/lib/csv";
 import {
   useEu4Actions,
@@ -68,7 +68,7 @@ export const CountriesIncomeTable = () => {
           <Table.ColumnHeader column={column} title="Country" />
         ),
         cell: ({ row }) => (
-          <FlagAvatar tag={row.original.tag} name={row.original.name} />
+          <Flag tag={row.original.tag} name={row.original.name} />
         ),
       }),
       columnHelper.accessor("total", {

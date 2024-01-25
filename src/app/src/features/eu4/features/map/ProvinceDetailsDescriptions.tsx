@@ -9,7 +9,7 @@ import {
 import {
   TcInvestmentAvatar,
   BuildingAvatar,
-  FlagAvatar,
+  Flag,
 } from "@/features/eu4/components/avatars";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { formatFloat, formatInt } from "@/lib/format";
@@ -25,7 +25,7 @@ const devColumnHelper = createColumnHelper<ProvinceCountryImprovement>();
 const devColumns = [
   devColumnHelper.accessor("country", {
     header: "Country",
-    cell: (info) => <FlagAvatar {...info.getValue()} />,
+    cell: (info) => <Flag {...info.getValue()} />,
   }),
 
   devColumnHelper.accessor("improvements", {
@@ -39,7 +39,7 @@ const stateColumnHelper = createColumnHelper<CountryState>();
 const stateColumns = [
   stateColumnHelper.accessor("country", {
     header: "Country",
-    cell: (info) => <FlagAvatar {...info.getValue()} />,
+    cell: (info) => <Flag {...info.getValue()} />,
   }),
 
   stateColumnHelper.accessor("prosperity", {
@@ -53,7 +53,7 @@ const investmentColumnHelper = createColumnHelper<TradeCompanyInvestments>();
 const investmentColumns = [
   investmentColumnHelper.accessor("country", {
     header: "Country",
-    cell: (info) => <FlagAvatar {...info.getValue()} />,
+    cell: (info) => <Flag {...info.getValue()} />,
   }),
 
   investmentColumnHelper.accessor("investments", {
@@ -87,7 +87,7 @@ const historyColumns = [
     cell: (info) => {
       const event = info.row.original.data;
       if (event.kind == "Owner") {
-        return <FlagAvatar tag={event.tag} name={event.name} />;
+        return <Flag tag={event.tag} name={event.name} />;
       } else if (event.kind == "Demolished" || event.kind == "Constructed") {
         return <BuildingAvatar {...event} />;
       }
@@ -120,10 +120,7 @@ export const ProvinceDetailsDescriptions = ({
             <th className="py-2 text-left">Owner:</th>
             <td className="py-2">
               {province.owner ? (
-                <FlagAvatar
-                  tag={province.owner.tag}
-                  name={province.owner.name}
-                />
+                <Flag tag={province.owner.tag} name={province.owner.name} />
               ) : (
                 "---"
               )}
@@ -133,7 +130,7 @@ export const ProvinceDetailsDescriptions = ({
             <th className="py-2 text-left">Controller:</th>
             <td className="py-2">
               {province.controller ? (
-                <FlagAvatar
+                <Flag
                   tag={province.controller.tag}
                   name={province.controller.name}
                 />
@@ -148,11 +145,7 @@ export const ProvinceDetailsDescriptions = ({
               <ul className="flex flex-wrap gap-2">
                 {province.cores.map((core) => (
                   <li key={core.tag}>
-                    <FlagAvatar
-                      tag={core.tag}
-                      name={core.name}
-                      condensed={true}
-                    />
+                    <Flag tag={core.tag} name={core.name} condensed={true} />
                   </li>
                 ))}
               </ul>
@@ -164,11 +157,7 @@ export const ProvinceDetailsDescriptions = ({
               <ul className="flex flex-wrap gap-2">
                 {province.claims.map((claim) => (
                   <li key={claim.tag}>
-                    <FlagAvatar
-                      tag={claim.tag}
-                      name={claim.name}
-                      condensed={true}
-                    />
+                    <Flag tag={claim.tag} name={claim.name} condensed={true} />
                   </li>
                 ))}
               </ul>

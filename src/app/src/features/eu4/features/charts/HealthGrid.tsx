@@ -5,7 +5,7 @@ import { useAnalysisWorker } from "@/features/eu4/worker";
 import { createCsv } from "@/lib/csv";
 import { useTagFilter } from "../../store";
 import { CountryHealth } from "../../types/models";
-import { FlagAvatar } from "../../components/avatars";
+import { Flag } from "../../components/avatars";
 import { Tooltip } from "@/components/Tooltip";
 import { Alert } from "@/components/Alert";
 import { SortingFn, createColumnHelper } from "@tanstack/react-table";
@@ -31,9 +31,7 @@ const columns = [
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Country" />
     ),
-    cell: ({ row }) => (
-      <FlagAvatar tag={row.original.tag} name={row.original.name} />
-    ),
+    cell: ({ row }) => <Flag tag={row.original.tag} name={row.original.name} />,
   }),
 
   columnHelper.accessor("coreIncome", {

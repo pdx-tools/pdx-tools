@@ -1,9 +1,6 @@
 import { FailedHeir, RunningMonarch } from "../../types/models";
 import { formatFloat, formatInt } from "@/lib/format";
-import {
-  FlagAvatar,
-  PersonalityAvatar,
-} from "@/features/eu4/components/avatars";
+import { Flag, PersonalityAvatar } from "@/features/eu4/components/avatars";
 import { createColumnHelper } from "@tanstack/react-table";
 import { DataTable } from "@/components/DataTable";
 import { HelpTooltip } from "@/components/HelpTooltip";
@@ -52,7 +49,7 @@ const columns = [
   columnHelper.accessor("country", {
     header: "Tag",
     cell: (info) => (
-      <FlagAvatar
+      <Flag
         name={info.getValue().name}
         tag={info.getValue().tag}
         condensed={true}
@@ -190,7 +187,7 @@ const heirColumns = [
   heirColumnsHelper.accessor("country", {
     header: "Tag",
     cell: (info) => (
-      <FlagAvatar
+      <Flag
         name={info.getValue().name}
         tag={info.getValue().tag}
         condensed={true}
