@@ -8,7 +8,6 @@ import {
   Flag,
   FlagAvatar,
   FlagAvatarCore,
-  TagFlag,
 } from "@/features/eu4/components/avatars";
 import { Aar } from "./Aar";
 import { FlipBook, StringFlipBook } from "../../components/flip-book";
@@ -166,13 +165,11 @@ export const InfoDrawer = () => {
             className={cx(
               "space-y-5 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md",
               item.annexed && "bg-rose-100",
-              !item.is_human && !item.annexed && "bg-gray-100",
+              !item.is_human && !item.annexed && "bg-gray-100"
             )}
           >
             <div className="flex">
-              <TagFlag tag={item.latest} size="large">
-                {item.name}
-              </TagFlag>
+              <FlagAvatar tag={item.latest} name={item.name} size="large"/>
               <div className="flex grow items-center justify-end">
                 {!item.annexed && (
                   <IconButton
@@ -241,26 +238,20 @@ export const InfoDrawer = () => {
                 </thead>
                 <tbody>
                   {greatPowers.data.slice(0, 8).map((x, i) => (
-                    <Flag
-                      key={x.country.tag}
-                      tag={x.country.tag}
-                      name={x.country.name}
-                    >
-                      <tr>
-                        <td className="flex mt-1">
+                    <tr key={x.country.tag}>
+                      <td className="flex mt-1">
+                        <Flag tag={x.country.tag} name={x.country.name}>
                           <Flag.Tooltip asChild>
                             <Flag.DrawerTrigger className="gap-2 grow">
                               <Flag.Image size="large" />
                               <div>(#{i + 1})</div>
-                              <div>
-                                <Flag.CountryName />
-                              </div>
+                              <Flag.CountryName />
                             </Flag.DrawerTrigger>
                           </Flag.Tooltip>
-                        </td>
-                        <td className="text-right">{formatInt(x.score)}</td>
-                      </tr>
-                    </Flag>
+                        </Flag>
+                      </td>
+                      <td className="text-right">{formatInt(x.score)}</td>
+                    </tr>
                   ))}
                 </tbody>
               </table>

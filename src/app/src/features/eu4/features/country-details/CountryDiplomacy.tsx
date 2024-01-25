@@ -1,9 +1,8 @@
-import { formatInt } from "@/lib/format";
+import { formatInt, sentenceCasing } from "@/lib/format";
 import { useCallback, useMemo } from "react";
-import { TagFlag } from "../../components/avatars";
+import { Flag } from "../../components/avatars";
 import { CountryDetails, DiplomacyEntry } from "../../types/models";
 import { isOfType } from "@/lib/isPresent";
-import { useSelectedTag } from "../../store";
 
 const isColony = (subjectType: string) => {
   switch (subjectType) {
@@ -51,9 +50,12 @@ export const DiploRow = <T extends { tag: string; name: string }>({
       <td className="w-full px-2 py-4">
         <div className={rowClass}>
           {relations.map((x) => (
-            <TagFlag key={x.tag} tag={x.tag} size="large">
-              {children(x)}
-            </TagFlag>
+            <Flag key={x.tag} tag={x.tag} name={x.name}>
+              <Flag.DrawerTrigger className="gap-2 text-left pr-4">
+                <Flag.Image size="large"/>
+                {children(x)}
+              </Flag.DrawerTrigger>
+            </Flag>
           ))}
         </div>
       </td>
@@ -188,7 +190,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
             <div>
               <p className="m-0 text-sm">{`${x.name} (${x.tag})`}</p>
               <p className="m-0 text-sm">
-                {x.subject_type.replace("_colony", "")}
+                {sentenceCasing(x.subject_type.replace("_", " "))}
               </p>
               {x.start_date && (
                 <p className="m-0 text-sm">Since: {x.start_date}</p>

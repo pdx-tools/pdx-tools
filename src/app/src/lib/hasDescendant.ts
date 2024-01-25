@@ -1,8 +1,10 @@
 import React from "react";
 
+/// Returns true if any children or further
+/// descendants contains a given component.
 export const hasDescendant = (
   children: React.ReactNode,
-  needle: () => React.ReactElement,
+  needle: (...args: any[]) => React.ReactNode
 ): boolean => {
   let found = false;
   React.Children.forEach(children, (child) => {
@@ -12,7 +14,9 @@ export const hasDescendant = (
     }
 
     found ||= child.type == needle;
-    found ||= hasDescendant(child.props.children, needle);
+    if (!found) {
+      found ||= hasDescendant(child.props.children, needle);
+    }
   });
   return found;
 };
