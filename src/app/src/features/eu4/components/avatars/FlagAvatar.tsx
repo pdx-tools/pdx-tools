@@ -6,7 +6,6 @@ import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import { Button } from "@/components/Button";
 import { check } from "@/lib/isPresent";
-import { hasDescendant } from "@/lib/hasDescendant";
 
 type FlagContextState = { name: string; tag: string };
 const FlagContext = createContext<FlagContextState | undefined>(undefined);
@@ -31,17 +30,18 @@ export const Flag = RootFlag as typeof RootFlag & {
 
 const FlagTooltip = React.forwardRef<
   React.ElementRef<typeof Tooltip.Trigger>,
-  React.ComponentPropsWithoutRef<typeof Tooltip.Trigger>
->(function FlagTooltip({ children, ...props }, ref) {
+  React.ComponentPropsWithoutRef<typeof Tooltip.Trigger> & {
+    showName?: boolean;
+  }
+>(function FlagTooltip({ children, showName, ...props }, ref) {
   const flag = useFlag();
-  const hasFullName = hasDescendant(children, FlagCountryName);
   return (
     <Tooltip>
       <Tooltip.Trigger ref={ref} {...props}>
         {children}
       </Tooltip.Trigger>
       <Tooltip.Content>
-        {hasFullName ? flag.tag : `${flag.name} (${flag.tag})`}
+        {showName ? `${flag.name} (${flag.tag})` : flag.tag}
       </Tooltip.Content>
     </Tooltip>
   );
@@ -167,5 +167,9 @@ const FlagAvatar = (props: FlagAvatarProps) => {
     withName
   );
 
-  return <Flag.Tooltip asChild={interactive}>{withTrigger}</Flag.Tooltip>;
+  return (
+    <Flag.Tooltip asChild={interactive} showName={props.condensed}>
+      {withTrigger}
+    </Flag.Tooltip>
+  );
 };

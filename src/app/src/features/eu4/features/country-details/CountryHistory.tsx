@@ -373,7 +373,7 @@ const CountryHistoryCard = ({
                   <div className="flex flex-wrap w-44">
                     {evt.event.attackers.map((x) => (
                       <Flag key={x.tag} name={x.name} tag={x.tag}>
-                        <Flag.Tooltip>
+                        <Flag.Tooltip showName>
                           <Flag.Image size="xs" />
                         </Flag.Tooltip>
                       </Flag>
@@ -390,7 +390,7 @@ const CountryHistoryCard = ({
                   <div className="flex flex-wrap w-44">
                     {evt.event.defenders.map((x) => (
                       <Flag key={x.tag} name={x.name} tag={x.tag}>
-                        <Flag.Tooltip>
+                        <Flag.Tooltip showName>
                           <Flag.Image size="xs" />
                         </Flag.Tooltip>
                       </Flag>
