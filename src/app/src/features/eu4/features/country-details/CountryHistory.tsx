@@ -6,6 +6,7 @@ import {
   CountryHistoryYear,
   LeaderKind,
   LocalizedTag,
+  ProvinceConquer,
   WarBattles,
 } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
 import { Alert } from "@/components/Alert";
@@ -43,6 +44,7 @@ import { Losses, expandLosses } from "../../utils/losses";
 import {
   abbreviateInt,
   formatInt,
+  formatList,
   pluralize,
   sentenceCasing,
 } from "@/lib/format";
@@ -471,6 +473,11 @@ const CountryHistoryCard = ({
                 </div>
               </div>
               <div>
+                <ProvinceChanges provinces={evt.event.province_gains} gained />
+                <ProvinceChanges
+                  provinces={evt.event.province_losses}
+                  gained={false}
+                />
                 <WarBattlesSummary
                   is_attacking={evt.event.is_attacking}
                   battles={evt.event.land_battles}
@@ -521,6 +528,46 @@ const CountryHistoryCard = ({
       );
   }
 };
+
+function ProvinceChanges({
+  provinces,
+  gained,
+}: {
+  provinces: ProvinceConquer[];
+  gained: boolean;
+}) {
+  if (provinces.length === 0) {
+    return null;
+  }
+
+  const tags = new Set(
+    provinces.map((x) => (gained ? x.from.name : x.to.name)),
+  );
+
+  return (
+    <div className="font-semibold text-xs text-gray-400/75">
+      {gained ? "Gained" : "Lost"} provinces:{" "}
+      {formatList(
+        [
+          formatProvince(provinces[0]),
+          formatProvince(provinces[1]),
+          provinces.length < 4
+            ? formatProvince(provinces[2])
+            : `${formatInt(provinces.length - 2)} others`,
+        ].filter((x) => x),
+      )}{" "}
+      {gained ? "from" : "to"} {formatList(Array.from(tags))}
+    </div>
+  );
+}
+
+function formatProvince(props?: { name: string; province_id: number }) {
+  if (!props) {
+    return "";
+  }
+
+  return `${props.name} (${props.province_id})`;
+}
 
 const HistoryIcons = ({ evt }: { evt: CountryHistoryEvent }) => {
   return (

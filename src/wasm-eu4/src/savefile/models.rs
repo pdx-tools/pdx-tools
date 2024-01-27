@@ -1075,6 +1075,8 @@ pub struct WarEnd {
     pub our_losses: [u32; 21],
     pub our_participation: f32,
     pub our_participation_percent: f32,
+    pub province_gains: Vec<ProvinceConquer>,
+    pub province_losses: Vec<ProvinceConquer>,
 }
 
 #[derive(Tsify, Debug, Serialize)]
@@ -1123,4 +1125,13 @@ impl<'a> From<&'a ActiveWar> for WarOverview<'a> {
             is_active: true,
         }
     }
+}
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct ProvinceConquer {
+    pub province_id: ProvinceId,
+    pub name: String,
+    pub from: LocalizedTag,
+    pub to: LocalizedTag,
+    pub development: f32,
 }

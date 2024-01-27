@@ -3,8 +3,8 @@ use super::{
     CountryHistoryEventKind, CountryHistoryLeader, CountryHistoryMonarch, CountryLeader,
     CountryMonarch, CountryReligions, CountryStateDetails, DiplomacyEntry, DiplomacyKind, Estate,
     FailedHeir, GovernmentStrength, GreatAdvisor, InfluenceModifier, LandUnitStrength,
-    LocalizedObj, LocalizedTag, MonarchKind, ProgressDate, ProvinceGc, RunningMonarch,
-    SaveFileImpl, WarBattles, WarOverview,
+    LocalizedObj, LocalizedTag, MonarchKind, ProgressDate, ProvinceConquer, ProvinceGc,
+    RunningMonarch, SaveFileImpl, WarBattles, WarOverview,
 };
 use crate::savefile::{
     hex_color, BattleGroundProvince, CountryHistoryYear, CountryReligion, CultureTolerance,
@@ -13,7 +13,7 @@ use crate::savefile::{
 use eu4game::SaveGameQuery;
 use eu4save::{
     models::{Country, CountryEvent, Leader, LeaderKind, Province},
-    query::{NationEvents, SaveCountry},
+    query::{NationEvents, ProvinceOwnerChange, SaveCountry},
     CountryTag, Eu4Date, PdsDate, ProvinceId,
 };
 use std::collections::{HashMap, HashSet};
@@ -1695,6 +1695,12 @@ impl SaveFileImpl {
             .map(|x| self.localize_tag(x.tag))
             .collect::<Vec<_>>();
 
+        let opposing_tags = if is_attacking {
+            defenders.clone()
+        } else {
+            attacker_tags.iter().map(|x| x.tag).collect()
+        };
+
         let attacking_participation: f32 = attacking_participants.iter().map(|x| x.value).sum();
         let defending_participation: f32 = defending_participants.iter().map(|x| x.value).sum();
 
@@ -1767,6 +1773,41 @@ impl SaveFileImpl {
             return;
         };
 
+        let opposing_peaces = if is_attacking {
+            war.history
+                .events
+                .iter()
+                .filter_map(|(date, event)| match event {
+                    eu4save::models::WarEvent::RemoveDefender(tag) => Some((*date, *tag)),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        } else {
+            war.history
+                .events
+                .iter()
+                .filter_map(|(date, event)| match event {
+                    eu4save::models::WarEvent::RemoveAttacker(tag) => Some((*date, *tag)),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+
+        let province_gains = opposing_peaces.iter().flat_map(|(date, opponent)| {
+            self.province_owners
+                .events_on(*date)
+                .iter()
+                .filter(move |x| x.from == opponent && x.to == join_tag)
+        });
+        let province_gains = self.province_conquered(province_gains);
+
+        let province_losses = self
+            .province_owners
+            .events_on(peaced_out)
+            .iter()
+            .filter(|x| x.from == join_tag && opposing_tags.contains(&x.to));
+        let province_losses = self.province_conquered(province_losses);
+
         let end = war
             .history
             .events
@@ -1790,8 +1831,37 @@ impl SaveFileImpl {
                 our_losses,
                 our_participation: participant.value,
                 our_participation_percent,
+                province_gains,
+                province_losses,
             }),
         });
+    }
+
+    fn province_conquered<'a>(
+        &self,
+        iter: impl Iterator<Item = &'a ProvinceOwnerChange>,
+    ) -> Vec<ProvinceConquer> {
+        let mut result = iter
+            .filter_map(|x| {
+                self.query
+                    .save()
+                    .game
+                    .provinces
+                    .get(&x.province)
+                    .map(|prov| ProvinceConquer {
+                        province_id: x.province,
+                        name: prov.name.clone(),
+                        from: self.localize_tag(x.from),
+                        to: self.localize_tag(x.to),
+                        development: prov.base_tax + prov.base_production + prov.base_manpower,
+                    })
+            })
+            .collect::<Vec<_>>();
+
+        result.sort_by(|a: &ProvinceConquer, b| {
+            a.development.partial_cmp(&b.development).unwrap().reverse()
+        });
+        result
     }
 
     fn country_history_battle(&self, war: &WarOverview, land_battle: bool) -> WarBattles {
