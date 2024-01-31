@@ -478,6 +478,7 @@ impl<'a> AchievementHunter<'a> {
             self.prester_john(),
             self.a_blessed_nation(),
             self.mehmet_ambition(),
+            self.tiger_of_mysore(),
             //            self.gothic_invasion(),
         ]
     }
@@ -2796,6 +2797,30 @@ impl<'a> AchievementHunter<'a> {
         let desc = "Has all provinces to form Roman Empire";
         result.and(AchievementCondition::new(has_all_provinces, desc));
 
+        result
+    }
+
+    pub fn tiger_of_mysore(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(285);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+
+        let starter = self.starting_country == "MYS";
+        let desc = "started as Mysore";
+        result.and(AchievementCondition::new(starter, desc));
+
+        let has_all_provinces = if result.completed() {
+            ["deccan_region", "coromandel_region"].iter().all(|region| {
+                self.all_provs_in_region(region, |prov, _| {
+                    self.owns_or_non_sovereign_subject_of_province(prov)
+                })
+            })
+        } else {
+            false
+        };
+
+        let desc = "Mysore owns or has subject owns correct provinces";
+        result.and(AchievementCondition::new(has_all_provinces, desc));
         result
     }
 

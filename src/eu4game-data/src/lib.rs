@@ -264,6 +264,11 @@ pub fn achievements() -> Vec<Achievement> {
             name: String::from("Never say Nevers"),
             description: String::from("As Nevers, own the entire France region as core provinces."),
             difficulty: Difficulty::VeryHard,
+        },  Achievement {
+            id: 285,
+            name: String::from("Tiger of Mysore"),
+            description: String::from("Starting as Mysore, Conquer the Deccan and Coromandel Regions."),
+            difficulty: Difficulty::Hard,
         }, Achievement {
             id: 296,
             name: String::from("AEIOU"),
