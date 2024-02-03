@@ -39,7 +39,11 @@ export const SkanderbegPage = () => {
               );
             }}
           >
-            <Input name="id" placeholder="Skanderbeg URL or id" />
+            <Input
+              name="id"
+              placeholder="Skanderbeg URL or id"
+              className="h-10 px-3 py-2"
+            />
             <Button type="submit" variant="primary">
               Analyze
             </Button>

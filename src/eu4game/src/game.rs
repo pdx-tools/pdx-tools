@@ -1,7 +1,10 @@
 use crate::GameProvince;
 pub use eu4game_data::LATEST_MINOR;
 use eu4save::{CountryTag, ProvinceId};
-use schemas::flatbuffers::{Follow, Vector};
+use schemas::{
+    eu4::Terrain,
+    flatbuffers::{Follow, Vector},
+};
 use std::{cmp::Ordering, collections::HashMap};
 
 #[derive(Debug)]
@@ -46,6 +49,12 @@ pub enum NavalUnitKind {
     LightShip,
     Galley,
     Transport,
+}
+
+#[derive(Debug)]
+pub struct TerrainInfo {
+    pub terrain: Terrain,
+    pub local_development_cost: f32,
 }
 
 #[derive(Debug)]
@@ -341,6 +350,17 @@ impl<'a> Game<'a> {
                 _ => NavalUnitKind::Transport,
             },
         })
+    }
+
+    pub fn terrain_infos(&self) -> impl Iterator<Item = TerrainInfo> + 'a {
+        self.data.terrain().unwrap().iter().map(|x| TerrainInfo {
+            terrain: x.id(),
+            local_development_cost: x.local_development_cost(),
+        })
+    }
+
+    pub fn terrain_info(&self, terrain: schemas::eu4::Terrain) -> Option<TerrainInfo> {
+        self.terrain_infos().find(|x| x.terrain == terrain)
     }
 }
 

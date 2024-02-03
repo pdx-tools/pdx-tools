@@ -16,6 +16,8 @@ pub struct Terrain {
 pub struct TerrainCategory {
     #[serde(default)]
     pub terrain_override: Vec<u16>,
+    #[serde(default)]
+    pub local_development_cost: f32,
 }
 
 #[derive(Deserialize, Debug, Clone)]

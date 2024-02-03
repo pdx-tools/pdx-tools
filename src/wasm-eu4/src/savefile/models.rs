@@ -1135,3 +1135,24 @@ pub struct ProvinceConquer {
     pub to: LocalizedTag,
     pub development: f32,
 }
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct InstitutionCost {
+    pub province_id: ProvinceId,
+    pub name: String,
+    pub mana_cost: i32,
+    pub additional_expand_infrastructure: i32,
+    pub exploit_at: Option<i32>,
+    pub current_dev: i32,
+    pub final_dev: i32,
+    pub current_institution_progress: f32,
+    pub dev_cost_modifier: f64,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+#[tsify(into_wasm_abi)]
+pub struct CountryInstitution {
+    pub institutions_available: i32,
+    pub institutions_embraced: i32,
+    pub dev_push: Vec<InstitutionCost>,
+}

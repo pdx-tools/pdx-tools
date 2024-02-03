@@ -1,3 +1,4 @@
+use super::mapper::parse_terrain_txt;
 use super::religion::religion_rebels;
 use super::{
     achievements, area, assets, continents, cultures, localization, mapper, personalities, regions,
@@ -59,7 +60,8 @@ pub fn parse_game_dir(
     let tc = generate_trade_company_investments(tmp_game_dir, &localization, options)?;
     let persons = generate_ruler_personalities(tmp_game_dir, &localization, options)?;
     let advs = generate_advisors(tmp_game_dir, &localization, options)?;
-    let (total_provs, provs) = write_provinces_csv(tmp_game_dir, game_version)?;
+    let (total_provs, provs) = generate_provinces(tmp_game_dir, game_version)?;
+    let terrain = generate_terrain(tmp_game_dir)?;
     translate_flags(tmp_game_dir, options).context("country flag error")?;
     translate_achievements_images(tmp_game_dir, options).context("achievement images error")?;
     translate_building_images(tmp_game_dir, options).context("building images error")?;
@@ -371,6 +373,20 @@ pub fn parse_game_dir(
 
     let provinces = buffer.create_vector(&provinces);
 
+    // TERRAIN
+    let mut terrains = Vec::new();
+    for (terrain, local_dev) in terrain.iter() {
+        let entry = schemas::eu4::TerrainInfo::create(
+            &mut buffer,
+            &schemas::eu4::TerrainInfoArgs {
+                id: *terrain,
+                local_development_cost: *local_dev,
+            },
+        );
+        terrains.push(entry);
+    }
+    let terrain = buffer.create_vector(&terrains);
+
     // LOCALIZATION
     let mut localization: Vec<_> = localization
         .iter()
@@ -480,6 +496,7 @@ pub fn parse_game_dir(
             religions: Some(religions),
             land_units: Some(land_units),
             naval_units: Some(naval_units),
+            terrain: Some(terrain),
         },
     );
 
@@ -753,7 +770,38 @@ fn generate_advisors(
     Ok(translate)
 }
 
-fn write_provinces_csv(
+fn generate_terrain(tmp_game_dir: &Path) -> anyhow::Result<Vec<(schemas::eu4::Terrain, f32)>> {
+    let terrain_data = fs::read(tmp_game_dir.join("map").join("terrain.txt"))?;
+    let terrain = parse_terrain_txt(&terrain_data)
+        .categories
+        .into_iter()
+        .filter_map(|(terrain, data)| {
+            let terrain = match terrain.as_str() {
+                "grasslands" => Some(schemas::eu4::Terrain::Grasslands),
+                "hills" => Some(schemas::eu4::Terrain::Hills),
+                "mountains" => Some(schemas::eu4::Terrain::Mountains),
+                "desert" => Some(schemas::eu4::Terrain::Desert),
+                "marsh" => Some(schemas::eu4::Terrain::Marsh),
+                "farmlands" => Some(schemas::eu4::Terrain::Farmlands),
+                "forest" => Some(schemas::eu4::Terrain::Forest),
+                "coastal_desert" => Some(schemas::eu4::Terrain::CoastalDesert),
+                "coastline" => Some(schemas::eu4::Terrain::Coastline),
+                "savannah" => Some(schemas::eu4::Terrain::Savannah),
+                "drylands" => Some(schemas::eu4::Terrain::Drylands),
+                "highlands" => Some(schemas::eu4::Terrain::Highlands),
+                "woods" => Some(schemas::eu4::Terrain::Woods),
+                "jungle" => Some(schemas::eu4::Terrain::Jungle),
+                "steppe" => Some(schemas::eu4::Terrain::Steppe),
+                "glacier" => Some(schemas::eu4::Terrain::Glacier),
+                _ => None,
+            }?;
+            Some((terrain, data.local_development_cost))
+        })
+        .collect::<Vec<_>>();
+    Ok(terrain)
+}
+
+fn generate_provinces(
     tmp_game_dir: &Path,
     game_version: &str,
 ) -> anyhow::Result<(usize, Vec<GameProvince>)> {
@@ -774,7 +822,7 @@ fn write_provinces_csv(
     let total_provs = provs.len();
 
     let mut terrains = Vec::new();
-    let man: CountryTag = "KOI".parse().unwrap();
+    let man = CountryTag::new(*b"KOI");
     for (id, prov) in provs {
         if let Some(owner) = &prov.owner {
             let terrain = match owner.as_str() {

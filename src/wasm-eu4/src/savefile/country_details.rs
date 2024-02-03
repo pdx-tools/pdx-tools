@@ -10,7 +10,7 @@ use crate::savefile::{
     hex_color, BattleGroundProvince, CountryHistoryYear, CountryReligion, CultureTolerance,
     MonarchStats, RebelReligion, WarEnd, WarStart,
 };
-use eu4game::SaveGameQuery;
+use eu4game::{ProvinceExt, SaveGameQuery};
 use eu4save::{
     models::{Country, CountryEvent, Leader, LeaderKind, Province},
     query::{NationEvents, ProvinceOwnerChange, SaveCountry},
@@ -665,18 +665,7 @@ impl SaveFileImpl {
             let entry = province_counts.entry(religion).or_default();
             entry.count += 1;
             entry.development += prov.base_manpower + prov.base_production + prov.base_tax;
-
-            // Can't exploit production of inland provinces, but this hasn't been setup,
-            // so just rely on either tax or manpower being above 2.
-            let exploited_recently = prov.exploit_date.map_or(false, |x| {
-                x.add_days(365 * 20) > self.query.save().meta.date
-            });
-            entry.exploitable +=
-                if (prov.base_tax >= 2.0 || prov.base_manpower >= 2.0) && !exploited_recently {
-                    1
-                } else {
-                    0
-                }
+            entry.exploitable += prov.exploitable(self.query.save().meta.date) as usize;
         }
 
         let mut total_provinces = 0;

@@ -21,6 +21,7 @@ interface DataTableProps<TData> {
   pagination?: boolean;
   summary?: React.ReactNode;
   initialSorting?: SortingState;
+  className?: string;
 }
 
 export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
@@ -29,6 +30,7 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
   pagination,
   summary,
   initialSorting = [],
+  className,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -56,7 +58,7 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
 
   const rows = table.getRowModel().rows;
   return (
-    <div className="flex flex-col gap-2 rounded-md">
+    <div className={cx("flex flex-col gap-2 rounded-md", className)}>
       <Table>
         <Table.Header>
           {table.getHeaderGroups().map((headerGroup) => (

@@ -1165,7 +1165,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#f041531f78f0587698c516421063b12a84246621"
+source = "git+https://github.com/rakaly/eu4save.git#dfb0e4b745ebc537957b863ab78180bb2422d5d2"
 dependencies = [
  "flate2",
  "jomini",
@@ -3308,6 +3308,7 @@ dependencies = [
  "once_cell",
  "schemas",
  "serde",
+ "serde-wasm-bindgen",
  "tsify",
  "wasm-bindgen",
  "wasm-bindgen-test",
