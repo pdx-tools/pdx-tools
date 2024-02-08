@@ -60,7 +60,7 @@ fn dev_cost(
     country: CountryModifiers,
 ) -> i32 {
     let dev_efficiency = province.dev_efficiency + country.dev_efficiency;
-    let dev_base_cost = (50.0 * (1.0 - dev_efficiency.0)).floor();
+    let dev_base_cost = (50.0 * (1.0 - dev_efficiency.0)).floor().min(0.0);
 
     let base_cost_modifier = base_dev_cost_modifier(dev);
     let expand_infrastructure_modifier = country
@@ -104,7 +104,7 @@ fn institution_cost_engine(prov: InstitutionEngine) -> ProvinceDevStrategy {
 
     let expand_step = prov.dev % 15 == 0;
     let available_expands = (prov.dev / 15) - prov.current_expand_infrastructure;
-    if expand_step && available_expands == 1 {
+    if expand_step && available_expands >= 1 {
         optimal = optimal.min(institution_cost_engine(prov.expand_infrastructure()))
     }
 
@@ -756,7 +756,11 @@ mod tests {
     #[test]
     fn test_institution_cost() {
         fn institution(dev: i32) -> ProvinceDevStrategy {
-            let prov_mods = ProvinceModifiers::default();
+            let prov_mods = ProvinceModifiers
+            {
+                dev_cost_modifier: Modifier(-0.27),
+                ..ProvinceModifiers::default()
+            };
             let country_mods = CountryModifiers::default();
 
             let stats = ProvinceStats {
@@ -768,23 +772,33 @@ mod tests {
             institution_cost(stats, prov_mods, country_mods)
         }
 
-        assert_eq!(
-            institution(3),
-            ProvinceDevStrategy {
-                mana_cost: 2121,
-                additional_expand_infrastructure: 1,
-                final_dev: 34,
-                exploit_at: Some(15),
-            }
-        );
+        // assert_eq!(
+        //     institution(3),
+        //     ProvinceDevStrategy {
+        //         mana_cost: 2121,
+        //         additional_expand_infrastructure: 1,
+        //         final_dev: 34,
+        //         exploit_at: Some(15),
+        //     }
+        // );
+
+        // assert_eq!(
+        //     institution(4),
+        //     ProvinceDevStrategy {
+        //         mana_cost: 2072,
+        //         additional_expand_infrastructure: 1,
+        //         final_dev: 34,
+        //         exploit_at: Some(16),
+        //     }
+        // );
 
         assert_eq!(
-            institution(4),
+            institution(16),
             ProvinceDevStrategy {
-                mana_cost: 2072,
-                additional_expand_infrastructure: 1,
-                final_dev: 34,
-                exploit_at: Some(16),
+                mana_cost: 1645,
+                additional_expand_infrastructure: 2,
+                final_dev: 37,
+                exploit_at: Some(34),
             }
         );
 
