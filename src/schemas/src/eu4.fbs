@@ -31,6 +31,11 @@ struct Rgb {
   b:uint8;
 }
 
+table TerrainInfo {
+  id:Terrain;
+  local_development_cost:float32;
+}
+
 table Country {
   tag:string (key);
   name:string;
@@ -126,6 +131,7 @@ table Game {
   religions:[Religion];
   land_units:[LandUnit];
   naval_units:[NavalUnit];
+  terrain:[TerrainInfo];
 }
 
 root_type Game;

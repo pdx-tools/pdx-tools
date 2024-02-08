@@ -6,7 +6,7 @@ use crate::{
         PlayerHistories, RunningMonarchs, SingleCountryWarCasualtiesList, StaticMap, StringList,
         Wars,
     },
-    savefile::CountryHistory,
+    savefile::{CountryHistory, CountryInstitution},
 };
 use eu4game::{game::Game, shared::Eu4Parser};
 use eu4save::{
@@ -191,6 +191,21 @@ impl SaveFile {
 
     pub fn get_country_history(&self, tag: &str) -> CountryHistory {
         self.0.country_history(tag)
+    }
+
+    pub fn get_country_institutions(
+        &self,
+        tag: &str,
+        country_development_modifier: f64,
+        expand_infrastructure_cost: i32,
+        overrides: JsValue,
+    ) -> CountryInstitution {
+        self.0.institution_provinces(
+            tag,
+            country_development_modifier,
+            expand_infrastructure_cost,
+            overrides,
+        )
     }
 
     pub fn get_country_province_religion(&self, tag: &str) -> CountryReligions {

@@ -17,6 +17,7 @@ use eu4save::{
 use std::collections::{HashMap, HashSet};
 
 mod country_details;
+mod institution;
 mod map;
 mod models;
 mod tag_filter;

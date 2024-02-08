@@ -25,6 +25,7 @@ import { wasm } from "./common";
 import { TimelapseIter } from "../../../../../wasm-eu4/pkg/wasm_eu4";
 import { timeSync, timeit } from "@/lib/timeit";
 import { logMs } from "@/lib/log";
+import exp from "constants";
 export * from "./init";
 
 export const getRawData = wasm.viewData;
@@ -146,6 +147,24 @@ export function eu4GetCountryProvinceReligion(tag: string) {
 export function eu4GetCountryHistory(tag: string) {
   const timed = timeSync(() => wasm.save.get_country_history(tag));
   logMs(timed, "country history calculation");
+  return timed.data;
+}
+
+export function eu4GetCountryInstitutionPush(
+  tag: string,
+  countryDevelopmentModifier: number,
+  expandInfrastructureCost: number,
+  overrides: Map<number, number>,
+) {
+  const timed = timeSync(() =>
+    wasm.save.get_country_institutions(
+      tag,
+      countryDevelopmentModifier,
+      expandInfrastructureCost,
+      overrides,
+    ),
+  );
+  logMs(timed, "country institution push calculation");
   return timed.data;
 }
 
