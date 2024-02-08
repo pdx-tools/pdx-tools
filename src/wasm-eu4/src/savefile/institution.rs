@@ -60,7 +60,7 @@ fn dev_cost(
     country: CountryModifiers,
 ) -> i32 {
     let dev_efficiency = province.dev_efficiency + country.dev_efficiency;
-    let dev_base_cost = (50.0 * (1.0 - dev_efficiency.0)).floor().min(0.0);
+    let dev_base_cost = (50.0 * (1.0 - dev_efficiency.0)).floor().max(0.0);
 
     let base_cost_modifier = base_dev_cost_modifier(dev);
     let expand_infrastructure_modifier = country
@@ -82,21 +82,23 @@ struct ProvinceDevStrategy {
 }
 
 fn institution_cost_engine(prov: InstitutionEngine) -> ProvinceDevStrategy {
+    let exploited_at = match prov.exploitable {
+        Exploit::At(x) => Some(x),
+        _ => None,
+    };
+
+    let additional_expand_infrastructure =
+        prov.current_expand_infrastructure - prov.original_expand_infrastructure;
+
+    let strategy = ProvinceDevStrategy {
+        mana_cost: prov.mana_cost,
+        final_dev: prov.dev,
+        additional_expand_infrastructure,
+        exploit_at: exploited_at,
+    };
+
     if prov.institution_progress >= 100.0 {
-        let exploit_at = match prov.exploitable {
-            Exploit::At(x) => Some(x),
-            _ => None,
-        };
-
-        let additional_expand_infrastructure =
-            prov.current_expand_infrastructure - prov.original_expand_infrastructure;
-
-        return ProvinceDevStrategy {
-            mana_cost: prov.mana_cost,
-            final_dev: prov.dev,
-            additional_expand_infrastructure,
-            exploit_at,
-        };
+        return strategy;
     }
 
     let base = institution_cost_engine(prov.dev_click());
@@ -104,7 +106,7 @@ fn institution_cost_engine(prov: InstitutionEngine) -> ProvinceDevStrategy {
 
     let expand_step = prov.dev % 15 == 0;
     let available_expands = (prov.dev / 15) - prov.current_expand_infrastructure;
-    if expand_step && available_expands >= 1 {
+    if expand_step && available_expands == 1 {
         optimal = optimal.min(institution_cost_engine(prov.expand_infrastructure()))
     }
 
@@ -126,6 +128,7 @@ enum Exploit {
     At(i32),
 }
 
+#[derive(Debug, Clone)]
 struct InstitutionEngine {
     // Mana cost spent developing the institution.
     mana_cost: i32,
@@ -204,7 +207,16 @@ fn institution_cost(
         country_modifiers: country,
     };
 
-    institution_cost_engine(engine)
+    let mut optimal = institution_cost_engine(engine.clone());
+
+    let total_expands = (stats.dev / 15).max(stats.current_expand_infrastructure);
+    let mut expand_infras_engine = engine.clone();
+    for _ in (stats.current_expand_infrastructure + 1)..=total_expands {
+        expand_infras_engine = expand_infras_engine.expand_infrastructure();
+        optimal = optimal.min(institution_cost_engine(expand_infras_engine.clone()));
+    }
+
+    optimal
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Default)]
@@ -756,8 +768,7 @@ mod tests {
     #[test]
     fn test_institution_cost() {
         fn institution(dev: i32) -> ProvinceDevStrategy {
-            let prov_mods = ProvinceModifiers
-            {
+            let prov_mods = ProvinceModifiers {
                 dev_cost_modifier: Modifier(-0.27),
                 ..ProvinceModifiers::default()
             };
@@ -795,7 +806,7 @@ mod tests {
         assert_eq!(
             institution(16),
             ProvinceDevStrategy {
-                mana_cost: 1645,
+                mana_cost: 1544,
                 additional_expand_infrastructure: 2,
                 final_dev: 37,
                 exploit_at: Some(34),
