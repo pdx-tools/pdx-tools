@@ -281,7 +281,7 @@ export const CountryInstitution = ({
             </Tooltip.Trigger>
             <Tooltip.Content className="max-w-72">
               The development cost modifier that all provinces share (eg:
-              renaissance)
+              renaissance: -5%)
             </Tooltip.Content>
           </Tooltip>
           <div>
