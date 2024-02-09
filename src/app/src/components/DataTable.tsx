@@ -5,6 +5,7 @@ import {
   ColumnDef,
   ColumnFiltersState,
   SortingState,
+  TableOptions,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -15,14 +16,14 @@ import {
 import { Button } from "./Button";
 import { cx } from "class-variance-authority";
 
-interface DataTableProps<TData> {
+type DataTableProps<TData> = {
   columns: ColumnDef<TData, any>[];
   data: TData[];
   pagination?: boolean;
   summary?: React.ReactNode;
   initialSorting?: SortingState;
   className?: string;
-}
+} & Partial<TableOptions<TData>>;
 
 export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
   data,
@@ -31,6 +32,8 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
   summary,
   initialSorting = [],
   className,
+  enableColumnFilters = false,
+  ...options
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -54,6 +57,8 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
     getFilteredRowModel: getFilteredRowModel(),
     manualPagination: !pagination,
     state,
+    enableColumnFilters,
+    ...options,
   });
 
   const rows = table.getRowModel().rows;

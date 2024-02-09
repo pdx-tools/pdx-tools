@@ -1147,6 +1147,7 @@ pub struct InstitutionCost {
     pub final_dev: i32,
     pub current_institution_progress: f32,
     pub dev_cost_modifier: f64,
+    pub dev_cost_modifier_heuristic: f64,
 }
 
 #[derive(Tsify, Debug, Serialize)]

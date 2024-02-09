@@ -306,6 +306,7 @@ struct ProvinceInstitution<'a> {
     province_id: ProvinceId,
     dev: i32,
     dev_cost_modifier: Modifier,
+    dev_cost_modifier_heuristic: Modifier,
 }
 
 impl SaveFileImpl {
@@ -418,9 +419,12 @@ impl SaveFileImpl {
 
             // Avoid situations where "-0.15000000000000002" (which does
             // influence results), we convert to percent and remove the decimal.
-            let dev_cost_modifier = f64::trunc(dev_cost_modifier * 100.0) / 100.0;
+            let dev_cost_modifier_heuristic = f64::trunc(dev_cost_modifier * 100.0) / 100.0;
 
-            let dev_cost_modifier = overrides.get(id).copied().unwrap_or(dev_cost_modifier);
+            let dev_cost_modifier = overrides
+                .get(id)
+                .copied()
+                .unwrap_or(dev_cost_modifier_heuristic);
 
             let province_modifiers = ProvinceModifiers {
                 dev_efficiency: DevEfficiency(0.0),
@@ -439,6 +443,7 @@ impl SaveFileImpl {
             costs.push(ProvinceInstitution {
                 results: cost,
                 dev_cost_modifier: province_modifiers.dev_cost_modifier,
+                dev_cost_modifier_heuristic: Modifier(dev_cost_modifier_heuristic),
                 current_institution_progress,
                 province: save,
                 province_id: *id,
@@ -460,6 +465,7 @@ impl SaveFileImpl {
                 final_dev: x.results.final_dev,
                 current_institution_progress: x.current_institution_progress,
                 dev_cost_modifier: x.dev_cost_modifier.0,
+                dev_cost_modifier_heuristic: x.dev_cost_modifier_heuristic.0,
             })
             .collect();
 

@@ -1,4 +1,12 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, {
+  ComponentPropsWithoutRef,
+  ElementRef,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { CountryDetails } from "../../types/models";
 import { Eu4Worker, useEu4Worker } from "../../worker";
 import { Alert } from "@/components/Alert";
@@ -15,32 +23,69 @@ import { useThrottle } from "@/hooks/useThrottle";
 import { Divider } from "@/components/Divider";
 import { Input } from "@/components/Input";
 import { Tooltip } from "@/components/Tooltip";
+import { keyboardTrigger } from "@/lib/keyboardTrigger";
+
+type InputEvent = React.SyntheticEvent<ElementRef<typeof Input>>;
+type InputNumberEvent = InputEvent & { value: number };
+const InputNumber = forwardRef<
+  ElementRef<typeof Input>,
+  Omit<ComponentPropsWithoutRef<typeof Input>, "onChange"> & {
+    onChange: (e: InputNumberEvent) => void;
+  }
+>(function InputNumber({ value, onChange, ...props }, ref) {
+  const [backing, setBacking] = useState(value);
+
+  useEffect(() => {
+    setBacking(value);
+  }, [value]);
+
+  const changeCb = (e: InputEvent) => {
+    const result = Number(e.currentTarget.value);
+    if (isNaN(result)) {
+      return;
+    }
+
+    onChange({
+      value: result,
+      ...e,
+    });
+  };
+
+  return (
+    <Input
+      ref={ref}
+      {...props}
+      inputMode="numeric"
+      type="text"
+      value={backing}
+      onKeyDown={keyboardTrigger(changeCb, "Enter")}
+      onBlur={changeCb}
+      onChange={(e) => setBacking(e.currentTarget.value)}
+    />
+  );
+});
 
 function ProvinceModifier(props: InstitutionCost) {
   const actions = useInstitutionActions();
   const override = useProvinceModifierOverride(props.province_id);
   const value = Math.round((override ?? props.dev_cost_modifier) * 100);
 
-  const changeCb = (
-    e: React.FocusEvent<HTMLInputElement> | React.ChangeEvent<HTMLInputElement>
-  ) => {
-    actions.overrideModifier(
-      props.province_id,
-      Number(e.currentTarget.value) / 100
-    );
-  };
-
   return (
     <div className="flex">
-      <Input
-        className="w-14 text-right border-gray-400/25 mr-1"
-        type="number"
+      <InputNumber
+        className="w-14 text-right border-gray-400/25 mr-1 px-2"
         value={value}
-        onFocus={changeCb}
-        onChange={changeCb}
+        onChange={(e) => {
+          if (override === undefined && e.value == value) {
+            return;
+          }
+
+          actions.overrideModifier(props.province_id, e.value / 100);
+        }}
       />
       %
-      {override !== undefined ? (
+      {override !== undefined &&
+      override !== props.dev_cost_modifier_heuristic ? (
         <IconButton
           className="pl-2"
           variant="ghost"
@@ -187,13 +232,13 @@ export const CountryInstitution = ({
       (worker: Eu4Worker) =>
         worker.eu4GetCountryInstitutionPush(
           details.tag,
-          modifier / 100,
+          modifier,
           expandCost,
-          overrides
+          overrides,
         ),
-      [details.tag, modifier, expandCost, overrides]
+      [details.tag, modifier, expandCost, overrides],
     ),
-    150
+    150,
   );
 
   const { data, error } = useEu4Worker(institutionPush);
@@ -211,55 +256,66 @@ export const CountryInstitution = ({
       <div
         className={cx(
           data.institutions_embraced == data.institutions_available &&
-            "font-semibold text-green-600"
+            "font-semibold text-green-600",
         )}
       >
         {formatInt(data.institutions_embraced)}/
         {formatInt(data.institutions_available)} institutions embraced
       </div>
       <Divider>Dev Push Institution</Divider>
-      <div className="space-y-1">
-        <Tooltip>
-          <Tooltip.Trigger>
-            <div>
-              <label className="w-96 inline-flex justify-between mr-1">
-                Country-wide development cost modifier:
-                <Input
-                  className="px-2 py-1 w-14 text-right"
-                  type="number"
-                  min="-200"
-                  max="200"
-                  value={modifier}
-                  onChange={(e) => setModifier(Number(e.currentTarget.value))}
-                />
-              </label>
-              %
-            </div>
-          </Tooltip.Trigger>
-          <Tooltip.Content className="max-w-72">
-            The development cost modifier that all provinces share (eg:
-            renaissance)
-          </Tooltip.Content>
-        </Tooltip>
+      <div className="flex gap-20">
+        <div className="space-y-1">
+          <Tooltip>
+            <Tooltip.Trigger>
+              <div>
+                <label className="w-96 inline-flex justify-between mr-1">
+                  Country-wide development cost modifier:
+                  <InputNumber
+                    className="px-2 py-1 w-14 text-right"
+                    value={modifier * 100}
+                    onChange={(e) => setModifier(e.value / 100)}
+                  />
+                </label>
+                %
+              </div>
+            </Tooltip.Trigger>
+            <Tooltip.Content className="max-w-72">
+              The development cost modifier that all provinces share (eg:
+              renaissance)
+            </Tooltip.Content>
+          </Tooltip>
+          <div>
+            <label className="w-96 inline-flex justify-between">
+              Expand infrastructure mana cost:
+              <InputNumber
+                className="px-2 py-1 w-14 text-right"
+                value={expandCost}
+                onChange={(e) => setExpandCost(Math.max(e.value, 0))}
+              />
+            </label>
+          </div>
+        </div>
         <div>
-          <label className="w-96 inline-flex justify-between">
-            Expand infrastructure mana cost:
-            <Input
-              className="px-2 py-1 w-14 text-right"
-              type="number"
-              min="0"
-              max="200"
-              value={expandCost}
-              onChange={(e) => setExpandCost(Number(e.currentTarget.value))}
-            />
-          </label>
+          <div className="font-semibold">
+            Detected Province development cost modifiers
+          </div>
+          <ul className="pl-4 flex flex-col flex-wrap h-20 gap-x-12">
+            <li>✔️ Terrain</li>
+            <li>✔️ Center of Trade</li>
+            <li>✔️ Prosperity</li>
+            <li>✔️ Trade Goods</li>
+            <li>✔️ Capital</li>
+            <li>❌ Everything else is manual</li>
+          </ul>
         </div>
       </div>
+
       <DataTable
         className="pt-6"
         data={data.dev_push}
         columns={columns}
         pagination={true}
+        autoResetPageIndex={false}
       />
     </div>
   );
