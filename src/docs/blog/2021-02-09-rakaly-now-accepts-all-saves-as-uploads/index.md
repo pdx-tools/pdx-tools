@@ -2,7 +2,7 @@
 slug: rakaly-now-accepts-all-saves-as-uploads
 title: "Rakaly Now Accepts All Saves as Uploads"
 authors: [comagoosie]
-image: rakaly-upload-all-saves.jpg
+image: ./rakaly-upload-all-saves.jpg
 description: "Today marks the first day that Rakaly allows all saves (patch 1.29 and above) to be uploaded. Previously, only saves that contained record breaking achievements in ironman were accepted. Everyone will get 10 save slots and record breaking ironman saves won't consume a slot. It's a start and things will change but it's been a goal from the start to allow all saves."
 ---
 

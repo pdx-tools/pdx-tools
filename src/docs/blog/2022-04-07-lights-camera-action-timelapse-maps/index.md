@@ -1,7 +1,7 @@
 ---
 slug: lights-camera-action-timelapse-maps
 title: "Lights, camera, action: timelapse maps"
-image: banner.jpg
+image: ./banner.jpg
 authors: [comagoosie]
 description: "pdx.tools is now able to show and record timelapses of EU4 saves. Easily output timelapses of the world or region in webm or mp4. pdx.tools may not be the first tool to offer timelapses but it's one of the best"
 ---

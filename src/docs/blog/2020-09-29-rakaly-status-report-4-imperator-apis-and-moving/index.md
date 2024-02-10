@@ -1,7 +1,7 @@
 ---
 slug: rakaly-status-report-4-imperator-apis-and-moving
 title: "Rakaly Status Report #4: Imperator, APIs, and Moving"
-image: water-banner.jpg
+image: ./water-banner.jpg
 description: |
   It's been a few weeks since the last update as my time has been taken up by moving a household to a new city, but I have some tidbits in store:
 

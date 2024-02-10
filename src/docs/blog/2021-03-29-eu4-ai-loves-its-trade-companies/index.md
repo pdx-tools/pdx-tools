@@ -1,7 +1,7 @@
 ---
 slug: eu4-ai-loves-its-trade-companies
 title: "EU4 AI Loves Its Trade Companies"
-image: meme-header.jpg
+image: ./meme-header.jpg
 authors: [comagoosie]
 description: "The EU4 Spanish AI finds it normal to spend 40k on trade company investments while neglecting to construct buildings in the homeland. And the Spanish aren't alone. Rakaly's province details view and expense table allows insight not possible in game and made this phenomenon obvious."
 ---

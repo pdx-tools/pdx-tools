@@ -1,7 +1,7 @@
 ---
 slug: new-year-new-version-new-name-pdx-tools
 title: "New year, new version, new name: PDX Tools"
-image: banner.jpg
+image: ./banner.jpg
 authors: [comagoosie]
 description: "Today marks the culmination of nearly a half a year's worth of work. A new version is upon us and it's the biggest yet. The most visible change is the new name! Rakaly is now PDX Tools. The site is now open source and there has been tons of new features like an immersive map, new visualizations, and preliminary support for CK3, HOI4, and Imperator"
 ---

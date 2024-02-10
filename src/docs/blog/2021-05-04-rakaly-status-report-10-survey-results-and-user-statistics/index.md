@@ -1,7 +1,7 @@
 ---
 slug: rakaly-status-report-10-survey-results-and-user-statistics
 title: "Rakaly Status Report #10: Survey Results and User Statistics"
-image: banner.jpg
+image: ./banner.jpg
 authors: [comagoosie]
 description: "Rakaly's first user questionnaire is now closed. Thank you to all who took the time fill out the survey. This post contains the results, some of which are surprising. User events are now captured to determine how popular certain features are."
 ---

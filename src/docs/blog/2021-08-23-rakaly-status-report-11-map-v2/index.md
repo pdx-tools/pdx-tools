@@ -1,7 +1,7 @@
 ---
 slug: rakaly-status-report-11-map-v2
 title: "Rakaly Status Report #11: Map v2"
-image: map-2.0.jpg
+image: ./map-2.0.jpg
 authors: [comagoosie]
 description: "Sorry for the radio silence for the past 3 months -- we've been busy. A lot of effort went into this and I wanted to make sure this would pan out before breaking the news:
 

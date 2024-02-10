@@ -1,7 +1,7 @@
 ---
 slug: user-questionnaire
 title: "User Questionnaire"
-image: banner.jpg
+image: ./banner.jpg
 authors: [comagoosie]
 description: "Until now I've been relying on generous feedback from users who go out of their way to share their tips or tribulations. So I've written a short survey that should offer a streamline process for users to voice their views on Rakaly."
 ---

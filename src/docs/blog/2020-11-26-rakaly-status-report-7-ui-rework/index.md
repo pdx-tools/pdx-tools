@@ -1,7 +1,7 @@
 ---
 slug: rakaly-status-report-7-ui-rework
 title: "Rakaly Status Report #7: UI Rework"
-image: rakaly-sunflower.jpg
+image: ./rakaly-sunflower.jpg
 authors: [comagoosie]
 description: |
   There's been a major update to the Rakaly UI and I wanted to walk through what's changed and the reasoning behind it. I know UI redesigns can be contentious so I'm hoping that the explanation is worth it.

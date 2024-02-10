@@ -2,7 +2,7 @@
 slug: a-new-timelapse-video-recorder
 title: "A new timelapse video recorder"
 authors: [comagoosie]
-image: banner.jpg
+image: ./banner.png
 ---
 
 <div style={{textAlign: "center"}}>

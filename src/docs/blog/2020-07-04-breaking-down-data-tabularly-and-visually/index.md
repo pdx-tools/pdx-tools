@@ -1,7 +1,7 @@
 ---
 slug: breaking-down-data-tabularly-and-visually
 title: Breaking Down Data Tabularly and Visually
-image: ledger-table-split.png
+image: ./ledger-table-split.png
 authors: [comagoosie]
 description: EU4 savefiles contain data about where a country gets it's income. There isn't a one size fits all approach to interpreting this data, so Rakaly allows one to see the income breakdown in a chart so one can easily spot anomalies or in a table for closer scrutiny
 ---

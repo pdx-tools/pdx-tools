@@ -1,7 +1,7 @@
 ---
 slug: removing-limits-on-recursive-events
 title: "Removing Limits on Recursive Events"
-image: rakaly-mana-chart.png
+image: ./rakaly-mana-chart.png
 authors: [comagoosie]
 description: "EU4 events can be recursive, meaning that an event can be defined in and of itself. A great example of this is the Oxford Symposium event for England / Great Britain where every 10 years the event has a different option than the previous iteration. Previously Rakaly restricted how nested this event could become, but a new method was implemented to allow an unlimited depth."
 ---

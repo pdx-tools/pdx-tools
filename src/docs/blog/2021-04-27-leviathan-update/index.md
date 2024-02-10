@@ -1,7 +1,7 @@
 ---
 slug: leviathan-update
 title: "Leviathan Update"
-image: drippy.jpg
+image: ./drippy.jpg
 authors: [comagoosie]
 summary: "Rakaly now has support for Leviathan! You can analyze and upload Leviathan saves like normal. All prior uploads have an additional 10% tax added onto their in game time. There were some challenges in implementing Leviathan support due to changes in the save and game -- like wasteland terrain and monument dates"
 ---

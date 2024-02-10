@@ -1,7 +1,7 @@
 ---
 slug: rakaly-status-report-12-next-level-compression
 title: "Rakaly Status Report #12: next level compression"
-image: banner.jpg
+image: ./banner.jpg
 authors: [comagoosie]
 description: "Optimizations found in how saves are uploaded, downloaded, and stored at rest resulted in a **2-3x** reduction in bandwidth and up to a **2x** reduction in time to parse shared saves. This benefits all Rakaly users as this made it easy to **increase the save limit from 10 to 100**. For those interested in the technical details: keep reading."
 ---

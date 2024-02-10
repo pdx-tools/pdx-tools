@@ -1,7 +1,7 @@
 ---
 title: EU4 AI builds to force limit even if greater than supply limit
 slug: eu4-ai-builds-to-force-limit-even-if-greater-than-supply-limit
-image: harsh.jpg
+image: ./harsh.jpg
 authors: [comagoosie]
 description: |
   With the advent of mega cities introduced in EU4 leviathan, we're encountering a new class of bugs: bugs where a country's force limit outstrips their entire supply limit. A player would be able to adapt by building to their supply limit instead of their force limit, but the AI is does not yet realize this.

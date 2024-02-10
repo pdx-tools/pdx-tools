@@ -1,7 +1,7 @@
 ---
 slug: tracking-tag-switches-in-eu4-save-files
 title: "Tracking Tag Switches in EU4 Save Files"
-banner: tag-plants.jpg
+banner: ./tag-plants.jpg
 authors: [comagoosie]
 description: "In EU4, when one forms another country or changes their country ID, it is called tag switching. The implications for tag switching is important to understanding the course of events. Countries come, go, and can reappear so it's important to differentiate players. EU4 save files record tag switches (with some edge cases!), and this post will be about following the changes in tags in a given playthrough."
 ---

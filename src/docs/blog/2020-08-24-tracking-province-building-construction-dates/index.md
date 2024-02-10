@@ -1,7 +1,7 @@
 ---
 slug: tracking-province-building-construction-dates
 title: "Tracking Province Building Construction Dates"
-image: racing-province-values.png
+image: ./racing-province-values.png
 authors: [comagoosie]
 description: "Racing bar charts are seemingly all the rage now, so of course I must capitalize on this opportunity. I implemented a racing bar chart that tracks how popular a province building is over time. Hopefully one can glean useful insights from it, I know that I received confirmation that the AI is overly zealous when it comes to building coastal defences"
 ---

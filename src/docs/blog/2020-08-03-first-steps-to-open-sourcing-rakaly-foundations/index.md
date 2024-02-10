@@ -2,7 +2,7 @@
 slug: first-steps-to-open-sourcing-rakaly-foundations
 title: "First Steps to Open Sourcing Rakaly: Foundations"
 authors: [comagoosie]
-image: railroad-jomini-open-source.jpg
+image: ./railroad-jomini-open-source.jpg
 description: "There are many layers that need to come together to make Rakaly work. I initially started developing Rakaly 6 months ago, and at the beginning I wasn't sure how the project should be constructed. While the initial scaffolding was fluid to support whatever impulse I had, over time sub-projects emerged. These sub-projects can be extracted and open sourced to the benefit of others. Today the first step was taken and the parser for text and ironman data has been open sourced."
 ---
 

@@ -1,7 +1,7 @@
 ---
 slug: melting-an-eu4-ironman-save-into-a-normal-save
 title: "Melting an EU4 Ironman Save into a Normal Save"
-banner: melt-banner.jpg
+banner: ./melt-banner.jpg
 authors: [comagoosie]
 description: "There's been a long history of converting (or trying to convert) EU4 ironman saves (a binary format) to their normal counterpart (plaintext). Wanting plaintext saves allows one to use the EU4 to Victoria 2 save converter, console commands, and allows easier access for one to go spleunking through the save file as it can be opened in any text editor. Rakaly now provides its own take on this conversion"
 ---

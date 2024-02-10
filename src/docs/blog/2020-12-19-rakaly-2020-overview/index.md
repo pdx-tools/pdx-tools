@@ -1,7 +1,7 @@
 ---
 slug: rakaly-2020-overview
 title: "Rakaly 2020 Overview"
-image: rakaly-2020-overview.jpg
+image: ./rakaly-2020-overview.jpg
 authors: [comagoosie]
 description: "It's hard to believe that it's been 6 months since Rakaly has launched. It feels like both a short and long time. I figured it was best to look back at what was accomplished and what is planned for 2021. Overall I'm very pleased with how things have turned out for Rakaly in 2020 and I hope for this to be the first of many annual reviews"
 ---

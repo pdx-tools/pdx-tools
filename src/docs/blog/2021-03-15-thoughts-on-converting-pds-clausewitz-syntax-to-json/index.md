@@ -1,7 +1,7 @@
 ---
 slug: thoughts-on-converting-pds-clausewitz-syntax-to-json
 title: "Thoughts on Converting PDS Clausewitz Syntax to JSON"
-image: plant.jpg
+image: ./plant.jpg
 description: "After one is familiar with the PDS Clausewitz syntax, it becomes almost too tempting to try and convert it to JSON as both are document formats that share a lot of similarities, except the former is a undocumented format and the other is the world's most popular data interchange format. There are a lot of nuances in the conversion between the two, so I figured I'd take the time and do a brain dump of my thoughts."
 ---
 

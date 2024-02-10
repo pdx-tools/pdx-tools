@@ -1,7 +1,7 @@
 ---
 slug: rakaly-status-report-3-crusader-kings-iii
 title: "Rakaly Status Report #3: Crusader Kings III"
-image: rockies.jpg
+image: ./rockies.jpg
 description: "Crusader Kings III was released 10 days ago. And for 10 days I've lost myself in adding support for CK3 saves and improving the core parser. It started out as a \"I wonder how close CK3 saves are to EU4 saves\" experiment. Initial testing showed they were quite close so I kept pushing to completion, but I'd always be tripped up by a new syntax or encoding. I'm pleased to announce that I have the CK3 syntax under control and the core parser walks away faster and more robust than before."
 ---
 

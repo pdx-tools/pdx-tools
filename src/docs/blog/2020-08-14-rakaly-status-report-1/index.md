@@ -1,7 +1,7 @@
 ---
 slug: rakaly-status-report-1
 title: "Rakaly Status Report #1"
-image: elephant-rocks.jpg
+image: ./elephant-rocks.jpg
 authors: [comagoosie]
 description: "I wanted to give an update as it may seem like I've gone quiet, as there hasn't been any recent announcements or UI changes in awhile. Far from being idle, I've been diligently working behind the scenes. I've logged a significant number of code changes, and this is my break to tell everyone what I've been up to. Another large chunk of Rakaly has been open sourced though with a legal caveat, a Javascript library appears, and the rakaly parser can now accept data from more recent titles like imperator"
 ---

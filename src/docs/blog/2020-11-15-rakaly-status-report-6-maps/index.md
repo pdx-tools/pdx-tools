@@ -1,7 +1,7 @@
 ---
 slug: rakaly-status-report-6-maps
 title: "Rakaly Status Report #6: Maps!"
-image: rakaly-maps.png
+image: ./rakaly-maps.png
 authors: [comagoosie]
 description: |
   EU4 is just a fancy map simulator and any EU4 site without maps would be incomplete. I'm excited to announce that Rakaly now features maps!

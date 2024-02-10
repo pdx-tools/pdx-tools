@@ -2,7 +2,7 @@
 slug: leaderboard-and-api-key-updates
 title: "Leaderboard and API Key Updates"
 authors: [comagoosie]
-image: banner.jpg
+image: ./banner.jpg
 ---
 
 <div style={{textAlign: "center"}}>

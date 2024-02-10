@@ -1,7 +1,7 @@
 ---
 slug: rakaly-status-report-9-the-ui-refactor
 title: "Rakaly Status Report #9: The UI Refactor"
-image: frozen.jpg
+image: ./frozen.jpg
 authors: [comagoosie]
 description: |
   Last month was used to refactor the UI: hundreds of files and tens of thousands of lines changed for no discernible visual difference. This refactor unlocked performance improvements that should allow Rakaly to load faster. More importantly it gave me time to rework all of Rakaly's logic into a coherent structure that should hopefully allow for faster development. 

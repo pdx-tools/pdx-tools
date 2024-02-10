@@ -1,7 +1,7 @@
 ---
 slug: rakaly-status-report-8-accuracy-and-wars
 title: "Rakaly Status Report #8: Accuracy and Wars"
-image: war-banner.png
+image: ./war-banner.png
 authors: [comagoosie]
 description: |
     A good amount of work when into this status report. Some highlights: 

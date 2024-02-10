@@ -1,7 +1,7 @@
 ---
 slug: guides-and-a-new-home-for-content
 title: "Guides and a new home for content"
-image: banner.jpg
+image: ./banner.jpg
 authors: [comagoosie]
 ---
 

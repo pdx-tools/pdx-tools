@@ -1,7 +1,7 @@
 ---
 slug: rakaly-status-report-5
 title: "Rakaly Status Report #5"
-image: rakaly-fall.jpg
+image: ./rakaly-fall.jpg
 authors: [comagoosie]
 description: |
   Though it may not look like it, a lot of work has gone into Rakaly in the past month:

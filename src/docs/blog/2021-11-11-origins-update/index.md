@@ -1,7 +1,7 @@
 ---
 slug: origins-update
 title: "EU4 Origins"
-image: banner.jpg
+image: ./banner.jpg
 authors: [comagoosie]
 description: "EU4 Origins has been released today and I'm happy to announce same day support in Rakaly. Thankfully the expansion is a flavor pack so there weren't any major changes necessary for Rakaly other than tweaks and adding achievements. But I still put together some of my musings so the blog would have an update as it's been a couple months since the last one! Also big things are in store for Rakaly in the near future so stay tuned."
 ---

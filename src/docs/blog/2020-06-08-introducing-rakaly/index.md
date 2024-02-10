@@ -1,7 +1,7 @@
 ---
 slug: introducing-rakaly
 title: "Introducing Rakaly"
-image: introducing-rakaly-banner.png
+image: ./introducing-rakaly-banner.png
 authors: [comagoosie]
 description: "Welcome to Rakaly. Rakaly is an EU4 achievement leaderboard that houses an in browser savegame analyzer. This post covers the goals, limitations and future of Rakaly. If you'd like a hand in shaping Rakaly, join the discussion!"
 ---

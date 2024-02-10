@@ -1,7 +1,7 @@
 ---
 slug: a-tour-of-pds-clausewitz-syntax
 title: A Tour of PDS Clausewitz Syntax
-image: storm.png
+image: ./storm.png
 authors: [comagoosie]
 description: Paradox Development Studio (PDS) develops a game engine called Clausewitz that consumes and produces files in a proprietary format. This format is undocumented. I decided it would be worthwhile for myself as well as future developers interested in writing parsers to not only know the basics of this format but also the edge cases that I've encountered along the way.
 ---

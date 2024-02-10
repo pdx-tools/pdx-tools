@@ -1,7 +1,7 @@
 ---
 slug: rakaly-status-report-2-desktop-musings
 title: "Rakaly Status Report #2: Desktop Musings"
-image: sun-banner.jpg
+image: ./sun-banner.jpg
 authors: [comagoosie]
 description: "It's been my goal since day 1 for there to be a desktop component to Rakaly that uploads saves while you play. It would work by watching for save files and uploading them to the server when a new one appears. There are two underlying reasons why I want a desktop component: backups and richer analytics. There are a couple of unsolved problems that need to be fixed before I can consider further development on the desktop version and allowing one to upload all saves"
 ---
