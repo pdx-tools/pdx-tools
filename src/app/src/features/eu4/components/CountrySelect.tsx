@@ -33,6 +33,7 @@ export const CountrySelect = memo(function CountrySelect({
     setOpen(open);
   }, []);
 
+  const search = input?.trim().toLocaleLowerCase() ?? "";
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
@@ -47,7 +48,7 @@ export const CountrySelect = memo(function CountrySelect({
       </Popover.Trigger>
       <Popover.Content className="max-h-96 w-72 overflow-auto">
         <Command
-          filter={(value, search) => {
+          filter={(value) => {
             if (search.length == 0) {
               return 1;
             } else if (search.length <= 3) {
