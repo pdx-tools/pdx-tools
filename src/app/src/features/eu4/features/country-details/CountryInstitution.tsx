@@ -149,7 +149,8 @@ const columns = [
         </Tooltip.Trigger>
         <Tooltip.Content className="max-w-72">
           The calculated development cost modifier from province specific and
-          country-wide sources. Can be edited for exactness.
+          country-wide sources. Can be edited for exactness (exclude base cost
+          from development and expand infrastructure)
         </Tooltip.Content>
       </Tooltip>
     ),
