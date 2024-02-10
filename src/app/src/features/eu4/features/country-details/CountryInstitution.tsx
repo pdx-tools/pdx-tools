@@ -1,12 +1,4 @@
-import React, {
-  ComponentPropsWithoutRef,
-  ElementRef,
-  forwardRef,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useState } from "react";
 import { CountryDetails } from "../../types/models";
 import { Eu4Worker, useEu4Worker } from "../../worker";
 import { Alert } from "@/components/Alert";
@@ -21,49 +13,8 @@ import { IconButton } from "@/components/IconButton";
 import { XMarkIcon } from "@heroicons/react/16/solid";
 import { useThrottle } from "@/hooks/useThrottle";
 import { Divider } from "@/components/Divider";
-import { Input } from "@/components/Input";
 import { Tooltip } from "@/components/Tooltip";
-import { keyboardTrigger } from "@/lib/keyboardTrigger";
-
-type InputEvent = React.SyntheticEvent<ElementRef<typeof Input>>;
-type InputNumberEvent = InputEvent & { value: number };
-const InputNumber = forwardRef<
-  ElementRef<typeof Input>,
-  Omit<ComponentPropsWithoutRef<typeof Input>, "onChange"> & {
-    onChange: (e: InputNumberEvent) => void;
-  }
->(function InputNumber({ value, onChange, ...props }, ref) {
-  const [backing, setBacking] = useState(value);
-
-  useEffect(() => {
-    setBacking(value);
-  }, [value]);
-
-  const changeCb = (e: InputEvent) => {
-    const result = Number(e.currentTarget.value);
-    if (isNaN(result)) {
-      return;
-    }
-
-    onChange({
-      value: result,
-      ...e,
-    });
-  };
-
-  return (
-    <Input
-      ref={ref}
-      {...props}
-      inputMode="numeric"
-      type="text"
-      value={backing}
-      onKeyDown={keyboardTrigger(changeCb, "Enter")}
-      onBlur={changeCb}
-      onChange={(e) => setBacking(e.currentTarget.value)}
-    />
-  );
-});
+import { InputNumber } from "@/components/InputNumber";
 
 function ProvinceModifier(props: InstitutionCost) {
   const actions = useInstitutionActions();
