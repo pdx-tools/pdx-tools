@@ -15,6 +15,7 @@ import { useThrottle } from "@/hooks/useThrottle";
 import { Divider } from "@/components/Divider";
 import { Tooltip } from "@/components/Tooltip";
 import { InputNumber } from "@/components/InputNumber";
+import { Link } from "@/components/Link";
 
 function ProvinceModifier(props: InstitutionCost) {
   const actions = useInstitutionActions();
@@ -192,7 +193,7 @@ export const CountryInstitution = ({
       (worker: Eu4Worker) =>
         worker.eu4GetCountryInstitutionPush(
           details.tag,
-          modifier,
+          modifier / 100,
           expandCost,
           overrides,
         ),
@@ -222,7 +223,16 @@ export const CountryInstitution = ({
         {formatInt(data.institutions_embraced)}/
         {formatInt(data.institutions_available)} institutions embraced
       </div>
-      <Divider paddingClassNames="pt-5">Dev Push Institution</Divider>
+      <Divider paddingClassNames="pt-5">
+        Dev Push Institution (
+        <Link
+          target="_blank"
+          href="/docs/eu4-guides/optimize-dev-push-institution/"
+        >
+          guide
+        </Link>
+        )
+      </Divider>
       <div className="flex gap-20">
         <div className="space-y-1 pt-5">
           <Tooltip>
@@ -232,8 +242,8 @@ export const CountryInstitution = ({
                   Country-wide development cost modifier:
                   <InputNumber
                     className="px-2 py-1 w-14 text-right"
-                    value={modifier * 100}
-                    onChange={(e) => setModifier(e.value / 100)}
+                    value={modifier}
+                    onChange={(e) => setModifier(e.value)}
                   />
                 </label>
                 %
@@ -257,7 +267,7 @@ export const CountryInstitution = ({
         </div>
         <div>
           <div className="font-semibold">
-            Detected Province development cost modifiers
+            Detected province development cost modifiers
           </div>
           <ul className="pl-4 flex flex-col flex-wrap h-20 gap-x-12">
             <li>✔️ Terrain</li>
