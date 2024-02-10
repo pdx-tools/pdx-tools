@@ -263,9 +263,9 @@ export const CountryInstitution = ({
         {formatInt(data.institutions_embraced)}/
         {formatInt(data.institutions_available)} institutions embraced
       </div>
-      <Divider>Dev Push Institution</Divider>
+      <Divider paddingClassNames="pt-5">Dev Push Institution</Divider>
       <div className="flex gap-20">
-        <div className="space-y-1">
+        <div className="space-y-1 pt-5">
           <Tooltip>
             <Tooltip.Trigger>
               <div>
