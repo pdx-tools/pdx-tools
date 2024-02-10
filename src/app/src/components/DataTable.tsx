@@ -2,6 +2,8 @@ import React, { useMemo, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { Table } from "./Table";
 import {
+  Table as TableDef,
+  Column,
   ColumnDef,
   ColumnFiltersState,
   SortingState,
@@ -15,6 +17,7 @@ import {
 } from "@tanstack/react-table";
 import { Button } from "./Button";
 import { cx } from "class-variance-authority";
+import { Input } from "./Input";
 
 type DataTableProps<TData> = {
   columns: ColumnDef<TData, any>[];
@@ -82,6 +85,9 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
                         header.column.columnDef.header,
                         header.getContext(),
                       )}
+                  {header.column.getCanFilter() ? (
+                    <Filter column={header.column} />
+                  ) : null}
                 </Table.Head>
               ))}
             </Table.Row>
@@ -150,5 +156,18 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function Filter<TData>({ column }: { column: Column<TData, unknown> }) {
+  const columnFilterValue = column.getFilterValue();
+  return (
+    <Input
+      type="text"
+      value={`${columnFilterValue ?? ""}`}
+      onChange={(value) => column.setFilterValue(value.currentTarget.value)}
+      placeholder={`Search...`}
+      className="pl-1"
+    />
   );
 }

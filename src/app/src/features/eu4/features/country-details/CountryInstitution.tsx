@@ -58,6 +58,7 @@ const columns = [
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Province" />
     ),
+    enableColumnFilter: true,
     cell: ({ row }) => (
       <div>
         {row.original.name} ({row.original.province_id})
@@ -66,6 +67,7 @@ const columns = [
   }),
 
   columnHelper.accessor("current_institution_progress", {
+    enableColumnFilter: false,
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Progress" />
     ),
@@ -75,6 +77,7 @@ const columns = [
   }),
 
   columnHelper.accessor("mana_cost", {
+    enableColumnFilter: false,
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Mana cost" />
     ),
@@ -84,6 +87,7 @@ const columns = [
   }),
 
   columnHelper.accessor("current_dev", {
+    enableColumnFilter: false,
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Current dev" />
     ),
@@ -93,6 +97,7 @@ const columns = [
   }),
 
   columnHelper.accessor("dev_cost_modifier", {
+    enableColumnFilter: false,
     header: ({ column }) => (
       <Tooltip>
         <Tooltip.Trigger asChild>
@@ -109,6 +114,7 @@ const columns = [
   }),
 
   columnHelper.accessor("final_dev", {
+    enableColumnFilter: false,
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Final dev" />
     ),
@@ -118,6 +124,7 @@ const columns = [
   }),
 
   columnHelper.accessor("exploit_at", {
+    enableColumnFilter: false,
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Exploit at" />
     ),
@@ -132,6 +139,7 @@ const columns = [
   }),
 
   columnHelper.accessor("additional_expand_infrastructure", {
+    enableColumnFilter: false,
     header: ({ column }) => (
       <Table.ColumnHeader
         className="w-28"
@@ -268,6 +276,7 @@ export const CountryInstitution = ({
         columns={columns}
         pagination={true}
         autoResetPageIndex={false}
+        enableColumnFilters={true}
       />
     </div>
   );
