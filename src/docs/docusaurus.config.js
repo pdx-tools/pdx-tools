@@ -4,7 +4,7 @@ const { themes } = require("prism-react-renderer");
 const lightCodeTheme = themes.github;
 const darkCodeTheme = themes.dracula;
 const repo = "https://github.com/pdx-tools/pdx-tools";
-const url = "https://dev.pdx.tools";
+const url = "https://pdx.tools";
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
