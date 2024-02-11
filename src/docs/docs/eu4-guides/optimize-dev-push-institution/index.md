@@ -59,7 +59,7 @@ Calculating the country-wide development cost modifier is oftentimes good enough
 
 Overriding a dev modifier for a province will disable the automatic detection of province development cost modifiers for only the overridden province.
 
-Back to our Sharqiya example, adding the local modifiers to country-wide we arrive at -54% (-29 + -25%)
+Back to our Sharqiya example, adding the local modifiers to country-wide we arrive at -54% (-29 + -25%). We always exclude modifiers from development and expand infrastructure as PDX Tools already takes them into account during the optimization process.
 
 [![Updated view with country-wide development modifier](province-edit.png)](province-edit.png)
 
