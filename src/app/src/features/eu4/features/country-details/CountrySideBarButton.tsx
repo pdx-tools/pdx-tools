@@ -43,7 +43,6 @@ import { CountrySelect } from "../../components/CountrySelect";
 import { emitEvent } from "@/lib/plausible";
 import { CountryHistory } from "./CountryHistory";
 import { CountryInstitution } from "./CountryInstitution";
-import { useIsDeveloper } from "@/features/account";
 
 export const CountrySideBarButton = ({
   children,
@@ -70,7 +69,6 @@ const CountryDetailsContent = () => {
   const [expanded, setExpanded] = useState(false);
   const selectedTag = useSelectedTag();
   const sideBarContainerRef = useSideBarContainerRef();
-  const isDeveloper = useIsDeveloper();
 
   const {
     data: [country, rulers, advisors] = [undefined, [], undefined],
@@ -172,9 +170,7 @@ const CountryDetailsContent = () => {
         <Tabs.List className="mt-3 w-full max-w-full overflow-x-auto border-0 px-4 shadow-md">
           <Tabs.Trigger value="General">General</Tabs.Trigger>
           <Tabs.Trigger value="History">History</Tabs.Trigger>
-          {isDeveloper && (
-            <Tabs.Trigger value="Institution">Institution</Tabs.Trigger>
-          )}
+          <Tabs.Trigger value="Institution">Institution</Tabs.Trigger>
           <Tabs.Trigger value="Advisors">Advisors</Tabs.Trigger>
           <Tabs.Trigger value="Rulers">Rulers</Tabs.Trigger>
           <Tabs.Trigger value="Leaders">Leaders</Tabs.Trigger>
@@ -198,14 +194,9 @@ const CountryDetailsContent = () => {
         <Tabs.Content value="History" className=" flex-1 basis-0 relative">
           {country && <CountryHistory details={country} />}
         </Tabs.Content>
-        {isDeveloper && (
-          <Tabs.Content
-            value="Institution"
-            className=" flex-1 basis-0 px-4 py-6"
-          >
-            {country && <CountryInstitution details={country} />}
-          </Tabs.Content>
-        )}
+        <Tabs.Content value="Institution" className=" flex-1 basis-0 px-4 py-6">
+          {country && <CountryInstitution details={country} />}
+        </Tabs.Content>
         <Tabs.Content value="Advisors" className=" flex-1 basis-0 px-4 py-6">
           <div>
             Radical reforms completed: {advisors?.radicalReforms || "no"}
