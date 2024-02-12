@@ -1,10 +1,10 @@
 use super::{
     CountryAdvisors, CountryCulture, CountryDetails, CountryHistory, CountryHistoryEvent,
     CountryHistoryEventKind, CountryHistoryLeader, CountryHistoryMonarch, CountryLeader,
-    CountryMonarch, CountryReligions, CountryStateDetails, DiplomacyEntry, DiplomacyKind, Estate,
-    FailedHeir, GovernmentStrength, GreatAdvisor, InfluenceModifier, LandUnitStrength,
-    LocalizedObj, LocalizedTag, MonarchKind, ProgressDate, ProvinceConquer, ProvinceGc,
-    RunningMonarch, SaveFileImpl, WarBattles, WarOverview,
+    CountryMonarch, CountryReligions, CountryStateDetails, DecisionCount, DiplomacyEntry,
+    DiplomacyKind, Estate, FailedHeir, GovernmentStrength, GreatAdvisor, InfluenceModifier,
+    LandUnitStrength, LocalizedObj, LocalizedTag, MonarchKind, ProgressDate, ProvinceConquer,
+    ProvinceGc, RunningMonarch, SaveFileImpl, WarBattles, WarOverview,
 };
 use crate::savefile::{
     hex_color, BattleGroundProvince, CountryHistoryYear, CountryReligion, CultureTolerance,
@@ -12,7 +12,7 @@ use crate::savefile::{
 };
 use eu4game::{ProvinceExt, SaveGameQuery};
 use eu4save::{
-    models::{Country, CountryEvent, Leader, LeaderKind, Province},
+    models::{Country, CountryEvent, Leader, LeaderKind, Monarch, Province},
     query::{NationEvents, ProvinceOwnerChange, SaveCountry},
     CountryTag, Eu4Date, PdsDate, ProvinceId,
 };
@@ -1389,6 +1389,52 @@ impl SaveFileImpl {
             }
         }
 
+        // Only take the last monarch introduced on a given day to workaround
+        // glitches like 20k enthrone timurid princes:
+        // https://pdx.tools/eu4/saves/nj8my4knkiao
+        let mut monarch = None;
+        let mut queen = None;
+        let mut heir = None;
+        for (date, event) in country.history.events.iter() {
+            if game.start_date > *date {
+                continue;
+            }
+
+            match event {
+                CountryEvent::Monarch(m) => match monarch.replace((*date, m)) {
+                    Some((d, m)) if d != *date => {
+                        events.push(self.country_history_monarch_event(d, m, MonarchKind::Monarch))
+                    }
+                    _ => {}
+                },
+                CountryEvent::Queen(m) => match queen.replace((*date, m)) {
+                    Some((d, m)) if d != *date => {
+                        events.push(self.country_history_monarch_event(d, m, MonarchKind::Queen))
+                    }
+                    _ => {}
+                },
+                CountryEvent::Heir(m) => match heir.replace((*date, m)) {
+                    Some((d, m)) if d != *date => {
+                        events.push(self.country_history_monarch_event(d, m, MonarchKind::Heir))
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+
+        if let Some((d, m)) = monarch.take() {
+            events.push(self.country_history_monarch_event(d, m, MonarchKind::Monarch));
+        }
+
+        if let Some((d, m)) = queen.take() {
+            events.push(self.country_history_monarch_event(d, m, MonarchKind::Queen));
+        }
+
+        if let Some((d, m)) = heir.take() {
+            events.push(self.country_history_monarch_event(d, m, MonarchKind::Heir));
+        }
+
         let mut date_leaders: HashMap<(Eu4Date, LeaderKind), Vec<CountryHistoryLeader>> =
             HashMap::new();
         for (date, event) in country.history.events.iter() {
@@ -1411,6 +1457,37 @@ impl SaveFileImpl {
             events.push(CountryHistoryEvent {
                 date,
                 event: CountryHistoryEventKind::Leader { leaders },
+            })
+        }
+
+        let mut date_decisions: HashMap<Eu4Date, HashMap<&String, usize>> = HashMap::new();
+        for (date, event) in country.history.events.iter() {
+            if game.start_date > *date {
+                continue;
+            }
+
+            let decision = match event {
+                CountryEvent::Decision(id) => id,
+                _ => continue,
+            };
+
+            let decisions = date_decisions.entry(*date).or_default();
+            let count = decisions.entry(decision).or_default();
+            *count += 1;
+        }
+
+        for (date, decision_counts) in date_decisions {
+            let decisions: Vec<_> = decision_counts
+                .into_iter()
+                .map(|(decision, count)| DecisionCount {
+                    decision: decision.clone(),
+                    count,
+                })
+                .collect();
+
+            events.push(CountryHistoryEvent {
+                date,
+                event: CountryHistoryEventKind::Decision { decisions },
             })
         }
 
@@ -1438,70 +1515,69 @@ impl SaveFileImpl {
         CountryHistory { data: years }
     }
 
+    fn country_history_monarch_event(
+        &self,
+        date: Eu4Date,
+        m: &Monarch,
+        kind: MonarchKind,
+    ) -> CountryHistoryEvent {
+        CountryHistoryEvent {
+            date,
+            event: CountryHistoryEventKind::Monarch(CountryHistoryMonarch {
+                name: m.name.clone(),
+                dynasty: m.dynasty.clone(),
+                kind,
+                age: m.birth_date.days_until(&date) / 365,
+                culture: m.culture.as_ref().map(|id| LocalizedObj {
+                    id: id.clone(),
+                    name: self
+                        .game
+                        .localize(id)
+                        .map(String::from)
+                        .unwrap_or_else(|| id.clone()),
+                }),
+                religion: m.religion.as_ref().map(|id| LocalizedObj {
+                    id: id.clone(),
+                    name: self
+                        .game
+                        .localize(id)
+                        .map(String::from)
+                        .unwrap_or_else(|| id.clone()),
+                }),
+                personalities: m
+                    .personalities
+                    .iter()
+                    .map(|(personality, _)| LocalizedObj {
+                        id: personality.clone(),
+                        name: self.game.localize_personality(personality),
+                    })
+                    .collect(),
+                adm: m.adm as u16,
+                dip: m.dip as u16,
+                mil: m.mil as u16,
+                leader: m.leader.as_ref().map(|x| CountryHistoryLeader {
+                    name: x.name.clone(),
+                    fire: x.fire,
+                    shock: x.shock,
+                    maneuver: x.maneuver,
+                    siege: x.siege,
+                    kind: x.kind.clone(),
+                    activation: x.activation,
+                    personality: x.personality.as_ref().map(|personality| LocalizedObj {
+                        id: personality.clone(),
+                        name: self.game.localize_personality(personality),
+                    }),
+                }),
+            }),
+        }
+    }
+
     fn country_history_event(
         &self,
         date: Eu4Date,
         event: &CountryEvent,
     ) -> Option<CountryHistoryEvent> {
         match event {
-            CountryEvent::Monarch(m)
-            | CountryEvent::MonarchHeir(m)
-            | CountryEvent::MonarchConsort(m)
-            | CountryEvent::Heir(m)
-            | CountryEvent::Queen(m) => Some(CountryHistoryEvent {
-                date,
-                event: CountryHistoryEventKind::Monarch(CountryHistoryMonarch {
-                    name: m.name.clone(),
-                    dynasty: m.dynasty.clone(),
-                    kind: match event {
-                        CountryEvent::Heir(_) => MonarchKind::Heir,
-                        CountryEvent::Queen(_) => MonarchKind::Queen,
-                        CountryEvent::MonarchConsort(_) => MonarchKind::Consort,
-                        _ => MonarchKind::Monarch,
-                    },
-                    age: m.birth_date.days_until(&date) / 365,
-                    culture: m.culture.as_ref().map(|id| LocalizedObj {
-                        id: id.clone(),
-                        name: self
-                            .game
-                            .localize(id)
-                            .map(String::from)
-                            .unwrap_or_else(|| id.clone()),
-                    }),
-                    religion: m.religion.as_ref().map(|id| LocalizedObj {
-                        id: id.clone(),
-                        name: self
-                            .game
-                            .localize(id)
-                            .map(String::from)
-                            .unwrap_or_else(|| id.clone()),
-                    }),
-                    personalities: m
-                        .personalities
-                        .iter()
-                        .map(|(personality, _)| LocalizedObj {
-                            id: personality.clone(),
-                            name: self.game.localize_personality(personality),
-                        })
-                        .collect(),
-                    adm: m.adm as u16,
-                    dip: m.dip as u16,
-                    mil: m.mil as u16,
-                    leader: m.leader.as_ref().map(|x| CountryHistoryLeader {
-                        name: x.name.clone(),
-                        fire: x.fire,
-                        shock: x.shock,
-                        maneuver: x.maneuver,
-                        siege: x.siege,
-                        kind: x.kind.clone(),
-                        activation: x.activation,
-                        personality: x.personality.as_ref().map(|personality| LocalizedObj {
-                            id: personality.clone(),
-                            name: self.game.localize_personality(personality),
-                        }),
-                    }),
-                }),
-            }),
             CountryEvent::Capital(x) => {
                 let id = ProvinceId::new(*x as i32);
                 Some(CountryHistoryEvent {
@@ -1519,10 +1595,6 @@ impl SaveFileImpl {
                     },
                 })
             }
-            CountryEvent::Decision(id) => Some(CountryHistoryEvent {
-                date,
-                event: CountryHistoryEventKind::Decision { id: id.clone() },
-            }),
             CountryEvent::Religion(religion_id) => {
                 let name = self
                     .game

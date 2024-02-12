@@ -203,8 +203,19 @@ const CountryHistoryCard = ({
             <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
-            <DecisionIcon />
-            <p>{sentenceCasing(evt.event.id.replaceAll("_", " "))}</p>
+            <div className="self-start">
+              <DecisionIcon />
+            </div>
+            <div>
+              {evt.event.decisions.map((x, i) => (
+                <div key={i} className="flex gap-2">
+                  <p>
+                    {sentenceCasing(x.decision.replaceAll("_", " "))}{" "}
+                    {x.count > 1 && `(${formatInt(x.count)}x)`}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
       );

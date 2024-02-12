@@ -991,7 +991,7 @@ pub enum CountryHistoryEventKind {
     ChangeStateReligion(LocalizedObj),
     Flag { name: String },
     GreatAdvisor { occupation: LocalizedObj },
-    Decision { id: String },
+    Decision { decisions: Vec<DecisionCount> },
     Leader { leaders: Vec<CountryHistoryLeader> },
     Monarch(CountryHistoryMonarch),
     WarStart(WarStart),
@@ -1010,6 +1010,12 @@ pub struct CountryHistoryLeader {
     pub activation: Option<Eu4Date>,
     pub kind: LeaderKind,
     pub personality: Option<LocalizedObj>,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+pub struct DecisionCount {
+    pub decision: String,
+    pub count: usize,
 }
 
 #[derive(Tsify, Serialize, Debug)]
