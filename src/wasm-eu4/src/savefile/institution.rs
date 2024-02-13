@@ -418,12 +418,13 @@ impl SaveFileImpl {
                 + country_wide_dev_cost_modifier;
 
             // Avoid situations where "-0.15000000000000002" (which does
-            // influence results), we convert to percent and remove the decimal.
-            let dev_cost_modifier_heuristic = f64::trunc(dev_cost_modifier * 100.0) / 100.0;
+            // influence results), we convert to percent and keep 2 decimals.
+            let dev_cost_modifier_heuristic = f64::trunc(dev_cost_modifier * 10000.0) / 10000.0;
 
             let dev_cost_modifier = overrides
                 .get(id)
                 .copied()
+                .map(|x| f64::trunc(x * 10000.0) / 10000.0)
                 .unwrap_or(dev_cost_modifier_heuristic);
 
             let province_modifiers = ProvinceModifiers {
