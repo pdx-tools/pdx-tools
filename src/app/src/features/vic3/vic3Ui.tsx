@@ -1,10 +1,12 @@
-import { useReducer, useEffect } from "react";
-import { logMs } from "@/lib/log";
+import { useState, useReducer, useEffect } from "react";
+import { log, logMs } from "@/lib/log";
 import { timeit } from "@/lib/timeit";
 import Head from "next/head";
 import { getVic3Worker } from "./worker";
+import { CountryStatsTable } from "./CountryStats";
+import { TagSelect } from "./TagSelect";
 import { MeltButton } from "@/components/MeltButton";
-import { Vic3Metadata } from "./worker/types";
+import { Vic3Stats, Vic3Metadata } from "./worker/types";
 import { captureException } from "../errors";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
@@ -12,9 +14,32 @@ import { emitEvent } from "@/lib/plausible";
 import { pdxAbortController } from "@/lib/abortController";
 
 export type Vic3SaveFile = { save: { file: File } };
-type Vic3PageProps = Vic3SaveFile & { meta: Vic3Metadata };
+type Vic3StatsProps = {
+  meta: Vic3Metadata;
+  played_tag: string;
+  tags: [string];
+};
+type Vic3PageProps = Vic3SaveFile & Vic3StatsProps;
 
-export const Vic3Page = ({ save, meta }: Vic3PageProps) => {
+export const Vic3Page = ({ save, meta, played_tag, tags }: Vic3PageProps) => {
+  const [displayed_tag, setDisplayedTag] = useState<string>(played_tag);
+  const [tag_stats, setTagStats] = useState<[Vic3Stats]>([]);
+  if (!tags) {
+    tags = [];
+  }
+
+  useEffect(() => {
+    if (!displayed_tag) {
+      return () => {};
+    }
+    const worker = getVic3Worker();
+    if (worker) {
+      worker.get_country_stats(displayed_tag).then((tag_s) => {
+        log("Got tag stats", displayed_tag);
+        setTagStats(tag_s);
+      });
+    }
+  }, [displayed_tag]);
   return (
     <main className="mx-auto mt-4 max-w-screen-lg">
       <Head>
@@ -34,6 +59,12 @@ export const Vic3Page = ({ save, meta }: Vic3PageProps) => {
             filename={save.file.name}
           />
         )}
+        <TagSelect
+          value={displayed_tag}
+          tags={tags}
+          onChange={setDisplayedTag}
+        />
+        <CountryStatsTable stats={tag_stats} />
       </div>
     </main>
   );
@@ -70,23 +101,23 @@ async function loadVic3Save(file: File, signal: AbortSignal) {
     }),
   ]);
 
-  const { meta } = await run({
+  const { meta, tags, played_tag } = await run({
     fn: () => worker.parseVic3(),
     name: "parse vic3 file",
   });
 
-  return { meta };
+  return { meta, tags, played_tag };
 }
 
 type Vic3LoadState = {
   loading: boolean;
-  data: Vic3Metadata | null;
+  data: Vic3StatsProps | null;
   error: unknown | null;
 };
 
 type Vic3LoadActions =
   | { kind: "start" }
-  | { kind: "data"; data: Vic3Metadata }
+  | { kind: "data"; data: Vic3StatsProps }
   | { kind: "error"; error: unknown };
 
 const loadStateReducer = (
@@ -128,8 +159,8 @@ function useLoadVic3(input: Vic3SaveFile) {
     dispatch({ kind: "start" });
     const controller = pdxAbortController();
     loadVic3Save(input.save.file, controller.signal)
-      .then(({ meta }) => {
-        dispatch({ kind: "data", data: meta });
+      .then(({ meta, tags, played_tag }) => {
+        dispatch({ kind: "data", data: { meta, tags, played_tag } });
       })
       .catch((error) => {
         if (controller.signal.aborted) {
@@ -148,7 +179,7 @@ function useLoadVic3(input: Vic3SaveFile) {
 }
 
 export const Vic3Ui = (props: Vic3SaveFile) => {
-  const { data, error } = useLoadVic3(props);
+  const { data, error, stats } = useLoadVic3(props);
 
   return (
     <>
@@ -157,7 +188,14 @@ export const Vic3Ui = (props: Vic3SaveFile) => {
           <Alert.Description>{getErrorMessage(error)}</Alert.Description>
         </Alert>
       )}
-      {data && <Vic3Page {...props} meta={data} />}
+      {data && (
+        <Vic3Page
+          {...props}
+          meta={data.meta}
+          tags={data.tags}
+          played_tag={data.played_tag}
+        />
+      )}
     </>
   );
 };

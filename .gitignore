@@ -18,3 +18,4 @@ dev/.env.*staging
 *.node
 tmp/
 node_modules
+*.swp
