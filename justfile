@@ -225,7 +225,7 @@ deploy-db-schema ENVIRONMENT:
 
   DATABASE_URL=postgresql://postgres:$DATABASE_ADMIN_PASSWORD@localhost:$DATABASE_EXPOSED_LOCAL_PORT
   echo npx drizzle-kit push:pg --verbose --driver pg --schema src/server-lib/db/schema.ts --connectionString "$DATABASE_URL"
-  echo Execute the above to migrate a given database
+  echo Execute the above to migrate a given database but probably better to just copy and paste the migration sql into the database.
 
 backup ENVIRONMENT:
   backup-db {{ENVIRONMENT}}
