@@ -59,6 +59,7 @@ jobs:
           just package-all && \
           just build-wasm-dev && \
           just test && \
+          cargo clean && \
           NEXT_OUTPUT=standalone just build
 
     - name: Push to container registry
