@@ -220,8 +220,12 @@ deploy-db-schema ENVIRONMENT:
   #!/usr/bin/env bash
   set -euo pipefail
   . dev/.env.{{ENVIRONMENT}}
-  export DATABASE_URL=postgresql://postgres:$DATABASE_ADMIN_PASSWORD@localhost:$DATABASE_EXPOSED_LOCAL_PORT
-  (cd src/app && npx prisma migrate deploy)
+  cd src/app
+  npx drizzle-kit generate:pg --schema src/server-lib/db/schema.ts --out migrations
+
+  DATABASE_URL=postgresql://postgres:$DATABASE_ADMIN_PASSWORD@localhost:$DATABASE_EXPOSED_LOCAL_PORT
+  echo npx drizzle-kit push:pg --verbose --driver pg --schema src/server-lib/db/schema.ts --connectionString "$DATABASE_URL"
+  echo Execute the above to migrate a given database
 
 backup ENVIRONMENT:
   backup-db {{ENVIRONMENT}}
