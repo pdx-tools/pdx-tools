@@ -17,57 +17,61 @@ type CountryBudgetCountProps = {
 const incomePalette = new Map(incomeLedgerColorPalette());
 const expensePalette = new Map(expenseLedgerColorPalette());
 
-const BudgetBar = React.memo(
-  ({ income, expenses }: { income: number; expenses: number }) => {
-    const overviewConfig: BarConfig = {
-      data: [
-        {
-          key: "Income",
-          value: income,
-        },
-        {
-          key: "Expenses",
-          value: expenses,
-        },
-      ],
-      width: 500,
-      height: 200,
-      xField: "value",
-      yField: "key",
-      seriesField: "key",
-      color: (v: Record<string, any>) => {
-        switch (v["key"]) {
-          case "Income":
-            return "#1383ab";
-          case "Expenses":
-            return "#c52125";
-          default:
-            return "#000";
-        }
+const BudgetBar = React.memo(function BudgetBar({
+  income,
+  expenses,
+}: {
+  income: number;
+  expenses: number;
+}) {
+  const overviewConfig: BarConfig = {
+    data: [
+      {
+        key: "Income",
+        value: income,
       },
-      xAxis: {
-        title: {
-          text: "ducats",
-        },
+      {
+        key: "Expenses",
+        value: expenses,
       },
-      tooltip: {
-        // @ts-ignore https://github.com/ant-design/ant-design-charts/issues/1474
-        formatter: (datum) => ({
-          name: datum.key,
-          value: formatInt(datum.value || 0),
-        }),
+    ],
+    width: 500,
+    height: 200,
+    xField: "value",
+    yField: "key",
+    seriesField: "key",
+    color: (v: Record<string, any>) => {
+      switch (v["key"]) {
+        case "Income":
+          return "#1383ab";
+        case "Expenses":
+          return "#c52125";
+        default:
+          return "#000";
+      }
+    },
+    xAxis: {
+      title: {
+        text: "ducats",
       },
-      label: {
-        style: {
-          fill: "#fff",
-        },
-        formatter: (datum: any, _item: any) => datum.value.toFixed(0),
+    },
+    tooltip: {
+      // @ts-ignore https://github.com/ant-design/ant-design-charts/issues/1474
+      formatter: (datum) => ({
+        name: datum.key,
+        value: formatInt(datum.value || 0),
+      }),
+    },
+    label: {
+      style: {
+        fill: "#fff",
       },
-    };
+      formatter: (datum: any, _item: any) => datum.value.toFixed(0),
+    },
+  };
 
-    return <Bar {...overviewConfig} />;
-  },
-);
+  return <Bar {...overviewConfig} />;
+});
 
 export const CountryBudget = ({ details }: CountryBudgetCountProps) => {
   const [showRecurringOnly, setRecurOnly] = useState(false);

@@ -14,7 +14,10 @@ type MemoProps = LedgerProps & {
   lookup: ReturnType<typeof useCountryNameLookup>;
 };
 
-const AnnualLedgerPropped = React.memo(({ ledger, lookup }: MemoProps) => {
+const AnnualLedgerPropped = React.memo(function AnnualLedgerPropped({
+  ledger,
+  lookup,
+}: MemoProps) {
   const config: LineConfig = {
     data: ledger,
     xField: "year",

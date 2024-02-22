@@ -114,7 +114,7 @@ Command.Group = CommandGroup;
 const CommandSeparator = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
->(function ({ className, ...props }, ref) {
+>(function CommandSeparator({ className, ...props }, ref) {
   return (
     <CommandPrimitive.Separator
       ref={ref}

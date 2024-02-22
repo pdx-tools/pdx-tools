@@ -20,7 +20,7 @@ Select.Icon = SelectPrimitive.Icon;
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(function ({ className, children, ...props }, ref) {
+>(function SelectTrigger({ className, children, ...props }, ref) {
   return (
     <SelectPrimitive.Trigger
       ref={ref}
