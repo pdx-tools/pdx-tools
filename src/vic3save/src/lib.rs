@@ -4,6 +4,8 @@ pub mod file;
 pub(crate) mod flavor;
 mod header;
 mod melt;
+pub mod savefile;
+pub mod stats;
 pub mod tokens;
 mod vic3date;
 

@@ -3353,6 +3353,7 @@ dependencies = [
  "schemas",
  "serde",
  "serde-wasm-bindgen",
+ "tsify",
  "vic3save",
  "wasm-bindgen",
  "zstd 0.13.0",

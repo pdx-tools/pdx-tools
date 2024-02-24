@@ -1,5 +1,5 @@
 pub use jomini::common::PdsDate;
-use jomini::common::{DateError, DateFormat, PdsDateFormatter, RawDate};
+use jomini::common::{Date, DateError, DateFormat, PdsDateFormatter, RawDate};
 use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::str::FromStr;
@@ -90,6 +90,22 @@ impl Vic3Date {
     /// Date hour. Can be 0, 6, 12, or 18.
     pub fn hour(&self) -> u8 {
         self.raw.hour()
+    }
+
+    pub fn add_days(self, days: i32) -> Vic3Date {
+        let new_date = Date::from_ymd(self.year(), self.month(), self.day()).add_days(days);
+        Self::from_ymdh(
+            new_date.year(),
+            new_date.month(),
+            new_date.day(),
+            self.hour(),
+        )
+    }
+
+    pub fn days_until(self, other: &Vic3Date) -> i32 {
+        let self_date = Date::from_ymd(self.year(), self.month(), self.day());
+        let other_date = Date::from_ymd(other.year(), other.month(), other.day());
+        self_date.days_until(&other_date)
     }
 }
 
@@ -212,5 +228,41 @@ impl<'de> Deserialize<'de> for Vic3Date {
         D: Deserializer<'de>,
     {
         deserializer.deserialize_any(DateVisitor)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Vic3Date;
+    #[test]
+    fn test_date_arithmetic() {
+        assert_eq!(
+            Vic3Date::from_ymdh(1836, 1, 1, 0).add_days(364),
+            Vic3Date::from_ymdh(1836, 12, 31, 0)
+        );
+        assert_eq!(
+            Vic3Date::from_ymdh(1836, 1, 1, 0).add_days(365),
+            Vic3Date::from_ymdh(1837, 1, 1, 0)
+        );
+        assert_eq!(
+            Vic3Date::from_ymdh(1837, 12, 31, 0).add_days(1),
+            Vic3Date::from_ymdh(1838, 1, 1, 0)
+        );
+        assert_eq!(
+            Vic3Date::from_ymdh(1837, 12, 31, 0).add_days(32),
+            Vic3Date::from_ymdh(1838, 2, 1, 0)
+        );
+        let base = Vic3Date::from_ymdh(1837, 6, 25, 0);
+        assert_eq!(base.add_days(3), Vic3Date::from_ymdh(1837, 6, 28, 0));
+        assert_eq!(base.add_days(8), Vic3Date::from_ymdh(1837, 7, 3, 0));
+        assert_eq!(base.add_days(61), Vic3Date::from_ymdh(1837, 8, 25, 0));
+        assert_eq!(base.add_days(365), Vic3Date::from_ymdh(1838, 6, 25, 0));
+    }
+    #[test]
+    fn test_days_until() {
+        let base = Vic3Date::from_ymdh(1837, 6, 25, 0);
+        assert_eq!(base.days_until(&Vic3Date::from_ymdh(1837, 6, 26, 0)), 1);
+        assert_eq!(base.days_until(&Vic3Date::from_ymdh(1838, 6, 25, 0)), 365);
+        assert_eq!(base.days_until(&base), 0);
     }
 }
