@@ -160,7 +160,7 @@ impl Vic3Save {
     pub fn get_last_played_country(&self) -> &Vic3Country {
         let country = self
             .previous_played
-            .get(0)
+            .first()
             .and_then(|x| self.country_manager.database.get(&x.idtype));
 
         if let Some(Some(country)) = &country {
@@ -177,11 +177,39 @@ impl Vic3Save {
             .map(|x| (x.budget.weekly_income.iter().sum::<f64>(), x))
             .collect::<Vec<_>>();
 
-        incomes.sort_unstable_by(|(a, _), (b, _)| a.total_cmp(&b).reverse());
+        incomes.sort_unstable_by(|(a, _), (b, _)| a.total_cmp(b).reverse());
         incomes
-            .get(0)
+            .first()
             .map(|(_, country)| country)
             .expect("for there to be at least one country")
+    }
+
+    /// Certain binary floating point values contain a different encoding and so
+    /// this function will attempt to normalize these oddities so the same
+    /// calculations can be ran on both the binary and plaintext formats.
+    /// See "ReencodeScalar" in the melter for other affected fields
+    pub fn normalize(mut self) -> Self {
+        let countries = self
+            .country_manager
+            .database
+            .values_mut()
+            .filter_map(|c| c.as_mut());
+
+        for country in countries {
+            let channels = country
+                .pop_statistics
+                .trend_population
+                .channels
+                .values_mut();
+
+            for channel in channels {
+                for value in &mut channel.values {
+                    *value *= 10_000.0;
+                }
+            }
+        }
+
+        self
     }
 }
 

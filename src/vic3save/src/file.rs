@@ -245,7 +245,7 @@ impl<'a> Vic3File<'a> {
     {
         match self.kind() {
             FileKind::Text(x) => x.deserialize(),
-            FileKind::Binary(x) => x.deserialize(resolver),
+            FileKind::Binary(x) => Ok(x.deserialize::<Vic3Save, _>(resolver)?.normalize()),
             FileKind::Zip {
                 archive,
                 gamestate,
@@ -261,7 +261,9 @@ impl<'a> Vic3File<'a> {
                 let save: Vic3Save = if *is_text {
                     Vic3Text::new(&zip_sink).deserialize()
                 } else {
-                    Vic3Binary::new(&zip_sink).deserialize(resolver)
+                    Ok(Vic3Binary::new(&zip_sink)
+                        .deserialize::<Vic3Save, _>(resolver)?
+                        .normalize())
                 }?;
 
                 Ok(save)
