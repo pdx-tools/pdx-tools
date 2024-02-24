@@ -45,6 +45,9 @@ pub enum Vic3ErrorKind {
     #[error("unable to deserialize due to: {0}")]
     Deserialize(#[source] jomini::Error),
 
+    #[error("unable to deserialize due to: {0}")]
+    DeserializeDebug(String),
+
     #[error("error while writing output: {0}")]
     Writer(#[source] jomini::Error),
 

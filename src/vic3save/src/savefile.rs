@@ -1,5 +1,4 @@
-use crate::stats::Vic3CountryStats;
-use crate::Vic3Date;
+use crate::{stats::Vic3CountryStats, Vic3Date};
 use serde::{
     de::{self, DeserializeOwned, Unexpected},
     Deserialize, Deserializer,
@@ -81,7 +80,7 @@ where
                 T1::deserialize(de::value::MapAccessDeserializer::new(map)).map(|x| Maybe(Some(x)))
             }
         }
-        deserializer.deserialize_any(MaybeVisitor {
+        deserializer.deserialize_map(MaybeVisitor {
             marker: PhantomData,
         })
     }
@@ -141,7 +140,7 @@ pub struct Player {
     pub name: String,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize)]
 pub struct Vic3Save {
     pub meta_data: MetaData,
     pub counters: Counters,
@@ -151,7 +150,8 @@ pub struct Vic3Save {
 
 impl Vic3Save {
     pub fn get_country(&self, country_tag: &str) -> Option<&Vic3Country> {
-        self.country_manager
+        self
+            .country_manager
             .database
             .iter()
             .filter_map(|(_, country)| country.as_ref())

@@ -46,8 +46,9 @@ impl SaveFileImpl {
     }
 
     fn get_available_tags(&self) -> Vec<String> {
-        let mngr = &self.save.country_manager;
-        mngr.database
+        self.save
+            .country_manager
+            .database
             .iter()
             .filter_map(|(_, country)| country.as_ref())
             .map(|x| x.definition.clone())
@@ -86,9 +87,7 @@ impl SaveFileImpl {
 fn _parse_save(data: &[u8]) -> Result<SaveFile, Vic3Error> {
     let file = Vic3File::from_slice(data)?;
     let header = file.header();
-    let mut zip_sink = Vec::new();
-    let parsed = file.parse(&mut zip_sink)?;
-    let save: Vic3Save = parsed.deserializer(tokens::get_tokens()).deserialize()?;
+    let save = file.deserialize_save(tokens::get_tokens())?;
     Ok(SaveFile(SaveFileImpl {
         save,
         header: header.clone(),

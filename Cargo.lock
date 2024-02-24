@@ -1620,9 +1620,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.25.3"
+version = "0.25.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d8d87c05369e00bf48491985ed88cb9b2cb39bf6e26fb3896392a6f604666a4"
+checksum = "9411e14aba794b85d77c69910d933e703594982847c412a14ce0330397fc059d"
 dependencies = [
  "itoa",
  "jomini_derive",
@@ -3134,6 +3134,7 @@ dependencies = [
  "libdeflater",
  "miniz_oxide",
  "serde",
+ "serde_path_to_error",
  "thiserror",
  "zip",
 ]

@@ -1,14 +1,11 @@
 use std::error::Error;
 use std::fs;
-use vic3save::savefile::Vic3Save;
-use vic3save::{tokens, Vic3File};
+use vic3save::{EnvTokens, Vic3File};
 
 pub fn run(raw_args: &[String]) -> Result<(), Box<dyn Error>> {
     let data = fs::read(raw_args[1].clone())?;
     let file = Vic3File::from_slice(data.as_slice())?;
-    let mut zip_sink = Vec::new();
-    let parsed_file = file.parse(&mut zip_sink)?;
-    let save: Vic3Save = parsed_file.deserializer(&tokens::EnvTokens).deserialize()?;
+    let save = file.deserialize_save(&EnvTokens)?;
     let tag = save.get_last_played_country().definition.as_ref();
     let country = save.get_country(tag).expect("tag to be found");
 
