@@ -150,8 +150,7 @@ pub struct Vic3Save {
 
 impl Vic3Save {
     pub fn get_country(&self, country_tag: &str) -> Option<&Vic3Country> {
-        self
-            .country_manager
+        self.country_manager
             .database
             .iter()
             .filter_map(|(_, country)| country.as_ref())

@@ -24,11 +24,7 @@ export function useVic3Context() {
   return check(useContext(Vic3SaveContext), "Missing Vic3 Save Context");
 }
 
-function useVic3Store<T>(
-  selector: (state: Vic3State) => T,
-  equalityFn?: (left: T, right: T) => boolean,
-): T {
-  return useStore(useVic3Context(), selector, equalityFn);
-}
+const useVic3Store = <T>(selector: (state: Vic3State) => T): T =>
+  useStore(useVic3Context(), selector);
 export const useVic3Meta = () => useVic3Store((x) => x.save.meta);
 export const useSaveFilename = () => useVic3Store((x) => x.save.filename);

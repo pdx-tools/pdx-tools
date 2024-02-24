@@ -344,13 +344,8 @@ export function useEu4Context() {
   return check(useContext(Eu4SaveContext), "Missing Eu4 Save Context");
 }
 
-function useEu4Store<T>(
-  selector: (state: Eu4State) => T,
-  equalityFn?: (left: T, right: T) => boolean,
-): T {
-  return useStore(useEu4Context(), selector, equalityFn);
-}
-
+const useEu4Store = <T,>(selector: (state: Eu4State) => T): T =>
+  useStore(useEu4Context(), selector);
 export const useEu4Map = () => useEu4Store((x) => x.map);
 export const useEu4Actions = () => useEu4Store((x) => x.actions);
 export const useEu4MapMode = () => useEu4Store((x) => x.mapMode);
