@@ -71,7 +71,7 @@ const gameRenderer = (savegame: SaveGameInput | null) => {
     case "vic3":
       return {
         kind: "in-screen",
-        component: () => <DynamicVic3 save={savegame} />,
+        component: () => <DynamicVic3 save={savegame.data} />,
       } as const;
     case "hoi4":
       return {

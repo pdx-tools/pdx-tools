@@ -1,27 +1,14 @@
-use serde::{Deserialize, Serialize};
-use vic3save::savefile::Vic3Save;
-use vic3save::{FailedResolveStrategy, SaveHeader, SaveHeaderKind, Vic3Date, Vic3Error, Vic3File};
+use models::{Vic3GraphData, Vic3Metadata};
+use vic3save::{
+    savefile::Vic3Save, FailedResolveStrategy, SaveHeader, SaveHeaderKind, Vic3Error, Vic3File,
+};
 use wasm_bindgen::prelude::*;
 
+mod models;
 mod tokens;
 pub use tokens::*;
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Vic3GraphData {
-    date: Vic3Date,
-    gdp: f64,
-    sol: f64,
-    pop: f64,
-    gdpc: f64,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Vic3Metadata {
-    date: Vic3Date,
-    is_meltable: bool,
-}
+use crate::models::Vic3GraphResponse;
 
 pub struct SaveFileImpl {
     save: Vic3Save,
@@ -38,17 +25,13 @@ pub fn to_json_value<T: serde::ser::Serialize + ?Sized>(value: &T) -> JsValue {
 
 #[wasm_bindgen]
 impl SaveFile {
-    pub fn metadata(&self) -> JsValue {
-        to_json_value(&self.0.metadata())
+    pub fn metadata(&self) -> Vic3Metadata {
+        self.0.metadata()
     }
-    pub fn get_country_stats(&self, tag: &str) -> JsValue {
-        to_json_value(&self.0.get_country_stats(tag))
-    }
-    pub fn get_available_tags(&self) -> JsValue {
-        to_json_value(&self.0.get_available_tags())
-    }
-    pub fn get_played_tag(&self) -> JsValue {
-        to_json_value(&self.0.get_played_tag())
+    pub fn get_country_stats(&self, tag: &str) -> Vic3GraphResponse {
+        Vic3GraphResponse {
+            data: self.0.get_country_stats(tag),
+        }
     }
 }
 
@@ -57,21 +40,20 @@ impl SaveFileImpl {
         Vic3Metadata {
             date: self.save.meta_data.game_date,
             is_meltable: self.is_meltable(),
+            last_played_tag: self.save.get_last_played_country().definition.clone(),
+            available_tags: self.get_available_tags(),
         }
     }
-    pub fn get_played_tag(&self) -> String {
-        self.save.get_last_played_country().definition.clone()
-    }
 
-    pub fn get_available_tags(&self) -> Vec<String> {
+    fn get_available_tags(&self) -> Vec<String> {
         let mngr = &self.save.country_manager;
-        return mngr
-            .database
+        mngr.database
             .iter()
             .filter_map(|(_, country)| country.as_ref())
             .map(|x| x.definition.clone())
-            .collect();
+            .collect()
     }
+
     pub fn get_country_stats(&self, tag: &str) -> Vec<Vic3GraphData> {
         let country = self.save.get_country(tag).unwrap();
         let gdp_line = country.gdp.iter();

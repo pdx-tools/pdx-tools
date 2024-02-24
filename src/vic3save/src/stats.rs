@@ -42,7 +42,7 @@ impl<'a> Iterator for Vic3CountryStatsIter<'a> {
         self.index += 1;
 
         let new_date = start_date.add_days(self.index as i32 * days_per_index);
-        Some((new_date, elem.clone()))
+        Some((new_date, *elem))
     }
 }
 

@@ -1,12 +1,10 @@
 use crate::stats::Vic3CountryStats;
 use crate::Vic3Date;
-use serde::de;
-use serde::de::Unexpected;
-use serde::{de::DeserializeOwned, Deserialize, Deserializer};
-use std::collections::HashMap;
-use std::fmt;
-use std::hash::Hash;
-use std::marker::PhantomData;
+use serde::{
+    de::{self, DeserializeOwned, Unexpected},
+    Deserialize, Deserializer,
+};
+use std::{collections::HashMap, fmt, hash::Hash, marker::PhantomData};
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct MetaData {
@@ -152,25 +150,39 @@ pub struct Vic3Save {
 }
 
 impl Vic3Save {
-    pub fn get_country<'a>(&'a self, country_tag: &str) -> Option<&'a Vic3Country> {
-        let mngr = &self.country_manager;
-        return mngr.database.iter().find_map(|(_, country)| match country {
-            Some(
-                country @ Vic3Country {
-                    definition: def, ..
-                },
-            ) if def == country_tag => Some(country),
-            _ => None,
-        });
+    pub fn get_country(&self, country_tag: &str) -> Option<&Vic3Country> {
+        self.country_manager
+            .database
+            .iter()
+            .filter_map(|(_, country)| country.as_ref())
+            .find(|country| country.definition == country_tag)
     }
 
     pub fn get_last_played_country(&self) -> &Vic3Country {
-        let mngr = &self.country_manager;
-        let last_played_id = &self.previous_played[0].idtype;
-        let Some(ref country) = mngr.database[last_played_id] else {
-            panic!("played country not found")
-        };
-        country
+        let country = self
+            .previous_played
+            .get(0)
+            .and_then(|x| self.country_manager.database.get(&x.idtype));
+
+        if let Some(Some(country)) = &country {
+            return country;
+        }
+
+        // If we can't find the previous played country (ie: observer game)
+        // default to the country with the highest weekly income
+        let mut incomes = self
+            .country_manager
+            .database
+            .values()
+            .filter_map(|x| x.as_ref())
+            .map(|x| (x.budget.weekly_income.iter().sum::<f64>(), x))
+            .collect::<Vec<_>>();
+
+        incomes.sort_unstable_by(|(a, _), (b, _)| a.total_cmp(&b).reverse());
+        incomes
+            .get(0)
+            .map(|(_, country)| country)
+            .expect("for there to be at least one country")
     }
 }
 

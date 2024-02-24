@@ -1,15 +1,15 @@
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { createColumnHelper } from "@tanstack/react-table";
-import { formatFloat, formatInt } from "@/lib/format";
-import { Vic3Stats } from "./worker/types";
+import { formatFloat } from "@/lib/format";
+import { Vic3GraphData } from "./worker/types";
 
 export interface CountryStatsProps {
-  stats: [Vic3Stats];
+  stats: Vic3GraphData[];
 }
 
 export const CountryStatsTable = ({ stats }: CountryStatsProps) => {
-  const columnHelper = createColumnHelper<Vic3Stats>();
+  const columnHelper = createColumnHelper<Vic3GraphData>();
   const columns = [
     columnHelper.accessor("date", {
       sortingFn: "basic",
@@ -39,10 +39,6 @@ export const CountryStatsTable = ({ stats }: CountryStatsProps) => {
       ),
     }),
   ];
-  return (
-    <DataTable
-      data={stats.filter((_v, i, _) => i % 250 == 0)}
-      columns={columns}
-    />
-  );
+
+  return <DataTable data={stats} columns={columns} />;
 };

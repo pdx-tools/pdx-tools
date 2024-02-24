@@ -102,14 +102,10 @@ impl Vic3Date {
         )
     }
 
-    pub fn days_until<Q>(self, other0: Q) -> i32
-    where
-        Q: std::borrow::Borrow<Self>,
-    {
-        let other = other0.borrow();
+    pub fn days_until(self, other: &Vic3Date) -> i32 {
         let self_date = Date::from_ymd(self.year(), self.month(), self.day());
         let other_date = Date::from_ymd(other.year(), other.month(), other.day());
-        return self_date.days_until(&other_date);
+        self_date.days_until(&other_date)
     }
 }
 
@@ -265,8 +261,8 @@ mod tests {
     #[test]
     fn test_days_until() {
         let base = Vic3Date::from_ymdh(1837, 6, 25, 0);
-        assert_eq!(base.days_until(Vic3Date::from_ymdh(1837, 6, 26, 0)), 1);
-        assert_eq!(base.days_until(Vic3Date::from_ymdh(1838, 6, 25, 0)), 365);
+        assert_eq!(base.days_until(&Vic3Date::from_ymdh(1837, 6, 26, 0)), 1);
+        assert_eq!(base.days_until(&Vic3Date::from_ymdh(1838, 6, 25, 0)), 365);
         assert_eq!(base.days_until(&base), 0);
     }
 }
