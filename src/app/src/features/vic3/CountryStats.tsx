@@ -24,11 +24,25 @@ export const CountryStatsTable = ({ stats }: CountryStatsProps) => {
         <Table.ColumnHeader column={column} title="GDP" />
       ),
     }),
+    columnHelper.accessor("gdpGrowth", {
+      sortingFn: "basic",
+      cell: (info) => formatFloat(info.getValue() * 100, 2) + "%",
+      header: ({ column }) => (
+        <Table.ColumnHeader column={column} title="GDP growth" />
+      ),
+    }),
     columnHelper.accessor("gdpc", {
       sortingFn: "basic",
       cell: (info) => formatFloat(info.getValue()),
       header: ({ column }) => (
         <Table.ColumnHeader column={column} title="GDP/c" />
+      ),
+    }),
+    columnHelper.accessor("gdpcGrowth", {
+      sortingFn: "basic",
+      cell: (info) => formatFloat(info.getValue() * 100, 2) + "%",
+      header: ({ column }) => (
+        <Table.ColumnHeader column={column} title="GDP growth" />
       ),
     }),
     columnHelper.accessor("sol", {

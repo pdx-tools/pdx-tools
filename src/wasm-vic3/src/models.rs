@@ -1,5 +1,5 @@
 #![allow(nonstandard_style)]
-
+use jomini::common::Date;
 use serde::Serialize;
 use tsify::Tsify;
 use vic3save::Vic3Date;
@@ -24,9 +24,11 @@ pub struct Vic3GraphResponse {
 #[derive(Tsify, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Vic3GraphData {
-    pub date: Vic3Date,
+    pub date: Date,
     pub gdp: f64,
     pub sol: f64,
     pub pop: f64,
     pub gdpc: f64,
+    pub gdp_growth: f64,
+    pub gdpc_growth: f64,
 }
