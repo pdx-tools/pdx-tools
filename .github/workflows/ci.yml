@@ -13,19 +13,24 @@ jobs:
     env:
       CARGO_TERM_VERBOSE: true
     steps:
-    - uses: actions/checkout@v3
+    - name: Maximize build space
+      uses: easimon/maximize-build-space@v10
+      with:
+        remove-dotnet: 'true'
+
+    - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
     - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Cache assets
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           assets/game-bundles
@@ -35,7 +40,7 @@ jobs:
 
     # https://nextjs.org/docs/messages/no-cache#github-actions
     - name: Cache Next.js build
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: src/app/.next/cache
         key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
