@@ -36,7 +36,7 @@ code pdx-tools
 
 Once the repo is open in vscode, either click the tooltip to open in Dev Container or [open manually](https://code.visualstudio.com/docs/devcontainers/tutorial#_check-installation)
 
-The next step is deciding on how to communicate EU4 assets during the compilation stage, as Paradox would be unhappy if the game assets were uploaded to the repo. There are a couple ways of doing this:
+**(non-EU4 contributors can skip to [starting the dev server](#start-server))** The next step is deciding on how to communicate EU4 assets during the compilation stage, as Paradox would be unhappy if the game assets were uploaded to the repo. There are a couple ways of doing this:
 
 - If you're comfortable with docker, modify the docker mounts in `.devcontainer/devcontainer.json` to include the directory where EU4 is installed. Below is an example:
   ```diff
@@ -58,7 +58,9 @@ just pdx compile-assets assets/game-bundles/eu4-1.34.tar.zst
 
 After those commands have finished, one can unlink the EU4 assets if desired.
 
-Then, to start the PDX Tools:
+### Start server
+
+To start the PDX Tools:
 
 ```bash
 just dev

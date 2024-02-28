@@ -284,6 +284,15 @@ prep-frontend:
   #!/usr/bin/env bash
   set -euxo pipefail
 
+  # Generate empty image folders otherwise next.js goes into an infinite loop
+  grep '^assets/game/eu4/common/images' .gitignore | grep -v '*' | \
+  while IFS= read -r folder; do
+    mkdir -p "$folder"
+  done;
+
+  # Copy over the REB flag which is the only one that is statically imported
+  cp assets/game/eu4/common/images/{REB.png,flags/.}
+
   # Generate typescript types from rust code
   just cargo run -p applib --bin types
 
