@@ -1620,9 +1620,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.25.4"
+version = "0.25.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9411e14aba794b85d77c69910d933e703594982847c412a14ce0330397fc059d"
+checksum = "b664fb33ee0246b877cf2d3a82a50c261e8357535fe14df14eb36c9f5068117e"
 dependencies = [
  "itoa",
  "jomini_derive",
@@ -1632,9 +1632,9 @@ dependencies = [
 
 [[package]]
 name = "jomini_derive"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29d12f3fe59690eba739a86f305cd085efc9e853b10908735f5ee28f0e743aec"
+checksum = "86fa60e23f7c016cc52d09b9a8e9b1ec298b170610312e0fb7c21af5c8975578"
 dependencies = [
  "quote",
  "syn 1.0.109",
