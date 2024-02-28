@@ -23,10 +23,6 @@ fn main() {
         versions.push((major, minor));
     }
 
-    if versions.is_empty() {
-        return;
-    }
-
     versions.sort_unstable();
 
     let embedded_path = Path::new(&env::var("OUT_DIR").unwrap()).join("embedded_game.rs");
@@ -35,7 +31,8 @@ fn main() {
     let latest_minor = versions
         .last()
         .map(|(_major, minor)| *minor)
-        .unwrap_or_default();
+        .unwrap_or(29);
+
     let _ = writeln!(
         embedded_file,
         "pub const LATEST_MINOR: u16 = {};",
@@ -60,6 +57,13 @@ fn main() {
         embedded_file,
         "pub fn game_data(minor_version: u16) -> &'static [u8] {{"
     );
+
+    if versions.is_empty() {
+        let _ = writeln!(embedded_file, "let _ = minor_version; todo!()");
+        let _ = writeln!(embedded_file, "}}");
+        return;
+    }
+
     let _ = writeln!(embedded_file, "match minor_version {{");
 
     for (i, (major, minor)) in versions.iter().enumerate() {
