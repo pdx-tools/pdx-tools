@@ -28,10 +28,7 @@ fn main() {
     let embedded_path = Path::new(&env::var("OUT_DIR").unwrap()).join("embedded_game.rs");
     let mut embedded_file = File::create(embedded_path).unwrap();
 
-    let latest_minor = versions
-        .last()
-        .map(|(_major, minor)| *minor)
-        .unwrap_or(29);
+    let latest_minor = versions.last().map(|(_major, minor)| *minor).unwrap_or(29);
 
     let _ = writeln!(
         embedded_file,

@@ -76,7 +76,7 @@ export const Vic3Ui = (props: { save: Vic3SaveInput }) => {
 
   return (
     <>
-      <Alert.Error className="px-4 py-2" msg={error}/>
+      <Alert.Error className="px-4 py-2" msg={error} />
       {data && (
         <Vic3StoreProvider store={data}>
           <Vic3Page />
