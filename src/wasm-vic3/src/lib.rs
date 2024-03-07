@@ -1,6 +1,9 @@
+use jomini::common::Date;
 use models::{Vic3GraphData, Vic3Metadata};
+use vic3save::stats::{Vic3CountryStatsRateIter, Vic3StatsGDPIter};
 use vic3save::{
-    savefile::Vic3Save, FailedResolveStrategy, SaveHeader, SaveHeaderKind, Vic3Error, Vic3File,
+    savefile::Vic3Save, FailedResolveStrategy, PdsDate, SaveHeader, SaveHeaderKind, Vic3Error,
+    Vic3File,
 };
 use wasm_bindgen::prelude::*;
 
@@ -57,22 +60,35 @@ impl SaveFileImpl {
 
     pub fn get_country_stats(&self, tag: &str) -> Vec<Vic3GraphData> {
         let country = self.save.get_country(tag).unwrap();
-        let gdp_line = country.gdp.iter();
+        let gdp_line = || country.gdp.iter();
         let sol_line = country.avgsoltrend.iter();
-        let pop_line = country.pop_statistics.trend_population.iter();
-        gdp_line
+        let pop_line = || country.pop_statistics.trend_population.iter();
+        let gdpc_line = || {
+            pop_line()
+                .zip_aligned(gdp_line())
+                .map(|(date, (pop, gdp))| (date, (gdp / (pop / 100_000.0))))
+        };
+        let gdpc_growth = Vic3StatsGDPIter::new(gdpc_line());
+        let pop_growth = Vic3CountryStatsRateIter::new(pop_line(), 365);
+        gdp_line()
             .zip_aligned(sol_line)
-            .zip_aligned(pop_line)
-            .map(|(date_p, ((gdp, sol), pop))| {
-                let pop_adj = pop / 100000.0;
-                Vic3GraphData {
+            .zip_aligned(gdpc_line())
+            .zip_aligned(country.gdp.gdp_growth())
+            .zip_aligned(gdpc_growth)
+            // Unused for now but StatsRateIter ensure only 1 data point per year. Which makes the table of managable length
+            .zip_aligned(pop_growth)
+            .flat()
+            .map(
+                |(date_p, [gdp, sol, gdpc, gdp_growth, gdpc_growth, _pop_growth])| Vic3GraphData {
                     gdp: gdp / 1000000.0,
-                    gdpc: gdp / pop_adj,
-                    pop: pop_adj,
-                    date: date_p,
+                    gdpc,
+                    pop: gdp / gdpc,
+                    date: Date::from_ymd(date_p.year(), date_p.month(), date_p.day()),
                     sol,
-                }
-            })
+                    gdp_growth,
+                    gdpc_growth,
+                },
+            )
             .collect()
     }
 

@@ -2,10 +2,12 @@ import { useState, useCallback } from "react";
 import Head from "next/head";
 import { getVic3Worker } from "./worker";
 import { CountryStatsTable } from "./CountryStats";
+import { CountryGDPChart } from "./CountryChart";
 import { TagSelect } from "./TagSelect";
 import { MeltButton } from "@/components/MeltButton";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
+import { VisualizationProvider } from "@/components/viz";
 import {
   Vic3SaveInput,
   Vic3StoreProvider,
@@ -25,6 +27,7 @@ export const Vic3Page = () => {
       [selectedTag],
     ),
   );
+    console.log(stats);
 
   return (
     <main className="mx-auto mt-4 max-w-screen-lg">
@@ -46,6 +49,18 @@ export const Vic3Page = () => {
           />
         )}
         <TagSelect value={selectedTag} onChange={setSelectedTag} />
+        <VisualizationProvider>
+          <div className="flex flex-row ">
+            <div className="w-[calc(50%-1px)] text-center p-2">
+              <span> GDP/c </span>
+              <CountryGDPChart type="gdpc" stats={stats?.data ?? []} />
+            </div>
+            <div className="w-[calc(50%-1px)] text-center p-2">
+              <span> GDP (M) </span>
+              <CountryGDPChart type="gdp" stats={stats?.data ?? []} />
+            </div>
+          </div>
+        </VisualizationProvider>
         <CountryStatsTable stats={stats?.data ?? []} />
       </div>
     </main>

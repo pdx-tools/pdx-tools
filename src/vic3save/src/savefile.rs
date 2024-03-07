@@ -1,4 +1,5 @@
-use crate::{stats::Vic3CountryStats, Vic3Date};
+use crate::stats::{Vic3CountryStats};
+use crate::Vic3Date;
 use serde::{
     de::{self, DeserializeOwned, Unexpected},
     Deserialize, Deserializer,
@@ -204,7 +205,7 @@ impl Vic3Save {
 
             for channel in channels {
                 for value in &mut channel.values {
-                    *value *= 10_000.0;
+                    *value *= 100_000.0;
                 }
             }
         }
