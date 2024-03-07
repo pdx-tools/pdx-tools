@@ -1,3 +1,4 @@
+use jomini::common::{Date, PdsDate};
 use models::{Vic3GraphData, Vic3Metadata};
 use vic3save::stats::{Vic3CountryStatsRateIter, Vic3StatsGDPIter};
 use vic3save::{
@@ -84,7 +85,9 @@ impl SaveFileImpl {
                     gdp: gdp / 1000000.0,
                     gdpc,
                     pop: gdp / gdpc,
-                    date,
+                    date: Date::from_ymd(date.year(), date.month(), date.day())
+                        .iso_8601()
+                        .to_string(),
                     sol,
                     gdp_growth,
                     gdpc_growth,
