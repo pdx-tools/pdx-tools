@@ -1,9 +1,7 @@
-use jomini::common::Date;
 use models::{Vic3GraphData, Vic3Metadata};
 use vic3save::stats::{Vic3CountryStatsRateIter, Vic3StatsGDPIter};
 use vic3save::{
-    savefile::Vic3Save, FailedResolveStrategy, PdsDate, SaveHeader, SaveHeaderKind, Vic3Error,
-    Vic3File,
+    savefile::Vic3Save, FailedResolveStrategy, SaveHeader, SaveHeaderKind, Vic3Error, Vic3File,
 };
 use wasm_bindgen::prelude::*;
 
@@ -12,6 +10,9 @@ mod tokens;
 pub use tokens::*;
 
 use crate::models::Vic3GraphResponse;
+
+#[wasm_bindgen(typescript_custom_section)]
+const VIC3_DATE_TYPE: &'static str = r#"export type Vic3Date = string;"#;
 
 pub struct SaveFileImpl {
     save: Vic3Save,
@@ -79,11 +80,11 @@ impl SaveFileImpl {
             .zip_aligned(pop_growth)
             .flat()
             .map(
-                |(date_p, [gdp, sol, gdpc, gdp_growth, gdpc_growth, _pop_growth])| Vic3GraphData {
+                |(date, [gdp, sol, gdpc, gdp_growth, gdpc_growth, _pop_growth])| Vic3GraphData {
                     gdp: gdp / 1000000.0,
                     gdpc,
                     pop: gdp / gdpc,
-                    date: Date::from_ymd(date_p.year(), date_p.month(), date_p.day()),
+                    date,
                     sol,
                     gdp_growth,
                     gdpc_growth,

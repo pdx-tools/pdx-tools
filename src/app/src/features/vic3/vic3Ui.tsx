@@ -6,7 +6,6 @@ import { CountryGDPChart } from "./CountryChart";
 import { TagSelect } from "./TagSelect";
 import { MeltButton } from "@/components/MeltButton";
 import { Alert } from "@/components/Alert";
-import { getErrorMessage } from "@/lib/getErrorMessage";
 import { VisualizationProvider } from "@/components/viz";
 import {
   Vic3SaveInput,
@@ -27,41 +26,46 @@ export const Vic3Page = () => {
       [selectedTag],
     ),
   );
-    console.log(stats);
 
   return (
-    <main className="mx-auto mt-4 max-w-screen-lg">
+    <main className="mx-auto mt-4">
       <Head>
         <title>{`${filename.replace(".v3", "")} - Vic3 (${
           meta.date
         }) - PDX Tools`}</title>
       </Head>
-      <div className="mx-auto max-w-prose flex flex-col gap-4">
-        <h2 className="text-2xl font-bold">Vic3</h2>
-        <p>
-          {`A Vic3 save was detected (date ${meta.date}). At this time, Vic3 functionality is limited but one can still melt binary saves into plaintext`}
-        </p>
-        {meta.isMeltable && (
-          <MeltButton
-            game="vic3"
-            worker={getVic3Worker()}
-            filename={filename}
-          />
-        )}
-        <TagSelect value={selectedTag} onChange={setSelectedTag} />
+      <div className="flex flex-col gap-8 items-center">
+        <div className="mx-auto max-w-prose flex flex-col gap-4">
+          <h2 className="text-2xl font-bold">Vic3</h2>
+          <p>
+            {`A Vic3 save was detected (date ${meta.date}). At this time, Vic3 functionality is limited but one can still melt binary saves into plaintext`}
+          </p>
+          {meta.isMeltable && (
+            <MeltButton
+              game="vic3"
+              worker={getVic3Worker()}
+              filename={filename}
+            />
+          )}
+          <TagSelect value={selectedTag} onChange={setSelectedTag} />
+        </div>
         <VisualizationProvider>
-          <div className="flex flex-row ">
-            <div className="w-[calc(50%-1px)] text-center p-2">
-              <span> GDP/c </span>
-              <CountryGDPChart type="gdpc" stats={stats?.data ?? []} />
-            </div>
-            <div className="w-[calc(50%-1px)] text-center p-2">
-              <span> GDP (M) </span>
-              <CountryGDPChart type="gdp" stats={stats?.data ?? []} />
+          <div className="max-w-screen-2xl w-full px-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="p-2">
+                <span> GDP/c </span>
+                <CountryGDPChart type="gdpc" stats={stats?.data ?? []} />
+              </div>
+              <div className="p-2">
+                <span> GDP (M) </span>
+                <CountryGDPChart type="gdp" stats={stats?.data ?? []} />
+              </div>
             </div>
           </div>
         </VisualizationProvider>
-        <CountryStatsTable stats={stats?.data ?? []} />
+        <div className="max-w-screen-lg mx-auto">
+          <CountryStatsTable stats={stats?.data ?? []} />
+        </div>
       </div>
     </main>
   );
@@ -72,11 +76,7 @@ export const Vic3Ui = (props: { save: Vic3SaveInput }) => {
 
   return (
     <>
-      {error && (
-        <Alert variant="error" className="px-4 py-2">
-          <Alert.Description>{getErrorMessage(error)}</Alert.Description>
-        </Alert>
-      )}
+      <Alert.Error className="px-4 py-2" msg={error}/>
       {data && (
         <Vic3StoreProvider store={data}>
           <Vic3Page />

@@ -20,6 +20,7 @@ export const CountryStatsTable = ({ stats }: CountryStatsProps) => {
     columnHelper.accessor("gdp", {
       sortingFn: "basic",
       cell: (info) => formatFloat(info.getValue()),
+      meta: { className: "text-right" },
       header: ({ column }) => (
         <Table.ColumnHeader column={column} title="GDP" />
       ),
@@ -27,6 +28,7 @@ export const CountryStatsTable = ({ stats }: CountryStatsProps) => {
     columnHelper.accessor("gdpGrowth", {
       sortingFn: "basic",
       cell: (info) => formatFloat(info.getValue() * 100, 2) + "%",
+      meta: { className: "text-right" },
       header: ({ column }) => (
         <Table.ColumnHeader column={column} title="GDP growth" />
       ),
@@ -34,6 +36,7 @@ export const CountryStatsTable = ({ stats }: CountryStatsProps) => {
     columnHelper.accessor("gdpc", {
       sortingFn: "basic",
       cell: (info) => formatFloat(info.getValue()),
+      meta: { className: "text-right" },
       header: ({ column }) => (
         <Table.ColumnHeader column={column} title="GDP/c" />
       ),
@@ -41,6 +44,7 @@ export const CountryStatsTable = ({ stats }: CountryStatsProps) => {
     columnHelper.accessor("gdpcGrowth", {
       sortingFn: "basic",
       cell: (info) => formatFloat(info.getValue() * 100, 2) + "%",
+      meta: { className: "text-right" },
       header: ({ column }) => (
         <Table.ColumnHeader column={column} title="GDP growth" />
       ),
@@ -48,6 +52,7 @@ export const CountryStatsTable = ({ stats }: CountryStatsProps) => {
     columnHelper.accessor("sol", {
       sortingFn: "basic",
       cell: (info) => formatFloat(info.getValue()),
+      meta: { className: "text-right" },
       header: ({ column }) => (
         <Table.ColumnHeader column={column} title="SoL" />
       ),

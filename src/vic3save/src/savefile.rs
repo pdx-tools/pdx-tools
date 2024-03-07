@@ -1,4 +1,4 @@
-use crate::stats::{Vic3CountryStats};
+use crate::stats::Vic3CountryStats;
 use crate::Vic3Date;
 use serde::{
     de::{self, DeserializeOwned, Unexpected},

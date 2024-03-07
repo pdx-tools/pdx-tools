@@ -1,75 +1,72 @@
-import {
-  Line,
-  LineConfig,
-  useVisualizationDispatch,
-  VisualizationProvider,
-} from "@/components/viz";
+import React, { ComponentType, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Vic3GraphData } from "./worker/types";
-import React, { useEffect } from "react";
-import { createCsv } from "@/lib/csv";
 import { VisualizationLoader } from "@/components/viz/VisualizationLoader";
 import { formatFloat } from "@/lib/format";
+import { DualAxesConfig } from "@ant-design/plots";
 
 export interface CountryChartProps {
   stats: Vic3GraphData[];
-  type: (keyof Vic3GraphData)[];
+  type: keyof Vic3GraphData;
 }
 
-const DualAxes: ComponentType<TreemapConfig> = React.memo(
+const DualAxes: ComponentType<DualAxesConfig> = React.memo(
   dynamic(() => import("@ant-design/plots").then((mod) => mod.DualAxes), {
     ssr: false,
     loading: () => <VisualizationLoader />,
   }),
 );
 
-const type_map = {
+const typeMap = {
   gdp: "GDP (M)",
   gdpc: "GDP/c",
   gdpcGrowth: "GDP inc (%)",
   gdpGrowth: "GDP/c inc (%)",
 };
 
-export const CountryGDPChart = ({ stats, type }: CountryStatsProps) => {
-  //const columnHelper = createColumnHelper<Vic3GraphData>();
-  const visualizationDispatch = useVisualizationDispatch();
-  const fix_date = stats.map((obj) => {
-    return {
-      ...obj,
-      date: obj.date.slice(0, 4),
-      gdpGrowth: obj.gdpGrowth * 100,
-      gdpcGrowth: obj.gdpcGrowth * 100,
-    };
-  });
+export const CountryGDPChart = ({ stats, type }: CountryChartProps) => {
+  const data = useMemo(
+    () =>
+      stats.map((obj) => ({
+        ...obj,
+        date: obj.date.slice(0, 4),
+        gdpGrowth: obj.gdpGrowth * 100,
+        gdpcGrowth: obj.gdpcGrowth * 100,
+      })),
+    [stats],
+  );
+
   const props = {
-    data: [fix_date, fix_date],
+    data: [data, data],
     xField: "date",
     yField: [type, type + "Growth"],
     legend: {
       itemName: {
-        formatter: (text, item) => {
-          return type_map[item.value];
+        formatter: (_text, item) => {
+          return typeMap[item.value as keyof typeof typeMap];
         },
       },
     },
     tooltip: {
-      // Fromat of d = {date: ..., gdpGrowth: ....}
-      formatter: (d) => {
-        var line_name = "Unknown";
-        for (var k in d) {
-          line_name = type_map[k];
-          var suffix = "";
-
-          if (line_name !== undefined) {
-            if (k.endsWith("Growth")) {
-              suffix = "%";
-            }
-
-            return { name: line_name, value: formatFloat(d[k], 2) + suffix };
-          }
+      formatter: (datum) => {
+        const d = datum as Partial<(typeof data)[number]>;
+        if (d.gdpc !== undefined) {
+          return { name: typeMap.gdpc, value: formatFloat(d.gdpc, 2) };
+        } else if (d.gdpcGrowth !== undefined) {
+          return {
+            name: typeMap.gdpcGrowth,
+            value: formatFloat(d.gdpcGrowth, 2) + "%",
+          };
+        } else if (d.gdp !== undefined) {
+          return { name: typeMap.gdp, value: formatFloat(d.gdp, 2) };
+        } else if (d.gdpGrowth !== undefined) {
+          return {
+            name: typeMap.gdpGrowth,
+            value: formatFloat(d.gdpGrowth, 2) + "%",
+          };
+        } else {
+          return { name: "Unknown", value: 0 };
         }
-
-        return { line_name: line_name, value: d.gdp };
       },
     },
     geometryOptions: [
@@ -84,6 +81,6 @@ export const CountryGDPChart = ({ stats, type }: CountryStatsProps) => {
         },
       },
     ],
-  };
+  } satisfies DualAxesConfig;
   return <DualAxes {...props} />;
 };
