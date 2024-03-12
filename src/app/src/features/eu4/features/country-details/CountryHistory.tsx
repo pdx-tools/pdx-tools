@@ -842,36 +842,37 @@ const CountryHistoryVirtualList = ({
   const items = virtualizer.getVirtualItems();
 
   return (
-    <div
-      ref={parentRef}
-      className={
-        "absolute left-4 right-0 top-0 bottom-0 self-center overflow-y-auto"
-      }
-    >
+    <div className="absolute left-4 right-0 top-0 bottom-0">
       <div
-        className="relative w-full"
-        style={{ height: virtualizer.getTotalSize(), contain: "strict" }}
+        ref={parentRef}
+        className="overflow-y-auto h-full w-full"
+        style={{ contain: "strict" }}
       >
-        <FilterOverlay />
         <div
-          className="absolute top-0 left-0 w-full"
-          style={{ transform: `translateY(${items[0]?.start ?? 0}px)` }}
+          className="relative w-full"
+          style={{ height: virtualizer.getTotalSize() }}
         >
-          {items.map((virtualRow) => (
-            <div
-              key={virtualRow.key}
-              data-index={virtualRow.index}
-              ref={virtualizer.measureElement}
-              className="flex gap-8 py-4"
-            >
-              <div>{data[virtualRow.index].year}</div>
-              <div className="flex flex-col grow gap-3">
-                {data[virtualRow.index].events.map((evt, i) => (
-                  <CountryHistoryCard country={details} key={i} evt={evt} />
-                ))}
+          <FilterOverlay />
+          <div
+            className="absolute top-0 left-0 w-full"
+            style={{ transform: `translateY(${items[0]?.start ?? 0}px)` }}
+          >
+            {items.map((virtualRow) => (
+              <div
+                key={virtualRow.key}
+                data-index={virtualRow.index}
+                ref={virtualizer.measureElement}
+                className="flex gap-8 py-4 px-2"
+              >
+                <div>{data[virtualRow.index].year}</div>
+                <div className="flex flex-col grow gap-3">
+                  {data[virtualRow.index].events.map((evt, i) => (
+                    <CountryHistoryCard country={details} key={i} evt={evt} />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
