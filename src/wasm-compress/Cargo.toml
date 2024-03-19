@@ -10,7 +10,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 wasm-bindgen = { version = "0.2" }
-zip_next = { version = "0.10.0", default-features = false, features = ["deflate", "zstd"] }
+zip_next = { version = "0.11.0", default-features = false, features = ["deflate", "zstd"] }
 zstd = { version = "0.13.0", default-features = false }
 js-sys = "0.3"
 tsify = { version = "0.4.5", default-features = false, features = ["js"] } 
