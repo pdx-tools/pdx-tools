@@ -1,7 +1,8 @@
+use anyhow::Context;
 use applib::parser::{parse_save_data, ParseResult};
 use axum::{body::Bytes, extract::DefaultBodyLimit, http::StatusCode, routing::post, Json, Router};
 use std::net::SocketAddr;
-use tokio::signal;
+use tokio::{net::TcpListener, signal};
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 
@@ -19,7 +20,7 @@ async fn upload(data: Bytes) -> Result<Json<ParseResult>, StatusCode> {
 }
 
 #[tokio::main(flavor = "multi_thread")]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_target(false)
         .compact()
@@ -30,7 +31,7 @@ async fn main() {
         Err(_) => 8080,
     };
 
-    let router = Router::new()
+    let app: Router = Router::new()
         .route("/", post(upload))
         .layer(DefaultBodyLimit::max(15 * 1024 * 1024))
         .layer(
@@ -39,13 +40,17 @@ async fn main() {
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         );
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    let listener = TcpListener::bind(addr)
+        .await
+        .with_context(|| format!("unable to bind to port: {port}"))?;
     tracing::info!("listening on {}", addr);
 
-    axum::Server::bind(&addr)
-        .serve(router.into_make_service())
+    axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
-        .unwrap();
+        .context("unable to create axum server")?;
+
+    Ok(())
 }
 
 async fn shutdown_signal() {
