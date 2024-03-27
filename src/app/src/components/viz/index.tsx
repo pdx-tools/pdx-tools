@@ -44,7 +44,7 @@ export const Bar: ComponentType<BarConfig> = React.memo(
   }),
 );
 
-export type TreemapConfig = React.ComponentProps<typeof TreemapImpl>;
+export type TreemapConfig = React.ComponentPropsWithoutRef<typeof TreemapImpl>;
 export const Treemap: ComponentType<TreemapConfig> = React.memo(
   dynamic(() => import("@ant-design/plots").then((mod) => mod.Treemap), {
     ssr: false,

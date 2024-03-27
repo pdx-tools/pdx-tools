@@ -146,7 +146,7 @@ const columns = [
   }),
 ];
 
-const CountryStateDetails = ({ data }: { data: CountryStateDetails[] }) => {
+const CountryStatesDataTable = ({ data }: { data: CountryStateDetails[] }) => {
   return (
     <DataTable
       columns={columns}
@@ -157,7 +157,7 @@ const CountryStateDetails = ({ data }: { data: CountryStateDetails[] }) => {
   );
 };
 
-const CountryStateImpl = React.memo(CountryStateDetails);
+const CountryStateDataTableImpl = React.memo(CountryStatesDataTable);
 
 export const CountryStates = ({ details }: CountryStatesProps) => {
   const { data = [], error } = useEu4Worker(
@@ -169,7 +169,7 @@ export const CountryStates = ({ details }: CountryStatesProps) => {
   return (
     <>
       <Alert.Error msg={error} />
-      <CountryStateImpl data={data} />
+      <CountryStateDataTableImpl data={data} />
     </>
   );
 };

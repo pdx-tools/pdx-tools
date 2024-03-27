@@ -8,10 +8,15 @@ type WebPageProps = {
 export const WebPage = ({ children, inert }: WebPageProps) => {
   return (
     <div
-      ref={(node) =>
-        node &&
-        (inert ? node.setAttribute("inert", "") : node.removeAttribute("inert"))
-      }
+      ref={(node) => {
+        if (node) {
+          if (inert) {
+            node.setAttribute("inert", "");
+          } else {
+            node.removeAttribute("inert");
+          }
+        }
+      }}
     >
       <AppHeader />
       {children}

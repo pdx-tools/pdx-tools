@@ -93,7 +93,11 @@ const CountrySelectGroup = memo(function CountrySelectGroup({
   return (
     <Command.Group heading={title}>
       {countries.map((x) => (
-        <Command.Item key={x} value={x.toLowerCase()} onSelect={() => onSelect(x)}>
+        <Command.Item
+          key={x}
+          value={x.toLowerCase()}
+          onSelect={() => onSelect(x)}
+        >
           <CheckIcon
             className={cx(
               "mr-2 h-4 w-4 opacity-0 data-[selected]:opacity-100",
