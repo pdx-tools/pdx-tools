@@ -63,19 +63,21 @@ export const CountrySelect = memo(function CountrySelect({
             onValueChange={setInput}
             placeholder="Search countries"
           />
-          <Command.Empty>No countries found.</Command.Empty>
-          <CountrySelectGroup
-            title="Players"
-            countries={humanCountries}
-            isSelected={isSelected}
-            onSelect={select}
-          />
-          <CountrySelectGroup
-            title="AI"
-            countries={aiCountries}
-            isSelected={isSelected}
-            onSelect={select}
-          />
+          <Command.List>
+            <Command.Empty>No countries found.</Command.Empty>
+            <CountrySelectGroup
+              title="Players"
+              countries={humanCountries}
+              isSelected={isSelected}
+              onSelect={select}
+            />
+            <CountrySelectGroup
+              title="AI"
+              countries={aiCountries}
+              isSelected={isSelected}
+              onSelect={select}
+            />
+          </Command.List>
         </Command>
       </Popover.Content>
     </Popover>
@@ -100,7 +102,7 @@ const CountrySelectGroup = memo(function CountrySelectGroup({
       {countries.map((x) => (
         <Command.Item
           key={x.tag}
-          value={x.normalizedName + x.tag}
+          value={`${x.normalizedName}${x.tag}`.toLowerCase()}
           onSelect={() => onSelect(x.tag)}
         >
           <CheckIcon

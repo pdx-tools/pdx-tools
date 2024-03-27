@@ -32,6 +32,7 @@ export const CountrySelect = memo(function CountrySelect({
     setOpen(open);
   }, []);
 
+  const search = input?.trim().toLocaleLowerCase() ?? "";
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
@@ -46,7 +47,7 @@ export const CountrySelect = memo(function CountrySelect({
       </Popover.Trigger>
       <Popover.Content className="max-h-96 w-72 overflow-auto">
         <Command
-          filter={(value, search) => {
+          filter={(value) => {
             if (search.length == 0) {
               return 1;
             } else if (search.length <= 3) {
@@ -61,13 +62,15 @@ export const CountrySelect = memo(function CountrySelect({
             onValueChange={setInput}
             placeholder="Search countries"
           />
-          <Command.Empty>No countries found.</Command.Empty>
-          <CountrySelectGroup
-            title="Countries"
-            countries={countries}
-            isSelected={isSelected}
-            onSelect={select}
-          />
+          <Command.List>
+            <Command.Empty>No countries found.</Command.Empty>
+            <CountrySelectGroup
+              title="Countries"
+              countries={countries}
+              isSelected={isSelected}
+              onSelect={select}
+            />
+          </Command.List>
         </Command>
       </Popover.Content>
     </Popover>
@@ -90,7 +93,7 @@ const CountrySelectGroup = memo(function CountrySelectGroup({
   return (
     <Command.Group heading={title}>
       {countries.map((x) => (
-        <Command.Item key={x} value={x} onSelect={() => onSelect(x)}>
+        <Command.Item key={x} value={x.toLowerCase()} onSelect={() => onSelect(x)}>
           <CheckIcon
             className={cx(
               "mr-2 h-4 w-4 opacity-0 data-[selected]:opacity-100",

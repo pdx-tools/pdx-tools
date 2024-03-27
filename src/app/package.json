@@ -31,7 +31,7 @@
     "@types/wicg-file-system-access": "2023.10.4",
     "aws4fetch": "1.0.17",
     "class-variance-authority": "0.7.0",
-    "cmdk": "0.2.0",
+    "cmdk": "1.0.0",
     "comlink": "4.4.1",
     "dayjs": "1.11.10",
     "drizzle-orm": "0.29.4",
