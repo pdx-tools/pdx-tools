@@ -34,7 +34,7 @@
     "cmdk": "1.0.0",
     "comlink": "4.4.1",
     "dayjs": "1.11.10",
-    "drizzle-orm": "0.29.4",
+    "drizzle-orm": "0.30.5",
     "jose": "5.2.3",
     "map": "file:../map",
     "mp4-muxer": "4.0.1",
