@@ -35,7 +35,6 @@ let nextConfig = {
   headers: () => [
     {
       source: "/:path*",
-      // If these headers are updated, make sure to update workers
       headers: [
         {
           key: "Cross-Origin-Embedder-Policy",
