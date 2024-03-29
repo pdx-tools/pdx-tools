@@ -790,25 +790,25 @@ mod tests {
             institution_cost(stats, prov_mods, country_mods)
         }
 
-        // assert_eq!(
-        //     institution(3),
-        //     ProvinceDevStrategy {
-        //         mana_cost: 2121,
-        //         additional_expand_infrastructure: 1,
-        //         final_dev: 34,
-        //         exploit_at: Some(15),
-        //     }
-        // );
+        assert_eq!(
+            institution(3),
+            ProvinceDevStrategy {
+                mana_cost: 1690,
+                additional_expand_infrastructure: 1,
+                final_dev: 34,
+                exploit_at: Some(15),
+            }
+        );
 
-        // assert_eq!(
-        //     institution(4),
-        //     ProvinceDevStrategy {
-        //         mana_cost: 2072,
-        //         additional_expand_infrastructure: 1,
-        //         final_dev: 34,
-        //         exploit_at: Some(16),
-        //     }
-        // );
+        assert_eq!(
+            institution(4),
+            ProvinceDevStrategy {
+                mana_cost: 1656,
+                additional_expand_infrastructure: 1,
+                final_dev: 34,
+                exploit_at: Some(16),
+            }
+        );
 
         assert_eq!(
             institution(16),
@@ -819,32 +819,5 @@ mod tests {
                 exploit_at: Some(34),
             }
         );
-
-        // assert_eq!(institution_cost(5, 0.0, 0.0), 1645);
-        // assert_eq!(institution_cost(6, 0.0, 0.0), 1617);
-        // assert_eq!(institution_cost(7, 0.0, 0.0), 1585);
-        // assert_eq!(institution_cost(8, 0.0, 0.0), 1589);
-        // assert_eq!(institution_cost(9, 0.0, 0.0), 1540);
-        // assert_eq!(institution_cost(10, 0.0, 0.0), 1517);
-        // assert_eq!(institution_cost(11, 0.0, 0.0), 1541);
-        // assert_eq!(institution_cost(12, 0.0, 0.0), 1497);
-        // assert_eq!(institution_cost(13, 0.0, 0.0), 1462);
-        // assert_eq!(institution_cost(14, 0.0, 0.0), 1490);
-        // assert_eq!(institution_cost(15, 0.0, 0.0), 1433);
-        // assert_eq!(institution_cost(16, 0.0, 0.0), 1427);
-        // assert_eq!(institution_cost(17, 0.0, 0.0), 1443);
-        // assert_eq!(institution_cost(18, 0.0, 0.0), 1423);
-        // assert_eq!(institution_cost(19, 0.0, 0.0), 1455);
-        // assert_eq!(institution_cost(20, 0.0, 0.0), 1430);
-        // assert_eq!(institution_cost(21, 0.0, 0.0), 1466);
-        // assert_eq!(institution_cost(22, 0.0, 0.0), 1444);
-        // assert_eq!(institution_cost(23, 0.0, 0.0), 1473);
-        // assert_eq!(institution_cost(24, 0.0, 0.0), 1463);
-        // assert_eq!(institution_cost(25, 0.0, 0.0), 1474);
-        // assert_eq!(institution_cost(26, 0.0, 0.0), 1533);
-        // assert_eq!(institution_cost(27, 0.0, 0.0), 1479);
-        // assert_eq!(institution_cost(28, 0.0, 0.0), 1529);
-        // assert_eq!(institution_cost(29, 0.0, 0.0), 1591);
-        // assert_eq!(institution_cost(30, 0.0, 0.0), 1513);
     }
 }
