@@ -59,30 +59,45 @@ function SelectContent({
   const humanCountries = useHumanCountries();
   const aiCountries = useExistedAiCountries();
   const search = input?.trim().toLocaleLowerCase() ?? "";
-  const isMatch = useCallback(
-    (x: EnhancedCountryInfo) => {
-      const value = `${x.normalizedName}${x.tag}`.toLowerCase();
-
-      if (search.length == 0) {
-        return 1;
-      } else if (search.length <= 3) {
-        return value.includes(search, value.length - 3) ? 1 : 0;
-      } else {
-        return value.includes(search) ? 1 : 0;
-      }
-    },
-    [search],
-  );
 
   const filteredCountries = useMemo(() => {
     type Fab = EnhancedCountryInfo & { badge?: string };
 
-    const filteredHumans: Fab[] = humanCountries
-      .filter(isMatch)
-      .map((x) => ({ badge: "player", ...x }));
-    const filteredAi: Fab[] = aiCountries.filter(isMatch);
-    return filteredHumans.concat(filteredAi);
-  }, [humanCountries, aiCountries, isMatch]);
+    function scorer<T extends EnhancedCountryInfo>(
+      countries: T[],
+      search: string,
+    ) {
+      let needsSorting = true;
+      const scores: [number, number][] = [];
+
+      for (let i = 0; i < countries.length; i++) {
+        const country = countries[i];
+        const normalName = country.normalizedName.toLowerCase();
+        const normalTag = country.tag.toLowerCase();
+
+        if (search === normalName || search === normalTag) {
+          scores.push([2, i]);
+          needsSorting = true;
+        } else if (normalName.includes(search) || normalTag.includes(search)) {
+          scores.push([1, i]);
+        }
+      }
+
+      if (needsSorting) {
+        scores.sort(([ascore], [bscore]) => bscore - ascore);
+      }
+
+      return scores.map(([_, index]) => countries[index]);
+    }
+
+    const filteredHumans: Fab[] = humanCountries.map((x) => ({
+      badge: "player",
+      ...x,
+    }));
+    const filteredAi: Fab[] = aiCountries;
+
+    return scorer(filteredHumans.concat(filteredAi), search);
+  }, [humanCountries, aiCountries, search]);
 
   const parentRef = useRef<HTMLDivElement>(null);
 
