@@ -21,6 +21,7 @@ export const MapTip = () => {
   const mapMode = useEu4MapMode();
   const currentMapDate = useSelectedDate();
   const map = useEu4Map();
+  const canvas = map.gl.canvas;
 
   useEffect(() => {
     let isDown = false;
@@ -40,26 +41,26 @@ export const MapTip = () => {
       isDown = false;
     }
 
-    document.addEventListener("pointermove", pointerMove, false);
-    document.addEventListener("pointerdown", pointerDown, false);
-    document.addEventListener("pointerup", pointerUp, false);
+    canvas.addEventListener("pointermove", pointerMove, false);
+    canvas.addEventListener("pointerdown", pointerDown, false);
+    canvas.addEventListener("pointerup", pointerUp, false);
     return () => {
-      document.removeEventListener("pointermove", pointerMove, false);
-      document.removeEventListener("pointerdown", pointerDown, false);
-      document.removeEventListener("pointerup", pointerUp, false);
+      canvas.removeEventListener("pointermove", pointerMove, false);
+      canvas.removeEventListener("pointerdown", pointerDown, false);
+      canvas.removeEventListener("pointerup", pointerUp, false);
     };
-  }, [toolTipRef]);
+  }, [toolTipRef, canvas]);
 
   useEffect(() => {
     function mouseOut() {
       setPointerDisplay(false);
     }
 
-    document.addEventListener("mouseout", mouseOut);
+    canvas.addEventListener("mouseout", mouseOut);
     return () => {
-      document.removeEventListener("mouseout", mouseOut);
+      canvas.removeEventListener("mouseout", mouseOut);
     };
-  }, []);
+  }, [canvas]);
 
   // Recalculate tooltip positioning if the mouse pointer moves or if the
   // contents of map tip changes
