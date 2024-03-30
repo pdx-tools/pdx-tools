@@ -182,11 +182,12 @@ export const Timelapse = () => {
           <IconButton
             shape="circle"
             variant="ghost"
+            className="opacity-75 enabled:hover:opacity-90 transition-opacity"
             disabled={!timelapseEnabled}
             onClick={!isPlaying ? startTimelapse : stopTimelapse}
             icon={
               !isPlaying ? (
-                <PlayIcon className="h-6 w-6 opacity-75" />
+                <PlayIcon className="h-6 w-6" />
               ) : (
                 <PauseIcon className="h-6 w-6" />
               )
@@ -197,11 +198,12 @@ export const Timelapse = () => {
           <IconButton
             shape="circle"
             variant="ghost"
+            className="opacity-60 enabled:hover:opacity-90 transition-opacity"
             disabled={!(timelapseEnabled && recordingSupported)}
             onClick={!isRecording ? startRecording : stopRecording}
             icon={
               !isRecording ? (
-                <VideoCameraIcon className="opacity-60 h-6 w-6" />
+                <VideoCameraIcon className="h-6 w-6" />
               ) : (
                 <StopIcon className="h-6 w-6" />
               )
@@ -220,7 +222,8 @@ export const Timelapse = () => {
               <IconButton
                 shape="circle"
                 variant="ghost"
-                icon={<MixerHorizontalIcon className="opacity-60 h-6 w-6" />}
+                className="opacity-60 enabled:hover:opacity-90 transition-opacity"
+                icon={<MixerHorizontalIcon className="h-6 w-6" />}
                 tooltip="Map and timelapse settings"
               />
             </Popover.Trigger>
