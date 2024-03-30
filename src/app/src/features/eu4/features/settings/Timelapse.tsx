@@ -24,8 +24,12 @@ import { IconButton } from "@/components/IconButton";
 import { Button } from "@/components/Button";
 import { ToggleGroup } from "@/components/ToggleGroup";
 import { Slider } from "@/components/Slider";
-import { PauseIcon, PlayIcon } from "@heroicons/react/24/solid";
-import { StopIcon, VideoCameraIcon } from "@heroicons/react/24/outline";
+import {
+  PauseIcon,
+  PlayIcon,
+  VideoCameraIcon,
+} from "@heroicons/react/24/solid";
+import { StopIcon } from "@heroicons/react/24/outline";
 import { MixerHorizontalIcon } from "@/components/icons/MixerHorizontalIcon";
 import { Popover } from "@/components/Popover";
 import { useIsDeveloper } from "@/features/account";
