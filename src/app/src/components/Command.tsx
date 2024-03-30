@@ -133,7 +133,7 @@ const CommandItem = React.forwardRef<
     <CommandPrimitive.Item
       ref={ref}
       className={cx(
-        "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-sky-100 aria-selected:text-sky-800 aria-disabled:pointer-events-none aria-disabled:opacity-50",
+        "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-sky-100 aria-selected:text-sky-800 aria-disabled:pointer-events-none aria-disabled:opacity-50",
         className,
       )}
       {...props}
