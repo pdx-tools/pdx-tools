@@ -45,7 +45,7 @@ export const InfoSideBarButton = ({
         <Sheet.Content
           onInteractOutside={(e) => e.preventDefault()}
           side="right"
-          className="flex w-[800px] max-w-full flex-col bg-white pt-4"
+          className="flex w-[800px] max-w-full flex-col dark:bg-slate-800 bg-white pt-4"
         >
           <Sheet.Header className="z-10 px-4 pb-4 shadow-md items-center">
             <Sheet.Close />

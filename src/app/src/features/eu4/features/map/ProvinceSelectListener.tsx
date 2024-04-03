@@ -35,7 +35,7 @@ export const ProvinceSelectListener = () => {
     <Sheet modal={false} open={visible} onOpenChange={setDrawerVisible}>
       <Sheet.Content
         side="right"
-        className="flex w-[480px] max-w-full flex-col bg-white"
+        className="flex w-[480px] max-w-full flex-col bg-white dark:bg-slate-800"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <SideBarContainerProvider>

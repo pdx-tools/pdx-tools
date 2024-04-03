@@ -91,13 +91,13 @@ export const Home = ({ subtitle }: HomeProps) => {
         </section>
       </div>
       <div
-        className={`${classes.row} flex w-full flex-col items-center justify-center px-5 py-16 text-xl odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
+        className={`${classes.row} flex w-full flex-col items-center justify-center px-5 py-16 text-xl odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-slate-800 dark:even:bg-slate-800 md:px-9`}
       >
         <ImageGallery />
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-slate-800 dark:even:bg-slate-800 md:px-9`}
       >
         <div className="max-w-7xl">
           <h2 className="text-center text-3xl font-extrabold tracking-tight text-white xl:text-4xl">
@@ -166,7 +166,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-slate-800 dark:even:bg-slate-800 md:px-9`}
       >
         <section>
           <div className="grid max-w-prose gap-4">
@@ -210,7 +210,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-slate-800 dark:even:bg-slate-800 md:px-9`}
       >
         <section>
           <div className="grid max-w-prose gap-4">
@@ -237,7 +237,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-slate-800 dark:even:bg-slate-800 md:px-9`}
       >
         <section>
           <div className="grid max-w-prose gap-4">
@@ -273,7 +273,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-slate-800 dark:even:bg-slate-800 md:px-9`}
       >
         <section>
           <div className="grid max-w-prose gap-4">
@@ -301,7 +301,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-slate-800 dark:even:bg-slate-800 md:px-9`}
       >
         <section>
           <div className="grid max-w-prose gap-4">

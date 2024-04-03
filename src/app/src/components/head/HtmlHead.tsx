@@ -19,6 +19,7 @@ export const HtmlHead = ({ children }: HtmlHeadProps) => {
         name="viewport"
         content="width=device-width, initial-scale=1"
       ></meta>
+      <meta name="color-scheme" content="light dark"></meta>
       <link rel="apple-touch-icon" sizes="180x180" href={apple_url} />
       <link rel="icon" type="image/png" sizes="32x32" href={fav32} />
       <link rel="icon" type="image/png" sizes="16x16" href={fav16} />

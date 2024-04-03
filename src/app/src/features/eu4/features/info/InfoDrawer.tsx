@@ -180,7 +180,7 @@ export const InfoDrawer = () => {
                 )}
               </div>
             </div>
-            <div className="border border-solid border-gray-200"></div>
+            <div className="border border-solid border-gray-200 dark:border-gray-600"></div>
             <table className="w-full">
               <tbody>
                 <tr>

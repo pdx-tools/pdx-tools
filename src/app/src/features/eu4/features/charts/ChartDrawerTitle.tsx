@@ -136,7 +136,7 @@ export const ChartDrawerTitle = ({
             <span className="sr-only">Help</span>
           </Button>
         </Sheet.Trigger>
-        <Sheet.Content side="right" className="w-96 bg-white">
+        <Sheet.Content side="right" className="w-96 dark:bg-slate-800 bg-white">
           <Sheet.Header className="z-10 p-4 shadow-md items-center">
             <Sheet.Close />
             <Sheet.Title>Help</Sheet.Title>

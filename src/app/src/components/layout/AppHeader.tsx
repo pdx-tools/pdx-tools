@@ -100,7 +100,7 @@ const HeaderMenu = () => {
             <NavigationMenu.List>
               <NavigationMenu.Item className="mr-16 xl:mr-0">
                 <NavigationMenu.Trigger asChild>
-                  <Button shape="circle">
+                  <Button shape="circle" style={{ backgroundColor: "white" }}>
                     <UserIcon className="h-4 w-4 text-black" />
                     <span className="sr-only">Account</span>
                   </Button>
