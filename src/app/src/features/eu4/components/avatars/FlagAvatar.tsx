@@ -63,7 +63,7 @@ const FlagDrawerTrigger = React.forwardRef<
       shape="none"
       className={cx(
         className,
-        `w-max flex-shrink-0 rounded-r-md p-0 hover:bg-gray-200/70 active:bg-gray-300`,
+        `w-max flex-shrink-0 rounded-r-md p-0 hover:bg-gray-200/70 active:bg-gray-300 dark:hover:bg-slate-700/70 dark:active:bg-slate-700`,
       )}
       onClick={() => {
         setSelectedTag(flag.tag);
@@ -142,7 +142,7 @@ const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
       height={128}
       className={cx(
         dims,
-        "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500",
+        "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500 dark:outline-gray-800",
       )}
       src={src}
     />

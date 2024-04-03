@@ -48,7 +48,7 @@ export const ChartContent = () => {
       side="right"
       onInteractOutside={(e) => e.preventDefault()}
       className={cx(
-        "flex flex-col bg-white pt-4 transition-[width] duration-200",
+        "flex flex-col bg-white pt-4 transition-[width] duration-200 dark:bg-slate-800",
         expanded ? "w-full" : "w-[800px] max-w-full",
       )}
     >

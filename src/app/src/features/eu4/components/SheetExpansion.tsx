@@ -25,7 +25,7 @@ export const SheetExpansion = ({
       <Sheet.Content
         side="right"
         className={cx(
-          "flex flex-col bg-white pt-4 transition-[width] duration-200",
+          "flex flex-col dark:bg-slate-800 bg-white pt-4 transition-[width] duration-200",
           expanded ? "w-full" : "w-[800px] max-w-full",
         )}
       >

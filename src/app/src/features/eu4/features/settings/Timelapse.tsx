@@ -324,7 +324,7 @@ export const Timelapse = () => {
                   </Alert>
                 ) : null}
               </div>
-              <Popover.Arrow className="fill-white" />
+              <Popover.Arrow className="fill-white dark:fill-slate-800" />
             </Popover.Content>
           </Popover>
         </div>

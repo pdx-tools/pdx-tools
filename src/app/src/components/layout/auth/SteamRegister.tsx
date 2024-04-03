@@ -10,7 +10,10 @@ export const SteamRegister = () => {
       <Sheet.Trigger asChild>
         <Button variant="primary">Register</Button>
       </Sheet.Trigger>
-      <Sheet.Content side="right" className="w-80 bg-white p-4">
+      <Sheet.Content
+        side="right"
+        className="w-80 dark:bg-slate-800 bg-white p-4"
+      >
         <Sheet.Header>
           <Sheet.Close />
           <Sheet.Title>Register an account with PDX Tools</Sheet.Title>

@@ -40,7 +40,10 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
           rows={8}
           maxLength={5000}
           readOnly={!isEditing}
-          className={cx("grow", isEditing ? "border" : "")}
+          className={cx(
+            "grow px-2 py-1",
+            isEditing ? "border dark:border-gray-600" : "",
+          )}
         />
 
         {editMode == "privileged" && (

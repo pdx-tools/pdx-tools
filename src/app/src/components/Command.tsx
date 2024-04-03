@@ -14,7 +14,7 @@ const CommandRoot = React.forwardRef<
     <CommandPrimitive
       ref={ref}
       className={cx(
-        "flex h-full w-full flex-col overflow-hidden rounded-md bg-white",
+        "flex h-full w-full flex-col overflow-hidden rounded-md bg-white dark:bg-slate-800",
         className,
       )}
       {...props}
@@ -51,12 +51,15 @@ const CommandInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(function CommandInput({ className, ...props }, ref) {
   return (
-    <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
+    <div
+      className="flex items-center border-b dark:border-gray-600 px-3"
+      cmdk-input-wrapper=""
+    >
       <MagnifyingGlassIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
       <CommandPrimitive.Input
         ref={ref}
         className={cx(
-          "flex h-11 w-full rounded-md bg-white px-2 py-3 text-sm outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-11 w-full rounded-md bg-white dark:bg-slate-800 px-2 py-3 text-sm outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50",
           className,
         )}
         {...props}

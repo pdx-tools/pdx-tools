@@ -10,7 +10,7 @@ const buttonVariants = cva(
         primary:
           "border font-medium border-solid bg-sky-600 border-sky-800 text-white enabled:hover:bg-sky-500 focus-visible:bg-sky-500 enabled:active:bg-sky-400",
         default:
-          "border font-medium border-solid bg-white border-gray-400 text-black/80 enabled:hover:bg-slate-200 focus-visible:bg-slate-200 enabled:active:bg-slate-300",
+          "border font-medium border-solid bg-white dark:bg-slate-700 dark:border-gray-600 border-gray-400 text-black/80 dark:text-white enabled:hover:bg-slate-200 focus-visible:bg-slate-200 enabled:active:bg-slate-300 dark:enabled:hover:bg-slate-600 dark:focus-visible:bg-slate-600 dark:enabled:active:bg-slate-600",
         danger:
           "border font-medium border-solid bg-white border-rose-400 text-rose-800 enabled:hover:bg-rose-200 focus-visible:bg-rose-200 enabled:active:bg-rose-300",
         ghost: "",

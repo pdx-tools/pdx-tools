@@ -270,27 +270,27 @@ function colorToClass(x: number) {
     case 2:
       return "bg-red-500 text-white";
     case 3:
-      return "bg-red-400";
+      return "bg-red-400 text-black";
     case 4:
-      return "bg-red-300";
+      return "bg-red-300 text-black";
     case 5:
-      return "bg-red-200";
+      return "bg-red-200 text-black";
     case 6:
-      return "bg-red-100";
+      return "bg-red-100 text-black";
     case 7:
-      return "bg-red-50";
+      return "bg-red-50 text-black";
     case 8:
-      return "bg-blue-50";
+      return "bg-blue-50 text-black";
     case 9:
-      return "bg-blue-100";
+      return "bg-blue-100 text-black";
     case 10:
-      return "bg-blue-200";
+      return "bg-blue-200 text-black";
     case 11:
-      return "bg-blue-300";
+      return "bg-blue-300 text-black";
     case 12:
-      return "bg-blue-400";
+      return "bg-blue-400 text-black";
     case 13:
-      return "bg-blue-500";
+      return "bg-blue-500 text-black";
     case 14:
       return "bg-blue-600 text-white";
     case 15:

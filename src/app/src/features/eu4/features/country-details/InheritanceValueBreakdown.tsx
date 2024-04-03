@@ -30,7 +30,10 @@ export const InheritanceValueBreakdown = ({
         </Button>
       </Sheet.Trigger>
 
-      <Sheet.Content side="right" className="w-[450px] max-w-full bg-white">
+      <Sheet.Content
+        side="right"
+        className="w-[450px] max-w-full dark:bg-slate-800 bg-white"
+      >
         <Sheet.Header className="z-10 p-4 shadow-md items-center">
           <Sheet.Close />
           <Sheet.Title>Inheritance Value Breakdown</Sheet.Title>
@@ -120,7 +123,7 @@ export const InheritanceValueBreakdown = ({
                   <td>Owned Provinces ({details.tag})</td>
                   <td>{formatInt(inheritance.calculations.owned_provinces)}</td>
                 </tr>
-                <tr className="bg-gray-200">
+                <tr className="bg-gray-200 dark:bg-slate-700">
                   <td>Subtotal</td>
                   <td>
                     {formatInt(
@@ -134,7 +137,7 @@ export const InheritanceValueBreakdown = ({
                   <td>Save year</td>
                   <td>{saveYear}</td>
                 </tr>
-                <tr className="bg-gray-200">
+                <tr className="bg-gray-200 dark:bg-slate-700">
                   <td>Inheritance Value</td>
                   <td>
                     {formatInt(

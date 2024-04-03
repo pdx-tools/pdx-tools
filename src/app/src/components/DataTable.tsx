@@ -75,7 +75,8 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
                 <Table.Head
                   colSpan={header.colSpan}
                   className={cx(
-                    header.colSpan > 1 && "border-l border-r text-center",
+                    header.colSpan > 1 &&
+                      "border-l border-r text-center dark:border-gray-600",
                   )}
                   key={header.id}
                 >
@@ -106,7 +107,8 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
                       key={cell.id}
                       rowSpan={i == 0 ? cell.row.original.rowSpan : undefined}
                       className={cx(
-                        cell.column.getIsSorted() && "bg-gray-50",
+                        cell.column.getIsSorted() &&
+                          "bg-gray-50 dark:bg-slate-700",
                         (cell.column.columnDef?.meta as any)?.className,
                       )}
                     >

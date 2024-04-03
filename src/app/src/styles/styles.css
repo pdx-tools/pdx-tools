@@ -17,3 +17,11 @@
   height: auto;
   max-width: 100%;
 }
+
+html {
+  @apply dark:bg-slate-800 dark:text-slate-300;
+}
+
+textarea {
+  @apply dark:bg-slate-700;
+}

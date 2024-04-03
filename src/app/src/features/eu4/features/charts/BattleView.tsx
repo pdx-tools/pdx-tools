@@ -154,7 +154,11 @@ const landColumns = [
     header: "Attacker",
     cell: (info) => (
       <div
-        className={info.row.original.attacker_won ? "flex bg-green-300" : ""}
+        className={
+          info.row.original.attacker_won
+            ? "flex bg-green-300 dark:bg-green-700"
+            : ""
+        }
       >
         <Flag
           tag={info.getValue().country}
@@ -168,7 +172,11 @@ const landColumns = [
     header: "Defender",
     cell: (info) => (
       <div
-        className={!info.row.original.attacker_won ? "flex bg-green-300" : ""}
+        className={
+          !info.row.original.attacker_won
+            ? "flex bg-green-300 dark:bg-green-700"
+            : ""
+        }
       >
         <Flag
           tag={info.getValue().country}
@@ -329,7 +337,11 @@ const navyColumns = [
   battleColumnHelper.accessor("attacker", {
     header: "Attacker",
     cell: (info) => (
-      <div className={info.row.original.attacker_won ? "bg-lime-200" : ""}>
+      <div
+        className={
+          info.row.original.attacker_won ? "bg-green-300 dark:bg-green-700" : ""
+        }
+      >
         <Flag
           tag={info.getValue().country}
           name={info.getValue().country_name}
@@ -341,7 +353,13 @@ const navyColumns = [
   battleColumnHelper.accessor("defender", {
     header: "Defender",
     cell: (info) => (
-      <div className={!info.row.original.attacker_won ? "bg-lime-200" : ""}>
+      <div
+        className={
+          !info.row.original.attacker_won
+            ? "bg-green-300 dark:bg-green-700"
+            : ""
+        }
+      >
         <Flag
           tag={info.getValue().country}
           name={info.getValue().country_name}

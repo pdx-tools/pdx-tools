@@ -57,6 +57,7 @@ const config = {
     ({
       colorMode: {
         disableSwitch: true,
+        respectPrefersColorScheme: true,
       },
 
       navbar: {
