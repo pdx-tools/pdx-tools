@@ -27,6 +27,7 @@ import { Alert } from "@/components/Alert";
 import { Link } from "@/components/Link";
 import { EyeIcon } from "@heroicons/react/24/outline";
 import { formatInt } from "@/lib/format";
+import { Card } from "@/components/Card";
 
 const TagDescription = (play: TagTransition) => {
   return (
@@ -78,7 +79,7 @@ export const InfoDrawer = () => {
   return (
     <div ref={sideBarContainerRef}>
       <div className="flex flex-wrap justify-center gap-8">
-        <div className="w-80 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
+        <Card className="p-4 w-80">
           <table className="table w-full">
             <tbody>
               <tr>
@@ -119,16 +120,16 @@ export const InfoDrawer = () => {
               )}
             </tbody>
           </table>
-        </div>
-        <div className="w-80 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
+        </Card>
+        <Card className="p-4 w-80">
           <div className="space-y-2">
             <div className="text-center text-lg">DLC</div>
             <DlcList dlc_enabled={meta.dlc} />
           </div>
-        </div>
+        </Card>
         {achievements.kind === "Compatible" &&
         achievements.achievements.length > 0 ? (
-          <div className="w-80 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
+          <Card className="p-4 w-80">
             <div className="space-y-2">
               <div className="text-center text-lg">Achievements</div>
               <div className="flex flex-wrap place-content-center space-x-2">
@@ -142,25 +143,25 @@ export const InfoDrawer = () => {
                 ))}
               </div>
             </div>
-          </div>
+          </Card>
         ) : null}
         {mods.length > 0 ? (
-          <div className="min-w-[320px] max-w-xl rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
+          <Card className="p-4 min-w-[320px] max-w-xl">
             <div className="space-y-2">
               <div className="text-center text-lg">Mods {mods.length}</div>
               <ModList />
             </div>
-          </div>
+          </Card>
         ) : null}
       </div>
       <Divider>Countries</Divider>
       <Alert.Error msg={playerHistories.error} />
       <div className="grid gap-8 md:grid-cols-2">
         {playerHistories.data?.map((item) => (
-          <div
+          <Card
             key={item.latest}
             className={cx(
-              "space-y-5 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md",
+              "space-y-5 p-4",
               item.annexed && "bg-rose-100",
               !item.is_human && !item.annexed && "bg-gray-100",
             )}
@@ -210,7 +211,7 @@ export const InfoDrawer = () => {
                 </tr>
               </tbody>
             </table>
-          </div>
+          </Card>
         ))}
       </div>
 

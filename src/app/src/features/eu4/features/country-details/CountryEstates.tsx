@@ -4,10 +4,11 @@ import { useEu4Worker } from "../../worker";
 import React from "react";
 import { formatInt, sentenceCasing } from "@/lib/format";
 import { Alert } from "@/components/Alert";
+import { Card } from "@/components/Card";
 
 const CountryEstate = ({ estate }: { estate: Estate }) => {
   return (
-    <div className="flex w-96 flex-col gap-2 rounded-lg border border-solid border-gray-400/50 p-4 shadow-md">
+    <Card className="flex w-96 flex-col gap-2 p-4">
       <div className="flex">
         <h3 className="inline-block grow">{estate.kind}</h3>
         <span className="flex gap-4">
@@ -54,7 +55,7 @@ const CountryEstate = ({ estate }: { estate: Estate }) => {
           </tbody>
         </table>
       ) : null}
-    </div>
+    </Card>
   );
 };
 

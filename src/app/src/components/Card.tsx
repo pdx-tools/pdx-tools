@@ -8,7 +8,7 @@ export const Card = React.forwardRef<
   return (
     <div
       className={cx(
-        "rounded-lg border border-solid border-gray-400/50 shadow-md",
+        "rounded-lg border border-solid border-gray-400/50 shadow-md dark:bg-slate-800",
         className,
       )}
       ref={ref}
