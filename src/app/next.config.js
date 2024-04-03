@@ -1,5 +1,27 @@
 const { withSentryConfig } = require("@sentry/nextjs");
 
+const cspScriptApp = [
+  "'self'",
+  "'unsafe-eval'",
+  "blob:",
+  "https://a.pdx.tools/js/index.js",
+];
+
+const globalCsp = [
+  "default-src 'self'",
+  "connect-src 'self' blob: https://skanderbeg.pm/api.php https://a.pdx.tools/api/event",
+  "img-src 'self' data:",
+  "style-src 'self' 'unsafe-inline'",
+];
+
+const csp = [...globalCsp, `script-src ${cspScriptApp.join(" ")}`];
+const docsCsp = [
+  ...globalCsp,
+
+  // Docusaurus does dark mode through an inline script
+  `script-src ${[...cspScriptApp, "'unsafe-inline'"].join(" ")}`,
+];
+
 // @ts-check
 /** @type {import('next').NextConfig} */
 let nextConfig = {
@@ -46,15 +68,20 @@ let nextConfig = {
         },
         {
           key: "Content-Security-Policy",
-          value:
-            "default-src 'self';" +
-            `connect-src 'self' blob: https://skanderbeg.pm/api.php https://a.pdx.tools/api/event;` +
-            "img-src 'self' data:;" +
-            "script-src 'self' 'unsafe-eval' blob: https://a.pdx.tools/js/index.js;" +
-            "style-src 'self' 'unsafe-inline'",
+          value: csp.join("; "),
         },
       ],
     },
+
+    ...["/docs/:path*", "/blog/:path*", "/changelog/:path*"].map((source) => ({
+      source,
+      headers: [
+        {
+          key: "Content-Security-Policy",
+          value: docsCsp.join("; "),
+        },
+      ],
+    })),
   ],
 
   rewrites: async () => ({
@@ -97,7 +124,7 @@ if (process.env.SENTRY_DSN) {
         autoInstrumentAppDirectory: false,
         autoInstrumentMiddleware: false,
         autoInstrumentServerFunctions: false,
-        tunnelRoute: "/api/tunnel"
+        tunnelRoute: "/api/tunnel",
       },
     },
     { silent: true, dryRun: process.env.PDX_RELEASE !== "1" }
