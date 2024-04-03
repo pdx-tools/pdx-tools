@@ -134,7 +134,7 @@ const MapTipsTable = ({ tip }: MapTipContentsProps) => {
 export const MapTipContents = ({ tip }: MapTipContentsProps) => {
   return (
     <div
-      className={`no-break rounded-2xl border-2 border-solid border-gray-300 dark:border-gray-600 dark:bg-slate-800 bg-white p-4 shadow-lg`}
+      className={`no-break rounded-2xl border-2 border-solid border-gray-300 dark:border-gray-600 dark:bg-slate-900 bg-white p-4 shadow-lg`}
     >
       <div className="mb-2 text-lg">{`${tip.provinceName} (${tip.provinceId})`}</div>
       <MapTipsTable tip={tip} />

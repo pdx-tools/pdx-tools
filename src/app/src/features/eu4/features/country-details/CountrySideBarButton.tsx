@@ -91,7 +91,7 @@ const CountryDetailsContent = () => {
       side="right"
       onInteractOutside={(e) => e.preventDefault()}
       className={cx(
-        "flex flex-col bg-white pt-4 transition-[width] duration-200 dark:bg-slate-800",
+        "flex flex-col bg-white pt-4 transition-[width] duration-200 dark:bg-slate-900",
         expanded ? "w-full" : "w-[970px] max-w-full",
       )}
     >
@@ -120,7 +120,7 @@ const CountryDetailsContent = () => {
             </Sheet.Trigger>
             <Sheet.Content
               side="right"
-              className="w-96 dark:bg-slate-800 bg-white"
+              className="w-96 dark:bg-slate-900 bg-white"
             >
               <Sheet.Header className="z-10 p-4 shadow-md items-center">
                 <Sheet.Close />

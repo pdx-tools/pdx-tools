@@ -19,7 +19,7 @@
 }
 
 html {
-  @apply dark:bg-slate-800 dark:text-slate-300;
+  @apply dark:bg-slate-900 dark:text-slate-300;
 }
 
 textarea {

@@ -27,7 +27,7 @@ export const UploadSideBarButton = ({
       </Sheet.Trigger>
       <Sheet.Content
         side="right"
-        className="flex w-[800px] max-w-full flex-col bg-white pt-4 dark:bg-slate-800"
+        className="flex w-[800px] max-w-full flex-col bg-white pt-4 dark:bg-slate-900"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <SideBarContainerProvider>

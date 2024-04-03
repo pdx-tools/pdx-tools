@@ -11,7 +11,7 @@ export const SteamLogin = () => {
       </Sheet.Trigger>
       <Sheet.Content
         side="right"
-        className="w-80 dark:bg-slate-800 bg-white p-4"
+        className="w-80 dark:bg-slate-900 bg-white p-4"
       >
         <Sheet.Header>
           <Sheet.Close />
