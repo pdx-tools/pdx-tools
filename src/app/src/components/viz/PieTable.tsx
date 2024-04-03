@@ -4,6 +4,7 @@ import { LegendColor, Pie, PieConfig } from "@/components/viz";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
+import { isDarkMode } from "@/lib/dark";
 
 interface BudgetRow {
   key: string;
@@ -46,6 +47,13 @@ const PieTablePieImpl = ({ rows, palette }: PieTablePieProps) => {
       formatter: (_text: any, item: any) => `${item._origin.value.toFixed(0)}`,
     },
     interactions: [{ type: "element-active" }],
+    legend: {
+      itemName: {
+        style: {
+          fill: isDarkMode() ? "#fff" : "#000",
+        },
+      },
+    },
   };
 
   return <Pie {...chartConfig} />;

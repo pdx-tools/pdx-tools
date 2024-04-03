@@ -23,13 +23,19 @@ const HeaderMenu = () => {
             </NavigationMenu.Trigger>
             <NavigationMenu.Content className="bg-[#001529] p-4">
               <NavigationMenu.Link variant="button" asChild>
-                <Link href="/eu4">Recent saves</Link>
+                <Link variant="ghost" href="/eu4">
+                  Recent saves
+                </Link>
               </NavigationMenu.Link>
               <NavigationMenu.Link variant="button" asChild>
-                <Link href="/eu4/achievements">Achievements</Link>
+                <Link variant="ghost" href="/eu4/achievements">
+                  Achievements
+                </Link>
               </NavigationMenu.Link>
               <NavigationMenu.Link variant="button" asChild>
-                <Link href="/eu4/skanderbeg">Skanderbeg</Link>
+                <Link variant="ghost" href="/eu4/skanderbeg">
+                  Skanderbeg
+                </Link>
               </NavigationMenu.Link>
             </NavigationMenu.Content>
           </NavigationMenu.Item>
@@ -39,10 +45,14 @@ const HeaderMenu = () => {
             </NavigationMenu.Trigger>
             <NavigationMenu.Content className="bg-[#001529] p-4">
               <NavigationMenu.Link asChild variant="button">
-                <Link href="/changelog">Changelog</Link>
+                <Link variant="ghost" href="/changelog">
+                  Changelog
+                </Link>
               </NavigationMenu.Link>
               <NavigationMenu.Link variant="button" asChild>
-                <Link href="/docs">Docs</Link>
+                <Link variant="ghost" href="/docs">
+                  Docs
+                </Link>
               </NavigationMenu.Link>
               <NavigationMenu.Link
                 variant="button"
@@ -61,11 +71,16 @@ const HeaderMenu = () => {
                 </Link>
               </NavigationMenu.Link>
               <NavigationMenu.Link variant="button" asChild>
-                <Link href="/blog">Blog</Link>
+                <Link variant="ghost" href="/blog">
+                  Blog
+                </Link>
               </NavigationMenu.Link>
 
               <NavigationMenu.Link variant="button" asChild>
-                <Link href="https://github.com/sponsors/nickbabcock">
+                <Link
+                  variant="ghost"
+                  href="https://github.com/sponsors/nickbabcock"
+                >
                   Donate
                 </Link>
               </NavigationMenu.Link>
@@ -108,7 +123,9 @@ const HeaderMenu = () => {
 
                 <NavigationMenu.Content className="items-center bg-[#001529] p-4">
                   <NavigationMenu.Link variant="button" asChild>
-                    <Link href="/account">Accout</Link>
+                    <Link variant="ghost" href="/account">
+                      Accout
+                    </Link>
                   </NavigationMenu.Link>
 
                   <NavigationMenu.Link
@@ -116,7 +133,10 @@ const HeaderMenu = () => {
                     asChild
                     className="no-break"
                   >
-                    <Link href={`/users/${session.data.user.user_id}`}>
+                    <Link
+                      variant="ghost"
+                      href={`/users/${session.data.user.user_id}`}
+                    >
                       My Saves
                     </Link>
                   </NavigationMenu.Link>
@@ -152,6 +172,7 @@ export const AppHeader = () => {
         <div className="mx-auto flex h-full w-full max-w-screen-xl items-center">
           <Link
             href="/"
+            variant="ghost"
             className="mr-3 flex items-center gap-1 text-3xl text-white hover:text-white hover:underline"
             onClick={() => resetSaveAnalysis()}
           >

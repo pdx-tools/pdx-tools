@@ -11,6 +11,7 @@ import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { RebelReligion } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
 import { Link } from "@/components/Link";
+import { isDarkMode } from "@/lib/dark";
 
 export interface CountryReligionsProps {
   details: CountryDetails;
@@ -107,6 +108,13 @@ const CountryReligionVizImpl = ({
       formatter: (_text: any, item: any) =>
         `${item._origin.development.toFixed(0)}`,
     },
+    legend: {
+      itemName: {
+        style: {
+          fill: isDarkMode() ? "#fff" : "#000",
+        },
+      },
+    },
     interactions: [{ type: "element-active" }],
     statistic: {
       title: false,
@@ -116,6 +124,7 @@ const CountryReligionVizImpl = ({
           overflow: "hidden",
           textOverflow: "ellipsis",
           fontSize: "24px",
+          color: isDarkMode() ? "#fff" : "#000",
         },
         formatter: () => "Religion\nDev",
       },

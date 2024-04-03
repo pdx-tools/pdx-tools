@@ -9,6 +9,7 @@ import { formatInt } from "@/lib/format";
 import { CountryDetails } from "../../types/models";
 import { Bar, BarConfig, PieTable } from "@/components/viz";
 import { Switch } from "@/components/Switch";
+import { isDarkMode } from "@/lib/dark";
 
 type CountryBudgetCountProps = {
   details: CountryDetails;
@@ -53,6 +54,13 @@ const BudgetBar = React.memo(function BudgetBar({
     xAxis: {
       title: {
         text: "ducats",
+      },
+    },
+    legend: {
+      itemName: {
+        style: {
+          fill: isDarkMode() ? "#fff" : "#000",
+        },
       },
     },
     tooltip: {

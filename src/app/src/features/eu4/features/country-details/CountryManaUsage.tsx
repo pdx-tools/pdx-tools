@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { manaSpendAliases, manaSpendColorPalette } from "./data";
 import { Bar, BarConfig, PieTable } from "@/components/viz";
 import { CountryDetails } from "../../types/models";
+import { isDarkMode } from "@/lib/dark";
 
 interface CountryManaProps {
   details: CountryDetails;
@@ -42,6 +43,13 @@ const TotalManaBarImpl = ({ adm, dip, mil }: TotalManaBarProps) => {
     xAxis: false,
     color: (data: Record<string, any>) =>
       manaColors.get(data["key"] as string) || "#000",
+    legend: {
+      itemName: {
+        style: {
+          fill: isDarkMode() ? "#fff" : "#000",
+        },
+      },
+    },
     label: {
       formatter: (_text: any, item: any) => item._origin.value.toFixed(0),
       style: {
@@ -114,6 +122,13 @@ const ManaCategoryBarsImpl = ({ details }: CountryManaProps) => {
       formatter: (_text: any, item: any) => item._origin.value.toFixed(0),
       style: {
         fill: "#fff",
+      },
+    },
+    legend: {
+      itemName: {
+        style: {
+          fill: isDarkMode() ? "#fff" : "#000",
+        },
       },
     },
     autoFit: true,

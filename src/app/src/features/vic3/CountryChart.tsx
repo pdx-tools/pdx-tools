@@ -4,6 +4,7 @@ import { Vic3GraphData } from "./worker/types";
 import { VisualizationLoader } from "@/components/viz/VisualizationLoader";
 import { formatFloat } from "@/lib/format";
 import { DualAxesConfig } from "@ant-design/plots";
+import { isDarkMode } from "@/lib/dark";
 
 export interface CountryChartProps {
   stats: Vic3GraphData[];
@@ -42,6 +43,9 @@ export const CountryGDPChart = ({ stats, type }: CountryChartProps) => {
     yField: [type, type + "Growth"],
     legend: {
       itemName: {
+        style: {
+          fill: isDarkMode() ? "#fff" : "#000",
+        },
         formatter: (_text, item) => {
           return typeMap[item.value as keyof typeof typeMap];
         },

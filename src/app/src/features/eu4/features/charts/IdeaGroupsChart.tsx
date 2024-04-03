@@ -4,6 +4,7 @@ import { Bar, BarConfig, useVisualizationDispatch } from "@/components/viz";
 import { createCsv } from "@/lib/csv";
 import { useEu4Meta, useTagFilter } from "../../store";
 import { Alert } from "@/components/Alert";
+import { isDarkMode } from "@/lib/dark";
 
 interface IdeaGroupDatum {
   name: string;
@@ -112,6 +113,13 @@ export const IdeaGroupsChart = () => {
     yField: "name",
     seriesField: "type",
     isGroup: true,
+    legend: {
+      itemName: {
+        style: {
+          fill: isDarkMode() ? "#fff" : "#000",
+        },
+      },
+    },
   };
 
   return (

@@ -9,6 +9,7 @@ import { formatInt } from "@/lib/format";
 import { createCsv } from "@/lib/csv";
 import { useTagFilter } from "../../store";
 import { Alert } from "@/components/Alert";
+import { isDarkMode } from "@/lib/dark";
 
 type DevelopmentStatisticProps = {
   title: string;
@@ -30,7 +31,7 @@ const DevelopmentStatistic = ({
         <span className="text-2xl font-bold">
           {formatInt(tax + production + manpower)}
         </span>
-        <span className="text-gray-500">
+        <span className="text-gray-500 dark:text-gray-300">
           <div className="text-sm all-small-caps flex justify-around">
             <span>tax</span>
             <span>prod</span>
@@ -103,6 +104,11 @@ export const GeographicalDevelopmentTree = () => {
     colorField: "name",
     legend: {
       position: "top-left",
+      itemName: {
+        style: {
+          fill: isDarkMode() ? "#fff" : "#000",
+        },
+      },
     },
     hierarchyConfig: {
       sort(a, b) {

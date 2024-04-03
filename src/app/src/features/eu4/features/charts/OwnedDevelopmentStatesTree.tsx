@@ -14,6 +14,7 @@ import {
 import { Flag } from "../../components/avatars";
 import { formatInt } from "@/lib/format";
 import { Alert } from "@/components/Alert";
+import { isDarkMode } from "@/lib/dark";
 
 export const OwnedDevelopmentStatesTree = () => {
   const countryFilter = useTagFilter();
@@ -149,6 +150,11 @@ function CountryStateDevelopmentTree({
       total === max
         ? {
             position: "bottom",
+            itemName: {
+              style: {
+                fill: isDarkMode() ? "#fff" : "#000",
+              },
+            },
           }
         : false,
 

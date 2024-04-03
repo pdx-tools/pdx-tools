@@ -104,7 +104,7 @@ export const ProvinceDetailsDescriptions = ({
     <div className="flex max-h-full flex-col gap-12" ref={sideBarContainerRef}>
       <table>
         <tbody>
-          <tr className="odd:bg-white even:bg-slate-50">
+          <tr>
             <th className="py-2 text-left">Development:</th>
             <td className="py-2">
               <Tooltip>
@@ -116,7 +116,7 @@ export const ProvinceDetailsDescriptions = ({
               </Tooltip>
             </td>
           </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
+          <tr>
             <th className="py-2 text-left">Owner:</th>
             <td className="py-2">
               {province.owner ? (
@@ -126,7 +126,7 @@ export const ProvinceDetailsDescriptions = ({
               )}
             </td>
           </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
+          <tr>
             <th className="py-2 text-left">Controller:</th>
             <td className="py-2">
               {province.controller ? (
@@ -139,7 +139,7 @@ export const ProvinceDetailsDescriptions = ({
               )}
             </td>
           </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
+          <tr>
             <th className="py-2 text-left">Cores:</th>
             <td className="py-2">
               <ul className="flex flex-wrap gap-2">
@@ -151,7 +151,7 @@ export const ProvinceDetailsDescriptions = ({
               </ul>
             </td>
           </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
+          <tr>
             <th className="py-2 text-left">Claims:</th>
             <td className="py-2">
               <ul className="flex flex-wrap gap-2">
@@ -163,33 +163,33 @@ export const ProvinceDetailsDescriptions = ({
               </ul>
             </td>
           </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
+          <tr>
             <th className="py-2 text-left">Religion:</th>
             <td className="py-2">{province.religion || "---"}</td>
           </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
+          <tr>
             <th className="py-2 text-left">Culture:</th>
             <td className="py-2">{province.culture || "---"}</td>
           </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
+          <tr>
             <th className="py-2 text-left">Devastation:</th>
             <td className="py-2">{formatFloat(province.devastation)}</td>
           </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
+          <tr>
             <th className="py-2 text-left">Trade Goods:</th>
             <td className="py-2">{province.trade_goods || "---"}</td>
           </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
+          <tr>
             <th className="py-2 text-left">Latent Trade Goods:</th>
             <td className="py-2">{province.latent_trade_goods.join(", ")}</td>
           </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
+          <tr>
             <th className="py-2 text-left">In Trade Company:</th>
             <td className="py-2">
               {province.is_in_trade_company ? "yes" : "no"}
             </td>
           </tr>
-          <tr className="odd:bg-white even:bg-slate-50">
+          <tr>
             <th className="py-2 text-left">Buildings:</th>
             <td className="py-2">
               <ul className="flex flex-wrap gap-2">

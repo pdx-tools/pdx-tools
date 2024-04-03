@@ -5,6 +5,7 @@ import { createCsv } from "@/lib/csv";
 import { useCountryNameLookup } from "@/features/eu4/store";
 import { useLedgerData } from "./hooks";
 import { Alert } from "@/components/Alert";
+import { isDarkMode } from "@/lib/dark";
 
 interface LedgerProps {
   ledger: LedgerDatum[];
@@ -36,6 +37,11 @@ const AnnualLedgerPropped = React.memo(function AnnualLedgerPropped({
       position: "left",
       layout: "vertical",
       itemWidth: 300,
+      itemName: {
+        style: {
+          fill: isDarkMode() ? "#fff" : "#000",
+        },
+      },
     },
   };
 
