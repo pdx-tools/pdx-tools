@@ -580,7 +580,8 @@ impl SaveFileImpl {
 
     pub fn get_player_histories(&self) -> Vec<PlayerHistory> {
         let save_game_query = SaveGameQuery::new(&self.query, &self.game);
-        self.query
+        let mut data = self
+            .query
             .player_histories(&self.nation_events)
             .iter()
             .map(|x| PlayerHistory {
@@ -611,7 +612,25 @@ impl SaveFileImpl {
                 })
                 .collect(),
             })
-            .collect()
+            .collect::<Vec<_>>();
+
+        data.sort_unstable_by(|a, b| {
+            fn history_state(a: &PlayerHistory) -> i32 {
+                if a.annexed.is_some() {
+                    2
+                } else if !a.is_human {
+                    1
+                } else {
+                    0
+                }
+            }
+
+            history_state(a)
+                .cmp(&history_state(b))
+                .then_with(|| a.name.cmp(&b.name))
+        });
+
+        data
     }
 
     pub fn get_lucky_countries(&self) -> Vec<LocalizedTag> {

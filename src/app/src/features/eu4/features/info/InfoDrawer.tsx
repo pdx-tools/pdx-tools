@@ -164,7 +164,9 @@ export const InfoDrawer = () => {
             className={cx(
               "space-y-5 p-4",
               item.annexed && "bg-rose-100 dark:bg-rose-900 saturate-50",
-              !item.is_human && !item.annexed && "bg-gray-100 dark:bg-slate-800 saturate-50",
+              !item.is_human &&
+                !item.annexed &&
+                "bg-gray-100 dark:bg-slate-800 saturate-50",
             )}
           >
             <div className="flex">

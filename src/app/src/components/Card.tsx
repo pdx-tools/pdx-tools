@@ -8,13 +8,13 @@ const cardVariants = cva(
       variant: {
         default: "dark:bg-slate-800",
         ghost: "",
-      }
+      },
     },
     defaultVariants: {
-      variant: "default"
-    }
-  }
-)
+      variant: "default",
+    },
+  },
+);
 
 export const Card = React.forwardRef<
   HTMLDivElement,
@@ -22,10 +22,7 @@ export const Card = React.forwardRef<
 >(function Card({ className, variant, ...props }, ref) {
   return (
     <div
-      className={cx(
-        cardVariants({ variant }),
-        className,
-      )}
+      className={cx(cardVariants({ variant }), className)}
       ref={ref}
       {...props}
     />
