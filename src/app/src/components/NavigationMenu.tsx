@@ -53,7 +53,7 @@ const NavigationMenuList = React.forwardRef<
 NavigationMenu.List = NavigationMenuList;
 
 const navigationMenuTriggerStyle = cva(
-  "group inline-flex w-full border-0 items-center justify-start text-white bg-[#001529] text-sm font-medium transition-colors hover:bg-sky-800 hover:text-gray-300 focus:bg-sky-800 focus:text-gray-300 focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-sky-800/50 data-[state=open]:bg-sky-800/50",
+  "group inline-flex w-full border-0 items-center justify-start text-white bg-slate-900 text-sm font-medium transition-colors hover:bg-sky-800 hover:text-gray-300 focus:bg-sky-800 focus:text-gray-300 focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-sky-800/50 data-[state=open]:bg-sky-800/50",
   {
     variants: {
       variant: {

@@ -177,7 +177,7 @@ export const Timelapse = () => {
 
   return (
     <>
-      <div className="bg-[#001529] rounded-tr-lg flex gap-2 items-center pl-3 pr-4 py-2">
+      <div className="bg-slate-900 rounded-tr-lg flex gap-2 items-center pl-3 pr-4 py-2">
         <div className="flex items-center justify-center">
           <IconButton
             shape="circle"

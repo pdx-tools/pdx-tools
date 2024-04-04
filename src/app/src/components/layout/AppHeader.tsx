@@ -21,7 +21,7 @@ const HeaderMenu = () => {
             <NavigationMenu.Trigger className="px-4 py-2">
               EU4
             </NavigationMenu.Trigger>
-            <NavigationMenu.Content className="bg-[#001529] p-4">
+            <NavigationMenu.Content className="bg-slate-900 p-4">
               <NavigationMenu.Link variant="button" asChild>
                 <Link variant="ghost" href="/eu4">
                   Recent saves
@@ -43,7 +43,7 @@ const HeaderMenu = () => {
             <NavigationMenu.Trigger className="px-4 py-2">
               About
             </NavigationMenu.Trigger>
-            <NavigationMenu.Content className="bg-[#001529] p-4">
+            <NavigationMenu.Content className="bg-slate-900 p-4">
               <NavigationMenu.Link asChild variant="button">
                 <Link variant="ghost" href="/changelog">
                   Changelog
@@ -121,7 +121,7 @@ const HeaderMenu = () => {
                   </Button>
                 </NavigationMenu.Trigger>
 
-                <NavigationMenu.Content className="items-center bg-[#001529] p-4">
+                <NavigationMenu.Content className="items-center bg-slate-900 p-4">
                   <NavigationMenu.Link variant="button" asChild>
                     <Link variant="ghost" href="/account">
                       Accout
@@ -168,7 +168,7 @@ export const AppHeader = () => {
         </AnnouncementBar>
       )}
 
-      <div className="h-16 bg-[#001529] px-4">
+      <div className="h-16 bg-slate-900 px-4">
         <div className="mx-auto flex h-full w-full max-w-screen-xl items-center">
           <Link
             href="/"

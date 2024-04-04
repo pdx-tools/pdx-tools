@@ -43,7 +43,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
       {loadingIcon}
 
       {data !== null ? (
-        <div className="absolute inset-0 bg-[#001529]"></div>
+        <div className="absolute inset-0 bg-slate-900"></div>
       ) : null}
 
       <div
@@ -59,7 +59,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
             <Timelapse />
           </div>
 
-          <div className="group absolute bottom-0 right-0 top-0 w-14 bg-[#001529] transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">
+          <div className="group absolute bottom-0 right-0 top-0 w-14 bg-slate-900 transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">
             <Eu4CanvasOverlay />
           </div>
 
