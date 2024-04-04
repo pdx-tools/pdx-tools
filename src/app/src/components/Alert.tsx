@@ -5,10 +5,10 @@ import { getErrorMessage } from "@/lib/getErrorMessage";
 const alert = cva("relative w-full border-2 border-solid flex", {
   variants: {
     variant: {
-      success: "bg-green-100 border-green-200",
+      success: "bg-green-100 border-green-200 text-gray-900",
       error: "bg-rose-100 border-rose-200 text-gray-900",
-      info: "bg-sky-100 border-sky-200",
-      warning: "bg-amber-100 border-amber-200",
+      info: "bg-sky-100 border-sky-200 text-gray-900",
+      warning: "bg-amber-100 border-amber-200 text-gray-900",
     },
   },
 });
