@@ -16,6 +16,7 @@ import { Divider } from "@/components/Divider";
 import { Tooltip } from "@/components/Tooltip";
 import { InputNumber } from "@/components/InputNumber";
 import { Link } from "@/components/Link";
+import { Badge } from "@/components/Badge";
 
 function ProvinceModifier(props: InstitutionCost) {
   const actions = useInstitutionActions();
@@ -214,15 +215,18 @@ export const CountryInstitution = ({
 
   return (
     <div>
-      <div
-        className={cx(
-          data.institutions_embraced == data.institutions_available &&
-            "font-semibold text-green-600",
-        )}
+      <Badge
+        variant={
+          data.institutions_embraced == data.institutions_available
+            ? "green"
+            : "default"
+        }
       >
-        {formatInt(data.institutions_embraced)}/
-        {formatInt(data.institutions_available)} institutions embraced
-      </div>
+        {data.institutions_embraced == data.institutions_available
+          ? "All"
+          : `${formatInt(data.institutions_embraced)}/${formatInt(data.institutions_available)}`}{" "}
+        institutions embraced
+      </Badge>
       <Divider paddingClassNames="pt-5">
         Dev Push Institution (
         <Link
