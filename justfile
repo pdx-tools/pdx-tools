@@ -302,6 +302,16 @@ prep-frontend:
     touch -a assets/tokens/$game.bin assets/tokens/$game.txt
   done;
 
+  # Create DLC spritesheet
+  cd src/app/src/features/eu4/components/dlc-list
+  N=$(ls dlc-images | wc -l)
+  COLS=$(echo $N | awk '{s=sqrt($0); print s == int(s) ? s : int(s) + 1}')
+  montage -tile ${COLS}x -quality 90 -background transparent -mode concatenate  dlc-images/* dlc-sprites.webp
+  while IFS= read -r item; do echo "${item%%.*}"; done < <(ls dlc-images/) | \
+    jq --compact-output --raw-input --null-input \
+      '[inputs] | to_entries | map({(.value): .key}) | add' > dlc-sprites.json
+  cd -
+
   OUTPUT=src/app/src/lib/game_gen.ts
   rm -f "$OUTPUT"
 

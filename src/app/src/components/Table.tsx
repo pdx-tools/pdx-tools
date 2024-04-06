@@ -119,7 +119,7 @@ const TableCell = React.forwardRef<
       className={cx(
         "p-4 [&:has([role=checkbox])]:pr-0",
         className,
-        !className?.includes("align-") && "align-middle" // poor man's tailwind merge
+        !className?.includes("align-") && "align-middle", // poor man's tailwind merge
       )}
       {...props}
     />

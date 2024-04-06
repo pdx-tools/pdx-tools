@@ -6,6 +6,7 @@ import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import { Button } from "@/components/Button";
 import { check } from "@/lib/isPresent";
+import { Sprite, spriteDimension } from "../Sprite";
 
 type FlagContextState = { name: string; tag: string };
 const FlagContext = createContext<FlagContextState | undefined>(undefined);
@@ -124,9 +125,11 @@ function sizeFactor(size?: AvatarSize): number {
   }
 }
 
-let flagsPerRow: number | undefined;
+let dimensions: { rows: number; cols: number } | undefined;
 
 const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
+  // The imports in here are lazy so that they don't fail dev
+  // for those that don't have EU4 assets
   const data = require(`@/images/eu4/flags/flags.json`);
   const index = data[tag];
   const factor = sizeFactor(size);
@@ -152,23 +155,17 @@ const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
       />
     );
   } else {
-    if (flagsPerRow === undefined) {
-      flagsPerRow = Math.ceil(Math.sqrt(Object.keys(data).length));
+    if (dimensions === undefined) {
+      dimensions = spriteDimension({ data });
     }
 
-    const row = Math.floor(index / flagsPerRow);
-    const col = index % flagsPerRow;
     return (
-      <div
-        role="img"
-        className={className}
-        style={{
-          width: factor * 4,
-          height: factor * 4,
-          backgroundImage: `url(${require(`@/images/eu4/flags/flags.webp`)})`,
-          backgroundPosition: `-${col * factor * 4}px -${row * factor * 4}px`,
-          backgroundSize: `${flagsPerRow * 100}% ${flagsPerRow * 100}%`,
-        }}
+      <Sprite
+        src={require(`@/images/eu4/flags/flags.webp`)}
+        index={index}
+        width={factor * 4}
+        height={factor * 4}
+        dimensions={dimensions}
       />
     );
   }
