@@ -185,7 +185,7 @@ pub struct War {
 pub struct WarSide {
     pub original: CountryTag,
     pub original_name: String,
-    pub members: Vec<CountryTag>,
+    pub members: Vec<LocalizedTag>,
     pub losses: [u32; 21],
 }
 

@@ -110,43 +110,68 @@ interface FlagAvatarProps {
   condensed?: boolean;
 }
 
-const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
-  let src: string;
-  try {
-    src = require(`@/images/eu4/flags/${tag}.png`);
-  } catch {
-    try {
-      src = require(`@/images/eu4/flags/REB.png`);
-    } catch {
-      return null;
-    }
+function sizeFactor(size?: AvatarSize): number {
+  switch (size) {
+    case "large":
+      return 12;
+    case "small":
+      return 8;
+    case "xs":
+      return 5;
+    case "base":
+    default:
+      return 10;
   }
+}
 
-  let dims = "h-10 w-10";
-  if (size === "xs") {
-    dims = "h-5 w-5";
-  } else if (size === "small") {
-    dims = "h-8 w-8";
-  } else if (size === "large") {
-    dims = "h-12 w-12";
-  }
+let flagsPerRow: number | undefined;
+
+const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
+  const data = require(`@/images/eu4/flags/flags.json`);
+  const index = data[tag];
+  const factor = sizeFactor(size);
 
   // We need create a small border around flag avatars as some countries
   // are white at the edges (like austria). Using a 1px border resulted
   // in a weird gap in chrome so we have to use outline with a negative
   // offset to account for the avatar's border radius.
-  return (
-    <Image
-      alt=""
-      width={128}
-      height={128}
-      className={cx(
-        dims,
-        "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500 dark:outline-gray-800",
-      )}
-      src={src}
-    />
-  );
+  const className =
+    "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500 dark:outline-gray-800";
+
+  if (index === undefined) {
+    return (
+      <Image
+        alt=""
+        width={128}
+        height={128}
+        className={className}
+        style={{ width: factor * 4, height: factor * 4 }}
+        src={require(
+          `../../../../../../../assets/game/eu4/common/images/REB.png`,
+        )}
+      />
+    );
+  } else {
+    if (flagsPerRow === undefined) {
+      flagsPerRow = Math.ceil(Math.sqrt(Object.keys(data).length));
+    }
+
+    const row = Math.floor(index / flagsPerRow);
+    const col = index % flagsPerRow;
+    return (
+      <div
+        role="img"
+        className={className}
+        style={{
+          width: factor * 4,
+          height: factor * 4,
+          backgroundImage: `url(${require(`@/images/eu4/flags/flags.webp`)})`,
+          backgroundPosition: `-${col * factor * 4}px -${row * factor * 4}px`,
+          backgroundSize: `${flagsPerRow * 100}% ${flagsPerRow * 100}%`,
+        }}
+      />
+    );
+  }
 };
 
 const FlagAvatar = (props: FlagAvatarProps) => {

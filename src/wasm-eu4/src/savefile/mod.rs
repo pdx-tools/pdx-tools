@@ -1659,6 +1659,20 @@ impl SaveFileImpl {
             return;
         }
 
+        attackers.remove(&war.original_attacker);
+        let mut attackers = attackers
+            .iter()
+            .map(|x| self.localize_tag(**x))
+            .collect::<Vec<_>>();
+        attackers.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+
+        defenders.remove(&war.original_defender);
+        let mut defenders = defenders
+            .iter()
+            .map(|x| self.localize_tag(**x))
+            .collect::<Vec<_>>();
+        defenders.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+
         let war = War {
             name: String::from(war.name),
             start_date: start.iso_8601().to_string(),
@@ -1669,13 +1683,13 @@ impl SaveFileImpl {
                 original: war.original_attacker,
                 original_name: save_game_query.localize_country(&war.original_attacker),
                 losses: attacker_losses,
-                members: attackers.iter().map(|&&x| x).collect(),
+                members: attackers,
             },
             defenders: WarSide {
                 original: war.original_defender,
                 original_name: save_game_query.localize_country(&war.original_defender),
                 losses: defender_losses,
-                members: defenders.iter().map(|&&x| x).collect(),
+                members: defenders,
             },
         };
 

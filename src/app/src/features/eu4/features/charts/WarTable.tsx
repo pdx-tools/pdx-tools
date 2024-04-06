@@ -23,6 +23,31 @@ interface WarTableData extends War {
   defenders: WarSideData;
 }
 
+function FlagColumn({ data }: { data: WarSideData }) {
+  return (
+    <Flag tag={data.original} name={data.original_name}>
+      <Flag.CountryName />
+      <div className="flex gap-2 items-start">
+        <Flag.Tooltip asChild showName>
+          <Flag.DrawerTrigger>
+            <Flag.Image />
+          </Flag.DrawerTrigger>
+        </Flag.Tooltip>
+
+        <div className="flex flex-wrap w-20">
+          {data.members.slice(0, 30).map((x) => (
+            <Flag tag={x.tag} key={x.tag} name={x.name}>
+              <Flag.Tooltip showName>
+                <Flag.Image size="xs" />
+              </Flag.Tooltip>
+            </Flag>
+          ))}
+        </div>
+      </div>
+    </Flag>
+  );
+}
+
 const columnHelper = createColumnHelper<WarTableData>();
 const columns = [
   columnHelper.display({
@@ -65,42 +90,14 @@ const columns = [
 
   columnHelper.accessor("attackers.original", {
     header: "Attackers",
-    cell: (info) => {
-      const additional = info.row.original.attackers.members.length - 1;
-      const elem =
-        additional == 0 ? null : (
-          <span className="block">{`+ ${additional}`}</span>
-        );
-      return (
-        <>
-          <Flag
-            tag={info.getValue()}
-            name={info.row.original.attackers.original_name}
-          />
-          {elem}
-        </>
-      );
-    },
+    cell: (info) => <FlagColumn data={info.row.original.attackers} />,
+    meta: { className: "align-top" },
   }),
 
   columnHelper.accessor("defenders.original", {
     header: "Defenders",
-    cell: (info) => {
-      const additional = info.row.original.defenders.members.length - 1;
-      const elem =
-        additional == 0 ? null : (
-          <span className="block">{`+ ${additional}`}</span>
-        );
-      return (
-        <>
-          <Flag
-            tag={info.getValue()}
-            name={info.row.original.defenders.original_name}
-          />
-          {elem}
-        </>
-      );
-    },
+    cell: (info) => <FlagColumn data={info.row.original.defenders} />,
+    meta: { className: "align-top" },
   }),
 
   columnHelper.accessor("battles", {
@@ -207,12 +204,12 @@ export const WarTable = () => {
           ...x,
           attacker_main: x.attackers.original,
           attacker_main_name: x.attackers.original_name,
-          attacker_members: `"{${x.attackers.members.join(",")}}"`,
+          attacker_members: `"{${x.attackers.members.map((y) => y.tag).join(",")}}"`,
           attacker_battle_losses: x.attackers.losses.totalBattle,
           attacker_attrition_losses: x.attackers.losses.totalAttrition,
           defender_main: x.defenders.original,
           defender_main_name: x.defenders.original_name,
-          defender_members: `"{${x.defenders.members.join(",")}}"`,
+          defender_members: `"{${x.defenders.members.map((y) => y.tag).join(",")}}"`,
           defender_battle_losses: x.defenders.losses.totalBattle,
           defender_attrition_losses: x.defenders.losses.totalAttrition,
         }));

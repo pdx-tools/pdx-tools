@@ -383,15 +383,7 @@ const CountryHistoryCard = ({
                       losses={expandLosses(evt.event.attacker_losses)}
                     />
                   ) : null}
-                  <div className="flex flex-wrap w-44">
-                    {evt.event.attackers.map((x) => (
-                      <Flag key={x.tag} name={x.name} tag={x.tag}>
-                        <Flag.Tooltip showName>
-                          <Flag.Image size="xs" />
-                        </Flag.Tooltip>
-                      </Flag>
-                    ))}
-                  </div>
+                  <FlagList flags={evt.event.attackers} />
                 </div>
                 <div>
                   <div className="text-sm font-semibold">Defenders</div>
@@ -400,15 +392,7 @@ const CountryHistoryCard = ({
                       losses={expandLosses(evt.event.defender_losses)}
                     />
                   ) : null}
-                  <div className="flex flex-wrap w-44">
-                    {evt.event.defenders.map((x) => (
-                      <Flag key={x.tag} name={x.name} tag={x.tag}>
-                        <Flag.Tooltip showName>
-                          <Flag.Image size="xs" />
-                        </Flag.Tooltip>
-                      </Flag>
-                    ))}
-                  </div>
+                  <FlagList flags={evt.event.defenders} />
                 </div>
                 {evt.event.is_active ? (
                   <div>
@@ -539,6 +523,30 @@ const CountryHistoryCard = ({
       );
   }
 };
+
+function FlagList({ flags }: { flags: LocalizedTag[] }) {
+  const first = flags[0];
+
+  return (
+    <div className="flex gap-2 items-start">
+      <Flag key={first.tag} name={first.name} tag={first.tag}>
+        <Flag.Tooltip showName>
+          <Flag.Image size="small" />
+        </Flag.Tooltip>
+      </Flag>
+
+      <div className="flex flex-wrap w-44">
+        {flags.slice(1).map((x) => (
+          <Flag key={x.tag} name={x.name} tag={x.tag}>
+            <Flag.Tooltip showName>
+              <Flag.Image size="xs" />
+            </Flag.Tooltip>
+          </Flag>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function ProvinceChanges({
   provinces,

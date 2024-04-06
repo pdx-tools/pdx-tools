@@ -988,41 +988,55 @@ pub fn translate_building_images(
 }
 
 pub fn translate_flags(tmp_game_dir: &Path, options: &PackageOptions) -> anyhow::Result<()> {
+    if !options.common {
+        return Ok(());
+    }
+
     let base_flag_path = Path::new("assets/game/eu4/common/images/flags");
     std::fs::create_dir_all(&base_flag_path)?;
 
+    let flag_data_file = std::fs::File::create(base_flag_path.join("flags.json"))?;
+    let mut flag_json = BufWriter::new(flag_data_file);
+    flag_json.write_all(&b"{\n"[..])?;
+
     let tmp_flags = WalkDir::new(tmp_game_dir.join("gfx").join("flags"))
+        .sort_by_file_name()
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|x| !x.path().is_dir());
 
-    for flag in tmp_flags {
-        let file_path = flag.path();
-        let file_stem = file_path.file_stem().unwrap();
-        let mut end_filename = file_stem.to_os_string();
-        end_filename.push(".png");
-        let out_path = base_flag_path.join(&end_filename);
+    let mut cmd = Command::new("montage");
+    cmd.arg("-background")
+        .arg("white")
+        .arg("-alpha")
+        .arg("Off")
+        .arg("-auto-orient")
+        .arg("-geometry") // flag images are mostly 128x128 but there are a
+        .arg("64x64+0+0") // few 256x256, and 48x48 is max flag avatar size
+        .arg("-quality")
+        .arg("90");
 
-        if (out_path.exists() && !options.regen) || !options.common {
-            continue;
+    for (i, flag) in tmp_flags.enumerate() {
+        let file_stem = flag.path().file_stem().unwrap();
+        if i != 0 {
+            flag_json.write_all(&b","[..])?;
         }
 
-        let child = Command::new("convert")
-            .arg(file_path)
-            .arg("-alpha")
-            .arg("Off")
-            .arg("-auto-orient")
-            .arg(&out_path)
-            .output()?;
+        let tag = file_stem.to_str().unwrap();
+        write!(flag_json, "\"{}\":{}", tag, i)?;
+        cmd.arg(flag.path());
+    }
+    flag_json.write_all(&b"\n}"[..])?;
+    flag_json.flush()?;
 
-        if !child.status.success() {
-            bail!(
-                "Flag convert failed with: {}",
-                String::from_utf8_lossy(&child.stderr)
-            );
-        }
+    cmd.arg(base_flag_path.join("flags.webp"));
+    let child = cmd.output()?;
 
-        optimize_png(&out_path)?;
+    if !child.status.success() {
+        bail!(
+            "Flag convert failed with: {}",
+            String::from_utf8_lossy(&child.stderr)
+        );
     }
     Ok(())
 }
