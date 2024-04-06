@@ -5,7 +5,6 @@ import { DlcList } from "@/features/eu4/components/dlc-list";
 import { TagTransition } from "@/features/eu4/types/models";
 import { AchievementAvatar, Flag } from "@/features/eu4/components/avatars";
 import { Aar } from "./Aar";
-import { FlipBook, StringFlipBook } from "../../components/flip-book";
 import { ModList } from "./ModList";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { useEu4Worker, Eu4Worker } from "@/features/eu4/worker";
@@ -28,18 +27,11 @@ import { Link } from "@/components/Link";
 import { EyeIcon } from "@heroicons/react/24/outline";
 import { formatInt } from "@/lib/format";
 import { Card } from "@/components/Card";
-
-const TagDescription = (play: TagTransition) => {
-  return (
-    <div className="flex flex-col items-start">
-      <Flag tag={play.tag} name={play.name}>
-        <Flag.Image size="large" />
-      </Flag>
-      <div>{play.name}</div>
-      <div>{play.date}</div>
-    </div>
-  );
-};
+import {
+  GreatPower,
+  PlayerHistory,
+} from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+import { findMap } from "@/lib/findMap";
 
 const playerHistoriesFn = (worker: Eu4Worker) => worker.eu4GetPlayerHistories();
 const luckyCountriesFn = (worker: Eu4Worker) => worker.eu4GetLuckyCountries();
@@ -54,25 +46,22 @@ export const InfoDrawer = () => {
   const luckyCountries = useEu4Worker(luckyCountriesFn);
   const greatPowers = useEu4Worker(greatPowersFn);
   const sideBarContainerRef = useSideBarContainerRef();
-  const [filteredTag, setFilteredTag] = useState<string | undefined>(undefined);
-  const { updateTagFilter } = useEu4Actions();
   const session = pdxApi.session.useCurrent();
   const isPrivileged = sessionSelect.isPrivileged(session, {
     user_id: serverFile?.user_id,
   });
 
-  const visibleTag = async (tag: string) => {
-    if (tag === filteredTag) {
-      updateTagFilter(initialEu4CountryFilter);
-      setFilteredTag(undefined);
-    } else {
-      updateTagFilter({
-        ...emptyEu4CountryFilter,
-        include: [tag],
-      });
-      setFilteredTag(tag);
-    }
-  };
+  const players = playerHistories.data
+    ?.map((x) => ({
+      ...x,
+      greatPower: findMap(greatPowers.data ?? [], (p, i) =>
+        p.country.tag === x.latest ? ([p, i] as const) : undefined,
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        (a.greatPower?.[1] ?? Infinity) - (b.greatPower?.[1] ?? Infinity),
+    );
 
   const version = meta.savegame_version;
   const patch = `${version.first}.${version.second}.${version.third}.${version.fourth}`;
@@ -157,65 +146,7 @@ export const InfoDrawer = () => {
       <Divider>Countries</Divider>
       <Alert.Error msg={playerHistories.error} />
       <div className="grid gap-8 md:grid-cols-2">
-        {playerHistories.data?.map((item) => (
-          <Card
-            variant={item.annexed || !item.is_human ? "ghost" : "default"}
-            key={item.latest}
-            className={cx(
-              "space-y-5 p-4",
-              item.annexed && "bg-rose-100 dark:bg-rose-900 saturate-50",
-              !item.is_human &&
-                !item.annexed &&
-                "bg-gray-100 dark:bg-slate-800 saturate-50",
-            )}
-          >
-            <div className="flex">
-              <Flag tag={item.latest} name={item.name} size="large" />
-              <div className="flex grow items-center justify-end">
-                {!item.annexed && (
-                  <IconButton
-                    shape="square"
-                    icon={<EyeIcon className="h-5 w-5" />}
-                    tooltip={`Show only ${item.name} on the map`}
-                    onClick={() => {
-                      visibleTag(item.latest);
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-            <div className="border border-solid border-gray-200 dark:border-gray-600"></div>
-            <table className="w-full">
-              <tbody>
-                <tr>
-                  <td className="w-20 py-1">
-                    {item.annexed ? "Annexed:" : "Status:"}
-                  </td>
-                  <td className="py-1">
-                    {item.annexed ?? (item.is_human ? "online" : "offline")}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="w-20 py-1">
-                    Player{item.player_names.length == 1 ? "" : "s"}:
-                  </td>
-                  <td className="py-1">
-                    <StringFlipBook items={item.player_names} />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="w-20 py-1">History:</td>
-                  <td className="py-1">
-                    <FlipBook
-                      items={item.transitions}
-                      itemRender={(play) => <TagDescription {...play} />}
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </Card>
-        ))}
+        {players?.map((item, i) => <CountryCard key={i} item={item} />)}
       </div>
 
       <Alert.Error msg={greatPowers.error} />
@@ -286,3 +217,118 @@ export const InfoDrawer = () => {
     </div>
   );
 };
+
+function CountryCard({
+  item,
+}: {
+  item: PlayerHistory & {
+    greatPower: readonly [GreatPower, number] | undefined;
+  };
+}) {
+  const [filteredTag, setFilteredTag] = useState<string | undefined>(undefined);
+  const { updateTagFilter } = useEu4Actions();
+
+  const visibleTag = async (tag: string) => {
+    if (tag === filteredTag) {
+      updateTagFilter(initialEu4CountryFilter);
+      setFilteredTag(undefined);
+    } else {
+      updateTagFilter({
+        ...emptyEu4CountryFilter,
+        include: [tag],
+      });
+      setFilteredTag(tag);
+    }
+  };
+
+  return (
+    <Card
+      variant={item.annexed || !item.is_human ? "ghost" : "default"}
+      key={item.latest}
+      className={cx(
+        "space-y-5 p-4",
+        item.annexed && "bg-rose-100 dark:bg-rose-900 saturate-50",
+        !item.is_human &&
+          !item.annexed &&
+          "bg-gray-100 dark:bg-slate-800 saturate-50",
+      )}
+    >
+      <div className="flex">
+        <Flag tag={item.latest} name={item.name}>
+          <Flag.DrawerTrigger className="gap-2 pr-4">
+            <Flag.Image size="large" />
+            <div className="flex flex-col items-start">
+              <Flag.CountryName />
+              <span className="font-semibold text-xs text-gray-400/75">
+                {item.player_names[0]}
+              </span>
+            </div>
+          </Flag.DrawerTrigger>
+        </Flag>
+        <div className="flex grow items-center justify-end gap-2">
+          {item.greatPower && (
+            <Tooltip>
+              <Tooltip.Trigger>(#{item.greatPower[1] + 1})</Tooltip.Trigger>
+              <Tooltip.Content>
+                Great power score: {formatInt(item.greatPower[0].score)}
+              </Tooltip.Content>
+            </Tooltip>
+          )}
+          {!item.annexed && (
+            <IconButton
+              shape="square"
+              icon={<EyeIcon className="h-5 w-5" />}
+              tooltip={`Show only ${item.name} on the map`}
+              onClick={() => {
+                visibleTag(item.latest);
+              }}
+            />
+          )}
+        </div>
+      </div>
+
+      {item.transitions.length > 1 ||
+      item.annexed ||
+      item.player_names.length > 1 ? (
+        <div className="border border-solid border-gray-200 dark:border-gray-600"></div>
+      ) : null}
+
+      {item.player_names.length > 1 ? (
+        <div className="flex flex-col">
+          <p className="font-semibold grow">Players:</p>
+          <div className="max-h-24 overflow-y-auto">
+            {item.player_names.map((x, i) => (
+              <div key={i}>{x}</div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {item.transitions.length > 1 || item.annexed ? (
+        <div className="flex flex-col gap-1">
+          <div className="flex">
+            <p className="font-semibold grow">History:</p>
+            <p className="font-semibold">Date</p>
+          </div>
+          <div className="max-h-24 overflow-y-auto">
+            {item.transitions.map((x, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <Flag name={x.name} tag={x.tag}>
+                  <Flag.Image size="xs" />
+                  <Flag.CountryName className="grow" />
+                </Flag>
+                <span>{i !== 0 ? x.date : null}</span>
+              </div>
+            ))}
+            {item.annexed ? (
+              <div className="flex">
+                <span className="grow pl-7">Annexed</span>
+                <span>{item.annexed}</span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </Card>
+  );
+}

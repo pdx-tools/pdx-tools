@@ -656,7 +656,6 @@ impl SaveFileImpl {
             .query
             .countries()
             .filter(|x| x.country.num_of_cities > 0)
-            .filter(|x| x.country.is_great_power)
             .map(|x| GreatPower {
                 country: self.localize_tag(x.tag),
                 score: x.country.great_power_score,
