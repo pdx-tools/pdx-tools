@@ -126,11 +126,14 @@ function sizeFactor(size?: AvatarSize): number {
 }
 
 let dimensions: SpriteDimension | undefined;
+let data: any;
 
 const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
   // The imports in here are lazy so that they don't fail dev
   // for those that don't have EU4 assets
-  const data = require(`@/images/eu4/flags/flags.json`);
+  data ??= require(`@/images/eu4/flags/flags.json`);
+  dimensions ??= spriteDimension({ data });
+
   const index = data[tag];
   const factor = sizeFactor(size);
 
@@ -155,10 +158,6 @@ const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
       />
     );
   } else {
-    if (dimensions === undefined) {
-      dimensions = spriteDimension({ data });
-    }
-
     return (
       <Sprite
         src={require(`@/images/eu4/flags/flags.webp`)}

@@ -722,6 +722,7 @@ fn generate_advisors(
     options: &PackageOptions,
 ) -> anyhow::Result<HashMap<String, String>> {
     let persons = WalkDir::new(tmp_game_dir.join("common").join("advisortypes"))
+        .sort_by_file_name()
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|x| !x.path().is_dir());
@@ -736,32 +737,54 @@ fn generate_advisors(
 
         for advisor in advise.keys() {
             advisors.push((advisor.clone(), localization.get(advisor).unwrap().clone()));
+        }
+    }
 
-            let out_path = out_dir.join(&advisor).with_extension("png");
+    if options.common {
+        let advisor_data_file = std::fs::File::create(out_dir.join("advisors.json"))?;
+        let mut advisor_json = BufWriter::new(advisor_data_file);
+        advisor_json.write_all(&b"{\n"[..])?;
+
+        let cols = (advisors.len() as f64).sqrt().ceil();
+        let mut cmd = Command::new("montage");
+        cmd.arg("-background")
+            .arg("transparent")
+            .arg("-mode")
+            .arg("concatenate")
+            .arg("-tile")
+            .arg(&format!("{cols}x"))
+            .arg("-geometry")
+            .arg("64x64")
+            .arg("-quality")
+            .arg("90");
+
+        for (i, (advisor, _)) in advisors.iter().enumerate() {
+            if i != 0 {
+                advisor_json.write_all(&b","[..])?;
+            }
+            write!(advisor_json, "\"{}\":{}", advisor, i)?;
+
             let actual_path = tmp_game_dir
                 .join("gfx")
                 .join("interface")
                 .join("advisors")
-                .join(&advisor)
+                .join(advisor)
                 .with_extension("dds");
+            cmd.arg(&actual_path);
+        }
 
-            if (out_path.exists() && !options.regen) || !options.common {
-                continue;
-            }
+        advisor_json.write_all(&b"\n}"[..])?;
+        advisor_json.flush()?;
 
-            let child = Command::new("convert")
-                .arg(actual_path)
-                .arg(&out_path)
-                .output()?;
+        let out_path = out_dir.join("advisors.webp");
+        cmd.arg(&out_path);
+        let child = cmd.output()?;
 
-            if !child.status.success() {
-                bail!(
-                    "image convert failed with: {}",
-                    String::from_utf8_lossy(&child.stderr)
-                );
-            }
-
-            optimize_png(&out_path)?;
+        if !child.status.success() {
+            bail!(
+                "Advisor convert failed with: {}",
+                String::from_utf8_lossy(&child.stderr)
+            );
         }
     }
 

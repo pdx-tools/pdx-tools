@@ -19,7 +19,8 @@ export const AdvisorAvatar = ({
     <AdvisorImage
       id={localized.id}
       alt=""
-      className={cx("h-12 w-12", !enabled && "grayscale")}
+      size={48}
+      className={cx(!enabled && "grayscale")}
     />
   );
   if (image === null) {

@@ -229,11 +229,7 @@ const CountryHistoryCard = ({
             <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
-            <AdvisorImage
-              id={evt.event.occupation.id}
-              className="h-8 w-8"
-              alt=""
-            />
+            <AdvisorImage id={evt.event.occupation.id} size={32} alt="" />
             <p>{evt.event.occupation.name} great advisor event</p>
           </div>
         </Card>

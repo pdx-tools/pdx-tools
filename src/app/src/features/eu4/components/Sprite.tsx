@@ -22,13 +22,18 @@ type SpriteProps = {
   height: number;
   dimensions: SpriteDimension;
   ariaLabel?: string;
+  className?: string;
 };
 
 export const Sprite = React.forwardRef<HTMLDivElement, SpriteProps>(
-  function Sprite({ src, index, width, height, dimensions, ariaLabel }, ref) {
+  function Sprite(
+    { src, index, width, height, dimensions, ariaLabel, ...props },
+    ref,
+  ) {
     const { row, col } = dimensions.coordinates(index);
     return (
       <div
+        {...props}
         ref={ref}
         role={ariaLabel ? "img" : "presentation"}
         aria-label={ariaLabel}
