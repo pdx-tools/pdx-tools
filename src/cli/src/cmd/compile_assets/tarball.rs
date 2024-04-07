@@ -650,7 +650,7 @@ fn generate_ruler_personalities(
     let out_dir = Path::new("assets/game/eu4/common/images/personalities");
     fs::create_dir_all(&out_dir)?;
 
-    let mut personalities: HashSet<String> = HashSet::new();
+    let mut personalities: HashMap<String, PathBuf> = HashMap::new();
     for person_file in persons {
         let data = fs::read(person_file.path())?;
         let parsed_persons = personalities::personalities(&data[..]);
@@ -684,32 +684,55 @@ fn generate_ruler_personalities(
                     anyhow::anyhow!("unable to find personality image for {}", &personality)
                 })?;
 
-            let out_path = out_dir.join(&personality).with_extension("png");
-            personalities.insert(personality);
+            personalities.insert(personality, actual_trait);
+        }
+    }
 
-            if (out_path.exists() && !options.regen) || !options.common {
-                continue;
+    if options.common {
+        let personality_data_file = std::fs::File::create(out_dir.join("advisors.json"))?;
+        let mut personality_json = BufWriter::new(personality_data_file);
+        personality_json.write_all(&b"{\n"[..])?;
+
+        let mut personalities_order = personalities.iter().collect::<Vec<_>>();
+        personalities_order.sort_unstable();
+
+        let cols = (personalities_order.len() as f64).sqrt().ceil();
+        let mut cmd = Command::new("montage");
+        cmd.arg("-background")
+            .arg("transparent")
+            .arg("-mode")
+            .arg("concatenate")
+            .arg("-tile")
+            .arg(&format!("{cols}x"))
+            .arg("-quality")
+            .arg("90");
+
+        for (i, (personality, path)) in personalities_order.iter().enumerate() {
+            if i != 0 {
+                personality_json.write_all(&b","[..])?;
             }
+            write!(personality_json, "\"{}\":{}", personality, i)?;
 
-            let child = Command::new("convert")
-                .arg(actual_trait)
-                .arg(&out_path)
-                .output()?;
+            cmd.arg(path);
+        }
 
-            if !child.status.success() {
-                bail!(
-                    "image convert failed with: {}",
-                    String::from_utf8_lossy(&child.stderr)
-                );
-            }
+        personality_json.write_all(&b"\n}"[..])?;
+        personality_json.flush()?;
 
-            optimize_png(&out_path)?;
+        cmd.arg(out_dir.join("personalities.webp"));
+        let child = cmd.output()?;
+
+        if !child.status.success() {
+            bail!(
+                "Personalities convert failed with: {}",
+                String::from_utf8_lossy(&child.stderr)
+            );
         }
     }
 
     let translate: HashMap<_, _> = localization
         .iter()
-        .filter(|(k, _v)| personalities.contains(*k))
+        .filter(|(k, _v)| personalities.contains_key(*k))
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
 
@@ -741,7 +764,7 @@ fn generate_advisors(
     }
 
     if options.common {
-        let advisor_data_file = std::fs::File::create(out_dir.join("advisors.json"))?;
+        let advisor_data_file = std::fs::File::create(out_dir.join("personalities.json"))?;
         let mut advisor_json = BufWriter::new(advisor_data_file);
         advisor_json.write_all(&b"{\n"[..])?;
 
