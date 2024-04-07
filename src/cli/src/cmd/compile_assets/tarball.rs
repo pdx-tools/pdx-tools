@@ -1012,11 +1012,18 @@ pub fn translate_building_images(
     tmp_game_dir: &Path,
     options: &PackageOptions,
 ) -> anyhow::Result<()> {
+    if !options.common {
+        return Ok(());
+    }
+
     let base_path = Path::new("assets/game/eu4/common/images/buildings");
     std::fs::create_dir_all(&base_path)?;
 
     let data = fs::read(tmp_game_dir.join("interface").join("building_icons.gfx"))?;
     let sprites = sprites::parse_sprites(&data[..]);
+
+    let mut western_buildings = Vec::new();
+    let mut global_buildings = Vec::new();
 
     for sprite in sprites {
         let mut new_name = String::from(sprite.name.get(4..).unwrap());
@@ -1042,9 +1049,6 @@ pub fn translate_building_images(
             new_name = new_name.replace("muslim", "muslimgfx");
         }
 
-        let out_filename = format!("{}.png", new_name);
-        let out_path = base_path.join(out_filename);
-
         let tga_path = image_path.with_extension("tga");
         let dds_path = image_path.with_extension("dds");
         if tga_path.exists() {
@@ -1053,28 +1057,94 @@ pub fn translate_building_images(
             image_path = dds_path;
         }
 
-        if (out_path.exists() && !options.regen) || !options.common {
-            continue;
+        if new_name.ends_with("westerngfx") {
+            western_buildings.push((new_name, image_path))
+        } else if !new_name.ends_with("gfx") {
+            global_buildings.push((new_name, image_path));
         }
+    }
 
-        // Turn alpha off as else buildings like latin_admiralty are converted to
-        // something that is completely transparent
-        let child = Command::new("convert")
-            .arg("-alpha")
-            .arg("Off")
-            .arg("-auto-orient")
-            .arg(image_path)
-            .arg(&out_path)
-            .output()?;
+    let data_file = std::fs::File::create(base_path.join("westerngfx.json"))?;
+    let mut json = BufWriter::new(data_file);
+    json.write_all(&b"{\n"[..])?;
 
-        if !child.status.success() {
-            bail!(
-                "image convert failed with: {}",
-                String::from_utf8_lossy(&child.stderr)
-            );
+    let cols = (western_buildings.len() as f64).sqrt().ceil();
+
+    // Turn alpha off as else buildings like latin_admiralty are converted to
+    // something that is completely transparent
+    let mut cmd = Command::new("montage");
+    cmd.arg("-background")
+        .arg("white")
+        .arg("-alpha")
+        .arg("Off")
+        .arg("-auto-orient")
+        .arg("-mode")
+        .arg("concatenate")
+        .arg("-tile")
+        .arg(&format!("{cols}x"))
+        .arg("-quality")
+        .arg("90");
+
+    for (i, (key, path)) in western_buildings.iter().enumerate() {
+        if i != 0 {
+            json.write_all(&b","[..])?;
         }
+        write!(json, "\"{}\":{}", key, i)?;
 
-        optimize_png(out_path)?;
+        cmd.arg(path);
+    }
+
+    json.write_all(&b"\n}"[..])?;
+    json.flush()?;
+
+    cmd.arg(base_path.join("westerngfx.webp"));
+    let child = cmd.output()?;
+
+    if !child.status.success() {
+        bail!(
+            "buildings convert failed with: {}",
+            String::from_utf8_lossy(&child.stderr)
+        );
+    }
+
+    let data_file = std::fs::File::create(base_path.join("global.json"))?;
+    let mut json = BufWriter::new(data_file);
+    json.write_all(&b"{\n"[..])?;
+
+    let cols = (global_buildings.len() as f64).sqrt().ceil();
+    let mut cmd = Command::new("montage");
+    cmd.arg("-background")
+        .arg("white")
+        .arg("-alpha")
+        .arg("Off")
+        .arg("-auto-orient")
+        .arg("-mode")
+        .arg("concatenate")
+        .arg("-tile")
+        .arg(&format!("{cols}x"))
+        .arg("-quality")
+        .arg("90");
+
+    for (i, (key, path)) in global_buildings.iter().enumerate() {
+        if i != 0 {
+            json.write_all(&b","[..])?;
+        }
+        write!(json, "\"{}\":{}", key, i)?;
+
+        cmd.arg(path);
+    }
+
+    json.write_all(&b"\n}"[..])?;
+    json.flush()?;
+
+    cmd.arg(base_path.join("global.webp"));
+    let child = cmd.output()?;
+
+    if !child.status.success() {
+        bail!(
+            "buildings convert failed with: {}",
+            String::from_utf8_lossy(&child.stderr)
+        );
     }
 
     Ok(())
