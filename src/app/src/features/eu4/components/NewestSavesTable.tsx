@@ -79,7 +79,7 @@ const columns = [
       <ul className="flex space-x-1">
         {info.row.original.achievements.map((x) => (
           <li className="flex" key={x}>
-            <AchievementAvatar id={x} className="h-10 w-10 shrink-0" />
+            <AchievementAvatar size={40} id={x} className="shrink-0" />
           </li>
         ))}
       </ul>

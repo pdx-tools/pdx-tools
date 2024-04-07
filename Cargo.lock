@@ -1976,6 +1976,7 @@ dependencies = [
  "csv",
  "env_logger",
  "eu4game",
+ "eu4game-data",
  "eu4save",
  "filetime",
  "flate2",

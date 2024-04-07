@@ -125,7 +125,7 @@ export const InfoDrawer = () => {
                 {achievements.achievements.map((x) => (
                   <Tooltip key={x.id}>
                     <Tooltip.Trigger className="flex">
-                      <AchievementAvatar className="h-10 w-10" id={x.id} />
+                      <AchievementAvatar size={40} id={x.id} />
                     </Tooltip.Trigger>
                     <Tooltip.Content>{x.name}</Tooltip.Content>
                   </Tooltip>

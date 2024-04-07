@@ -20,7 +20,8 @@ const columns = [
     cell: (info) => (
       <div className="flex items-center space-x-2">
         <AchievementAvatar
-          className="h-16 w-16 flex-shrink-0"
+          size={64}
+          className="flex-shrink-0"
           id={info.row.original.id}
         />
         <div className="flex flex-col space-y-2">

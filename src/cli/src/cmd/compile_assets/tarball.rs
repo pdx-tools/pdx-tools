@@ -905,34 +905,81 @@ pub fn translate_achievements_images(
     tmp_game_dir: &Path,
     options: &PackageOptions,
 ) -> anyhow::Result<()> {
+    if !options.common {
+        return Ok(());
+    }
+
     let base_achievement_path = Path::new("assets/game/eu4/common/images/achievements");
     std::fs::create_dir_all(&base_achievement_path)?;
 
+    let additional_achievement_entries = WalkDir::new(base_achievement_path)
+        .sort_by_file_name()
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|x| !x.path().is_dir())
+        .filter(|x| {
+            x.path()
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("png"))
+        })
+        .filter_map(|x| {
+            let name = x.path().file_stem()?.to_str()?;
+            let id = name.parse::<i32>().unwrap();
+            Some((id, x.into_path()))
+        });
+
+    let achievements_data_file =
+        std::fs::File::create(base_achievement_path.join("achievements.json"))?;
+    let mut achievements_json = BufWriter::new(achievements_data_file);
+    achievements_json.write_all(&b"{\n"[..])?;
+
     let achievements_gfx_data = fs::read(tmp_game_dir.join("interface").join("achievements.gfx"))?;
-    let achieves = achievements::achievement_images(&achievements_gfx_data[..]);
+    let achievement_paths = achievements::achievement_images(&achievements_gfx_data[..]);
+    let achievement_data = eu4game_data::achievements();
+    let achieves = achievement_data
+        .iter()
+        .filter_map(|x| {
+            achievement_paths
+                .get(&x.id)
+                .map(|path| (x.id, tmp_game_dir.join(path)))
+        })
+        .chain(additional_achievement_entries)
+        .collect::<Vec<_>>();
+    let cols = (achieves.len() as f64).sqrt().ceil();
 
-    for (id, path) in achieves {
-        let achieve_path = tmp_game_dir.join(&path);
-        let out_filename = format!("{}.png", id);
-        let out_path = base_achievement_path.join(out_filename);
+    let mut cmd = Command::new("montage");
+    cmd.arg("-background")
+        .arg("transparent")
+        .arg("-mode")
+        .arg("concatenate")
+        .arg("-tile")
+        .arg(&format!("{cols}x"))
+        .arg("-geometry")
+        .arg("64x64")
+        .arg("-quality")
+        .arg("90");
 
-        if (out_path.exists() && !options.regen) || !options.common {
-            continue;
+    for (i, (achievement, path)) in achieves.iter().enumerate() {
+        if i != 0 {
+            achievements_json.write_all(&b","[..])?;
         }
+        write!(achievements_json, "\"{}\":{}", achievement, i)?;
 
-        let child = Command::new("convert")
-            .arg(achieve_path)
-            .arg(&out_path)
-            .output()?;
+        cmd.arg(path);
+    }
 
-        if !child.status.success() {
-            bail!(
-                "Achievement convert failed with: {}",
-                String::from_utf8_lossy(&child.stderr)
-            );
-        }
+    achievements_json.write_all(&b"\n}"[..])?;
+    achievements_json.flush()?;
 
-        optimize_png(&out_path)?;
+    cmd.arg(base_achievement_path.join("achievements.webp"));
+
+    let child = cmd.output()?;
+
+    if !child.status.success() {
+        bail!(
+            "Achievement montage failed with: {}",
+            String::from_utf8_lossy(&child.stderr)
+        );
     }
 
     Ok(())
