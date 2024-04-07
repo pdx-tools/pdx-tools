@@ -3,7 +3,6 @@ import { CountryDetails } from "../../types/models";
 import { Eu4Worker, useEu4Worker } from "../../worker";
 import { Alert } from "@/components/Alert";
 import { formatFloat, formatInt } from "@/lib/format";
-import { cx } from "class-variance-authority";
 import { InstitutionCost } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";

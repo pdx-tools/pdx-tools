@@ -16,6 +16,7 @@ import { CountriesIncomeTable } from "./CountriesIncomeTable";
 import { CountriesTotalExpensesTable } from "./CountriesTotalExpensesTable";
 import { GeographicalDevelopmentTree } from "./GeographicalDevelopmentTree";
 import { OwnedDevelopmentStatesTree } from "./OwnedDevelopmentStatesTree";
+import { ProvinceDataTable } from "./ProvinceDataTable";
 
 interface VizRendererProps {
   module: VizModules;
@@ -51,5 +52,7 @@ export const VizRenderer = ({ module }: VizRendererProps): JSX.Element => {
       return <GeographicalDevelopmentTree />;
     case "owned-development-states":
       return <OwnedDevelopmentStatesTree />;
+    case "provinces":
+      return <ProvinceDataTable />;
   }
 };

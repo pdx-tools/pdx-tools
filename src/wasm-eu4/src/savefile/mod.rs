@@ -761,6 +761,33 @@ impl SaveFileImpl {
         }
     }
 
+    pub fn get_provinces(&self) -> Vec<ProvinceItem> {
+        self.query
+            .save()
+            .game
+            .provinces
+            .iter()
+            .filter_map(|(id, prov)| prov.owner.as_ref().map(|owner| (id, prov, owner)))
+            .map(|(id, prov, owner)| ProvinceItem {
+                id: *id,
+                name: prov.name.clone(),
+                owner: self.localize_tag(*owner),
+                tax: prov.base_tax,
+                production: prov.base_production,
+                manpower: prov.base_manpower,
+                development: prov.base_tax + prov.base_production + prov.base_manpower,
+                expand_infrastructure: prov.expand_infrastructure,
+                num_centralized_state: prov.num_centralize_state,
+                religion: prov.religion.clone(),
+                culture: prov.culture.clone(),
+                devastation: prov.devastation,
+                exploit_date: prov.exploit_date,
+                in_hre: prov.hre,
+                trade_goods: prov.trade_goods.clone(),
+            })
+            .collect()
+    }
+
     pub fn get_health(&self, payload: TagFilterPayloadRaw) -> HealthData {
         struct CountryHealthDatum {
             tag: CountryTag,

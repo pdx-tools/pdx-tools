@@ -12,4 +12,5 @@ export type VizModules =
   | "navy-casualties"
   | "wars"
   | "geographical-development"
-  | "owned-development-states";
+  | "owned-development-states"
+  | "provinces";

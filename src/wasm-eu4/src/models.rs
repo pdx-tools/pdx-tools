@@ -8,7 +8,8 @@ use tsify::Tsify;
 use crate::savefile::{
     CountryCasualties, CountryCulture, CountryInfo, CountryLeader, CountryStateDetails, Estate,
     GreatPower, IdeaGroup, LocalizedCountryExpense, LocalizedCountryIncome, LocalizedTag,
-    OwnedDevelopmentStates, PlayerHistory, RunningMonarch, SingleCountryWarCasualties, War,
+    OwnedDevelopmentStates, PlayerHistory, ProvinceItem, RunningMonarch,
+    SingleCountryWarCasualties, War,
 };
 
 /// Looks like bindgen doesn't include generics in the typescript signature
@@ -54,3 +55,4 @@ wasm_wrapper!(IdeaGroups, Vec<IdeaGroup>);
 wasm_wrapper!(MetaRef, &'static eu4save::models::Meta);
 wasm_wrapper!(OptionalCountryTag, Option<CountryTag>);
 wasm_wrapper!(StaticMap, HashMap<&'static str, &'static str>);
+wasm_wrapper!(ProvinceList, Vec<ProvinceItem>);

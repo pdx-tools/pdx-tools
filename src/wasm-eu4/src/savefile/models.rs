@@ -66,6 +66,26 @@ pub struct ProvinceDetails {
     pub history: Vec<ProvinceHistoryEvent>,
 }
 
+#[derive(Tsify, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ProvinceItem {
+    pub id: ProvinceId,
+    pub name: String,
+    pub owner: LocalizedTag,
+    pub tax: f32,
+    pub production: f32,
+    pub manpower: f32,
+    pub development: f32,
+    pub expand_infrastructure: i32,
+    pub num_centralized_state: i32,
+    pub religion: Option<String>,
+    pub culture: Option<String>,
+    pub trade_goods: Option<String>,
+    pub devastation: f32,
+    pub exploit_date: Option<Eu4Date>,
+    pub in_hre: bool,
+}
+
 #[derive(Tsify, Serialize, Deserialize, Debug)]
 pub struct MapAreaDetails {
     pub area_id: String,

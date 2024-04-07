@@ -238,6 +238,10 @@ export function eu4GetAnnualInflationData(
   return workLedgerData(data);
 }
 
+export function eu4GetProvinces() {
+  return wasm.save.get_provinces();
+}
+
 export function eu4GetHealth(filter: CountryMatcher): HealthData {
   return wasm.save.get_health(filter);
 }

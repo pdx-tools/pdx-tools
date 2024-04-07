@@ -111,6 +111,7 @@ export const ChartDrawerTitle = ({
             <Select.Item value="total-expense-table">
               Accumulated Expenses
             </Select.Item>
+            <Select.Item value="provinces">Provinces</Select.Item>
           </Select.Group>
           <Select.Group>
             <Select.Label>Other</Select.Label>

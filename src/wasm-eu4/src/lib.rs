@@ -3,8 +3,8 @@ use crate::{
         CountriesCasualties, CountriesExpenses, CountriesIncome, CountryCultures, CountryInfoList,
         CountryLeaders, CountryStateDetailsList, CountryTags, Estates, GreatPowers, I32List,
         IdeaGroups, LocalizedTags, MetaRef, OptionalCountryTag, OwnedDevelopmentStatesList,
-        PlayerHistories, RunningMonarchs, SingleCountryWarCasualtiesList, StaticMap, StringList,
-        Wars,
+        PlayerHistories, ProvinceList, RunningMonarchs, SingleCountryWarCasualtiesList, StaticMap,
+        StringList, Wars,
     },
     savefile::{CountryHistory, CountryInstitution},
 };
@@ -140,6 +140,10 @@ impl SaveFile {
 
     pub fn save_mode(&self) -> SaveMode {
         self.0.save_mode()
+    }
+
+    pub fn get_provinces(&self) -> ProvinceList {
+        self.0.get_provinces().into()
     }
 
     pub fn get_health(&self, payload: TagFilterPayloadRaw) -> HealthData {
