@@ -6,7 +6,7 @@ import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import { Button } from "@/components/Button";
 import { check } from "@/lib/isPresent";
-import { Sprite, spriteDimension } from "../Sprite";
+import { Sprite, SpriteDimension, spriteDimension } from "../Sprite";
 
 type FlagContextState = { name: string; tag: string };
 const FlagContext = createContext<FlagContextState | undefined>(undefined);
@@ -125,7 +125,7 @@ function sizeFactor(size?: AvatarSize): number {
   }
 }
 
-let dimensions: { rows: number; cols: number } | undefined;
+let dimensions: SpriteDimension | undefined;
 
 const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
   // The imports in here are lazy so that they don't fail dev

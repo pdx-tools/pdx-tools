@@ -1,402 +1,282 @@
 import { Tooltip } from "@/components/Tooltip";
-import Image from "next/image";
+import data from "./icons.json";
+import imageUrl from "./icons.webp";
+import React from "react";
+import { spriteDimension } from "../Sprite";
 
 type GameIconProps = {
-  src: string;
+  src: keyof typeof data;
   alt: string;
   height?: number;
   width?: number;
 };
 
+const dimensions = spriteDimension({ data });
+
 const GameIcon = ({ src, alt, height = 27, width = 27 }: GameIconProps) => {
+  const { row, col } = dimensions.coordinates(data[src]);
+  const startx = col * 32;
+  const starty = row * 32;
   return (
     <Tooltip>
       <Tooltip.Trigger className="w-max">
-        <Image
-          style={{ height, width }}
-          src={src}
-          alt={alt}
-          height={height}
-          width={width}
+        <div
+          role={"img"}
+          aria-label={alt}
+          style={{
+            width,
+            height,
+            backgroundImage: `url(${imageUrl})`,
+            backgroundPosition: `-${startx}px -${starty}px`,
+          }}
         />
+        <Tooltip.Content>{alt}</Tooltip.Content>
       </Tooltip.Trigger>
-      <Tooltip.Content>{alt}</Tooltip.Content>
     </Tooltip>
   );
 };
 
-export const PrestigeIcon = () => (
-  <GameIcon src={require("./icon_prestige.png")} alt="Prestige" />
-);
+export const PrestigeIcon = () => <GameIcon src={"prestige"} alt="Prestige" />;
 
 export const StabilityIcon = () => (
-  <GameIcon src={require("./icon_stability.png")} alt="Stability" />
+  <GameIcon src={"stability"} alt="Stability" />
 );
 
 export const CorruptionIcon = () => (
-  <GameIcon src={require("./icon_corruption.png")} alt="Corruption" />
+  <GameIcon src={"corruption"} alt="Corruption" />
 );
 
 export const ProfessionalismIcon = () => (
-  <GameIcon src={require("./icon_professionalism.png")} alt="Professionalism" />
+  <GameIcon src={"professionalism"} alt="Professionalism" />
 );
 
-export const GoldIcon = () => (
-  <GameIcon src={require("./icon_gold.png")} alt="Treasury" />
-);
+export const GoldIcon = () => <GameIcon src={"gold"} alt="Treasury" />;
 
 export const OverextensionIcon = () => (
-  <GameIcon src={require("./icon_overextension.png")} alt="Overextension" />
+  <GameIcon src={"overextension"} alt="Overextension" />
 );
 
-export const DebtIcon = () => (
-  <GameIcon src={require("./icon_debt.png")} alt="Debt" />
-);
+export const DebtIcon = () => <GameIcon src={"debt"} alt="Debt" />;
 
 export const InnovativenessIcon = () => (
-  <GameIcon src={require("./icon_innovativeness.png")} alt="Innovativeness" />
+  <GameIcon src={"innovativeness"} alt="Innovativeness" />
 );
 
 export const InflationIcon = () => (
-  <GameIcon src={require("./icon_inflation.png")} alt="Inflation" />
+  <GameIcon src={"inflation"} alt="Inflation" />
 );
 
 export const InfantryIcon = ({ alt = "Infantry" }: { alt?: string }) => (
-  <GameIcon src={require("./icon_infantry.png")} alt={alt} />
+  <GameIcon src={"infantry"} alt={alt} />
 );
 
-export const CavalryIcon = () => (
-  <GameIcon src={require("./icon_cavalry.png")} alt="Cavalry" />
-);
+export const CavalryIcon = () => <GameIcon src={"cavalry"} alt="Cavalry" />;
 
 export const ArtilleryIcon = () => (
-  <GameIcon src={require("./icon_artillery.png")} alt="Artillery" />
+  <GameIcon src={"artillery"} alt="Artillery" />
 );
 
-export const ManpowerIcon = () => (
-  <GameIcon src={require("./icon_manpower.png")} alt="Manpower" />
-);
+export const ManpowerIcon = () => <GameIcon src={"manpower"} alt="Manpower" />;
 
 export const ArmyTraditionIcon = () => (
-  <GameIcon src={require("./icon_army_tradition.png")} alt="Army Tradition" />
+  <GameIcon src={"army_tradition"} alt="Army Tradition" />
 );
 
 export const NavyTraditionIcon = () => (
-  <GameIcon src={require("./icon_navy_tradition.png")} alt="Navy Tradition" />
+  <GameIcon src={"navy_tradition"} alt="Navy Tradition" />
 );
 
 export const PowerProjectionIcon = () => (
-  <GameIcon
-    src={require("./icon_power_projection.png")}
-    alt="Power Projection"
-  />
+  <GameIcon src={"power_projection"} alt="Power Projection" />
 );
 
 export const ReligiousUnityIcon = () => (
-  <GameIcon src={require("./icon_religious_unity.png")} alt="Religious Unity" />
+  <GameIcon src={"religious_unity"} alt="Religious Unity" />
 );
 
 export const HeavyShipIcon = ({ alt = "Heavy Ships" }: { alt?: string }) => (
-  <GameIcon src={require("./icon_heavy_ship.png")} alt={alt} />
+  <GameIcon src={"heavy_ship"} alt={alt} />
 );
 
 export const LightShipIcon = () => (
-  <GameIcon src={require("./icon_light_ship.png")} alt="Light Ships" />
+  <GameIcon src={"light_ship"} alt="Light Ships" />
 );
 
-export const GalleyIcon = () => (
-  <GameIcon src={require("./icon_galley.png")} alt="Galleys" />
-);
+export const GalleyIcon = () => <GameIcon src={"galley"} alt="Galleys" />;
 
 export const TransportIcon = () => (
-  <GameIcon src={require("./icon_transport.png")} alt="Transports" />
+  <GameIcon src={"transport"} alt="Transports" />
 );
 
-export const RulerIcon = () => (
-  <GameIcon src={require("./icon_ruler.png")} alt="Ruler" />
-);
+export const RulerIcon = () => <GameIcon src={"ruler"} alt="Ruler" />;
 
 export const AdminManaIcon = () => (
-  <GameIcon
-    src={require("./icon_powers_administrative.png")}
-    alt="Admin Mana"
-  />
+  <GameIcon src={"powers_administrative"} alt="Admin Mana" />
 );
 
 export const AdminManaFocusedIcon = () => (
-  <GameIcon
-    src={require("./icon_powers_administrative_focused.png")}
-    alt="Admin Mana (focused)"
-  />
+  <GameIcon src={"powers_administrative_focused"} alt="Admin Mana (focused)" />
 );
 
 export const DiplomaticManaIcon = () => (
-  <GameIcon
-    src={require("./icon_powers_diplomatic.png")}
-    alt="Dipolmatic Mana"
-  />
+  <GameIcon src={"powers_diplomatic"} alt="Dipolmatic Mana" />
 );
 
 export const DiplomaticManaFocusedIcon = () => (
-  <GameIcon
-    src={require("./icon_powers_diplomatic_focused.png")}
-    alt="Dipolmatic Mana (focused)"
-  />
+  <GameIcon src={"powers_diplomatic_focused"} alt="Dipolmatic Mana (focused)" />
 );
 
 export const MilitaryManaIcon = () => (
-  <GameIcon src={require("./icon_powers_military.png")} alt="Military Mana" />
+  <GameIcon src={"powers_military"} alt="Military Mana" />
 );
 
 export const MilitaryManaFocusedIcon = () => (
-  <GameIcon
-    src={require("./icon_powers_military_focused.png")}
-    alt="Military Mana (focused)"
-  />
+  <GameIcon src={"powers_military_focused"} alt="Military Mana (focused)" />
 );
 
 export const AdminTechIcon = () => (
-  <GameIcon
-    src={require("./icon_powers_administrative_tech.png")}
-    alt="Admin Tech"
-  />
+  <GameIcon src={"powers_administrative_tech"} alt="Admin Tech" />
 );
 
 export const DiplomaticTechIcon = () => (
-  <GameIcon
-    src={require("./icon_powers_diplomatic_tech.png")}
-    alt="Dipolmatic Tech"
-  />
+  <GameIcon src={"powers_diplomatic_tech"} alt="Dipolmatic Tech" />
 );
 
 export const MilitaryTechIcon = () => (
-  <GameIcon
-    src={require("./icon_powers_military_tech.png")}
-    alt="Military Tech"
-  />
+  <GameIcon src={"powers_military_tech"} alt="Military Tech" />
 );
 
 export const IdeaGroupsIcon = () => (
-  <GameIcon src={require("./icon_idea_groups.png")} alt="Ideas" />
+  <GameIcon src={"idea_groups"} alt="Ideas" />
 );
 
 export const ReinforcementsIcon = () => (
-  <GameIcon src={require("./icon_reinforcements.png")} alt="Reinforcements" />
+  <GameIcon src={"reinforcements"} alt="Reinforcements" />
 );
 
 export const MaxManpowerIcon = () => (
-  <GameIcon src={require("./icon_max_manpower.png")} alt="Max Manpower" />
+  <GameIcon src={"max_manpower"} alt="Max Manpower" />
 );
 
 export const MercenaryIcon = () => (
-  <GameIcon src={require("./icon_mercenary.png")} alt="Mercenary Regiments" />
+  <GameIcon src={"mercenary"} alt="Mercenary Regiments" />
 );
 
 export const ProvincesIcon = () => (
-  <GameIcon src={require("./icon_provinces.png")} alt="Provinces" />
+  <GameIcon src={"provinces"} alt="Provinces" />
 );
 
 export const DevelopmentIcon = () => (
-  <GameIcon src={require("./icon_development.png")} alt="Development" />
+  <GameIcon src={"development"} alt="Development" />
 );
 
 export const AverageAutonomyIcon = () => (
-  <GameIcon src={require("./icon_autonomy.png")} alt="Average Autonomy" />
+  <GameIcon src={"autonomy"} alt="Average Autonomy" />
 );
 
 export const AutonomyDevelopmentIcon = () => (
-  <GameIcon
-    src={require("./icon_autonomy_development.png")}
-    alt="Autonomy Adjusted Development"
-  />
+  <GameIcon src={"autonomy_development"} alt="Autonomy Adjusted Development" />
 );
 
 export const HordeUnityIcon = () => (
-  <GameIcon src={require("./icon_horde_unity.png")} alt="Horde Unity" />
+  <GameIcon src={"horde_unity"} alt="Horde Unity" />
 );
 
-export const DevotionIcon = () => (
-  <GameIcon src={require("./icon_devotion.png")} alt="Devotion" />
-);
+export const DevotionIcon = () => <GameIcon src={"devotion"} alt="Devotion" />;
 
 export const LegitimacyIcon = () => (
-  <GameIcon src={require("./icon_legitimacy.png")} alt="Legitimacy" />
+  <GameIcon src={"legitimacy"} alt="Legitimacy" />
 );
 
 export const MeritocracyIcon = () => (
-  <GameIcon src={require("./icon_meritocracy.png")} alt="Meritocracy" />
+  <GameIcon src={"meritocracy"} alt="Meritocracy" />
 );
 
 export const RepublicanTraditionIcon = () => (
-  <GameIcon
-    src={require("./icon_republican_tradition.png")}
-    alt="Republican Tradition"
-  />
+  <GameIcon src={"republican_tradition"} alt="Republican Tradition" />
 );
 
 export const AbsolutismIcon = () => (
-  <GameIcon src={require("./icon_absolutism.png")} alt="Absolutism" />
+  <GameIcon src={"absolutism"} alt="Absolutism" />
 );
 
 export const MercantilismIcon = () => (
-  <GameIcon src={require("./icon_mercantilism.png")} alt="Mercantilism" />
+  <GameIcon src={"mercantilism"} alt="Mercantilism" />
 );
 
-export const SplendorIcon = () => (
-  <GameIcon src={require("./icon_splendor.png")} alt="Splendor" />
-);
+export const SplendorIcon = () => <GameIcon src={"splendor"} alt="Splendor" />;
 
 export const MerchantIcon = () => (
-  <GameIcon
-    src={require("./icon_merchant.png")}
-    height={31}
-    width={31}
-    alt="Merchant"
-  />
+  <GameIcon src={"merchant"} height={31} width={31} alt="Merchant" />
 );
 
 export const DiplomatIcon = () => (
-  <GameIcon
-    src={require("./icon_diplomat.png")}
-    height={31}
-    width={31}
-    alt="Diplomat"
-  />
+  <GameIcon src={"diplomat"} height={31} width={31} alt="Diplomat" />
 );
 
 export const MissionaryIcon = () => (
-  <GameIcon
-    src={require("./icon_missionary.png")}
-    height={31}
-    width={31}
-    alt="Missionary"
-  />
+  <GameIcon src={"missionary"} height={31} width={31} alt="Missionary" />
 );
 
 export const ColonistIcon = () => (
-  <GameIcon
-    src={require("./icon_colonist.png")}
-    height={31}
-    width={31}
-    alt="Colonist"
-  />
+  <GameIcon src={"colonist"} height={31} width={31} alt="Colonist" />
 );
 
 export const CapitalIcon = () => (
-  <GameIcon
-    src={require("./icon_capital.png")}
-    alt="Capital"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"capital"} alt="Capital" width={32} height={32} />
 );
 
 export const CultureIcon = () => (
-  <GameIcon
-    src={require("./icon_culture.png")}
-    alt="Culture"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"culture"} alt="Culture" width={32} height={32} />
 );
 
 export const ReligionIcon = () => (
-  <GameIcon
-    src={require("./icon_religion.png")}
-    alt="Religion"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"religion"} alt="Religion" width={32} height={32} />
 );
 
 export const ModifierIcon = () => (
-  <GameIcon
-    src={require("./icon_modifier.png")}
-    alt="Modifier"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"modifier"} alt="Modifier" width={32} height={32} />
 );
 
 export const DecisionIcon = () => (
-  <GameIcon
-    src={require("./icon_decision.png")}
-    alt="Decision"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"decision"} alt="Decision" width={32} height={32} />
 );
 
 export const GeneralIcon = () => (
-  <GameIcon
-    src={require("./icon_general.png")}
-    alt="General"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"general"} alt="General" width={32} height={32} />
 );
 
 export const AdmiralIcon = () => (
-  <GameIcon
-    src={require("./icon_admiral.png")}
-    alt="Admiral"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"admiral"} alt="Admiral" width={32} height={32} />
 );
 
 export const ConquistadorIcon = () => (
-  <GameIcon
-    src={require("./icon_conquistador.png")}
-    alt="Conquistador"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"conquistador"} alt="Conquistador" width={32} height={32} />
 );
 
 export const ExplorerIcon = () => (
-  <GameIcon
-    src={require("./icon_explorer.png")}
-    alt="Explorer"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"explorer"} alt="Explorer" width={32} height={32} />
 );
 
 export const HeirIcon = () => (
-  <GameIcon
-    src={require("./icon_heir.png")}
-    alt="Heir"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"heir"} alt="Heir" width={32} height={32} />
 );
 
 export const QueenIcon = () => (
-  <GameIcon
-    src={require("./icon_queen.png")}
-    alt="Queen"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"queen"} alt="Queen" width={32} height={32} />
 );
 
 export const WarIcon = () => (
-  <GameIcon src={require("./icon_war.png")} alt="War" width={32} height={32} />
+  <GameIcon src={"war"} alt="War" width={32} height={32} />
 );
 
 export const PeaceIcon = () => (
-  <GameIcon
-    src={require("./icon_peace.png")}
-    alt="Peace"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"peace"} alt="Peace" width={32} height={32} />
 );
 
 export const AttritionLossesIcon = () => (
   <GameIcon
-    src={require("./icon_attrition_losses.png")}
+    src={"attrition_losses"}
     alt="Attrition losses"
     width={27}
     height={27}
@@ -404,10 +284,5 @@ export const AttritionLossesIcon = () => (
 );
 
 export const PolicyIcon = () => (
-  <GameIcon
-    src={require("./icon_policy.png")}
-    alt="Policy"
-    width={32}
-    height={32}
-  />
+  <GameIcon src={"policy"} alt="Policy" width={32} height={32} />
 );

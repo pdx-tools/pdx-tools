@@ -312,6 +312,17 @@ prep-frontend:
       '[inputs] | to_entries | map({(.value): .key}) | add' > dlc-sprites.json
   cd -
 
+  # Create icons spritesheet
+  cd src/app/src/features/eu4/components/icons
+  N=$(ls *.png | wc -l)
+  COLS=$(echo $N | awk '{s=sqrt($0); print s == int(s) ? s : int(s) + 1}')
+  montage -tile ${COLS}x -mode concatenate -geometry '32x32>' -background transparent *.png icons.webp
+  while IFS= read -r item; do echo "${item%%.*}"; done < <(ls *.png) |
+    sed -e 's/icon_//g' | \
+    jq --compact-output --raw-input --null-input \
+      '[inputs] | to_entries | map({(.value): .key}) | add' > icons.json
+  cd -
+
   OUTPUT=src/app/src/lib/game_gen.ts
   rm -f "$OUTPUT"
 
