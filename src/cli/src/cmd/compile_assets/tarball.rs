@@ -1,4 +1,5 @@
 use super::mapper::parse_terrain_txt;
+use super::montager::{self, Montager};
 use super::religion::religion_rebels;
 use super::{
     achievements, area, assets, continents, cultures, localization, mapper, personalities, regions,
@@ -689,45 +690,17 @@ fn generate_ruler_personalities(
     }
 
     if options.common {
-        let personality_data_file = std::fs::File::create(out_dir.join("advisors.json"))?;
-        let mut personality_json = BufWriter::new(personality_data_file);
-        personality_json.write_all(&b"{\n"[..])?;
-
         let mut personalities_order = personalities.iter().collect::<Vec<_>>();
         personalities_order.sort_unstable();
 
-        let cols = (personalities_order.len() as f64).sqrt().ceil();
-        let mut cmd = Command::new("montage");
-        cmd.arg("-background")
-            .arg("transparent")
-            .arg("-mode")
-            .arg("concatenate")
-            .arg("-tile")
-            .arg(&format!("{cols}x"))
-            .arg("-quality")
-            .arg("90");
+        let montage = Montager {
+            name: "personalities",
+            base_path: out_dir.to_path_buf(),
+            encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
+            args: &["-background", "transparent"],
+        };
 
-        for (i, (personality, path)) in personalities_order.iter().enumerate() {
-            if i != 0 {
-                personality_json.write_all(&b","[..])?;
-            }
-            write!(personality_json, "\"{}\":{}", personality, i)?;
-
-            cmd.arg(path);
-        }
-
-        personality_json.write_all(&b"\n}"[..])?;
-        personality_json.flush()?;
-
-        cmd.arg(out_dir.join("personalities.webp"));
-        let child = cmd.output()?;
-
-        if !child.status.success() {
-            bail!(
-                "Personalities convert failed with: {}",
-                String::from_utf8_lossy(&child.stderr)
-            );
-        }
+        montage.montage(&personalities_order)?;
     }
 
     let translate: HashMap<_, _> = localization
@@ -764,51 +737,27 @@ fn generate_advisors(
     }
 
     if options.common {
-        let advisor_data_file = std::fs::File::create(out_dir.join("personalities.json"))?;
-        let mut advisor_json = BufWriter::new(advisor_data_file);
-        advisor_json.write_all(&b"{\n"[..])?;
+        let advisors_montage = advisors
+            .iter()
+            .map(|(advisor, _)| {
+                let advisor_path = tmp_game_dir
+                    .join("gfx")
+                    .join("interface")
+                    .join("advisors")
+                    .join(advisor)
+                    .with_extension("dds");
+                (advisor, advisor_path)
+            })
+            .collect::<Vec<_>>();
 
-        let cols = (advisors.len() as f64).sqrt().ceil();
-        let mut cmd = Command::new("montage");
-        cmd.arg("-background")
-            .arg("transparent")
-            .arg("-mode")
-            .arg("concatenate")
-            .arg("-tile")
-            .arg(&format!("{cols}x"))
-            .arg("-geometry")
-            .arg("64x64")
-            .arg("-quality")
-            .arg("90");
+        let montage = Montager {
+            name: "advisors",
+            base_path: out_dir.to_path_buf(),
+            encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
+            args: &["-background", "transparent", "-geometry", "64x64"],
+        };
 
-        for (i, (advisor, _)) in advisors.iter().enumerate() {
-            if i != 0 {
-                advisor_json.write_all(&b","[..])?;
-            }
-            write!(advisor_json, "\"{}\":{}", advisor, i)?;
-
-            let actual_path = tmp_game_dir
-                .join("gfx")
-                .join("interface")
-                .join("advisors")
-                .join(advisor)
-                .with_extension("dds");
-            cmd.arg(&actual_path);
-        }
-
-        advisor_json.write_all(&b"\n}"[..])?;
-        advisor_json.flush()?;
-
-        let out_path = out_dir.join("advisors.webp");
-        cmd.arg(&out_path);
-        let child = cmd.output()?;
-
-        if !child.status.success() {
-            bail!(
-                "Advisor convert failed with: {}",
-                String::from_utf8_lossy(&child.stderr)
-            );
-        }
+        montage.montage(&advisors_montage)?;
     }
 
     let translate = advisors.into_iter().collect::<HashMap<_, _>>();
@@ -947,14 +896,8 @@ pub fn translate_achievements_images(
         })
         .filter_map(|x| {
             let name = x.path().file_stem()?.to_str()?;
-            let id = name.parse::<i32>().unwrap();
-            Some((id, x.into_path()))
+            Some((String::from(name), x.into_path()))
         });
-
-    let achievements_data_file =
-        std::fs::File::create(base_achievement_path.join("achievements.json"))?;
-    let mut achievements_json = BufWriter::new(achievements_data_file);
-    achievements_json.write_all(&b"{\n"[..])?;
 
     let achievements_gfx_data = fs::read(tmp_game_dir.join("interface").join("achievements.gfx"))?;
     let achievement_paths = achievements::achievement_images(&achievements_gfx_data[..]);
@@ -964,46 +907,19 @@ pub fn translate_achievements_images(
         .filter_map(|x| {
             achievement_paths
                 .get(&x.id)
-                .map(|path| (x.id, tmp_game_dir.join(path)))
+                .map(|path| (x.id.to_string(), tmp_game_dir.join(path)))
         })
         .chain(additional_achievement_entries)
         .collect::<Vec<_>>();
-    let cols = (achieves.len() as f64).sqrt().ceil();
 
-    let mut cmd = Command::new("montage");
-    cmd.arg("-background")
-        .arg("transparent")
-        .arg("-mode")
-        .arg("concatenate")
-        .arg("-tile")
-        .arg(&format!("{cols}x"))
-        .arg("-geometry")
-        .arg("64x64")
-        .arg("-quality")
-        .arg("90");
+    let montage = Montager {
+        name: "achievements",
+        base_path: base_achievement_path.to_path_buf(),
+        encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
+        args: &["-background", "transparent", "-geometry", "64x64"],
+    };
 
-    for (i, (achievement, path)) in achieves.iter().enumerate() {
-        if i != 0 {
-            achievements_json.write_all(&b","[..])?;
-        }
-        write!(achievements_json, "\"{}\":{}", achievement, i)?;
-
-        cmd.arg(path);
-    }
-
-    achievements_json.write_all(&b"\n}"[..])?;
-    achievements_json.flush()?;
-
-    cmd.arg(base_achievement_path.join("achievements.webp"));
-
-    let child = cmd.output()?;
-
-    if !child.status.success() {
-        bail!(
-            "Achievement montage failed with: {}",
-            String::from_utf8_lossy(&child.stderr)
-        );
-    }
+    montage.montage(&achieves)?;
 
     Ok(())
 }
@@ -1064,88 +980,26 @@ pub fn translate_building_images(
         }
     }
 
-    let data_file = std::fs::File::create(base_path.join("westerngfx.json"))?;
-    let mut json = BufWriter::new(data_file);
-    json.write_all(&b"{\n"[..])?;
-
-    let cols = (western_buildings.len() as f64).sqrt().ceil();
-
     // Turn alpha off as else buildings like latin_admiralty are converted to
     // something that is completely transparent
-    let mut cmd = Command::new("montage");
-    cmd.arg("-background")
-        .arg("white")
-        .arg("-alpha")
-        .arg("Off")
-        .arg("-auto-orient")
-        .arg("-mode")
-        .arg("concatenate")
-        .arg("-tile")
-        .arg(&format!("{cols}x"))
-        .arg("-quality")
-        .arg("90");
+    let args = &["-background", "white", "-alpha", "Off", "-auto-orient"];
+    let montage = Montager {
+        name: "westerngfx",
+        base_path: base_path.to_path_buf(),
+        encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
+        args,
+    };
 
-    for (i, (key, path)) in western_buildings.iter().enumerate() {
-        if i != 0 {
-            json.write_all(&b","[..])?;
-        }
-        write!(json, "\"{}\":{}", key, i)?;
+    montage.montage(&western_buildings)?;
 
-        cmd.arg(path);
-    }
+    let montage = Montager {
+        name: "global",
+        base_path: base_path.to_path_buf(),
+        encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
+        args,
+    };
 
-    json.write_all(&b"\n}"[..])?;
-    json.flush()?;
-
-    cmd.arg(base_path.join("westerngfx.webp"));
-    let child = cmd.output()?;
-
-    if !child.status.success() {
-        bail!(
-            "buildings convert failed with: {}",
-            String::from_utf8_lossy(&child.stderr)
-        );
-    }
-
-    let data_file = std::fs::File::create(base_path.join("global.json"))?;
-    let mut json = BufWriter::new(data_file);
-    json.write_all(&b"{\n"[..])?;
-
-    let cols = (global_buildings.len() as f64).sqrt().ceil();
-    let mut cmd = Command::new("montage");
-    cmd.arg("-background")
-        .arg("white")
-        .arg("-alpha")
-        .arg("Off")
-        .arg("-auto-orient")
-        .arg("-mode")
-        .arg("concatenate")
-        .arg("-tile")
-        .arg(&format!("{cols}x"))
-        .arg("-quality")
-        .arg("90");
-
-    for (i, (key, path)) in global_buildings.iter().enumerate() {
-        if i != 0 {
-            json.write_all(&b","[..])?;
-        }
-        write!(json, "\"{}\":{}", key, i)?;
-
-        cmd.arg(path);
-    }
-
-    json.write_all(&b"\n}"[..])?;
-    json.flush()?;
-
-    cmd.arg(base_path.join("global.webp"));
-    let child = cmd.output()?;
-
-    if !child.status.success() {
-        bail!(
-            "buildings convert failed with: {}",
-            String::from_utf8_lossy(&child.stderr)
-        );
-    }
+    montage.montage(&global_buildings)?;
 
     Ok(())
 }
@@ -1166,41 +1020,33 @@ pub fn translate_flags(tmp_game_dir: &Path, options: &PackageOptions) -> anyhow:
         .sort_by_file_name()
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|x| !x.path().is_dir());
+        .filter(|x| !x.path().is_dir())
+        .map(|flag| {
+            let file_stem = flag.path().file_stem().unwrap();
+            let tag = file_stem.to_str().unwrap();
+            (String::from(tag), flag.path().to_path_buf())
+        })
+        .collect::<Vec<_>>();
 
-    let mut cmd = Command::new("montage");
-    cmd.arg("-background")
-        .arg("white")
-        .arg("-alpha")
-        .arg("Off")
-        .arg("-auto-orient")
-        .arg("-geometry") // flag images are mostly 128x128 but there are a
-        .arg("64x64+0+0") // few 256x256, and 48x48 is max flag avatar size
-        .arg("-quality")
-        .arg("90");
+    let montage = Montager {
+        name: "flags",
+        base_path: base_flag_path.to_path_buf(),
+        encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
 
-    for (i, flag) in tmp_flags.enumerate() {
-        let file_stem = flag.path().file_stem().unwrap();
-        if i != 0 {
-            flag_json.write_all(&b","[..])?;
-        }
+        // flag images are mostly 128x128 but there are a
+        // few 256x256, and 48x48 is max flag avatar size
+        args: &[
+            "-background",
+            "white",
+            "-alpha",
+            "Off",
+            "-auto-orient",
+            "-geometry",
+            "64x64",
+        ],
+    };
 
-        let tag = file_stem.to_str().unwrap();
-        write!(flag_json, "\"{}\":{}", tag, i)?;
-        cmd.arg(flag.path());
-    }
-    flag_json.write_all(&b"\n}"[..])?;
-    flag_json.flush()?;
-
-    cmd.arg(base_flag_path.join("flags.webp"));
-    let child = cmd.output()?;
-
-    if !child.status.success() {
-        bail!(
-            "Flag convert failed with: {}",
-            String::from_utf8_lossy(&child.stderr)
-        );
-    }
+    montage.montage(&tmp_flags)?;
     Ok(())
 }
 

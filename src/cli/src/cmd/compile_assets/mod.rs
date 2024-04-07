@@ -5,6 +5,7 @@ mod continents;
 mod cultures;
 mod localization;
 pub mod mapper;
+mod montager;
 mod personalities;
 mod regions;
 mod religion;
