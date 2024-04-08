@@ -1,5 +1,6 @@
 import React from "react";
 import { Sprite, SpriteDimension, spriteDimension } from "../Sprite";
+import Link from "next/link";
 
 type AchievementAvatarProps = {
   id: number | string;
@@ -25,14 +26,16 @@ export const AchievementAvatar = ({
   }
 
   return (
-    <Sprite
-      src={require("@/images/eu4/achievements/achievements.webp")}
-      dimensions={dimensions}
-      index={index}
-      height={size}
-      width={size}
-      ariaLabel={`achievement ${id}`}
-      className={className}
-    />
+    <Link className={className} key={id} href={`/eu4/achievements/${id}`}>
+      <Sprite
+        src={require("@/images/eu4/achievements/achievements.webp")}
+        dimensions={dimensions}
+        index={index}
+        height={size}
+        width={size}
+        ariaLabel={`achievement ${id}`}
+        className={className}
+      />
+    </Link>
   );
 };
