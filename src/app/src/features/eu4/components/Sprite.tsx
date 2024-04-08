@@ -38,8 +38,10 @@ export const Sprite = React.forwardRef<HTMLDivElement, SpriteProps>(
         role={ariaLabel ? "img" : "presentation"}
         aria-label={ariaLabel}
         style={{
-          width,
-          height,
+          minWidth: width,
+          minHeight: height,
+          maxWidth: width,
+          maxHeight: height,
           backgroundImage: `url(${src})`,
           backgroundPosition: `-${col * width}px -${row * height}px`,
           backgroundSize: `${dimensions.cols * 100}% ${dimensions.rows * 100}%`,

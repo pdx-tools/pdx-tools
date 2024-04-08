@@ -24,8 +24,10 @@ const GameIcon = ({ src, alt, height = 27, width = 27 }: GameIconProps) => {
           role={"img"}
           aria-label={alt}
           style={{
-            width,
-            height,
+            minWidth: width,
+            minHeight: height,
+            maxWidth: width,
+            maxHeight: height,
             backgroundImage: `url(${imageUrl})`,
             backgroundPosition: `-${startx}px -${starty}px`,
           }}
