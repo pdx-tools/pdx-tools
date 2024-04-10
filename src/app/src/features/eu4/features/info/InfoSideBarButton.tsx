@@ -7,15 +7,13 @@ import {
 } from "../../components/SideBarButton";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
 import { DownloadButton } from "./DownloadButton";
-import { MeltButton } from "@/components/MeltButton";
-import { getEu4Worker } from "../../worker";
-import { useEu4Meta, useSaveFilename, useServerSaveFile } from "../../store";
+import { useEu4Meta, useServerSaveFile } from "../../store";
 import { Sheet } from "@/components/Sheet";
+import { Eu4MeltButton } from "./Eu4MeltButton";
 
 const InfoSideBarTitle = () => {
   const meta = useEu4Meta();
   const remoteFile = useServerSaveFile();
-  const filename = useSaveFilename();
   return (
     <div className="flex grow items-center gap-2">
       <SaveMode mode={meta.mode} />
@@ -24,9 +22,7 @@ const InfoSideBarTitle = () => {
       </Sheet.Title>
       <div className="drawer-extras mr-4 flex grow items-center justify-end gap-2">
         {remoteFile && <DownloadButton />}
-        {!meta.encoding.includes("text") && (
-          <MeltButton game="eu4" worker={getEu4Worker()} filename={filename} />
-        )}
+        {!meta.encoding.includes("text") && <Eu4MeltButton />}
       </div>
     </div>
   );

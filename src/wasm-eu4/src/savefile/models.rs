@@ -1,8 +1,8 @@
 #![allow(nonstandard_style)]
 use eu4save::{
     models::{
-        ActiveWar, CountryTechnology, Leader, LeaderKind, NationalFocus, PreviousWar, Province,
-        WarHistory,
+        ActiveWar, CountryTechnology, GameplayOptions, Leader, LeaderKind, NationalFocus,
+        PreviousWar, Province, WarHistory,
     },
     query::{CountryExpenseLedger, CountryIncomeLedger, CountryManaUsage, Inheritance},
     CountryTag, Eu4Date, ProvinceId,
@@ -317,12 +317,23 @@ pub struct CountryCasualties {
 }
 
 #[derive(Tsify, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[tsify(into_wasm_abi)]
 pub enum SaveMode {
     Normal,
     Multiplayer,
     IronmanOk,
     IronmanNo,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[tsify(into_wasm_abi)]
+pub struct SaveInfo {
+    pub mode: SaveMode,
+    pub encoding: eu4save::Encoding,
+    pub gameplay_options: GameplayOptions,
+    pub dlc: Vec<i32>,
+    pub playthough_id: String,
+    pub random_world: Option<i32>,
 }
 
 #[derive(Tsify, Debug, Clone, Serialize)]

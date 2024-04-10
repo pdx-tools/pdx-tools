@@ -43,11 +43,7 @@ export const MeltButton = ({ filename, worker, game }: MeltProps) => {
   const melt = async () => {
     try {
       setLoading(true);
-      emitEvent({ kind: "melt", game });
-      const ext = gameExtension(game);
-      const meltedName = translateToMeltedFilename(filename, ext);
-      const data = await worker.melt();
-      downloadData(data, meltedName);
+      await meltSave(game, filename, worker);
     } finally {
       if (isMounted()) {
         setLoading(false);
@@ -69,3 +65,15 @@ export const MeltButton = ({ filename, worker, game }: MeltProps) => {
     </Tooltip>
   );
 };
+
+export async function meltSave(
+  game: DetectedDataType,
+  filename: string,
+  worker: { melt(): Promise<Uint8Array> },
+) {
+  emitEvent({ kind: "melt", game });
+  const ext = gameExtension(game);
+  const meltedName = translateToMeltedFilename(filename, ext);
+  const data = await worker.melt();
+  downloadData(data, meltedName);
+}

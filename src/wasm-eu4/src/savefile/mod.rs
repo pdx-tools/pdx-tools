@@ -8,7 +8,7 @@ use eu4game::{
 use eu4save::{
     eu4_start_date,
     models::{
-        Country, CountryEvent, CountryTechnology, GameplayOptions, Leader, Province, ProvinceEvent,
+        Country, CountryEvent, CountryTechnology, Leader, Province, ProvinceEvent,
         ProvinceEventValue, WarEvent,
     },
     query::{LedgerPoint, NationEventKind, NationEvents, Query},
@@ -83,10 +83,6 @@ impl SaveFileImpl {
 
     pub fn get_meta_raw(&self) -> &'_ eu4save::models::Meta {
         &self.query.save().meta
-    }
-
-    pub fn gameplay_options(&self) -> &'_ GameplayOptions {
-        &self.query.save().game.gameplay_settings.options
     }
 
     pub fn savefile_warnings(&self) -> Vec<String> {
@@ -280,10 +276,6 @@ impl SaveFileImpl {
                 achievements: Vec::with_capacity(0),
             },
         }
-    }
-
-    pub fn playthrough_id(&self) -> String {
-        playthrough_id(&self.query)
     }
 
     pub fn get_countries(&self) -> Vec<CountryInfo> {
@@ -740,8 +732,15 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn save_encoding(&self) -> Encoding {
-        self.encoding
+    pub fn save_info(&self) -> SaveInfo {
+        SaveInfo {
+            mode: self.save_mode(),
+            encoding: self.encoding,
+            gameplay_options: self.query.save().game.gameplay_settings.options.clone(),
+            dlc: self.get_dlc_ids(),
+            playthough_id: playthrough_id(&self.query),
+            random_world: self.query.save().game.random_world,
+        }
     }
 
     pub fn save_mode(&self) -> SaveMode {

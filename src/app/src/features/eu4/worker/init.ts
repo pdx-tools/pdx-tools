@@ -73,14 +73,11 @@ export function getMeta(savefile: mod.SaveFile) {
   const start_date = savefile.get_start_date();
   const total_days = savefile.get_total_days();
   const player_tag_name = savefile.localize_country(meta.player);
-  const dlc = savefile.get_dlc_ids();
-  const encoding = savefile.save_encoding();
   const players = savefile.get_players();
   const aliveCountries = savefile.get_alive_countries();
-  const playthroughId = savefile.playthrough_id();
-  const mode = savefile.save_mode();
-  const gameplayOptions = savefile.gameplay_options();
   const warnings = savefile.savefile_warnings();
+
+  const saveInfo = savefile.save_info();
 
   return {
     start_date,
@@ -88,14 +85,10 @@ export function getMeta(savefile: mod.SaveFile) {
     starting_tag,
     starting_tag_name,
     player_tag_name,
-    dlc,
-    encoding,
     players,
     aliveCountries,
-    playthroughId,
-    mode,
-    gameplayOptions,
     warnings,
+    ...saveInfo,
     ...meta,
   };
 }

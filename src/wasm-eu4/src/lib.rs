@@ -1,24 +1,19 @@
 use crate::{
     models::{
         CountriesCasualties, CountriesExpenses, CountriesIncome, CountryCultures, CountryInfoList,
-        CountryLeaders, CountryStateDetailsList, CountryTags, Estates, GreatPowers, I32List,
-        IdeaGroups, LocalizedTags, MetaRef, OptionalCountryTag, OwnedDevelopmentStatesList,
-        PlayerHistories, ProvinceList, RunningMonarchs, SingleCountryWarCasualtiesList, StaticMap,
-        StringList, Wars,
+        CountryLeaders, CountryStateDetailsList, CountryTags, Estates, GreatPowers, IdeaGroups,
+        LocalizedTags, MetaRef, OptionalCountryTag, OwnedDevelopmentStatesList, PlayerHistories,
+        ProvinceList, RunningMonarchs, SingleCountryWarCasualtiesList, StaticMap, StringList, Wars,
     },
-    savefile::{CountryHistory, CountryInstitution},
+    savefile::{CountryHistory, CountryInstitution, SaveInfo},
 };
 use eu4game::{game::Game, shared::Eu4Parser};
-use eu4save::{
-    models::{Eu4Save, GameplayOptions},
-    query::Query,
-    Encoding, Eu4File, FailedResolveStrategy,
-};
+use eu4save::{models::Eu4Save, query::Query, Encoding, Eu4File, FailedResolveStrategy};
 use savefile::{
     AchievementsScore, CountryAdvisors, CountryDetails, CountryReligions, Estate,
     FileObservationFrequency, HealthData, LocalizedLedger, MapCursorPayload, MapPayload,
     MapPayloadKind, MapQuickTipPayload, Monitor, ProvinceDetails, Reparse, RootTree, SaveFileImpl,
-    SaveMode, TagFilterPayloadRaw, WarInfo,
+    TagFilterPayloadRaw, WarInfo,
 };
 use std::io::Cursor;
 use wasm_bindgen::prelude::*;
@@ -52,10 +47,6 @@ impl SaveFile {
 
     pub fn get_meta_raw(&self) -> MetaRef {
         MetaRef(unsafe { std::mem::transmute(self.0.get_meta_raw()) })
-    }
-
-    pub fn gameplay_options(&self) -> GameplayOptions {
-        self.0.gameplay_options().clone()
     }
 
     pub fn savefile_warnings(&self) -> StringList {
@@ -126,20 +117,8 @@ impl SaveFile {
         self.0.localize_country(tag)
     }
 
-    pub fn get_dlc_ids(&self) -> I32List {
-        self.0.get_dlc_ids().into()
-    }
-
-    pub fn playthrough_id(&self) -> String {
-        self.0.playthrough_id()
-    }
-
-    pub fn save_encoding(&self) -> Encoding {
-        self.0.save_encoding()
-    }
-
-    pub fn save_mode(&self) -> SaveMode {
-        self.0.save_mode()
+    pub fn save_info(&self) -> SaveInfo {
+        self.0.save_info()
     }
 
     pub fn get_provinces(&self) -> ProvinceList {

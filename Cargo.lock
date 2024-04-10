@@ -1162,7 +1162,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#43a774e756cd786c128eb38c729f8e0ade37ab7b"
+source = "git+https://github.com/rakaly/eu4save.git#37416885a4f6ad9ce71e7d2dc2f9460c6d24225e"
 dependencies = [
  "flate2",
  "jomini",
@@ -1617,9 +1617,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.25.5"
+version = "0.25.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b664fb33ee0246b877cf2d3a82a50c261e8357535fe14df14eb36c9f5068117e"
+checksum = "bd8bcefffbfcccf0df9b4c729cde50920649a84d9d3fb84539edfe0a2bcfafdc"
 dependencies = [
  "itoa",
  "jomini_derive",

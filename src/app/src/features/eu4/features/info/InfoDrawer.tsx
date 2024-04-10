@@ -89,6 +89,12 @@ export const InfoDrawer = () => {
                 <td>Difficulty:</td>
                 <td>{difficultyText(meta.gameplayOptions.difficulty)}</td>
               </tr>
+              {meta.randomWorld !== undefined && (
+                <tr>
+                  <td>RNW seed:</td>
+                  <td>{meta.randomWorld}</td>
+                </tr>
+              )}
               {serverFile && (
                 <>
                   <tr>
