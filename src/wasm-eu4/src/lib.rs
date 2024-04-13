@@ -363,6 +363,15 @@ pub fn game_save(
 
 #[wasm_bindgen]
 pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
+    if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
+        let inflated = zstd::decode_all(data).unwrap();
+        _melt(&inflated)
+    } else {
+        _melt(data)
+    }
+}
+
+fn _melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
     let mut output = Cursor::new(Vec::new());
     Eu4File::from_slice(data)
         .and_then(|file| {

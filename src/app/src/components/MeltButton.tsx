@@ -59,9 +59,7 @@ export const MeltButton = ({ filename, worker, game }: MeltProps) => {
           <span>Melt</span>
         </Button>
       </Tooltip.Trigger>
-      <Tooltip.Content>
-        Convert (melt) an ironman save into a normal save
-      </Tooltip.Content>
+      <Tooltip.Content>Convert (melt) save into plain text</Tooltip.Content>
     </Tooltip>
   );
 };
