@@ -22,7 +22,7 @@ const InfoSideBarTitle = () => {
       </Sheet.Title>
       <div className="drawer-extras mr-4 flex grow items-center justify-end gap-2">
         {remoteFile && <DownloadButton />}
-        {!meta.encoding.includes("text") && <Eu4MeltButton />}
+        <Eu4MeltButton />
       </div>
     </div>
   );
