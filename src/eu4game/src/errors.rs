@@ -1,4 +1,5 @@
 use eu4save::Eu4Error;
+use std::io;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -17,4 +18,7 @@ pub enum Eu4GameError {
 
     #[error("save file is too large at: {0} bytes")]
     TooLarge(usize),
+
+    #[error("unable to inflate detected zstd data: {0}")]
+    ZstdInflate(#[source] io::Error),
 }

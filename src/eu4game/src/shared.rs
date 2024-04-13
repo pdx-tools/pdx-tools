@@ -3,7 +3,7 @@ use eu4save::{
     file::{Eu4FileKind, Eu4Modeller},
     models::{CountryEvent, Eu4Save, GameState, Meta, Monarch},
     query::Query,
-    Encoding, Eu4Date, Eu4Error, Eu4File,
+    CountryTag, Encoding, Eu4Date, Eu4Error, Eu4File,
 };
 use highway::{HighwayHash, HighwayHasher, Key};
 use jomini::binary::TokenResolver;
@@ -118,7 +118,7 @@ pub fn playthrough_id(query: &Query) -> String {
     let monarch_content_date = start_date.add_days(1);
     let mut hash = HighwayHasher::new(new_key());
 
-    if let Some(reb) = query.country(&"REB".parse().unwrap()) {
+    if let Some(reb) = query.country(&CountryTag::new(*b"REB")) {
         hash.append(&reb.decision_seed.to_le_bytes())
     }
 
@@ -223,7 +223,7 @@ impl Eu4Parser {
     {
         let mut hasher = SaveCheckSummer::new(self.hash);
         if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-            let inflated = zstd::decode_all(data).unwrap();
+            let inflated = zstd::decode_all(data).map_err(Eu4GameError::ZstdInflate)?;
             hasher.append(&inflated);
             let mut modeller = Eu4Modeller::from_slice(&inflated, resolver);
             let save: Eu4Save = self.deserialize(&mut modeller)?;
@@ -302,7 +302,7 @@ where
     Q: TokenResolver,
 {
     if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-        let mut decoder = zstd::Decoder::new(data).unwrap();
+        let mut decoder = zstd::Decoder::new(data).map_err(Eu4GameError::ZstdInflate)?;
         let mut modeller = Eu4Modeller::from_reader(&mut decoder, resolver);
         Ok(modeller.deserialize()?)
     } else {
