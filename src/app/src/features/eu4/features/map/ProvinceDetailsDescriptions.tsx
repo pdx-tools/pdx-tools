@@ -58,15 +58,15 @@ const investmentColumns = [
 
   investmentColumnHelper.accessor("investments", {
     header: "Investments",
-    cell: (info) => {
+    cell: (info) => (
       <ul className="flex">
         {info.getValue().map((investment) => (
           <li key={investment.id}>
             <TcInvestmentAvatar {...investment} />
           </li>
         ))}
-      </ul>;
-    },
+      </ul>
+    ),
   }),
 ];
 
@@ -99,7 +99,6 @@ export const ProvinceDetailsDescriptions = ({
   province,
 }: ProvinceDetailsProps) => {
   const sideBarContainerRef = useSideBarContainerRef();
-
   return (
     <div className="flex max-h-full flex-col gap-12" ref={sideBarContainerRef}>
       <table>
