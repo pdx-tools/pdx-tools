@@ -160,7 +160,7 @@ const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
   } else {
     return (
       <Sprite
-        src={require(`@/images/eu4/flags/flags.webp`)}
+        src={require(`@/images/eu4/flags/flags_x48.webp`)}
         index={index}
         width={factor * 4}
         height={factor * 4}

@@ -26,7 +26,7 @@ export function AdvisorImage({
   return (
     <Sprite
       {...props}
-      src={require("@/images/eu4/advisors/advisors.webp")}
+      src={require("@/images/eu4/advisors/advisors_x48.webp")}
       height={size}
       width={size}
       dimensions={dimensions}

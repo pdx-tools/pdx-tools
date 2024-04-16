@@ -588,38 +588,35 @@ fn generate_trade_company_investments(
     let data: HashMap<String, InvestmentData> =
         jomini::text::de::from_windows1252_slice(&file_data[..])?;
 
-    let gfx_path = tmp_game_dir
-        .join("interface")
-        .join("trade_company_investments_view.gfx");
-    let gfx_data = fs::read(gfx_path)?;
-    let gfx = sprites::parse_sprites(&gfx_data[..]);
-    let sprites: HashMap<String, PathBuf> =
-        gfx.into_iter().map(|x| (x.name, x.texturefile)).collect();
+    if options.common {
+        let gfx_path = tmp_game_dir
+            .join("interface")
+            .join("trade_company_investments_view.gfx");
+        let gfx_data = fs::read(gfx_path)?;
+        let gfx = sprites::parse_sprites(&gfx_data[..]);
+        let sprites: HashMap<String, PathBuf> =
+            gfx.into_iter().map(|x| (x.name, x.texturefile)).collect();
 
-    let out_dir = Path::new("assets/game/eu4/common/images/tc-investments");
-    fs::create_dir_all(&out_dir)?;
+        let out_dir = Path::new("assets/game/eu4/common/images/tc-investments");
+        fs::create_dir_all(&out_dir)?;
 
-    for (name, investment) in &data {
-        let sprite_path = tmp_game_dir.join(sprites.get(&investment.sprite).unwrap());
-        let out_path = out_dir.join(name).with_extension("png");
+        let sprite_images = data
+            .iter()
+            .map(|(name, investment)| {
+                let sprite_path = tmp_game_dir.join(sprites.get(&investment.sprite).unwrap());
+                (name, sprite_path)
+            })
+            .collect::<Vec<_>>();
 
-        if (out_path.exists() && !options.regen) || !options.common {
-            continue;
-        }
+        let montage = Montager {
+            name: "investments",
+            base_path: out_dir.to_path_buf(),
+            encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
+            args: &[],
+            sizes: &[],
+        };
 
-        let child = Command::new("convert")
-            .arg(sprite_path)
-            .arg(&out_path)
-            .output()?;
-
-        if !child.status.success() {
-            bail!(
-                "image convert failed with: {}",
-                String::from_utf8_lossy(&child.stderr)
-            );
-        }
-
-        optimize_png(&out_path)?;
+        montage.montage(&sprite_images)?;
     }
 
     let name_ids: HashSet<_> = data.iter().map(|(name_id, _)| name_id.as_str()).collect();
@@ -698,6 +695,7 @@ fn generate_ruler_personalities(
             base_path: out_dir.to_path_buf(),
             encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
             args: &["-background", "transparent"],
+            sizes: &[],
         };
 
         montage.montage(&personalities_order)?;
@@ -754,7 +752,8 @@ fn generate_advisors(
             name: "advisors",
             base_path: out_dir.to_path_buf(),
             encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
-            args: &["-background", "transparent", "-geometry", "64x64"],
+            args: &["-background", "transparent"],
+            sizes: &["48x48", "64x64", "77x77"],
         };
 
         montage.montage(&advisors_montage)?;
@@ -916,7 +915,8 @@ pub fn translate_achievements_images(
         name: "achievements",
         base_path: base_achievement_path.to_path_buf(),
         encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
-        args: &["-background", "transparent", "-geometry", "64x64"],
+        args: &["-background", "transparent"],
+        sizes: &[],
     };
 
     montage.montage(&achieves)?;
@@ -988,6 +988,7 @@ pub fn translate_building_images(
         base_path: base_path.to_path_buf(),
         encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
         args,
+        sizes: &[],
     };
 
     montage.montage(&western_buildings)?;
@@ -997,6 +998,7 @@ pub fn translate_building_images(
         base_path: base_path.to_path_buf(),
         encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
         args,
+        sizes: &[],
     };
 
     montage.montage(&global_buildings)?;
@@ -1035,15 +1037,8 @@ pub fn translate_flags(tmp_game_dir: &Path, options: &PackageOptions) -> anyhow:
 
         // flag images are mostly 128x128 but there are a
         // few 256x256, and 48x48 is max flag avatar size
-        args: &[
-            "-background",
-            "white",
-            "-alpha",
-            "Off",
-            "-auto-orient",
-            "-geometry",
-            "64x64",
-        ],
+        args: &["-background", "white", "-alpha", "Off", "-auto-orient"],
+        sizes: &["8x8", "48x48", "64x64", "128x128"],
     };
 
     montage.montage(&tmp_flags)?;
