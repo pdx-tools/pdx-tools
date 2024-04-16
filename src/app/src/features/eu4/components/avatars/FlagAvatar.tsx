@@ -127,12 +127,22 @@ function sizeFactor(size?: AvatarSize): number {
 
 let dimensions: SpriteDimension | undefined;
 let data: any;
+let srcSet: string | undefined;
 
 const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
   // The imports in here are lazy so that they don't fail dev
   // for those that don't have EU4 assets
   data ??= require(`@/images/eu4/flags/flags.json`);
-  dimensions ??= spriteDimension({ data });
+  dimensions ??= spriteDimension({
+    data,
+    spriteCell: { width: 48, height: 48 },
+  });
+  if (srcSet === undefined) {
+    srcSet = [
+      `${require(`@/images/eu4/flags/flags_x64.webp`)} 1.33x`,
+      `${require(`@/images/eu4/flags/flags_x128.webp`)} 2.66x`,
+    ].join(",");
+  }
 
   const index = data[tag];
   const factor = sizeFactor(size);
@@ -161,10 +171,12 @@ const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
     return (
       <Sprite
         src={require(`@/images/eu4/flags/flags_x48.webp`)}
-        index={index}
-        width={factor * 4}
-        height={factor * 4}
+        srcSet={srcSet}
+        alt=""
         dimensions={dimensions}
+        index={index}
+        scale={(factor * 4) / dimensions.spriteCell.height}
+        blurSrc={require(`@/images/eu4/flags/flags_x8.webp`)}
       />
     );
   }

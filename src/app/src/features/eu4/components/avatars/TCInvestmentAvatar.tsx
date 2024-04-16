@@ -8,7 +8,10 @@ let data: any;
 
 export const TcInvestmentAvatar = ({ id, name }: LocalizedObj) => {
   data ??= require(`@/images/eu4/tc-investments/investments.json`);
-  dimensions ??= spriteDimension({ data });
+  dimensions ??= spriteDimension({
+    data,
+    spriteCell: { width: 48, height: 48 },
+  });
 
   const index = data[id];
   if (index === undefined) {
@@ -19,14 +22,7 @@ export const TcInvestmentAvatar = ({ id, name }: LocalizedObj) => {
   return (
     <Tooltip>
       <Tooltip.Trigger className="h-12 w-12">
-        <Sprite
-          src={src}
-          height={48}
-          width={48}
-          dimensions={dimensions}
-          index={index}
-          ariaLabel={name}
-        />
+        <Sprite src={src} dimensions={dimensions} index={index} alt={name} />
       </Tooltip.Trigger>
       <Tooltip.Content>{name}</Tooltip.Content>
     </Tooltip>

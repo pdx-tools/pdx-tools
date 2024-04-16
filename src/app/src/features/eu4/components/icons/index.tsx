@@ -2,7 +2,7 @@ import { Tooltip } from "@/components/Tooltip";
 import data from "./icons.json";
 import imageUrl from "./icons.webp";
 import React from "react";
-import { spriteDimension } from "../Sprite";
+import { Sprite, spriteDimension } from "../Sprite";
 
 type GameIconProps = {
   src: keyof typeof data;
@@ -11,26 +11,21 @@ type GameIconProps = {
   width?: number;
 };
 
-const dimensions = spriteDimension({ data });
+const dimensions = spriteDimension({
+  data,
+  spriteCell: { width: 32, height: 32 },
+});
 
 const GameIcon = ({ src, alt, height = 27, width = 27 }: GameIconProps) => {
-  const { row, col } = dimensions.coordinates(data[src]);
-  const startx = col * 32;
-  const starty = row * 32;
   return (
     <Tooltip>
       <Tooltip.Trigger className="w-max">
-        <div
-          role={"img"}
-          aria-label={alt}
-          style={{
-            minWidth: width,
-            minHeight: height,
-            maxWidth: width,
-            maxHeight: height,
-            backgroundImage: `url(${imageUrl})`,
-            backgroundPosition: `-${startx}px -${starty}px`,
-          }}
+        <Sprite
+          src={imageUrl}
+          alt={alt}
+          index={data[src]}
+          sprite={{ width, height }}
+          dimensions={dimensions}
         />
         <Tooltip.Content>{alt}</Tooltip.Content>
       </Tooltip.Trigger>

@@ -29,7 +29,10 @@ const names = [
   [128, "King of Kings"],
 ] as const;
 
-const dimensions = spriteDimension({ data });
+const dimensions = spriteDimension({
+  data,
+  spriteCell: { width: 24, height: 24 },
+});
 
 const dlc = names.map(([id, name]) => [id, name, data[`${id}_s`]] as const);
 
@@ -47,10 +50,8 @@ export const DlcList = ({ dlc_enabled }: DlcListProps) => {
           <Sprite
             src={imageUrl}
             index={index}
-            width={24}
-            height={24}
             dimensions={dimensions}
-            ariaLabel={contents}
+            alt={contents}
           />
         </Tooltip.Trigger>
         <Tooltip.Content>{contents}</Tooltip.Content>

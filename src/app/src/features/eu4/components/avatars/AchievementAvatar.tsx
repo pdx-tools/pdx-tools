@@ -19,7 +19,10 @@ export const AchievementAvatar = ({
   // The imports in here are lazy so that they don't fail dev
   // for those that don't have EU4 assets
   data ??= require(`@/images/eu4/achievements/achievements.json`);
-  dimensions ??= spriteDimension({ data });
+  dimensions ??= spriteDimension({
+    data,
+    spriteCell: { width: 64, height: 64 },
+  });
   const index = data[id];
   if (index === undefined) {
     return null;
@@ -31,9 +34,8 @@ export const AchievementAvatar = ({
         src={require("@/images/eu4/achievements/achievements.webp")}
         dimensions={dimensions}
         index={index}
-        height={size}
-        width={size}
-        ariaLabel={`achievement ${id}`}
+        alt={`achievement ${id}`}
+        scale={size / 64}
         className={className}
       />
     </Link>

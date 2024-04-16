@@ -3,6 +3,7 @@ import { Sprite, SpriteDimension, spriteDimension } from "./Sprite";
 
 let dimensions: SpriteDimension | undefined;
 let data: any;
+let srcSet: string | undefined;
 
 export function AdvisorImage({
   id,
@@ -16,22 +17,32 @@ export function AdvisorImage({
   className?: string;
 }) {
   data ??= require(`@/images/eu4/advisors/advisors.json`);
-  dimensions ??= spriteDimension({ data });
+  dimensions ??= spriteDimension({
+    data,
+    spriteCell: { width: 48, height: 48 },
+  });
 
   const index = data[id];
   if (index === undefined) {
     return null;
   }
 
+  if (srcSet === undefined) {
+    srcSet = [
+      `${require(`@/images/eu4/advisors/advisors_x64.webp`)} 1.33x`,
+      `${require(`@/images/eu4/advisors/advisors_x77.webp`)} 1.60x`,
+    ].join(",");
+  }
+
   return (
     <Sprite
       {...props}
       src={require("@/images/eu4/advisors/advisors_x48.webp")}
-      height={size}
-      width={size}
+      srcSet={srcSet}
+      alt={alt ?? ""}
       dimensions={dimensions}
       index={index}
-      ariaLabel={alt}
+      scale={size / 48}
     />
   );
 }

@@ -12,7 +12,10 @@ export const PersonalityAvatar = ({
   size = 64,
 }: LocalizedObj & { size?: 64 | 42 }) => {
   data ??= require(`@/images/eu4/personalities/personalities.json`);
-  dimensions ??= spriteDimension({ data });
+  dimensions ??= spriteDimension({
+    data,
+    spriteCell: { width: 64, height: 64 },
+  });
   const index = data[id];
   if (index === undefined) {
     return <div>{id}</div>;
@@ -23,11 +26,10 @@ export const PersonalityAvatar = ({
       <Tooltip.Trigger style={{ height: size, width: size }}>
         <Sprite
           src={require("@/images/eu4/personalities/personalities.webp")}
-          height={size}
-          width={size}
           dimensions={dimensions}
+          scale={size / 64}
           index={index}
-          ariaLabel={name}
+          alt={name}
         />
       </Tooltip.Trigger>
       <Tooltip.Content>{name}</Tooltip.Content>

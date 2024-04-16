@@ -1,5 +1,4 @@
 import React from "react";
-import Image from "next/image";
 import { GfxObj } from "@/features/eu4/types/models";
 import { Tooltip } from "@/components/Tooltip";
 import { Sprite, SpriteDimension, spriteDimension } from "../Sprite";
@@ -13,13 +12,14 @@ let westernData: any;
 
 let globalDimensions: SpriteDimension | undefined;
 let globalData: any;
+const spriteCell = { width: 48, height: 48 };
 
 export const BuildingAvatar = ({ id, name, gfx, condensed }: BuildingProps) => {
   globalData ??= require(`@/images/eu4/buildings/global.json`);
-  globalDimensions ??= spriteDimension({ data: globalData });
+  globalDimensions ??= spriteDimension({ data: globalData, spriteCell });
 
   westernData ??= require(`@/images/eu4/buildings/westerngfx.json`);
-  westernDimensions ??= spriteDimension({ data: westernData });
+  westernDimensions ??= spriteDimension({ data: westernData, spriteCell });
 
   const globalIndex = globalData[id];
   const westernIndex = westernData[`${id}_${gfx}`];
@@ -30,9 +30,7 @@ export const BuildingAvatar = ({ id, name, gfx, condensed }: BuildingProps) => {
         src={require(`@/images/eu4/buildings/global.webp`)}
         index={globalIndex}
         dimensions={globalDimensions}
-        height={48}
-        width={48}
-        ariaLabel={name}
+        alt={name}
       />
     );
   } else if (westernIndex !== undefined) {
@@ -41,9 +39,7 @@ export const BuildingAvatar = ({ id, name, gfx, condensed }: BuildingProps) => {
         src={require(`@/images/eu4/buildings/westerngfx.webp`)}
         index={westernIndex}
         dimensions={westernDimensions}
-        height={48}
-        width={48}
-        ariaLabel={name}
+        alt={name}
       />
     );
   } else {
