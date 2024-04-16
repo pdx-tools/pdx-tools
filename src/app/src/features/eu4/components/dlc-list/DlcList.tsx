@@ -40,7 +40,7 @@ interface DlcListProps {
 export const DlcList = ({ dlc_enabled }: DlcListProps) => {
   const list = dlc.map(([id, name, index]) => {
     const disabled = dlc_enabled.find((x) => x === id) === undefined;
-    const contents = `${name}${disabled && " (disabled)"}`;
+    const contents = `${name}${disabled ? "" : " (disabled)"}`;
     return (
       <Tooltip key={id}>
         <Tooltip.Trigger className={cx(disabled && "grayscale")}>

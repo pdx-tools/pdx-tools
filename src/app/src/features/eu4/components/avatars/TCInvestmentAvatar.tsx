@@ -11,7 +11,6 @@ export const TcInvestmentAvatar = ({ id, name }: LocalizedObj) => {
   dimensions ??= spriteDimension({ data });
 
   const index = data[id];
-  console.log({ id, index, data })
   if (index === undefined) {
     return <div>{id}</div>;
   }
