@@ -65,10 +65,12 @@ export const Sprite = ({
     maxHeight: height * scale,
   };
 
-  const srcVar = (srcSet?.map(([url, res]) => `url(${url}) ${res}`) ?? []).join(
-    ", ",
-  );
+  const backgroundStyles = {
+    backgroundPosition: `-${startx}px -${starty}px`,
+    backgroundSize: `${sizex}px ${sizey}px`,
+  };
 
+  const srcs = srcSet?.map(([url, res]) => `url(${url}) ${res}`) ?? [];
   const image = (
     <div
       role={alt ? "img" : "presentation"}
@@ -80,10 +82,9 @@ export const Sprite = ({
       style={
         {
           ...forcedDimensions,
+          ...backgroundStyles,
           "--img-src": `url(${src})`,
-          "--img-src-set": srcVar,
-          backgroundPosition: `-${startx}px -${starty}px`,
-          backgroundSize: `${sizex}px ${sizey}px`,
+          "--img-src-set": srcs.join(", "),
         } as React.CSSProperties
       }
     />
@@ -93,17 +94,15 @@ export const Sprite = ({
     return image;
   }
 
-  const blurStyles = blurSrc
-    ? {
-        backgroundImage: `url(${blurSrc})`,
-        backgroundPosition: `-${col * width}px -${row * height}px`,
-        backgroundSize: `${dimensions.cols * 100}% ${dimensions.rows * 100}%`,
-      }
-    : {};
-
   return (
     <div style={forcedDimensions} className="relative">
-      <div className="absolute inset-0" style={blurStyles}>
+      <div
+        className="absolute inset-0"
+        style={{
+          ...backgroundStyles,
+          backgroundImage: `url(${blurSrc})`,
+        }}
+      >
         {image}
       </div>
     </div>
