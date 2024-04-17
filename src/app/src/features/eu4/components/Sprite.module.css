@@ -1,0 +1,9 @@
+.static-sprite,
+.sprite {
+  background-image: var(--img-src);
+}
+
+.sprite {
+  background-image: -webkit-image-set(var(--img-src-set));
+  background-image: image-set(var(--img-src-set));
+}

@@ -3,7 +3,7 @@ import { Sprite, SpriteDimension, spriteDimension } from "./Sprite";
 
 let dimensions: SpriteDimension | undefined;
 let data: any;
-let srcSet: string | undefined;
+let srcSet: [string, string][] | undefined;
 
 export function AdvisorImage({
   id,
@@ -27,12 +27,10 @@ export function AdvisorImage({
     return null;
   }
 
-  if (srcSet === undefined) {
-    srcSet = [
-      `${require(`@/images/eu4/advisors/advisors_x64.webp`)} 1.33x`,
-      `${require(`@/images/eu4/advisors/advisors_x77.webp`)} 1.60x`,
-    ].join(",");
-  }
+  srcSet ??= [
+    [require(`@/images/eu4/advisors/advisors_x64.webp`), `1.33x`],
+    [require(`@/images/eu4/advisors/advisors_x77.webp`), `1.60x`],
+  ];
 
   return (
     <Sprite

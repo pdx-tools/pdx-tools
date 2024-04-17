@@ -127,7 +127,7 @@ function sizeFactor(size?: AvatarSize): number {
 
 let dimensions: SpriteDimension | undefined;
 let data: any;
-let srcSet: string | undefined;
+let srcSet: [string, string][] | undefined;
 
 const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
   // The imports in here are lazy so that they don't fail dev
@@ -137,12 +137,11 @@ const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
     data,
     spriteCell: { width: 48, height: 48 },
   });
-  if (srcSet === undefined) {
-    srcSet = [
-      `${require(`@/images/eu4/flags/flags_x64.webp`)} 1.33x`,
-      `${require(`@/images/eu4/flags/flags_x128.webp`)} 2.66x`,
-    ].join(",");
-  }
+
+  srcSet ??= [
+    [require(`@/images/eu4/flags/flags_x64.webp`), `1.33x`],
+    [require(`@/images/eu4/flags/flags_x128.webp`), `2.66x`],
+  ];
 
   const index = data[tag];
   const factor = sizeFactor(size);
@@ -186,7 +185,7 @@ const FlagAvatar = (props: FlagAvatarProps) => {
   const interactive = useInEu4Analysis();
   const flag = <FlagImageImpl {...props} />;
   const withName = (
-    <div className="flex flex-shrink-0 gap-x-2 text-left">
+    <div className="flex flex-shrink-0 gap-x-2 text-left items-center">
       {flag}
       {!props.condensed && <Flag.CountryName />}
     </div>

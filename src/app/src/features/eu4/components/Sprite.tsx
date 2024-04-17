@@ -1,6 +1,6 @@
-/* eslint-disable @next/next/no-img-element */
 import { cx } from "class-variance-authority";
 import React from "react";
+import classes from "./Sprite.module.css";
 
 export type SpriteDimension = ReturnType<typeof spriteDimension>;
 export function spriteDimension({
@@ -37,7 +37,7 @@ export const Sprite = ({
 }: {
   src: string;
   blurSrc?: string;
-  srcSet?: string;
+  srcSet?: [string, string][];
   index: number;
   sprite?: {
     width: number;
@@ -50,10 +50,48 @@ export const Sprite = ({
 }) => {
   const { row, col } = dimensions.coordinates(index);
 
+  const startx = col * dimensions.spriteCell.width * scale;
+  const starty = row * dimensions.spriteCell.height * scale;
+  const sizex = dimensions.cols * dimensions.spriteCell.width * scale;
+  const sizey = dimensions.rows * dimensions.spriteCell.height * scale;
+
   const width = sprite?.width ?? dimensions.spriteCell.width;
   const height = sprite?.height ?? dimensions.spriteCell.height;
-  const renderWidth = width * scale;
-  const renderHeight = height * scale;
+
+  const forcedDimensions = {
+    minWidth: width * scale,
+    minHeight: height * scale,
+    maxWidth: width * scale,
+    maxHeight: height * scale,
+  };
+
+  const srcVar = (srcSet?.map(([url, res]) => `url(${url}) ${res}`) ?? []).join(
+    ", ",
+  );
+
+  const image = (
+    <div
+      role={alt ? "img" : "presentation"}
+      aria-label={alt || undefined}
+      className={cx(
+        className,
+        srcSet ? classes["sprite"] : classes["static-sprite"],
+      )}
+      style={
+        {
+          ...forcedDimensions,
+          "--img-src": `url(${src})`,
+          "--img-src-set": srcVar,
+          backgroundPosition: `-${startx}px -${starty}px`,
+          backgroundSize: `${sizex}px ${sizey}px`,
+        } as React.CSSProperties
+      }
+    />
+  );
+
+  if (blurSrc === undefined) {
+    return image;
+  }
 
   const blurStyles = blurSrc
     ? {
@@ -63,58 +101,9 @@ export const Sprite = ({
       }
     : {};
 
-  const forcedDimensions = {
-    minWidth: renderWidth,
-    minHeight: renderHeight,
-    maxWidth: renderWidth,
-    maxHeight: renderHeight,
-  };
-
-  // Percentage of the number of columns where the icon is located at
-  const colPortion = col / (dimensions.cols - 1);
-
-  // If the icon is a different size than the sprite cell, compute the
-  // max difference in percentage that we offset the object position
-  const colMaxSizeDiff = (dimensions.spriteCell.width - width) / 2;
-
-  // Scale our max difference by the column number it is found at
-  const colOffset = colPortion * 100 - colMaxSizeDiff * colPortion;
-
-  const rowPortion = row / (dimensions.rows - 1);
-  const rowMaxSizeDiff = (dimensions.spriteCell.height - height) / 2;
-  const rowOffset = rowPortion * 100 - rowMaxSizeDiff * rowPortion;
-
-  const image = (
-    <img
-      src={src}
-      alt={alt}
-      height={height}
-      width={width}
-      srcSet={srcSet}
-      className={cx(className, "object-none")}
-      style={{
-        ...blurStyles,
-        ...(scale === 1 ? forcedDimensions : {}),
-        objectPosition: `${colOffset}% ${rowOffset}%`,
-      }}
-    />
-  );
-
-  if (scale === 1) {
-    return image;
-  }
-
   return (
     <div style={forcedDimensions} className="relative">
-      <div
-        className="absolute flex"
-        style={{
-          width,
-          height,
-          transformOrigin: "top left",
-          transform: `scale(${scale})`,
-        }}
-      >
+      <div className="absolute inset-0" style={blurStyles}>
         {image}
       </div>
     </div>
