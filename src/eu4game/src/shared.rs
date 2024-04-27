@@ -199,9 +199,19 @@ impl Eu4Parser {
     }
 
     #[cfg(feature = "embedded")]
-    pub fn parse(&self, data: &[u8]) -> Result<Eu4SaveOutput, Eu4GameError> {
+    pub fn parse_reuse(
+        &self,
+        data: &[u8],
+        inflated: &mut Vec<u8>,
+    ) -> Result<Eu4SaveOutput, Eu4GameError> {
         let tokens = schemas::resolver::Eu4FlatTokens::new();
-        self.parse_with(data, &tokens)
+        self.parse_with(data, &tokens, inflated)
+    }
+
+    #[cfg(all(feature = "embedded", debug_assertions))]
+    pub fn parse(&self, data: &[u8]) -> Result<Eu4SaveOutput, Eu4GameError> {
+        let mut inflated = Vec::new();
+        self.parse_reuse(data, &mut inflated)
     }
 
     fn deserialize<'res, 'de, T, D>(&self, deser: D) -> Result<T, Eu4GameError>
@@ -217,15 +227,20 @@ impl Eu4Parser {
         }
     }
 
-    pub fn parse_with<Q>(&self, data: &[u8], resolver: &Q) -> Result<Eu4SaveOutput, Eu4GameError>
+    pub fn parse_with<Q>(
+        &self,
+        data: &[u8],
+        resolver: &Q,
+        mut inflated: &mut Vec<u8>,
+    ) -> Result<Eu4SaveOutput, Eu4GameError>
     where
         Q: TokenResolver,
     {
         let mut hasher = SaveCheckSummer::new(self.hash);
         if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-            let inflated = zstd::decode_all(data).map_err(Eu4GameError::ZstdInflate)?;
-            hasher.append(&inflated);
-            let mut modeller = Eu4Modeller::from_slice(&inflated, resolver);
+            zstd::stream::copy_decode(data, &mut inflated).map_err(Eu4GameError::ZstdInflate)?;
+            hasher.append(inflated);
+            let mut modeller = Eu4Modeller::from_slice(inflated, resolver);
             let save: Eu4Save = self.deserialize(&mut modeller)?;
             let encoding = modeller.encoding();
             Ok(Eu4SaveOutput {
@@ -250,28 +265,28 @@ impl Eu4Parser {
                         .max(gamestate_file.size())
                         .max(ai_file.size());
 
-                    let mut zip_sink = Vec::with_capacity(max_size);
+                    inflated.reserve_exact(max_size);
 
                     // This is safe as the "read_exact" method guarantee to
                     // initialize the entire passed in buffer.
                     #[allow(clippy::uninit_vec)]
                     unsafe {
-                        zip_sink.set_len(max_size)
+                        inflated.set_len(max_size)
                     }
 
-                    let meta_data = &mut zip_sink[..meta_file.size()];
+                    let meta_data = &mut inflated[..meta_file.size()];
                     meta_file.read_exact(meta_data)?;
                     hasher.append(meta_data);
-                    let mut modeller = Eu4Modeller::from_slice(&meta_data, resolver);
+                    let mut modeller = Eu4Modeller::from_slice(meta_data, resolver);
                     let meta: Meta = self.deserialize(&mut modeller)?;
 
-                    let gamestate_data = &mut zip_sink[..gamestate_file.size()];
+                    let gamestate_data = &mut inflated[..gamestate_file.size()];
                     gamestate_file.read_exact(gamestate_data)?;
                     hasher.append(gamestate_data);
-                    let mut modeller = Eu4Modeller::from_slice(&gamestate_data, resolver);
+                    let mut modeller = Eu4Modeller::from_slice(gamestate_data, resolver);
                     let game: GameState = self.deserialize(&mut modeller)?;
 
-                    let ai_data = &mut zip_sink[..ai_file.size()];
+                    let ai_data = &mut inflated[..ai_file.size()];
                     ai_file.read_exact(ai_data)?;
                     hasher.append(ai_data);
 
@@ -283,8 +298,8 @@ impl Eu4Parser {
                     })
                 }
                 _ => {
-                    hasher.append(&data);
-                    let mut modeller = Eu4Modeller::from_slice(&data, resolver);
+                    hasher.append(data);
+                    let mut modeller = Eu4Modeller::from_slice(data, resolver);
                     let save: Eu4Save = self.deserialize(&mut modeller)?;
                     Ok(Eu4SaveOutput {
                         save,

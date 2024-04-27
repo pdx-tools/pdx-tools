@@ -11,7 +11,7 @@ use std::{
     io::{self, Cursor, Read},
     path::PathBuf,
     process::ExitCode,
-    sync::mpsc::sync_channel,
+    sync::mpsc::{channel, sync_channel},
     thread,
 };
 use walkdir::WalkDir;
@@ -38,7 +38,8 @@ impl ReprocessArgs {
             HashMap::new()
         };
 
-        let (tx, rx) = sync_channel(1);
+        let (tx, rx) = sync_channel(2);
+        let (return_buf, receive_buf) = channel::<Vec<u8>>();
         let saves = thread::scope(|scope| {
             scope.spawn(move || {
                 let files = self
@@ -50,25 +51,69 @@ impl ReprocessArgs {
                 for file in files {
                     let path = file.path();
 
-                    let save_data = std::fs::read(path)
-                        .with_context(|| format!("unable to read: {}", path.display()))
-                        .unwrap();
+                    let Some(save_id) = path.file_name().and_then(|x| x.to_str()).map(String::from)
+                    else {
+                        let err = Err(anyhow::anyhow!("bad file name: {}", path.display()));
+                        if tx.send(err).is_err() {
+                            return;
+                        }
+                        continue;
+                    };
 
-                    let save_id = String::from(path.file_name().unwrap().to_str().unwrap());
-                    tx.send((save_id, save_data)).expect("to send save id");
+                    let file = std::fs::File::open(path)
+                        .with_context(|| format!("unable to open: {}", path.display()));
+
+                    let mut file = match file {
+                        Ok(file) => file,
+                        Err(e) => {
+                            if tx.send(Err(e)).is_err() {
+                                return;
+                            }
+                            continue;
+                        }
+                    };
+
+                    let size = file.metadata().map(|m| m.len() as usize).ok().unwrap_or(0);
+
+                    let mut buf = if let Ok(mut existing_buf) = receive_buf.try_recv() {
+                        existing_buf.clear();
+                        existing_buf.reserve(size);
+                        existing_buf
+                    } else {
+                        Vec::with_capacity(size)
+                    };
+
+                    let result = file
+                        .read_to_end(&mut buf)
+                        .with_context(|| format!("failed to read: {}", path.display()))
+                        .map(|_| (save_id, buf));
+
+                    // If the other end hung up stop processing.
+                    if tx.send(result).is_err() {
+                        return;
+                    }
                 }
             });
 
             let pool = rayon::ThreadPoolBuilder::new()
-                .num_threads(2)
+                .num_threads(3)
                 .build()
                 .expect("threadpool to build");
 
             pool.install(|| {
                 rx.into_iter()
                     .par_bridge()
-                    .map(|(save_id, data)| {
-                        let save = applib::parser::parse_save_data(&data)?;
+                    .map_with(Vec::with_capacity(150 * 1000 * 1000), |inflated, result| {
+                        let (save_id, data) = result?;
+                        inflated.clear();
+
+                        let save = applib::parser::parse_save_data(&data, inflated)?;
+
+                        // Ignore any errors from trying to return the buffer,
+                        // as if we've iterated through all the files, there
+                        // won't be anyone expecting a return buffer.
+                        let _ = return_buf.send(data);
+
                         let save = match save {
                             ParseResult::InvalidPatch(_) => bail!("unable parse patch"),
                             ParseResult::Parsed(x) => *x,

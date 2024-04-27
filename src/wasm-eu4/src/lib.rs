@@ -319,9 +319,15 @@ pub fn parse_save(
 ) -> Result<SaveFile, JsValue> {
     let tokens = tokens::get_tokens();
     let mut parser = Eu4Parser::new();
+    let mut inflated_sink = Vec::new();
     let out = parser
-        .parse_with(&save_data, tokens)
-        .or_else(|_| parser.with_debug(true).parse_with(&save_data, tokens))
+        .parse_with(&save_data, tokens, &mut inflated_sink)
+        .or_else(|_| {
+            inflated_sink.clear();
+            parser
+                .with_debug(true)
+                .parse_with(&save_data, tokens, &mut inflated_sink)
+        })
         .map_err(js_err)?;
 
     let save = SaveFileParsed(out.save, out.encoding);

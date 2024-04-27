@@ -60,8 +60,10 @@ pub enum ParseFileError {
     Parse(#[from] eu4game::Eu4GameError),
 }
 
-pub fn parse_save_data(data: &[u8]) -> Result<ParseResult, ParseFileError> {
-    let output = Eu4Parser::new().with_hash(true).parse(data)?;
+pub fn parse_save_data(data: &[u8], inflated: &mut Vec<u8>) -> Result<ParseResult, ParseFileError> {
+    let output = Eu4Parser::new()
+        .with_hash(true)
+        .parse_reuse(data, inflated)?;
     let save = output.save;
     let encoding = output.encoding;
     let patch_shorthand = format!(
