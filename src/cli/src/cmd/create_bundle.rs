@@ -111,5 +111,9 @@ where
     let settings: LauncherSettings = serde_json::from_slice(&settings_data)
         .with_context(|| format!("{}", settings_path.display()))?;
     let major_minor: Vec<_> = settings.raw_version.split('.').take(2).collect();
-    tar_game_directory(game_dir, output_dir, &major_minor.join("."))
+    tar_game_directory(
+        game_dir,
+        output_dir,
+        &major_minor.join(".").trim_start_matches('v'),
+    )
 }
