@@ -11,12 +11,16 @@ pub struct FlatResolver<'a> {
 }
 
 impl<'a> FlatResolver<'a> {
+    pub const fn empty() -> Self {
+        FlatResolver {
+            values: Vec::new(),
+            breakpoint: 0,
+        }
+    }
+
     pub fn from_slice(data: &'a [u8]) -> Self {
         if data.len() < 4 {
-            return FlatResolver {
-                values: Vec::new(),
-                breakpoint: 0,
-            };
+            return FlatResolver::empty()
         }
 
         let total_tokens = usize::from(u16::from_le_bytes([data[0], data[1]]));
