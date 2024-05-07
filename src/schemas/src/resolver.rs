@@ -20,7 +20,7 @@ impl<'a> FlatResolver<'a> {
 
     pub fn from_slice(data: &'a [u8]) -> Self {
         if data.len() < 4 {
-            return FlatResolver::empty()
+            return FlatResolver::empty();
         }
 
         let total_tokens = usize::from(u16::from_le_bytes([data[0], data[1]]));
