@@ -331,7 +331,7 @@ pub struct SaveInfo {
     pub mode: SaveMode,
     pub encoding: eu4save::Encoding,
     pub gameplay_options: GameplayOptions,
-    pub dlc: Vec<i32>,
+    pub dlc: Vec<String>,
     pub playthough_id: String,
     pub random_world: Option<i32>,
 }

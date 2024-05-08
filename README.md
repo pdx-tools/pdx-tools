@@ -175,11 +175,6 @@ Uploaded files are sent to S3 through the backend. This may be surprising, as wh
      ```
    - Upload the new entry in assets/game-bundles to the game-bundles directory in the pdx-tools-build S3 bucket
    - `just package-all`
- - Add DLC info
-   - Commit new entry in [DLC name to ID resolver](https://github.com/rakaly/eu4save/blob/master/src/dlc.rs) as found in `Europa Universalis IV/dlc`
-   - Grab updated DLC resolver in pdx-tools repo with: `cargo update -p eu4save`
-   - Re-save the small DDS DLC icon in `gfx/interface` as `<dlc-id>_s.png` in the pdx-tools `dlc-images` folder
-   - Update [DLC ID to image resolver](https://github.com/pdx-tools/pdx-tools/blob/master/src/app/src/features/eu4/components/dlc-list/DlcList.tsx)
  - Update achievement detection logic with any changes
  - Add new 1444 entry for patch
  - Generate binary tokens

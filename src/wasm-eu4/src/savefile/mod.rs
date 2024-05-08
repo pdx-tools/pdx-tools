@@ -692,16 +692,6 @@ impl SaveFileImpl {
         LocalizedTag { tag, name }
     }
 
-    pub fn get_dlc_ids(&self) -> Vec<i32> {
-        self.query
-            .save()
-            .meta
-            .dlc_enabled
-            .iter()
-            .filter_map(|x| eu4save::dlc_id(x.as_str()))
-            .collect()
-    }
-
     pub fn get_start_date(&self) -> String {
         self.query.save().game.start_date.iso_8601().to_string()
     }
@@ -740,7 +730,7 @@ impl SaveFileImpl {
             mode: self.save_mode(),
             encoding: self.encoding,
             gameplay_options: self.query.save().game.gameplay_settings.options.clone(),
-            dlc: self.get_dlc_ids(),
+            dlc: self.query.save().meta.dlc_enabled.clone(),
             playthough_id: playthrough_id(&self.query),
             random_world: self.query.save().game.random_world,
         }

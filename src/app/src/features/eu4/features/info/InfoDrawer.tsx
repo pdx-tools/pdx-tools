@@ -117,7 +117,7 @@ export const InfoDrawer = () => {
           </table>
         </Card>
         <Card className="p-4 w-80">
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="text-center text-lg">DLC</div>
             <DlcList dlc_enabled={meta.dlc} />
           </div>
