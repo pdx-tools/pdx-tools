@@ -23,5 +23,6 @@ js-sys = "0.3"
 tsify = { version = "0.4.5", default-features = false, features = ["js"] } 
 zstd = { version = "0.13.0", default-features = false }
 
+
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false

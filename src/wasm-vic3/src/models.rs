@@ -16,6 +16,20 @@ pub struct Vic3Metadata {
 #[derive(Tsify, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[tsify(into_wasm_abi)]
+pub struct Vic3MarketResponse {
+    pub prices: Vec<Vic3GoodPrice>,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Vic3GoodPrice {
+    pub good: String,
+    pub price: f64,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[tsify(into_wasm_abi)]
 pub struct Vic3GraphResponse {
     pub data: Vec<Vic3GraphData>,
 }
