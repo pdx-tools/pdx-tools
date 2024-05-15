@@ -1,3 +1,4 @@
+use crate::markets::Vic3Building;
 use crate::stats::Vic3CountryStats;
 use crate::Vic3Date;
 use serde::{
@@ -37,6 +38,8 @@ pub struct Vic3Country {
     pub prestige: Vic3CountryStats,
     pub avgsoltrend: Vic3CountryStats,
     pub pop_statistics: PopStatistics,
+    #[serde(default)]
+    pub states: Vec<u32>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -146,6 +149,7 @@ pub struct Vic3Save {
     pub meta_data: MetaData,
     pub counters: Counters,
     pub country_manager: Vic3Manager<Vic3Country>,
+    pub building_manager: Vic3Manager<Vic3Building>,
     pub previous_played: Vec<Player>,
 }
 

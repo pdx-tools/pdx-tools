@@ -1,5 +1,6 @@
 use jomini::common::{Date, PdsDate};
-use models::{Vic3GraphData, Vic3Metadata};
+use models::{Vic3GoodPrice, Vic3GraphData, Vic3Metadata};
+use vic3save::markets::{goods_price_based_on_buildings, Vic3GoodEstimationError};
 use vic3save::stats::{Vic3CountryStatsRateIter, Vic3StatsGDPIter};
 use vic3save::{
     savefile::Vic3Save, FailedResolveStrategy, SaveHeader, SaveHeaderKind, Vic3Error, Vic3File,
@@ -11,6 +12,7 @@ mod tokens;
 pub use tokens::*;
 
 use crate::models::Vic3GraphResponse;
+use crate::models::Vic3MarketResponse;
 
 #[wasm_bindgen(typescript_custom_section)]
 const VIC3_DATE_TYPE: &'static str = r#"export type Vic3Date = string;"#;
@@ -38,6 +40,13 @@ impl SaveFile {
             data: self.0.get_country_stats(tag),
         }
     }
+    pub fn get_country_goods_prices(&self, tag: &str) -> Result<Vic3MarketResponse, JsValue> {
+        let prices = self
+            .0
+            .get_country_goods_prices(tag)
+            .map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+        Ok(Vic3MarketResponse { prices })
+    }
 }
 
 impl SaveFileImpl {
@@ -58,6 +67,32 @@ impl SaveFileImpl {
             .filter_map(|(_, country)| country.as_ref())
             .map(|x| x.definition.clone())
             .collect()
+    }
+
+    pub fn get_country_goods_prices(
+        &self,
+        tag: &str,
+    ) -> Result<Vec<Vic3GoodPrice>, Vic3GoodEstimationError> {
+        let country = self.save.get_country(tag).unwrap();
+        let states = &country.states;
+
+        let goods_prices = goods_price_based_on_buildings(
+            self.save
+                .building_manager
+                .database
+                .values()
+                .filter_map(|x| x.as_ref())
+                .filter(|b| states.contains(&b.state)),
+        )?;
+        let mut goods_prices_vec: Vec<_> = goods_prices
+            .iter()
+            .map(|(good, price)| Vic3GoodPrice {
+                good: good.to_string(),
+                price: *price,
+            })
+            .collect();
+        goods_prices_vec.sort_by(|a, b| a.good.cmp(&b.good));
+        Ok(goods_prices_vec)
     }
 
     pub fn get_country_stats(&self, tag: &str) -> Vec<Vic3GraphData> {

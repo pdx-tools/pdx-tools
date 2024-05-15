@@ -3,6 +3,7 @@ mod errors;
 pub mod file;
 pub(crate) mod flavor;
 mod header;
+pub mod markets;
 mod melt;
 pub mod savefile;
 pub mod stats;

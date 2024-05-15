@@ -18,6 +18,8 @@ thiserror = "1"
 libdeflater = { version = "1.19", optional = true }
 miniz_oxide = { version = "0.7", optional = true }
 serde_path_to_error = "0.1"
+getrandom = { version = "0.2", features = ["js"]}
+mathru = "0.15.3"
 
 [dev-dependencies]
 zip = { version =  "0.6", default-features = false, features = ["deflate"] }

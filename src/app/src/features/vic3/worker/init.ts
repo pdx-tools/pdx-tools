@@ -31,3 +31,7 @@ export function parseVic3() {
 export function get_country_stats(tag: string) {
   return wasm.save.get_country_stats(tag);
 }
+
+export function get_country_goods_prices(tag: string) {
+  return wasm.save.get_country_goods_prices(tag);
+}

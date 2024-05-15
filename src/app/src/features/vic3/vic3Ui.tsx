@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import Head from "next/head";
 import { getVic3Worker } from "./worker";
 import { CountryStatsTable } from "./CountryStats";
+import { CountryMarketTable } from "./CountryMarket";
 import { CountryGDPChart } from "./CountryChart";
 import { TagSelect } from "./TagSelect";
 import { MeltButton } from "@/components/MeltButton";
@@ -23,6 +24,12 @@ export const Vic3Page = () => {
   const { data: stats } = useVic3Worker(
     useCallback(
       (worker) => worker.get_country_stats(selectedTag),
+      [selectedTag],
+    ),
+  );
+  const { data: prices } = useVic3Worker(
+    useCallback(
+      (worker) => worker.get_country_goods_prices(selectedTag),
       [selectedTag],
     ),
   );
@@ -63,8 +70,16 @@ export const Vic3Page = () => {
             </div>
           </div>
         </VisualizationProvider>
-        <div className="max-w-screen-lg mx-auto">
-          <CountryStatsTable stats={stats?.data ?? []} />
+        <div className="flex flex-row gap-8">
+          <div className="basis-5/6">
+            <CountryStatsTable stats={stats?.data ?? []} />
+          </div>
+          <div className="basis-1/6">
+            <div className="p-2">
+              <span> Estimated prices in market </span>
+              <CountryMarketTable goods_prices={prices?.prices ?? []} />
+            </div>
+          </div>
         </div>
       </div>
     </main>
