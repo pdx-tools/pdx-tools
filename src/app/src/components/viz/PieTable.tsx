@@ -6,21 +6,22 @@ import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { isDarkMode } from "@/lib/dark";
 
-interface BudgetRow {
+export interface DataPoint {
   key: string;
   value: number;
 }
 
 interface PieTableProps {
-  rows: BudgetRow[];
+  rows: DataPoint[];
   title: string;
   palette: Readonly<Map<string, string>>;
   paginate?: boolean;
   wholeNumbers?: boolean;
+  negativesSlot?: (rows: DataPoint[]) => React.ReactNode;
 }
 
 interface PieTablePieProps {
-  rows: BudgetRow[];
+  rows: DataPoint[];
   palette: Readonly<Map<string, string>>;
 }
 
@@ -61,16 +62,21 @@ const PieTablePieImpl = ({ rows, palette }: PieTablePieProps) => {
 
 const PieTablePie = React.memo(PieTablePieImpl);
 
-const columnHelper = createColumnHelper<BudgetRow & { percent: number }>();
+const columnHelper = createColumnHelper<DataPoint & { percent: number }>();
 
 export const PieTable = ({
-  rows,
+  rows: raw,
   title,
   palette,
   paginate,
   wholeNumbers = false,
+  negativesSlot,
 }: PieTableProps) => {
   const numFormatter = wholeNumbers ? formatInt : formatFloat;
+
+  const negatives = raw.filter((x) => x.value < 0);
+  const rows = raw.filter((x) => x.value >= 0);
+
   const total = rows.reduce((acc, x) => acc + x.value, 0);
 
   const data = useMemo(
@@ -140,6 +146,7 @@ export const PieTable = ({
             </Table.Row>
           }
         />
+        {negatives.length > 0 && negativesSlot?.(negatives)}
       </div>
       <PieTablePie rows={rows} palette={palette} />
     </div>

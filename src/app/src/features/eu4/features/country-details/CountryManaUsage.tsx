@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { manaSpendAliases, manaSpendColorPalette } from "./data";
-import { Bar, BarConfig, PieTable } from "@/components/viz";
+import { Bar, BarConfig, DataPoint, PieTable } from "@/components/viz";
 import { CountryDetails } from "../../types/models";
 import { isDarkMode } from "@/lib/dark";
 import { useEu4Worker } from "../../worker";
@@ -335,23 +335,42 @@ const CountryManaUsageImpl = ({ mana }: { mana: CountryMana }) => {
           title="ADM mana breakdown"
           rows={adm_mana}
           wholeNumbers={true}
+          negativesSlot={(rows) => <NegativeMana rows={rows} />}
         />
         <PieTable
           palette={palette}
           title="DIP mana breakdown"
           rows={dip_mana}
           wholeNumbers={true}
+          negativesSlot={(rows) => <NegativeMana rows={rows} />}
         />
         <PieTable
           palette={palette}
           title="MIL mana breakdown"
           rows={mil_mana}
           wholeNumbers={true}
+          negativesSlot={(rows) => <NegativeMana rows={rows} />}
         />
       </div>
     </div>
   );
 };
+
+function NegativeMana({ rows }: { rows: DataPoint[] }) {
+  return (
+    <div className="pt-2 max-w-prose">
+      Negative values excluded.{" "}
+      <HelpTooltip help="Negative values are not a bug, and can represent tributes or any other game mechanic that isn't fully represented." />
+      <ul>
+        {rows.map((row) => (
+          <li className="ml-8 list-disc" key={row.key}>
+            {row.key}: {formatInt(row.value)}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export const CountryManaUsage = ({ details }: CountryManaProps) => {
   const { data, error } = useEu4Worker(
