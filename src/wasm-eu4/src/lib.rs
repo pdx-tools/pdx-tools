@@ -5,7 +5,7 @@ use crate::{
         LocalizedTags, MetaRef, OptionalCountryTag, OwnedDevelopmentStatesList, PlayerHistories,
         ProvinceList, RunningMonarchs, SingleCountryWarCasualtiesList, StaticMap, StringList, Wars,
     },
-    savefile::{CountryHistory, CountryInstitution, SaveInfo},
+    savefile::{CountryHistory, CountryInstitution, CountryMana, SaveInfo},
 };
 use eu4game::{game::Game, shared::Eu4Parser};
 use eu4save::{models::Eu4Save, query::Query, Encoding, Eu4File, FailedResolveStrategy};
@@ -135,6 +135,10 @@ impl SaveFile {
 
     pub fn get_country(&self, tag: String) -> CountryDetails {
         self.0.get_country(tag)
+    }
+
+    pub fn get_country_mana(&self, tag: &str) -> CountryMana {
+        self.0.country_mana(tag)
     }
 
     pub fn get_countries_income(&self, payload: TagFilterPayloadRaw) -> CountriesIncome {

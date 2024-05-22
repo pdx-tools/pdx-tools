@@ -611,7 +611,6 @@ pub struct CountryDetails {
     pub income: CountryIncomeLedger,
     pub expenses: CountryExpenseLedger,
     pub total_expenses: CountryExpenseLedger,
-    pub mana_usage: CountryManaUsage,
     pub building_count: HashMap<String, i32>,
     pub ideas: Vec<(String, i32)>,
     pub num_cities: i32,
@@ -643,6 +642,24 @@ pub struct CountryDetails {
     pub missionaries: usize,
     pub government_strength: GovernmentStrength,
     pub national_focus: NationalFocus,
+}
+
+#[derive(Tsify, Serialize, Debug)]
+#[tsify(into_wasm_abi)]
+pub struct CountryMana {
+    pub mana_usage: CountryManaUsage,
+    pub development: Vec<CountryDevMana>,
+    pub provinces_developed: usize,
+    pub generals: usize,
+    pub conquistadors: usize,
+    pub admirals: usize,
+    pub explorers: usize,
+}
+
+#[derive(Tsify, Serialize, Debug)]
+pub struct CountryDevMana {
+    pub country: LocalizedTag,
+    pub sum: usize,
 }
 
 #[derive(Tsify, Serialize, Debug)]

@@ -144,6 +144,10 @@ export function eu4GetCountryProvinceReligion(tag: string) {
   return wasm.save.get_country_province_religion(tag);
 }
 
+export function eu4GetCountrymana(tag: string) {
+  return wasm.save.get_country_mana(tag);
+}
+
 export function eu4GetCountryHistory(tag: string) {
   const timed = timeSync(() => wasm.save.get_country_history(tag));
   logMs(timed, "country history calculation");

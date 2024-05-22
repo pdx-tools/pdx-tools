@@ -7,8 +7,8 @@ use super::{
     ProvinceGc, RunningMonarch, SaveFileImpl, WarBattles, WarOverview,
 };
 use crate::savefile::{
-    hex_color, BattleGroundProvince, CountryHistoryYear, CountryReligion, CultureTolerance,
-    MonarchStats, RebelReligion, WarEnd, WarStart,
+    hex_color, BattleGroundProvince, CountryDevMana, CountryHistoryYear, CountryMana,
+    CountryReligion, CultureTolerance, MonarchStats, RebelReligion, WarEnd, WarStart,
 };
 use eu4game::{ProvinceExt, SaveGameQuery};
 use eu4save::{
@@ -388,7 +388,6 @@ impl SaveFileImpl {
             income: self.query.country_income_breakdown(country),
             expenses: self.query.country_expense_breakdown(country),
             total_expenses: self.query.country_total_expense_breakdown(country),
-            mana_usage: self.query.country_mana_breakdown(country),
             building_count: buildings,
             inheritance,
             diplomacy: diplomacy_entries,
@@ -1994,6 +1993,81 @@ impl SaveFileImpl {
             count,
             won: attackers_won,
             battle_ground,
+        }
+    }
+
+    pub fn country_mana(&self, tag: &str) -> CountryMana {
+        let tag = tag.parse::<CountryTag>().unwrap();
+        let country = self.query.country(&tag).unwrap();
+
+        let mana = self.query.country_mana_breakdown(country);
+
+        #[derive(Debug, Default)]
+        struct Development {
+            sum: usize,
+        }
+
+        let (generals, conquistadors, admirals, explorers) = country
+            .history
+            .events
+            .iter()
+            .filter_map(|(_, event)| match event {
+                CountryEvent::Leader(leader) => Some(leader),
+                _ => None,
+            })
+            .fold((0, 0, 0, 0), |(g, c, a, e), leader| match leader.kind {
+                LeaderKind::Admiral => (g, c, a + 1, e),
+                LeaderKind::General => (g + 1, c, a, e),
+                LeaderKind::Explorer => (g, c, a, e + 1),
+                LeaderKind::Conquistador => (g, c + 1, a, e),
+            });
+
+        let mut tags = country
+            .history
+            .events
+            .iter()
+            .filter_map(|(_, event)| match event {
+                CountryEvent::ChangedTagFrom(tag) => Some(*tag),
+                _ => None,
+            })
+            .chain(std::iter::once(tag))
+            .map(|tag| (tag, Development::default()))
+            .collect::<Vec<_>>();
+
+        let mut province_count = 0;
+        for prov in self.query.save().game.provinces.values() {
+            let mut province_found = false;
+            for (tag, dev) in &mut tags {
+                if let Some(s) = prov.country_improve_count.get(tag) {
+                    if *s < 0 {
+                        continue;
+                    }
+                    if !province_found {
+                        province_count += 1;
+                    }
+                    province_found = true;
+                    dev.sum += *s as usize;
+                }
+            }
+        }
+
+        let development = tags
+            .into_iter()
+            .filter(|(_, dev)| dev.sum > 0)
+            .map(|(tag, dev)| CountryDevMana {
+                country: self.localize_tag(tag),
+                sum: dev.sum,
+            })
+            .collect::<Vec<_>>();
+
+        CountryMana {
+            mana_usage: mana,
+            development,
+            provinces_developed: province_count,
+            generals,
+            conquistadors,
+            admirals,
+            explorers,
         }
     }
 }
