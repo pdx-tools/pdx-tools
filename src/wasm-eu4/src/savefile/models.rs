@@ -581,6 +581,16 @@ pub struct RootTree {
     pub uncolonized_manpower: f32,
 }
 
+#[derive(Tsify, Serialize)]
+pub struct CountryDevEffiency {
+    pub country: LocalizedTag,
+    pub mana: CountryManaUsage,
+    pub dev_breakdown: Vec<CountryDevMana>,
+    pub provinces_improved: usize,
+    pub dev_clicks: usize,
+    pub dev_mana: i32,
+}
+
 // start of country details model
 
 #[derive(Tsify, Serialize, Debug)]

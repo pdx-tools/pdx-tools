@@ -5,6 +5,7 @@ import type {
   PieConfig,
   BarConfig,
   Treemap as TreemapImpl,
+  ScatterConfig,
 } from "@ant-design/plots";
 import { VisualizationLoader } from "./VisualizationLoader";
 
@@ -52,6 +53,13 @@ export const Treemap: ComponentType<TreemapConfig> = React.memo(
   }),
 );
 
+export const Scatter: ComponentType<ScatterConfig> = React.memo(
+  dynamic(() => import("@ant-design/plots").then((mod) => mod.Scatter), {
+    ssr: false,
+    loading: () => <VisualizationLoader />,
+  }),
+);
+
 export {
   VisualizationProvider,
   useVisualizationDispatch,
@@ -62,4 +70,4 @@ export {
 export * from "./LegendColor";
 export * from "./PieTable";
 
-export type { LineConfig, PieConfig, BarConfig };
+export type { LineConfig, PieConfig, BarConfig, ScatterConfig };

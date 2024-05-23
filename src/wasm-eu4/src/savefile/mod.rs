@@ -234,6 +234,141 @@ impl SaveFileImpl {
         self.localize_ledger_points(ledger)
     }
 
+    fn dev_efficiencies<'a>(
+        &self,
+        countries: impl Iterator<Item = (CountryTag, &'a Country)>,
+    ) -> Vec<CountryDevEffiency> {
+        struct CountryManaDetails<'a> {
+            tag: CountryTag,
+            country: &'a Country,
+            dev_breakdown: Vec<(CountryTag, usize)>,
+            provinces_improved: usize,
+        }
+
+        let mut country_details = countries
+            .map(|(tag, country)| {
+                let dev_breakdown = country
+                    .history
+                    .events
+                    .iter()
+                    .filter_map(|(_, event)| match event {
+                        CountryEvent::ChangedTagFrom(tag) => Some(*tag),
+                        _ => None,
+                    })
+                    .chain(std::iter::once(tag))
+                    .map(|tag| (tag, 0))
+                    .collect::<Vec<_>>();
+                CountryManaDetails {
+                    tag,
+                    country,
+                    dev_breakdown,
+                    provinces_improved: 0,
+                }
+            })
+            .map(|x| (x.tag, x))
+            .collect::<HashMap<_, _>>();
+
+        // province dev tag to a list of filtered tags that were that tag. For
+        // example, AI polish may be annexed by the player who tag switched into
+        // poland (and then tag switched again), so we'll credit both the AI and
+        // the player with any polish improvements. Yeah it's a flaw to this
+        // method but we make due with the data that EU4 gives us.
+        let mut devs: HashMap<CountryTag, Vec<CountryTag>> = HashMap::new();
+        for country in country_details.values() {
+            for (tag, _) in &country.dev_breakdown {
+                devs.entry(*tag).or_default().push(country.tag)
+            }
+        }
+
+        // countries latest tag has improved a given province
+        let mut seen: Vec<CountryTag> = Vec::new();
+
+        for prov in self.query.save().game.provinces.values() {
+            seen.clear();
+
+            for (tag, amt) in &prov.country_improve_count {
+                if *amt < 0 {
+                    continue;
+                }
+
+                // The tag that is recorded in the country improvement count could now be stored in multiple
+                let Some(devs) = devs.get(tag) else {
+                    continue;
+                };
+
+                for dev_tag in devs {
+                    let Some(details) = country_details.get_mut(dev_tag) else {
+                        continue;
+                    };
+
+                    let Some((_, improvements)) = details
+                        .dev_breakdown
+                        .iter_mut()
+                        .find(|(tag, _)| tag == dev_tag)
+                    else {
+                        continue;
+                    };
+
+                    *improvements += *amt as usize;
+                    if !seen.contains(dev_tag) {
+                        seen.push(*dev_tag);
+                    }
+                }
+            }
+
+            for tag in &seen {
+                let details = country_details.get_mut(tag).expect("country to exist");
+                details.provinces_improved += 1;
+            }
+        }
+
+        let mut result = country_details
+            .drain()
+            .map(|(_, mut country)| {
+                let mana = self.query.country_mana_breakdown(country.country);
+                CountryDevEffiency {
+                    country: self.localize_tag(country.tag),
+                    dev_mana: mana.adm.develop_prov + mana.dip.develop_prov + mana.mil.develop_prov,
+                    mana,
+                    dev_clicks: country.dev_breakdown.iter().map(|(_, amt)| amt).sum(),
+                    dev_breakdown: country
+                        .dev_breakdown
+                        .drain(..)
+                        .map(|(tag, amt)| CountryDevMana {
+                            country: self.localize_tag(tag),
+                            sum: amt,
+                        })
+                        .collect(),
+                    provinces_improved: country.provinces_improved,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        result.sort_unstable_by(|a, b| {
+            a.dev_clicks
+                .cmp(&b.dev_clicks)
+                .reverse()
+                .then_with(|| a.country.name.cmp(&b.country.name))
+        });
+
+        result
+    }
+
+    pub fn get_dev_efficiency(&self, payload: TagFilterPayloadRaw) -> Vec<CountryDevEffiency> {
+        let filter = TagFilterPayload::from(payload);
+        let tags = self.matching_tags(&filter);
+        let countries = self
+            .query
+            .save()
+            .game
+            .countries
+            .iter()
+            .filter(|(tag, _)| tags.contains(tag))
+            .map(|(tag, country)| (*tag, country));
+
+        self.dev_efficiencies(countries)
+    }
+
     pub fn get_achievements(&self) -> AchievementsScore {
         let achieves = AchievementHunter::create(
             self.encoding,

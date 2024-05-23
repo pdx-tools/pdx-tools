@@ -242,6 +242,10 @@ export function eu4GetAnnualInflationData(
   return workLedgerData(data);
 }
 
+export function eu4GetDevEfficiencies(filter: CountryMatcher) {
+  return wasm.save.get_dev_efficiency(filter);
+}
+
 export function eu4GetProvinces() {
   return wasm.save.get_provinces();
 }

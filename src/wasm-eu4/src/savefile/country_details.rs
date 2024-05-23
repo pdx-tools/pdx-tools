@@ -7,8 +7,8 @@ use super::{
     ProvinceGc, RunningMonarch, SaveFileImpl, WarBattles, WarOverview,
 };
 use crate::savefile::{
-    hex_color, BattleGroundProvince, CountryDevMana, CountryHistoryYear, CountryMana,
-    CountryReligion, CultureTolerance, MonarchStats, RebelReligion, WarEnd, WarStart,
+    hex_color, BattleGroundProvince, CountryHistoryYear, CountryMana, CountryReligion,
+    CultureTolerance, MonarchStats, RebelReligion, WarEnd, WarStart,
 };
 use eu4game::{ProvinceExt, SaveGameQuery};
 use eu4save::{
@@ -2000,13 +2000,6 @@ impl SaveFileImpl {
         let tag = tag.parse::<CountryTag>().unwrap();
         let country = self.query.country(&tag).unwrap();
 
-        let mana = self.query.country_mana_breakdown(country);
-
-        #[derive(Debug, Default)]
-        struct Development {
-            sum: usize,
-        }
-
         let (generals, conquistadors, admirals, explorers) = country
             .history
             .events
@@ -2022,48 +2015,15 @@ impl SaveFileImpl {
                 LeaderKind::Conquistador => (g, c + 1, a, e),
             });
 
-        let mut tags = country
-            .history
-            .events
-            .iter()
-            .filter_map(|(_, event)| match event {
-                CountryEvent::ChangedTagFrom(tag) => Some(*tag),
-                _ => None,
-            })
-            .chain(std::iter::once(tag))
-            .map(|tag| (tag, Development::default()))
-            .collect::<Vec<_>>();
-
-        let mut province_count = 0;
-        for prov in self.query.save().game.provinces.values() {
-            let mut province_found = false;
-            for (tag, dev) in &mut tags {
-                if let Some(s) = prov.country_improve_count.get(tag) {
-                    if *s < 0 {
-                        continue;
-                    }
-                    if !province_found {
-                        province_count += 1;
-                    }
-                    province_found = true;
-                    dev.sum += *s as usize;
-                }
-            }
-        }
-
-        let development = tags
-            .into_iter()
-            .filter(|(_, dev)| dev.sum > 0)
-            .map(|(tag, dev)| CountryDevMana {
-                country: self.localize_tag(tag),
-                sum: dev.sum,
-            })
-            .collect::<Vec<_>>();
+        let dev_efficiency = self
+            .dev_efficiencies(std::iter::once((tag, country)))
+            .pop()
+            .expect("to have one element");
 
         CountryMana {
-            mana_usage: mana,
-            development,
-            provinces_developed: province_count,
+            mana_usage: dev_efficiency.mana,
+            development: dev_efficiency.dev_breakdown,
+            provinces_developed: dev_efficiency.provinces_improved,
             generals,
             conquistadors,
             admirals,

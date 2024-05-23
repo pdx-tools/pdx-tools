@@ -82,11 +82,12 @@ export const ChartDrawerTitle = ({
         </Select.Trigger>
         <Select.Content>
           <Select.Group>
-            <Select.Label>Annual Charts</Select.Label>
+            <Select.Label>Charts</Select.Label>
             <Select.Item value="monthly-income">Monthly Income</Select.Item>
             <Select.Item value="nation-size">Nation Size</Select.Item>
             <Select.Item value="score">Score</Select.Item>
             <Select.Item value="inflation">Inflation</Select.Item>
+            <Select.Item value="dev-efficiency">Dev Efficiency</Select.Item>
           </Select.Group>
 
           <Select.Group>

@@ -17,12 +17,13 @@ import { CountriesTotalExpensesTable } from "./CountriesTotalExpensesTable";
 import { GeographicalDevelopmentTree } from "./GeographicalDevelopmentTree";
 import { OwnedDevelopmentStatesTree } from "./OwnedDevelopmentStatesTree";
 import { ProvinceDataTable } from "./ProvinceDataTable";
+import { DevEfficiency } from "./DevEfficiency";
 
 interface VizRendererProps {
   module: VizModules;
 }
 
-export const VizRenderer = ({ module }: VizRendererProps): JSX.Element => {
+export const VizRenderer = ({ module }: VizRendererProps) => {
   switch (module) {
     case "idea-group":
       return <IdeaGroupsChart />;
@@ -54,5 +55,7 @@ export const VizRenderer = ({ module }: VizRendererProps): JSX.Element => {
       return <OwnedDevelopmentStatesTree />;
     case "provinces":
       return <ProvinceDataTable />;
+    case "dev-efficiency":
+      return <DevEfficiency />;
   }
 };

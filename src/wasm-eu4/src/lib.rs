@@ -9,6 +9,7 @@ use crate::{
 };
 use eu4game::{game::Game, shared::Eu4Parser};
 use eu4save::{models::Eu4Save, query::Query, Encoding, Eu4File, FailedResolveStrategy};
+use models::CountryDevEfficiencies;
 use savefile::{
     AchievementsScore, CountryAdvisors, CountryDetails, CountryReligions, Estate,
     FileObservationFrequency, HealthData, LocalizedLedger, MapCursorPayload, MapPayload,
@@ -151,6 +152,10 @@ impl SaveFile {
 
     pub fn get_countries_total_expenses(&self, payload: TagFilterPayloadRaw) -> CountriesExpenses {
         self.0.get_countries_total_expenses(payload).into()
+    }
+
+    pub fn get_dev_efficiency(&self, payload: TagFilterPayloadRaw) -> CountryDevEfficiencies {
+        self.0.get_dev_efficiency(payload).into()
     }
 
     pub fn geographical_development(&self, payload: TagFilterPayloadRaw) -> RootTree {

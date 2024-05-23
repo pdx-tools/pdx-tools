@@ -13,4 +13,5 @@ export type VizModules =
   | "wars"
   | "geographical-development"
   | "owned-development-states"
-  | "provinces";
+  | "provinces"
+  | "dev-efficiency";
