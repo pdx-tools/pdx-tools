@@ -1,4 +1,5 @@
 #![allow(nonstandard_style)]
+#![allow(clippy::empty_docs)]
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 

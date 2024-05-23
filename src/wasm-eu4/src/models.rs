@@ -1,4 +1,5 @@
 #![allow(nonstandard_style)]
+#![allow(clippy::empty_docs)]
 
 use eu4save::CountryTag;
 use serde::Serialize;

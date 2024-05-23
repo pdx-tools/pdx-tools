@@ -152,7 +152,7 @@ impl SaveFileImpl {
         // g2plot will interpolate between two years which we want to avoid
         let mut result = Vec::with_capacity(points.capacity());
         for window in points.windows(2) {
-            let x = window.get(0).unwrap();
+            let x = window.first().unwrap();
             let y = window.get(1).unwrap();
 
             result.push(x.clone());
@@ -560,15 +560,10 @@ impl SaveFileImpl {
         for (continent, provs) in self.game.continents() {
             let provs = provs
                 .filter_map(|id| {
-                    let Some(prov) = self.query.save().game.provinces.get(&id) else {
-                        return None;
-                    };
-                    let owned = prov
-                        .owner
-                        .as_ref()
-                        .map_or(false, |owner| filter.contains(owner));
+                    let prov = self.query.save().game.provinces.get(&id)?;
+                    let owner = prov.owner.as_ref()?;
 
-                    if !owned {
+                    if !filter.contains(owner) {
                         return None;
                     }
 

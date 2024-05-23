@@ -112,7 +112,7 @@ fn institution_cost_engine(prov: InstitutionEngine) -> ProvinceDevStrategy {
 
     if matches!(prov.exploitable, Exploit::Available) {
         let right_after_expand = expand_step && available_expands == 0;
-        let optimal_exploit = exploit_at(prov.dev, f64::from(prov.institution_progress));
+        let optimal_exploit = exploit_at(prov.dev, prov.institution_progress);
         if right_after_expand || prov.dev == optimal_exploit {
             optimal = optimal.min(institution_cost_engine(prov.exploit()))
         }

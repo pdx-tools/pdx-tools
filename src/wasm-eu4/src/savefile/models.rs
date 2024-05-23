@@ -1,4 +1,5 @@
 #![allow(nonstandard_style)]
+#![allow(clippy::empty_docs)]
 use eu4save::{
     models::{
         ActiveWar, CountryTechnology, GameplayOptions, Leader, LeaderKind, NationalFocus,
