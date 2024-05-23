@@ -116,6 +116,8 @@ export const DevEfficiency = () => {
     return null;
   }
 
+  const topCountries = new Set(data.slice(0, 15).map((x) => x.country.tag));
+
   const config = {
     appendPadding: 10,
     data,
@@ -185,6 +187,15 @@ export const DevEfficiency = () => {
         style: {
           stroke: "#aaa",
         },
+      },
+    },
+    label: {
+      formatter(text) {
+        const tag = (text as CountryDevEffiency).country.tag;
+        return topCountries.has(tag) ? tag : "";
+      },
+      style: {
+        fill: isDarkMode() ? "#fff" : "#000",
       },
     },
   } satisfies ScatterConfig;
