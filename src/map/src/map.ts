@@ -563,7 +563,7 @@ export class WebGLMap {
     const pixelX = ((mouseFocusX + width / 2) / width) * IMG_WIDTH;
     const pixelY = ((mouseFocusY + height / 2) / height) * IMG_HEIGHT;
 
-    return [pixelX, pixelY];
+    return [(pixelX + IMG_WIDTH) % IMG_WIDTH, pixelY];
   }
 
   public onMouseUp(e: MouseEvent, rect?: UserRect) {
