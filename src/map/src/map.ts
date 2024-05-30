@@ -488,6 +488,14 @@ export class WebGLMap {
     } else if (focusYAdj - focusYLen / 2 < -canvas.height / 2) {
       this.focusPoint[1] = (-canvas.height / 2 + focusYLen / 2) / yAspect;
     }
+
+    const wrappedAround = (canvas.width + focusXLen) / 2;
+    const wrapAdj = canvas.width / 2 - focusXLen / 2;
+    if (this.focusPoint[0] > wrappedAround) {
+      this.focusPoint[0] = (this.focusPoint[0] % wrappedAround) - wrapAdj;
+    } else if (this.focusPoint[0] < -wrappedAround) {
+      this.focusPoint[0] = (this.focusPoint[0] % wrappedAround) + wrapAdj;
+    }
   }
 
   public onWheel(e: WheelEvent, rect?: UserRect) {
