@@ -289,7 +289,7 @@ export class WebGLMap {
     this.glResources.xbrShaderProgram.setTextures(this.glResources);
 
     gl.bindVertexArray(this.glResources.xbrVao);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.drawArrays(gl.TRIANGLES, 0, 18);
     gl.bindVertexArray(null);
 
     this.onCommit?.(gl);
@@ -347,7 +347,7 @@ export class WebGLMap {
     this.glResources.xbrShaderProgram.setTextures(this.glResources);
 
     gl.bindVertexArray(this.glResources.xbrVao);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.drawArrays(gl.TRIANGLES, 0, 18);
     gl.bindVertexArray(null);
 
     this.glResources.xbrShaderProgram.clear();

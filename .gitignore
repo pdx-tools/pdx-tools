@@ -19,3 +19,4 @@ dev/.env.*staging
 tmp/
 node_modules
 *.swp
+.idea
