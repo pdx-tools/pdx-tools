@@ -406,7 +406,7 @@ export const CountryDetailsDescriptions = ({
           <div>
             <div className="flex text-right">
               <ProfessionalismIcon />
-              <span className="grow">{formatInt(details.professionalism)}</span>
+              <span className="grow">{formatInt(details.professionalism * 100)}%</span>
             </div>
             <div className="flex text-right">
               <ArmyTraditionIcon />
