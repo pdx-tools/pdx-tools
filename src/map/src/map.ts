@@ -488,12 +488,6 @@ export class WebGLMap {
     } else if (focusYAdj - focusYLen / 2 < -canvas.height / 2) {
       this.focusPoint[1] = (-canvas.height / 2 + focusYLen / 2) / yAspect;
     }
-
-    if (this.focusPoint[0] + focusXLen / 2 > canvas.width / 2) {
-      this.focusPoint[0] = canvas.width / 2 - focusXLen / 2;
-    } else if (this.focusPoint[0] - focusXLen / 2 < -canvas.width / 2) {
-      this.focusPoint[0] = -(canvas.width / 2) + focusXLen / 2;
-    }
   }
 
   public onWheel(e: WheelEvent, rect?: UserRect) {
