@@ -23,7 +23,7 @@ export interface TerrainOverlayResources {
 }
 
 export async function loadImage(src: string): Promise<ImageBitmap> {
-  // Download as blobs per this 2021-06-04 chronium comment:
+  // Download as blobs per this 2021-06-04 chromium comment:
   // https://bugs.chromium.org/p/chromium/issues/detail?id=580202#c53
   const image = await fetch(src).then((x) => x.blob());
   return createImageBitmap(image);
