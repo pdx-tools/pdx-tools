@@ -54,8 +54,6 @@ services:
   api:
     image: ghcr.io/pdx-tools/api:nightly
     restart: 'unless-stopped'
-    expose:
-      - 8080
 
 volumes:
   pgdata:
