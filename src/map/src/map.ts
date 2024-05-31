@@ -289,7 +289,7 @@ export class WebGLMap {
     this.glResources.xbrShaderProgram.setTextures(this.glResources);
 
     gl.bindVertexArray(this.glResources.xbrVao);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.drawArrays(gl.TRIANGLES, 0, 18);
     gl.bindVertexArray(null);
 
     this.onCommit?.(gl);
@@ -347,7 +347,7 @@ export class WebGLMap {
     this.glResources.xbrShaderProgram.setTextures(this.glResources);
 
     gl.bindVertexArray(this.glResources.xbrVao);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.drawArrays(gl.TRIANGLES, 0, 18);
     gl.bindVertexArray(null);
 
     this.glResources.xbrShaderProgram.clear();
@@ -489,10 +489,12 @@ export class WebGLMap {
       this.focusPoint[1] = (-canvas.height / 2 + focusYLen / 2) / yAspect;
     }
 
-    if (this.focusPoint[0] + focusXLen / 2 > canvas.width / 2) {
-      this.focusPoint[0] = canvas.width / 2 - focusXLen / 2;
-    } else if (this.focusPoint[0] - focusXLen / 2 < -canvas.width / 2) {
-      this.focusPoint[0] = -(canvas.width / 2) + focusXLen / 2;
+    const wrappedAround = (canvas.width + focusXLen) / 2;
+    const wrapAdj = canvas.width / 2 - focusXLen / 2;
+    if (this.focusPoint[0] > wrappedAround) {
+      this.focusPoint[0] = (this.focusPoint[0] % wrappedAround) - wrapAdj;
+    } else if (this.focusPoint[0] < -wrappedAround) {
+      this.focusPoint[0] = (this.focusPoint[0] % wrappedAround) + wrapAdj;
     }
   }
 
@@ -561,7 +563,7 @@ export class WebGLMap {
     const pixelX = ((mouseFocusX + width / 2) / width) * IMG_WIDTH;
     const pixelY = ((mouseFocusY + height / 2) / height) * IMG_HEIGHT;
 
-    return [pixelX, pixelY];
+    return [(pixelX + IMG_WIDTH) % IMG_WIDTH, pixelY];
   }
 
   public onMouseUp(e: MouseEvent, rect?: UserRect) {
