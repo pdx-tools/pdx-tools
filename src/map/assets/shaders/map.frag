@@ -31,13 +31,13 @@ vec3 tcLayer(highp vec2 tc) {
     return vec3((tc.x - 0.5 * layer) * 2.0, tc.y, layer);
 }
 
-vec3 provincesAt3(highp vec3 tc) {
+vec3 provincesAt(highp vec3 tc) {
     return tc.z <= 0.5 ?
         texture(u_provincesImage1, vec2(tc)).rgb :
         texture(u_provincesImage2, vec2(tc)).rgb;
 }
 
-vec3 terrainAt3(highp vec3 tc) {
+vec3 terrainAt(highp vec3 tc) {
     return tc.z <= 0.5 ?
         texture(u_terrainImage1, vec2(tc)).rgb :
         texture(u_terrainImage2, vec2(tc)).rgb;
@@ -206,8 +206,8 @@ void main() {
     vec4[5] mapMode;
 
     for (int i = 0; i < 5; i++) {
-        terrain[i] = terrainAt3(tc[i]);
-        provinces[i] = provincesAt3(tc[i]);
+        terrain[i] = terrainAt(tc[i]);
+        provinces[i] = provincesAt(tc[i]);
         provinceIndices[i] = getOrderedProvinceColorIndex(provinces[i]);
         country[i] = texelFetch(u_countryProvincesColorImage, provinceIndices[i], 0);
         mapMode[i] = texelFetch(u_primaryProvincesColorImage, provinceIndices[i], 0);
