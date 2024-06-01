@@ -92,7 +92,7 @@ export const Timelapse = () => {
     try {
       for await (const frame of mapTimelapseCursor(timelapsePayload)) {
         updateMap(frame);
-        map.redrawMapImage();
+        map.redrawMap();
         await new Promise((res) => setTimeout(res, 1000 / maxFps));
         if (stopTimelapseReq.current) {
           return;
@@ -100,7 +100,7 @@ export const Timelapse = () => {
       }
 
       await updateProvinceColors();
-      map.redrawMapNow();
+      await map.redrawMap();
     } finally {
       setIsPlaying(false);
     }
@@ -160,7 +160,7 @@ export const Timelapse = () => {
       restoreMapState();
 
       await updateProvinceColors();
-      map.redrawMapImage();
+      map.redrawMap();
       downloadData(blob, filename);
     } catch (ex) {
       captureException(ex);

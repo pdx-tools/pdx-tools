@@ -26,8 +26,8 @@ export interface UserRect {
 
 export interface DrawEvent {
   elapsedMs: number;
-  viewportAnimationRequestCancelled: number;
-  mapAnimationRequestCancelled: number;
+  viewportDrawsQueued: number;
+  mapDrawsQueued: number;
 }
 
 export const glContextOptions = (): WebGLContextAttributes => ({
@@ -71,22 +71,17 @@ export class WebGLMap {
   public renderTerrain = true;
   private throttledMouseMove: (arg0: any, rect?: UserRect) => void;
 
-  private previousViewportTimestamp = 0;
-  private viewportAnimationRequest: undefined | number = undefined;
-  private viewportAnimationRequestCancelled: number = 0;
+  private viewportDrawsQueued: number = 0;
+  private mapDrawsQueued: number = 0;
 
-  private previousMapTimestamp = 0;
-  private mapAnimationRequest: undefined | number = undefined;
-  private mapAnimationRequestCancelled: number = 0;
-
-  private rawMapStartTime: number = 0;
-
-  public readonly redrawMapImage: () => void;
-  public readonly redrawViewport: () => void;
   public onProvinceHover?: (proinceId: number) => void;
   public onProvinceSelection?: (proinceId: number) => void;
   public onDraw?: (event: DrawEvent) => void;
   public onCommit?: (context: OnScreenWegblContext) => void;
+  private redrawViewportTask: Promise<void> | undefined;
+  private redrawMapTask: Promise<void> | undefined;
+  private queuedViewportTask: Promise<void> | undefined;
+  private queuedMapTask: Promise<void> | undefined;
 
   constructor(
     public readonly gl: OnScreenWegblContext,
@@ -95,35 +90,6 @@ export class WebGLMap {
   ) {
     this.focusPoint = [0, 0];
     this.scale = 1;
-
-    const capViewportAnimation = () => {
-      this.cancelQueuedViewportAnimation();
-      if (this.mapAnimationRequest) {
-        return;
-      }
-
-      this.viewportAnimationRequest = requestAnimationFrame((timestamp) => {
-        if (timestamp - this.previousViewportTimestamp > 10) {
-          this.previousViewportTimestamp = timestamp;
-          this.redrawViewportNow();
-        }
-      });
-    };
-
-    const capMapAnimation = () => {
-      this.rawMapStartTime = this.rawMapStartTime || performance.now();
-      this.cancelQueuedMapAnimation();
-      this.mapAnimationRequest = requestAnimationFrame((timestamp) => {
-        if (timestamp - this.previousMapTimestamp > 10) {
-          this.previousMapTimestamp = timestamp;
-          this.previousViewportTimestamp = timestamp;
-          this.redrawMapNow();
-        }
-      });
-    };
-
-    this.redrawMapImage = capMapAnimation;
-    this.redrawViewport = capViewportAnimation;
 
     this.throttledMouseMove = throttle((args, rect) => {
       this.onMouseMove(args, rect);
@@ -158,24 +124,53 @@ export class WebGLMap {
     return new WebGLMap(glResources.gl, glResources, provinceFinder);
   }
 
-  private cancelQueuedViewportAnimation() {
-    if (this.viewportAnimationRequest) {
-      cancelAnimationFrame(this.viewportAnimationRequest);
-      this.viewportAnimationRequestCancelled += 1;
-      this.viewportAnimationRequest = undefined;
+  /** Returns a promise for when the canvas has been updated with latest viewport */
+  public redrawViewport = async () => {
+    // If there's already a queue to redraw, let's defer to them
+    const alreadyQueued = this.queuedViewportTask ?? this.queuedMapTask;
+    if (alreadyQueued) {
+      this.viewportDrawsQueued += 1;
+      return alreadyQueued;
     }
-  }
 
-  private cancelQueuedMapAnimation() {
-    // We cancel any viewport request as redrawing the map includes the viewport
-    this.cancelQueuedViewportAnimation();
-
-    if (this.mapAnimationRequest) {
-      cancelAnimationFrame(this.mapAnimationRequest);
-      this.mapAnimationRequestCancelled += 1;
-      this.mapAnimationRequest = undefined;
+    // Create the queue if there's an outstanding task
+    this.queuedViewportTask = this.redrawViewportTask ?? this.redrawMapTask;
+    if (this.queuedViewportTask) {
+      await this.queuedViewportTask;
+      this.queuedViewportTask = undefined;
     }
-  }
+
+    this.redrawViewportNow();
+    return (this.redrawViewportTask = new Promise((res) =>
+      requestAnimationFrame((_) => {
+        this.redrawViewportTask = undefined;
+        res(void 0);
+      }),
+    ));
+  };
+
+  /** Returns a promise for when the canvas has been updated with latest map data */
+  public redrawMap = async () => {
+    const alreadyQueued = this.queuedMapTask;
+    if (alreadyQueued) {
+      this.mapDrawsQueued += 1;
+      return alreadyQueued;
+    }
+
+    this.queuedMapTask = this.redrawMapTask;
+    if (this.queuedMapTask) {
+      await this.queuedMapTask;
+      this.queuedMapTask = undefined;
+    }
+
+    this.redrawMapNow();
+    return (this.redrawMapTask = new Promise((res) =>
+      requestAnimationFrame((_) => {
+        this.redrawMapTask = undefined;
+        res(void 0);
+      }),
+    ));
+  };
 
   private applyMapShaderParameters() {
     this.glResources.mapShaderProgram.setTextures(this.glResources);
@@ -250,16 +245,14 @@ export class WebGLMap {
     this.redrawRawMapRight();
   }
 
-  public redrawMapNow() {
+  private redrawMapNow() {
     this.redrawRawMap();
     this.redrawViewportNow();
-    this.cancelQueuedMapAnimation();
-    this.rawMapStartTime = 0;
-    this.mapAnimationRequestCancelled = 0;
-    this.viewportAnimationRequestCancelled = 0;
+    this.mapDrawsQueued = 0;
+    this.viewportDrawsQueued = 0;
   }
 
-  public redrawViewportNow() {
+  private redrawViewportNow() {
     const start = performance.now();
     const gl = this.gl;
     this.scale = Math.max(this.minScale, this.scale) || 1;
@@ -290,23 +283,22 @@ export class WebGLMap {
 
     gl.bindVertexArray(this.glResources.xbrVao);
     gl.drawArrays(gl.TRIANGLES, 0, 18);
+
+    requestAnimationFrame(() => {
+      const end = performance.now();
+      const elapsedMs = end - start;
+      this.onDraw?.({
+        elapsedMs,
+        viewportDrawsQueued: this.viewportDrawsQueued,
+        mapDrawsQueued: this.mapDrawsQueued,
+      });
+    });
+
     gl.bindVertexArray(null);
 
     this.onCommit?.(gl);
     this.glResources.xbrShaderProgram.clear();
-    this.cancelQueuedViewportAnimation();
-    this.viewportAnimationRequestCancelled = 0;
-
-    requestAnimationFrame(() => {
-      const end = performance.now();
-      const elapsedMs = end - (this.rawMapStartTime || start);
-      this.onDraw?.({
-        elapsedMs,
-        viewportAnimationRequestCancelled:
-          this.viewportAnimationRequestCancelled,
-        mapAnimationRequestCancelled: this.mapAnimationRequestCancelled,
-      });
-    });
+    this.viewportDrawsQueued = 0;
   }
 
   public generateMapImage(width: number, height: number) {
