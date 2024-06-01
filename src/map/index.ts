@@ -169,11 +169,8 @@ async function main() {
   map.onProvinceHover = (e) => (hoveredEl.textContent = e.toString());
   map.onDraw = (e) => {
     let cancellations = ``;
-    if (
-      e.viewportAnimationRequestCancelled != 0 ||
-      e.mapAnimationRequestCancelled != 0
-    ) {
-      cancellations += `(cancellations: viewport ${e.viewportAnimationRequestCancelled} / redraw ${e.mapAnimationRequestCancelled}) `;
+    if (e.mapDrawsQueued != 0 ||e.viewportDrawsQueued != 0) {
+      cancellations += `(queued: viewport ${e.viewportDrawsQueued} / redraw ${e.mapDrawsQueued}) `;
     }
     console.log(
       `Canvas content redrawn ${cancellations}in: ${e.elapsedMs.toFixed(2)}ms`
@@ -310,25 +307,25 @@ async function main() {
 
   function mapModeHandler(this: HTMLInputElement, _e: Event) {
     mapModeChange(this.value);
-    map.redrawMapImage();
+    map.redrawMap();
   }
 
   function provinceBordersHandler(this: HTMLInputElement, _e: Event) {
     map.showProvinceBorders = this.checked;
     localStorage.setItem("showProvinceBorders", JSON.stringify(this.checked));
-    map.redrawMapImage();
+    map.redrawMap();
   }
 
   function countryBordersHandler(this: HTMLInputElement, _e: Event) {
     map.showCountryBorders = this.checked;
     localStorage.setItem("showCountryBorders", JSON.stringify(this.checked));
-    map.redrawMapImage();
+    map.redrawMap();
   }
 
   function mapBordersHandler(this: HTMLInputElement, _e: Event) {
     map.showMapModeBorders = this.checked;
     localStorage.setItem("showMapModeBorders", JSON.stringify(this.checked));
-    map.redrawMapImage();
+    map.redrawMap();
   }
 
   function renderTerrainHandler(this: HTMLInputElement, _e: Event) {
@@ -352,8 +349,8 @@ async function main() {
     link.remove();
   }
 
-  function exportImageHandler() {
-    map.redrawMapNow();
+  async function exportImageHandler() {
+    await map.redrawMap();
     canvas.toBlob((data) => downloadImage(data, "png"));
   }
 
@@ -496,7 +493,7 @@ async function main() {
     renderTerrainEl.checked = map.renderTerrain = val;
   }
 
-  map.redrawMapImage();
+  map.redrawMap();
   const debounceResize = debounce(() => resizeHandler(), 100);
 
   let firstResize = true;

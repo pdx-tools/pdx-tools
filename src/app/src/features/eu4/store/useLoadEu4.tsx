@@ -10,7 +10,7 @@ import {
   MapShader,
   ProvinceFinder,
   XbrShader,
-  compileShaders
+  compileShaders,
 } from "map";
 import { captureException } from "@sentry/nextjs";
 import { Dispatch, useRef, useEffect, useReducer } from "react";
@@ -341,13 +341,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
         });
 
         await runTask(dispatch, {
-          fn: () =>
-            new Promise((res) =>
-              requestAnimationFrame(() => {
-                map.onDraw = () => res(void 0);
-                map.redrawMapImage();
-              }),
-            ),
+          fn: () => map.redrawMap(),
           name: "first render",
           progress: 4,
         });

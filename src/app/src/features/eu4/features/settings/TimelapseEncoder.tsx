@@ -96,7 +96,7 @@ export class TimelapseEncoder {
       }
 
       this.store.getState().actions.updateMap(item);
-      this.map.redrawMapNow();
+      await this.map.redrawMap();
       this.create2dFrame(item.date.text);
 
       const frame = new VideoFrame(this.ctx2d.canvas, {

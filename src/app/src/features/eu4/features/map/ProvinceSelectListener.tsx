@@ -15,12 +15,12 @@ export const ProvinceSelectListener = () => {
       const details = await getEu4Worker().eu4GetProvinceDeteails(id);
       if (details) {
         map.highlightSelectedProvince();
-        map.redrawMapImage();
+        map.redrawMap();
         setDrawerVisible(true);
         setData(details);
       } else {
         map.unhighlightSelectedProvince();
-        map.redrawMapImage();
+        map.redrawMap();
         setDrawerVisible(false);
       }
     };

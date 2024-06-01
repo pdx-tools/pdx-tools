@@ -172,22 +172,22 @@ export const createEu4Store = async ({
         emitEvent({ kind: "map-mode", mode });
         syncMapSettings(get());
         await get().actions.updateProvinceColors();
-        get().map.redrawMapImage();
+        get().map.redrawMap();
       },
       setMapShowStripes: async (show: boolean) => {
         set({ showSecondaryColor: show });
         await get().actions.updateProvinceColors();
-        get().map.redrawMapImage();
+        get().map.redrawMap();
       },
       setPaintSubjectInOverlordHue: async (enabled: boolean) => {
         set({ paintSubjectInOverlordHue: enabled });
         await get().actions.updateProvinceColors();
-        get().map.redrawMapImage();
+        get().map.redrawMap();
       },
       setShowProvinceBorders: (enabled: boolean) => {
         set({ showProvinceBorders: enabled });
         syncMapSettings(get());
-        get().map.redrawMapImage();
+        get().map.redrawMap();
       },
       setShowCountryBorders: (enabled: boolean) => {
         if (get().mapMode == "political") {
@@ -196,12 +196,12 @@ export const createEu4Store = async ({
 
         set({ showCountryBorders: enabled });
         syncMapSettings(get());
-        get().map.redrawMapImage();
+        get().map.redrawMap();
       },
       setShowMapModeBorders: (enabled: boolean) => {
         set({ showMapModeBorders: enabled });
         syncMapSettings(get());
-        get().map.redrawMapImage();
+        get().map.redrawMap();
       },
 
       setTerrainOverlay: async (enabled: boolean) => {
@@ -210,7 +210,7 @@ export const createEu4Store = async ({
         if (get().map.renderTerrain) {
           await loadTerrainImages(get().map, selectSaveVersion(get()));
         }
-        map.redrawMapImage();
+        map.redrawMap();
       },
       setSelectedDate: (date: Eu4State["selectedDate"] | null) => {
         if (date !== null) {
@@ -223,7 +223,7 @@ export const createEu4Store = async ({
         const text = await getEu4Worker().eu4DaysToDate(days);
         get().actions.setSelectedDate({ days, text });
         await get().actions.updateProvinceColors();
-        get().map.redrawMapImage();
+        get().map.redrawMap();
       },
       setSelectedDateText: async (text: string) => {
         const days = await getEu4Worker().eu4DateToDays(text);
@@ -233,7 +233,7 @@ export const createEu4Store = async ({
 
         get().actions.setSelectedDate({ days, text });
         await get().actions.updateProvinceColors();
-        get().map.redrawMapImage();
+        get().map.redrawMap();
       },
 
       setSelectedTag: (tag: string) =>
@@ -267,7 +267,7 @@ export const createEu4Store = async ({
         const newFilter = { ...get().countryFilter, ...matcher };
         set({ countryFilter: newFilter });
         await get().actions.updateProvinceColors();
-        get().map.redrawMapImage();
+        get().map.redrawMap();
       },
       updateProvinceColors: async () => {
         const payload = selectMapPayload(get());
@@ -301,7 +301,7 @@ export const createEu4Store = async ({
         });
 
         await get().actions.updateProvinceColors();
-        get().map.redrawMapImage();
+        get().map.redrawMap();
       },
       zoomIn: () => {
         get().map.zoomIn();

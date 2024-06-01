@@ -53,9 +53,9 @@ export const MapExportMenu = () => {
     setIsExporting(false);
   };
 
-  const exportView = () => {
-    map.redrawMapNow();
+  const exportView = async () => {
     setIsExporting(true);
+    await map.redrawMap();
     map.gl.canvas.toBlob((b) => downloadDataFile(b, "view"));
   };
 
