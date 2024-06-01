@@ -6,7 +6,7 @@ import {
 import { GLResources } from "./src/glResources";
 import { ProvinceFinder } from "./src/ProvinceFinder";
 import { debounce } from "./src/debounce";
-import { startCompilation } from "./src/shaderCompiler";
+import { compileShaders } from "./src/shaderCompiler";
 import { OnScreenWegblContext, ShaderSource } from "./src/types";
 import { MapShader } from "./src/mapShader";
 import { XbrShader } from "./src/xbrShader";
@@ -133,7 +133,7 @@ async function main() {
   ]);
 
   const staticResourcesPromise = loadStaticResources();
-  const linkedPrograms = startCompilation(gl, await shaderPromise);
+  const compilation = compileShaders(gl, await shaderPromise);
 
   const [primaryPoliticalColors, secondaryPoliticalColors] =
     await fetchColorData("political");
@@ -150,7 +150,7 @@ async function main() {
     gl,
     staticResources,
   );
-  const [mapProgram, xbrProgram] = await linkedPrograms.compilationCompletion();
+  const [mapProgram, xbrProgram] = compilation.linked();
   const glResources = new GLResources(
     ...glResourcesInit,
     MapShader.create(gl, mapProgram),

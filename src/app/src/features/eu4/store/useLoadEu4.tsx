@@ -30,6 +30,7 @@ import {
 } from "./eu4Store";
 import { dataUrls, gameVersion } from "@/lib/game_gen";
 import { pdxAbortController } from "@/lib/abortController";
+import { compileShaders } from "map/src/shaderCompiler";
 
 export type Eu4SaveInput =
   | { kind: "file"; file: File }
@@ -161,12 +162,9 @@ async function loadEu4Save(
   ]);
 
   const shaders = await shadersTask;
-  const compileTask = timeSync(() => startCompilation(gl, shaders));
+  const compilation = timeSync(() => compileShaders(gl, shaders));
   dispatch({ kind: "progress", value: 3 });
-  logMs(
-    compileTask,
-    `init shader compilation - non-blocking: ${compileTask.data.nonBlocking}`,
-  );
+  logMs(compilation, `start compiling shaders`);
 
   await initTasks;
   const { version } = await run({
@@ -205,11 +203,12 @@ async function loadEu4Save(
 
   const resources = await resourceTask;
   const glResourcesInit = GLResources.create(gl, resources);
-  const [mapProgram, xbrProgram] = await run({
-    fn: () => compileTask.data.compilationCompletion(),
-    name: "shader linkage",
-    progress: 5,
-  });
+
+  signal.throwIfAborted();
+  const programTask = timeSync(() => compilation.data.linked());
+  dispatch({ kind: "progress", value: 5 });
+  logMs(programTask, `shaders linked`);
+  const [mapProgram, xbrProgram] = programTask.data;
 
   const glResources = new GLResources(
     ...glResourcesInit,
