@@ -9,8 +9,8 @@ import {
   WebGLMap,
   MapShader,
   ProvinceFinder,
-  startCompilation,
   XbrShader,
+  compileShaders
 } from "map";
 import { captureException } from "@sentry/nextjs";
 import { Dispatch, useRef, useEffect, useReducer } from "react";
@@ -30,7 +30,6 @@ import {
 } from "./eu4Store";
 import { dataUrls, gameVersion } from "@/lib/game_gen";
 import { pdxAbortController } from "@/lib/abortController";
-import { compileShaders } from "map/src/shaderCompiler";
 
 export type Eu4SaveInput =
   | { kind: "file"; file: File }
