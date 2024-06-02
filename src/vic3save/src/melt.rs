@@ -98,7 +98,7 @@ impl<'a, 'b> Vic3Melter<'a, 'b> {
     }
 }
 
-fn update_header(data: &mut Vec<u8>, mut header: SaveHeader) {
+fn update_header(data: &mut [u8], mut header: SaveHeader) {
     header.set_kind(SaveHeaderKind::Text);
     header.set_metadata_len((data.len() + 1 - header.header_len()) as u64);
     let _ = header.write(&mut data[..header.header_len()]);

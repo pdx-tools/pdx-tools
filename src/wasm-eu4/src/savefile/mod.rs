@@ -185,10 +185,7 @@ impl SaveFileImpl {
             })
         });
 
-        let localization = tag_names
-            .into_iter()
-            .map(|(_tag, localized)| localized)
-            .collect();
+        let localization = tag_names.into_values().collect();
 
         LocalizedLedger {
             points: result,

@@ -1,4 +1,6 @@
 #![allow(nonstandard_style)]
+#![allow(clippy::empty_docs)]
+
 use serde::Serialize;
 use tsify::Tsify;
 use vic3save::Vic3Date;

@@ -114,6 +114,6 @@ where
     tar_game_directory(
         game_dir,
         output_dir,
-        &major_minor.join(".").trim_start_matches('v'),
+        major_minor.join(".").trim_start_matches('v'),
     )
 }
