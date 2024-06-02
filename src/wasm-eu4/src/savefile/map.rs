@@ -3,7 +3,6 @@ use super::{
     MapPayloadKind, MapQuickTipPayload, SaveFileImpl, TagFilterPayload,
 };
 use crate::savefile::Interval;
-use eu4game::SaveGameQuery;
 use eu4save::{
     models::{CountryEvent, Province},
     query::ReligionIndex,
@@ -45,7 +44,6 @@ impl SaveFileImpl {
         let province = self.query.save().game.provinces.get(&province_id)?;
         let requested_date = days.map(|x| self.query.save().game.start_date.add_days(x));
         let reb = CountryTag::new(*b"REB");
-        let sq = SaveGameQuery::new(&self.query, &self.game);
 
         let local_controller = 'controller: {
             let Some(date) = requested_date else {
@@ -71,10 +69,7 @@ impl SaveFileImpl {
                     }
                 };
 
-                break 'controller LocalizedTag {
-                    name: sq.localize_country(&current_controller),
-                    tag: current_controller,
-                };
+                break 'controller self.localize_tag(current_controller);
             };
 
             let resolver = self.tag_resolver.at(date);
@@ -110,10 +105,7 @@ impl SaveFileImpl {
             if current_controller == CountryTag::NONE {
                 return None;
             } else {
-                LocalizedTag {
-                    name: sq.localize_country(&current_controller),
-                    tag: current_controller,
-                }
+                self.localize_tag(current_controller)
             }
         };
 
@@ -160,10 +152,7 @@ impl SaveFileImpl {
             return None;
         }
 
-        let local_owner = LocalizedTag {
-            name: sq.localize_country(&owner_tag),
-            tag: owner_tag,
-        };
+        let local_owner = self.localize_tag(owner_tag);
 
         match payload {
             MapPayloadKind::Political => Some(MapQuickTipPayload::Political {

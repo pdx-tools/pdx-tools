@@ -3,8 +3,8 @@ use super::{
     CountryHistoryEventKind, CountryHistoryLeader, CountryHistoryMonarch, CountryLeader,
     CountryMonarch, CountryReligions, CountryStateDetails, DecisionCount, DiplomacyEntry,
     DiplomacyKind, Estate, FailedHeir, GovernmentStrength, GreatAdvisor, InfluenceModifier,
-    LandUnitStrength, LocalizedObj, LocalizedTag, MonarchKind, ProgressDate, ProvinceConquer,
-    ProvinceGc, RunningMonarch, SaveFileImpl, WarBattles, WarOverview,
+    LandUnitStrength, LocalizedObj, MonarchKind, ProgressDate, ProvinceConquer, ProvinceGc,
+    RunningMonarch, SaveFileImpl, WarBattles, WarOverview,
 };
 use crate::savefile::{
     hex_color, BattleGroundProvince, CountryHistoryYear, CountryMana, CountryReligion,
@@ -423,7 +423,6 @@ impl SaveFileImpl {
     pub fn get_country_rulers(&self, tag: &str) -> Vec<RunningMonarch> {
         let tag = tag.parse::<CountryTag>().unwrap();
         let country = self.query.country(&tag).unwrap();
-        let save_game_query = SaveGameQuery::new(&self.query, &self.game);
 
         let monarch_ids = country
             .previous_monarchs
@@ -494,10 +493,7 @@ impl SaveFileImpl {
                         let tmp_monarch = RunningMonarch {
                             name: x.name.clone(),
                             start: start_date.iso_8601().to_string(),
-                            country: LocalizedTag {
-                                tag: x.country,
-                                name: save_game_query.localize_country(&x.country),
-                            },
+                            country: self.localize_tag(x.country),
                             end: None,
                             personalities: x
                                 .personalities
@@ -528,10 +524,7 @@ impl SaveFileImpl {
                     if !monarch_ids.contains(&heir.id.id) {
                         failed_heirs.push(FailedHeir {
                             name: heir.name.clone(),
-                            country: LocalizedTag {
-                                tag: heir.country,
-                                name: save_game_query.localize_country(&heir.country),
-                            },
+                            country: self.localize_tag(heir.country),
                             birth: heir.birth_date.iso_8601().to_string(),
                             personalities: heir
                                 .personalities

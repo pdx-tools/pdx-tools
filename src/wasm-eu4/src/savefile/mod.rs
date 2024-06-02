@@ -137,7 +137,6 @@ impl SaveFileImpl {
     }
 
     fn localize_ledger_points(&self, iter: impl Iterator<Item = LedgerPoint>) -> LocalizedLedger {
-        let sgq = SaveGameQuery::new(&self.query, &self.game);
         let mut points: Vec<_> = iter
             .map(|x| OptionalLedgerPoint {
                 tag: x.tag,
@@ -174,18 +173,21 @@ impl SaveFileImpl {
         let tag_set: HashSet<_> = result.iter().map(|x| x.tag).collect();
         let tag_names: HashMap<_, _> = tag_set
             .iter()
-            .map(|tag| (tag, sgq.localize_country(tag)))
+            .map(|tag| (tag, self.localize_tag(*tag)))
             .collect();
 
         result.sort_unstable_by(|a, b| {
-            a.year
-                .cmp(&b.year)
-                .then_with(|| tag_names.get(&a.tag).cmp(&tag_names.get(&b.tag)))
+            a.year.cmp(&b.year).then_with(|| {
+                tag_names
+                    .get(&a.tag)
+                    .map(|x| &x.name)
+                    .cmp(&tag_names.get(&b.tag).map(|x| &x.name))
+            })
         });
 
         let localization = tag_names
             .into_iter()
-            .map(|(tag, name)| LocalizedTag { tag: *tag, name })
+            .map(|(_tag, localized)| localized)
             .collect();
 
         LocalizedLedger {
@@ -759,7 +761,6 @@ impl SaveFileImpl {
     }
 
     pub fn get_lucky_countries(&self) -> Vec<LocalizedTag> {
-        let save_game_query = SaveGameQuery::new(&self.query, &self.game);
         let mut v: Vec<_> = self
             .query
             .save()
@@ -767,10 +768,7 @@ impl SaveFileImpl {
             .countries
             .iter()
             .filter(|(_, country)| country.luck)
-            .map(|(tag, _)| LocalizedTag {
-                tag: *tag,
-                name: save_game_query.localize_country(tag),
-            })
+            .map(|(tag, _)| self.localize_tag(*tag))
             .collect();
         v.sort_unstable_by(|a, b| a.name.cmp(&b.name));
         v
@@ -1228,8 +1226,6 @@ impl SaveFileImpl {
         }
 
         let province = self.query.save().game.provinces.get(&id).unwrap();
-        let save_game_query = SaveGameQuery::new(&self.query, &self.game);
-
         let map_area = self
             .game
             .province_area(&id)
@@ -1256,10 +1252,7 @@ impl SaveFileImpl {
                             .country_states
                             .iter()
                             .map(|country_state| CountryState {
-                                country: LocalizedTag {
-                                    tag: country_state.country,
-                                    name: save_game_query.localize_country(&country_state.country),
-                                },
+                                country: self.localize_tag(country_state.country),
                                 prosperity: country_state.prosperity,
                             })
                             .collect::<Vec<_>>()
@@ -1269,10 +1262,7 @@ impl SaveFileImpl {
                     .investments
                     .iter()
                     .map(|investment| TradeCompanyInvestments {
-                        country: LocalizedTag {
-                            tag: investment.tag,
-                            name: save_game_query.localize_country(&investment.tag),
-                        },
+                        country: self.localize_tag(investment.tag),
                         investments: investment
                             .investments
                             .iter()
@@ -1285,10 +1275,7 @@ impl SaveFileImpl {
                     .collect::<Vec<_>>(),
             });
 
-        let owner = province.owner.as_ref().map(|tag| LocalizedTag {
-            tag: *tag,
-            name: save_game_query.localize_country(tag),
-        });
+        let owner = province.owner.as_ref().map(|tag| self.localize_tag(*tag));
 
         let controller = province
             .occupying_rebel_faction
@@ -1302,7 +1289,7 @@ impl SaveFileImpl {
                     .find_map(|reb| {
                         if reb.id.id == x.id {
                             Some(LocalizedTag {
-                                tag: "REB".parse::<CountryTag>().unwrap(),
+                                tag: CountryTag::new(*b"REB"),
                                 name: reb.name.clone(),
                             })
                         } else {
@@ -1311,28 +1298,22 @@ impl SaveFileImpl {
                     })
             })
             .or_else(|| {
-                province.controller.as_ref().map(|tag| LocalizedTag {
-                    tag: *tag,
-                    name: save_game_query.localize_country(tag),
-                })
+                province
+                    .controller
+                    .as_ref()
+                    .map(|tag| self.localize_tag(*tag))
             });
 
         let cores = province
             .cores
             .iter()
-            .map(|tag| LocalizedTag {
-                tag: *tag,
-                name: save_game_query.localize_country(tag),
-            })
+            .map(|tag| self.localize_tag(*tag))
             .collect();
 
         let claims = province
             .claims
             .iter()
-            .map(|tag| LocalizedTag {
-                tag: *tag,
-                name: save_game_query.localize_country(tag),
-            })
+            .map(|tag| self.localize_tag(*tag))
             .collect();
 
         let buildings = province
@@ -1358,10 +1339,7 @@ impl SaveFileImpl {
                 ProvinceEvent::Owner(x) => {
                     history.push(ProvinceHistoryEvent {
                         date: date.iso_8601().to_string(),
-                        data: ProvinceHistoryEventKind::Owner(LocalizedTag {
-                            tag: *x,
-                            name: save_game_query.localize_country(x),
-                        }),
+                        data: ProvinceHistoryEventKind::Owner(self.localize_tag(*x)),
                     });
                 }
                 ProvinceEvent::KV((key, ProvinceEventValue::Bool(value))) => {
@@ -1400,10 +1378,7 @@ impl SaveFileImpl {
             .country_improve_count
             .iter()
             .map(|(tag, &amount)| ProvinceCountryImprovement {
-                country: LocalizedTag {
-                    tag: *tag,
-                    name: save_game_query.localize_country(tag),
-                },
+                country: self.localize_tag(*tag),
                 improvements: amount,
             })
             .collect::<Vec<_>>();

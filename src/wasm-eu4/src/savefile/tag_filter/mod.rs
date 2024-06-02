@@ -1,5 +1,4 @@
 use super::{LocalizedTag, SaveFileImpl};
-use eu4game::SaveGameQuery;
 use eu4save::CountryTag;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -42,15 +41,11 @@ impl From<TagFilterPayloadRaw> for TagFilterPayload {
 impl SaveFileImpl {
     pub fn matching_countries(&self, payload: TagFilterPayloadRaw) -> Vec<LocalizedTag> {
         let payload = TagFilterPayload::from(payload);
-        let save_game_query = SaveGameQuery::new(&self.query, &self.game);
 
         let mut result: Vec<_> = self
             .matching_tags(&payload)
             .into_iter()
-            .map(|tag| LocalizedTag {
-                tag,
-                name: save_game_query.localize_country(&tag),
-            })
+            .map(|tag| self.localize_tag(tag))
             .collect();
 
         result.sort_unstable_by_key(|x| x.tag);
