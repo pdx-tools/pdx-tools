@@ -1,7 +1,7 @@
 import React, { createContext, useContext } from "react";
 import Image from "next/image";
 import { useInEu4Analysis } from "../SideBarContainer";
-import { useEu4Actions } from "../../store";
+import { useColonialOverlord, useEu4Actions } from "../../store";
 import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import { Button } from "@/components/Button";
@@ -129,7 +129,7 @@ let dimensions: SpriteDimension | undefined;
 let data: any;
 let srcSet: [string, string][] | undefined;
 
-const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
+function flagData() {
   // The imports in here are lazy so that they don't fail dev
   // for those that don't have EU4 assets
   data ??= require(`@/images/eu4/flags/flags.json`);
@@ -142,42 +142,89 @@ const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
     [require(`@/images/eu4/flags/flags_x64.webp`), `1.33x`],
     [require(`@/images/eu4/flags/flags_x128.webp`), `2.66x`],
   ];
+  return { data, dimensions, srcSet };
+}
+
+// We need create a small border around flag avatars as some countries
+// are white at the edges (like austria). Using a 1px border resulted
+// in a weird gap in chrome so we have to use outline with a negative
+// offset to account for the avatar's border radius.
+const className =
+  "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500 dark:outline-gray-800";
+
+function RebFlag({ size }: { size?: AvatarSize }) {
+  const factor = sizeFactor(size);
+  return (
+    <Image
+      alt=""
+      width={128}
+      height={128}
+      className={className}
+      style={{ width: factor * 4, height: factor * 4 }}
+      src={require(
+        `../../../../../../../assets/game/eu4/common/images/REB.png`,
+      )}
+    />
+  );
+}
+
+const FallbackImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
+  const inAnalysis = useInEu4Analysis();
+  if (!inAnalysis) {
+    return <RebFlag size={size} />;
+  } else {
+    return <ColonialSubjectFlag tag={tag} size={size} />;
+  }
+};
+
+const FlagSprite = ({ index, size }: { index: number; size?: AvatarSize }) => {
+  const { dimensions } = flagData();
+  const factor = sizeFactor(size);
+  return (
+    <Sprite
+      src={require(`@/images/eu4/flags/flags_x48.webp`)}
+      srcSet={srcSet}
+      alt=""
+      dimensions={dimensions}
+      index={index}
+      scale={(factor * 4) / dimensions.spriteCell.height}
+      blurSrc={require(`@/images/eu4/flags/flags_x8.webp`)}
+    />
+  );
+};
+
+const ColonialSubjectFlag = ({ tag, size }: FlagAvatarCoreProps) => {
+  const overlord = useColonialOverlord(tag);
+  if (!overlord) {
+    return <RebFlag size={size} />;
+  }
+
+  const { data } = flagData();
+  const overlordIndex = data[overlord[0]];
+  if (!overlordIndex) {
+    return <RebFlag size={size} />;
+  }
+
+  const [r, g, b] = overlord[1];
+  return (
+    <div className="relative">
+      <FlagSprite index={overlordIndex} size={size} />
+      <div
+        className="absolute right-0 top-0 bottom-0 w-1/2"
+        style={{ backgroundColor: `rgb(${r},${g},${b})` }}
+      />
+    </div>
+  );
+};
+
+const FlagImageImpl = ({ tag, size }: FlagAvatarCoreProps) => {
+  const { data } = flagData();
 
   const index = data[tag];
-  const factor = sizeFactor(size);
-
-  // We need create a small border around flag avatars as some countries
-  // are white at the edges (like austria). Using a 1px border resulted
-  // in a weird gap in chrome so we have to use outline with a negative
-  // offset to account for the avatar's border radius.
-  const className =
-    "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500 dark:outline-gray-800";
-
   if (index === undefined) {
-    return (
-      <Image
-        alt=""
-        width={128}
-        height={128}
-        className={className}
-        style={{ width: factor * 4, height: factor * 4 }}
-        src={require(
-          `../../../../../../../assets/game/eu4/common/images/REB.png`,
-        )}
-      />
-    );
+    return <FallbackImageImpl tag={tag} size={size} />;
   } else {
-    return (
-      <Sprite
-        src={require(`@/images/eu4/flags/flags_x48.webp`)}
-        srcSet={srcSet}
-        alt=""
-        dimensions={dimensions}
-        index={index}
-        scale={(factor * 4) / dimensions.spriteCell.height}
-        blurSrc={require(`@/images/eu4/flags/flags_x8.webp`)}
-      />
-    );
+    return <FlagSprite index={index} size={size} />;
   }
 };
 

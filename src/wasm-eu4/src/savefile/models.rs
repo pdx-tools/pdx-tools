@@ -335,6 +335,7 @@ pub struct SaveInfo {
     pub dlc: Vec<String>,
     pub playthough_id: String,
     pub random_world: Option<i32>,
+    pub colonial_subjects: HashMap<CountryTag, (CountryTag, [u8; 3])>,
 }
 
 #[derive(Tsify, Debug, Clone, Serialize)]

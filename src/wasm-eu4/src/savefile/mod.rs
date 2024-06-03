@@ -858,7 +858,21 @@ impl SaveFileImpl {
             dlc: self.query.save().meta.dlc_enabled.clone(),
             playthough_id: playthrough_id(&self.query),
             random_world: self.query.save().game.random_world,
+            colonial_subjects: self.colonial_subjects(),
         }
+    }
+
+    fn colonial_subjects(&self) -> HashMap<CountryTag, (CountryTag, [u8; 3])> {
+        self.query
+            .save()
+            .game
+            .countries
+            .iter()
+            .filter_map(|(tag, country)| {
+                let parent = country.colonial_parent?;
+                Some((*tag, (parent, country.colors.country_color)))
+            })
+            .collect()
     }
 
     pub fn save_mode(&self) -> SaveMode {

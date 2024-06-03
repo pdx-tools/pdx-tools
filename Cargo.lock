@@ -1162,7 +1162,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#37416885a4f6ad9ce71e7d2dc2f9460c6d24225e"
+source = "git+https://github.com/rakaly/eu4save.git#b1b74b19da1698aee1fbab32beae23260b775bba"
 dependencies = [
  "flate2",
  "jomini",

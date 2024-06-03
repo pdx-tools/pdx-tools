@@ -11,6 +11,7 @@ import {
   AchievementsScore,
   EnhancedCountryInfo,
   MapDate,
+  CountryTag,
 } from "../types/models";
 import { getEu4Worker } from "../worker";
 import type {
@@ -372,6 +373,8 @@ export const useShowOnetimeLineItems = () =>
 export const useCountryDrawerVisible = () =>
   useEu4Store((x) => x.countryDrawerVisible);
 export const useWatcher = () => useEu4Store((x) => x.watcher);
+export const useColonialOverlord = (tag: CountryTag) =>
+  useEu4Store((x) => x.save.meta.colonialSubjects).get(tag);
 
 export function useEu4ModList() {
   const meta = useEu4Meta();
