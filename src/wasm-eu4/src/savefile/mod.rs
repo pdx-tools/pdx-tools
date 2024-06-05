@@ -1953,10 +1953,10 @@ impl SaveFileImpl {
             .iter()
             .find(|x| x.name == name);
 
-        let war_history = active_war
-            .map(|x| &x.history)
-            .or_else(|| previous_war.map(|x| &x.history))
-            .unwrap();
+        let war = active_war
+            .map(WarOverview::from)
+            .or_else(|| previous_war.map(WarOverview::from))
+            .expect("war to be found");
 
         let participants: HashMap<CountryTag, CountryTag> = self
             .war_participants
@@ -1976,7 +1976,7 @@ impl SaveFileImpl {
         let mut start_date = None;
         let mut end_date = None;
 
-        for (date, event) in &war_history.events {
+        for (date, event) in &war.history.events {
             if matches!(&start_date, Some(x) if x > date) {
                 start_date = Some(*date)
             }
@@ -2089,111 +2089,56 @@ impl SaveFileImpl {
 
         let mut attacker_participants = Vec::new();
         let mut defender_participants = Vec::new();
-        if let Some(war) = active_war {
-            let mut total_attacker_participation: f64 = 0.0;
-            let mut total_defender_participation: f64 = 0.0;
-            for participant in &war.participants {
-                if total_attackers.contains(&participant.tag) {
-                    total_attacker_participation += f64::from(participant.value);
-                } else {
-                    total_defender_participation += f64::from(participant.value);
-                }
-            }
 
-            for participant in &war.participants {
-                let exit = exited
-                    .get(&participant.tag)
-                    .and_then(|x| match &end_date {
-                        Some(e) if e > x => Some(x),
-                        _ => None,
-                    })
-                    .map(|x| x.iso_8601().to_string());
-
-                let join = joined
-                    .get(&participant.tag)
-                    .and_then(|x| match &start_date {
-                        Some(e) if e < x => Some(x),
-                        _ => None,
-                    })
-                    .map(|x| x.iso_8601().to_string());
-
-                if total_attackers.contains(&participant.tag) {
-                    attacker_participants.push(WarParticipant {
-                        tag: participant.tag,
-                        name: save_game_query.localize_country(&participant.tag),
-                        participation: participant.value,
-                        participation_percent: f64::from(participant.value)
-                            / total_attacker_participation,
-                        losses: SaveFileImpl::create_losses(&participant.losses.members),
-                        joined: join,
-                        exited: exit,
-                    });
-                } else {
-                    defender_participants.push(WarParticipant {
-                        tag: participant.tag,
-                        name: save_game_query.localize_country(&participant.tag),
-                        participation: participant.value,
-                        participation_percent: f64::from(participant.value)
-                            / total_defender_participation,
-                        losses: SaveFileImpl::create_losses(&participant.losses.members),
-                        joined: join,
-                        exited: exit,
-                    });
-                }
+        let mut total_attacker_participation: f64 = 0.0;
+        let mut total_defender_participation: f64 = 0.0;
+        for participant in war.participants {
+            if total_attackers.contains(&participant.tag) {
+                total_attacker_participation += f64::from(participant.value);
+            } else {
+                total_defender_participation += f64::from(participant.value);
             }
         }
 
-        if let Some(war) = previous_war {
-            let mut total_attacker_participation: f64 = 0.0;
-            let mut total_defender_participation: f64 = 0.0;
-            for participant in &war.participants {
-                if total_attackers.contains(&participant.tag) {
-                    total_attacker_participation += f64::from(participant.value);
-                } else {
-                    total_defender_participation += f64::from(participant.value);
-                }
-            }
+        for participant in war.participants {
+            let exit = exited
+                .get(&participant.tag)
+                .and_then(|x| match &end_date {
+                    Some(e) if e > x => Some(x),
+                    _ => None,
+                })
+                .map(|x| x.iso_8601().to_string());
 
-            for participant in &war.participants {
-                let exit = exited
-                    .get(&participant.tag)
-                    .and_then(|x| match &end_date {
-                        Some(e) if e > x => Some(x),
-                        _ => None,
-                    })
-                    .map(|x| x.iso_8601().to_string());
+            let join = joined
+                .get(&participant.tag)
+                .and_then(|x| match &start_date {
+                    Some(e) if e < x => Some(x),
+                    _ => None,
+                })
+                .map(|x| x.iso_8601().to_string());
 
-                let join = joined
-                    .get(&participant.tag)
-                    .and_then(|x| match &start_date {
-                        Some(e) if e < x => Some(x),
-                        _ => None,
-                    })
-                    .map(|x| x.iso_8601().to_string());
-
-                if total_attackers.contains(&participant.tag) {
-                    attacker_participants.push(WarParticipant {
-                        tag: participant.tag,
-                        name: save_game_query.localize_country(&participant.tag),
-                        participation: participant.value,
-                        participation_percent: f64::from(participant.value)
-                            / total_attacker_participation,
-                        losses: SaveFileImpl::create_losses(&participant.losses.members),
-                        joined: join,
-                        exited: exit,
-                    });
-                } else {
-                    defender_participants.push(WarParticipant {
-                        tag: participant.tag,
-                        name: save_game_query.localize_country(&participant.tag),
-                        participation: participant.value,
-                        participation_percent: f64::from(participant.value)
-                            / total_defender_participation,
-                        losses: SaveFileImpl::create_losses(&participant.losses.members),
-                        joined: join,
-                        exited: exit,
-                    });
-                }
+            if total_attackers.contains(&participant.tag) {
+                attacker_participants.push(WarParticipant {
+                    tag: participant.tag,
+                    name: save_game_query.localize_country(&participant.tag),
+                    participation: participant.value,
+                    participation_percent: f64::from(participant.value)
+                        / total_attacker_participation,
+                    losses: SaveFileImpl::create_losses(&participant.losses.members),
+                    joined: join,
+                    exited: exit,
+                });
+            } else {
+                defender_participants.push(WarParticipant {
+                    tag: participant.tag,
+                    name: save_game_query.localize_country(&participant.tag),
+                    participation: participant.value,
+                    participation_percent: f64::from(participant.value)
+                        / total_defender_participation,
+                    losses: SaveFileImpl::create_losses(&participant.losses.members),
+                    joined: join,
+                    exited: exit,
+                });
             }
         }
 
