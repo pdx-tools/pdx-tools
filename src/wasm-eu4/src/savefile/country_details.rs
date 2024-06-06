@@ -1,10 +1,10 @@
 use super::{
-    CountryAdvisors, CountryCulture, CountryDetails, CountryHistory,
-    CountryHistoryEvent, CountryHistoryEventKind, CountryHistoryLeader, CountryHistoryMonarch,
-    CountryLeader, CountryMonarch, CountryReligions, CountryStateDetails, DecisionCount,
-    DiplomacyEntry, DiplomacyKind, Estate, FailedHeir, GovernmentStrength, GreatAdvisor,
-    InfluenceModifier, LandUnitStrength, LocalizedObj, MonarchKind, ProgressDate, ProvinceConquer,
-    ProvinceGc, RunningMonarch, SaveFileImpl, WarBattles, WarOverview,
+    CountryAdvisors, CountryCulture, CountryDetails, CountryHistory, CountryHistoryEvent,
+    CountryHistoryEventKind, CountryHistoryLeader, CountryHistoryMonarch, CountryLeader,
+    CountryMonarch, CountryReligions, CountryStateDetails, DecisionCount, DiplomacyEntry,
+    DiplomacyKind, Estate, FailedHeir, GovernmentStrength, GreatAdvisor, InfluenceModifier,
+    LandUnitStrength, LocalizedObj, MonarchKind, ProgressDate, ProvinceConquer, ProvinceGc,
+    RunningMonarch, SaveFileImpl, WarBattles, WarOverview,
 };
 use crate::savefile::{
     hex_color, BattleGroundProvince, CountryHistoryYear, CountryMana, CountryReligion,
@@ -1684,98 +1684,58 @@ impl SaveFileImpl {
             return;
         }
 
-        let join_attackers = war
-            .history
-            .events
-            .iter()
-            .find_map(|(date, event)| match event {
-                eu4save::models::WarEvent::AddAttacker(tag) if resolver.matches(*tag, *date) => {
-                    Some((*date, *tag))
-                }
-                _ => None,
-            });
+        let info = self.war_info(&war);
 
-        let join_defenders = war
-            .history
-            .events
+        let join_attackers = info
+            .attackers
+            .members
             .iter()
-            .find_map(|(date, event)| match event {
-                eu4save::models::WarEvent::AddDefender(tag) if resolver.matches(*tag, *date) => {
-                    Some((*date, *tag))
-                }
-                _ => None,
-            });
+            .find(|x| resolver.matches(x.country.tag, x.joined));
+        let join_defenders = info
+            .defenders
+            .members
+            .iter()
+            .find(|x| resolver.matches(x.country.tag, x.joined));
 
-        let (join_date, join_tag) = match (join_attackers, join_defenders) {
+        let participant = match (join_attackers, join_defenders) {
             (None, None) => return,
             (Some(x), _) => x,
             (_, Some(x)) => x,
         };
+        let join_tag = participant.country.tag;
 
-        let Some(participant) = war.participants.iter().find(|x| x.tag == join_tag) else {
-            return;
-        };
-
+        let attacker_tags = info
+            .attackers
+            .members
+            .iter()
+            .map(|x| x.country.clone())
+            .collect::<Vec<_>>();
+        let defender_tags = info
+            .defenders
+            .members
+            .iter()
+            .map(|x| x.country.clone())
+            .collect::<Vec<_>>();
         let is_war_leader = join_tag == war.original_attacker || join_tag == war.original_defender;
         let is_attacking = join_attackers.is_some();
-        let defenders = war
-            .history
-            .events
-            .iter()
-            .filter_map(|(_, evt)| match evt {
-                eu4save::models::WarEvent::AddDefender(x) => Some(*x),
-                _ => None,
-            })
-            .collect::<HashSet<_>>();
 
-        let attacking_participants = war
-            .participants
-            .iter()
-            .filter(|x| !defenders.contains(&x.tag))
-            .collect::<Vec<_>>();
-        let defending_participants = war
-            .participants
-            .iter()
-            .filter(|x| defenders.contains(&x.tag))
-            .collect::<Vec<_>>();
-
-        let attacker_tags = attacking_participants
-            .iter()
-            .map(|x| self.localize_tag(x.tag))
-            .collect::<Vec<_>>();
-        let defender_tags = defending_participants
-            .iter()
-            .map(|x| self.localize_tag(x.tag))
-            .collect::<Vec<_>>();
-
-        let opposing_tags = if is_attacking {
-            defenders.clone()
+        let opposing_side = if is_attacking {
+            &info.defenders
         } else {
-            attacker_tags.iter().map(|x| x.tag).collect()
+            &info.attackers
         };
 
-        let attacking_participation: f32 = attacking_participants.iter().map(|x| x.value).sum();
-        let defending_participation: f32 = defending_participants.iter().map(|x| x.value).sum();
-
-        let our_participation_percent = if is_attacking {
-            participant.value / attacking_participation
-        } else {
-            participant.value / defending_participation
-        };
-
-        let our_losses = SaveFileImpl::create_losses(&participant.losses.members);
+        let our_losses = participant.losses;
 
         let mut attacker_losses = [0u32; 21];
-        for x in attacking_participants.iter().map(|x| &x.losses.members) {
-            let losses = SaveFileImpl::create_losses(x);
+        for losses in info.attackers.members.iter().map(|x| &x.losses) {
             for (&x, y) in losses.iter().zip(attacker_losses.iter_mut()) {
                 *y += x;
             }
         }
 
         let mut defender_losses = [0u32; 21];
-        for x in defending_participants.iter().map(|x| &x.losses.members) {
-            let losses = SaveFileImpl::create_losses(x);
+        for losses in info.defenders.members.iter().map(|x| &x.losses) {
             for (&x, y) in losses.iter().zip(defender_losses.iter_mut()) {
                 *y += x;
             }
@@ -1790,22 +1750,10 @@ impl SaveFileImpl {
             naval_battles.won = naval_battles.count - naval_battles.won;
         }
 
-        let peaced_out = war
-            .history
-            .events
-            .iter()
-            .find_map(|(date, event)| match event {
-                eu4save::models::WarEvent::RemoveDefender(tag)
-                | eu4save::models::WarEvent::RemoveAttacker(tag)
-                    if *tag == join_tag =>
-                {
-                    Some(*date)
-                }
-                _ => None,
-            });
+        let peaced_out = participant.exited;
 
         events.push(CountryHistoryEvent {
-            date: join_date,
+            date: participant.joined,
             event: CountryHistoryEventKind::WarStart(WarStart {
                 war: String::from(war.name),
                 war_start: *start,
@@ -1817,8 +1765,8 @@ impl SaveFileImpl {
                 attacker_losses,
                 defender_losses,
                 our_losses,
-                our_participation: participant.value,
-                our_participation_percent,
+                our_participation: participant.participation,
+                our_participation_percent: participant.participation_percent,
             }),
         });
 
@@ -1826,25 +1774,11 @@ impl SaveFileImpl {
             return;
         };
 
-        let opposing_peaces = if is_attacking {
-            war.history
-                .events
-                .iter()
-                .filter_map(|(date, event)| match event {
-                    eu4save::models::WarEvent::RemoveDefender(tag) => Some((*date, *tag)),
-                    _ => None,
-                })
-                .collect::<Vec<_>>()
-        } else {
-            war.history
-                .events
-                .iter()
-                .filter_map(|(date, event)| match event {
-                    eu4save::models::WarEvent::RemoveAttacker(tag) => Some((*date, *tag)),
-                    _ => None,
-                })
-                .collect::<Vec<_>>()
-        };
+        let opposing_peaces = opposing_side
+            .members
+            .iter()
+            .filter_map(|x| Some((x.exited?, x.country.tag)))
+            .collect::<Vec<_>>();
 
         let province_gains = opposing_peaces.iter().flat_map(|(date, opponent)| {
             self.province_owners
@@ -1858,32 +1792,27 @@ impl SaveFileImpl {
             .province_owners
             .events_on(peaced_out)
             .iter()
-            .filter(|x| x.from == join_tag && opposing_tags.contains(&x.to));
+            .filter(|x| x.from == join_tag)
+            .filter(|x| opposing_side.members.iter().any(|o| o.country.tag == x.to));
         let province_losses = self.province_conquered(province_losses);
 
-        let end = war
-            .history
-            .events
-            .iter()
-            .map(|(date, _)| date)
-            .max()
-            .unwrap_or(&peaced_out);
+        let end = info.end_date.unwrap_or(peaced_out);
 
         events.push(CountryHistoryEvent {
             date: peaced_out,
             event: CountryHistoryEventKind::WarEnd(WarEnd {
                 war: String::from(war.name),
-                war_end: (!war.is_active).then_some(*end),
+                war_end: (!war.is_active).then_some(end),
                 is_attacking,
-                war_duration_days: start.days_until(end),
-                our_duration_days: join_date.days_until(&peaced_out),
+                war_duration_days: info.days,
+                our_duration_days: participant.joined.days_until(&peaced_out),
                 land_battles,
                 naval_battles,
                 attacker_losses,
                 defender_losses,
                 our_losses,
-                our_participation: participant.value,
-                our_participation_percent,
+                our_participation: participant.participation,
+                our_participation_percent: participant.participation_percent,
                 province_gains,
                 province_losses,
             }),

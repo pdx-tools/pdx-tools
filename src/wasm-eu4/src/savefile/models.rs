@@ -1162,7 +1162,7 @@ pub struct WarStart {
     pub defender_losses: [u32; 21],
     pub our_losses: [u32; 21],
     pub our_participation: f32,
-    pub our_participation_percent: f32,
+    pub our_participation_percent: f64,
 }
 
 #[derive(Tsify, Debug, Serialize)]
@@ -1186,7 +1186,7 @@ pub struct WarEnd {
     pub our_duration_days: i32,
     pub our_losses: [u32; 21],
     pub our_participation: f32,
-    pub our_participation_percent: f32,
+    pub our_participation_percent: f64,
     pub province_gains: Vec<ProvinceConquer>,
     pub province_losses: Vec<ProvinceConquer>,
 }

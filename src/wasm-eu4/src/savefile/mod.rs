@@ -1726,7 +1726,7 @@ impl SaveFileImpl {
                     .filter(|(_d, event)| matches!(event, WarEvent::Battle(_)))
                     .count();
 
-                let war = self.war_info(x);
+                let war = self.war_info(&x);
                 War {
                     name: war.name,
                     start_date: war.start_date,
@@ -1814,7 +1814,7 @@ impl SaveFileImpl {
         result
     }
 
-    fn war_info(&self, war: WarOverview) -> RawWarInfo {
+    fn war_info(&self, war: &WarOverview) -> RawWarInfo {
         let mut attackers = HashSet::new();
         let mut joined = HashMap::new();
         let mut exited = HashMap::new();
@@ -2005,7 +2005,7 @@ impl SaveFileImpl {
             .expect("war to be found");
 
         let battles = self.battle_info(war.history);
-        let result = self.war_info(war);
+        let result = self.war_info(&war);
         WarInfo {
             name: result.name,
             start_date: result.start_date,
