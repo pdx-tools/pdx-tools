@@ -191,37 +191,51 @@ pub struct NationSizeHistory {
     pub count: i32,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
+#[derive(Tsify, Serialize, Debug)]
 pub struct War {
     pub name: String,
-    pub start_date: String,
-    pub end_date: Option<String>,
+    pub start_date: Eu4Date,
+    pub end_date: Option<Eu4Date>,
     pub days: i32,
-    pub attackers: WarSide,
-    pub defenders: WarSide,
-    pub battles: i32,
+    pub attackers: WarInfoSide,
+    pub defenders: WarInfoSide,
+    pub battles: usize,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
-pub struct WarSide {
-    pub original: CountryTag,
-    pub original_name: String,
-    pub members: Vec<LocalizedTag>,
-    pub losses: [u32; 21],
-}
-
-#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
+#[derive(Tsify, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 #[tsify(into_wasm_abi)]
 pub struct WarInfo {
+    pub name: String,
+    pub start_date: Eu4Date,
+    pub end_date: Option<Eu4Date>,
+    pub days: i32,
     pub battles: Vec<BattleInfo>,
-    pub attacker_participants: Vec<WarParticipant>,
-    pub defender_participants: Vec<WarParticipant>,
+    pub attackers: WarInfoSide,
+    pub defenders: WarInfoSide,
+}
+
+pub struct RawWarInfo {
+    pub name: String,
+    pub start_date: Eu4Date,
+    pub end_date: Option<Eu4Date>,
+    pub days: i32,
+    pub attackers: WarInfoSide,
+    pub defenders: WarInfoSide,
+}
+
+#[derive(Tsify, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct WarInfoSide {
+    pub original: LocalizedTag,
+    pub members: Vec<WarParticipant>,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct BattleInfo {
     pub name: String,
-    pub date: String,
+    pub date: Eu4Date,
     pub location: u16,
     pub attacker_won: bool,
     pub attacker: BattleSide,
@@ -242,13 +256,32 @@ pub struct BattleSide {
     pub galley: u32,
     pub transport: u32,
     pub losses: i32,
-    pub country: CountryTag,
-    pub country_name: String,
+    pub country: LocalizedTag,
     pub commander: Option<String>,
     pub commander_stats: Option<String>,
 }
 
 impl BattleSide {
+    pub fn new(
+        raw: &eu4save::models::BattleSide,
+        country: LocalizedTag,
+        commander_stats: Option<String>,
+    ) -> Self {
+        BattleSide {
+            infantry: raw.infantry,
+            cavalry: raw.cavalry,
+            artillery: raw.artillery,
+            heavy_ship: raw.heavy_ship,
+            light_ship: raw.light_ship,
+            galley: raw.galley,
+            transport: raw.transport,
+            losses: raw.losses,
+            country,
+            commander: raw.commander.clone(),
+            commander_stats,
+        }
+    }
+
     pub fn forces(&self) -> u32 {
         self.infantry
             + self.cavalry
@@ -261,14 +294,27 @@ impl BattleSide {
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct WarParticipant {
-    pub tag: CountryTag,
-    pub name: String,
+    pub country: LocalizedTag,
     pub losses: [u32; 21],
     pub participation: f32,
     pub participation_percent: f64,
-    pub joined: Option<String>,
-    pub exited: Option<String>,
+    pub joined: Eu4Date,
+    pub exited: Option<Eu4Date>,
+}
+
+#[derive(Tsify, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveWarCountry {
+    #[serde(flatten)]
+    pub country: LocalizedTag,
+    pub war_exhaustion: f32,
+    // pub losses: [u32; 21],
+    // pub participation: f32,
+    // pub participation_percent: f64,
+    // pub joined: Option<String>,
+    // pub exited: Option<String>,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone, Debug)]

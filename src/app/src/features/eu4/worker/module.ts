@@ -22,7 +22,7 @@ import { MapPayload, QuickTipPayload } from "../types/map";
 import { workLedgerData } from "../utils/ledger";
 import { expandLosses } from "../utils/losses";
 import { wasm } from "./common";
-import { TimelapseIter } from "../../../../../wasm-eu4/pkg/wasm_eu4";
+import { TimelapseIter, Wars } from "../../../../../wasm-eu4/pkg/wasm_eu4";
 import { timeSync, timeit } from "@/lib/timeit";
 import { logMs } from "@/lib/log";
 import exp from "constants";
@@ -315,26 +315,34 @@ export function eu4GetSingleCountryCasualties(tag: string) {
   }));
 }
 
+function sumLosses(participants: Wars[number]["attackers"]["members"]) {
+  const result: number[] = [];
+  for (const member of participants) {
+    for (let i = 0; i < member.losses.length; i++) {
+      result[i] = (result?.[i] ?? 0) + member.losses[i];
+    }
+  }
+  return expandLosses(result);
+}
+
 export type War = ReturnType<typeof eu4GetWars>[number];
 export type WarSide = War["attackers"];
 export function eu4GetWars(filter: CountryMatcher) {
   const data = wasm.save.wars(filter);
   return data.map((x) => {
-    const attackerLosses = expandLosses(x.attackers.losses);
-    const defenderLosses = expandLosses(x.defenders.losses);
+    const aLosses = sumLosses(x.attackers.members);
+    const dLosses = sumLosses(x.defenders.members);
     return {
       ...x,
-      totalBattleLosses:
-        attackerLosses.totalBattle + defenderLosses.totalBattle,
-      totalAttritionLosses:
-        attackerLosses.totalAttrition + defenderLosses.totalAttrition,
+      totalBattleLosses: aLosses.totalBattle + dLosses.totalBattle,
+      totalAttritionLosses: aLosses.totalAttrition + dLosses.totalAttrition,
       attackers: {
         ...x.attackers,
-        losses: expandLosses(x.attackers.losses),
+        losses: aLosses,
       },
       defenders: {
         ...x.defenders,
-        losses: expandLosses(x.defenders.losses),
+        losses: dLosses,
       },
     };
   });
@@ -342,16 +350,16 @@ export function eu4GetWars(filter: CountryMatcher) {
 
 export type WarInfo = ReturnType<typeof eu4GetWarInfo>;
 export type BattleInfo = WarInfo["battles"][number];
-export type WarParticipant = WarInfo["attacker_participants"][number];
+export type WarParticipant = WarInfo["attackerParticipants"][number];
 export function eu4GetWarInfo(war: string) {
   const raw = wasm.save.get_war(war);
   return {
     ...raw,
-    attacker_participants: raw.attacker_participants.map((x) => ({
+    attackerParticipants: raw.attackers.members.map((x) => ({
       ...x,
       losses: expandLosses(x.losses),
     })),
-    defender_participants: raw.defender_participants.map((x) => ({
+    defenderParticipants: raw.defenders.members.map((x) => ({
       ...x,
       losses: expandLosses(x.losses),
     })),

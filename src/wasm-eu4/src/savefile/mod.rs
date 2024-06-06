@@ -9,7 +9,7 @@ use eu4save::{
     eu4_start_date,
     models::{
         Country, CountryEvent, CountryTechnology, Leader, Province, ProvinceEvent,
-        ProvinceEventValue, WarEvent,
+        ProvinceEventValue, WarEvent, WarHistory,
     },
     query::{LedgerPoint, NationEventKind, NationEvents, Query},
     CountryTag, Encoding, Eu4Date, PdsDate, ProvinceId, TagResolver,
@@ -1708,145 +1708,54 @@ impl SaveFileImpl {
         values
     }
 
-    fn war_info(&self, wars: &mut Vec<War>, tags: &HashSet<CountryTag>, war: WarOverview) {
-        let mut attackers = HashSet::new();
-        let mut defenders = HashSet::new();
-        let mut attackers_date = Vec::new();
-        let mut defenders_date = Vec::new();
-        let save_game_query = SaveGameQuery::new(&self.query, &self.game);
-
-        if war.name.is_empty() || war.original_attacker.is_none() {
-            return;
-        }
-
-        attackers.clear();
-        defenders.clear();
-        attackers_date.clear();
-        defenders_date.clear();
-        let mut battles = 0;
-        let mut start_date = None;
-        let mut end_date = None;
-
-        for (date, event) in war.history.events.iter() {
-            if matches!(&start_date, Some(x) if x > date) {
-                start_date = Some(*date)
-            }
-
-            if start_date.is_none() {
-                start_date = Some(*date)
-            }
-
-            if matches!(&end_date, Some(x) if x < date) {
-                end_date = Some(*date)
-            }
-
-            if end_date.is_none() {
-                end_date = Some(*date)
-            }
-
-            match event {
-                WarEvent::AddAttacker(x) => {
-                    attackers.insert(x);
-                    attackers_date.push((*date, *x));
-                }
-                WarEvent::AddDefender(x) => {
-                    defenders.insert(x);
-                    defenders_date.push((*date, *x));
-                }
-                WarEvent::Battle(_) => battles += 1,
-                _ => {}
-            }
-        }
-
-        if matches!(start_date, Some(x) if x < self.query.save().game.start_date) {
-            return;
-        }
-
-        let mut attacker_losses = [0u32; 21];
-        let mut defender_losses = [0u32; 21];
-        for participant in war.participants {
-            let losses = SaveFileImpl::create_losses(&participant.losses.members);
-            if attackers.contains(&participant.tag) {
-                for (&x, y) in losses.iter().zip(attacker_losses.iter_mut()) {
-                    *y += x;
-                }
-            } else if defenders.contains(&participant.tag) {
-                for (&x, y) in losses.iter().zip(defender_losses.iter_mut()) {
-                    *y += x;
-                }
-            }
-        }
-
-        let start = start_date.unwrap_or_else(eu4save::eu4_start_date);
-        let filter_war = std::iter::once(&(start, war.original_attacker))
-            .chain(std::iter::once(&(start, war.original_defender)))
-            .chain(attackers_date.iter())
-            .chain(defenders_date.iter())
-            .map(|(date, tag)| {
-                self.tag_resolver
-                    .resolve(*tag, *date)
-                    .map(|x| x.current)
-                    .unwrap_or(*tag)
-            })
-            .any(|tag| tags.contains(&tag));
-
-        if !filter_war {
-            return;
-        }
-
-        attackers.remove(&war.original_attacker);
-        let mut attackers = attackers
-            .iter()
-            .map(|x| self.localize_tag(**x))
-            .collect::<Vec<_>>();
-        attackers.sort_unstable_by(|a, b| a.name.cmp(&b.name));
-
-        defenders.remove(&war.original_defender);
-        let mut defenders = defenders
-            .iter()
-            .map(|x| self.localize_tag(**x))
-            .collect::<Vec<_>>();
-        defenders.sort_unstable_by(|a, b| a.name.cmp(&b.name));
-
-        let war = War {
-            name: String::from(war.name),
-            start_date: start.iso_8601().to_string(),
-            end_date: end_date.map(|x| x.iso_8601().to_string()),
-            days: start.days_until(&end_date.unwrap_or(self.query.save().meta.date)),
-            battles,
-            attackers: WarSide {
-                original: war.original_attacker,
-                original_name: save_game_query.localize_country(&war.original_attacker),
-                losses: attacker_losses,
-                members: attackers,
-            },
-            defenders: WarSide {
-                original: war.original_defender,
-                original_name: save_game_query.localize_country(&war.original_defender),
-                losses: defender_losses,
-                members: defenders,
-            },
-        };
-
-        wars.push(war);
-    }
-
     pub fn wars(&self, payload: TagFilterPayloadRaw) -> Vec<War> {
         let filter = TagFilterPayload::from(payload);
         let tags = self.matching_tags(&filter);
         let previous_wars = &self.query.save().game.previous_wars;
         let active_wars = &self.query.save().game.active_wars;
-        let mut result = Vec::with_capacity(previous_wars.len() + active_wars.len());
+        let prev = previous_wars.iter().map(WarOverview::from);
+        let act = active_wars.iter().map(WarOverview::from);
 
-        for war in &self.query.save().game.previous_wars {
-            self.war_info(&mut result, &tags, WarOverview::from(war))
-        }
+        prev.chain(act)
+            .filter(|x| !x.name.is_empty() && x.original_attacker.is_some())
+            .map(|x| {
+                let battles = x
+                    .history
+                    .events
+                    .iter()
+                    .filter(|(_d, event)| matches!(event, WarEvent::Battle(_)))
+                    .count();
 
-        for war in &self.query.save().game.active_wars {
-            self.war_info(&mut result, &tags, WarOverview::from(war))
-        }
+                let war = self.war_info(x);
+                War {
+                    name: war.name,
+                    start_date: war.start_date,
+                    end_date: war.end_date,
+                    days: war.days,
+                    attackers: war.attackers,
+                    defenders: war.defenders,
+                    battles,
+                }
+            })
+            .filter(|war| war.start_date > self.query.save().game.start_date)
+            .filter(|war| {
+                let mut all_participants = war
+                    .attackers
+                    .members
+                    .iter()
+                    .chain(war.defenders.members.iter());
 
-        result
+                all_participants.any(|part| {
+                    tags.contains(
+                        &self
+                            .tag_resolver
+                            .resolve(part.country.tag, part.joined)
+                            .map(|x| x.current)
+                            .unwrap_or(part.country.tag),
+                    )
+                })
+            })
+            .collect::<Vec<_>>()
     }
 
     pub fn get_commander_stats<'a>(
@@ -1855,57 +1764,27 @@ impl SaveFileImpl {
         tags: impl Iterator<Item = &'a CountryTag>,
         commander: &str,
     ) -> String {
-        for tag in tags {
-            let country = match self.query.country(tag) {
-                Some(c) => c,
-                None => continue,
-            };
+        tags.filter_map(|tag| self.query.country(tag))
+            .flat_map(|country| {
+                let leaders = country
+                    .history
+                    .events
+                    .iter()
+                    .rev()
+                    .skip_while(|(d, _)| d > &date)
+                    .map(|(_, event)| event)
+                    .filter_map(|x| x.as_leader());
 
-            let events = country
-                .history
-                .events
-                .iter()
-                .rev()
-                .skip_while(|(d, _)| d > &date)
-                .map(|(_, event)| event);
+                let merc_leaders = country
+                    .mercenary_companies
+                    .iter()
+                    .flat_map(|x| x.leader.as_ref());
 
-            let merc_leaders = country
-                .mercenary_companies
-                .iter()
-                .flat_map(|x| x.leader.as_ref());
-            for merc in merc_leaders {
-                if merc.name == commander {
-                    return format!(
-                        "({} / {} / {} / {})",
-                        merc.fire, merc.shock, merc.maneuver, merc.siege
-                    );
-                }
-            }
-
-            for event in events {
-                match event {
-                    CountryEvent::Leader(x) if x.name == commander => {
-                        return format!(
-                            "({} / {} / {} / {})",
-                            x.fire, x.shock, x.maneuver, x.siege
-                        );
-                    }
-                    CountryEvent::Heir(x) | CountryEvent::Queen(x) | CountryEvent::Monarch(x) => {
-                        if let Some(l) = &x.leader {
-                            if l.name == commander {
-                                return format!(
-                                    "({} / {} / {} / {})",
-                                    l.fire, l.shock, l.maneuver, l.siege
-                                );
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        String::from("(? / ? / ? / ?)")
+                leaders.chain(merc_leaders)
+            })
+            .find(|leader| leader.name == commander)
+            .map(|x| format!("({} / {} / {} / {})", x.fire, x.shock, x.maneuver, x.siege))
+            .unwrap_or_else(|| String::from("(? / ? / ? / ?)"))
     }
 
     pub fn get_country_casualties(&self, tag: &str) -> Vec<SingleCountryWarCasualties> {
@@ -1935,81 +1814,113 @@ impl SaveFileImpl {
         result
     }
 
-    pub fn get_war(&self, name: &str) -> WarInfo {
-        let save_game_query = SaveGameQuery::new(&self.query, &self.game);
-        let active_war = self
-            .query
-            .save()
-            .game
-            .active_wars
-            .iter()
-            .find(|x| x.name == name);
+    fn war_info(&self, war: WarOverview) -> RawWarInfo {
+        let mut attackers = HashSet::new();
+        let mut joined = HashMap::new();
+        let mut exited = HashMap::new();
 
-        let previous_war = self
-            .query
-            .save()
-            .game
-            .previous_wars
-            .iter()
-            .find(|x| x.name == name);
+        let start_date = war.history.events.iter().map(|(date, _)| date).min();
+        let start_date = start_date.copied().unwrap_or_else(eu4save::eu4_start_date);
+        let end_date = war.history.events.iter().map(|(date, _)| date).max();
+        let end_date = end_date.copied();
 
-        let war = active_war
-            .map(WarOverview::from)
-            .or_else(|| previous_war.map(WarOverview::from))
-            .expect("war to be found");
+        for (date, event) in &war.history.events {
+            match event {
+                WarEvent::AddAttacker(x) => {
+                    joined.insert(x, date);
+                    attackers.insert(x);
+                }
+                WarEvent::AddDefender(x) => {
+                    joined.insert(x, date);
+                }
+                WarEvent::RemoveAttacker(x) => {
+                    exited.insert(x, date);
+                }
+                WarEvent::RemoveDefender(x) => {
+                    exited.insert(x, date);
+                }
+                WarEvent::Battle(_) => {}
+            }
+        }
 
-        let participants: HashMap<CountryTag, CountryTag> = self
-            .war_participants
-            .iter()
-            .find(|x| x.war == name)
-            .map(|x| x.participants.iter().map(|x| (x.tag, x.stored)).collect())
-            .unwrap_or_default();
+        let mut attacker_participants = Vec::new();
+        let mut defender_participants = Vec::new();
 
-        let mut total_attackers = HashSet::new();
+        let mut total_attacker_participation: f64 = 0.0;
+        let mut total_defender_participation: f64 = 0.0;
+        for participant in war.participants {
+            if attackers.contains(&participant.tag) {
+                total_attacker_participation += f64::from(participant.value);
+            } else {
+                total_defender_participation += f64::from(participant.value);
+            }
+        }
+
+        for participant in war.participants {
+            let exit = exited
+                .get(&participant.tag)
+                .filter(|&&&x| matches!(end_date, Some(e) if e > x))
+                .map(|&&x| x);
+
+            let join = joined
+                .get(&participant.tag)
+                .filter(|&&&x| start_date < x)
+                .map(|&&x| x)
+                .unwrap_or(start_date);
+
+            let mut participant = WarParticipant {
+                country: self.localize_tag(participant.tag),
+                participation: participant.value,
+                participation_percent: f64::from(participant.value),
+                losses: SaveFileImpl::create_losses(&participant.losses.members),
+                joined: join,
+                exited: exit,
+            };
+
+            if attackers.contains(&participant.country.tag) {
+                participant.participation_percent /= total_attacker_participation;
+                attacker_participants.push(participant);
+            } else {
+                participant.participation_percent /= total_defender_participation;
+                defender_participants.push(participant);
+            }
+        }
+
+        RawWarInfo {
+            name: String::from(war.name),
+            start_date,
+            end_date,
+            days: start_date.days_until(&end_date.unwrap_or(self.query.save().meta.date)),
+            attackers: WarInfoSide {
+                original: self.localize_tag(war.original_attacker),
+                members: attacker_participants,
+            },
+            defenders: WarInfoSide {
+                original: self.localize_tag(war.original_defender),
+                members: defender_participants,
+            },
+        }
+    }
+
+    fn battle_info(&self, history: &WarHistory) -> Vec<BattleInfo> {
         let mut attackers = HashSet::new();
         let mut defenders = HashSet::new();
         let mut battles = Vec::new();
         let mut commanders = HashMap::new();
-        let mut joined = HashMap::new();
-        let mut exited = HashMap::new();
 
-        let mut start_date = None;
-        let mut end_date = None;
-
-        for (date, event) in &war.history.events {
-            if matches!(&start_date, Some(x) if x > date) {
-                start_date = Some(*date)
-            }
-
-            if start_date.is_none() {
-                start_date = Some(*date)
-            }
-
-            if matches!(&end_date, Some(x) if x < date) {
-                end_date = Some(*date)
-            }
-
-            if end_date.is_none() {
-                end_date = Some(*date)
-            }
-
+        for (date, event) in &history.events {
             match event {
                 WarEvent::AddAttacker(x) => {
-                    attackers.insert(participants.get(x).unwrap_or(x));
-                    joined.insert(x, date);
-                    total_attackers.insert(x);
+                    attackers.insert(x);
                 }
                 WarEvent::AddDefender(x) => {
-                    joined.insert(x, date);
-                    defenders.insert(participants.get(x).unwrap_or(x));
+                    defenders.insert(x);
                 }
                 WarEvent::RemoveAttacker(x) => {
-                    exited.insert(x, date);
-                    attackers.remove(participants.get(x).unwrap_or(x));
+                    attackers.remove(x);
                 }
                 WarEvent::RemoveDefender(x) => {
-                    exited.insert(x, date);
-                    defenders.remove(participants.get(x).unwrap_or(x));
+                    defenders.remove(x);
                 }
                 WarEvent::Battle(b) => {
                     let attacker_commander_stats = match b.attacker.commander.as_ref() {
@@ -2040,39 +1951,20 @@ impl SaveFileImpl {
                         None => None,
                     };
 
-                    let attacker = BattleSide {
-                        infantry: b.attacker.infantry,
-                        cavalry: b.attacker.cavalry,
-                        artillery: b.attacker.artillery,
-                        heavy_ship: b.attacker.heavy_ship,
-                        light_ship: b.attacker.light_ship,
-                        galley: b.attacker.galley,
-                        transport: b.attacker.transport,
-                        losses: b.attacker.losses,
-                        country: b.attacker.country,
-                        country_name: save_game_query.localize_country(&b.attacker.country),
-                        commander: b.attacker.commander.clone(),
-                        commander_stats: attacker_commander_stats,
-                    };
-
-                    let defender = BattleSide {
-                        infantry: b.defender.infantry,
-                        cavalry: b.defender.cavalry,
-                        artillery: b.defender.artillery,
-                        heavy_ship: b.defender.heavy_ship,
-                        light_ship: b.defender.light_ship,
-                        galley: b.defender.galley,
-                        transport: b.defender.transport,
-                        losses: b.defender.losses,
-                        country: b.defender.country,
-                        country_name: save_game_query.localize_country(&b.defender.country),
-                        commander: b.defender.commander.clone(),
-                        commander_stats: defender_commander_stats,
-                    };
+                    let attacker = BattleSide::new(
+                        &b.attacker,
+                        self.localize_tag(b.attacker.country),
+                        attacker_commander_stats,
+                    );
+                    let defender = BattleSide::new(
+                        &b.defender,
+                        self.localize_tag(b.defender.country),
+                        defender_commander_stats,
+                    );
 
                     let x = BattleInfo {
                         name: b.name.clone(),
-                        date: date.iso_8601().to_string(),
+                        date: *date,
                         location: b.location.as_u16(),
                         loser_alliance: b.loser_alliance,
                         winner_alliance: b.winner_alliance,
@@ -2087,65 +1979,41 @@ impl SaveFileImpl {
             }
         }
 
-        let mut attacker_participants = Vec::new();
-        let mut defender_participants = Vec::new();
+        battles
+    }
 
-        let mut total_attacker_participation: f64 = 0.0;
-        let mut total_defender_participation: f64 = 0.0;
-        for participant in war.participants {
-            if total_attackers.contains(&participant.tag) {
-                total_attacker_participation += f64::from(participant.value);
-            } else {
-                total_defender_participation += f64::from(participant.value);
-            }
-        }
+    pub fn get_war(&self, name: &str) -> WarInfo {
+        let active_war = self
+            .query
+            .save()
+            .game
+            .active_wars
+            .iter()
+            .find(|x| x.name == name);
 
-        for participant in war.participants {
-            let exit = exited
-                .get(&participant.tag)
-                .and_then(|x| match &end_date {
-                    Some(e) if e > x => Some(x),
-                    _ => None,
-                })
-                .map(|x| x.iso_8601().to_string());
+        let previous_war = self
+            .query
+            .save()
+            .game
+            .previous_wars
+            .iter()
+            .find(|x| x.name == name);
 
-            let join = joined
-                .get(&participant.tag)
-                .and_then(|x| match &start_date {
-                    Some(e) if e < x => Some(x),
-                    _ => None,
-                })
-                .map(|x| x.iso_8601().to_string());
+        let war = active_war
+            .map(WarOverview::from)
+            .or_else(|| previous_war.map(WarOverview::from))
+            .expect("war to be found");
 
-            if total_attackers.contains(&participant.tag) {
-                attacker_participants.push(WarParticipant {
-                    tag: participant.tag,
-                    name: save_game_query.localize_country(&participant.tag),
-                    participation: participant.value,
-                    participation_percent: f64::from(participant.value)
-                        / total_attacker_participation,
-                    losses: SaveFileImpl::create_losses(&participant.losses.members),
-                    joined: join,
-                    exited: exit,
-                });
-            } else {
-                defender_participants.push(WarParticipant {
-                    tag: participant.tag,
-                    name: save_game_query.localize_country(&participant.tag),
-                    participation: participant.value,
-                    participation_percent: f64::from(participant.value)
-                        / total_defender_participation,
-                    losses: SaveFileImpl::create_losses(&participant.losses.members),
-                    joined: join,
-                    exited: exit,
-                });
-            }
-        }
-
+        let battles = self.battle_info(war.history);
+        let result = self.war_info(war);
         WarInfo {
+            name: result.name,
+            start_date: result.start_date,
+            end_date: result.end_date,
+            days: result.days,
+            attackers: result.attackers,
+            defenders: result.defenders,
             battles,
-            attacker_participants,
-            defender_participants,
         }
     }
 

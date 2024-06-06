@@ -63,12 +63,14 @@ const ParticipantsSummary = ({
 const columnHelper = createColumnHelper<WarParticipant>();
 
 const participantColumns = [
-  columnHelper.accessor("name", {
+  columnHelper.accessor("country.name", {
     sortingFn: "text",
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Country" />
     ),
-    cell: ({ row }) => <Flag tag={row.original.tag} name={row.original.name} />,
+    cell: ({ row }) => (
+      <Flag tag={row.original.country.tag} name={row.original.country.name} />
+    ),
   }),
 
   columnHelper.accessor("participation", {
@@ -80,7 +82,7 @@ const participantColumns = [
     cell: ({ row }) => (
       <Tooltip>
         <Tooltip.Trigger>
-          {formatInt(row.original.participation_percent * 100)}%
+          {formatInt(row.original.participationPercent * 100)}%
         </Tooltip.Trigger>
         <Tooltip.Content>
           {formatFloat(row.original.participation)}
@@ -155,14 +157,14 @@ const landColumns = [
     cell: (info) => (
       <div
         className={
-          info.row.original.attacker_won
+          info.row.original.attackerWon
             ? "flex bg-green-300 dark:bg-green-700"
             : ""
         }
       >
         <Flag
-          tag={info.getValue().country}
-          name={info.getValue().country_name}
+          tag={info.getValue().country.tag}
+          name={info.getValue().country.name}
         />
       </div>
     ),
@@ -173,14 +175,14 @@ const landColumns = [
     cell: (info) => (
       <div
         className={
-          !info.row.original.attacker_won
+          !info.row.original.attackerWon
             ? "flex bg-green-300 dark:bg-green-700"
             : ""
         }
       >
         <Flag
-          tag={info.getValue().country}
-          name={info.getValue().country_name}
+          tag={info.getValue().country.tag}
+          name={info.getValue().country.name}
         />
       </div>
     ),
@@ -339,12 +341,14 @@ const navyColumns = [
     cell: (info) => (
       <div
         className={
-          info.row.original.attacker_won ? "bg-green-300 dark:bg-green-700" : ""
+          info.row.original.attackerWon
+            ? "flex bg-green-300 dark:bg-green-700"
+            : ""
         }
       >
         <Flag
-          tag={info.getValue().country}
-          name={info.getValue().country_name}
+          tag={info.getValue().country.tag}
+          name={info.getValue().country.name}
         />
       </div>
     ),
@@ -355,14 +359,14 @@ const navyColumns = [
     cell: (info) => (
       <div
         className={
-          !info.row.original.attacker_won
-            ? "bg-green-300 dark:bg-green-700"
+          !info.row.original.attackerWon
+            ? "flex bg-green-300 dark:bg-green-700"
             : ""
         }
       >
         <Flag
-          tag={info.getValue().country}
-          name={info.getValue().country_name}
+          tag={info.getValue().country.tag}
+          name={info.getValue().country.name}
         />
       </div>
     ),
@@ -543,8 +547,8 @@ export const BattleView = ({ warName }: BattleViewProps) => {
         }
 
         return {
-          attackers: war.attacker_participants,
-          defenders: war.defender_participants,
+          attackers: war.attackerParticipants,
+          defenders: war.defenderParticipants,
           navalBattles: navalBattleInfos,
           landBattles: landBattleInfos,
         };

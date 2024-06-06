@@ -13,9 +13,7 @@ import { SheetExpansion } from "../../components/SheetExpansion";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 
-interface WarSideData extends WarSide {
-  original_name: string;
-}
+interface WarSideData extends WarSide {}
 
 interface WarTableData extends War {
   key: number;
@@ -25,7 +23,7 @@ interface WarTableData extends War {
 
 function FlagColumn({ data }: { data: WarSideData }) {
   return (
-    <Flag tag={data.original} name={data.original_name}>
+    <Flag tag={data.original.tag} name={data.original.name}>
       <Flag.CountryName />
       <div className="flex gap-2 items-start">
         <Flag.Tooltip asChild showName>
@@ -35,8 +33,8 @@ function FlagColumn({ data }: { data: WarSideData }) {
         </Flag.Tooltip>
 
         <div className="flex flex-wrap w-20">
-          {data.members.slice(0, 30).map((x) => (
-            <Flag tag={x.tag} key={x.tag} name={x.name}>
+          {data.members.slice(1, 30).map((x) => (
+            <Flag tag={x.country.tag} key={x.country.tag} name={x.country.name}>
               <Flag.Tooltip showName>
                 <Flag.Image size="xs" />
               </Flag.Tooltip>
@@ -202,14 +200,14 @@ export const WarTable = () => {
       getCsvData: async () => {
         const dataCsv = data.map((x) => ({
           ...x,
-          attacker_main: x.attackers.original,
-          attacker_main_name: x.attackers.original_name,
-          attacker_members: `"{${x.attackers.members.map((y) => y.tag).join(",")}}"`,
+          attacker_main: x.attackers.original.tag,
+          attacker_main_name: x.attackers.original.name,
+          attacker_members: `"{${x.attackers.members.map((y) => y.country.tag).join(",")}}"`,
           attacker_battle_losses: x.attackers.losses.totalBattle,
           attacker_attrition_losses: x.attackers.losses.totalAttrition,
-          defender_main: x.defenders.original,
-          defender_main_name: x.defenders.original_name,
-          defender_members: `"{${x.defenders.members.map((y) => y.tag).join(",")}}"`,
+          defender_main: x.defenders.original.tag,
+          defender_main_name: x.defenders.original.name,
+          defender_members: `"{${x.defenders.members.map((y) => y.country.tag).join(",")}}"`,
           defender_battle_losses: x.defenders.losses.totalBattle,
           defender_attrition_losses: x.defenders.losses.totalAttrition,
         }));
