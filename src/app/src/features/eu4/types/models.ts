@@ -4,6 +4,7 @@ import {
   CountryInfo,
 } from "../../../../../wasm-eu4/pkg/wasm_eu4";
 import { Losses } from "../utils/losses";
+export type { CountryDetails } from "../worker/module";
 export type {
   CountryAdvisors,
   GreatAdvisor,
@@ -25,7 +26,6 @@ export type {
   Estate,
   OwnedDevelopmentStates,
   CountryStateDetails,
-  CountryDetails,
   CountryManaSpend,
   DiplomacyEntry,
   RunningMonarch,

@@ -22,10 +22,17 @@ import { MapPayload, QuickTipPayload } from "../types/map";
 import { workLedgerData } from "../utils/ledger";
 import { expandLosses } from "../utils/losses";
 import { wasm } from "./common";
-import { TimelapseIter, Wars } from "../../../../../wasm-eu4/pkg/wasm_eu4";
-import { timeSync, timeit } from "@/lib/timeit";
+import {
+  ActiveWarParticipant,
+  TimelapseIter,
+  Wars,
+} from "../../../../../wasm-eu4/pkg/wasm_eu4";
+import { timeSync } from "@/lib/timeit";
 import { logMs } from "@/lib/log";
-import exp from "constants";
+import {
+  filterToRecurringExpenses,
+  filterToRecurringIncome,
+} from "../features/country-details/data";
 export * from "./init";
 
 export const getRawData = wasm.viewData;
@@ -128,8 +135,44 @@ export function eu4GetCountries(): EnhancedCountryInfo[] {
   }));
 }
 
+export type CountryDetails = ReturnType<typeof eu4GetCountry>;
+function activeWarParticipant({
+  participant: { losses, ...participant },
+  armedForces,
+  income,
+  expenses,
+  ...rest
+}: ActiveWarParticipant) {
+  const recurringIncome = filterToRecurringIncome(income);
+  const totalIncome = Object.values(recurringIncome).reduce(
+    (acc, x) => x + acc,
+    0,
+  );
+  const recurringExpenses = filterToRecurringExpenses(expenses);
+  const totalExpenses = Object.values(recurringExpenses).reduce(
+    (acc, x) => x + acc,
+    0,
+  );
+  return {
+    ...rest,
+    monthlyProfit: (totalIncome - totalExpenses) as number,
+    losses: expandLosses(losses),
+    ...armedForces,
+    ...participant,
+  };
+}
+
 export function eu4GetCountry(tag: string) {
-  return wasm.save.get_country(tag);
+  const result = wasm.save.get_country(tag);
+  return {
+    ...result,
+    ...result.armed_forces,
+    active_wars: result.active_wars.map((war) => ({
+      ...war,
+      attackers: war.attackers.map(activeWarParticipant),
+      defenders: war.defenders.map(activeWarParticipant),
+    })),
+  };
 }
 
 export function eu4GetCountryRulers(tag: string) {

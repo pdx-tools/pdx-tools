@@ -7,19 +7,32 @@ import {
   ChevronUpDownIcon,
   ChevronUpIcon,
 } from "@heroicons/react/20/solid";
+import { check } from "@/lib/isPresent";
+import { useContext } from "react";
+
+type TableContextState = { size: "standard" | "compact" };
+const TableContext = React.createContext<TableContextState | undefined>(
+  undefined,
+);
+const useTable = () =>
+  check(useContext(TableContext), "table context is undefined");
 
 const TableImpl = React.forwardRef<
   HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(function Table({ className, ...props }, ref) {
+  React.HTMLAttributes<HTMLTableElement> & {
+    size?: "standard" | "compact";
+  }
+>(function Table({ className, size = "standard", ...props }, ref) {
   return (
-    <div className="w-full overflow-auto">
-      <table
-        ref={ref}
-        className={cx("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
-    </div>
+    <TableContext.Provider value={{ size }}>
+      <div className="w-full overflow-auto">
+        <table
+          ref={ref}
+          className={cx("w-full caption-bottom text-sm", className)}
+          {...props}
+        />
+      </div>
+    </TableContext.Provider>
   );
 });
 
@@ -96,11 +109,13 @@ const TableHead = React.forwardRef<
   HTMLTableCellElement,
   React.ThHTMLAttributes<HTMLTableCellElement>
 >(function TableHead({ className, ...props }, ref) {
+  const table = useTable();
   return (
     <th
       ref={ref}
       className={cx(
-        "min-h-12 px-4 text-left align-middle font-medium text-gray-800 dark:text-slate-300 [&:has([role=checkbox])]:pr-0",
+        "min-h-12 text-left align-middle font-medium text-gray-800 dark:text-slate-300 [&:has([role=checkbox])]:pr-0",
+        table.size === "standard" ? "px-4" : "pl-2",
         className,
       )}
       {...props}
@@ -113,11 +128,13 @@ const TableCell = React.forwardRef<
   HTMLTableCellElement,
   React.TdHTMLAttributes<HTMLTableCellElement>
 >(function TableCell({ className, ...props }, ref) {
+  const table = useTable();
   return (
     <td
       ref={ref}
       className={cx(
-        "p-4 [&:has([role=checkbox])]:pr-0",
+        "[&:has([role=checkbox])]:pr-0",
+        table.size == "standard" && "p-4",
         className,
         !className?.includes("align-") && "align-middle", // poor man's tailwind merge
       )}
@@ -142,9 +159,9 @@ const TableCaption = React.forwardRef<
 Table.Caption = TableCaption;
 
 interface ColumnHeaderProps<TData, TValue>
-  extends React.HTMLAttributes<HTMLButtonElement> {
+  extends Omit<React.HTMLAttributes<HTMLButtonElement>, "title"> {
   column: Column<TData, TValue>;
-  title: string;
+  title: React.ReactNode;
 }
 
 function ColumnHeaderInner<TData, TValue>(
@@ -168,7 +185,7 @@ function ColumnHeaderInner<TData, TValue>(
       ref={ref}
       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
     >
-      <span>{title}</span>
+      {typeof title === "string" ? <span>{title}</span> : title}
       <SortIcon sorted={column.getIsSorted()} />
     </Button>
   );

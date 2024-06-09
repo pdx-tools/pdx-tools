@@ -334,12 +334,12 @@ export const CountryDetailsDescriptions = ({
             <ReinforcementsIcon />
             <div>
               {formatInt(
-                details.infantry_units.count +
-                  details.cavalry_units.count +
-                  details.artillery_units.count -
-                  details.infantry_units.strength -
-                  details.cavalry_units.strength -
-                  details.artillery_units.strength,
+                details.infantryUnits.count +
+                  details.cavalryUnits.count +
+                  details.artilleryUnits.count -
+                  details.infantryUnits.strength -
+                  details.cavalryUnits.strength -
+                  details.artilleryUnits.strength,
               )}
               K
             </div>
@@ -355,52 +355,50 @@ export const CountryDetailsDescriptions = ({
             <div className="flex text-right">
               <InfantryIcon />
               <span className="grow">
-                {formatInt(details.infantry_units.count)}
+                {formatInt(details.infantryUnits.count)}
               </span>
             </div>
 
             <div className="flex text-right">
               <CavalryIcon />
               <div className="grow">
-                {formatInt(details.cavalry_units.count)}
+                {formatInt(details.cavalryUnits.count)}
               </div>
             </div>
 
             <div className="flex text-right">
               <ArtilleryIcon />
               <span className="grow">
-                {formatInt(details.artillery_units.count)}
+                {formatInt(details.artilleryUnits.count)}
               </span>
             </div>
 
             <div className="flex text-right">
               <MercenaryIcon />
-              <span className="grow">{formatInt(details.mercenary_units)}</span>
+              <span className="grow">
+                {formatInt(details.mercenaryUnits.count)}
+              </span>
             </div>
           </div>
           <div>
             <div className="flex text-right">
               <HeavyShipIcon />
-              <span className="grow">
-                {formatInt(details.heavy_ship_units)}
-              </span>
+              <span className="grow">{formatInt(details.heavyShipUnits)}</span>
             </div>
 
             <div className="flex text-right">
               <LightShipIcon />
-              <span className="grow">
-                {formatInt(details.light_ship_units)}
-              </span>
+              <span className="grow">{formatInt(details.lightShipUnits)}</span>
             </div>
 
             <div className="flex text-right">
               <GalleyIcon />
-              <span className="grow">{formatInt(details.galley_units)}</span>
+              <span className="grow">{formatInt(details.galleyUnits)}</span>
             </div>
 
             <div className="flex text-right">
               <TransportIcon />
-              <span className="grow">{formatInt(details.transport_units)}</span>
+              <span className="grow">{formatInt(details.transportUnits)}</span>
             </div>
           </div>
           <div>
@@ -421,23 +419,23 @@ export const CountryDetailsDescriptions = ({
           </div>
         </div>
 
-        {details.best_general || details.best_admiral ? (
+        {details.bestGeneral || details.bestAdmiral ? (
           <div>
             <div>BEST LEADERS:</div>
-            {details.best_general ? (
+            {details.bestGeneral ? (
               <div className="ml-2 flex gap-2">
                 <div className="grow">
-                  {details.best_general.kind} {details.best_general.name}
+                  {details.bestGeneral.kind} {details.bestGeneral.name}
                 </div>
-                <LeaderStats {...details.best_general} />
+                <LeaderStats {...details.bestGeneral} />
               </div>
             ) : null}
-            {details.best_admiral ? (
+            {details.bestAdmiral ? (
               <div className="ml-2 flex gap-2">
                 <div className="grow">
-                  {details.best_admiral.kind} {details.best_admiral.name}
+                  {details.bestAdmiral.kind} {details.bestAdmiral.name}
                 </div>
-                <LeaderStats {...details.best_admiral} />
+                <LeaderStats {...details.bestAdmiral} />
               </div>
             ) : null}
           </div>
