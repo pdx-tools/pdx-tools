@@ -1,10 +1,11 @@
 use super::{
-    CountryAdvisors, CountryCulture, CountryDetails, CountryHistory, CountryHistoryEvent,
-    CountryHistoryEventKind, CountryHistoryLeader, CountryHistoryMonarch, CountryLeader,
-    CountryMonarch, CountryReligions, CountryStateDetails, DecisionCount, DiplomacyEntry,
-    DiplomacyKind, Estate, FailedHeir, GovernmentStrength, GreatAdvisor, InfluenceModifier,
-    LandUnitStrength, LocalizedObj, MonarchKind, ProgressDate, ProvinceConquer, ProvinceGc,
-    RunningMonarch, SaveFileImpl, WarBattles, WarOverview,
+    ActiveWarParticipant, CountryActiveWar, CountryAdvisors, CountryArmedForces, CountryCulture,
+    CountryDetails, CountryHistory, CountryHistoryEvent, CountryHistoryEventKind,
+    CountryHistoryLeader, CountryHistoryMonarch, CountryLeader, CountryMonarch, CountryReligions,
+    CountryStateDetails, DecisionCount, DiplomacyEntry, DiplomacyKind, Estate, FailedHeir,
+    GovernmentStrength, GreatAdvisor, InfluenceModifier, LandUnitStrength, LocalizedObj,
+    MonarchKind, ProgressDate, ProvinceConquer, ProvinceGc, RunningMonarch, SaveFileImpl,
+    WarBattles, WarOverview, WarParticipant,
 };
 use crate::savefile::{
     hex_color, BattleGroundProvince, CountryHistoryYear, CountryMana, CountryReligion,
@@ -100,6 +101,46 @@ impl SaveFileImpl {
             .clone()
             .unwrap_or_else(|| String::from("noculture"));
 
+        let active_wars = self
+            .query
+            .save()
+            .game
+            .active_wars
+            .iter()
+            .map(WarOverview::from)
+            .filter(|war| war.participants.iter().any(|x| x.tag == country_tag))
+            .map(|x| self.war_info(&x))
+            .map(|war| {
+                let attackers = war
+                    .attackers
+                    .members
+                    .into_iter()
+                    .filter_map(|part| {
+                        let country = self.query.country(&part.country.tag)?;
+                        Some(self.active_war_participant(part, country))
+                    })
+                    .collect::<Vec<_>>();
+
+                let defenders = war
+                    .defenders
+                    .members
+                    .into_iter()
+                    .filter_map(|part| {
+                        let country = self.query.country(&part.country.tag)?;
+                        Some(self.active_war_participant(part, country))
+                    })
+                    .collect::<Vec<_>>();
+
+                CountryActiveWar {
+                    name: war.name,
+                    start_date: war.start_date,
+                    days: war.days,
+                    attackers,
+                    defenders,
+                }
+            })
+            .collect::<Vec<_>>();
+
         let mut building_count = HashMap::new();
         let prov_buildings = self
             .query
@@ -153,67 +194,6 @@ impl SaveFileImpl {
             .iter()
             .map(|(name, v)| (name.clone(), i32::from(*v)))
             .collect();
-
-        let game_land_units: HashMap<_, _> =
-            self.game.land_units().map(|x| (x.name, x.kind)).collect();
-        let units = country
-            .armies
-            .iter()
-            .filter(|x| x.mercenary_company.is_none())
-            .flat_map(|x| x.regiments.iter())
-            .filter_map(|x| game_land_units.get(x._type.as_str()).map(|unit| (unit, x)));
-
-        let mut infantry = LandUnitStrength::default();
-        let mut cavalry = LandUnitStrength::default();
-        let mut artillery = LandUnitStrength::default();
-
-        for (unit, regiment) in units {
-            match unit {
-                eu4game::game::LandUnitKind::Infantry => {
-                    infantry.count += 1;
-                    infantry.strength += regiment.strength;
-                }
-                eu4game::game::LandUnitKind::Cavalry => {
-                    cavalry.count += 1;
-                    cavalry.strength += regiment.strength;
-                }
-                eu4game::game::LandUnitKind::Artillery => {
-                    artillery.count += 1;
-                    artillery.strength += regiment.strength;
-                }
-            }
-        }
-
-        let mercenary_units: usize = country
-            .armies
-            .iter()
-            .filter(|x| x.mercenary_company.is_some())
-            .map(|x| x.regiments.len())
-            .sum();
-
-        let game_naval_units: HashMap<_, _> =
-            self.game.naval_units().map(|x| (x.name, x.kind)).collect();
-        let ships = country
-            .navies
-            .iter()
-            .flat_map(|x| x.ships.iter())
-            .filter_map(|x| game_naval_units.get(x._type.as_str()).map(|unit| (unit, x)));
-
-        let mut heavy_ship = 0;
-        let mut light_ship = 0;
-        let mut galley = 0;
-        let mut transport = 0;
-
-        for (unit, _regiment) in ships {
-            match unit {
-                eu4game::game::NavalUnitKind::HeavyShip => heavy_ship += 1,
-                eu4game::game::NavalUnitKind::LightShip => light_ship += 1,
-                eu4game::game::NavalUnitKind::Galley => galley += 1,
-                eu4game::game::NavalUnitKind::Transport => transport += 1,
-            }
-        }
-
-        let (best_general, best_admiral) = country_best_leaders(country);
 
         let inheritance = self.query.inherit(&save_country);
 
@@ -391,16 +371,7 @@ impl SaveFileImpl {
             building_count: buildings,
             inheritance,
             diplomacy: diplomacy_entries,
-            best_admiral: best_admiral.cloned(),
-            best_general: best_general.cloned(),
-            infantry_units: infantry,
-            cavalry_units: cavalry,
-            artillery_units: artillery,
-            mercenary_units,
-            heavy_ship_units: heavy_ship,
-            light_ship_units: light_ship,
-            galley_units: galley,
-            transport_units: transport,
+            armed_forces: self.armed_forces(country),
             manpower: country.manpower,
             max_manpower: country.max_manpower,
             professionalism: country.army_professionalism,
@@ -417,6 +388,112 @@ impl SaveFileImpl {
             missionaries: country.missionaries.envoys.len(),
             government_strength,
             national_focus: country.national_focus.clone(),
+            active_wars,
+        }
+    }
+
+    fn active_war_participant(
+        &self,
+        part: WarParticipant,
+        country: &Country,
+    ) -> ActiveWarParticipant {
+        let debt = country.loans.iter().map(|x| x.amount).sum::<i32>();
+
+        let income = self.query.country_income_breakdown(country);
+        let expenses = self.query.country_expense_breakdown(&country);
+
+        ActiveWarParticipant {
+            armed_forces: self.armed_forces(country),
+            treasury: country.treasury,
+            debt,
+            income,
+            expenses,
+            participant: part,
+            manpower: country.manpower,
+            war_exhaustion: country.war_exhaustion,
+            professionalism: country.army_professionalism,
+            army_tradition: country.army_tradition,
+            navy_tradition: country.navy_tradition,
+            mil_tech: country.technology.mil_tech,
+        }
+    }
+
+    fn armed_forces(&self, country: &Country) -> CountryArmedForces {
+        let game_land_units: HashMap<_, _> =
+            self.game.land_units().map(|x| (x.name, x.kind)).collect();
+        let units = country
+            .armies
+            .iter()
+            .filter(|x| x.mercenary_company.is_none())
+            .flat_map(|x| x.regiments.iter())
+            .filter_map(|x| game_land_units.get(x._type.as_str()).map(|unit| (unit, x)));
+
+        let mut infantry = LandUnitStrength::default();
+        let mut cavalry = LandUnitStrength::default();
+        let mut artillery = LandUnitStrength::default();
+
+        for (unit, regiment) in units {
+            match unit {
+                eu4game::game::LandUnitKind::Infantry => {
+                    infantry.count += 1;
+                    infantry.strength += regiment.strength;
+                }
+                eu4game::game::LandUnitKind::Cavalry => {
+                    cavalry.count += 1;
+                    cavalry.strength += regiment.strength;
+                }
+                eu4game::game::LandUnitKind::Artillery => {
+                    artillery.count += 1;
+                    artillery.strength += regiment.strength;
+                }
+            }
+        }
+
+        let mercs = country
+            .armies
+            .iter()
+            .filter(|x| x.mercenary_company.is_some());
+        let mut mercenaries = LandUnitStrength::default();
+        for merc in mercs.flat_map(|x| x.regiments.iter()) {
+            mercenaries.count += 1;
+            mercenaries.strength += merc.strength;
+        }
+
+        let game_naval_units: HashMap<_, _> =
+            self.game.naval_units().map(|x| (x.name, x.kind)).collect();
+        let ships = country
+            .navies
+            .iter()
+            .flat_map(|x| x.ships.iter())
+            .filter_map(|x| game_naval_units.get(x._type.as_str()).map(|unit| (unit, x)));
+
+        let mut heavy_ship = 0;
+        let mut light_ship = 0;
+        let mut galley = 0;
+        let mut transport = 0;
+
+        for (unit, _regiment) in ships {
+            match unit {
+                eu4game::game::NavalUnitKind::HeavyShip => heavy_ship += 1,
+                eu4game::game::NavalUnitKind::LightShip => light_ship += 1,
+                eu4game::game::NavalUnitKind::Galley => galley += 1,
+                eu4game::game::NavalUnitKind::Transport => transport += 1,
+            }
+        }
+
+        let (best_general, best_admiral) = country_best_leaders(country);
+
+        CountryArmedForces {
+            best_admiral: best_admiral.cloned(),
+            best_general: best_general.cloned(),
+            infantry_units: infantry,
+            cavalry_units: cavalry,
+            artillery_units: artillery,
+            mercenary_units: mercenaries,
+            heavy_ship_units: heavy_ship,
+            light_ship_units: light_ship,
+            galley_units: galley,
+            transport_units: transport,
         }
     }
 
@@ -1955,6 +2032,18 @@ impl SaveFileImpl {
 }
 
 pub(crate) fn country_best_leaders(country: &Country) -> (Option<&Leader>, Option<&Leader>) {
+    let merc_leader_ids = country
+        .armies
+        .iter()
+        .filter_map(|x| x.mercenary_company.as_ref())
+        .map(|x| x.id)
+        .collect::<HashSet<_>>();
+    let merc_leaders = country
+        .mercenary_companies
+        .iter()
+        .filter(|x| merc_leader_ids.contains(&x.id.id))
+        .filter_map(|x| x.leader.as_ref());
+
     let active_leaders: HashSet<_> = country.leaders.iter().map(|x| x.id).collect();
 
     let (best_general, best_admiral) = country
@@ -1966,8 +2055,9 @@ pub(crate) fn country_best_leaders(country: &Country) -> (Option<&Leader>, Optio
             leader
                 .id
                 .as_ref()
-                .map_or(false, |x| active_leaders.contains(&x.id))
+                .is_some_and(|x| active_leaders.contains(&x.id))
         })
+        .chain(merc_leaders)
         .fold((None, None), |(general, admiral), leader| {
             match leader.kind {
                 eu4save::models::LeaderKind::General

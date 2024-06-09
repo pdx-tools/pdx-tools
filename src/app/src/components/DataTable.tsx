@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { ComponentProps, useMemo, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { Table } from "./Table";
 import {
-  Table as TableDef,
   Column,
   ColumnDef,
   ColumnFiltersState,
@@ -26,7 +25,8 @@ type DataTableProps<TData> = {
   summary?: React.ReactNode;
   initialSorting?: SortingState;
   className?: string;
-} & Partial<TableOptions<TData>>;
+} & Partial<TableOptions<TData>> &
+  ComponentProps<typeof Table>;
 
 export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
   data,
@@ -36,6 +36,7 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
   initialSorting = [],
   className,
   enableColumnFilters = false,
+  size,
   ...options
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
@@ -67,7 +68,7 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
   const rows = table.getRowModel().rows;
   return (
     <div className={cx("flex flex-col gap-2 rounded-md", className)}>
-      <Table>
+      <Table size={size}>
         <Table.Header>
           {table.getHeaderGroups().map((headerGroup) => (
             <Table.Row key={headerGroup.id}>
@@ -75,6 +76,7 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
                 <Table.Head
                   colSpan={header.colSpan}
                   className={cx(
+                    (header.column.columnDef?.meta as any)?.headClassName,
                     header.colSpan > 1 &&
                       "border-l border-r text-center dark:border-gray-600",
                   )}

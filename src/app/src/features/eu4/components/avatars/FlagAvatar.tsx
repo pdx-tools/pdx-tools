@@ -207,12 +207,14 @@ const ColonialSubjectFlag = ({ tag, size }: FlagAvatarCoreProps) => {
 
   const [r, g, b] = overlord[1];
   return (
-    <div className="relative">
-      <FlagSprite index={overlordIndex} size={size} />
-      <div
-        className="absolute right-0 top-0 bottom-0 w-1/2"
-        style={{ backgroundColor: `rgb(${r},${g},${b})` }}
-      />
+    <div className="flex">
+      <div className="relative">
+        <FlagSprite index={overlordIndex} size={size} />
+        <div
+          className="absolute right-0 top-0 bottom-0 w-1/2"
+          style={{ backgroundColor: `rgb(${r},${g},${b})` }}
+        />
+      </div>
     </div>
   );
 };

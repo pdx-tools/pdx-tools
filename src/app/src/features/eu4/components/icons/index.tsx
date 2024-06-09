@@ -67,13 +67,19 @@ export const InfantryIcon = ({ alt = "Infantry" }: { alt?: string }) => (
   <GameIcon src={"infantry"} alt={alt} />
 );
 
+export const InfantrySkullIcon = ({ alt = "Attrition" }: { alt?: string }) => (
+  <GameIcon src={"infantry_skull"} alt={alt} />
+);
+
 export const CavalryIcon = () => <GameIcon src={"cavalry"} alt="Cavalry" />;
 
 export const ArtilleryIcon = () => (
   <GameIcon src={"artillery"} alt="Artillery" />
 );
 
-export const ManpowerIcon = () => <GameIcon src={"manpower"} alt="Manpower" />;
+export const ManpowerIcon = ({ alt = "Manpower" }: { alt?: string }) => (
+  <GameIcon src={"manpower"} alt={alt} />
+);
 
 export const ArmyTraditionIcon = () => (
   <GameIcon src={"army_tradition"} alt="Army Tradition" />
@@ -239,8 +245,8 @@ export const DecisionIcon = () => (
   <GameIcon src={"decision"} alt="Decision" width={32} height={32} />
 );
 
-export const GeneralIcon = () => (
-  <GameIcon src={"general"} alt="General" width={32} height={32} />
+export const GeneralIcon = ({ alt = "General" }: { alt?: string }) => (
+  <GameIcon src={"general"} alt={alt} width={32} height={32} />
 );
 
 export const AdmiralIcon = () => (
@@ -282,4 +288,21 @@ export const AttritionLossesIcon = () => (
 
 export const PolicyIcon = () => (
   <GameIcon src={"policy"} alt="Policy" width={32} height={32} />
+);
+
+export const WarExhaustionIcon = () => (
+  <GameIcon src="war_exhaustion" alt="War Exhaustion" />
+);
+
+export const DucatsIcon = () => (
+  <GameIcon src="ducats" width={28} height={28} alt="Net Cash" />
+);
+
+export const ProfitIcon = () => (
+  <GameIcon
+    src="profit"
+    width={28}
+    height={28}
+    alt="Monthly Recurring Profit"
+  />
 );

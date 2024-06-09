@@ -43,6 +43,7 @@ import { CountrySelect } from "../../components/CountrySelect";
 import { emitEvent } from "@/lib/plausible";
 import { CountryHistory } from "./CountryHistory";
 import { CountryInstitution } from "./CountryInstitution";
+import { ActiveWarCard } from "./ActiveWarCard";
 
 export const CountrySideBarButton = ({
   children,
@@ -189,6 +190,16 @@ const CountryDetailsContent = () => {
           {country && (
             <>
               <CountryDetailsDescriptions details={country} />
+              {country.active_wars.length > 0 ? (
+                <>
+                  <Divider>Ongoing Wars</Divider>
+                  <div className="flex flex-col gap-8">
+                    {country.active_wars.map((x) => (
+                      <ActiveWarCard key={x.name} war={x} />
+                    ))}
+                  </div>
+                </>
+              ) : null}
               <Divider>Diplomacy</Divider>
               <CountryDiplomacy details={country} />
             </>

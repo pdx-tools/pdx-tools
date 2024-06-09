@@ -293,7 +293,7 @@ impl BattleSide {
     }
 }
 
-#[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
+#[derive(Tsify, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct WarParticipant {
     pub country: LocalizedTag,
@@ -304,17 +304,46 @@ pub struct WarParticipant {
     pub exited: Option<Eu4Date>,
 }
 
-#[derive(Tsify, Serialize)]
+#[derive(Tsify, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ActiveWarCountry {
-    #[serde(flatten)]
-    pub country: LocalizedTag,
+pub struct CountryActiveWar {
+    pub name: String,
+    pub start_date: Eu4Date,
+    pub days: i32,
+    pub attackers: Vec<ActiveWarParticipant>,
+    pub defenders: Vec<ActiveWarParticipant>,
+}
+
+#[derive(Tsify, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveWarParticipant {
+    pub participant: WarParticipant,
     pub war_exhaustion: f32,
-    // pub losses: [u32; 21],
-    // pub participation: f32,
-    // pub participation_percent: f64,
-    // pub joined: Option<String>,
-    // pub exited: Option<String>,
+    pub professionalism: f32,
+    pub army_tradition: f32,
+    pub navy_tradition: f32,
+    pub mil_tech: u8,
+    pub manpower: f32,
+    pub armed_forces: CountryArmedForces,
+    pub treasury: f32,
+    pub debt: i32,
+    pub income: CountryIncomeLedger,
+    pub expenses: CountryExpenseLedger,
+}
+
+#[derive(Tsify, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CountryArmedForces {
+    pub best_general: Option<Leader>,
+    pub best_admiral: Option<Leader>,
+    pub infantry_units: LandUnitStrength,
+    pub cavalry_units: LandUnitStrength,
+    pub artillery_units: LandUnitStrength,
+    pub mercenary_units: LandUnitStrength,
+    pub heavy_ship_units: usize,
+    pub light_ship_units: usize,
+    pub galley_units: usize,
+    pub transport_units: usize,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
@@ -673,17 +702,8 @@ pub struct CountryDetails {
     pub ideas: Vec<(String, i32)>,
     pub num_cities: i32,
     pub inheritance: Inheritance,
-    pub best_general: Option<Leader>,
-    pub best_admiral: Option<Leader>,
     pub diplomacy: Vec<DiplomacyEntry>,
-    pub infantry_units: LandUnitStrength,
-    pub cavalry_units: LandUnitStrength,
-    pub artillery_units: LandUnitStrength,
-    pub mercenary_units: usize,
-    pub heavy_ship_units: usize,
-    pub light_ship_units: usize,
-    pub galley_units: usize,
-    pub transport_units: usize,
+    pub armed_forces: CountryArmedForces,
     pub manpower: f32,
     pub max_manpower: f32,
     pub professionalism: f32,
@@ -700,6 +720,7 @@ pub struct CountryDetails {
     pub missionaries: usize,
     pub government_strength: GovernmentStrength,
     pub national_focus: NationalFocus,
+    pub active_wars: Vec<CountryActiveWar>,
 }
 
 #[derive(Tsify, Serialize, Debug)]
