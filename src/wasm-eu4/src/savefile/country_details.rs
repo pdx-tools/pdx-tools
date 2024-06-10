@@ -110,6 +110,14 @@ impl SaveFileImpl {
             .map(WarOverview::from)
             .filter(|war| war.participants.iter().any(|x| x.tag == country_tag))
             .map(|x| self.war_info(&x))
+            .filter(|war| {
+                war.attackers
+                    .members
+                    .iter()
+                    .chain(war.defenders.members.iter())
+                    .find(|x| x.country.tag == country_tag)
+                    .is_some_and(|x| x.exited.is_none())
+            })
             .map(|war| {
                 let attackers = war
                     .attackers
