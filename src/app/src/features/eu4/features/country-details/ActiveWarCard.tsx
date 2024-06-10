@@ -359,7 +359,7 @@ function ParticipantHealth({ participants }: { participants: Participant[] }) {
           <Table.Cell className="text-right">
             {formatInt(totalReserves.reduce((acc, x) => acc + x, 0))}K
           </Table.Cell>
-          <Table.Cell className="text-right">
+          <Table.Cell className="hidden text-right @lg:table-cell">
             {formatInt(totalNetCash.reduce((acc, x) => acc + x, 0))}
           </Table.Cell>
           <Table.Cell className="text-right">
