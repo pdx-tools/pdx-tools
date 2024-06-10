@@ -1,5 +1,4 @@
 import { useEu4Worker } from "../../worker";
-import { CountryDetails, Eu4Date } from "../../types/models";
 import { Flag } from "../../components/avatars";
 import { useCallback, useState } from "react";
 import {
@@ -24,8 +23,13 @@ import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";
 import { DataTable } from "@/components/DataTable";
 import { TableCellsIcon } from "@heroicons/react/24/outline";
+import { MonitorData } from "../../worker/module";
+import { Eu4Date } from "../../types/models";
 
-type MonitorRow = CountryDetails & { date: Eu4Date; rowSpan: number };
+type MonitorRow = MonitorData["countries"][number] & {
+  date: Eu4Date;
+  rowSpan: number;
+};
 
 const columnHelper = createColumnHelper<MonitorRow>();
 const columns = [
@@ -84,25 +88,25 @@ const columns = [
     cell: (info) => formatInt(info.getValue()) + "K",
   }),
 
-  columnHelper.accessor("infantry_units.count", {
+  columnHelper.accessor("infantryUnits.count", {
     header: () => <InfantryIcon />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
 
-  columnHelper.accessor("cavalry_units.count", {
+  columnHelper.accessor("cavalryUnits.count", {
     header: () => <CavalryIcon />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
 
-  columnHelper.accessor("artillery_units.count", {
+  columnHelper.accessor("artilleryUnits.count", {
     header: () => <ArtilleryIcon />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
 
-  columnHelper.accessor("mercenary_units", {
+  columnHelper.accessor("mercenaryUnits.count", {
     header: () => <MercenaryIcon />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
@@ -147,9 +151,9 @@ export const WatchCountryDetails = () => {
               manpower: formatInt(x.manpower * 1000),
               treasury: formatInt(x.treasury - x.debt),
               development: formatInt(x.development),
-              infantry_count: x.infantry_units.count,
-              cavalry_count: x.cavalry_units.count,
-              artillery_count: x.artillery_units.count,
+              infantry_count: x.infantryUnits.count,
+              cavalry_count: x.cavalryUnits.count,
+              artillery_count: x.artilleryUnits.count,
             }));
 
             const csvData = createCsv(outData, [
@@ -165,7 +169,7 @@ export const WatchCountryDetails = () => {
               "infantry_count",
               "cavalry_count",
               "artillery_count",
-              "mercenary_units",
+              "mercenaryUnits",
             ]);
 
             downloadData(
