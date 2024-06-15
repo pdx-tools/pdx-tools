@@ -1,10 +1,10 @@
+use crate::utils;
 use serde::Deserialize;
 use std::{
     error::Error,
     io::{Cursor, Read},
 };
 use vic3save::{Vic3Date, Vic3File};
-mod utils;
 
 #[test]
 fn can_parse_debug() -> Result<(), Box<dyn Error>> {
