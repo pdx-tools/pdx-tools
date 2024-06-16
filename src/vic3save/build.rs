@@ -9,7 +9,11 @@ fn main() {
     writeln!(writer, "match token {{").unwrap();
 
     println!("cargo:rerun-if-env-changed=VIC3_IRONMAN_TOKENS");
-    if let Ok(v) = env::var("VIC3_IRONMAN_TOKENS") {
+    let tfile = env::var("VIC3_IRONMAN_TOKENS")
+        .ok()
+        .filter(|x| !x.is_empty());
+
+    if let Some(v) = tfile {
         println!("cargo:rustc-cfg=ironman");
         println!("cargo:rerun-if-changed={}", v);
         let file = File::open(&v).unwrap();
