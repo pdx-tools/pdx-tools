@@ -362,16 +362,16 @@ prep-frontend:
   for VERSION in "${VERSIONS[@]}"; do
     cat >> "$OUTPUT" << EOF
     case "$VERSION": return {
-      provinces1: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-1.png\`),
-      provinces2: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-2.png\`),
+      provinces1: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-1.webp\`),
+      provinces2: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-2.webp\`),
       colorMap: require(\`../../../../assets/game/eu4/$VERSION/map/colormap_summer.webp\`),
       sea: require(\`../../../../assets/game/eu4/$VERSION/map/colormap_water.webp\`),
       normal: require(\`../../../../assets/game/eu4/$VERSION/map/world_normal.webp\`),
-      terrain1: require(\`../../../../assets/game/eu4/$VERSION/map/terrain-1.png\`),
-      terrain2: require(\`../../../../assets/game/eu4/$VERSION/map/terrain-2.png\`),
-      rivers1: require(\`../../../../assets/game/eu4/$VERSION/map/rivers-1.png\`),
-      rivers2: require(\`../../../../assets/game/eu4/$VERSION/map/rivers-2.png\`),
-      stripes: require(\`../../../../assets/game/eu4/$VERSION/map/occupation.png\`),
+      terrain1: require(\`../../../../assets/game/eu4/$VERSION/map/terrain-1.webp\`),
+      terrain2: require(\`../../../../assets/game/eu4/$VERSION/map/terrain-2.webp\`),
+      rivers1: require(\`../../../../assets/game/eu4/$VERSION/map/rivers-1.webp\`),
+      rivers2: require(\`../../../../assets/game/eu4/$VERSION/map/rivers-2.webp\`),
+      stripes: require(\`../../../../assets/game/eu4/$VERSION/map/occupation.webp\`),
       water: require(\`../../../../assets/game/eu4/$VERSION/map/noise-2d.webp\`),
       surfaceRock: require(\`../../../../assets/game/eu4/$VERSION/map/atlas0_rock.webp\`),
       surfaceGreen: require(\`../../../../assets/game/eu4/$VERSION/map/atlas0_green.webp\`),
