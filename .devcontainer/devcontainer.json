@@ -16,7 +16,8 @@
     "EU4_IRONMAN_TOKENS": "${containerWorkspaceFolder}/assets/tokens/eu4.txt",
     "HOI4_IRONMAN_TOKENS": "${containerWorkspaceFolder}/assets/tokens/hoi4.txt",
     "CK3_IRONMAN_TOKENS": "${containerWorkspaceFolder}/assets/tokens/ck3.txt",
-    "IMPERATOR_TOKENS": "${containerWorkspaceFolder}/assets/tokens/imperator.txt"
+    "IMPERATOR_TOKENS": "${containerWorkspaceFolder}/assets/tokens/imperator.txt",
+    "VIC3_IRONMAN_TOKENS": "${containerWorkspaceFolder}/assets/tokens/vic3.txt"
   },
 
   "features": {

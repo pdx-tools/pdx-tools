@@ -8,6 +8,7 @@ export EU4_IRONMAN_TOKENS := ""
 export HOI4_IRONMAN_TOKENS := ""
 export CK3_IRONMAN_TOKENS := ""
 export IMPERATOR_TOKENS := ""
+export VIC3_IRONMAN_TOKENS := ""
 
 export NEXT_PUBLIC_SENTRY_DSN := `echo ${SENTRY_DSN:-''}`
 
@@ -50,10 +51,14 @@ staging: build-app prep-dev-app
   . .env.production
   PORT=3001 node_modules/.bin/next start
 
-test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-*") test-wasm (cargo "test" "-p" "pdx" "--all-features") test-app
+test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-*" "--exclude" "vic3save")  test-vic3save test-wasm (cargo "test" "-p" "pdx" "--all-features") test-app
 
 # Disable zstd fat-lto which cause linking issues for tests
 test-wasm: (cargo "test" "--no-default-features" "--features" "miniz" "-p" "wasm-*")
+
+test-vic3save:
+  #!/usr/bin/env bash
+  VIC3_IRONMAN_TOKENS={{justfile_directory()}}/assets/tokens/vic3.txt cargo test -p vic3save
 
 setup:
   #!/usr/bin/env bash
