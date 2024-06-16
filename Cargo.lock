@@ -750,7 +750,7 @@ name = "ck3save"
 version = "0.4.3"
 source = "git+https://github.com/rakaly/ck3save.git#45d6e4391f3cef32a55905005456bad9a06aa29c"
 dependencies = [
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "libdeflater",
  "miniz_oxide",
  "serde",
@@ -1138,7 +1138,7 @@ dependencies = [
  "eu4game-data",
  "eu4save",
  "highway",
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex",
  "schemas",
  "serde",
@@ -1165,7 +1165,7 @@ version = "0.8.2"
 source = "git+https://github.com/rakaly/eu4save.git#aa8998a0b2b385caf843a2edd5d7932bb1345ff4"
 dependencies = [
  "flate2",
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "libdeflater",
  "miniz_oxide",
  "once_cell",
@@ -1428,7 +1428,7 @@ name = "hoi4save"
 version = "0.3.4"
 source = "git+https://github.com/rakaly/hoi4save.git#b217bcf2a0f91fa2c7a4783c8247b9d6dabf12a5"
 dependencies = [
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "thiserror",
 ]
@@ -1557,7 +1557,7 @@ name = "imperator-save"
 version = "0.4.2"
 source = "git+https://github.com/rakaly/imperator-save.git#70e66caade56820832e1b27f0d40faaf15926376"
 dependencies = [
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "libdeflater",
  "miniz_oxide",
  "serde",
@@ -1624,7 +1624,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd8bcefffbfcccf0df9b4c729cde50920649a84d9d3fb84539edfe0a2bcfafdc"
 dependencies = [
  "itoa",
- "jomini_derive",
+ "jomini_derive 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "jomini"
+version = "0.25.6"
+source = "git+https://github.com/rakaly/jomini.git?branch=unknown#a09ac7da85e39847c09dabdc7f82cbcde8e59bbe"
+dependencies = [
+ "itoa",
+ "jomini_derive 0.2.4 (git+https://github.com/rakaly/jomini.git?branch=unknown)",
  "serde",
  "serde_json",
 ]
@@ -1634,6 +1645,15 @@ name = "jomini_derive"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "86fa60e23f7c016cc52d09b9a8e9b1ec298b170610312e0fb7c21af5c8975578"
+dependencies = [
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "jomini_derive"
+version = "0.2.4"
+source = "git+https://github.com/rakaly/jomini.git?branch=unknown#a09ac7da85e39847c09dabdc7f82cbcde8e59bbe"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -2005,7 +2025,7 @@ dependencies = [
  "eu4save",
  "filetime",
  "flate2",
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "oxipng",
  "rayon",
@@ -2417,7 +2437,7 @@ dependencies = [
  "eu4save",
  "flatbuffers",
  "flatc-rust",
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand",
 ]
 
@@ -3168,8 +3188,9 @@ name = "vic3save"
 version = "0.1.0"
 dependencies = [
  "attohttpc",
+ "flate2",
  "getrandom",
- "jomini",
+ "jomini 0.25.6 (git+https://github.com/rakaly/jomini.git?branch=unknown)",
  "libdeflater",
  "mathru",
  "miniz_oxide",
@@ -3215,7 +3236,7 @@ name = "wasm-app"
 version = "0.1.0"
 dependencies = [
  "eu4game-data",
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "tsify",
  "wasm-bindgen",
@@ -3317,7 +3338,7 @@ name = "wasm-ck3"
 version = "0.1.0"
 dependencies = [
  "ck3save",
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "js-sys",
  "schemas",
  "serde",
@@ -3344,7 +3365,7 @@ version = "0.1.0"
 dependencies = [
  "eu4game",
  "eu4save",
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "js-sys",
  "once_cell",
  "schemas",
@@ -3361,7 +3382,7 @@ name = "wasm-hoi4"
 version = "0.1.0"
 dependencies = [
  "hoi4save",
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "js-sys",
  "schemas",
  "serde",
@@ -3376,7 +3397,7 @@ name = "wasm-imperator"
 version = "0.1.0"
 dependencies = [
  "imperator-save",
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "js-sys",
  "schemas",
  "serde",
@@ -3389,7 +3410,7 @@ dependencies = [
 name = "wasm-vic3"
 version = "0.1.0"
 dependencies = [
- "jomini",
+ "jomini 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "js-sys",
  "schemas",
  "serde",

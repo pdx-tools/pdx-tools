@@ -14,7 +14,7 @@ fn test_parse_ironman() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_melt_snapshot() -> Result<(), Box<dyn Error>> {
-    let zip_data = utils::request("egalitarian_melted.zip");
+    let zip_data = utils::request("egalitarian_melted2.zip");
     let reader = Cursor::new(&zip_data[..]);
     let mut zip = zip::ZipArchive::new(reader).unwrap();
     let mut zip_file = zip.by_index(0).unwrap();
@@ -23,14 +23,11 @@ fn test_melt_snapshot() -> Result<(), Box<dyn Error>> {
 
     let data = utils::request("egalitarian.v3");
     let file = Vic3File::from_slice(&data)?;
-    let mut zip_sink = Vec::new();
-    let parsed = file.parse(&mut zip_sink)?;
-    let bin = parsed.as_binary().unwrap();
-    let out = bin.melter().melt(&EnvTokens)?;
+    let mut out = Cursor::new(Vec::new());
+    file.melter().melt(&mut out, &EnvTokens)?;
 
-    std::fs::write("/tmp/out", out.data()).unwrap();
     assert!(
-        eq(out.data(), &buffer),
+        eq(out.get_ref(), &buffer),
         "melt snapshot failed"
     );
     Ok(())
