@@ -16,15 +16,18 @@ pub enum Vic3ZipMeta<'a> {
     Entry(VerifiedIndex),
 }
 
+#[derive(Clone, Debug)]
+pub struct Vic3Zip<'a> {
+    pub archive: Vic3ZipFiles<'a>,
+    pub meta: Vic3ZipMeta<'a>,
+    pub gamestate: VerifiedIndex,
+    pub is_text: bool,
+}
+
 pub enum FileKind<'a> {
     Text(Vic3Text<'a>),
     Binary(Vic3Binary<'a>),
-    Zip {
-        archive: Vic3ZipFiles<'a>,
-        gamestate: VerifiedIndex,
-        meta: Vic3ZipMeta<'a>,
-        is_text: bool,
-    },
+    Zip(Vic3Zip<'a>),
 }
 
 /// The encoding of a save file
@@ -75,12 +78,12 @@ impl<'a> Vic3File<'a> {
                 let is_text = !header.kind().is_binary();
                 Ok(Vic3File {
                     header,
-                    kind: FileKind::Zip {
+                    kind: FileKind::Zip(Vic3Zip {
                         archive: files,
                         meta,
                         gamestate: gamestate_idx,
                         is_text,
-                    },
+                    }),
                 })
             }
             Err(ZipError::InvalidArchive(_)) => {
@@ -113,8 +116,8 @@ impl<'a> Vic3File<'a> {
         match &self.kind {
             FileKind::Text(_) => Encoding::Text,
             FileKind::Binary(_) => Encoding::Binary,
-            FileKind::Zip { is_text: true, .. } => Encoding::TextZip,
-            FileKind::Zip { is_text: false, .. } => Encoding::BinaryZip,
+            FileKind::Zip(Vic3Zip { is_text: true, .. }) => Encoding::TextZip,
+            FileKind::Zip(Vic3Zip { is_text: false, .. }) => Encoding::BinaryZip,
         }
     }
 
@@ -124,7 +127,7 @@ impl<'a> Vic3File<'a> {
     pub fn size(&self) -> usize {
         match &self.kind {
             FileKind::Text(Vic3Text { data }) | FileKind::Binary(Vic3Binary { data }) => data.len(),
-            FileKind::Zip { gamestate, .. } => gamestate.size,
+            FileKind::Zip(Vic3Zip { gamestate, .. }) => gamestate.size,
         }
     }
 
@@ -152,20 +155,20 @@ impl<'a> Vic3File<'a> {
                     header: self.header.clone(),
                 })
             }
-            FileKind::Zip {
+            FileKind::Zip(Vic3Zip {
                 meta: Vic3ZipMeta::Raw(data),
                 is_text: true,
                 ..
-            } => Ok(Vic3Meta {
+            }) => Ok(Vic3Meta {
                 kind: Vic3MetaKind::TextRaw(data),
                 header: self.header.clone(),
             }),
-            FileKind::Zip {
+            FileKind::Zip(Vic3Zip {
                 archive,
                 meta: Vic3ZipMeta::Entry(entry),
                 is_text: true,
                 ..
-            } => {
+            }) => {
                 let mut data = Vec::new();
                 archive.retrieve_file(*entry).read_to_end(&mut data)?;
                 Ok(Vic3Meta {
@@ -173,20 +176,20 @@ impl<'a> Vic3File<'a> {
                     header: self.header.clone(),
                 })
             }
-            FileKind::Zip {
+            FileKind::Zip(Vic3Zip {
                 meta: Vic3ZipMeta::Raw(data),
                 is_text: false,
                 ..
-            } => Ok(Vic3Meta {
+            }) => Ok(Vic3Meta {
                 kind: Vic3MetaKind::BinaryRaw(data),
                 header: self.header.clone(),
             }),
-            FileKind::Zip {
+            FileKind::Zip(Vic3Zip {
                 archive,
                 meta: Vic3ZipMeta::Entry(entry),
                 is_text: false,
                 ..
-            } => {
+            }) => {
                 let mut data = Vec::new();
                 archive.retrieve_file(*entry).read_to_end(&mut data)?;
                 Ok(Vic3Meta {
@@ -215,12 +218,12 @@ impl<'a> Vic3File<'a> {
                     kind: Vic3ParsedFileKind::Binary(binary),
                 })
             }
-            FileKind::Zip {
+            FileKind::Zip(Vic3Zip {
                 archive,
                 gamestate,
                 is_text,
                 ..
-            } => {
+            }) => {
                 let zip = archive.retrieve_file(*gamestate);
                 zip.read_to_end(zip_sink)?;
 
@@ -246,12 +249,12 @@ impl<'a> Vic3File<'a> {
         match self.kind() {
             FileKind::Text(x) => x.deserialize(),
             FileKind::Binary(x) => Ok(x.deserialize::<Vic3Save, _>(resolver)?.normalize()),
-            FileKind::Zip {
+            FileKind::Zip(Vic3Zip {
                 archive,
                 gamestate,
                 is_text,
                 ..
-            } => {
+            }) => {
                 let gamestate_file = archive.retrieve_file(*gamestate);
                 let max_size = gamestate_file.size();
 
@@ -268,6 +271,14 @@ impl<'a> Vic3File<'a> {
 
                 Ok(save)
             }
+        }
+    }
+
+    pub fn melter(&self) -> Vic3Melter<'a> {
+        match &self.kind {
+            FileKind::Text(x) => Vic3Melter::new_text(x.data, self.header.clone()),
+            FileKind::Binary(x) => Vic3Melter::new_binary(x.data, self.header.clone()),
+            FileKind::Zip(x) => Vic3Melter::new_zip((*x).clone(), self.header.clone()),
         }
     }
 }
@@ -314,6 +325,13 @@ impl<'a> Vic3Meta<'a> {
                     kind: Vic3ParsedFileKind::Binary(kind),
                 })
             }
+        }
+    }
+
+    pub fn melter(&self) -> Vic3Melter {
+        match self.kind() {
+            Vic3MetaData::Text(x) => Vic3Melter::new_text(x, self.header.clone()),
+            Vic3MetaData::Binary(x) => Vic3Melter::new_binary(x, self.header.clone()),
         }
     }
 }
@@ -446,6 +464,10 @@ impl<'a> Vic3ZipFile<'a> {
         Ok(())
     }
 
+    pub fn reader(&self) -> crate::deflate::DeflateReader<'a> {
+        crate::deflate::DeflateReader::new(self.raw, crate::deflate::CompressionMethod::Deflate)
+    }
+
     pub fn size(&self) -> usize {
         self.size
     }
@@ -527,6 +549,7 @@ impl<'a> Vic3Binary<'a> {
 /// A parsed Vic3 binary document
 pub struct Vic3ParsedBinary<'data> {
     tape: BinaryTape<'data>,
+    #[allow(dead_code)]
     header: SaveHeader,
 }
 
@@ -552,10 +575,6 @@ impl<'data> Vic3ParsedBinary<'data> {
             deser: BinaryDeserializer::builder_flavor(Vic3Flavor::new())
                 .from_tape(&self.tape, resolver),
         }
-    }
-
-    pub fn melter<'b>(&'b self) -> Vic3Melter<'data, 'b> {
-        Vic3Melter::new(&self.tape, &self.header)
     }
 }
 

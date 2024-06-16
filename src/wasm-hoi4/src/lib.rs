@@ -1,7 +1,7 @@
 use hoi4save::{
     models::Hoi4Save, CountryTag, Encoding, FailedResolveStrategy, Hoi4Error, Hoi4File,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Cursor};
 use wasm_bindgen::prelude::*;
 
 mod log;
@@ -102,20 +102,18 @@ pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
     Ok(s)
 }
 
-fn _melt(data: &[u8]) -> Result<hoi4save::MeltedDocument, Hoi4Error> {
+fn _melt(data: &[u8]) -> Result<Vec<u8>, Hoi4Error> {
     let file = Hoi4File::from_slice(data)?;
-    let parsed_file = file.parse()?;
-    let binary = parsed_file.as_binary().unwrap();
-    let out = binary
-        .melter()
+    let mut out = Cursor::new(Vec::new());
+    file.melter()
         .on_failed_resolve(FailedResolveStrategy::Ignore)
-        .melt(tokens::get_tokens())?;
-    Ok(out)
+        .melt(&mut out, tokens::get_tokens())?;
+    Ok(out.into_inner())
 }
 
 #[wasm_bindgen]
 pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
     _melt(data)
-        .map(|x| js_sys::Uint8Array::from(x.data()))
+        .map(|x| js_sys::Uint8Array::from(x.as_slice()))
         .map_err(|e| JsValue::from_str(e.to_string().as_str()))
 }

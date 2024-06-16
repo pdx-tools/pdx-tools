@@ -1,5 +1,6 @@
 use ck3save::{models::HeaderOwned, Ck3Error, Ck3File, Encoding, FailedResolveStrategy};
 use serde::Serialize;
+use std::io::Cursor;
 use wasm_bindgen::prelude::*;
 
 mod tokens;
@@ -62,21 +63,18 @@ pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
     Ok(s)
 }
 
-fn _melt(data: &[u8]) -> Result<ck3save::MeltedDocument, Ck3Error> {
+fn _melt(data: &[u8]) -> Result<Vec<u8>, Ck3Error> {
     let file = Ck3File::from_slice(data)?;
-    let mut zip_sink = Vec::new();
-    let parsed_file = file.parse(&mut zip_sink)?;
-    let binary = parsed_file.as_binary().unwrap();
-    let out = binary
-        .melter()
+    let mut out = Cursor::new(Vec::new());
+    file.melter()
         .on_failed_resolve(FailedResolveStrategy::Ignore)
-        .melt(tokens::get_tokens())?;
-    Ok(out)
+        .melt(&mut out, tokens::get_tokens())?;
+    Ok(out.into_inner())
 }
 
 #[wasm_bindgen]
 pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
     _melt(data)
-        .map(|x| js_sys::Uint8Array::from(x.data()))
+        .map(|x| js_sys::Uint8Array::from(x.as_slice()))
         .map_err(|e| JsValue::from_str(e.to_string().as_str()))
 }

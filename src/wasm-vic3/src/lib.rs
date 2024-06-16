@@ -1,5 +1,6 @@
 use jomini::common::{Date, PdsDate};
 use models::{Vic3GoodPrice, Vic3GraphData, Vic3Metadata};
+use std::io::Cursor;
 use vic3save::markets::{goods_price_based_on_buildings, Vic3GoodEstimationError};
 use vic3save::stats::{Vic3CountryStatsRateIter, Vic3StatsGDPIter};
 use vic3save::{
@@ -155,21 +156,18 @@ pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
     Ok(s)
 }
 
-fn _melt(data: &[u8]) -> Result<vic3save::MeltedDocument, Vic3Error> {
+fn _melt(data: &[u8]) -> Result<Vec<u8>, Vic3Error> {
     let file = Vic3File::from_slice(data)?;
-    let mut zip_sink = Vec::new();
-    let parsed_file = file.parse(&mut zip_sink)?;
-    let binary = parsed_file.as_binary().unwrap();
-    let out = binary
-        .melter()
+    let mut out = Cursor::new(Vec::new());
+    file.melter()
         .on_failed_resolve(FailedResolveStrategy::Ignore)
-        .melt(tokens::get_tokens())?;
-    Ok(out)
+        .melt(&mut out, tokens::get_tokens())?;
+    Ok(out.into_inner())
 }
 
 #[wasm_bindgen]
 pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
     _melt(data)
-        .map(|x| js_sys::Uint8Array::from(x.data()))
+        .map(|x| js_sys::Uint8Array::from(x.as_slice()))
         .map_err(|e| JsValue::from_str(e.to_string().as_str()))
 }

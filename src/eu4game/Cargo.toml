@@ -12,7 +12,7 @@ libdeflate = ["eu4save/libdeflate"]
 embedded = ["eu4game-data/embedded"]
 
 [dependencies]
-jomini = { version = "0.25" }
+jomini = { version = "0.26" }
 eu4game-data = { path = "../eu4game-data" }
 eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false }
 schemas = { path = "../schemas", features = ["inline"] }

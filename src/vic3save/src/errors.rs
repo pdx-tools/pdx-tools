@@ -1,6 +1,7 @@
-use zip::result::ZipError;
-
 use crate::deflate::ZipInflationError;
+use jomini::binary;
+use std::io;
+use zip::result::ZipError;
 
 /// A Vic3 Error
 #[derive(thiserror::Error, Debug)]
@@ -59,6 +60,41 @@ pub enum Vic3ErrorKind {
 
     #[error("invalid header")]
     InvalidHeader,
+
+    #[error("io error: {0}")]
+    Io(#[from] io::Error),
+}
+
+impl From<jomini::Error> for Vic3Error {
+    fn from(value: jomini::Error) -> Self {
+        let kind = if matches!(value.kind(), jomini::ErrorKind::Deserialize(_)) {
+            match value.into_kind() {
+                jomini::ErrorKind::Deserialize(x) => match x.kind() {
+                    &jomini::DeserializeErrorKind::UnknownToken { token_id } => {
+                        Vic3ErrorKind::UnknownToken { token_id }
+                    }
+                    _ => Vic3ErrorKind::Deserialize(x.into()),
+                },
+                _ => unreachable!(),
+            }
+        } else {
+            Vic3ErrorKind::Parse(value)
+        };
+
+        Vic3Error::new(kind)
+    }
+}
+
+impl From<io::Error> for Vic3Error {
+    fn from(value: io::Error) -> Self {
+        Vic3Error::from(Vic3ErrorKind::from(value))
+    }
+}
+
+impl From<binary::ReaderError> for Vic3Error {
+    fn from(value: binary::ReaderError) -> Self {
+        Self::from(jomini::Error::from(value))
+    }
 }
 
 impl From<ZipInflationError> for Vic3ErrorKind {
