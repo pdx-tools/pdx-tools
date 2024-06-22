@@ -44,13 +44,16 @@ vec3 terrainAt(highp vec3 tc) {
 }
 
 vec3[5] neighborhood(highp vec2 tc, vec2 ps) {
-    return vec3[5](
-        tcLayer(tc),
-        tcLayer(tc + vec2(0, -ps.y)),
-        tcLayer(tc + vec2(0, ps.y)),
-        tcLayer(tc + vec2(-ps.x, 0)),
-        tcLayer(tc + vec2(ps.x, 0))
-    );
+    // do not use initialize with array shorthand, otherwise some mobile
+    // devices will throw a "no default precision defined for variable" error.
+    // https://stackoverflow.com/a/73322269/433785
+    vec3[5] result;
+    result[0] = tcLayer(tc);
+    result[1] = tcLayer(tc + vec2(0, -ps.y));
+    result[2] = tcLayer(tc + vec2(0, ps.y));
+    result[3] = tcLayer(tc + vec2(-ps.x, 0));
+    result[4] = tcLayer(tc + vec2(ps.x, 0));
+    return result;
 }
 
 // Use terrain image to determine sea terrain by checking against fixed sea terrain colors.
