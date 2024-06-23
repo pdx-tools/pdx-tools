@@ -18,7 +18,7 @@ eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = fa
 schemas = { path = "../schemas", features = ["inline"] }
 serde = { version = "1", features = ["derive"] }
 serde_path_to_error = "0.1"
-highway = "1"
+highway = "1.2"
 base64 = "0.13"
 thiserror = "1"
 zstd = { version = "0.13.0", default-features = false }
