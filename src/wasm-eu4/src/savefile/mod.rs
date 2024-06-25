@@ -1859,7 +1859,7 @@ impl SaveFileImpl {
         for participant in war.participants {
             let exit = exited
                 .get(&participant.tag)
-                .filter(|&&&x| matches!(end_date, Some(e) if e > x))
+                .filter(|&&&x| matches!(end_date, Some(e) if e >= x))
                 .map(|&&x| x);
 
             let join = joined
