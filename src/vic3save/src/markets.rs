@@ -105,6 +105,7 @@ pub struct Vic3Building {
     pub goods_sales: f64,
     #[serde(default)]
     pub staffing: f64,
+    #[serde(default)]
     pub level: i32,
 }
 
