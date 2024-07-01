@@ -17,7 +17,7 @@ fn test_parse_ironman() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_melt_snapshot() -> Result<(), Box<dyn Error>> {
-    let zip_data = utils::request("egalitarian_melted2.zip");
+    let zip_data = utils::request("egalitarian_melted3.zip");
     let reader = Cursor::new(&zip_data[..]);
     let mut zip = zip::ZipArchive::new(reader).unwrap();
     let mut zip_file = zip.by_index(0).unwrap();
