@@ -7,11 +7,11 @@ use vic3save::{savefile::Vic3Save, EnvTokens, Vic3File};
 
 #[test]
 fn test_parse_ironman() -> Result<(), Box<dyn Error>> {
-    let data = utils::request("egalitarian.v3");
+    let data = utils::request("egalitarian2.v3");
     let file = Vic3File::from_slice(&data)?;
     let save: Vic3Save = file.deserialize_save(&EnvTokens)?;
 
-    assert_eq!(save.meta_data.version, String::from("1.6.2"));
+    assert_eq!(save.meta_data.version, String::from("1.7.1"));
     Ok(())
 }
 
@@ -24,7 +24,7 @@ fn test_melt_snapshot() -> Result<(), Box<dyn Error>> {
     let mut buffer = Vec::with_capacity(0);
     zip_file.read_to_end(&mut buffer).unwrap();
 
-    let data = utils::request("egalitarian.v3");
+    let data = utils::request("egalitarian2.v3");
     let file = Vic3File::from_slice(&data)?;
     let mut out = Cursor::new(Vec::new());
     file.melter().melt(&mut out, &EnvTokens)?;
