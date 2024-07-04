@@ -246,6 +246,11 @@ impl<'a> Vic3File<'a> {
     where
         R: TokenResolver,
     {
+        if matches!(self.encoding(), Encoding::Binary | Encoding::BinaryZip) && resolver.is_empty()
+        {
+            return Err(Vic3ErrorKind::NoTokens.into());
+        }
+
         match self.kind() {
             FileKind::Text(x) => x.deserialize(),
             FileKind::Binary(x) => Ok(x.deserialize::<Vic3Save, _>(resolver)?.normalize()),
