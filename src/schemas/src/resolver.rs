@@ -58,6 +58,10 @@ impl<'a> jomini::binary::TokenResolver for FlatResolver<'a> {
             None
         }
     }
+
+    fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
 }
 
 include!(concat!(env!("OUT_DIR"), "/gen_tokens.rs"));
