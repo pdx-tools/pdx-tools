@@ -1,3 +1,4 @@
+import { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -9,7 +10,6 @@ import {
   smallint,
   index,
 } from "drizzle-orm/pg-core";
-import { InferModel } from "drizzle-orm";
 
 export const account = pgEnum("account", ["free", "admin"]);
 export const gameDifficulty = pgEnum("game_difficulty", [
@@ -41,7 +41,7 @@ export const users = pgTable(
     steamIdIndex: uniqueIndex("idx_users_steam_id").on(users.steamId),
   }),
 );
-export type User = InferModel<typeof users>;
+export type User = InferSelectModel<typeof users>;
 export type Account = User["account"];
 
 export const saves = pgTable(
@@ -82,6 +82,6 @@ export const saves = pgTable(
     ),
   }),
 );
-export type Save = InferModel<typeof saves>;
-export type NewSave = InferModel<typeof saves, "insert">;
+export type Save = InferSelectModel<typeof saves>;
+export type NewSave = InferInsertModel<typeof saves>;
 export type GameDifficulty = Save["gameDifficulty"];
