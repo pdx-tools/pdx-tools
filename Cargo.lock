@@ -730,7 +730,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/ck3save.git#a5f2c23383afc0a48491740b9ef7376b4c38e032"
+source = "git+https://github.com/rakaly/ck3save.git#bfaf863213683a784d462da25407bc55089eaa2e"
 dependencies = [
  "flate2",
  "jomini",
@@ -1532,7 +1532,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/imperator-save.git#aa5c642163678bdb060bdb462506c682436ebe6f"
+source = "git+https://github.com/rakaly/imperator-save.git#a02f1fe897fc3a405cd727a22d6a5ce520fb9ea5"
 dependencies = [
  "flate2",
  "jomini",
