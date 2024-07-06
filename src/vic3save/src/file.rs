@@ -507,7 +507,7 @@ pub struct Vic3ParsedText<'a> {
 impl<'a> Vic3ParsedText<'a> {
     pub fn from_slice(data: &'a [u8]) -> Result<Self, Vic3Error> {
         let header = SaveHeader::from_slice(data)?;
-        Self::from_raw(&data[..header.header_len()])
+        Self::from_raw(&data[header.header_len()..])
     }
 
     pub(crate) fn from_raw(data: &'a [u8]) -> Result<Self, Vic3Error> {
@@ -561,7 +561,7 @@ pub struct Vic3ParsedBinary<'data> {
 impl<'data> Vic3ParsedBinary<'data> {
     pub fn from_slice(data: &'data [u8]) -> Result<Self, Vic3Error> {
         let header = SaveHeader::from_slice(data)?;
-        Self::from_raw(&data[..header.header_len()], header)
+        Self::from_raw(&data[header.header_len()..], header)
     }
 
     pub(crate) fn from_raw(data: &'data [u8], header: SaveHeader) -> Result<Self, Vic3Error> {

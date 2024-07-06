@@ -9,7 +9,7 @@ use jomini::{
 };
 use std::{
     collections::HashSet,
-    io::{Cursor, Read, Write},
+    io::{copy, Cursor, Read, Write},
 };
 
 /// Output from melting a binary save to plaintext
@@ -173,13 +173,23 @@ impl<'data> Vic3Melter<'data> {
             MeltInput::Binary(x) => melt(x, output, resolver, self.options, self.header.clone()),
             MeltInput::Zip(zip) => {
                 let file = zip.archive.retrieve_file(zip.gamestate);
-                melt(
-                    file.reader(),
-                    &mut output,
-                    resolver,
-                    self.options,
-                    self.header.clone(),
-                )
+                if zip.is_text {
+                    let mut header = self.header.clone();
+                    header.set_kind(SaveHeaderKind::Text);
+                    header.set_metadata_len(self.header.metadata_len());
+                    header.write(&mut output)?;
+                    let mut reader = file.reader();
+                    copy(&mut reader, &mut output).map_err(Vic3ErrorKind::from)?;
+                    Ok(MeltedDocument::new())
+                } else {
+                    melt(
+                        file.reader(),
+                        &mut output,
+                        resolver,
+                        self.options,
+                        self.header.clone(),
+                    )
+                }
             }
         }
     }
