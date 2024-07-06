@@ -9,7 +9,7 @@ admin = ["create_bundle", "fetch_assets", "tokenize", "dep:applib", "dep:eu4game
 fun = ["compile_assets", "dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2"]
 
 create_bundle = ["dep:zstd"]
-compile_assets = ["dep:attohttpc", "dep:eu4save", "dep:jomini", "dep:eu4game-data", "dep:oxipng", "dep:schemas", "schemas?/inline", "dep:zstd"]
+compile_assets = ["dep:attohttpc", "dep:eu4save", "dep:jomini", "dep:eu4game-data", "dep:schemas", "schemas?/inline", "dep:zstd"]
 fetch_assets = ["dep:aws-config", "dep:aws-sdk-s3", "dep:tokio", "dep:tokio-stream"]
 tokenize = ["dep:zstd", "dep:schemas"]
 
@@ -30,7 +30,6 @@ filetime = "0.2"
 flate2 = { version = "1.0", optional = true }
 jomini = { version = "0.26", optional = true }
 log = "0.4"
-oxipng = { version = "9.0", optional = true, default-features = false, features = ["filetime", "parallel"] }
 rayon = "1"
 regex = "1"
 schemas = { path = "../schemas", optional = true }

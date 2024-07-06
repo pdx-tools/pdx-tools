@@ -557,18 +557,6 @@ fn generate_countries(
     Ok(countries)
 }
 
-fn optimize_png<P: AsRef<Path>>(input: P) -> anyhow::Result<()> {
-    let fp = input.as_ref();
-    let mut opts = oxipng::Options::from_preset(2);
-    opts.strip = oxipng::StripChunks::Safe;
-    let out = oxipng::OutFile::Path {
-        path: None,
-        preserve_attrs: true,
-    };
-    oxipng::optimize(&fp.into(), &out, &opts)
-        .with_context(|| format!("unable to optimize png: {}", fp.display()))
-}
-
 fn generate_trade_company_investments(
     tmp_game_dir: &Path,
     localization: &HashMap<String, String>,
@@ -1063,7 +1051,7 @@ pub fn translate_map(
 
         for i in 1..=2 {
             let mut end_filename = file_stem.to_os_string();
-            end_filename.push(format!("-{}.png", i));
+            end_filename.push(format!("-{}.webp", i));
             let out_path = base_image_dir.join(&end_filename);
 
             if out_path.exists() && !options.regen {
@@ -1075,7 +1063,9 @@ pub fn translate_map(
                 .arg("-strip")
                 .arg("-crop")
                 .arg(format!("2816x2048+{}+0", (i - 1) * 2816))
-                .arg(format!("PNG32:{}", out_path.display()))
+                .arg("-define")
+                .arg("webp:lossless=true")
+                .arg(out_path)
                 .output()
                 .context("imagemagick convert failed")?;
 
@@ -1085,21 +1075,6 @@ pub fn translate_map(
                     String::from_utf8_lossy(&child.stderr)
                 );
             }
-
-            let mut opts = oxipng::Options::from_preset(2);
-            opts.strip = oxipng::StripChunks::Safe;
-            if *image == "provinces.bmp" {
-                opts.bit_depth_reduction = false;
-                opts.palette_reduction = false;
-                opts.color_type_reduction = false;
-            }
-
-            let out = oxipng::OutFile::Path {
-                path: None,
-                preserve_attrs: true,
-            };
-            oxipng::optimize(&out_path.clone().into(), &out, &opts)
-                .with_context(|| format!("unable to optimize png: {}", out_path.display()))?
         }
     }
 
@@ -1107,7 +1082,7 @@ pub fn translate_map(
         let image_path = tmp_game_dir.join("map").join(image);
         let file_stem = image_path.file_stem().unwrap();
         let mut end_filename = file_stem.to_os_string();
-        end_filename.push(".png");
+        end_filename.push(".webp");
         let out_path = base_image_dir.join(&end_filename);
 
         if out_path.exists() && !options.regen {
@@ -1117,6 +1092,8 @@ pub fn translate_map(
         let child = Command::new("convert")
             .arg(image_path)
             .arg("-strip")
+            .arg("-define")
+            .arg("webp:lossless=true")
             .arg(&out_path)
             .output()?;
 
@@ -1126,8 +1103,6 @@ pub fn translate_map(
                 String::from_utf8_lossy(&child.stderr)
             );
         }
-
-        optimize_png(&out_path)?;
     }
 
     for image in &[
