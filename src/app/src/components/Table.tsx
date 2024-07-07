@@ -194,11 +194,11 @@ function ColumnHeaderInner<TData, TValue>(
 const SortIcon = ({ sorted }: { sorted: false | SortDirection }) => {
   switch (sorted) {
     case false:
-      return <ChevronUpDownIcon className="h-3 w-3" />;
+      return <ChevronUpDownIcon className="h-3 w-3 shrink-0" />;
     case "asc":
-      return <ChevronUpIcon className="h-3 w-3" />;
+      return <ChevronUpIcon className="h-3 w-3 shrink-0" />;
     case "desc":
-      return <ChevronDownIcon className="h-3 w-3" />;
+      return <ChevronDownIcon className="h-3 w-3 shrink-0" />;
   }
 };
 
