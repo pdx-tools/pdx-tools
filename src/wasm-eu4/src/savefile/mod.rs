@@ -1821,8 +1821,8 @@ impl SaveFileImpl {
 
         let start_date = war.history.events.iter().map(|(date, _)| date).min();
         let start_date = start_date.copied().unwrap_or_else(eu4save::eu4_start_date);
-        let end_date = war.history.events.iter().map(|(date, _)| date).max();
-        let end_date = end_date.copied();
+        let last_date = war.history.events.iter().map(|(date, _)| date).max();
+        let last_date = last_date.copied();
 
         for (date, event) in &war.history.events {
             match event {
@@ -1859,7 +1859,7 @@ impl SaveFileImpl {
         for participant in war.participants {
             let exit = exited
                 .get(&participant.tag)
-                .filter(|&&&x| matches!(end_date, Some(e) if e >= x))
+                .filter(|&&&x| matches!(last_date, Some(e) if e >= x))
                 .map(|&&x| x);
 
             let join = joined
@@ -1886,11 +1886,17 @@ impl SaveFileImpl {
             }
         }
 
+        let days = if let Some(d) = (!war.is_active).then_some(last_date).flatten() {
+            start_date.days_until(&d)
+        } else {
+            start_date.days_until(&self.query.save().meta.date)
+        };
+
         RawWarInfo {
             name: String::from(war.name),
             start_date,
-            end_date,
-            days: start_date.days_until(&end_date.unwrap_or(self.query.save().meta.date)),
+            end_date: if war.is_active { None } else { last_date },
+            days,
             attackers: WarInfoSide {
                 original: self.localize_tag(war.original_attacker),
                 members: attacker_participants,
