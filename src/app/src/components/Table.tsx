@@ -183,7 +183,14 @@ function ColumnHeaderInner<TData, TValue>(
       variant="ghost"
       shape="none"
       ref={ref}
-      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      onClick={() => {
+        const sorted = column.getIsSorted();
+        if (sorted === "desc") {
+          column.clearSorting();
+        } else {
+          column.toggleSorting(sorted === "asc");
+        }
+      }}
     >
       {typeof title === "string" ? <span>{title}</span> : title}
       <SortIcon sorted={column.getIsSorted()} />
