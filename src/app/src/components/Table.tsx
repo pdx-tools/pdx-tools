@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Column, SortDirection } from "@tanstack/react-table";
 import { cx } from "class-variance-authority";
-import { Button } from "./Button";
+import { Button, ButtonProps } from "./Button";
 import {
   ChevronDownIcon,
   ChevronUpDownIcon,
@@ -9,6 +9,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { check } from "@/lib/isPresent";
 import { useContext } from "react";
+import { Tooltip } from "./Tooltip";
 
 type TableContextState = { size: "standard" | "compact" };
 const TableContext = React.createContext<TableContextState | undefined>(
@@ -161,24 +162,21 @@ Table.Caption = TableCaption;
 interface ColumnHeaderProps<TData, TValue>
   extends Omit<React.HTMLAttributes<HTMLButtonElement>, "title"> {
   column: Column<TData, TValue>;
-  title: React.ReactNode;
+  icon?: React.ReactNode;
+  title: string;
 }
 
-function ColumnHeaderInner<TData, TValue>(
-  { column, title, className, ...rest }: ColumnHeaderProps<TData, TValue>,
+function ColumnHeaderButtonInner<TData, TValue>(
+  { column, title, icon, className, ...rest }: ColumnHeaderProps<TData, TValue>,
   ref: React.ForwardedRef<HTMLButtonElement>,
 ) {
-  if (!column.getCanSort()) {
-    throw new Error("eeeK");
-    // return <div className={cx(className)} ref={ref}>{title}</div>;
-  }
-
   return (
     <Button
       {...rest}
       className={cx(
-        "h-full w-full justify-between gap-2 font-semibold",
+        "h-full w-full gap-2 font-semibold",
         className,
+        !icon && "justify-between",
       )}
       variant="ghost"
       shape="none"
@@ -192,10 +190,40 @@ function ColumnHeaderInner<TData, TValue>(
         }
       }}
     >
-      {typeof title === "string" ? <span>{title}</span> : title}
+      {icon}
+      <span className={icon ? "sr-only" : ""}>{title}</span>
       <SortIcon sorted={column.getIsSorted()} />
     </Button>
   );
+}
+
+const ColumnHeaderButton = React.forwardRef(ColumnHeaderButtonInner) as <
+  TData,
+  TValue,
+>(
+  props: ColumnHeaderProps<TData, TValue> & {
+    ref?: React.ForwardedRef<HTMLButtonElement>;
+  },
+) => ReturnType<typeof ColumnHeaderButtonInner>;
+
+function ColumnHeaderInner<TData, TValue>(
+  props: ColumnHeaderProps<TData, TValue>,
+  ref: React.ForwardedRef<HTMLButtonElement>,
+) {
+  check(props.column.getCanSort(), "All columns are assumed to be sortable");
+
+  if (props.icon) {
+    return (
+      <Tooltip>
+        <Tooltip.Trigger asChild>
+          <ColumnHeaderButton ref={ref} {...props} />
+        </Tooltip.Trigger>
+        <Tooltip.Content>{props.title}</Tooltip.Content>
+      </Tooltip>
+    );
+  } else {
+    return <ColumnHeaderButton ref={ref} {...props} />;
+  }
 }
 
 const SortIcon = ({ sorted }: { sorted: false | SortDirection }) => {

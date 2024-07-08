@@ -5,19 +5,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { Flag } from "../../components/avatars";
 import { DataTable } from "@/components/DataTable";
-import {
-  ArmyTraditionIcon,
-  DucatsIcon,
-  GeneralIcon,
-  HeavyShipIcon,
-  InfantryIcon,
-  InfantrySkullIcon,
-  ManpowerIcon,
-  MilitaryTechIcon,
-  ProfessionalismIcon,
-  ProfitIcon,
-  WarExhaustionIcon,
-} from "../../components/icons";
+import { GameIconSprite, iconSpriteTitle } from "../../components/icons";
 import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import { LeaderStats } from "../../components/LeaderStats";
@@ -53,11 +41,9 @@ const activeColumns = [
       header: ({ column }) => (
         <Table.ColumnHeader
           column={column}
-          title={
-            <div className="flex grow justify-end">
-              <InfantryIcon alt="Current force strength" />
-            </div>
-          }
+          className="justify-end"
+          title="Current force strength"
+          icon={<GameIconSprite src="infantry" alt="" />}
         />
       ),
       meta: { className: "text-right" },
@@ -99,11 +85,9 @@ const activeColumns = [
       header: ({ column }) => (
         <Table.ColumnHeader
           column={column}
-          title={
-            <div className="flex grow justify-end">
-              <ManpowerIcon alt="Net Manpower" />
-            </div>
-          }
+          title="Net Manpower"
+          className="justify-end"
+          icon={<GameIconSprite src="manpower" alt="" />}
         />
       ),
       meta: { className: "text-right" },
@@ -136,11 +120,9 @@ const activeColumns = [
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
-        title={
-          <div className="flex grow justify-end">
-            <DucatsIcon />
-          </div>
-        }
+        className="justify-end"
+        icon={<GameIconSprite src="ducats" alt="" />}
+        title={iconSpriteTitle.ducats}
       />
     ),
     meta: {
@@ -163,11 +145,9 @@ const activeColumns = [
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
-        title={
-          <div className="flex grow justify-end">
-            <ProfitIcon />
-          </div>
-        }
+        className="justify-end"
+        icon={<GameIconSprite src="profit" alt="" />}
+        title={iconSpriteTitle.profit}
       />
     ),
     meta: { className: "text-right" },
@@ -179,11 +159,9 @@ const activeColumns = [
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
-        title={
-          <div className="flex grow justify-end">
-            <ProfessionalismIcon />
-          </div>
-        }
+        className="justify-end"
+        icon={<GameIconSprite src="professionalism" alt="" />}
+        title={iconSpriteTitle.professionalism}
       />
     ),
     meta: {
@@ -198,11 +176,9 @@ const activeColumns = [
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
-        title={
-          <div className="flex grow justify-end">
-            <ArmyTraditionIcon />
-          </div>
-        }
+        className="justify-end"
+        icon={<GameIconSprite src="army_tradition" alt="" />}
+        title={iconSpriteTitle.army_tradition}
       />
     ),
     meta: {
@@ -224,11 +200,9 @@ const activeColumns = [
       header: ({ column }) => (
         <Table.ColumnHeader
           column={column}
-          title={
-            <div className="flex grow justify-end">
-              <GeneralIcon alt="Best general (by pips)" />
-            </div>
-          }
+          className="justify-end"
+          icon={<GameIconSprite src="general" alt="" />}
+          title="Best general (by pips)"
         />
       ),
       meta: {
@@ -258,11 +232,9 @@ const activeColumns = [
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
-        title={
-          <div className="flex grow justify-end">
-            <WarExhaustionIcon />
-          </div>
-        }
+        className="justify-end"
+        icon={<GameIconSprite src="war_exhaustion" alt="" />}
+        title={iconSpriteTitle.war_exhaustion}
       />
     ),
     meta: {
@@ -281,11 +253,9 @@ const activeColumns = [
       header: ({ column }) => (
         <Table.ColumnHeader
           column={column}
-          title={
-            <div className="flex grow justify-end">
-              <HeavyShipIcon alt="Ships" />
-            </div>
-          }
+          className="justify-end"
+          icon={<GameIconSprite src="heavy_ship" alt="" />}
+          title="Ships"
         />
       ),
       meta: {
@@ -311,11 +281,9 @@ const activeColumns = [
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
-        title={
-          <div className="flex grow justify-end">
-            <MilitaryTechIcon />
-          </div>
-        }
+        className="justify-end"
+        icon={<GameIconSprite src="powers_military_tech" />}
+        title={iconSpriteTitle.powers_military_tech}
       />
     ),
     meta: { className: "text-right" },
@@ -406,11 +374,9 @@ const totalColumns = [
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
-        title={
-          <div className="flex grow justify-end">
-            <InfantryIcon alt="Battles" />
-          </div>
-        }
+        className="justify-end"
+        icon={<GameIconSprite src="infantry" alt="" />}
+        title="Battles"
       />
     ),
     meta: { className: "text-right" },
@@ -422,11 +388,9 @@ const totalColumns = [
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
-        title={
-          <div className="flex grow justify-end">
-            <InfantrySkullIcon alt="Total" />
-          </div>
-        }
+        className="justify-end"
+        icon={<GameIconSprite src="infantry_skull" alt="" />}
+        title="Total"
       />
     ),
     meta: { className: "text-right" },
@@ -438,11 +402,9 @@ const totalColumns = [
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
-        title={
-          <div className="flex grow justify-end">
-            <HeavyShipIcon alt="Ships Lost" />
-          </div>
-        }
+        className="justify-end"
+        icon={<GameIconSprite src="heavy_ship" alt="" />}
+        title="Ships Lost"
       />
     ),
     meta: { className: "text-right" },
@@ -454,14 +416,9 @@ const totalColumns = [
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
-        title={
-          <Tooltip>
-            <Tooltip.Trigger className="flex grow justify-end">
-              🏅
-            </Tooltip.Trigger>
-            <Tooltip.Content>Participation</Tooltip.Content>
-          </Tooltip>
-        }
+        className="justify-end"
+        icon="🏅"
+        title="Participation"
       />
     ),
     meta: { className: "text-right" },
