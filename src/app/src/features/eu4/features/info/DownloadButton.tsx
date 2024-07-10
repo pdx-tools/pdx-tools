@@ -8,26 +8,19 @@ import { useCompression } from "@/features/compress";
 import { Button } from "@/components/Button";
 import { Tooltip } from "@/components/Tooltip";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
+import { useTriggeredAction } from "@/hooks/useTriggeredAction";
 
 export const DownloadButton = () => {
-  const [loading, setLoading] = useState(false);
   const compressWorker = useCompression();
   const filename = useSaveFilename();
-  const isMounted = useIsMounted();
-
-  const download = async () => {
-    try {
-      setLoading(true);
+  const { isLoading: loading, run: download } = useTriggeredAction({
+    action: async () => {
       emitEvent({ kind: "download", game: "eu4" });
       const raw = await getEu4Worker().getRawData();
       const data = await compressWorker.transform(raw);
       downloadData(data, filename);
-    } finally {
-      if (isMounted()) {
-        setLoading(false);
-      }
-    }
-  };
+    },
+  });
 
   return (
     <Tooltip>

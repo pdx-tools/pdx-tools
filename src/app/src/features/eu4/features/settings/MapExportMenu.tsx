@@ -14,6 +14,7 @@ import {
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { Button } from "@/components/Button";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
+import { useTriggeredAction } from "@/hooks/useTriggeredAction";
 
 export const MapExportMenu = () => {
   const meta = useEu4Meta();
@@ -22,7 +23,6 @@ export const MapExportMenu = () => {
   const terrainOverlay = useTerrainOverlay();
   const mapMode = useEu4MapMode();
   const store = useEu4Context();
-  const [isExporting, setIsExporting] = useState(false);
 
   const colorCb = useCallback(async () => {
     const mapPayload = selectMapPayload(store.getState());
@@ -50,32 +50,22 @@ export const MapExportMenu = () => {
     outName = `${outName}-${meta.date}-${mapMode}-${suffix}.${exportType}`;
 
     downloadData(data, outName);
-    setIsExporting(false);
   };
 
-  const exportView = async () => {
-    setIsExporting(true);
-    await map.redrawMap();
-    map.gl.canvas.toBlob((b) => downloadDataFile(b, "view"));
-  };
-
-  const exportFullView = async () => {
-    setIsExporting(true);
-    const data = await map.mapData(1, `image/${exportType}`);
-    downloadDataFile(data, "map");
-  };
-
-  const exportFullView2x = async () => {
-    setIsExporting(true);
-    const data = await map.mapData(2, `image/${exportType}`);
-    downloadDataFile(data, "map-2x");
-  };
-
-  const exportFullView3x = async () => {
-    setIsExporting(true);
-    const data = await map.mapData(3, `image/${exportType}`);
-    downloadDataFile(data, "map-3x");
-  };
+  const { isLoading: isExporting, run } = useTriggeredAction({
+    action: async (type: "view" | 1 | 2 | 3) => {
+      switch (type) {
+        case "view":
+          await map.redrawMap();
+          map.gl.canvas.toBlob((b) => downloadDataFile(b, "view"));
+          break;
+        default:
+          const data = await map.mapData(type, `image/${exportType}`);
+          downloadDataFile(data, type == 1 ? "map" : `map-${type}x`);
+          break;
+      }
+    },
+  });
 
   return (
     <DropdownMenu>
@@ -89,28 +79,28 @@ export const MapExportMenu = () => {
       </DropdownMenu.Trigger>
       <DropdownMenu.Content className="w-40">
         <DropdownMenu.Item asChild>
-          <Button variant="ghost" className="w-full" onClick={exportView}>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => run("view")}
+          >
             Map
           </Button>
         </DropdownMenu.Item>
         <DropdownMenu.Item asChild>
-          <Button variant="ghost" className="w-full" onClick={exportFullView}>
+          <Button variant="ghost" className="w-full" onClick={() => run(1)}>
             World (1:1)
           </Button>
         </DropdownMenu.Item>
         <DropdownMenu.Item asChild>
-          <Button variant="ghost" className="w-full" onClick={exportFullView2x}>
+          <Button variant="ghost" className="w-full" onClick={() => run(2)}>
             World (2:1)
           </Button>
         </DropdownMenu.Item>
         {isDeveloper ? (
           <>
             <DropdownMenu.Item asChild>
-              <Button
-                variant="ghost"
-                className="w-full"
-                onClick={exportFullView3x}
-              >
+              <Button variant="ghost" className="w-full" onClick={() => run(3)}>
                 World (3x)
               </Button>
             </DropdownMenu.Item>

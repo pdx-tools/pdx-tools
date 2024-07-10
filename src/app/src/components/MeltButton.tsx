@@ -1,11 +1,10 @@
-import { useState } from "react";
 import { downloadData } from "@/lib/downloadData";
 import { emitEvent } from "@/lib/plausible";
 import { DetectedDataType } from "@/features/engine";
-import { useIsMounted } from "@/hooks/useIsMounted";
 import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 import { LoadingIcon } from "./icons/LoadingIcon";
+import { useTriggeredAction } from "@/hooks/useTriggeredAction";
 
 type MeltProps = {
   filename: string;
@@ -37,19 +36,9 @@ function translateToMeltedFilename(filename: string, extension: string) {
 }
 
 export const MeltButton = ({ filename, worker, game }: MeltProps) => {
-  const [loading, setLoading] = useState(false);
-  const isMounted = useIsMounted();
-
-  const melt = async () => {
-    try {
-      setLoading(true);
-      await meltSave(game, filename, worker);
-    } finally {
-      if (isMounted()) {
-        setLoading(false);
-      }
-    }
-  };
+  const { isLoading: loading, run: melt } = useTriggeredAction({
+    action: () => meltSave(game, filename, worker),
+  });
 
   return (
     <Tooltip>
