@@ -16,6 +16,7 @@ import {
   useVic3Meta,
 } from "./store";
 import { useVic3Worker } from "./worker/useVic3Worker";
+import { ExportDataButton } from "./ExportDataButton";
 
 export const Vic3Page = () => {
   const meta = useVic3Meta();
@@ -54,7 +55,10 @@ export const Vic3Page = () => {
               filename={filename}
             />
           )}
-          <TagSelect value={selectedTag} onChange={setSelectedTag} />
+          <div className="flex items-center gap-4">
+            <ExportDataButton />
+            <TagSelect value={selectedTag} onChange={setSelectedTag} />
+          </div>
         </div>
         <VisualizationProvider>
           <div className="max-w-screen-2xl w-full px-4">

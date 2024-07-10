@@ -47,3 +47,17 @@ pub struct Vic3GraphData {
     pub gdp_growth: f64,
     pub gdpc_growth: f64,
 }
+
+#[derive(Tsify, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[tsify(into_wasm_abi)]
+pub struct Vic3CountryGraphDataResponse {
+    pub data: Vec<Vic3CountryGraphData>,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Vic3CountryGraphData {
+    pub tag: String,
+    pub stats: Vec<Vic3GraphData>,
+}

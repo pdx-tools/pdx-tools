@@ -28,6 +28,10 @@ export function parseVic3() {
   return wasm.save.metadata();
 }
 
+export function get_countries_stats() {
+  return wasm.save.get_countries_stats();
+}
+
 export function get_country_stats(tag: string) {
   return wasm.save.get_country_stats(tag);
 }

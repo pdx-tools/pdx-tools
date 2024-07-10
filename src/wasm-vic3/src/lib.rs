@@ -1,7 +1,10 @@
 use jomini::common::{Date, PdsDate};
-use models::{Vic3GoodPrice, Vic3GraphData, Vic3Metadata};
+use models::{
+    Vic3CountryGraphData, Vic3CountryGraphDataResponse, Vic3GoodPrice, Vic3GraphData, Vic3Metadata,
+};
 use std::io::Cursor;
 use vic3save::markets::{goods_price_based_on_buildings, Vic3GoodEstimationError};
+use vic3save::savefile::Vic3Country;
 use vic3save::stats::{Vic3CountryStatsRateIter, Vic3StatsGDPIter};
 use vic3save::{
     savefile::Vic3Save, FailedResolveStrategy, SaveHeader, SaveHeaderKind, Vic3Error, Vic3File,
@@ -36,6 +39,12 @@ impl SaveFile {
     pub fn metadata(&self) -> Vic3Metadata {
         self.0.metadata()
     }
+    pub fn get_countries_stats(&self) -> Vic3CountryGraphDataResponse {
+        Vic3CountryGraphDataResponse {
+            data: self.0.get_countries_stats(),
+        }
+    }
+
     pub fn get_country_stats(&self, tag: &str) -> Vic3GraphResponse {
         Vic3GraphResponse {
             data: self.0.get_country_stats(tag),
@@ -96,8 +105,25 @@ impl SaveFileImpl {
         Ok(goods_prices_vec)
     }
 
+    pub fn get_countries_stats(&self) -> Vec<Vic3CountryGraphData> {
+        self.save
+            .country_manager
+            .database
+            .iter()
+            .filter_map(|(_, c)| c.as_ref())
+            .map(|country| Vic3CountryGraphData {
+                tag: country.definition.clone(),
+                stats: self.country_stats(country),
+            })
+            .collect()
+    }
+
     pub fn get_country_stats(&self, tag: &str) -> Vec<Vic3GraphData> {
         let country = self.save.get_country(tag).unwrap();
+        self.country_stats(country)
+    }
+
+    fn country_stats(&self, country: &Vic3Country) -> Vec<Vic3GraphData> {
         let gdp_line = || country.gdp.iter();
         let sol_line = country.avgsoltrend.iter();
         let pop_line = || country.pop_statistics.trend_population.iter();
