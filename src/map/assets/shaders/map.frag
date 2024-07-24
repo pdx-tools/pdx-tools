@@ -179,7 +179,7 @@ vec4 displayImage(
     if (u_renderProvinceBorders) {
         for (int i = 1; i < 5; i++) {
             if (borderCompare(terrain[0], terrain[i], provinces[0], provinces[i])) {
-                return vec4(0.1, 0.1, 0.1, 1.0);
+                return mapMode[0] - vec4(0.1, 0.1, 0.1, 0.0);
             }
         }
     }
