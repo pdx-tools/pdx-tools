@@ -5,6 +5,8 @@ import { IMG_HEIGHT, IMG_WIDTH, throttle } from "map";
 import { mapTimelapseCursor, TimelapseEncoder } from "./TimelapseEncoder";
 import { captureException } from "@/features/errors";
 import {
+  Eu4Store,
+  selectDate,
   useEu4Actions,
   useEu4Context,
   useEu4Map,
@@ -49,45 +51,55 @@ interface MapState {
 }
 type Interval = "year" | "month" | "week" | "day";
 
+function createTimelapsePayload({
+  store,
+  interval,
+}: {
+  store: Eu4Store;
+  interval: Interval;
+}) {
+  const state = store.getState();
+  const mapMode = state.mapMode;
+  const currentMapDate = selectDate(
+    mapMode,
+    state.save.meta,
+    state.selectedDate,
+  );
+
+  return {
+    kind: mapMode == "battles" || mapMode == "religion" ? mapMode : "political",
+    interval: interval,
+    start: currentMapDate.enabledDays ?? 0,
+  } as const;
+}
+
 export const Timelapse = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingFrame, setRecordingFrame] = useState("None");
-  const meta = useEu4Meta();
   const isDeveloper = useIsDeveloper();
   const [maxFps, setMaxFps] = useState(8);
   const [exportAsMp4, setExportAsMp4] = useState(true);
   const [freezeFrameSeconds, setFreezeFrameSeconds] = useState(0);
   const [intervalSelection, setIntervalSelection] = useState<Interval>("year");
-  const currentMapDate = useSelectedDate();
   const filename = useSaveFilenameWith(exportAsMp4 ? ".mp4" : ".webm");
   const encoderRef = useRef<TimelapseEncoder | undefined>(undefined);
   const stopTimelapseReq = useRef<boolean>(false);
   const [recordingSupported] = useState(() => TimelapseEncoder.isSupported());
   const map = useEu4Map();
   const timelapseEnabled = useIsDatePickerEnabled();
-  const { updateMap, updateProvinceColors, setSelectedDateDay } =
-    useEu4Actions();
+  const { updateMap, updateProvinceColors } = useEu4Actions();
   const store = useEu4Context();
-  const mapMode = useEu4MapMode();
   const [timelapseError, setTimelapseError] = useState<unknown | null>(null);
-  const timelapsePayload = {
-    kind: mapMode == "battles" || mapMode == "religion" ? mapMode : "political",
-    interval: intervalSelection,
-    start: currentMapDate.enabledDays ?? 0,
-  } as const;
-
-  const datePickerEnabled = useIsDatePickerEnabled();
-
-  const dayChange = useMemo(
-    () => throttle(setSelectedDateDay, 100),
-    [setSelectedDateDay],
-  );
 
   const startTimelapse = async () => {
     emitEvent({ kind: "play-timelapse" });
     setIsPlaying(true);
     stopTimelapseReq.current = false;
+    const timelapsePayload = createTimelapsePayload({
+      store,
+      interval: intervalSelection,
+    });
 
     try {
       for await (const frame of mapTimelapseCursor(timelapsePayload)) {
@@ -141,6 +153,10 @@ export const Timelapse = () => {
       }
     };
 
+    const timelapsePayload = createTimelapsePayload({
+      store,
+      interval: intervalSelection,
+    });
     try {
       const encoding = exportAsMp4 ? "mp4" : "webm";
       const encoder = await TimelapseEncoder.create({
@@ -329,7 +345,7 @@ export const Timelapse = () => {
           </Popover>
         </div>
         <div className="whitespace-nowrap text-base opacity-60">
-          {currentMapDate.text}
+          <TimelapseDate />
         </div>
         <ErrorDialog
           error={timelapseError}
@@ -337,17 +353,37 @@ export const Timelapse = () => {
         />
       </div>
 
-      <Slider
-        value={[currentMapDate.days]}
-        disabled={!datePickerEnabled}
-        max={meta.total_days}
-        onValueChange={(v) => dayChange(v[0])}
-        className={cx(!datePickerEnabled && "hidden", "grow opacity-80")}
-        rounded={false}
-      />
+      <TimelapseSlider />
     </>
   );
 };
+
+function TimelapseDate() {
+  const currentMapDate = useSelectedDate();
+  return currentMapDate.text;
+}
+
+function TimelapseSlider() {
+  const datePickerEnabled = useIsDatePickerEnabled();
+  const meta = useEu4Meta();
+  const currentMapDate = useSelectedDate();
+  const { setSelectedDateDay } = useEu4Actions();
+  const dayChange = useMemo(
+    () => throttle(setSelectedDateDay, 100),
+    [setSelectedDateDay],
+  );
+
+  return (
+    <Slider
+      value={[currentMapDate.days]}
+      disabled={!datePickerEnabled}
+      max={meta.total_days}
+      onValueChange={(v) => dayChange(v[0])}
+      className={cx(!datePickerEnabled && "hidden", "grow opacity-80")}
+      rounded={false}
+    />
+  );
+}
 
 function intervalFpsToSlider(i: Interval, fps: number) {
   const base = intervalOffset(i) + fps;

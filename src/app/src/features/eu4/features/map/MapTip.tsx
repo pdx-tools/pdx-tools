@@ -1,5 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useEu4Map, useEu4MapMode, useSelectedDate } from "../../store";
+import {
+  selectDate,
+  useEu4Context,
+  useEu4Map,
+  useEu4MapMode,
+} from "../../store";
 import { QuickTipPayload } from "../../types/map";
 import { getEu4Worker } from "../../worker";
 import { MapTipContents } from "./MapTipContents";
@@ -14,12 +19,9 @@ export const MapTip = () => {
   const [pointer, setPointer] = useState<MousePosition>({ x: 0, y: 0 });
   const [pointerDisplay, setPointerDisplay] = useState(false);
   const toolTipRef = useRef<HTMLDivElement>(null);
-  const tooltipTimer = useRef<ReturnType<typeof setTimeout>>();
   const [timerDisplay, setTimerDisplay] = useState(false);
   const [mapTip, setMapTip] = useState<QuickTipPayload | null>(null);
   const [provinceId, setProvinceId] = useState(0);
-  const mapMode = useEu4MapMode();
-  const currentMapDate = useSelectedDate();
   const map = useEu4Map();
   const canvas = map.gl.canvas;
 
@@ -106,34 +108,6 @@ export const MapTip = () => {
     };
   }, [map]);
 
-  useEffect(() => {
-    if (provinceId == 0) {
-      return;
-    }
-
-    let isMounted = true;
-    const worker = getEu4Worker();
-    if (tooltipTimer.current) {
-      clearTimeout(tooltipTimer.current);
-    }
-    setTimerDisplay(false);
-
-    tooltipTimer.current = setTimeout(async () => {
-      const days = currentMapDate.enabledDays ?? undefined;
-      const data = await worker.eu4GetMapTooltip(provinceId, mapMode, days);
-      if (isMounted) {
-        setMapTip(data);
-      }
-    }, 250);
-
-    return () => {
-      isMounted = false;
-      if (tooltipTimer.current) {
-        clearTimeout(tooltipTimer.current);
-      }
-    };
-  }, [provinceId, mapMode, currentMapDate]);
-
   // When we are calculating (or don't want to display) the tooltip,
   // set the opacity to 0 instead of removing the display so that the width
   // can be calculated. And position it in the upper right quadrant so that
@@ -156,7 +130,68 @@ export const MapTip = () => {
       className="pointer-events-none absolute"
       style={toolTipStyle}
     >
-      {mapTip && <MapTipContents tip={mapTip} />}
+      {provinceId !== 0 ? (
+        <MapTipProvince
+          provinceId={provinceId}
+          mapTip={mapTip}
+          setMapTip={setMapTip}
+          setTimerDisplay={setTimerDisplay}
+        />
+      ) : null}
     </div>
   );
 };
+
+function MapTipProvince({
+  provinceId,
+  mapTip,
+  setMapTip,
+  setTimerDisplay,
+}: {
+  provinceId: number;
+  mapTip: QuickTipPayload | null;
+  setMapTip: (arg: QuickTipPayload | null) => void;
+  setTimerDisplay: (arg: boolean) => void;
+}) {
+  const tooltipTimer = useRef<ReturnType<typeof setTimeout>>();
+  const mapMode = useEu4MapMode();
+  const store = useEu4Context();
+
+  useEffect(() => {
+    let isMounted = true;
+    const worker = getEu4Worker();
+    if (tooltipTimer.current) {
+      clearTimeout(tooltipTimer.current);
+    }
+    setTimerDisplay(false);
+
+    tooltipTimer.current = setTimeout(async () => {
+      const state = store.getState();
+      const mapMode = state.mapMode;
+      const currentMapDate = selectDate(
+        mapMode,
+        state.save.meta,
+        state.selectedDate,
+      );
+
+      const days = currentMapDate.enabledDays;
+      const data = await worker.eu4GetMapTooltip(provinceId, mapMode, days);
+      if (isMounted) {
+        setMapTip(data);
+      }
+    }, 250);
+
+    return () => {
+      isMounted = false;
+      if (tooltipTimer.current) {
+        clearTimeout(tooltipTimer.current);
+      }
+    };
+  }, [provinceId, mapMode, store, setMapTip, setTimerDisplay]);
+
+  if (!mapTip) {
+    return null;
+  }
+
+  return <MapTipContents tip={mapTip} />;
+}

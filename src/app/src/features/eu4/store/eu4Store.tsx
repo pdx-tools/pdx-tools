@@ -445,7 +445,7 @@ const dateEnabledMapMode = (mode: MapPayload["kind"]) => {
   return mode === "political" || mode === "religion" || mode === "battles";
 };
 
-const selectDate = (
+export const selectDate = (
   mode: MapPayload["kind"],
   meta: EnhancedMeta,
   date: MapDate,
