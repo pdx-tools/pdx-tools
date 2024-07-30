@@ -3,12 +3,13 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { Button } from "@/components/Button";
 import { difficultyText, difficultySort } from "@/lib/difficulty";
 import { SaveFile, pdxApi } from "@/services/appApi";
-import { Flag, AchievementAvatar } from "@/features/eu4/components/avatars";
+import { Flag } from "@/features/eu4/components/avatars";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { Link } from "@/components/Link";
 import { Alert } from "@/components/Alert";
+import { AchievementsCell } from "./AchievementsCell";
 
 const columnHelper = createColumnHelper<SaveFile>();
 const columns = [
@@ -76,13 +77,7 @@ const columns = [
     id: "Achievements",
     header: "Achievements",
     cell: (info) => (
-      <ul className="flex space-x-1">
-        {info.row.original.achievements.map((x) => (
-          <li className="flex" key={x}>
-            <AchievementAvatar size={40} id={x} className="shrink-0" />
-          </li>
-        ))}
-      </ul>
+      <AchievementsCell achievements={info.row.original.achievements} />
     ),
   }),
   columnHelper.display({

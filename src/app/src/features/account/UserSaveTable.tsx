@@ -4,11 +4,12 @@ import { SaveFile } from "@/services/appApi";
 import { diff } from "@/lib/dates";
 import { difficultyText } from "@/lib/difficulty";
 import { DeleteSave } from "../eu4/components/DeleteSave";
-import { AchievementAvatar, Flag } from "@/features/eu4/components/avatars";
+import { Flag } from "@/features/eu4/components/avatars";
 import { groupBy } from "@/lib/groupBy";
 import { createColumnHelper } from "@tanstack/react-table";
 import { DataTable } from "@/components/DataTable";
 import { Link } from "@/components/Link";
+import { AchievementsCell } from "../eu4/components/AchievementsCell";
 
 interface UserSaveTableProps {
   saves: SaveFile[];
@@ -113,13 +114,7 @@ export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
       columnHelper.display({
         header: "Achievements",
         cell: (info) => (
-          <ul className="flex space-x-1">
-            {info.row.original.achievements.map((x) => (
-              <li className="flex" key={x}>
-                <AchievementAvatar id={x} size={40} className="shrink-0" />
-              </li>
-            ))}
-          </ul>
+          <AchievementsCell achievements={info.row.original.achievements} />
         ),
       }),
       columnHelper.display({

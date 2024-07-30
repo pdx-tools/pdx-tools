@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { TimeAgo } from "@/components/TimeAgo";
 import { difficultyText } from "@/lib/difficulty";
 import { DlcList } from "@/features/eu4/components/dlc-list";
-import { TagTransition } from "@/features/eu4/types/models";
 import { AchievementAvatar, Flag } from "@/features/eu4/components/avatars";
 import { Aar } from "./Aar";
 import { ModList } from "./ModList";
@@ -28,10 +27,12 @@ import { EyeIcon } from "@heroicons/react/24/outline";
 import { formatInt } from "@/lib/format";
 import { Card } from "@/components/Card";
 import {
+  CompletedAchievement,
   GreatPower,
   PlayerHistory,
 } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
 import { findMap } from "@/lib/findMap";
+import { useList } from "@/hooks/useList";
 
 const playerHistoriesFn = (worker: Eu4Worker) => worker.eu4GetPlayerHistories();
 const luckyCountriesFn = (worker: Eu4Worker) => worker.eu4GetLuckyCountries();
@@ -124,21 +125,7 @@ export const InfoDrawer = () => {
         </Card>
         {achievements.kind === "Compatible" &&
         achievements.achievements.length > 0 ? (
-          <Card className="p-4 w-80">
-            <div className="space-y-2">
-              <div className="text-center text-lg">Achievements</div>
-              <div className="flex flex-wrap place-content-center space-x-2">
-                {achievements.achievements.map((x) => (
-                  <Tooltip key={x.id}>
-                    <Tooltip.Trigger className="flex">
-                      <AchievementAvatar size={40} id={x.id} />
-                    </Tooltip.Trigger>
-                    <Tooltip.Content>{x.name}</Tooltip.Content>
-                  </Tooltip>
-                ))}
-              </div>
-            </div>
-          </Card>
+          <AchievementCard achievements={achievements.achievements} />
         ) : null}
         {mods.length > 0 ? (
           <Card className="p-4 min-w-[320px] max-w-xl">
@@ -223,6 +210,37 @@ export const InfoDrawer = () => {
     </div>
   );
 };
+
+function AchievementCard({
+  achievements,
+}: {
+  achievements: CompletedAchievement[];
+}) {
+  const { items } = useList({
+    data: achievements,
+    variant: "balance",
+    threshold: 4,
+  });
+  return (
+    <Card className="p-4 w-80">
+      <div className="flex flex-col space-y-2 items-center">
+        <div className="text-lg">Achievements</div>
+        {items.map((row, i) => (
+          <div key={i} className="flex gap-2">
+            {row.map((x) => (
+              <Tooltip key={x.id}>
+                <Tooltip.Trigger className="flex">
+                  <AchievementAvatar size={40} id={x.id} />
+                </Tooltip.Trigger>
+                <Tooltip.Content>{x.name}</Tooltip.Content>
+              </Tooltip>
+            ))}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
 
 function CountryCard({
   item,
