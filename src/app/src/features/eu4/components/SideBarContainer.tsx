@@ -23,10 +23,6 @@ export const SideBarContainerProvider = ({
   );
 };
 
-export function useInEu4Analysis() {
-  return React.useContext(SideBarContainerContext) != undefined;
-}
-
 export function useSideBarContainer() {
   const data = React.useContext(SideBarContainerContext);
   if (data === undefined) {

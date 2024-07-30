@@ -1,7 +1,6 @@
 import React, { createContext, useContext } from "react";
 import Image from "next/image";
-import { useInEu4Analysis } from "../SideBarContainer";
-import { useColonialOverlord, useEu4Actions } from "../../store";
+import { useColonialOverlord, useEu4Actions, useInEu4Analysis } from "../../store";
 import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import { Button } from "@/components/Button";
