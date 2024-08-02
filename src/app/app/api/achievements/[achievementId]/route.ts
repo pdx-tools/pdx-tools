@@ -19,38 +19,28 @@ const handler = async (
   }
 
   const db = await dbConn;
-  const saves = await db
+
+  // saves with achievement
+  const saves = db
     .select({
       id: table.saves.id,
-      playthroughId: table.saves.playthroughId,
-      rank: sql<number>`RANK() OVER(
-        ORDER BY score_days, created_on ASC
-      )`,
+      rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY playthrough_id ORDER BY score_days)`.as(
+        "rn",
+      ),
     })
     .from(table.saves)
-    .where(sql`${table.saves.achieveIds} @> Array[${[achieveId]}]::int[]`);
+    .where(sql`${table.saves.achieveIds} @> Array[${[achieveId]}]::int[]`)
+    .as("ranked");
 
-  const playthroughIds = new Set();
-  const outSaves: string[] = [];
+  // best save in a given playthrough
+  const top = db.select({ id: saves.id }).from(saves).where(eq(saves.rn, 1));
 
-  for (const save of saves) {
-    if (playthroughIds.has(save.playthroughId)) {
-      continue;
-    }
-
-    playthroughIds.add(save.playthroughId);
-    outSaves.push(save.id);
-  }
-
-  const result =
-    outSaves.length > 0
-      ? await db
-          .select()
-          .from(table.saves)
-          .innerJoin(table.users, eq(table.users.userId, table.saves.userId))
-          .where(inArray(table.saves.id, outSaves))
-          .orderBy(asc(table.saves.scoreDays))
-      : [];
+  const result = await db
+    .select()
+    .from(table.saves)
+    .innerJoin(table.users, eq(table.users.userId, table.saves.userId))
+    .where(inArray(table.saves.id, top))
+    .orderBy(asc(table.saves.scoreDays), asc(table.saves.createdOn));
 
   return NextResponse.json<AchievementView>({
     achievement: {
