@@ -1,7 +1,7 @@
 public/assets
-public/blog
-public/changelog
-public/docs
+public/blog*
+public/changelog*
+public/docs*
 public/img
 *_gen.ts
 src/server-lib/save-parsing-types.ts

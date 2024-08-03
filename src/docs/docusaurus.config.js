@@ -14,6 +14,7 @@ const config = {
   onBrokenLinks: "warn",
   onBrokenMarkdownLinks: "throw",
   favicon: "img/favicon.ico",
+  trailingSlash: false,
 
   i18n: {
     defaultLocale: "en",
