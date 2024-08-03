@@ -8,6 +8,7 @@
     "format": "prettier --write 'src' 'app' 'tests'",
     "lint": "next lint --dir src",
     "test": "jest",
+    "postinstall": "patch-package",
     "start": "next start"
   },
   "dependencies": {
@@ -49,6 +50,7 @@
     "zustand": "4.5.2"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "1.13.1",
     "@types/jest": "29.5.12",
     "@types/node": "20.11.30",
     "@types/pg": "8.11.4",
@@ -58,6 +60,7 @@
     "eslint": "8.57.0",
     "eslint-config-next": "14.1.4",
     "jest": "29.7.0",
+    "patch-package": "^8.0.0",
     "prettier": "3.2.5",
     "prettier-plugin-tailwindcss": "0.5.13",
     "tailwindcss": "3.4.3",
