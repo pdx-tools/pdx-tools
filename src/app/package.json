@@ -9,6 +9,7 @@
     "lint": "next lint --dir src",
     "test": "jest",
     "postinstall": "patch-package",
+    "cloudflare-headers": "echo 'const { csp, docsCsp } = require(`./next.cors`); console.log(`/*\\n  Content-Security-Policy: ${csp.join(`; `)}`); [`/docs*`, `/blog*`, `/changelog*`].forEach((path) => { console.log(`${path}\\n  ! Content-Security-Policy\n  Content-Security-Policy: ${docsCsp.join(`; `)}`)});' | node -",
     "start": "next start"
   },
   "dependencies": {

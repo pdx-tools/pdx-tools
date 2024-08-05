@@ -79,8 +79,12 @@ publish-backend:
   docker image save ghcr.io/pdx-tools/pdx-tools:nightly | gzip | ssh pdx-tools-prod 'docker load && pdx-tools/docker-compose.sh up -d app'
 
 publish-app:
-  cd src/app && npx @cloudflare/next-on-pages
-  cd src/app && npx wrangler pages deploy --project-name pages-pdx-tools .vercel/output/static/
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  cd src/app
+  npx @cloudflare/next-on-pages
+  npm run --silent cloudflare-headers >> .vercel/output/static/_headers
+  npx wrangler pages deploy --branch master --project-name pages-pdx-tools .vercel/output/static/
 
 build-app: prep-frontend
   cd src/docs && npm run build
