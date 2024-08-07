@@ -1,72 +1,46 @@
-import { getEnv, isLocal } from "@/server-lib/env";
 import { eq } from "drizzle-orm";
 import { table, withDb } from "@/server-lib/db";
 import { NextResponse } from "next/server";
 import { newSessionCookie } from "@/server-lib/auth/session";
 import { withCore } from "@/server-lib/middleware";
 import { check } from "@/lib/isPresent";
-import { STEAM_URL } from "@/server-lib/steam";
-
-export const runtime = isLocal() ? "nodejs" : "edge";
 
 const TEST_UID = "100";
-const handler = !isLocal()
-  ? () => {
-      const externalAddress = getEnv("EXTERNAL_ADDRESS");
-      const url = loginRedirectUrl(
-        externalAddress,
-        "/api/login/steam-callback",
-      );
-      return NextResponse.redirect(url, 302);
-    }
-  : withCore(
-      withDb(async (req: Request, { dbConn }) => {
-        const db = await dbConn;
-        const users = await db
-          .select()
-          .from(table.users)
-          .where(eq(table.users.userId, TEST_UID));
-        let user = users[0];
 
-        if (!user) {
-          const [newUser] = await db
-            .insert(table.users)
-            .values({
-              userId: TEST_UID,
-              steamId: "1000",
-              steamName: "my-steam-name",
-            })
-            .returning();
-          user = check(newUser, "new user is not null");
-        }
+// This route is only for tests and development!
+const handler = withCore(
+  withDb(async (req: Request, { dbConn }) => {
+    const db = await dbConn;
+    const users = await db
+      .select()
+      .from(table.users)
+      .where(eq(table.users.userId, TEST_UID));
+    let user = users[0];
 
-        const cookie = await newSessionCookie({
+    if (!user) {
+      const [newUser] = await db
+        .insert(table.users)
+        .values({
           userId: TEST_UID,
           steamId: "1000",
-          account: user.account,
-        });
-        const dest = new URL("/", req.url);
-        const response = NextResponse.redirect(dest, 302);
-        response.cookies.set(cookie);
-        return response;
-      }),
-    );
+          steamName: "my-steam-name",
+          account: "admin",
+        })
+        .returning();
+      user = check(newUser, "new user is not null");
+    }
 
-export const GET = handler;
-export const POST = isLocal() ? handler : undefined;
+    const cookie = await newSessionCookie({
+      userId: TEST_UID,
+      steamId: "1000",
+      account: user.account,
+    });
+    const dest = new URL("/", req.url);
+    const response = NextResponse.redirect(dest, 302);
+    response.cookies.set(cookie);
+    return response;
+  }),
+);
 
-function loginRedirectUrl(external_address: string, callback: string) {
-  const params = {
-    "openid.ns": "http://specs.openid.net/auth/2.0",
-    "openid.sreg": "http://openid.net/extensions/sreg/1.1",
-    "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
-    "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
-    "openid.mode": "checkid_setup",
-    "openid.realm": external_address,
-    "openid.return_to": `${external_address}${callback}`,
-  };
-
-  const steamUrl = new URL(STEAM_URL);
-  steamUrl.search = new URLSearchParams(params).toString();
-  return steamUrl;
-}
+export const POST =
+  process.env["NODE_ENV"] === "production" ? undefined : handler;

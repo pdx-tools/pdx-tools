@@ -8,7 +8,7 @@ import { fetchOk, fetchOkJson } from "@/lib/fetch";
 import { genId } from "@/server-lib/id";
 import { withCore } from "@/server-lib/middleware";
 import { check } from "@/lib/isPresent";
-import { STEAM_URL } from "@/server-lib/steam";
+import { STEAM_URL } from "@/lib/steam";
 
 const handler = async (
   _req: NextRequest,
@@ -43,7 +43,7 @@ const handler = async (
     account: user?.account ?? "free",
   });
 
-  const dest = new URL(getEnv("EXTERNAL_ADDRESS"));
+  const dest = new URL("/");
   const response = NextResponse.redirect(dest, 302);
   response.cookies.set(cookie);
   return response;
