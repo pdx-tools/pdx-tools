@@ -1,4 +1,13 @@
 {
   "version": 1,
-  "exclude": ["/assets/*"]
+  "exclude": [
+    "/assets/*",
+    "/blog*",
+    "/changelog*",
+    "/docs*",
+    "/eu4",
+    "/",
+    "/favicon.ico",
+    "/robots.txt"
+  ]
 }
