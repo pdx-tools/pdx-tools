@@ -6,5 +6,3 @@ export function getEnv(setting: string) {
     return result;
   }
 }
-
-export const isLocal = () => !process.env["EXTERNAL_ADDRESS"];

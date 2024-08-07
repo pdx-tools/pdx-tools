@@ -16,6 +16,7 @@ release:
   #!/usr/bin/env bash
   set -euxo pipefail
   export PDX_RELEASE=1
+  export NEXT_PUBLIC_EXTERNAL_ADDRESS=https://pdx.tools
 
   just vercel whoami
   just vercel link --yes --project pdx-tools

@@ -4,7 +4,6 @@ import { eq } from "drizzle-orm";
 import { parseBasicAuth } from "./basic";
 import { getSessionPayload } from "./session";
 import { Account } from "../db/schema";
-import { isLocal } from "../env";
 
 export type SessionRoute = { session: { uid: string; account: Account } };
 const unauthResponse = () =>
@@ -65,7 +64,7 @@ export function withAdmin<T = unknown, Ctxt extends object = {}>(
       req: NextRequest,
       ctxt: Ctxt & SessionRoute,
     ): Promise<NextResponse<T> | Response> => {
-      if (!isLocal() && ctxt.session.account !== "admin") {
+      if (ctxt.session.account !== "admin") {
         return unauthResponse();
       }
 
