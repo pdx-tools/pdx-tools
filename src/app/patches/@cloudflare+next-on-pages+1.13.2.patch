@@ -1,0 +1,17 @@
+diff --git a/node_modules/@cloudflare/next-on-pages/dist/index.js b/node_modules/@cloudflare/next-on-pages/dist/index.js
+index 4cb150a..d374888 100644
+--- a/node_modules/@cloudflare/next-on-pages/dist/index.js
++++ b/node_modules/@cloudflare/next-on-pages/dist/index.js
+@@ -13310,12 +13310,6 @@ async function checkInvalidFunctions(collectedFunctions, opts) {
+   await tryToFixI18nFunctions(collectedFunctions, opts);
+   await tryToFixInvalidFuncsWithValidIndexAlternative(collectedFunctions);
+   await tryToFixInvalidDynamicISRFuncs(collectedFunctions);
+-  if (collectedFunctions.invalidFunctions.size > 0) {
+-    await printInvalidFunctionsErrorMessage(
+-      collectedFunctions.invalidFunctions
+-    );
+-    process.exit(1);
+-  }
+ }
+ async function tryToFixAppRouterNotFoundFunction({
+   invalidFunctions,

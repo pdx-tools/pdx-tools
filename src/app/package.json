@@ -51,7 +51,7 @@
     "zustand": "4.5.2"
   },
   "devDependencies": {
-    "@cloudflare/next-on-pages": "1.13.1",
+    "@cloudflare/next-on-pages": "1.13.2",
     "@types/jest": "29.5.12",
     "@types/node": "20.11.30",
     "@types/pg": "8.11.4",
