@@ -9,8 +9,6 @@ const saveSchema = z.object({ saveId: z.string() });
 export const GET = withCore(
   async (_req: NextRequest, { params }: { params: { saveId: string } }) => {
     const save = saveSchema.parse(params);
-    return s3FetchOk(`${BUCKET}/${save.saveId}`, {
-      cache: "no-store",
-    });
+    return s3FetchOk(`${BUCKET}/${save.saveId}`, {});
   },
 );

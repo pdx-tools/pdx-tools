@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "include": [
+    "/api/*",
+    "/eu4/*",
+    "/users/*",
+    "/achievements/*"
+  ]
+}

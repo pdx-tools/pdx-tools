@@ -18,9 +18,6 @@ release:
   export PDX_RELEASE=1
   export NEXT_PUBLIC_EXTERNAL_ADDRESS=https://pdx.tools
 
-  just vercel whoami
-  just vercel link --yes --project pdx-tools
-  just vercel pull
   if [[ "$(gcloud config get-value account 2>&1)" = "(unset)" ]]; then
     gcloud auth login
   fi
@@ -81,10 +78,13 @@ publish-api:
 publish-backend:
   docker image save ghcr.io/pdx-tools/pdx-tools:nightly | gzip | ssh pdx-tools-prod 'docker load && pdx-tools/docker-compose.sh up -d app'
 
-vercel +cmd:
-  vercel --cwd src/app "$@"
-
-publish-app: (vercel "build" "--prod") (vercel "deploy" "--prod" "--prebuilt")
+publish-app:
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  cd src/app
+  npx @cloudflare/next-on-pages
+  npm run --silent cloudflare-headers >> .vercel/output/static/_headers
+  npx wrangler pages deploy --branch master --project-name pages-pdx-tools .vercel/output/static/
 
 build-app: prep-frontend
   cd src/docs && npm run build
