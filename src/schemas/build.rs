@@ -22,6 +22,7 @@ fn main() {
     for game in &["eu4", "ck3", "hoi4", "imperator", "vic3"] {
         let mut pascal = String::from(*game);
         pascal.get_mut(0..1).unwrap().make_ascii_uppercase();
+        println!("cargo:rerun-if-changed=../../assets/tokens/{game}-raw.bin");
         let path = format!("../../assets/tokens/{game}-raw.bin");
         let tokens = Path::new(&path);
         let exists = tokens.exists();
