@@ -11,7 +11,7 @@ import { check } from "@/lib/isPresent";
 import { STEAM_URL } from "@/lib/steam";
 
 const handler = async (
-  _req: NextRequest,
+  req: NextRequest,
   { dbConn, searchParams }: DbRoute & { searchParams: URLSearchParams },
 ) => {
   const steamUid = await loginVerify(searchParams);
@@ -43,7 +43,7 @@ const handler = async (
     account: user?.account ?? "free",
   });
 
-  const dest = new URL("/");
+  const dest = process.env.NEXT_PUBLIC_EXTERNAL_ADDRESS ?? "https://pdx.tools";
   const response = NextResponse.redirect(dest, 302);
   response.cookies.set(cookie);
   return response;
