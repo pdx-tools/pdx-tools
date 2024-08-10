@@ -15,16 +15,16 @@
     "format": "npx prettier@latest --write '{*.js,src/**/*.{js,tsx,css}}'"
   },
   "dependencies": {
-    "@docusaurus/core": "3.1.1",
-    "@docusaurus/preset-classic": "3.1.1",
+    "@docusaurus/core": "3.5.1",
+    "@docusaurus/preset-classic": "3.5.1",
     "@mdx-js/react": "3.0.1",
-    "clsx": "2.1.0",
+    "clsx": "2.1.1",
     "prism-react-renderer": "2.3.1",
-    "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "3.1.1"
+    "@docusaurus/module-type-aliases": "3.5.1"
   },
   "browserslist": [
     "defaults and supports webgl2 and supports wasm"
