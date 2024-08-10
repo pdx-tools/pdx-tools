@@ -16,10 +16,13 @@ const s3client = new AwsClient({
 export async function s3Fetch(...args: Parameters<(typeof s3client)["fetch"]>) {
   return args[0] instanceof Request
     ? s3client.fetch(...args)
-    : s3client.fetch(new URL(args[0], getEnv("S3_ENDPOINT")).toString(), {
-        ...args[1],
-        aws: { ...defaultHeaders, ...args[1]?.aws },
-      });
+    : s3client.fetch(
+        new URL(args[0].toString(), getEnv("S3_ENDPOINT")).toString(),
+        {
+          ...args[1],
+          aws: { ...defaultHeaders, ...args[1]?.aws },
+        },
+      );
 }
 
 export async function s3FetchOk(
