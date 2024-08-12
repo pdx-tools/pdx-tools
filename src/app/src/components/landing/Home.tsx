@@ -324,6 +324,12 @@ export const Home = ({ subtitle }: HomeProps) => {
           </div>
         </section>
       </div>
+      <footer className="text-sm my-4 text-slate-400 text-center">
+        <a href="https://www.flaticon.com/free-icons/north">EU4</a>,{" "}
+        <a href="https://www.flaticon.com/free-icons/victoria-day">V3</a>, and{" "}
+        <a href="https://www.flaticon.com/free-icons/military">HOI4</a> icons
+        created by Freepik and Good Ware - Flaticon
+      </footer>
     </div>
   );
 };
