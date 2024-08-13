@@ -297,6 +297,18 @@ test("same playthrough disjoint set", async () => {
   expect(goldenUpload.save_id).toBeDefined();
 });
 
+test("reject duplicate uploads", async () => {
+  const client = await HttpClient.create();
+  const tatarPath = "tartartar.eu4";
+
+  const tatarUpload = await client.uploadSave(tatarPath);
+  expect(tatarUpload.save_id).toBeDefined();
+
+  await expect(client.uploadSave(tatarPath)).rejects.toThrow(
+    "save already exists",
+  );
+});
+
 test("delete save", async () => {
   const client = await HttpClient.create();
   const ita1Path = "ita1.eu4";
