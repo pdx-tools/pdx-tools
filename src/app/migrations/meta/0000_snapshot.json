@@ -1,10 +1,8 @@
 {
-  "version": "5",
-  "dialect": "pg",
-  "id": "3fa8b50b-44d2-454c-8ca7-e14c3eaaf3d4",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
   "tables": {
-    "saves": {
+    "public.saves": {
       "name": "saves",
       "schema": "",
       "columns": {
@@ -193,87 +191,160 @@
       },
       "indexes": {
         "idx_save_achieve_days": {
-          "name": "idx_save_achieve_days",
           "columns": [
-            "days"
+            {
+              "expression": "days",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "idx_save_achieve_days",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         },
         "idx_save_achieve_ids": {
-          "name": "idx_save_achieve_ids",
           "columns": [
-            "achieve_ids"
+            {
+              "expression": "achieve_ids",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "idx_save_achieve_ids",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         },
         "idx_save_campaign_id": {
-          "name": "idx_save_campaign_id",
           "columns": [
-            "campaign_id"
+            {
+              "expression": "campaign_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "idx_save_campaign_id",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         },
         "idx_save_checksum": {
-          "name": "idx_save_checksum",
           "columns": [
-            "checksum"
+            {
+              "expression": "checksum",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "idx_save_checksum",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         },
         "idx_save_creation": {
-          "name": "idx_save_creation",
           "columns": [
-            "created_on"
+            {
+              "expression": "created_on",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "idx_save_creation",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         },
         "idx_save_dlc": {
-          "name": "idx_save_dlc",
           "columns": [
-            "dlc"
+            {
+              "expression": "dlc",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "idx_save_dlc",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         },
         "idx_save_hash": {
-          "name": "idx_save_hash",
           "columns": [
-            "hash"
+            {
+              "expression": "hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "idx_save_hash",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         },
         "idx_save_players": {
-          "name": "idx_save_players",
           "columns": [
-            "players"
+            {
+              "expression": "players",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "idx_save_players",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         },
         "idx_saves_playthrough_id": {
-          "name": "idx_saves_playthrough_id",
           "columns": [
-            "playthrough_id"
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "idx_saves_playthrough_id",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "saves_user_id_users_user_id_fk": {
           "name": "saves_user_id_users_user_id_fk",
           "tableFrom": "saves",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "user_id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
-      "compositePrimaryKeys": {}
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
     },
-    "users": {
+    "public.users": {
       "name": "users",
       "schema": "",
       "columns": {
@@ -330,42 +401,54 @@
       },
       "indexes": {
         "idx_users_steam_id": {
-          "name": "idx_users_steam_id",
           "columns": [
-            "steam_id"
+            {
+              "expression": "steam_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": true
+          "with": {},
+          "name": "idx_users_steam_id",
+          "isUnique": true,
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {},
-      "compositePrimaryKeys": {}
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
     }
   },
   "enums": {
-    "account": {
+    "public.account": {
       "name": "account",
-      "values": {
-        "free": "free",
-        "admin": "admin"
-      }
+      "schema": "public",
+      "values": [
+        "free",
+        "admin"
+      ]
     },
-    "game_difficulty": {
+    "public.game_difficulty": {
       "name": "game_difficulty",
-      "values": {
-        "very_easy": "very_easy",
-        "easy": "easy",
-        "normal": "normal",
-        "hard": "hard",
-        "very_hard": "very_hard"
-      }
+      "schema": "public",
+      "values": [
+        "very_easy",
+        "easy",
+        "normal",
+        "hard",
+        "very_hard"
+      ]
     },
-    "save_encoding": {
+    "public.save_encoding": {
       "name": "save_encoding",
-      "values": {
-        "text": "text",
-        "textzip": "textzip",
-        "binzip": "binzip"
-      }
+      "schema": "public",
+      "values": [
+        "text",
+        "textzip",
+        "binzip"
+      ]
     }
   },
   "schemas": {},
@@ -373,5 +456,8 @@
     "schemas": {},
     "tables": {},
     "columns": {}
-  }
+  },
+  "id": "3fa8b50b-44d2-454c-8ca7-e14c3eaaf3d4",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "sequences": {}
 }
