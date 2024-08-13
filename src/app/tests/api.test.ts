@@ -423,7 +423,7 @@ test("api post new save", async () => {
   const client = await HttpClient.create();
   const path = "Granada1468_05_09.eu4.zst";
   const upload = await client.uploadSaveHeaders(path, {
-    "rakaly-filename": "granada.eu4",
+    "pdx-tools-filename": "granada.eu4",
     "Content-Type": "application/zstd",
   });
 

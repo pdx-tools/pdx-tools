@@ -30,7 +30,7 @@ POST https://pdx.tools/api/saves
 All requests must be authenticated through [basic auth](https://en.wikipedia.org/wiki/Basic_access_authentication)
 with your user id and API key.
 
-All requests must contain the "rakaly-filename" HTTP header which
+All requests must contain the "pdx-tools-filename" HTTP header which
 describes the filename of the uploaded files, as multipart/form-data is
 not officially supported by the API.
 
@@ -44,7 +44,7 @@ First, an example request to upload a save that is a zip file.
 
 ```bash
 curl "https://pdx.tools/api/saves" \
-  --header "rakaly-filename: ita1.eu4" \
+  --header "pdx-tools-filename: ita1.eu4" \
   --header "Content-Type: application/zip" \
   --data-binary @ita1.eu4 \
   --user "yourUserId"
