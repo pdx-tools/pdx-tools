@@ -75,7 +75,7 @@ export const saves = pgTable(
   (saves) => ({
     achieveIdsIndex: index("idx_save_achieve_ids").on(saves.achieveIds),
     createdOnIndex: index("idx_save_creation").on(saves.createdOn),
-    hashIndex: index("idx_save_hash").on(saves.hash),
+    hashIndex: uniqueIndex("idx_save_hash").on(saves.hash),
     playersIndex: index("idx_save_players").on(saves.players),
     playthroughIdIndex: index("idx_saves_playthrough_id").on(
       saves.playthroughId,
