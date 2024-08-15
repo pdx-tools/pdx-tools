@@ -51,18 +51,15 @@ function withPrivilegedSave<T = unknown, R = {}>(
     req: NextRequest,
     ctxt: R & SessionRoute & SaveRoute & DbRoute,
   ): Promise<NextResponse<T> | Response> => {
-    if (ctxt.save.user.userId !== ctxt.session.uid) {
-      const db = await ctxt.dbConn;
-      const users = await db
-        .select()
-        .from(table.users)
-        .where(eq(table.users.userId, ctxt.session.uid));
-      if (users[0]?.account !== "admin") {
-        return NextResponse.json(
-          { msg: "forbidden from performing action" },
-          { status: 403 },
-        );
-      }
+    const { save, session } = ctxt;
+
+    // Since JWTs are tamperproof we check them instead of querying
+    // the DB if the user is an admin.
+    if (save.user.userId !== session.uid && session.account !== "admin") {
+      return NextResponse.json(
+        { msg: "forbidden from performing action" },
+        { status: 403 },
+      );
     }
 
     return fn(req, ctxt);
