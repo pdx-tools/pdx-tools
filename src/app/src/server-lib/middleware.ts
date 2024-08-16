@@ -1,5 +1,10 @@
 import { NextApiHandler } from "next";
-import { ValidationError, withErrorHandling } from "./errors";
+import {
+  AuthorizationError,
+  NotFoundError,
+  ValidationError,
+  withErrorHandling,
+} from "./errors";
 import { log, withLogger } from "./logging";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
@@ -25,6 +30,13 @@ export function withCore<T extends Array<any>>(
 
       if (err.name === ValidationError.name) {
         return NextResponse.json(obj, { status: 400 });
+      } else if (err instanceof AuthorizationError) {
+        return NextResponse.json(obj, { status: 403 });
+      } else if (err instanceof NotFoundError) {
+        return NextResponse.json(
+          { ...obj, msg: `${obj.msg} not found` },
+          { status: 404 },
+        );
       } else if (err instanceof ZodError) {
         return NextResponse.json(
           {

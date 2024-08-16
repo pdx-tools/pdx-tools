@@ -5,7 +5,8 @@ import { parseBasicAuth } from "./basic";
 import { getSessionPayload } from "./session";
 import { Account } from "../db/schema";
 
-export type SessionRoute = { session: { uid: string; account: Account } };
+export type Session = { uid: string; account: Account };
+export type SessionRoute = { session: Session };
 const unauthResponse = () =>
   NextResponse.json({ msg: "unable to authorize" }, { status: 401 });
 
