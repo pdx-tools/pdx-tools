@@ -1,6 +1,8 @@
 import { epochOf } from "@/lib/dates";
 import { fetchOk, fetchOkJson, sendJson } from "@/lib/fetch";
 import {
+  MutationCache,
+  QueryCache,
   QueryClient,
   UseQueryResult,
   useInfiniteQuery,
@@ -12,6 +14,7 @@ import type { Achievement, Difficulty } from "@/server-lib/wasm/wasm_app";
 import { Eu4Worker } from "@/features/eu4/worker";
 import { SavePostResponse, UploadMetadaInput } from "@/server-lib/models";
 import { createCompressionWorker } from "@/features/compress";
+import { captureException } from "@/features/errors";
 export type { Achievement, SaveFile, Difficulty as AchievementDifficulty };
 
 export type GameDifficulty = SaveFile["game_difficulty"];
@@ -106,6 +109,16 @@ export const queryClient = new QueryClient({
       staleTime: 30 * 1000,
     },
   },
+  queryCache: new QueryCache({
+    onError(error, _query) {
+      captureException(error);
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError(error, _variables, _context, _mutation) {
+      captureException(error)
+    }
+  })
 });
 
 export const pdxKeys = {
