@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { TimeAgo } from "@/components/TimeAgo";
 import { Button } from "@/components/Button";
 import { difficultyText, difficultySort } from "@/lib/difficulty";
-import { SaveFile, pdxApi } from "@/services/appApi";
+import { pdxApi } from "@/services/appApi";
 import { Flag } from "@/features/eu4/components/avatars";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
@@ -10,7 +10,9 @@ import { DataTable } from "@/components/DataTable";
 import { Link } from "@/components/Link";
 import { Alert } from "@/components/Alert";
 import { AchievementsCell } from "./AchievementsCell";
+import { NewestSaveResponse } from "app/api/new/route";
 
+type SaveFile = NewestSaveResponse["saves"][number];
 const columnHelper = createColumnHelper<SaveFile>();
 const columns = [
   columnHelper.accessor("upload_time", {
@@ -31,12 +33,12 @@ const columns = [
       </Link>
     ),
   }),
-  columnHelper.accessor("days", {
+  columnHelper.accessor("date", {
     sortingFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Date" />,
-    cell: (info) => <div className="no-break">{info.row.original.date}</div>,
+    cell: (info) => <div className="no-break">{info.getValue()}</div>,
   }),
-  columnHelper.accessor("player_start_tag_name", {
+  columnHelper.accessor("player_start_tag", {
     sortingFn: "text",
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Starting" />
@@ -51,13 +53,16 @@ const columns = [
         "Multiplayer"
       ),
   }),
-  columnHelper.accessor("player_tag_name", {
+  columnHelper.accessor("player_tag", {
     sortingFn: "text",
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Current" />
     ),
     cell: ({ row }) => (
-      <Flag tag={row.original.player_tag} name={row.original.player_tag_name} />
+      <Flag
+        tag={row.original.player_tag}
+        name={row.original.player_tag_name ?? row.original.player_tag}
+      />
     ),
   }),
   columnHelper.accessor("patch", {

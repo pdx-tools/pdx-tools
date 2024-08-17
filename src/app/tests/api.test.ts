@@ -1,17 +1,15 @@
 import { promises } from "fs";
 import { BUCKET, deleteFile, s3Fetch, s3FetchOk } from "@/server-lib/s3";
-import {
-  AchievementView,
-  NewKeyResponse,
-  ProfileResponse,
-  SaveFile,
-  UserSaves,
-} from "@/services/appApi";
+import { NewKeyResponse, ProfileResponse } from "@/services/appApi";
 import { dbDisconnect, table, useDb } from "@/server-lib/db";
 import { parseSave } from "@/server-lib/save-parser";
 import { SavePostResponse } from "@/server-lib/models";
 import { fetchOk, fetchOkJson, sendJson } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
+import type { AchievementResponse } from "app/api/achievements/[achievementId]/route";
+import { UserResponse } from "app/api/users/[userId]/route";
+import { NewestSaveResponse } from "app/api/new/route";
+import { SaveResponse } from "app/api/saves/[saveId]/route";
 globalThis.crypto = require("node:crypto").webcrypto;
 
 jest.setTimeout(60000);
@@ -219,14 +217,14 @@ test("same campaign", async () => {
   expect(startUpload.save_id).toBeDefined();
 
   // When retrieving the achievements, we should only see the save with the earliest date
-  let achievementLeaderboard = await client.get<AchievementView>(
+  let achievementLeaderboard = await client.get<AchievementResponse>(
     "/api/achievements/18",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(startUpload.save_id);
 
   // But all saves will be exposed when viewing user saves
-  let userProfile = await client.get<UserSaves>("/api/users/100");
+  let userProfile = await client.get<UserResponse>("/api/users/100");
   expect(userProfile.saves).toHaveLength(3);
   expect(userProfile.saves[0].id).toEqual(startUpload.save_id);
   expect(userProfile.saves[1].id).toEqual(endUpload.save_id);
@@ -265,13 +263,13 @@ test("same playthrough id", async () => {
   expect(persia.save_id).toBeDefined();
 
   // When retrieving the shahanshah achievement we should only see the start data
-  let achievementLeaderboard = await client.get<AchievementView>(
+  let achievementLeaderboard = await client.get<AchievementResponse>(
     "/api/achievements/89",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(shahansha.save_id);
 
-  const newest = await client.get<{ saves: SaveFile[] }>("/api/new");
+  const newest = await client.get<NewestSaveResponse>("/api/new");
   expect(newest.saves).toHaveLength(2);
   expect(newest.saves[0].game_difficulty).toBe("Normal");
 });
@@ -322,15 +320,17 @@ test("delete save", async () => {
 
   await client.delete(`/api/saves/${ita1.save_id}`);
 
-  let userProfile = await client.get<UserSaves>("/api/users/100");
+  let userProfile = await client.get<UserResponse>("/api/users/100");
   expect(userProfile.saves).toHaveLength(1);
 
   await client.delete(`/api/saves/${kandy.save_id}`);
 
-  userProfile = await client.get<UserSaves>("/api/users/100");
+  userProfile = await client.get<UserResponse>("/api/users/100");
   expect(userProfile.saves).toHaveLength(0);
 
-  const achievement = await client.get<AchievementView>("/api/achievements/18");
+  const achievement = await client.get<AchievementResponse>(
+    "/api/achievements/18",
+  );
   expect(achievement.saves).toHaveLength(0);
 
   const kandy2 = await client.uploadSave(kandyPath);
@@ -342,7 +342,7 @@ test("set aar", async () => {
   const ita1Path = "ita1.eu4";
   const initAar = "hello world";
   const uploadResponse = await client.uploadSave(ita1Path, { aar: initAar });
-  const uploadedSave = await client.get<SaveFile>(
+  const uploadedSave = await client.get<SaveResponse>(
     `/api/saves/${uploadResponse.save_id}`,
   );
   expect(uploadedSave.aar).toBe(initAar);
@@ -352,7 +352,7 @@ test("set aar", async () => {
     filename: "hello world.eu4",
   });
 
-  const updatedSave = await client.get<SaveFile>(
+  const updatedSave = await client.get<SaveResponse>(
     `/api/saves/${uploadResponse.save_id}`,
   );
   expect(updatedSave.aar).toBe("goodbye");
@@ -363,7 +363,7 @@ test("chinese supplementary", async () => {
   const client = await HttpClient.create();
   const path = "chinese-supplementary.eu4";
   const newSave = await client.uploadSave(path);
-  const meta = await client.get<SaveFile>(`/api/saves/${newSave.save_id}`);
+  const meta = await client.get<SaveResponse>(`/api/saves/${newSave.save_id}`);
   expect(meta.player_tag_name).toBe("Saluzzo");
 });
 
@@ -404,7 +404,7 @@ test("get profile with api key", async () => {
     },
   });
 
-  const newest = await client.get<{ saves: SaveFile[] }>("/api/new");
+  const newest = await client.get<NewestSaveResponse>("/api/new");
   expect(newest.saves).toHaveLength(0);
 });
 
@@ -422,7 +422,7 @@ test("admin rebalance", async () => {
   // test with empty database
   await client.post("/api/admin/rebalance?__patch_override_for_testing=243");
 
-  let achievementLeaderboard = await client.get<AchievementView>(
+  let achievementLeaderboard = await client.get<AchievementResponse>(
     "/api/achievements/18",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);

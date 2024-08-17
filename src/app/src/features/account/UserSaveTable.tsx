@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import { TimeAgo } from "@/components/TimeAgo";
-import { SaveFile } from "@/services/appApi";
 import { diff } from "@/lib/dates";
 import { difficultyText } from "@/lib/difficulty";
 import { DeleteSave } from "../eu4/components/DeleteSave";
@@ -10,13 +9,14 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { DataTable } from "@/components/DataTable";
 import { Link } from "@/components/Link";
 import { AchievementsCell } from "../eu4/components/AchievementsCell";
+import { UserResponse } from "app/api/users/[userId]/route";
 
 interface UserSaveTableProps {
-  saves: SaveFile[];
+  saves: UserResponse["saves"];
   isPrivileged: boolean;
 }
 
-type SaveRow = SaveFile & {
+type SaveRow = UserResponse["saves"][number] & {
   name: string;
   rowSpan: number;
 };
@@ -100,10 +100,11 @@ export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
         cell: ({ row }) => (
           <Flag
             tag={row.original.player_tag}
-            name={row.original.player_tag_name}
+            name={row.original.player_tag_name ?? row.original.player_tag}
           />
         ),
       }),
+
       columnHelper.accessor("patch", {
         header: "Patch",
       }),

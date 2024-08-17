@@ -1,10 +1,10 @@
 import dayjs from "dayjs";
 import { withCore } from "@/server-lib/middleware";
-import { SaveFile, UserSaves } from "@/services/appApi";
-import { DbRoute, table, toApiSaveUser, withDb } from "@/server-lib/db";
+import { DbRoute, saveView, table, toApiSave, withDb } from "@/server-lib/db";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
+import { NotFoundError } from "@/server-lib/errors";
 
 const paramSchema = z.object({ userId: z.string() });
 const handler = async (
@@ -13,36 +13,47 @@ const handler = async (
 ) => {
   const params = paramSchema.parse(ctx.params);
   const db = await dbConn;
-  const usersSaves = await db
-    .select()
+
+  const userSaves = await db
+    .select(
+      saveView({
+        save: {
+          filename: table.saves.filename,
+          playthrough_id: table.saves.playthroughId,
+          days: table.saves.days,
+        },
+        user: {
+          created_on: table.users.createdOn,
+        },
+      }),
+    )
     .from(table.saves)
     .rightJoin(table.users, eq(table.users.userId, table.saves.userId))
     .where(eq(table.users.userId, params.userId))
     .orderBy(desc(table.saves.createdOn));
 
-  const user = usersSaves[0]?.users;
-  if (!user) {
-    return NextResponse.json({ msg: "user does not exist" }, { status: 404 });
+  const firstRow = userSaves.at(0);
+  if (firstRow === undefined) {
+    throw new NotFoundError("user");
   }
 
-  const saves = usersSaves.reduce<SaveFile[]>((acc, row) => {
-    if (row.saves !== null) {
-      acc.push(toApiSaveUser(row.saves, user));
-    }
-
-    return acc;
-  }, []);
-
-  const result: UserSaves = {
+  const saves = userSaves
+    .map((x) => x.save)
+    .filter((x) => x !== null)
+    .map(toApiSave);
+  const result = {
     user_info: {
-      created_on: dayjs(user.createdOn).toISOString(),
-      user_id: user.userId,
-      user_name: user.display || user.steamName || "unknown",
+      created_on: dayjs(firstRow.user.created_on).toISOString(),
+      user_id: firstRow.user.user_id,
+      user_name: firstRow.user.user_name,
     },
     saves,
   };
 
   return NextResponse.json(result);
 };
+
+export type UserResponse =
+  Awaited<ReturnType<typeof handler>> extends NextResponse<infer T> ? T : never;
 
 export const GET = withCore(withDb(handler));

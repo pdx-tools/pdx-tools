@@ -1,10 +1,10 @@
 import dayjs from "dayjs";
-import { eu4DaysToDate } from "../game";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { Save, User, saves, users } from "./schema";
+import { GameDifficulty, Save, saves, users } from "./schema";
 import { ParsedFile } from "../save-parser";
 import { NextRequest, NextResponse } from "next/server";
+import { sql } from "drizzle-orm";
 export {
   type User,
   type Save,
@@ -12,45 +12,56 @@ export {
   type NewSave,
 } from "./schema";
 
-export type SaveFile = ReturnType<typeof toApiSaveUser>;
-export const toApiSaveUser = (save: Save, user: User) => {
-  const weightedScore = save.scoreDays
-    ? {
-        days: save.scoreDays,
-        date: eu4DaysToDate(save.scoreDays),
-      }
-    : null;
+export const userView = {
+  get userName() {
+    return sql<string>`COALESCE(NULLIF(${table.users.display}, ''), NULLIF(${table.users.steamName}, ''), 'unknown')`;
+  },
+};
+
+export function saveView<S, U>(opts?: { save?: S; user?: U }) {
+  const saveColumns = {
+    id: table.saves.id,
+    upload_time: table.saves.createdOn,
+    date: table.saves.date,
+    player_tag: table.saves.playerTag,
+    player_tag_name: table.saves.playerTagName,
+    player_start_tag: table.saves.playerStartTag,
+    player_start_tag_name: table.saves.playerStartTagName,
+    patch: sql<string>`CONCAT(${table.saves.saveVersionFirst}, '.', ${table.saves.saveVersionSecond}, '.', ${table.saves.saveVersionThird}, '.', ${table.saves.saveVersionFourth})`,
+    difficulty: table.saves.gameDifficulty,
+    achievements: table.saves.achieveIds,
+    ...opts?.save,
+  } as const;
+
+  const userColumns = {
+    user_id: table.users.userId,
+    user_name: userView.userName,
+  } as const;
 
   return {
-    id: save.id,
-    filename: save.filename,
-    upload_time: dayjs(save.createdOn).toISOString(),
-    user_name: user.display ?? user.steamName ?? "unknown",
-    user_id: user.userId,
-    date: save.date,
-    days: save.days,
-    player_tag: save.playerTag,
-    player_tag_name: save.playerTagName ?? save.playerTag,
-    player_start_tag: save.playerStartTag,
-    player_start_tag_name: save.playerStartTagName,
-    patch: `${save.saveVersionFirst}.${save.saveVersionSecond}.${save.saveVersionThird}.${save.saveVersionFourth}`,
-    playthrough_id: save.playthroughId,
-    achievements: save.achieveIds,
-    weighted_score: weightedScore,
-    game_difficulty: dbDifficulty(save.gameDifficulty),
-    aar: save.aar,
-    version: {
-      first: save.saveVersionFirst,
-      second: save.saveVersionSecond,
-      third: save.saveVersionThird,
-      fourth: save.saveVersionFourth,
-    },
+    save: {
+      ...saveColumns,
+      ...opts?.save,
+    } as typeof saveColumns & S,
+    user: {
+      ...userColumns,
+      ...opts?.user,
+    } as typeof userColumns & U,
   };
-};
+}
 
-export const toApiSave = (save: { saves: Save; users: User }): SaveFile => {
-  return toApiSaveUser(save.saves, save.users);
-};
+type DbRow = { upload_time: Date; difficulty: GameDifficulty };
+export function toApiSave<T extends DbRow>({
+  upload_time,
+  difficulty,
+  ...save
+}: T) {
+  return {
+    ...save,
+    upload_time: dayjs(upload_time).toISOString(),
+    game_difficulty: dbDifficulty(difficulty),
+  };
+}
 
 function reverseRecord<T extends PropertyKey, U extends PropertyKey>(
   input: Record<T, U>,
@@ -70,9 +81,9 @@ const difficultyTable = {
 
 const dbDifficultyTable = reverseRecord(difficultyTable);
 
-export const dbDifficulty = (dbDiff: Save["gameDifficulty"]) =>
+export const dbDifficulty = (dbDiff: GameDifficulty) =>
   dbDifficultyTable[dbDiff];
-export const toDbDifficulty = (diff: SaveFile["game_difficulty"]) =>
+export const toDbDifficulty = (diff: keyof typeof difficultyTable) =>
   difficultyTable[diff];
 
 export const apiKeyAtRest = async (key: string) => {

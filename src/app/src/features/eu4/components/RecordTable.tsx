@@ -3,19 +3,19 @@ import { rankDisplay } from "@/lib/ranks";
 import { difficultySort, difficultyText } from "@/lib/difficulty";
 import { Flag } from "@/features/eu4/components/avatars";
 import { TimeAgo } from "@/components/TimeAgo";
-import { RankedSaveFile } from "@/services/appApi";
 import { formatInt } from "@/lib/format";
 import { Tooltip } from "@/components/Tooltip";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { Link } from "@/components/Link";
+import type { RankedSave } from "../AchievementPage";
 
 interface RecordTableProps {
-  records: RankedSaveFile[];
+  records: RankedSave[];
 }
 
-const columnHelper = createColumnHelper<RankedSaveFile>();
+const columnHelper = createColumnHelper<RankedSave>();
 
 const columns = [
   columnHelper.accessor("rank", {
@@ -81,7 +81,7 @@ const columns = [
     cell: (info) => difficultyText(info.getValue()),
   }),
 
-  columnHelper.accessor("player_start_tag_name", {
+  columnHelper.accessor("player_start_tag", {
     sortingFn: "text",
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Starting" />
@@ -96,16 +96,18 @@ const columns = [
         "Multiplayer"
       ),
   }),
-  columnHelper.accessor("player_tag_name", {
+  columnHelper.accessor("player_tag", {
     sortingFn: "text",
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Current" />
     ),
     cell: ({ row }) => (
-      <Flag tag={row.original.player_tag} name={row.original.player_tag_name} />
+      <Flag
+        tag={row.original.player_tag}
+        name={row.original.player_tag_name ?? row.original.player_tag}
+      />
     ),
   }),
-
   columnHelper.accessor("patch", {
     sortingFn: "text",
     header: ({ column }) => (

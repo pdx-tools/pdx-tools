@@ -8,6 +8,8 @@ interface AchievementRoute {
   staticAchievement?: Achievement;
 }
 
+export type RankedSave = ReturnType<typeof useAchievement>["saves"][number];
+
 const useAchievement = (achievementId: string) => {
   const achievementQuery = pdxApi.achievement.useGet(achievementId);
   const achievement = achievementQuery.data?.achievement;

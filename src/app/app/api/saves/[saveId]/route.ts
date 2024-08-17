@@ -1,5 +1,12 @@
 import { Session, SessionRoute, withAuth } from "@/server-lib/auth/middleware";
-import { DbRoute, table, toApiSaveUser, withDb } from "@/server-lib/db";
+import {
+  DbRoute,
+  saveView,
+  table,
+  toApiSave,
+  userView,
+  withDb,
+} from "@/server-lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { deleteFile } from "@/server-lib/s3";
@@ -13,23 +20,35 @@ import { withCore } from "@/server-lib/middleware";
 
 type SaveRouteParams = { params: { saveId: string } };
 
-export const GET = withCore(
-  withDb(async (_req, { dbConn, params }: SaveRouteParams & DbRoute) => {
-    const db = await dbConn;
-    const saves = await db
-      .select()
-      .from(table.saves)
-      .where(eq(table.saves.id, params.saveId))
-      .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
+const getHandler = async (
+  _req: NextRequest,
+  { dbConn, params }: SaveRouteParams & DbRoute,
+) => {
+  const db = await dbConn;
+  const saves = await db
+    .select(
+      saveView({
+        save: { aar: table.saves.aar, filename: table.saves.filename },
+      }),
+    )
+    .from(table.saves)
+    .where(eq(table.saves.id, params.saveId))
+    .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
 
-    const save = saves.at(0);
-    if (save === undefined) {
-      throw new NotFoundError("save");
-    }
+  const save = saves.at(0);
+  if (save === undefined) {
+    throw new NotFoundError("save");
+  }
 
-    return NextResponse.json(toApiSaveUser(save.saves, save.users));
-  }),
-);
+  return NextResponse.json({ ...save.user, ...toApiSave(save.save) });
+};
+
+export const GET = withCore(withDb(getHandler));
+
+export type SaveResponse =
+  Awaited<ReturnType<typeof getHandler>> extends NextResponse<infer T>
+    ? T
+    : never;
 
 const PatchBody = z.object({
   aar: z

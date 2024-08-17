@@ -1,5 +1,5 @@
 import { withCore } from "@/server-lib/middleware";
-import { DbRoute, table, toApiSave, withDb } from "@/server-lib/db";
+import { DbRoute, saveView, table, toApiSave, withDb } from "@/server-lib/db";
 import { eq, lt, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -19,8 +19,8 @@ const handler = async (
   const params = NewSchema.parse(Object.fromEntries(searchParams.entries()));
   const db = await dbConn;
 
-  let query = db
-    .select()
+  const query = db
+    .select(saveView())
     .from(table.saves)
     .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
 
@@ -39,11 +39,17 @@ const handler = async (
   const saves = await cursorQuery
     .orderBy(desc(table.saves.createdOn))
     .limit(params.pageSize);
-  const result = saves.map(toApiSave);
+  const result = saves.map(({ user, save }) => ({
+    ...user,
+    ...toApiSave(save),
+  }));
   const cursorRes =
     result.length < params.pageSize ? undefined : result.at(-1)?.id;
   return NextResponse.json({ saves: result, cursor: cursorRes });
 };
+
+export type NewestSaveResponse =
+  Awaited<ReturnType<typeof handler>> extends NextResponse<infer T> ? T : never;
 
 export const GET = (req: NextRequest) => {
   const searchParams = new URL(req.url).searchParams;

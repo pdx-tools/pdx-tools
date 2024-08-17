@@ -9,21 +9,17 @@ import {
   useMutation,
   useQuery,
 } from "@tanstack/react-query";
-import type { SaveFile } from "@/server-lib/db";
 import type { Achievement, Difficulty } from "@/server-lib/wasm/wasm_app";
 import { Eu4Worker } from "@/features/eu4/worker";
 import { SavePostResponse, UploadMetadaInput } from "@/server-lib/models";
 import { createCompressionWorker } from "@/features/compress";
 import { captureException } from "@/features/errors";
-export type { Achievement, SaveFile, Difficulty as AchievementDifficulty };
-
-export type GameDifficulty = SaveFile["game_difficulty"];
-export type WeightedScore = SaveFile["weighted_score"];
-
-export type UserSaves = {
-  saves: SaveFile[];
-  user_info: PublicUserInfo | null;
-};
+import type { NewestSaveResponse } from "app/api/new/route";
+import type { AchievementResponse } from "app/api/achievements/[achievementId]/route";
+import type { UserResponse } from "app/api/users/[userId]/route";
+import { SaveResponse } from "app/api/saves/[saveId]/route";
+export type { GameDifficulty } from "@/server-lib/save-parsing-types";
+export type { Achievement, Difficulty as AchievementDifficulty };
 
 export type PublicUserInfo = {
   user_id: string;
@@ -48,21 +44,9 @@ export type ProfileResponse =
 
 type LoggedInUser = Extract<ProfileResponse, { kind: "user" }>;
 
-export type ApiAchievementsResponse = {
-  achievements: Achievement[];
-  saves: SaveFile[];
-};
-
-export type AchievementView = {
-  achievement: Achievement;
-  saves: SaveFile[];
-};
-
 export type NewKeyResponse = {
   api_key: string;
 };
-
-export type RankedSaveFile = { rank: number } & SaveFile;
 
 export type SavePatchProps = {
   id: string;
@@ -139,7 +123,8 @@ export const pdxApi = {
     useGet: (id: string) =>
       useQuery({
         queryKey: pdxKeys.achievement(id),
-        queryFn: () => fetchOkJson<AchievementView>(`/api/achievements/${id}`),
+        queryFn: () =>
+          fetchOkJson<AchievementResponse>(`/api/achievements/${id}`),
       }),
   },
 
@@ -186,7 +171,7 @@ export const pdxApi = {
       useInfiniteQuery({
         queryKey: pdxKeys.newSaves(),
         queryFn: ({ pageParam }) =>
-          fetchOkJson<{ saves: SaveFile[]; cursor: string | undefined }>(
+          fetchOkJson<NewestSaveResponse>(
             "/api/new" +
               (!pageParam
                 ? ""
@@ -316,7 +301,7 @@ export const pdxApi = {
       const enabled = opts?.enabled ?? true;
       return useQuery({
         queryKey: [...pdxKeys.save(id), { enabled }],
-        queryFn: () => fetchOkJson<SaveFile>(`/api/saves/${id}`),
+        queryFn: () => fetchOkJson<SaveResponse>(`/api/saves/${id}`),
         enabled,
       });
     },
@@ -342,7 +327,7 @@ export const pdxApi = {
     useGet: (userId: string) =>
       useQuery({
         queryKey: pdxKeys.user(userId),
-        queryFn: () => fetchOkJson<UserSaves>(`/api/users/${userId}`),
+        queryFn: () => fetchOkJson<UserResponse>(`/api/users/${userId}`),
       }),
   },
 };

@@ -1,8 +1,7 @@
 import { ValidationError } from "@/server-lib/errors";
-import { getAchievement } from "@/server-lib/game";
-import { AchievementView } from "@/services/appApi";
+import { eu4DaysToDate, getAchievement } from "@/server-lib/game";
 import { withCore } from "@/server-lib/middleware";
-import { DbRoute, table, toApiSave, withDb } from "@/server-lib/db";
+import { DbRoute, saveView, table, toApiSave, withDb } from "@/server-lib/db";
 import { sql, eq, asc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
@@ -36,18 +35,39 @@ const handler = async (
   const top = db.select({ id: saves.id }).from(saves).where(eq(saves.rn, 1));
 
   const result = await db
-    .select()
+    .select(
+      saveView({
+        save: {
+          scoreDays: table.saves.scoreDays,
+          days: table.saves.days,
+        },
+      }),
+    )
     .from(table.saves)
     .innerJoin(table.users, eq(table.users.userId, table.saves.userId))
     .where(inArray(table.saves.id, top))
     .orderBy(asc(table.saves.scoreDays), asc(table.saves.createdOn));
 
-  return NextResponse.json<AchievementView>({
+  const s = result.map(({ save: { scoreDays, days, ...save }, user }) => ({
+    ...user,
+    ...toApiSave(save),
+    days,
+    weighted_score: scoreDays
+      ? {
+          days: scoreDays,
+          date: eu4DaysToDate(scoreDays),
+        }
+      : null,
+  }));
+  return NextResponse.json({
     achievement: {
       ...achievement,
     },
-    saves: result.map((x) => toApiSave(x)),
+    saves: s,
   });
 };
+
+export type AchievementResponse =
+  Awaited<ReturnType<typeof handler>> extends NextResponse<infer T> ? T : never;
 
 export const GET = withCore(withDb(handler));
