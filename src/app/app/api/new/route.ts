@@ -5,7 +5,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const NewSchema = z.object({
-  pageSize: z.number().nullish(),
+  pageSize: z
+    .number()
+    .nullish()
+    .transform((x) => x ?? 50),
   cursor: z.string().nullish(),
 });
 
@@ -14,32 +17,31 @@ const handler = async (
   { dbConn, searchParams }: DbRoute & { searchParams: URLSearchParams },
 ) => {
   const params = NewSchema.parse(Object.fromEntries(searchParams.entries()));
-  let timestamp: Date | undefined = undefined;
   const db = await dbConn;
-  if (params.cursor) {
-    const row = await db
-      .select({ createdOn: table.saves.createdOn })
-      .from(table.saves)
-      .where(eq(table.saves.id, params.cursor));
-    timestamp = row[0]?.createdOn;
-  }
 
   let query = db
     .select()
     .from(table.saves)
-    .innerJoin(table.users, eq(table.users.userId, table.saves.userId))
-    .$dynamic();
+    .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
 
-  if (timestamp !== undefined) {
-    query = query.where(lt(table.saves.createdOn, timestamp));
-  }
+  let cursorQuery = params.cursor
+    ? query.where(
+        lt(
+          table.saves.createdOn,
+          db
+            .select({ createdOn: table.saves.createdOn })
+            .from(table.saves)
+            .where(eq(table.saves.id, params.cursor)),
+        ),
+      )
+    : query;
 
-  const pageSize = params.pageSize || 50;
-  const saves = await query
+  const saves = await cursorQuery
     .orderBy(desc(table.saves.createdOn))
-    .limit(pageSize);
+    .limit(params.pageSize);
   const result = saves.map(toApiSave);
-  const cursorRes = result.length < pageSize ? undefined : result.at(-1)?.id;
+  const cursorRes =
+    result.length < params.pageSize ? undefined : result.at(-1)?.id;
   return NextResponse.json({ saves: result, cursor: cursorRes });
 };
 
