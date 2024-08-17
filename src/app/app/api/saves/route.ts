@@ -18,7 +18,6 @@ import {
 } from "@/server-lib/models";
 import { deleteFile, uploadFileToS3 } from "@/server-lib/s3";
 import { parseSave } from "@/server-lib/save-parser";
-import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 async function fileUploadData(req: NextRequest) {
@@ -76,9 +75,6 @@ async function handler(
       throw new ValidationError(`unsupported patch: ${out.patch_shorthand}`);
     }
 
-    const db = await dbConn;
-    await uploadTask;
-
     const newSave: NewSave = {
       id: saveId,
       userId: session.uid,
@@ -102,7 +98,11 @@ async function handler(
       playthroughId: out.playthrough_id,
     };
 
-    await db.insert(table.saves).values(newSave);
+    const db = await dbConn;
+    await db.transaction(async (tx) => {
+      await tx.insert(table.saves).values(newSave);
+      await uploadTask;
+    })
 
     const response: SavePostResponse = {
       save_id: saveId,
