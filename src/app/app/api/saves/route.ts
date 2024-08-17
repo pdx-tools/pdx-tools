@@ -77,15 +77,6 @@ async function handler(
     }
 
     const db = await dbConn;
-    const existingSaves = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(table.saves)
-      .where(eq(table.saves.hash, out.hash));
-
-    if (existingSaves[0].count > 0) {
-      throw new ValidationError("save already exists");
-    }
-
     await uploadTask;
 
     const newSave: NewSave = {
@@ -123,6 +114,13 @@ async function handler(
       // If anything goes awry, delete the s3 file if it was uploaded
       await uploadTask.then(() => deleteFile(saveId));
     } finally {
+      // If we have a unique constraint violation, let's assume it is the
+      // idx_save_hash and throw a validation error.
+      // https://www.postgresql.org/docs/current/errcodes-appendix.html
+      if (ex && typeof ex === "object" && "code" in ex && ex.code === "23505") {
+        throw new ValidationError("save already exists");
+      }
+
       throw ex;
     }
   }
