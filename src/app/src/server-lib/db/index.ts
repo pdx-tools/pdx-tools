@@ -114,7 +114,11 @@ export async function useDb<T>(
 }
 
 type DbDrizzle = ReturnType<typeof drizzle>;
-export type DbRoute = { dbConn: Promise<ReturnType<typeof drizzle>> };
+export type DbConnection = ReturnType<typeof drizzle>;
+export type DbTransaction = Parameters<
+  Parameters<DbConnection["transaction"]>[0]
+>[0];
+export type DbRoute = { dbConn: Promise<DbConnection> };
 
 function createDbPool() {
   const pool = new Pool({ connectionString: process.env["DATABASE_URL"] });

@@ -1,74 +1,33 @@
-import { SessionRoute, withAuth } from "@/server-lib/auth/middleware";
-import {
-  DbRoute,
-  Save,
-  User,
-  table,
-  toApiSaveUser,
-  withDb,
-} from "@/server-lib/db";
+import { Session, SessionRoute, withAuth } from "@/server-lib/auth/middleware";
+import { DbRoute, table, toApiSaveUser, withDb } from "@/server-lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { deleteFile } from "@/server-lib/s3";
 import { z } from "zod";
-import { ValidationError } from "@/server-lib/errors";
+import {
+  AuthorizationError,
+  NotFoundError,
+  ValidationError,
+} from "@/server-lib/errors";
+import { withCore } from "@/server-lib/middleware";
 
 type SaveRouteParams = { params: { saveId: string } };
-type SaveRoute = { save: { save: Save; user: User } } & SaveRouteParams;
 
-function withSave<T = unknown, R = {}>(
-  fn: (
-    req: NextRequest,
-    context: R & SaveRoute & DbRoute,
-  ) => Promise<NextResponse<T> | Response>,
-) {
-  return async (
-    req: NextRequest,
-    ctxt: R & SaveRouteParams & DbRoute,
-  ): Promise<NextResponse<T> | Response> => {
-    const db = await ctxt.dbConn;
+export const GET = withCore(
+  withDb(async (_req, { dbConn, params }: SaveRouteParams & DbRoute) => {
+    const db = await dbConn;
     const saves = await db
       .select()
       .from(table.saves)
-      .where(eq(table.saves.id, ctxt.params.saveId))
+      .where(eq(table.saves.id, params.saveId))
       .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
-    const save = saves[0];
+
+    const save = saves.at(0);
     if (save === undefined) {
-      return NextResponse.json({ msg: "save does not exist" }, { status: 404 });
-    } else {
-      return fn(req, { ...ctxt, save: { save: save.saves, user: save.users } });
-    }
-  };
-}
-
-function withPrivilegedSave<T = unknown, R = {}>(
-  fn: (
-    req: NextRequest,
-    context: R & SessionRoute & SaveRoute & DbRoute,
-  ) => Promise<NextResponse<T> | Response>,
-) {
-  return async (
-    req: NextRequest,
-    ctxt: R & SessionRoute & SaveRoute & DbRoute,
-  ): Promise<NextResponse<T> | Response> => {
-    const { save, session } = ctxt;
-
-    // Since JWTs are tamperproof we check them instead of querying
-    // the DB if the user is an admin.
-    if (save.user.userId !== session.uid && session.account !== "admin") {
-      return NextResponse.json(
-        { msg: "forbidden from performing action" },
-        { status: 403 },
-      );
+      throw new NotFoundError("save");
     }
 
-    return fn(req, ctxt);
-  };
-}
-
-export const GET = withDb(
-  withSave(async (_req, { save }) => {
-    return NextResponse.json(toApiSaveUser(save.save, save.user));
+    return NextResponse.json(toApiSaveUser(save.saves, save.users));
   }),
 );
 
@@ -83,9 +42,21 @@ const PatchBody = z.object({
     .transform((x) => x ?? undefined),
 });
 
+function ensurePermissions(session: Session, db?: { userId: string }) {
+  if (db === undefined) {
+    throw new NotFoundError("save");
+  }
+
+  // Since JWTs are tamperproof we check them instead of querying
+  // the DB if the user is an admin.
+  if (db.userId !== session.uid && session.account !== "admin") {
+    throw new AuthorizationError();
+  }
+}
+
 async function patchHandler(
   req: NextRequest,
-  { save, dbConn }: SaveRoute & DbRoute,
+  { params, dbConn, session }: DbRoute & SessionRoute & SaveRouteParams,
 ) {
   const body = await req.json();
   const data = PatchBody.safeParse(body);
@@ -94,27 +65,35 @@ async function patchHandler(
   }
 
   const db = await dbConn;
-  await db
-    .update(table.saves)
-    .set(data.data)
-    .where(eq(table.saves.id, save.save.id));
+  await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(table.saves)
+      .set(data.data)
+      .where(eq(table.saves.id, params.saveId))
+      .returning({ userId: table.saves.userId });
+
+    ensurePermissions(session, rows.at(0));
+  });
+
   return new Response(null, { status: 204 });
 }
 
-export const PATCH = withAuth(
-  withDb(withSave(withPrivilegedSave(patchHandler))),
-);
+export const PATCH = withCore(withAuth(withDb(patchHandler)));
 
 async function deleteHandler(
   _req: NextRequest,
-  { save, dbConn }: SaveRoute & DbRoute,
+  { params, dbConn, session }: SessionRoute & DbRoute & SaveRouteParams,
 ) {
   const db = await dbConn;
-  await deleteFile(save.save.id);
-  await db.delete(table.saves).where(eq(table.saves.id, save.save.id));
+  await db.transaction(async (tx) => {
+    const saves = await tx
+      .delete(table.saves)
+      .where(eq(table.saves.id, params.saveId))
+      .returning({ userId: table.saves.userId });
+    ensurePermissions(session, saves.at(0));
+    await deleteFile(params.saveId);
+  });
   return new Response(null, { status: 204 });
 }
 
-export const DELETE = withAuth(
-  withDb(withSave(withPrivilegedSave(deleteHandler))),
-);
+export const DELETE = withCore(withAuth(withDb(deleteHandler)));
