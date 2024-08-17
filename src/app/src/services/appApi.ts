@@ -116,9 +116,9 @@ export const queryClient = new QueryClient({
   }),
   mutationCache: new MutationCache({
     onError(error, _variables, _context, _mutation) {
-      captureException(error)
-    }
-  })
+      captureException(error);
+    },
+  }),
 });
 
 export const pdxKeys = {

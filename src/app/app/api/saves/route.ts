@@ -102,7 +102,7 @@ async function handler(
     await db.transaction(async (tx) => {
       await tx.insert(table.saves).values(newSave);
       await uploadTask;
-    })
+    });
 
     const response: SavePostResponse = {
       save_id: saveId,

@@ -29,7 +29,7 @@ const handler = async (
     })
     .onConflictDoUpdate({
       target: table.users.steamId,
-      set: { steamName: sql.raw(`excluded.${table.users.steamName}`) },
+      set: { steamName: sql.raw(`excluded.${table.users.steamName.name}`) },
     })
     .returning();
 
