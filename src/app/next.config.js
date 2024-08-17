@@ -85,21 +85,13 @@ let nextConfig = {
   }),
 };
 
-if (process.env.SENTRY_DSN) {
-  nextConfig = withSentryConfig(
-    {
-      ...nextConfig,
-      sentry: {
-        widenClientFileUpload: true,
-        hideSourceMaps: true,
-        autoInstrumentAppDirectory: false,
-        autoInstrumentMiddleware: false,
-        autoInstrumentServerFunctions: false,
-        tunnelRoute: "/api/tunnel",
-      },
-    },
-    { silent: true, dryRun: process.env.PDX_RELEASE !== "1" }
-  );
-}
-
-module.exports = nextConfig;
+module.exports = withSentryConfig(nextConfig, {
+  widenClientFileUpload: true,
+  hideSourceMaps: true,
+  autoInstrumentAppDirectory: false,
+  autoInstrumentMiddleware: false,
+  autoInstrumentServerFunctions: false,
+  tunnelRoute: "/api/tunnel",
+  silent: true,
+  dryRun: process.env.PDX_RELEASE !== "1",
+});
