@@ -2,7 +2,7 @@ import { newSessionCookie } from "@/server-lib/auth/session";
 import { DbRoute, table, withDb } from "@/server-lib/db";
 import { getEnv } from "@/server-lib/env";
 import { ValidationError } from "@/server-lib/errors";
-import { eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { fetchOk, fetchOkJson } from "@/lib/fetch";
 import { genId } from "@/server-lib/id";
@@ -18,27 +18,24 @@ const handler = async (
   const steamName = await getPlayerName(steamUid);
 
   const db = await dbConn;
+
+  const genUserId = genId(12);
   const users = await db
-    .select({ userId: table.users.userId, account: table.users.account })
-    .from(table.users)
-    .where(eq(table.users.steamId, steamUid));
-  let user = users.at(0);
+    .insert(table.users)
+    .values({
+      userId: genUserId,
+      steamId: steamUid,
+      steamName: steamName,
+    })
+    .onConflictDoUpdate({
+      target: table.users.steamId,
+      set: { steamName: sql.raw(`excluded.${table.users.steamName}`) },
+    })
+    .returning();
 
-  const userId = user?.userId ?? genId(12);
-  if (!user) {
-    const [newUser] = await db
-      .insert(table.users)
-      .values({
-        userId,
-        steamId: steamUid,
-        steamName: steamName,
-      })
-      .returning();
-    user = check(newUser, "new user is not null");
-  }
-
+  const user = check(users.at(0), "expected user");
   const cookie = await newSessionCookie({
-    userId,
+    userId: user.userId,
     steamId: steamUid,
     account: user?.account ?? "free",
   });
