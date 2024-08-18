@@ -14,13 +14,13 @@ export async function fetchOkJson<T = any>(
   return fetchOk(...args).then((x) => x.json());
 }
 
-export async function sendJson<T = unknown>(
+export async function sendJson(
   url: Parameters<typeof fetch>[0],
   options: Omit<RequestInit, "body"> & {
     body: Parameters<typeof JSON.stringify>[0];
   },
-): Promise<T> {
-  return fetchOkJson<T>(url, {
+) {
+  return fetchOk(url, {
     ...options,
     method: options.method ?? "POST",
     body: JSON.stringify(options.body),
@@ -29,4 +29,13 @@ export async function sendJson<T = unknown>(
       ...options.headers,
     },
   });
+}
+
+export async function sendJsonAs<T>(
+  url: Parameters<typeof fetch>[0],
+  options: Omit<RequestInit, "body"> & {
+    body: Parameters<typeof JSON.stringify>[0];
+  },
+): Promise<T> {
+  return sendJson(url, options).then((x) => x.json());
 }

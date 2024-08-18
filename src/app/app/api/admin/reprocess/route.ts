@@ -24,7 +24,7 @@ const handler = async (req: NextRequest, { dbConn }: DbRoute) => {
       .where(eq(table.saves.id, save.saveId));
   }
 
-  return NextResponse.json({ msg: "done" });
+  return NextResponse.json(null, { status: 204 });
 };
 
 export const POST = withCore(withAdmin(withDb(handler)));

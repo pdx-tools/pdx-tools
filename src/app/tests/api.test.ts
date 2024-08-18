@@ -4,7 +4,7 @@ import { NewKeyResponse, ProfileResponse } from "@/services/appApi";
 import { dbDisconnect, table, useDb } from "@/server-lib/db";
 import { parseSave } from "@/server-lib/save-parser";
 import { SavePostResponse } from "@/server-lib/models";
-import { fetchOk, fetchOkJson, sendJson } from "@/lib/fetch";
+import { fetchOk, fetchOkJson, sendJsonAs } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import type { AchievementResponse } from "app/api/achievements/[achievementId]/route";
 import { UserResponse } from "app/api/users/[userId]/route";
@@ -119,7 +119,7 @@ class HttpClient {
   }
 
   public async post<T>(path: string, data?: any): Promise<T> {
-    return await sendJson<T>(pdxUrl(path), {
+    return await sendJsonAs<T>(pdxUrl(path), {
       body: data ? JSON.stringify(data) : data,
       headers: {
         Cookie: this.cookies,
