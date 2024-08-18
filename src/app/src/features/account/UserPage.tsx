@@ -3,7 +3,7 @@ import { UserSaveTable } from "./UserSaveTable";
 import { TimeAgo } from "../../components/TimeAgo";
 import { pdxApi, sessionSelect } from "../../services/appApi";
 import Head from "next/head";
-import { Alert } from "@/components/Alert";
+import { useToastOnError } from "@/hooks/useToastOnError";
 
 interface UserRouteProps {
   userId: string;
@@ -12,15 +12,9 @@ interface UserRouteProps {
 export const UserPage = ({ userId }: UserRouteProps) => {
   const userQuery = pdxApi.user.useGet(userId);
   const session = pdxApi.session.useCurrent();
-  if (userQuery.error) {
-    return <Alert.Error className="px-4 py-2" msg={userQuery.error} />;
-  }
+  useToastOnError(userQuery.error, "User data refresh failed");
 
   const user = userQuery.data;
-  if (user == null || user.user_info == null) {
-    return null;
-  }
-
   const isPrivileged = sessionSelect.isPrivileged(session, {
     user_id: user.user_info.user_id,
   });

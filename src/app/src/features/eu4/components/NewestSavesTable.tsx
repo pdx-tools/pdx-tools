@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { TimeAgo } from "@/components/TimeAgo";
-import { Button } from "@/components/Button";
 import { difficultyText, difficultySort } from "@/lib/difficulty";
 import { pdxApi } from "@/services/appApi";
 import { Flag } from "@/features/eu4/components/avatars";
@@ -8,9 +7,10 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { Link } from "@/components/Link";
-import { Alert } from "@/components/Alert";
 import { AchievementsCell } from "./AchievementsCell";
 import { NewestSaveResponse } from "app/api/new/route";
+import { useToastOnError } from "@/hooks/useToastOnError";
+import { LoadingIcon } from "@/components/icons/LoadingIcon";
 
 type SaveFile = NewestSaveResponse["saves"][number];
 const columnHelper = createColumnHelper<SaveFile>();
@@ -97,6 +97,7 @@ export const NewestSavesTable = () => {
   const { data, isFetching, hasNextPage, fetchNextPage, error } =
     pdxApi.saves.useNewest();
 
+  useToastOnError(error, "Failed to fetch latest saves");
   const saves = useMemo(() => data?.pages.flatMap((x) => x.saves), [data]);
 
   const endRef = useRef<HTMLDivElement>(null);
@@ -120,7 +121,11 @@ export const NewestSavesTable = () => {
       (ent) => {
         // When isFetching changes, we want the effect to rerun to trigger
         // another intersection.
-        if (ent[0].isIntersecting && hasNextPageRef.current && !isFetching) {
+        if (isFetching || error) {
+          return;
+        }
+
+        if (ent[0].isIntersecting && hasNextPageRef.current) {
           fetchNextPageRef.current();
         }
       },
@@ -134,13 +139,17 @@ export const NewestSavesTable = () => {
     return () => {
       observer.disconnect();
     };
-  }, [isFetching]);
+  }, [isFetching, error]);
 
   return (
     <div className="flex flex-col space-y-4">
-      <Alert.Error className="px-4 py-2" msg={error} />
-      <DataTable columns={columns} data={saves ?? []} />
+      <DataTable columns={columns} data={saves} />
       <div ref={endRef} />
+      {isFetching ? (
+        <div className="m-8 flex justify-center">
+          <LoadingIcon className="h-8 w-8" />
+        </div>
+      ) : null}
     </div>
   );
 };

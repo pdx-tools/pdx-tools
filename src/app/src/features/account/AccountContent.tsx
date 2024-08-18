@@ -2,10 +2,12 @@ import { Alert } from "@/components/Alert";
 import { pdxApi, sessionSelect } from "@/services/appApi";
 import { Button } from "@/components/Button";
 import React, { useState } from "react";
+import { toast } from "sonner";
+import { LoadingIcon } from "@/components/icons/LoadingIcon";
 
 export const AccountContent = () => {
   const [key, setKey] = useState<string | undefined>();
-  const newKey = pdxApi.apiKey.useGenerateKey(setKey);
+  const newKey = pdxApi.apiKey.useGenerateKey();
   const session = pdxApi.session.useCurrent();
   const rebalance = pdxApi.saves.useRebalance();
   const reprocess = pdxApi.saves.useReprocess();
@@ -24,7 +26,22 @@ export const AccountContent = () => {
           Generate a new API key for 3rd party apps. Previous API key is
           overwritten
         </p>
-        <Button className="mt-2" onClick={() => newKey.mutate()}>
+        <Button
+          className="mt-2"
+          onClick={() =>
+            newKey.mutate(undefined, {
+              onSuccess: (data) => setKey(data.api_key),
+              onError: (e) =>
+                toast.error("Failed to generate API key", {
+                  description: e.message,
+                  duration: 5000,
+                }),
+            })
+          }
+        >
+          {newKey.isPending ? (
+            <LoadingIcon className="h-4 w-4 text-gray-800" />
+          ) : null}{" "}
           Generate
         </Button>
       </div>
@@ -32,10 +49,16 @@ export const AccountContent = () => {
         <div className="flex flex-col w-60">
           <Button
             variant="primary"
+            disabled={rebalance.isPending}
             onClick={() =>
               rebalance.mutate(undefined, {
-                onSuccess: () => alert("success"),
-                onError: () => alert("failure"),
+                onSuccess: () => toast.success("Rebalanced successfully"),
+                onError: (e) =>
+                  toast.success("Rebalanced failed", {
+                    description: e.message,
+                    duration: Infinity,
+                    closeButton: true,
+                  }),
               })
             }
           >
@@ -48,14 +71,20 @@ export const AccountContent = () => {
                 className="absolute opacity-0"
                 type="file"
                 accept=".json"
+                disabled={reprocess.isPending}
                 onChange={async (e) => {
                   if (e.currentTarget.files && e.currentTarget.files[0]) {
                     const target = e.currentTarget;
                     const file = e.currentTarget.files[0];
                     let data = JSON.parse(await file.text());
                     reprocess.mutate(data, {
-                      onSuccess: () => alert("success"),
-                      onError: () => alert("failure"),
+                      onSuccess: () => toast.success("Reprocess successfully"),
+                      onError: (e) =>
+                        toast.success("Reprocess failed", {
+                          description: e.message,
+                          duration: Infinity,
+                          closeButton: true,
+                        }),
                     });
                     target.value = "";
                   }

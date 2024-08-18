@@ -1,53 +1,60 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { RecordTable } from "./components/RecordTable";
-import { Achievement, pdxApi } from "@/services/appApi";
-import { Alert } from "@/components/Alert";
+import { pdxApi } from "@/services/appApi";
+import { AchievementAvatar } from "./components/avatars";
+import { useToastOnError } from "@/hooks/useToastOnError";
 
 interface AchievementRoute {
   achievementId: string;
-  staticAchievement?: Achievement;
 }
 
-export type RankedSave = ReturnType<typeof useAchievement>["saves"][number];
-
-const useAchievement = (achievementId: string) => {
-  const achievementQuery = pdxApi.achievement.useGet(achievementId);
-  const achievement = achievementQuery.data?.achievement;
-  const saves = useMemo(
-    () =>
-      (achievementQuery.data?.saves ?? []).map((x, i) => ({
-        ...x,
-        rank: i + 1,
-      })),
-    [achievementQuery.data],
+export const AchievementLayout = ({
+  achievementId,
+  title,
+  description,
+  children,
+}: React.PropsWithChildren<{
+  achievementId: string;
+  title: string;
+  description: string;
+}>) => {
+  return (
+    <div className="mx-auto max-w-7xl p-5 mt-8">
+      <div className="flex gap-3">
+        <AchievementAvatar id={achievementId} size={40} />
+        <h1 className="text-4xl">{title} Leaderboard</h1>
+        <p className="text-2xl self-end tracking-tighter text-gray-400">
+          (id: {achievementId})
+        </p>
+      </div>
+      <div className="mt-3 max-w-prose leading-snug">
+        <p className="text-gray-600 dark:text-gray-300">{description}</p>
+      </div>
+      <div className="mt-2 max-w-prose leading-snug">
+        <p className="text-gray-600 dark:text-gray-300">
+          Achievement leaderboards score saves based on the number of elapsed in
+          game days, taxed 10% per patch behind the latest EU4 minor version
+        </p>
+      </div>
+      {children}
+    </div>
   );
-
-  return {
-    isFetching: achievementQuery.isFetching,
-    error: achievementQuery.error,
-    achievement,
-    saves,
-  };
 };
 
-export const AchievementPage = ({
-  achievementId,
-  staticAchievement,
-}: AchievementRoute) => {
-  const { achievement, saves, error } = useAchievement(achievementId);
-
-  const title = achievement?.name ?? staticAchievement?.name ?? "";
-  const table = saves === undefined ? null : <RecordTable records={saves} />;
-  const description =
-    achievement?.description ?? staticAchievement?.description ?? "";
+export const AchievementPage = ({ achievementId }: AchievementRoute) => {
+  const achievementQuery = pdxApi.achievement.useGet(achievementId);
+  useToastOnError(achievementQuery.error, "Achievement data refresh failed");
+  const achievement = achievementQuery.data.achievement;
 
   return (
-    <div className="mx-auto max-w-7xl p-5">
-      <h1 className="text-4xl">{title}</h1>
-      <p>Achievement id: {achievementId}</p>
-      <p>{description}</p>
-      <Alert.Error className="px-4 py-2" msg={error} />
-      <div className="mt-5">{table}</div>
-    </div>
+    <AchievementLayout
+      achievementId={`${achievement.id}`}
+      description={achievement.description}
+      title={achievement.name}
+    >
+      <div className="mt-10">
+        <RecordTable records={achievementQuery.data.saves} />
+      </div>
+    </AchievementLayout>
   );
 };

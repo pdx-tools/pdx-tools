@@ -1,9 +1,14 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { NewestSavesTable } from "./components/NewestSavesTable";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { Link } from "@/components/Link";
 import { useRouter } from "next/router";
+import { LoadingIcon } from "@/components/icons/LoadingIcon";
+import { ErrorBoundary } from "@sentry/nextjs";
+import { Alert } from "@/components/Alert";
+import { Csr } from "@/components/Csr";
+import { LoadingState } from "@/components/LoadingState";
 
 const saves = [
   ["1.29", "/eu4/saves/10loz22jqw1l"],
@@ -54,7 +59,22 @@ export const Eu4GamePage = () => {
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <NewestSavesTable />
+        <Suspense fallback={<LoadingState />}>
+          <ErrorBoundary
+            fallback={({ error }) => (
+              <div className="m-8">
+                <Alert.Error
+                  className="px-4 py-2"
+                  msg={`Failed to fetch latest saves: ${error}`}
+                />
+              </div>
+            )}
+          >
+            <Csr>
+              <NewestSavesTable />
+            </Csr>
+          </ErrorBoundary>
+        </Suspense>
       </div>
     </div>
   );

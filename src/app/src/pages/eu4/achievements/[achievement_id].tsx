@@ -1,23 +1,53 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { useRouter } from "next/router";
 import { HtmlHead } from "@/components/head";
 import { Root, WebPage } from "@/components/layout";
-import { AchievementPage } from "@/features/eu4/AchievementPage";
+import {
+  AchievementLayout,
+  AchievementPage,
+} from "@/features/eu4/AchievementPage";
 import { Achievement } from "@/services/appApi";
 import { GetStaticProps } from "next";
 import { getAchievement, loadAchievements } from "@/server-lib/game";
+import { Alert } from "@/components/Alert";
+import { ErrorBoundary } from "@sentry/nextjs";
+import { LoadingIcon } from "@/components/icons/LoadingIcon";
+import { Csr } from "@/components/Csr";
 
 interface StaticAchievement {
   achievement?: Achievement;
 }
 
+function AchievementFallback({
+  children,
+  achievement,
+}: React.PropsWithChildren<{ achievement?: Achievement }>) {
+  return achievement ? (
+    <AchievementLayout
+      achievementId={`${achievement.id}`}
+      description={achievement.description}
+      title={achievement.name}
+    >
+      {children}
+    </AchievementLayout>
+  ) : (
+    <>{children}</>
+  );
+}
+
 export const Eu4Achievement = ({ achievement }: StaticAchievement) => {
   const router = useRouter();
   const { achievement_id } = router.query;
+
+  if (typeof achievement_id !== "string" || Array.isArray(achievement_id)) {
+    return null;
+  }
+
   const prefix = achievement
     ? `${achievement.name} (${achievement.id}) - `
     : "";
   const title = `${prefix}EU4 Achievements - PDX Tools`;
+
   return (
     <Root>
       <HtmlHead>
@@ -30,15 +60,32 @@ export const Eu4Achievement = ({ achievement }: StaticAchievement) => {
         ></meta>
       </HtmlHead>
       <WebPage>
-        {achievement !== undefined ? (
-          <AchievementPage
-            achievementId={achievement.id.toString()}
-            staticAchievement={achievement}
-          />
-        ) : typeof achievement_id === "string" &&
-          !Array.isArray(achievement_id) ? (
-          <AchievementPage achievementId={achievement_id} />
-        ) : null}
+        <Suspense
+          fallback={
+            <AchievementFallback achievement={achievement}>
+              <div className="m-8 flex justify-center">
+                <LoadingIcon className="h-8 w-8" />
+              </div>
+            </AchievementFallback>
+          }
+        >
+          <ErrorBoundary
+            fallback={({ error }) => (
+              <AchievementFallback achievement={achievement}>
+                <div className="m-8">
+                  <Alert.Error
+                    className="px-4 py-2"
+                    msg={`Failed to fetch leaderboard: ${error}`}
+                  />
+                </div>
+              </AchievementFallback>
+            )}
+          >
+            <Csr>
+              <AchievementPage achievementId={achievement_id} />
+            </Csr>
+          </ErrorBoundary>
+        </Suspense>
       </WebPage>
     </Root>
   );

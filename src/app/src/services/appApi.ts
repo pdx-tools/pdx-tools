@@ -8,6 +8,8 @@ import {
   useInfiniteQuery,
   useMutation,
   useQuery,
+  useSuspenseInfiniteQuery,
+  useSuspenseQuery,
 } from "@tanstack/react-query";
 import type { Achievement, Difficulty } from "@/server-lib/wasm/wasm_app";
 import { Eu4Worker } from "@/features/eu4/worker";
@@ -121,19 +123,22 @@ export const pdxKeys = {
 export const pdxApi = {
   achievement: {
     useGet: (id: string) =>
-      useQuery({
+      useSuspenseQuery({
         queryKey: pdxKeys.achievement(id),
         queryFn: () =>
           fetchOkJson<AchievementResponse>(`/api/achievements/${id}`),
+        select: (data) => ({
+          ...data,
+          saves: data.saves.map((x, i) => ({ ...x, rank: i + 1 })),
+        }),
       }),
   },
 
   apiKey: {
-    useGenerateKey: (onSuccess: (key: string) => void) =>
+    useGenerateKey: () =>
       useMutation({
         mutationFn: () =>
           fetchOkJson<NewKeyResponse>(`/api/key`, { method: "POST" }),
-        onSuccess: (data) => onSuccess(data.api_key),
       }),
   },
 
@@ -168,7 +173,7 @@ export const pdxApi = {
 
   saves: {
     useNewest: () =>
-      useInfiniteQuery({
+      useSuspenseInfiniteQuery({
         queryKey: pdxKeys.newSaves(),
         queryFn: ({ pageParam }) =>
           fetchOkJson<NewestSaveResponse>(
@@ -325,7 +330,7 @@ export const pdxApi = {
 
   user: {
     useGet: (userId: string) =>
-      useQuery({
+      useSuspenseQuery({
         queryKey: pdxKeys.user(userId),
         queryFn: () => fetchOkJson<UserResponse>(`/api/users/${userId}`),
       }),

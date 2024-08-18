@@ -3,6 +3,7 @@ import { pdxApi } from "@/services/appApi";
 import { Button, type ButtonProps } from "@/components/Button";
 import { Dialog } from "@/components/Dialog";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
+import { toast } from "sonner";
 
 interface DeleteSaveProps extends ButtonProps {
   saveId: string;
@@ -34,7 +35,17 @@ export const DeleteSave = ({ saveId, ...rest }: DeleteSaveProps) => {
             variant="danger"
             onClick={() =>
               saveDeletion.mutate(saveId, {
-                onSuccess: () => setOpen(false),
+                onSuccess: () => {
+                  setOpen(false);
+                  toast.success("Save deleted", {
+                    duration: 1000,
+                  });
+                },
+                onError: (e) =>
+                  toast.error("Failed to delete", {
+                    description: e.message,
+                    duration: 5000,
+                  }),
               })
             }
           >

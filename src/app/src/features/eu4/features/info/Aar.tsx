@@ -4,6 +4,8 @@ import { pdxApi } from "@/services/appApi";
 import { Button } from "@/components/Button";
 import { cx } from "class-variance-authority";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
+import { check } from "@/lib/isPresent";
+import { toast } from "sonner";
 
 interface AarProps {
   defaultValue?: string;
@@ -22,11 +24,23 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
       ev.preventDefault();
       const values = Object.fromEntries(new FormData(ev.currentTarget));
       setIsEditing(false);
-      const id = serverFile?.id;
-      if (id === undefined) {
-        throw new Error("server file id can't be undefined");
-      }
-      patchSave.mutate({ id, aar: values.aar as string });
+      const id = check(serverFile?.id, "server file id can't be undefined");
+      patchSave.mutate(
+        { id, aar: values.aar as string },
+        {
+          onSuccess: () => {
+            toast.success("AAR updated", {
+              duration: 1000,
+            });
+          },
+          onError: (e) =>
+            toast.error("Failed to update AAR", {
+              description: e.message,
+              duration: Infinity,
+              closeButton: true,
+            }),
+        },
+      );
     },
     [serverFile, patchSave],
   );
