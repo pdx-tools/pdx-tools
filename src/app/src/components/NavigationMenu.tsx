@@ -16,7 +16,6 @@ const NavigationMenuRoot = React.forwardRef<
       {...props}
     >
       {children}
-      <NavigationMenuViewport />
     </NavigationMenuPrimitive.Root>
   );
 });
@@ -129,12 +128,9 @@ const NavigationMenuViewport = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Viewport>
 >(function NavigationMenuViewport({ className, ...props }, ref) {
   return (
-    <div className={cx("absolute top-full flex justify-center")}>
+    <div className={cx("absolute top-full flex justify-center", className)}>
       <NavigationMenuPrimitive.Viewport
-        className={cx(
-          "bg-popover text-popover-foreground relative mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full overflow-hidden rounded-md border shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-90 md:w-[var(--radix-navigation-menu-viewport-width)]",
-          className,
-        )}
+        className="bg-popover text-popover-foreground relative mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full overflow-hidden rounded-md border shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-90 md:w-[var(--radix-navigation-menu-viewport-width)]"
         ref={ref}
         {...props}
       />

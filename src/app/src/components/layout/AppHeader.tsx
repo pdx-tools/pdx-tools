@@ -87,6 +87,7 @@ const HeaderMenu = () => {
             </NavigationMenu.Content>
           </NavigationMenu.Item>
         </NavigationMenu.List>
+        <NavigationMenu.Viewport />
       </NavigationMenu>
 
       <div className="flex grow justify-end self-center text-end items-center gap-6">
@@ -148,6 +149,7 @@ const HeaderMenu = () => {
                 </NavigationMenu.Content>
               </NavigationMenu.Item>
             </NavigationMenu.List>
+            <NavigationMenu.Viewport className="right-0" />
           </NavigationMenu>
         )}
       </div>
