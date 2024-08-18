@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { NewestSavesTable } from "./components/NewestSavesTable";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { Link } from "@/components/Link";
+import { useRouter } from "next/router";
 
 const saves = [
   ["1.29", "/eu4/saves/10loz22jqw1l"],
@@ -17,27 +18,25 @@ const saves = [
 ] as const;
 
 export const Eu4GamePage = () => {
+  // If someone landed on this page from google, show the "analyze save" button.
+  const router = useRouter();
+  const isReady = useRef(router.isReady);
+
   return (
-    <div className="mx-auto max-w-7xl space-y-5 p-5">
-      <h1 className="text-4xl">Latest EU4 Saves</h1>
-      <div className="flex flex-col gap-2">
+    <div className="mx-auto max-w-7xl flex flex-col gap-12 p-5">
+      <div className="flex flex-col md:flex-row gap-8">
+        <h1 className="text-4xl">Latest EU4 Saves</h1>
         <div className="flex items-center gap-2">
-          <Button
-            asChild
-            className="hover:bg-slate-200 active:bg-slate-300 dark:hover:bg-slate-600"
-          >
-            <Link variant="ghost" href="/">
-              Analyze EU4 Saves
-            </Link>
-          </Button>
-          <Button
-            asChild
-            className="hover:bg-slate-200 active:bg-slate-300 dark:hover:bg-slate-600"
-          >
-            <Link variant="ghost" href="/eu4/achievements">
-              Available Achievements
-            </Link>
-          </Button>
+          {!isReady.current ? (
+            <Button
+              asChild
+              className="hover:bg-slate-200 active:bg-slate-300 dark:hover:bg-slate-600"
+            >
+              <Link variant="ghost" href="/">
+                Analyze EU4 Saves
+              </Link>
+            </Button>
+          ) : null}
           <DropdownMenu>
             <DropdownMenu.Trigger asChild>
               <Button>1444 saves</Button>
@@ -53,6 +52,8 @@ export const Eu4GamePage = () => {
             </DropdownMenu.Content>
           </DropdownMenu>
         </div>
+      </div>
+      <div className="flex flex-col gap-2">
         <NewestSavesTable />
       </div>
     </div>

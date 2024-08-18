@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { TimeAgo } from "@/components/TimeAgo";
 import { Button } from "@/components/Button";
 import { difficultyText, difficultySort } from "@/lib/difficulty";
@@ -98,17 +98,49 @@ export const NewestSavesTable = () => {
     pdxApi.saves.useNewest();
 
   const saves = useMemo(() => data?.pages.flatMap((x) => x.saves), [data]);
+
+  const endRef = useRef<HTMLDivElement>(null);
+  const hasNextPageRef = useRef(hasNextPage);
+  useEffect(() => {
+    hasNextPageRef.current = hasNextPage;
+  }, [hasNextPage]);
+
+  const fetchNextPageRef = useRef(fetchNextPage);
+  useEffect(() => {
+    fetchNextPageRef.current = fetchNextPage;
+  }, [fetchNextPage]);
+
+  useEffect(() => {
+    const elem = endRef.current;
+    if (!elem) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (ent) => {
+        // When isFetching changes, we want the effect to rerun to trigger
+        // another intersection.
+        if (ent[0].isIntersecting && hasNextPageRef.current && !isFetching) {
+          fetchNextPageRef.current();
+        }
+      },
+      {
+        rootMargin: "100px",
+        threshold: 0,
+      },
+    );
+
+    observer.observe(elem);
+    return () => {
+      observer.disconnect();
+    };
+  }, [isFetching]);
+
   return (
     <div className="flex flex-col space-y-4">
       <Alert.Error className="px-4 py-2" msg={error} />
       <DataTable columns={columns} data={saves ?? []} />
-      <Button
-        className="self-center"
-        disabled={!hasNextPage || isFetching}
-        onClick={() => fetchNextPage()}
-      >
-        Load more
-      </Button>
+      <div ref={endRef} />
     </div>
   );
 };
