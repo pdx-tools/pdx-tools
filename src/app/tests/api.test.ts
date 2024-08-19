@@ -426,7 +426,7 @@ test("admin rebalance", async () => {
     "/api/achievements/18",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);
-  expect(achievementLeaderboard.saves[0].patch).toBe("1.29.6.0");
+  expect(achievementLeaderboard.saves[0].patch).toBe("1.29");
   expect(achievementLeaderboard.saves[0].days).toBe(30527);
   expect(achievementLeaderboard.saves[0].weighted_score?.days).toBe(683804);
 });
