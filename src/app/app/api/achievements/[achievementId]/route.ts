@@ -2,7 +2,7 @@ import { ValidationError } from "@/server-lib/errors";
 import { eu4DaysToDate, getAchievement } from "@/server-lib/game";
 import { withCore } from "@/server-lib/middleware";
 import { DbRoute, saveView, table, toApiSave, withDb } from "@/server-lib/db";
-import { sql, eq, asc, inArray } from "drizzle-orm";
+import { sql, eq, asc, inArray, and, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -28,7 +28,12 @@ const handler = async (
       ),
     })
     .from(table.saves)
-    .where(sql`${table.saves.achieveIds} @> Array[${[achieveId]}]::int[]`)
+    .where(
+      and(
+        sql`${table.saves.achieveIds} @> Array[${[achieveId]}]::int[]`,
+        isNotNull(table.saves.scoreDays),
+      ),
+    )
     .as("ranked");
 
   // best save in a given playthrough
@@ -40,6 +45,7 @@ const handler = async (
         save: {
           scoreDays: table.saves.scoreDays,
           days: table.saves.days,
+          patch: sql<string>`CONCAT(${table.saves.saveVersionFirst}, '.', ${table.saves.saveVersionSecond})`,
         },
       }),
     )
@@ -48,22 +54,27 @@ const handler = async (
     .where(inArray(table.saves.id, top))
     .orderBy(asc(table.saves.scoreDays), asc(table.saves.createdOn));
 
-  const s = result.map(({ save: { scoreDays, days, ...save }, user }) => ({
-    ...user,
-    ...toApiSave(save),
-    days,
-    weighted_score: scoreDays
-      ? {
-          days: scoreDays,
-          date: eu4DaysToDate(scoreDays),
-        }
-      : null,
-  }));
+  const leaderboard = result.map(
+    ({ save: { scoreDays, days, ...save }, user }) => ({
+      ...user,
+      ...toApiSave(save),
+      days,
+      weighted_score: {
+        days: scoreDays as number,
+        date: eu4DaysToDate(scoreDays as number),
+      },
+    }),
+  );
+
+  const gold = leaderboard.at(0);
+  const goldDate = gold ? eu4DaysToDate(gold.weighted_score.days) : undefined;
+
   return NextResponse.json({
     achievement: {
       ...achievement,
     },
-    saves: s,
+    goldDate,
+    saves: leaderboard,
   });
 };
 

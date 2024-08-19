@@ -35,20 +35,16 @@ export const difficultyNum = (
   }
 };
 
-export const difficultyColor = (diff: AchievementDifficulty): string => {
+export const difficultyColor = (diff: GameDifficulty): string | undefined => {
   switch (diff) {
-    case "VeryEasy":
-      return "bg-indigo-200";
     case "Easy":
-      return "bg-blue-200";
-    case "Medium":
-      return "bg-green-100";
+    case "VeryEasy":
+      return "text-emerald-500";
     case "Hard":
-      return "bg-yellow-100";
     case "VeryHard":
-      return "bg-orange-100";
-    case "Insane":
-      return "bg-red-100";
+      return "text-rose-500";
+    default:
+      return undefined;
   }
 };
 

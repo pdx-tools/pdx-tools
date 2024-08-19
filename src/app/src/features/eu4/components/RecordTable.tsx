@@ -18,11 +18,13 @@ type AchievementData =
   > extends UseSuspenseQueryResult<infer T>
     ? T
     : never;
+
+export type RankedSave = AchievementData["saves"][number];
 interface RecordTableProps {
-  records: AchievementData["saves"];
+  records: RankedSave[];
 }
 
-const columnHelper = createColumnHelper<AchievementData["saves"][number]>();
+const columnHelper = createColumnHelper<RankedSave>();
 
 const columns = [
   columnHelper.accessor("rank", {
