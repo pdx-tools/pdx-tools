@@ -8,8 +8,8 @@ use eu4game::{
 use eu4save::{
     eu4_start_date,
     models::{
-        Country, CountryEvent, CountryTechnology, Leader, Province, ProvinceEvent,
-        ProvinceEventValue, WarEvent, WarHistory,
+        Country, CountryEvent, CountryTechnology, Province, ProvinceEvent, ProvinceEventValue,
+        WarEvent, WarHistory,
     },
     query::{LedgerPoint, NationEventKind, NationEvents, Query},
     CountryTag, Encoding, Eu4Date, PdsDate, ProvinceId, TagResolver,
@@ -932,22 +932,32 @@ impl SaveFileImpl {
             inflation: f32,
 
             // army
-            best_general: Option<Leader>,
+            armed_forces: CountryArmedForces,
             army_tradition: f32,
-            manpower_balance: f32,
-            standard_regiments: usize,
-            professionalism: f32,
-
-            // navy
-            best_admiral: Option<Leader>,
             navy_tradition: f32,
-            ships: usize,
+            professionalism: f32,
 
             // other
             stability: f32,
             technology: CountryTechnology,
             ideas: i32,
             corruption: f32,
+        }
+
+        impl CountryHealthDatum {
+            fn force_strength(&self) -> f32 {
+                self.armed_forces.infantry_units.strength
+                    + self.armed_forces.cavalry_units.strength
+                    + self.armed_forces.artillery_units.strength
+                    + self.armed_forces.mercenary_units.strength
+            }
+
+            fn ships(&self) -> usize {
+                self.armed_forces.heavy_ship_units
+                    + self.armed_forces.light_ship_units
+                    + self.armed_forces.galley_units
+                    + self.armed_forces.transport_units
+            }
         }
 
         let sgq = SaveGameQuery::new(&self.query, &self.game);
@@ -976,18 +986,7 @@ impl SaveFileImpl {
                     .map(|x| x.buildings.len())
                     .sum::<usize>();
 
-                let (best_general, best_admiral) = country_details::country_best_leaders(country);
-                let ships = country.navies.iter().flat_map(|x| x.ships.iter()).count();
-
-                let (regiment_count, regiment_strength) = country
-                    .armies
-                    .iter()
-                    .flat_map(|x| x.regiments.iter())
-                    .fold((0, 0.), |(count, strength), reg| {
-                        (count + 1, reg.strength + strength)
-                    });
-                let manpower_deficiet = (regiment_count as f32) - regiment_strength;
-                let manpower_balance = (country.manpower - manpower_deficiet) * 1000.0;
+                let armed_forces = self.armed_forces(country);
 
                 let ideas = country
                     .active_idea_groups
@@ -1003,18 +1002,14 @@ impl SaveFileImpl {
                     development: country.development,
                     buildings,
                     inflation: country.inflation,
-                    best_general: best_general.cloned(),
-                    army_tradition: country.army_tradition,
-                    manpower_balance,
-                    standard_regiments: regiment_count,
-                    professionalism: country.army_professionalism,
-                    best_admiral: best_admiral.cloned(),
-                    navy_tradition: country.navy_tradition,
-                    ships,
+                    armed_forces,
                     stability: country.stability,
                     technology: country.technology.clone(),
                     ideas,
                     corruption: country.corruption,
+                    army_tradition: country.army_tradition,
+                    navy_tradition: country.navy_tradition,
+                    professionalism: country.army_professionalism,
                 }
             })
             .collect();
@@ -1035,31 +1030,36 @@ impl SaveFileImpl {
 
         let best_general = countries
             .iter()
-            .filter_map(|x| x.best_general.as_ref())
+            .filter_map(|x| x.armed_forces.best_general.as_ref())
             .map(|x| x.fire + x.shock + x.maneuver + x.siege)
             .fold(10, u16::max) as f32;
 
         let max_manpower_balance = countries
             .iter()
-            .map(|x| x.manpower_balance)
+            .map(|x| x.armed_forces.net_manpower)
             .fold(0., f32::max);
 
         let min_manpower_balance = countries
             .iter()
-            .map(|x| x.manpower_balance)
+            .map(|x| x.armed_forces.net_manpower)
             .fold(0., f32::min);
 
-        let max_standard_regiments = countries
+        let max_force_strength = countries
             .iter()
-            .map(|x| x.standard_regiments)
-            .fold(0, usize::max);
+            .map(|x| x.force_strength())
+            .fold(0., f32::max);
+
+        let max_max_manpower = countries
+            .iter()
+            .map(|x| x.armed_forces.max_manpower)
+            .fold(0., f32::max);
 
         let best_admiral = countries
             .iter()
-            .filter_map(|x| x.best_admiral.as_ref())
+            .filter_map(|x| x.armed_forces.best_general.as_ref())
             .map(|x| x.fire + x.shock + x.maneuver)
             .fold(10, u16::max) as f32;
-        let max_ships = countries.iter().map(|x| x.ships).fold(0, usize::max);
+        let max_ships = countries.iter().map(|x| x.ships()).fold(0, usize::max);
 
         let max_tech = countries
             .iter()
@@ -1082,17 +1082,19 @@ impl SaveFileImpl {
                     blue_min - (country.treasury_balance * blue_min / min_treasury_balance)
                 };
 
-                let manpower_balance_color = if country.manpower_balance > 0. {
-                    country.manpower_balance * (blue_max - blue_min) / (max_manpower_balance)
+                let net_manpower_color = if country.armed_forces.net_manpower > 0. {
+                    country.armed_forces.net_manpower * (blue_max - blue_min)
+                        / (max_manpower_balance)
                         + blue_min
                 } else {
-                    blue_min - (country.manpower_balance * blue_min / min_manpower_balance)
+                    blue_min - (country.armed_forces.net_manpower * blue_min / min_manpower_balance)
                 };
 
                 let tech_total = (country.technology.adm_tech
                     + country.technology.dip_tech
                     + country.technology.mil_tech) as f32;
-
+                let standard_regiments = country.force_strength();
+                let ships = country.ships() as f32;
                 CountryHealth {
                     tag: country.tag,
                     name: country.name,
@@ -1117,7 +1119,9 @@ impl SaveFileImpl {
                         color: (blue_max - (country.inflation * blue_max / max_inflation)) as u8,
                     },
                     best_general: country
+                        .armed_forces
                         .best_general
+                        .as_ref()
                         .map(|x| {
                             let total = (x.fire + x.shock + x.maneuver + x.siege) as f32;
                             LeaderDatum {
@@ -1144,15 +1148,20 @@ impl SaveFileImpl {
                         color: (country.army_tradition * blue_max / 100.) as u8,
                     },
 
-                    manpower_balance: HealthDatum {
-                        value: country.manpower_balance,
-                        color: manpower_balance_color as u8,
+                    net_manpower: HealthDatum {
+                        value: country.armed_forces.net_manpower,
+                        color: net_manpower_color as u8,
                     },
 
-                    standard_regiments: HealthDatum {
-                        value: country.standard_regiments as f32,
-                        color: (country.standard_regiments as f32 * blue_max
-                            / max_standard_regiments as f32) as u8,
+                    max_manpower: HealthDatum {
+                        value: country.armed_forces.max_manpower,
+                        color: (country.armed_forces.max_manpower * blue_max / max_max_manpower)
+                            as u8,
+                    },
+
+                    force_strength: HealthDatum {
+                        value: standard_regiments,
+                        color: (standard_regiments * blue_max / max_force_strength) as u8,
                     },
 
                     professionalism: HealthDatum {
@@ -1161,7 +1170,9 @@ impl SaveFileImpl {
                     },
 
                     best_admiral: country
+                        .armed_forces
                         .best_admiral
+                        .as_ref()
                         .map(|x| {
                             let total = (x.fire + x.shock + x.maneuver) as f32;
                             LeaderDatum {
@@ -1189,8 +1200,8 @@ impl SaveFileImpl {
                     },
 
                     ships: HealthDatum {
-                        value: country.ships as f32,
-                        color: (country.ships as f32 * blue_max / max_ships as f32) as u8,
+                        value: ships,
+                        color: (ships * blue_max / max_ships as f32) as u8,
                     },
 
                     stability: HealthDatum {
@@ -1217,6 +1228,7 @@ impl SaveFileImpl {
                         value: country.corruption,
                         color: (blue_max - (country.corruption * blue_max / max_corruption)) as u8,
                     },
+                    armed_forces: country.armed_forces,
                 }
             })
             .collect();

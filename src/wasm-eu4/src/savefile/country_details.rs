@@ -426,7 +426,7 @@ impl SaveFileImpl {
         }
     }
 
-    fn armed_forces(&self, country: &Country) -> CountryArmedForces {
+    pub(crate) fn armed_forces(&self, country: &Country) -> CountryArmedForces {
         let game_land_units: HashMap<_, _> =
             self.game.land_units().map(|x| (x.name, x.kind)).collect();
         let units = country
@@ -491,6 +491,13 @@ impl SaveFileImpl {
 
         let (best_general, best_admiral) = country_best_leaders(country);
 
+        let reinforcements_needed = (infantry.count as f32 - infantry.strength)
+            + (cavalry.count as f32 - cavalry.strength)
+            + (artillery.count as f32 - artillery.strength);
+
+        let net_manpower = country.manpower - reinforcements_needed;
+        let max_manpower = country.max_manpower;
+
         CountryArmedForces {
             best_admiral: best_admiral.cloned(),
             best_general: best_general.cloned(),
@@ -502,6 +509,8 @@ impl SaveFileImpl {
             light_ship_units: light_ship,
             galley_units: galley,
             transport_units: transport,
+            net_manpower,
+            max_manpower,
         }
     }
 

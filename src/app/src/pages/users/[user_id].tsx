@@ -7,6 +7,7 @@ import { WebPage } from "@/components/layout";
 import { ErrorBoundary } from "@sentry/nextjs";
 import { Alert } from "@/components/Alert";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
+import { LoadingState } from "@/components/LoadingState";
 
 export const UserSaves = () => {
   const router = useRouter();
@@ -25,13 +26,7 @@ export const UserSaves = () => {
         ></meta>
       </HtmlHead>
       <WebPage>
-        <Suspense
-          fallback={
-            <div className="m-8 flex justify-center">
-              <LoadingIcon className="h-8 w-8" />
-            </div>
-          }
-        >
+        <Suspense fallback={<LoadingState />}>
           <ErrorBoundary
             fallback={({ error }) => (
               <div className="m-8">

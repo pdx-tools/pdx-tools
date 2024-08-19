@@ -11,7 +11,7 @@ import { check } from "@/lib/isPresent";
 import { useContext } from "react";
 import { Tooltip } from "./Tooltip";
 
-type TableContextState = { size: "standard" | "compact" };
+type TableContextState = { size: "standard" | "compact" | "small" };
 const TableContext = React.createContext<TableContextState | undefined>(
   undefined,
 );
@@ -21,12 +21,16 @@ const useTable = () =>
 const TableImpl = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement> & {
-    size?: "standard" | "compact";
+    size?: "standard" | "compact" | "small";
+    overflow?: boolean;
   }
->(function Table({ className, size = "standard", ...props }, ref) {
+>(function Table(
+  { className, size = "standard", overflow = true, ...props },
+  ref,
+) {
   return (
     <TableContext.Provider value={{ size }}>
-      <div className="w-full overflow-auto">
+      <div className={cx("w-full", overflow && "overflow-auto")}>
         <table
           ref={ref}
           className={cx("w-full caption-bottom text-sm", className)}
@@ -135,7 +139,7 @@ const TableCell = React.forwardRef<
       ref={ref}
       className={cx(
         "[&:has([role=checkbox])]:pr-0",
-        table.size == "standard" && "p-4",
+        table.size == "standard" ? "p-4" : table.size == "small" ? "px-2" : "",
         className,
         !className?.includes("align-") && "align-middle", // poor man's tailwind merge
       )}

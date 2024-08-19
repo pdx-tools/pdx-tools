@@ -344,6 +344,8 @@ pub struct CountryArmedForces {
     pub light_ship_units: usize,
     pub galley_units: usize,
     pub transport_units: usize,
+    pub max_manpower: f32,
+    pub net_manpower: f32,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
@@ -468,11 +470,12 @@ pub struct HealthTechnology {
     pub mil: u8,
 }
 
-#[derive(Tsify, Serialize, Clone, Debug)]
+#[derive(Tsify, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CountryHealth {
     pub tag: CountryTag,
     pub name: String,
+    pub armed_forces: CountryArmedForces,
 
     // economy
     pub core_income: HealthDatum,
@@ -484,9 +487,10 @@ pub struct CountryHealth {
     // army
     pub best_general: LeaderDatum,
     pub army_tradition: HealthDatum,
-    pub manpower_balance: HealthDatum,
-    pub standard_regiments: HealthDatum,
+    pub net_manpower: HealthDatum,
+    pub force_strength: HealthDatum,
     pub professionalism: HealthDatum,
+    pub max_manpower: HealthDatum,
 
     // navy
     pub best_admiral: LeaderDatum,
@@ -500,7 +504,7 @@ pub struct CountryHealth {
     pub corruption: HealthDatum,
 }
 
-#[derive(Tsify, Serialize, Clone, Debug)]
+#[derive(Tsify, Serialize, Debug)]
 #[tsify(into_wasm_abi)]
 pub struct HealthData {
     pub data: Vec<CountryHealth>,

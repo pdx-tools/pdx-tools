@@ -19,6 +19,9 @@ import {
 } from "@tanstack/react-table";
 import { cx } from "class-variance-authority";
 import { HealthDatum } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+import { GameIconSprite, iconSpriteTitle } from "../../components/icons";
+import { LandForceStrengthTooltip } from "../../components/LandForceStrengthTooltip";
+import { NavalForceStrengthTooltip } from "../../components/NavalForceStrengthTooltip";
 
 const healthSort: SortingFn<any> = (rowA, rowB, column) =>
   rowA.getValue<HealthDatum>(column).value -
@@ -37,12 +40,12 @@ const columns = [
   columnHelper.accessor("coreIncome", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Tooltip>
-        <Tooltip.Trigger asChild>
-          <Table.ColumnHeader column={column} title="Income" />
-        </Tooltip.Trigger>
-        <Tooltip.Content>Tax + production + trade + gold</Tooltip.Content>
-      </Tooltip>
+      <Table.ColumnHeader
+        column={column}
+        className="justify-end"
+        icon={<GameIconSprite src="profit" alt="" />}
+        title="Tax + production + trade + gold"
+      />
     ),
     meta: { className: "no-break text-right" },
     cell: (info) => formatInt(info.getValue().value),
@@ -51,12 +54,12 @@ const columns = [
   columnHelper.accessor("treasuryBalance", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Tooltip>
-        <Tooltip.Trigger asChild>
-          <Table.ColumnHeader column={column} title="Treasury" />
-        </Tooltip.Trigger>
-        <Tooltip.Content>Current treasury minus loans</Tooltip.Content>
-      </Tooltip>
+      <Table.ColumnHeader
+        column={column}
+        className="justify-end"
+        icon={<GameIconSprite src="ducats" alt="" />}
+        title={iconSpriteTitle.ducats}
+      />
     ),
     meta: { className: "no-break text-right" },
     cell: (info) => formatInt(info.getValue().value),
@@ -65,12 +68,12 @@ const columns = [
   columnHelper.accessor("development", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Tooltip>
-        <Tooltip.Trigger asChild>
-          <Table.ColumnHeader column={column} title="Development" />
-        </Tooltip.Trigger>
-        <Tooltip.Content>Autonomy adjusted development</Tooltip.Content>
-      </Tooltip>
+      <Table.ColumnHeader
+        column={column}
+        className="justify-end"
+        icon={<GameIconSprite src="autonomy_development" alt="" />}
+        title={iconSpriteTitle.autonomy_development}
+      />
     ),
     meta: { className: "no-break text-right" },
     cell: (info) => formatInt(info.getValue().value),
@@ -88,7 +91,12 @@ const columns = [
   columnHelper.accessor("inflation", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Inflation" />
+      <Table.ColumnHeader
+        column={column}
+        className="justify-end"
+        icon={<GameIconSprite src="inflation" alt="" />}
+        title={iconSpriteTitle.inflation}
+      />
     ),
     meta: { className: "no-break text-right" },
     cell: (info) => formatFloat(info.getValue().value, 2),
@@ -97,12 +105,12 @@ const columns = [
   columnHelper.accessor("bestGeneral", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Tooltip>
-        <Tooltip.Trigger asChild>
-          <Table.ColumnHeader column={column} title="Generals" />
-        </Tooltip.Trigger>
-        <Tooltip.Content>General with most pips</Tooltip.Content>
-      </Tooltip>
+      <Table.ColumnHeader
+        column={column}
+        className="justify-end"
+        icon={<GameIconSprite src="general" alt="" />}
+        title="Best general (by pips)"
+      />
     ),
     meta: { className: "no-break text-right" },
     cell: (info) => {
@@ -118,56 +126,69 @@ const columns = [
   columnHelper.accessor("armyTradition", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Tooltip>
-        <Tooltip.Trigger asChild>
-          <Table.ColumnHeader column={column} title="AT" />
-        </Tooltip.Trigger>
-        <Tooltip.Content>Army Tradition</Tooltip.Content>
-      </Tooltip>
+      <Table.ColumnHeader
+        column={column}
+        icon={<GameIconSprite src="army_tradition" alt="" />}
+        title={iconSpriteTitle.army_tradition}
+      />
     ),
     meta: { className: "no-break text-right" },
     cell: (info) => formatFloat(info.getValue().value, 2),
   }),
 
-  columnHelper.accessor("manpowerBalance", {
+  columnHelper.accessor("forceStrength", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Tooltip>
-        <Tooltip.Trigger asChild>
-          <Table.ColumnHeader column={column} title="Manpower" />
-        </Tooltip.Trigger>
-        <Tooltip.Content>
-          Manpower leftover after reinforcing all units
-        </Tooltip.Content>
-      </Tooltip>
+      <Table.ColumnHeader
+        column={column}
+        className="justify-end"
+        title="Current force strength"
+        icon={<GameIconSprite src="infantry" alt="" />}
+      />
     ),
     meta: { className: "no-break text-right" },
-    cell: (info) => formatInt(info.getValue().value),
+    cell: (info) => (
+      <LandForceStrengthTooltip force={info.row.original.armedForces} />
+    ),
   }),
 
-  columnHelper.accessor("standardRegiments", {
+  columnHelper.accessor("netManpower", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Tooltip>
-        <Tooltip.Trigger asChild>
-          <Table.ColumnHeader column={column} title="Regiments" />
-        </Tooltip.Trigger>
-        <Tooltip.Content>Regiments (excludes mercenaries)</Tooltip.Content>
-      </Tooltip>
+      <Table.ColumnHeader
+        column={column}
+        title="Net Manpower"
+        className="justify-end"
+        icon={<GameIconSprite src="manpower" alt="" />}
+      />
     ),
     meta: { className: "no-break text-right" },
-    cell: (info) => formatInt(info.getValue().value),
+    cell: (info) => `${formatInt(info.getValue().value)}K`,
+  }),
+
+  columnHelper.accessor("maxManpower", {
+    sortingFn: healthSort,
+    header: ({ column }) => (
+      <Table.ColumnHeader
+        column={column}
+        title={iconSpriteTitle.max_manpower}
+        className="justify-end"
+        icon={<GameIconSprite src="max_manpower" alt="" />}
+      />
+    ),
+    meta: { className: "no-break text-right" },
+    cell: (info) => `${formatInt(info.getValue().value)}K`,
   }),
 
   columnHelper.accessor("professionalism", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Tooltip>
-        <Tooltip.Trigger asChild>
-          <Table.ColumnHeader column={column} title="Prof" />
-        </Tooltip.Trigger>
-        <Tooltip.Content>Professionalism</Tooltip.Content>
-      </Tooltip>
+      <Table.ColumnHeader
+        column={column}
+        title={iconSpriteTitle.professionalism}
+        className="justify-end"
+        icon={<GameIconSprite src="professionalism" alt="" />}
+      />
     ),
     meta: { className: "no-break text-right" },
     cell: (info) => formatInt(info.getValue().value * 100) + "%",
@@ -176,14 +197,12 @@ const columns = [
   columnHelper.accessor("bestAdmiral", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Tooltip>
-        <Tooltip.Trigger asChild>
-          <Table.ColumnHeader column={column} title="Admirals" />
-        </Tooltip.Trigger>
-        <Tooltip.Content>
-          Admiral with the most pips (excludes siege pip)
-        </Tooltip.Content>
-      </Tooltip>
+      <Table.ColumnHeader
+        column={column}
+        className="justify-end"
+        icon={<GameIconSprite src="admiral" alt="" />}
+        title="Best admiral (by pips)"
+      />
     ),
     meta: { className: "no-break text-right" },
     cell: (info) => {
@@ -199,12 +218,11 @@ const columns = [
   columnHelper.accessor("navyTradition", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Tooltip>
-        <Tooltip.Trigger asChild>
-          <Table.ColumnHeader column={column} title="NT" />
-        </Tooltip.Trigger>
-        <Tooltip.Content>Navy Tradition</Tooltip.Content>
-      </Tooltip>
+      <Table.ColumnHeader
+        column={column}
+        icon={<GameIconSprite src="navy_tradition" alt="" />}
+        title={iconSpriteTitle.navy_tradition}
+      />
     ),
     meta: { className: "no-break text-right" },
     cell: (info) => formatFloat(info.getValue().value, 2),
@@ -213,16 +231,27 @@ const columns = [
   columnHelper.accessor("ships", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Ships" />
+      <Table.ColumnHeader
+        column={column}
+        className="justify-end"
+        icon={<GameIconSprite src="heavy_ship" alt="" />}
+        title="Ships"
+      />
     ),
     meta: { className: "no-break text-right" },
-    cell: (info) => formatInt(info.getValue().value),
+    cell: (info) => (
+      <NavalForceStrengthTooltip forces={info.row.original.armedForces} />
+    ),
   }),
 
   columnHelper.accessor("stability", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Stability" />
+      <Table.ColumnHeader
+        column={column}
+        icon={<GameIconSprite src="stability" alt="" />}
+        title={iconSpriteTitle.stability}
+      />
     ),
     meta: { className: "no-break text-right" },
     cell: (info) => formatInt(info.getValue().value),
@@ -245,7 +274,11 @@ const columns = [
   columnHelper.accessor("ideas", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Ideas" />
+      <Table.ColumnHeader
+        column={column}
+        icon={<GameIconSprite src="idea_groups" alt="" />}
+        title={iconSpriteTitle.idea_groups}
+      />
     ),
     meta: { className: "no-break text-right" },
     cell: (info) => formatInt(info.getValue().value),
@@ -254,7 +287,11 @@ const columns = [
   columnHelper.accessor("corruption", {
     sortingFn: healthSort,
     header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Corruption" />
+      <Table.ColumnHeader
+        column={column}
+        icon={<GameIconSprite src="corruption" alt="" />}
+        title={iconSpriteTitle.corruption}
+      />
     ),
     meta: { className: "no-break text-right" },
     cell: (info) => formatFloat(info.getValue().value, 2),
@@ -346,8 +383,8 @@ export const HealthGrid = () => {
               ["general_maneuver", x.bestGeneral.maneuver],
               ["general_siege", x.bestGeneral.siege],
               ["army_tradition", x.armyTradition.value],
-              ["manpower_balance", x.manpowerBalance.value],
-              ["regiments", x.standardRegiments.value],
+              ["manpower_balance", x.netManpower.value],
+              ["force_strength", x.forceStrength.value],
               ["professionalism", x.professionalism.value],
               ["admiral_fire", x.bestAdmiral.fire],
               ["admiral_shock", x.bestAdmiral.shock],
@@ -373,7 +410,7 @@ export const HealthGrid = () => {
   return (
     <>
       <Alert.Error msg={error} />
-      <Table>
+      <Table size="small" overflow={false}>
         <Table.Header>
           {table.getHeaderGroups().map((headerGroup) => (
             <Table.Row key={headerGroup.id}>

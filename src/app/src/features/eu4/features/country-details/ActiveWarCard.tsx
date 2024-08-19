@@ -9,6 +9,8 @@ import { GameIconSprite, iconSpriteTitle } from "../../components/icons";
 import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import { LeaderStats } from "../../components/LeaderStats";
+import { LandForceStrengthTooltip } from "../../components/LandForceStrengthTooltip";
+import { NavalForceStrengthTooltip } from "../../components/NavalForceStrengthTooltip";
 
 type ActiveWar = CountryDetails["active_wars"][number];
 type Participant = ActiveWar["attackers" | "defenders"][number];
@@ -47,72 +49,43 @@ const activeColumns = [
         />
       ),
       meta: { className: "text-right" },
-      cell: (info) => (
-        <Tooltip>
-          <Tooltip.Trigger>{formatInt(info.getValue())}K</Tooltip.Trigger>
-          <Tooltip.Content className="flex flex-col p-2">
-            <p>
-              Infantry: {formatInt(info.row.original.infantryUnits.strength)}K
-            </p>
-            <p>
-              Cavalry: {formatInt(info.row.original.cavalryUnits.strength)}K
-            </p>
-            <p>
-              Artillery: {formatInt(info.row.original.artilleryUnits.strength)}K
-            </p>
-            <p>
-              Mercenaries:{" "}
-              {formatInt(info.row.original.mercenaryUnits.strength)}K
-            </p>
-          </Tooltip.Content>
-        </Tooltip>
-      ),
+      cell: (info) => <LandForceStrengthTooltip force={info.row.original} />,
     },
   ),
 
-  columnHelper.accessor(
-    (x) =>
-      x.manpower -
-      (x.infantryUnits.count +
-        x.cavalryUnits.count +
-        x.artilleryUnits.count -
-        x.infantryUnits.strength -
-        x.cavalryUnits.strength -
-        x.artilleryUnits.strength),
-    {
-      id: "manpower-reserves",
-      sortingFn: "basic",
-      header: ({ column }) => (
-        <Table.ColumnHeader
-          column={column}
-          title="Net Manpower"
-          className="justify-end"
-          icon={<GameIconSprite src="manpower" alt="" />}
-        />
-      ),
-      meta: { className: "text-right" },
-      cell: (info) => (
-        <Tooltip>
-          <Tooltip.Trigger>{formatInt(info.getValue())}K</Tooltip.Trigger>
-          <Tooltip.Content className="flex flex-col p-2">
-            <p>Current manpower: {formatInt(info.row.original.manpower)}K</p>
-            <p>
-              Reinforcements:{" "}
-              {formatInt(
-                info.row.original.infantryUnits.count +
-                  info.row.original.cavalryUnits.count +
-                  info.row.original.artilleryUnits.count -
-                  info.row.original.infantryUnits.strength -
-                  info.row.original.cavalryUnits.strength -
-                  info.row.original.artilleryUnits.strength,
-              )}
-              K
-            </p>
-          </Tooltip.Content>
-        </Tooltip>
-      ),
-    },
-  ),
+  columnHelper.accessor((x) => x.netManpower, {
+    id: "manpower-reserves",
+    sortingFn: "basic",
+    header: ({ column }) => (
+      <Table.ColumnHeader
+        column={column}
+        title="Net Manpower"
+        className="justify-end"
+        icon={<GameIconSprite src="manpower" alt="" />}
+      />
+    ),
+    meta: { className: "text-right" },
+    cell: (info) => (
+      <Tooltip>
+        <Tooltip.Trigger>{formatInt(info.getValue())}K</Tooltip.Trigger>
+        <Tooltip.Content className="flex flex-col p-2">
+          <p>Current manpower: {formatInt(info.row.original.manpower)}K</p>
+          <p>
+            Reinforcements:{" "}
+            {formatInt(
+              info.row.original.infantryUnits.count +
+                info.row.original.cavalryUnits.count +
+                info.row.original.artilleryUnits.count -
+                info.row.original.infantryUnits.strength -
+                info.row.original.cavalryUnits.strength -
+                info.row.original.artilleryUnits.strength,
+            )}
+            K
+          </p>
+        </Tooltip.Content>
+      </Tooltip>
+    ),
+  }),
 
   columnHelper.accessor((x) => x.treasury - x.debt, {
     id: "net-cash",
@@ -262,17 +235,7 @@ const activeColumns = [
         className: "hidden text-right @lg:table-cell",
         headClassName: "hidden @lg:table-cell",
       },
-      cell: (info) => (
-        <Tooltip>
-          <Tooltip.Trigger>{formatInt(info.getValue())}</Tooltip.Trigger>
-          <Tooltip.Content className="flex flex-col p-2">
-            <p>Heavy: {formatInt(info.row.original.heavyShipUnits)}</p>
-            <p>Light: {formatInt(info.row.original.lightShipUnits)}</p>
-            <p>Galley: {formatInt(info.row.original.galleyUnits)}</p>
-            <p>Transports: {formatInt(info.row.original.transportUnits)}</p>
-          </Tooltip.Content>
-        </Tooltip>
-      ),
+      cell: (info) => <NavalForceStrengthTooltip forces={info.row.original} />,
     },
   ),
 
@@ -300,16 +263,7 @@ function ParticipantHealth({ participants }: { participants: Participant[] }) {
       x.artilleryUnits.strength +
       x.mercenaryUnits.strength,
   );
-  const totalReserves = data.map(
-    (x) =>
-      x.manpower -
-      (x.infantryUnits.count +
-        x.cavalryUnits.count +
-        x.artilleryUnits.count -
-        x.infantryUnits.strength -
-        x.cavalryUnits.strength -
-        x.artilleryUnits.strength),
-  );
+  const totalReserves = data.map((x) => x.netManpower);
   const totalNetCash = data.map((x) => x.treasury - x.debt);
   const totalMonthlyProfit = data.map((x) => x.monthlyProfit);
   return (
