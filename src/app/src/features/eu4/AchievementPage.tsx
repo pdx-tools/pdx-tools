@@ -30,12 +30,7 @@ export const AchievementLayout = ({
       <div className="flex flex-col max-w-3xl mx-auto">
         <div className="flex gap-3 items-center">
           <AchievementAvatar id={achievementId} size={40} />
-          <h1 className="text-4xl">
-            {title} Leaderboard{" "}
-            <span className="text-2xl self-end tracking-tighter text-gray-400 no-break">
-              (id: {achievementId})
-            </span>
-          </h1>
+          <h1 className="text-4xl">{title} Leaderboard</h1>
         </div>
         <div className="mt-3 max-w-prose leading-snug">
           <p className="text-gray-600 dark:text-gray-300">{description}</p>
