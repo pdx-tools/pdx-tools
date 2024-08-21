@@ -71,6 +71,17 @@ export const Sprite = ({
   };
 
   const srcs = srcSet?.map(([url, res]) => `url(${url}) ${res}`) ?? [];
+  const srcSetStyles =
+    srcs.length === 0
+      ? {}
+      : {
+          "--img-src-set": srcs.join(", "),
+        };
+  const imgStyles = {
+    ...srcSetStyles,
+    "--img-src": `url(${src})`,
+  };
+
   const image = (
     <div
       role={alt ? "img" : "presentation"}
@@ -83,8 +94,7 @@ export const Sprite = ({
         {
           ...forcedDimensions,
           ...backgroundStyles,
-          "--img-src": `url(${src})`,
-          "--img-src-set": srcs.join(", "),
+          ...imgStyles,
         } as React.CSSProperties
       }
     />
