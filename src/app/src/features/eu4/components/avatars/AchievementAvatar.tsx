@@ -11,6 +11,10 @@ type AchievementAvatarProps = {
 let dimensions: SpriteDimension | undefined;
 let data: any;
 
+export function getAchievementData() {
+  return (data ??= require(`@/images/eu4/achievements/achievements.json`));
+}
+
 export const AchievementAvatar = ({
   id,
   className,
@@ -18,7 +22,7 @@ export const AchievementAvatar = ({
 }: AchievementAvatarProps) => {
   // The imports in here are lazy so that they don't fail dev
   // for those that don't have EU4 assets
-  data ??= require(`@/images/eu4/achievements/achievements.json`);
+  const data = getAchievementData();
   dimensions ??= spriteDimension({
     data,
     spriteCell: { width: 64, height: 64 },

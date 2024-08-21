@@ -17,6 +17,7 @@ import { ImageGallery } from "./ImageGallery";
 import { useRouter } from "next/router";
 import { useEngineActions } from "@/features/engine";
 import { HomeLeaderboard } from "./HomeLeaderboard";
+import { AchievementWall } from "./AchievementWall";
 
 interface HomeProps {
   subtitle?: React.ReactNode;
@@ -177,6 +178,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             <Link href="/eu4/achievements">supported achievements</Link>.
             Competition kept fresh with saves on the latest patch prioritized.
           </p>
+          <AchievementWall />
           <HomeLeaderboard />
         </div>
       </div>
