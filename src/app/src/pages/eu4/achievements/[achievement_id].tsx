@@ -13,6 +13,7 @@ import { Alert } from "@/components/Alert";
 import { ErrorBoundary } from "@sentry/nextjs";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { Csr } from "@/components/Csr";
+import { LoadingState } from "@/components/LoadingState";
 
 interface StaticAchievement {
   achievement?: Achievement;
@@ -63,9 +64,7 @@ export const Eu4Achievement = ({ achievement }: StaticAchievement) => {
         <Suspense
           fallback={
             <AchievementFallback achievement={achievement}>
-              <div className="m-8 flex justify-center">
-                <LoadingIcon className="h-8 w-8" />
-              </div>
+              <LoadingState />
             </AchievementFallback>
           }
         >

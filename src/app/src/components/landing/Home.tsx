@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import Image from "next/image";
 import icons from "./icons.png";
-import achievement from "./achievement.png";
 import melted from "./melted.webp";
 import games from "./games.webp";
 import { HeroFileInput } from "./HeroFileInput";
@@ -17,6 +16,7 @@ import classes from "./Home.module.css";
 import { ImageGallery } from "./ImageGallery";
 import { useRouter } from "next/router";
 import { useEngineActions } from "@/features/engine";
+import { HomeLeaderboard } from "./HomeLeaderboard";
 
 interface HomeProps {
   subtitle?: React.ReactNode;
@@ -100,7 +100,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-transparent dark:even:bg-transparent md:px-9`}
       >
         <div className="max-w-7xl">
-          <h2 className="text-center text-3xl font-extrabold tracking-tight text-white xl:text-4xl">
+          <h2 className="text-center text-3xl font-extrabold tracking-tight xl:text-4xl">
             Questions? Answered.
           </h2>
           <p className="mb-6 mt-3 text-center text-xl">
@@ -162,6 +162,22 @@ export const Home = ({ subtitle }: HomeProps) => {
               </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-transparent dark:even:bg-transparent md:px-9`}
+      >
+        <div className="max-w-7xl flex flex-col items-center">
+          <h2 className="text-center text-3xl font-extrabold tracking-tight xl:text-4xl">
+            Achievement Leaderboards
+          </h2>
+          <p className="mb-6 mt-3 text-center text-xl max-w-prose">
+            Go for gold! Uploaded saves are tagged with{" "}
+            <Link href="/eu4/achievements">supported achievements</Link>.
+            Competition kept fresh with saves on the latest patch prioritized.
+          </p>
+          <HomeLeaderboard />
         </div>
       </div>
 
@@ -231,42 +247,6 @@ export const Home = ({ subtitle }: HomeProps) => {
               width={287}
               className="drop-shadow-xl"
               alt="Screenshot of EU4 showing a melted save being loaded"
-            />
-          </div>
-        </section>
-      </div>
-
-      <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-transparent dark:even:bg-transparent md:px-9`}
-      >
-        <section>
-          <div className="grid max-w-prose gap-4">
-            <h2 className="text-2xl font-bold">Fresh Competition</h2>
-            <p>
-              An advanced achievement engine uses the game's logic to check if a
-              save has completed one of the{" "}
-              <Link href="/eu4/achievements">supported achievements</Link>
-            </p>
-            <p>
-              Uploaded saves are tagged with completed achievements to generate
-              a leaderboard of who speed ran a{" "}
-              <Link href="/eu4/achievements/18">certain achievement</Link> the
-              quickest
-            </p>
-            <p>
-              The leaderboard is kept evergreen by enacting a small tax to saves
-              on previous patches, just enough to keep the leaderboard fresh
-              while allowing exceptional runs to bask in glory forever
-            </p>
-          </div>
-          <div className="flex justify-center">
-            <Image
-              src={achievement}
-              height={325}
-              width={400}
-              loading="lazy"
-              className="drop-shadow-xl"
-              alt="Screenshot of the PDX Tools leaderboard for an achievement"
             />
           </div>
         </section>

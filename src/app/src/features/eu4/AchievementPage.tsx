@@ -4,12 +4,13 @@ import { pdxApi } from "@/services/appApi";
 import { AchievementAvatar } from "./components/avatars";
 import { useToastOnError } from "@/hooks/useToastOnError";
 import { Card } from "@/components/Card";
-import { formatInt } from "@/lib/format";
+import { formatFloat, formatInt } from "@/lib/format";
 import { cx } from "class-variance-authority";
 import { TrophyIcon } from "@heroicons/react/24/solid";
 import { TimeAgo } from "@/components/TimeAgo";
 import { Link } from "@/components/Link";
 import { difficultyColor, difficultyText } from "@/lib/difficulty";
+import { Tooltip } from "@/components/Tooltip";
 
 interface AchievementRoute {
   achievementId: string;
@@ -49,7 +50,7 @@ export const AchievementLayout = ({
   );
 };
 
-function AchievementPodium({
+function AchievementPlatform({
   save,
   className,
 }: {
@@ -59,7 +60,7 @@ function AchievementPodium({
   return (
     <Card
       className={cx(
-        "relative shadow-lg lg:hover:scale-105 transition-transform duration-100",
+        "relative shadow-lg lg:hover:scale-105 transition-transform duration-100 min-w-64 max-w-64",
         className,
       )}
     >
@@ -71,7 +72,7 @@ function AchievementPodium({
           save.rank === 3 && "h-7 w-7 top-0.5 ",
         )}
       >
-        <TrophyIcon className="drop-shadow-lg fill-slate-800 dark:fill-slate-200" />
+        <TrophyIcon className="drop-shadow-lg stroke-slate-800 stroke-[0.5] fill-slate-200" />
       </div>
 
       <div
@@ -83,11 +84,36 @@ function AchievementPodium({
         )}
       ></div>
 
-      <div className="px-8 pt-4">
+      <div className="px-8 pt-6">
         <div className="flex flex-col items-center pb-4">
-          <p className="text-3xl font-semibold">
-            {formatInt(save.weighted_score.days)}
-          </p>
+          <Tooltip>
+            <Tooltip.Trigger className="text-3xl font-semibold">
+              {formatInt(save.weighted_score.days)}
+            </Tooltip.Trigger>
+            <Tooltip.Content>
+              <table className="text-xl border-separate border-spacing-x-3 border-spacing-y-1">
+                <caption>Score calculation:</caption>
+                <tr>
+                  <td>{save.date}:</td>
+                  <td className="text-right">{formatInt(save.days)}</td>
+                </tr>
+                <tr>
+                  <td>Patch {save.patch}:</td>
+                  <td className="text-right">
+                    x{formatFloat(save.weighted_score.days / save.days, 2)}
+                  </td>
+                </tr>
+                <tfoot>
+                  <tr className="border-t border-white">
+                    <td>{save.weighted_score.date}:</td>
+                    <td className="text-right">
+                      {formatInt(save.weighted_score.days)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </Tooltip.Content>
+          </Tooltip>
           <p className="all-small-caps text-gray-600 dark:text-gray-400 tracking-tighter leading-tight">
             PATCH IN-GAME DAYS
           </p>
@@ -114,7 +140,7 @@ function AchievementPodium({
               </p>
             ) : null}
             <p className=" text-gray-600 dark:text-gray-400">
-              Uploaded: <TimeAgo date={save.upload_time} />
+              <TimeAgo date={save.upload_time} />
             </p>
           </div>
         </div>
@@ -140,6 +166,20 @@ function AchievementPodium({
   );
 }
 
+export const AchievementPodium = ({
+  saves: [gold, silver, bronze],
+}: {
+  saves: RankedSave[];
+}) => {
+  return (
+    <div className="mt-20 flex flex-col lg:flex-row gap-8 lg:gap-12 lg:items-end justify-center">
+      {gold && <AchievementPlatform save={gold} className="lg:order-2" />}
+      {silver && <AchievementPlatform save={silver} className="lg:order-1" />}
+      {bronze && <AchievementPlatform save={bronze} className="lg:order-3" />}
+    </div>
+  );
+};
+
 export const AchievementPage = ({ achievementId }: AchievementRoute) => {
   const achievementQuery = pdxApi.achievement.useGet(achievementId);
   useToastOnError(achievementQuery.error, "Achievement data refresh failed");
@@ -152,12 +192,8 @@ export const AchievementPage = ({ achievementId }: AchievementRoute) => {
       description={achievement.description}
       title={achievement.name}
     >
-      <div className="mt-24 flex flex-col gap-10">
-        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 lg:items-end justify-center">
-          {gold && <AchievementPodium save={gold} className="lg:order-2" />}
-          {silver && <AchievementPodium save={silver} className="lg:order-1" />}
-          {bronze && <AchievementPodium save={bronze} className="lg:order-3" />}
-        </div>
+      <div className="flex flex-col gap-10">
+        <AchievementPodium saves={[gold, silver, bronze]} />
         {achievementQuery.data.goldDate ? (
           <div className="text-center">
             <p className="text-xl">
