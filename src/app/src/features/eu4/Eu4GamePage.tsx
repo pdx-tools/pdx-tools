@@ -28,8 +28,8 @@ export const Eu4GamePage = () => {
   const isReady = useRef(router.isReady);
 
   return (
-    <div className="mx-auto max-w-7xl flex flex-col gap-12 p-5">
-      <div className="flex flex-col md:flex-row gap-8">
+    <div className="mx-auto flex max-w-7xl flex-col gap-12 p-5">
+      <div className="flex flex-col gap-8 md:flex-row">
         <h1 className="text-4xl">Latest EU4 Saves</h1>
         <div className="flex items-center gap-2">
           {!isReady.current ? (

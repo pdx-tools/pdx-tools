@@ -25,7 +25,7 @@ function ProvinceModifier(props: InstitutionCost) {
   return (
     <div className="flex">
       <InputNumber
-        className="w-14 text-right border-gray-400/25 mr-1 px-2"
+        className="mr-1 w-14 border-gray-400/25 px-2 text-right"
         value={value}
         onChange={(e) => {
           if (override === undefined && e.value == value) {
@@ -45,7 +45,7 @@ function ProvinceModifier(props: InstitutionCost) {
           onClick={() => actions.clearOverride(props.province_id)}
           tooltip={"Reset modified dev cost modifier"}
           icon={
-            <XMarkIcon className="h-4 w-4 hover:opacity-100 transition-opacity opacity-50" />
+            <XMarkIcon className="h-4 w-4 opacity-50 transition-opacity hover:opacity-100" />
           }
         />
       ) : null}
@@ -241,10 +241,10 @@ export const CountryInstitution = ({
           <Tooltip>
             <Tooltip.Trigger>
               <div>
-                <label className="w-96 inline-flex justify-between mr-1">
+                <label className="mr-1 inline-flex w-96 justify-between">
                   Country-wide development cost modifier:
                   <InputNumber
-                    className="px-2 py-1 w-14 text-right"
+                    className="w-14 px-2 py-1 text-right"
                     value={modifier}
                     onChange={(e) => setModifier(e.value)}
                   />
@@ -258,10 +258,10 @@ export const CountryInstitution = ({
             </Tooltip.Content>
           </Tooltip>
           <div>
-            <label className="w-96 inline-flex justify-between">
+            <label className="inline-flex w-96 justify-between">
               Expand infrastructure mana cost:
               <InputNumber
-                className="px-2 py-1 w-14 text-right"
+                className="w-14 px-2 py-1 text-right"
                 value={expandCost}
                 onChange={(e) => setExpandCost(Math.max(e.value, 0))}
               />
@@ -272,7 +272,7 @@ export const CountryInstitution = ({
           <div className="font-semibold">
             Detected province development cost modifiers
           </div>
-          <ul className="pl-4 flex flex-col flex-wrap h-20 gap-x-12">
+          <ul className="flex h-20 flex-col flex-wrap gap-x-12 pl-4">
             <li>✔️ Terrain</li>
             <li>✔️ Center of Trade</li>
             <li>✔️ Prosperity</li>

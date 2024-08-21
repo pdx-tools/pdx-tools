@@ -21,7 +21,7 @@ export const TagSelect = ({ value, onChange }: TagSelectProps) => {
         <Button>
           <Select.Value placeholder="Select country tag" />
           <Select.Icon asChild>
-            <PlayIcon className="h-3 w-3 rotate-90 opacity-50 self-center" />
+            <PlayIcon className="h-3 w-3 rotate-90 self-center opacity-50" />
           </Select.Icon>
         </Button>
       </Select.Trigger>

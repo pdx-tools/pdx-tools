@@ -18,7 +18,7 @@ const CountryEstate = ({ estate }: { estate: Estate }) => {
       </div>
       <div>Completed agendas: {formatInt(estate.completedAgendas)}</div>
       {estate.privileges.length > 0 ? (
-        <table className="w-full my-2">
+        <table className="my-2 w-full">
           <thead>
             <tr>
               <th className="text-left">Privilege:</th>
@@ -36,7 +36,7 @@ const CountryEstate = ({ estate }: { estate: Estate }) => {
         </table>
       ) : null}
       {estate.influenceModifiers.length > 0 ? (
-        <table className="w-full my-2">
+        <table className="my-2 w-full">
           <thead>
             <tr>
               <th className="text-left">Influence Modifier:</th>
@@ -48,7 +48,7 @@ const CountryEstate = ({ estate }: { estate: Estate }) => {
             {estate.influenceModifiers.map((modifier) => (
               <tr key={`${modifier.desc}-${modifier.date}`}>
                 <td>{sentenceCasing(modifier.desc)}</td>
-                <td className="text-right pr-2">{formatInt(modifier.value)}</td>
+                <td className="pr-2 text-right">{formatInt(modifier.value)}</td>
                 <td className="no-break text-right">{modifier.date}</td>
               </tr>
             ))}

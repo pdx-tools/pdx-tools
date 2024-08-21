@@ -32,7 +32,7 @@ const DevelopmentStatistic = ({
           {formatInt(tax + production + manpower)}
         </span>
         <span className="text-gray-500 dark:text-gray-300">
-          <div className="text-sm all-small-caps flex justify-around">
+          <div className="all-small-caps flex justify-around text-sm">
             <span>tax</span>
             <span>prod</span>
             <span>man</span>

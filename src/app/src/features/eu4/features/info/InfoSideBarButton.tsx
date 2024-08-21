@@ -17,7 +17,7 @@ const InfoSideBarTitle = () => {
   return (
     <div className="flex grow items-center gap-2">
       <SaveMode mode={meta.mode} />
-      <Sheet.Title className="overflow-hidden text-ellipsis max-w-md">
+      <Sheet.Title className="max-w-md overflow-hidden text-ellipsis">
         {meta.save_game || "EU4 Save Game"}
       </Sheet.Title>
       <div className="drawer-extras mr-4 flex grow items-center justify-end gap-2">
@@ -41,9 +41,9 @@ export const InfoSideBarButton = ({
         <Sheet.Content
           onInteractOutside={(e) => e.preventDefault()}
           side="right"
-          className="flex w-[800px] max-w-full flex-col dark:bg-slate-900 bg-white pt-4"
+          className="flex w-[800px] max-w-full flex-col bg-white pt-4 dark:bg-slate-900"
         >
-          <Sheet.Header className="z-10 px-4 pb-4 shadow-md items-center">
+          <Sheet.Header className="z-10 items-center px-4 pb-4 shadow-md">
             <Sheet.Close />
             <InfoSideBarTitle />
           </Sheet.Header>

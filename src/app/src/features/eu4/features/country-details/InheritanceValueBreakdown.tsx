@@ -32,9 +32,9 @@ export const InheritanceValueBreakdown = ({
 
       <Sheet.Content
         side="right"
-        className="w-[450px] max-w-full dark:bg-slate-900 bg-white"
+        className="w-[450px] max-w-full bg-white dark:bg-slate-900"
       >
-        <Sheet.Header className="z-10 p-4 shadow-md items-center">
+        <Sheet.Header className="z-10 items-center p-4 shadow-md">
           <Sheet.Close />
           <Sheet.Title>Inheritance Value Breakdown</Sheet.Title>
         </Sheet.Header>

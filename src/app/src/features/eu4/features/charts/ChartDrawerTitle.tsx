@@ -76,7 +76,7 @@ export const ChartDrawerTitle = ({
           <Button>
             <Select.Value />
             <Select.Icon asChild>
-              <PlayIcon className="h-3 w-3 rotate-90 opacity-50 self-center" />
+              <PlayIcon className="h-3 w-3 rotate-90 self-center opacity-50" />
             </Select.Icon>
           </Button>
         </Select.Trigger>
@@ -138,8 +138,8 @@ export const ChartDrawerTitle = ({
             <span className="sr-only">Help</span>
           </Button>
         </Sheet.Trigger>
-        <Sheet.Content side="right" className="w-96 dark:bg-slate-900 bg-white">
-          <Sheet.Header className="z-10 p-4 shadow-md items-center">
+        <Sheet.Content side="right" className="w-96 bg-white dark:bg-slate-900">
+          <Sheet.Header className="z-10 items-center p-4 shadow-md">
             <Sheet.Close />
             <Sheet.Title>Help</Sheet.Title>
           </Sheet.Header>

@@ -214,7 +214,7 @@ const ColonialSubjectFlag = ({ tag, size }: FlagAvatarCoreProps) => {
       <div className="relative">
         <FlagSprite index={overlordIndex} size={size} />
         <div
-          className="absolute right-0 top-0 bottom-0 w-1/2"
+          className="absolute bottom-0 right-0 top-0 w-1/2"
           style={{ backgroundColor: `rgb(${r},${g},${b})` }}
         />
       </div>
@@ -237,7 +237,7 @@ const FlagAvatar = (props: FlagAvatarProps) => {
   const interactive = useInEu4Analysis();
   const flag = <FlagImageImpl {...props} />;
   const withName = (
-    <div className="flex flex-shrink-0 gap-x-2 text-left items-center">
+    <div className="flex flex-shrink-0 items-center gap-x-2 text-left">
       {flag}
       {!props.condensed && <Flag.CountryName />}
     </div>

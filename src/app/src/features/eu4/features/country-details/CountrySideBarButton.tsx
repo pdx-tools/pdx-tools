@@ -121,9 +121,9 @@ const CountryDetailsContent = () => {
             </Sheet.Trigger>
             <Sheet.Content
               side="right"
-              className="w-96 dark:bg-slate-900 bg-white"
+              className="w-96 bg-white dark:bg-slate-900"
             >
-              <Sheet.Header className="z-10 p-4 shadow-md items-center">
+              <Sheet.Header className="z-10 items-center p-4 shadow-md">
                 <Sheet.Close />
                 <Sheet.Title>Help</Sheet.Title>
               </Sheet.Header>
@@ -186,7 +186,7 @@ const CountryDetailsContent = () => {
           <Tabs.Trigger value="States">States</Tabs.Trigger>
           <Tabs.Trigger value="Estates">Estates</Tabs.Trigger>
         </Tabs.List>
-        <Tabs.Content value="General" className=" flex-1 basis-0 px-4 py-6">
+        <Tabs.Content value="General" className="flex-1 basis-0 px-4 py-6">
           {country && (
             <>
               <CountryDetailsDescriptions details={country} />
@@ -205,13 +205,13 @@ const CountryDetailsContent = () => {
             </>
           )}
         </Tabs.Content>
-        <Tabs.Content value="History" className=" flex-1 basis-0 relative">
+        <Tabs.Content value="History" className="relative flex-1 basis-0">
           {country && <CountryHistory details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Institution" className=" flex-1 basis-0 px-4 py-6">
+        <Tabs.Content value="Institution" className="flex-1 basis-0 px-4 py-6">
           {country && <CountryInstitution details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Advisors" className=" flex-1 basis-0 px-4 py-6">
+        <Tabs.Content value="Advisors" className="flex-1 basis-0 px-4 py-6">
           <div>
             Radical reforms completed: {advisors?.radicalReforms || "no"}
           </div>
@@ -229,31 +229,31 @@ const CountryDetailsContent = () => {
             <GreatAdvisorsList greatAdvisors={advisors.greatAdvisors} />
           )}
         </Tabs.Content>
-        <Tabs.Content value="Rulers" className=" flex-1 basis-0 px-4 py-6">
+        <Tabs.Content value="Rulers" className="flex-1 basis-0 px-4 py-6">
           <CountryRulersTable rulers={rulers} />
         </Tabs.Content>
-        <Tabs.Content value="Leaders" className=" flex-1 basis-0 px-4 py-6">
+        <Tabs.Content value="Leaders" className="flex-1 basis-0 px-4 py-6">
           {country && <CountryLeaders details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Budget" className=" flex-1 basis-0 px-4 py-6">
+        <Tabs.Content value="Budget" className="flex-1 basis-0 px-4 py-6">
           {country && <CountryBudget details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Mana" className=" flex-1 basis-0 px-4 py-6">
+        <Tabs.Content value="Mana" className="flex-1 basis-0 px-4 py-6">
           {country && <CountryManaUsage details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Buildings" className=" flex-1 basis-0 px-4 py-6">
+        <Tabs.Content value="Buildings" className="flex-1 basis-0 px-4 py-6">
           {country && <CountryBuildingCount details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Religion" className=" flex-1 basis-0 px-4 py-6">
+        <Tabs.Content value="Religion" className="flex-1 basis-0 px-4 py-6">
           {country && <CountryReligions details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Culture" className=" flex-1 basis-0 px-4 py-6">
+        <Tabs.Content value="Culture" className="flex-1 basis-0 px-4 py-6">
           {country && <CountryCultures details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="States" className=" flex-1 basis-0 px-4 py-6">
+        <Tabs.Content value="States" className="flex-1 basis-0 px-4 py-6">
           {country && <CountryStates details={country} />}
         </Tabs.Content>
-        <Tabs.Content value="Estates" className=" flex-1 basis-0 px-4 py-6">
+        <Tabs.Content value="Estates" className="flex-1 basis-0 px-4 py-6">
           {country && <CountryEstates details={country} />}
         </Tabs.Content>
       </Tabs>

@@ -52,7 +52,7 @@ export const ChartContent = () => {
         expanded ? "w-full" : "w-[800px] max-w-full",
       )}
     >
-      <Sheet.Header className="z-10 px-4 pb-4 shadow-md items-center">
+      <Sheet.Header className="z-10 items-center px-4 pb-4 shadow-md">
         <ChartDrawerTitle
           selectedViz={selectedViz}
           setSelectedViz={setSelectedViz}

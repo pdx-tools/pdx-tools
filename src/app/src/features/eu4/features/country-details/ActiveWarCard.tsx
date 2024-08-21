@@ -395,7 +395,7 @@ function SideLosses({ participants }: { participants: Participant[] }) {
   return (
     <DataTable
       size="compact"
-      className="max-h-96 grow max-w-xl @3xl/card:grow-0"
+      className="max-h-96 max-w-xl grow @3xl/card:grow-0"
       columns={totalColumns}
       data={participants}
       summary={
@@ -424,7 +424,7 @@ export const ActiveWarCard = ({
   const years = war.days / 365;
   const leftDays = war.days % 365;
   return (
-    <Card className="p-6 flex flex-col gap-4 @container/card">
+    <Card className="flex flex-col gap-4 p-6 @container/card">
       <div className="flex flex-col items-center">
         <p className="text-xl">{war.name}</p>
         <p>
@@ -433,14 +433,14 @@ export const ActiveWarCard = ({
         </p>
       </div>
       <div className="flex flex-col gap-2">
-        <p className="text-lg text-center">Combatants</p>
-        <div className="flex flex-col @3xl/card:flex-row gap-8 w-full">
-          <div className="@container  grow">
+        <p className="text-center text-lg">Combatants</p>
+        <div className="flex w-full flex-col gap-8 @3xl/card:flex-row">
+          <div className="grow @container">
             <ParticipantHealth participants={war.attackers} />
           </div>
-          <div className="@container flex flex-col gap-1 grow">
+          <div className="flex grow flex-col gap-1 @container">
             <ParticipantHealth participants={war.defenders} />
-            <p className="@3xl:hidden text-gray-400 text-right text-xs tracking-tight">
+            <p className="text-right text-xs tracking-tight text-gray-400 @3xl:hidden">
               Additional columns hidden
             </p>
           </div>
@@ -448,8 +448,8 @@ export const ActiveWarCard = ({
       </div>
 
       <div className="flex flex-col gap-2">
-        <p className="text-lg text-center">Casualties</p>
-        <div className="flex flex-col @3xl/card:flex-row gap-8 w-full">
+        <p className="text-center text-lg">Casualties</p>
+        <div className="flex w-full flex-col gap-8 @3xl/card:flex-row">
           <div className="flex grow @3xl/card:justify-end">
             <SideLosses participants={war.attackers} />
           </div>

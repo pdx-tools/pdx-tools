@@ -18,9 +18,9 @@ const HomeLeaderboardImpl = () => {
 
   return (
     <>
-      <h3 className="flex flex-col text-2xl font-bold items-center gap-3">
+      <h3 className="flex flex-col items-center gap-3 text-2xl font-bold">
         <p>Featured leaderboard:</p>
-        <div className="flex gap-2 items-center">
+        <div className="flex items-center gap-2">
           <AchievementAvatar
             size={40}
             id={achievementQuery.data.achievement.id}

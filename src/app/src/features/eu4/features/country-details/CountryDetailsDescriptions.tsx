@@ -72,13 +72,13 @@ const IdeasTable = ({ ideas }: Pick<CountryDetails, "ideas">) => {
     let ideaMarkers = [];
     let i = 0;
     for (; i < count; i++) {
-      ideaMarkers.push(<CheckCircleIcon className="w-4 h-4" key={i} />);
+      ideaMarkers.push(<CheckCircleIcon className="h-4 w-4" key={i} />);
     }
     for (; i < 7; i++) {
       ideaMarkers.push(
         <div
           key={i}
-          className="w-4 h-4 outline outline-1 -outline-offset-2 rounded-full"
+          className="h-4 w-4 rounded-full outline outline-1 -outline-offset-2"
         />,
       );
     }
@@ -156,7 +156,7 @@ export const CountryDetailsDescriptions = ({
 
   return (
     <div className="flex flex-wrap justify-center gap-8">
-      <Card className="p-4 flex w-80 flex-col gap-4">
+      <Card className="flex w-80 flex-col gap-4 p-4">
         <div className="grid grid-cols-3 gap-4">
           <div>
             <div className="flex text-right">
@@ -324,7 +324,7 @@ export const CountryDetailsDescriptions = ({
         </div>
       </Card>
 
-      <Card className="p-4 flex w-80 flex-col gap-4">
+      <Card className="flex w-80 flex-col gap-4 p-4">
         <div className="flex justify-around">
           <div className="flex items-center gap-1">
             <ManpowerIcon />
@@ -442,7 +442,7 @@ export const CountryDetailsDescriptions = ({
         ) : null}
       </Card>
 
-      <Card className="p-4 flex w-64 flex-col gap-2">
+      <Card className="flex w-64 flex-col gap-2 p-4">
         <div className="flex items-center gap-2">
           <div>
             <RulerIcon />
@@ -494,7 +494,7 @@ export const CountryDetailsDescriptions = ({
         </div>
       </Card>
 
-      <Card className="p-4 flex w-64 flex-col gap-2">
+      <Card className="flex w-64 flex-col gap-2 p-4">
         <div className="flex gap-2">
           <IdeaGroupsIcon />
           <div className="grow text-lg">Ideas</div>

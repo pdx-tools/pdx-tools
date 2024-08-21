@@ -25,14 +25,14 @@ function FlagColumn({ data }: { data: WarSideData }) {
   return (
     <Flag tag={data.original.tag} name={data.original.name}>
       <Flag.CountryName />
-      <div className="flex gap-2 items-start">
+      <div className="flex items-start gap-2">
         <Flag.Tooltip asChild showName>
           <Flag.DrawerTrigger>
             <Flag.Image />
           </Flag.DrawerTrigger>
         </Flag.Tooltip>
 
-        <div className="flex flex-wrap w-20">
+        <div className="flex w-20 flex-wrap">
           {data.members.slice(1, 30).map((x) => (
             <Flag tag={x.country.tag} key={x.country.tag} name={x.country.name}>
               <Flag.Tooltip showName>

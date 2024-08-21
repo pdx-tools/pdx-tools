@@ -123,7 +123,7 @@ export const Eu4CanvasOverlay = () => {
       {watcher.status != "idle" ? (
         <Tooltip>
           <Tooltip.Trigger>
-            <div className="fixed top-0 left-0 touch-none select-none border-2 border-solid border-black bg-gray-800 p-1">
+            <div className="fixed left-0 top-0 touch-none select-none border-2 border-solid border-black bg-gray-800 p-1">
               <div className="h-[56px] w-[56px] rounded-full bg-teal-500"></div>
             </div>
           </Tooltip.Trigger>

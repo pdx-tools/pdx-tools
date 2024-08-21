@@ -39,7 +39,7 @@ const TagsSelect = ({
         <Button>
           <Select.Value placeholder="Tags" />
           <Select.Icon asChild>
-            <ChevronDownIcon className="h-4 w-4 opacity-50 self-end" />
+            <ChevronDownIcon className="h-4 w-4 self-end opacity-50" />
           </Select.Icon>
         </Button>
       </Select.Trigger>

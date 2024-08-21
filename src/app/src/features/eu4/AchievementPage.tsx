@@ -27,9 +27,9 @@ export const AchievementLayout = ({
   description: string;
 }>) => {
   return (
-    <div className="mx-auto max-w-7xl p-5 mt-8">
-      <div className="flex flex-col max-w-3xl mx-auto">
-        <div className="flex gap-3 items-center">
+    <div className="mx-auto mt-8 max-w-7xl p-5">
+      <div className="mx-auto flex max-w-3xl flex-col">
+        <div className="flex items-center gap-3">
           <AchievementAvatar id={achievementId} size={40} />
           <h1 className="text-4xl">{title} Leaderboard</h1>
         </div>
@@ -60,24 +60,24 @@ function AchievementPlatform({
   return (
     <Card
       className={cx(
-        "relative shadow-lg lg:hover:scale-105 transition-transform duration-100 min-w-64 max-w-64",
+        "relative min-w-64 max-w-64 shadow-lg transition-transform duration-100 lg:hover:scale-105",
         className,
       )}
     >
       <div
         className={cx(
-          "absolute mx-auto left-0 right-0 text-center text-white",
-          save.rank === 1 && "h-16 w-16 -top-9",
-          save.rank === 2 && "h-11 w-11 -top-5",
-          save.rank === 3 && "h-7 w-7 top-0.5 ",
+          "absolute left-0 right-0 mx-auto text-center text-white",
+          save.rank === 1 && "-top-9 h-16 w-16",
+          save.rank === 2 && "-top-5 h-11 w-11",
+          save.rank === 3 && "top-0.5 h-7 w-7",
         )}
       >
-        <TrophyIcon className="drop-shadow-lg stroke-slate-800 stroke-[0.5] fill-slate-200" />
+        <TrophyIcon className="fill-slate-200 stroke-slate-800 stroke-[0.5] drop-shadow-lg" />
       </div>
 
       <div
         className={cx(
-          "rounded-t-lg h-8 shadow-lg",
+          "h-8 rounded-t-lg shadow-lg",
           save.rank === 1 && "bg-yellow-500",
           save.rank === 2 && "bg-slate-400",
           save.rank === 3 && "bg-amber-800",
@@ -91,7 +91,7 @@ function AchievementPlatform({
               {formatInt(save.weighted_score.days)}
             </Tooltip.Trigger>
             <Tooltip.Content>
-              <table className="text-xl border-separate border-spacing-x-3 border-spacing-y-1">
+              <table className="border-separate border-spacing-x-3 border-spacing-y-1 text-xl">
                 <caption>Score calculation:</caption>
                 <tr>
                   <td>{save.date}:</td>
@@ -114,7 +114,7 @@ function AchievementPlatform({
               </table>
             </Tooltip.Content>
           </Tooltip>
-          <p className="all-small-caps text-gray-600 dark:text-gray-400 tracking-tighter leading-tight">
+          <p className="all-small-caps leading-tight tracking-tighter text-gray-600 dark:text-gray-400">
             PATCH IN-GAME DAYS
           </p>
         </div>
@@ -139,7 +139,7 @@ function AchievementPlatform({
                 (ON {difficultyText(save.game_difficulty)})
               </p>
             ) : null}
-            <p className=" text-gray-600 dark:text-gray-400">
+            <p className="text-gray-600 dark:text-gray-400">
               <TimeAgo date={save.upload_time} />
             </p>
           </div>
@@ -147,17 +147,17 @@ function AchievementPlatform({
 
         <p
           className={cx(
-            "font-semibold text-center hidden lg:block",
-            save.rank === 1 && "text-9xl mt-14",
-            save.rank === 2 && "text-7xl mt-10",
-            save.rank === 3 && "text-5xl mt-6",
+            "hidden text-center font-semibold lg:block",
+            save.rank === 1 && "mt-14 text-9xl",
+            save.rank === 2 && "mt-10 text-7xl",
+            save.rank === 3 && "mt-6 text-5xl",
           )}
         >
           {save.rank}
         </p>
       </div>
       <Link
-        className="block text-center py-2 mt-3 border-t border-gray-300 dark:border-gray-600"
+        className="mt-3 block border-t border-gray-300 py-2 text-center dark:border-gray-600"
         href={`/eu4/saves/${save.id}`}
       >
         View
@@ -172,7 +172,7 @@ export const AchievementPodium = ({
   saves: RankedSave[];
 }) => {
   return (
-    <div className="mt-20 flex flex-col lg:flex-row gap-8 lg:gap-12 lg:items-end justify-center">
+    <div className="mt-20 flex flex-col justify-center gap-8 lg:flex-row lg:items-end lg:gap-12">
       {gold && <AchievementPlatform save={gold} className="lg:order-2" />}
       {silver && <AchievementPlatform save={silver} className="lg:order-1" />}
       {bronze && <AchievementPlatform save={bronze} className="lg:order-3" />}
@@ -206,7 +206,7 @@ export const AchievementPage = ({ achievementId }: AchievementRoute) => {
         ) : null}
         {rest.length ? (
           <div className="flex flex-col gap-4">
-            <h2 className="text-lg text-center font-semibold">
+            <h2 className="text-center text-lg font-semibold">
               Other completions:
             </h2>
             <RecordTable records={rest} />

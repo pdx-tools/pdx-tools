@@ -13,6 +13,10 @@
     "generate": "drizzle-kit generate --config drizzle-kit.config.ts",
     "start": "next start"
   },
+  "prettier": {
+    "plugins": ["prettier-plugin-tailwindcss"],
+    "tailwindFunctions": ["cx"]
+  },
   "dependencies": {
     "@ant-design/plots": "1.2.5",
     "@heroicons/react": "2.1.5",

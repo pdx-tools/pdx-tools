@@ -84,7 +84,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}
             </div>
             <HistoryIcons evt={evt} />
@@ -103,7 +103,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}
             </div>
             <HistoryIcons evt={evt} />
@@ -120,7 +120,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}
             </div>
             <HistoryIcons evt={evt} />
@@ -136,7 +136,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}
             </div>
             <HistoryIcons evt={evt} />
@@ -152,7 +152,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}
             </div>
             <HistoryIcons evt={evt} />
@@ -167,7 +167,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}
             </div>
             <HistoryIcons evt={evt} />
@@ -182,7 +182,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}
             </div>
             <HistoryIcons evt={evt} />
@@ -197,7 +197,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}: enacted decision
             </div>
             <HistoryIcons evt={evt} />
@@ -223,7 +223,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}
             </div>
             <HistoryIcons evt={evt} />
@@ -238,7 +238,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}
             </div>
             <HistoryIcons evt={evt} />
@@ -253,7 +253,7 @@ const CountryHistoryCard = ({
                   <LeaderStats {...x} />
                   <div>
                     <div>{x.name}</div>
-                    <div className="font-semibold text-xs text-gray-400/75">
+                    <div className="text-xs font-semibold text-gray-400/75">
                       {x.personality?.name
                         .replace("_personality", "")
                         .replaceAll("_", " ")}
@@ -269,7 +269,7 @@ const CountryHistoryCard = ({
       return (
         <Card className="pb-4">
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}:{" "}
               {(() => {
                 switch (evt.event.type) {
@@ -300,7 +300,7 @@ const CountryHistoryCard = ({
             })()}
 
             <div>
-              <div className="flex flex-col gap-1 min-w-48">
+              <div className="flex min-w-48 flex-col gap-1">
                 <div>
                   {evt.event.name} {evt.event.dynasty}
                 </div>
@@ -326,26 +326,26 @@ const CountryHistoryCard = ({
                 </div>
               </div>
             </div>
-            <div className="pl-4 flex flex-col gap-1">
+            <div className="flex flex-col gap-1 pl-4">
               <div>Age: {evt.event.age}</div>
               <div>Culture: {evt.event.culture?.name}</div>
               <div>Religion: {evt.event.religion?.name}</div>
             </div>
           </div>
           {evt.event.leader ? (
-            <div className="pl-4 flex gap-4">
+            <div className="flex gap-4 pl-4">
               <div className="self-start">
                 <LeaderKindIcon kind={evt.event.leader.kind} />
               </div>
               <div className="flex flex-col">
                 <LeaderStats {...evt.event.leader} />
-                <div className="font-semibold text-xs text-gray-400/75">
+                <div className="text-xs font-semibold text-gray-400/75">
                   {evt.event.leader.personality?.name
                     .replace("_personality", "")
                     .replaceAll("_", " ")}
                 </div>
                 {evt.event.leader.activation ? (
-                  <div className="font-semibold text-xs text-gray-400/75">
+                  <div className="text-xs font-semibold text-gray-400/75">
                     Commandant since {evt.event.leader.activation}
                   </div>
                 ) : null}
@@ -359,7 +359,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}: <WarStartHeader date={evt.date} event={event} />{" "}
               {event.is_active ? "(ongoing)" : ""}
             </div>
@@ -371,7 +371,7 @@ const CountryHistoryCard = ({
             </div>
             <div className="flex flex-col gap-2">
               <div>{evt.event.war}</div>
-              <div className="flex gap-8 flex-wrap">
+              <div className="flex flex-wrap gap-8">
                 <div className="flex flex-col">
                   <div className="text-sm font-semibold">Attackers</div>
                   {evt.event.is_active ? (
@@ -396,7 +396,7 @@ const CountryHistoryCard = ({
                       <span className="text-sm font-semibold">
                         {country.name}
                       </span>{" "}
-                      <span className="no-break font-semibold text-xs text-gray-400/75">
+                      <span className="no-break text-xs font-semibold text-gray-400/75">
                         (participation:{" "}
                         {formatInt(evt.event.our_participation_percent * 100)}%)
                       </span>
@@ -423,7 +423,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}: {evt.event.war_end != evt.date ? "Separate" : ""}{" "}
               peace after {formatInt(evt.event.our_duration_days)} days
               {evt.event.war_end != evt.date
@@ -441,7 +441,7 @@ const CountryHistoryCard = ({
             </div>
             <div className="flex flex-col gap-2">
               <div>{evt.event.war}</div>
-              <div className="flex gap-8 flex-wrap">
+              <div className="flex flex-wrap gap-8">
                 <div>
                   <div className="text-sm font-semibold">Attackers</div>
                   <SideCasualties losses={attackingLosses} />
@@ -455,7 +455,7 @@ const CountryHistoryCard = ({
                     <span className="text-sm font-semibold">
                       {country.name}
                     </span>{" "}
-                    <span className="no-break font-semibold text-xs text-gray-400/75">
+                    <span className="no-break text-xs font-semibold text-gray-400/75">
                       (participation:{" "}
                       {formatInt(evt.event.our_participation_percent * 100)}%)
                     </span>
@@ -489,7 +489,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}: enacted policy
             </div>
             <HistoryIcons evt={evt} />
@@ -504,7 +504,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow font-semibold text-xs text-gray-400/75">
+            <div className="grow text-xs font-semibold text-gray-400/75">
               {evt.date}: changed national focus
             </div>
             <HistoryIcons evt={evt} />
@@ -524,14 +524,14 @@ function FlagList({ flags }: { flags: LocalizedTag[] }) {
   const first = flags[0];
 
   return (
-    <div className="flex gap-2 items-start">
+    <div className="flex items-start gap-2">
       <Flag key={first.tag} name={first.name} tag={first.tag}>
         <Flag.Tooltip showName>
           <Flag.Image size="small" />
         </Flag.Tooltip>
       </Flag>
 
-      <div className="flex flex-wrap w-44">
+      <div className="flex w-44 flex-wrap">
         {flags.slice(1).map((x) => (
           <Flag key={x.tag} name={x.name} tag={x.tag}>
             <Flag.Tooltip showName>
@@ -560,7 +560,7 @@ function ProvinceChanges({
   );
 
   return (
-    <div className="font-semibold text-xs text-gray-400/75">
+    <div className="text-xs font-semibold text-gray-400/75">
       {gained ? "Gained" : "Lost"} provinces:{" "}
       {formatList(
         [
@@ -654,7 +654,7 @@ const HistoryFilterIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
   return (
     <IconButton
       side="left"
-      className="pt-1 group"
+      className="group pt-1"
       variant="ghost"
       shape="none"
       tooltip={`Hide similar events (${filterName})`}
@@ -662,7 +662,7 @@ const HistoryFilterIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
         actions.addFilter(filterName);
       }}
       icon={
-        <EyeSlashIcon className="h-6 w-6 hover:opacity-100 transition-opacity opacity-50" />
+        <EyeSlashIcon className="h-6 w-6 opacity-50 transition-opacity hover:opacity-100" />
       }
     />
   );
@@ -676,7 +676,7 @@ const HistoryMapIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
   return (
     <IconButton
       side="left"
-      className="pt-1 group"
+      className="group pt-1"
       variant="ghost"
       shape="none"
       onClick={() =>
@@ -692,7 +692,7 @@ const HistoryMapIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
       icon={
         <MapIcon
           className={cx(
-            "h-6 w-6 hover:opacity-100 transition-opacity",
+            "h-6 w-6 transition-opacity hover:opacity-100",
             date.text != evt.date && "opacity-50",
           )}
         />
@@ -715,7 +715,7 @@ const WarBattlesSummary = ({
   }
 
   return (
-    <div className="font-semibold text-xs text-gray-400/75">
+    <div className="text-xs font-semibold text-gray-400/75">
       {type} battles: {formatInt(battles.count)}. The{" "}
       {is_attacking ? "attackers" : "defenders"} won{" "}
       {pluralize("battle", battles.won)}.
@@ -780,7 +780,7 @@ const LeaderKindIcon = ({ kind }: { kind: LeaderKind }) => {
 
 const SideCasualties = ({ losses }: { losses: Losses }) => {
   return (
-    <div className="flex gap-2 w-44 justify-between">
+    <div className="flex w-44 justify-between gap-2">
       <div className="flex items-end">
         <span className="all-small-caps">
           {abbreviateInt(losses.landTotal)}
@@ -812,12 +812,12 @@ const FilterOverlay = () => {
   }
 
   return (
-    <div className="sticky left-0 flex justify-end top-0 z-10 animate-in slide-in-from-right">
+    <div className="sticky left-0 top-0 z-10 flex justify-end animate-in slide-in-from-right">
       <div className="shadow-md">
         <Button
           shape="none"
           variant="ghost"
-          className="text-white bg-teal-900 hover:bg-teal-800 rounded-bl px-4 py-2 flex gap-2"
+          className="flex gap-2 rounded-bl bg-teal-900 px-4 py-2 text-white hover:bg-teal-800"
           onClick={() => actions.clearFilters()}
         >
           <FunnelIcon className="h-4 w-4" /> <span>Clear filter</span>
@@ -846,10 +846,10 @@ const CountryHistoryVirtualList = ({
   const items = virtualizer.getVirtualItems();
 
   return (
-    <div className="absolute left-4 right-0 top-0 bottom-0">
+    <div className="absolute bottom-0 left-4 right-0 top-0">
       <div
         ref={parentRef}
-        className="overflow-y-auto h-full w-full"
+        className="h-full w-full overflow-y-auto"
         style={{ contain: "strict" }}
       >
         <div
@@ -858,7 +858,7 @@ const CountryHistoryVirtualList = ({
         >
           <FilterOverlay />
           <div
-            className="absolute top-0 left-0 w-full"
+            className="absolute left-0 top-0 w-full"
             style={{ transform: `translateY(${items[0]?.start ?? 0}px)` }}
           >
             {items.map((virtualRow) => (
@@ -866,10 +866,10 @@ const CountryHistoryVirtualList = ({
                 key={virtualRow.key}
                 data-index={virtualRow.index}
                 ref={virtualizer.measureElement}
-                className="flex gap-8 py-4 px-2"
+                className="flex gap-8 px-2 py-4"
               >
                 <div>{data[virtualRow.index].year}</div>
-                <div className="flex flex-col grow gap-3">
+                <div className="flex grow flex-col gap-3">
                   {data[virtualRow.index].events.map((evt, i) => (
                     <CountryHistoryCard country={details} key={i} evt={evt} />
                   ))}

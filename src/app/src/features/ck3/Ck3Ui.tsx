@@ -130,7 +130,7 @@ const Ck3Page = ({ save, meta }: Ck3PageProps) => {
           meta.version
         }) - PDX Tools`}</title>
       </Head>
-      <div className="mx-auto max-w-prose flex flex-col gap-4">
+      <div className="mx-auto flex max-w-prose flex-col gap-4">
         <h2 className="text-2xl font-bold">CK3</h2>
         <p>
           {`A CK3 save was detected (version ${meta.version}). At this time, CK3 functionality is limited but one can still melt binary ironman saves into plaintext`}

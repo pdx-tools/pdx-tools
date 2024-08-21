@@ -29,7 +29,7 @@ export function ExportDataButton() {
   return (
     <Button onClick={() => run()}>
       {isLoading ? (
-        <LoadingIcon className="h-4 w-4 text-gray-800 mr-2" />
+        <LoadingIcon className="mr-2 h-4 w-4 text-gray-800" />
       ) : null}
       Export Data
     </Button>

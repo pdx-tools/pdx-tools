@@ -46,7 +46,7 @@ export const AccountContent = () => {
         </Button>
       </div>
       {sessionSelect.isAdmin(session) ? (
-        <div className="flex flex-col w-60">
+        <div className="flex w-60 flex-col">
           <Button
             variant="primary"
             disabled={rebalance.isPending}

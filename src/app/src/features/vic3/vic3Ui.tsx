@@ -42,8 +42,8 @@ export const Vic3Page = () => {
           meta.date
         }) - PDX Tools`}</title>
       </Head>
-      <div className="flex flex-col gap-8 items-center">
-        <div className="mx-auto max-w-prose flex flex-col gap-4">
+      <div className="flex flex-col items-center gap-8">
+        <div className="mx-auto flex max-w-prose flex-col gap-4">
           <h2 className="text-2xl font-bold">Vic3</h2>
           <p>
             {`A Vic3 save was detected (date ${meta.date}). At this time, Vic3 functionality is limited but one can still melt binary saves into plaintext`}
@@ -61,8 +61,8 @@ export const Vic3Page = () => {
           </div>
         </div>
         <VisualizationProvider>
-          <div className="max-w-screen-2xl w-full px-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="w-full max-w-screen-2xl px-4">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
               <div className="p-2">
                 <span> GDP/c </span>
                 <CountryGDPChart type="gdpc" stats={stats?.data ?? []} />

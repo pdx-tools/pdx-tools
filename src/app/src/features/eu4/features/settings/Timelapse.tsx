@@ -193,12 +193,12 @@ export const Timelapse = () => {
 
   return (
     <>
-      <div className="bg-slate-900 rounded-tr-lg flex gap-2 items-center pl-3 pr-4 py-2">
+      <div className="flex items-center gap-2 rounded-tr-lg bg-slate-900 py-2 pl-3 pr-4">
         <div className="flex items-center justify-center">
           <IconButton
             shape="circle"
             variant="ghost"
-            className="opacity-75 enabled:hover:opacity-90 transition-opacity"
+            className="opacity-75 transition-opacity enabled:hover:opacity-90"
             disabled={!timelapseEnabled}
             onClick={!isPlaying ? startTimelapse : stopTimelapse}
             icon={
@@ -214,7 +214,7 @@ export const Timelapse = () => {
           <IconButton
             shape="circle"
             variant="ghost"
-            className="opacity-60 enabled:hover:opacity-90 transition-opacity"
+            className="opacity-60 transition-opacity enabled:hover:opacity-90"
             disabled={!(timelapseEnabled && recordingSupported)}
             onClick={!isRecording ? startRecording : stopRecording}
             icon={
@@ -238,7 +238,7 @@ export const Timelapse = () => {
               <IconButton
                 shape="circle"
                 variant="ghost"
-                className="opacity-60 enabled:hover:opacity-90 transition-opacity"
+                className="opacity-60 transition-opacity enabled:hover:opacity-90"
                 icon={<MixerHorizontalIcon className="h-6 w-6" />}
                 tooltip="Map and timelapse settings"
               />
@@ -246,8 +246,8 @@ export const Timelapse = () => {
             <Popover.Content sideOffset={7}>
               <div className="flex flex-col gap-1">
                 <div className="flex w-full">
-                  <h2 className="font-semibold grow">Map Settings</h2>
-                  <div className="flex gap-1 items-center">
+                  <h2 className="grow font-semibold">Map Settings</h2>
+                  <div className="flex items-center gap-1">
                     <CountryFilterButton />
                     <MapExportMenu />
                   </div>
@@ -322,7 +322,7 @@ export const Timelapse = () => {
                   />
                 )}
                 {!recordingSupported ? (
-                  <Alert variant="info" className="px-4 py-2 max-w-xs">
+                  <Alert variant="info" className="max-w-xs px-4 py-2">
                     <Alert.Description>
                       Browser does not support timelapse recording.{" "}
                       <Link href="https://caniuse.com/mdn-api_videoencoder">

@@ -21,7 +21,7 @@ export const ImperatorPage = ({ save, meta }: ImperatorPageProps) => {
           meta.date
         }) - PDX Tools`}</title>
       </Head>
-      <div className="mx-auto max-w-prose flex flex-col gap-4">
+      <div className="mx-auto flex max-w-prose flex-col gap-4">
         <h2 className="text-2xl font-bold">Imperator</h2>
         <p>
           {`An Imperator save was detected (date ${meta.date}). At this time, Imperator functionality is limited but one can still melt binary saves into plaintext`}

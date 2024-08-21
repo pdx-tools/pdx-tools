@@ -32,7 +32,7 @@ export const CountrySelect = memo(function CountrySelect({
       <Popover.Trigger asChild>
         <Button role="combobox" className="w-52 justify-between">
           {children}
-          <PlayIcon className="h-3 w-3 rotate-90 opacity-50 self-center" />
+          <PlayIcon className="h-3 w-3 rotate-90 self-center opacity-50" />
         </Button>
       </Popover.Trigger>
       <Popover.Content className="max-h-96 w-80 overflow-auto">
@@ -142,7 +142,7 @@ function SelectContent({
               <Command.Item
                 key={row.index}
                 onSelect={() => select(x.tag)}
-                className="absolute top-0 left-0 w-full"
+                className="absolute left-0 top-0 w-full"
                 style={{
                   height: row.size,
                   transform: `translateY(${row.start}px)`,
@@ -151,7 +151,7 @@ function SelectContent({
                 {isSelected(x.tag) && (
                   <CheckIcon className="absolute mr-2 h-4 w-4" />
                 )}
-                <span className="pl-6 grow">
+                <span className="grow pl-6">
                   {x.name} ({x.tag})
                 </span>
                 {x.badge && <Badge variant="blue">{x.badge}</Badge>}

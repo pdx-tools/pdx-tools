@@ -55,7 +55,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
 
       {data !== null ? (
         <Eu4StoreProvider store={data}>
-          <div className="flex fixed bottom-0 left-0 text-white items-end w-[calc(100%-56px)]">
+          <div className="fixed bottom-0 left-0 flex w-[calc(100%-56px)] items-end text-white">
             <Timelapse />
           </div>
 

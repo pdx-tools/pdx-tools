@@ -16,7 +16,7 @@ export const Hoi4Page = () => {
           meta.date
         }) - PDX Tools`}</title>
       </Head>
-      <div className="mx-auto max-w-prose flex flex-col gap-4">
+      <div className="mx-auto flex max-w-prose flex-col gap-4">
         <h2 className="text-2xl font-bold">Hoi4</h2>
         <p>
           {`An Hoi4 save was detected (date ${meta.date}). At this time, Hoi4 functionality is limited but one can still melt binary saves into plaintext`}

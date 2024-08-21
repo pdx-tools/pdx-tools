@@ -42,7 +42,7 @@ export const CountrySelect = memo(function CountrySelect({
           className="w-52 justify-between"
         >
           {children}
-          <PlayIcon className="h-3 w-3 rotate-90 opacity-50 self-center" />
+          <PlayIcon className="h-3 w-3 rotate-90 self-center opacity-50" />
         </Button>
       </Popover.Trigger>
       <Popover.Content className="max-h-96 w-72 overflow-auto">

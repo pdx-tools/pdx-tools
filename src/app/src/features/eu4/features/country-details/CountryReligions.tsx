@@ -269,7 +269,7 @@ export const CountryReligions = ({ details }: CountryReligionsProps) => {
                     <p className="max-w-prose">
                       Techniques to influence amount needed to reach plurality:
                     </p>
-                    <ul className="list-disc list-inside pl-3">
+                    <ul className="list-inside list-disc pl-3">
                       {data.rebel.more_popular.map((x) => (
                         <li key={x.id}>
                           <span className="font-semibold">

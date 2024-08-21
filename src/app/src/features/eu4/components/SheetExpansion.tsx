@@ -25,11 +25,11 @@ export const SheetExpansion = ({
       <Sheet.Content
         side="right"
         className={cx(
-          "flex flex-col dark:bg-slate-900 bg-white pt-4 transition-[width] duration-200",
+          "flex flex-col bg-white pt-4 transition-[width] duration-200 dark:bg-slate-900",
           expanded ? "w-full" : "w-[800px] max-w-full",
         )}
       >
-        <Sheet.Header className="z-[1] flex gap-2 px-4 pb-4 shadow-md items-center">
+        <Sheet.Header className="z-[1] flex items-center gap-2 px-4 pb-4 shadow-md">
           <Sheet.Close />
           <Button
             shape="square"

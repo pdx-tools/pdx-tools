@@ -92,13 +92,13 @@ export const Home = ({ subtitle }: HomeProps) => {
         </section>
       </div>
       <div
-        className={`${classes.row} flex w-full flex-col items-center justify-center px-5 py-16 text-xl odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-transparent dark:even:bg-transparent md:px-9`}
+        className={`${classes.row} flex w-full flex-col items-center justify-center px-5 py-16 text-xl odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
       >
         <ImageGallery />
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-transparent dark:even:bg-transparent md:px-9`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
       >
         <div className="max-w-7xl">
           <h2 className="text-center text-3xl font-extrabold tracking-tight xl:text-4xl">
@@ -167,13 +167,13 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-transparent dark:even:bg-transparent md:px-9`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
       >
-        <div className="max-w-7xl flex flex-col items-center">
+        <div className="flex max-w-7xl flex-col items-center">
           <h2 className="text-center text-3xl font-extrabold tracking-tight xl:text-4xl">
             Achievement Leaderboards
           </h2>
-          <p className="mb-6 mt-3 text-center text-xl max-w-prose">
+          <p className="mb-6 mt-3 max-w-prose text-center text-xl">
             Go for gold! Uploaded saves are tagged with{" "}
             <Link href="/eu4/achievements">supported achievements</Link>.
             Competition kept fresh with saves on the latest patch prioritized.
@@ -184,7 +184,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-transparent dark:even:bg-transparent md:px-9`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
       >
         <section>
           <div className="grid max-w-prose gap-4">
@@ -202,13 +202,13 @@ export const Home = ({ subtitle }: HomeProps) => {
             </p>
             <div className="flex flex-col gap-y-2">
               <div className="flex items-center gap-x-2">
-                <FirefoxIcon className="text-gray-300 h-8 w-8" />
+                <FirefoxIcon className="h-8 w-8 text-gray-300" />
                 <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
-                <ChromeIcon className="text-gray-300 h-8 w-8" />
+                <ChromeIcon className="h-8 w-8 text-gray-300" />
                 <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
-                <EdgeIcon className="text-gray-300 h-8 w-8" />
+                <EdgeIcon className="h-8 w-8 text-gray-300" />
                 <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
-                <SafariIcon className="text-gray-300 h-8 w-8" />
+                <SafariIcon className="h-8 w-8 text-gray-300" />
               </div>
               <div className="text-xs">
                 Recommended: Chrome (88+), Edge (88+).
@@ -228,7 +228,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-transparent dark:even:bg-transparent md:px-9`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
       >
         <section>
           <div className="grid max-w-prose gap-4">
@@ -255,7 +255,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-transparent dark:even:bg-transparent md:px-9`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
       >
         <section>
           <div className="grid max-w-prose gap-4">
@@ -283,7 +283,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white dark:odd:bg-transparent dark:even:bg-transparent md:px-9`}
+        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
       >
         <section>
           <div className="grid max-w-prose gap-4">
@@ -306,7 +306,7 @@ export const Home = ({ subtitle }: HomeProps) => {
           </div>
         </section>
       </div>
-      <footer className="text-sm my-4 text-slate-400 text-center">
+      <footer className="my-4 text-center text-sm text-slate-400">
         <a href="https://www.flaticon.com/free-icons/north">EU4</a>,{" "}
         <a href="https://www.flaticon.com/free-icons/victoria-day">V3</a>, and{" "}
         <a href="https://www.flaticon.com/free-icons/military">HOI4</a> icons

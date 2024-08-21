@@ -13,7 +13,7 @@ export const MapZoomSideBar = () => {
           </div>
         </ZoomInSideBarButton>
       </div>
-      <div className="flex  justify-end overflow-hidden whitespace-nowrap">
+      <div className="flex justify-end overflow-hidden whitespace-nowrap">
         <ZoomOutSideBarButton key="zoom-out">
           <span className="text-base">Zoom out</span>
           <div className="flex h-8 w-8 items-center justify-center">

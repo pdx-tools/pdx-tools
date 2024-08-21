@@ -52,14 +52,14 @@ const CommandInput = React.forwardRef<
 >(function CommandInput({ className, ...props }, ref) {
   return (
     <div
-      className="flex items-center border-b dark:border-gray-600 px-3"
+      className="flex items-center border-b px-3 dark:border-gray-600"
       cmdk-input-wrapper=""
     >
       <MagnifyingGlassIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
       <CommandPrimitive.Input
         ref={ref}
         className={cx(
-          "flex h-11 w-full rounded-md bg-white dark:bg-slate-800 px-2 py-3 text-sm outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-11 w-full rounded-md bg-white px-2 py-3 text-sm outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-800",
           className,
         )}
         {...props}
@@ -136,7 +136,7 @@ const CommandItem = React.forwardRef<
     <CommandPrimitive.Item
       ref={ref}
       className={cx(
-        "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-sky-100 aria-selected:text-sky-800 aria-disabled:pointer-events-none aria-disabled:opacity-50",
+        "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-selected:bg-sky-100 aria-selected:text-sky-800",
         className,
       )}
       {...props}

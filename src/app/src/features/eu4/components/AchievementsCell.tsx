@@ -17,8 +17,8 @@ export const AchievementsCell = ({
       ))}
       {data.overflow.length > 0 ? (
         <li className="flex">
-          <div className="w-10 h-10 place-content-center bg-neutral-950/50">
-            <div className="font-semibold text-lg text-center">
+          <div className="h-10 w-10 place-content-center bg-neutral-950/50">
+            <div className="text-center text-lg font-semibold">
               +{data.overflow.length}
             </div>
           </div>

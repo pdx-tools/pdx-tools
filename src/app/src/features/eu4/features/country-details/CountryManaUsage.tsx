@@ -171,8 +171,8 @@ const DevClicksCard = ({ mana }: { mana: CountryMana }) => {
   const averageDevClickCost = totalDevCost / (totalDevClicks || 1);
 
   return (
-    <Card className="w-max p-4 flex flex-col gap-6 items-center">
-      <div className="flex flex-col gap-1 items-center">
+    <Card className="flex w-max flex-col items-center gap-6 p-4">
+      <div className="flex flex-col items-center gap-1">
         <div className="text-lg">Mana spent on province development:</div>
         <div className="flex gap-4">
           <div className="flex items-center gap-1">
@@ -188,7 +188,7 @@ const DevClicksCard = ({ mana }: { mana: CountryMana }) => {
         <div>Total: {formatInt(totalDevCost)}</div>
       </div>
 
-      <div className="flex flex-col gap-1 items-center">
+      <div className="flex flex-col items-center gap-1">
         <div className="text-lg">Dev clicks:</div>
         <div className="flex gap-4">
           <div className="flex items-center gap-1">
@@ -208,12 +208,12 @@ const DevClicksCard = ({ mana }: { mana: CountryMana }) => {
       {mana.development.length > 1 ? (
         <div className="flex flex-col gap-1">
           <div className="flex gap-8">
-            <p className="font-semibold grow">Dev breakdown:</p>
+            <p className="grow font-semibold">Dev breakdown:</p>
             <p className="font-semibold">Dev clicks:</p>
           </div>
           <div>
             {mana.development.map((x) => (
-              <div key={x.country.tag} className="flex gap-2 items-center">
+              <div key={x.country.tag} className="flex items-center gap-2">
                 <Flag name={x.country.name} tag={x.country.tag}>
                   <Flag.Image size="xs" />
                   <Flag.CountryName className="grow" />
@@ -234,8 +234,8 @@ const LeadersCard = ({ mana }: { mana: CountryMana }) => {
   const milDevCost = mana.mana_usage.mil.create_leader;
 
   return (
-    <Card className="w-max p-4 flex flex-col gap-6 items-center">
-      <div className="flex flex-col gap-1 items-center">
+    <Card className="flex w-max flex-col items-center gap-6 p-4">
+      <div className="flex flex-col items-center gap-1">
         <div className="text-lg">Mana spent on leader recruitment:</div>
         <div className="flex gap-4">
           <div className="flex items-center gap-1">
@@ -251,7 +251,7 @@ const LeadersCard = ({ mana }: { mana: CountryMana }) => {
         <div>Total: {formatInt(admDevCost + milDevCost + dipDevCost)}</div>
       </div>
 
-      <div className="flex flex-col gap-1 items-center">
+      <div className="flex flex-col items-center gap-1">
         <div className="text-lg">Leaders:</div>
         <div className="flex gap-8">
           <div className="flex gap-4">
@@ -358,7 +358,7 @@ const CountryManaUsageImpl = ({ mana }: { mana: CountryMana }) => {
 
 function NegativeMana({ rows }: { rows: DataPoint[] }) {
   return (
-    <div className="pt-2 max-w-prose">
+    <div className="max-w-prose pt-2">
       Negative values excluded.{" "}
       <HelpTooltip help="Negative values are not a bug, and can represent tributes or any other game mechanic that isn't fully represented." />
       <ul>

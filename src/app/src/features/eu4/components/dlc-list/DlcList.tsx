@@ -34,5 +34,5 @@ export const DlcList = ({ dlc_enabled }: DlcListProps) => {
     );
   });
 
-  return <div className="justify-center flex flex-wrap">{list}</div>;
+  return <div className="flex flex-wrap justify-center">{list}</div>;
 };

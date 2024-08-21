@@ -17,13 +17,13 @@ function Eu4FileIcon() {
           alt=""
           height="256"
           width="256"
-          className="absolute top-1/4 w-1/2 left-1/4"
+          className="absolute left-1/4 top-1/4 w-1/2"
         />
       </div>
-      <div className="absolute top-[104px] left-16 bg-slate-900 text-white font-semibold tracking-tight rounded px-2 py-0.5">
+      <div className="absolute left-16 top-[104px] rounded bg-slate-900 px-2 py-0.5 font-semibold tracking-tight text-white">
         .EU4
       </div>
-      <div className="mt-5 ml-3 w-max bg-blue-500 text-white text-sm rounded-full px-3 py-0.5 opacity-80">
+      <div className="ml-3 mt-5 w-max rounded-full bg-blue-500 px-3 py-0.5 text-sm text-white opacity-80">
         Mehmet.eu4
       </div>
     </div>
@@ -32,7 +32,7 @@ function Eu4FileIcon() {
 
 function V3FileIcon() {
   return (
-    <div className="hidden sm:block absolute w-max rotate-12 translate-x-52 -translate-y-4 drop-shadow-lg">
+    <div className="absolute hidden w-max -translate-y-4 translate-x-52 rotate-12 drop-shadow-lg sm:block">
       <div className="relative">
         <DocumentIcon className="h-32 w-32" />
         <Image
@@ -40,13 +40,13 @@ function V3FileIcon() {
           alt=""
           height="256"
           width="256"
-          className="absolute top-10 w-14 h-14 left-9"
+          className="absolute left-9 top-10 h-14 w-14"
         />
       </div>
-      <div className="absolute top-[104px] left-20 bg-slate-900 text-white font-semibold tracking-tight rounded px-2 py-0.5">
+      <div className="absolute left-20 top-[104px] rounded bg-slate-900 px-2 py-0.5 font-semibold tracking-tight text-white">
         .V3
       </div>
-      <div className="mt-5 ml-3 w-max bg-blue-500 text-white text-sm rounded-full px-3 py-0.5 opacity-80">
+      <div className="ml-3 mt-5 w-max rounded-full bg-blue-500 px-3 py-0.5 text-sm text-white opacity-80">
         egalitarian.v3
       </div>
     </div>
@@ -55,7 +55,7 @@ function V3FileIcon() {
 
 function Hoi4FileIcon() {
   return (
-    <div className="hidden sm:block absolute w-max -rotate-12 -translate-x-44 -translate-y-10 drop-shadow-lg">
+    <div className="absolute hidden w-max -translate-x-44 -translate-y-10 -rotate-12 drop-shadow-lg sm:block">
       <div className="relative">
         <DocumentIcon className="h-32 w-32" />
         <Image
@@ -63,13 +63,13 @@ function Hoi4FileIcon() {
           alt=""
           height="256"
           width="256"
-          className="absolute top-10 left-1/4 w-14 h-14"
+          className="absolute left-1/4 top-10 h-14 w-14"
         />
       </div>
-      <div className="absolute top-[104px] left-16 bg-slate-900 text-white font-semibold tracking-tight rounded px-2 py-0.5">
+      <div className="absolute left-16 top-[104px] rounded bg-slate-900 px-2 py-0.5 font-semibold tracking-tight text-white">
         .HOI4
       </div>
-      <div className="mt-5 w-max bg-blue-500 text-white text-sm rounded-full px-3 py-0.5 opacity-80">
+      <div className="mt-5 w-max rounded-full bg-blue-500 px-3 py-0.5 text-sm text-white opacity-80">
         blitzkrieg-bop.hoi4
       </div>
     </div>
@@ -114,7 +114,7 @@ export const HeroFileInput = () => {
       <Eu4FileIcon />
       <V3FileIcon />
       <Hoi4FileIcon />
-      <p className="text-2xl leading-relaxed text-balance max-w-72 opacity-75">
+      <p className="max-w-72 text-balance text-2xl leading-relaxed opacity-75">
         Choose file or drag and drop
       </p>
     </>
@@ -165,6 +165,6 @@ export const HeroFileInput = () => {
   );
 
   return (
-    <div className="flex leading-relaxed max-w-[480px] h-[264px]">{input}</div>
+    <div className="flex h-[264px] max-w-[480px] leading-relaxed">{input}</div>
   );
 };

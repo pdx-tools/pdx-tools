@@ -67,7 +67,7 @@ export const CountryFilterButton = () => {
           </Dialog.Trigger>
           <Dialog.Content>
             <Dialog.Title>Custom Country Filter</Dialog.Title>
-            <div className="px-4 flex flex-col gap-2">
+            <div className="flex flex-col gap-2 px-4">
               <div className="flex justify-between">
                 <div>
                   <p>Include Countries:</p>

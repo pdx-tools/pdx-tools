@@ -45,7 +45,7 @@ export const UploadDrawerContent = ({
             maxLength={5000}
             name="aar"
             rows={8}
-            className="w-full px-2 py-1 border dark:border-gray-600"
+            className="w-full border px-2 py-1 dark:border-gray-600"
           />
         </label>
         <div className="flex justify-center">

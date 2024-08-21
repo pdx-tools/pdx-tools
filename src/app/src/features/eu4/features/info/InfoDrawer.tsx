@@ -69,7 +69,7 @@ export const InfoDrawer = () => {
   return (
     <div ref={sideBarContainerRef}>
       <div className="flex flex-wrap justify-center gap-8">
-        <Card className="p-4 w-80">
+        <Card className="w-80 p-4">
           <table className="table w-full">
             <tbody>
               <tr>
@@ -117,7 +117,7 @@ export const InfoDrawer = () => {
             </tbody>
           </table>
         </Card>
-        <Card className="p-4 w-80">
+        <Card className="w-80 p-4">
           <div className="space-y-3">
             <div className="text-center text-lg">DLC</div>
             <DlcList dlc_enabled={meta.dlc} />
@@ -128,7 +128,7 @@ export const InfoDrawer = () => {
           <AchievementCard achievements={achievements.achievements} />
         ) : null}
         {mods.length > 0 ? (
-          <Card className="p-4 min-w-[320px] max-w-xl">
+          <Card className="min-w-[320px] max-w-xl p-4">
             <div className="space-y-2">
               <div className="text-center text-lg">Mods {mods.length}</div>
               <ModList />
@@ -156,7 +156,7 @@ export const InfoDrawer = () => {
                     <th>
                       <span className="sr-only">Country</span>
                     </th>
-                    <th className="font-normal text-right">
+                    <th className="text-right font-normal">
                       Great power score
                     </th>
                   </tr>
@@ -164,10 +164,10 @@ export const InfoDrawer = () => {
                 <tbody>
                   {greatPowers.data.slice(0, 8).map((x, i) => (
                     <tr key={x.country.tag}>
-                      <td className="flex mt-1">
+                      <td className="mt-1 flex">
                         <Flag tag={x.country.tag} name={x.country.name}>
                           <Flag.Tooltip asChild>
-                            <Flag.DrawerTrigger className="gap-2 grow">
+                            <Flag.DrawerTrigger className="grow gap-2">
                               <Flag.Image size="large" />
                               <div>(#{i + 1})</div>
                               <Flag.CountryName />
@@ -222,8 +222,8 @@ function AchievementCard({
     threshold: 4,
   });
   return (
-    <Card className="p-4 w-80">
-      <div className="flex flex-col space-y-2 items-center">
+    <Card className="w-80 p-4">
+      <div className="flex flex-col items-center space-y-2">
         <div className="text-lg">Achievements</div>
         {items.map((row, i) => (
           <div key={i} className="flex gap-2">
@@ -271,10 +271,10 @@ function CountryCard({
       key={item.latest}
       className={cx(
         "space-y-5 p-4",
-        item.annexed && "bg-rose-100 dark:bg-rose-900 saturate-50",
+        item.annexed && "bg-rose-100 saturate-50 dark:bg-rose-900",
         !item.is_human &&
           !item.annexed &&
-          "bg-gray-100 dark:bg-slate-800 saturate-50",
+          "bg-gray-100 saturate-50 dark:bg-slate-800",
       )}
     >
       <div className="flex">
@@ -283,7 +283,7 @@ function CountryCard({
             <Flag.Image size="large" />
             <div className="flex flex-col items-start">
               <Flag.CountryName />
-              <span className="font-semibold text-xs text-gray-400/75">
+              <span className="text-xs font-semibold text-gray-400/75">
                 {item.player_names[0]}
               </span>
             </div>
@@ -319,7 +319,7 @@ function CountryCard({
 
       {item.player_names.length > 1 ? (
         <div className="flex flex-col">
-          <p className="font-semibold grow">Players:</p>
+          <p className="grow font-semibold">Players:</p>
           <div className="max-h-24 overflow-y-auto">
             {item.player_names.map((x, i) => (
               <div key={i}>{x}</div>
@@ -331,12 +331,12 @@ function CountryCard({
       {item.transitions.length > 1 || item.annexed ? (
         <div className="flex flex-col gap-1">
           <div className="flex">
-            <p className="font-semibold grow">History:</p>
+            <p className="grow font-semibold">History:</p>
             <p className="font-semibold">Date</p>
           </div>
           <div className="max-h-24 overflow-y-auto">
             {item.transitions.map((x, i) => (
-              <div key={i} className="flex gap-2 items-center">
+              <div key={i} className="flex items-center gap-2">
                 <Flag name={x.name} tag={x.tag}>
                   <Flag.Image size="xs" />
                   <Flag.CountryName className="grow" />

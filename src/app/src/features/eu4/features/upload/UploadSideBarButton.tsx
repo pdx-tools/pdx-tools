@@ -31,7 +31,7 @@ export const UploadSideBarButton = ({
         onInteractOutside={(e) => e.preventDefault()}
       >
         <SideBarContainerProvider>
-          <Sheet.Header className="z-10 px-4 pb-4 shadow-md items-center">
+          <Sheet.Header className="z-10 items-center px-4 pb-4 shadow-md">
             <Sheet.Close />
             <UploadDrawerTitle
               progress={fileUpload.progress}

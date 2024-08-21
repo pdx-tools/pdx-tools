@@ -90,10 +90,10 @@ const HeaderMenu = () => {
         <NavigationMenu.Viewport />
       </NavigationMenu>
 
-      <div className="flex grow justify-end self-center text-end items-center gap-6">
+      <div className="flex grow items-center justify-end gap-6 self-center text-end">
         <Link
           href="https://github.com/pdx-tools/pdx-tools"
-          className="hidden lg:block opacity-75 hover:opacity-100 focus-visible:opacity-100"
+          className="hidden opacity-75 hover:opacity-100 focus-visible:opacity-100 lg:block"
         >
           <GithubIcon className="h-6 w-6 text-white" />
           <span className="sr-only">Github repo</span>
@@ -101,7 +101,7 @@ const HeaderMenu = () => {
 
         <Link
           href="https://discord.gg/rCpNWQW"
-          className="hidden lg:block opacity-75 hover:opacity-100 focus-visible:opacity-100"
+          className="hidden opacity-75 hover:opacity-100 focus-visible:opacity-100 lg:block"
         >
           <DiscordIcon className="h-6 w-6" />
           <span className="sr-only">Discord</span>
