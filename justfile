@@ -332,12 +332,29 @@ prep-frontend:
   # Create dummy spritesheets files if they don't exist for those who don't have
   # EU4 game data, otherwise dynamic imports will cause next.js failure
   mkdir -p assets/game/eu4/common/images/{achievements,advisors,buildings,flags,personalities,tc-investments}
-  touch -a assets/game/eu4/common/images/achievements/achievements{.json,.webp}
-  touch -a assets/game/eu4/common/images/advisors/{advisors.json,advisors_x{48,64,77}.webp}
-  touch -a assets/game/eu4/common/images/buildings/{global{.json,.webp},westerngfx{.json,.webp}}
-  touch -a assets/game/eu4/common/images/flags/{flags.json,flags_x{8,48,64,128}.webp}
-  touch -a assets/game/eu4/common/images/personalities/personalities{.json,.webp}
-  touch -a assets/game/eu4/common/images/tc-investments/investments{.json,.webp}
+  touch -a assets/game/eu4/common/images/achievements/achievements.webp
+  touch -a assets/game/eu4/common/images/advisors/advisors_x{48,64,77}.webp
+  touch -a assets/game/eu4/common/images/buildings/{global.webp,westerngfx.webp}
+  touch -a assets/game/eu4/common/images/flags/flags_x{8,48,64,128}.webp
+  touch -a assets/game/eu4/common/images/personalities/personalities.webp
+  touch -a assets/game/eu4/common/images/tc-investments/investments.webp
+
+  function create_file_if_empty() {
+    [ ! -f "$1" ] || [ ! -s "$1" ] && echo "{}" > "$1" || echo "..."
+  }
+
+  JSON_FILES=(
+    achievements/achievements.json
+    advisors/advisors.json
+    buildings/global.json
+    buildings/westerngfx.json
+    flags/flags.json
+    personalities/personalities.json
+    tc-investments/investments.json
+  )
+  for FILE in "${JSON_FILES[@]}"; do
+    create_file_if_empty "assets/game/eu4/common/images/$FILE"
+  done;
 
   # Generate EU4 game asset hooks
   OUTPUT=src/app/src/lib/game_gen.ts
