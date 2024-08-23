@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useMemo } from "react";
 import { TimeAgo } from "@/components/TimeAgo";
 import { difficultyText, difficultySort } from "@/lib/difficulty";
 import { pdxApi } from "@/services/appApi";
@@ -11,6 +11,7 @@ import { AchievementsCell } from "./AchievementsCell";
 import { NewestSaveResponse } from "app/api/new/route";
 import { useToastOnError } from "@/hooks/useToastOnError";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
+import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
 
 type SaveFile = NewestSaveResponse["saves"][number];
 const columnHelper = createColumnHelper<SaveFile>();
@@ -100,51 +101,17 @@ export const NewestSavesTable = () => {
   useToastOnError(error, "Failed to fetch latest saves");
   const saves = useMemo(() => data?.pages.flatMap((x) => x.saves), [data]);
 
-  const endRef = useRef<HTMLDivElement>(null);
-  const hasNextPageRef = useRef(hasNextPage);
-  useEffect(() => {
-    hasNextPageRef.current = hasNextPage;
-  }, [hasNextPage]);
-
-  const fetchNextPageRef = useRef(fetchNextPage);
-  useEffect(() => {
-    fetchNextPageRef.current = fetchNextPage;
-  }, [fetchNextPage]);
-
-  useEffect(() => {
-    const elem = endRef.current;
-    if (!elem) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (ent) => {
-        // When isFetching changes, we want the effect to rerun to trigger
-        // another intersection.
-        if (isFetching || error) {
-          return;
-        }
-
-        if (ent[0].isIntersecting && hasNextPageRef.current) {
-          fetchNextPageRef.current();
-        }
-      },
-      {
-        rootMargin: "100px",
-        threshold: 0,
-      },
-    );
-
-    observer.observe(elem);
-    return () => {
-      observer.disconnect();
-    };
-  }, [isFetching, error]);
+  const { ref } = useIntersectionObserver<HTMLDivElement>({
+    enabled: !isFetching && !error,
+    onIntersect: hasNextPage ? fetchNextPage : undefined,
+    rootMargin: "100px",
+    threshold: 0,
+  });
 
   return (
     <div className="flex flex-col space-y-4">
       <DataTable columns={columns} data={saves} />
-      <div ref={endRef} />
+      <div ref={ref} />
       {isFetching ? (
         <div className="m-8 flex justify-center">
           <LoadingIcon className="h-8 w-8" />

@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense } from "react";
 import { LoadingState } from "../LoadingState";
 import { ErrorBoundary } from "@sentry/nextjs";
 import { pdxApi } from "@/services/appApi";
@@ -6,6 +6,7 @@ import { AchievementPodium } from "@/features/eu4/AchievementPage";
 import { cx } from "class-variance-authority";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
 import { Link } from "../Link";
+import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
 
 let globalShow = false;
 
@@ -36,33 +37,15 @@ const HomeLeaderboardImpl = () => {
 };
 
 export const HomeLeaderboard = () => {
-  const [show, setShow] = useState(globalShow);
-  const watchRef = useRef<HTMLDivElement>(null);
+  const { ref, isIntersecting } = useIntersectionObserver<HTMLDivElement>({
+    threshold: 0.1,
+    rootMargin: "200px",
+  });
 
-  useEffect(() => {
-    if (!watchRef.current) {
-      return;
-    }
-
-    const intersection = new IntersectionObserver(
-      (ent) => {
-        globalShow ||= ent[0].isIntersecting;
-        setShow(globalShow);
-      },
-      {
-        threshold: 0.1,
-        rootMargin: "200px",
-      },
-    );
-
-    intersection.observe(watchRef.current);
-    return () => {
-      intersection.disconnect();
-    };
-  }, []);
+  let show = (globalShow ||= isIntersecting);
 
   return (
-    <div ref={watchRef} className={cx(!show && "h-[750px]")}>
+    <div ref={ref} className={cx(!show && "h-[750px]")}>
       {show ? (
         <Suspense
           fallback={
