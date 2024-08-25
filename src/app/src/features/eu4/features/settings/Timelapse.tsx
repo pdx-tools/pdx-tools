@@ -38,10 +38,11 @@ import { useIsDeveloper } from "@/features/account";
 import { MapExportMenu } from "./MapExportMenu";
 import { CountryFilterButton } from "../../components/CountryFilterButton";
 import { cx } from "class-variance-authority";
-import { ErrorDialog } from "@/components/ErrorDialog";
 import { Link } from "@/components/Link";
 import { Alert } from "@/components/Alert";
 import { emitEvent } from "@/lib/plausible";
+import { getErrorMessage } from "@/lib/getErrorMessage";
+import { toast } from "sonner";
 
 interface MapState {
   focusPoint: [number, number];
@@ -90,7 +91,6 @@ export const Timelapse = () => {
   const timelapseEnabled = useIsDatePickerEnabled();
   const { updateMap, updateProvinceColors } = useEu4Actions();
   const store = useEu4Context();
-  const [timelapseError, setTimelapseError] = useState<unknown | null>(null);
 
   const startTimelapse = async () => {
     emitEvent({ kind: "play-timelapse" });
@@ -180,7 +180,11 @@ export const Timelapse = () => {
       downloadData(blob, filename);
     } catch (ex) {
       captureException(ex);
-      setTimelapseError(ex);
+      toast.error("Timelapse error", {
+        description: getErrorMessage(ex),
+        duration: Infinity,
+        closeButton: true,
+      });
     } finally {
       restoreMapState();
       setIsRecording(false);
@@ -347,10 +351,6 @@ export const Timelapse = () => {
         <div className="whitespace-nowrap text-base opacity-60">
           <TimelapseDate />
         </div>
-        <ErrorDialog
-          error={timelapseError}
-          title="The timelapse engine encountered an error"
-        />
       </div>
 
       <TimelapseSlider />
