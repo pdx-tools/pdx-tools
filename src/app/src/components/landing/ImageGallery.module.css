@@ -1,0 +1,96 @@
+.anim {
+  animation-name: zoomIn;
+  animation-duration: 150ms;
+  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation-fill-mode: forwards;
+}
+
+.hotspot-1 {
+  top: 9rem;
+  left: 25rem;
+}
+
+.hotspot-2 {
+  top: 85px;
+  left: min(1225px, calc(100% - 56px));
+  animation-delay: 200ms;
+}
+
+.hotspot-3 {
+  top: 151px;
+  left: min(1225px, calc(100% - 56px));
+  animation-delay: 350ms;
+}
+
+.hotspot-4 {
+  top: 214px;
+  left: min(1225px, calc(100% - 56px));
+  animation-delay: 500ms;
+}
+
+.hotspot-5 {
+  top: 277px;
+  left: min(1225px, calc(100% - 56px));
+  animation-delay: 750ms;
+}
+
+.hotspot-6 {
+  top: 339px;
+  left: min(1225px, calc(100% - 56px));
+  animation-delay: 900ms;
+}
+
+.hotspot-7 {
+  top: 625px;
+  left: 35px;
+  animation-delay: 1050ms;
+}
+
+@keyframes zoomIn {
+  0% {
+    opacity: 1;
+    transform: scale(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.hotspot::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    theme(colors.teal.900 / 0.5),
+    transparent
+  );
+  transition-property: opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 500ms;
+  transform: skewX(-30deg);
+  animation: shimmer 5s infinite;
+}
+
+.hotspot:hover::after {
+  opacity: 0%;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+
+  50% {
+    left: 100%;
+  }
+
+  100% {
+    left: -100%;
+  }
+}
