@@ -211,7 +211,7 @@ dev-environment +cmd:
   trap 'rm -rf -- "$MY_TMP"' EXIT
   cat src/app/.env.development ./dev/.env.dev >> "$MY_TMP"
 
-  docker-compose -f ./dev/docker-compose.test.yml --env-file "$MY_TMP" --project-name pdx_dev "$@"
+  docker compose -f ./dev/docker-compose.test.yml --env-file "$MY_TMP" --project-name pdx_dev "$@"
 
 test-environment +cmd:
   #!/usr/bin/env bash
@@ -220,7 +220,7 @@ test-environment +cmd:
   trap 'rm -rf -- "$MY_TMP"' EXIT
   cat src/app/.env.test ./dev/.env.test >> "$MY_TMP"
 
-  docker-compose -f ./dev/docker-compose.test.yml --env-file "$MY_TMP" --project-name pdx_test "$@"
+  docker compose -f ./dev/docker-compose.test.yml --env-file "$MY_TMP" --project-name pdx_test "$@"
 
 deploy-db-schema ENVIRONMENT:
   #!/usr/bin/env bash

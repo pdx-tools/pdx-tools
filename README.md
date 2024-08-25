@@ -186,8 +186,11 @@ If not using vscode and the Dev Container, one can setup an environment manually
 A Linux environment assumed (WSL on Windows untested but probably supported). The following applications must be installed in order to instantiate the dev environment.
 
 - docker
-- docker-compose
-- node js
+- docker compose plugin v2
+- node js, including npm
+- clang
+- jq
+- psql
 - [rust](https://www.rust-lang.org/tools/install)
 - [imagemagick](https://imagemagick.org/index.php) with the `convert` command in `$PATH`
 - [just](https://github.com/casey/just/releases/latest)
