@@ -18,6 +18,12 @@ export const userView = {
   },
 };
 
+export const saveViews = {
+  get effectivePatch() {
+    return sql<string>`CONCAT(${table.saves.saveVersionFirst}, '.', ${table.saves.saveVersionSecond})`;
+  },
+};
+
 export function saveView<S, U>(opts?: { save?: S; user?: U }) {
   const saveColumns = {
     id: table.saves.id,

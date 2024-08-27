@@ -23,7 +23,7 @@ const handler = async (
   const saves = db
     .select({
       id: table.saves.id,
-      rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY playthrough_id ORDER BY score_days)`.as(
+      rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${sql.raw(table.saves.playthroughId.name)} ORDER BY ${sql.raw(table.saves.scoreDays.name)})`.as(
         "rn",
       ),
     })

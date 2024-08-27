@@ -20,6 +20,7 @@ import type { NewestSaveResponse } from "app/api/new/route";
 import type { AchievementResponse } from "app/api/achievements/[achievementId]/route";
 import type { UserResponse } from "app/api/users/[userId]/route";
 import { SaveResponse } from "app/api/saves/[saveId]/route";
+import { MedalistResponse } from "app/api/medalists/route";
 export type { GameDifficulty } from "@/server-lib/save-parsing-types";
 export type { Achievement, Difficulty as AchievementDifficulty };
 
@@ -118,6 +119,7 @@ export const pdxKeys = {
   skanderbegUser: () => [...pdxKeys.all, "skanderbeg"] as const,
   users: () => [...pdxKeys.all, "users"] as const,
   user: (id: string) => [...pdxKeys.users(), id] as const,
+  medalists: () => [...pdxKeys.all, "medalists"] as const,
 };
 
 export const pdxApi = {
@@ -139,6 +141,15 @@ export const pdxApi = {
       useMutation({
         mutationFn: () =>
           fetchOkJson<NewKeyResponse>(`/api/key`, { method: "POST" }),
+      }),
+  },
+
+  medalists: {
+    useGet: () =>
+      useSuspenseQuery({
+        queryKey: pdxKeys.medalists(),
+        queryFn: () => fetchOkJson<MedalistResponse>(`/api/medalists`),
+        staleTime: Infinity, // expensive
       }),
   },
 

@@ -14,12 +14,17 @@
     "start": "next start"
   },
   "prettier": {
-    "plugins": ["prettier-plugin-tailwindcss"],
-    "tailwindFunctions": ["cx"]
+    "plugins": [
+      "prettier-plugin-tailwindcss"
+    ],
+    "tailwindFunctions": [
+      "cx"
+    ]
   },
   "dependencies": {
     "@ant-design/plots": "1.2.5",
     "@heroicons/react": "2.1.5",
+    "@radix-ui/react-accordion": "1.2.0",
     "@radix-ui/react-dialog": "1.1.1",
     "@radix-ui/react-dropdown-menu": "2.1.1",
     "@radix-ui/react-navigation-menu": "1.2.0",
