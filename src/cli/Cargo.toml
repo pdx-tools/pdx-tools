@@ -5,20 +5,17 @@ edition = "2021"
 publish = false
 
 [features]
-admin = ["create_bundle", "fetch_assets", "tokenize", "dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2"]
+admin = ["create_bundle", "tokenize", "dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2"]
 fun = ["compile_assets", "dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2"]
 
 create_bundle = ["dep:zstd"]
 compile_assets = ["dep:attohttpc", "dep:eu4save", "dep:jomini", "dep:eu4game-data", "dep:schemas", "schemas?/inline", "dep:zstd"]
-fetch_assets = ["dep:aws-config", "dep:aws-sdk-s3", "dep:tokio", "dep:tokio-stream"]
 tokenize = ["dep:zstd", "dep:schemas"]
 
 [dependencies]
 anyhow = "1.0"
 applib = { path = "../applib", optional = true }
 attohttpc = { version = "0.26", features = ["json"], optional = true }
-aws-config = { version = "1.1.1", optional = true }
-aws-sdk-s3 = { version = "1.10.0", optional = true }
 chrono = "0.4"
 clap = { version = "4.1", features = ["derive", "env"] }
 csv = { version = "1.1" }
@@ -37,8 +34,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tar = "0.4"
 tempfile = "3.3"
-tokio = { version = "1", features = ["full"], optional = true }
-tokio-stream = { version = "0.1.8", optional = true }
 walkdir = "2.3.1"
 zip_next = { version = "0.11.0", default-features = false, features = ["deflate", "zstd"] }
 zstd = { version = "0.13.0", features = ["zstdmt"], optional = true }
