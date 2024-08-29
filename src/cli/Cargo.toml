@@ -15,7 +15,7 @@ tokenize = ["dep:zstd", "dep:schemas"]
 [dependencies]
 anyhow = "1.0"
 applib = { path = "../applib", optional = true }
-attohttpc = { version = "0.26", features = ["json"], optional = true }
+attohttpc = { version = "0.28", features = ["json"], optional = true }
 chrono = "0.4"
 clap = { version = "4.1", features = ["derive", "env"] }
 csv = { version = "1.1" }
