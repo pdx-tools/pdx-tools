@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
       clang \
       imagemagick \
       openssl \
+      rclone \
       webp \
       zstd \
     && \

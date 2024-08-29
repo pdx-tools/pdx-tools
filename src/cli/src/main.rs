@@ -8,9 +8,6 @@ mod compile_assets;
 #[cfg(feature = "create_bundle")]
 #[path = "cmd/create_bundle.rs"]
 mod create_bundle;
-#[cfg(feature = "fetch_assets")]
-#[path = "cmd/fetch_assets.rs"]
-mod fetch_assets;
 #[cfg(feature = "admin")]
 #[path = "cmd/reprocess.rs"]
 mod reprocess;
@@ -64,8 +61,6 @@ struct Cli {
 enum Commands {
     #[cfg(feature = "create_bundle")]
     CreateBundle(create_bundle::CreateBundleArgs),
-    #[cfg(feature = "fetch_assets")]
-    FetchAssets(fetch_assets::FetchAssetsArgs),
     #[cfg(feature = "admin")]
     Reprocess(reprocess::ReprocessArgs),
     #[cfg(feature = "tokenize")]
@@ -95,8 +90,6 @@ fn main() -> ExitCode {
     let exit_code = match &cli.command {
         #[cfg(feature = "create_bundle")]
         Commands::CreateBundle(x) => x.run(),
-        #[cfg(feature = "fetch_assets")]
-        Commands::FetchAssets(x) => x.run(),
         #[cfg(feature = "admin")]
         Commands::Reprocess(x) => x.run(),
         #[cfg(feature = "tokenize")]

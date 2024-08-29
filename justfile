@@ -267,7 +267,7 @@ admin-sync-tokens:
   (cd assets/tokens && ln -s tokens/* .)
 
 admin-sync-assets: admin-sync-tokens
-  just pdx fetch-assets --access-key "${ASSETS_ACCESS_KEY}" --secret-key "${ASSETS_SECRET_KEY}"
+  rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key="${ASSETS_SECRET_KEY}" --s3-access-key-id="${ASSETS_ACCESS_KEY}" copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.
 
 admin-tokenize-all: (tokenize 
   "--eu4-ironman-tokens" "./assets/tokens/eu4.txt"
