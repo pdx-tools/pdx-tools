@@ -45,7 +45,7 @@ export const CountrySelect = memo(function CountrySelect({
           <PlayIcon className="h-3 w-3 rotate-90 self-center opacity-50" />
         </Button>
       </Popover.Trigger>
-      <Popover.Content className="max-h-96 w-72 overflow-auto">
+      <Popover.Content className="max-h-96 w-72 overflow-auto p-4">
         <Command
           filter={(value) => {
             if (search.length == 0) {
