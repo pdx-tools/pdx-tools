@@ -1,6 +1,7 @@
+import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { generateOgIntoS3 } from "@/server-lib/og";
-import { BUCKET, s3Fetch, s3FetchOk } from "@/server-lib/s3";
+import { BUCKET, s3Fetch } from "@/server-lib/s3";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 
@@ -17,9 +18,11 @@ export const GET = withCore(
     });
 
     if (existing.ok) {
-      return existing;
+        log.info({ msg: "save preview exists", saveId: save.saveId });
+        return existing;
     }
 
+    log.info({ msg: "save preview does not exist", saveId: save.saveId });
     return await generateOgIntoS3(save.saveId, s3Key);
   },
 );
