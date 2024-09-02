@@ -18,28 +18,31 @@ import { useRouter } from "next/router";
 import { useEngineActions } from "@/features/engine";
 import { HomeLeaderboard } from "./HomeLeaderboard";
 import { AchievementWall } from "./AchievementWall";
+import { cx } from "class-variance-authority";
 
 interface HomeProps {
   subtitle?: React.ReactNode;
 }
 
-// https://getwaves.io/
-const computeWaveBackground = ([h, s, l]: [number, number, number]) => {
-  // prettier-ignore
-  const waveSvg = `
-  <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" viewBox="0 0 1440 320"><path fill="hsl(${h}deg,${s}%,${l / 1.15}%)" fill-opacity="1" d="M0,256L13.3,266.7C26.7,277,53,299,80,272C106.7,245,133,171,160,138.7C186.7,107,213,117,240,138.7C266.7,160,293,192,320,213.3C346.7,235,373,245,400,245.3C426.7,245,453,235,480,218.7C506.7,203,533,181,560,181.3C586.7,181,613,203,640,224C666.7,245,693,267,720,240C746.7,213,773,139,800,144C826.7,149,853,235,880,266.7C906.7,299,933,277,960,277.3C986.7,277,1013,299,1040,288C1066.7,277,1093,235,1120,229.3C1146.7,224,1173,256,1200,256C1226.7,256,1253,224,1280,197.3C1306.7,171,1333,149,1360,160C1386.7,171,1413,213,1427,234.7L1440,256L1440,320L1426.7,320C1413.3,320,1387,320,1360,320C1333.3,320,1307,320,1280,320C1253.3,320,1227,320,1200,320C1173.3,320,1147,320,1120,320C1093.3,320,1067,320,1040,320C1013.3,320,987,320,960,320C933.3,320,907,320,880,320C853.3,320,827,320,800,320C773.3,320,747,320,720,320C693.3,320,667,320,640,320C613.3,320,587,320,560,320C533.3,320,507,320,480,320C453.3,320,427,320,400,320C373.3,320,347,320,320,320C293.3,320,267,320,240,320C213.3,320,187,320,160,320C133.3,320,107,320,80,320C53.3,320,27,320,13,320L0,320Z"></path></svg>  
-`;
-
-  return `url("data:image/svg+xml;base64,${btoa(waveSvg)}`;
-};
-
-const useWaveBackground = ([h, s, l]: [number, number, number]) => {
-  return computeWaveBackground([h, s, l]);
-};
+function Lip() {
+  return (
+    <svg
+      viewBox="0 0 1440 58"
+      version="1.1"
+      xmlns="http://www.w3.org/2000/svg"
+      className="max-h-28 w-full bg-white dark:bg-slate-900"
+      preserveAspectRatio="none"
+    >
+      <path
+        className="fill-teal-900"
+        d="M-100 58C-100 58 218.416 36.3297 693.5 36.3297C1168.58 36.3297 1487 58 1487 58V-3.8147e-06H-100V58Z"
+      ></path>
+    </svg>
+  );
+}
 
 export const Home = ({ subtitle }: HomeProps) => {
   const secondaryColor: [number, number, number] = [177, 100, 13.7];
-  const waveBackground = useWaveBackground(secondaryColor);
 
   const router = useRouter();
   const { resetSaveAnalysis } = useEngineActions();
@@ -57,48 +60,58 @@ export const Home = ({ subtitle }: HomeProps) => {
   return (
     <div className={`w-full ${classes.main}`}>
       <div
-        className={`${classes.row} grid justify-center gap-8 bg-bottom bg-repeat-x px-5 py-12 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 lg:grid-cols-2`}
-        style={{ backgroundImage: waveBackground }}
+        className={cx(
+          "px-5 py-12 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9",
+          classes.row,
+        )}
       >
-        <div className="flex flex-col gap-y-4 justify-self-end lg:max-w-lg">
-          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:mt-0 sm:text-6xl lg:mt-6 xl:text-6xl">
-            Explore the world
-            <span className="block italic">you created</span>
-          </h1>
-          <p className="mt-8 grid max-w-prose gap-4 text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
-            Save files contain a treasure trove of information. PDX Tools is a
-            modern save file analyzer that will unlock hidden EU4 insights
-            without the save leaving your browser.
-          </p>
-          <p className="grid max-w-prose gap-4 text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
-            Ready to explore maps, timelapses, and charts?
-          </p>
+        <div className="mx-auto grid max-w-7xl justify-center gap-8 lg:grid-cols-2 xl:gap-16 2xl:gap-24">
+          <div className="flex flex-col gap-y-4 justify-self-end lg:max-w-lg">
+            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:mt-0 lg:mt-6 lg:text-5xl xl:text-6xl text-balance">
+              Explore the world{" "}
+              <span className="block italic supports-[text-wrap:balance]:inline">you created</span>
+            </h1>
+            <p className="mt-8 grid max-w-prose gap-4 text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
+              Save files contain a treasure trove of information. PDX Tools is a
+              modern save file analyzer that will unlock hidden EU4 insights
+              without the save leaving your browser.
+            </p>
+            <p className="grid max-w-prose gap-4 text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
+              Ready to explore maps, timelapses, and charts?
+            </p>
 
-          <div className="flex flex-col items-center justify-center gap-2 lg:justify-start">
-            <div className="text-base text-gray-300">
-              No save?{" "}
-              <Link href="/eu4/saves/l3mDIfueYIB-gjB0gOliK" variant="light">
-                Checkout a sample
-              </Link>
+            <div className="flex flex-col items-center justify-center gap-2 lg:justify-start">
+              <div className="text-base text-gray-300">
+                No save?{" "}
+                <Link href="/eu4/saves/l3mDIfueYIB-gjB0gOliK" variant="light">
+                  Checkout a sample
+                </Link>
+              </div>
             </div>
+            <BrowserCheck />
           </div>
-          <BrowserCheck />
+          <section className="flex w-full flex-col items-center justify-center">
+            <div className="flex">
+              <HeroFileInput />
+              {subtitle}
+            </div>
+          </section>
         </div>
-        <section className="flex w-full flex-col justify-end">
-          <div className="gap flex w-full max-w-xl flex-col">
-            <HeroFileInput />
-            {subtitle}
-          </div>
-        </section>
       </div>
+      <Lip />
       <div
-        className={`${classes.row} flex w-full flex-col items-center justify-center px-5 py-16 text-xl odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
+        className={cx(
+          classes.row,
+          "flex w-full flex-col items-center justify-center px-5 py-16 text-xl odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
+        )}
       >
         <ImageGallery />
       </div>
-
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
+        className={cx(
+          classes.row,
+          "flex justify-center px-5 py-16 text-lg odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
+        )}
       >
         <div className="max-w-7xl">
           <h2 className="text-center text-3xl font-extrabold tracking-tight xl:text-4xl">
@@ -167,7 +180,10 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
+        className={cx(
+          classes.row,
+          "flex justify-center px-5 py-16 text-lg odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
+        )}
       >
         <div className="flex max-w-7xl flex-col items-center">
           <h2 className="text-center text-3xl font-extrabold tracking-tight xl:text-4xl">
@@ -184,7 +200,10 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
+        className={cx(
+          classes.row,
+          "flex justify-center px-5 py-16 text-lg odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
+        )}
       >
         <section>
           <div className="grid max-w-prose gap-4">
@@ -228,7 +247,10 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
+        className={cx(
+          classes.row,
+          "flex justify-center px-5 py-16 text-lg odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
+        )}
       >
         <section>
           <div className="grid max-w-prose gap-4">
@@ -255,7 +277,10 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
+        className={cx(
+          classes.row,
+          "flex justify-center px-5 py-16 text-lg odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
+        )}
       >
         <section>
           <div className="grid max-w-prose gap-4">
@@ -283,7 +308,10 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        className={`${classes.row} flex justify-center px-5 py-16 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent`}
+        className={cx(
+          classes.row,
+          "flex justify-center px-5 py-16 text-lg odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
+        )}
       >
         <section>
           <div className="grid max-w-prose gap-4">

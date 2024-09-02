@@ -6,6 +6,7 @@ import compassSymbol from "./compass-symbol.webp";
 import queenSymbol from "./queen.webp";
 import militaryRank from "./military-rank.webp";
 import Image from "next/image";
+import { cx } from "class-variance-authority";
 
 function Eu4FileIcon() {
   return (
@@ -95,11 +96,12 @@ export const HeroFileInput = () => {
     }
   };
 
-  const className = `w-full m-8 flex cursor-pointer flex-col items-center rounded-2xl border-0 p-4 text-center outline-dashed outline-4 transition-all duration-150 hover:bg-black/10 hover:text-blue-200 hover:outline-blue-500 peer-focus:text-blue-200 peer-focus:outline-blue-500 lg:p-8 ${
+  const className = cx(
+    "m-8 flex w-full cursor-pointer flex-col items-center rounded-2xl border-0 p-4 text-center outline-dashed outline-4 transition-all duration-150 hover:bg-black/10 hover:text-blue-200 hover:outline-blue-500 peer-focus:text-blue-200 peer-focus:outline-blue-500 lg:p-8 xl:p-16",
     !isHovering
       ? "bg-black/20 text-white outline-white/50"
-      : "bg-black/10 text-blue-200 outline-blue-500"
-  }`;
+      : "bg-black/10 text-blue-200 outline-blue-500",
+  );
 
   const acceptedFiles: `.${string}`[] = [
     ".eu4",
@@ -164,7 +166,5 @@ export const HeroFileInput = () => {
     </button>
   );
 
-  return (
-    <div className="flex h-[264px] max-w-[480px] leading-relaxed">{input}</div>
-  );
+  return <div className="flex h-[264px] leading-relaxed xl:h-80">{input}</div>;
 };

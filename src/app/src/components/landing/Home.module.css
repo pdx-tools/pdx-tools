@@ -6,10 +6,6 @@
   @apply flex-grow basis-0;
 }
 
-.row:nth-child(odd) :is(h1, h2, h3) {
-  @apply text-white;
-}
-
 .row:nth-child(odd) > section {
   @apply lg:flex-row-reverse;
 }
