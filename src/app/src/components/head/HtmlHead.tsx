@@ -8,9 +8,13 @@ import social from "../landing/social.png";
 
 interface HtmlHeadProps {
   children: React.ReactNode;
+  social?: string;
 }
 
-export const HtmlHead = ({ children }: HtmlHeadProps) => {
+export const HtmlHead = ({
+  children,
+  social: socialImage = `https://pdx.tools${social}`,
+}: HtmlHeadProps) => {
   const router = useRouter();
   const canonicalUrl = `https://pdx.tools${router.asPath}`;
   return (
@@ -25,7 +29,7 @@ export const HtmlHead = ({ children }: HtmlHeadProps) => {
       <link rel="icon" type="image/png" sizes="16x16" href={fav16} />
       <link rel="canonical" href={canonicalUrl} />
       <meta name="twitter:card" content="summary_large_image" />
-      <meta property="og:image" content={`https://pdx.tools${social}`} />
+      <meta property="og:image" content={socialImage} />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
       {children}
