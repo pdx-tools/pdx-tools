@@ -12,6 +12,14 @@ services:
       - POSTGRES_PASSWORD=${DATABASE_ADMIN_PASSWORD}
       - DATABASE_BACKUP_PASSWORD=${DATABASE_BACKUP_PASSWORD}
 
+  og:
+    image: ghcr.io/browserless/chromium
+    ports:
+      - "3010:3000"
+    environment:
+      - TOKEN=${PUPPETEER_TOKEN}
+      - CONCURRENT=3
+
   s3:
     image: minio/minio@sha256:c92f04149c93010eefc4e4581b18fb4b9ea46af8e9f658291c377388b7691828
     environment:

@@ -16,7 +16,8 @@ import {
   headerMetadata,
   uploadMetadata,
 } from "@/server-lib/models";
-import { deleteFile, uploadFileToS3 } from "@/server-lib/s3";
+import { generateOgIntoS3 } from "@/server-lib/og";
+import { BUCKET, deleteFile, uploadFileToS3 } from "@/server-lib/s3";
 import { parseSave } from "@/server-lib/save-parser";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -107,6 +108,13 @@ async function handler(
     const response: SavePostResponse = {
       save_id: saveId,
     };
+
+    if (process.env.NODE_ENV === "production") {
+      const s3Key = `${BUCKET}/previews/${saveId}`;
+      generateOgIntoS3(saveId, s3Key).catch((err) => {
+        log.error({ msg: "unable to generate og image", err });
+      });
+    }
 
     return NextResponse.json(response);
   } catch (ex) {
