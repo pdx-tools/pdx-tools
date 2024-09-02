@@ -127,10 +127,10 @@ vec3 postProcess(highp vec2 tc) {
 
 	if (!u_renderTerrain) {
 		// Sea
-		if (map.a == 0.2) {
+		if (abs(map.a - 0.20) < 0.0001) {
 			return vec3(68.0, 107.0, 163.0) / vec3(256.0, 256.0, 256.0);
 		}
-		if (map.a == 0.4) {
+		if (abs(map.a - 0.4) < 0.0001) {
 			return vec3(0.3, 0.3, 0.3);
 		}
 		return map.rgb;
@@ -141,7 +141,7 @@ vec3 postProcess(highp vec2 tc) {
 	float normal_map_res = dot(viewDirection, normal);
 
 	// Sea
-	if (map.a == 0.2) {
+	if (abs(map.a - 0.20) < 0.0001) {
 		vec2 seaTc = mod(tc * u_textureSize * 6.0, 256.0) / 256.0;
 		vec3 sea_overlay_color = texture(u_waterImage, seaTc).rgb;
 		vec3 sea_background_color = texture(u_seaImage, tc * vec2(u_textureSize.x / u_usedTextureSize.x, 1.0)).rgb * pow(normal_map_res, 4.0) * 1.2;
