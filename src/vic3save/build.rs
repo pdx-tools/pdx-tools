@@ -13,6 +13,7 @@ fn main() {
         .ok()
         .filter(|x| !x.is_empty());
 
+    println!("cargo::rustc-check-cfg=cfg(ironman)");
     if let Some(v) = tfile {
         println!("cargo:rustc-cfg=ironman");
         println!("cargo:rerun-if-changed={}", v);
