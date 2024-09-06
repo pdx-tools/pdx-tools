@@ -33,7 +33,7 @@ function Eu4FileIcon() {
 
 function V3FileIcon() {
   return (
-    <div className="absolute hidden w-max -translate-y-4 translate-x-52 rotate-12 drop-shadow-lg sm:block">
+    <div className="absolute hidden w-max -translate-y-4 translate-x-44 rotate-12 drop-shadow-lg sm:block xl:translate-x-52">
       <div className="relative">
         <DocumentIcon className="h-32 w-32" />
         <Image
