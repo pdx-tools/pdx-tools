@@ -1,5 +1,5 @@
 const { withSentryConfig } = require("@sentry/nextjs");
-const { csp, docsCsp } = require("./next.cors");
+const { csp } = require("./next.cors");
 
 // @ts-check
 /** @type {import('next').NextConfig} */
@@ -43,16 +43,6 @@ let nextConfig = {
         },
       ],
     },
-
-    ...["/docs/:path*", "/blog/:path*", "/changelog/:path*"].map((source) => ({
-      source,
-      headers: [
-        {
-          key: "Content-Security-Policy",
-          value: docsCsp.join("; "),
-        },
-      ],
-    })),
   ],
 
   rewrites: async () => ({
