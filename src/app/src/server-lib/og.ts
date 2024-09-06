@@ -4,7 +4,7 @@ import { s3FetchOk } from "./s3";
 import { log } from "./logging";
 
 export async function generateOgIntoS3(saveId: string, s3Key: string) {
-   const puppeteerCmd = `async function ({ page }) {
+  const puppeteerCmd = `async function ({ page }) {
       page.setViewport({
         width: 1405,
         height: 640,
@@ -55,7 +55,12 @@ export async function generateOgIntoS3(saveId: string, s3Key: string) {
   const image = await imageResp.blob();
   const headers = { "Content-Type": "image/png" };
 
-  log.info({ msg: "storing save preview", saveId, s3Key, imageSize: image.size });
+  log.info({
+    msg: "storing save preview",
+    saveId,
+    s3Key,
+    imageSize: image.size,
+  });
   await s3FetchOk(s3Key, {
     method: "PUT",
     body: image,

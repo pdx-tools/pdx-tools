@@ -67,9 +67,11 @@ export const Home = ({ subtitle }: HomeProps) => {
       >
         <div className="mx-auto grid max-w-7xl justify-center gap-8 lg:grid-cols-2 xl:gap-16 2xl:gap-24">
           <div className="flex flex-col gap-y-4 justify-self-end lg:max-w-lg">
-            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:mt-0 lg:mt-6 lg:text-5xl xl:text-6xl text-balance">
+            <h1 className="text-balance text-4xl font-extrabold tracking-tight text-white sm:mt-0 lg:mt-6 lg:text-5xl xl:text-6xl">
               Explore the world{" "}
-              <span className="block italic supports-[text-wrap:balance]:inline">you created</span>
+              <span className="block italic supports-[text-wrap:balance]:inline">
+                you created
+              </span>
             </h1>
             <p className="mt-8 grid max-w-prose gap-4 text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
               Save files contain a treasure trove of information. PDX Tools is a

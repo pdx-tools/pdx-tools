@@ -18,8 +18,8 @@ export const GET = withCore(
     });
 
     if (existing.ok) {
-        log.info({ msg: "save preview exists", saveId: save.saveId });
-        return existing;
+      log.info({ msg: "save preview exists", saveId: save.saveId });
+      return existing;
     }
 
     log.info({ msg: "save preview does not exist", saveId: save.saveId });
