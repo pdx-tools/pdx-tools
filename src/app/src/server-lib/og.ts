@@ -18,9 +18,12 @@ export async function generateOgIntoS3(saveId: string, s3Key: string) {
       // Wait for any button to show up on the UI
       await page.waitForSelector("button[data-state='closed']");
   
-      // Dismiss alert about unsupported webgl
-      await page.click("[role='alert'] button");
-  
+      // Dismiss alerts about unsupported webgl or map data
+      await page.$$eval(
+        "[role='alert'] button",
+        (elHandles) => elHandles.forEach(el => el.click())
+      );
+
       // Take a screenshot
       const image = await page.screenshot({
         clip: {
