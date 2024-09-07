@@ -7,22 +7,22 @@ import { z } from "zod";
 
 export const runtime = "edge";
 
-const saveSchema = z.object({ saveId: z.string().regex(/^[a-z0-9_-]*$/i) });
+const saveSchema = z.object({ save_id: z.string().regex(/^[a-z0-9_-]*$/i) });
 export const GET = withCore(
-  async (_req: NextRequest, { params }: { params: { saveId: string } }) => {
+  async (_req: NextRequest, { params }: { params: { save_id: string } }) => {
     const save = saveSchema.parse(params);
 
-    const s3Key = `${BUCKET}/previews/${save.saveId}`;
+    const s3Key = `${BUCKET}/previews/${save.save_id}`;
     const existing = await s3Fetch(s3Key, {
       method: "GET",
     });
 
     if (existing.ok) {
-      log.info({ msg: "save preview exists", saveId: save.saveId });
+      log.info({ msg: "save preview exists", saveId: save.save_id });
       return existing;
     }
 
-    log.info({ msg: "save preview does not exist", saveId: save.saveId });
-    return await generateOgIntoS3(save.saveId, s3Key);
+    log.info({ msg: "save preview does not exist", saveId: save.save_id });
+    return await generateOgIntoS3(save.save_id, s3Key);
   },
 );
