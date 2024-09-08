@@ -198,7 +198,7 @@ export const InfoDrawer = () => {
         ) : null}
       </div>
 
-      {(serverFile?.aar || isPrivileged) && (
+      {(serverFile?.aar || (serverFile?.id && isPrivileged)) && (
         <>
           <Divider>AAR</Divider>
           <Aar
