@@ -1,7 +1,7 @@
 version: '3'
 services:
   db:
-    image: postgres:14
+    image: postgres:16
     restart: 'unless-stopped'
     environment:
       - DATABASE_APP_USER=${DATABASE_USER}
@@ -13,7 +13,7 @@ services:
       - pgdata:/var/lib/postgresql/data
 
     # pg tune:
-    # DB Version: 14
+    # DB Version: 16
     # OS Type: linux
     # DB Type: web
     # Total Memory (RAM): 2 GB
