@@ -110,7 +110,10 @@ async function deleteHandler(
       .where(eq(table.saves.id, params.saveId))
       .returning({ userId: table.saves.userId });
     ensurePermissions(session, saves.at(0));
-    await deleteFile(params.saveId);
+    await Promise.all([
+      deleteFile(params.saveId),
+      deleteFile(`previews/${params.saveId}`)
+    ])
   });
   return new Response(null, { status: 204 });
 }
