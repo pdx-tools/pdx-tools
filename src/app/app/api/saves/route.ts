@@ -17,7 +17,7 @@ import {
   uploadMetadata,
 } from "@/server-lib/models";
 import { generateOgIntoS3 } from "@/server-lib/og";
-import { BUCKET, deleteFile, uploadFileToS3 } from "@/server-lib/s3";
+import { deleteFile, s3Keys, uploadFileToS3 } from "@/server-lib/s3";
 import { parseSave } from "@/server-lib/save-parser";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -110,9 +110,8 @@ async function handler(
     };
 
     if (process.env.PUPPETEER_URL) {
-      const s3Key = `${BUCKET}/previews/${saveId}`;
-      generateOgIntoS3(saveId, s3Key).catch((err) => {
-        log.error({ msg: "unable to generate og image", err });
+      generateOgIntoS3(saveId).catch((err) => {
+        log.exception(err, { msg: "unable to generate og image" });
       });
     }
 
@@ -120,7 +119,7 @@ async function handler(
   } catch (ex) {
     try {
       // If anything goes awry, delete the s3 file if it was uploaded
-      await uploadTask.then(() => deleteFile(saveId));
+      await uploadTask.then(() => deleteFile(s3Keys.save(saveId)));
     } finally {
       // If we have a unique constraint violation, let's assume it is the
       // idx_save_hash and throw a validation error.

@@ -1,5 +1,5 @@
 import { withCore } from "@/server-lib/middleware";
-import { BUCKET, s3FetchOk } from "@/server-lib/s3";
+import { s3FetchOk, s3Keys } from "@/server-lib/s3";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 
@@ -9,6 +9,6 @@ const saveSchema = z.object({ saveId: z.string() });
 export const GET = withCore(
   async (_req: NextRequest, { params }: { params: { saveId: string } }) => {
     const save = saveSchema.parse(params);
-    return s3FetchOk(`${BUCKET}/${save.saveId}`, {});
+    return s3FetchOk(s3Keys.save(save.saveId));
   },
 );

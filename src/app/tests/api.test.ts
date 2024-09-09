@@ -1,5 +1,5 @@
 import { promises } from "fs";
-import { BUCKET, deleteFile, s3Fetch, s3FetchOk } from "@/server-lib/s3";
+import { BUCKET, s3Fetch, s3FetchOk } from "@/server-lib/s3";
 import { NewKeyResponse, ProfileResponse } from "@/services/appApi";
 import { dbDisconnect, table, useDb } from "@/server-lib/db";
 import { parseSave } from "@/server-lib/save-parser";
@@ -30,7 +30,7 @@ beforeEach(async () => {
   const objsData = await s3FetchOk(`${BUCKET}?list-type=2`);
   const objText = await objsData.text();
   const keys = [...objText.matchAll(/<Key>(.*?)<\/Key>/g)].map(([_, key]) =>
-    deleteFile(key),
+    s3FetchOk(`${BUCKET}/${key}`, { method: "DELETE" }),
   );
   await Promise.all(keys);
 });

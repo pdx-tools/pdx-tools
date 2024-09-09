@@ -7,6 +7,17 @@ import { timeit } from "@/lib/timeit";
 export const BUCKET = getEnv("S3_BUCKET");
 const defaultHeaders = { service: "s3", region: getEnv("S3_REGION") };
 
+declare const tag: unique symbol;
+export type S3Key = unknown & {
+  readonly [tag]: S3Key;
+};
+
+export const s3Keys = {
+  save: (saveId: string) => `${BUCKET}/${saveId}` as unknown as S3Key,
+  preview: (saveId: string) =>
+    `${BUCKET}/previews/${saveId}.webp` as unknown as S3Key,
+} as const;
+
 const s3client = new AwsClient({
   accessKeyId: getEnv("S3_ACCESS_KEY"),
   secretAccessKey: getEnv("S3_SECRET_KEY"),
@@ -53,7 +64,7 @@ export async function uploadFileToS3(
 ): Promise<void> {
   const contentType = uploadContentType(upload);
   const put = await timeit(() =>
-    s3FetchOk(`${BUCKET}/${filename}`, {
+    s3FetchOk(s3Keys.save(filename), {
       method: "PUT",
       body,
       headers: {
@@ -71,9 +82,9 @@ export async function uploadFileToS3(
   });
 }
 
-export async function deleteFile(saveId: string): Promise<void> {
-  await s3FetchOk(`${BUCKET}/${saveId}`, {
+export async function deleteFile(s3Key: S3Key): Promise<void> {
+  await s3FetchOk(s3Key, {
     method: "DELETE",
   });
-  log.info({ msg: "deleted s3 file", saveId });
+  log.info({ msg: "deleted s3 file", s3Key });
 }

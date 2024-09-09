@@ -1,15 +1,8 @@
 import { Session, SessionRoute, withAuth } from "@/server-lib/auth/middleware";
-import {
-  DbRoute,
-  saveView,
-  table,
-  toApiSave,
-  userView,
-  withDb,
-} from "@/server-lib/db";
+import { DbRoute, saveView, table, toApiSave, withDb } from "@/server-lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { deleteFile } from "@/server-lib/s3";
+import { deleteFile, s3Keys } from "@/server-lib/s3";
 import { z } from "zod";
 import {
   AuthorizationError,
@@ -111,9 +104,9 @@ async function deleteHandler(
       .returning({ userId: table.saves.userId });
     ensurePermissions(session, saves.at(0));
     await Promise.all([
-      deleteFile(params.saveId),
-      deleteFile(`previews/${params.saveId}`)
-    ])
+      deleteFile(s3Keys.save(params.saveId)),
+      deleteFile(s3Keys.preview(params.saveId)),
+    ]);
   });
   return new Response(null, { status: 204 });
 }
