@@ -109,7 +109,7 @@ async function handler(
       save_id: saveId,
     };
 
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.PUPPETEER_URL) {
       const s3Key = `${BUCKET}/previews/${saveId}`;
       generateOgIntoS3(saveId, s3Key).catch((err) => {
         log.error({ msg: "unable to generate og image", err });

@@ -1,3 +1,3 @@
-FROM gcr.io/distroless/static-debian11
+FROM gcr.io/distroless/static-debian12
 COPY ./pdx-tools-api /app
 CMD ["/app"]

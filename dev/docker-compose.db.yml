@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16
+    restart: "unless-stopped"
+    environment:
+      - DATABASE_APP_USER=${DATABASE_USER}
+      - DATABASE_APP_USER_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_PASSWORD=${DATABASE_ADMIN_PASSWORD}
+      - DATABASE_BACKUP_PASSWORD=${DATABASE_BACKUP_PASSWORD}
+
+    # pg tune:
+    # DB Version: 16
+    # OS Type: linux
+    # DB Type: web
+    # Total Memory (RAM): 1 GB
+    # CPUs num: 1
+    # Connections num: 20
+    # Data Storage: ssd
+    command: >
+      -c max_connections=20
+      -c shared_buffers=256MB
+      -c effective_cache_size=768MB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=7864kB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=6553kB
+      -c huge_pages=off
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
