@@ -4,13 +4,14 @@ import { s3FetchOk } from "./s3";
 import { log } from "./logging";
 
 export async function generateOgIntoS3(saveId: string, s3Key: string) {
+  const url = process.env.NODE_ENV === "production" ? "https://pdx.tools" : "http://localhost:3001";
   const puppeteerCmd = `async function ({ page }) {
       page.setViewport({
         width: 1405,
         height: 640,
       });
 
-      const pageUrl = "https://pdx.tools/eu4/saves/${saveId}";
+      const pageUrl = "${url}/eu4/saves/${saveId}";
       await page.goto(pageUrl, {
         waitUntil: "load",
       });

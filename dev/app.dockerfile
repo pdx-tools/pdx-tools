@@ -1,5 +1,5 @@
 # Production image, copy all the files and run next
-FROM node:18.12.1-bullseye-slim
+FROM node:20.17.0-bookworm-slim
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libssl-dev \

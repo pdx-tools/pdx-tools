@@ -207,20 +207,14 @@ pdx cmd *args:
 dev-environment +cmd:
   #!/usr/bin/env bash
   set -euxo pipefail
-  MY_TMP="$(mktemp)"
-  trap 'rm -rf -- "$MY_TMP"' EXIT
-  cat src/app/.env.development ./dev/.env.dev >> "$MY_TMP"
-
-  docker compose -f ./dev/docker-compose.test.yml --env-file "$MY_TMP" --project-name pdx_dev "$@"
+  cd dev
+  docker compose -f ./docker-compose.dev.yml --env-file ../src/app/.env.development --env-file .env.dev --project-name pdx_dev "$@"
 
 test-environment +cmd:
   #!/usr/bin/env bash
   set -euxo pipefail
-  MY_TMP="$(mktemp)"
-  trap 'rm -rf -- "$MY_TMP"' EXIT
-  cat src/app/.env.test ./dev/.env.test >> "$MY_TMP"
-
-  docker compose -f ./dev/docker-compose.test.yml --env-file "$MY_TMP" --project-name pdx_test "$@"
+  cd dev
+  docker compose -f ./docker-compose.test.yml --env-file ../src/app/.env.test --env-file .env.test --project-name pdx_test "$@"
 
 deploy-db-schema ENVIRONMENT:
   #!/usr/bin/env bash

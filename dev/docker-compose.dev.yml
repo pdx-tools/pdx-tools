@@ -1,0 +1,25 @@
+services:
+  db:
+    extends:
+      file: docker-compose.test.yml
+      service: db
+
+  s3:
+    extends:
+      file: docker-compose.test.yml
+      service: s3
+
+  createbuckets:
+    extends:
+      file: docker-compose.test.yml
+      service: createbuckets
+
+  og:
+    image: ghcr.io/browserless/chromium
+    ports:
+      - "3010:3010"
+    network_mode: "host"
+    environment:
+      - PORT=3010
+      - TOKEN=${PUPPETEER_TOKEN}
+      - CONCURRENT=3
