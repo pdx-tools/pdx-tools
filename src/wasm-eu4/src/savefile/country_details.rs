@@ -408,7 +408,7 @@ impl SaveFileImpl {
         let debt = country.loans.iter().map(|x| x.amount).sum::<i32>();
 
         let income = self.query.country_income_breakdown(country);
-        let expenses = self.query.country_expense_breakdown(&country);
+        let expenses = self.query.country_expense_breakdown(country);
 
         ActiveWarParticipant {
             armed_forces: self.armed_forces(country),

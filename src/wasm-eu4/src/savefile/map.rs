@@ -447,7 +447,7 @@ impl SaveFileImpl {
                     .map(|(_id, prov, _)| prov.base_manpower + prov.base_production + prov.base_tax)
                     .max_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or(0.0);
-                let max_dev = max_dev.min(50.0).max(10.0);
+                let max_dev = max_dev.clamp(10.0, 50.0);
 
                 for (&id, prov, include) in provs {
                     let offset = province_id_to_color_index[usize::from(id.as_u16())] as usize * 4;
@@ -840,7 +840,7 @@ impl OwnerTimelapse {
             current_controllers,
             tracking,
             events,
-            wasm: unsafe { std::mem::transmute(wasm) },
+            wasm: unsafe { std::mem::transmute::<&SaveFileImpl, &SaveFileImpl>(wasm) },
             event_index: 0,
             conflicts: HashMap::new(),
         }
@@ -1016,7 +1016,7 @@ impl PoliticalTimelapse {
         let owners = OwnerTimelapse::new(wasm, ProvinceTracking::OwnerAndController);
 
         Self {
-            wasm: unsafe { std::mem::transmute(wasm) },
+            wasm: unsafe { std::mem::transmute::<&SaveFileImpl, &SaveFileImpl>(wasm) },
             owners,
         }
     }
@@ -1245,7 +1245,7 @@ impl ReligionTimelapse {
             country_religions,
             religion_colors,
             events,
-            wasm: unsafe { std::mem::transmute(wasm) },
+            wasm: unsafe { std::mem::transmute::<&SaveFileImpl, &SaveFileImpl>(wasm) },
             event_index: 0,
         }
     }
@@ -1409,7 +1409,7 @@ impl BattleTimelapse {
             owners,
             current_losses,
             events,
-            wasm: unsafe { std::mem::transmute(wasm) },
+            wasm: unsafe { std::mem::transmute::<&SaveFileImpl, &SaveFileImpl>(wasm) },
             event_index: 0,
         }
     }

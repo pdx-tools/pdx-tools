@@ -154,13 +154,13 @@ impl<'a> Bmp<'a> {
     }
 
     pub fn pixels_len(&self) -> usize {
-        let w = self.dib_header.width.abs() as usize;
-        let h = self.dib_header.height.abs() as usize;
+        let w = self.dib_header.width.unsigned_abs() as usize;
+        let h = self.dib_header.height.unsigned_abs() as usize;
         w * h
     }
 
     fn byte_width(&self) -> usize {
-        let width = self.dib_header.width.abs() as usize;
+        let width = self.dib_header.width.unsigned_abs() as usize;
         let bytes_per_pixel = (self.dib_header.bpp + 7) / 8;
         width * usize::from(bytes_per_pixel)
     }

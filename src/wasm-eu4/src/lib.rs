@@ -8,7 +8,11 @@ use crate::{
     savefile::{CountryHistory, CountryInstitution, CountryMana, SaveInfo},
 };
 use eu4game::{game::Game, shared::Eu4Parser};
-use eu4save::{models::Eu4Save, query::Query, Encoding, Eu4File, FailedResolveStrategy};
+use eu4save::{
+    models::{Eu4Save, Meta},
+    query::Query,
+    Encoding, Eu4File, FailedResolveStrategy,
+};
 use models::CountryDevEfficiencies;
 use savefile::{
     AchievementsScore, CountryAdvisors, CountryDetails, CountryReligions, Estate,
@@ -16,7 +20,7 @@ use savefile::{
     MapPayloadKind, MapQuickTipPayload, Monitor, ProvinceDetails, Reparse, RootTree, SaveFileImpl,
     TagFilterPayloadRaw, WarInfo,
 };
-use std::io::Cursor;
+use std::{collections::HashMap, io::Cursor};
 use wasm_bindgen::prelude::*;
 
 mod log;
@@ -47,7 +51,7 @@ impl SaveFile {
     }
 
     pub fn get_meta_raw(&self) -> MetaRef {
-        MetaRef(unsafe { std::mem::transmute(self.0.get_meta_raw()) })
+        MetaRef(unsafe { std::mem::transmute::<&Meta, &Meta>(self.0.get_meta_raw()) })
     }
 
     pub fn savefile_warnings(&self) -> StringList {
@@ -95,7 +99,9 @@ impl SaveFile {
     }
 
     pub fn get_players(&self) -> StaticMap {
-        StaticMap(unsafe { std::mem::transmute(self.0.get_players()) })
+        StaticMap(unsafe {
+            std::mem::transmute::<HashMap<&str, &str>, HashMap<&str, &str>>(self.0.get_players())
+        })
     }
 
     pub fn get_player_histories(&self) -> PlayerHistories {

@@ -586,7 +586,7 @@ fn generate_trade_company_investments(
             gfx.into_iter().map(|x| (x.name, x.texturefile)).collect();
 
         let out_dir = Path::new("assets/game/eu4/common/images/tc-investments");
-        fs::create_dir_all(&out_dir)?;
+        fs::create_dir_all(out_dir)?;
 
         let sprite_images = data
             .iter()
@@ -607,7 +607,7 @@ fn generate_trade_company_investments(
         montage.montage(&sprite_images)?;
     }
 
-    let name_ids: HashSet<_> = data.iter().map(|(name_id, _)| name_id.as_str()).collect();
+    let name_ids: HashSet<_> = data.keys().map(|name_id| name_id.as_str()).collect();
 
     let translate: HashMap<_, _> = localization
         .iter()
@@ -634,7 +634,7 @@ fn generate_ruler_personalities(
         .filter(|x| !x.path().is_dir());
 
     let out_dir = Path::new("assets/game/eu4/common/images/personalities");
-    fs::create_dir_all(&out_dir)?;
+    fs::create_dir_all(out_dir)?;
 
     let mut personalities: HashMap<String, PathBuf> = HashMap::new();
     for person_file in persons {
@@ -710,7 +710,7 @@ fn generate_advisors(
         .filter(|x| !x.path().is_dir());
 
     let out_dir = Path::new("assets/game/eu4/common/images/advisors");
-    fs::create_dir_all(&out_dir)?;
+    fs::create_dir_all(out_dir)?;
 
     let mut advisors = Vec::new();
     for person_file in persons {
@@ -869,7 +869,7 @@ pub fn translate_achievements_images(
     }
 
     let base_achievement_path = Path::new("assets/game/eu4/common/images/achievements");
-    std::fs::create_dir_all(&base_achievement_path)?;
+    std::fs::create_dir_all(base_achievement_path)?;
 
     let additional_achievement_entries = WalkDir::new(base_achievement_path)
         .sort_by_file_name()
@@ -921,7 +921,7 @@ pub fn translate_building_images(
     }
 
     let base_path = Path::new("assets/game/eu4/common/images/buildings");
-    std::fs::create_dir_all(&base_path)?;
+    std::fs::create_dir_all(base_path)?;
 
     let data = fs::read(tmp_game_dir.join("interface").join("building_icons.gfx"))?;
     let sprites = sprites::parse_sprites(&data[..]);
@@ -932,7 +932,7 @@ pub fn translate_building_images(
     for sprite in sprites {
         let mut new_name = String::from(sprite.name.get(4..).unwrap());
         let mut image_path =
-            tmp_game_dir.join(&sprite.texturefile.to_string_lossy().replace("//", "/"));
+            tmp_game_dir.join(sprite.texturefile.to_string_lossy().replace("//", "/"));
 
         // Find buildings like "latin_temple.tga" which should have their name "GFX_temple",
         // mapped to temple_westerngfx
@@ -1000,7 +1000,7 @@ pub fn translate_flags(tmp_game_dir: &Path, options: &PackageOptions) -> anyhow:
     }
 
     let base_flag_path = Path::new("assets/game/eu4/common/images/flags");
-    std::fs::create_dir_all(&base_flag_path)?;
+    std::fs::create_dir_all(base_flag_path)?;
 
     let flag_data_file = std::fs::File::create(base_flag_path.join("flags.json"))?;
     let mut flag_json = BufWriter::new(flag_data_file);
@@ -1221,14 +1221,14 @@ pub fn translate_map(
     let provinces_bmp =
         rawbmp::Bmp::parse(&provinces_file_data[..]).context("unable to parse bmp")?;
     let Pixels::Rgb(pixs) = provinces_bmp.pixels();
-    let width = provinces_bmp.dib_header.width.abs() as usize;
-    let height = provinces_bmp.dib_header.height.abs() as u16;
+    let width = provinces_bmp.dib_header.width.unsigned_abs() as usize;
+    let height = provinces_bmp.dib_header.height.unsigned_abs() as u16;
 
     for (i, pix) in pixs.enumerate() {
         let id = definitions.get(&pix).copied().unwrap();
         let x = (i % width) as u16;
         let y = height - (i / width) as u16;
-        let coord = pixel_locations.entry(*id).or_insert_with(Vec::new);
+        let coord = pixel_locations.entry(*id).or_default();
         coord.push((x, y));
     }
 

@@ -12,6 +12,9 @@ mod errors;
 mod utils;
 
 pub use bmp::*;
+
+// in case this is ever made into a library
+#[allow(unused_imports)]
 pub use errors::*;
 
 #[cfg(test)]

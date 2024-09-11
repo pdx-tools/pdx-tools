@@ -61,7 +61,8 @@ impl AiDevelopmentArgs {
                 .provinces
                 .values()
                 .flat_map(|p| p.country_improve_count.iter())
-                .filter_map(|(k, v)| (!player_tag_switches.contains(k)).then(|| *v))
+                .filter(|&(k, _)| !player_tag_switches.contains(k))
+                .map(|(_, v)| *v)
                 .sum();
 
             println!(

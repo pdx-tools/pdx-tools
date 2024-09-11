@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+// This code may prove useful in the future,
+// and I don't want to lose it.
+
 use crate::rawbmp::{Bmp, Pixels, Rgb};
 use eu4save::ProvinceId;
 use jomini::Scalar;
