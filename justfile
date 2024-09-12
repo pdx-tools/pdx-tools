@@ -73,7 +73,7 @@ npm-ci:
 publish-api:
   docker tag ghcr.io/pdx-tools/api:nightly us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
   docker push us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
-  gcloud run deploy api --region=us-east4 --project=$GCLOUD_PROJECT --image=us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
+  gcloud run deploy api --region=us-west2 --project=$GCLOUD_PROJECT --image=us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
 
 publish-backend:
   docker image save ghcr.io/pdx-tools/pdx-tools:nightly | gzip | ssh pdx-tools-prod 'docker load && pdx-tools/docker-compose.sh up -d app'
