@@ -11,7 +11,7 @@ miniz = ["miniz_oxide"]
 libdeflate = ["libdeflater/freestanding"]
 
 [dependencies]
-jomini =  { version = "0.26.0", features = ["json"] }
+jomini =  { version = "0.27.0", features = ["json"] }
 zip = { version =  "0.6", default-features = false }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"

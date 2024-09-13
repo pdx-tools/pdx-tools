@@ -309,7 +309,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/ck3save.git#bfaf863213683a784d462da25407bc55089eaa2e"
+source = "git+https://github.com/rakaly/ck3save.git#9e24fe28a6846e434a3cd7ca28b4b2cc4187caba"
 dependencies = [
  "flate2",
  "jomini",
@@ -600,7 +600,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#9cf25b0ddc5abb8aee6aa15b49830834783af1ad"
+source = "git+https://github.com/rakaly/eu4save.git#064b192f072d853089ca924437f3234dba62302b"
 dependencies = [
  "flate2",
  "jomini",
@@ -781,7 +781,7 @@ checksum = "c706f1711006204c2ba8fb1a7bd55f689bbf7feca9ff40325206b5e140cff6df"
 [[package]]
 name = "hoi4save"
 version = "0.3.4"
-source = "git+https://github.com/rakaly/hoi4save.git#d377f8f43de2e2d90315d6fa8b714d44e932aa5b"
+source = "git+https://github.com/rakaly/hoi4save.git#566f6295d03b41f97729f6660a8dd841dd2ac8a5"
 dependencies = [
  "jomini",
  "serde",
@@ -910,7 +910,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/imperator-save.git#a02f1fe897fc3a405cd727a22d6a5ce520fb9ea5"
+source = "git+https://github.com/rakaly/imperator-save.git#cfb66c02e5873216c6a0a44bda0ffdaee7be06a4"
 dependencies = [
  "flate2",
  "jomini",
@@ -964,9 +964,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99a28ecf49b71fc2496fc667d7d6988fe412e84f0f81495f25181d9f3a51899a"
+checksum = "be7b64a1ef85c738f94811efc8e1863077c0b1a727e7e798c96a79ffa3822841"
 dependencies = [
  "itoa",
  "jomini_derive",

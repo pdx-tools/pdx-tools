@@ -24,21 +24,6 @@ fn token_benchmark(c: &mut Criterion) {
         })
     });
 
-    group.bench_function("compile", |b| {
-        let mut i = 0;
-        let resolver = eu4save::EnvTokens;
-
-        if !matches!(resolver.resolve(0x337f), Some("campaign_id")) {
-            panic!("EU4 compile tokens missing");
-        }
-
-        b.iter(|| {
-            let res = resolver.resolve(arr[i % 1024]);
-            i += 1;
-            res
-        })
-    });
-
     group.finish();
 }
 
