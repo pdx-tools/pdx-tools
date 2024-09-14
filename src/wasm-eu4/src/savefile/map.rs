@@ -445,7 +445,7 @@ impl SaveFileImpl {
                     .iter()
                     .filter(|(_, _, include)| *include)
                     .map(|(_id, prov, _)| prov.base_manpower + prov.base_production + prov.base_tax)
-                    .max_by(|a, b| a.partial_cmp(b).unwrap())
+                    .max_by(|a, b| a.total_cmp(b))
                     .unwrap_or(0.0);
                 let max_dev = max_dev.clamp(10.0, 50.0);
 

@@ -800,14 +800,13 @@ impl SaveFileImpl {
                     .map_or(false, |r| r.id != x.as_str())
             })
             .filter_map(|x| result.iter().find(|r| x == &&r.id))
-            .max_by(|a, b| a.development.partial_cmp(&b.development).unwrap())
+            .max_by(|a, b| a.development.total_cmp(&b.development))
             .map(|leader| {
                 let most_popular = result
                     .iter()
                     .max_by(|a, b| {
                         a.development
-                            .partial_cmp(&b.development)
-                            .unwrap()
+                            .total_cmp(&b.development)
                             .then_with(|| a.index.cmp(&b.index).reverse())
                     })
                     .unwrap();
@@ -1934,9 +1933,7 @@ impl SaveFileImpl {
             })
             .collect::<Vec<_>>();
 
-        result.sort_by(|a: &ProvinceConquer, b| {
-            a.development.partial_cmp(&b.development).unwrap().reverse()
-        });
+        result.sort_by(|a: &ProvinceConquer, b| a.development.total_cmp(&b.development).reverse());
         result
     }
 

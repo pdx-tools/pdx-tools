@@ -122,9 +122,8 @@ impl SaveFileImpl {
                 .map(|(tag, c)| (c.great_power_score, tag))
                 .filter(|(score, tag)| *score > 1. && !tags.contains(tag))
                 .collect();
-            great_scores.sort_unstable_by(|(ascore, _), (bscore, _)| {
-                ascore.partial_cmp(bscore).unwrap().reverse()
-            });
+            great_scores
+                .sort_unstable_by(|(ascore, _), (bscore, _)| ascore.total_cmp(bscore).reverse());
             let dead_greats = great_scores
                 .iter()
                 .map(|(_, tag)| tag)

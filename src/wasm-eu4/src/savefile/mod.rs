@@ -782,7 +782,7 @@ impl SaveFileImpl {
             })
             .collect::<Vec<_>>();
 
-        great_powers.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap().reverse());
+        great_powers.sort_by(|a, b| a.score.total_cmp(&b.score).reverse());
         great_powers
     }
 
@@ -1248,7 +1248,7 @@ impl SaveFileImpl {
             return None;
         }
 
-        let province = self.query.save().game.provinces.get(&id).unwrap();
+        let province = self.query.save().game.provinces.get(&id)?;
         let map_area = self
             .game
             .province_area(&id)
@@ -1573,7 +1573,9 @@ impl SaveFileImpl {
 
             if incl_subjects {
                 for x in &country.subjects {
-                    let country = self.query.country(x).unwrap();
+                    let Some(country) = self.query.country(x) else {
+                        continue;
+                    };
                     let c = &country.colors.map_color;
                     country_colors.insert(x, [c[0], c[1], c[2]]);
                 }
@@ -1585,9 +1587,11 @@ impl SaveFileImpl {
         } else {
             desired_countries.extend(player_countries.iter());
             if incl_subjects {
-                for tag in &player_countries {
-                    desired_countries.extend(self.query.country(tag).unwrap().subjects.iter());
-                }
+                let countries = player_countries
+                    .iter()
+                    .filter_map(|tag| self.query.country(tag))
+                    .flat_map(|x| x.subjects.iter());
+                desired_countries.extend(countries);
             }
         }
 
@@ -1595,7 +1599,11 @@ impl SaveFileImpl {
             let mut lighten_subjects = HashMap::new();
             for tag in &desired_countries {
                 if let Some(color) = country_colors.get(tag) {
-                    for sub in &self.query.country(tag).unwrap().subjects {
+                    let Some(country) = self.query.country(tag) else {
+                        continue;
+                    };
+
+                    for sub in &country.subjects {
                         let data = [
                             color[0].saturating_add((255.0 * 0.1) as u8),
                             color[1].saturating_add((255.0 * 0.1) as u8),
@@ -1615,8 +1623,11 @@ impl SaveFileImpl {
             .provinces
             .keys()
             .max()
-            .unwrap()
-            .as_u16();
+            .or_else(|| self.query.save().game.provinces.keys().max())
+            .map_or_else(
+                || self.query.save().game.provinces.len() as u16,
+                |x| x.as_u16(),
+            );
 
         let mut result = vec![0u8; (usize::from(highest_province_id) + 1) * 3];
         for (id, prov) in &self.query.save().game.provinces {
@@ -2000,7 +2011,7 @@ impl SaveFileImpl {
         battles
     }
 
-    pub fn get_war(&self, name: &str) -> WarInfo {
+    pub fn get_war(&self, name: &str) -> Option<WarInfo> {
         let active_war = self
             .query
             .save()
@@ -2019,12 +2030,11 @@ impl SaveFileImpl {
 
         let war = active_war
             .map(WarOverview::from)
-            .or_else(|| previous_war.map(WarOverview::from))
-            .expect("war to be found");
+            .or_else(|| previous_war.map(WarOverview::from))?;
 
         let battles = self.battle_info(war.history);
         let result = self.war_info(&war);
-        WarInfo {
+        Some(WarInfo {
             name: result.name,
             start_date: result.start_date,
             end_date: result.end_date,
@@ -2032,7 +2042,7 @@ impl SaveFileImpl {
             attackers: result.attackers,
             defenders: result.defenders,
             battles,
-        }
+        })
     }
 
     pub fn monitoring_data(&self) -> Monitor {

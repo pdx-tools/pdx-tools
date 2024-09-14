@@ -23,6 +23,7 @@ use savefile::{
 use std::{collections::HashMap, io::Cursor};
 use wasm_bindgen::prelude::*;
 
+mod console_error_panic_hook;
 mod log;
 mod models;
 mod savefile;
@@ -304,7 +305,7 @@ impl SaveFile {
         self.0.get_country_casualties(tag).into()
     }
 
-    pub fn get_war(&self, war_name: String) -> WarInfo {
+    pub fn get_war(&self, war_name: String) -> Option<WarInfo> {
         self.0.get_war(&war_name)
     }
 
@@ -322,6 +323,7 @@ pub struct SaveFileParsed(Eu4Save, Encoding);
 
 #[wasm_bindgen]
 pub fn parse_meta(data: &[u8]) -> Result<eu4save::models::Meta, JsValue> {
+    console_error_panic_hook::set_once();
     let tokens = tokens::get_tokens();
     eu4game::shared::parse_meta(data, tokens).map_err(js_err)
 }

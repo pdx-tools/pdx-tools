@@ -396,6 +396,9 @@ export type BattleInfo = WarInfo["battles"][number];
 export type WarParticipant = WarInfo["attackerParticipants"][number];
 export function eu4GetWarInfo(war: string) {
   const raw = wasm.save.get_war(war);
+  if (!raw) {
+    throw new Error(`Did not find war by the name of ${war}`)
+  }
   return {
     ...raw,
     attackerParticipants: raw.attackers.members.map((x) => ({
