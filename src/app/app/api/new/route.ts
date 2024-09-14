@@ -1,6 +1,6 @@
 import { withCore } from "@/server-lib/middleware";
 import { DbRoute, saveView, table, toApiSave, withDb } from "@/server-lib/db";
-import { eq, lt, desc } from "drizzle-orm";
+import { eq, lt, desc, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -20,7 +20,13 @@ const handler = async (
   const db = await dbConn;
 
   const query = db
-    .select(saveView())
+    .select(
+      saveView({
+        save: {
+          players: sql<number>`cardinality(players)`,
+        },
+      }),
+    )
     .from(table.saves)
     .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
 

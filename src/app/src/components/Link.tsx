@@ -6,7 +6,7 @@ const linkVariants = cva("underline-offset-4 hover:underline", {
   variants: {
     variant: {
       light: "text-teal-400",
-      dark: "text-sky-600 dark:text-sky-400",
+      dark: "text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-500",
       ghost: "",
     },
   },

@@ -20,7 +20,7 @@ export const UserPage = ({ userId }: UserRouteProps) => {
   });
 
   return (
-    <div>
+    <div className="mx-auto max-w-5xl">
       <Head>
         <title>{user.user_info.user_name} saves - PDX Tools</title>
       </Head>

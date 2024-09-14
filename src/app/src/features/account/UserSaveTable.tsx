@@ -1,30 +1,40 @@
 import React, { useMemo } from "react";
-import { TimeAgo } from "@/components/TimeAgo";
 import { diff } from "@/lib/dates";
-import { difficultyText } from "@/lib/difficulty";
-import { DeleteSave } from "../eu4/components/DeleteSave";
-import { Flag } from "@/features/eu4/components/avatars";
 import { groupBy } from "@/lib/groupBy";
-import { createColumnHelper } from "@tanstack/react-table";
-import { DataTable } from "@/components/DataTable";
-import { Link } from "@/components/Link";
-import { AchievementsCell } from "../eu4/components/AchievementsCell";
 import { UserResponse } from "app/api/users/[userId]/route";
+import { SaveCard } from "./SaveCard";
 
 interface UserSaveTableProps {
   saves: UserResponse["saves"];
   isPrivileged: boolean;
 }
 
-type SaveRow = UserResponse["saves"][number] & {
-  name: string;
-  rowSpan: number;
+export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
+  const data = useSavesGroupedByPlaythrough(saves);
+
+  return (
+    <div className="flex flex-col gap-12">
+      {data.map((playthroughSaves, i) => (
+        <div key={i}>
+          <h2 className="overflow-hidden text-center text-lg font-bold lg:text-2xl">
+            {playthroughSaves[0].name}
+            {playthroughSaves[0].filename !== playthroughSaves[0].name && (
+              <div className="text-sm font-semibold leading-tight text-gray-600 dark:text-gray-400">
+                (playthrough name)
+              </div>
+            )}
+          </h2>
+          {playthroughSaves.map((save) => (
+            <SaveCard key={save.id} save={save} isPrivileged={isPrivileged} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
 };
 
-const columnHelper = createColumnHelper<SaveRow>();
-
-export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
-  const data = useMemo(() => {
+export function useSavesGroupedByPlaythrough(saves: UserResponse["saves"]) {
+  return useMemo(() => {
     const fileGroup = groupBy(saves, (x) => x.filename);
 
     // File names that map to one playthrough id
@@ -55,99 +65,14 @@ export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
       return saves.map((x, i) => ({
         ...x,
         name,
-        rowSpan: i == 0 ? saves.length : 0,
       }));
     });
 
-    playthroughs.sort((a, b) => -diff(a[0].upload_time, b[0].upload_time));
-
-    return playthroughs.flat();
+    return playthroughs.sort(
+      (a, b) => -diff(a[0].upload_time, b[0].upload_time),
+    );
   }, [saves]);
-
-  const columns = useMemo(
-    () => [
-      columnHelper.accessor("name", {
-        header: "Playthrough",
-      }),
-
-      columnHelper.accessor("upload_time", {
-        cell: (info) => <TimeAgo date={info.getValue()} />,
-        header: "Uploaded",
-      }),
-
-      columnHelper.accessor("days", {
-        header: "Date",
-        cell: (info) => (
-          <div className="no-break">{info.row.original.date}</div>
-        ),
-      }),
-
-      columnHelper.accessor("player_start_tag_name", {
-        header: "Starting",
-        cell: ({ row }) =>
-          row.original.player_start_tag &&
-          row.original.player_start_tag_name ? (
-            <Flag
-              tag={row.original.player_start_tag}
-              name={row.original.player_start_tag_name}
-            />
-          ) : (
-            "Multiplayer"
-          ),
-      }),
-      columnHelper.accessor("player_tag_name", {
-        header: "Current",
-        cell: ({ row }) => (
-          <Flag
-            tag={row.original.player_tag}
-            name={row.original.player_tag_name ?? row.original.player_tag}
-          />
-        ),
-      }),
-
-      columnHelper.accessor("patch", {
-        header: "Patch",
-      }),
-      columnHelper.accessor("game_difficulty", {
-        header: "Difficulty",
-        cell: (info) => difficultyText(info.getValue()),
-      }),
-      columnHelper.display({
-        header: "Achievements",
-        cell: (info) => (
-          <AchievementsCell achievements={info.row.original.achievements} />
-        ),
-      }),
-      columnHelper.display({
-        id: "actions",
-        cell: (info) => {
-          const data = info.row.original;
-          const link = <Link href={`/eu4/saves/${data.id}`}>View</Link>;
-          let deleteEle = null;
-          if (isPrivileged) {
-            deleteEle = (
-              <DeleteSave
-                variant="ghost"
-                className="text-rose-500 underline-offset-4 hover:underline"
-                saveId={data.id}
-              />
-            );
-          }
-
-          return (
-            <div className="flex items-center space-x-2">
-              {link}
-              {deleteEle}
-            </div>
-          );
-        },
-      }),
-    ],
-    [isPrivileged],
-  );
-
-  return <DataTable columns={columns} data={data} />;
-};
+}
 
 function playthroughName(playthroughId: string) {
   const start = playthroughId.slice(0, Math.floor(playthroughId.length / 2));

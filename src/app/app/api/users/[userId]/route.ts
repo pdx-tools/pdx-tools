@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { withCore } from "@/server-lib/middleware";
 import { DbRoute, saveView, table, toApiSave, withDb } from "@/server-lib/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { NotFoundError } from "@/server-lib/errors";
@@ -21,6 +21,7 @@ const handler = async (
           filename: table.saves.filename,
           playthrough_id: table.saves.playthroughId,
           days: table.saves.days,
+          players: sql<number>`cardinality(players)`,
         },
         user: {
           created_on: table.users.createdOn,

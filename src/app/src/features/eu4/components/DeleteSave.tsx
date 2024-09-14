@@ -4,6 +4,7 @@ import { Button, type ButtonProps } from "@/components/Button";
 import { Dialog } from "@/components/Dialog";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { toast } from "sonner";
+import { TrashIcon } from "@heroicons/react/24/outline";
 
 interface DeleteSaveProps extends ButtonProps {
   saveId: string;
@@ -15,7 +16,9 @@ export const DeleteSave = ({ saveId, ...rest }: DeleteSaveProps) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <Button {...rest}>Delete</Button>
+        <Button {...rest}>
+          <TrashIcon className="h-8 w-8 text-gray-600 transition-colors hover:text-rose-500 dark:text-gray-400" />
+        </Button>
       </Dialog.Trigger>
       <Dialog.Content>
         <Dialog.Header>
