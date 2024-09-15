@@ -1,13 +1,13 @@
 import { glContextOptions, WebGLMap } from "./src/map";
 import {
   loadImage,
-  StaticResources, TerrainOverlayResources,
+  type StaticResources, type TerrainOverlayResources,
 } from "./src/staticResources";
 import { GLResources } from "./src/glResources";
 import { ProvinceFinder } from "./src/ProvinceFinder";
 import { debounce } from "./src/debounce";
 import { compileShaders } from "./src/shaderCompiler";
-import { OnScreenWegblContext, ShaderSource } from "./src/types";
+import type { OnScreenWegblContext, ShaderSource } from "./src/types";
 import { MapShader } from "./src/mapShader";
 import { XbrShader } from "./src/xbrShader";
 
