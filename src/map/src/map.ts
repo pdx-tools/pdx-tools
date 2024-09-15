@@ -1,8 +1,8 @@
 import { GLResources, setupFramebufferTexture } from "./glResources";
 import { ProvinceFinder } from "./ProvinceFinder";
 import { throttle } from "./throttle";
-import { TerrainOverlayResources } from "./staticResources";
-import { OnScreenWegblContext } from "./types";
+import type { TerrainOverlayResources } from "./staticResources";
+import type { OnScreenWegblContext } from "./types";
 
 export const IMG_HEIGHT = 2048;
 export const IMG_WIDTH = 5632;
@@ -346,8 +346,8 @@ export class WebGLMap {
     gl.bindTexture(gl.TEXTURE_2D, null);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-    let data = new Uint8ClampedArray(width * height * 4);
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    let data = new Uint8ClampedArray(width * height * 4);
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     return data;
@@ -357,19 +357,15 @@ export class WebGLMap {
     const width = IMG_WIDTH * scale;
     const height = IMG_HEIGHT * scale;
     const data = this.generateMapImage(width, height);
-    const pngCanvas = document.createElement("canvas");
+    const worker = new Worker(new URL("./screenshot-worker", import.meta.url));
 
-    pngCanvas.width = width;
-    pngCanvas.height = height;
-    const ctx = pngCanvas.getContext("2d")!;
-    const image = new ImageData(data, width, height);
-    ctx.putImageData(image, 0, 0);
-
-    return new Promise((resolve) => {
-      pngCanvas.toBlob((result) => {
-        pngCanvas.remove();
-        resolve(result);
-      }, type);
+    const pngCanvas = new OffscreenCanvas(width, height);
+    worker.postMessage({ canvas: pngCanvas, data }, [pngCanvas, data.buffer]);
+    return new Promise<Blob>((res) => {
+      worker.onmessage = (ev) => {
+        res(ev.data.blob);
+        worker.terminate();
+      };
     });
   }
 

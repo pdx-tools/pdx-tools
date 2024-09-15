@@ -1,5 +1,5 @@
 import { notNull } from "./nullcheck";
-import { ShaderSource } from "./types";
+import type { ShaderSource } from "./types";
 
 export function compileShaders(
   gl: WebGL2RenderingContext,

@@ -1,4 +1,7 @@
-import { StaticResources, TerrainOverlayResources } from "./staticResources";
+import type {
+  StaticResources,
+  TerrainOverlayResources,
+} from "./staticResources";
 import { MapShader } from "./mapShader";
 import { XbrShader } from "./xbrShader";
 import {
@@ -8,7 +11,7 @@ import {
   SPLIT_IMG_PADDED_WIDTH,
 } from "./map";
 import { notNull } from "./nullcheck";
-import { OnScreenWegblContext } from "./types";
+import type { OnScreenWegblContext } from "./types";
 
 const MAX_TEXTURE_SIZE = 4096;
 
