@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { downloadData } from "@/lib/downloadData";
 import { ToggleRow } from "./ToggleRow";
 import { IMG_HEIGHT, IMG_WIDTH } from "map";
@@ -24,9 +24,9 @@ import {
 } from "../../store";
 import { IconButton } from "@/components/IconButton";
 import { Button } from "@/components/Button";
-import { ToggleGroup } from "@/components/ToggleGroup";
 import { Slider } from "@/components/Slider";
 import {
+  CameraIcon,
   PauseIcon,
   PlayIcon,
   VideoCameraIcon,
@@ -35,7 +35,6 @@ import { StopIcon } from "@heroicons/react/24/outline";
 import { MixerHorizontalIcon } from "@/components/icons/MixerHorizontalIcon";
 import { Popover } from "@/components/Popover";
 import { useIsDeveloper } from "@/features/account";
-import { MapExportMenu } from "./MapExportMenu";
 import { CountryFilterButton } from "../../components/CountryFilterButton";
 import { cx } from "class-variance-authority";
 import { Link } from "@/components/Link";
@@ -44,6 +43,11 @@ import { emitEvent } from "@/lib/events";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { toast } from "sonner";
 import { throttle } from "@/lib/throttle";
+import { useTriggeredAction } from "@/hooks/useTriggeredAction";
+import { DropdownMenu } from "@/components/DropdownMenu";
+import { LoadingIcon } from "@/components/icons/LoadingIcon";
+import { ExportMenu } from "./ExportMenu";
+import { compatibilityReport } from "@/lib/compatibility";
 
 type Interval = "year" | "month" | "week" | "day";
 
@@ -72,7 +76,6 @@ function createTimelapsePayload({
 export const Timelapse = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [recordingFrame, setRecordingFrame] = useState("None");
   const isDeveloper = useIsDeveloper();
   const [maxFps, setMaxFps] = useState(8);
   const [exportAsMp4, setExportAsMp4] = useState(true);
@@ -118,7 +121,7 @@ export const Timelapse = () => {
     stopRecording();
   };
 
-  const startRecording = async () => {
+  const startRecording = async (recordingFrame: string) => {
     setIsRecording(true);
     emitEvent({
       kind: "Timelapse recording",
@@ -128,7 +131,7 @@ export const Timelapse = () => {
           : `World (1:${recordingFrame.charCodeAt(0) - "0".charCodeAt(0)})`,
     });
 
-    let oldDimensions = [map.canvas.style.width, map.canvas.style.height];
+    const oldDimensions = [map.canvas.style.width, map.canvas.style.height];
     if (recordingFrame !== "None") {
       const zoom = recordingFrame.charCodeAt(0) - "0".charCodeAt(0);
 
@@ -181,7 +184,8 @@ export const Timelapse = () => {
     }
   };
 
-  const stopRecording = async () => {
+  const stopRecording = (e?: MouseEvent<HTMLButtonElement>) => {
+    e?.preventDefault();
     encoderRef.current?.stop();
   };
 
@@ -190,10 +194,11 @@ export const Timelapse = () => {
       <div className="flex items-center gap-2 rounded-tr-lg bg-slate-900 py-2 pl-3 pr-4">
         <div className="flex items-center justify-center">
           <IconButton
+            aria-label="Play timelapse"
             shape="circle"
             variant="ghost"
             className="opacity-75 transition-opacity enabled:hover:opacity-90"
-            disabled={!timelapseEnabled}
+            disabled={!timelapseEnabled || isRecording}
             onClick={!isPlaying ? startTimelapse : stopTimelapse}
             icon={
               !isPlaying ? (
@@ -202,30 +207,75 @@ export const Timelapse = () => {
                 <PauseIcon className="h-6 w-6" />
               )
             }
-            tooltip={!isPlaying ? "Start timelapse" : "Stop timelapse"}
           />
 
-          <IconButton
-            shape="circle"
-            variant="ghost"
-            className="opacity-60 transition-opacity enabled:hover:opacity-90"
-            disabled={!(timelapseEnabled && recordingSupported)}
-            onClick={!isRecording ? startRecording : stopRecording}
-            icon={
-              !isRecording ? (
-                <VideoCameraIcon className="h-6 w-6" />
-              ) : (
-                <StopIcon className="h-6 w-6" />
-              )
-            }
-            tooltip={
-              !recordingSupported
-                ? "Timelapse recording is not supported by your browser"
-                : !isRecording
-                  ? "Start recording timelapse"
-                  : "Stop recording timelapse"
-            }
-          />
+          <DropdownMenu>
+            <DropdownMenu.Trigger asChild>
+              <IconButton
+                aria-label="Record timelapse"
+                shape="circle"
+                variant="ghost"
+                className="opacity-60 transition-opacity enabled:hover:opacity-90"
+                disabled={!(timelapseEnabled && recordingSupported)}
+                onPointerDown={
+                  /* https://github.com/radix-ui/primitives/blob/660060/packages/react/dropdown-menu/src/DropdownMenu.tsx#L116 */
+                  isRecording ? stopRecording : undefined
+                }
+                icon={
+                  !isRecording ? (
+                    <VideoCameraIcon className="h-6 w-6" />
+                  ) : (
+                    <StopIcon className="h-6 w-6" />
+                  )
+                }
+                tooltip={
+                  !recordingSupported
+                    ? "Timelapse recording is not supported by your browser"
+                    : undefined
+                }
+              />
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content className="w-40" sideOffset={7}>
+              <DropdownMenu.Item asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => startRecording("None")}
+                >
+                  <span className="w-full py-2 text-xl tracking-tight">
+                    Current view
+                  </span>
+                </Button>
+              </DropdownMenu.Item>
+              <DropdownMenu.Item asChild>
+                <Button
+                  variant="ghost"
+                  shape="none"
+                  className="w-full"
+                  onClick={() => startRecording("4x")}
+                >
+                  <span className="w-full py-2 text-xl tracking-tight">
+                    World (1:4)
+                  </span>
+                </Button>
+              </DropdownMenu.Item>
+              <DropdownMenu.Item asChild>
+                <Button
+                  variant="ghost"
+                  shape="none"
+                  className="w-full"
+                  onClick={() => startRecording("2x")}
+                >
+                  <span className="w-full py-2 text-xl tracking-tight">
+                    World (1:2)
+                  </span>
+                </Button>
+              </DropdownMenu.Item>
+              <DropdownMenu.Arrow className="fill-white dark:fill-slate-800" />
+            </DropdownMenu.Content>
+          </DropdownMenu>
+
+          <Screenshot />
 
           <Popover>
             <Popover.Trigger asChild>
@@ -238,12 +288,12 @@ export const Timelapse = () => {
               />
             </Popover.Trigger>
             <Popover.Content sideOffset={7}>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 <div className="flex w-full">
                   <h2 className="grow font-semibold">Map Settings</h2>
                   <div className="flex items-center gap-1">
                     <CountryFilterButton />
-                    <MapExportMenu />
+                    <ExportMenu />
                   </div>
                 </div>
                 <TerrainToggleRow />
@@ -253,7 +303,7 @@ export const Timelapse = () => {
                 <CountryBordersToggleRow />
                 <MapModeBordersToggleRow />
               </div>
-              <div className="flex flex-col gap-3 py-3">
+              <div className="flex flex-col gap-3 py-6">
                 <div>
                   <label>
                     <div>
@@ -280,33 +330,6 @@ export const Timelapse = () => {
                     />
                   </label>
                 </div>
-                {recordingSupported && (
-                  <div>
-                    <div>Recording output:</div>
-                    <ToggleGroup
-                      type="single"
-                      className="inline-flex"
-                      value={recordingFrame}
-                      onValueChange={(e) => e && setRecordingFrame(e)}
-                    >
-                      <ToggleGroup.Item value="None" asChild>
-                        <Button shape="none" className="px-4 py-2">
-                          Map
-                        </Button>
-                      </ToggleGroup.Item>
-                      <ToggleGroup.Item value="4x" asChild>
-                        <Button shape="none" className="px-4 py-2">
-                          World (1:4)
-                        </Button>
-                      </ToggleGroup.Item>
-                      <ToggleGroup.Item value="2x" asChild>
-                        <Button shape="none" className="px-4 py-2">
-                          World (1:2)
-                        </Button>
-                      </ToggleGroup.Item>
-                    </ToggleGroup>
-                  </div>
-                )}
                 {isDeveloper && recordingSupported && (
                   <ToggleRow
                     text="Export as MP4"
@@ -473,3 +496,132 @@ const MapModeBordersToggleRow = () => {
     />
   );
 };
+
+function Screenshot() {
+  const meta = useEu4Meta();
+  const map = useEu4Map();
+  const terrainOverlay = useTerrainOverlay();
+  const mapMode = useEu4MapMode();
+  const [supportedTextureSize, setSupportedTextureSize] = useState(0);
+  const currentMapDate = useSelectedDate();
+
+  useEffect(() => {
+    const report = compatibilityReport();
+    if (report.webgl2.enabled) {
+      setSupportedTextureSize(report.webgl2.textureSize.actual);
+    }
+  }, []);
+
+  // exporting as webp may seem enticing, but it's a trap, stick to png
+  const exportType = terrainOverlay ? "png" : "png";
+
+  const downloadDataFile = async (data: Blob, suffix: string) => {
+    let outName = meta.save_game.replace(".eu4", "");
+    outName = `${outName}-${meta.date}-${mapMode}-${suffix}.${exportType}`;
+
+    downloadData(data, outName);
+    if (document.hasFocus()) {
+      const item = new ClipboardItem({ [`image/${exportType}`]: data });
+      await navigator.clipboard.write([item]);
+      toast.success("Screenshot downloaded and copied to clipboard", {
+        duration: 2000,
+      });
+    } else {
+      toast.success("Screenshot downloaded", {
+        duration: 2000,
+      });
+    }
+  };
+
+  const { isLoading: isExporting, run } = useTriggeredAction({
+    action: async (type: "view" | 1 | 2 | 3) => {
+      const fontFamily = getComputedStyle(document.body).fontFamily;
+      switch (type) {
+        case "view": {
+          const data = await map.screenshot({
+            kind: "viewport",
+            date: currentMapDate.text,
+            fontFamily,
+          });
+          downloadDataFile(data, "view");
+          emitEvent({ kind: "Screenshot taken", view: "Viewport" });
+          break;
+        }
+        default: {
+          const data = await map.screenshot({
+            kind: "world",
+            scale: type,
+            date: currentMapDate.text,
+            fontFamily,
+          });
+          downloadDataFile(data, type == 1 ? "map" : `map-${type}x`);
+          emitEvent({ kind: "Screenshot taken", view: `World (${type}:1)` });
+          break;
+        }
+      }
+    },
+  });
+
+  return (
+    <DropdownMenu>
+      <DropdownMenu.Trigger asChild>
+        <IconButton
+          disabled={isExporting}
+          shape="circle"
+          variant="ghost"
+          className="opacity-60 transition-opacity enabled:hover:opacity-90"
+          aria-label="take screenshot"
+          icon={
+            isExporting ? (
+              <LoadingIcon className="h-6 w-6" />
+            ) : (
+              <CameraIcon className="h-6 w-6" />
+            )
+          }
+        />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content className="w-40" sideOffset={7}>
+        <DropdownMenu.Item asChild>
+          <Button
+            id="screenshot-map-btn"
+            variant="ghost"
+            className="w-full"
+            onClick={() => run("view")}
+          >
+            <span className="w-full py-2 text-xl tracking-tight">
+              Current view
+            </span>
+          </Button>
+        </DropdownMenu.Item>
+        <DropdownMenu.Item asChild disabled={supportedTextureSize < IMG_WIDTH}>
+          <Button
+            variant="ghost"
+            shape="none"
+            className="w-full"
+            onClick={() => run(1)}
+          >
+            <span className="w-full py-2 text-xl tracking-tight">
+              World (1:1)
+            </span>
+          </Button>
+        </DropdownMenu.Item>
+        <DropdownMenu.Item
+          asChild
+          disabled={supportedTextureSize < IMG_WIDTH * 2}
+        >
+          <Button
+            variant="ghost"
+            shape="none"
+            className="w-full"
+            onClick={() => run(2)}
+          >
+            <span className="w-full py-2 text-xl tracking-tight">
+              World (2:1)
+            </span>
+          </Button>
+        </DropdownMenu.Item>
+        <DropdownMenu.Arrow className="fill-white dark:fill-slate-800" />
+      </DropdownMenu.Content>
+    </DropdownMenu>
+  );
+}

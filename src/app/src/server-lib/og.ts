@@ -15,8 +15,8 @@ export async function generateOgIntoS3(saveId: string) {
 
   const puppeteerCmd = `async function ({ page }) {
       page.setViewport({
-        width: 1405,
-        height: 640,
+        width: 1200 + 56,
+        height: 630,
       });
 
       const pageUrl = "${url}/eu4/saves/${saveId}";
@@ -24,26 +24,8 @@ export async function generateOgIntoS3(saveId: string) {
         waitUntil: "load",
       });
 
-      // Wait for any button to show up on the UI
-      await page.waitForSelector("button[data-state='closed']");
-  
-      // Dismiss alerts about unsupported webgl or map data
-      await page.$$eval(
-        "[role='alert'] button",
-        (elHandles) => elHandles.forEach(el => el.click())
-      );
-
-      // Take a screenshot
-      const image = await page.screenshot({
-        clip: {
-          width: 1200.0,
-          height: 630.0,
-          x: 130,
-          y: 0,
-        },
-      });
-
-      return image;
+      await page.waitForSelector('button[aria-label="take screenshot"]');
+      await page.evaluate(() => window.pdxScreenshot());
     }
     `;
 
@@ -52,7 +34,7 @@ export async function generateOgIntoS3(saveId: string) {
   const bust = await new Promise((res) => res("default"));
   const cmd = ["export", bust, puppeteerCmd].join(" ");
 
-  const puppeteerUrl = new URL(getEnv("PUPPETEER_URL") + "/function");
+  const puppeteerUrl = new URL(getEnv("PUPPETEER_URL") + "/download");
   puppeteerUrl.searchParams.set("token", getEnv("PUPPETEER_TOKEN"));
 
   const pngBuffer = await timeit(() =>

@@ -1,3 +1,4 @@
+import { overlayDate } from "./canvasOverlays";
 import { GLResources } from "./glResources";
 import {
   glContextOptions,
@@ -154,14 +155,16 @@ export async function withTerrainImages(
   return {} as TerrainToken;
 }
 
-export type ScreenshotOptions =
+export type ScreenshotOptions = (
   | {
       kind: "viewport";
     }
   | {
       kind: "world";
       scale: number;
-    };
+    }
+) &
+  Partial<{ date: string; fontFamily: string }>;
 
 export async function screenshot(
   _map: MapToken,
@@ -171,12 +174,37 @@ export async function screenshot(
   const canvas = state.canvas!;
   const map = state.map!;
 
+  const offscreen =
+    screenshot.kind === "viewport"
+      ? new OffscreenCanvas(canvas.width, canvas.height)
+      : new OffscreenCanvas(
+          IMG_WIDTH * screenshot.scale,
+          IMG_HEIGHT * screenshot.scale,
+        );
+
+  const ctx2d = offscreen.getContext("2d", { alpha: false })!;
   if (screenshot.kind === "viewport") {
     map.redrawMap();
-    return canvas.convertToBlob(options);
+    ctx2d.drawImage(canvas, 0, 0);
   } else {
-    return map.mapData(screenshot.scale);
+    const data = map.generateMapImage(offscreen.width, offscreen.height);
+    const image = new ImageData(data, offscreen.width, offscreen.height);
+    ctx2d.putImageData(image, 0, 0);
   }
+
+  if (screenshot.date && screenshot.fontFamily) {
+    const scale =
+      screenshot.kind === "viewport" ? map.pixelRatio : screenshot.scale * 4;
+    ctx2d.font = `700 ${20 * scale}px ${screenshot.fontFamily}`;
+    overlayDate({
+      ctx2d,
+      date: screenshot.date,
+      scale,
+      textMetrics: ctx2d.measureText(screenshot.date),
+    });
+  }
+
+  return offscreen.convertToBlob(options);
 }
 
 export async function highlightProvince(
@@ -327,7 +355,7 @@ export function proportionScale(_map: MapToken, proportion: number) {
   map.scale = map.maxScale * proportion;
 }
 
-export function stash(_map: MapToken, { zoom }: { zoom: number }) {
+export async function stash(_map: MapToken, { zoom }: { zoom: number }) {
   const map = state.map!;
   state.stash = {
     width: state.canvas!.width,
@@ -339,7 +367,7 @@ export function stash(_map: MapToken, { zoom }: { zoom: number }) {
   map.focusPoint = [0, 0];
   map.scale = 1;
   map.resize(IMG_WIDTH / zoom, IMG_HEIGHT / zoom);
-  map.redrawViewport();
+  await map.redrawViewport();
 }
 
 export function popStash(_map: MapToken) {

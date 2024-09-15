@@ -21,6 +21,7 @@ import {
 } from "./eu4Store";
 import { dataUrls, gameVersion } from "@/lib/game_gen";
 import { pdxAbortController } from "@/lib/abortController";
+import { downloadData } from "@/lib/downloadData";
 
 export type Eu4SaveInput =
   | { kind: "file"; file: File }
@@ -347,6 +348,21 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
     )
       .then(async ({ map, ...rest }) => {
         storeRef.current?.getState().map.dispose?.();
+
+        // Attach a function to the window so that puppeteer can wait for the
+        // screenshot to be generated. Download the screenshot as puppeteer
+        // doesn't support transferring blobs:
+        // https://github.com/puppeteer/puppeteer/issues/3722
+        (window as any).pdxScreenshot = async () => {
+          const fontFamily = getComputedStyle(document.body).fontFamily;
+          const date = storeRef.current?.getState().selectedDate.text;
+          const result = await map.screenshot({
+            kind: "viewport",
+            date,
+            fontFamily,
+          });
+          downloadData(result, "image.png");
+        };
 
         const store = await createEu4Store({
           store: storeRef.current,

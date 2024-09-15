@@ -59,7 +59,7 @@ function offscreenCompatibility() {
     const ctx = canvas.getContext("webgl2");
     return { enabled: ctx !== null };
   } catch (ex) {
-    return { enabled: false }
+    return { enabled: false };
   }
 }
 

@@ -344,22 +344,6 @@ export class WebGLMap {
     return data;
   }
 
-  public mapData(scale: number): Promise<Blob | null> {
-    const width = IMG_WIDTH * scale;
-    const height = IMG_HEIGHT * scale;
-    const data = this.generateMapImage(width, height);
-    const worker = new Worker(new URL("./screenshot-worker", import.meta.url));
-
-    const pngCanvas = new OffscreenCanvas(width, height);
-    worker.postMessage({ canvas: pngCanvas, data }, [pngCanvas, data.buffer]);
-    return new Promise<Blob>((res) => {
-      worker.onmessage = (ev) => {
-        res(ev.data.blob);
-        worker.terminate();
-      };
-    });
-  }
-
   public updateTerrainTextures(textures: TerrainOverlayResources) {
     this.glResources.updateTerrainTextures(textures);
   }
