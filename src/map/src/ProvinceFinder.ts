@@ -1,12 +1,15 @@
 export class ProvinceFinder {
-  private ctx: CanvasRenderingContext2D;
+  private ctx: OffscreenCanvasRenderingContext2D;
   constructor(
     provinces1: ImageBitmap,
     provinces2: ImageBitmap,
     private sortedColors: Uint8Array,
     private provinceColorIndex: Uint16Array,
   ) {
-    const provinceCanvas = document.createElement("canvas");
+    const provinceCanvas = new OffscreenCanvas(
+      provinces1.width * 2,
+      provinces2.height,
+    );
     provinceCanvas.width = provinces1.width * 2;
     provinceCanvas.height = provinces2.height;
 
@@ -45,11 +48,7 @@ export class ProvinceFinder {
     };
   }
 
-  close() {
-    if ("remove" in this.ctx.canvas) {
-      this.ctx.canvas.remove();
-    }
-  }
+  close() {}
 }
 
 // adaption of https://stackoverflow.com/a/29018745/433785
@@ -77,13 +76,7 @@ function comparePixel(
   ind: number,
   rgb: [number, number, number],
 ) {
-  if (colors[ind] - rgb[0] !== 0) {
-    return rgb[0] - colors[ind];
-  }
-
-  if (colors[ind + 1] - rgb[1] !== 0) {
-    return rgb[1] - colors[ind + 1];
-  }
-
-  return rgb[2] - colors[ind + 2];
+  return (
+    rgb[0] - colors[ind] || rgb[1] - colors[ind + 1] || rgb[2] - colors[ind + 2]
+  );
 }

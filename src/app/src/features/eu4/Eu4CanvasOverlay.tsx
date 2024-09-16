@@ -16,7 +16,6 @@ import {
   useSaveFilename,
   useWatcher,
 } from "./store";
-import { useCanvasPointerEvents } from "./hooks/useCanvasPointerEvents";
 import { WatchSideBarButton } from "./features/watch";
 import { useEngineActions } from "../engine";
 import { SideBarButton } from "./components/SideBarButton";
@@ -38,12 +37,10 @@ export const Eu4CanvasOverlay = () => {
   const serverFile = useIsServerSaveFile();
   const meta = useEu4Meta();
   const filename = useSaveFilename();
-  const map = useEu4Map();
   const watcher = useWatcher();
   const actions = useEngineActions();
   const mapMode = useEu4MapMode();
   const eu4Actions = useEu4Actions();
-  useCanvasPointerEvents(map);
 
   return (
     <>

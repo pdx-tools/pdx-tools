@@ -80,6 +80,6 @@
     "typescript": "5.5.4"
   },
   "browserslist": [
-    "defaults and supports webgl2 and supports wasm"
+    "defaults and supports webgl2 and supports wasm and supports offscreencanvas"
   ]
 }

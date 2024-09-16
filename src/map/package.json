@@ -14,5 +14,8 @@
   "devDependencies": {
     "typescript": "5.6.2",
     "vite": "5.4.5"
+  },
+  "dependencies": {
+    "comlink": "4.4.1"
   }
 }

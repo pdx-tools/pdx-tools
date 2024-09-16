@@ -1,32 +1,23 @@
+import { transfer, wrap } from "comlink";
 import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
 import { fetchOk } from "@/lib/fetch";
-import { check } from "@/lib/isPresent";
 import { log, logMs } from "@/lib/log";
 import { emitEvent } from "@/lib/plausible";
-import { timeit, timeSync } from "@/lib/timeit";
-import {
-  GLResources,
-  WebGLMap,
-  MapShader,
-  ProvinceFinder,
-  XbrShader,
-  compileShaders,
-} from "map";
+import { timeit } from "@/lib/timeit";
+import { MapWorker, MapController, createMapWorker, InitToken } from "map";
 import { captureException } from "@sentry/nextjs";
 import { Dispatch, useRef, useEffect, useReducer } from "react";
 import {
-  glContext,
   shaderUrls,
   fetchProvinceUniqueIndex,
   resourceUrls,
-  provinceIdToColorIndexInvert,
 } from "../features/map/resources";
 import { getEu4Worker } from "../worker";
 import {
   Eu4Store,
   initialEu4CountryFilter,
-  focusCameraOn,
   createEu4Store,
+  loadSettings,
 } from "./eu4Store";
 import { dataUrls, gameVersion } from "@/lib/game_gen";
 import { pdxAbortController } from "@/lib/abortController";
@@ -121,12 +112,22 @@ function getSaveInfo(
   }
 }
 
+let initTokenTask: Promise<InitToken> | undefined;
+let mapWorker: undefined | ReturnType<typeof createMapComlink>;
+function createMapComlink() {
+  return wrap<MapWorker>(createMapWorker());
+}
+export function getMapWorker() {
+  return (mapWorker ??= createMapComlink());
+}
+
 async function loadEu4Save(
   save: Eu4SaveInput,
   mapCanvas: HTMLCanvasElement,
   dispatch: Dispatch<Eu4LoadActions>,
-  dimensions: { width: number; height: number },
+  mapContainer: HTMLElement,
   signal: AbortSignal,
+  eagerLoadTerrain: boolean,
 ) {
   const run = async <T,>(task: Task<T>) => {
     signal.throwIfAborted();
@@ -138,13 +139,24 @@ async function loadEu4Save(
   dispatch({ kind: "start" });
   const worker = getEu4Worker();
   emitEvent({ kind: "parse", game: "eu4" });
-  const gl = check(glContext(mapCanvas), "unable to acquire webgl2 context");
 
-  const shadersTask = run({
-    fn: () => shaderUrls(),
-    name: "fetch shaders",
-    progress: 3,
-  });
+  const mapWorker = getMapWorker();
+  const shadersTask = (initTokenTask ??= new Promise<InitToken>(
+    (res, reject) => {
+      const bounds = mapContainer.getBoundingClientRect();
+      mapCanvas.width = bounds.width * window.devicePixelRatio;
+      mapCanvas.height = bounds.height * window.devicePixelRatio;
+      mapCanvas.style.width = `${bounds.width}px`;
+      mapCanvas.style.height = `${bounds.height}px`;
+
+      const offscreen = mapCanvas.transferControlToOffscreen();
+      return runTask(dispatch, {
+        fn: () => mapWorker.init(transfer(offscreen, [offscreen]), shaderUrls),
+        name: "shader compilation",
+        progress: 10,
+      }).then(res, reject);
+    },
+  ));
 
   const initTasks = Promise.all([
     run({
@@ -160,17 +172,64 @@ async function loadEu4Save(
     }),
   ]);
 
-  const shaders = await shadersTask;
-  const compilation = timeSync(() => compileShaders(gl, shaders));
-  dispatch({ kind: "progress", value: 3 });
-  logMs(compilation, `start compiling shaders`);
-
   await initTasks;
   const { version } = await run({
     fn: () => worker.parseMeta(),
     name: "parsed eu4 metadata",
     progress: 5,
   });
+
+  const resources = resourceUrls(version);
+
+  const mapControllerTask = Promise.all([
+    shadersTask,
+    run({
+      fn: () =>
+        mapWorker.withResources(
+          {
+            provinces1: resources.provinces1,
+            provinces2: resources.provinces2,
+            terrain1: resources.terrain1,
+            terrain2: resources.terrain2,
+            stripes: resources.stripes,
+          },
+          resources.provincesUniqueColor,
+          resources.provincesUniqueIndex,
+        ),
+      name: "textures fetched and bitmapped",
+      progress: 10,
+    }),
+    run({
+      fn: () =>
+        mapWorker.withTerrainImages(
+          {
+            colorMap: resources.colorMap,
+            sea: resources.sea,
+            normal: resources.normal,
+            rivers1: resources.rivers1,
+            rivers2: resources.rivers2,
+            water: resources.water,
+            surfaceRock: resources.surfaceRock,
+            surfaceGreen: resources.surfaceGreen,
+            surfaceNormalRock: resources.surfaceNormalRock,
+            surfaceNormalGreen: resources.surfaceNormalGreen,
+            heightMap: resources.heightmap,
+          },
+          { eager: eagerLoadTerrain },
+        ),
+      name: "primed terrain textures",
+      progress: 10,
+    }),
+  ])
+    .then(([init, resources, terrain]) =>
+      run({
+        fn: () =>
+          mapWorker.withMap(window.devicePixelRatio, init, resources, terrain),
+        name: "constructed offscreen worker",
+        progress: 5,
+      }),
+    )
+    .then((map) => new MapController(mapWorker, map, mapCanvas, mapContainer));
 
   const [gameData, provincesUniqueIndex] = await Promise.all([
     run({
@@ -188,42 +247,13 @@ async function loadEu4Save(
     }),
   ]);
 
-  const resourceTask = run({
-    fn: () => resourceUrls(version),
-    name: "textures fetched and bitmapped",
-    progress: 7,
-  });
-
   const saveTask = run({
     fn: () => worker.eu4GameParse(gameData, provincesUniqueIndex),
     name: "save deserialized",
     progress: 40,
   });
 
-  const resources = await resourceTask;
-  const glResourcesInit = GLResources.create(gl, resources);
-
   signal.throwIfAborted();
-  const programTask = timeSync(() => compilation.data.linked());
-  dispatch({ kind: "progress", value: 5 });
-  logMs(programTask, `shaders linked`);
-  const [mapProgram, xbrProgram] = programTask.data;
-
-  const glResources = new GLResources(
-    ...glResourcesInit,
-    MapShader.create(gl, mapProgram),
-    XbrShader.create(gl, xbrProgram),
-  );
-
-  const colorIndexToProvinceId =
-    provinceIdToColorIndexInvert(provincesUniqueIndex);
-
-  const finder = new ProvinceFinder(
-    resources.provinces1,
-    resources.provinces2,
-    resources.provincesUniqueColor,
-    colorIndexToProvinceId,
-  );
 
   const { meta, achievements, defaultSelectedTag } = await saveTask;
   const [countries, mapPosition] = await Promise.all([
@@ -240,9 +270,6 @@ async function loadEu4Save(
     }),
   ]);
 
-  const map = new WebGLMap(gl, glResources, finder);
-  map.resize(dimensions.width, dimensions.height);
-
   const { primary, secondary } = await run({
     fn: () =>
       worker.eu4MapColors({
@@ -254,12 +281,13 @@ async function loadEu4Save(
     name: "calculate political map",
     progress: 4,
   });
-  map.updateCountryProvinceColors(primary);
-  map.updateProvinceColors(primary, secondary);
+
+  const map = await mapControllerTask;
+  map.updateProvinceColors(primary, secondary, { country: primary });
 
   if (!meta.multiplayer) {
-    map.scale = map.maxScale * (1 / 4);
-    focusCameraOn(map, mapPosition);
+    map.setScaleOfMax(0.25);
+    map.moveCameraTo({ x: mapPosition[0], y: mapPosition[1] });
   }
 
   const saveInfo = getSaveInfo(save);
@@ -275,32 +303,8 @@ async function loadEu4Save(
   };
 }
 
-const useMapContainer = (map: WebGLMap | null | undefined) => {
+const useMapContainer = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (mapContainer.current == null || map == null) {
-      return;
-    }
-
-    const container = mapContainer.current;
-    let resiveObserverAF = 0;
-    const ro = new ResizeObserver((_entries) => {
-      // Why resive observer has RAF: https://stackoverflow.com/a/58701523
-      cancelAnimationFrame(resiveObserverAF);
-      resiveObserverAF = requestAnimationFrame(() => {
-        const bounds = container.getBoundingClientRect();
-        map.resize(bounds.width, bounds.height);
-        map.redrawViewport();
-      });
-    });
-    ro.observe(container);
-
-    return () => {
-      ro.disconnect();
-    };
-  }, [map]);
-
   return mapContainer;
 };
 
@@ -317,7 +321,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
     storeRef.current = data;
   });
 
-  const mapContainer = useMapContainer(data?.getState().map);
+  const mapContainer = useMapContainer();
 
   useEffect(() => {
     if (mapCanvas.current === null || mapContainer.current === null) {
@@ -325,20 +329,26 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
     }
 
     const controller = pdxAbortController();
-    const dimensions = mapContainer.current.getBoundingClientRect();
+    const settings = loadSettings();
     loadEu4Save(
       save,
       mapCanvas.current,
       dispatch,
-      dimensions,
+      mapContainer.current,
       controller.signal,
+      settings.renderTerrain,
     )
       .then(async ({ map, ...rest }) => {
+        storeRef.current?.getState().map.dispose?.();
+
         const store = await createEu4Store({
           store: storeRef.current,
           save: rest,
           map,
+          settings,
         });
+
+        map.attachDOMHandlers();
 
         await runTask(dispatch, {
           fn: () => map.redrawMap(),

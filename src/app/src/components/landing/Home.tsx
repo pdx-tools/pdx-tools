@@ -233,7 +233,7 @@ export const Home = ({ subtitle }: HomeProps) => {
               </div>
               <div className="text-xs">
                 Recommended: Chrome (88+), Edge (88+).
-                <div>Supported: Firefox (89+), Safari (15.2+).</div>
+                <div>Supported: Firefox (105+), Safari (17.0+).</div>
               </div>
             </div>
           </div>

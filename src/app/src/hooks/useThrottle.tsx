@@ -1,6 +1,6 @@
-import { throttle } from "map";
 import { useEffect, useReducer, useRef } from "react";
 import { useIsMounted } from "./useIsMounted";
+import { throttle } from "@/lib/throttle";
 
 export function useThrottle<T>(value: T, interval: number) {
   // Easier to use refs when value could be a function

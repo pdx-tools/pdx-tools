@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { downloadData } from "@/lib/downloadData";
 import { ToggleRow } from "./ToggleRow";
-import { IMG_HEIGHT, IMG_WIDTH, throttle } from "map";
+import { IMG_HEIGHT, IMG_WIDTH } from "map";
 import { mapTimelapseCursor, TimelapseEncoder } from "./TimelapseEncoder";
 import { captureException } from "@/features/errors";
 import {
@@ -43,13 +43,8 @@ import { Alert } from "@/components/Alert";
 import { emitEvent } from "@/lib/plausible";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { toast } from "sonner";
+import { throttle } from "@/lib/throttle";
 
-interface MapState {
-  focusPoint: [number, number];
-  scale: number;
-  width: number;
-  height: number;
-}
 type Interval = "year" | "month" | "week" | "day";
 
 function createTimelapsePayload({
@@ -127,30 +122,19 @@ export const Timelapse = () => {
     emitEvent({ kind: "record-timelapse" });
     setIsRecording(true);
 
-    let savedMapStateRef: MapState | undefined;
+    let oldDimensions = [map.canvas.style.width, map.canvas.style.height];
     if (recordingFrame !== "None") {
       const zoom = recordingFrame.charCodeAt(0) - "0".charCodeAt(0);
 
-      savedMapStateRef = {
-        width: map.gl.canvas.width,
-        height: map.gl.canvas.height,
-        focusPoint: map.focusPoint,
-        scale: map.scale,
-      };
-
-      map.focusPoint = [0, 0];
-      map.scale = 1;
-      map.resize(IMG_WIDTH / zoom, IMG_HEIGHT / zoom);
-      map.redrawViewport();
+      await map.stash({ zoom });
+      map.canvas.style.width = `${IMG_WIDTH / zoom}px`;
+      map.canvas.style.height = `${IMG_HEIGHT / zoom}px`;
     }
 
     const restoreMapState = () => {
-      if (savedMapStateRef) {
-        map.focusPoint = savedMapStateRef.focusPoint;
-        map.scale = savedMapStateRef.scale;
-        map.resize(savedMapStateRef.width, savedMapStateRef.height);
-        savedMapStateRef = undefined;
-      }
+      map.canvas.style.width = oldDimensions[0];
+      map.canvas.style.height = oldDimensions[1];
+      map.popStash();
     };
 
     const timelapsePayload = createTimelapsePayload({

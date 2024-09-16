@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from "react";
 import { downloadData } from "@/lib/downloadData";
-import { provinceIdToColorIndexInvert } from "@/features/eu4/features/map/resources";
 import { useIsDeveloper } from "@/features/account";
 import { getEu4Worker } from "../../worker";
 import {
@@ -15,6 +14,7 @@ import { DropdownMenu } from "@/components/DropdownMenu";
 import { Button } from "@/components/Button";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { useTriggeredAction } from "@/hooks/useTriggeredAction";
+import { provinceIdToColorIndexInvert } from "map/src/resources";
 
 export const MapExportMenu = () => {
   const meta = useEu4Meta();
@@ -55,14 +55,16 @@ export const MapExportMenu = () => {
   const { isLoading: isExporting, run } = useTriggeredAction({
     action: async (type: "view" | 1 | 2 | 3) => {
       switch (type) {
-        case "view":
-          await map.redrawMap();
-          map.gl.canvas.toBlob((b) => downloadDataFile(b, "view"));
+        case "view": {
+          const data = await map.screenshot({ kind: "viewport" });
+          downloadDataFile(data, "view");
           break;
-        default:
-          const data = await map.mapData(type, `image/${exportType}`);
+        }
+        default: {
+          const data = await map.screenshot({ kind: "world", scale: type });
           downloadDataFile(data, type == 1 ? "map" : `map-${type}x`);
           break;
+        }
       }
     },
   });
