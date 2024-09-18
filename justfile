@@ -56,6 +56,7 @@ setup:
 npm-ci:
   (cd src/docs && npm ci)
   (cd src/app && npm ci)
+  (cd src/map && npm ci)
 
 publish-api:
   docker tag ghcr.io/pdx-tools/api:nightly us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
