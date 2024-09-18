@@ -1,10 +1,9 @@
 import { compatibilityReport } from "@/lib/compatibility";
 import { check } from "@/lib/isPresent";
-import { IMG_HEIGHT, IMG_WIDTH, WebGLMap } from "map";
+import { MapController } from "map";
 import { pdxApi } from "@/services/appApi";
 import { createContext, useContext, useMemo } from "react";
 import { StoreApi, createStore, useStore } from "zustand";
-import { loadTerrainOverlayImages } from "../features/map/resources";
 import { MapPayload, mapModes } from "../types/map";
 import {
   CountryMatcher,
@@ -48,7 +47,7 @@ type Eu4StateProps = {
       | { kind: "async"; saveId: string };
     initialPoliticalMapColors: Uint8Array;
   };
-  map: WebGLMap;
+  map: MapController;
 };
 
 type Eu4State = Eu4StateProps & {
@@ -87,7 +86,9 @@ type Eu4State = Eu4StateProps & {
     setSelectedDateText: (text: string) => Promise<void>;
     startWatcher: (frequency: FileObservationFrequency) => void;
     stopWatcher: () => void;
-    updateProvinceColors: () => Promise<void>;
+    updateProvinceColors: (options?: {
+      countryColors?: Uint8Array;
+    }) => Promise<void>;
     updateMap: (frame: MapTimelapseItem) => void;
     updateTagFilter: (matcher: Partial<CountryMatcher>) => Promise<void>;
     updateSave: (save: {
@@ -101,13 +102,17 @@ type Eu4State = Eu4StateProps & {
 };
 
 export type Eu4Store = StoreApi<Eu4State>;
-type Eu4StoreInit = Eu4StateProps & { store: Eu4Store | null };
+type Eu4StoreInit = Eu4StateProps & {
+  store: Eu4Store | null;
+  settings: PersistedMapSettings;
+};
 export const Eu4SaveContext = createContext<Eu4Store | null>(null);
 
 export const createEu4Store = async ({
   store: prevStore,
   save,
   map,
+  settings,
 }: Eu4StoreInit) => {
   const defaults = {
     mapMode: "political",
@@ -122,13 +127,18 @@ export const createEu4Store = async ({
     countryDrawerVisible: false,
   } as const;
 
-  const syncMapSettings = (state: Eu4State) => {
+  const syncMapSettings = (state: Eu4State, options?: { draw?: boolean }) => {
     const report = compatibilityReport().webgl2;
-    state.map.renderTerrain =
-      state.renderTerrain && report.enabled && !report.performanceCaveat;
-    state.map.showProvinceBorders = state.showProvinceBorders;
-    state.map.showCountryBorders = selectShowCountryBorders(state);
-    state.map.showMapModeBorders = state.showMapModeBorders;
+    state.map.update(
+      {
+        renderTerrain:
+          state.renderTerrain && report.enabled && !report.performanceCaveat,
+        showProvinceBorders: state.showProvinceBorders,
+        showCountryBorders: selectShowCountryBorders(state),
+        showMapModeBorders: state.showMapModeBorders,
+      },
+      options,
+    );
 
     persistMapSettings({
       renderTerrain: state.renderTerrain,
@@ -138,7 +148,6 @@ export const createEu4Store = async ({
     });
   };
 
-  const settings = loadSettings();
   const store = createStore<Eu4State>()((set, get) => ({
     ...defaults,
     ...prevStore?.getState(),
@@ -154,8 +163,8 @@ export const createEu4Store = async ({
       setCountryDrawer: (open: boolean) => set({ countryDrawerVisible: open }),
       panToTag: async (tag, offset?: number) => {
         const pos = await getEu4Worker().eu4MapPositionOf(tag);
-        map.scale = map.maxScale * (1 / 2);
-        focusCameraOn(map, pos, { offsetX: offset });
+        map.setScaleOfMax(0.5);
+        map.moveCameraTo({ x: pos[0], y: pos[1], offsetX: offset });
         map.redrawViewport();
       },
       nextMapMode: () => {
@@ -163,16 +172,14 @@ export const createEu4Store = async ({
         get().actions.setMapMode(mapModes[index + 1] ?? mapModes[0]);
       },
       setMapMode: async (mode: Eu4State["mapMode"]) => {
-        if (!dateEnabledMapMode(mode) && dateEnabledMapMode(get().mapMode)) {
-          get().map.updateCountryProvinceColors(
-            get().save.initialPoliticalMapColors,
-          );
-        }
-
+        const countryColors =
+          !dateEnabledMapMode(mode) && dateEnabledMapMode(get().mapMode)
+            ? get().save.initialPoliticalMapColors
+            : undefined;
         set({ mapMode: mode });
         emitEvent({ kind: "map-mode", mode });
         syncMapSettings(get());
-        await get().actions.updateProvinceColors();
+        await get().actions.updateProvinceColors({ countryColors });
         get().map.redrawMap();
       },
       setMapShowStripes: async (show: boolean) => {
@@ -187,8 +194,7 @@ export const createEu4Store = async ({
       },
       setShowProvinceBorders: (enabled: boolean) => {
         set({ showProvinceBorders: enabled });
-        syncMapSettings(get());
-        get().map.redrawMap();
+        syncMapSettings(get(), { draw: true });
       },
       setShowCountryBorders: (enabled: boolean) => {
         if (get().mapMode == "political") {
@@ -196,22 +202,16 @@ export const createEu4Store = async ({
         }
 
         set({ showCountryBorders: enabled });
-        syncMapSettings(get());
-        get().map.redrawMap();
+        syncMapSettings(get(), { draw: true });
       },
       setShowMapModeBorders: (enabled: boolean) => {
         set({ showMapModeBorders: enabled });
-        syncMapSettings(get());
-        get().map.redrawMap();
+        syncMapSettings(get(), { draw: true });
       },
 
       setTerrainOverlay: async (enabled: boolean) => {
         set({ renderTerrain: enabled });
-        syncMapSettings(get());
-        if (get().map.renderTerrain) {
-          await loadTerrainImages(get().map, selectSaveVersion(get()));
-        }
-        map.redrawMap();
+        syncMapSettings(get(), { draw: true });
       },
       setSelectedDate: (date: Eu4State["selectedDate"] | null) => {
         if (date !== null) {
@@ -270,25 +270,26 @@ export const createEu4Store = async ({
         await get().actions.updateProvinceColors();
         get().map.redrawMap();
       },
-      updateProvinceColors: async () => {
+      updateProvinceColors: async (options?: {
+        countryColors?: Uint8Array;
+      }) => {
         const payload = selectMapPayload(get());
         const colors = await getEu4Worker().eu4MapColors(payload);
-        if (colors.country) {
-          get().map.updateCountryProvinceColors(colors.country);
-        }
-
         const secondary = get().showSecondaryColor
           ? colors.secondary
           : colors.primary;
-        get().map.updateProvinceColors(colors.primary, secondary);
+        get().map.updateProvinceColors(colors.primary, secondary, {
+          country: options?.countryColors ?? colors.country,
+        });
       },
       updateMap: (frame: MapTimelapseItem) => {
         get().actions.setSelectedDate(frame.date);
-        get().map.updateCountryProvinceColors(frame.country);
         const stripes = get().showSecondaryColor
           ? frame.secondary
           : frame.primary;
-        get().map.updateProvinceColors(frame.primary, stripes);
+        get().map.updateProvinceColors(frame.primary, stripes, {
+          country: frame.country,
+        });
       },
       async updateSave({ meta, achievements, countries }) {
         set({
@@ -317,10 +318,6 @@ export const createEu4Store = async ({
 
   const state = store.getState();
   syncMapSettings(state);
-  if (map.renderTerrain) {
-    await loadTerrainImages(map, selectSaveVersion(state));
-  }
-
   await state.actions.updateProvinceColors();
   return store;
 };
@@ -481,11 +478,6 @@ export const useSelectedDate = () => {
   );
 };
 
-async function loadTerrainImages(map: WebGLMap, version: string) {
-  const images = await loadTerrainOverlayImages(version);
-  map.updateTerrainTextures(images);
-}
-
 type PersistedMapSettings = {
   renderTerrain: boolean;
   showProvinceBorders: boolean;
@@ -497,7 +489,7 @@ function persistMapSettings(settings: PersistedMapSettings) {
   localStorage.setItem("map-settings", JSON.stringify(settings));
 }
 
-function loadSettings(): PersistedMapSettings {
+export function loadSettings(): PersistedMapSettings {
   const deprecatedSettings = {
     renderTerrain: !!JSON.parse(
       localStorage.getItem("map-show-terrain") ?? "false",
@@ -509,31 +501,4 @@ function loadSettings(): PersistedMapSettings {
     ...deprecatedSettings,
     ...mapSettings,
   };
-}
-
-type FocusCameraOnProps = {
-  offsetX: number;
-  width: number;
-  height: number;
-};
-
-export function focusCameraOn(
-  map: WebGLMap,
-  [x, y]: number[],
-  options?: Partial<FocusCameraOnProps>,
-) {
-  const width = options?.width ?? map.gl.canvas.width;
-  const height = options?.height ?? map.gl.canvas.height;
-
-  const IMG_ASPECT = IMG_WIDTH / IMG_HEIGHT;
-  const initX = ((x - IMG_WIDTH / 2) / (IMG_WIDTH / 2)) * (width / 2);
-  const initY =
-    (((y - IMG_HEIGHT / 2) / (IMG_HEIGHT / 2)) * (height / 2)) /
-    (IMG_ASPECT / (width / height));
-
-  map.focusPoint = [initX, initY];
-
-  if (options?.offsetX) {
-    map.focusPoint[0] = initX + options.offsetX / 2 / map.scale;
-  }
 }

@@ -3,7 +3,7 @@ import {
   ArrayBufferTarget as WebmTarget,
 } from "webm-muxer";
 import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4Target } from "mp4-muxer";
-import { WebGLMap } from "map";
+import { MapController, WebGLMap } from "map";
 import { Eu4Worker, getEu4Worker } from "../../worker";
 import { Eu4Store } from "../../store";
 import { log } from "@/lib/log";
@@ -24,7 +24,7 @@ type EncoderConfig = VideoEncoderConfig;
 type VideoEncoding = "mp4" | "webm";
 
 type TimelapseEncoderOptions = {
-  map: WebGLMap;
+  map: MapController;
   fps: number;
   frames: ReturnType<typeof mapTimelapseCursor>;
   encoding: VideoEncoding;
@@ -40,7 +40,7 @@ export class TimelapseEncoder {
   private stopRequested: boolean = false;
 
   private constructor(
-    private map: WebGLMap,
+    private map: MapController,
     config: EncoderConfig,
     private muxer:
       | { kind: "webm"; mux: WebMMuxer<WebmTarget> }
@@ -66,7 +66,7 @@ export class TimelapseEncoder {
     const scale = recordingCanvas.width > 2000 ? 2 : 1;
 
     // Create rectangle to hold text
-    ctx2d.drawImage(this.map.gl.canvas, 0, 0);
+    ctx2d.drawImage(this.map.canvas, 0, 0);
     ctx2d.fillStyle = "#20272c";
     ctx2d.fillRect(
       recordingCanvas.width - 130 * scale,
@@ -168,12 +168,12 @@ export class TimelapseEncoder {
     const { height, width } =
       encoding == "mp4"
         ? {
-            width: 2 * Math.round((map.gl.canvas.width + 1) / 2),
-            height: 2 * Math.round((map.gl.canvas.height + 1) / 2),
+            width: 2 * Math.round((map.canvas.width + 1) / 2),
+            height: 2 * Math.round((map.canvas.height + 1) / 2),
           }
         : {
-            width: map.gl.canvas.width,
-            height: map.gl.canvas.height,
+            width: map.canvas.width,
+            height: map.canvas.height,
           };
 
     async function findSupportedEncoder(

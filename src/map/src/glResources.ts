@@ -1,9 +1,6 @@
-import type {
-  StaticResources,
-  TerrainOverlayResources,
-} from "./staticResources";
-import { MapShader } from "./mapShader";
-import { XbrShader } from "./xbrShader";
+import type { StaticResources, TerrainOverlayResources } from "./types";
+import { MapShader } from "./MapShader";
+import { XbrShader } from "./XbrShader";
 import {
   IMG_WIDTH,
   IMG_HEIGHT,
@@ -11,14 +8,13 @@ import {
   SPLIT_IMG_PADDED_WIDTH,
 } from "./map";
 import { notNull } from "./nullcheck";
-import type { OnScreenWegblContext } from "./types";
 
 const MAX_TEXTURE_SIZE = 4096;
 
 // Stores all WebGL resource data like textures, shader programs, etc.
 export class GLResources {
   public constructor(
-    public readonly gl: OnScreenWegblContext,
+    public readonly gl: WebGL2RenderingContext,
     public colorMap: WebGLTexture,
     public sea: WebGLTexture,
     public normal: WebGLTexture,
@@ -73,7 +69,7 @@ export class GLResources {
     gl.bindVertexArray(null);
   }
 
-  static create(gl: OnScreenWegblContext, staticRes: StaticResources) {
+  static create(gl: WebGL2RenderingContext, staticRes: StaticResources) {
     let provinceCount = staticRes.provincesUniqueColor.length / 3;
 
     let rawMapFramebuffer1 = notNull(gl.createFramebuffer());

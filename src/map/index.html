@@ -32,7 +32,7 @@
   </head>
   <body>
     <div id="canvasContainer" style="touch-action: none;">
-      <div id="canvasControls" style="display: none">
+      <div id="canvasControls">
         <div id="canvasUi">
           <div>
             <button id="btn-zoom-in">+</button>
@@ -65,10 +65,6 @@
             <div>
               <input type="radio" id="religion-player" name="mapmode" value="religion-player" />
               <label for="religion-player">Religion Player</label>
-            </div>
-            <div>
-              <input type="radio" id="terrain" name="mapmode" value="terrain" />
-              <label for="terrain">Terrain</label>
             </div>
           </div>
           <div style="padding-top: 6px; padding-bottom: 6px">
@@ -119,7 +115,7 @@
           <button id="btn-full-export-3x" disabled>Export Full Image (3x)</button>
         </div>
 
-        <canvas id="canvas" width="1200" height="600"></canvas>
+        <canvas id="canvas"></canvas>
       </div>
     </div>
 

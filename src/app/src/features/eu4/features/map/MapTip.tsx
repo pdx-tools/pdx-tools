@@ -23,7 +23,7 @@ export const MapTip = () => {
   const [mapTip, setMapTip] = useState<QuickTipPayload | null>(null);
   const [provinceId, setProvinceId] = useState(0);
   const map = useEu4Map();
-  const canvas = map.gl.canvas;
+  const canvas = map.canvas;
 
   useEffect(() => {
     let isDown = false;
@@ -98,11 +98,14 @@ export const MapTip = () => {
 
   useEffect(() => {
     let isMounted = true;
-    map.onProvinceHover = (e) => {
-      if (isMounted) {
-        setProvinceId(e);
-      }
-    };
+    map.register({
+      onProvinceHover(provinceId) {
+        if (isMounted) {
+          setProvinceId(provinceId);
+        }
+      },
+    });
+
     return () => {
       isMounted = false;
     };

@@ -1,8 +1,6 @@
 import { GLResources, setupFramebufferTexture } from "./glResources";
 import { ProvinceFinder } from "./ProvinceFinder";
-import { throttle } from "./throttle";
-import type { TerrainOverlayResources } from "./staticResources";
-import type { OnScreenWegblContext } from "./types";
+import type { TerrainOverlayResources } from "./types";
 
 export const IMG_HEIGHT = 2048;
 export const IMG_WIDTH = 5632;
@@ -17,7 +15,13 @@ export interface MouseEvent {
 
 export interface WheelEvent extends MouseEvent {
   deltaY: number;
+  eventDiff: number;
 }
+
+export type MoveEvent = {
+  deltaX: number;
+  deltaY: number;
+};
 
 export interface UserRect {
   top: number;
@@ -47,58 +51,41 @@ export const glContextOptions = (): WebGLContextAttributes => ({
   // https://stackoverflow.com/a/27747016/433785
   preserveDrawingBuffer: false,
 
-  // Need desynchronized to be false so that we can export view on chrome,
-  // otherwise it exports a blank rectangle even when `preserveDrawingBuffer` is
-  // true (firefox isn't effected).
+  // Unsure why this is required
   desynchronized: false,
 });
 
 export class WebGLMap {
   public scale: number;
-  public pixelRatio: number = window.devicePixelRatio;
   public focusPoint: [number, number];
-  private mousePos = [0, 0];
-  private mouseDownInitialPos = [0, 0];
-  private lastScrollTime = 0;
   private maxViewWidth = 24000;
   private selectedProvinceColorInd: number | undefined;
-  private hoverProvinceColorInd: number | undefined;
   private originalPrimaryColor: Uint8Array = new Uint8Array();
   private originalSecondaryColor: Uint8Array = new Uint8Array();
   public showProvinceBorders = false;
   public showCountryBorders = false;
   public showMapModeBorders = false;
-  public renderTerrain = true;
-  private throttledMouseMove: (arg0: any, rect?: UserRect) => void;
+  public renderTerrain = false;
 
   private viewportDrawsQueued: number = 0;
   private mapDrawsQueued: number = 0;
 
-  public onProvinceHover?: (proinceId: number) => void;
   public onProvinceSelection?: (proinceId: number) => void;
   public onDraw?: (event: DrawEvent) => void;
-  public onCommit?: (context: OnScreenWegblContext) => void;
+  public onCommit?: (context: WebGL2RenderingContext) => void;
   private redrawViewportTask: Promise<void> | undefined;
   private redrawMapTask: Promise<void> | undefined;
   private queuedViewportTask: Promise<void> | undefined;
   private queuedMapTask: Promise<void> | undefined;
 
   constructor(
-    public readonly gl: OnScreenWegblContext,
+    public readonly gl: WebGL2RenderingContext,
     private glResources: GLResources,
     private provinceFinder: ProvinceFinder,
+    public pixelRatio: number,
   ) {
     this.focusPoint = [0, 0];
     this.scale = 1;
-
-    this.throttledMouseMove = throttle((args, rect) => {
-      this.onMouseMove(args, rect);
-    }, 100);
-
-    gl.canvas.addEventListener("dblclick", (evt) => this.onDblClick(evt));
-    gl.canvas.addEventListener("pointermove", (evt) =>
-      this.throttledMouseMove(evt),
-    );
   }
 
   get maxScale(): number {
@@ -111,8 +98,6 @@ export class WebGLMap {
   }
 
   public resize(cssWidth: number, cssHeight: number) {
-    this.gl.canvas.style.width = `${cssWidth}px`;
-    this.gl.canvas.style.height = `${cssHeight}px`;
     this.gl.canvas.width = cssWidth * this.pixelRatio;
     this.gl.canvas.height = cssHeight * this.pixelRatio;
   }
@@ -120,8 +105,14 @@ export class WebGLMap {
   static create(
     glResources: GLResources,
     provinceFinder: ProvinceFinder,
+    pixelRatio: number,
   ): WebGLMap {
-    return new WebGLMap(glResources.gl, glResources, provinceFinder);
+    return new WebGLMap(
+      glResources.gl,
+      glResources,
+      provinceFinder,
+      pixelRatio,
+    );
   }
 
   /** Returns a promise for when the canvas has been updated with latest viewport */
@@ -353,7 +344,7 @@ export class WebGLMap {
     return data;
   }
 
-  public mapData(scale: number, type?: string): Promise<Blob | null> {
+  public mapData(scale: number): Promise<Blob | null> {
     const width = IMG_WIDTH * scale;
     const height = IMG_HEIGHT * scale;
     const data = this.generateMapImage(width, height);
@@ -386,12 +377,17 @@ export class WebGLMap {
     this.highlightSelectedProvince();
   }
 
-  public unhighlightSelectedProvince() {
+  public highlightProvince(provinceColorIndex: number) {
+    this.selectedProvinceColorInd = provinceColorIndex;
+    this.highlightSelectedProvince();
+  }
+
+  public unhighlightProvince() {
     this.selectedProvinceColorInd = undefined;
     this.highlightSelectedProvince();
   }
 
-  public highlightSelectedProvince() {
+  private highlightSelectedProvince() {
     if (this.selectedProvinceColorInd !== undefined) {
       const newPrimary = this.originalPrimaryColor.slice();
       newPrimary[this.selectedProvinceColorInd * 4] = 255;
@@ -427,38 +423,50 @@ export class WebGLMap {
   }
 
   private canvasDisplayDimensions() {
-    const rect = this.gl.canvas.getBoundingClientRect();
-    return { width: rect.width, height: rect.height };
+    return {
+      width: this.gl.canvas.width / this.pixelRatio,
+      height: this.gl.canvas.height / this.pixelRatio,
+    };
   }
 
   private mousePosition(e: MouseEvent, rect?: UserRect) {
-    const canvas = this.gl.canvas;
-    if (rect) {
-      const cssX = e.clientX - rect.left;
-      const cssY = e.clientY - rect.top;
-      return [cssX, cssY];
-    } else if (canvas instanceof HTMLCanvasElement) {
-      const rect = canvas.getBoundingClientRect();
-      const cssX = e.clientX - rect.left;
-      const cssY = e.clientY - rect.top;
-      return [cssX, cssY];
-    } else {
-      return [0, 0];
-    }
+    const cssX = e.clientX - (rect?.left ?? 0);
+    const cssY = e.clientY - (rect?.top ?? 0);
+    return [cssX, cssY];
   }
 
-  public moveCamera(e: MouseEvent, rect?: UserRect) {
-    const [newX, newY] = this.mousePosition(e, rect);
+  public moveCamera(e: MoveEvent) {
     const newfocusPoint: [number, number] = [
-      this.focusPoint[0] -
-        ((newX - this.mousePos[0]) * this.pixelRatio) / this.scale,
-      this.focusPoint[1] -
-        ((newY - this.mousePos[1]) * this.pixelRatio) / this.scale,
+      this.focusPoint[0] - (e.deltaX * this.pixelRatio) / this.scale,
+      this.focusPoint[1] - (e.deltaY * this.pixelRatio) / this.scale,
     ];
 
     this.focusPoint = newfocusPoint;
     this.clampFocusPoint();
-    this.mousePos = [newX, newY];
+  }
+
+  public moveCameraTo({
+    x,
+    y,
+    offsetX,
+  }: {
+    x: number;
+    y: number;
+    offsetX?: number;
+  }) {
+    const width = this.gl.canvas.width;
+    const height = this.gl.canvas.height;
+
+    const IMG_ASPECT = IMG_WIDTH / IMG_HEIGHT;
+    const initX = ((x - IMG_WIDTH / 2) / (IMG_WIDTH / 2)) * (width / 2);
+    const initY =
+      (((y - IMG_HEIGHT / 2) / (IMG_HEIGHT / 2)) * (height / 2)) /
+      (IMG_ASPECT / (width / height));
+
+    this.focusPoint = [initX, initY];
+    if (offsetX) {
+      this.focusPoint[0] = initX + offsetX / 2 / this.scale;
+    }
   }
 
   private clampFocusPoint() {
@@ -487,18 +495,11 @@ export class WebGLMap {
   }
 
   public onWheel(e: WheelEvent, rect?: UserRect) {
-    const time = performance.now();
-    const eventDiff = time - this.lastScrollTime;
-    this.lastScrollTime = time;
-    if (eventDiff > 300) {
-      return;
-    }
-
     const oldScale = this.scale;
     const clampedY = Math.max(-30, Math.min(30, e.deltaY));
     this.scale *= Math.pow(
       2,
-      clampedY * -0.01 * (Math.min(eventDiff, 64) / 64),
+      clampedY * -0.01 * (Math.min(e.eventDiff, 64) / 64),
     );
 
     this.scale = Math.max(this.minScale, this.scale);
@@ -526,10 +527,6 @@ export class WebGLMap {
     this.clampFocusPoint();
   }
 
-  public onMouseDown(e: MouseEvent, rect?: UserRect) {
-    this.mousePos = this.mouseDownInitialPos = this.mousePosition(e, rect);
-  }
-
   private mousePixel(e: MouseEvent, rect?: UserRect) {
     const { height, width } = this.canvasDisplayDimensions();
     const trueScale = this.scale / this.minScale;
@@ -554,40 +551,10 @@ export class WebGLMap {
     return [(pixelX + IMG_WIDTH) % IMG_WIDTH, pixelY];
   }
 
-  public onMouseUp(e: MouseEvent, rect?: UserRect) {
-    const [newX, newY] = this.mousePosition(e, rect);
-    const [pixelX, pixelY] = this.mousePixel(e, rect);
-    const diffX = Math.abs(this.mouseDownInitialPos[0] - newX);
-    const diffY = Math.abs(this.mouseDownInitialPos[1] - newY);
-
-    if (diffX + diffY < 15) {
-      const prov = this.provinceFinder.findProvinceId(pixelX, pixelY);
-      if (prov && prov.colorIndex !== this.selectedProvinceColorInd) {
-        this.selectedProvinceColorInd = prov.colorIndex;
-        this.onProvinceSelection?.(prov.provinceId);
-      }
-    }
-  }
-
-  private onDblClick(e: any) {
+  public findProvince(e: MouseEvent) {
     const [pixelX, pixelY] = this.mousePixel(e);
     const prov = this.provinceFinder.findProvinceId(pixelX, pixelY);
-    if (prov && prov.colorIndex === this.selectedProvinceColorInd) {
-      console.log("double click on same province");
-    }
-  }
-
-  public triggerMouseMove(e: MouseEvent, rect: UserRect) {
-    this.throttledMouseMove(e, rect);
-  }
-
-  private onMouseMove(e: any, rect?: UserRect) {
-    const [pixelX, pixelY] = this.mousePixel(e, rect);
-    const prov = this.provinceFinder.findProvinceId(pixelX, pixelY);
-    if (prov && prov.colorIndex !== this.hoverProvinceColorInd) {
-      this.hoverProvinceColorInd = prov.colorIndex;
-      this.onProvinceHover?.(prov.provinceId);
-    }
+    return prov;
   }
 
   public zoomIn() {

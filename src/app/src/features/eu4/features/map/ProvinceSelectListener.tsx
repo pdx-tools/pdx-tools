@@ -11,23 +11,21 @@ export const ProvinceSelectListener = () => {
   const map = useEu4Map();
   const [data, setData] = useState<ProvinceDetails | undefined>();
   useEffect(() => {
-    map.onProvinceSelection = async (id) => {
-      const details = await getEu4Worker().eu4GetProvinceDeteails(id);
-      if (details) {
-        map.highlightSelectedProvince();
-        map.redrawMap();
-        setDrawerVisible(true);
-        setData(details);
-      } else {
-        map.unhighlightSelectedProvince();
-        map.redrawMap();
-        setDrawerVisible(false);
-      }
-    };
-
-    return () => {
-      map.onProvinceSelection = undefined;
-    };
+    map.register({
+      async onProvinceSelect(province) {
+        const details = await getEu4Worker().eu4GetProvinceDeteails(
+          province.provinceId,
+        );
+        if (details) {
+          map.highlightProvince(province);
+          setDrawerVisible(true);
+          setData(details);
+        } else {
+          map.unhighlightProvince();
+          setDrawerVisible(false);
+        }
+      },
+    });
   }, [map]);
 
   const visible = drawerVisible && !!data;
