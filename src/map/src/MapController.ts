@@ -5,12 +5,9 @@ import type { MapToken, ScreenshotOptions, UpdateOptions } from "./map-worker";
 import type {
   UserRect,
   WheelEvent as WorkerWheelEvent,
-  MouseEvent as WorkerMouseEvent,
-  WebGLMap,
   MoveEvent,
   DrawEvent,
 } from "./map";
-import { throttleQueue } from "./throttle-queue";
 
 export class MapController {
   private lastScrollTime = 0;
@@ -34,19 +31,21 @@ export class MapController {
     onDraw?: (event: DrawEvent) => void;
   }) {
     if (options?.onProvinceHover) {
+      let hoverTimeout = 0;
       let currentHoverProvince: number | undefined;
       const hover = options.onProvinceHover;
-      const queue = throttleQueue({
-        work: async (e: WorkerMouseEvent) => {
-          const province = await this.worker.findProvince(e, this.mapToken);
+      this.canvas.addEventListener("pointermove", ({ clientX, clientY }) => {
+        clearTimeout(hoverTimeout);
+        hoverTimeout = setTimeout(async () => {
+          const province = await this.worker.findProvince(
+            { clientX, clientY },
+            this.mapToken,
+          );
           if (province && province.provinceId !== currentHoverProvince) {
             currentHoverProvince = province.provinceId;
             hover(province.provinceId);
           }
-        },
-      });
-      this.canvas.addEventListener("pointermove", ({ clientX, clientY }) => {
-        queue.run({ clientX, clientY });
+        }, 100);
       });
     }
 
