@@ -3,7 +3,7 @@ import { glContextOptions, WebGLMap } from "map";
 import { MapOnlyControls } from "../../types/map";
 import { fetchOk } from "@/lib/fetch";
 
-export const shaderUrls = {
+export const shaderUrls = () => ({
   map: {
     vertex: require(`../../../../../../map/assets/shaders/map.vert`),
     fragment: require(`../../../../../../map/assets/shaders/map.frag`),
@@ -12,7 +12,7 @@ export const shaderUrls = {
     vertex: require(`../../../../../../map/assets/shaders/xbr.vert`),
     fragment: require(`../../../../../../map/assets/shaders/xbr.frag`),
   },
-};
+});
 
 export async function fetchProvinceUniqueIndex(
   version: string,

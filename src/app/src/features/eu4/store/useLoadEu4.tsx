@@ -151,7 +151,8 @@ async function loadEu4Save(
 
       const offscreen = mapCanvas.transferControlToOffscreen();
       return runTask(dispatch, {
-        fn: () => mapWorker.init(transfer(offscreen, [offscreen]), shaderUrls),
+        fn: () =>
+          mapWorker.init(transfer(offscreen, [offscreen]), shaderUrls()),
         name: "shader compilation",
         progress: 10,
       }).then(res, reject);
