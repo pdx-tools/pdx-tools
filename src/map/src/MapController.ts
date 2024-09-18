@@ -32,7 +32,7 @@ export class MapController {
   }) {
     if (options?.onProvinceHover) {
       let hoverTimeout = 0;
-      let currentHoverProvince: number | undefined;
+      let currentHoverProvince: ReturnType<typeof setTimeout> | undefined;
       const hover = options.onProvinceHover;
       this.canvas.addEventListener("pointermove", ({ clientX, clientY }) => {
         clearTimeout(hoverTimeout);
