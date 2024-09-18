@@ -350,6 +350,7 @@ export function popStash(_map: MapToken) {
   const map = state.map!;
   map.focusPoint = state.stash.focusPoint;
   map.scale = state.stash.scale;
-  map.resize(state.stash.width, state.stash.height);
+  state.canvas!.width = state.stash.width;
+  state.canvas!.height = state.stash.height;
   state.stash = undefined;
 }
