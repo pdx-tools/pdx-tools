@@ -39,13 +39,13 @@ export function SaveCard({
             </div>
 
             {save.user_id && save.user_name && (
-              <div className="line-clamp-1 text-center">
+              <div className="line-clamp-1 break-all text-center">
                 <Link href={`/users/${save.user_id}`}>{save.user_name}</Link>
               </div>
             )}
 
             {save.filename !== save.name && (
-              <div className="line-clamp-1 text-center text-gray-600 dark:text-gray-400">
+              <div className="line-clamp-1 break-all text-center text-gray-600 dark:text-gray-400">
                 {save.filename}
               </div>
             )}
@@ -59,7 +59,7 @@ export function SaveCard({
               >
                 <Flag.Image size="large" />
                 <div>
-                  <Flag.CountryName className="line-clamp-1" />
+                  <Flag.CountryName className="line-clamp-1 break-all" />
                   <div>
                     {save.patch}{" "}
                     <span
