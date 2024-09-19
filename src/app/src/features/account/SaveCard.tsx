@@ -24,14 +24,14 @@ export function SaveCard({
   return (
     <Card className="mt-2 flex flex-col gap-2 lg:flex-row">
       <Image
-        className="max-h-96 w-auto rounded-t-md object-cover lg:rounded-l-md lg:rounded-tr-none"
+        className="max-h-96 rounded-t-md object-cover lg:rounded-l-md lg:rounded-tr-none"
         alt={`preview of save ${save.id}`}
         width={1200}
         height={630}
         src={`/eu4/saves/${save.id}/og.webp`}
         loading="lazy"
       />
-      <div className="flex grow flex-col gap-2 p-4 lg:gap-4">
+      <div className="flex min-w-56 lg:max-w-56 flex-col gap-2 p-4 lg:gap-4">
         <div className="flex flex-wrap justify-around gap-4">
           <div>
             <div className="text-center text-gray-600 dark:text-gray-400">
