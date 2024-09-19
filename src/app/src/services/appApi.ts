@@ -326,6 +326,12 @@ export const pdxApi = {
           queryClient.invalidateQueries({ queryKey: pdxKeys.save(id) });
         },
       }),
+
+    useOgMutation: () =>
+      useMutation({
+        mutationFn: ({ id }: { id: string }) =>
+          sendJson(`/api/admin/og`, { body: { saveId: id } }),
+      }),
   },
 
   user: {

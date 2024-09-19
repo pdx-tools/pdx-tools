@@ -1,9 +1,11 @@
 import { Alert } from "@/components/Alert";
 import { pdxApi, sessionSelect } from "@/services/appApi";
 import { Button } from "@/components/Button";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { toast } from "sonner";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
+import { Input } from "@/components/Input";
+import { check } from "@/lib/isPresent";
 
 export const AccountContent = () => {
   const [key, setKey] = useState<string | undefined>();
@@ -11,6 +13,8 @@ export const AccountContent = () => {
   const session = pdxApi.session.useCurrent();
   const rebalance = pdxApi.saves.useRebalance();
   const reprocess = pdxApi.saves.useReprocess();
+  const og = pdxApi.save.useOgMutation();
+  const saveIdRef = useRef<HTMLInputElement>(null);
 
   return (
     <>
@@ -93,6 +97,18 @@ export const AccountContent = () => {
             </label>
           </Button>
         </div>
+      ) : null}
+
+      {sessionSelect.isAdmin(session) ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            og.mutate({ id: check(saveIdRef.current).value });
+          }}
+        >
+          <Input name="save-id" ref={saveIdRef} />
+          <Button type="submit">Update OG</Button>
+        </form>
       ) : null}
     </>
   );
