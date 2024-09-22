@@ -2,7 +2,7 @@ import { transfer, wrap } from "comlink";
 import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
 import { fetchOk } from "@/lib/fetch";
 import { log, logMs } from "@/lib/log";
-import { emitEvent } from "@/lib/plausible";
+import { emitEvent, startSessionRecording } from "@/lib/events";
 import { timeit } from "@/lib/timeit";
 import { MapWorker, MapController, createMapWorker, InitToken } from "map";
 import { captureException } from "@sentry/nextjs";
@@ -138,8 +138,8 @@ async function loadEu4Save(
 
   dispatch({ kind: "start" });
   const worker = getEu4Worker();
-  emitEvent({ kind: "parse", game: "eu4" });
 
+  startSessionRecording();
   const mapWorker = getMapWorker();
   const shadersTask = (initTokenTask ??= new Promise<InitToken>(
     (res, reject) => {
@@ -178,6 +178,12 @@ async function loadEu4Save(
     fn: () => worker.parseMeta(),
     name: "parsed eu4 metadata",
     progress: 5,
+  });
+
+  emitEvent({
+    kind: "Save parsed",
+    game: "eu4",
+    source: save.kind === "server" ? "remote" : "local",
   });
 
   const resources = resourceUrls(version);

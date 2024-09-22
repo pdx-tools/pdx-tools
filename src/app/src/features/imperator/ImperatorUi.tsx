@@ -6,7 +6,7 @@ import { getImperatorWorker } from "./worker";
 import { MeltButton } from "@/components/MeltButton";
 import { ImperatorMetadata } from "./worker/types";
 import { captureException } from "../errors";
-import { emitEvent } from "@/lib/plausible";
+import { emitEvent } from "@/lib/events";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { pdxAbortController } from "@/lib/abortController";
@@ -55,8 +55,6 @@ async function loadImperatorSave(file: File, signal: AbortSignal) {
   };
 
   const worker = getImperatorWorker();
-  emitEvent({ kind: "parse", game: "imperator" });
-
   await Promise.all([
     run({
       fn: () => worker.initializeWasm(),
@@ -73,6 +71,8 @@ async function loadImperatorSave(file: File, signal: AbortSignal) {
     fn: () => worker.parseImperator(),
     name: "parse Imperator file",
   });
+
+  emitEvent({ kind: "Save parsed", game: "imperator", source: "local" });
 
   return { meta };
 }

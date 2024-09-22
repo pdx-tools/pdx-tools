@@ -40,7 +40,7 @@ import { CountryFilterButton } from "../../components/CountryFilterButton";
 import { cx } from "class-variance-authority";
 import { Link } from "@/components/Link";
 import { Alert } from "@/components/Alert";
-import { emitEvent } from "@/lib/plausible";
+import { emitEvent } from "@/lib/events";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { toast } from "sonner";
 import { throttle } from "@/lib/throttle";
@@ -88,7 +88,7 @@ export const Timelapse = () => {
   const store = useEu4Context();
 
   const startTimelapse = async () => {
-    emitEvent({ kind: "play-timelapse" });
+    emitEvent({ kind: "Timelapse playing" });
     setIsPlaying(true);
     stopTimelapseReq.current = false;
     const timelapsePayload = createTimelapsePayload({
@@ -119,8 +119,14 @@ export const Timelapse = () => {
   };
 
   const startRecording = async () => {
-    emitEvent({ kind: "record-timelapse" });
     setIsRecording(true);
+    emitEvent({
+      kind: "Timelapse recording",
+      view:
+        recordingFrame === "None"
+          ? "Viewport"
+          : `World (1:${recordingFrame.charCodeAt(0) - "0".charCodeAt(0)})`,
+    });
 
     let oldDimensions = [map.canvas.style.width, map.canvas.style.height];
     if (recordingFrame !== "None") {

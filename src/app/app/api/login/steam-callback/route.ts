@@ -9,6 +9,7 @@ import { genId } from "@/server-lib/id";
 import { withCore } from "@/server-lib/middleware";
 import { check } from "@/lib/isPresent";
 import { STEAM_URL } from "@/lib/steam";
+import { log } from "@/server-lib/logging";
 
 const handler = async (
   req: NextRequest,
@@ -39,6 +40,11 @@ const handler = async (
     });
 
   const user = check(users.at(0), "expected user");
+  log.event({
+    userId: user.userId,
+    event: user.inserted ? "User created" : "User updated",
+  });
+
   const cookie = await newSessionCookie({
     userId: user.userId,
     steamId: steamUid,

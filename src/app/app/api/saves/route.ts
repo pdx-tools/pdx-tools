@@ -105,6 +105,12 @@ async function handler(
       await uploadTask;
     });
 
+    log.event({
+      userId: session.uid,
+      event: "Save created",
+      key: saveId,
+    });
+
     const response: SavePostResponse = {
       save_id: saveId,
     };

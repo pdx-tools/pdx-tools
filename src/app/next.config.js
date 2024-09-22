@@ -45,8 +45,23 @@ let nextConfig = {
     },
   ],
 
+  // This is required to support PostHog trailing slash API requests
+  skipTrailingSlashRedirect: true,
   rewrites: async () => ({
-    beforeFiles: process.env.PROXY_NODE_URL
+    beforeFiles: [
+      {
+        source: "/ingest/static/:path*",
+        destination: "https://eu-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/ingest/:path*",
+        destination: "https://eu.i.posthog.com/:path*",
+      },
+      {
+        source: "/ingest/decide",
+        destination: "https://eu.i.posthog.com/decide",
+      },
+    ].concat(process.env.PROXY_NODE_URL
       ? [
           "/api/achievements/:path*",
           "/api/admin/:path*",
@@ -61,7 +76,7 @@ let nextConfig = {
           source,
           destination: `${process.env.PROXY_NODE_URL}${source}`,
         }))
-      : undefined,
+      : []),
 
     fallback:
       process.env.NODE_ENV !== "production"

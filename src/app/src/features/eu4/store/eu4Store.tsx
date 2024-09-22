@@ -19,7 +19,7 @@ import type {
   MapTimelapseItem,
 } from "../worker/module";
 import { proxy } from "comlink";
-import { emitEvent } from "@/lib/plausible";
+import { emitEvent } from "@/lib/events";
 
 export const emptyEu4CountryFilter: CountryMatcher = {
   players: "none",
@@ -177,7 +177,7 @@ export const createEu4Store = async ({
             ? get().save.initialPoliticalMapColors
             : undefined;
         set({ mapMode: mode });
-        emitEvent({ kind: "map-mode", mode });
+        emitEvent({ kind: "Map mode switch", mode });
         syncMapSettings(get());
         await get().actions.updateProvinceColors({ countryColors });
         get().map.redrawMap();
@@ -244,10 +244,11 @@ export const createEu4Store = async ({
       setShowOneTimeLineItems: (checked: boolean) =>
         set({ showOneTimeLineItems: checked }),
       startWatcher: (frequency: FileObservationFrequency) => {
+        emitEvent({ kind: "Save watching", frequency });
         getEu4Worker().startFileObserver(
           frequency,
           proxy(async ({ meta, achievements }) => {
-            emitEvent({ kind: "watch-save" });
+            emitEvent({ kind: "Save parsed", game: "eu4", source: "watched" });
             get().actions.updateSave({
               meta,
               achievements,

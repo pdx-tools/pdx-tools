@@ -5,7 +5,7 @@ import { pdxAbortController } from "@/lib/abortController";
 import { timeit } from "@/lib/timeit";
 import { logMs } from "@/lib/log";
 import { getHoi4Worker } from "../worker";
-import { emitEvent } from "@/lib/plausible";
+import { emitEvent } from "@/lib/events";
 
 type Task<T> = {
   fn: () => T | Promise<T>;
@@ -97,8 +97,6 @@ async function loadHoi4Save(file: File, signal: AbortSignal) {
   };
 
   const worker = getHoi4Worker();
-  emitEvent({ kind: "parse", game: "hoi4" });
-
   await Promise.all([
     run({
       fn: () => worker.initializeWasm(),
@@ -115,6 +113,8 @@ async function loadHoi4Save(file: File, signal: AbortSignal) {
     fn: () => worker.parseHoi4(),
     name: "parse Hoi4 file",
   });
+
+  emitEvent({ kind: "Save parsed", game: "hoi4", source: "local" });
 
   return { meta };
 }

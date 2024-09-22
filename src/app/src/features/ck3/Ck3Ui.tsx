@@ -6,7 +6,7 @@ import { getCk3Worker } from "./worker";
 import { MeltButton } from "@/components/MeltButton";
 import { Ck3Metadata } from "./worker/types";
 import { captureException } from "@sentry/nextjs";
-import { emitEvent } from "@/lib/plausible";
+import { emitEvent } from "@/lib/events";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { pdxAbortController } from "@/lib/abortController";
@@ -30,7 +30,6 @@ async function loadCk3Save(file: File, signal: AbortSignal) {
   };
 
   const worker = getCk3Worker();
-  emitEvent({ kind: "parse", game: "ck3" });
 
   await Promise.all([
     run({
@@ -49,6 +48,7 @@ async function loadCk3Save(file: File, signal: AbortSignal) {
     name: "parse ck3 file",
   });
 
+  emitEvent({ kind: "Save parsed", game: "ck3", source: "local" });
   return { meta };
 }
 
