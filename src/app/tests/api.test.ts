@@ -42,8 +42,7 @@ afterAll(async () => {
 const pdxUrl = (path: string) => `http://localhost:3000${path}`;
 
 async function getNewCookies(): Promise<string> {
-  const resp = await fetchOk(pdxUrl("/api/login/steam"), {
-    method: "POST",
+  const resp = await fetchOk(pdxUrl("/api/login/steam-callback"), {
     redirect: "manual",
   });
   return check(resp.headers.get("set-cookie"));

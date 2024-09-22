@@ -35,7 +35,7 @@ function SteamImage() {
 
 function SteamForm() {
   return (
-    <form method="POST" action="/api/login/steam">
+    <form method="GET" action="/api/login/steam-callback">
       <button type="submit">
         <SteamImage />
       </button>
