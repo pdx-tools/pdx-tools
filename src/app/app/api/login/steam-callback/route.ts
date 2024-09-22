@@ -14,42 +14,61 @@ const handler = async (
   req: NextRequest,
   { dbConn, searchParams }: DbRoute & { searchParams: URLSearchParams },
 ) => {
-  const steamUid = await loginVerify(searchParams);
-  const steamName = await getPlayerName(steamUid);
+  const { steamUid, steamName, genUserId } =
+    process.env.NODE_ENV === "production"
+      ? await steamInfo(searchParams)
+      : testInfo();
 
   const db = await dbConn;
-
-  const genUserId = genId(12);
   const users = await db
     .insert(table.users)
     .values({
       userId: genUserId,
       steamId: steamUid,
       steamName: steamName,
+      account: process.env.NODE_ENV === "production" ? "free" : "admin",
     })
     .onConflictDoUpdate({
       target: table.users.steamId,
       set: { steamName: sql.raw(`excluded.${table.users.steamName.name}`) },
     })
-    .returning();
+    .returning({
+      userId: table.users.userId,
+      account: table.users.account,
+      inserted: sql<boolean>`(xmax = 0)`,
+    });
 
   const user = check(users.at(0), "expected user");
   const cookie = await newSessionCookie({
     userId: user.userId,
     steamId: steamUid,
-    account: user?.account ?? "free",
+    account: user.account,
   });
 
-  const dest = process.env.NEXT_PUBLIC_EXTERNAL_ADDRESS ?? "https://pdx.tools";
+  const prodDest =
+    process.env.NEXT_PUBLIC_EXTERNAL_ADDRESS ?? "https://pdx.tools";
+  const dest =
+    process.env.NODE_ENV === "production" ? prodDest : new URL("/", req.url);
   const response = NextResponse.redirect(dest, 302);
   response.cookies.set(cookie);
   return response;
 };
 
-export const GET = (req: NextRequest) => {
+export function GET(req: NextRequest) {
   const searchParams = new URL(req.url).searchParams;
   return withCore(withDb(handler))(req, { searchParams });
-};
+}
+
+async function steamInfo(searchParams: URLSearchParams) {
+  const steamUid = await loginVerify(searchParams);
+  const steamName = await getPlayerName(steamUid);
+  const genUserId = genId(12);
+  return { steamUid, steamName, genUserId };
+}
+
+function testInfo() {
+  return { steamUid: "1000", steamName: "my-steam-name", genUserId: "100" };
+}
 
 async function loginVerify(data: URLSearchParams) {
   data.set("openid.mode", "check_authentication");
