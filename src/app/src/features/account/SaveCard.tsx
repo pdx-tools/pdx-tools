@@ -31,7 +31,7 @@ export function SaveCard({
         src={`/eu4/saves/${save.id}/og.webp`}
         loading="lazy"
       />
-      <div className="flex min-w-56 lg:max-w-56 flex-col gap-2 p-4 lg:gap-4">
+      <div className="flex min-w-56 flex-col gap-2 p-4 lg:max-w-56 lg:gap-4">
         <div className="flex flex-wrap justify-around gap-4">
           <div>
             <div className="text-center text-gray-600 dark:text-gray-400">

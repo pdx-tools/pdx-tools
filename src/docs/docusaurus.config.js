@@ -21,13 +21,19 @@ const config = {
     locales: ["en"],
   },
 
-  scripts: [
-    {
-      src: "https://a.pdx.tools/js/index.js",
-      async: true,
-      "data-domain": "pdx.tools",
-    },
-  ],
+  plugins: process.env.NEXT_PUBLIC_POSTHOG_KEY
+    ? [
+        [
+          "posthog-docusaurus",
+          {
+            apiKey: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+            appUrl: "/ingest",
+            enableInDevelopment: false,
+            ui_host: "https://eu.posthog.com",
+          },
+        ],
+      ]
+    : [],
 
   presets: [
     [

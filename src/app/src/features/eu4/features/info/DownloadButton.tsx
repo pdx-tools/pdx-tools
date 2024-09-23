@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { emitEvent } from "@/lib/plausible";
+import { emitEvent } from "@/lib/events";
 import { downloadData } from "@/lib/downloadData";
 import { useIsMounted } from "@/hooks/useIsMounted";
 import { getEu4Worker } from "../../worker";
@@ -15,9 +15,9 @@ export const DownloadButton = () => {
   const filename = useSaveFilename();
   const { isLoading: loading, run: download } = useTriggeredAction({
     action: async () => {
-      emitEvent({ kind: "download", game: "eu4" });
       const raw = await getEu4Worker().getRawData();
       const data = await compressWorker.transform(raw);
+      emitEvent({ kind: "Save downloaded", game: "eu4" });
       downloadData(data, filename);
     },
   });

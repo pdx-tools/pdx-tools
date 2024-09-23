@@ -10,6 +10,7 @@ import {
   ValidationError,
 } from "@/server-lib/errors";
 import { withCore } from "@/server-lib/middleware";
+import { log } from "@/server-lib/logging";
 
 type SaveRouteParams = { params: { saveId: string } };
 
@@ -87,6 +88,7 @@ async function patchHandler(
     ensurePermissions(session, rows.at(0));
   });
 
+  log.event({ userId: session.uid, event: "Save patched", key: params.saveId });
   return new Response(null, { status: 204 });
 }
 
@@ -108,6 +110,7 @@ async function deleteHandler(
       deleteFile(s3Keys.preview(params.saveId)),
     ]);
   });
+  log.event({ userId: session.uid, event: "Save deleted", key: params.saveId });
   return new Response(null, { status: 204 });
 }
 

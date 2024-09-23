@@ -2,12 +2,19 @@ import React from "react";
 import { Button } from "@/components/Button";
 import { SteamButton } from "./SteamButton";
 import { Sheet } from "@/components/Sheet";
+import { emitEvent } from "@/lib/events";
 
 export const SteamLogin = () => {
   return (
     <Sheet modal={true}>
       <Sheet.Trigger asChild>
-        <Button>Login</Button>
+        <Button
+          onClick={() => {
+            emitEvent({ kind: "Login click" });
+          }}
+        >
+          Login
+        </Button>
       </Sheet.Trigger>
       <Sheet.Content
         side="right"

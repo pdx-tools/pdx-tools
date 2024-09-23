@@ -2,14 +2,24 @@ import { toErrorWithMessage } from "@/lib/getErrorMessage";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import { ValidationError } from "./errors";
 import { ZodError } from "zod";
+import { captureEvent } from "./posthog";
 
-export interface LogMessage {
+export type LogMessage = {
   [x: string]: any;
-}
+};
 
 class Log {
   private dateFmt(): string {
     return new Date().toJSON();
+  }
+
+  public event({
+    userId,
+    event,
+    ...rest
+  }: { userId: string; event: string } & LogMessage) {
+    captureEvent({ userId, event });
+    this.info({ msg: event, user: userId, ...rest });
   }
 
   public info(data: LogMessage) {

@@ -5,7 +5,6 @@ import {
   QueryCache,
   QueryClient,
   UseQueryResult,
-  useInfiniteQuery,
   useMutation,
   useQuery,
   useSuspenseInfiniteQuery,
@@ -20,6 +19,7 @@ import type { NewestSaveResponse } from "app/api/new/route";
 import type { AchievementResponse } from "app/api/achievements/[achievementId]/route";
 import type { UserResponse } from "app/api/users/[userId]/route";
 import { SaveResponse } from "app/api/saves/[saveId]/route";
+import { identify } from "@/lib/events";
 export type { GameDifficulty } from "@/server-lib/save-parsing-types";
 export type { Achievement, Difficulty as AchievementDifficulty };
 
@@ -146,7 +146,13 @@ export const pdxApi = {
     useCurrent: () =>
       useQuery({
         queryKey: pdxKeys.profile(),
-        queryFn: () => fetchOkJson<ProfileResponse>("/api/profile"),
+        queryFn: async () => {
+          const result = await fetchOkJson<ProfileResponse>("/api/profile");
+          if (result.kind === "user") {
+            identify(result.user.user_id);
+          }
+          return result;
+        },
         gcTime: Infinity,
       }),
 

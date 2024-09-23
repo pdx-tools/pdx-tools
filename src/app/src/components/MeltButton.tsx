@@ -1,5 +1,5 @@
 import { downloadData } from "@/lib/downloadData";
-import { emitEvent } from "@/lib/plausible";
+import { emitEvent } from "@/lib/events";
 import { DetectedDataType } from "@/features/engine";
 import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
@@ -58,9 +58,9 @@ export async function meltSave(
   filename: string,
   worker: { melt(): Promise<Uint8Array> },
 ) {
-  emitEvent({ kind: "melt", game });
   const ext = gameExtension(game);
   const meltedName = translateToMeltedFilename(filename, ext);
   const data = await worker.melt();
+  emitEvent({ kind: "Save melted", game });
   downloadData(data, meltedName);
 }

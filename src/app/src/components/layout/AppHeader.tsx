@@ -9,6 +9,7 @@ import { SignInButtons } from "./auth";
 import { Button } from "@/components/Button";
 import { UserIcon } from "@heroicons/react/24/outline";
 import { DiscordIcon, GithubIcon } from "../icons";
+import { resetLogging } from "@/lib/events";
 
 const HeaderMenu = () => {
   const session = pdxApi.session.useCurrent();
@@ -142,7 +143,13 @@ const HeaderMenu = () => {
                     </Link>
                   </NavigationMenu.Link>
                   <NavigationMenu.Link variant="button" asChild>
-                    <form method="POST" action="/api/logout">
+                    <form
+                      method="POST"
+                      action="/api/logout"
+                      onSubmit={() => {
+                        resetLogging();
+                      }}
+                    >
                       <button type="submit">Logout</button>
                     </form>
                   </NavigationMenu.Link>

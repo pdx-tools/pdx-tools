@@ -8,6 +8,7 @@ release:
   set -euxo pipefail
   export PDX_RELEASE=1
   export NEXT_PUBLIC_EXTERNAL_ADDRESS=https://pdx.tools
+  export NEXT_PUBLIC_POSTHOG_KEY=$POSTHOG_KEY
 
   if [[ "$(gcloud config get-value account 2>&1)" = "(unset)" ]]; then
     gcloud auth login

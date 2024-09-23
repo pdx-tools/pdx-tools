@@ -3,12 +3,20 @@ import { SteamButton } from "./SteamButton";
 import { Button } from "@/components/Button";
 import { Sheet } from "@/components/Sheet";
 import { Link } from "@/components/Link";
+import { emitEvent } from "@/lib/events";
 
 export const SteamRegister = () => {
   return (
     <Sheet modal={true}>
       <Sheet.Trigger asChild>
-        <Button variant="primary">Register</Button>
+        <Button
+          variant="primary"
+          onClick={() => {
+            emitEvent({ kind: "Register click" });
+          }}
+        >
+          Register
+        </Button>
       </Sheet.Trigger>
       <Sheet.Content
         side="right"

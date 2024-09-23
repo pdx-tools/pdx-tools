@@ -15,6 +15,7 @@ import { Button } from "@/components/Button";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { useTriggeredAction } from "@/hooks/useTriggeredAction";
 import { provinceIdToColorIndexInvert } from "map/src/resources";
+import { emitEvent } from "@/lib/events";
 
 export const MapExportMenu = () => {
   const meta = useEu4Meta();
@@ -58,11 +59,13 @@ export const MapExportMenu = () => {
         case "view": {
           const data = await map.screenshot({ kind: "viewport" });
           downloadDataFile(data, "view");
+          emitEvent({ kind: "Screenshot taken", view: "Viewport" });
           break;
         }
         default: {
           const data = await map.screenshot({ kind: "world", scale: type });
           downloadDataFile(data, type == 1 ? "map" : `map-${type}x`);
+          emitEvent({ kind: "Screenshot taken", view: `World (${type}:1)` });
           break;
         }
       }

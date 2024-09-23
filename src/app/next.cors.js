@@ -1,9 +1,9 @@
 const globalCsp = [
   "default-src 'self'",
-  "connect-src 'self' blob: https://skanderbeg.pm/api.php https://a.pdx.tools/api/event",
+  "connect-src 'self' blob: https://skanderbeg.pm/api.php",
   "img-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https://a.pdx.tools/js/index.js"
+  "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:"
 ];
 
 module.exports = {

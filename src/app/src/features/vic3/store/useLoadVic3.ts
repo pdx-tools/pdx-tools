@@ -1,5 +1,5 @@
 import { logMs } from "@/lib/log";
-import { emitEvent } from "@/lib/plausible";
+import { emitEvent } from "@/lib/events";
 import { timeit } from "@/lib/timeit";
 import { getVic3Worker } from "../worker";
 import { captureException } from "@/features/errors";
@@ -28,7 +28,6 @@ async function loadVic3Save(save: Vic3SaveInput, signal: AbortSignal) {
   };
 
   const worker = getVic3Worker();
-  emitEvent({ kind: "parse", game: "vic3" });
 
   await Promise.all([
     run({
@@ -42,10 +41,13 @@ async function loadVic3Save(save: Vic3SaveInput, signal: AbortSignal) {
     }),
   ]);
 
-  return await run({
+  const result = await run({
     fn: () => worker.parseVic3(),
     name: "parse vic3 file",
   });
+  emitEvent({ kind: "Save parsed", game: "vic3", source: "local" });
+
+  return result;
 }
 
 type Vic3LoadState = {
