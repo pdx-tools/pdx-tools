@@ -35,6 +35,8 @@ export type Event =
       kind: "$pageview";
       maxSize: number | null;
       performanceCaveat: boolean | null;
+      offscreenCanvas: boolean;
+      supportedEnvironment: boolean;
     };
 
 let isRecording = false;

@@ -7,15 +7,10 @@ export const BrowserCheck = () => {
 
   useEffect(() => {
     const report = compatibilityReport();
-    const browser = report.browser.webkit;
-    if (browser?.supported === false) {
+    if (!report.offscreen.enabled) {
       setWarnings((x) => [
         ...x,
-        `Unsupported ${browser.kind} version (${
-          browser?.version ?? "unknown"
-        }). Requires: ${
-          browser.required
-        }. If on iPad or iPhone, upgrade to iOS 15.2. If on desktop, either use a different browser or upgrade to the latest macOS version`,
+        `Unable to create a WebGL2 OffscreenCanvas. Upgrade the browser to the latest version`,
       ]);
     }
 

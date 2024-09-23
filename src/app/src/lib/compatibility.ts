@@ -1,10 +1,9 @@
 import { glContext } from "@/features/eu4/features/map/resources";
-import { emitEvent } from "./events";
 
 export interface CompatibilityReport {
   webgl2: WegblCompatibility;
   wasm: boolean;
-  browser: BrowserCompatibility;
+  offscreen: { enabled: boolean };
 }
 
 export type WegblCompatibility =
@@ -20,17 +19,6 @@ export type WegblCompatibility =
   | {
       enabled: false;
     };
-
-export type BrowserCompatibility = {
-  webkit?: WebkitCompatibility;
-};
-
-export type WebkitCompatibility = {
-  kind: "ios" | "safari";
-  version: string | null;
-  required: string;
-  supported: boolean;
-};
 
 let report: CompatibilityReport | undefined = undefined;
 
@@ -65,65 +53,21 @@ function wasmCompatibility() {
   return window.WebAssembly !== undefined;
 }
 
-// Versions of safari known to handle our webgl2 shaders.
-const MINIMUM_SAFARI = "15.2";
-
-export function userAgentCompatibility(ua: string): BrowserCompatibility {
-  if (!ua.includes("Safari")) {
-    return {};
+function offscreenCompatibility() {
+  try {
+    const canvas = new OffscreenCanvas(100, 100);
+    const ctx = canvas.getContext("webgl2");
+    return { enabled: ctx !== null };
+  } catch (ex) {
+    return { enabled: false }
   }
-
-  if (!ua.includes("Mac OS")) {
-    return {};
-  }
-
-  const vere = /Version\/([0-9]+\.[0-9]+)/;
-  const matches = ua.match(vere);
-
-  if (matches === null) {
-    const osre = /OS ([0-9]+_[0-9]+)/;
-    const osMatches = ua.match(osre);
-    if (osMatches === null) {
-      return {};
-    } else {
-      const version = osMatches[1]?.replace(/_/g, ".") ?? null;
-      const unsupported = +(version ?? 0) < +MINIMUM_SAFARI;
-      return {
-        webkit: {
-          kind: "ios",
-          version,
-          required: MINIMUM_SAFARI,
-          supported: !unsupported,
-        },
-      };
-    }
-  } else {
-    const version = matches[1] ?? null;
-    const unsupported = +(version ?? 0) < +MINIMUM_SAFARI;
-
-    return {
-      webkit: {
-        kind: "safari",
-        version,
-        required: MINIMUM_SAFARI,
-        supported: !unsupported,
-      },
-    };
-  }
-}
-
-function browserCompatibility(): BrowserCompatibility {
-  const ua = navigator.userAgent;
-  return userAgentCompatibility(ua);
 }
 
 function genReport(): CompatibilityReport {
-  const webgl2 = webgl2Compatibility();
-
   return {
-    webgl2,
+    webgl2: webgl2Compatibility(),
     wasm: wasmCompatibility(),
-    browser: browserCompatibility(),
+    offscreen: offscreenCompatibility(),
   };
 }
 
@@ -139,6 +83,6 @@ export function isEnvironmentSupported() {
     report.webgl2.performanceCaveat === false &&
     report.webgl2.textureSize.tooSmall === false &&
     report.wasm &&
-    report.browser.webkit?.supported !== false
+    report.offscreen.enabled
   );
 }

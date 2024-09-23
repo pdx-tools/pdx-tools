@@ -7,7 +7,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/services/appApi";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
-import { compatibilityReport } from "@/lib/compatibility";
+import { compatibilityReport, isEnvironmentSupported } from "@/lib/compatibility";
 import { emitEvent } from "@/lib/events";
 
 if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
@@ -28,7 +28,7 @@ function PostHog({ children }: React.PropsWithChildren<{}>) {
   const initialLoad = useRef(true);
 
   useEffect(() => {
-    const { webgl2 } = compatibilityReport();
+    const { webgl2, offscreen } = compatibilityReport();
     const maxTextureSize = webgl2.enabled ? webgl2.textureSize.actual : null;
     const performanceCaveat = webgl2.enabled ? webgl2.performanceCaveat : null;
 
@@ -37,6 +37,8 @@ function PostHog({ children }: React.PropsWithChildren<{}>) {
         kind: "$pageview",
         maxSize: maxTextureSize,
         performanceCaveat,
+        offscreenCanvas: offscreen.enabled,
+        supportedEnvironment: isEnvironmentSupported(),
       });
     };
 
