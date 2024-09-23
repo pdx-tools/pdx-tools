@@ -15,8 +15,7 @@ jomini = {version = "0.27" }
 flatc-rust = "*"
 
 [dev-dependencies]
-criterion = "0.3"
-eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["miniz"] }
+criterion = "0.5"
 rand = "0.8"
 
 [[bench]]
