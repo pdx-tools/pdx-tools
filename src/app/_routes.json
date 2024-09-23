@@ -4,6 +4,7 @@
     "/api/*",
     "/eu4/*",
     "/users/*",
-    "/achievements/*"
+    "/achievements/*",
+    "/ingest/*"
   ]
 }
