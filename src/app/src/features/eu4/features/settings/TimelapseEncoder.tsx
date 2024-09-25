@@ -3,7 +3,7 @@ import {
   ArrayBufferTarget as WebmTarget,
 } from "webm-muxer";
 import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4Target } from "mp4-muxer";
-import { MapController, WebGLMap } from "map";
+import { IMG_WIDTH, MapController, overlayDate } from "map";
 import { Eu4Worker, getEu4Worker } from "../../worker";
 import { Eu4Store } from "../../store";
 import { log } from "@/lib/log";
@@ -38,6 +38,7 @@ export class TimelapseEncoder {
   private timestamp: number = 0;
   private frameCount: number = 0;
   private stopRequested: boolean = false;
+  private textMetrics: TextMetrics | undefined;
 
   private constructor(
     private map: MapController,
@@ -62,25 +63,19 @@ export class TimelapseEncoder {
 
   create2dFrame(date: string) {
     const ctx2d = this.ctx2d;
-    const recordingCanvas = ctx2d.canvas;
-    const scale = recordingCanvas.width > 2000 ? 2 : 1;
-
-    // Create rectangle to hold text
     ctx2d.drawImage(this.map.canvas, 0, 0);
-    ctx2d.fillStyle = "#20272c";
-    ctx2d.fillRect(
-      recordingCanvas.width - 130 * scale,
-      0,
-      130 * scale,
-      50 * scale,
-    );
 
-    ctx2d.fillStyle = "#ffffff";
-    ctx2d.textAlign = "right";
-    ctx2d.font = `700 ${12 * scale}px ${this.fontFamily}`;
-    ctx2d.fillText(`PDX.TOOLS`, recordingCanvas.width - 11 * scale, 15 * scale);
+    const isScaled = Number.isInteger(IMG_WIDTH / ctx2d.canvas.width);
+    const scale = !isScaled
+      ? window.devicePixelRatio
+      : (ctx2d.canvas.width / IMG_WIDTH) * 4;
     ctx2d.font = `700 ${20 * scale}px ${this.fontFamily}`;
-    ctx2d.fillText(date, recordingCanvas.width - 10 * scale, 35 * scale);
+    overlayDate({
+      ctx2d,
+      date,
+      scale,
+      textMetrics: (this.textMetrics ??= ctx2d.measureText(date)),
+    });
   }
 
   async encodeTimelapse() {

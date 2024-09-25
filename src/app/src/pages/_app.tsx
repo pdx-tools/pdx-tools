@@ -7,7 +7,10 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/services/appApi";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
-import { compatibilityReport, isEnvironmentSupported } from "@/lib/compatibility";
+import {
+  compatibilityReport,
+  isEnvironmentSupported,
+} from "@/lib/compatibility";
 import { emitEvent } from "@/lib/events";
 
 if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
