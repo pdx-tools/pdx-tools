@@ -108,7 +108,7 @@ export const PieTable = ({
       columnHelper.accessor("value", {
         sortingFn: "basic",
         header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Class" />
+          <Table.ColumnHeader column={column} title="Value" />
         ),
         cell: (info) => (
           <div className="text-right">{numFormatter(info.getValue())}</div>
