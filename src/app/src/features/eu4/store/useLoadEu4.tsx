@@ -22,6 +22,7 @@ import {
 import { dataUrls, gameVersion } from "@/lib/game_gen";
 import { pdxAbortController } from "@/lib/abortController";
 import { downloadData } from "@/lib/downloadData";
+import { check } from "@/lib/isPresent";
 
 export type Eu4SaveInput =
   | { kind: "file"; file: File }
@@ -122,6 +123,10 @@ export function getMapWorker() {
   return (mapWorker ??= createMapComlink());
 }
 
+function hasTransferredOffscreen(canvas: HTMLCanvasElement) {
+  return !!canvas.getAttribute("data-offscreen");
+}
+
 async function loadEu4Save(
   save: Eu4SaveInput,
   mapCanvas: HTMLCanvasElement,
@@ -142,23 +147,23 @@ async function loadEu4Save(
 
   startSessionRecording();
   const mapWorker = getMapWorker();
-  const shadersTask = (initTokenTask ??= new Promise<InitToken>(
-    (res, reject) => {
-      const bounds = mapContainer.getBoundingClientRect();
-      mapCanvas.width = bounds.width * window.devicePixelRatio;
-      mapCanvas.height = bounds.height * window.devicePixelRatio;
-      mapCanvas.style.width = `${bounds.width}px`;
-      mapCanvas.style.height = `${bounds.height}px`;
-
-      const offscreen = mapCanvas.transferControlToOffscreen();
-      return runTask(dispatch, {
-        fn: () =>
-          mapWorker.init(transfer(offscreen, [offscreen]), shaderUrls()),
-        name: "shader compilation",
-        progress: 10,
-      }).then(res, reject);
-    },
-  ));
+  const shadersTask = hasTransferredOffscreen(mapCanvas)
+    ? check(initTokenTask, "empty init token task")
+    : (initTokenTask = new Promise<InitToken>((res, reject) => {
+        const bounds = mapContainer.getBoundingClientRect();
+        mapCanvas.width = bounds.width * window.devicePixelRatio;
+        mapCanvas.height = bounds.height * window.devicePixelRatio;
+        mapCanvas.style.width = `${bounds.width}px`;
+        mapCanvas.style.height = `${bounds.height}px`;
+        const offscreen = mapCanvas.transferControlToOffscreen();
+        mapCanvas.setAttribute("data-offscreen", "true");
+        return runTask(dispatch, {
+          fn: () =>
+            mapWorker.init(transfer(offscreen, [offscreen]), shaderUrls()),
+          name: "shader compilation",
+          progress: 10,
+        }).then(res, reject);
+      }));
 
   const initTasks = Promise.all([
     run({
