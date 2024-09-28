@@ -2,10 +2,18 @@ import React from "react";
 import * as ToggleGroupPrimitive from "@radix-ui/react-toggle-group";
 import { cx } from "class-variance-authority";
 
-export const ToggleGroup =
-  ToggleGroupPrimitive.Root as typeof ToggleGroupPrimitive.Root & {
-    Item: typeof ToggleGroupItem;
-  };
+const ToggleGroupRoot = React.forwardRef<
+  React.ElementRef<typeof ToggleGroupPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Root>
+>(function ToggleGroupRoot({ className, ...props }, ref) {
+  return (
+    <ToggleGroupPrimitive.Root ref={ref} className={className} {...props} />
+  );
+});
+
+export const ToggleGroup = ToggleGroupRoot as typeof ToggleGroupRoot & {
+  Item: typeof ToggleGroupItem;
+};
 
 const ToggleGroupItem = React.forwardRef<
   React.ElementRef<typeof ToggleGroupPrimitive.Item>,

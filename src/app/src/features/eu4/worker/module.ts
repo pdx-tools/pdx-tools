@@ -33,6 +33,7 @@ import {
   filterToRecurringExpenses,
   filterToRecurringIncome,
 } from "../features/country-details/data";
+import { budgetSelect, createBudget } from "../features/country-details/budget";
 export * from "./init";
 
 export const getRawData = wasm.viewData;
@@ -143,19 +144,9 @@ function activeWarParticipant({
   expenses,
   ...rest
 }: ActiveWarParticipant) {
-  const recurringIncome = filterToRecurringIncome(income);
-  const totalIncome = Object.values(recurringIncome).reduce(
-    (acc, x) => x + acc,
-    0,
-  );
-  const recurringExpenses = filterToRecurringExpenses(expenses);
-  const totalExpenses = Object.values(recurringExpenses).reduce(
-    (acc, x) => x + acc,
-    0,
-  );
   return {
     ...rest,
-    monthlyProfit: (totalIncome - totalExpenses) as number,
+    budget: createBudget({ income, expenses }),
     losses: expandLosses(losses),
     ...armedForces,
     ...participant,

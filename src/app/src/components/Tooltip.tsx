@@ -1,6 +1,7 @@
 import React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cx } from "class-variance-authority";
+import { createPortal } from "react-dom";
 
 export const Tooltip = TooltipPrimitive.Root as typeof TooltipPrimitive.Root & {
   Provider: typeof TooltipPrimitive.Provider;
@@ -29,7 +30,8 @@ const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
 >(function TooltipContent({ className, sideOffset = 4, ...props }, ref) {
-  return (
+  // https://github.com/radix-ui/primitives/issues/3143
+  return createPortal(
     <TooltipPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
@@ -38,7 +40,8 @@ const TooltipContent = React.forwardRef<
         className,
       )}
       {...props}
-    />
+    />,
+    document.body,
   );
 });
 Tooltip.Content = TooltipContent;
