@@ -145,7 +145,7 @@ async function loadEu4Save(
   dispatch({ kind: "start" });
   const worker = getEu4Worker();
 
-  startSessionRecording();
+  // startSessionRecording();
   const mapWorker = getMapWorker();
   const shadersTask = hasTransferredOffscreen(mapCanvas)
     ? check(initTokenTask, "empty init token task")
