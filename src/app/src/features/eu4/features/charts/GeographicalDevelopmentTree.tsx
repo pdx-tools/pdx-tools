@@ -27,20 +27,26 @@ const DevelopmentStatistic = ({
   return (
     <div className="flex flex-col items-center">
       <span className="text-lg">{title}</span>
-      <span className="flex items-start gap-3">
+      <span className="flex flex-col items-center gap-1">
         <span className="text-2xl font-bold">
           {formatInt(tax + production + manpower)}
         </span>
-        <span className="text-gray-500 dark:text-gray-300">
-          <div className="all-small-caps flex justify-around text-sm">
-            <span>tax</span>
-            <span>prod</span>
-            <span>man</span>
+        <div className="flex gap-4 text-gray-500 dark:text-gray-300">
+          <div className="flex flex-col items-center leading-none">
+            <div className="all-small-caps text-sm">tax</div>
+            <div>{formatInt(tax)}</div>
           </div>
-          <div>
-            ({formatInt(tax)} / {formatInt(production)} / {formatInt(manpower)})
+
+          <div className="flex flex-col items-center leading-none">
+            <div className="all-small-caps text-sm">prod</div>
+            <div>{formatInt(production)}</div>
           </div>
-        </span>
+
+          <div className="flex flex-col items-center leading-none">
+            <div className="all-small-caps text-sm">man</div>
+            <div>{formatInt(manpower)}</div>
+          </div>
+        </div>
       </span>
     </div>
   );
@@ -138,6 +144,9 @@ export const GeographicalDevelopmentTree = () => {
       breadCrumb: {
         position: "bottom-left",
         rootText: "back to top",
+        textStyle: {
+          fill: isDarkMode() ? "white" : "black",
+        },
       },
     },
     animation: {},
