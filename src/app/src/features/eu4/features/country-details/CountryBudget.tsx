@@ -395,7 +395,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
   };
 
   return (
-    <div ref={containerRef} className="flex flex-col items-center gap-8">
+    <div ref={containerRef} className="flex flex-col items-center gap-8 pb-8">
       <div className="flex flex-col gap-8 lg:flex-row">
         <Card className="flex items-center gap-3 p-4">
           <div className="text-2xl font-bold">
