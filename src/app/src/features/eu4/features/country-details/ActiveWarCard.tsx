@@ -11,6 +11,7 @@ import { cx } from "class-variance-authority";
 import { LeaderStats } from "../../components/LeaderStats";
 import { LandForceStrengthTooltip } from "../../components/LandForceStrengthTooltip";
 import { NavalForceStrengthTooltip } from "../../components/NavalForceStrengthTooltip";
+import { budgetSelect } from "./budget";
 
 type ActiveWar = CountryDetails["active_wars"][number];
 type Participant = ActiveWar["attackers" | "defenders"][number];
@@ -113,7 +114,8 @@ const activeColumns = [
     ),
   }),
 
-  columnHelper.accessor("monthlyProfit", {
+  columnHelper.accessor((x) => budgetSelect.operatingProfit(x.budget), {
+    id: "operating-profit",
     sortingFn: "basic",
     header: ({ column }) => (
       <Table.ColumnHeader
@@ -124,7 +126,49 @@ const activeColumns = [
       />
     ),
     meta: { className: "text-right" },
-    cell: (info) => formatInt(info.getValue()),
+    cell: (info) => (
+      <Tooltip>
+        <Tooltip.Trigger>{formatInt(info.getValue())}</Tooltip.Trigger>
+        <Tooltip.Content>
+          <table>
+            <caption className="text-lg">Last month budget</caption>
+
+            <tbody>
+              <tr>
+                <td>Recurring revenue</td>
+                <td className="pl-4 text-right">
+                  {formatInt(
+                    budgetSelect.recurringRevenue(info.row.original.budget),
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <td>Operating expenses</td>
+                <td className="pl-4 text-right">
+                  {formatInt(
+                    budgetSelect.operatingExpenses(info.row.original.budget),
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <td>Operating profit</td>
+                <td className="pl-4 text-right">
+                  {formatInt(
+                    budgetSelect.operatingProfit(info.row.original.budget),
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <td>Net profit</td>
+                <td className="pl-4 text-right">
+                  {formatInt(budgetSelect.netProfit(info.row.original.budget))}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </Tooltip.Content>
+      </Tooltip>
+    ),
   }),
 
   columnHelper.accessor("professionalism", {
@@ -265,7 +309,9 @@ function ParticipantHealth({ participants }: { participants: Participant[] }) {
   );
   const totalReserves = data.map((x) => x.netManpower);
   const totalNetCash = data.map((x) => x.treasury - x.debt);
-  const totalMonthlyProfit = data.map((x) => x.monthlyProfit);
+  const totalMonthlyProfit = data.map((x) =>
+    budgetSelect.operatingProfit(x.budget),
+  );
   return (
     <DataTable
       size="compact"

@@ -37,6 +37,10 @@ export type Event =
       performanceCaveat: boolean | null;
       offscreenCanvas: boolean;
       supportedEnvironment: boolean;
+    }
+  | {
+      kind: "Budget interval switched";
+      interval: string;
     };
 
 let isRecording = false;

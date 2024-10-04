@@ -4,45 +4,11 @@ import {
   CountryManaSpend,
 } from "../../types/models";
 
-// We define a specific palette instead of relying on g2plot to auto
-// generate one. While the auto-generated ones are nice, by creating our own
-// palette we can group categories together. For instance anything that
-// deals with income from warfare should be a darker or redder color. The
-// palette below was created with the following R code (and then colors
-// swapped to match the category)
-//
-// ```
-// library(RColorBrewer)
-// colorRampPalette(brewer.pal(12, "Paired"))(20)
-// ```
-export const incomeLedgerColorPalette = (): [string, string][] => [
-  ["Taxation", "#A6CEE3"],
-  ["Production", "#579CC7"],
-  ["Trade", "#3688AD"],
-  ["Tariffs", "#8BC395"],
-  ["Vassals", "#89CB6C"],
-  ["Harbor Fees", "#40A635"],
-  ["Subsidies", "#919D5F"],
-  ["War Reparations", "#F99392"],
-  ["Interest", "#DEB969"],
-  ["Gifts", "#E7E099"],
-  ["Events", "#F79C5D"],
-  ["Gold", "#FDA746"],
-  ["Spoils of War", "#FE8205"],
-  ["Treasure Fleet", "#E39970"],
-  ["Siphoning Income", "#BFA5CF"],
-  ["Condottieri", "#8861AC"],
-  ["Knowledge Sharing", "#917099"],
-  ["Blockading Ports", "#E83C2D"],
-  ["Looting Cities", "#EB494A"],
-  ["Other", "#B15928"],
-];
-
 export const incomeLedgerAliases = (): [
   keyof CountryIncomeLedger,
   string,
 ][] => [
-  ["taxation", "Taxation"],
+  ["taxation", "Tax"],
   ["production", "Production"],
   ["trade", "Trade"],
   ["tariffs", "Tariffs"],
@@ -255,20 +221,6 @@ export const filterToRecurringIncome = (
   },
 });
 
-export function filterIncome(
-  entries: CountryIncomeLedger,
-  showRecurringOnly: boolean,
-) {
-  const incomeAliases: Map<string, string> = new Map(incomeLedgerAliases());
-
-  const fincome = showRecurringOnly
-    ? filterToRecurringIncome(entries)
-    : entries;
-  return Object.entries(fincome)
-    .filter(([_key, value]) => value !== 0.0)
-    .map(([key, value]) => ({ key: incomeAliases.get(key) || key, value }));
-}
-
 export const filterToRecurringExpenses = (
   value: CountryExpenseLedger,
 ): CountryExpenseLedger => ({
@@ -291,24 +243,3 @@ export const filterToRecurringExpenses = (
     cities_looted: 0,
   },
 });
-
-export function filterExpenses(
-  entries: CountryExpenseLedger,
-  showRecurringOnly: boolean,
-) {
-  const expenseAliases: Map<string, string> = new Map(expenseLedgerAliases());
-
-  if (!entries) {
-    return [];
-  }
-
-  const expenses = showRecurringOnly
-    ? filterToRecurringExpenses(entries)
-    : entries;
-  return Object.entries(expenses)
-    .filter(([_key, value]) => value !== 0.0)
-    .map(([key, value]) => ({
-      key: expenseAliases.get(key) || key,
-      value,
-    }));
-}
