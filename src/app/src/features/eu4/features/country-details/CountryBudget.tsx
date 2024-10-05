@@ -3,8 +3,8 @@ import { incomeLedgerAliases } from "./data";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryDetails } from "../../types/models";
 import { axisTop } from "d3-axis";
-import { scaleBand, scaleLinear } from "d3-scale"
-import { select } from "d3-selection"
+import { scaleBand, scaleLinear } from "d3-scale";
+import { select } from "d3-selection";
 import { cx } from "class-variance-authority";
 import { budgetSelect, createBudget, expenseBudget } from "./budget";
 import { Card } from "@/components/Card";
@@ -15,6 +15,7 @@ import { throttle } from "@/lib/throttle";
 import { isDarkMode } from "@/lib/dark";
 import { Treemap, TreemapConfig } from "@/components/viz";
 import { emitEvent } from "@/lib/events";
+import { classicCyclic } from "@/lib/colors";
 
 type CountryBudgetCountProps = {
   details: CountryDetails;
@@ -363,15 +364,15 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
       let x = datum as { kind: keyof typeof totalExpenses };
       switch (x.kind) {
         case "Maintenance":
-          return "#7FD6AD";
+          return classicCyclic[9];
         case "Interest Payments":
-          return "#EFC344";
+          return classicCyclic[5];
         case "Diplomatic Expenses":
-          return "#6D5FF3";
+          return classicCyclic[12];
         case "One-time Expenses":
-          return "#687696";
+          return classicCyclic[13];
         case "Capital Expenditure":
-          return "#6D93F4";
+          return classicCyclic[0];
       }
     },
     legend: {
@@ -477,7 +478,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                 x2={x(0)}
                 y1={0}
                 y2={height - marginBottom}
-                stroke="white"
+                className="stroke-black dark:stroke-white"
               />
 
               {Object.entries(bars).map(([category, bar], i) => (

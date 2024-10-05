@@ -15,6 +15,7 @@ import { Flag } from "../../components/avatars";
 import { formatInt } from "@/lib/format";
 import { Alert } from "@/components/Alert";
 import { isDarkMode } from "@/lib/dark";
+import { classicCyclic } from "@/lib/colors";
 
 export const OwnedDevelopmentStatesTree = () => {
   const countryFilter = useTagFilter();
@@ -133,15 +134,15 @@ function CountryStateDevelopmentTree({
       let x = datum as (typeof devs)[number];
       switch (x.name) {
         case "Full Cores":
-          return "#6D93F4";
+          return classicCyclic[0];
         case "Half States":
-          return "#6D5FF3";
+          return classicCyclic[12];
         case "No Core":
-          return "#EFC344";
+          return classicCyclic[5];
         case "TCs":
-          return "#687696";
+          return classicCyclic[13];
         case "Territories":
-          return "#7FD6AD";
+          return classicCyclic[9];
         default:
           return defaultColor ?? "#000";
       }
