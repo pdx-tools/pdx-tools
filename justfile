@@ -352,6 +352,31 @@ prep-frontend:
     exit
   fi
 
+  for VERSION in "${VERSIONS[@]}"; do
+    MINOR=$(echo "$VERSION" | cut -d '.' -f 2)
+    cat >> "$OUTPUT" << EOF
+      import provinces1$MINOR from "../../../../assets/game/eu4/$VERSION/map/provinces-1.webp";
+      import provinces2$MINOR from "../../../../assets/game/eu4/$VERSION/map/provinces-2.webp";
+      import colorMap$MINOR from "../../../../assets/game/eu4/$VERSION/map/colormap_summer.webp";
+      import sea$MINOR from "../../../../assets/game/eu4/$VERSION/map/colormap_water.webp";
+      import normal$MINOR from "../../../../assets/game/eu4/$VERSION/map/world_normal.webp";
+      import terrain1$MINOR from "../../../../assets/game/eu4/$VERSION/map/terrain-1.webp";
+      import terrain2$MINOR from "../../../../assets/game/eu4/$VERSION/map/terrain-2.webp";
+      import rivers1$MINOR from "../../../../assets/game/eu4/$VERSION/map/rivers-1.webp";
+      import rivers2$MINOR from "../../../../assets/game/eu4/$VERSION/map/rivers-2.webp";
+      import stripes$MINOR from "../../../../assets/game/eu4/$VERSION/map/occupation.webp";
+      import water$MINOR from "../../../../assets/game/eu4/$VERSION/map/noise-2d.webp";
+      import surfaceRock$MINOR from "../../../../assets/game/eu4/$VERSION/map/atlas0_rock.webp";
+      import surfaceGreen$MINOR from "../../../../assets/game/eu4/$VERSION/map/atlas0_green.webp";
+      import surfaceNormalRock$MINOR from "../../../../assets/game/eu4/$VERSION/map/atlas_normal0_rock.webp";
+      import surfaceNormalGreen$MINOR from "../../../../assets/game/eu4/$VERSION/map/atlas_normal0_green.webp";
+      import heightmap$MINOR from "../../../../assets/game/eu4/$VERSION/map/heightmap.webp";
+      import provincesUniqueColor$MINOR from "../../../../assets/game/eu4/$VERSION/map/color-order.bin?url";
+      import provincesUniqueIndex$MINOR from "../../../../assets/game/eu4/$VERSION/map/color-index.bin?url";
+      import data$MINOR from "../../../../assets/game/eu4/$VERSION/data.bin?url";
+  EOF
+  done;
+
   echo "import type { ResourceUrls } from \"./url_types\"" >> "$OUTPUT"
   echo -n "export type GameVersion = \"${VERSIONS[0]}\"" >> "$OUTPUT"
   for VERSION in "${VERSIONS[@]:1}"; do
@@ -372,26 +397,27 @@ prep-frontend:
   echo "export const resources = (x: GameVersion): ResourceUrls => {" >> "$OUTPUT"
   echo "  switch(x) {" >> "$OUTPUT"
   for VERSION in "${VERSIONS[@]}"; do
+    MINOR=$(echo "$VERSION" | cut -d '.' -f 2)
     cat >> "$OUTPUT" << EOF
     case "$VERSION": return {
-      provinces1: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-1.webp\`),
-      provinces2: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-2.webp\`),
-      colorMap: require(\`../../../../assets/game/eu4/$VERSION/map/colormap_summer.webp\`),
-      sea: require(\`../../../../assets/game/eu4/$VERSION/map/colormap_water.webp\`),
-      normal: require(\`../../../../assets/game/eu4/$VERSION/map/world_normal.webp\`),
-      terrain1: require(\`../../../../assets/game/eu4/$VERSION/map/terrain-1.webp\`),
-      terrain2: require(\`../../../../assets/game/eu4/$VERSION/map/terrain-2.webp\`),
-      rivers1: require(\`../../../../assets/game/eu4/$VERSION/map/rivers-1.webp\`),
-      rivers2: require(\`../../../../assets/game/eu4/$VERSION/map/rivers-2.webp\`),
-      stripes: require(\`../../../../assets/game/eu4/$VERSION/map/occupation.webp\`),
-      water: require(\`../../../../assets/game/eu4/$VERSION/map/noise-2d.webp\`),
-      surfaceRock: require(\`../../../../assets/game/eu4/$VERSION/map/atlas0_rock.webp\`),
-      surfaceGreen: require(\`../../../../assets/game/eu4/$VERSION/map/atlas0_green.webp\`),
-      surfaceNormalRock: require(\`../../../../assets/game/eu4/$VERSION/map/atlas_normal0_rock.webp\`),
-      surfaceNormalGreen: require(\`../../../../assets/game/eu4/$VERSION/map/atlas_normal0_green.webp\`),
-      heightmap: require(\`../../../../assets/game/eu4/$VERSION/map/heightmap.webp\`),
-      provincesUniqueColor: require(\`../../../../assets/game/eu4/$VERSION/map/color-order.bin\`),
-      provincesUniqueIndex: require(\`../../../../assets/game/eu4/$VERSION/map/color-index.bin\`),
+      provinces1: provinces1$MINOR,
+      provinces2: provinces2$MINOR,
+      colorMap: colorMap$MINOR,
+      sea: sea$MINOR,
+      normal: normal$MINOR,
+      terrain1: terrain1$MINOR,
+      terrain2: terrain2$MINOR,
+      rivers1: rivers1$MINOR,
+      rivers2: rivers2$MINOR,
+      stripes: stripes$MINOR,
+      water: water$MINOR,
+      surfaceRock: surfaceRock$MINOR,
+      surfaceGreen: surfaceGreen$MINOR,
+      surfaceNormalRock: surfaceNormalRock$MINOR,
+      surfaceNormalGreen: surfaceNormalGreen$MINOR,
+      heightmap: heightmap$MINOR,
+      provincesUniqueColor: provincesUniqueColor$MINOR,
+      provincesUniqueIndex: provincesUniqueIndex$MINOR,
     }
   EOF
 
@@ -402,8 +428,9 @@ prep-frontend:
   echo "export const dataUrls = (x: GameVersion): string => {" >> "$OUTPUT"
   echo "  switch(x) {" >> "$OUTPUT"
   for VERSION in "${VERSIONS[@]}"; do
+    MINOR=$(echo "$VERSION" | cut -d '.' -f 2)
     cat >> "$OUTPUT" << EOF
-    case "$VERSION": return require(\`../../../../assets/game/eu4/$VERSION/data.bin\`)
+    case "$VERSION": return data$MINOR
   EOF
   done;
   echo "}}" >> "$OUTPUT"

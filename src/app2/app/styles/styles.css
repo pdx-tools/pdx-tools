@@ -1,0 +1,27 @@
+#__next {
+  height: 100%;
+  min-height: 100vh;
+}
+
+.no-break {
+  hyphens: none;
+  white-space: nowrap;
+}
+
+.all-small-caps {
+  font-variant-caps: all-small-caps;
+}
+
+/* https://github.com/csstools/sanitize.css/blob/092d0d85922bfa72d28e9e8d25d80a5437c8df44/assets.css */
+:where(img) {
+  height: auto;
+  max-width: 100%;
+}
+
+html {
+  @apply dark:bg-slate-900 dark:text-slate-300;
+}
+
+textarea {
+  @apply dark:bg-slate-700;
+}
