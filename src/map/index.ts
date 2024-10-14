@@ -1,7 +1,6 @@
 import {wrap, transfer} from "comlink";
-import type { MapWorker } from "./src/map-worker-bridge";
 import { MapController } from "./src/MapController";
-import { createMapWorker } from "./src";
+import { createMapWorker, type MapWorker } from "./src";
 
 async function fetchColorData(kind: string) {
   const raw = await fetch(`assets/game/eu4/data/color-${kind}-data.bin`).then(
