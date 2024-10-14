@@ -1,6 +1,6 @@
 import { proxy, transfer } from "comlink";
 import type { wrap } from "comlink";
-import type { MapWorker } from "./map-worker-bridge";
+import type { MapWorker } from "./map-worker-types";
 import type { MapToken, ScreenshotOptions, UpdateOptions } from "./map-worker";
 import type {
   UserRect,

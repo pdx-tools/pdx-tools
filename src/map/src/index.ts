@@ -8,7 +8,7 @@ export { type StaticResources, type TerrainOverlayResources } from "./types";
 export { MapController } from "./MapController";
 export { type InitToken } from "./map-worker";
 export * from "./canvasOverlays";
-export type MapWorker = typeof import("./map-worker");
+export * from "./map-worker-types";
 
 export function createMapWorker() {
   return new Worker(new URL("./map-worker-bridge", import.meta.url), {
