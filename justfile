@@ -1,8 +1,6 @@
 set dotenv-load := true
 set positional-arguments
 
-export NEXT_PUBLIC_SENTRY_DSN := `echo ${SENTRY_DSN:-''}`
-
 release:
   #!/usr/bin/env bash
   set -euxo pipefail
@@ -20,8 +18,8 @@ release:
     exit 1
   fi
 
-  NEXT_OUTPUT=standalone just build
-  PROXY_NODE_URL=$PRODUCTION_PROXY_NODE_URL just publish-app
+  just build
+  just publish-app
   just publish-api
 
   if [[ $(grep -c pdx-tools-prod ~/.ssh/config || echo "0") -gt 0 ]]; then
@@ -70,20 +68,22 @@ publish-backend:
 publish-app:
   #!/usr/bin/env bash
   set -euxo pipefail
+  export PDX_RELEASE=1
+  export VITE_EXTERNAL_ADDRESS=$EXTERNAL_ADDRESS
+  export VITE_SENTRY_DSN=$SENTRY_DSN
+  just build-app
   cd src/app
-  npx @cloudflare/next-on-pages
-  npm run --silent cloudflare-headers >> .vercel/output/static/_headers
-  npx wrangler pages deploy --branch master --project-name pages-pdx-tools .vercel/output/static/
+  npm run deploy
 
 build-app: prep-frontend
   cd src/docs && npm run build
   cd src/docs/build && cp -r assets blog.html changelog.html docs.html img ../../app/public/.
   cd src/app && npm run build
+  cp src/app/app/server-lib/wasm/wasm_app_bg.wasm src/app/build/server/assets/.
 
 build-docker:
   #!/usr/bin/env bash
   set -euxo pipefail
-  [[ -d ./src/app/.next/standalone/ ]] && docker build -t ghcr.io/pdx-tools/pdx-tools:nightly -f ./dev/app.dockerfile ${PLATFORM:+--platform $PLATFORM} ./src/app
   docker build -t ghcr.io/pdx-tools/api:nightly -f ./dev/api.dockerfile ./target/x86_64-unknown-linux-musl/release/
 
 build-admin:
@@ -112,8 +112,9 @@ dev-app: prep-frontend prep-dev-app
   . dev/.env.dev
   cat src/app/migrations/*.sql | just dev-environment exec -u postgres --no-TTY db psql
 
+  export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
   npx --yes concurrently@latest \
-    "cd src/app && PORT=3001 node_modules/.bin/next dev" \
+    "cd src/app && PORT=3001 npm run dev" \
     "cd src/docs && npm run docusaurus -- start --no-open" \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api"
 
@@ -125,10 +126,12 @@ test-app *cmd: prep-frontend prep-test-app
   . dev/.env.test
   just cargo build -p pdx-tools-api
   cat src/app/migrations/*.sql | just test-environment exec -u postgres --no-TTY db psql
-  cd src/app && npx --yes concurrently@latest --kill-others --success command-2 --passthrough-arguments \
-    "NODE_ENV=test node_modules/.bin/next dev" \
+  mkdir -p src/app/build/client
+
+  export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
+  cd src/app && npx --yes concurrently@latest --kill-others --success command-1 --passthrough-arguments \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api" \
-    "npm test -- {@}" -- "$@"
+    "npm test -- run {@}" -- "$@"
 
 prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "-d")
   #!/usr/bin/env bash
@@ -152,7 +155,7 @@ build-wasm: build-wasm-dev
     mv "$MY_TMP" "$1"
   }
 
-  optimize src/app/src/server-lib/wasm/wasm_app_bg.wasm &
+  optimize src/app/app/server-lib/wasm/wasm_app_bg.wasm &
   optimize src/wasm-compress/pkg/wasm_compress_bg.wasm &
   optimize src/wasm-ck3/pkg/wasm_ck3_bg.wasm &
   optimize src/wasm-eu4/pkg/wasm_eu4_bg.wasm &
@@ -162,7 +165,7 @@ build-wasm: build-wasm-dev
   wait
 
 build-wasm-dev:
-  wasm-pack build -t web src/wasm-app --out-dir {{justfile_directory()}}/src/app/src/server-lib/wasm
+  wasm-pack build -t web src/wasm-app --out-dir {{justfile_directory()}}/src/app/app/server-lib/wasm
   wasm-pack build -t web src/wasm-compress
   wasm-pack build -t web src/wasm-ck3
   wasm-pack build -t web src/wasm-eu4
@@ -197,13 +200,13 @@ dev-environment +cmd:
   #!/usr/bin/env bash
   set -euxo pipefail
   cd dev
-  docker compose -f ./docker-compose.dev.yml --env-file ../src/app/.env.development --env-file .env.dev --project-name pdx_dev "$@"
+  docker compose -f ./docker-compose.dev.yml --env-file ../src/app/.env.development --env-file ../src/app/.dev.vars --env-file .env.dev --project-name pdx_dev "$@"
 
 test-environment +cmd:
   #!/usr/bin/env bash
   set -euxo pipefail
   cd dev
-  docker compose -f ./docker-compose.test.yml --env-file ../src/app/.env.test --env-file .env.test --project-name pdx_test "$@"
+  docker compose -f ./docker-compose.test.yml --env-file ../src/app/.env.test --env-file ../src/app/.dev.vars.test --env-file .env.test --project-name pdx_test "$@"
 
 deploy-db-schema ENVIRONMENT:
   #!/usr/bin/env bash
@@ -293,7 +296,7 @@ prep-frontend:
   done;
 
   # Create DLC spritesheet
-  cd src/app/src/features/eu4/components/dlc-list
+  cd src/app/app/features/eu4/components/dlc-list
   N=$(ls dlc-images | wc -l)
   COLS=$(echo $N | awk '{s=sqrt($0); print s == int(s) ? s : int(s) + 1}')
   montage -tile ${COLS}x -background transparent -define webp:lossless=true -mode concatenate "dlc-images/*" dlc-sprites.webp
@@ -303,7 +306,7 @@ prep-frontend:
   cd -
 
   # Create icons spritesheet
-  cd src/app/src/features/eu4/components/icons
+  cd src/app/app/features/eu4/components/icons
   N=$(ls *.png | wc -l)
   COLS=$(echo $N | awk '{s=sqrt($0); print s == int(s) ? s : int(s) + 1}')
   montage -tile ${COLS}x -mode concatenate -geometry '32x32>' -background transparent *.png icons.webp
@@ -341,7 +344,7 @@ prep-frontend:
   done;
 
   # Generate EU4 game asset hooks
-  OUTPUT=src/app/src/lib/game_gen.ts
+  OUTPUT=src/app/app/lib/game_gen.ts
   rm -f "$OUTPUT"
 
   readarray -t VERSIONS < <(ls assets/game/eu4/ | grep -v common | sort -n)
@@ -352,6 +355,31 @@ prep-frontend:
     echo "export const dataUrls = (x: any): any => { throw new Error(msg); }" >> "$OUTPUT"
     exit
   fi
+
+  for VERSION in "${VERSIONS[@]}"; do
+    MINOR=$(echo "$VERSION" | cut -d '.' -f 2)
+    cat >> "$OUTPUT" << EOF
+      import provinces1$MINOR from "../../../../assets/game/eu4/$VERSION/map/provinces-1.webp";
+      import provinces2$MINOR from "../../../../assets/game/eu4/$VERSION/map/provinces-2.webp";
+      import colorMap$MINOR from "../../../../assets/game/eu4/$VERSION/map/colormap_summer.webp";
+      import sea$MINOR from "../../../../assets/game/eu4/$VERSION/map/colormap_water.webp";
+      import normal$MINOR from "../../../../assets/game/eu4/$VERSION/map/world_normal.webp";
+      import terrain1$MINOR from "../../../../assets/game/eu4/$VERSION/map/terrain-1.webp";
+      import terrain2$MINOR from "../../../../assets/game/eu4/$VERSION/map/terrain-2.webp";
+      import rivers1$MINOR from "../../../../assets/game/eu4/$VERSION/map/rivers-1.webp";
+      import rivers2$MINOR from "../../../../assets/game/eu4/$VERSION/map/rivers-2.webp";
+      import stripes$MINOR from "../../../../assets/game/eu4/$VERSION/map/occupation.webp";
+      import water$MINOR from "../../../../assets/game/eu4/$VERSION/map/noise-2d.webp";
+      import surfaceRock$MINOR from "../../../../assets/game/eu4/$VERSION/map/atlas0_rock.webp";
+      import surfaceGreen$MINOR from "../../../../assets/game/eu4/$VERSION/map/atlas0_green.webp";
+      import surfaceNormalRock$MINOR from "../../../../assets/game/eu4/$VERSION/map/atlas_normal0_rock.webp";
+      import surfaceNormalGreen$MINOR from "../../../../assets/game/eu4/$VERSION/map/atlas_normal0_green.webp";
+      import heightmap$MINOR from "../../../../assets/game/eu4/$VERSION/map/heightmap.webp";
+      import provincesUniqueColor$MINOR from "../../../../assets/game/eu4/$VERSION/map/color-order.bin?url";
+      import provincesUniqueIndex$MINOR from "../../../../assets/game/eu4/$VERSION/map/color-index.bin?url";
+      import data$MINOR from "../../../../assets/game/eu4/$VERSION/data.bin?url";
+  EOF
+  done;
 
   echo "import type { ResourceUrls } from \"./url_types\"" >> "$OUTPUT"
   echo -n "export type GameVersion = \"${VERSIONS[0]}\"" >> "$OUTPUT"
@@ -373,26 +401,27 @@ prep-frontend:
   echo "export const resources = (x: GameVersion): ResourceUrls => {" >> "$OUTPUT"
   echo "  switch(x) {" >> "$OUTPUT"
   for VERSION in "${VERSIONS[@]}"; do
+    MINOR=$(echo "$VERSION" | cut -d '.' -f 2)
     cat >> "$OUTPUT" << EOF
     case "$VERSION": return {
-      provinces1: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-1.webp\`),
-      provinces2: require(\`../../../../assets/game/eu4/$VERSION/map/provinces-2.webp\`),
-      colorMap: require(\`../../../../assets/game/eu4/$VERSION/map/colormap_summer.webp\`),
-      sea: require(\`../../../../assets/game/eu4/$VERSION/map/colormap_water.webp\`),
-      normal: require(\`../../../../assets/game/eu4/$VERSION/map/world_normal.webp\`),
-      terrain1: require(\`../../../../assets/game/eu4/$VERSION/map/terrain-1.webp\`),
-      terrain2: require(\`../../../../assets/game/eu4/$VERSION/map/terrain-2.webp\`),
-      rivers1: require(\`../../../../assets/game/eu4/$VERSION/map/rivers-1.webp\`),
-      rivers2: require(\`../../../../assets/game/eu4/$VERSION/map/rivers-2.webp\`),
-      stripes: require(\`../../../../assets/game/eu4/$VERSION/map/occupation.webp\`),
-      water: require(\`../../../../assets/game/eu4/$VERSION/map/noise-2d.webp\`),
-      surfaceRock: require(\`../../../../assets/game/eu4/$VERSION/map/atlas0_rock.webp\`),
-      surfaceGreen: require(\`../../../../assets/game/eu4/$VERSION/map/atlas0_green.webp\`),
-      surfaceNormalRock: require(\`../../../../assets/game/eu4/$VERSION/map/atlas_normal0_rock.webp\`),
-      surfaceNormalGreen: require(\`../../../../assets/game/eu4/$VERSION/map/atlas_normal0_green.webp\`),
-      heightmap: require(\`../../../../assets/game/eu4/$VERSION/map/heightmap.webp\`),
-      provincesUniqueColor: require(\`../../../../assets/game/eu4/$VERSION/map/color-order.bin\`),
-      provincesUniqueIndex: require(\`../../../../assets/game/eu4/$VERSION/map/color-index.bin\`),
+      provinces1: provinces1$MINOR,
+      provinces2: provinces2$MINOR,
+      colorMap: colorMap$MINOR,
+      sea: sea$MINOR,
+      normal: normal$MINOR,
+      terrain1: terrain1$MINOR,
+      terrain2: terrain2$MINOR,
+      rivers1: rivers1$MINOR,
+      rivers2: rivers2$MINOR,
+      stripes: stripes$MINOR,
+      water: water$MINOR,
+      surfaceRock: surfaceRock$MINOR,
+      surfaceGreen: surfaceGreen$MINOR,
+      surfaceNormalRock: surfaceNormalRock$MINOR,
+      surfaceNormalGreen: surfaceNormalGreen$MINOR,
+      heightmap: heightmap$MINOR,
+      provincesUniqueColor: provincesUniqueColor$MINOR,
+      provincesUniqueIndex: provincesUniqueIndex$MINOR,
     }
   EOF
 
@@ -403,8 +432,9 @@ prep-frontend:
   echo "export const dataUrls = (x: GameVersion): string => {" >> "$OUTPUT"
   echo "  switch(x) {" >> "$OUTPUT"
   for VERSION in "${VERSIONS[@]}"; do
+    MINOR=$(echo "$VERSION" | cut -d '.' -f 2)
     cat >> "$OUTPUT" << EOF
-    case "$VERSION": return require(\`../../../../assets/game/eu4/$VERSION/data.bin\`)
+    case "$VERSION": return data$MINOR
   EOF
   done;
   echo "}}" >> "$OUTPUT"

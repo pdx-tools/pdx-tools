@@ -1,6 +1,0 @@
-https://:project.pages.dev/*
-  X-Robots-Tag: noindex
-
-# docusaurus digested assets
-/assets/*
-  cache-control: public,max-age=31536000,immutable

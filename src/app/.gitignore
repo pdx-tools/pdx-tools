@@ -4,42 +4,26 @@ public/changelog*
 public/docs*
 public/img
 *_gen.ts
-src/server-lib/save-parsing-types.ts
+app/server-lib/save-parsing-types.ts
 
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+node_modules
+yarn.lock
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
 .DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# vercel
+.cache
+.env
 .vercel
+.output
+.vinxi
 
-# typescript
-*.tsbuildinfo
+/build/
+/api/
+/server/build
+/public/build
+.vinxi
+# Sentry Config File
+.env.sentry-build-plugin
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

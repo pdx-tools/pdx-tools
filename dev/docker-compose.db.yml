@@ -12,17 +12,17 @@ services:
     # DB Version: 16
     # OS Type: linux
     # DB Type: web
-    # Total Memory (RAM): 1 GB
+    # Total Memory (RAM): 4 GB
     # CPUs num: 1
-    # Connections num: 20
+    # Connections num: 80
     # Data Storage: ssd
     command: >
-      -c max_connections=20
-      -c shared_buffers=256MB
-      -c effective_cache_size=768MB
-      -c maintenance_work_mem=64MB
+      -c max_connections=80
+      -c shared_buffers=1GB
+      -c effective_cache_size=3GB
+      -c maintenance_work_mem=256MB
       -c checkpoint_completion_target=0.9
-      -c wal_buffers=7864kB
+      -c wal_buffers=16MB
       -c default_statistics_target=100
       -c random_page_cost=1.1
       -c effective_io_concurrency=200

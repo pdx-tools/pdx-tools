@@ -1,37 +1,38 @@
 {
   "compilerOptions": {
-    "target": "es2019",
-    "lib": ["dom", "dom.iterable", "esnext", "webworker"],
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./app/*"]
     },
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
+    "types": [
+      "@remix-run/cloudflare",
+      "vite/client",
+      "@types/wicg-file-system-access",
+      "@cloudflare/vitest-pool-workers"
+    ],
+
+    "jsx": "react-jsx",
+    "moduleResolution": "bundler",
+
+    /* Base Options: */
     "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "target": "es2022",
+    "allowJs": true,
     "resolveJsonModule": true,
+    "moduleDetection": "force",
     "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
-  },
-  "include": [
-    "custom.d.ts",
-    "next-env.d.ts",
-    ".next/types/**/*.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    "tailwind.config.js",
-    "tests/**/*.ts"
-  ],
-  "exclude": ["node_modules"]
+    // "verbatimModuleSyntax": true,
+
+    /* Strictness */
+    "strict": true,
+    "noImplicitOverride": true,
+    "strictNullChecks": true,
+
+    /* If NOT transpiling with TypeScript: */
+    "module": "preserve",
+    "noEmit": true,
+
+    /* If your code runs in the DOM: */
+    "lib": ["es2022", "dom", "dom.iterable"]
+  }
 }

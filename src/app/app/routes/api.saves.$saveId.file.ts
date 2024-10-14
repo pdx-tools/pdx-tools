@@ -1,0 +1,10 @@
+import { pdxS3 } from "@/server-lib/s3";
+import { LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { z } from "zod";
+
+const saveSchema = z.object({ saveId: z.string() });
+export async function loader({ params, context }: LoaderFunctionArgs) {
+  const save = saveSchema.parse(params);
+  const s3 = pdxS3({ context });
+  return s3.fetchOk(s3.keys.save(save.saveId));
+}
