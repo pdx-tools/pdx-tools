@@ -4,7 +4,8 @@ import pg from "pg";
 import { GameDifficulty, Save, saves, users } from "./schema";
 import { ParsedFile } from "../save-parser";
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "drizzle-orm";
+import { sql, eq, desc } from "drizzle-orm";
+import { NotFoundError } from "../errors";
 export {
   type User,
   type Save,
@@ -169,3 +170,44 @@ export const table = {
   users,
   saves,
 };
+
+export async function getUser(userId: string) {
+  const db = dbPool().orm;
+  const userSaves = await db
+    .select(
+      saveView({
+        save: {
+          filename: table.saves.filename,
+          playthrough_id: table.saves.playthroughId,
+          days: table.saves.days,
+          players: sql<number>`cardinality(players)`,
+        },
+        user: {
+          created_on: table.users.createdOn,
+        },
+      })
+    )
+    .from(table.saves)
+    .rightJoin(table.users, eq(table.users.userId, table.saves.userId))
+    .where(eq(table.users.userId, userId))
+    .orderBy(desc(table.saves.createdOn));
+
+  const firstRow = userSaves.at(0);
+  if (firstRow === undefined) {
+    throw new NotFoundError("user");
+  }
+
+  const saves = userSaves
+    .map((x) => x.save)
+    .filter((x) => x !== null)
+    .map(toApiSave);
+
+  return {
+    user_info: {
+      created_on: dayjs(firstRow.user.created_on).toISOString(),
+      user_id: firstRow.user.user_id,
+      user_name: firstRow.user.user_name,
+    },
+    saves,
+  };
+}

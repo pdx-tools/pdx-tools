@@ -17,6 +17,7 @@ import {
 import { SessionProvider } from "@/features/account";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/services/appApi";
+import { Tooltip } from "@/components/Tooltip";
 
 export const Route = createRootRoute({
   meta: () => [

@@ -117,9 +117,7 @@ function getSaveInfo(
 let initTokenTask: Promise<InitToken> | undefined;
 let mapWorker: undefined | ReturnType<typeof createMapComlink>;
 function createMapComlink() {
-  return wrap<MapWorker>(new Worker(new URL("../../map/map-worker-bridge.ts", import.meta.url), {
-    type: "module",
-  }));
+  return wrap<MapWorker>(createMapWorker());
 }
 export function getMapWorker() {
   return (mapWorker ??= createMapComlink());

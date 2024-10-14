@@ -1,0 +1,10 @@
+{
+  "name": "pdx-tools",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "src/app2",
+    "src/map"
+  ],
+  "scripts": {}
+}
