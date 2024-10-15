@@ -10,16 +10,11 @@ export type SessionRoute = { session: Session };
 const unauthResponse = () =>
   json({ msg: "unable to authorize" }, { status: 401 });
 
-export function withAuth<Args extends { request: Request }, Ctxt extends object = {}>(
-  fn: (
-    args: Args,
-    context: SessionRoute & Ctxt,
-  ) => Promise<Response>,
-) {
-  return async (
-    args: Args,
-    ctxt?: Ctxt,
-  ): Promise<Response> => {
+export function withAuth<
+  Args extends { request: Request },
+  Ctxt extends object = {},
+>(fn: (args: Args, context: SessionRoute & Ctxt) => Promise<Response>) {
+  return async (args: Args, ctxt?: Ctxt): Promise<Response> => {
     const header = args.request.headers.get("authorization");
     if (header) {
       const creds = parseBasicAuth(header);
@@ -39,7 +34,7 @@ export function withAuth<Args extends { request: Request }, Ctxt extends object 
         return unauthResponse();
       }
 
-      const newCtxt = ctxt ?? {} as Ctxt;
+      const newCtxt = ctxt ?? ({} as Ctxt);
       return fn(args, {
         ...newCtxt,
         session: { uid: creds.username, account: user.account },
@@ -50,7 +45,7 @@ export function withAuth<Args extends { request: Request }, Ctxt extends object 
         return unauthResponse();
       }
 
-      const newCtxt = ctxt ?? {} as Ctxt;
+      const newCtxt = ctxt ?? ({} as Ctxt);
       return fn(args, {
         ...newCtxt,
         session: { uid: session.userId, account: session.account },
@@ -59,14 +54,12 @@ export function withAuth<Args extends { request: Request }, Ctxt extends object 
   };
 }
 
-export function withAdmin<Args extends { request: Request }, Ctxt extends object = {}>(
-  fn: (req: Args, context: Ctxt) => Promise<Response>,
-) {
+export function withAdmin<
+  Args extends { request: Request },
+  Ctxt extends object = {},
+>(fn: (req: Args, context: Ctxt) => Promise<Response>) {
   return withAuth(
-    async (
-      req: Args,
-      ctxt: Ctxt & SessionRoute,
-    ): Promise<Response> => {
+    async (req: Args, ctxt: Ctxt & SessionRoute): Promise<Response> => {
       if (ctxt.session.account !== "admin") {
         return unauthResponse();
       }

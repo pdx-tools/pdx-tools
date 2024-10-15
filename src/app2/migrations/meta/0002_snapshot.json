@@ -1,0 +1,349 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.saves": {
+      "name": "saves",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "created_on": {
+          "name": "created_on",
+          "type": "timestamp (6) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "locked": {
+          "name": "locked",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "filename": {
+          "name": "filename",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hash": {
+          "name": "hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "days": {
+          "name": "days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "score_days": {
+          "name": "score_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "player_tag": {
+          "name": "player_tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "player_tag_name": {
+          "name": "player_tag_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "save_version_first": {
+          "name": "save_version_first",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "save_version_second": {
+          "name": "save_version_second",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "save_version_third": {
+          "name": "save_version_third",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "save_version_fourth": {
+          "name": "save_version_fourth",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "achieve_ids": {
+          "name": "achieve_ids",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "players": {
+          "name": "players",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "player_start_tag": {
+          "name": "player_start_tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "player_start_tag_name": {
+          "name": "player_start_tag_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "game_difficulty": {
+          "name": "game_difficulty",
+          "type": "game_difficulty",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "aar": {
+          "name": "aar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "idx_save_achieve_ids": {
+          "columns": [
+            {
+              "expression": "achieve_ids",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "with": {},
+          "name": "idx_save_achieve_ids",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
+        },
+        "idx_save_creation": {
+          "columns": [
+            {
+              "expression": "created_on",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "with": {},
+          "name": "idx_save_creation",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
+        },
+        "idx_save_hash": {
+          "columns": [
+            {
+              "expression": "hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "with": {},
+          "name": "idx_save_hash",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
+        },
+        "idx_save_players": {
+          "columns": [
+            {
+              "expression": "players",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "with": {},
+          "name": "idx_save_players",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
+        },
+        "idx_saves_playthrough_id": {
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "with": {},
+          "name": "idx_saves_playthrough_id",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "saves_user_id_users_user_id_fk": {
+          "name": "saves_user_id_users_user_id_fk",
+          "tableFrom": "saves",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "user_id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "steam_id": {
+          "name": "steam_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "steam_name": {
+          "name": "steam_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "account": {
+          "name": "account",
+          "type": "account",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'free'"
+        },
+        "display": {
+          "name": "display",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_on": {
+          "name": "created_on",
+          "type": "timestamp (6) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "api_key": {
+          "name": "api_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_users_steam_id": {
+          "columns": [
+            {
+              "expression": "steam_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "with": {},
+          "name": "idx_users_steam_id",
+          "isUnique": true,
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    }
+  },
+  "enums": {
+    "public.account": {
+      "name": "account",
+      "schema": "public",
+      "values": [
+        "free",
+        "admin"
+      ]
+    },
+    "public.game_difficulty": {
+      "name": "game_difficulty",
+      "schema": "public",
+      "values": [
+        "very_easy",
+        "easy",
+        "normal",
+        "hard",
+        "very_hard"
+      ]
+    }
+  },
+  "schemas": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {
+      "\"saves\".\"player\"": "\"saves\".\"player_tag\"",
+      "\"saves\".\"displayed_country_name\"": "\"saves\".\"player_tag_name\""
+    }
+  },
+  "id": "839e63c7-09f8-42e9-8ea8-08fce60cf440",
+  "prevId": "3fa8b50b-44d2-454c-8ca7-e14c3eaaf3d4",
+  "sequences": {}
+}

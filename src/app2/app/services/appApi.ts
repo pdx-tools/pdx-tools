@@ -81,8 +81,7 @@ export const sessionSelect = {
     { user_id }: Partial<{ user_id: string }>,
   ) =>
     sessionSelect.isLoggedIn(session) &&
-    (session.account == "admin" ||
-      session.userId === user_id),
+    (session.account == "admin" || session.userId === user_id),
 };
 
 export const queryClient = new QueryClient({

@@ -1,6 +1,4 @@
-import {
-  AchievementAvatar,
-} from "@/features/eu4/components/avatars";
+import { AchievementAvatar } from "@/features/eu4/components/avatars";
 import achievementData from "@/images/eu4/achievements/achievements.json";
 
 export function AchievementWall() {

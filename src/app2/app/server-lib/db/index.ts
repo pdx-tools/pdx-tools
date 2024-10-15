@@ -4,8 +4,10 @@ import pg from "pg";
 import { GameDifficulty, Save, saves, users } from "./schema";
 import { ParsedFile } from "../save-parser";
 import { NextRequest, NextResponse } from "next/server";
-import { sql, eq, desc } from "drizzle-orm";
+import { sql, eq, desc, and, isNotNull, inArray, asc } from "drizzle-orm";
 import { NotFoundError } from "../errors";
+import { Achievement } from "../wasm/wasm_app";
+import { eu4DaysToDate } from "../game";
 export {
   type User,
   type Save,
@@ -135,7 +137,9 @@ export type DbTransaction = Parameters<
 export type DbRoute = { dbConn: Promise<DbConnection> };
 
 function createDbPool() {
-  const pool = new Pool({ connectionString: import.meta.env["VITE_DATABASE_URL"] });
+  const pool = new Pool({
+    connectionString: import.meta.env["VITE_DATABASE_URL"],
+  });
   return {
     pool,
     orm: drizzle(pool),
@@ -185,7 +189,7 @@ export async function getUser(userId: string) {
         user: {
           created_on: table.users.createdOn,
         },
-      })
+      }),
     )
     .from(table.saves)
     .rightJoin(table.users, eq(table.users.userId, table.saves.userId))
@@ -209,5 +213,67 @@ export async function getUser(userId: string) {
       user_name: firstRow.user.user_name,
     },
     saves,
+  };
+}
+
+export async function getAchievementDb(achievement: Achievement) {
+  const db = dbPool().orm;
+
+  // saves with achievement
+  const saves = db
+    .select({
+      id: table.saves.id,
+      rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY playthrough_id ORDER BY score_days)`.as(
+        "rn",
+      ),
+    })
+    .from(table.saves)
+    .where(
+      and(
+        sql`${table.saves.achieveIds} @> Array[${[achievement.id]}]::int[]`,
+        isNotNull(table.saves.scoreDays),
+      ),
+    )
+    .as("ranked");
+
+  // best save in a given playthrough
+  const top = db.select({ id: saves.id }).from(saves).where(eq(saves.rn, 1));
+
+  const result = await db
+    .select(
+      saveView({
+        save: {
+          scoreDays: table.saves.scoreDays,
+          days: table.saves.days,
+          patch: sql<string>`CONCAT(${table.saves.saveVersionFirst}, '.', ${table.saves.saveVersionSecond})`,
+        },
+      }),
+    )
+    .from(table.saves)
+    .innerJoin(table.users, eq(table.users.userId, table.saves.userId))
+    .where(inArray(table.saves.id, top))
+    .orderBy(asc(table.saves.scoreDays), asc(table.saves.createdOn));
+
+  const leaderboard = result.map(
+    ({ save: { scoreDays, days, ...save }, user }) => ({
+      ...user,
+      ...toApiSave(save),
+      days,
+      weighted_score: {
+        days: scoreDays as number,
+        date: eu4DaysToDate(scoreDays as number),
+      },
+    }),
+  );
+
+  const gold = leaderboard.at(0);
+  const goldDate = gold ? eu4DaysToDate(gold.weighted_score.days) : undefined;
+
+  return {
+    achievement: {
+      ...achievement,
+    },
+    goldDate,
+    saves: leaderboard,
   };
 }

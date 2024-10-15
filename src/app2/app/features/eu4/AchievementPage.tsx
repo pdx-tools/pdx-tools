@@ -1,8 +1,6 @@
 import React from "react";
 import { RankedSave, RecordTable } from "./components/RecordTable";
-import { pdxApi } from "@/services/appApi";
 import { AchievementAvatar } from "./components/avatars";
-import { useToastOnError } from "@/hooks/useToastOnError";
 import { Card } from "@/components/Card";
 import { formatFloat, formatInt } from "@/lib/format";
 import { cx } from "class-variance-authority";
@@ -11,10 +9,7 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { Link } from "@/components/Link";
 import { difficultyColor, difficultyText } from "@/lib/difficulty";
 import { Tooltip } from "@/components/Tooltip";
-
-interface AchievementRoute {
-  achievementId: string;
-}
+import { AchievementResponse } from "@/server-lib/fn/achievement";
 
 export const AchievementLayout = ({
   achievementId,
@@ -169,7 +164,7 @@ function AchievementPlatform({
 export const AchievementPodium = ({
   saves: [gold, silver, bronze],
 }: {
-  saves: RankedSave[];
+  saves: (RankedSave | undefined)[];
 }) => {
   return (
     <div className="mt-20 flex flex-col justify-center gap-8 lg:flex-row lg:items-end lg:gap-12">
@@ -180,28 +175,26 @@ export const AchievementPodium = ({
   );
 };
 
-export const AchievementPage = ({ achievementId }: AchievementRoute) => {
-  const achievementQuery = pdxApi.achievement.useGet(achievementId);
-  useToastOnError(achievementQuery.error, "Achievement data refresh failed");
-  const achievement = achievementQuery.data.achievement;
-
-  const [gold, silver, bronze, ...rest] = achievementQuery.data.saves;
+export const AchievementPage = ({
+  achievement: data,
+}: {
+  achievement: AchievementResponse;
+}) => {
+  const [gold, silver, bronze, ...rest] = data.saves;
   return (
     <AchievementLayout
-      achievementId={`${achievement.id}`}
-      description={achievement.description}
-      title={achievement.name}
+      achievementId={`${data.achievement.id}`}
+      description={data.achievement.description}
+      title={data.achievement.name}
     >
       <div className="flex flex-col gap-10">
         <AchievementPodium saves={[gold, silver, bronze]} />
-        {achievementQuery.data.goldDate ? (
+        {data.goldDate ? (
           <div className="text-center">
             <p className="text-xl">
               Earn gold by completing the achievement before:
             </p>
-            <p className="text-3xl font-semibold">
-              {achievementQuery.data.goldDate}
-            </p>
+            <p className="text-3xl font-semibold">{data.goldDate}</p>
           </div>
         ) : null}
         {rest.length ? (

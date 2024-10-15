@@ -1,0 +1,41 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1684506282955,
+      "tag": "0000_living_patch",
+      "breakpoints": false
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1688989987509,
+      "tag": "0001_daffy_old_lace",
+      "breakpoints": false
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1689012302131,
+      "tag": "0002_tired_jean_grey",
+      "breakpoints": false
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1708604791905,
+      "tag": "0003_stormy_beast",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1723586927105,
+      "tag": "0004_amusing_penance",
+      "breakpoints": true
+    }
+  ]
+}

@@ -25,12 +25,12 @@ const HeaderMenu = () => {
             </NavigationMenu.Trigger>
             <NavigationMenu.Content className="bg-slate-900 p-4">
               <NavigationMenu.Link variant="button" asChild>
-                <Link variant="ghost" href="/eu4">
+                <Link variant="ghost" to="/eu4">
                   Recent saves
                 </Link>
               </NavigationMenu.Link>
               <NavigationMenu.Link variant="button" asChild>
-                <Link variant="ghost" href="/eu4/achievements">
+                <Link variant="ghost" to="/eu4/achievements">
                   Achievements
                 </Link>
               </NavigationMenu.Link>
@@ -109,7 +109,7 @@ const HeaderMenu = () => {
           <span className="sr-only">Discord</span>
         </Link>
 
-        { session.kind === "guest" ? (
+        {session.kind === "guest" ? (
           <SignInButtons />
         ) : (
           <NavigationMenu>
@@ -136,21 +136,22 @@ const HeaderMenu = () => {
                   >
                     <Link
                       variant="ghost"
-                      href={`/users/${session.userId}`}
+                      to="/users/$userId"
+                      params={{ userId: session.userId }}
                     >
                       My Saves
                     </Link>
                   </NavigationMenu.Link>
                   <NavigationMenu.Link variant="button" asChild>
-                    <form
-                      method="POST"
-                      action="/api/logout"
-                      onSubmit={() => {
+                    <Link
+                      variant="ghost"
+                      to="/logout"
+                      onClick={() => {
                         resetLogging();
                       }}
                     >
-                      <button type="submit">Logout</button>
-                    </form>
+                      Logout
+                    </Link>
                   </NavigationMenu.Link>
                 </NavigationMenu.Content>
               </NavigationMenu.Item>
@@ -179,7 +180,7 @@ export const AppHeader = () => {
       <div className="h-16 bg-slate-900 px-4">
         <div className="mx-auto flex h-full w-full max-w-screen-xl items-center">
           <Link
-            href="/"
+            to="/"
             variant="ghost"
             className="mr-3 flex items-center gap-1 text-3xl text-white hover:text-white hover:underline"
             onClick={() => resetSaveAnalysis()}

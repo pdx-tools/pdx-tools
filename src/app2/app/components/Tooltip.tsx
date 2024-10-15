@@ -33,7 +33,7 @@ const TooltipContent = React.forwardRef<
   if (!("document" in globalThis)) {
     return null;
   }
-  
+
   // https://github.com/radix-ui/primitives/issues/3143
   return createPortal(
     <TooltipPrimitive.Content

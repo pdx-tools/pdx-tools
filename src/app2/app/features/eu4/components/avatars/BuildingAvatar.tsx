@@ -18,9 +18,12 @@ const spriteCell = { width: 48, height: 48 };
 
 export const BuildingAvatar = ({ id, name, gfx, condensed }: BuildingProps) => {
   globalDimensions ??= spriteDimension({ data: globalSpriteData, spriteCell });
-  westernDimensions ??= spriteDimension({ data: westernSpriteData, spriteCell });
+  westernDimensions ??= spriteDimension({
+    data: westernSpriteData,
+    spriteCell,
+  });
 
-  const westernKey = `${id}_${gfx}`
+  const westernKey = `${id}_${gfx}`;
   let avatar;
   if (id in globalSpriteData) {
     avatar = (

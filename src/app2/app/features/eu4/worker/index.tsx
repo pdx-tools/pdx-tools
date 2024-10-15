@@ -6,7 +6,9 @@ export { type Eu4Worker } from "./bridge";
 export { type FileObservationFrequency } from "./init";
 
 function createWorker() {
-  const rawWorker = new Worker(new URL("./bridge", import.meta.url), { type: "module" });
+  const rawWorker = new Worker(new URL("./bridge", import.meta.url), {
+    type: "module",
+  });
   return wrap<Eu4WorkerModule>(rawWorker);
 }
 

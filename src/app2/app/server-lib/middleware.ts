@@ -22,10 +22,7 @@ export function withCore<T extends Array<any>>(
       .catch((err) => {
         if (!(err instanceof Error)) {
           log.exception(err, { msg: "unknown exception" });
-          return json(
-            { msg: `unknown exception` },
-            { status: 500 },
-          );
+          return json({ msg: `unknown exception` }, { status: 500 });
         }
 
         const obj = {
@@ -38,10 +35,7 @@ export function withCore<T extends Array<any>>(
         } else if (err instanceof AuthorizationError) {
           return json(obj, { status: 403 });
         } else if (err instanceof NotFoundError) {
-          return json(
-            { ...obj, msg: `${obj.msg} not found` },
-            { status: 404 },
-          );
+          return json({ ...obj, msg: `${obj.msg} not found` }, { status: 404 });
         } else if (err instanceof ZodError) {
           return json(
             {

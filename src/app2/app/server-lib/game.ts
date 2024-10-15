@@ -1,5 +1,3 @@
-import path from "path";
-import fs from "fs";
 import {
   initSync,
   achievements,
@@ -7,27 +5,12 @@ import {
   latest_eu4_minor_patch,
   type Achievement,
 } from "./wasm/wasm_app";
+import wasmApp from "./wasm/wasm_app_bg.wasm?module";
 
-function compileWasm() {
-  // https://vercel.com/docs/concepts/functions/serverless-functions/runtimes#including-additional-files
-  const file = path.join(
-    process.cwd(),
-    "src",
-    "server-lib",
-    "wasm",
-    "wasm_app_bg.wasm",
-  );
-  initSync(fs.readFileSync(file));
-}
+initSync(wasmApp);
 
-let hasInit = false;
 const withWasm = <T extends Array<any>, U>(fn: (...args: T) => U) => {
   return (...args: T): U => {
-    if (!hasInit) {
-      hasInit = true;
-      compileWasm();
-    }
-
     return fn(...args);
   };
 };

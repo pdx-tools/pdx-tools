@@ -1,6 +1,6 @@
-import { useAppSession } from '@/server-lib/auth/session';
-import { createAPIFileRoute } from '@tanstack/start/api'
-import { dbPool, DbRoute, table, withDb } from "@/server-lib/db";
+import { useAppSession } from "@/server-lib/auth/session";
+import { createAPIFileRoute } from "@tanstack/start/api";
+import { dbPool, table } from "@/server-lib/db";
 import { getEnv } from "@/server-lib/env";
 import { ValidationError } from "@/server-lib/errors";
 import { sql } from "drizzle-orm";
@@ -9,13 +9,13 @@ import { genId } from "@/server-lib/id";
 import { check } from "@/lib/isPresent";
 import { STEAM_URL } from "@/lib/steam";
 import { log } from "@/server-lib/logging";
-import { withCore } from '@/server-lib/middleware';
+import { withCore } from "@/server-lib/middleware";
 
-export const Route = createAPIFileRoute('/api/login/steam-callback')({
+export const Route = createAPIFileRoute("/api/login/steam-callback")({
   GET: withCore(async ({ request }) => {
-    const searchParams = new URL(request.url).searchParams
+    const searchParams = new URL(request.url).searchParams;
 
-     const { steamUid, steamName, genUserId } =
+    const { steamUid, steamName, genUserId } =
       process.env.NODE_ENV === "production"
         ? await steamInfo(searchParams)
         : testInfo();
@@ -48,23 +48,25 @@ export const Route = createAPIFileRoute('/api/login/steam-callback')({
     const prodDest =
       process.env.NEXT_PUBLIC_EXTERNAL_ADDRESS ?? "https://pdx.tools";
     const dest =
-      process.env.NODE_ENV === "production" ? prodDest : new URL("/", request.url);
+      process.env.NODE_ENV === "production"
+        ? prodDest
+        : new URL("/", request.url);
 
     const session = await useAppSession();
     await session.update({
       userId: user.userId,
       steamId: steamUid,
       account: user.account,
-    })
+    });
 
     return new Response(null, {
       status: 302,
       headers: {
-        location: `${dest}`
-      }
+        location: `${dest}`,
+      },
     });
-  })
-})
+  }),
+});
 
 async function steamInfo(searchParams: URLSearchParams) {
   const steamUid = await loginVerify(searchParams);

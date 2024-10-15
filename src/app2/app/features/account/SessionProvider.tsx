@@ -18,7 +18,10 @@ const SessionContext = React.createContext<SessionContextData>({
   profile: undefined,
 });
 
-export const SessionProvider = ({ children, profile }: SessionProviderProps) => {
+export const SessionProvider = ({
+  children,
+  profile,
+}: SessionProviderProps) => {
   const [isDeveloper, setIsDeveloper] = useState(false);
 
   useEffect(() => {
@@ -32,6 +35,6 @@ export const SessionProvider = ({ children, profile }: SessionProviderProps) => 
   );
 };
 
-export const useSession = () => check(useContext(SessionContext).profile)
+export const useSession = () => check(useContext(SessionContext).profile);
 
 export const useIsDeveloper = () => useContext(SessionContext).isDeveloper;

@@ -1,0 +1,15 @@
+ALTER TABLE "saves" RENAME COLUMN "player" TO "player_tag";
+ALTER TABLE "saves" RENAME COLUMN "displayed_country_name" TO "player_tag_name";
+ALTER TABLE "saves" ALTER COLUMN "playthrough_id" SET NOT NULL;
+ALTER TABLE "saves" DROP COLUMN IF EXISTS "encoding";
+ALTER TABLE "saves" DROP COLUMN IF EXISTS "campaign_id";
+ALTER TABLE "saves" DROP COLUMN IF EXISTS "campaign_length";
+ALTER TABLE "saves" DROP COLUMN IF EXISTS "ironman";
+ALTER TABLE "saves" DROP COLUMN IF EXISTS "multiplayer";
+ALTER TABLE "saves" DROP COLUMN IF EXISTS "observer";
+ALTER TABLE "saves" DROP COLUMN IF EXISTS "dlc";
+ALTER TABLE "saves" DROP COLUMN IF EXISTS "checksum";
+DROP INDEX IF EXISTS "idx_save_achieve_days";
+DROP INDEX IF EXISTS "idx_save_campaign_id";
+DROP INDEX IF EXISTS "idx_save_checksum";
+DROP INDEX IF EXISTS "idx_save_dlc";

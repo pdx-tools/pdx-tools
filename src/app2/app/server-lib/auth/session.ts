@@ -11,11 +11,11 @@ export function useAppSession() {
     cookie: {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: "strict",
     },
-    name: 'sid',
+    name: "sid",
     password: import.meta.env["VITE_SESSION_SECRET"],
-  })
+  });
 }
 
 export type PdxSession = Awaited<ReturnType<typeof usePdxSession>>;

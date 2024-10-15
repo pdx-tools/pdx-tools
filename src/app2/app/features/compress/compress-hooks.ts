@@ -3,7 +3,9 @@ import { useEffect, useMemo, useRef } from "react";
 import type { ProgressCb, CompressionWorker } from "./compress-worker";
 
 export function createCompressionWorker() {
-  const worker = new Worker(new URL("./compress-worker", import.meta.url), { type: "module" });
+  const worker = new Worker(new URL("./compress-worker", import.meta.url), {
+    type: "module",
+  });
   const workerApi = wrap<CompressionWorker>(worker);
   return {
     worker,

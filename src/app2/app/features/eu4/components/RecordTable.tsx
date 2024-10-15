@@ -9,15 +9,9 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { Link } from "@/components/Link";
-import type { pdxApi } from "@/services/appApi";
-import type { UseSuspenseQueryResult } from "@tanstack/react-query";
+import { AchievementResponse } from "@/server-lib/fn/achievement";
 
-type AchievementData =
-  ReturnType<
-    (typeof pdxApi)["achievement"]["useGet"]
-  > extends UseSuspenseQueryResult<infer T>
-    ? T
-    : never;
+type AchievementData = AchievementResponse;
 
 export type RankedSave = AchievementData["saves"][number];
 interface RecordTableProps {

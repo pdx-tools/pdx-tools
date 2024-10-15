@@ -5,11 +5,11 @@ import Head from "next/head";
 import { getImperatorWorker } from "./worker";
 import { MeltButton } from "@/components/MeltButton";
 import { ImperatorMetadata } from "./worker/types";
-import { captureException } from "../errors";
 import { emitEvent } from "@/lib/events";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { pdxAbortController } from "@/lib/abortController";
+import { captureException } from "@/lib/captureException";
 
 export type ImperatorSaveFile = { save: { file: File } };
 type ImperatorPageProps = ImperatorSaveFile & { meta: ImperatorMetadata };

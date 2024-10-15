@@ -1,6 +1,6 @@
+import { WebPage } from "@/components/layout";
 import { LoadingState } from "@/components/LoadingState";
 import { TimeAgo } from "@/components/TimeAgo";
-import { Tooltip } from "@/components/Tooltip";
 import { useSession } from "@/features/account";
 import { UserSaveTable } from "@/features/account/UserSaveTable";
 import { dbPool, getUser, saveView, table, toApiSave } from "@/server-lib/db";
@@ -10,8 +10,8 @@ import { Await, createFileRoute, defer } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/start";
 
 const fetchUser = createServerFn("GET", async (userId: string) => {
-  return getUser(userId)
-})
+  return getUser(userId);
+});
 
 export const Route = createFileRoute("/users/$userId")({
   loader: ({ params: { userId } }) => {
@@ -21,15 +21,14 @@ export const Route = createFileRoute("/users/$userId")({
 });
 
 function UserComponent() {
-  // const { user } = Route.useLoaderData();
-  // return <UserPage user={user} />;
-
   const { userPromise } = Route.useLoaderData();
 
   return (
-    <Await promise={userPromise} fallback={<LoadingState />}>
-      {(user) => <UserPage user={user} />}
-    </Await>
+    <WebPage>
+      <Await promise={userPromise} fallback={<LoadingState />}>
+        {(user) => <UserPage user={user} />}
+      </Await>
+    </WebPage>
   );
 }
 
@@ -40,24 +39,21 @@ function UserPage({ user }: { user: Awaited<ReturnType<typeof fetchUser>> }) {
   });
 
   return (
-    <Tooltip.Provider>
-      {" "}
-      <div className="mx-auto max-w-5xl">
-        {/* <Head>
+    <div className="mx-auto max-w-5xl">
+      {/* <Head>
     <title>{user.user_info.user_name} saves - PDX Tools</title>
   </Head> */}
-        <div className="p-5">
-          <h1 className="text-4xl">
-            {user.user_info.user_name || `User: ${user.user_info.user_id}`}
-          </h1>
-          <div className="mb-4 space-x-2">
-            <span>Joined:</span>
-            <TimeAgo date={user.user_info.created_on} />
-          </div>
-
-          <UserSaveTable isPrivileged={isPrivileged} saves={user.saves} />
+      <div className="p-5">
+        <h1 className="text-4xl">
+          {user.user_info.user_name || `User: ${user.user_info.user_id}`}
+        </h1>
+        <div className="mb-4 space-x-2">
+          <span>Joined:</span>
+          <TimeAgo date={user.user_info.created_on} />
         </div>
+
+        <UserSaveTable isPrivileged={isPrivileged} saves={user.saves} />
       </div>
-    </Tooltip.Provider>
+    </div>
   );
 }

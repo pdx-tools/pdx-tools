@@ -10,10 +10,10 @@ type RootProps = {
 export const Root = ({ children }: RootProps) => {
   return (
     <Tooltip.Provider delayDuration={300}>
-        <ErrorCatcher>
-          {children}
-          <Toaster />
-        </ErrorCatcher>
+      <ErrorCatcher>
+        {children}
+        <Toaster />
+      </ErrorCatcher>
     </Tooltip.Provider>
   );
 };

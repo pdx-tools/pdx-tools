@@ -1,5 +1,5 @@
 import { VariantProps, cva, cx } from "class-variance-authority";
-import LinkPrimitive from "next/link";
+import { createLink, Link as LinkPrimitive } from "@tanstack/react-router";
 import React, { ComponentPropsWithoutRef } from "react";
 
 const linkVariants = cva("underline-offset-4 hover:underline", {
@@ -15,21 +15,28 @@ const linkVariants = cva("underline-offset-4 hover:underline", {
   },
 });
 
-export const Link = React.forwardRef<
-  HTMLAnchorElement,
-  ComponentPropsWithoutRef<typeof LinkPrimitive> &
-    VariantProps<typeof linkVariants>
->(function Link({ className, variant, href, ...props }, ref) {
-  const isExternal = href.toString().startsWith("http");
+export const Link = createLink(
+  React.forwardRef(function Link(
+    {
+      className,
+      variant,
+      href,
+      ...props
+    }: ComponentPropsWithoutRef<typeof LinkPrimitive> &
+      VariantProps<typeof linkVariants>,
+    ref: React.ForwardedRef<HTMLAnchorElement>,
+  ) {
+    const isExternal = href?.startsWith("http");
 
-  return (
-    <LinkPrimitive
-      className={cx(linkVariants({ variant }), className)}
-      href={href}
-      ref={ref}
-      {...props}
-      target={isExternal ? "_blank" : props.target}
-      rel={isExternal ? "noreferrer" : props.rel}
-    />
-  );
-});
+    return (
+      <LinkPrimitive
+        className={cx(linkVariants({ variant }), className)}
+        href={href}
+        ref={ref}
+        {...props}
+        target={isExternal ? "_blank" : props.target}
+        rel={isExternal ? "noreferrer" : props.rel}
+      />
+    );
+  }),
+);
