@@ -12,3 +12,5 @@ eu4game = { path = "../eu4game" }
 tower-http = { version = "0.5.2", features = ["trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+webp = "0.3"
+image = { version = "0.25.2", default-features = false, features = ["png"] }

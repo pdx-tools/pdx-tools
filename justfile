@@ -78,12 +78,6 @@ publish-app:
 build-app: prep-frontend
   cd src/docs && npm run build
   cd src/docs/build && cp -r assets blog.html changelog.html docs.html img ../../app/public/.
-
-  # We want the wasm version of sharp so pdx-tools can run on any architecture.
-  # node cross platform package management is a mess: the x86 version of sharp
-  # will be installed due to `npm ci` so have always manually override it.
-  cd src/app && npm install --no-save --cpu=wasm32 sharp
-
   cd src/app && npm run build
 
 build-docker:
@@ -158,7 +152,7 @@ build-wasm: build-wasm-dev
     mv "$MY_TMP" "$1"
   }
 
-  optimize src/wasm-app/pkg/wasm_app_bg.wasm &
+  optimize src/app/src/server-lib/wasm/wasm_app_bg.wasm &
   optimize src/wasm-compress/pkg/wasm_compress_bg.wasm &
   optimize src/wasm-ck3/pkg/wasm_ck3_bg.wasm &
   optimize src/wasm-eu4/pkg/wasm_eu4_bg.wasm &

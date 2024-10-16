@@ -1,5 +1,12 @@
 use applib::parser::{parse_save_data, ParseResult};
-use axum::{body::Bytes, extract::DefaultBodyLimit, http::StatusCode, routing::post, Json, Router};
+use axum::{
+    body::Bytes,
+    extract::DefaultBodyLimit,
+    http::{header, HeaderMap, HeaderValue, StatusCode},
+    response::IntoResponse,
+    routing::post,
+    Json, Router,
+};
 use std::net::SocketAddr;
 use tokio::{net::TcpListener, signal};
 use tower_http::trace::{self, TraceLayer};
@@ -19,6 +26,26 @@ async fn upload(data: Bytes) -> Result<Json<ParseResult>, StatusCode> {
     }
 }
 
+async fn convert_png(data: Bytes) -> impl IntoResponse {
+    tracing::info!("received png request (bytes: {})", data.len());
+
+    tokio::task::block_in_place(|| {
+        let Ok(png) = image::load_from_memory_with_format(&data, image::ImageFormat::Png) else {
+            return Err(StatusCode::BAD_REQUEST);
+        };
+
+        let Ok(encoder) = webp::Encoder::from_image(&png) else {
+            return Err(StatusCode::BAD_REQUEST);
+        };
+
+        let data = Bytes::copy_from_slice(&encoder.encode_lossless());
+        let mut headers = HeaderMap::new();
+        headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("image/webp"));
+
+        Ok((headers, data))
+    })
+}
+
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     tracing_subscriber::fmt()
@@ -33,6 +60,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", post(upload))
+        .route("/webp", post(convert_png))
         .layer(DefaultBodyLimit::max(15 * 1024 * 1024))
         .layer(
             TraceLayer::new_for_http()

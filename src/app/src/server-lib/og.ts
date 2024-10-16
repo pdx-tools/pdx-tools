@@ -2,8 +2,8 @@ import { fetchOk } from "@/lib/fetch";
 import { getEnv } from "./env";
 import { s3FetchOk, s3Keys } from "./s3";
 import { log } from "./logging";
-import sharp from "sharp";
 import { timeit } from "@/lib/timeit";
+import { convertScreenshot } from "./save-parser";
 
 export async function generateOgIntoS3(saveId: string) {
   const url =
@@ -54,11 +54,16 @@ export async function generateOgIntoS3(saveId: string) {
     imageSize: pngBuffer.data.byteLength,
   });
 
-  // Convert the png screenshot into lossless webp, which is
-  // 40% of the size as the png at a cost of 100ms.
-  const { data: buffer, elapsedMs } = await timeit(() =>
-    sharp(pngBuffer.data).webp({ lossless: true }).toBuffer(),
-  );
+  // An optimized webp of the screenshot can be 1/3 of the size. It may seem odd
+  // to call out to the API service to do the conversion, but it makes sense:
+  // - Puppeteer webp screenshot is not optimized
+  // - Using "sharp" has dependency issues when for Wasm deployments (npm
+  //   doesn't save what cpu runtime)
+  // - The pure rust webp impl in "image" does not output well optimized
+  //   lossless
+  // - Using "webp" rust crate does support web-assembly:
+  //   https://github.com/jaredforth/webp/issues/20
+  const { data: buffer, elapsedMs } = await timeit(() => convertScreenshot(pngBuffer.data));
 
   log.info({
     key: saveId,
@@ -67,15 +72,10 @@ export async function generateOgIntoS3(saveId: string) {
     imageSize: buffer.byteLength,
   });
 
-  // Make a copy, otherwise undici will throw an error:
-  // ArrayBuffer: SharedArrayBuffer is not allowed
-  const body = new Uint8Array(new ArrayBuffer(buffer.length));
-  buffer.copy(body);
-
   const s3Upload = await timeit(() =>
     s3FetchOk(s3Key, {
       method: "PUT",
-      body,
+      body: buffer,
       headers: {
         "Content-Type": "image/webp",
         "Content-Length": `${buffer.byteLength}`,
