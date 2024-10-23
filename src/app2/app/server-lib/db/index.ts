@@ -175,6 +175,7 @@ export const table = {
   saves,
 };
 
+export type UserSaves = Awaited<ReturnType<typeof getUser>>;
 export async function getUser(userId: string) {
   const db = dbPool().orm;
   const userSaves = await db

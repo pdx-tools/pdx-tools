@@ -8,7 +8,7 @@ export const Account = () => {
     <div className="mx-auto max-w-5xl space-y-5 p-5">
       <div className="flex items-baseline space-x-4">
         <h1 className="text-4xl">Manage Your Account</h1>
-        <span>(ID: {user.user_id})</span>
+        <span>(ID: {user.userId})</span>
       </div>
       <AccountContent />
     </div>

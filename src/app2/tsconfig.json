@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "paths": {
-        "@/*": ["./app/*"]
+      "@/*": ["./app/*"]
     },
     "jsx": "react-jsx",
 
@@ -17,7 +17,6 @@
 
     /* Strictness */
     "strict": true,
-    "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "strictNullChecks": true,
 

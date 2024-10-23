@@ -2,9 +2,10 @@ import React, { useMemo } from "react";
 import { diff } from "@/lib/dates";
 import { groupBy } from "@/lib/groupBy";
 import { SaveCard } from "./SaveCard";
+import { type UserSaves } from "@/server-lib/db";
 
 interface UserSaveTableProps {
-  saves: UserResponse["saves"];
+  saves: UserSaves["saves"];
   isPrivileged: boolean;
 }
 
@@ -32,7 +33,7 @@ export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
   );
 };
 
-export function useSavesGroupedByPlaythrough(saves: UserResponse["saves"]) {
+export function useSavesGroupedByPlaythrough(saves: UserSaves["saves"]) {
   return useMemo(() => {
     const fileGroup = groupBy(saves, (x) => x.filename);
 

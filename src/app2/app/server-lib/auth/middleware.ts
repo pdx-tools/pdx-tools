@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { parseBasicAuth } from "./basic";
 import { Account } from "../db/schema";
 import { json } from "@tanstack/start";
-import { useAppSession, usePdxSession } from "./session";
+import { usePdxSession } from "./session";
 
 export type Session = { uid: string; account: Account };
 export type SessionRoute = { session: Session };

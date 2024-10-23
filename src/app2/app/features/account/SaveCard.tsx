@@ -27,7 +27,7 @@ export function SaveCard({
         alt={`preview of save ${save.id}`}
         width={1200}
         height={630}
-        src={`/eu4/saves/${save.id}/og.webp`}
+        src={`/api/saves/${save.id}/og`}
         loading="lazy"
       />
       <div className="flex min-w-56 flex-1 flex-col gap-2 p-4 lg:gap-4">

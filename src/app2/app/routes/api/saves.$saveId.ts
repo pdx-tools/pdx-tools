@@ -36,25 +36,30 @@ const PatchBody = z.object({
     .transform((x) => x ?? undefined),
 });
 
+export type SaveResponse = Awaited<ReturnType<typeof getSave>>;
+async function getSave(params: { saveId: string }) {
+  const db = dbPool().orm;
+  const saves = await db
+    .select(
+      saveView({
+        save: { aar: table.saves.aar, filename: table.saves.filename },
+      }),
+    )
+    .from(table.saves)
+    .where(eq(table.saves.id, params.saveId))
+    .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
+
+  const save = saves.at(0);
+  if (save === undefined) {
+    throw new NotFoundError("save");
+  }
+
+  return { ...save.user, ...toApiSave(save.save) }
+}
+
 export const Route = createAPIFileRoute("/api/saves/$saveId")({
   GET: withCore(async ({ params }) => {
-    const db = dbPool().orm;
-    const saves = await db
-      .select(
-        saveView({
-          save: { aar: table.saves.aar, filename: table.saves.filename },
-        }),
-      )
-      .from(table.saves)
-      .where(eq(table.saves.id, params.saveId))
-      .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
-
-    const save = saves.at(0);
-    if (save === undefined) {
-      throw new NotFoundError("save");
-    }
-
-    return json({ ...save.user, ...toApiSave(save.save) });
+    return json(await getSave(params));
   }),
 
   PATCH: withCore(

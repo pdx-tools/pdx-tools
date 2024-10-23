@@ -113,7 +113,7 @@ dev-app: prep-frontend prep-dev-app
   cat src/app/migrations/*.sql | just dev-environment exec -u postgres --no-TTY db psql
 
   npx --yes concurrently@latest \
-    "cd src/app && PORT=3001 node_modules/.bin/next dev" \
+    "cd src/app2 && PORT=3001 npm run dev" \
     "cd src/docs && npm run docusaurus -- start --no-open" \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api"
 

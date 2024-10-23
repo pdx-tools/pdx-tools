@@ -17,6 +17,9 @@ import { createCompressionWorker } from "@/features/compress";
 import { identify } from "@/lib/events";
 import { captureException } from "@/lib/captureException";
 import { PdxSession } from "@/server-lib/auth/session";
+import { SaveResponse } from "@/routes/api/saves.$saveId";
+import { AchievementResponse } from "@/server-lib/fn/achievement";
+import { NewestSaveResponse } from "@/routes/api/new";
 export type { GameDifficulty } from "@/server-lib/save-parsing-types";
 export type { Achievement, Difficulty as AchievementDifficulty };
 
@@ -25,23 +28,6 @@ export type PublicUserInfo = {
   user_name: string | null;
   created_on: string;
 };
-
-export type PrivateUserInfo = {
-  user_id: string;
-  steam_id: string;
-  account: "free" | "admin";
-};
-
-export type ProfileResponse =
-  | {
-      kind: "guest";
-    }
-  | {
-      kind: "user";
-      user: PrivateUserInfo;
-    };
-
-type LoggedInUser = Extract<ProfileResponse, { kind: "user" }>;
 
 export type NewKeyResponse = {
   api_key: string;
@@ -138,19 +124,6 @@ export const pdxApi = {
   },
 
   session: {
-    useCurrent: () =>
-      useQuery({
-        queryKey: pdxKeys.profile(),
-        queryFn: async () => {
-          const result = await fetchOkJson<ProfileResponse>("/api/profile");
-          if (result.kind === "user") {
-            identify(result.user.user_id);
-          }
-          return result;
-        },
-        gcTime: Infinity,
-      }),
-
     useSkanderbegSaves: () =>
       useQuery({
         queryKey: pdxKeys.skanderbegUser(),
@@ -332,14 +305,6 @@ export const pdxApi = {
       useMutation({
         mutationFn: ({ id }: { id: string }) =>
           sendJson(`/api/admin/og`, { body: { saveId: id } }),
-      }),
-  },
-
-  user: {
-    useGet: (userId: string) =>
-      useSuspenseQuery({
-        queryKey: pdxKeys.user(userId),
-        queryFn: () => fetchOkJson<UserResponse>(`/api/users/${userId}`),
       }),
   },
 };

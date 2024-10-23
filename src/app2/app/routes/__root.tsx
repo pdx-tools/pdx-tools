@@ -1,5 +1,4 @@
-import { createRootRoute, useRouter } from "@tanstack/react-router";
-import { Outlet, ScrollRestoration } from "@tanstack/react-router";
+import { Outlet, ScrollRestoration, createRootRoute, useRouter } from "@tanstack/react-router";
 import {
   Body,
   createServerFn,

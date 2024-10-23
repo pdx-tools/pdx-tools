@@ -1,17 +1,15 @@
 import { PropsWithChildren, createContext, useContext } from "react";
-import { PrivateUserInfo, sessionSelect } from "@/services/appApi";
 import { check } from "@/lib/isPresent";
-import { useSession } from "@/features/account";
+import { type PdxUserSession } from "@/server-lib/auth/session";
 
-const LoggedInContext = createContext<undefined | PrivateUserInfo>(undefined);
+const LoggedInContext = createContext<undefined | PdxUserSession>(undefined);
 
-export function LoggedIn({ children }: PropsWithChildren<{}>) {
-  const session = useSession();
-  return sessionSelect.isLoggedIn(session) ? (
-    <LoggedInContext.Provider value={session.user}>
+export function LoggedIn({ children, session }: PropsWithChildren<{ session: PdxUserSession}>) {
+  return (
+    <LoggedInContext.Provider value={session}>
       {children}
     </LoggedInContext.Provider>
-  ) : null;
+  );
 }
 
 export const useLoggedIn = () => check(useContext(LoggedInContext));
