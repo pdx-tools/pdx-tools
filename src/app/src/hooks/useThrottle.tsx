@@ -1,17 +1,14 @@
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useIsMounted } from "./useIsMounted";
 import { throttle } from "@/lib/throttle";
 
 export function useThrottle<T>(value: T, interval: number) {
-  // Easier to use refs when value could be a function
-  const throttledValue = useRef(value);
-  const [, forceUpdate] = useReducer((x) => x + 1, 0);
+  const [throttledValue, setThrottledValue] = useState(() => value);
 
   const mounted = useIsMounted();
   const cb = (x: T) => {
     if (mounted()) {
-      throttledValue.current = x;
-      forceUpdate();
+      setThrottledValue(() => x);
     }
   };
 
@@ -20,5 +17,5 @@ export function useThrottle<T>(value: T, interval: number) {
     setter.current(value);
   }, [value]);
 
-  return throttledValue.current;
+  return throttledValue;
 }
