@@ -170,7 +170,7 @@ build-wasm-dev:
   wasm-pack build -t web src/wasm-imperator
   wasm-pack build -t web src/wasm-vic3
 
-package-all *opts: admin-tokenize-all
+package-all *opts:
   #!/usr/bin/env bash
   set -euxo pipefail
   package() {
@@ -248,6 +248,7 @@ admin-sync-tokens:
   rm -rf assets/tokens
   git clone https://${GH_PAT:+"$GH_PAT@"}github.com/pdx-tools/tokens.git assets/tokens
   (cd assets/tokens && ln -s tokens/* .)
+  just admin-tokenize-all
 
 admin-sync-assets: admin-sync-tokens
   rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key="${ASSETS_SECRET_KEY}" --s3-access-key-id="${ASSETS_ACCESS_KEY}" copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.

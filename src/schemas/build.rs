@@ -78,8 +78,8 @@ impl jomini::binary::TokenResolver for {pascal}FlatTokens {{
         )
         .unwrap();
 
+        println!("cargo::rustc-check-cfg=cfg({game}_tokens)");
         if tokens.exists() {
-            println!("cargo::rustc-check-cfg=cfg({game}_tokens)");
             println!("cargo:rustc-cfg={game}_tokens");
         }
     }
