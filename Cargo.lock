@@ -1335,7 +1335,6 @@ dependencies = [
  "eu4game",
  "eu4game-data",
  "eu4save",
- "filetime",
  "flate2",
  "jomini",
  "log",
