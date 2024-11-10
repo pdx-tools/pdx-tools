@@ -17,11 +17,8 @@ function dbConnect(connection: string) {
   };
 }
 
-// let dbDrizzle: ReturnType<typeof dbConnect> | undefined;
 export function getDbOrm(connection: string) {
   return dbConnect(connection);
-  // console.log({connection});
-  //   return (dbDrizzle ??= dbConnect(connection));
 }
 
 export function getDb(connection: string) {
