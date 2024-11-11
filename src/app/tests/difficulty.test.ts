@@ -5,17 +5,17 @@ describe("difficulty", () => {
   test.for([
     ["VeryEasy", "Very Easy"],
     ["VeryHard", "Very Hard"],
-    ["Easy", "Easy"], 
+    ["Easy", "Easy"],
   ] as const)("difficultyText(%s) -> %s", ([input, expected]) => {
     expect(difficultyText(input)).toBe(expected);
-  })
+  });
 
   test.for([
     ["VeryEasy", "Easy"],
     ["Easy", "Medium"],
-    ["Hard", "VeryHard"], 
-    ["VeryHard", "Insane"], 
+    ["Hard", "VeryHard"],
+    ["VeryHard", "Insane"],
   ] as const)("difficultyNum(%s) < %s", ([a1, a2]) => {
     expect(difficultyNum(a1)).toBeLessThan(difficultyNum(a2));
-  })
-})
+  });
+});

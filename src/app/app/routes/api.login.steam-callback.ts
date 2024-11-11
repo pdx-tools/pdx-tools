@@ -4,11 +4,7 @@ import { genId } from "@/server-lib/id";
 import { check } from "@/lib/isPresent";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
-import {
-  AppLoadContext,
-  LoaderFunctionArgs,
-  redirect,
-} from "@remix-run/cloudflare";
+import { AppLoadContext, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { withDb } from "@/server-lib/db/middleware";
 import { pdxSession } from "@/server-lib/auth/session";
 import { pdxSteam } from "@/server-lib/steam.server";

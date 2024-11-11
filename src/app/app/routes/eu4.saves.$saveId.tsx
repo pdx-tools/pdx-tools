@@ -8,7 +8,7 @@ export const meta: MetaFunction = ({ params: { saveId } }) =>
   seo({
     title: `EU4 Save: ${saveId}`,
     description: `View EU4 maps, charts, timelapses, and data`,
-    image: `/eu4/saves/${saveId}/og.webp`,
+    image: `/eu4/saves/${saveId}/og`,
   });
 
 export default function SaveRoute() {

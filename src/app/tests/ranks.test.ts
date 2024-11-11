@@ -29,5 +29,5 @@ describe("rankDisplay", () => {
     [24, "24th"],
   ] as const)(`rankDisplay(%i) == %s`, ([input, expected]) => {
     expect(rankDisplay(input)).toBe(expected);
-  })
-})
+  });
+});

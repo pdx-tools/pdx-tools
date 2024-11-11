@@ -73,6 +73,7 @@ publish-app:
   export VITE_SENTRY_DSN=$SENTRY_DSN
   just build-app
   cd src/app
+  find build/ -iname "*.map" -delete
   npm run deploy
 
 build-app: prep-frontend

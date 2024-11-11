@@ -14,15 +14,15 @@
 
 import { beforeEach, expect, test } from "vitest";
 
-test("1 + 1", () =>{
+test("1 + 1", () => {
   expect(1 + 1).toBe(2);
-})
+});
 
 // beforeEach(async () => {
-  // await useDb(async (db) => {
-  //   await db.delete(table.saves);
-  //   await db.delete(table.users);
-  // });
+// await useDb(async (db) => {
+//   await db.delete(table.saves);
+//   await db.delete(table.users);
+// });
 // });
 
 // beforeEach(async () => {
