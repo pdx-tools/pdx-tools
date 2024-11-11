@@ -10,9 +10,11 @@ directory = "./build/client"
 [[hyperdrive]]
 binding = "PDX_DB"
 id = "52bcc7b655d44776a6e42672fd11b388"
+localConnectionString = ""
 
 [env.test]
 
 [[env.test.hyperdrive]]
 binding = "PDX_DB"
 id = "52bcc7b655d44776a6e42672fd11b388"
+localConnectionString = ""
