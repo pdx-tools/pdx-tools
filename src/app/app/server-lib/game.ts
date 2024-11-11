@@ -6,6 +6,7 @@ import init, {
   type Achievement,
 } from "./wasm/wasm_app";
 
+// detect if on cloudflare to import the Wasm.Module directly
 if (typeof WebSocketPair !== "undefined") {
   const wasmApp = await import("wasm_app_bg.wasm");
   initSync(wasmApp.default);

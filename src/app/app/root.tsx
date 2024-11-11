@@ -62,6 +62,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
+        {/* FF FOUC protection https://stackoverflow.com/a/57888310/433785 */}
+        <script>0</script>
+
         {children}
         <ScrollRestoration />
         <Scripts />
