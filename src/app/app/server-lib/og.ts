@@ -70,7 +70,9 @@ export const pdxOg = ({
       // - Using "webp" rust crate does support web-assembly:
       //   https://github.com/jaredforth/webp/issues/20
       const { data: buffer, elapsedMs } = await timeit(() =>
-        pdxFns({ context }).convertScreenshot(pngBuffer.data),
+        pdxFns({
+          endpoint: context.cloudflare.env.PARSE_API_ENDPOINT,
+        }).convertScreenshot(pngBuffer.data),
       );
 
       log.info({

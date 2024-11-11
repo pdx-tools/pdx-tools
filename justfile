@@ -80,7 +80,6 @@ build-app: prep-frontend
   cd src/docs && npm run build
   cd src/docs/build && cp -r assets blog.html changelog.html docs.html img ../../app/public/.
   cd src/app && npm run build
-  cp src/app/app/server-lib/wasm/wasm_app_bg.wasm src/app/build/server/assets/.
 
 build-docker:
   #!/usr/bin/env bash
@@ -128,11 +127,13 @@ test-app *cmd: prep-frontend prep-test-app
   just cargo build -p pdx-tools-api
   cat src/app/migrations/*.sql | just test-environment exec -u postgres --no-TTY db psql
   mkdir -p src/app/build/client
+  (cd src/app && npm run build:test)
 
   export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
-  cd src/app && npx --yes concurrently@latest --kill-others --success command-1 --passthrough-arguments \
+  cd src/app && npx --yes concurrently@latest --kill-others --success command-2 --passthrough-arguments \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api" \
-    "npm test -- run {@}" -- "$@"
+    "npx wrangler dev --env test --port 3000" \
+    "sleep 2 && npm test -- run {@}" -- "$@"
 
 prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "-d")
   #!/usr/bin/env bash

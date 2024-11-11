@@ -22,7 +22,7 @@ export function withCore<
           msg: err.message,
         };
 
-        if (err.name === ValidationError.name) {
+        if (err instanceof ValidationError) {
           throw json(obj, { status: 400 });
         } else if (err instanceof AuthorizationError) {
           throw json(obj, { status: 403 });

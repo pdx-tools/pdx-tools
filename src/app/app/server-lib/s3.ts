@@ -9,31 +9,47 @@ export type S3Key = unknown & {
   readonly [tag]: S3Key;
 };
 
-export const pdxS3 = ({ context }: { context: AppLoadContext }) => {
+type S3Connection = {
+  accessKey: string;
+  secretKey: string;
+  region: string;
+  bucket: string;
+  endpoint: string;
+};
+
+export const pdxCloudflareS3 = ({ context }: { context: AppLoadContext }) => ({
+  accessKey: context.cloudflare.env.S3_ACCESS_KEY,
+  secretKey: context.cloudflare.env.S3_SECRET_KEY,
+  region: context.cloudflare.env.S3_REGION,
+  bucket: context.cloudflare.env.S3_BUCKET,
+  endpoint: context.cloudflare.env.S3_ENDPOINT,
+});
+
+export const pdxS3 = ({
+  accessKey,
+  secretKey,
+  region,
+  bucket,
+  endpoint,
+}: S3Connection) => {
   const s3client = new AwsClient({
-    accessKeyId: context.cloudflare.env.S3_ACCESS_KEY,
-    secretAccessKey: context.cloudflare.env.S3_SECRET_KEY,
-    region: context.cloudflare.env.S3_REGION,
+    accessKeyId: accessKey,
+    secretAccessKey: secretKey,
+    region,
   });
 
   const defaultHeaders = {
     service: "s3",
-    region: context.cloudflare.env.S3_REGION,
+    region,
   };
 
   const s3Fetch = (...args: Parameters<(typeof s3client)["fetch"]>) => {
     return args[0] instanceof Request
       ? s3client.fetch(...args)
-      : s3client.fetch(
-          new URL(
-            args[0].toString(),
-            context.cloudflare.env.S3_ENDPOINT,
-          ).toString(),
-          {
-            ...args[1],
-            aws: { ...defaultHeaders, ...args[1]?.aws },
-          },
-        );
+      : s3client.fetch(new URL(args[0].toString(), endpoint).toString(), {
+          ...args[1],
+          aws: { ...defaultHeaders, ...args[1]?.aws },
+        });
   };
 
   const s3FetchOk = async (...args: Parameters<(typeof s3client)["fetch"]>) => {
@@ -46,7 +62,6 @@ export const pdxS3 = ({ context }: { context: AppLoadContext }) => {
     return res;
   };
 
-  const bucket = context.cloudflare.env.S3_BUCKET;
   const s3Keys = {
     save: (saveId: string) => `${bucket}/${saveId}` as unknown as S3Key,
     preview: (saveId: string) =>
@@ -59,10 +74,7 @@ export const pdxS3 = ({ context }: { context: AppLoadContext }) => {
     fetch: s3Fetch,
     fetchOk: s3FetchOk,
     presigned: async (saveId: string) => {
-      const url = new URL(
-        `${bucket}/${saveId}`,
-        context.cloudflare.env.S3_ENDPOINT,
-      );
+      const url = new URL(`${bucket}/${saveId}`, endpoint);
       url.searchParams.set("X-Amz-Expires", "3600");
       const req = await s3client.sign(url.toString(), {
         aws: { ...defaultHeaders, signQuery: true },

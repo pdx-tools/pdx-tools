@@ -6,7 +6,7 @@ import { withCore } from "@/server-lib/middleware";
 import { json, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { sql } from "drizzle-orm";
 
-export const loader = withCore(
+export const action = withCore(
   withDb(async ({ request, context }: LoaderFunctionArgs, { db }) => {
     await getAdmin({ request, context });
 

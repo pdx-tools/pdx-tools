@@ -13,7 +13,7 @@ import {
   uploadMetadata,
 } from "@/server-lib/models";
 import { pdxOg } from "@/server-lib/og";
-import { pdxS3 } from "@/server-lib/s3";
+import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
 import { ActionFunctionArgs, json } from "@remix-run/cloudflare";
 
 async function fileUploadData(req: Request) {
@@ -57,14 +57,16 @@ export const action = withCore(
     const session = await getAuth({ request, context });
     const { bytes, metadata } = await fileUploadData(request);
     const saveId = genId(12);
-    const s3 = pdxS3({ context });
+    const s3 = pdxS3(pdxCloudflareS3({ context }));
 
     // Optimistically start upload to s3, the longest stage
     const uploadTask = s3.uploadFileToS3(bytes, saveId, metadata.uploadType);
 
     try {
       const { data: out, elapsedMs } = await timeit(() =>
-        pdxFns({ context }).parseSave(bytes),
+        pdxFns({
+          endpoint: context.cloudflare.env.PARSE_API_ENDPOINT,
+        }).parseSave(bytes),
       );
       log.info({
         key: saveId,

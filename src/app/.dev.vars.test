@@ -1,6 +1,6 @@
 SESSION_SECRET="fdviwdAbBi2DWRh0fN4sBGEdVngfRhRj"
-PUPPETEER_URL=http://localhost:3010
-PUPPETEER_TOKEN=trustmeiknowwhatiamdoing
+PUPPETEER_URL=
+PUPPETEER_TOKEN=
 S3_BUCKET=savefiles
 S3_REGION=nyc
 S3_ACCESS_KEY=miniominio

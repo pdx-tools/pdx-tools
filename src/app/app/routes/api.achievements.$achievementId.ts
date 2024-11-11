@@ -17,7 +17,7 @@ async function getAchievement(
 
 const paramsSchema = z.object({ achievementId: z.string() });
 export const loader = withCore(
-  withDb(async ({ params, context }: LoaderFunctionArgs, { db }) => {
+  withDb(async ({ params }: LoaderFunctionArgs, { db }) => {
     return json(await getAchievement(db, paramsSchema.parse(params)));
   }),
 );

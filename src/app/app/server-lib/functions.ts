@@ -1,10 +1,8 @@
 import { fetchOk, fetchOkJson } from "@/lib/fetch";
 import { ParseResult } from "./save-parsing-types";
-import { AppLoadContext } from "@remix-run/cloudflare";
 export type * from "./save-parsing-types";
 
-export const pdxFns = ({ context }: { context: AppLoadContext }) => {
-  const endpoint = context.cloudflare.env.PARSE_API_ENDPOINT;
+export const pdxFns = ({ endpoint }: { endpoint: string }) => {
   return {
     parseSave: (data: BodyInit) =>
       fetchOkJson<ParseResult>(endpoint, {

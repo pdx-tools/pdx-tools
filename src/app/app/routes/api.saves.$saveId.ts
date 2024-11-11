@@ -9,7 +9,7 @@ import {
 } from "@/server-lib/errors";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
-import { pdxS3 } from "@/server-lib/s3";
+import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
 import {
   ActionFunctionArgs,
   json,
@@ -106,7 +106,7 @@ export const action = withCore(
           return new Response(null, { status: 204 });
         }
         case "DELETE": {
-          const s3 = pdxS3({ context });
+          const s3 = pdxS3(pdxCloudflareS3({ context }));
           await db.transaction(async (tx) => {
             const saves = await tx
               .delete(table.saves)
