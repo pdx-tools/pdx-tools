@@ -62,6 +62,3 @@ jobs:
           just test && \
           just build-app
 
-    - name: Push to container registry
-      if: github.ref == 'refs/heads/master'
-      run: docker push ghcr.io/pdx-tools/pdx-tools:nightly
