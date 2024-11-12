@@ -1,42 +1,49 @@
-import { promises } from "fs";
-import { BUCKET, s3Fetch, s3FetchOk } from "@/server-lib/s3";
-import { NewKeyResponse, ProfileResponse } from "@/services/appApi";
-import { dbDisconnect, table, useDb } from "@/server-lib/db";
-import { parseSave } from "@/server-lib/save-parser";
-import { SavePostResponse } from "@/server-lib/models";
+import fs from "node:fs/promises";
 import { fetchOk, fetchOkJson, sendJsonAs } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
-import type { AchievementResponse } from "app/api/achievements/[achievementId]/route";
-import { UserResponse } from "app/api/users/[userId]/route";
-import { NewestSaveResponse } from "app/api/new/route";
-import { SaveResponse } from "app/api/saves/[saveId]/route";
-globalThis.crypto = require("node:crypto").webcrypto;
+import { table, UserSaves } from "@/server-lib/db";
+import { useDb } from "@/server-lib/db/connection";
+import { beforeEach, expect, test } from "vitest";
+import { SavePostResponse } from "@/server-lib/models";
+import { pdxFns } from "@/server-lib/functions";
+import { pdxS3 } from "@/server-lib/s3";
+import { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
+import { NewestSaveResponse } from "@/routes/api.new";
+import { PdxSession } from "@/server-lib/auth/session";
+import { SaveResponse } from "@/routes/api.saves.$saveId";
+import { NewKeyResponse } from "@/services/appApi";
 
-jest.setTimeout(60000);
+const dbConnection = check(
+  process.env["WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB"],
+);
 
 beforeEach(async () => {
-  await useDb(async (db) => {
+  await useDb(dbConnection, async (db) => {
     await db.delete(table.saves);
     await db.delete(table.users);
   });
 });
 
 beforeEach(async () => {
-  const headBucket = await s3Fetch(BUCKET, { method: "HEAD" });
+  const s3 = pdxS3({
+    accessKey: "miniominio",
+    secretKey: "minio12minio",
+    bucket: "savefiles",
+    endpoint: "http://localhost:9001",
+    region: "nyc",
+  });
+
+  const headBucket = await s3.fetch(s3.bucket, { method: "HEAD" });
   if (!headBucket.ok) {
-    await s3FetchOk(BUCKET, { method: "PUT" });
+    await s3.fetchOk(s3.bucket, { method: "PUT" });
   }
 
-  const objsData = await s3FetchOk(`${BUCKET}?list-type=2`);
+  const objsData = await s3.fetchOk(`${s3.bucket}?list-type=2`);
   const objText = await objsData.text();
   const keys = [...objText.matchAll(/<Key>(.*?)<\/Key>/g)].map(([_, key]) =>
-    s3FetchOk(`${BUCKET}/${key}`, { method: "DELETE" }),
+    s3.fetchOk(`${s3.bucket}/${key}`, { method: "DELETE" }),
   );
   await Promise.all(keys);
-});
-
-afterAll(async () => {
-  await dbDisconnect();
 });
 
 const pdxUrl = (path: string) => `http://localhost:3000${path}`;
@@ -67,7 +74,7 @@ class HttpClient {
 
   async uploadSaveCore(filepath: string, metadata?: any) {
     await fetchEu4Save(filepath);
-    const data = await promises.readFile(eu4SaveLocation(filepath));
+    const data = await fs.readFile(eu4SaveLocation(filepath));
     const file = new Blob([data], { type: "application/octet-stream" });
 
     const meta = JSON.stringify({
@@ -152,9 +159,11 @@ class HttpClient {
   }
 }
 
+const fns = pdxFns({ endpoint: `http://localhost:8081` });
+
 async function parseFile(path: string) {
   const fileData = await fetchEu4Save(path);
-  const data = await parseSave(fileData);
+  const data = await fns.parseSave(fileData);
 
   if (data.kind !== "Parsed") {
     throw new Error("unable to parse");
@@ -171,7 +180,7 @@ async function fetchEu4Save(save: string) {
   const fp = eu4SaveLocation(save);
 
   try {
-    return await promises.readFile(fp);
+    return await fs.readFile(fp);
   } catch {
     const resp = await fetch(
       `https://eu4saves-test-cases.s3.us-west-002.backblazeb2.com/${save}`,
@@ -180,7 +189,7 @@ async function fetchEu4Save(save: string) {
       throw new Error(`unable to retrieve: ${save}`);
     }
     const buf = Buffer.from(await resp.arrayBuffer());
-    await promises.writeFile(fp, buf);
+    await fs.writeFile(fp, buf);
     return buf;
   }
 }
@@ -216,14 +225,14 @@ test("same campaign", async () => {
   expect(startUpload.save_id).toBeDefined();
 
   // When retrieving the achievements, we should only see the save with the earliest date
-  let achievementLeaderboard = await client.get<AchievementResponse>(
+  let achievementLeaderboard = await client.get<AchievementApiResponse>(
     "/api/achievements/18",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(startUpload.save_id);
 
   // But all saves will be exposed when viewing user saves
-  let userProfile = await client.get<UserResponse>("/api/users/100");
+  let userProfile = await client.get<UserSaves>("/api/users/100");
   expect(userProfile.saves).toHaveLength(3);
   expect(userProfile.saves[0].id).toEqual(startUpload.save_id);
   expect(userProfile.saves[1].id).toEqual(endUpload.save_id);
@@ -262,7 +271,7 @@ test("same playthrough id", async () => {
   expect(persia.save_id).toBeDefined();
 
   // When retrieving the shahanshah achievement we should only see the start data
-  let achievementLeaderboard = await client.get<AchievementResponse>(
+  let achievementLeaderboard = await client.get<AchievementApiResponse>(
     "/api/achievements/89",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);
@@ -319,15 +328,15 @@ test("delete save", async () => {
 
   await client.delete(`/api/saves/${ita1.save_id}`);
 
-  let userProfile = await client.get<UserResponse>("/api/users/100");
+  let userProfile = await client.get<UserSaves>("/api/users/100");
   expect(userProfile.saves).toHaveLength(1);
 
   await client.delete(`/api/saves/${kandy.save_id}`);
 
-  userProfile = await client.get<UserResponse>("/api/users/100");
+  userProfile = await client.get<UserSaves>("/api/users/100");
   expect(userProfile.saves).toHaveLength(0);
 
-  const achievement = await client.get<AchievementResponse>(
+  const achievement = await client.get<AchievementApiResponse>(
     "/api/achievements/18",
   );
   expect(achievement.saves).toHaveLength(0);
@@ -373,7 +382,7 @@ test("plain saves", async () => {
     content_type: "application/zstd",
   });
   const fileReq = await client.getReq(`/api/saves/${upload.save_id}/file`);
-  const save = await parseSave(await fileReq.arrayBuffer());
+  const save = await fns.parseSave(await fileReq.arrayBuffer());
   expect(save.kind).toBe("Parsed");
   if (save.kind == "Parsed") {
     expect(save.encoding).toBe("text");
@@ -382,8 +391,8 @@ test("plain saves", async () => {
 
 test("get profile", async () => {
   const client = await HttpClient.create();
-  const profile = await client.get<ProfileResponse>("/api/profile");
-  expect(profile).toHaveProperty("user.user_id", "100");
+  const profile = await client.get<PdxSession>("/api/profile");
+  expect(profile).toHaveProperty("userId", "100");
 });
 
 test("get profile with api key", async () => {
@@ -421,7 +430,7 @@ test("admin rebalance", async () => {
   // test with empty database
   await client.post("/api/admin/rebalance?__patch_override_for_testing=243");
 
-  let achievementLeaderboard = await client.get<AchievementResponse>(
+  let achievementLeaderboard = await client.get<AchievementApiResponse>(
     "/api/achievements/18",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);

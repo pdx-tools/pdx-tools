@@ -1,0 +1,24 @@
+# A traefik proxy for steamcommunity requests (ie: login) blocked on cloudflare.
+http:
+  routers:
+    steamcommunity:
+      rule: "Host(`your.domain`) && Path(`/openid/login`) && Method(`POST`)"
+      entryPoints: ["websecure"]
+      service: "steamcommunity"
+      middlewares: 
+        - "steam-header"
+      tls:
+        certResolver: "myresolver"
+
+  middlewares:
+    steam-header:
+      headers:
+        customRequestHeaders:
+          Host: "https://steamcommunity.com"
+          Cf-Worker: ""
+
+  services:
+    steamcommunity:
+      loadBalancer:
+        servers:
+          - url: "https://steamcommunity.com"

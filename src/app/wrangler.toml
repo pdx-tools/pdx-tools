@@ -1,0 +1,20 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "pdx-tools-workers"
+compatibility_date = "2024-09-26"
+compatibility_flags = ["nodejs_compat"]
+main = "./server.ts"
+
+[assets]
+directory = "./build/client"
+
+[[hyperdrive]]
+binding = "PDX_DB"
+id = "52bcc7b655d44776a6e42672fd11b388"
+localConnectionString = "postgres://user:password@localhost:5432/databasename"
+
+[env.test]
+
+[[env.test.hyperdrive]]
+binding = "PDX_DB"
+id = "52bcc7b655d44776a6e42672fd11b388"
+localConnectionString = "postgres://user:password@localhost:5432/databasename"

@@ -1,14 +1,21 @@
 import { difficultyNum, difficultyText } from "@/lib/difficulty";
+import { describe, expect, test } from "vitest";
 
-test("difficulty text", () => {
-  expect(difficultyText("VeryEasy")).toBe("Very Easy");
-  expect(difficultyText("VeryHard")).toBe("Very Hard");
-  expect(difficultyText("Easy")).toBe("Easy");
-});
+describe("difficulty", () => {
+  test.for([
+    ["VeryEasy", "Very Easy"],
+    ["VeryHard", "Very Hard"],
+    ["Easy", "Easy"],
+  ] as const)("difficultyText(%s) -> %s", ([input, expected]) => {
+    expect(difficultyText(input)).toBe(expected);
+  });
 
-test("difficulty number", () => {
-  expect(difficultyNum("VeryEasy")).toBeLessThan(difficultyNum("Easy"));
-  expect(difficultyNum("Easy")).toBeLessThan(difficultyNum("Medium"));
-  expect(difficultyNum("Hard")).toBeLessThan(difficultyNum("VeryHard"));
-  expect(difficultyNum("VeryHard")).toBeLessThan(difficultyNum("Insane"));
+  test.for([
+    ["VeryEasy", "Easy"],
+    ["Easy", "Medium"],
+    ["Hard", "VeryHard"],
+    ["VeryHard", "Insane"],
+  ] as const)("difficultyNum(%s) < %s", ([a1, a2]) => {
+    expect(difficultyNum(a1)).toBeLessThan(difficultyNum(a2));
+  });
 });

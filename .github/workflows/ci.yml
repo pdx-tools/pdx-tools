@@ -43,15 +43,6 @@ jobs:
           src/vic3save/assets
         key: asset-cache
 
-    # https://nextjs.org/docs/messages/no-cache#github-actions
-    - name: Cache Next.js build
-      uses: actions/cache@v4
-      with:
-        path: src/app/.next/cache
-        key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
-        restore-keys: |
-          ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
-
     - name: Build and run Dev Container task
       uses: devcontainers/ci@v0.3
       env:
@@ -69,8 +60,7 @@ jobs:
           just package-all && \
           just build-wasm-dev && \
           just test && \
-          cargo clean && \
-          NEXT_OUTPUT=standalone just build
+          just build-app
 
     - name: Push to container registry
       if: github.ref == 'refs/heads/master'
