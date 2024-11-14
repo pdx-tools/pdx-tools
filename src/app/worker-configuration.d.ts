@@ -12,7 +12,6 @@ interface Env {
 	SENTRY_HOST: string;
 	SENTRY_PROJECT_ID: string;
 	PARSE_API_ENDPOINT: string;
-	EXTERNAL_ADDRESS: string;
 	STEAM_API_KEY: string;
 	STEAM_LOGIN_ADDRESS: string;
 	SKAN_API_KEY: string;

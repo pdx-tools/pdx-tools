@@ -41,9 +41,7 @@ export const loader = withCore(
       event: user.inserted ? "User created" : "User updated",
     });
 
-    const prodDest =
-      context.cloudflare.env.EXTERNAL_ADDRESS || "https://pdx.tools";
-    const dest = import.meta.env.PROD ? prodDest : new URL("/", request.url);
+    const dest = new URL("/", request.url);
 
     const sessionStorage = pdxSession({ context, request });
     const session = await sessionStorage.new();

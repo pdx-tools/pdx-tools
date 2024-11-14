@@ -4,10 +4,6 @@ set positional-arguments
 release:
   #!/usr/bin/env bash
   set -euxo pipefail
-  export PDX_RELEASE=1
-  export NEXT_PUBLIC_EXTERNAL_ADDRESS=https://pdx.tools
-  export NEXT_PUBLIC_POSTHOG_KEY=$POSTHOG_KEY
-
   if [[ "$(gcloud config get-value account 2>&1)" = "(unset)" ]]; then
     gcloud auth login
   fi
@@ -22,22 +18,18 @@ release:
   just publish-app
   just publish-api
 
-  if [[ $(grep -c pdx-tools-prod ~/.ssh/config || echo "0") -gt 0 ]]; then
-    just publish-backend
-  else
-    echo "pdx-tools-prod not found in ssh config, please add it and then run just publish-backend"
-  fi
-
-build: build-wasm build-app (cross "--package" "pdx-tools-api" "--release") build-docker
+build: build-wasm (cross "--package" "pdx-tools-api" "--release") build-docker
 
 dev: build-wasm-dev dev-app
 
 staging: build-app prep-dev-app
   #!/usr/bin/env bash
   set -euxo pipefail
+  . src/app/.env.development
+  . dev/.env.dev
   cd src/app
-  . .env.production
-  PORT=3001 node_modules/.bin/next start
+  export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
+  npx wrangler dev --port 3001
 
 test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-*") test-wasm (cargo "test" "-p" "pdx" "--all-features") test-app
 
@@ -71,6 +63,7 @@ publish-app:
   export PDX_RELEASE=1
   export VITE_EXTERNAL_ADDRESS=$EXTERNAL_ADDRESS
   export VITE_SENTRY_DSN=$SENTRY_DSN
+  export VITE_POSTHOG_KEY=$POSTHOG_KEY
   just build-app
   cd src/app
   find build/ -iname "*.map" -delete
@@ -243,9 +236,6 @@ backup-saves ENVIRONMENT:
   export RCLONE_CONFIG_PDX_ENDPOINT="${S3_ENDPOINT/https:\/\//}"
 
   rclone sync --no-gzip-encoding --backup-dir ./saves-archive "pdx:/$S3_BUCKET" ./saves
-
-backup-config ENVIRONMENT:
-  ssh pdx-tools-{{ENVIRONMENT}} 'tar -c -C /opt/pdx-tools .' > config-{{ENVIRONMENT}}.tar
 
 admin-sync-tokens:
   #!/usr/bin/env bash
