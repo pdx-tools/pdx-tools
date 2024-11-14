@@ -71,7 +71,7 @@ publish-app:
 
 build-app: prep-frontend
   cd src/docs && npm run build
-  cd src/docs/build && cp -r assets blog.html changelog.html docs.html img ../../app/public/.
+  cd src/docs/build && cp -r assets blog docs blog.html changelog.html docs.html img ../../app/public/.
   cd src/app && npm run build
 
 build-docker:

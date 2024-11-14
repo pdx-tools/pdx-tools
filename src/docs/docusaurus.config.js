@@ -21,12 +21,12 @@ const config = {
     locales: ["en"],
   },
 
-  plugins: process.env.NEXT_PUBLIC_POSTHOG_KEY
+  plugins: process.env.POSTHOG_KEY
     ? [
         [
           "posthog-docusaurus",
           {
-            apiKey: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+            apiKey: process.env.POSTHOG_KEY,
             appUrl: "/ingest",
             enableInDevelopment: false,
             ui_host: "https://eu.posthog.com",
