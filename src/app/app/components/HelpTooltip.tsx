@@ -1,4 +1,3 @@
-import React from "react";
 import { IconButton } from "./IconButton";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 

@@ -133,20 +133,17 @@ export const action = withCore(
       return json(response);
     } catch (ex) {
       // If anything goes awry, delete the s3 file if it was uploaded
-      const deleteFileFromS3 = uploadTask.then(() => s3.deleteFile(s3.keys.save(saveId))).catch((err) => {
-        log.exception(err, { msg: "unable to delete file from s3", saveId})
-      });
+      const deleteFileFromS3 = uploadTask
+        .then(() => s3.deleteFile(s3.keys.save(saveId)))
+        .catch((err) => {
+          log.exception(err, { msg: "unable to delete file from s3", saveId });
+        });
       context.cloudflare.ctx.waitUntil(deleteFileFromS3);
 
       // If we have a unique constraint violation, let's assume it is the
       // idx_save_hash and throw a validation error.
       // https://www.postgresql.org/docs/current/errcodes-appendix.html
-      if (
-        ex &&
-        typeof ex === "object" &&
-        "code" in ex &&
-        ex.code === "23505"
-      ) {
+      if (ex && typeof ex === "object" && "code" in ex && ex.code === "23505") {
         throw new ValidationError("save already exists");
       }
 

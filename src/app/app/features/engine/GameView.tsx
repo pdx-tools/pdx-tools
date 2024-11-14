@@ -107,9 +107,7 @@ const gameRenderer = (savegame: SaveGameInput | null) => {
   }
 };
 
-const FullscreenPage = ({
-  children,
-}: React.PropsWithChildren) => {
+const FullscreenPage = ({ children }: React.PropsWithChildren) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -149,9 +147,7 @@ export const GameView = ({ children }: GameViewProps) => {
         </WebPage>
       ) : null}
       {game?.kind === "full-screen" ? (
-        <FullscreenPage>
-          {game.component()}
-        </FullscreenPage>
+        <FullscreenPage>{game.component()}</FullscreenPage>
       ) : null}
       <PageDropOverlay />
     </>

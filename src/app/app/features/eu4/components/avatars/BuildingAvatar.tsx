@@ -1,4 +1,3 @@
-import React from "react";
 import { GfxObj } from "@/features/eu4/types/models";
 import { Tooltip } from "@/components/Tooltip";
 import { Sprite, SpriteDimension, spriteDimension } from "../Sprite";

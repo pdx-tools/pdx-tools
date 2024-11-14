@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { BattleView } from "./BattleView";
 import { formatInt } from "@/lib/format";
 import { Flag } from "@/features/eu4/components/avatars";

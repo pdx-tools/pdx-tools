@@ -1,7 +1,6 @@
-// @ts-check
-
 import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
+import reactPlugin from "eslint-plugin-react";
 
 export default tseslint.config(
   eslint.configs.recommended,
@@ -23,6 +22,23 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ["**/*.{js,mjs,cjs,jsx,mjsx,ts,tsx,mtsx}"],
+    ...reactPlugin.configs.flat.recommended,
+    languageOptions: {
+      ...reactPlugin.configs.flat.recommended.languageOptions,
+    },
+    settings: {
+        react: {
+            version: "detect",
+          },
+    },
+    rules: {
+        // https://github.com/yannickcr/eslint-plugin-react/issues/894#issuecomment-613789396
+        "react/no-unescaped-entities": ["error", { forbid: [">", "}"] }],
+      },
+  },
+  reactPlugin.configs.flat["jsx-runtime"],
   {
     ignores: [
       "**/public/assets/**",

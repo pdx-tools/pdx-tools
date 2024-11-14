@@ -1,4 +1,3 @@
-import React from "react";
 import { AchievementsTable } from "@/features/eu4/components/AchievementsTable";
 import { Achievement } from "@/services/appApi";
 

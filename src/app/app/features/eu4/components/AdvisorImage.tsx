@@ -1,4 +1,3 @@
-import React from "react";
 import { Sprite, SpriteDimension, spriteDimension } from "./Sprite";
 import spriteData from "@/images/eu4/advisors/advisors.json";
 import advisor48 from "@/images/eu4/advisors/advisors_x48.webp";

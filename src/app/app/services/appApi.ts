@@ -158,7 +158,8 @@ export const pdxApi = {
     useReprocess: () => {
       const queryClient = useQueryClient();
       return useMutation({
-        mutationFn: (body: unknown) => sendJson("/api/admin/reprocess", { body }),
+        mutationFn: (body: unknown) =>
+          sendJson("/api/admin/reprocess", { body }),
         onSuccess: invalidateSaves(queryClient),
       });
     },

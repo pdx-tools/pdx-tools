@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useAnalysisWorker, Eu4Worker } from "@/features/eu4/worker";
 import { Bar, BarConfig, useVisualizationDispatch } from "@/components/viz";
 import { createCsv } from "@/lib/csv";

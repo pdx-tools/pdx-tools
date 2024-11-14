@@ -1,4 +1,3 @@
-import React from "react";
 import { AnnualLedger } from "./AnnualLedger";
 import { LedgerSelection, useLedgerData } from "./hooks";
 

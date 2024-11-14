@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { TableLosses } from "./hooks";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { formatFloat, formatInt } from "@/lib/format";

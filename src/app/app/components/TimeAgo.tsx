@@ -1,4 +1,3 @@
-import React from "react";
 import { display, timeAgo } from "@/lib/dates";
 import { Tooltip } from "./Tooltip";
 

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { TableLosses, useCountryCasualtyData } from "./hooks";
 import { CountriesNavyCasualtiesWarTable } from "./CountriesNavyCasualtiesWarTable";
 import { Flag } from "@/features/eu4/components/avatars";

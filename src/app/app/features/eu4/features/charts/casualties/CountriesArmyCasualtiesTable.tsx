@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { TableLosses, useCountryCasualtyData } from "./hooks";
 import { useVisualizationDispatch } from "@/components/viz/visualization-context";
 import { formatInt } from "@/lib/format";

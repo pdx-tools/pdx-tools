@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { downloadData } from "@/lib/downloadData";
 import { useIsDeveloper } from "@/features/account";
 import { getEu4Worker } from "../../worker";

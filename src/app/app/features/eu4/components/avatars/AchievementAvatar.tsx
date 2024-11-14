@@ -1,4 +1,3 @@
-import React from "react";
 import { Sprite, SpriteDimension, spriteDimension } from "../Sprite";
 import data from "@/images/eu4/achievements/achievements.json";
 import achievementImage from "@/images/eu4/achievements/achievements.webp";

@@ -1,4 +1,3 @@
-import React from "react";
 import { IdeaGroupsChart } from "./IdeaGroupsChart";
 import { VizModules } from "../../types/visualizations";
 import {

@@ -71,13 +71,13 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
 
   let budget: Budget;
   if (budgetInterval === "last-month") {
-    budget = lastMonthBudget
+    budget = lastMonthBudget;
   } else if (budgetInterval === "ytd") {
     budget = ytdDateBudget;
   } else if (budgetInterval === "last-year") {
     budget = lastYearBudget;
   } else {
-    throw new Error(`unrecognized budget interval: ${budgetInterval}`)
+    throw new Error(`unrecognized budget interval: ${budgetInterval}`);
   }
 
   const recurringRevenue = budgetSelect.recurringRevenue(budget);

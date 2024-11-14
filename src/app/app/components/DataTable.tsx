@@ -19,7 +19,8 @@ import { cx } from "class-variance-authority";
 import { Input } from "./Input";
 
 type DataTableProps<TData> = {
-  columns: ColumnDef<TData, unknown>[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  columns: ColumnDef<TData, any>[];
   data: TData[];
   pagination?: boolean;
   summary?: React.ReactNode;

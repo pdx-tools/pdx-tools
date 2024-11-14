@@ -1,4 +1,3 @@
-import React from "react";
 import { AccountContent } from "./AccountContent";
 import { useLoggedIn } from "@/components/LoggedIn";
 

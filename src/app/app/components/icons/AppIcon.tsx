@@ -1,4 +1,3 @@
-import React from "react";
 import app from "./app.svg";
 
 type AppSvgProps = {

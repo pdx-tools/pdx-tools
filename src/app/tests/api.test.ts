@@ -245,7 +245,7 @@ test("invalid ironman", async () => {
   const newSave = await client.uploadSaveReq("Ruskies.eu4");
 
   expect(newSave.status).toEqual(400);
-  const data = (await newSave.json());
+  const data = await newSave.json();
   expect(data).toHaveProperty("name", "ValidationError");
   expect(data).toHaveProperty("msg", "unsupported patch: 1.28");
 });

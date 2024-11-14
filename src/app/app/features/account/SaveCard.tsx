@@ -1,4 +1,3 @@
-import React from "react";
 import { TimeAgo } from "@/components/TimeAgo";
 import { DeleteSave } from "../eu4/components/DeleteSave";
 import { AchievementAvatar, Flag } from "@/features/eu4/components/avatars";

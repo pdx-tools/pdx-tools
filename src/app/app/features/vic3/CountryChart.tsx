@@ -12,11 +12,15 @@ export interface CountryChartProps {
 const LazyDualAxes = lazy(() =>
   import("@ant-design/plots").then((mod) => ({ default: mod.DualAxes })),
 );
-const DualAxes: ComponentType<DualAxesConfig> = React.memo((props) => (
-  <Suspense fallback={null}>
-    <LazyDualAxes {...props} />
-  </Suspense>
-));
+const DualAxes: ComponentType<DualAxesConfig> = React.memo(
+  function DualAxes(props) {
+    return (
+      <Suspense fallback={null}>
+        <LazyDualAxes {...props} />
+      </Suspense>
+    );
+  },
+);
 
 const typeMap = {
   gdp: "GDP (M)",

@@ -1,7 +1,6 @@
 import { Tooltip } from "@/components/Tooltip";
 import data from "./icons.json";
 import imageUrl from "./icons.webp";
-import React from "react";
 import { Sprite, spriteDimension } from "../Sprite";
 
 const dimensions = spriteDimension({

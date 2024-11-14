@@ -1,4 +1,3 @@
-import React from "react";
 import { useEu4Meta } from "../store";
 import { Alert } from "@/components/Alert";
 

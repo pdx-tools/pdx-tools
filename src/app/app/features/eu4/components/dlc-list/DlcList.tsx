@@ -1,4 +1,3 @@
-import React from "react";
 import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import imageUrl from "./dlc-sprites.webp";

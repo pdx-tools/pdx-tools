@@ -1,4 +1,3 @@
-import React from "react";
 import { Button } from "@/components/Button";
 import { SteamButton } from "./SteamButton";
 import { Sheet } from "@/components/Sheet";

@@ -1,4 +1,3 @@
-import React from "react";
 import { InfoDrawer } from "./InfoDrawer";
 import { SaveMode } from "../../components/save-mode";
 import {

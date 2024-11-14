@@ -1,4 +1,3 @@
-import React from "react";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryDetails } from "@/features/eu4/types/models";
 import { InheritanceValueBreakdown } from "./InheritanceValueBreakdown";

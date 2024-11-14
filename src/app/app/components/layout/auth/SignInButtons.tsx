@@ -1,4 +1,3 @@
-import React from "react";
 import { SteamLogin } from "./SteamLogin";
 import { SteamRegister } from "./SteamRegister";
 

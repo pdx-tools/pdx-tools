@@ -1,4 +1,3 @@
-import React from "react";
 import { SaveMode as Mode } from "../../types/models";
 import ironmanNo from "./ironman-no.png";
 import ironmanOk from "./ironman-ok.png";

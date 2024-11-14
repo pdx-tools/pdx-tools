@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { incomeLedgerAliases } from "../country-details/data";
 import { CountryIncome } from "../../types/models";
 import { useVisualizationDispatch } from "../../../../components/viz/visualization-context";

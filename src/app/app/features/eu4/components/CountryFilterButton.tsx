@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { Select } from "@/components/Select";
 import { useEu4Actions, useTagFilter } from "../store";
 import { Button } from "@/components/Button";

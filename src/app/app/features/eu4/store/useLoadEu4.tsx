@@ -358,7 +358,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
         // screenshot to be generated. Download the screenshot as puppeteer
         // doesn't support transferring blobs:
         // https://github.com/puppeteer/puppeteer/issues/3722
-        Object.defineProperty(window, 'pdxScreenshot', {
+        Object.defineProperty(window, "pdxScreenshot", {
           value: async () => {
             const fontFamily = getComputedStyle(document.body).fontFamily;
             const date = storeRef.current?.getState().selectedDate.text;
@@ -368,7 +368,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
               fontFamily,
             });
             downloadData(result, "image.png");
-          }
+          },
         });
 
         const store = await createEu4Store({

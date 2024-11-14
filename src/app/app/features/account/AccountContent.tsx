@@ -1,7 +1,7 @@
 import { Alert } from "@/components/Alert";
 import { pdxApi, sessionSelect } from "@/services/appApi";
 import { Button } from "@/components/Button";
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { Input } from "@/components/Input";

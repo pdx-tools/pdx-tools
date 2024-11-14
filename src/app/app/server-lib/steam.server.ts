@@ -3,6 +3,19 @@ import { ValidationError } from "./errors";
 import { fetchOk, fetchOkJson } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import { log } from "./logging";
+import { z } from "zod";
+
+const SteamSchema = z.object({
+  response: z.object({
+    players: z
+      .array(
+        z.object({
+          personaname: z.string(),
+        }),
+      )
+      .nonempty(),
+  }),
+});
 
 export const pdxSteam = ({ context }: { context: AppLoadContext }) => {
   const apiKey = context.cloudflare.env.STEAM_API_KEY;
@@ -41,12 +54,12 @@ export const pdxSteam = ({ context }: { context: AppLoadContext }) => {
       const body = await fetchOkJson(
         `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002?${params}`,
       );
-      const name = body?.response?.players?.[0]?.personaname;
-      if (typeof name !== "string") {
+      const resp = SteamSchema.safeParse(body);
+      if (!resp.success) {
         throw new ValidationError("could not retrieve player name from steam");
-      } else {
-        return name;
       }
+
+      return resp.data.response.players[0].personaname;
     },
   };
 };

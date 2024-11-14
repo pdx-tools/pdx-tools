@@ -1,4 +1,3 @@
-import React from "react";
 import { LocalizedObj } from "@/features/eu4/types/models";
 import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";

@@ -626,7 +626,7 @@ function eventToFilter(evt: CountryHistoryEvent) {
         case "Conquistador":
           return "conquistadors";
         default:
-          return "Leader"
+          return "Leader";
       }
     }
     case "monarch": {
@@ -636,7 +636,7 @@ function eventToFilter(evt: CountryHistoryEvent) {
         case "consort":
           return evt.event.type;
         default:
-          return "ruler"
+          return "ruler";
       }
     }
     case "warStart":

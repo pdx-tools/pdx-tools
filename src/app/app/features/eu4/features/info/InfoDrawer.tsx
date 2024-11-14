@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { TimeAgo } from "@/components/TimeAgo";
 import { difficultyText } from "@/lib/difficulty";
 import { DlcList } from "@/features/eu4/components/dlc-list";

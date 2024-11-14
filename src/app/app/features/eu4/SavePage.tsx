@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import Eu4Ui from "./Eu4Ui";
 
 type SaveProps = {

@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { Losses } from "../../types/models";
 import { formatFloat, formatInt } from "@/lib/format";
 import { Flag } from "@/features/eu4/components/avatars";

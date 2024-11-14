@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { CountryDetails } from "../../types/models";
 import { Eu4Worker, useEu4Worker } from "../../worker";
 import { Alert } from "@/components/Alert";
