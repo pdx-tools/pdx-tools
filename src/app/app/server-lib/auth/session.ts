@@ -32,14 +32,11 @@ export const pdxSession = ({
   return {
     new: () => storage.getSession(),
     get: async () => {
-      const session = await storage.getSession(request.headers.get("Cookie"));
-      const parsed = SessionPayloadSchema.safeParse(session.data);
-      if (parsed.success) {
-        return {
-          kind: "user",
-          ...parsed.data,
-        } as const;
-      } else {
+      try {
+        const session = await storage.getSession(request.headers.get("Cookie"));
+        const parsed = SessionPayloadSchema.parse(session.data);
+        return { kind: "user", ...parsed } as const;
+      } catch (_ex) {
         return { kind: "guest" } as const;
       }
     },
