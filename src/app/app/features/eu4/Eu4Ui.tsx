@@ -32,7 +32,14 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
   const { loading, data, error, mapCanvas, mapContainer } = useLoadEu4(save);
 
   const loadingIcon =
-    data === null ? (
+    data === null ? save.kind === "server" ? (
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 blur-md brightness-75 bg-cover" style={{
+          backgroundImage: `url('/eu4/saves/${save.saveId}/og')`
+        }}/>
+        <AppLoading />
+      </div>
+    ) : (
       <div className="absolute inset-0">
         <AppLoading />
       </div>
