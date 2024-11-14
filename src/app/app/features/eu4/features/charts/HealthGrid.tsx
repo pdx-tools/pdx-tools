@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
 import { useVisualizationDispatch } from "@/components/viz";
 import { useAnalysisWorker } from "@/features/eu4/worker";
@@ -6,7 +6,6 @@ import { createCsv } from "@/lib/csv";
 import { useTagFilter } from "../../store";
 import { CountryHealth } from "../../types/models";
 import { Flag } from "../../components/avatars";
-import { Tooltip } from "@/components/Tooltip";
 import { Alert } from "@/components/Alert";
 import { SortingFn, createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
@@ -23,6 +22,7 @@ import { GameIconSprite, iconSpriteTitle } from "../../components/icons";
 import { LandForceStrengthTooltip } from "../../components/LandForceStrengthTooltip";
 import { NavalForceStrengthTooltip } from "../../components/NavalForceStrengthTooltip";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const healthSort: SortingFn<any> = (rowA, rowB, column) =>
   rowA.getValue<HealthDatum>(column).value -
   rowB.getValue<HealthDatum>(column).value;
@@ -440,6 +440,7 @@ export const HealthGrid = () => {
                   <Table.Cell
                     key={cell.id}
                     className={cx(
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       (cell.column.columnDef?.meta as any)?.className,
                       value instanceof Object && "color" in value
                         ? colorToClass(value.color as number)

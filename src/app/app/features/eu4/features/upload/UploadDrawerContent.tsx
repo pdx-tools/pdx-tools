@@ -1,5 +1,4 @@
-import { pdxApi, sessionSelect } from "@/services/appApi";
-import React from "react";
+import { sessionSelect } from "@/services/appApi";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { Alert } from "@/components/Alert";
 import { Button } from "@/components/Button";

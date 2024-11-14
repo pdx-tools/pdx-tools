@@ -59,6 +59,7 @@ const TotalManaBarImpl = ({ adm, dip, mil }: TotalManaBarProps) => {
     yField: "key",
     seriesField: "key",
     xAxis: false,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     color: (data: Record<string, any>) =>
       manaColors.get(data["key"] as string) || "#000",
     legend: {
@@ -69,6 +70,7 @@ const TotalManaBarImpl = ({ adm, dip, mil }: TotalManaBarProps) => {
       },
     },
     label: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       formatter: (_text: any, item: any) => item._origin.value.toFixed(0),
       style: {
         fill: "#fff",
@@ -137,6 +139,7 @@ const ManaCategoryBarsImpl = ({ mana }: { mana: CountryMana }) => {
     seriesField: "type",
     isGroup: true,
     label: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       formatter: (_text: any, item: any) => item._origin.value.toFixed(0),
       style: {
         fill: "#fff",
@@ -150,6 +153,7 @@ const ManaCategoryBarsImpl = ({ mana }: { mana: CountryMana }) => {
       },
     },
     autoFit: true,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     color: (data: Record<string, any>) =>
       manaColors.get(data["type"] as string) || "#000",
     xAxis: false,

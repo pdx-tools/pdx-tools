@@ -109,8 +109,7 @@ const gameRenderer = (savegame: SaveGameInput | null) => {
 
 const FullscreenPage = ({
   children,
-  hasBackdrop,
-}: React.PropsWithChildren<{ hasBackdrop: boolean }>) => {
+}: React.PropsWithChildren) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -150,7 +149,7 @@ export const GameView = ({ children }: GameViewProps) => {
         </WebPage>
       ) : null}
       {game?.kind === "full-screen" ? (
-        <FullscreenPage hasBackdrop={!!children}>
+        <FullscreenPage>
           {game.component()}
         </FullscreenPage>
       ) : null}

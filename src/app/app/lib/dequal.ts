@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // https://github.com/lukeed/dequal/blob/37d4f27de03fa6264e406cd03288cec8255fca4c/src/lite.js
-var has = Object.prototype.hasOwnProperty;
+const has = Object.prototype.hasOwnProperty;
 
 export function dequal(foo: any, bar: any): boolean {
-  var ctor, len;
+  let ctor, len;
   if (foo === bar) return true;
 
   if (foo && bar && (ctor = foo.constructor) === bar.constructor) {

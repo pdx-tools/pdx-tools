@@ -1,7 +1,5 @@
-import React, { useState } from "react";
 import { emitEvent } from "@/lib/events";
 import { downloadData } from "@/lib/downloadData";
-import { useIsMounted } from "@/hooks/useIsMounted";
 import { getEu4Worker } from "../../worker";
 import { useSaveFilename } from "../../store";
 import { useCompression } from "@/features/compress";

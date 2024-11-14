@@ -5,7 +5,7 @@ export type DbRoute = { db: DbConnection };
 export function withDb<
   Args extends { request: Request; context: AppLoadContext },
   R,
-  Ctxt = {},
+  Ctxt = object,
 >(fn: (args: Args, context: DbRoute & Ctxt) => R) {
   return async (args: Args, ctxt?: Ctxt) => {
     const { db, close } = usingDb(args.context);

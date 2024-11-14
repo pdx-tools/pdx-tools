@@ -1,8 +1,7 @@
 import React from "react";
 import { cx } from "class-variance-authority";
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+export type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   function Input({ className, type, ...props }, ref) {

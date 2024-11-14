@@ -8,7 +8,7 @@ interface ErrorCatcherProps {
 }
 
 interface ErrorCatcherState {
-  error: any;
+  error: unknown;
 }
 
 export class ErrorCatcher extends React.Component<
@@ -20,7 +20,7 @@ export class ErrorCatcher extends React.Component<
     this.state = { error: null };
   }
 
-  static getDerivedStateFromError(error: any) {
+  static getDerivedStateFromError(error: unknown) {
     return { error };
   }
 

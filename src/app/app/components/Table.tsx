@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Column, SortDirection } from "@tanstack/react-table";
 import { cx } from "class-variance-authority";
-import { Button, ButtonProps } from "./Button";
+import { Button } from "./Button";
 import {
   ChevronDownIcon,
   ChevronUpDownIcon,

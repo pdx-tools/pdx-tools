@@ -15,7 +15,7 @@ export type Vic3Store = StoreApi<Vic3State>;
 export const Vic3SaveContext = createContext<Vic3Store | null>(null);
 
 export const createVic3Store = async ({ save }: Vic3StateProps) => {
-  return create<Vic3State>()((set, get) => ({
+  return create<Vic3State>()((_set, _get) => ({
     save,
   }));
 };

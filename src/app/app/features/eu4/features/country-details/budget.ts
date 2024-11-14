@@ -13,7 +13,7 @@ function pick<T extends object, K extends keyof T>(
   return result;
 }
 
-function sumValues(...obj: { [key: string]: any }[]): number {
+function sumValues(...obj: { [key: string]: number }[]): number {
   return obj.reduce(
     (acc, x) => acc + Object.values(x).reduce((sum, value) => sum + value, 0),
     0,

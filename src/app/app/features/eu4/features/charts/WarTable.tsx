@@ -13,15 +13,13 @@ import { SheetExpansion } from "../../components/SheetExpansion";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 
-interface WarSideData extends WarSide {}
-
 interface WarTableData extends War {
   key: number;
-  attackers: WarSideData;
-  defenders: WarSideData;
+  attackers: WarSide;
+  defenders: WarSide;
 }
 
-function FlagColumn({ data }: { data: WarSideData }) {
+function FlagColumn({ data }: { data: WarSide }) {
   return (
     <Flag tag={data.original.tag} name={data.original.name}>
       <Flag.CountryName />

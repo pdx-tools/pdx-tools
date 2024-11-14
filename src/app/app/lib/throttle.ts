@@ -1,6 +1,6 @@
 // throttle with leading and trailing executions
-export function throttle<T extends Array<any>>(
-  func: (...args: T) => any,
+export function throttle<T extends Array<unknown>>(
+  func: (...args: T) => unknown,
   timeFrame: number,
 ) {
   let lastTime = 0;

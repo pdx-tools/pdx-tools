@@ -19,7 +19,7 @@ import { cx } from "class-variance-authority";
 import { Input } from "./Input";
 
 type DataTableProps<TData> = {
-  columns: ColumnDef<TData, any>[];
+  columns: ColumnDef<TData, unknown>[];
   data: TData[];
   pagination?: boolean;
   summary?: React.ReactNode;
@@ -28,7 +28,7 @@ type DataTableProps<TData> = {
 } & Partial<TableOptions<TData>> &
   ComponentProps<typeof Table>;
 
-export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
+export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
   data,
   columns,
   pagination,
@@ -76,6 +76,7 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
                 <Table.Head
                   colSpan={header.colSpan}
                   className={cx(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (header.column.columnDef?.meta as any)?.headClassName,
                     header.colSpan > 1 &&
                       "border-l border-r text-center dark:border-gray-600",
@@ -111,6 +112,7 @@ export function DataTable<TData extends Object & Partial<{ rowSpan: number }>>({
                       className={cx(
                         cell.column.getIsSorted() &&
                           "bg-gray-50 dark:bg-slate-700",
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (cell.column.columnDef?.meta as any)?.className,
                       )}
                     >

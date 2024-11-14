@@ -33,7 +33,7 @@ export const Command = CommandRoot as typeof CommandRoot & {
   Separator: typeof CommandSeparator;
 };
 
-interface CommandDialogProps extends DialogProps {}
+type CommandDialogProps = DialogProps;
 
 const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
   return (

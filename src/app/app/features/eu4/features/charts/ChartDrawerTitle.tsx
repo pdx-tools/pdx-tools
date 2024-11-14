@@ -47,7 +47,8 @@ export const ChartDrawerTitle = ({
 }: ChartDrawerTitleProps) => {
   const viz = useVisualization();
   const filename = useSaveFilenameWith(`-${selectedViz}.csv`);
-  const displayLimit = vizModuleDisplayLimit(selectedViz);
+  // TODO: why is this unused?
+  const _displayLimit = vizModuleDisplayLimit(selectedViz);
 
   return (
     <div className="flex items-center gap-2">

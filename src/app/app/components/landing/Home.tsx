@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import icons from "./icons.png";
 import melted from "./melted.webp";
 import games from "./games.webp";

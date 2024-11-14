@@ -625,16 +625,18 @@ function eventToFilter(evt: CountryHistoryEvent) {
           return "explorers";
         case "Conquistador":
           return "conquistadors";
+        default:
+          return "Leader"
       }
     }
     case "monarch": {
       switch (evt.event.type) {
-        case "monarch":
-          return "ruler";
         case "heir":
         case "queen":
         case "consort":
           return evt.event.type;
+        default:
+          return "ruler"
       }
     }
     case "warStart":

@@ -8,15 +8,12 @@ type Hoi4StateInit = {
   input: File;
 };
 
-type Hoi4State = Hoi4StateInit & {
-  actions: {};
-};
+type Hoi4State = Hoi4StateInit;
 
 export const createHoi4Store = ({ meta, input }: Hoi4StateInit) => {
-  return createStore<Hoi4State>()((set, get) => ({
+  return createStore<Hoi4State>()((_set, _get) => ({
     meta,
     input,
-    actions: {},
   }));
 };
 

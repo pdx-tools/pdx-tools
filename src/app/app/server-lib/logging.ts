@@ -2,7 +2,7 @@ import { toErrorWithMessage } from "@/lib/getErrorMessage";
 import { captureEvent } from "./posthog";
 
 export type LogMessage = {
-  [x: string]: any;
+  [x: string]: unknown;
 };
 
 class Log {
@@ -47,9 +47,9 @@ class Log {
   }
 
   public exception(err: unknown, data: LogMessage) {
-    let { message, stack } = toErrorWithMessage(err);
-    stack = stack ?? new Error().stack ?? "no stack available";
-    this.error({ ...data, error: message, stack });
+    const error = toErrorWithMessage(err);
+    const stack = error.stack ?? new Error().stack ?? "no stack available";
+    this.error({ ...data, error: error.message, stack });
   }
 }
 

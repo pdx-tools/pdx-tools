@@ -1,5 +1,5 @@
 export function keyboardTrigger<T extends React.KeyboardEvent<R>, R = Element>(
-  fn: (event: React.KeyboardEvent<R>) => any,
+  fn: (event: React.KeyboardEvent<R>) => unknown,
   key: "Space" | "Enter" | undefined = "Enter",
 ) {
   const k = key == "Space" ? " " : key;

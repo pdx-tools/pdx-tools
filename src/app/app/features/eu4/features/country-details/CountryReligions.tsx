@@ -105,6 +105,7 @@ const CountryReligionVizImpl = ({
     label: {
       type: "inner",
       offset: "-30%",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       formatter: (_text: any, item: any) =>
         `${item._origin.development.toFixed(0)}`,
     },
@@ -159,7 +160,7 @@ const EmojiKey = ({ value }: { value: boolean | undefined }) => {
 
 const RebelConvert = ({ rebel }: { rebel: RebelReligion }) => {
   const religion = rebel.religion;
-  let dev = Number.isInteger(rebel.until_plurality)
+  const dev = Number.isInteger(rebel.until_plurality)
     ? formatInt(rebel.until_plurality)
     : formatFloat(rebel.until_plurality, 2);
 

@@ -2,7 +2,7 @@ import { transfer, wrap } from "comlink";
 import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
 import { fetchOk } from "@/lib/fetch";
 import { log, logMs } from "@/lib/log";
-import { emitEvent, startSessionRecording } from "@/lib/events";
+import { emitEvent } from "@/lib/events";
 import { timeit } from "@/lib/timeit";
 import { type MapWorker, MapController, createMapWorker, InitToken } from "map";
 import { Dispatch, useRef, useEffect, useReducer } from "react";
@@ -358,16 +358,18 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
         // screenshot to be generated. Download the screenshot as puppeteer
         // doesn't support transferring blobs:
         // https://github.com/puppeteer/puppeteer/issues/3722
-        (window as any).pdxScreenshot = async () => {
-          const fontFamily = getComputedStyle(document.body).fontFamily;
-          const date = storeRef.current?.getState().selectedDate.text;
-          const result = await map.screenshot({
-            kind: "viewport",
-            date,
-            fontFamily,
-          });
-          downloadData(result, "image.png");
-        };
+        Object.defineProperty(window, 'pdxScreenshot', {
+          value: async () => {
+            const fontFamily = getComputedStyle(document.body).fontFamily;
+            const date = storeRef.current?.getState().selectedDate.text;
+            const result = await map.screenshot({
+              kind: "viewport",
+              date,
+              fontFamily,
+            });
+            downloadData(result, "image.png");
+          }
+        });
 
         const store = await createEu4Store({
           store: storeRef.current,

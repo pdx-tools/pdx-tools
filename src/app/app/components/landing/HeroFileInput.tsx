@@ -121,7 +121,7 @@ export const HeroFileInput = () => {
     </>
   );
 
-  let input = !fileSystemAccessApiEnabled ? (
+  const input = !fileSystemAccessApiEnabled ? (
     <>
       <input
         id="analyze-box-file-input"
@@ -140,8 +140,9 @@ export const HeroFileInput = () => {
     <button
       className={className}
       onClick={async () => {
+        let fileHandle: FileSystemFileHandle;
         try {
-          var [fileHandle] = await window.showOpenFilePicker({
+          const result = await window.showOpenFilePicker({
             multiple: false,
             types: [
               {
@@ -152,7 +153,8 @@ export const HeroFileInput = () => {
               },
             ],
           });
-        } catch (ex) {
+          fileHandle = result[0];
+        } catch (_ex) {
           // User closing without selecting a file throws an exception
           // so we swallow it.
           return;

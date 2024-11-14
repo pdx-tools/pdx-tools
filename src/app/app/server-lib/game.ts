@@ -18,7 +18,7 @@ if (typeof WebSocketPair !== "undefined") {
   await init(data);
 }
 
-const withWasm = <T extends Array<any>, U>(fn: (...args: T) => U) => {
+const withWasm = <T extends Array<unknown>, U>(fn: (...args: T) => U) => {
   return (...args: T): U => {
     return fn(...args);
   };

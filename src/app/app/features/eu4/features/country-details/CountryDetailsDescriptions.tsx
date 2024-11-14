@@ -69,7 +69,7 @@ interface CountryDetailsProps {
 const IdeasTable = ({ ideas }: Pick<CountryDetails, "ideas">) => {
   const elem = ideas.map(([name, count]) => {
     name = name.substring(0, name.length - "_ideas".length);
-    let ideaMarkers = [];
+    const ideaMarkers = [];
     let i = 0;
     for (; i < count; i++) {
       ideaMarkers.push(<CheckCircleIcon className="h-4 w-4" key={i} />);
@@ -151,7 +151,7 @@ const GovernmentStrength = ({
 export const CountryDetailsDescriptions = ({
   details,
 }: CountryDetailsProps) => {
-  const { ruler, technology, ideas } = details;
+  const { ruler, ideas } = details;
   const isJuniorPartner = useIsJuniorPartner(details);
 
   return (

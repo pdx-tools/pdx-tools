@@ -6,7 +6,7 @@ import { axisTop } from "d3-axis";
 import { scaleBand, scaleLinear } from "d3-scale";
 import { select } from "d3-selection";
 import { cx } from "class-variance-authority";
-import { budgetSelect, createBudget, expenseBudget } from "./budget";
+import { Budget, budgetSelect, createBudget, expenseBudget } from "./budget";
 import { Card } from "@/components/Card";
 import { useEu4Meta } from "../../store";
 import { Button } from "@/components/Button";
@@ -21,7 +21,7 @@ type CountryBudgetCountProps = {
   details: CountryDetails;
 };
 
-function sumValues(...obj: { [key: string]: any }[]): number {
+function sumValues(...obj: { [key: string]: number }[]): number {
   return obj.reduce(
     (acc, x) => acc + Object.values(x).reduce((sum, value) => sum + value, 0),
     0,
@@ -68,19 +68,16 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
   const [budgetInterval, setBudgetInterval] = useState<
     "last-month" | "ytd" | "last-year"
   >("last-year");
-  switch (budgetInterval) {
-    case "last-month": {
-      var budget = lastMonthBudget;
-      break;
-    }
-    case "ytd": {
-      var budget = ytdDateBudget;
-      break;
-    }
-    case "last-year": {
-      var budget = lastYearBudget;
-      break;
-    }
+
+  let budget: Budget;
+  if (budgetInterval === "last-month") {
+    budget = lastMonthBudget
+  } else if (budgetInterval === "ytd") {
+    budget = ytdDateBudget;
+  } else if (budgetInterval === "last-year") {
+    budget = lastYearBudget;
+  } else {
+    throw new Error(`unrecognized budget interval: ${budgetInterval}`)
   }
 
   const recurringRevenue = budgetSelect.recurringRevenue(budget);
@@ -361,7 +358,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
     },
     colorField: "kind",
     color(datum, _defaultColor) {
-      let x = datum as { kind: keyof typeof totalExpenses };
+      const x = datum as { kind: keyof typeof totalExpenses };
       switch (x.kind) {
         case "Maintenance":
           return classicCyclic[9];
@@ -481,10 +478,10 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                 className="stroke-black dark:stroke-white"
               />
 
-              {Object.entries(bars).map(([category, bar], i) => (
+              {Object.values(bars).map((bar, i) => (
                 <g key={i} transform={`translate(0, ${y(barLabels[i])})`}>
                   {Array.isArray(bar) ? (
-                    bar.map((x, i) => (
+                    bar.map((x) => (
                       <BudgetRect
                         key={x.key}
                         label={x.key}

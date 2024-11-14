@@ -158,7 +158,7 @@ export const pdxApi = {
     useReprocess: () => {
       const queryClient = useQueryClient();
       return useMutation({
-        mutationFn: (body: any) => sendJson("/api/admin/reprocess", { body }),
+        mutationFn: (body: unknown) => sendJson("/api/admin/reprocess", { body }),
         onSuccess: invalidateSaves(queryClient),
       });
     },
@@ -210,7 +210,7 @@ export const pdxApi = {
             data.append("file", blob);
             data.append("metadata", metadata);
 
-            return new Promise<SavePostResponse>(async (resolve, reject) => {
+            return new Promise<SavePostResponse>((resolve, reject) => {
               const request = new XMLHttpRequest();
               request.open("POST", "/api/saves");
 
@@ -222,7 +222,7 @@ export const pdxApi = {
                 });
               });
 
-              request.addEventListener("load", function (e) {
+              request.addEventListener("load", function () {
                 if (request.status >= 200 && request.status < 300) {
                   const response: SavePostResponse = JSON.parse(
                     request.response,
@@ -232,7 +232,7 @@ export const pdxApi = {
                   try {
                     const err = JSON.parse(request.response).msg;
                     reject(new Error(err));
-                  } catch (ex) {
+                  } catch (_ex) {
                     reject(new Error(`unknown error: ${request.response}`));
                   }
                 }

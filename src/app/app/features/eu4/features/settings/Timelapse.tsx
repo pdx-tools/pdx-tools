@@ -79,7 +79,7 @@ export const Timelapse = () => {
   const isDeveloper = useIsDeveloper();
   const [maxFps, setMaxFps] = useState(8);
   const [exportAsMp4, setExportAsMp4] = useState(true);
-  const [freezeFrameSeconds, setFreezeFrameSeconds] = useState(0);
+  const [freezeFrameSeconds, _setFreezeFrameSeconds] = useState(0);
   const [intervalSelection, setIntervalSelection] = useState<Interval>("year");
   const filename = useSaveFilenameWith(exportAsMp4 ? ".mp4" : ".webm");
   const encoderRef = useRef<TimelapseEncoder | undefined>(undefined);

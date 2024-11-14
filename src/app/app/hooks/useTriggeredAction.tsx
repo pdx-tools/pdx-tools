@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useIsomorphicLayoutEffect } from "./useIsomorphicLayoutEffect";
 import { useIsMounted } from "./useIsMounted";
 
-export function useTriggeredAction<T, R extends any[]>({
+export function useTriggeredAction<T, R extends unknown[]>({
   action,
 }: {
   action: (...args: R) => Promise<T>;

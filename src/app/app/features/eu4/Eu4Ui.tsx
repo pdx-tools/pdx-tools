@@ -15,7 +15,7 @@ type Eu4UiProps = {
 };
 
 const TrackingCanvas = memo(
-  forwardRef<HTMLCanvasElement>(function TrackingCanvas({}, ref) {
+  forwardRef<HTMLCanvasElement>(function TrackingCanvas(_, ref) {
     useEffect(() => {
       return () => {
         developerLog("tracking canvas unmounted");

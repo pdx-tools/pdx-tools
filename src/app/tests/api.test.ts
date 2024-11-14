@@ -72,7 +72,7 @@ class HttpClient {
     });
   }
 
-  async uploadSaveCore(filepath: string, metadata?: any) {
+  async uploadSaveCore<T extends object>(filepath: string, metadata?: T) {
     await fetchEu4Save(filepath);
     const data = await fs.readFile(eu4SaveLocation(filepath));
     const file = new Blob([data], { type: "application/octet-stream" });
@@ -97,7 +97,7 @@ class HttpClient {
     });
   }
 
-  public async uploadSave(filepath: string, metadata?: any) {
+  public async uploadSave<T extends object>(filepath: string, metadata?: T) {
     const resp = await this.uploadSaveCore(filepath, metadata);
 
     if (!resp.ok) {
@@ -124,7 +124,7 @@ class HttpClient {
     return fetchOkJson(pdxUrl(path), { headers: { cookie: this.cookies } });
   }
 
-  public async post<T>(path: string, data?: any): Promise<T> {
+  public async post<T>(path: string, data?: unknown): Promise<T> {
     return await sendJsonAs<T>(pdxUrl(path), {
       body: data ? JSON.stringify(data) : data,
       headers: {
@@ -133,7 +133,7 @@ class HttpClient {
     });
   }
 
-  public async delete<T>(path: string): Promise<void> {
+  public async delete(path: string): Promise<void> {
     await fetchOk(pdxUrl(path), {
       method: "DELETE",
       headers: {
@@ -142,7 +142,7 @@ class HttpClient {
     });
   }
 
-  public async patch(path: string, data: any): Promise<void> {
+  public async patch(path: string, data: unknown): Promise<void> {
     await fetchOk(pdxUrl(path), {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -198,13 +198,13 @@ test("same campaign", async () => {
   // Uploading 3 saves from the same campaign
   const client = await HttpClient.create();
 
-  let startPath = "ita2.eu4";
-  let midPath = "ita2_later.eu4";
-  let endPath = "ita2_later13.eu4";
+  const startPath = "ita2.eu4";
+  const midPath = "ita2_later.eu4";
+  const endPath = "ita2_later13.eu4";
 
-  let start = await parseFile(startPath);
-  let mid = await parseFile(midPath);
-  let end = await parseFile(endPath);
+  const start = await parseFile(startPath);
+  const mid = await parseFile(midPath);
+  const end = await parseFile(endPath);
 
   // sanity check to ensure we're dealing with the files from the same campaign
   expect(start.playthrough_id).toBe(mid.playthrough_id);
@@ -225,14 +225,14 @@ test("same campaign", async () => {
   expect(startUpload.save_id).toBeDefined();
 
   // When retrieving the achievements, we should only see the save with the earliest date
-  let achievementLeaderboard = await client.get<AchievementApiResponse>(
+  const achievementLeaderboard = await client.get<AchievementApiResponse>(
     "/api/achievements/18",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(startUpload.save_id);
 
   // But all saves will be exposed when viewing user saves
-  let userProfile = await client.get<UserSaves>("/api/users/100");
+  const userProfile = await client.get<UserSaves>("/api/users/100");
   expect(userProfile.saves).toHaveLength(3);
   expect(userProfile.saves[0].id).toEqual(startUpload.save_id);
   expect(userProfile.saves[1].id).toEqual(endUpload.save_id);
@@ -245,9 +245,9 @@ test("invalid ironman", async () => {
   const newSave = await client.uploadSaveReq("Ruskies.eu4");
 
   expect(newSave.status).toEqual(400);
-  const data = (await newSave.json()) as any;
-  expect(data.name).toEqual("ValidationError");
-  expect(data.msg).toEqual("unsupported patch: 1.28");
+  const data = (await newSave.json());
+  expect(data).toHaveProperty("name", "ValidationError");
+  expect(data).toHaveProperty("msg", "unsupported patch: 1.28");
 });
 
 test("same playthrough id", async () => {
@@ -271,7 +271,7 @@ test("same playthrough id", async () => {
   expect(persia.save_id).toBeDefined();
 
   // When retrieving the shahanshah achievement we should only see the start data
-  let achievementLeaderboard = await client.get<AchievementApiResponse>(
+  const achievementLeaderboard = await client.get<AchievementApiResponse>(
     "/api/achievements/89",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);
@@ -430,7 +430,7 @@ test("admin rebalance", async () => {
   // test with empty database
   await client.post("/api/admin/rebalance?__patch_override_for_testing=243");
 
-  let achievementLeaderboard = await client.get<AchievementApiResponse>(
+  const achievementLeaderboard = await client.get<AchievementApiResponse>(
     "/api/achievements/18",
   );
   expect(achievementLeaderboard.saves).toHaveLength(1);

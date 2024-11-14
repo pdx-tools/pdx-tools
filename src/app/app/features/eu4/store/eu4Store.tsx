@@ -328,9 +328,6 @@ const selectDefaultDate = (meta: EnhancedMeta) => ({
   days: meta.total_days,
 });
 
-const selectSaveVersion = (state: Eu4State) =>
-  `${state.save.meta.savegame_version.first}.${state.save.meta.savegame_version.second}`;
-
 export const selectMapPayload = (state: Eu4State): MapPayload => ({
   kind: state.mapMode,
   tagFilter: state.countryFilter,

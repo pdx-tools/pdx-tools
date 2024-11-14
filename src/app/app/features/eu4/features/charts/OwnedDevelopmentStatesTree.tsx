@@ -131,7 +131,7 @@ function CountryStateDevelopmentTree({
     data,
     colorField: "name",
     color(datum, defaultColor) {
-      let x = datum as (typeof devs)[number];
+      const x = datum as (typeof devs)[number];
       switch (x.name) {
         case "Full Cores":
           return classicCyclic[0];

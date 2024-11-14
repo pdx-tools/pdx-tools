@@ -42,7 +42,7 @@ export const HomeLeaderboard = () => {
     rootMargin: "200px",
   });
 
-  let show = (globalShow ||= isIntersecting);
+  const show = (globalShow ||= isIntersecting);
 
   return (
     <div ref={ref} className={cx(!show && "h-[750px]")}>

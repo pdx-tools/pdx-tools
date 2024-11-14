@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { diff } from "@/lib/dates";
 import { groupBy } from "@/lib/groupBy";
 import { SaveCard } from "./SaveCard";
@@ -62,7 +62,7 @@ export function useSavesGroupedByPlaythrough(saves: UserSaves["saves"]) {
           : playthroughName(group);
 
       saves.sort((a, b) => b.days - a.days);
-      return saves.map((x, i) => ({
+      return saves.map((x) => ({
         ...x,
         name,
       }));
@@ -84,7 +84,7 @@ function playthroughName(playthroughId: string) {
 function nameHash(str: string, names: string[]) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
-    let chr = str.charCodeAt(i);
+    const chr = str.charCodeAt(i);
     hash = (hash << 5) - hash + chr;
     hash |= 0;
   }

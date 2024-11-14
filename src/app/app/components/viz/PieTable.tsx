@@ -31,6 +31,7 @@ const PieTablePieImpl = ({ rows, palette }: PieTablePieProps) => {
     angleField: "value",
     colorField: "key",
     autoFit: true,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     color: (data: Record<string, any>) =>
       palette.get(data["key"] as string) || "#000",
     tooltip: {
@@ -45,6 +46,7 @@ const PieTablePieImpl = ({ rows, palette }: PieTablePieProps) => {
     label: {
       type: "inner",
       offset: "-30%",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       formatter: (_text: any, item: any) => `${item._origin.value.toFixed(0)}`,
     },
     interactions: [{ type: "element-active" }],

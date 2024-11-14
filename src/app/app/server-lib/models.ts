@@ -25,6 +25,7 @@ const filename = () =>
   z
     .string()
     .max(255)
+    // eslint-disable-next-line no-control-regex
     .refine((path) => !/[<>:"/\\|?*\u0000-\u001F]/g.test(path), {
       message: "invalid file path characters",
     });

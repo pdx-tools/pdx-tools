@@ -170,7 +170,7 @@ export const CountryLeaders = ({ details }: CountryLeadersProps) => {
           tags: [
             ...(x.active ? (["active"] as const) : []),
             x.kind,
-            ...(!!x.monarch_stats ? (["ruler"] as const) : []),
+            ...(x.monarch_stats ? (["ruler"] as const) : []),
           ],
           total: x.fire + x.shock + x.maneuver + x.siege,
         }));

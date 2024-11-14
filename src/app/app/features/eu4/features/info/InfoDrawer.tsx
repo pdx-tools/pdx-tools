@@ -7,7 +7,7 @@ import { Aar } from "./Aar";
 import { ModList } from "./ModList";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { useEu4Worker, Eu4Worker } from "@/features/eu4/worker";
-import { pdxApi, sessionSelect } from "@/services/appApi";
+import { sessionSelect } from "@/services/appApi";
 import {
   emptyEu4CountryFilter,
   initialEu4CountryFilter,

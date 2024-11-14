@@ -8,7 +8,7 @@ export async function fetchOk(...args: Parameters<typeof fetch>) {
   return resp;
 }
 
-export async function fetchOkJson<T = any>(
+export async function fetchOkJson<T = unknown>(
   ...args: Parameters<typeof fetch>
 ): Promise<T> {
   return fetchOk(...args).then((x) => x.json());

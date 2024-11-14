@@ -6,7 +6,7 @@ import { json, LoaderFunctionArgs } from "@remix-run/cloudflare";
 
 export function withCore<
   A1 extends LoaderFunctionArgs,
-  T extends Array<any>,
+  T extends Array<unknown>,
   R,
 >(fn: (a1: A1, ...args: T) => Promise<R>) {
   return function (a1: A1, ...args: T) {

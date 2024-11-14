@@ -56,6 +56,7 @@ export const difficultyComparator = (a: DiffProp, b: DiffProp): number => {
   return difficultyNum(a.difficulty) - difficultyNum(b.difficulty);
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const difficultySort: SortingFn<any> = (rowA, rowB, columnId) =>
   difficultyNum(rowA.getValue(columnId)) -
   difficultyNum(rowB.getValue(columnId));

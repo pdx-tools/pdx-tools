@@ -59,10 +59,10 @@ export function useFileDrop({ onFile, enabled = true }: FileDropProps) {
         }
 
         if ("getAsFileSystemHandle" in items[0]) {
-          let handle = await items[0].getAsFileSystemHandle();
+          const handle = await items[0].getAsFileSystemHandle();
           if (handle !== null) {
             if (handle.kind === "file") {
-              let file = handle as FileSystemFileHandle;
+              const file = handle as FileSystemFileHandle;
               onFileRef.current({ kind: "handle", file });
               return;
             }

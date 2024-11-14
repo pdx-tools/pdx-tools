@@ -19,6 +19,7 @@ const CountryBuildingCountImpl = ({ details }: CountryBuildingCountProps) => {
     xField: "value",
     yField: "label",
     label: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       formatter: (_text: any, item: any) => item._origin.value.toFixed(0),
       style: {
         fill: "#fff",

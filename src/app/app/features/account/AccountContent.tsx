@@ -81,7 +81,7 @@ export const AccountContent = () => {
                   if (e.currentTarget.files && e.currentTarget.files[0]) {
                     const target = e.currentTarget;
                     const file = e.currentTarget.files[0];
-                    let data = JSON.parse(await file.text());
+                    const data = JSON.parse(await file.text());
                     reprocess.mutate(data, {
                       onSuccess: () => toast.success("Reprocess successfully"),
                       onError: (e) =>

@@ -3,7 +3,7 @@ import { sql, eq, lt, desc } from "drizzle-orm";
 import { z } from "zod";
 import { DbConnection } from "../db/connection";
 
-const NewSchema = z.object({
+export const NewSchema = z.object({
   pageSize: z
     .number()
     .nullish()
@@ -26,7 +26,7 @@ export async function getSaves(
     .from(table.saves)
     .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
 
-  let cursorQuery = params.cursor
+  const cursorQuery = params.cursor
     ? query.where(
         lt(
           table.saves.createdOn,
