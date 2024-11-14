@@ -6,8 +6,7 @@
     "types": [
       "@remix-run/cloudflare",
       "vite/client",
-      "@types/wicg-file-system-access",
-      "@cloudflare/vitest-pool-workers"
+      "@types/wicg-file-system-access"
     ],
 
     "jsx": "react-jsx",
