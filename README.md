@@ -72,10 +72,10 @@ Congrats! You should now be able to see PDX Tools in your browser and be able to
 
 ### Ironman saves
 
-By default, ironman and binary files will be unparsable. If you are in possession of a binary token file, you can unlock processing binary saves by placing the the token file at `./assets/tokens/eu4.txt` and execute:
+By default, ironman and binary files will be unparsable. If you are in possession of a binary token file, you can unlock processing binary saves by placing the token file at `./assets/tokens/eu4.txt` and execute:
 
 ```bash
-just tokenize --eu4-ironman-tokens ./assets/tokens/eu4.txt
+just tokenize ./assets/tokens
 ```
 
 ## Contributor Project Guide

@@ -1336,6 +1336,7 @@ dependencies = [
  "eu4game-data",
  "eu4save",
  "flate2",
+ "highway",
  "jomini",
  "log",
  "rayon",

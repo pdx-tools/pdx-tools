@@ -160,6 +160,7 @@ build-wasm: build-wasm-dev
   wait
 
 build-wasm-dev:
+  just tokenize assets/tokens
   wasm-pack build -t web src/wasm-app --out-dir {{justfile_directory()}}/src/app/app/server-lib/wasm
   wasm-pack build -t web src/wasm-compress
   wasm-pack build -t web src/wasm-ck3
@@ -243,18 +244,9 @@ admin-sync-tokens:
   rm -rf assets/tokens
   git clone https://${GH_PAT:+"$GH_PAT@"}github.com/pdx-tools/tokens.git assets/tokens
   (cd assets/tokens && ln -s tokens/* .)
-  just admin-tokenize-all
 
 admin-sync-assets: admin-sync-tokens
   rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key="${ASSETS_SECRET_KEY}" --s3-access-key-id="${ASSETS_ACCESS_KEY}" copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.
-
-admin-tokenize-all: (tokenize 
-  "--eu4-ironman-tokens" "./assets/tokens/eu4.txt"
-  "--ck3-ironman-tokens" "./assets/tokens/ck3.txt"
-  "--hoi4-ironman-tokens" "./assets/tokens/hoi4.txt"
-  "--imperator-tokens" "./assets/tokens/imperator.txt"
-  "--vic3-tokens" "./assets/tokens/vic3.txt"
-)
 
 tokenize *cmd:
   cargo run --release --package pdx --features tokenize -- tokenize "$@"

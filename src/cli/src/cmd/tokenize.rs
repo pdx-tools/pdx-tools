@@ -1,6 +1,7 @@
-use crate::zstd_tee::ZstdTee;
+use crate::zstd_tee::{ZstdFiles, ZstdTee};
 use anyhow::Context;
 use clap::Args;
+use highway::HighwayHash;
 use log::{debug, info};
 use std::{
     fs::File,
@@ -12,67 +13,59 @@ use std::{
 /// Converts token text files into flatbuffers
 #[derive(Args)]
 pub struct TokenizeArgs {
-    /// path to eu4 ironman tokens
-    #[arg(long, env)]
-    eu4_ironman_tokens: Option<PathBuf>,
-
-    /// path to ck3 ironman tokens
-    #[arg(long, env)]
-    ck3_ironman_tokens: Option<PathBuf>,
-
-    /// path to hoi4 ironman tokens
-    #[arg(long, env)]
-    hoi4_ironman_tokens: Option<PathBuf>,
-
-    /// path to imperator tokens
-    #[arg(long, env)]
-    imperator_tokens: Option<PathBuf>,
-
-    /// path to vic3 tokens
-    #[arg(long, env)]
-    vic3_tokens: Option<PathBuf>,
+    tokens_dir: PathBuf,
 }
 
 impl TokenizeArgs {
     pub fn run(&self) -> anyhow::Result<ExitCode> {
-        if let Some(e) = self.eu4_ironman_tokens.as_ref() {
-            tokenize_path(e, "eu4")?
-        }
-
-        if let Some(e) = self.ck3_ironman_tokens.as_ref() {
-            tokenize_path(e, "ck3")?
-        }
-
-        if let Some(e) = self.hoi4_ironman_tokens.as_ref() {
-            tokenize_path(e, "hoi4")?
-        }
-
-        if let Some(e) = self.imperator_tokens.as_ref() {
-            tokenize_path(e, "imperator")?
-        }
-
-        if let Some(e) = self.vic3_tokens.as_ref() {
-            tokenize_path(e, "vic3")?
+        for game in ["eu4", "ck3", "hoi4", "imperator", "vic3"] {
+            let token_file = self.tokens_dir.join(game).with_extension("txt");
+            if token_file.exists() {
+                tokenize_path(token_file)?;
+            } else {
+                info!(
+                    "skipping {} tokenization as file not detected",
+                    token_file.display()
+                );
+            }
         }
 
         Ok(ExitCode::SUCCESS)
     }
 }
 
-fn tokenize_path<P>(path: P, name: &str) -> anyhow::Result<()>
+fn tokenize_path<P>(path: P) -> anyhow::Result<()>
 where
     P: AsRef<Path>,
 {
-    let reader = File::open(path.as_ref())
+    let file_path = path.as_ref();
+    let reader = File::open(file_path)
         .with_context(|| format!("unable to open {}", path.as_ref().display()))?;
-    let out_dir = Path::new("assets").join("tokens");
-    std::fs::create_dir_all(&out_dir).context("unable to create token directory")?;
 
-    let out = out_dir.join(name);
-    let mut writer = ZstdTee::create(out)?;
+    let zstd_files = ZstdFiles::from_path(file_path)?;
 
-    tokenize(reader, &mut writer, name)?;
-    writer.flush()?;
+    let buffered = Vec::new();
+    let mut buf_cursor = Cursor::new(buffered);
+    tokenize(reader, &mut buf_cursor, zstd_files.name())?;
+    let buffered = buf_cursor.into_inner();
+    let mut hasher = highway::HighwayHasher::new(highway::Key::default());
+    hasher.append(&buffered);
+    let new_out = hasher.finalize256();
+
+    if let Ok(mut raw_file) = File::open(zstd_files.raw_path()) {
+        let mut hasher = highway::HighwayHasher::new(highway::Key::default());
+        std::io::copy(&mut raw_file, &mut hasher)
+            .context("unable to read existing tokenize file")?;
+        let old_out = hasher.finalize256();
+        if new_out == old_out {
+            info!("no changes detected for {} token file", zstd_files.name());
+            return Ok(());
+        }
+    }
+
+    let mut writer = ZstdTee::from_zstd_files(zstd_files)?;
+    std::io::copy(&mut buffered.as_slice(), &mut writer)
+        .context("unable to write to tokenize file")?;
     Ok(())
 }
 
