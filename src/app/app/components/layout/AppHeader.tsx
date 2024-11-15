@@ -108,7 +108,7 @@ const HeaderMenu = () => {
           <span className="sr-only">Discord</span>
         </Link>
 
-        {session.kind === "guest" ? (
+        {session.id === undefined ? (
           <SignInButtons />
         ) : (
           <NavigationMenu>
@@ -133,7 +133,7 @@ const HeaderMenu = () => {
                     asChild
                     className="no-break"
                   >
-                    <Link variant="ghost" to={`/users/${session.userId}`}>
+                    <Link variant="ghost" to={`/users/${session.id}`}>
                       My Saves
                     </Link>
                   </NavigationMenu.Link>

@@ -27,7 +27,7 @@ export const action = withCore(
     await db
       .update(table.users)
       .set({ apiKey })
-      .where(eq(table.users.userId, session.uid));
+      .where(eq(table.users.userId, session.id));
 
     return json({ api_key: newKey });
   }),

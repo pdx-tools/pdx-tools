@@ -9,6 +9,7 @@ import { parseBasicAuth } from "./basic";
 import { useDb } from "../db/connection";
 import { apiKeyAtRest, table } from "../db";
 import { eq } from "drizzle-orm";
+import { LoggedInUser } from "@/lib/auth";
 
 export type PdxSessionStorage = ReturnType<typeof pdxSession>;
 export const pdxSession = ({
@@ -61,14 +62,13 @@ export type SessionPayload = z.infer<typeof SessionPayloadSchema>;
 const unauthResponse = () =>
   json({ msg: "unable to authorize" }, { status: 401 });
 
-export type Session = Awaited<ReturnType<typeof getAuth>>;
 export async function getAuth({
   request,
   context,
 }: {
   request: Request;
   context: AppLoadContext;
-}) {
+}): Promise<LoggedInUser> {
   const header = request.headers.get("authorization");
   if (header) {
     const creds = parseBasicAuth(header);
@@ -90,28 +90,19 @@ export async function getAuth({
       throw unauthResponse();
     }
 
-    return { uid: creds.username, account: user.account };
+    return {
+      id: creds.username,
+      roles: [user.account === "admin" ? "admin" : "user"],
+    };
   } else {
     const session = await pdxSession({ request, context }).get();
     if (session.kind === "guest") {
       throw unauthResponse();
     }
 
-    return { uid: session.userId, account: session.account };
+    return {
+      id: session.userId,
+      roles: [session.account === "admin" ? "admin" : "user"],
+    };
   }
-}
-
-export async function getAdmin({
-  request,
-  context,
-}: {
-  request: Request;
-  context: AppLoadContext;
-}) {
-  const session = await getAuth({ request, context });
-  if (session.account !== "admin") {
-    throw unauthResponse();
-  }
-
-  return session;
 }

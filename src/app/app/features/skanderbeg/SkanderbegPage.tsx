@@ -5,7 +5,6 @@ import { pdxApi } from "../../services/appApi";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Link } from "@/components/Link";
-import { LoggedIn } from "@/components/LoggedIn";
 import { useSession } from "../account";
 import { useNavigate } from "@remix-run/react";
 
@@ -49,11 +48,7 @@ export const SkanderbegPage = () => {
               Analyze
             </Button>
           </form>
-          {session.kind === "user" ? (
-            <LoggedIn session={session}>
-              <SkanTable />
-            </LoggedIn>
-          ) : null}
+          {session.id ? <SkanTable /> : null}
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { ensurePermissions } from "@/lib/auth";
 import { timeit } from "@/lib/timeit";
 import { getAuth } from "@/server-lib/auth/session";
 import { NewSave, table, toDbDifficulty } from "@/server-lib/db";
@@ -55,6 +56,7 @@ export const action = withCore(
     }
 
     const session = await getAuth({ request, context });
+    ensurePermissions(session, "savefile:create");
     const { bytes, metadata } = await fileUploadData(request);
     const saveId = genId(12);
     const s3 = pdxS3(pdxCloudflareS3({ context }));
@@ -70,7 +72,7 @@ export const action = withCore(
       );
       log.info({
         key: saveId,
-        user: session.uid,
+        user: session.id,
         msg: "parsed file",
         elapsedMs: elapsedMs.toFixed(2),
       });
@@ -81,7 +83,7 @@ export const action = withCore(
 
       const newSave: NewSave = {
         id: saveId,
-        userId: session.uid,
+        userId: session.id,
         filename: metadata.filename,
         hash: out.hash,
         date: out.date,
@@ -113,7 +115,7 @@ export const action = withCore(
       }
 
       log.event({
-        userId: session.uid,
+        userId: session.id,
         event: "Save created",
         key: saveId,
       });

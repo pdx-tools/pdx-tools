@@ -1,4 +1,4 @@
-import { getAdmin } from "@/server-lib/auth/session";
+import { getAuth } from "@/server-lib/auth/session";
 import { fromParsedSave, table } from "@/server-lib/db";
 import { withDb } from "@/server-lib/db/middleware";
 import { log } from "@/server-lib/logging";
@@ -6,6 +6,7 @@ import { withCore } from "@/server-lib/middleware";
 import { ParsedFile } from "@/server-lib/functions";
 import { json, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { eq } from "drizzle-orm";
+import { ensurePermissions } from "@/lib/auth";
 
 type ReprocessEntry = {
   saveId: string;
@@ -14,7 +15,8 @@ type ReprocessEntry = {
 
 export const loader = withCore(
   withDb(async ({ request, context }: LoaderFunctionArgs, { db }) => {
-    await getAdmin({ request, context });
+    const session = await getAuth({ request, context });
+    ensurePermissions(session, "savefile:reprocess");
 
     const saves: ReprocessEntry[] = await request.json();
     for (const save of saves) {

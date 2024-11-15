@@ -6,10 +6,13 @@ import { type UserSaves } from "@/server-lib/db";
 
 interface UserSaveTableProps {
   saves: UserSaves["saves"];
-  isPrivileged: boolean;
+  canDeleteSaves: boolean;
 }
 
-export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
+export const UserSaveTable = ({
+  saves,
+  canDeleteSaves,
+}: UserSaveTableProps) => {
   const data = useSavesGroupedByPlaythrough(saves);
 
   return (
@@ -25,7 +28,7 @@ export const UserSaveTable = ({ saves, isPrivileged }: UserSaveTableProps) => {
             )}
           </h2>
           {playthroughSaves.map((save) => (
-            <SaveCard key={save.id} save={save} isPrivileged={isPrivileged} />
+            <SaveCard key={save.id} save={save} canDelete={canDeleteSaves} />
           ))}
         </div>
       ))}

@@ -33,7 +33,6 @@ import {
 import { StopIcon } from "@heroicons/react/24/outline";
 import { MixerHorizontalIcon } from "@/components/icons/MixerHorizontalIcon";
 import { Popover } from "@/components/Popover";
-import { useIsDeveloper } from "@/features/account";
 import { CountryFilterButton } from "../../components/CountryFilterButton";
 import { cx } from "class-variance-authority";
 import { Link } from "@/components/Link";
@@ -76,7 +75,6 @@ function createTimelapsePayload({
 export const Timelapse = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const isDeveloper = useIsDeveloper();
   const [maxFps, setMaxFps] = useState(8);
   const [exportAsMp4, setExportAsMp4] = useState(true);
   const [freezeFrameSeconds, _setFreezeFrameSeconds] = useState(0);
@@ -330,7 +328,7 @@ export const Timelapse = () => {
                     />
                   </label>
                 </div>
-                {isDeveloper && recordingSupported && (
+                {recordingSupported && (
                   <ToggleRow
                     text="Export as MP4"
                     onChange={setExportAsMp4}

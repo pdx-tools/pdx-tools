@@ -1,8 +1,8 @@
 import React, { useContext, useEffect, useState } from "react";
-import { getIsDeveloper } from "../../lib/isDeveloper";
-import { PdxSession } from "@/server-lib/auth/session";
+import { getIsDeveloper } from "@/lib/isDeveloper";
 import { check } from "@/lib/isPresent";
 import { pdxApi } from "@/services/appApi";
+import { pdxUser, User } from "@/lib/auth";
 
 type SessionProviderProps = {
   children: React.ReactNode;
@@ -10,7 +10,7 @@ type SessionProviderProps = {
 
 interface SessionContextData {
   isDeveloper: boolean;
-  profile?: PdxSession;
+  profile?: User;
 }
 
 const SessionContext = React.createContext<SessionContextData>({
@@ -25,8 +25,10 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
     setIsDeveloper(getIsDeveloper());
   }, []);
 
+  const user = pdxUser(profile.data);
+
   return (
-    <SessionContext.Provider value={{ isDeveloper, profile: profile.data }}>
+    <SessionContext.Provider value={{ isDeveloper, profile: user }}>
       {children}
     </SessionContext.Provider>
   );

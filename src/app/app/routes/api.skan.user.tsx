@@ -15,7 +15,7 @@ export const loader = withCore(
     const query = await db
       .select({ steamId: table.users.steamId })
       .from(table.users)
-      .where(eq(table.users.userId, session.uid));
+      .where(eq(table.users.userId, session.id));
     const steamId = query[0]?.steamId;
     if (!steamId) {
       return json(

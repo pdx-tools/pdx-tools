@@ -4,11 +4,12 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { useSession } from "@/features/account";
 import { UserSaveTable } from "@/features/account/UserSaveTable";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { hasPermission } from "@/lib/auth";
 import { seo } from "@/lib/seo";
 import { getUser } from "@/server-lib/db";
 import { usingDb } from "@/server-lib/db/connection";
 import { withCore } from "@/server-lib/middleware";
-import { pdxApi, pdxKeys, sessionSelect } from "@/services/appApi";
+import { pdxApi, pdxKeys } from "@/services/appApi";
 import { defer, LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { Await, useLoaderData, useParams } from "@remix-run/react";
 import {
@@ -72,10 +73,10 @@ export default function UserRoute() {
 function UserPage({ userId }: { userId: string }) {
   const { data: user } = pdxApi.user.useGet(userId);
   const session = useSession();
-  const isPrivileged = sessionSelect.isPrivileged(session, {
-    user_id: user.user_info.user_id,
-  });
 
+  const isPrivileged = hasPermission(session, "savefile:delete", {
+    userId: user.user_info.user_id,
+  });
   useDocumentTitle(`${user.user_info.user_name} saves - PDX Tools`);
 
   return (
@@ -89,7 +90,7 @@ function UserPage({ userId }: { userId: string }) {
           <TimeAgo date={user.user_info.created_on} />
         </div>
 
-        <UserSaveTable isPrivileged={isPrivileged} saves={user.saves} />
+        <UserSaveTable canDeleteSaves={isPrivileged} saves={user.saves} />
       </div>
     </div>
   );

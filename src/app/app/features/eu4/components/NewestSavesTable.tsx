@@ -30,7 +30,7 @@ export const NewestSavesTable = () => {
             name: "",
             playthrough_id: "",
           }}
-          isPrivileged={false}
+          canDelete={false}
         />
       ))}
       <div ref={ref} />

@@ -1,12 +1,9 @@
-import { getAuth, Session } from "@/server-lib/auth/session";
+import { ensurePermissions } from "@/lib/auth";
+import { getAuth } from "@/server-lib/auth/session";
 import { saveView, table, toApiSave } from "@/server-lib/db";
 import { DbConnection } from "@/server-lib/db/connection";
 import { withDb } from "@/server-lib/db/middleware";
-import {
-  AuthorizationError,
-  NotFoundError,
-  ValidationError,
-} from "@/server-lib/errors";
+import { NotFoundError, ValidationError } from "@/server-lib/errors";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
@@ -17,18 +14,6 @@ import {
 } from "@remix-run/cloudflare";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-
-function ensurePermissions(session: Session, db?: { userId: string }) {
-  if (db === undefined) {
-    throw new NotFoundError("save");
-  }
-
-  // Since sessions are tamperproof we check them instead of querying
-  // the DB if the user is an admin.
-  if (db.userId !== session.uid && session.account !== "admin") {
-    throw new AuthorizationError();
-  }
-}
 
 const SaveParam = z.object({
   saveId: z.string(),
@@ -95,11 +80,11 @@ export const action = withCore(
               .where(eq(table.saves.id, params.saveId))
               .returning({ userId: table.saves.userId });
 
-            ensurePermissions(session, rows.at(0));
+            ensurePermissions(session, "savefile:update", rows.at(0));
           });
 
           log.event({
-            userId: session.uid,
+            userId: session.id,
             event: "Save patched",
             key: params.saveId,
           });
@@ -112,14 +97,14 @@ export const action = withCore(
               .delete(table.saves)
               .where(eq(table.saves.id, params.saveId))
               .returning({ userId: table.saves.userId });
-            ensurePermissions(session, saves.at(0));
+            ensurePermissions(session, "savefile:delete", saves.at(0));
             await Promise.all([
               s3.deleteFile(s3.keys.save(params.saveId)),
               s3.deleteFile(s3.keys.preview(params.saveId)),
             ]);
           });
           log.event({
-            userId: session.uid,
+            userId: session.id,
             event: "Save deleted",
             key: params.saveId,
           });

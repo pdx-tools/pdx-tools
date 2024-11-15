@@ -10,14 +10,14 @@ import type { useSavesGroupedByPlaythrough } from "./UserSaveTable";
 
 export function SaveCard({
   save,
-  isPrivileged,
+  canDelete,
 }: {
   save: Omit<
     ReturnType<typeof useSavesGroupedByPlaythrough>[number][number],
     "days"
   > &
     Partial<{ user_name: string; user_id: string }>;
-  isPrivileged: boolean;
+  canDelete: boolean;
 }) {
   return (
     <Card className="mt-2 flex flex-col gap-2 lg:flex-row">
@@ -92,7 +92,7 @@ export function SaveCard({
 
         <div className="my-2 grow border-b border-gray-600" />
         <div className="flex justify-evenly gap-4">
-          {isPrivileged && (
+          {canDelete && (
             <DeleteSave saveId={save.id} variant="ghost" shape="none" />
           )}
           <Link to={`/eu4/saves/${save.id}`} target="_blank">

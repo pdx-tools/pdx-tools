@@ -7,7 +7,6 @@ import { Aar } from "./Aar";
 import { ModList } from "./ModList";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { useEu4Worker, Eu4Worker } from "@/features/eu4/worker";
-import { sessionSelect } from "@/services/appApi";
 import {
   emptyEu4CountryFilter,
   initialEu4CountryFilter,
@@ -34,6 +33,7 @@ import {
 import { findMap } from "@/lib/findMap";
 import { useList } from "@/hooks/useList";
 import { useSession } from "@/features/account";
+import { hasPermission } from "@/lib/auth";
 
 const playerHistoriesFn = (worker: Eu4Worker) => worker.eu4GetPlayerHistories();
 const luckyCountriesFn = (worker: Eu4Worker) => worker.eu4GetLuckyCountries();
@@ -49,8 +49,8 @@ export const InfoDrawer = () => {
   const greatPowers = useEu4Worker(greatPowersFn);
   const sideBarContainerRef = useSideBarContainerRef();
   const session = useSession();
-  const isPrivileged = sessionSelect.isPrivileged(session, {
-    user_id: serverFile?.user_id,
+  const canUpdateSave = hasPermission(session, "savefile:update", {
+    userId: serverFile?.user_id,
   });
 
   const players = playerHistories.data
@@ -199,12 +199,12 @@ export const InfoDrawer = () => {
         ) : null}
       </div>
 
-      {(serverFile?.aar || (serverFile?.id && isPrivileged)) && (
+      {(serverFile?.aar || (serverFile?.id && canUpdateSave)) && (
         <>
           <Divider>AAR</Divider>
           <Aar
             defaultValue={serverFile?.aar || ""}
-            editMode={isPrivileged ? "privileged" : "never"}
+            editMode={canUpdateSave ? "privileged" : "never"}
           />
         </>
       )}
