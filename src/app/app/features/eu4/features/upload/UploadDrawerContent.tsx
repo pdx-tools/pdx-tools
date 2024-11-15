@@ -1,4 +1,3 @@
-import { sessionSelect } from "@/services/appApi";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { Alert } from "@/components/Alert";
 import { Button } from "@/components/Button";
@@ -6,6 +5,7 @@ import { Tooltip } from "@/components/Tooltip";
 import { UploadFaq } from "./UploadFaq";
 import { FileUploadMutation } from "./hooks";
 import { useSession } from "@/features/account";
+import { hasPermission } from "@/lib/auth";
 
 export const UploadDrawerContent = ({
   fileUpload,
@@ -14,10 +14,10 @@ export const UploadDrawerContent = ({
 }) => {
   const sideBarContainerRef = useSideBarContainerRef();
   const session = useSession();
-
+  const hasPermissionToUpload = hasPermission(session, "savefile:create");
   return (
     <div className="flex flex-col gap-2" ref={sideBarContainerRef}>
-      {!sessionSelect.isLoggedIn(session) ? (
+      {!hasPermissionToUpload ? (
         <Alert className="px-4 py-2" variant="info">
           <Alert.Description>
             Did you know that all this analysis happens without the save leaving
@@ -50,7 +50,7 @@ export const UploadDrawerContent = ({
         </label>
         <div className="flex justify-center">
           <div>
-            {sessionSelect.isLoggedIn(session) ? (
+            {hasPermissionToUpload ? (
               <Button
                 type="submit"
                 variant="primary"

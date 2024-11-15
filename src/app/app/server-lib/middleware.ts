@@ -1,8 +1,9 @@
-import { AuthorizationError, NotFoundError, ValidationError } from "./errors";
+import { NotFoundError, ValidationError } from "./errors";
 import { log } from "./logging";
 import { ZodError } from "zod";
 import { flushEvents } from "./posthog";
 import { json, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { AuthorizationError } from "@/lib/auth";
 
 export function withCore<
   A1 extends LoaderFunctionArgs,

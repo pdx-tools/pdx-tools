@@ -1,5 +1,5 @@
 import { Alert } from "@/components/Alert";
-import { pdxApi, sessionSelect } from "@/services/appApi";
+import { pdxApi } from "@/services/appApi";
 import { Button } from "@/components/Button";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -7,6 +7,7 @@ import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { Input } from "@/components/Input";
 import { check } from "@/lib/isPresent";
 import { useSession } from "./SessionProvider";
+import { hasPermission } from "@/lib/auth";
 
 export const AccountContent = () => {
   const [key, setKey] = useState<string | undefined>();
@@ -50,7 +51,8 @@ export const AccountContent = () => {
           Generate
         </Button>
       </div>
-      {sessionSelect.isAdmin(session) ? (
+      {hasPermission(session, "leaderboard:rebalance") &&
+      hasPermission(session, "savefile:reprocess") ? (
         <div className="flex w-60 flex-col">
           <Button
             variant="primary"
@@ -100,7 +102,7 @@ export const AccountContent = () => {
         </div>
       ) : null}
 
-      {sessionSelect.isAdmin(session) ? (
+      {hasPermission(session, "savefile:og-request") ? (
         <form
           onSubmit={(e) => {
             e.preventDefault();

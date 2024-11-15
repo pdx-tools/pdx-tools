@@ -1,4 +1,5 @@
-import { getAdmin } from "@/server-lib/auth/session";
+import { ensurePermissions } from "@/lib/auth";
+import { getAuth } from "@/server-lib/auth/session";
 import { table } from "@/server-lib/db";
 import { withDb } from "@/server-lib/db/middleware";
 import { latestEu4MinorPatch } from "@/server-lib/game";
@@ -8,7 +9,8 @@ import { sql } from "drizzle-orm";
 
 export const action = withCore(
   withDb(async ({ request, context }: LoaderFunctionArgs, { db }) => {
-    await getAdmin({ request, context });
+    const session = await getAuth({ request, context });
+    ensurePermissions(session, "leaderboard:rebalance");
 
     const patch =
       new URL(request.url).searchParams.get("__patch_override_for_testing") ??

@@ -50,23 +50,6 @@ export type SkanUserSaves = {
   version: string;
 };
 
-export const sessionSelect = {
-  isLoggedIn: (
-    session: PdxSession,
-  ): session is Extract<PdxSession, { kind: "user" }> =>
-    session.kind === "user",
-
-  isAdmin: (session: PdxSession) =>
-    sessionSelect.isLoggedIn(session) && session.account == "admin",
-
-  isPrivileged: (
-    session: PdxSession,
-    { user_id }: Partial<{ user_id: string }>,
-  ) =>
-    sessionSelect.isLoggedIn(session) &&
-    (session.account == "admin" || session.userId === user_id),
-};
-
 export const pdxKeys = {
   all: ["pdx"] as const,
   profile: () => [...pdxKeys.all, "profile"] as const,
