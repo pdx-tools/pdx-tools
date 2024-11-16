@@ -10,7 +10,7 @@ import { getUser } from "@/server-lib/db";
 import { usingDb } from "@/server-lib/db/connection";
 import { withCore } from "@/server-lib/middleware";
 import { pdxApi, pdxKeys } from "@/services/appApi";
-import { defer, LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
+import { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { Await, useLoaderData, useParams } from "@remix-run/react";
 import {
   dehydrate,
@@ -45,9 +45,9 @@ export const loader = withCore(
       .then(() => dehydrate(queryClient))
       .finally(() => close());
 
-    return defer({
+    return {
       prefetch,
-    });
+    };
   },
 );
 

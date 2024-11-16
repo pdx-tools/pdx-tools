@@ -178,12 +178,7 @@ export const AchievementPodium = ({
 export const AchievementPage = ({
   achievement: data,
 }: {
-  // I do not know why this remix translates a property that is undefined into
-  // an optional property, but we have to undo it.
-  achievement: Omit<
-    Awaited<ReturnType<typeof fetchAchievement>>,
-    "goldDate"
-  > & { goldDate?: string | undefined };
+  achievement: Awaited<ReturnType<typeof fetchAchievement>>;
 }) => {
   const [gold, silver, bronze, ...rest] = data.saves;
   return (

@@ -6,7 +6,7 @@ import { usingDb } from "@/server-lib/db/connection";
 import { getSaves } from "@/server-lib/fn/new";
 import { withCore } from "@/server-lib/middleware";
 import { pdxKeys } from "@/services/appApi";
-import { defer, LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
+import { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { Await, useLoaderData } from "@remix-run/react";
 import {
   dehydrate,
@@ -34,9 +34,9 @@ export const loader = withCore(async ({ context }: LoaderFunctionArgs) => {
     .then(() => dehydrate(queryClient))
     .finally(() => close());
 
-  return defer({
+  return {
     prefetch,
-  });
+  };
 });
 
 export default function Eu4Route() {

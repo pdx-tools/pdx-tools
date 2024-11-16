@@ -2,7 +2,7 @@ import { WebPage } from "@/components/layout/WebPage";
 import { AchievementsPage } from "@/features/eu4/AchievementsPage";
 import { seo } from "@/lib/seo";
 import { loadAchievements } from "@/server-lib/game";
-import { json, MetaFunction } from "@remix-run/cloudflare";
+import { MetaFunction } from "@remix-run/cloudflare";
 import { useLoaderData } from "@remix-run/react";
 
 export const meta: MetaFunction = () =>
@@ -18,7 +18,7 @@ export const loader = () => {
     description: achievement.description,
     difficulty: achievement.difficulty,
   }));
-  return json({ achievements });
+  return { achievements };
 };
 
 export default function Eu4Achievements() {

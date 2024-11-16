@@ -4,7 +4,7 @@ import { withDb } from "@/server-lib/db/middleware";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { SkanUserSaves } from "@/services/appApi";
-import { json, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { eq } from "drizzle-orm";
 
 export const loader = withCore(
@@ -18,7 +18,7 @@ export const loader = withCore(
       .where(eq(table.users.userId, session.id));
     const steamId = query[0]?.steamId;
     if (!steamId) {
-      return json(
+      return Response.json(
         { msg: "user does not have associated steam account" },
         { status: 404 },
       );
@@ -38,9 +38,9 @@ export const loader = withCore(
     // This is intended according to jarvin: "Outputting an actual error message seems to be a
     // less confusing approach than outputting an empty array"
     if (typeof skanJson === "string") {
-      return json<SkanUserSaves[]>([]);
+      return Response.json([]);
     } else {
-      return json(skanJson as SkanUserSaves[]);
+      return Response.json(skanJson as SkanUserSaves[]);
     }
   }),
 );

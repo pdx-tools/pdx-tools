@@ -2,7 +2,7 @@ import { getAuth } from "@/server-lib/auth/session";
 import { apiKeyAtRest, table } from "@/server-lib/db";
 import { withDb } from "@/server-lib/db/middleware";
 import { withCore } from "@/server-lib/middleware";
-import { ActionFunctionArgs, json } from "@remix-run/cloudflare";
+import { ActionFunctionArgs } from "@remix-run/cloudflare";
 import { eq } from "drizzle-orm";
 
 export const action = withCore(
@@ -29,6 +29,6 @@ export const action = withCore(
       .set({ apiKey })
       .where(eq(table.users.userId, session.id));
 
-    return json({ api_key: newKey });
+    return Response.json({ api_key: newKey });
   }),
 );

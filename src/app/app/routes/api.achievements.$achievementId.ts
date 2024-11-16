@@ -2,7 +2,7 @@ import { DbConnection } from "@/server-lib/db/connection";
 import { withDb } from "@/server-lib/db/middleware";
 import { fetchAchievement, findAchievement } from "@/server-lib/fn/achievement";
 import { withCore } from "@/server-lib/middleware";
-import { json, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { z } from "zod";
 
 export type AchievementApiResponse = Awaited<ReturnType<typeof getAchievement>>;
@@ -18,6 +18,6 @@ async function getAchievement(
 const paramsSchema = z.object({ achievementId: z.string() });
 export const loader = withCore(
   withDb(async ({ params }: LoaderFunctionArgs, { db }) => {
-    return json(await getAchievement(db, paramsSchema.parse(params)));
+    return Response.json(await getAchievement(db, paramsSchema.parse(params)));
   }),
 );

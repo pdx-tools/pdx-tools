@@ -7,11 +7,7 @@ import { NotFoundError, ValidationError } from "@/server-lib/errors";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import {
-  ActionFunctionArgs,
-  json,
-  LoaderFunctionArgs,
-} from "@remix-run/cloudflare";
+import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -53,7 +49,7 @@ async function getSave(db: DbConnection, params: { saveId: string }) {
 export const loader = withCore(
   withDb(async ({ params: rawParams }: LoaderFunctionArgs, { db }) => {
     const params = SaveParam.parse(rawParams);
-    return json(await getSave(db, params));
+    return Response.json(await getSave(db, params));
   }),
 );
 
@@ -111,7 +107,7 @@ export const action = withCore(
           return new Response(null, { status: 204 });
         }
         default: {
-          throw json(
+          throw Response.json(
             { msg: "Method not allowed" },
             {
               status: 405,

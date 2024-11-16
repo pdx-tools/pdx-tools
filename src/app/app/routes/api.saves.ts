@@ -15,7 +15,7 @@ import {
 } from "@/server-lib/models";
 import { pdxOg } from "@/server-lib/og";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import { ActionFunctionArgs, json } from "@remix-run/cloudflare";
+import { ActionFunctionArgs } from "@remix-run/cloudflare";
 
 async function fileUploadData(req: Request) {
   const maxFileSize = 20 * 1024 * 1024;
@@ -52,7 +52,7 @@ async function fileUploadData(req: Request) {
 export const action = withCore(
   async ({ request, context }: ActionFunctionArgs) => {
     if (request.method !== "POST") {
-      throw json({ msg: "Method not allowed" }, { status: 405 });
+      throw Response.json({ msg: "Method not allowed" }, { status: 405 });
     }
 
     const session = await getAuth({ request, context });
@@ -132,7 +132,7 @@ export const action = withCore(
         context.cloudflare.ctx.waitUntil(ogGeneration);
       }
 
-      return json(response);
+      return Response.json(response);
     } catch (ex) {
       // If anything goes awry, delete the s3 file if it was uploaded
       const deleteFileFromS3 = uploadTask

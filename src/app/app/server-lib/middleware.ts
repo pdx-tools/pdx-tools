@@ -2,7 +2,7 @@ import { NotFoundError, ValidationError } from "./errors";
 import { log } from "./logging";
 import { ZodError } from "zod";
 import { flushEvents } from "./posthog";
-import { json, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { AuthorizationError } from "@/lib/auth";
 
 export function withCore<
@@ -15,7 +15,7 @@ export function withCore<
       .catch((err) => {
         if (!(err instanceof Error)) {
           log.exception(err, { msg: "unknown exception" });
-          throw json({ msg: `unknown exception` }, { status: 500 });
+          throw Response.json({ msg: `unknown exception` }, { status: 500 });
         }
 
         const obj = {
@@ -24,13 +24,16 @@ export function withCore<
         };
 
         if (err instanceof ValidationError) {
-          throw json(obj, { status: 400 });
+          throw Response.json(obj, { status: 400 });
         } else if (err instanceof AuthorizationError) {
-          throw json(obj, { status: 403 });
+          throw Response.json(obj, { status: 403 });
         } else if (err instanceof NotFoundError) {
-          throw json({ ...obj, msg: `${obj.msg} not found` }, { status: 404 });
+          throw Response.json(
+            { ...obj, msg: `${obj.msg} not found` },
+            { status: 404 },
+          );
         } else if (err instanceof ZodError) {
-          throw json(
+          throw Response.json(
             {
               name: "ValidationError",
               msg: JSON.stringify(err.flatten().fieldErrors),
@@ -39,7 +42,7 @@ export function withCore<
           );
         } else {
           log.exception(err, { msg: "unexpected exception" });
-          throw json(obj, { status: 500 });
+          throw Response.json(obj, { status: 500 });
         }
       })
       .finally(() => {

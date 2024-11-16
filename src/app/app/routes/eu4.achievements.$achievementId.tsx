@@ -10,7 +10,7 @@ import { seo } from "@/lib/seo";
 import { usingDb } from "@/server-lib/db/connection";
 import { fetchAchievement, findAchievement } from "@/server-lib/fn/achievement";
 import { withCore } from "@/server-lib/middleware";
-import { defer, LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
+import { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { Await, useLoaderData } from "@remix-run/react";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -31,10 +31,10 @@ export const loader = withCore(
     const savesPromise = fetchAchievement(db, achievement).finally(() =>
       close(),
     );
-    return defer({
+    return {
       achievement,
       savesPromise,
-    });
+    };
   },
 );
 

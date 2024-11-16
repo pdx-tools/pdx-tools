@@ -4,7 +4,7 @@ import { withDb } from "@/server-lib/db/middleware";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { ParsedFile } from "@/server-lib/functions";
-import { json, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { eq } from "drizzle-orm";
 import { ensurePermissions } from "@/lib/auth";
 
@@ -28,6 +28,6 @@ export const loader = withCore(
         .where(eq(table.saves.id, save.saveId));
     }
 
-    return json(null, { status: 204 });
+    return Response.json(null, { status: 204 });
   }),
 );

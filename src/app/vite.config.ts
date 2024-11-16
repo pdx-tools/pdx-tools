@@ -8,6 +8,13 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { getLoadContext } from "./load-context";
 import path from "node:path";
 
+// https://remix.run/docs/en/main/guides/single-fetch#enable-single-fetch-types
+declare module "@remix-run/cloudflare" {
+  interface Future {
+    v3_singleFetch: true;
+  }
+}
+
 export default defineConfig(({ mode }) => ({
   plugins: [
     cloudflareDevProxyVitePlugin({

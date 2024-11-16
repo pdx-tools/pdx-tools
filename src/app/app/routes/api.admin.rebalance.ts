@@ -4,7 +4,7 @@ import { table } from "@/server-lib/db";
 import { withDb } from "@/server-lib/db/middleware";
 import { latestEu4MinorPatch } from "@/server-lib/game";
 import { withCore } from "@/server-lib/middleware";
-import { json, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { sql } from "drizzle-orm";
 
 export const action = withCore(
@@ -23,6 +23,6 @@ export const action = withCore(
       })
       .where(sql`cardinality(${table.saves.achieveIds}) != 0`);
 
-    return json({ msg: "done" });
+    return Response.json({ msg: "done" });
   }),
 );

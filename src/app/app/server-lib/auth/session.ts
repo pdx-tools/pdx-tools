@@ -2,7 +2,6 @@ import { check } from "@/lib/isPresent";
 import {
   AppLoadContext,
   createCookieSessionStorage,
-  json,
 } from "@remix-run/cloudflare";
 import { z } from "zod";
 import { parseBasicAuth } from "./basic";
@@ -60,7 +59,7 @@ const SessionPayloadSchema = z
 export type SessionPayload = z.infer<typeof SessionPayloadSchema>;
 
 const unauthResponse = () =>
-  json({ msg: "unable to authorize" }, { status: 401 });
+  Response.json({ msg: "unable to authorize" }, { status: 401 });
 
 export async function getAuth({
   request,
