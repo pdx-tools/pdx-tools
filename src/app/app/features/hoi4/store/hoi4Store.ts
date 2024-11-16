@@ -23,11 +23,8 @@ export function useHoi4Context() {
   return check(useContext(Hoi4SaveContext), "Missing Hoi4 Save Context");
 }
 
-function useHoi4Store<T>(
-  selector: (state: Hoi4State) => T,
-  equalityFn?: (left: T, right: T) => boolean,
-): T {
-  return useStore(useHoi4Context(), selector, equalityFn);
+function useHoi4Store<T>(selector: (state: Hoi4State) => T): T {
+  return useStore(useHoi4Context(), selector);
 }
 
 export const hoi4 = {

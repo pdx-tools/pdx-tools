@@ -27,7 +27,7 @@ export function getDb(connection: string) {
 
 export async function useDb<R>(
   connection: string,
-  fn: (db: DbConnection) => R,
+  fn: (db: DbConnection) => Promise<R>,
 ) {
   const { orm, sql } = getDbOrm(connection);
   try {

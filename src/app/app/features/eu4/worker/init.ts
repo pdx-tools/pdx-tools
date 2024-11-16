@@ -44,7 +44,7 @@ export async function fetchData(save: Eu4SaveInput) {
   }
 }
 
-export async function eu4GameParse(
+export function eu4GameParse(
   gameData: Uint8Array,
   provinceIdToColorIndex: Uint16Array,
 ) {
@@ -56,7 +56,7 @@ export async function eu4GameParse(
   return { meta, achievements, defaultSelectedTag };
 }
 
-export async function parseMeta() {
+export function parseMeta() {
   const meta = wasm.module.parse_meta(wasm.viewStash());
   const version = `${meta.savegame_version.first}.${meta.savegame_version.second}`;
   return { meta, version };
@@ -124,7 +124,7 @@ export function startFileObserver<T>(
   frequency: FileObservationFrequency,
   cb: (save: { meta: EnhancedMeta; achievements: AchievementsScore }) => T,
 ) {
-  observer = wasm.startFileObserver(async (data) => {
+  observer = wasm.startFileObserver((data) => {
     try {
       const reparse = timeSync(() => wasm.save.reparse(frequency, data));
       if (reparse.data.kind === "tooSoon") {

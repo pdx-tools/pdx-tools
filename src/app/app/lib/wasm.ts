@@ -98,7 +98,7 @@ export function createWasmGame<
       return stashed?.kind === "handle";
     }
 
-    startFileObserver(callback: (data: Uint8Array) => Promise<void>) {
+    startFileObserver(callback: (data: Uint8Array) => Promise<void> | void) {
       if (stashed?.kind !== "handle") {
         throw new Error("file observer not supported");
       }

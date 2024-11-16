@@ -37,9 +37,7 @@ export const users = pgTable(
     createdOn: timestampColumn(),
     apiKey: text("api_key"),
   },
-  (users) => ({
-    steamIdIndex: uniqueIndex("idx_users_steam_id").on(users.steamId),
-  }),
+  (users) => [uniqueIndex("idx_users_steam_id").on(users.steamId)],
 );
 export type User = InferSelectModel<typeof users>;
 export type Account = User["account"];
@@ -72,15 +70,13 @@ export const saves = pgTable(
     aar: text("aar"),
     playthroughId: text("playthrough_id").notNull(),
   },
-  (saves) => ({
-    achieveIdsIndex: index("idx_save_achieve_ids").on(saves.achieveIds),
-    createdOnIndex: index("idx_save_creation").on(saves.createdOn),
-    hashIndex: uniqueIndex("idx_save_hash").on(saves.hash),
-    playersIndex: index("idx_save_players").on(saves.players),
-    playthroughIdIndex: index("idx_saves_playthrough_id").on(
-      saves.playthroughId,
-    ),
-  }),
+  (saves) => [
+    index("idx_save_achieve_ids").on(saves.achieveIds),
+    index("idx_save_creation").on(saves.createdOn),
+    uniqueIndex("idx_save_hash").on(saves.hash),
+    index("idx_save_players").on(saves.players),
+    index("idx_saves_playthrough_id").on(saves.playthroughId),
+  ],
 );
 export type Save = InferSelectModel<typeof saves>;
 export type NewSave = InferInsertModel<typeof saves>;

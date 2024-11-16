@@ -12,7 +12,6 @@ import {
   LinksFunction,
   LoaderFunctionArgs,
   MetaFunction,
-  json,
 } from "@remix-run/cloudflare";
 import tailwind from "@/styles/tailwind.css?url";
 import appCss from "@/styles/styles.css?url";
@@ -81,7 +80,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     queryFn: () => pdxSession({ request, context }).get(),
   });
 
-  return json({ dehydratedState: dehydrate(queryClient) });
+  return { dehydratedState: dehydrate(queryClient) };
 }
 
 export const ErrorBoundary = () => {

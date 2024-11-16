@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable */
 // https://github.com/lukeed/dequal/blob/37d4f27de03fa6264e406cd03288cec8255fca4c/src/lite.js
 const has = Object.prototype.hasOwnProperty;
 

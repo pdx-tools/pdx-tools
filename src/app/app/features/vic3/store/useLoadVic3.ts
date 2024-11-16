@@ -53,7 +53,7 @@ async function loadVic3Save(save: Vic3SaveInput, signal: AbortSignal) {
 type Vic3LoadState = {
   loading: boolean;
   data: Vic3Store | null;
-  error: unknown | null;
+  error: unknown;
 };
 
 type Vic3LoadActions =

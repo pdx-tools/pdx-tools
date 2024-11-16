@@ -32,7 +32,7 @@ import { logMs } from "@/lib/log";
 import { createBudget } from "../features/country-details/budget";
 export * from "./init";
 
-export const getRawData = wasm.viewData;
+export const getRawData = () => wasm.viewData();
 export const melt = () => wasm.melt();
 
 let provinceIdToColorIndex = new Uint16Array();

@@ -145,7 +145,7 @@ export const WatchCountryDetails = () => {
           shape="square"
           icon={<TableCellsIcon className="h-4 w-4" />}
           tooltip="download data as csv"
-          onClick={async () => {
+          onClick={() => {
             const outData = data.map((x) => ({
               ...x,
               manpower: formatInt(x.manpower * 1000),

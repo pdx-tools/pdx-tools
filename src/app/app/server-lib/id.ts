@@ -14,4 +14,4 @@ import { customAlphabet } from "nanoid";
 // scheme in front, we can still have new users and uploads benefit
 const alphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
 const nanoid = customAlphabet(alphabet);
-export const genId = (size?: number | undefined) => nanoid(size);
+export const genId = (size?: number) => nanoid(size);

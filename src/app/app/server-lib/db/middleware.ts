@@ -4,7 +4,8 @@ import { DbConnection, usingDb } from "./connection";
 export type DbRoute = { db: DbConnection };
 export function withDb<
   Args extends { request: Request; context: AppLoadContext },
-  R,
+  T,
+  R extends Promise<T>,
   Ctxt = object,
 >(fn: (args: Args, context: DbRoute & Ctxt) => R) {
   return async (args: Args, ctxt?: Ctxt) => {

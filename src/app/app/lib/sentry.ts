@@ -1,7 +1,7 @@
 import { isEnvironmentSupported } from "@/lib/compatibility";
 import * as Sentry from "@sentry/remix";
 
-const SENTRY_DSN = import.meta.env["VITE_SENTRY_DSN"];
+const SENTRY_DSN: string | undefined = import.meta.env.VITE_SENTRY_DSN;
 export const sentryInit = () =>
   Sentry.init({
     dsn: SENTRY_DSN,

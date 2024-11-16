@@ -1,5 +1,6 @@
 import { ensurePermissions } from "@/lib/auth";
 import { getAuth } from "@/server-lib/auth/session";
+import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { pdxOg } from "@/server-lib/og";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
@@ -14,7 +15,15 @@ export const action = withCore(
     const body = await request.json();
     const save = saveSchema.parse(body);
     const s3 = pdxS3(pdxCloudflareS3({ context }));
-    pdxOg({ s3, context }).generateOgIntoS3(save.saveId);
+    const task = pdxOg({ s3, context })
+      .generateOgIntoS3(save.saveId)
+      .catch((err) => {
+        log.exception(err, {
+          msg: "unable to generate og image",
+          saveId: save.saveId,
+        });
+      });
+    context.cloudflare.ctx.waitUntil(task);
     return Response.json({ msg: "done" });
   },
 );

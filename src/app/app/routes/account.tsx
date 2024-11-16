@@ -2,7 +2,7 @@ import { WebPage } from "@/components/layout/WebPage";
 import { LoggedIn } from "@/components/LoggedIn";
 import { Account } from "@/features/account";
 import { useLoaderData } from "@remix-run/react";
-import { json, LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
+import { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { pdxSession } from "@/server-lib/auth/session";
 import { seo } from "@/lib/seo";
 
@@ -17,7 +17,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   if (session.kind !== "user") {
     throw new Error("Not logged in");
   }
-  return json({ session });
+  return { session };
 };
 
 export default function AccountRoute() {

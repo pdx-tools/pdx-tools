@@ -23,16 +23,19 @@ export const useEu4Worker = <T>(cb: (arg0: Eu4Worker) => Promise<T>) => {
               setData(result);
             }
           }
-        } catch (error) {
-          captureException(error);
-          setError(getErrorMessage(error));
         } finally {
           if (mounted) {
             setLoading(false);
           }
         }
       }
-      getData();
+
+      getData().catch((error) => {
+        captureException(error);
+        if (mounted) {
+          setError(getErrorMessage(error));
+        }
+      });
 
       return () => {
         mounted = false;

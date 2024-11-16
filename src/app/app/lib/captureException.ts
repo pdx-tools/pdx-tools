@@ -2,7 +2,7 @@ import { captureException as sentryCaptureException } from "@sentry/remix";
 
 type CaptureException = typeof sentryCaptureException;
 
-export const captureException = async (
+export const captureException = (
   exception: Parameters<CaptureException>[0],
   captureContext?: Parameters<CaptureException>[1],
 ) => {
