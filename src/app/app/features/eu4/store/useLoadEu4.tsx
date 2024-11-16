@@ -359,6 +359,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
         // doesn't support transferring blobs:
         // https://github.com/puppeteer/puppeteer/issues/3722
         Object.defineProperty(window, "pdxScreenshot", {
+          writable: true,
           value: async () => {
             const fontFamily = getComputedStyle(document.body).fontFamily;
             const date = storeRef.current?.getState().selectedDate.text;
