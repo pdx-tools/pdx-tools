@@ -1,5 +1,4 @@
-import { hasPermission, userId } from "@/lib/auth";
-import { pdxUser } from "@/server-lib/auth/session";
+import { hasPermission, pdxUser, userId } from "@/lib/auth";
 import { describe, expect, it } from "vitest";
 
 describe("auth", () => {

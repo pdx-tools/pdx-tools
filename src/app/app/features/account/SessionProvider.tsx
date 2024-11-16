@@ -2,8 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { getIsDeveloper } from "@/lib/isDeveloper";
 import { check } from "@/lib/isPresent";
 import { pdxApi } from "@/services/appApi";
-import { type User } from "@/lib/auth";
-import { pdxUser } from "@/server-lib/auth/session";
+import { pdxUser, type User } from "@/lib/auth";
 
 type SessionProviderProps = {
   children: React.ReactNode;

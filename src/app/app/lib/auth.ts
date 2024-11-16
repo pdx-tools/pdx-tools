@@ -1,4 +1,5 @@
 // Attribute-based access control
+import { type PdxSession } from "@/server-lib/auth/session";
 
 declare const tag: unique symbol;
 export type UserId = string & {
@@ -104,4 +105,15 @@ export function ensurePermissions<P extends PdxPermissions["kind"]>(
   if (!hasPermission(user, operation, data)) {
     throw new AuthorizationError();
   }
+}
+
+export function pdxUser(session: PdxSession): User {
+  return session.kind === "guest"
+    ? {
+        roles: ["guest"],
+      }
+    : {
+        roles: [session.account === "admin" ? "admin" : "user"],
+        id: session.userId,
+      };
 }

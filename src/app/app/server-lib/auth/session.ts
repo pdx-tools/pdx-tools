@@ -8,7 +8,7 @@ import { parseBasicAuth } from "./basic";
 import { useDb } from "../db/connection";
 import { apiKeyAtRest, table } from "../db";
 import { eq } from "drizzle-orm";
-import { LoggedInUser, User, userId } from "@/lib/auth";
+import { LoggedInUser, userId } from "@/lib/auth";
 
 export type PdxSessionStorage = ReturnType<typeof pdxSession>;
 export const pdxSession = ({
@@ -104,15 +104,4 @@ export async function getAuth({
       roles: [session.account === "admin" ? "admin" : "user"],
     };
   }
-}
-
-export function pdxUser(session: PdxSession): User {
-  return session.kind === "guest"
-    ? {
-        roles: ["guest"],
-      }
-    : {
-        roles: [session.account === "admin" ? "admin" : "user"],
-        id: session.userId,
-      };
 }
