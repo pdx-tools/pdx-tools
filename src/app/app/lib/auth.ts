@@ -1,10 +1,17 @@
 // Attribute-based access control
 
-import { type PdxSession } from "@/server-lib/auth/session";
+declare const tag: unique symbol;
+export type UserId = string & {
+  readonly [tag]: UserId;
+};
+
+export function userId(x: string) {
+  return x as UserId;
+}
 
 export type Role = "admin" | "user" | "guest";
-export type User = { roles: Role[]; id?: string };
-export type LoggedInUser = { roles: Role[]; id: string };
+export type User = { roles: Role[]; id?: UserId };
+export type LoggedInUser = { roles: Role[]; id: UserId };
 
 type PdxPermissions =
   | {
@@ -12,11 +19,11 @@ type PdxPermissions =
     }
   | {
       kind: "savefile:delete";
-      data: { userId?: string };
+      data: { userId?: UserId };
     }
   | {
       kind: "savefile:update";
-      data: { userId?: string };
+      data: { userId?: UserId };
     }
   | {
       kind: "savefile:reprocess";
@@ -97,15 +104,4 @@ export function ensurePermissions<P extends PdxPermissions["kind"]>(
   if (!hasPermission(user, operation, data)) {
     throw new AuthorizationError();
   }
-}
-
-export function pdxUser(session: PdxSession): User {
-  return session.kind === "guest"
-    ? {
-        roles: ["guest"],
-      }
-    : {
-        roles: [session.account === "admin" ? "admin" : "user"],
-        id: session.userId,
-      };
 }

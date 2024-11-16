@@ -1,3 +1,5 @@
+import { userId } from "@/lib/auth";
+
 export function parseBasicAuth(header: string) {
   const space = header.indexOf(" ");
   if (space <= 0) {
@@ -16,7 +18,7 @@ export function parseBasicAuth(header: string) {
     return null;
   }
 
-  const username = decoded.substring(0, sep);
+  const username = userId(decoded.substring(0, sep));
   const password = decoded.substring(sep + 1);
   return { username, password };
 }

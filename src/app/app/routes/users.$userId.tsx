@@ -4,7 +4,7 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { useSession } from "@/features/account";
 import { UserSaveTable } from "@/features/account/UserSaveTable";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { hasPermission } from "@/lib/auth";
+import { hasPermission, userId } from "@/lib/auth";
 import { seo } from "@/lib/seo";
 import { getUser } from "@/server-lib/db";
 import { usingDb } from "@/server-lib/db/connection";
@@ -27,8 +27,8 @@ export const meta: MetaFunction = ({ params: { userId } }) =>
 
 export const loader = withCore(
   async ({ params, context }: LoaderFunctionArgs) => {
-    const { userId } = params;
-    if (!userId) {
+    const { userId: uid } = params;
+    if (!uid) {
       throw new Response("Missing user", {
         status: 400,
       });
@@ -38,8 +38,8 @@ export const loader = withCore(
     const queryClient = new QueryClient();
     const prefetch = queryClient
       .fetchQuery({
-        queryKey: pdxKeys.user(userId),
-        queryFn: () => getUser(db, userId),
+        queryKey: pdxKeys.user(uid),
+        queryFn: () => getUser(db, userId(uid)),
         retry: false,
       })
       .then(() => dehydrate(queryClient))

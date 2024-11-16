@@ -8,6 +8,7 @@ import { AppLoadContext, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { withDb } from "@/server-lib/db/middleware";
 import { pdxSession } from "@/server-lib/auth/session";
 import { pdxSteam } from "@/server-lib/steam.server";
+import { userId } from "@/lib/auth";
 
 export const loader = withCore(
   withDb(async ({ request, context }: LoaderFunctionArgs, { db }) => {
@@ -80,10 +81,14 @@ async function steamInfo(
   const steam = pdxSteam({ context });
   const steamUid = await steam.loginVerify(searchParams);
   const steamName = await steam.getPlayerName(steamUid);
-  const genUserId = genId(12);
+  const genUserId = userId(genId(12));
   return { steamUid, steamName, genUserId };
 }
 
 function testInfo() {
-  return { steamUid: "1000", steamName: "my-steam-name", genUserId: "100" };
+  return {
+    steamUid: "1000",
+    steamName: "my-steam-name",
+    genUserId: userId("100"),
+  };
 }

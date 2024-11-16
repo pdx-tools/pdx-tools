@@ -1,3 +1,4 @@
+import { type UserId } from "@/lib/auth";
 import { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   pgTable,
@@ -28,7 +29,7 @@ const timestampColumn = () =>
 export const users = pgTable(
   "users",
   {
-    userId: text("user_id").primaryKey(),
+    userId: text("user_id").$type<UserId>().primaryKey(),
     steamId: text("steam_id"),
     steamName: text("steam_name"),
     email: text("email"),
@@ -51,6 +52,7 @@ export const saves = pgTable(
     filename: text("filename").notNull(),
     userId: text("user_id")
       .notNull()
+      .$type<UserId>()
       .references(() => users.userId),
     hash: text("hash").notNull(),
     date: text("date").notNull(),

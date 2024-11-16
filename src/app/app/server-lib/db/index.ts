@@ -5,6 +5,7 @@ import { NotFoundError } from "../errors";
 import { Achievement } from "../wasm/wasm_app";
 import { eu4DaysToDate } from "../game";
 import { DbConnection } from "./connection";
+import { type UserId } from "@/lib/auth";
 export {
   type User,
   type Save,
@@ -124,7 +125,7 @@ export const table = {
 };
 
 export type UserSaves = Awaited<ReturnType<typeof getUser>>;
-export async function getUser(db: DbConnection, userId: string) {
+export async function getUser(db: DbConnection, userId: UserId) {
   const userSaves = await db
     .select(
       saveView({

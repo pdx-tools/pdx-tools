@@ -8,7 +8,7 @@ import { parseBasicAuth } from "./basic";
 import { useDb } from "../db/connection";
 import { apiKeyAtRest, table } from "../db";
 import { eq } from "drizzle-orm";
-import { LoggedInUser } from "@/lib/auth";
+import { LoggedInUser, User, userId } from "@/lib/auth";
 
 export type PdxSessionStorage = ReturnType<typeof pdxSession>;
 export const pdxSession = ({
@@ -50,7 +50,7 @@ export type PdxUserSession = Extract<PdxSession, { kind: "user" }>;
 
 const SessionPayloadSchema = z
   .object({
-    userId: z.string(),
+    userId: z.string().transform((x) => userId(x)),
     steamId: z.string(),
     account: z.enum(["free", "admin"]),
   })
@@ -104,4 +104,15 @@ export async function getAuth({
       roles: [session.account === "admin" ? "admin" : "user"],
     };
   }
+}
+
+export function pdxUser(session: PdxSession): User {
+  return session.kind === "guest"
+    ? {
+        roles: ["guest"],
+      }
+    : {
+        roles: [session.account === "admin" ? "admin" : "user"],
+        id: session.userId,
+      };
 }

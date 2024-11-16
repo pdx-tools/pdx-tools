@@ -2,7 +2,8 @@ import React, { useContext, useEffect, useState } from "react";
 import { getIsDeveloper } from "@/lib/isDeveloper";
 import { check } from "@/lib/isPresent";
 import { pdxApi } from "@/services/appApi";
-import { pdxUser, User } from "@/lib/auth";
+import { type User } from "@/lib/auth";
+import { pdxUser } from "@/server-lib/auth/session";
 
 type SessionProviderProps = {
   children: React.ReactNode;
@@ -26,7 +27,6 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
   }, []);
 
   const user = pdxUser(profile.data);
-
   return (
     <SessionContext.Provider value={{ isDeveloper, profile: user }}>
       {children}
