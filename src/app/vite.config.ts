@@ -71,12 +71,16 @@ export default defineConfig(({ mode }) => ({
       output: {
         paths: { "wasm_app_bg.wasm": "./wasm_app_bg.wasm" },
       },
-      external: ["wasm_app_bg.wasm"],
+      external: ["wasm_app_bg.wasm", "cloudflare:workers"],
     },
   },
-
-  // Need to transition to monorepo and then we can get rid of this
   server: {
+    hmr: {
+      // Change the port so HMR isn't hogging the live session websockets
+      port: 2999,
+    },
+
+    // Need to transition to monorepo and then we can get rid of this
     fs: {
       allow: ["../.."],
     },

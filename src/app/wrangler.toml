@@ -16,6 +16,15 @@ binding = "PDX_DB"
 id = "52bcc7b655d44776a6e42672fd11b388"
 localConnectionString = "postgres://user:password@localhost:5432/databasename"
 
+[[durable_objects.bindings]]
+name = "WEBSOCKET_LIVE_SERVER"
+class_name = "LiveSessionWebsocketServer"
+script_name = "./app/routes/api.users.$userId.live.ts"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["LiveSessionWebsocketServer"]
+
 [env.test]
 
 [[env.test.hyperdrive]]
