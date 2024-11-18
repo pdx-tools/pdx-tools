@@ -60,7 +60,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body>
+      {/* min-h-screen needed for firefox when selecting map country filter */}
+      <body className="min-h-screen">
         {/* FF FOUC protection https://stackoverflow.com/a/57888310/433785 */}
         <script>0</script>
 
