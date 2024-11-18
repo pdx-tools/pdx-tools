@@ -70,15 +70,6 @@ impl SaveFileImpl {
             .collect();
 
         let mut tags: HashSet<CountryTag> = payload.include.iter().copied().collect();
-        if payload.include_subjects {
-            let included_subjects = payload
-                .include
-                .iter()
-                .filter_map(|tag| self.query.country(tag))
-                .flat_map(|x| x.subjects.iter());
-            tags.extend(included_subjects);
-        }
-
         let players: HashSet<_> = self.all_players().into_iter().collect();
         for (tag, country) in &self.query.save().game.countries {
             if tag.is_none() || !existing_tags.contains(tag) {
@@ -104,10 +95,21 @@ impl SaveFileImpl {
 
             if insert {
                 tags.insert(*tag);
-                if payload.include_subjects {
-                    tags.extend(country.subjects.iter());
-                }
             }
+        }
+
+        if payload.include_subjects {
+            let included_subjects = tags
+                .iter()
+                .filter_map(|tag| self.query.country(tag))
+                .flat_map(|x| x.subjects.iter())
+                .filter_map(|subject| self.query.save_country(subject))
+                .flat_map(|subject| {
+                    std::iter::once(subject.tag).chain(subject.country.subjects.iter().cloned())
+                })
+                .collect::<Vec<_>>();
+
+            tags.extend(included_subjects);
         }
 
         // If the user wants to view great tags but there fewer than 8 alive
