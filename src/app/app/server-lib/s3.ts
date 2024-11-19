@@ -70,6 +70,20 @@ export const pdxS3 = ({
 
   return {
     keys: s3Keys,
+
+    // Given an original request's headers, create a new set of headers to
+    // forward onto the s3 provider
+    headers: (headers: Headers) => {
+      const newHeaders = new Headers();
+      for (const header of ["If-None-Match"]) {
+        const inm = headers.get(header);
+        if (inm) {
+          newHeaders.set(header, inm);
+        }
+      }
+
+      return newHeaders;
+    },
     bucket,
     fetch: s3Fetch,
     fetchOk: s3FetchOk,
