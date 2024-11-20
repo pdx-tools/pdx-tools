@@ -1,6 +1,20 @@
-import type { AppLoadContext, EntryContext } from "@remix-run/cloudflare";
+import type {
+  ActionFunctionArgs,
+  AppLoadContext,
+  EntryContext,
+  LoaderFunctionArgs,
+} from "@remix-run/cloudflare";
+import * as Sentry from "@sentry/remix";
 import { RemixServer } from "@remix-run/react";
 import { renderToReadableStream } from "react-dom/server";
+
+const SENTRY_DSN: string | undefined = import.meta.env.VITE_SENTRY_DSN;
+if (SENTRY_DSN) {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    tracesSampleRate: 0.0,
+  });
+}
 
 const ABORT_DELAY = 5000;
 
@@ -9,9 +23,6 @@ export default async function handleRequest(
   responseStatusCode: number,
   responseHeaders: Headers,
   remixContext: EntryContext,
-  // This is ignored so we can keep it in the template for visibility.  Feel
-  // free to delete this parameter in your app if you're not using it!
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   loadContext: AppLoadContext,
 ) {
   const controller = new AbortController();
@@ -35,8 +46,11 @@ export default async function handleRequest(
       signal: controller.signal,
       onError(error: unknown) {
         if (!controller.signal.aborted) {
-          // Log streaming rendering errors from inside the shell
           console.error(error);
+          Sentry.captureException(error, {
+            extra: { url: request.url },
+          });
+          loadContext.cloudflare.ctx.waitUntil(Sentry.flush(2000));
         }
         responseStatusCode = 500;
       },
@@ -51,4 +65,17 @@ export default async function handleRequest(
     headers: responseHeaders,
     status: responseStatusCode,
   });
+}
+
+export function handleError(
+  error: unknown,
+  { request, context }: LoaderFunctionArgs | ActionFunctionArgs,
+) {
+  if (!request.signal.aborted) {
+    console.error(error);
+    Sentry.captureException(error, {
+      extra: { url: request.url },
+    });
+    context.cloudflare.ctx.waitUntil(Sentry.flush(2000));
+  }
 }

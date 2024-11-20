@@ -5,13 +5,15 @@ import React, { ComponentPropsWithoutRef } from "react";
 const linkVariants = cva("underline-offset-4 hover:underline", {
   variants: {
     variant: {
-      light: "text-teal-400",
-      dark: "text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-500",
+      light: "font-semibold text-sky-300 hover:text-sky-200",
+      dark: "font-semibold text-sky-600 hover:text-sky-700",
+      standard:
+        "font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-500",
       ghost: "",
     },
   },
   defaultVariants: {
-    variant: "dark",
+    variant: "standard",
   },
 });
 
