@@ -35,14 +35,25 @@ impl<'a> Iterator for Vic3CountryStatsIter<'a> {
         let days_between_start_and_end = game_start_date.days_until(&channel.date);
         let days_per_index = self.stats.sample_rate / 4;
         let days_to_start_date = days_between_start_and_end - (channel.index * days_per_index);
-        let start_date = game_start_date.add_days(days_to_start_date + 1);
-        if self.index + 1 >= (channel.index as usize) {
+        let start_date = game_start_date.add_days(days_to_start_date);
+
+        if self.index >= (channel.index as usize) {
             return None;
         }
-        let elem = channel.values.get(self.index)?;
-        self.index += 1;
 
-        let new_date = start_date.add_days(self.index as i32 * days_per_index);
+        let elem = channel.values.get(self.index)?;
+
+
+        let mut new_date = start_date.add_days(self.index as i32 * days_per_index);
+
+        use jomini::common::PdsDate;
+        // Ensure the new_date does not cross into the next year
+        if new_date.year() > start_date.year() {
+            new_date = Vic3Date::from_ymdh(new_date.year(), 12, 31, 0);
+        }
+
+        self.index += 1;        
+
         Some((new_date, *elem))
     }
 }
