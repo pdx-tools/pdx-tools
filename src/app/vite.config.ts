@@ -55,7 +55,7 @@ export default defineConfig(({ mode }) => ({
       ...(mode === "development" && {
         postgres: path.resolve(
           __dirname,
-          "../../node_modules/postgres/src/index.js"
+          "./node_modules/postgres/src/index.js"
         ),
       }),
     },
