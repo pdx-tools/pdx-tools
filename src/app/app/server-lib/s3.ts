@@ -43,10 +43,13 @@ export const pdxS3 = ({
     region,
   };
 
+  const s3Url = (arg: { toString: () => string }) =>
+    new URL(arg.toString(), endpoint);
+
   const s3Fetch = (...args: Parameters<(typeof s3client)["fetch"]>) => {
     return args[0] instanceof Request
       ? s3client.fetch(...args)
-      : s3client.fetch(new URL(args[0].toString(), endpoint).toString(), {
+      : s3client.fetch(s3Url(args[0]).toString(), {
           ...args[1],
           aws: { ...defaultHeaders, ...args[1]?.aws },
         });
@@ -85,6 +88,7 @@ export const pdxS3 = ({
       return newHeaders;
     },
     bucket,
+    url: s3Url,
     fetch: s3Fetch,
     fetchOk: s3FetchOk,
     presigned: async (saveId: string) => {
