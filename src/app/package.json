@@ -15,6 +15,7 @@
     "start": "wrangler dev",
     "preview": "npm run build && wrangler dev",
     "test": "vitest",
+    "lint": "eslint",
     "copy-wasm": "cp app/server-lib/wasm/wasm_app_bg.wasm build/server/assets/.",
     "typegen": "wrangler types"
   },
