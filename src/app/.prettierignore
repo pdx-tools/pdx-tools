@@ -1,0 +1,3 @@
+migrations/
+app/server-lib/wasm/
+app/features/**/*.json

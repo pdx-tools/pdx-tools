@@ -29,14 +29,14 @@ export default tseslint.config(
       ...reactPlugin.configs.flat.recommended.languageOptions,
     },
     settings: {
-        react: {
-            version: "detect",
-          },
+      react: {
+        version: "detect",
+      },
     },
     rules: {
-        // https://github.com/yannickcr/eslint-plugin-react/issues/894#issuecomment-613789396
-        "react/no-unescaped-entities": ["error", { forbid: [">", "}"] }],
-      },
+      // https://github.com/yannickcr/eslint-plugin-react/issues/894#issuecomment-613789396
+      "react/no-unescaped-entities": ["error", { forbid: [">", "}"] }],
+    },
   },
   reactPlugin.configs.flat["jsx-runtime"],
   {
@@ -47,5 +47,5 @@ export default tseslint.config(
       "**/.wrangler/**",
       "**/wasm/wasm_app*",
     ],
-  }
+  },
 );

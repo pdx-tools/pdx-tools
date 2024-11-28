@@ -15,6 +15,7 @@ yarn.lock
 .vercel
 .output
 .vinxi
+.wrangler
 
 /build/
 /api/

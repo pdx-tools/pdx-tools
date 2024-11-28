@@ -41,7 +41,7 @@ export default defineConfig(({ mode }) => ({
             disable: !process.env.SENTRY_AUTH_TOKEN,
           }),
         ]
-      : []
+      : [],
   ),
   ssr: {
     resolve: {
@@ -55,7 +55,7 @@ export default defineConfig(({ mode }) => ({
       ...(mode === "development" && {
         postgres: path.resolve(
           __dirname,
-          "./node_modules/postgres/src/index.js"
+          "./node_modules/postgres/src/index.js",
         ),
       }),
     },
@@ -78,7 +78,7 @@ export default defineConfig(({ mode }) => ({
   // Need to transition to monorepo and then we can get rid of this
   server: {
     fs: {
-      allow: ['../..'],
-    }
-  }
+      allow: ["../.."],
+    },
+  },
 }));

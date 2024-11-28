@@ -10,7 +10,7 @@
     "build": "remix vite:build && npm run copy-wasm",
     "build:test": "NODE_ENV=development remix vite:build && npm run copy-wasm",
     "deploy": "wrangler deploy",
-    "format": "prettier --write 'app' 'tests'",
+    "format": "prettier --write .",
     "generate": "drizzle-kit generate --config drizzle-kit.config.ts",
     "start": "wrangler dev",
     "preview": "npm run build && wrangler dev",
