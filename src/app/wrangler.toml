@@ -7,6 +7,10 @@ main = "./server.ts"
 [assets]
 directory = "./build/client"
 
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 [[hyperdrive]]
 binding = "PDX_DB"
 id = "52bcc7b655d44776a6e42672fd11b388"
