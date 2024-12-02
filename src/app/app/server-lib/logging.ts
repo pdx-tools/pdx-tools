@@ -20,29 +20,29 @@ class Log {
   }
 
   public info(data: LogMessage) {
-    const line = JSON.stringify({
+    const line = {
       date: this.dateFmt(),
       level: "INFO",
       ...data,
-    });
+    };
     console.info(line);
   }
 
   public warn(data: LogMessage) {
-    const line = JSON.stringify({
+    const line = {
       date: this.dateFmt(),
       level: "WARN",
       ...data,
-    });
+    };
     console.warn(line);
   }
 
   public error(data: LogMessage) {
-    const line = JSON.stringify({
+    const line = {
       date: this.dateFmt(),
       level: "ERROR",
       ...data,
-    });
+    };
     console.error(line);
   }
 

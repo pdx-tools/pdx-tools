@@ -7,6 +7,7 @@ import type {
 import * as Sentry from "@sentry/remix";
 import { RemixServer } from "@remix-run/react";
 import { renderToReadableStream } from "react-dom/server";
+import { log } from "./server-lib/logging";
 
 const SENTRY_DSN: string | undefined = import.meta.env.VITE_SENTRY_DSN;
 if (SENTRY_DSN) {
@@ -46,7 +47,7 @@ export default async function handleRequest(
       signal: controller.signal,
       onError(error: unknown) {
         if (!controller.signal.aborted) {
-          console.error(error);
+          log.exception(error, { msg: "streaming error" });
           Sentry.captureException(error, {
             extra: { url: request.url },
           });
@@ -71,8 +72,16 @@ export function handleError(
   error: unknown,
   { request, context }: LoaderFunctionArgs | ActionFunctionArgs,
 ) {
-  if (!request.signal.aborted) {
-    console.error(error);
+  if (
+    !request.signal.aborted &&
+    !(
+      typeof error === "object" && // Don't log 404 errors
+      error !== null &&
+      "status" in error &&
+      error.status === 404
+    )
+  ) {
+    log.exception(error, { msg: "server error" });
     Sentry.captureException(error, {
       extra: { url: request.url },
     });
