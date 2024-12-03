@@ -31,7 +31,7 @@ export default async function handleRequest(
 
   const globalCsp = [
     "default-src 'self'",
-    "connect-src 'self' blob: https://skanderbeg.pm/api.php",
+    "connect-src 'self' blob:",
     "img-src 'self' data:",
     "style-src 'self' 'unsafe-inline'",
     "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:",

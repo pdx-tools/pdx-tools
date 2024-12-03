@@ -32,15 +32,6 @@ export async function fetchData(save: Eu4SaveInput) {
       wasm.stash(new Uint8Array(data), { kind: "remote", url });
       return;
     }
-    case "skanderbeg": {
-      // Unable to stream this as the skanderbeg saves as the content-length does
-      // not actually match the body as the body is compressed twice and the
-      // reported length is only the first compression
-      const url = `https://skanderbeg.pm/api.php?scope=downloadSaveFile&id=${save.skanId}`;
-      const data = await fetchOk(url).then((x) => x.arrayBuffer());
-      wasm.stash(new Uint8Array(data), { kind: "remote", url });
-      return;
-    }
   }
 }
 

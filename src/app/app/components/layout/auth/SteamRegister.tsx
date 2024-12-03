@@ -1,7 +1,6 @@
 import { SteamButton } from "./SteamButton";
 import { Button } from "@/components/Button";
 import { Sheet } from "@/components/Sheet";
-import { Link } from "@/components/Link";
 import { emitEvent } from "@/lib/events";
 
 export const SteamRegister = () => {
@@ -37,11 +36,8 @@ export const SteamRegister = () => {
           account features:
         </p>
         <ul>
-          <li>Ability to submit to the leaderboard</li>
-          <li>
-            <Link href="https://skanderbeg.pm">Skanderbeg</Link> saves linked to
-            your profile
-          </li>
+          <li>Ability to upload saves</li>
+          <li>Achievement leaderboard participation</li>
         </ul>
         <h3 className="text-xl">Why Steam?</h3>
         EU4 is mainly distributed through Steam, so the majority of PDX Tools

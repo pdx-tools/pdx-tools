@@ -33,11 +33,6 @@ const HeaderMenu = () => {
                   Achievements
                 </Link>
               </NavigationMenu.Link>
-              <NavigationMenu.Link variant="button" asChild>
-                <Link variant="ghost" to="/eu4/skanderbeg">
-                  Skanderbeg
-                </Link>
-              </NavigationMenu.Link>
             </NavigationMenu.Content>
           </NavigationMenu.Item>
           <NavigationMenu.Item>
