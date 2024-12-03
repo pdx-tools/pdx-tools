@@ -18,11 +18,21 @@ export async function action({ request, context }: ActionFunctionArgs) {
     throw new Error(`Invalid sentry project id: ${project_id}`);
   }
 
+  // https://github.com/getsentry/sentry-javascript/discussions/5798#discussioncomment-3711950
+  // https://developers.cloudflare.com/fundamentals/reference/http-request-headers/#x-forwarded-for
+  const headers = new Headers();
+  const forwardedHeader = "X-Forwarded-For";
+  const forwardedIp = request.headers.get(forwardedHeader);
+  if (forwardedIp) {
+    headers.set(forwardedHeader, forwardedIp);
+  }
+
   return fetch(
     `https://${context.cloudflare.env.SENTRY_HOST}/api/${project_id}/envelope/`,
     {
       method: "POST",
       body,
+      headers,
     },
   );
 }
