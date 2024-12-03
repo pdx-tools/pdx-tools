@@ -1,4 +1,3 @@
-import { epochOf } from "@/lib/dates";
 import { fetchOk, fetchOkJson, sendJson } from "@/lib/fetch";
 import {
   QueryClient,
@@ -36,20 +35,6 @@ export type SavePatchProps = {
   filename?: string;
 };
 
-export type SkanUserSaves = {
-  hash: string;
-  timestamp: string;
-  name: string;
-  uploaded_by: string;
-  player: string;
-  multiplayer: string;
-  date: string;
-  customname: string | null;
-  last_visited: string;
-  view_count: string;
-  version: string;
-};
-
 export const pdxKeys = {
   all: ["pdx"] as const,
   profile: () => [...pdxKeys.all, "profile"] as const,
@@ -58,7 +43,6 @@ export const pdxKeys = {
   save: (id: string) => [...pdxKeys.saves(), id] as const,
   achievements: () => [...pdxKeys.all, "achievements"] as const,
   achievement: (id: string) => [...pdxKeys.achievements(), id] as const,
-  skanderbegUser: () => [...pdxKeys.all, "skanderbeg"] as const,
   users: () => [...pdxKeys.all, "users"] as const,
   user: (id: string) => [...pdxKeys.users(), id] as const,
 };
@@ -90,26 +74,6 @@ export const pdxApi = {
       useSuspenseQuery({
         queryKey: pdxKeys.profile(),
         queryFn: () => fetchOkJson<PdxSession>("/api/profile"),
-      }),
-
-    useSkanderbegSaves: () =>
-      useQuery({
-        queryKey: pdxKeys.skanderbegUser(),
-        queryFn: () => fetchOkJson<SkanUserSaves[]>(`/api/skan/user`),
-        select: (data) => {
-          const saves = data.map((obj) => ({
-            hash: obj.hash,
-            timestamp: obj.timestamp,
-            timestamp_epoch: epochOf(obj.timestamp),
-            name: obj.customname || obj.name,
-            uploaded_by: obj.uploaded_by,
-            player: obj.player,
-            date: obj.date,
-            version: obj.version,
-          }));
-          saves.sort((a, b) => b.timestamp_epoch - a.timestamp_epoch);
-          return saves;
-        },
       }),
   },
 

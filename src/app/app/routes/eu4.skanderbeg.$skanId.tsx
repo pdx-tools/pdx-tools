@@ -1,8 +1,6 @@
-import Eu4Ui from "@/features/eu4/Eu4Ui";
+import { WebPage } from "@/components/layout";
 import { seo } from "@/lib/seo";
 import { MetaFunction } from "@remix-run/cloudflare";
-import { useParams } from "@remix-run/react";
-import { useMemo } from "react";
 
 export const meta: MetaFunction = () =>
   seo({
@@ -11,10 +9,11 @@ export const meta: MetaFunction = () =>
   });
 
 export default function SkanderbegRoute() {
-  const { skanId } = useParams();
-  const save = useMemo(
-    () => ({ kind: "skanderbeg", skanId: skanId! }) as const,
-    [skanId],
+  return (
+    <WebPage>
+      <main className="mx-auto mt-8 max-w-screen-md">
+        <SkanderbegRoute />
+      </main>
+    </WebPage>
   );
-  return <Eu4Ui save={save} />;
 }

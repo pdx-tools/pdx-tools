@@ -1,5 +1,4 @@
 import { WebPage } from "@/components/layout";
-import { SkanderbegPage } from "@/features/skanderbeg/SkanderbegPage";
 import { seo } from "@/lib/seo";
 import { MetaFunction } from "@remix-run/cloudflare";
 
@@ -12,7 +11,9 @@ export const meta: MetaFunction = () =>
 export default function SkanderbegRoute() {
   return (
     <WebPage>
-      <SkanderbegPage />
+      <main className="mx-auto mt-8 max-w-screen-md">
+        <SkanderbegRoute />
+      </main>
     </WebPage>
   );
 }
