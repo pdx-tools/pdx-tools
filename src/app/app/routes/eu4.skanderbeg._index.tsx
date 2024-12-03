@@ -1,4 +1,5 @@
 import { WebPage } from "@/components/layout";
+import { SkanderbegAlert } from "@/features/eu4/components/SkanderbegAlert";
 import { seo } from "@/lib/seo";
 import { MetaFunction } from "@remix-run/cloudflare";
 
@@ -12,7 +13,7 @@ export default function SkanderbegRoute() {
   return (
     <WebPage>
       <main className="mx-auto mt-8 max-w-screen-md">
-        <SkanderbegRoute />
+        <SkanderbegAlert />
       </main>
     </WebPage>
   );
