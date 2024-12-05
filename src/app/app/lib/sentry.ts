@@ -1,4 +1,5 @@
 import { isEnvironmentSupported } from "@/lib/compatibility";
+import { isProduction } from "@/server-lib/env";
 import * as Sentry from "@sentry/remix";
 
 const SENTRY_DSN: string | undefined = import.meta.env.VITE_SENTRY_DSN;
@@ -7,7 +8,7 @@ export const sentryInit = () =>
     dsn: SENTRY_DSN,
     tracesSampleRate: 0.0,
     enabled: !!SENTRY_DSN,
-    debug: !import.meta.env.PROD,
+    debug: !isProduction(),
     tunnel: "/api/tunnel",
     ignoreErrors: [
       "ResizeObserver loop completed with undelivered notifications.",

@@ -6,15 +6,16 @@ import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { AppLoadContext, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { withDb } from "@/server-lib/db/middleware";
-import { pdxSession } from "@/server-lib/auth/session";
+import { pdxCookieSession } from "@/server-lib/auth/cookie";
 import { pdxSteam } from "@/server-lib/steam.server";
 import { userId } from "@/lib/auth";
+import { isProduction } from "@/server-lib/env";
 
 export const loader = withCore(
   withDb(async ({ request, context }: LoaderFunctionArgs, { db }) => {
     const searchParams = new URL(request.url).searchParams;
 
-    const { steamUid, steamName, genUserId } = import.meta.env.PROD
+    const { steamUid, steamName, genUserId } = isProduction()
       ? await steamInfo(context, searchParams)
       : testInfo();
 
@@ -24,7 +25,7 @@ export const loader = withCore(
         userId: genUserId,
         steamId: steamUid,
         steamName: steamName,
-        account: import.meta.env.PROD ? "free" : "admin",
+        account: isProduction() ? "free" : "admin",
       })
       .onConflictDoUpdate({
         target: table.users.steamId,
@@ -44,7 +45,7 @@ export const loader = withCore(
 
     const dest = new URL("/", request.url);
 
-    const sessionStorage = pdxSession({ context, request });
+    const sessionStorage = pdxCookieSession({ context, request });
     const session = await sessionStorage.new();
     session.set("userId", user.userId);
     session.set("steamId", steamUid);

@@ -4,6 +4,7 @@ import { timeit } from "@/lib/timeit";
 import { pdxS3 } from "./s3";
 import { AppLoadContext } from "@remix-run/server-runtime";
 import { pdxFns } from "./functions";
+import { isProduction } from "./env";
 
 export const pdxOg = ({
   s3,
@@ -17,7 +18,7 @@ export const pdxOg = ({
   return {
     enabled: token && puppeteerUrlEnv,
     generateOgIntoS3: async (saveId: string) => {
-      const url = import.meta.env.PROD
+      const url = isProduction()
         ? "https://pdx.tools"
         : "http://localhost:3001";
 

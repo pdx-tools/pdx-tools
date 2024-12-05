@@ -7,12 +7,13 @@ import {
 import { emitEvent } from "@/lib/events";
 import { PostHogProvider } from "posthog-js/react";
 import { useLocation } from "@remix-run/react";
+import { isProduction } from "@/server-lib/env";
 
 export function PostHog() {
   const location = useLocation();
 
   useEffect(() => {
-    if (import.meta.env.PROD && import.meta.env.VITE_POSTHOG_KEY) {
+    if (isProduction() && import.meta.env.VITE_POSTHOG_KEY) {
       posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
         autocapture: false,
         disable_session_recording: true,

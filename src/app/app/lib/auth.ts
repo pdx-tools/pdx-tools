@@ -1,5 +1,5 @@
 // Attribute-based access control
-import { type PdxSession } from "@/server-lib/auth/session";
+import { type PdxSession } from "@/server-lib/auth/cookie";
 
 declare const tag: unique symbol;
 export type UserId = string & {

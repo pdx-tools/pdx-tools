@@ -30,7 +30,7 @@ import { Toaster } from "@/components/Toaster";
 import { PostHog } from "@/components/PostHog";
 import { captureException } from "@/lib/captureException";
 import { pdxKeys } from "./services/appApi";
-import { pdxSession } from "./server-lib/auth/session";
+import { pdxCookieSession } from "./server-lib/auth/cookie";
 import { seo } from "./lib/seo";
 import appleIconUrl from "./components/head/apple-touch-icon.png";
 import social from "./components/landing/social.png";
@@ -81,7 +81,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
   await queryClient.prefetchQuery({
     queryKey: pdxKeys.profile(),
-    queryFn: () => pdxSession({ request, context }).get(),
+    queryFn: () => pdxCookieSession({ request, context }).get(),
   });
 
   return { dehydratedState: dehydrate(queryClient) };

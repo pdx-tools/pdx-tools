@@ -3,6 +3,7 @@ import { log } from "./logging";
 import { uploadContentType, UploadType } from "./models";
 import { timeit } from "@/lib/timeit";
 import { AppLoadContext } from "@remix-run/cloudflare";
+import { UserId } from "@/lib/auth";
 
 declare const tag: unique symbol;
 export type S3Key = unknown & {
@@ -69,6 +70,8 @@ export const pdxS3 = ({
     save: (saveId: string) => `${bucket}/${saveId}` as unknown as S3Key,
     preview: (saveId: string) =>
       `${bucket}/previews/${saveId}.webp` as unknown as S3Key,
+    liveSave: (userId: UserId) =>
+      `${bucket}/live/${userId}` as unknown as S3Key,
   } as const;
 
   return {
@@ -102,24 +105,24 @@ export const pdxS3 = ({
 
     uploadFileToS3: async (
       body: Buffer | Uint8Array,
-      filename: string,
-      upload: UploadType,
+      key: S3Key,
+      upload: UploadType
     ) => {
       const contentType = uploadContentType(upload);
       const put = await timeit(() =>
-        s3FetchOk(s3Keys.save(filename), {
+        s3FetchOk(key, {
           method: "PUT",
           body,
           headers: {
             "Content-Type": contentType,
             "Content-Length": `${body.length}`,
           },
-        }),
+        })
       );
 
       log.info({
         msg: "uploaded a new file to s3",
-        key: filename,
+        key,
         bytes: body.length,
         elapsedMs: put.elapsedMs.toFixed(2),
       });

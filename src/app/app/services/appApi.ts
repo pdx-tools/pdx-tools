@@ -11,7 +11,7 @@ import type { Achievement, Difficulty } from "@/server-lib/wasm/wasm_app";
 import type { Eu4Worker } from "@/features/eu4/worker";
 import type { SavePostResponse, UploadMetadaInput } from "@/server-lib/models";
 import { createCompressionWorker } from "@/features/compress";
-import { PdxSession } from "@/server-lib/auth/session";
+import { PdxSession } from "@/server-lib/auth/cookie";
 import { NewestSaveResponse } from "@/routes/api.new";
 import { UserSaves } from "@/server-lib/db";
 import { SaveResponse } from "@/routes/api.saves.$saveId";

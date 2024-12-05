@@ -17,7 +17,12 @@ declare module "@remix-run/cloudflare" {
 
 export default defineConfig(({ mode }) => ({
   plugins: [
+    // https://discord.com/channels/595317990191398933/773219443911819284/1314241057000657019
+    // There is some bug between miniflare and remix when it comes to durable
+    // objects, so this sets the environment to test so the error becomes a
+    // warning.
     cloudflareDevProxyVitePlugin({
+      environment: "test",
       getLoadContext,
     }),
     remix({
@@ -57,6 +62,10 @@ export default defineConfig(({ mode }) => ({
           __dirname,
           "./node_modules/postgres/src/index.js",
         ),
+        "cloudflare:workers": path.resolve(
+          __dirname,
+          "./tests/durableObjectsMock.ts",
+        ),
       }),
     },
   },
@@ -71,15 +80,10 @@ export default defineConfig(({ mode }) => ({
       output: {
         paths: { "wasm_app_bg.wasm": "./wasm_app_bg.wasm" },
       },
-      external: ["wasm_app_bg.wasm", "cloudflare:workers"],
+      external: ["wasm_app_bg.wasm", "cloudflare:workers", "perf_hooks"],
     },
   },
   server: {
-    hmr: {
-      // Change the port so HMR isn't hogging the live session websockets
-      port: 2999,
-    },
-
     // Need to transition to monorepo and then we can get rid of this
     fs: {
       allow: ["../.."],

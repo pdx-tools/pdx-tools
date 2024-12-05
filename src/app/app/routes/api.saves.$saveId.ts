@@ -1,5 +1,5 @@
 import { ensurePermissions } from "@/lib/auth";
-import { getAuth } from "@/server-lib/auth/session";
+import { getSessionUser } from "@/server-lib/auth/user";
 import { saveView, table, toApiSave } from "@/server-lib/db";
 import { DbConnection } from "@/server-lib/db/connection";
 import { withDb } from "@/server-lib/db/middleware";
@@ -60,7 +60,7 @@ export const action = withCore(
       { db },
     ) => {
       const params = SaveParam.parse(rawParams);
-      const session = await getAuth({ request, context });
+      const session = await getSessionUser({ request, context });
       switch (request.method) {
         case "PATCH": {
           const body = await request.json();

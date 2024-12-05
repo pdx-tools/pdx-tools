@@ -1,5 +1,5 @@
 import { ensurePermissions } from "@/lib/auth";
-import { getAuth } from "@/server-lib/auth/session";
+import { getSessionUser } from "@/server-lib/auth/user";
 import { table } from "@/server-lib/db";
 import { withDb } from "@/server-lib/db/middleware";
 import { latestEu4MinorPatch } from "@/server-lib/game";
@@ -9,7 +9,7 @@ import { sql } from "drizzle-orm";
 
 export const action = withCore(
   withDb(async ({ request, context }: LoaderFunctionArgs, { db }) => {
-    const session = await getAuth({ request, context });
+    const session = await getSessionUser({ request, context });
     ensurePermissions(session, "leaderboard:rebalance");
 
     const patch =

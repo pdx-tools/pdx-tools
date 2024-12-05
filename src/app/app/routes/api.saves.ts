@@ -1,6 +1,6 @@
 import { ensurePermissions } from "@/lib/auth";
 import { timeit } from "@/lib/timeit";
-import { getAuth } from "@/server-lib/auth/session";
+import { getSessionUser } from "@/server-lib/auth/user";
 import { NewSave, table, toDbDifficulty } from "@/server-lib/db";
 import { usingDb } from "@/server-lib/db/connection";
 import { ValidationError } from "@/server-lib/errors";
@@ -9,45 +9,12 @@ import { genId } from "@/server-lib/id";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import {
-  headerMetadata,
   SavePostResponse,
-  uploadMetadata,
 } from "@/server-lib/models";
 import { pdxOg } from "@/server-lib/og";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
+import { fileUploadData } from "@/server-lib/uploads";
 import { ActionFunctionArgs } from "@remix-run/cloudflare";
-
-async function fileUploadData(req: Request) {
-  const maxFileSize = 20 * 1024 * 1024;
-  const contentType = req.headers.get("content-type");
-  if (contentType?.toLowerCase()?.includes("form-data")) {
-    const form = await timeit(() => req.formData());
-    log.info({
-      msg: "upload form data",
-      elapsedMs: form.elapsedMs.toFixed(2),
-    });
-
-    const file = form.data.get("file") as Blob | null;
-    if (!file || file.size > maxFileSize) {
-      throw new ValidationError("invalid file upload");
-    }
-
-    const metadataBody = (form.data.get("metadata") ?? "{}") as string;
-    const metadata = uploadMetadata.parse(JSON.parse(metadataBody));
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    return { bytes, metadata };
-  } else {
-    const lengthHeader = req.headers.get("content-length");
-    if (!(lengthHeader && +lengthHeader < maxFileSize)) {
-      throw new ValidationError("invalid file upload");
-    }
-
-    const headers = Object.fromEntries(req.headers.entries());
-    const metadata = headerMetadata.parse(headers);
-    const bytes = new Uint8Array(await req.arrayBuffer());
-    return { bytes, metadata };
-  }
-}
 
 export const action = withCore(
   async ({ request, context }: ActionFunctionArgs) => {
@@ -55,14 +22,15 @@ export const action = withCore(
       throw Response.json({ msg: "Method not allowed" }, { status: 405 });
     }
 
-    const session = await getAuth({ request, context });
+    const session = await getSessionUser({ request, context });
     ensurePermissions(session, "savefile:create");
     const { bytes, metadata } = await fileUploadData(request);
     const saveId = genId(12);
     const s3 = pdxS3(pdxCloudflareS3({ context }));
+    const s3Key = s3.keys.save(saveId);
 
     // Optimistically start upload to s3, the longest stage
-    const uploadTask = s3.uploadFileToS3(bytes, saveId, metadata.uploadType);
+    const uploadTask = s3.uploadFileToS3(bytes, s3Key, metadata.uploadType);
 
     try {
       const { data: out, elapsedMs } = await timeit(() =>
@@ -136,7 +104,7 @@ export const action = withCore(
     } catch (ex) {
       // If anything goes awry, delete the s3 file if it was uploaded
       const deleteFileFromS3 = uploadTask
-        .then(() => s3.deleteFile(s3.keys.save(saveId)))
+        .then(() => s3.deleteFile(s3Key))
         .catch((err) => {
           log.exception(err, { msg: "unable to delete file from s3", saveId });
         });

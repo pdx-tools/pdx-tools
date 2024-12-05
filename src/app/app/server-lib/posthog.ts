@@ -1,7 +1,8 @@
 import { PostHog } from "posthog-node";
 import { log } from "./logging";
+import { isProduction } from "./env";
 
-const enabled = import.meta.env.PROD && import.meta.env.VITE_POSTHOG_KEY;
+const enabled = isProduction() && import.meta.env.VITE_POSTHOG_KEY;
 function createPostHogClient() {
   return new PostHog(import.meta.env.VITE_POSTHOG_KEY, {
     host: "https://eu.i.posthog.com",

@@ -1,4 +1,4 @@
-import { getAuth } from "@/server-lib/auth/session";
+import { getSessionUser } from "@/server-lib/auth/user";
 import { apiKeyAtRest, table } from "@/server-lib/db";
 import { withDb } from "@/server-lib/db/middleware";
 import { withCore } from "@/server-lib/middleware";
@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 
 export const action = withCore(
   withDb(async ({ request, context }: ActionFunctionArgs, { db }) => {
-    const session = await getAuth({ request, context });
+    const session = await getSessionUser({ request, context });
 
     // https://news.ycombinator.com/item?id=16009109
     // - crypto random bytes

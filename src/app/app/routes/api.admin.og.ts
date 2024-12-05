@@ -1,5 +1,5 @@
 import { ensurePermissions } from "@/lib/auth";
-import { getAuth } from "@/server-lib/auth/session";
+import { getSessionUser } from "@/server-lib/auth/user";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { pdxOg } from "@/server-lib/og";
@@ -10,7 +10,7 @@ import { z } from "zod";
 const saveSchema = z.object({ saveId: z.string() });
 export const action = withCore(
   async ({ request, context }: LoaderFunctionArgs) => {
-    const session = await getAuth({ request, context });
+    const session = await getSessionUser({ request, context });
     ensurePermissions(session, "savefile:og-request");
     const body = await request.json();
     const save = saveSchema.parse(body);

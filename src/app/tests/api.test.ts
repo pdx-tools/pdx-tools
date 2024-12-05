@@ -9,7 +9,7 @@ import { pdxFns } from "@/server-lib/functions";
 import { pdxS3 } from "@/server-lib/s3";
 import { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
 import { NewestSaveResponse } from "@/routes/api.new";
-import { PdxSession } from "@/server-lib/auth/session";
+import { PdxSession } from "@/server-lib/auth/cookie";
 import { SaveResponse } from "@/routes/api.saves.$saveId";
 import { NewKeyResponse } from "@/services/appApi";
 

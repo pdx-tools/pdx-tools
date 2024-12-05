@@ -1,6 +1,7 @@
 import { DetectedDataType } from "@/features/engine";
 import posthog from "posthog-js";
 import { log } from "./log";
+import { isProduction } from "@/server-lib/env";
 
 export type Event =
   | {
@@ -66,7 +67,7 @@ export function identify(userId: string) {
 
 export function emitEvent({ kind, ...props }: Event) {
   log("Event", { kind, ...props });
-  if (import.meta.env.PROD) {
+  if (isProduction()) {
     posthog.capture(kind, props);
   }
 }
