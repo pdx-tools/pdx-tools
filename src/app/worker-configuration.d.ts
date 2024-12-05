@@ -14,6 +14,8 @@ interface Env {
   PARSE_API_ENDPOINT: string;
   STEAM_API_KEY: string;
   STEAM_LOGIN_ADDRESS: string;
-	WEBSOCKET_LIVE_SERVER: DurableObjectNamespace<import("./server").LiveSessionWebsocketServer>;
+  WEBSOCKET_LIVE_SERVER: DurableObjectNamespace<
+    import("./server").LiveSessionWebsocketServer
+  >;
   PDX_DB: Hyperdrive;
 }

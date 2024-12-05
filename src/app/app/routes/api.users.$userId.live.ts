@@ -18,17 +18,17 @@ export const loader = withCore(
     const isHost = session.kind === "user" && session.userId === user.userId;
 
     const id = context.cloudflare.env.WEBSOCKET_LIVE_SERVER.idFromName(
-      `live:${user.userId}`
+      `live:${user.userId}`,
     );
     const stub = context.cloudflare.env.WEBSOCKET_LIVE_SERVER.get(id);
 
     return stub.handleWebSocket({ isHost });
-  }
+  },
 );
 
 type SessionState = {
-    isHost: boolean;
-}
+  isHost: boolean;
+};
 
 export class LiveSessionWebsocketServer extends DurableObject {
   private sessions: Map<WebSocket, SessionState>;
@@ -46,7 +46,7 @@ export class LiveSessionWebsocketServer extends DurableObject {
     // Creates two ends of a WebSocket connection.
     const webSocketPair = new WebSocketPair();
     const [client, server] = Object.values(webSocketPair);
-    
+
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment(session);
     this.sessions.set(server, session);
@@ -59,13 +59,13 @@ export class LiveSessionWebsocketServer extends DurableObject {
 
   override webSocketMessage: DurableObject["webSocketMessage"] = async (
     ws,
-    message
+    message,
   ) => {
     // Upon receiving a message from the client, reply with the same message,
     // but will prefix the message with "[Durable Object]: " and return the
     // total number of connections.
     ws.send(
-      `[Durable Object] message: ${message}, connections: ${this.ctx.getWebSockets().length}`
+      `[Durable Object] message: ${message}, connections: ${this.ctx.getWebSockets().length}`,
     );
   };
 
@@ -73,7 +73,7 @@ export class LiveSessionWebsocketServer extends DurableObject {
     ws,
     code,
     reason,
-    wasClean
+    wasClean,
   ) => {
     // If the client closes the connection, the runtime will invoke the webSocketClose() handler.
     ws.close(code, "Durable Object is closing WebSocket");
