@@ -10,9 +10,20 @@ type SessionState = {
   isHost: boolean;
 };
 
+export default {
+  fetch(request, env, ctx) {
+    const doId = env.WEBSOCKET_LIVE_SERVER.idFromName(
+      `live:${"100"}`,
+    );
+    const stub = env.WEBSOCKET_LIVE_SERVER.get(doId);
+    const doUrl = new URL(`/100`, request.url);
+    return stub.fetch!(new Request(doUrl, request));
+  }
+}
+
 export const liveRoom = (id: UserId, context: AppLoadContext) => {
   const doId = context.cloudflare.env.WEBSOCKET_LIVE_SERVER.idFromName(
-    `live:${id}`
+    `live:${id}`,
   );
   return context.cloudflare.env.WEBSOCKET_LIVE_SERVER.get(doId);
 };
@@ -54,16 +65,16 @@ export class LiveSessionWebsocketServer extends DurableObject<Env> {
 
   override webSocketMessage: DurableObject["webSocketMessage"] = async (
     ws,
-    message
+    message,
   ) => {
-    ws.send(`unsupported: ${message}`)
+    ws.send(`unsupported: ${message}`);
   };
 
   override webSocketClose: DurableObject["webSocketClose"] = (
     ws,
     code,
     _reason,
-    _wasClean
+    _wasClean,
   ) => {
     // If the client closes the connection, the runtime will invoke the webSocketClose() handler.
     ws.close(code, "Durable Object is closing WebSocket");
@@ -87,6 +98,6 @@ export class LiveSessionWebsocketServer extends DurableObject<Env> {
   }
 }
 
-function msg(x: { kind: "new-save", s3Key: S3Key }) {
-    return JSON.stringify(x);
+function msg(x: { kind: "new-save"; s3Key: S3Key }) {
+  return JSON.stringify(x);
 }

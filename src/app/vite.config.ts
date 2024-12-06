@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => ({
     // objects, so this sets the environment to test so the error becomes a
     // warning.
     cloudflareDevProxyVitePlugin({
-      environment: "test",
+      environment: "dev",
       getLoadContext,
     }),
     remix({

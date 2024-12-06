@@ -27,6 +27,9 @@ type PdxPermissions =
       data: { userId?: UserId };
     }
   | {
+      kind: "savefile:live-update";
+    }
+  | {
       kind: "savefile:reprocess";
     }
   | {
@@ -55,6 +58,8 @@ const ROLES: RolePermissionsMapping = {
     "savefile:delete": true,
     "savefile:update": true,
     "savefile:reprocess": true,
+    "savefile:og-request": true,
+    "savefile:live-update": true,
     "leaderboard:rebalance": true,
   },
   user: {

@@ -30,7 +30,7 @@ const filename = () =>
       message: "invalid file path characters",
     });
 
-const contentType = () =>
+export const contentType = () =>
   z.string().transform((val, ctx) => {
     const deduced = deduceUploadType(val);
     if (deduced === null) {

@@ -106,7 +106,7 @@ export const pdxS3 = ({
     uploadFileToS3: async (
       body: Buffer | Uint8Array,
       key: S3Key,
-      upload: UploadType
+      upload: UploadType,
     ) => {
       const contentType = uploadContentType(upload);
       const put = await timeit(() =>
@@ -117,7 +117,7 @@ export const pdxS3 = ({
             "Content-Type": contentType,
             "Content-Length": `${body.length}`,
           },
-        })
+        }),
       );
 
       log.info({

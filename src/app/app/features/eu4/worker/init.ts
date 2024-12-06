@@ -4,8 +4,9 @@ import { wasm } from "./common";
 import * as mod from "../../../../../wasm-eu4/pkg/wasm_eu4";
 import { fetchOk } from "@/lib/fetch";
 import { type Eu4SaveInput } from "../store";
-import { logMs } from "@/lib/log";
+import { log, logMs } from "@/lib/log";
 import { captureException } from "@/lib/captureException";
+import { upload } from "@/lib/uploader";
 
 export const initializeWasm = wasm.initializeModule;
 export async function fetchData(save: Eu4SaveInput) {
@@ -115,6 +116,14 @@ export function startFileObserver<T>(
   frequency: FileObservationFrequency,
   cb: (save: { meta: EnhancedMeta; achievements: AchievementsScore }) => T,
 ) {
+
+  wasm.viewData().then((data) => upload({
+    url: "/api/saves/live",
+    data,
+    dispatch: (x) => log(x),
+    fileMetadata: (arg) => arg,
+  }));
+
   observer = wasm.startFileObserver((data) => {
     try {
       const reparse = timeSync(() => wasm.save.reparse(frequency, data));
@@ -122,6 +131,13 @@ export function startFileObserver<T>(
         logMs(reparse, `save date too soon to update: ${reparse.data.date}`);
         return;
       }
+
+      upload({
+        url: "/api/saves/live",
+        data,
+        dispatch: (x) => log(x),
+        fileMetadata: (arg) => arg,
+      })
 
       logMs(reparse, "reparsed save");
       const achievements = wasm.save.get_achievements();

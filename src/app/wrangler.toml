@@ -30,3 +30,10 @@ new_classes = ["LiveSessionWebsocketServer"]
 binding = "PDX_DB"
 id = "52bcc7b655d44776a6e42672fd11b388"
 localConnectionString = "postgres://user:password@localhost:5432/databasename"
+
+[env.dev]
+
+[[env.dev.hyperdrive]]
+binding = "PDX_DB"
+id = "52bcc7b655d44776a6e42672fd11b388"
+localConnectionString = "postgres://user:password@localhost:5432/databasename"
