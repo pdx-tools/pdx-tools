@@ -29,7 +29,9 @@ staging: build-app prep-dev-app
   . dev/.env.dev
   cd src/app
   export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
-  npx wrangler dev --port 3001
+  npx --yes concurrently@latest \
+    "npx wrangler dev --port 3001" \
+    "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api"
 
 test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-*") test-wasm (cargo "test" "-p" "pdx" "--all-features") test-app
 
