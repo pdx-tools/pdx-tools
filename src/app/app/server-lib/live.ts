@@ -10,17 +10,6 @@ type SessionState = {
   isHost: boolean;
 };
 
-export default {
-  fetch(request, env, ctx) {
-    const doId = env.WEBSOCKET_LIVE_SERVER.idFromName(
-      `live:${"100"}`,
-    );
-    const stub = env.WEBSOCKET_LIVE_SERVER.get(doId);
-    const doUrl = new URL(`/100`, request.url);
-    return stub.fetch!(new Request(doUrl, request));
-  }
-}
-
 export const liveRoom = (id: UserId, context: AppLoadContext) => {
   const doId = context.cloudflare.env.WEBSOCKET_LIVE_SERVER.idFromName(
     `live:${id}`,

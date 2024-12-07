@@ -27,7 +27,8 @@ import { captureException } from "@/lib/captureException";
 export type Eu4SaveInput =
   | { kind: "file"; file: File }
   | { kind: "handle"; file: FileSystemFileHandle; name: string }
-  | { kind: "server"; saveId: string };
+  | { kind: "server"; saveId: string }
+  | { kind: "live"; userId: string };
 
 type Eu4LoadState = {
   loading: {
@@ -108,6 +109,8 @@ function getSaveInfo(
       return { kind: "sync", data: save.file.name };
     case "handle":
       return { kind: "sync", data: save.name };
+    case "live":
+      return { kind: "sync", data: save.userId };
   }
 }
 

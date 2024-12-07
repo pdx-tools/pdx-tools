@@ -77,7 +77,7 @@ export function createWasmGame<
             .then((x) => x.arrayBuffer())
             .then((x) => new Uint8Array(x));
         case "remote":
-          return fetchOk(stashed.url, { cache: "force-cache" })
+          return fetchOk(stashed.url)
             .then((x) => x.arrayBuffer())
             .then((x) => new Uint8Array(x));
       }
