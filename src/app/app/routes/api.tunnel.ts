@@ -19,12 +19,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   // https://github.com/getsentry/sentry-javascript/discussions/5798#discussioncomment-3711950
-  // https://developers.cloudflare.com/fundamentals/reference/http-request-headers/#x-forwarded-for
+  // https://community.cloudflare.com/t/ip-address-of-the-remote-origin-of-the-request/13080
   const headers = new Headers();
-  const forwardedHeader = "X-Forwarded-For";
-  const forwardedIp = request.headers.get(forwardedHeader);
+  const forwardedIp = request.headers.get("CF-Connecting-IP");
   if (forwardedIp) {
-    headers.set(forwardedHeader, forwardedIp);
+    headers.set("X-Forwarded-For", forwardedIp);
   }
 
   return fetch(
