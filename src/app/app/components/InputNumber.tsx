@@ -2,7 +2,6 @@ import React, {
   ComponentPropsWithoutRef,
   ElementRef,
   forwardRef,
-  useEffect,
   useState,
 } from "react";
 import { Input } from "@/components/Input";
@@ -18,9 +17,12 @@ export const InputNumber = forwardRef<
 >(function InputNumber({ value, onChange, ...props }, ref) {
   const [backing, setBacking] = useState(value);
 
-  useEffect(() => {
+  // When value changes, update the backing store
+  const [prevValue, setPrevValue] = useState(value);
+  if (prevValue !== value) {
     setBacking(value);
-  }, [value]);
+    setPrevValue(value);
+  }
 
   const changeCb = (e: InputEvent) => {
     const result = Number(e.currentTarget.value);
