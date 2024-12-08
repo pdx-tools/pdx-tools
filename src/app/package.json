@@ -21,6 +21,14 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "prettier": {
+    "plugins": [
+      "prettier-plugin-tailwindcss"
+    ],
+    "tailwindFunctions": [
+      "cx"
+    ]
+  },
   "dependencies": {
     "@ant-design/plots": "1.2.5",
     "@heroicons/react": "2.1.5",

@@ -36,7 +36,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
       save.kind === "server" ? (
         <div className="absolute inset-0">
           <div
-            className="absolute inset-0 blur-md brightness-75 bg-cover"
+            className="absolute inset-0 bg-cover blur-md brightness-75"
             style={{
               backgroundImage: `url('/eu4/saves/${save.saveId}/og')`,
             }}

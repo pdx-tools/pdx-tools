@@ -91,8 +91,8 @@ export const ErrorBoundary = () => {
   const error = useRouteError();
   captureRemixErrorBoundaryError(error);
   return (
-    <div className="h-full flex align-middle justify-center">
-      <Alert variant="error" className="px-6 py-4 max-w-xl place-self-center">
+    <div className="flex h-full justify-center align-middle">
+      <Alert variant="error" className="max-w-xl place-self-center px-6 py-4">
         <Alert.Title>PDX Tools Crashed!</Alert.Title>
         <Alert.Description className="pt-2">
           <p>{getErrorMessage(error)}</p>
