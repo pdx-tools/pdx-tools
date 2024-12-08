@@ -62,16 +62,14 @@ export const UploadDrawerContent = ({
             ) : (
               <Tooltip>
                 <Tooltip.Trigger asChild>
-                  <span tabIndex={0}>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      className="pointer-events-none w-48 justify-center"
-                      disabled={true}
-                    >
-                      Upload
-                    </Button>
-                  </span>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="w-48 justify-center"
+                    disabled={true}
+                  >
+                    Upload
+                  </Button>
                 </Tooltip.Trigger>
                 <Tooltip.Content>Register an account to upload</Tooltip.Content>
               </Tooltip>

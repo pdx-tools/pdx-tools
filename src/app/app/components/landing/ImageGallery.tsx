@@ -62,8 +62,8 @@ const DesktopImageGallery = () => {
           >
             <img
               src={x.thumbnail}
-              aria-selected={i == selectedIndex}
-              className="cursor-pointer rounded-xl border-4 border-solid border-slate-400 opacity-80 transition duration-100 ease-in hover:border-teal-700 hover:opacity-100 aria-selected:border-teal-700 aria-selected:opacity-100"
+              data-selected={i == selectedIndex}
+              className="cursor-pointer rounded-xl border-4 border-solid border-slate-400 opacity-80 transition duration-100 ease-in hover:border-teal-700 hover:opacity-100 data-[selected='true']:border-teal-700 data-[selected='true']:opacity-100"
               width={1920}
               height={1080}
               alt={`Select ${x.alt}`}

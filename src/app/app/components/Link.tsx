@@ -25,7 +25,7 @@ export const Link = React.forwardRef<
       | { href: string }
       | { to: ComponentPropsWithoutRef<typeof LinkPrimitive>["to"] }
     )
->(function Link({ className, variant, ...props }, ref) {
+>(function Link({ className, variant, children, ...props }, ref) {
   if ("href" in props) {
     const isExternal = props.href.toString().startsWith("http");
     return (
@@ -35,7 +35,9 @@ export const Link = React.forwardRef<
         {...props}
         target={props.target ?? (isExternal ? "_blank" : undefined)}
         rel={props.rel ?? (isExternal ? "noreferrer" : undefined)}
-      />
+      >
+        {children}
+      </a>
     );
   } else {
     return (
@@ -43,7 +45,9 @@ export const Link = React.forwardRef<
         className={cx(linkVariants({ variant }), className)}
         ref={ref}
         {...props}
-      />
+      >
+        {children}
+      </LinkPrimitive>
     );
   }
 });

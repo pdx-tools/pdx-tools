@@ -2,6 +2,7 @@ import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 import reactPlugin from "eslint-plugin-react";
 import reactHookPlugin from "eslint-plugin-react-hooks";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 
 export default tseslint.config(
   eslint.configs.recommended,
@@ -46,6 +47,17 @@ export default tseslint.config(
     },
     rules: {
       ...reactHookPlugin.configs.recommended.rules,
+    },
+  },
+  jsxA11y.flatConfigs.recommended,
+  {
+    rules: {
+      "jsx-a11y/label-has-associated-control": [
+        "error",
+        {
+          controlComponents: ["InputNumber"],
+        },
+      ],
     },
   },
   {

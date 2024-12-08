@@ -50,7 +50,7 @@ export const Alert = AlertRoot as typeof AlertRoot & {
 const AlertTitle = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLHeadingElement>
->(function AlertTitle({ className, ...props }, ref) {
+>(function AlertTitle({ className, children, ...props }, ref) {
   return (
     <h5
       ref={ref}
@@ -59,7 +59,9 @@ const AlertTitle = React.forwardRef<
         className,
       )}
       {...props}
-    />
+    >
+      {children}
+    </h5>
   );
 });
 Alert.Title = AlertTitle;
