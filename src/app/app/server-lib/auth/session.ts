@@ -5,7 +5,7 @@ import {
 } from "@remix-run/cloudflare";
 import { z } from "zod";
 import { parseBasicAuth } from "./basic";
-import { useDb } from "../db/connection";
+import { oneshotDb } from "../db/connection";
 import { apiKeyAtRest, table } from "../db";
 import { eq } from "drizzle-orm";
 import { LoggedInUser, userId } from "@/lib/auth";
@@ -75,7 +75,7 @@ export async function getAuth({
       throw unauthResponse();
     }
 
-    const users = await useDb(
+    const users = await oneshotDb(
       context.cloudflare.env.PDX_DB.connectionString,
       (db) =>
         db

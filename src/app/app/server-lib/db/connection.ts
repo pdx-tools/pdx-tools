@@ -25,7 +25,7 @@ export function getDb(connection: string) {
   return getDbOrm(connection).orm;
 }
 
-export async function useDb<R>(
+export async function oneshotDb<R>(
   connection: string,
   fn: (db: DbConnection) => Promise<R>,
 ) {

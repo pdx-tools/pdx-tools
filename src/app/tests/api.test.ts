@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import { fetchOk, fetchOkJson, sendJsonAs } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import { table, UserSaves } from "@/server-lib/db";
-import { useDb } from "@/server-lib/db/connection";
+import { oneshotDb } from "@/server-lib/db/connection";
 import { beforeEach, expect, test } from "vitest";
 import { SavePostResponse } from "@/server-lib/models";
 import { pdxFns } from "@/server-lib/functions";
@@ -18,7 +18,7 @@ const dbConnection = check(
 );
 
 beforeEach(async () => {
-  await useDb(dbConnection, async (db) => {
+  await oneshotDb(dbConnection, async (db) => {
     await db.delete(table.saves);
     await db.delete(table.users);
   });

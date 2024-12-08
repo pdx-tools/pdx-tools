@@ -1,6 +1,7 @@
 import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 import reactPlugin from "eslint-plugin-react";
+import reactHookPlugin from "eslint-plugin-react-hooks";
 
 export default tseslint.config(
   eslint.configs.recommended,
@@ -39,6 +40,14 @@ export default tseslint.config(
     },
   },
   reactPlugin.configs.flat["jsx-runtime"],
+  {
+    plugins: {
+      "react-hooks": reactHookPlugin,
+    },
+    rules: {
+      ...reactHookPlugin.configs.recommended.rules,
+    },
+  },
   {
     ignores: [
       "**/public/assets/**",
