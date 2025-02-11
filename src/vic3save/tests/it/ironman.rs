@@ -1,11 +1,7 @@
 use crate::utils;
 use jomini::binary::TokenResolver;
-use std::{
-    error::Error,
-    io::{Cursor, Read},
-    sync::LazyLock,
-};
-use vic3save::{savefile::Vic3Save, BasicTokenResolver, Vic3File};
+use std::{error::Error, io::Cursor, sync::LazyLock};
+use vic3save::{savefile::Vic3Save, BasicTokenResolver, MeltOptions, Vic3File};
 
 static TOKENS: LazyLock<BasicTokenResolver> = LazyLock::new(|| {
     let file_data = std::fs::read("assets/vic3.txt")
@@ -20,9 +16,9 @@ fn test_parse_ironman() -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
-    let data = utils::request("egalitarian2.v3");
-    let file = Vic3File::from_slice(&data)?;
-    let save: Vic3Save = file.deserialize_save(&*TOKENS)?;
+    let file = utils::request_file("egalitarian2.v3");
+    let mut file = Vic3File::from_file(file)?;
+    let save: Vic3Save = file.parse_save(&*TOKENS)?;
 
     assert_eq!(save.meta_data.version, String::from("1.7.1"));
     Ok(())
@@ -34,28 +30,18 @@ fn test_melt_snapshot() -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
-    let zip_data = utils::request("egalitarian_melted3.zip");
-    let reader = Cursor::new(&zip_data[..]);
-    let mut zip = zip::ZipArchive::new(reader).unwrap();
-    let mut zip_file = zip.by_index(0).unwrap();
-    let mut buffer = Vec::with_capacity(0);
-    zip_file.read_to_end(&mut buffer).unwrap();
+    let zip_data = utils::inflate(utils::request_file("egalitarian_melted3.zip"));
 
-    let data = utils::request("egalitarian2.v3");
-    let file = Vic3File::from_slice(&data)?;
+    let file = utils::request_file("egalitarian2.v3");
+    let mut file = Vic3File::from_file(file)?;
     let mut out = Cursor::new(Vec::new());
-    file.melter().melt(&mut out, &*TOKENS)?;
+    let options = MeltOptions::new();
+    file.melt(options, &*TOKENS, &mut out)?;
 
-    assert!(eq(out.get_ref(), &buffer), "melt snapshot failed");
+    assert_eq!(
+        zip_data,
+        out.into_inner(),
+        "melted file should match snapshot"
+    );
     Ok(())
-}
-
-fn eq(a: &[u8], b: &[u8]) -> bool {
-    for (ai, bi) in a.iter().zip(b.iter()) {
-        if ai != bi {
-            return false;
-        }
-    }
-
-    a.len() == b.len()
 }

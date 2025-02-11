@@ -1,6 +1,6 @@
 use imperator_save::{
-    models::MetadataOwned, Encoding, FailedResolveStrategy, ImperatorDate, ImperatorError,
-    ImperatorFile,
+    models::Metadata, Encoding, FailedResolveStrategy, ImperatorDate, ImperatorError,
+    ImperatorFile, MeltOptions,
 };
 use serde::Serialize;
 use std::io::Cursor;
@@ -18,7 +18,7 @@ pub struct ImperatorMetadata {
 }
 
 pub struct SaveFileImpl {
-    header: MetadataOwned,
+    header: Metadata,
     encoding: Encoding,
 }
 
@@ -53,10 +53,9 @@ impl SaveFileImpl {
 
 fn _parse_save(data: &[u8]) -> Result<SaveFile, ImperatorError> {
     let file = ImperatorFile::from_slice(data)?;
-    let meta = file.meta().parse()?;
-    let header = meta.deserializer(tokens::get_tokens()).deserialize()?;
+    let save = file.parse_save(tokens::get_tokens())?;
     Ok(SaveFile(SaveFileImpl {
-        header,
+        header: save.meta,
         encoding: file.encoding(),
     }))
 }
@@ -70,9 +69,8 @@ pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
 fn _melt(data: &[u8]) -> Result<Vec<u8>, ImperatorError> {
     let file = ImperatorFile::from_slice(data)?;
     let mut out = Cursor::new(Vec::new());
-    file.melter()
-        .on_failed_resolve(FailedResolveStrategy::Ignore)
-        .melt(&mut out, tokens::get_tokens())?;
+    let options = MeltOptions::new().on_failed_resolve(FailedResolveStrategy::Ignore);
+    file.melt(options, tokens::get_tokens(), &mut out)?;
     Ok(out.into_inner())
 }
 

@@ -1,7 +1,4 @@
-use crate::{
-    file::Vic3Zip, flavor::Vic3Flavor, Encoding, SaveHeader, SaveHeaderKind, Vic3Error,
-    Vic3ErrorKind,
-};
+use crate::{flavor::Vic3Flavor, SaveHeader, SaveHeaderKind, Vic3Error, Vic3ErrorKind};
 use jomini::{
     binary::{BinaryFlavor, FailedResolveStrategy, Token, TokenReader, TokenResolver},
     common::PdsDate,
@@ -9,7 +6,7 @@ use jomini::{
 };
 use std::{
     collections::HashSet,
-    io::{copy, Cursor, Read, Write},
+    io::{Cursor, Read, Write},
 };
 
 /// Output from melting a binary save to plaintext
@@ -29,13 +26,6 @@ impl MeltedDocument {
     }
 }
 
-#[derive(Debug)]
-enum MeltInput<'data> {
-    Text(&'data [u8]),
-    Binary(&'data [u8]),
-    Zip(Vic3Zip<'data>),
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MeltOptions {
     verbatim: bool,
@@ -53,6 +43,17 @@ impl MeltOptions {
         Self {
             verbatim: false,
             on_failed_resolve: FailedResolveStrategy::Ignore,
+        }
+    }
+
+    pub fn verbatim(self, verbatim: bool) -> Self {
+        MeltOptions { verbatim, ..self }
+    }
+
+    pub fn on_failed_resolve(self, on_failed_resolve: FailedResolveStrategy) -> Self {
+        MeltOptions {
+            on_failed_resolve,
+            ..self
         }
     }
 }
@@ -101,97 +102,6 @@ impl Formatter {
     #[inline]
     fn clear_queued(&mut self) {
         self.queued = None;
-    }
-}
-
-/// Convert a binary save to plaintext
-pub struct Vic3Melter<'data> {
-    input: MeltInput<'data>,
-    header: SaveHeader,
-    options: MeltOptions,
-}
-
-impl<'data> Vic3Melter<'data> {
-    pub(crate) fn new_text(x: &'data [u8], header: SaveHeader) -> Self {
-        Self {
-            input: MeltInput::Text(x),
-            options: MeltOptions::default(),
-            header,
-        }
-    }
-
-    pub(crate) fn new_binary(x: &'data [u8], header: SaveHeader) -> Self {
-        Self {
-            input: MeltInput::Binary(x),
-            options: MeltOptions::default(),
-            header,
-        }
-    }
-
-    pub(crate) fn new_zip(x: Vic3Zip<'data>, header: SaveHeader) -> Self {
-        Self {
-            input: MeltInput::Zip(x),
-            options: MeltOptions::default(),
-            header,
-        }
-    }
-
-    pub fn verbatim(&mut self, verbatim: bool) -> &mut Self {
-        self.options.verbatim = verbatim;
-        self
-    }
-
-    pub fn on_failed_resolve(&mut self, strategy: FailedResolveStrategy) -> &mut Self {
-        self.options.on_failed_resolve = strategy;
-        self
-    }
-
-    pub fn input_encoding(&self) -> Encoding {
-        match &self.input {
-            MeltInput::Text(_) => Encoding::Text,
-            MeltInput::Binary(_) => Encoding::Binary,
-            MeltInput::Zip(z) if z.is_text => Encoding::TextZip,
-            MeltInput::Zip(_) => Encoding::BinaryZip,
-        }
-    }
-
-    pub fn melt<Writer, R>(
-        &mut self,
-        mut output: Writer,
-        resolver: &R,
-    ) -> Result<MeltedDocument, Vic3Error>
-    where
-        Writer: Write,
-        R: TokenResolver,
-    {
-        match &mut self.input {
-            MeltInput::Text(x) => {
-                self.header.write(&mut output)?;
-                output.write_all(x)?;
-                Ok(MeltedDocument::new())
-            }
-            MeltInput::Binary(x) => melt(x, output, resolver, self.options, self.header.clone()),
-            MeltInput::Zip(zip) => {
-                let file = zip.archive.retrieve_file(zip.gamestate);
-                if zip.is_text {
-                    let mut header = self.header.clone();
-                    header.set_kind(SaveHeaderKind::Text);
-                    header.set_metadata_len(self.header.metadata_len());
-                    header.write(&mut output)?;
-                    let mut reader = file.reader();
-                    copy(&mut reader, &mut output).map_err(Vic3ErrorKind::from)?;
-                    Ok(MeltedDocument::new())
-                } else {
-                    melt(
-                        file.reader(),
-                        &mut output,
-                        resolver,
-                        self.options,
-                        self.header.clone(),
-                    )
-                }
-            }
-        }
     }
 }
 

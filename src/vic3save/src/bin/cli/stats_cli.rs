@@ -4,11 +4,11 @@ use vic3save::stats::Vic3CountryStatsRateIter;
 use vic3save::{BasicTokenResolver, Vic3File};
 
 pub fn run(raw_args: &[String]) -> Result<(), Box<dyn Error>> {
-    let data = fs::read(raw_args[1].clone())?;
-    let file = Vic3File::from_slice(data.as_slice())?;
+    let file = fs::File::open(&raw_args[0])?;
+    let mut file = Vic3File::from_file(file)?;
     let file_data = std::fs::read("assets/vic3.txt").unwrap_or_default();
     let resolver = BasicTokenResolver::from_text_lines(file_data.as_slice())?;
-    let save = file.deserialize_save(&resolver)?;
+    let save = file.parse_save(&resolver)?;
     let tag = save.get_last_played_country().definition.as_ref();
     let country = save.get_country(tag).expect("tag to be found");
 

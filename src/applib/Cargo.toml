@@ -5,13 +5,10 @@ edition = "2021"
 publish = false
 
 [features]
-default = ["miniz"]
-miniz = ["eu4save/miniz", "eu4game/miniz"]
-libdeflate = ["eu4save/libdeflate", "eu4game/libdeflate"]
 
 [dependencies]
 serde = {version = "1", features = ["derive"]}
-eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["serialize", "zstd", "specta"] }
+eu4save = { git = "https://github.com/rakaly/eu4save.git", branch = "file2", default-features = false, features = ["serialize", "zstd", "specta"] }
 eu4game = { path = "../eu4game", default-features = false, features = ["embedded"] }
 thiserror = "1"
 specta = { version = "1.0.4", features = ["typescript", "export"] }

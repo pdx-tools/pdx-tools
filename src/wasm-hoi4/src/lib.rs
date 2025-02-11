@@ -1,5 +1,5 @@
 use hoi4save::{
-    models::Hoi4Save, CountryTag, Encoding, FailedResolveStrategy, Hoi4Error, Hoi4File,
+    models::Hoi4Save, CountryTag, Encoding, FailedResolveStrategy, Hoi4Error, Hoi4File, MeltOptions,
 };
 use std::{collections::HashMap, io::Cursor};
 use wasm_bindgen::prelude::*;
@@ -105,9 +105,8 @@ pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
 fn _melt(data: &[u8]) -> Result<Vec<u8>, Hoi4Error> {
     let file = Hoi4File::from_slice(data)?;
     let mut out = Cursor::new(Vec::new());
-    file.melter()
-        .on_failed_resolve(FailedResolveStrategy::Ignore)
-        .melt(&mut out, tokens::get_tokens())?;
+    let options = MeltOptions::new().on_failed_resolve(FailedResolveStrategy::Ignore);
+    file.melt(options, tokens::get_tokens(), &mut out)?;
     Ok(out.into_inner())
 }
 

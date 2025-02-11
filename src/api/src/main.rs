@@ -14,8 +14,7 @@ use tracing::Level;
 
 async fn upload(data: Bytes) -> Result<Json<ParseResult>, StatusCode> {
     tracing::info!("received request (bytes: {})", data.len());
-    let mut inflated = Vec::new();
-    let result = tokio::task::block_in_place(|| parse_save_data(&data, &mut inflated));
+    let result = tokio::task::block_in_place(|| parse_save_data(&data));
 
     match result {
         Ok(parsed) => Ok(Json(parsed)),

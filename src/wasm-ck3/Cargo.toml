@@ -9,9 +9,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["miniz", "zstd/fat-lto"]
-miniz = ["ck3save/miniz"]
-libdeflate = ["ck3save/libdeflate"]
+default = ["zstd/fat-lto"]
 
 [dependencies]
 jomini = "0.27"

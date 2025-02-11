@@ -1,4 +1,4 @@
-use ck3save::{models::HeaderOwned, Ck3Error, Ck3File, Encoding, FailedResolveStrategy};
+use ck3save::{models::Metadata, Ck3Error, Ck3File, Encoding, FailedResolveStrategy, MeltOptions};
 use serde::Serialize;
 use std::io::Cursor;
 use wasm_bindgen::prelude::*;
@@ -14,7 +14,7 @@ pub struct Ck3Metadata {
 }
 
 pub struct SaveFileImpl {
-    header: HeaderOwned,
+    meta_data: Metadata,
     encoding: Encoding,
 }
 
@@ -36,7 +36,7 @@ impl SaveFile {
 impl SaveFileImpl {
     pub fn metadata(&self) -> Ck3Metadata {
         Ck3Metadata {
-            version: self.header.meta_data.version.clone(),
+            version: self.meta_data.version.clone(),
             is_meltable: self.is_meltable(),
         }
     }
@@ -48,11 +48,9 @@ impl SaveFileImpl {
 
 fn _parse_save(data: &[u8]) -> Result<SaveFile, Ck3Error> {
     let file = Ck3File::from_slice(data)?;
-    let mut zip_sink = Vec::new();
-    let meta = file.parse(&mut zip_sink)?;
-    let header = meta.deserializer(tokens::get_tokens()).deserialize()?;
+    let save = file.parse_save(tokens::get_tokens())?;
     Ok(SaveFile(SaveFileImpl {
-        header,
+        meta_data: save.meta_data,
         encoding: file.encoding(),
     }))
 }
@@ -66,9 +64,8 @@ pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
 fn _melt(data: &[u8]) -> Result<Vec<u8>, Ck3Error> {
     let file = Ck3File::from_slice(data)?;
     let mut out = Cursor::new(Vec::new());
-    file.melter()
-        .on_failed_resolve(FailedResolveStrategy::Ignore)
-        .melt(&mut out, tokens::get_tokens())?;
+    let options = MeltOptions::new().on_failed_resolve(FailedResolveStrategy::Ignore);
+    file.melt(options, tokens::get_tokens(), &mut out)?;
     Ok(out.into_inner())
 }
 

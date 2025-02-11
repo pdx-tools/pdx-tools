@@ -6,15 +6,13 @@ edition = "2021"
 publish = false
 
 [features]
-default = ["embedded", "miniz"]
-miniz = ["eu4save/miniz"]
-libdeflate = ["eu4save/libdeflate"]
+default = ["embedded"]
 embedded = ["eu4game-data/embedded"]
 
 [dependencies]
 jomini = { version = "0.27" }
 eu4game-data = { path = "../eu4game-data" }
-eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false }
+eu4save = { git = "https://github.com/rakaly/eu4save.git", branch = "file2", default-features = false }
 schemas = { path = "../schemas", features = ["inline"] }
 serde = { version = "1", features = ["derive"] }
 serde_path_to_error = "0.1"

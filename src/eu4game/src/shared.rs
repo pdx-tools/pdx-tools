@@ -1,6 +1,6 @@
 use crate::Eu4GameError;
 use eu4save::{
-    file::{Eu4FileKind, Eu4Modeller},
+    file::{Eu4Modeller, Eu4SliceFileKind},
     models::{CountryEvent, Eu4Save, GameState, Meta, Monarch},
     query::Query,
     CountryTag, Encoding, Eu4Date, Eu4Error, Eu4File,
@@ -73,7 +73,7 @@ pub struct SaveCheckSummerReader<'a, R> {
     hasher: &'a mut SaveCheckSummer,
 }
 
-impl<'a, R: Read> Read for &'_ mut SaveCheckSummerReader<'a, R> {
+impl<'a, R: Read> Read for SaveCheckSummerReader<'a, R> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         match self.reader.read(buf) {
             Ok(x) => {
@@ -199,19 +199,9 @@ impl Eu4Parser {
     }
 
     #[cfg(feature = "embedded")]
-    pub fn parse_reuse(
-        &self,
-        data: &[u8],
-        inflated: &mut Vec<u8>,
-    ) -> Result<Eu4SaveOutput, Eu4GameError> {
-        let tokens = schemas::resolver::Eu4FlatTokens::new();
-        self.parse_with(data, &tokens, inflated)
-    }
-
-    #[cfg(all(feature = "embedded", debug_assertions))]
     pub fn parse(&self, data: &[u8]) -> Result<Eu4SaveOutput, Eu4GameError> {
-        let mut inflated = Vec::new();
-        self.parse_reuse(data, &mut inflated)
+        let tokens = schemas::resolver::Eu4FlatTokens::new();
+        self.parse_with(data, &tokens)
     }
 
     fn deserialize<'res, 'de, T, D>(&self, deser: D) -> Result<T, Eu4GameError>
@@ -227,20 +217,18 @@ impl Eu4Parser {
         }
     }
 
-    pub fn parse_with<Q>(
-        &self,
-        data: &[u8],
-        resolver: &Q,
-        mut inflated: &mut Vec<u8>,
-    ) -> Result<Eu4SaveOutput, Eu4GameError>
+    pub fn parse_with<Q>(&self, data: &[u8], resolver: &Q) -> Result<Eu4SaveOutput, Eu4GameError>
     where
         Q: TokenResolver,
     {
         let mut hasher = SaveCheckSummer::new(self.hash);
         if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-            zstd::stream::copy_decode(data, &mut inflated).map_err(Eu4GameError::ZstdInflate)?;
-            hasher.append(inflated);
-            let mut modeller = Eu4Modeller::from_slice(inflated, resolver);
+            let reader = zstd::Decoder::new(data).map_err(Eu4GameError::ZstdInflate)?;
+            let mut reader = SaveCheckSummerReader {
+                reader,
+                hasher: &mut hasher,
+            };
+            let mut modeller = Eu4Modeller::from_reader(&mut reader, resolver);
             let save: Eu4Save = self.deserialize(&mut modeller)?;
             let encoding = modeller.encoding();
             Ok(Eu4SaveOutput {
@@ -249,58 +237,63 @@ impl Eu4Parser {
                 hash: hasher.finish(),
             })
         } else {
-            let file = Eu4File::from_slice(data)?;
-            if file.size() > 300 * 1024 * 1024 {
-                return Err(Eu4GameError::TooLarge(file.size()));
+            let mut file = Eu4File::from_slice(data)?;
+            let file_size = file.size();
+            if file_size > 300 * 1024 * 1024 {
+                return Err(Eu4GameError::TooLarge(file_size));
             }
 
             let encoding = file.encoding();
-            match file.kind() {
-                Eu4FileKind::Zip(zip) => {
-                    let meta_file = zip.meta_file()?;
-                    let gamestate_file = zip.gamestate_file()?;
-                    let ai_file = zip.ai_file()?;
-                    let max_size = meta_file
-                        .size()
-                        .max(gamestate_file.size())
-                        .max(ai_file.size());
 
-                    inflated.reserve_exact(max_size);
-
-                    // This is safe as the "read_exact" method guarantee to
-                    // initialize the entire passed in buffer.
-                    #[allow(clippy::uninit_vec)]
-                    unsafe {
-                        inflated.set_len(max_size)
-                    }
-
-                    let meta_data = &mut inflated[..meta_file.size()];
-                    meta_file.read_exact(meta_data)?;
-                    hasher.append(meta_data);
-                    let mut modeller = Eu4Modeller::from_slice(meta_data, resolver);
-                    let meta: Meta = self.deserialize(&mut modeller)?;
-
-                    let gamestate_data = &mut inflated[..gamestate_file.size()];
-                    gamestate_file.read_exact(gamestate_data)?;
-                    hasher.append(gamestate_data);
-                    let mut modeller = Eu4Modeller::from_slice(gamestate_data, resolver);
-                    let game: GameState = self.deserialize(&mut modeller)?;
-
-                    let ai_data = &mut inflated[..ai_file.size()];
-                    ai_file.read_exact(ai_data)?;
-                    hasher.append(ai_data);
-
-                    let save = Eu4Save { meta, game };
+            match file.kind_mut() {
+                Eu4SliceFileKind::Text(x) => {
+                    hasher.append(x.as_ref());
+                    let mut modeller = x.deserializer();
+                    let save: Eu4Save = self.deserialize(&mut modeller)?;
                     Ok(Eu4SaveOutput {
                         save,
                         encoding,
                         hash: hasher.finish(),
                     })
                 }
-                _ => {
-                    hasher.append(data);
-                    let mut modeller = Eu4Modeller::from_slice(data, resolver);
+                Eu4SliceFileKind::Binary(x) => {
+                    hasher.append(x.as_ref());
+                    let mut modeller = x.deserializer(resolver);
                     let save: Eu4Save = self.deserialize(&mut modeller)?;
+                    Ok(Eu4SaveOutput {
+                        save,
+                        encoding,
+                        hash: hasher.finish(),
+                    })
+                }
+                Eu4SliceFileKind::Zip(zip) => {
+                    let meta = zip.get(eu4save::file::Eu4FileEntryName::Meta)?;
+                    let reader = SaveCheckSummerReader {
+                        reader: meta,
+                        hasher: &mut hasher,
+                    };
+                    let mut modeller = Eu4Modeller::from_reader(reader, resolver);
+                    let meta: Meta = self.deserialize(&mut modeller)?;
+
+                    let gamestate = zip.get(eu4save::file::Eu4FileEntryName::Gamestate)?;
+                    let reader = SaveCheckSummerReader {
+                        reader: gamestate,
+                        hasher: &mut hasher,
+                    };
+                    let mut modeller = Eu4Modeller::from_reader(reader, resolver);
+                    let gamestate: GameState = self.deserialize(&mut modeller)?;
+
+                    let ai = zip.get(eu4save::file::Eu4FileEntryName::Ai)?;
+                    let mut reader = SaveCheckSummerReader {
+                        reader: ai,
+                        hasher: &mut hasher,
+                    };
+                    std::io::copy(&mut reader, &mut std::io::sink())?;
+
+                    let save = Eu4Save {
+                        meta,
+                        game: gamestate,
+                    };
                     Ok(Eu4SaveOutput {
                         save,
                         encoding,
@@ -323,10 +316,9 @@ where
     } else {
         let file = Eu4File::from_slice(data)?;
         match file.kind() {
-            Eu4FileKind::Zip(zip) => {
-                let meta_file = zip.meta_file()?;
-                let mut reader = meta_file.reader();
-                let mut modeller = Eu4Modeller::from_reader(&mut reader, resolver);
+            Eu4SliceFileKind::Zip(zip) => {
+                let meta = zip.get(eu4save::file::Eu4FileEntryName::Meta)?;
+                let mut modeller = Eu4Modeller::from_reader(meta, resolver);
                 let res = serde_path_to_error::deserialize(&mut modeller)
                     .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))?;
                 Ok(res)
