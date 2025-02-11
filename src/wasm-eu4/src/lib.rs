@@ -11,7 +11,7 @@ use eu4game::{game::Game, shared::Eu4Parser};
 use eu4save::{
     models::{Eu4Save, Meta},
     query::Query,
-    Encoding, Eu4File, FailedResolveStrategy,
+    Encoding, Eu4File, FailedResolveStrategy, MeltOptions,
 };
 use models::CountryDevEfficiencies;
 use savefile::{
@@ -336,15 +336,9 @@ pub fn parse_save(
 ) -> Result<SaveFile, JsValue> {
     let tokens = tokens::get_tokens();
     let mut parser = Eu4Parser::new();
-    let mut inflated_sink = Vec::new();
     let out = parser
-        .parse_with(&save_data, tokens, &mut inflated_sink)
-        .or_else(|_| {
-            inflated_sink.clear();
-            parser
-                .with_debug(true)
-                .parse_with(&save_data, tokens, &mut inflated_sink)
-        })
+        .parse_with(&save_data, tokens)
+        .or_else(|_| parser.with_debug(true).parse_with(&save_data, tokens))
         .map_err(js_err)?;
 
     let save = SaveFileParsed(out.save, out.encoding);
@@ -398,9 +392,11 @@ fn _melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
     let mut output = Cursor::new(Vec::new());
     Eu4File::from_slice(data)
         .and_then(|file| {
-            file.melter()
-                .on_failed_resolve(FailedResolveStrategy::Ignore)
-                .melt(&mut output, tokens::get_tokens())
+            file.melt(
+                MeltOptions::new().on_failed_resolve(FailedResolveStrategy::Ignore),
+                tokens::get_tokens(),
+                &mut output,
+            )
         })
         .map(|_| js_sys::Uint8Array::from(output.get_ref().as_slice()))
         .map_err(|e| JsValue::from_str(e.to_string().as_str()))

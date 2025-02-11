@@ -21,4 +21,7 @@ pub enum Eu4GameError {
 
     #[error("unable to inflate detected zstd data: {0}")]
     ZstdInflate(#[source] io::Error),
+
+    #[error("io error")]
+    Io(#[from] io::Error),
 }

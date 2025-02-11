@@ -1,4 +1,3 @@
-mod deflate;
 mod errors;
 pub mod file;
 pub(crate) mod flavor;

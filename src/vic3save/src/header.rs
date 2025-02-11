@@ -88,6 +88,8 @@ pub struct SaveHeader {
 }
 
 impl SaveHeader {
+    pub(crate) const SIZE: usize = 24;
+
     pub fn from_slice(data: &[u8]) -> Result<Self, Vic3Error> {
         if data.len() < 24 {
             return Err(Vic3ErrorKind::InvalidHeader.into());

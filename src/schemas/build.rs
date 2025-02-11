@@ -56,6 +56,14 @@ impl {pascal}FlatTokens {{
         }}
     }}
 
+    pub fn breakpoint(&self) -> u16 {{
+        self.resolver.breakpoint
+    }}
+
+    pub fn into_values(self) -> Vec<&'static str> {{
+        self.resolver.values
+    }}
+
     #[cfg(not({game}_tokens))]
     pub fn new() -> Self {{
         Self {{

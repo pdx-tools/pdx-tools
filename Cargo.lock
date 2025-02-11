@@ -126,15 +126,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "arbitrary"
-version = "1.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d5a26814d8dcb93b0e5a0ff3c6d80a8843bafb21b39e8e18a6f05471870e110"
-dependencies = [
- "derive_arbitrary",
-]
-
-[[package]]
 name = "async-trait"
 version = "0.1.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -142,7 +133,7 @@ checksum = "fdf6721fb0140e4f897002dd086c06f6c27775df19cfe1fccb21181a48fd2c98"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.98",
 ]
 
 [[package]]
@@ -267,12 +258,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8334215b81e418a0a7bdb8ef0849474f40bb10c8b71f1c4ed315cff49f32494d"
 
 [[package]]
-name = "byteorder"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
-
-[[package]]
 name = "byteorder-lite"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -350,15 +335,13 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/ck3save.git#9e24fe28a6846e434a3cd7ca28b4b2cc4187caba"
+source = "git+https://github.com/rakaly/ck3save.git#105616597c0879b71ddcbf32650c91a9d4d0b535"
 dependencies = [
  "flate2",
  "jomini",
- "libdeflater",
- "miniz_oxide 0.7.1",
+ "rawzip",
  "serde",
  "thiserror",
- "zip",
 ]
 
 [[package]]
@@ -392,7 +375,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.98",
 ]
 
 [[package]]
@@ -555,17 +538,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "derive_arbitrary"
-version = "1.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67e77553c4162a157adbf834ebae5b415acbecbeafc7a74b0e886657506a7611"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.42",
-]
-
-[[package]]
 name = "document-features"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -594,6 +566,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "erased-serde"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24e2389d65ab4fab27dc2a5de7b191e1f6617d1f1c8855c0dc569c94a4cbb18d"
+dependencies = [
+ "serde",
+ "typeid",
+]
+
+[[package]]
 name = "errno"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -609,6 +591,7 @@ version = "0.1.0"
 dependencies = [
  "attohttpc",
  "base64",
+ "erased-serde",
  "eu4game-data",
  "eu4save",
  "highway",
@@ -619,7 +602,6 @@ dependencies = [
  "serde_path_to_error",
  "thiserror",
  "walkdir",
- "zip",
  "zstd",
 ]
 
@@ -636,19 +618,16 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#49c1ddec272a4f648e69bf50a089a67216d39fde"
+source = "git+https://github.com/rakaly/eu4save.git#484b14998273d24a1dacdf931d7b410abccbf234"
 dependencies = [
  "flate2",
  "jomini",
- "libdeflater",
- "miniz_oxide 0.7.1",
- "once_cell",
+ "rawzip",
  "serde",
  "specta",
  "thiserror",
  "tsify",
  "wasm-bindgen",
- "zip",
  "zstd",
 ]
 
@@ -691,12 +670,13 @@ dependencies = [
 
 [[package]]
 name = "flate2"
-version = "1.0.28"
+version = "1.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46303f565772937ffe1d394a4fac6f411c6013172fadde9dcdb1e147a086940e"
+checksum = "c936bfdafb507ebbf50b8074c54fa31c5be9a1e7e5f467dd659697041407d07c"
 dependencies = [
  "crc32fast",
- "miniz_oxide 0.7.1",
+ "libz-rs-sys",
+ "miniz_oxide 0.8.0",
 ]
 
 [[package]]
@@ -818,7 +798,7 @@ checksum = "c706f1711006204c2ba8fb1a7bd55f689bbf7feca9ff40325206b5e140cff6df"
 [[package]]
 name = "hoi4save"
 version = "0.3.4"
-source = "git+https://github.com/rakaly/hoi4save.git#566f6295d03b41f97729f6660a8dd841dd2ac8a5"
+source = "git+https://github.com/rakaly/hoi4save.git#c5cfe50b9fa57067a7dc1067b77525d025e07603"
 dependencies = [
  "jomini",
  "serde",
@@ -959,15 +939,13 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/imperator-save.git#cfb66c02e5873216c6a0a44bda0ffdaee7be06a4"
+source = "git+https://github.com/rakaly/imperator-save.git#28c3075a0e77f25fea73ab22882bedc1b00e8d6a"
 dependencies = [
  "flate2",
  "jomini",
- "libdeflater",
- "miniz_oxide 0.7.1",
+ "rawzip",
  "serde",
  "thiserror",
- "zip",
 ]
 
 [[package]]
@@ -1019,9 +997,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.27.0"
+version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be7b64a1ef85c738f94811efc8e1863077c0b1a727e7e798c96a79ffa3822841"
+checksum = "3dc82ff6f71a618586a1279249d6a026a73a3c12d932e407efb30fafb14434db"
 dependencies = [
  "itoa",
  "jomini_derive",
@@ -1031,9 +1009,9 @@ dependencies = [
 
 [[package]]
 name = "jomini_derive"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86fa60e23f7c016cc52d09b9a8e9b1ec298b170610312e0fb7c21af5c8975578"
+checksum = "8f1517407f78278cc5298fed44bd58b69e73e945021cfc0c1e7c8f4a77d9799d"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -1061,24 +1039,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "302d7ab3130588088d277783b1e2d2e10c9e9e4a16dd9050e6ec93fb3e7048f4"
 
 [[package]]
-name = "libdeflate-sys"
-version = "1.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67921a7f85100c1559efc3d1c7c472091b7da05f304b4bbd5356f075e97f1cc2"
-dependencies = [
- "cc",
-]
-
-[[package]]
-name = "libdeflater"
-version = "1.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a31b22f662350ec294b13859f935aea772ba7b2bc8776269f4a5627308eab7d"
-dependencies = [
- "libdeflate-sys",
-]
-
-[[package]]
 name = "libwebp-sys"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1086,6 +1046,15 @@ checksum = "54cd30df7c7165ce74a456e4ca9732c603e8dc5e60784558c1c6dc047f876733"
 dependencies = [
  "cc",
  "glob",
+]
+
+[[package]]
+name = "libz-rs-sys"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a90e19106f1b2c93f1fa6cdeec2e56facbf2e403559c1e1c0ddcc6d46e979cdf"
+dependencies = [
+ "zlib-rs",
 ]
 
 [[package]]
@@ -1286,7 +1255,7 @@ checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.98",
 ]
 
 [[package]]
@@ -1337,6 +1306,7 @@ dependencies = [
  "highway",
  "jomini",
  "log",
+ "rawzip",
  "rayon",
  "regex",
  "schemas",
@@ -1345,7 +1315,6 @@ dependencies = [
  "tar",
  "tempfile",
  "walkdir",
- "zip_next",
  "zstd",
 ]
 
@@ -1387,7 +1356,7 @@ checksum = "4359fd9c9171ec6e8c62926d6faaf553a8dc3f64e1507e76da7911b4f6a04405"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.98",
 ]
 
 [[package]]
@@ -1457,18 +1426,18 @@ checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.71"
+version = "1.0.93"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75cb1540fadbd5b8fbccc4dddad2734eba435053f725621c070711a14bb5f4b8"
+checksum = "60946a68e5f9d28b0dc1c21bb8a97ee7d018a8b322fa57838ba31cc878e22d99"
 dependencies = [
  "unicode-ident",
 ]
 
 [[package]]
 name = "quote"
-version = "1.0.33"
+version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
+checksum = "0e4dccaaaf89514f546c693ddc140f729f958c247918a13380cccc6078391acc"
 dependencies = [
  "proc-macro2",
 ]
@@ -1508,6 +1477,12 @@ name = "rawpointer"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
+
+[[package]]
+name = "rawzip"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd8833c0a2b1f9b70139ff6889a8949d6d44888a95806802f381cfcd36999519"
 
 [[package]]
 name = "rayon"
@@ -1687,9 +1662,9 @@ checksum = "836fa6a3e1e547f9a2c4040802ec865b5d85f4014efe00555d7090a3dcaa1090"
 
 [[package]]
 name = "serde"
-version = "1.0.193"
+version = "1.0.217"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25dd9975e68d0cb5aa1120c288333fc98731bd1dd12f561e468ea4728c042b89"
+checksum = "02fc4265df13d6fa1d00ecff087228cc0a2b5f3c0e87e258d8b94a156e984c70"
 dependencies = [
  "serde_derive",
 ]
@@ -1707,13 +1682,13 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.193"
+version = "1.0.217"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43576ca501357b9b071ac53cdc7da8ef0cbd9493d8df094cd821777ea6e894d3"
+checksum = "5a9bf7cf98d04a2b28aead066b7496853d4779c9cc183c440dbac457641e19a0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.98",
 ]
 
 [[package]]
@@ -1724,7 +1699,7 @@ checksum = "e578a843d40b4189a4d66bba51d7684f57da5bd7c304c64e14bd63efbef49509"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.98",
 ]
 
 [[package]]
@@ -1850,9 +1825,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.42"
+version = "2.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b7d0a2c048d661a1a59fcd7355baa232f7ed34e0ee4df2eef3c1c1c0d3852d8"
+checksum = "36147f1a48ae0ec2b5b3bc5b537d267457555a10dc06f3dbc8cb11ba3006d3b1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1921,7 +1896,7 @@ checksum = "01742297787513b79cf8e29d1056ede1313e2420b7b3b15d0a768b4921f549df"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.98",
 ]
 
 [[package]]
@@ -1993,7 +1968,7 @@ checksum = "5b8a1e28f2deaa14e508979454cb3a223b10b938b45af148bc0986de36f1923b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.98",
 ]
 
 [[package]]
@@ -2061,7 +2036,7 @@ checksum = "34704c8d6ebcbc939824180af020566b01a7c01f80641264eba0999f6c2b6be7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.98",
 ]
 
 [[package]]
@@ -2124,8 +2099,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde_derive_internals",
- "syn 2.0.42",
+ "syn 2.0.98",
 ]
+
+[[package]]
+name = "typeid"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e13db2e0ccd5e14a544e8a246ba2312cd25223f616442d7f2cb0e3db614236e"
 
 [[package]]
 name = "unicode-bidi"
@@ -2185,13 +2166,11 @@ dependencies = [
  "flate2",
  "getrandom",
  "jomini",
- "libdeflater",
  "mathru",
- "miniz_oxide 0.7.1",
+ "rawzip",
  "serde",
  "serde_path_to_error",
  "thiserror",
- "zip",
 ]
 
 [[package]]
@@ -2242,7 +2221,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.98",
  "wasm-bindgen-shared",
 ]
 
@@ -2276,7 +2255,7 @@ checksum = "f0eb82fcb7930ae6219a7ecfd55b217f5f0893484b7a13022ebb2b2bf20b5283"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.98",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -2309,7 +2288,7 @@ checksum = "794645f5408c9a039fd09f4d113cdfb2e7eba5ff1956b07bcf701cf4b394fe89"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.98",
 ]
 
 [[package]]
@@ -2330,11 +2309,12 @@ dependencies = [
 name = "wasm-compress"
 version = "0.1.0"
 dependencies = [
+ "flate2",
  "js-sys",
+ "rawzip",
  "serde",
  "tsify",
  "wasm-bindgen",
- "zip_next",
  "zstd",
 ]
 
@@ -2604,30 +2584,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "zip"
-version = "0.6.6"
+name = "zlib-rs"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "760394e246e4c28189f19d488c058bf16f564016aefac5d32bb1f3b51d5e9261"
-dependencies = [
- "byteorder",
- "crc32fast",
- "crossbeam-utils",
- "flate2",
-]
-
-[[package]]
-name = "zip_next"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59fac186200e2ead1a244c8df2d1964069c4bf992aad29c9fc1b89168049bba9"
-dependencies = [
- "arbitrary",
- "byteorder",
- "crc32fast",
- "crossbeam-utils",
- "flate2",
- "zstd",
-]
+checksum = "aada01553a9312bad4b9569035a1f12b05e5ec9770a1a4b323757356928944f8"
 
 [[package]]
 name = "zstd"

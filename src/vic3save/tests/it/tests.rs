@@ -1,10 +1,7 @@
 use crate::utils;
 use serde::Deserialize;
-use std::{
-    error::Error,
-    io::{Cursor, Read},
-};
-use vic3save::{Vic3Date, Vic3File};
+use std::error::Error;
+use vic3save::{file::Vic3SliceFileKind, Vic3Date, Vic3File};
 
 #[test]
 fn can_parse_debug() -> Result<(), Box<dyn Error>> {
@@ -19,18 +16,14 @@ fn can_parse_debug() -> Result<(), Box<dyn Error>> {
         meta_data: MetaData,
     }
 
-    let data = utils::request("chile-debug.zip");
-    let reader = Cursor::new(&data[..]);
-    let mut zip = zip::ZipArchive::new(reader)?;
-    let mut zip_file = zip.by_index(0)?;
-    let mut buffer = Vec::with_capacity(0);
-    zip_file.read_to_end(&mut buffer)?;
+    let data = utils::inflate(utils::request_file("chile-debug.zip"));
 
-    let file = Vic3File::from_slice(&buffer)?;
-    let meta = file.meta()?;
-    let parsed_meta = meta.parse()?;
-    let meta_text = parsed_meta.as_text().unwrap();
-    let out: MyMetaHeader = meta_text.deserialize().unwrap();
+    let file = Vic3File::from_slice(&data)?;
+    let Vic3SliceFileKind::Text(text) = file.kind() else {
+        panic!("Expected text file");
+    };
+
+    let out: MyMetaHeader = text.deserializer().deserialize()?;
 
     let expected = MyMetaHeader {
         meta_data: MetaData {
@@ -39,12 +32,6 @@ fn can_parse_debug() -> Result<(), Box<dyn Error>> {
         },
     };
 
-    assert_eq!(&out, &expected);
-
-    let mut dummy_sink = Vec::new();
-    let parsed_file = file.parse(&mut dummy_sink)?;
-    let text_parsed_file = parsed_file.as_text().unwrap();
-    let out: MyMetaHeader = text_parsed_file.deserialize().unwrap();
     assert_eq!(&out, &expected);
 
     Ok(())

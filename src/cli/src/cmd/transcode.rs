@@ -1,9 +1,11 @@
 use anyhow::Context;
 use clap::Args;
-use std::{io::Cursor, path::PathBuf, process::ExitCode};
+use std::{
+    io::{Cursor, Read, Seek},
+    path::PathBuf,
+    process::ExitCode,
+};
 use walkdir::WalkDir;
-use zip::CompressionMethod;
-use zip_next as zip;
 
 /// Re-encode save container format
 #[derive(Args)]
@@ -24,49 +26,90 @@ impl TranscodeArgs {
             .flat_map(|fp| WalkDir::new(fp).into_iter().filter_map(|e| e.ok()))
             .filter(|e| e.file_type().is_file());
 
+        let mut buf = vec![0u8; rawzip::RECOMMENDED_BUFFER_SIZE];
         for file in files {
             let path = file.path();
-            let raw = std::fs::read(path)
+            let file = std::fs::File::open(path)
                 .with_context(|| format!("unable to open: {}", path.display()))?;
 
-            let data = if let Ok(mut z) = zip::ZipArchive::new(Cursor::new(&raw)) {
-                let mut inflated_size: u64 = 0;
-                let mut is_encoded = true;
-                for name in &["meta", "gamestate", "ai"] {
-                    let file = z.by_name(name).context("unable to find file in zip")?;
-                    inflated_size += file.size();
-                    is_encoded &= file.compression() == CompressionMethod::ZSTD;
+            let file_length = file
+                .metadata()
+                .with_context(|| format!("unable to get metadata: {}", path.display()))?
+                .len();
+
+            let locator = rawzip::ZipLocator::new().max_search_space(1024);
+            let data = match locator.locate_in_file(file, &mut buf) {
+                Ok(zip) => {
+                    let mut is_encoded = true;
+                    let mut files = Vec::new();
+                    let mut entries = zip.entries(&mut buf);
+                    while let Some(entry) = entries.next_entry()? {
+                        if !matches!(entry.file_raw_path(), b"meta" | b"gamestate" | b"ai") {
+                            continue;
+                        }
+
+                        is_encoded &= entry.compression_method() == rawzip::CompressionMethod::Zstd;
+                        files.push((entry.file_safe_path()?.into_owned(), entry.wayfinder()));
+                    }
+
+                    if is_encoded {
+                        println!("{} already zstd", path.display());
+                        continue;
+                    }
+
+                    let out = Vec::with_capacity(file_length as usize);
+                    let cursor = Cursor::new(out);
+                    let mut out_zip = rawzip::ZipArchiveWriter::new(cursor);
+
+                    for (name, wayfinder) in files {
+                        let options = rawzip::ZipEntryOptions::default()
+                            .compression_method(rawzip::CompressionMethod::Zstd);
+                        let mut out_file = out_zip.new_file(&name, options)?;
+                        let mut enc = zstd::stream::Encoder::new(&mut out_file, 7)?;
+                        let mut writer = rawzip::RawZipWriter::new(&mut enc);
+                        let entry = zip.get_entry(wayfinder)?;
+                        let reader = flate2::read::DeflateDecoder::new(entry.reader());
+                        let mut reader = entry.verifying_reader(reader);
+                        std::io::copy(&mut reader, &mut writer)?;
+                        writer.get_mut().do_finish()?;
+                        let (_, output) = writer.finish()?;
+                        out_file.finish(output)?;
+                    }
+
+                    out_zip.finish()?.into_inner()
                 }
+                Err(e) => {
+                    let mut file = e.into_inner();
+                    let mut header = [0u8; 4];
+                    file.seek(std::io::SeekFrom::Start(0))
+                        .with_context(|| format!("unable to seek: {}", path.display()))?;
+                    file.read_exact(&mut header)
+                        .with_context(|| format!("unable to read header: {}", path.display()))?;
 
-                if is_encoded {
-                    continue;
+                    if header == zstd::zstd_safe::MAGICNUMBER.to_le_bytes() {
+                        println!("{} already zstd", path.display());
+                        continue;
+                    }
+
+                    file.seek(std::io::SeekFrom::Start(0))
+                        .with_context(|| format!("unable to seek: {}", path.display()))?;
+
+                    let out = Vec::with_capacity(file_length as usize);
+                    let mut cursor = Cursor::new(out);
+                    let mut encoder = zstd::Encoder::new(&mut cursor, 7)?;
+                    std::io::copy(&mut file, &mut encoder)
+                        .with_context(|| format!("unable to copy: {}", path.display()))?;
+                    encoder
+                        .finish()
+                        .with_context(|| format!("unable to finish: {}", path.display()))?;
+                    cursor.into_inner()
                 }
-
-                let out = Vec::with_capacity(inflated_size as usize);
-                let writer = Cursor::new(out);
-                let mut out_zip = zip::ZipWriter::new(writer);
-
-                for name in &["meta", "gamestate", "ai"] {
-                    let options = zip::write::FileOptions::default()
-                        .compression_level(Some(7))
-                        .compression_method(zip::CompressionMethod::Zstd);
-                    let mut file = z.by_name(name).context("unable to find file in zip")?;
-                    out_zip.start_file(String::from(*name), options).unwrap();
-                    std::io::copy(&mut file, &mut out_zip)
-                        .context("unable to copy between zips")?;
-                }
-
-                out_zip.finish().unwrap().into_inner()
-            } else if raw.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-                continue;
-            } else {
-                zstd::bulk::compress(&raw, 7).context("zstd failure")?
             };
 
             let out_path = self.dest.join(path.file_name().unwrap());
             std::fs::write(&out_path, &data)
                 .with_context(|| format!("unable to write to {}", out_path.display()))?;
-            println!("{} {}/{}", out_path.display(), raw.len(), data.len());
+            println!("{} {}/{}", out_path.display(), file_length, data.len());
         }
 
         Ok(ExitCode::SUCCESS)

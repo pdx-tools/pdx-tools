@@ -69,10 +69,7 @@ impl SaveFileImpl {
             _ => {}
         }
 
-        let mut inflated_sink = Vec::new();
-        let save = Eu4Parser::new()
-            .parse_with(&save_data, tokens, &mut inflated_sink)?
-            .save;
+        let save = Eu4Parser::new().parse_with(&save_data, tokens)?.save;
         self.query = Query::from_save(save);
         self.province_owners = self.query.province_owners();
         self.nation_events = self.query.nation_events(&self.province_owners);

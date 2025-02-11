@@ -103,11 +103,10 @@ impl ReprocessArgs {
             pool.install(|| {
                 rx.into_iter()
                     .par_bridge()
-                    .map_with(Vec::with_capacity(150 * 1000 * 1000), |inflated, result| {
+                    .map(|result| {
                         let (save_id, data) = result?;
-                        inflated.clear();
 
-                        let save = applib::parser::parse_save_data(&data, inflated)?;
+                        let save = applib::parser::parse_save_data(&data)?;
 
                         // Ignore any errors from trying to return the buffer,
                         // as if we've iterated through all the files, there

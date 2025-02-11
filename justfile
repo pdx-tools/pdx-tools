@@ -36,7 +36,7 @@ staging: build-app prep-dev-app
 test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-*") test-wasm (cargo "test" "-p" "pdx" "--all-features") test-app
 
 # Disable zstd fat-lto which cause linking issues for tests
-test-wasm: (cargo "test" "--no-default-features" "--features" "miniz" "-p" "wasm-*")
+test-wasm: (cargo "test" "--no-default-features" "-p" "wasm-*")
 
 setup:
   #!/usr/bin/env bash

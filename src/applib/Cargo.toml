@@ -5,9 +5,6 @@ edition = "2021"
 publish = false
 
 [features]
-default = ["miniz"]
-miniz = ["eu4save/miniz", "eu4game/miniz"]
-libdeflate = ["eu4save/libdeflate", "eu4game/libdeflate"]
 
 [dependencies]
 serde = {version = "1", features = ["derive"]}
