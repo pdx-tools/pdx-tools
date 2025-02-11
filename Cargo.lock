@@ -353,7 +353,7 @@ source = "git+https://github.com/rakaly/ck3save.git#53f0f4f5acbf0a7152a0a732aa5a
 dependencies = [
  "flate2",
  "jomini",
- "rawzip 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rawzip",
  "serde",
  "thiserror",
 ]
@@ -633,11 +633,11 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git?branch=file2#257cba949a183a148148dc35183b0cec1105c068"
+source = "git+https://github.com/rakaly/eu4save.git#845160429d7faf2fac4d1b5f0a06cfdce5605801"
 dependencies = [
  "flate2",
  "jomini",
- "rawzip 0.0.5 (git+https://github.com/nickbabcock/rawzip.git)",
+ "rawzip",
  "serde",
  "specta",
  "thiserror",
@@ -968,7 +968,7 @@ source = "git+https://github.com/rakaly/imperator-save.git#ea56d8b5fd26d2172ff29
 dependencies = [
  "flate2",
  "jomini",
- "rawzip 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rawzip",
  "serde",
  "thiserror",
 ]
@@ -1502,11 +1502,6 @@ name = "rawzip"
 version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ad44e0ba97d8830a790db672bbe701b0d030ad9e6133639be98a55a49a1e720"
-
-[[package]]
-name = "rawzip"
-version = "0.0.5"
-source = "git+https://github.com/nickbabcock/rawzip.git#48a88e339c0c4b437efe4de36482b351e699a1ef"
 
 [[package]]
 name = "rayon"
@@ -2186,7 +2181,7 @@ dependencies = [
  "getrandom",
  "jomini",
  "mathru",
- "rawzip 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rawzip",
  "serde",
  "serde_path_to_error",
  "thiserror",

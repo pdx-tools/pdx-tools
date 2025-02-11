@@ -247,7 +247,7 @@ impl Eu4Parser {
 
             match file.kind_mut() {
                 Eu4SliceFileKind::Text(x) => {
-                    hasher.append(x.as_ref());
+                    hasher.append(x.get_ref());
                     let mut modeller = x.deserializer();
                     let save: Eu4Save = self.deserialize(&mut modeller)?;
                     Ok(Eu4SaveOutput {
@@ -257,7 +257,7 @@ impl Eu4Parser {
                     })
                 }
                 Eu4SliceFileKind::Binary(x) => {
-                    hasher.append(x.as_ref());
+                    hasher.append(x.get_ref());
                     let mut modeller = x.deserializer(resolver);
                     let save: Eu4Save = self.deserialize(&mut modeller)?;
                     Ok(Eu4SaveOutput {
