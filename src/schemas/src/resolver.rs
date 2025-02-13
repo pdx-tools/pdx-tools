@@ -4,10 +4,10 @@
 pub const BREAKPOINT: u16 = 10000;
 
 pub struct FlatResolver<'a> {
-    values: Vec<&'a str>,
+    pub values: Vec<&'a str>,
 
     // The index where the data after the gap starts
-    breakpoint: u16,
+    pub breakpoint: u16,
 }
 
 impl<'a> FlatResolver<'a> {

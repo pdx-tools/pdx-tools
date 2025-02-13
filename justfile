@@ -34,7 +34,7 @@ staging: build-app prep-dev-app
 test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-*") test-wasm (cargo "test" "-p" "pdx" "--all-features") test-app
 
 # Disable zstd fat-lto which cause linking issues for tests
-test-wasm: (cargo "test" "--no-default-features" "--features" "miniz" "-p" "wasm-*")
+test-wasm: (cargo "test" "--no-default-features" "-p" "wasm-*")
 
 setup:
   #!/usr/bin/env bash
@@ -163,7 +163,7 @@ build-wasm-dev:
   just tokenize assets/tokens
   wasm-pack build -t web src/wasm-app --out-dir {{justfile_directory()}}/src/app/app/server-lib/wasm
   wasm-pack build -t web src/wasm-compress
-  wasm-pack build -t web src/wasm-ck3
+  #wasm-pack build -t web src/wasm-ck3
   wasm-pack build -t web src/wasm-eu4
   wasm-pack build -t web src/wasm-hoi4
   wasm-pack build -t web src/wasm-imperator

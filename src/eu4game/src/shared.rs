@@ -3,10 +3,9 @@ use eu4save::{
     file::{Eu4Modeller, Eu4SliceFileKind},
     models::{CountryEvent, Eu4Save, GameState, Meta, Monarch},
     query::Query,
-    CountryTag, Encoding, Eu4Date, Eu4Error, Eu4File,
+    CountryTag, Encoding, Eu4Date, Eu4Error, Eu4File, SegmentedResolver,
 };
 use highway::{HighwayHash, HighwayHasher, Key};
-use jomini::binary::TokenResolver;
 use serde::{de::DeserializeOwned, Deserializer};
 use std::io::Read;
 
@@ -58,22 +57,14 @@ impl SaveCheckSummer {
             None
         }
     }
-
-    pub fn wrap<R: Read>(&mut self, reader: R) -> SaveCheckSummerReader<R> {
-        SaveCheckSummerReader {
-            reader,
-            hasher: self,
-        }
-    }
 }
 
-#[derive(Debug)]
-pub struct SaveCheckSummerReader<'a, R> {
-    reader: R,
+pub struct SaveCheckSummerReader<'a> {
+    reader: Box<dyn Read + 'a>,
     hasher: &'a mut SaveCheckSummer,
 }
 
-impl<'a, R: Read> Read for SaveCheckSummerReader<'a, R> {
+impl<'a> Read for SaveCheckSummerReader<'a> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         match self.reader.read(buf) {
             Ok(x) => {
@@ -201,7 +192,10 @@ impl Eu4Parser {
     #[cfg(feature = "embedded")]
     pub fn parse(&self, data: &[u8]) -> Result<Eu4SaveOutput, Eu4GameError> {
         let tokens = schemas::resolver::Eu4FlatTokens::new();
-        self.parse_with(data, &tokens)
+        let breakpoint = tokens.breakpoint();
+        let values = tokens.into_values();
+        let resolver = SegmentedResolver::from_parts(values, breakpoint, 10000);
+        self.parse_with(data, &resolver)
     }
 
     fn deserialize<'res, 'de, T, D>(&self, deser: D) -> Result<T, Eu4GameError>
@@ -210,27 +204,34 @@ impl Eu4Parser {
         D: Deserializer<'de, Error = Eu4Error>,
     {
         if self.debug {
-            serde_path_to_error::deserialize(deser)
+            let mut track = serde_path_to_error::Track::new();
+            let deser = serde_path_to_error::Deserializer::new(deser, &mut track);
+            let mut erased = <dyn erased_serde::Deserializer>::erase(deser);
+            erased_serde::deserialize(&mut erased)
                 .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))
         } else {
             Ok(T::deserialize(deser)?)
         }
     }
 
-    pub fn parse_with<Q>(&self, data: &[u8], resolver: &Q) -> Result<Eu4SaveOutput, Eu4GameError>
-    where
-        Q: TokenResolver,
-    {
+    pub fn parse_with(
+        &self,
+        data: &[u8],
+        resolver: &SegmentedResolver,
+    ) -> Result<Eu4SaveOutput, Eu4GameError> {
         let mut hasher = SaveCheckSummer::new(self.hash);
         if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
             let reader = zstd::Decoder::new(data).map_err(Eu4GameError::ZstdInflate)?;
-            let mut reader = SaveCheckSummerReader {
-                reader,
-                hasher: &mut hasher,
+            let (save, encoding) = {
+                let mut reader = SaveCheckSummerReader {
+                    reader: Box::new(reader),
+                    hasher: &mut hasher,
+                };
+                let mut modeller = Eu4Modeller::from_reader(&mut reader, resolver);
+                let save: Eu4Save = self.deserialize(&mut modeller)?;
+                let encoding = modeller.encoding();
+                (save, encoding)
             };
-            let mut modeller = Eu4Modeller::from_reader(&mut reader, resolver);
-            let save: Eu4Save = self.deserialize(&mut modeller)?;
-            let encoding = modeller.encoding();
             Ok(Eu4SaveOutput {
                 save,
                 encoding,
@@ -268,27 +269,33 @@ impl Eu4Parser {
                 }
                 Eu4SliceFileKind::Zip(zip) => {
                     let meta = zip.get(eu4save::file::Eu4FileEntryName::Meta)?;
-                    let reader = SaveCheckSummerReader {
-                        reader: meta,
-                        hasher: &mut hasher,
+                    let meta: Meta = {
+                        let reader = SaveCheckSummerReader {
+                            reader: Box::new(meta),
+                            hasher: &mut hasher,
+                        };
+                        let mut modeller = Eu4Modeller::from_reader(reader, resolver);
+                        self.deserialize(&mut modeller)?
                     };
-                    let mut modeller = Eu4Modeller::from_reader(reader, resolver);
-                    let meta: Meta = self.deserialize(&mut modeller)?;
 
                     let gamestate = zip.get(eu4save::file::Eu4FileEntryName::Gamestate)?;
-                    let reader = SaveCheckSummerReader {
-                        reader: gamestate,
-                        hasher: &mut hasher,
+                    let gamestate: GameState = {
+                        let reader = SaveCheckSummerReader {
+                            reader: Box::new(gamestate),
+                            hasher: &mut hasher,
+                        };
+                        let mut modeller = Eu4Modeller::from_reader(reader, resolver);
+                        self.deserialize(&mut modeller)?
                     };
-                    let mut modeller = Eu4Modeller::from_reader(reader, resolver);
-                    let gamestate: GameState = self.deserialize(&mut modeller)?;
 
                     let ai = zip.get(eu4save::file::Eu4FileEntryName::Ai)?;
-                    let mut reader = SaveCheckSummerReader {
-                        reader: ai,
-                        hasher: &mut hasher,
-                    };
-                    std::io::copy(&mut reader, &mut std::io::sink())?;
+                    {
+                        let mut reader = SaveCheckSummerReader {
+                            reader: Box::new(ai),
+                            hasher: &mut hasher,
+                        };
+                        std::io::copy(&mut reader, &mut std::io::sink())?;
+                    }
 
                     let save = Eu4Save {
                         meta,
@@ -305,10 +312,7 @@ impl Eu4Parser {
     }
 }
 
-pub fn parse_meta<Q>(data: &[u8], resolver: &Q) -> Result<Meta, Eu4GameError>
-where
-    Q: TokenResolver,
-{
+pub fn parse_meta(data: &[u8], resolver: &SegmentedResolver) -> Result<Meta, Eu4GameError> {
     if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
         let mut decoder = zstd::Decoder::new(data).map_err(Eu4GameError::ZstdInflate)?;
         let mut modeller = Eu4Modeller::from_reader(&mut decoder, resolver);
