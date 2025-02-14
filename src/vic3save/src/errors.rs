@@ -1,7 +1,5 @@
-use crate::deflate::ZipInflationError;
 use jomini::binary;
-use std::io;
-use zip::result::ZipError;
+use std::{fmt, io};
 
 /// A Vic3 Error
 #[derive(thiserror::Error, Debug)]
@@ -29,16 +27,10 @@ impl From<Vic3ErrorKind> for Vic3Error {
 #[derive(thiserror::Error, Debug)]
 pub enum Vic3ErrorKind {
     #[error("unable to parse as zip: {0}")]
-    ZipArchive(#[from] ZipError),
+    Zip(#[from] rawzip::Error),
 
     #[error("missing zip entry in zip")]
     ZipMissingEntry,
-
-    #[error("unable to inflate zip entry: {msg}")]
-    ZipBadData { msg: String },
-
-    #[error("early eof, only able to write {written} bytes")]
-    ZipEarlyEof { written: usize },
 
     #[error("unable to parse due to: {0}")]
     Parse(#[source] jomini::Error),
@@ -48,6 +40,9 @@ pub enum Vic3ErrorKind {
 
     #[error("unable to deserialize due to: {0}")]
     DeserializeDebug(String),
+
+    #[error("unable to deserialize due to: {msg}. This shouldn't occur as this is a deserializer wrapper")]
+    DeserializeImpl { msg: String },
 
     #[error("error while writing output: {0}")]
     Writer(#[source] jomini::Error),
@@ -68,20 +63,26 @@ pub enum Vic3ErrorKind {
     Io(#[from] io::Error),
 }
 
+impl serde::de::Error for Vic3Error {
+    fn custom<T: fmt::Display>(msg: T) -> Self {
+        Vic3Error::new(Vic3ErrorKind::DeserializeImpl {
+            msg: msg.to_string(),
+        })
+    }
+}
+
 impl From<jomini::Error> for Vic3Error {
     fn from(value: jomini::Error) -> Self {
-        let kind = if matches!(value.kind(), jomini::ErrorKind::Deserialize(_)) {
-            match value.into_kind() {
-                jomini::ErrorKind::Deserialize(x) => match x.kind() {
-                    &jomini::DeserializeErrorKind::UnknownToken { token_id } => {
-                        Vic3ErrorKind::UnknownToken { token_id }
-                    }
-                    _ => Vic3ErrorKind::Deserialize(x.into()),
-                },
-                _ => unreachable!(),
-            }
-        } else {
-            Vic3ErrorKind::Parse(value)
+        let kind = match value.into_kind() {
+            jomini::ErrorKind::Deserialize(x) => match x.kind() {
+                &jomini::DeserializeErrorKind::UnknownToken { token_id } => {
+                    Vic3ErrorKind::UnknownToken { token_id }
+                }
+                _ => Vic3ErrorKind::Deserialize(x.into()),
+            },
+            _ => Vic3ErrorKind::DeserializeImpl {
+                msg: String::from("unexpected error"),
+            },
         };
 
         Vic3Error::new(kind)
@@ -97,15 +98,6 @@ impl From<io::Error> for Vic3Error {
 impl From<binary::ReaderError> for Vic3Error {
     fn from(value: binary::ReaderError) -> Self {
         Self::from(jomini::Error::from(value))
-    }
-}
-
-impl From<ZipInflationError> for Vic3ErrorKind {
-    fn from(x: ZipInflationError) -> Self {
-        match x {
-            ZipInflationError::BadData { msg } => Vic3ErrorKind::ZipBadData { msg },
-            ZipInflationError::EarlyEof { written } => Vic3ErrorKind::ZipEarlyEof { written },
-        }
     }
 }
 

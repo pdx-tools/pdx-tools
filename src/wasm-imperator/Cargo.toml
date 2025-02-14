@@ -8,9 +8,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["miniz", "zstd/fat-lto"]
-miniz = ["imperator-save/miniz"]
-libdeflate = ["imperator-save/libdeflate"]
+default = ["zstd/fat-lto"]
 
 [dependencies]
 jomini = "0.27"

@@ -6,22 +6,16 @@ edition = "2021"
 publish = false
 
 [features]
-default = ["miniz"]
-miniz = ["miniz_oxide"]
-libdeflate = ["libdeflater/freestanding"]
 
 [dependencies]
 jomini =  { version = "0.27.0", features = ["json"] }
-zip = { version =  "0.6", default-features = false }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"
-libdeflater = { version = "1.19", optional = true }
-miniz_oxide = { version = "0.7", optional = true }
 serde_path_to_error = "0.1"
 getrandom = { version = "0.2", features = ["js"]}
 mathru = "0.15.3"
-flate2 = { version = "1.0" }
+flate2 = { version = "1.0.29", default-features = false, features = ["zlib-rs"] }
+rawzip = "0.0.6"
 
 [dev-dependencies]
-zip = { version =  "0.6", default-features = false, features = ["deflate"] }
 attohttpc = "0.28.0"

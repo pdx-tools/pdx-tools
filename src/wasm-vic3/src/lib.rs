@@ -6,9 +6,8 @@ use std::io::Cursor;
 use vic3save::markets::{goods_price_based_on_buildings, Vic3GoodEstimationError};
 use vic3save::savefile::Vic3Country;
 use vic3save::stats::{Vic3CountryStatsRateIter, Vic3StatsGDPIter};
-use vic3save::{
-    savefile::Vic3Save, FailedResolveStrategy, SaveHeader, SaveHeaderKind, Vic3Error, Vic3File,
-};
+use vic3save::MeltOptions;
+use vic3save::{savefile::Vic3Save, FailedResolveStrategy, Vic3Error, Vic3File};
 use wasm_bindgen::prelude::*;
 
 mod models;
@@ -23,7 +22,7 @@ const VIC3_DATE_TYPE: &'static str = r#"export type Vic3Date = string;"#;
 
 pub struct SaveFileImpl {
     save: Vic3Save,
-    header: SaveHeader,
+    is_meltable: bool,
 }
 
 #[wasm_bindgen]
@@ -159,20 +158,20 @@ impl SaveFileImpl {
     }
 
     fn is_meltable(&self) -> bool {
-        matches!(
-            self.header.kind(),
-            SaveHeaderKind::Binary | SaveHeaderKind::SplitBinary | SaveHeaderKind::UnifiedBinary
-        )
+        self.is_meltable
     }
 }
 
 fn _parse_save(data: &[u8]) -> Result<SaveFile, Vic3Error> {
     let file = Vic3File::from_slice(data)?;
-    let header = file.header();
-    let save = file.deserialize_save(tokens::get_tokens())?;
+    let save = file.parse_save(tokens::get_tokens())?;
+
     Ok(SaveFile(SaveFileImpl {
         save,
-        header: header.clone(),
+        is_meltable: matches!(
+            file.encoding(),
+            vic3save::Encoding::Binary | vic3save::Encoding::BinaryZip
+        ),
     }))
 }
 
@@ -185,9 +184,8 @@ pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
 fn _melt(data: &[u8]) -> Result<Vec<u8>, Vic3Error> {
     let file = Vic3File::from_slice(data)?;
     let mut out = Cursor::new(Vec::new());
-    file.melter()
-        .on_failed_resolve(FailedResolveStrategy::Ignore)
-        .melt(&mut out, tokens::get_tokens())?;
+    let options = MeltOptions::new().on_failed_resolve(FailedResolveStrategy::Ignore);
+    file.melt(options, tokens::get_tokens(), &mut out)?;
     Ok(out.into_inner())
 }
 

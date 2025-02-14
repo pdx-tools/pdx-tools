@@ -1,6 +1,4 @@
-use std::io::Cursor;
-use zip::CompressionMethod;
-use zip_next as zip;
+use rawzip::CompressionMethod;
 
 fn compress(data: Vec<u8>) -> Vec<u8> {
     let c = wasm_compress::init_compression(data);
@@ -20,10 +18,11 @@ fn test_recompression_plaintext() {
 fn test_recompression_zip() {
     let data = include_bytes!("test.zip");
     let compressed = compress(data.to_vec());
-    let reader = Cursor::new(compressed);
-    let mut archive = zip::ZipArchive::new(reader).unwrap();
-    for i in 0..archive.len() {
-        let file = archive.by_index(i).unwrap();
-        assert_eq!(file.compression(), CompressionMethod::ZSTD);
+    let archive = rawzip::ZipArchive::from_slice(compressed.as_slice()).unwrap();
+    let mut entries = archive.entries();
+    while let Some(entry) = entries.next_entry().unwrap() {
+        assert_eq!(entry.compression_method(), CompressionMethod::Zstd);
+        let file = archive.get_entry(entry.wayfinder()).unwrap();
+        let _ = zstd::decode_all(file.data()).unwrap();
     }
 }

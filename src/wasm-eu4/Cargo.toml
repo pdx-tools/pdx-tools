@@ -9,9 +9,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["miniz", "zstd/fat-lto"]
-miniz = ["eu4save/miniz", "eu4game/miniz"]
-libdeflate = ["eu4save/libdeflate", "eu4game/libdeflate"]
+default = ["zstd/fat-lto"]
 
 [dependencies]
 jomini = { version = "0.27" }

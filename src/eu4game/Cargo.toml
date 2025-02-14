@@ -6,15 +6,14 @@ edition = "2021"
 publish = false
 
 [features]
-default = ["embedded", "miniz"]
-miniz = ["eu4save/miniz"]
-libdeflate = ["eu4save/libdeflate"]
+default = ["embedded"]
 embedded = ["eu4game-data/embedded"]
 
 [dependencies]
 jomini = { version = "0.27" }
+erased-serde = "0.4.5"
 eu4game-data = { path = "../eu4game-data" }
-eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false }
+eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["zstd"] }
 schemas = { path = "../schemas", features = ["inline"] }
 serde = { version = "1", features = ["derive"] }
 serde_path_to_error = "0.1"
@@ -26,7 +25,6 @@ zstd = { version = "0.13.0", default-features = false }
 [dev-dependencies]
 attohttpc = "0.28"
 walkdir = "2"
-zip = { version =  "0.6", default-features = false, features = ["deflate"] }
 
 [build-dependencies]
 regex = "1.5"
