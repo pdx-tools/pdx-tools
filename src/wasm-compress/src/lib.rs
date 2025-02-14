@@ -111,6 +111,9 @@ impl Compression {
                 let mut files = Vec::new();
                 let mut entries = zip.entries(&mut buf);
                 while let Some(entry) = entries.next_entry()? {
+                    if entry.is_dir() {
+                        continue;
+                    }
                     files.push((entry.file_safe_path()?.into_owned(), entry.wayfinder()));
                 }
 

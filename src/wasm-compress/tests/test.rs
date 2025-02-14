@@ -21,6 +21,10 @@ fn test_recompression_zip() {
     let archive = rawzip::ZipArchive::from_slice(compressed.as_slice()).unwrap();
     let mut entries = archive.entries();
     while let Some(entry) = entries.next_entry().unwrap() {
+        if entry.is_dir() {
+            continue;
+        }
+
         assert_eq!(entry.compression_method(), CompressionMethod::Zstd);
         let file = archive.get_entry(entry.wayfinder()).unwrap();
         let _ = zstd::decode_all(file.data()).unwrap();
