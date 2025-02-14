@@ -2,18 +2,24 @@ use std::{
     env,
     fs::File,
     io::{BufWriter, Write},
-    path::Path,
+    path::Path, process::Command,
 };
 
 fn main() {
-    if std::env::var("XARGO_HOME").is_err() {
-        println!("cargo:rerun-if-changed=src/eu4.fbs");
-        flatc_rust::run(flatc_rust::Args {
-            inputs: &[Path::new("src/eu4.fbs")],
-            out_dir: Path::new("target/flatbuffers/"),
-            ..Default::default()
-        })
-        .expect("flatc");
+    println!("cargo:rerun-if-changed=src/eu4.fbs");
+
+    // If the modification time of the schema is newer than the generated code, regenerate it
+    let schema = Path::new("src/eu4.fbs");
+    let generated = Path::new("src/eu4_generated.rs");
+    if !generated.exists() || schema.metadata().unwrap().modified().unwrap() > generated.metadata().unwrap().modified().unwrap() {
+        let status = Command::new("flatc")
+            .args(["-o", "src", "--rust", "src/eu4.fbs"])
+            .status()
+            .expect("flatc to generate a new schema");
+
+        if !status.success() {
+            panic!("flatc failed to generate schema");
+        }
     }
 
     let out_path = Path::new(&env::var("OUT_DIR").unwrap()).join("gen_tokens.rs");
