@@ -1,4 +1,5 @@
 #[allow(non_snake_case, unused_imports, clippy::all)]
+#[rustfmt::skip]
 mod eu4_generated;
 
 pub mod resolver;
