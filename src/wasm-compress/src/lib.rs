@@ -129,7 +129,8 @@ impl Compression {
                     let reader = entry.verifying_reader(reader);
                     let mut reader =
                         ProgressReader::start_at(reader, total_size, current_size, f.as_ref());
-                    std::io::copy(&mut reader, &mut writer)?;
+                    let written = std::io::copy(&mut reader, &mut writer)?;
+                    debug_assert_eq!(written, wayfinder.uncompressed_size_hint());
                     writer.get_mut().do_finish()?;
                     let (_, output) = writer.finish()?;
                     out_file.finish(output)?;

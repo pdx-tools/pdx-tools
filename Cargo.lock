@@ -339,7 +339,7 @@ source = "git+https://github.com/rakaly/ck3save.git#105616597c0879b71ddcbf32650c
 dependencies = [
  "flate2",
  "jomini",
- "rawzip",
+ "rawzip 0.0.6",
  "serde",
  "thiserror",
 ]
@@ -622,7 +622,7 @@ source = "git+https://github.com/rakaly/eu4save.git#484b14998273d24a1dacdf931d7b
 dependencies = [
  "flate2",
  "jomini",
- "rawzip",
+ "rawzip 0.0.6",
  "serde",
  "specta",
  "thiserror",
@@ -943,7 +943,7 @@ source = "git+https://github.com/rakaly/imperator-save.git#28c3075a0e77f25fea73a
 dependencies = [
  "flate2",
  "jomini",
- "rawzip",
+ "rawzip 0.0.6",
  "serde",
  "thiserror",
 ]
@@ -1306,7 +1306,7 @@ dependencies = [
  "highway",
  "jomini",
  "log",
- "rawzip",
+ "rawzip 0.0.6",
  "rayon",
  "regex",
  "schemas",
@@ -1483,6 +1483,12 @@ name = "rawzip"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd8833c0a2b1f9b70139ff6889a8949d6d44888a95806802f381cfcd36999519"
+
+[[package]]
+name = "rawzip"
+version = "0.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ec324e0457f4f630190d71b2470747043e232f313e5da9539cb9296c51ad253"
 
 [[package]]
 name = "rayon"
@@ -2167,7 +2173,7 @@ dependencies = [
  "getrandom",
  "jomini",
  "mathru",
- "rawzip",
+ "rawzip 0.0.6",
  "serde",
  "serde_path_to_error",
  "thiserror",
@@ -2311,7 +2317,7 @@ version = "0.1.0"
 dependencies = [
  "flate2",
  "js-sys",
- "rawzip",
+ "rawzip 0.0.7",
  "serde",
  "tsify",
  "wasm-bindgen",
