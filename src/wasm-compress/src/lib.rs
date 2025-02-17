@@ -59,6 +59,10 @@ where
     }
 }
 
+/// Re-encodes the data into a smaller, faster format.
+///
+/// - Remux Deflate ZIP archives with Zstd.
+/// - Otherwise, return the data compressed as a Zstd stream.
 #[wasm_bindgen]
 pub fn init_compression(data: Vec<u8>) -> Compression {
     Compression::new(data)
@@ -183,41 +187,41 @@ pub enum ContentType {
     Zstd,
 }
 
+/// Undoes the compress function, so that the save file can be loaded into EU4.
+///
+/// - Remux Zstd ZIP archives with Deflate.
+/// - Otherwise, decode the data with Zstd.
 #[wasm_bindgen]
-pub fn download_transformation(data: Vec<u8>) -> Vec<u8> {
+pub fn download_transformation(data: Vec<u8>) -> Result<Vec<u8>, JsValue> {
+    _download_transformation(data).map_err(|e| JsValue::from(e.to_string()))
+}
+
+fn _download_transformation(data: Vec<u8>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-        zstd::stream::decode_all(data.as_slice()).unwrap_or_default()
+        Ok(zstd::stream::decode_all(data.as_slice())?)
     } else if let Ok(zip) = rawzip::ZipArchive::from_slice(&data) {
         let out = Vec::with_capacity(data.len() * 2);
         let writer = Cursor::new(out);
         let mut out_zip = rawzip::ZipArchiveWriter::new(writer);
         let mut entries = zip.entries();
         while let Ok(Some(entry)) = entries.next_entry() {
-            let Ok(name) = entry.file_safe_path() else {
-                continue;
-            };
-
+            let name = entry.file_safe_path()?;
             let options = rawzip::ZipEntryOptions::default()
                 .compression_method(rawzip::CompressionMethod::Deflate);
-            let Ok(mut out_file) = out_zip.new_file(&name, options) else {
-                continue;
-            };
+            let mut out_file = out_zip.new_file(&name, options)?;
 
             let writer =
                 flate2::write::DeflateEncoder::new(&mut out_file, flate2::Compression::default());
             let mut writer = rawzip::RawZipWriter::new(writer);
 
-            let Ok(entry) = zip.get_entry(entry.wayfinder()) else {
-                continue;
-            };
-
-            let _ = zstd::stream::copy_decode(entry.data(), &mut writer);
-            let (_, output) = writer.finish().unwrap();
-            out_file.finish(output).unwrap();
+            let entry = zip.get_entry(entry.wayfinder())?;
+            zstd::stream::copy_decode(entry.data(), &mut writer)?;
+            let (_, output) = writer.finish()?;
+            out_file.finish(output)?;
         }
 
-        out_zip.finish().unwrap().into_inner()
+        Ok(out_zip.finish()?.into_inner())
     } else {
-        data
+        Ok(data)
     }
 }

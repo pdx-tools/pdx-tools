@@ -30,7 +30,7 @@ fn test_recompression_zip() {
     assert_eq!(actual.as_slice(), b"aaaaaaaaaa\n");
     assert!(entries.next_entry().unwrap().is_none());
 
-    let original = download_transformation(compressed);
+    let original = download_transformation(compressed).unwrap();
     let archive = rawzip::ZipArchive::from_slice(original.as_slice()).unwrap();
     let mut entries = archive.entries();
     let entry = entries.next_entry().unwrap().unwrap();
