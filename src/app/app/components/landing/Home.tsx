@@ -16,6 +16,7 @@ import { ImageGallery } from "./ImageGallery";
 import { HomeLeaderboard } from "./HomeLeaderboard";
 import { AchievementWall } from "./AchievementWall";
 import { cx } from "class-variance-authority";
+import { formatInt } from "@/lib/format";
 
 interface HomeProps {
   subtitle?: React.ReactNode;
@@ -99,10 +100,11 @@ export const Home = ({ subtitle }: HomeProps) => {
       >
         <div className="max-w-7xl">
           <h2 className="text-center text-3xl font-extrabold tracking-tight xl:text-4xl">
-            Questions? Answered.
+            <span className="mr-2 tracking-widest">{formatInt(1000000)}+</span>{" "}
+            saves analyzed
           </h2>
           <p className="mb-6 mt-3 text-center text-xl">
-            PDX Tools can help you answer these EU4 questions
+            Answering questions about your EU4 saves
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-y-6 xl:grid-cols-4">
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
@@ -118,8 +120,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white sm:col-span-2">
               <p className="text-center text-2xl">
-                How much more dev is needed for religious rebels to change the
-                state religion?
+                How much more development is needed to flip religion via rebels?
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
@@ -136,7 +137,8 @@ export const Home = ({ subtitle }: HomeProps) => {
 
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white sm:col-span-2">
               <p className="text-center text-2xl">
-                What is the reign weighted running average of monarch power?
+                Where should an institution be developed and how much mana will
+                it cost?
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
@@ -146,7 +148,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
               <p className="text-center text-2xl">
-                What wars were wars of attrition?
+                Who fought in the bloodiest and longest wars?
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
@@ -156,7 +158,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-4 text-white">
               <p className="text-center text-2xl">
-                What are the most popular idea groups?
+                How much did a bad ruler impact mana generation?
               </p>
             </div>
           </div>
