@@ -133,14 +133,12 @@ test-app *cmd: prep-frontend prep-test-app
 prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "-d")
   #!/usr/bin/env bash
   set -euxo pipefail
-  CONTAINER=$(just test-environment ps -q db)
-  timeout 5 sh -c 'until docker exec $0 pg_isready; do sleep 0.5; done' $CONTAINER
+  just dev-environment exec -u postgres --no-TTY db pg_isready --timeout=5
 
 prep-dev-app: (dev-environment "build") (dev-environment "up" "--no-start") (dev-environment "up" "-d")
   #!/usr/bin/env bash
   set -euxo pipefail
-  CONTAINER=$(just dev-environment ps -q db)
-  timeout 5 sh -c 'until docker exec $0 pg_isready; do sleep 0.5; done' $CONTAINER
+  just dev-environment exec -u postgres --no-TTY db pg_isready --timeout=5
 
 build-wasm: build-wasm-dev
   #!/usr/bin/env bash
@@ -284,8 +282,8 @@ prep-frontend:
   # Create DLC spritesheet
   cd src/app/app/features/eu4/components/dlc-list
   N=$(ls dlc-images | wc -l)
-  COLS=$(echo $N | awk '{s=sqrt($0); print s == int(s) ? s : int(s) + 1}')
-  montage -tile ${COLS}x -background transparent -define webp:lossless=true -mode concatenate "dlc-images/*" dlc-sprites.webp
+  COLS=$(echo "scale=0; sqrt($N + 0.9999) / 1" | bc)
+  command -v montage >/dev/null 2>&1 && montage -tile ${COLS}x -background transparent -define webp:lossless=true -mode concatenate "dlc-images/*" dlc-sprites.webp
   while IFS= read -r item; do echo "${item%%.*}"; done < <(ls dlc-images/) | \
     jq --compact-output --raw-input --null-input \
       '[inputs] | to_entries | map({(.value): .key}) | add' > dlc-sprites.json
@@ -294,8 +292,8 @@ prep-frontend:
   # Create icons spritesheet
   cd src/app/app/features/eu4/components/icons
   N=$(ls *.png | wc -l)
-  COLS=$(echo $N | awk '{s=sqrt($0); print s == int(s) ? s : int(s) + 1}')
-  montage -tile ${COLS}x -mode concatenate -geometry '32x32>' -background transparent *.png icons.webp
+  COLS=$(echo "scale=0; sqrt($N + 0.9999) / 1" | bc)
+  command -v montage >/dev/null 2>&1 && montage -tile ${COLS}x -mode concatenate -geometry '32x32>' -background transparent *.png icons.webp
   while IFS= read -r item; do echo "${item%%.*}"; done < <(ls *.png) |
     sed -e 's/icon_//g' | \
     jq --compact-output --raw-input --null-input \
@@ -333,7 +331,12 @@ prep-frontend:
   OUTPUT=src/app/app/lib/game_gen.ts
   rm -f "$OUTPUT"
 
-  readarray -t VERSIONS < <(ls assets/game/eu4/ | grep -v common | sort -n)
+  # readarray polyfill for macos bash
+  VERSIONS=()
+  while IFS= read -r line; do
+    VERSIONS+=("$line")
+  done < <(ls assets/game/eu4/ | grep -v common | sort -n)
+
   if [[ "${#VERSIONS[@]}" == '0' ]]; then
     echo "const msg = 'EU4 assets not found, have you forgot to compile assets';" >> $"$OUTPUT"
     echo "export const gameVersion = (x: string): any => { throw new Error(msg); } " >> "$OUTPUT"
