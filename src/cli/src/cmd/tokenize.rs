@@ -21,13 +21,14 @@ impl TokenizeArgs {
         for game in ["eu4", "ck3", "hoi4", "imperator", "vic3"] {
             let token_file = self.tokens_dir.join(game).with_extension("txt");
             if token_file.exists() {
-                tokenize_path(token_file)?;
-            } else {
-                info!(
-                    "skipping {} tokenization as file not detected",
-                    token_file.display()
-                );
+                let file = File::open(&token_file)?;
+                if file.metadata()?.len() > 0 {
+                    tokenize_path(token_file)?;
+                    continue;
+                }
             }
+
+            info!("skipping {}. Empty tokenization file", token_file.display());
         }
 
         Ok(ExitCode::SUCCESS)
