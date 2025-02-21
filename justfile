@@ -130,12 +130,12 @@ test-app *cmd: prep-frontend prep-test-app
     "npx wrangler dev --env test --port 3000" \
     "sleep 2 && npm test -- run {@}" -- "$@"
 
-prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "-d")
+prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "--wait" "db") (test-environment "up" "-d")
   #!/usr/bin/env bash
   set -euxo pipefail
-  just dev-environment exec -u postgres --no-TTY db pg_isready --timeout=5
+  just test-environment exec -u postgres --no-TTY db pg_isready --timeout=5
 
-prep-dev-app: (dev-environment "build") (dev-environment "up" "--no-start") (dev-environment "up" "-d")
+prep-dev-app: (dev-environment "build") (dev-environment "up" "--no-start") (dev-environment "up" "--wait" "db") (dev-environment "up" "-d")
   #!/usr/bin/env bash
   set -euxo pipefail
   just dev-environment exec -u postgres --no-TTY db pg_isready --timeout=5
