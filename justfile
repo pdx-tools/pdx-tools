@@ -282,7 +282,7 @@ prep-frontend:
   # Create DLC spritesheet
   cd src/app/app/features/eu4/components/dlc-list
   N=$(ls dlc-images | wc -l)
-  COLS=$(echo "scale=0; sqrt($N + 0.9999) / 1" | bc)
+  COLS=$(awk "BEGIN { print int(sqrt($N - 0.5) + 1) }")
   command -v montage >/dev/null 2>&1 && montage -tile ${COLS}x -background transparent -define webp:lossless=true -mode concatenate "dlc-images/*" dlc-sprites.webp
   while IFS= read -r item; do echo "${item%%.*}"; done < <(ls dlc-images/) | \
     jq --compact-output --raw-input --null-input \
@@ -292,7 +292,7 @@ prep-frontend:
   # Create icons spritesheet
   cd src/app/app/features/eu4/components/icons
   N=$(ls *.png | wc -l)
-  COLS=$(echo "scale=0; sqrt($N + 0.9999) / 1" | bc)
+  COLS=$(awk "BEGIN { print int(sqrt($N - 0.5) + 1) }")
   command -v montage >/dev/null 2>&1 && montage -tile ${COLS}x -mode concatenate -geometry '32x32>' -background transparent *.png icons.webp
   while IFS= read -r item; do echo "${item%%.*}"; done < <(ls *.png) |
     sed -e 's/icon_//g' | \
