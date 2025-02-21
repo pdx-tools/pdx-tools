@@ -2,7 +2,8 @@ use std::{
     env,
     fs::File,
     io::{BufWriter, Write},
-    path::Path, process::Command,
+    path::Path,
+    process::Command,
 };
 
 fn main() {
@@ -11,7 +12,10 @@ fn main() {
     // If the modification time of the schema is newer than the generated code, regenerate it
     let schema = Path::new("src/eu4.fbs");
     let generated = Path::new("src/eu4_generated.rs");
-    if !generated.exists() || schema.metadata().unwrap().modified().unwrap() > generated.metadata().unwrap().modified().unwrap() {
+    if !generated.exists()
+        || schema.metadata().unwrap().modified().unwrap()
+            > generated.metadata().unwrap().modified().unwrap()
+    {
         let status = Command::new("flatc")
             .args(["-o", "src", "--rust", "src/eu4.fbs"])
             .status()
