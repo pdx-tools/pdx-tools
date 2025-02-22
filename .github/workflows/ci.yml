@@ -1,8 +1,6 @@
 name: CI
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   pull_request_target:
     types: [opened, synchronize, reopened, labeled]
   push:
@@ -11,16 +9,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'pull_request' ||
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'safe to test'))
+    if: "!github.event.pull_request.head.repo.fork || contains(github.event.pull_request.labels.*.name, 'safe to test')"
     strategy:
       matrix:
         include:
-          - remove_tokens: false
-          - remove_tokens: true
-    name: build / tokens-${{ matrix.remove_tokens && 'removed' || 'included' }}
+          - name: "with-tokens"
+            remove_tokens: false
+          - name: "no-tokens"
+            remove_tokens: true
+    name: ${{ matrix.name }}
     env:
       CARGO_TERM_VERBOSE: true
     steps:
