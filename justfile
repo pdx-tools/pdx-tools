@@ -131,14 +131,22 @@ test-app *cmd: prep-frontend prep-test-app
     "sleep 2 && npm test -- run {@}" -- "$@"
 
 prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "--wait" "db") (test-environment "up" "-d")
-  #!/usr/bin/env bash
-  set -euxo pipefail
-  just test-environment exec -u postgres --no-TTY db pg_isready --timeout=5
+  just wait-for-db test-environment
 
 prep-dev-app: (dev-environment "build") (dev-environment "up" "--no-start") (dev-environment "up" "--wait" "db") (dev-environment "up" "-d")
+  just wait-for-db dev-environment
+
+wait-for-db environment timeout="5":
   #!/usr/bin/env bash
   set -euxo pipefail
-  just dev-environment exec -u postgres --no-TTY db pg_isready --timeout=5
+  for i in {1..3}; do
+    if just {{environment}} exec -u postgres --no-TTY db pg_isready --timeout={{timeout}}; then
+      exit 0
+    fi
+    sleep 1
+  done
+  echo "Database failed to become ready"
+  exit 1
 
 build-wasm: build-wasm-dev
   #!/usr/bin/env bash
@@ -427,4 +435,3 @@ prep-frontend:
   EOF
   done;
   echo "}}" >> "$OUTPUT"
-
