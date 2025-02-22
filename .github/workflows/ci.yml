@@ -18,11 +18,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: "with-tokens"
-            remove_tokens: false
-          - name: "no-tokens"
-            remove_tokens: true
-    name: build-${{ matrix.name }}
+          - remove_tokens: false
+          - remove_tokens: true
+    name: build / tokens-${{ matrix.remove_tokens && 'removed' || 'included' }}
     env:
       CARGO_TERM_VERBOSE: true
     steps:
