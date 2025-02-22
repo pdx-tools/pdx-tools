@@ -18,9 +18,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - remove_tokens: false
-          - remove_tokens: true
-    name: build / tokens-${{ matrix.remove_tokens && 'removed' || 'included' }}
+          - with_tokens: false
+          - with_tokens: true
+    name: build / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
     env:
       CARGO_TERM_VERBOSE: true
     steps:
@@ -55,6 +55,18 @@ jobs:
           src/vic3save/assets
         key: asset-cache
 
+    - uses: actions/checkout@v4
+      name: Clone tokens
+      if: matrix.with_tokens
+      with:
+        path: assets/tokens
+        repository: pdx-tools/tokens
+        token: ${{secrets.GH_PAT}}
+
+    - name: Link tokens
+      if: matrix.with_tokens
+      run: cd assets/tokens && ln -s tokens/* .
+
     - name: Build and run Dev Container task
       uses: devcontainers/ci@v0.3
       env:
@@ -66,12 +78,10 @@ jobs:
         env: |
           ASSETS_ACCESS_KEY
           ASSETS_SECRET_KEY
-          GH_PAT
         runCmd: |
           just admin-sync-assets && \
-          ${{ matrix.remove_tokens && 'rm -rf assets/tokens && ' || '' }} \
           just package-all && \
           just build-wasm-dev && \
-          ${{ !matrix.remove_tokens && 'just test && ' || '' }} \
+          ${{ matrix.with_tokens && 'just test && ' || '' }} \
           just build-app
 

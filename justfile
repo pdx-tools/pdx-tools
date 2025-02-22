@@ -253,7 +253,7 @@ admin-sync-tokens:
   git clone https://${GH_PAT:+"$GH_PAT@"}github.com/pdx-tools/tokens.git assets/tokens
   (cd assets/tokens && ln -s tokens/* .)
 
-admin-sync-assets: admin-sync-tokens
+admin-sync-assets:
   rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key="${ASSETS_SECRET_KEY}" --s3-access-key-id="${ASSETS_ACCESS_KEY}" copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.
 
 tokenize *cmd:
