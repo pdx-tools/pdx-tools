@@ -15,6 +15,7 @@ extern "C" {
     fn stack(error: &Error) -> String;
 }
 
+#[allow(deprecated)] // PanicHookInfo was introduced in 1.81, so wait for it to mature
 fn hook(info: &std::panic::PanicInfo) {
     let mut msg = info.to_string();
 
