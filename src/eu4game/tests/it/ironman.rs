@@ -16,7 +16,7 @@ pub fn ironman_saves_detected() -> Result<(), Box<dyn Error>> {
 
     let files = files
         .into_iter()
-        .chain(add_files.into_iter())
+        .chain(add_files)
         .filter_map(|x| x.ok())
         .filter(|x| x.path().is_file())
         .filter(|x| match x.path().to_str() {
@@ -28,13 +28,11 @@ pub fn ironman_saves_detected() -> Result<(), Box<dyn Error>> {
     for file in files {
         let path = file.path();
         println!("parsing {}", path.display());
-        let data = fs::read(&path)?;
+        let data = fs::read(path)?;
         let save = Eu4Parser::new().parse(&data)?.save;
         let query = Query::from_save(save);
         let playthrough_id = eu4game::shared::playthrough_id(&query);
-        let e = playthrough_ids
-            .entry(playthrough_id)
-            .or_insert_with(HashSet::new);
+        let e = playthrough_ids.entry(playthrough_id).or_default();
         e.insert(path.file_stem().unwrap().to_string_lossy().to_string());
     }
 

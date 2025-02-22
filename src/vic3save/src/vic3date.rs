@@ -192,7 +192,7 @@ impl Serialize for Vic3Date {
 
 struct DateVisitor;
 
-impl<'de> Visitor<'de> for DateVisitor {
+impl Visitor<'_> for DateVisitor {
     type Value = Vic3Date;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

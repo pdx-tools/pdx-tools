@@ -4,8 +4,8 @@ use wasm_compress::download_transformation;
 
 fn compress(data: Vec<u8>) -> Vec<u8> {
     let c = wasm_compress::init_compression(data);
-    let out = c.compress_cb(None).unwrap();
-    out
+
+    c.compress_cb(None).unwrap()
 }
 
 #[test]

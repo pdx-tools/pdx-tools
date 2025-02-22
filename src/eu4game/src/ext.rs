@@ -7,8 +7,7 @@ pub trait ProvinceExt {
 
 impl ProvinceExt for Province {
     fn recently_exploited(&self, at: Eu4Date) -> bool {
-        self.exploit_date
-            .map_or(false, |x| x.add_days(365 * 20) > at)
+        self.exploit_date.is_some_and(|x| x.add_days(365 * 20) > at)
     }
 
     fn exploitable(&self, at: Eu4Date) -> bool {

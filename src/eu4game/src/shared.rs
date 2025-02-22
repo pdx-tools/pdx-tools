@@ -64,7 +64,7 @@ pub struct SaveCheckSummerReader<'a> {
     hasher: &'a mut SaveCheckSummer,
 }
 
-impl<'a> Read for SaveCheckSummerReader<'a> {
+impl Read for SaveCheckSummerReader<'_> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         match self.reader.read(buf) {
             Ok(x) => {

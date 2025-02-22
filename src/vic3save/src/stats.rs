@@ -27,7 +27,7 @@ pub struct Vic3CountryStatsIter<'a> {
     stats: &'a Vic3CountryStats,
     index: usize,
 }
-impl<'a> Iterator for Vic3CountryStatsIter<'a> {
+impl Iterator for Vic3CountryStatsIter<'_> {
     type Item = (Vic3Date, f64);
     fn next(&mut self) -> Option<Self::Item> {
         let game_start_date: Vic3Date = Vic3Date::from_ymdh(1836, 1, 1, 0);
@@ -262,7 +262,7 @@ where
     }
 }
 
-impl<'a> Vic3CountryStatsIter<'a> {
+impl Vic3CountryStatsIter<'_> {
     pub fn zip_aligned<T, T1>(self, other: T1) -> Vic3CountryStatsAllignedIter<Self, T1>
     where
         T1: Iterator<Item = (Vic3Date, T)>,
@@ -427,7 +427,7 @@ mod tests {
         assert_eq!(x, 1.0);
         assert_eq!(y, 2.0);
         assert_eq!(z, 3.0);
-        let t1_vec = vec![(date, t1.clone()), (date, t1.clone()), (date, t1.clone())];
+        let t1_vec = [(date, t1), (date, t1), (date, t1)];
         let t1_flat: Vec<f64> = flattened_iter(t1_vec.iter().copied())
             .map(|(_, [_, y, _])| y)
             .collect();
@@ -435,14 +435,14 @@ mod tests {
         let t2: (_, f64) = (t1, 0.0);
         let [_, _y, _z, x]: [f64; 4] = t2.flattened();
         assert_eq!(x, 0.0);
-        let t2_vec = vec![(date, t2.clone()), (date, t2.clone()), (date, t2.clone())];
+        let t2_vec = [(date, t2), (date, t2), (date, t2)];
         let t2_flat: Vec<f64> = flattened_iter(t2_vec.iter().copied())
             .map(|(_, [_, _, y, _])| y)
             .collect();
         assert_eq!(vec![3.0, 3.0, 3.0], t2_flat);
 
         let t3: (_, f64) = (t2, 0.0);
-        let t3_vec = vec![(date, t3.clone()), (date, t3.clone()), (date, t3.clone())];
+        let t3_vec = [(date, t3), (date, t3), (date, t3)];
         assert_eq!(x, 0.0);
         let t3_flat: Vec<f64> = flattened_iter(t3_vec.iter().copied())
             .map(|(_, [_, _, y, _, _])| y)
@@ -502,7 +502,7 @@ mod tests {
         let date = Vic3Date::from_ymdh(1836, 1, 1, 0);
         let ex = || successors(Some(1.0), |n| Some(n + 1.0)).map(|n: f64| n.exp());
         const N: usize = 20;
-        let days = |add| successors(Some(date), move |d| Some(d.clone().add_days(add)));
+        let days = |add| successors(Some(date), move |d| Some((*d).add_days(add)));
         let exp_stats = days(365).take(N).zip(ex());
         let rate_iter = Vic3CountryStatsRateIter {
             stats: exp_stats,

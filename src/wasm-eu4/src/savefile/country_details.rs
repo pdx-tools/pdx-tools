@@ -43,7 +43,7 @@ impl SaveFileImpl {
                 country
                     .monarch
                     .as_ref()
-                    .map_or(true, |ruler| ruler.id == x.id.id)
+                    .is_none_or(|ruler| ruler.id == x.id.id)
             })
             .map(|(ascended, x)| CountryMonarch {
                 name: x.name.clone(),
@@ -800,8 +800,7 @@ impl SaveFileImpl {
             .difference(&direct_religions)
             .filter(|x| {
                 state_religion
-                    .as_ref()
-                    .map_or(false, |r| r.id != x.as_str())
+                    .as_ref().is_some_and(|r| r.id != x.as_str())
             })
             .filter_map(|x| result.iter().find(|r| x == &&r.id))
             .max_by(|a, b| a.development.total_cmp(&b.development))
@@ -817,7 +816,7 @@ impl SaveFileImpl {
 
                 let more_popular = result
                     .iter()
-                    .filter(|x| x.id != leader.id && (x.development > leader.development || (x.development == leader.development && x.index.map_or(true, |a| leader.index.map_or(true, |b| a < b)))))
+                    .filter(|x| x.id != leader.id && (x.development > leader.development || (x.development == leader.development && x.index.is_none_or(|a| leader.index.is_none_or(|b| a < b)))))
                     .cloned()
                     .collect::<Vec<_>>();
 
@@ -2080,7 +2079,7 @@ pub(crate) fn country_best_leaders(country: &Country) -> (Option<&Leader>, Optio
             match leader.kind {
                 eu4save::models::LeaderKind::General
                 | eu4save::models::LeaderKind::Conquistador => {
-                    if general.map_or(true, |b: &eu4save::models::Leader| {
+                    if general.is_none_or(|b: &eu4save::models::Leader| {
                         leader.fire + leader.shock + leader.maneuver + leader.siege
                             > b.fire + b.shock + b.maneuver + b.siege
                     }) {
@@ -2090,7 +2089,7 @@ pub(crate) fn country_best_leaders(country: &Country) -> (Option<&Leader>, Optio
                     }
                 }
                 eu4save::models::LeaderKind::Admiral | eu4save::models::LeaderKind::Explorer => {
-                    if admiral.map_or(true, |b: &eu4save::models::Leader| {
+                    if admiral.is_none_or(|b: &eu4save::models::Leader| {
                         leader.fire + leader.shock + leader.maneuver > b.fire + b.shock + b.maneuver
                     }) {
                         (general, Some(leader))
@@ -2135,9 +2134,10 @@ impl InvertedResolver {
 
     fn new(events: &NationEvents) -> Self {
         let mut switches: Vec<CountryTagDuration> = Vec::new();
-        let existed_at_start = !events.events.first().map_or(false, |x| {
-            matches!(x.kind, eu4save::query::NationEventKind::Appeared)
-        });
+        let existed_at_start = !events
+            .events
+            .first()
+            .is_some_and(|x| matches!(x.kind, eu4save::query::NationEventKind::Appeared));
 
         if existed_at_start {
             switches.push(CountryTagDuration {
