@@ -277,7 +277,7 @@ mod tests {
     #[test]
     fn underdefined_system() {
         // 1 costs bout 20
-        let buildings = vec![test_building(
+        let buildings = [test_building(
             HashMap::from([(Vic3Good(1), 1.0), (Vic3Good(2), 1.0), (Vic3Good(3), 1.0)]),
             19.75,
         )];

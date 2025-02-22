@@ -44,7 +44,7 @@ impl<'a> FlatResolver<'a> {
     }
 }
 
-impl<'a> jomini::binary::TokenResolver for FlatResolver<'a> {
+impl jomini::binary::TokenResolver for FlatResolver<'_> {
     fn resolve(&self, token: u16) -> Option<&str> {
         if token < self.breakpoint {
             self.values

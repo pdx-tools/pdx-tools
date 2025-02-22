@@ -38,7 +38,7 @@ impl<'a, R> ProgressReader<'a, R> {
     }
 }
 
-impl<'a, R> Read for ProgressReader<'a, R>
+impl<R> Read for ProgressReader<'_, R>
 where
     R: Read,
 {

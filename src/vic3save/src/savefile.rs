@@ -297,9 +297,6 @@ budget={
         assert_eq!(country.definition, "GER");
         let out1: TestCountry = from_utf8_slice(b"country={101=none}").unwrap();
         assert_eq!(out1.country[&101], None);
-        assert_eq!(
-            true,
-            from_utf8_slice::<TestCountry>(b"country={101=None}").is_err()
-        );
+        assert!(from_utf8_slice::<TestCountry>(b"country={101=None}").is_err());
     }
 }

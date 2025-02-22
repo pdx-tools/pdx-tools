@@ -9,7 +9,7 @@ fn token_benchmark(c: &mut Criterion) {
     let mut arr = [0u16; 1024];
     thread_rng().fill(&mut arr);
     for x in &mut arr {
-        *x %= 10000 as u16;
+        *x %= 10000_u16;
     }
 
     let mut group = c.benchmark_group("resolve");

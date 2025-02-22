@@ -1472,7 +1472,7 @@ impl SaveFileImpl {
             let dev = devs.entry(*owner).or_default();
             let owner_has_stated = prov_area
                 .get(id)
-                .map_or(false, |area| states.contains(&(area, owner)));
+                .is_some_and(|area| states.contains(&(area, owner)));
 
             let has_any_core = prov.cores.contains(owner);
             if owner_has_stated && prov.territorial_core.contains(owner) {

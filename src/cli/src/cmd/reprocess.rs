@@ -268,7 +268,7 @@ where
 {
     struct GameDifficultyVisitor;
 
-    impl<'de> de::Visitor<'de> for GameDifficultyVisitor {
+    impl de::Visitor<'_> for GameDifficultyVisitor {
         type Value = GameDifficulty;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

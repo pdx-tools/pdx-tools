@@ -280,7 +280,7 @@ impl SaveFileImpl {
 
                 let (battles, losses) = battles
                     .filter(|(location, _, _)| *location == province_id)
-                    .filter(|(_, date, _)| requested_date.map_or(true, |x| **date <= x))
+                    .filter(|(_, date, _)| requested_date.is_none_or(|x| **date <= x))
                     .map(|(_, _, losses)| losses)
                     .fold((0, 0), |(count, losses), x| (count + 1, losses + x));
 
@@ -329,7 +329,7 @@ impl SaveFileImpl {
                 (
                     id,
                     prov,
-                    tags.is_empty() || prov.owner.as_ref().map_or(false, |x| tags.contains(x)),
+                    tags.is_empty() || prov.owner.as_ref().is_some_and(|x| tags.contains(x)),
                 )
             })
             .collect();
