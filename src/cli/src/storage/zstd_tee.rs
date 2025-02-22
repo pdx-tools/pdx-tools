@@ -29,6 +29,7 @@ impl ZstdFiles {
         })
     }
 
+    #[allow(dead_code)] // Only used in tokenize command
     pub fn name(&self) -> &str {
         &self.name
     }
