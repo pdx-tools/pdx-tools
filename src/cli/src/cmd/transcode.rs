@@ -65,21 +65,20 @@ impl TranscodeArgs {
                         let options = rawzip::ZipEntryOptions::default()
                             .compression_method(rawzip::CompressionMethod::Zstd);
                         let mut out_file = out_zip.new_file(&name, options)?;
-                        let mut enc = zstd::stream::Encoder::new(&mut out_file, 7)?;
-                        let mut writer = rawzip::RawZipWriter::new(&mut enc);
+                        let enc = zstd::stream::Encoder::new(&mut out_file, 7)?;
+                        let mut writer = rawzip::ZipDataWriter::new(enc);
                         let entry = zip.get_entry(wayfinder)?;
                         let reader = flate2::read::DeflateDecoder::new(entry.reader());
                         let mut reader = entry.verifying_reader(reader);
                         std::io::copy(&mut reader, &mut writer)?;
-                        writer.get_mut().do_finish()?;
-                        let (_, output) = writer.finish()?;
+                        let (writer, output) = writer.finish()?;
+                        writer.finish()?;
                         out_file.finish(output)?;
                     }
 
                     out_zip.finish()?.into_inner()
                 }
-                Err(e) => {
-                    let mut file = e.into_inner();
+                Err((mut file, _)) => {
                     let mut header = [0u8; 4];
                     file.seek(std::io::SeekFrom::Start(0))
                         .with_context(|| format!("unable to seek: {}", path.display()))?;
