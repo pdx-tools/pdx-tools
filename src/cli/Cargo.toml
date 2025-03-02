@@ -37,3 +37,6 @@ tempfile = "3.3"
 walkdir = "2.3.1"
 rawzip = "0.1.0"
 zstd = { version = "0.13.0", features = ["zstdmt"], optional = true }
+
+[target.'cfg(target_env = "musl")'.dependencies]
+mimalloc = "0.1.43"

@@ -14,3 +14,6 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 webp = "0.3"
 image = { version = "0.25.2", default-features = false, features = ["png"] }
+
+[target.'cfg(target_env = "musl")'.dependencies]
+mimalloc = "0.1.43"
