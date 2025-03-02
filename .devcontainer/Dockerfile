@@ -5,6 +5,7 @@ ARG JUST_VERSION=1.5.0
 RUN apt-get update && apt-get install -y \
       clang \
       imagemagick \
+      musl-tools \
       openssl \
       rclone \
       webp \
@@ -22,6 +23,7 @@ RUN bash /tmp/library-scripts/dependencies.sh
 USER node
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile minimal --component rustfmt --component clippy -y && \
     . $HOME/.cargo/env && \
+    rustup target add x86_64-unknown-linux-musl && \
     tmp/library-scripts/npm-dependencies.sh && \
     tmp/library-scripts/opt-dependencies.sh
 
