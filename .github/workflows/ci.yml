@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     if: |
       github.event_name == 'pull_request' ||
       github.event_name == 'push' ||
@@ -18,9 +18,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - with_tokens: false
-          - with_tokens: true
-    name: build / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
+          - os: ubuntu-latest
+            with_tokens: false
+          - os: ubuntu-latest
+            with_tokens: true
+          - os: ubuntu-24.04-arm
+            with_tokens: true
+    name: build / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
     env:
       CARGO_TERM_VERBOSE: true
     steps:
@@ -84,4 +88,3 @@ jobs:
           just build-wasm-dev && \
           ${{ matrix.with_tokens && 'just test && ' || '' }} \
           just build-app
-
