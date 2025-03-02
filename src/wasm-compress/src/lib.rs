@@ -75,17 +75,16 @@ pub struct Compression {
 
 impl Compression {
     fn new(data: Vec<u8>) -> Compression {
-        let reader = Cursor::new(data);
-        let mut buf = vec![0u8; rawzip::RECOMMENDED_BUFFER_SIZE];
-        match rawzip::ZipLocator::new().locate_in_reader(reader, &mut buf) {
+        let locator = rawzip::ZipLocator::new().max_search_space(1024);
+        match locator.locate_in_slice(data) {
             Ok(zip) => {
-                let prelude = zip.get_ref().get_ref()[0..zip.base_offset() as usize].to_vec();
+                let prelude = zip.as_bytes()[0..zip.base_offset() as usize].to_vec();
                 Compression {
                     content: Reader::Zip { zip, prelude },
                 }
             }
-            Err(e) => Compression {
-                content: Reader::Data(e.into_inner().into_inner()),
+            Err((data, _)) => Compression {
+                content: Reader::Data(data),
             },
         }
     }
@@ -96,11 +95,9 @@ impl Compression {
     ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         match self.content {
             Reader::Zip { zip, prelude } => {
-                let mut buf = vec![0u8; rawzip::RECOMMENDED_BUFFER_SIZE];
-
                 let mut inflated_size: u64 = 0;
                 let mut total_size: usize = 0;
-                let mut entries = zip.entries(&mut buf);
+                let mut entries = zip.entries();
                 while let Some(entry) = entries.next_entry()? {
                     inflated_size += entry.compressed_size_hint();
                     total_size += entry.uncompressed_size_hint() as usize;
@@ -113,7 +110,7 @@ impl Compression {
                     rawzip::ZipArchiveWriter::at_offset(zip.base_offset()).build(writer);
 
                 let mut files = Vec::new();
-                let mut entries = zip.entries(&mut buf);
+                let mut entries = zip.entries();
                 while let Some(entry) = entries.next_entry()? {
                     if entry.is_dir() {
                         continue;
@@ -126,17 +123,17 @@ impl Compression {
                     let options = rawzip::ZipEntryOptions::default()
                         .compression_method(rawzip::CompressionMethod::Zstd);
                     let mut out_file = out_zip.new_file(&name, options)?;
-                    let mut enc = zstd::stream::Encoder::new(&mut out_file, 7)?;
-                    let mut writer = rawzip::RawZipWriter::new(&mut enc);
+                    let enc = zstd::stream::Encoder::new(&mut out_file, 7)?;
+                    let mut writer = rawzip::ZipDataWriter::new(enc);
                     let entry = zip.get_entry(wayfinder)?;
-                    let reader = flate2::read::DeflateDecoder::new(entry.reader());
+                    let reader = flate2::read::DeflateDecoder::new(entry.data());
                     let reader = entry.verifying_reader(reader);
                     let mut reader =
                         ProgressReader::start_at(reader, total_size, current_size, f.as_ref());
                     let written = std::io::copy(&mut reader, &mut writer)?;
                     debug_assert_eq!(written, wayfinder.uncompressed_size_hint());
-                    writer.get_mut().do_finish()?;
-                    let (_, output) = writer.finish()?;
+                    let (zstd_writer, output) = writer.finish()?;
+                    zstd_writer.finish()?;
                     out_file.finish(output)?;
                     current_size += wayfinder.uncompressed_size_hint() as usize;
                 }
@@ -172,7 +169,7 @@ impl Compression {
 
 enum Reader {
     Zip {
-        zip: rawzip::ZipArchive<Cursor<Vec<u8>>>,
+        zip: rawzip::ZipSliceArchive<Vec<u8>>,
         prelude: Vec<u8>,
     },
     Data(Vec<u8>),
@@ -212,7 +209,7 @@ fn _download_transformation(data: Vec<u8>) -> Result<Vec<u8>, Box<dyn std::error
 
             let writer =
                 flate2::write::DeflateEncoder::new(&mut out_file, flate2::Compression::default());
-            let mut writer = rawzip::RawZipWriter::new(writer);
+            let mut writer = rawzip::ZipDataWriter::new(writer);
 
             let entry = zip.get_entry(entry.wayfinder())?;
             zstd::stream::copy_decode(entry.data(), &mut writer)?;

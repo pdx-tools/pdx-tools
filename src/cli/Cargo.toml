@@ -23,7 +23,7 @@ env_logger = "0.10"
 eu4game = { path = "../eu4game", optional = true, default-features = false }
 eu4game-data = { path = "../eu4game-data", optional = true, default-features = false }
 eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["serialize", "zstd"], optional = true }
-flate2 = { version = "1.0.29", optional = true, default-features = false, features = ["zlib-rs"] }
+flate2 = { version = "1.1.0", optional = true, default-features = false, features = ["zlib-rs"] }
 highway = "1.2"
 jomini = { version = "0.27", optional = true }
 log = "0.4"
@@ -35,5 +35,5 @@ serde_json = "1.0"
 tar = "0.4"
 tempfile = "3.3"
 walkdir = "2.3.1"
-rawzip = "0.0.6"
+rawzip = "0.1.0"
 zstd = { version = "0.13.0", features = ["zstdmt"], optional = true }

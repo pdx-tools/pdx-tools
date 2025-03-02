@@ -14,8 +14,8 @@ thiserror = "1"
 serde_path_to_error = "0.1"
 getrandom = { version = "0.2", features = ["js"]}
 mathru = "0.15.3"
-flate2 = { version = "1.0.29", default-features = false, features = ["zlib-rs"] }
-rawzip = "0.0.6"
+flate2 = { version = "1.1.0", default-features = false, features = ["zlib-rs"] }
+rawzip = "0.1.0"
 
 [dev-dependencies]
 attohttpc = "0.28.0"
