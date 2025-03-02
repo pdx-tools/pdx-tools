@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
     && \
     rm -rf /var/lib/apt/lists/* && \
     # Install just
-    wget -O ${JUST_VERSION}.tar.gz https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz && \
+    wget -O ${JUST_VERSION}.tar.gz https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-$(uname -m)-unknown-linux-musl.tar.gz && \
     tar xf ${JUST_VERSION}.tar.gz && \
     mv just /usr/bin/just
 
