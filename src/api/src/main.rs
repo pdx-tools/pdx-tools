@@ -12,6 +12,12 @@ use tokio::{net::TcpListener, signal};
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 
+// Avoid musl's default allocator due to lackluster performance
+// https://nickb.dev/blog/default-musl-allocator-considered-harmful-to-performance
+#[cfg(target_env = "musl")]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 async fn upload(data: Bytes) -> Result<Json<ParseResult>, StatusCode> {
     tracing::info!("received request (bytes: {})", data.len());
     let result = tokio::task::block_in_place(|| parse_save_data(&data));
