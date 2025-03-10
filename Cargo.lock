@@ -122,7 +122,7 @@ dependencies = [
  "eu4save",
  "serde",
  "specta",
- "thiserror",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -335,13 +335,13 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/ck3save.git#50a6db7d4cf5ddce3fb480106c728965486545c0"
+source = "git+https://github.com/rakaly/ck3save.git#64b668485af5f8c4fd39da1f8033c6a3de01a37b"
 dependencies = [
  "flate2",
  "jomini",
  "rawzip",
  "serde",
- "thiserror",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -600,7 +600,7 @@ dependencies = [
  "schemas",
  "serde",
  "serde_path_to_error",
- "thiserror",
+ "thiserror 2.0.12",
  "walkdir",
  "zstd",
 ]
@@ -618,14 +618,14 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#11669df4c09c05f0b7b6fd3f518b358f5d551c6f"
+source = "git+https://github.com/rakaly/eu4save.git#70f242bd7f75f25cbba4cb60ac0f378ad3199bbd"
 dependencies = [
  "flate2",
  "jomini",
  "rawzip",
  "serde",
  "specta",
- "thiserror",
+ "thiserror 2.0.12",
  "tsify",
  "wasm-bindgen",
  "zstd",
@@ -798,11 +798,11 @@ checksum = "c706f1711006204c2ba8fb1a7bd55f689bbf7feca9ff40325206b5e140cff6df"
 [[package]]
 name = "hoi4save"
 version = "0.3.4"
-source = "git+https://github.com/rakaly/hoi4save.git#9e1486eae05ab809da7b02f12691738cc920141c"
+source = "git+https://github.com/rakaly/hoi4save.git#1b981ff230f58e2c6b4cea97f346ace7a9e1126d"
 dependencies = [
  "jomini",
  "serde",
- "thiserror",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -939,13 +939,13 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/imperator-save.git#ec27ffcc05e705510f18f513b1e26ac6a7a40394"
+source = "git+https://github.com/rakaly/imperator-save.git#045c8bf0e34b48fbdc276b86f32c8cc5e197a736"
 dependencies = [
  "flate2",
  "jomini",
  "rawzip",
  "serde",
- "thiserror",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -997,9 +997,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.27.2"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dc82ff6f71a618586a1279249d6a026a73a3c12d932e407efb30fafb14434db"
+checksum = "85f314ee2027b37925dae74743e4127c84cdd5d96775e6b32f6686d126b4ebf7"
 dependencies = [
  "itoa",
  "jomini_derive",
@@ -1009,12 +1009,12 @@ dependencies = [
 
 [[package]]
 name = "jomini_derive"
-version = "0.2.5"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f1517407f78278cc5298fed44bd58b69e73e945021cfc0c1e7c8f4a77d9799d"
+checksum = "ada358784500edb84f3e48b8d3758b4d1e9fe23f53b1d8d7b235bf1e6532021a"
 dependencies = [
  "quote",
- "syn 1.0.109",
+ "syn 2.0.98",
 ]
 
 [[package]]
@@ -1725,11 +1725,12 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.108"
+version = "1.0.140"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d1c7e3eac408d115102c4c24ad393e0821bb3a5df4d506a80f85f7a742a526b"
+checksum = "20068b6e96dc6c9bd23e01df8827e6c7e1f2fddd43c21810382803c136b99373"
 dependencies = [
  "itoa",
+ "memchr",
  "ryu",
  "serde",
 ]
@@ -1810,7 +1811,7 @@ dependencies = [
  "serde",
  "serde_json",
  "specta-macros",
- "thiserror",
+ "thiserror 1.0.51",
 ]
 
 [[package]]
@@ -1906,7 +1907,16 @@ version = "1.0.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f11c217e1416d6f036b870f14e0413d480dbf28edbee1f877abaf0206af43bb7"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.51",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "567b8a2dae586314f7be2a752ec7474332959c6460e02bde30d702a66d488708"
+dependencies = [
+ "thiserror-impl 2.0.12",
 ]
 
 [[package]]
@@ -1914,6 +1924,17 @@ name = "thiserror-impl"
 version = "1.0.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01742297787513b79cf8e29d1056ede1313e2420b7b3b15d0a768b4921f549df"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.98",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f7cf42b4507d8ea322120659672cf1b9dbb93f8f2d4ecfd6e51350ff5b17a1d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2191,7 +2212,7 @@ dependencies = [
  "rawzip",
  "serde",
  "serde_path_to_error",
- "thiserror",
+ "thiserror 2.0.12",
 ]
 
 [[package]]

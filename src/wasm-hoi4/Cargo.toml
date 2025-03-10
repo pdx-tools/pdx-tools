@@ -11,11 +11,11 @@ crate-type = ["cdylib", "rlib"]
 default = ["zstd/fat-lto"]
 
 [dependencies]
-jomini = "0.27"
+jomini = "0.28"
 schemas = { path = "../schemas" }
 wasm-bindgen = { version = "0.2" }
 serde-wasm-bindgen = "0.5"
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1.0.195", features = ["derive"] }
 hoi4save = { git = "https://github.com/rakaly/hoi4save.git" }
 js-sys = "0.3"
 zstd = { version = "0.13.0", default-features = false }
