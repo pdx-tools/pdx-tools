@@ -8,12 +8,12 @@ publish = false
 inline = []
 
 [dependencies]
-flatbuffers = "24.3.25"
-jomini = {version = "0.28" }
+flatbuffers = { workspace = true }
+jomini = { workspace = true }
 
 [dev-dependencies]
-criterion = "0.5"
-rand = "0.8"
+criterion = { workspace = true }
+rand = { workspace = true }
 
 [[bench]]
 name = "schema_benchmark"

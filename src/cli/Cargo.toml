@@ -13,30 +13,30 @@ compile_assets = ["dep:attohttpc", "dep:eu4save", "dep:jomini", "dep:eu4game-dat
 tokenize = ["dep:zstd", "dep:schemas"]
 
 [dependencies]
-anyhow = "1.0"
-applib = { path = "../applib", optional = true }
-attohttpc = { version = "0.28", features = ["json"], optional = true }
-chrono = "0.4"
-clap = { version = "4.1", features = ["derive", "env"] }
-csv = { version = "1.1" }
-env_logger = "0.10"
-eu4game = { path = "../eu4game", optional = true, default-features = false }
-eu4game-data = { path = "../eu4game-data", optional = true, default-features = false }
-eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["serialize", "zstd"], optional = true }
-flate2 = { version = "1.1.0", optional = true, default-features = false, features = ["zlib-rs"] }
-highway = "1.2"
-jomini = { version = "0.28", optional = true }
-log = "0.4"
-rayon = "1"
-regex = "1"
-schemas = { path = "../schemas", optional = true }
-serde = { version = "1.0.195", features = ["derive"] }
-serde_json = "1.0.114"
-tar = "0.4"
-tempfile = "3.3"
-walkdir = "2.3.1"
-rawzip = "0.1.0"
-zstd = { version = "0.13.0", features = ["zstdmt"], optional = true }
+anyhow = { workspace = true }
+applib = { optional = true , workspace = true }
+attohttpc = { features = ["json"], optional = true , workspace = true }
+chrono = { workspace = true }
+clap = { features = ["derive", "env"] , workspace = true }
+csv = { workspace = true }
+env_logger = { workspace = true }
+eu4game = { optional = true, default-features = false , workspace = true }
+eu4game-data = { optional = true, default-features = false , workspace = true }
+eu4save = { default-features = false, features = ["serialize", "zstd"], optional = true , workspace = true }
+flate2 = { optional = true, default-features = false, features = ["zlib-rs"] , workspace = true }
+highway = { workspace = true }
+jomini = { optional = true , workspace = true }
+log = { workspace = true }
+rayon = { workspace = true }
+regex = { workspace = true }
+schemas = { optional = true , workspace = true }
+serde = { features = ["derive"] , workspace = true }
+serde_json = { workspace = true }
+tar = { workspace = true }
+tempfile = { workspace = true }
+walkdir = { workspace = true }
+rawzip = { workspace = true }
+zstd = { features = ["zstdmt"], optional = true , workspace = true }
 
 [target.'cfg(target_env = "musl")'.dependencies]
-mimalloc = "0.1.43"
+mimalloc = { workspace = true }

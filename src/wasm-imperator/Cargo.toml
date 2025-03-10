@@ -11,14 +11,14 @@ crate-type = ["cdylib", "rlib"]
 default = ["zstd/fat-lto"]
 
 [dependencies]
-jomini = "0.28"
-schemas = { path = "../schemas" }
-wasm-bindgen = { version = "0.2" }
-serde-wasm-bindgen = "0.5"
-serde = { version = "1", features = ["derive"] }
-imperator-save = { git = "https://github.com/rakaly/imperator-save.git" }
-js-sys = "0.3"
-zstd = { version = "0.13.0", default-features = false }
+jomini = { workspace = true }
+schemas = { workspace = true }
+wasm-bindgen = { workspace = true }
+serde-wasm-bindgen = { workspace = true }
+serde = { features = ["derive"] , workspace = true }
+imperator-save = { workspace = true }
+js-sys = { workspace = true }
+zstd = { default-features = false , workspace = true }
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false

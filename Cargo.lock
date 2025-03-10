@@ -2368,7 +2368,6 @@ dependencies = [
  "eu4save",
  "jomini",
  "js-sys",
- "once_cell",
  "schemas",
  "serde",
  "serde-wasm-bindgen",

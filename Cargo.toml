@@ -17,6 +17,59 @@ members = [
     "src/wasm-vic3",
 ]
 
+[workspace.dependencies]
+anyhow = "1.0"
+applib = { path = "src/applib" }
+attohttpc = "0.28.0"
+axum = "0.7.5"
+base64 = "0.13"
+chrono = "0.4"
+ck3save = { git = "https://github.com/rakaly/ck3save.git" }
+clap = "4.1"
+criterion = "0.5"
+csv = "1.1"
+env_logger = "0.10"
+erased-serde = "0.4.5"
+eu4game = { path = "src/eu4game", default-features = false }
+eu4game-data = { path = "src/eu4game-data", default-features = false }
+eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false }
+flatbuffers = "24.3.25"
+flate2 = { version = "1.1.0", default-features = false }
+getrandom = "0.2"
+highway = "1.2"
+hoi4save = { git = "https://github.com/rakaly/hoi4save.git" }
+image = { version = "0.25.2", default-features = false }
+imperator-save = { git = "https://github.com/rakaly/imperator-save.git" }
+jomini = "0.28.0"
+js-sys = "0.3"
+log = "0.4"
+mathru = "0.15.3"
+mimalloc = "0.1.43"
+rand = "0.8"
+rawzip = "0.1.0"
+rayon = "1"
+regex = "1"
+schemas = { path = "src/schemas" }
+serde = "1.0.195"
+serde-wasm-bindgen = "0.5"
+serde_json = "1.0.114"
+serde_path_to_error = "0.1"
+specta = "1.0.4"
+tar = "0.4"
+tempfile = "3.3"
+thiserror = "2.0.0"
+tokio = "1.28.2"
+tower-http = "0.5.2"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+tsify = { version = "0.4.5", default-features = false }
+vic3save = { path = "src/vic3save" }
+walkdir = "2.3.1"
+wasm-bindgen = { version = "0.2", default-features = false }
+wasm-bindgen-test = "0.3.0"
+webp = "0.3"
+zstd = { version = "0.13.0", default-features = false }
+
 [profile.release]
 lto = true
 codegen-units = 1
