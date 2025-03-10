@@ -10,5 +10,5 @@ publish = false
 serde = {version = "1", features = ["derive"]}
 eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["serialize", "zstd", "specta"] }
 eu4game = { path = "../eu4game", default-features = false, features = ["embedded"] }
-thiserror = "1"
+thiserror = "2.0.0"
 specta = { version = "1.0.4", features = ["typescript", "export"] }
