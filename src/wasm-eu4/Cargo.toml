@@ -12,20 +12,19 @@ crate-type = ["cdylib", "rlib"]
 default = ["zstd/fat-lto"]
 
 [dependencies]
-jomini = { version = "0.28" }
-js-sys = "0.3"
-once_cell = "1.13"
-wasm-bindgen = { version = "0.2" }
-serde = { version = "1", features = ["derive"] }
-serde-wasm-bindgen = "0.5"
-eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["zstd", "tsify"] }
-eu4game = { path = "../eu4game", default-features = false }
-schemas = { path = "../schemas" }
-tsify = { version = "0.4.5", default-features = false, features = ["js"] } 
-zstd = { version = "0.13.0", default-features = false }
+jomini = { workspace = true }
+js-sys = { workspace = true }
+wasm-bindgen = { workspace = true }
+serde = { features = ["derive"] , workspace = true }
+serde-wasm-bindgen = { workspace = true }
+eu4save = { default-features = false, features = ["zstd", "tsify"] , workspace = true }
+eu4game = { default-features = false , workspace = true }
+schemas = { workspace = true }
+tsify = { default-features = false, features = ["js"] , workspace = true }
+zstd = { default-features = false , workspace = true }
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.0"
+wasm-bindgen-test = { workspace = true }
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false

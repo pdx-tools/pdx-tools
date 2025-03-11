@@ -9,11 +9,11 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = { version = "0.2" }
-tsify = { version = "0.4.5", default-features = false, features = ["js"] } 
-serde = { version = "1.0.195", features = ["derive"] }
-eu4game-data = { path = "../eu4game-data", features = ["tsify"] }
-jomini = { version = "0.28" }
+wasm-bindgen = { workspace = true }
+tsify = { default-features = false, features = ["js"] , workspace = true }
+serde = { features = ["derive"] , workspace = true }
+eu4game-data = { features = ["tsify"] , workspace = true }
+jomini = { workspace = true }
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false

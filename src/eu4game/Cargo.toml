@@ -10,21 +10,21 @@ default = ["embedded"]
 embedded = ["eu4game-data/embedded"]
 
 [dependencies]
-jomini = { version = "0.28" }
-erased-serde = "0.4.5"
-eu4game-data = { path = "../eu4game-data" }
-eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false, features = ["zstd"] }
-schemas = { path = "../schemas", features = ["inline"] }
-serde = { version = "1.0.195", features = ["derive"] }
-serde_path_to_error = "0.1"
-highway = "1.2"
-base64 = "0.13"
-thiserror = "2.0.0"
-zstd = { version = "0.13.0", default-features = false }
+jomini = { workspace = true }
+erased-serde = { workspace = true }
+eu4game-data = { workspace = true }
+eu4save = { default-features = false, features = ["zstd"] , workspace = true }
+schemas = { features = ["inline"] , workspace = true }
+serde = { features = ["derive"] , workspace = true }
+serde_path_to_error = { workspace = true }
+highway = { workspace = true }
+base64 = { workspace = true }
+thiserror = { workspace = true }
+zstd = { default-features = false , workspace = true }
 
 [dev-dependencies]
-attohttpc = "0.28"
-walkdir = "2"
+attohttpc = { workspace = true }
+walkdir = { workspace = true }
 
 [build-dependencies]
-regex = "1.5"
+regex = { workspace = true }

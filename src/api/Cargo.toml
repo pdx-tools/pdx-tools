@@ -5,15 +5,15 @@ edition = "2021"
 publish = false
 
 [dependencies]
-axum = { version = "0.7.5" }
-tokio = { version = "1.28.2", features = ["rt", "macros", "rt-multi-thread", "signal"] }
-applib = { path = "../applib" }
-eu4game = { path = "../eu4game" }
-tower-http = { version = "0.5.2", features = ["trace"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-webp = "0.3"
-image = { version = "0.25.2", default-features = false, features = ["png"] }
+axum = { workspace = true }
+tokio = { features = ["rt", "macros", "rt-multi-thread", "signal"] , workspace = true }
+applib = { workspace = true }
+eu4game = { workspace = true }
+tower-http = { features = ["trace"] , workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { features = ["env-filter"] , workspace = true }
+webp = { workspace = true }
+image = { default-features = false, features = ["png"] , workspace = true }
 
 [target.'cfg(target_env = "musl")'.dependencies]
-mimalloc = "0.1.43"
+mimalloc = { workspace = true }
