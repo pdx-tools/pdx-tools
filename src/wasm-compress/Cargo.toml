@@ -12,10 +12,13 @@ crate-type = ["cdylib", "rlib"]
 wasm-bindgen = { workspace = true }
 flate2 = { default-features = false, features = ["zlib-rs"] , workspace = true }
 rawzip = { workspace = true }
-zstd = { default-features = false , workspace = true }
+zstd = { default-features = false, workspace = true }
 js-sys = { workspace = true }
 tsify = { default-features = false, features = ["js"] , workspace = true }
 serde = { features = ["derive"] , workspace = true }
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
+
+[package.metadata.wasm-pack.profile.dev.wasm-bindgen]
+dwarf-debug-info = true

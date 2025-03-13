@@ -23,3 +23,6 @@ tsify = { default-features = false, features = ["js"] , workspace = true }
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
+
+[package.metadata.wasm-pack.profile.dev.wasm-bindgen]
+dwarf-debug-info = true
