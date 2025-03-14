@@ -1,5 +1,4 @@
 import React from "react";
-import icons from "./icons.png";
 import melted from "./melted.webp";
 import games from "./games.webp";
 import { HeroFileInput } from "./HeroFileInput";
@@ -7,8 +6,10 @@ import { Link } from "@/components/Link";
 import { BrowserCheck } from "./BrowserCheck";
 import {
   ChromeIcon,
+  DiscordIcon,
   EdgeIcon,
   FirefoxIcon,
+  GithubIcon,
   SafariIcon,
 } from "@/components/icons";
 import classes from "./Home.module.css";
@@ -315,12 +316,14 @@ export const Home = ({ subtitle }: HomeProps) => {
               and help contribute!
             </p>
           </div>
-          <div>
-            <img alt="" loading="lazy" src={icons} height={191} width={400} />
+          <div className="mt-4 flex justify-center gap-8">
+            <DiscordIcon className="size-16 md:size-32" />
+            <div className="text-3xl font-extrabold md:text-8xl">+</div>
+            <GithubIcon className="size-16 md:size-32" />
           </div>
         </section>
       </div>
-      <footer className="my-4 text-center text-sm text-slate-400">
+      <footer className="text-balance px-5 py-8 text-center text-sm text-slate-400">
         <a href="https://www.flaticon.com/free-icons/north">EU4</a>,{" "}
         <a href="https://www.flaticon.com/free-icons/victoria-day">V3</a>, and{" "}
         <a href="https://www.flaticon.com/free-icons/military">HOI4</a> icons

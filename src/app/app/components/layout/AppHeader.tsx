@@ -99,7 +99,7 @@ const HeaderMenu = () => {
           href="https://discord.gg/rCpNWQW"
           className="hidden opacity-75 hover:opacity-100 focus-visible:opacity-100 lg:block"
         >
-          <DiscordIcon className="h-6 w-6" />
+          <DiscordIcon className="h-6 w-6 text-white" />
           <span className="sr-only">Discord</span>
         </Link>
 
