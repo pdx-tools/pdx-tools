@@ -23,7 +23,9 @@ export const SteamLogin = () => {
           <Sheet.Close />
           <Sheet.Title>Welcome back!</Sheet.Title>
         </Sheet.Header>
-        <SteamButton />
+        <div className="flex justify-center py-4">
+          <SteamButton />
+        </div>
       </Sheet.Content>
     </Sheet>
   );
