@@ -15,7 +15,7 @@
 
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-      "dockerDashComposeVersion": "v2"
+      "dockerDashComposeVersion": "v2.33.1"
     },
     "ghcr.io/devcontainers/features/git-lfs:1": {}
   },
