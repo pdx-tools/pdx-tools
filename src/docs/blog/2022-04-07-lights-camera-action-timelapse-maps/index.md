@@ -15,7 +15,7 @@ The below video was generated entirely within the browser with [pdx.tools](https
 <!--truncate-->
 
 <video controls muted width='1110' >
-  <source src={require("./slim.mp4").default} type="video/mp4"/>
+  <source src={require("../../../app/app/components/landing/gallery-video.mp4").default} type="video/mp4"/>
 </video>
 
 You too can create a timelapse of your save by clicking on the globe (🌐) after loading a save on pdx.tools. There will be a video camera (🎥) to kick off the recording. Here are some instruction screenshots for those who are more visual learners:
@@ -26,12 +26,7 @@ You too can create a timelapse of your save by clicking on the globe (🌐) afte
 [![](record-2.png)](record-1.png)
 *Then the video camera*
 
-There's tons of options. We can capture the entire world in a recording (feel free to maximize the video to get a better view).
-
-<video controls muted width='2816' >
-  <source src={require("./wide.mp4").default} type="video/mp4"/>
-</video>
-
+There's tons of options. We can capture the entire world in a recording
 There's a lot to unpack, so strap in. 
 
 ## Prior Art

@@ -12,11 +12,11 @@ async function fetchColorData(kind: string) {
 }
 
 const baseImageUrls = {
-  provinces1: "/assets/game/eu4/images/provinces-1.png",
-  provinces2: "/assets/game/eu4/images/provinces-2.png",
-  terrain1: "/assets/game/eu4/images/terrain-1.png",
-  terrain2: "/assets/game/eu4/images/terrain-2.png",
-  stripes: "/assets/game/eu4/images/stripes.png",
+  provinces1: "/assets/game/eu4/images/provinces-1.webp",
+  provinces2: "/assets/game/eu4/images/provinces-2.webp",
+  terrain1: "/assets/game/eu4/images/terrain-1.webp",
+  terrain2: "/assets/game/eu4/images/terrain-2.webp",
+  stripes: "/assets/game/eu4/images/stripes.webp",
 };
 
 const provincesUniqueColorUrl = "/assets/game/eu4/data/color-order.bin";
@@ -26,8 +26,8 @@ const terrainUrls = {
   colorMap: "/assets/game/eu4/images/colormap.webp",
   sea: "/assets/game/eu4/images/sea-image.webp",
   normal: "/assets/game/eu4/images/world_normal.webp",
-  rivers1: "/assets/game/eu4/images/rivers-1.png",
-  rivers2: "/assets/game/eu4/images/rivers-2.png",
+  rivers1: "/assets/game/eu4/images/rivers-1.webp",
+  rivers2: "/assets/game/eu4/images/rivers-2.webp",
   water: "/assets/game/eu4/images/water.webp",
   surfaceRock: "/assets/game/eu4/images/surface_rock.webp",
   surfaceGreen: "/assets/game/eu4/images/surface_green.webp",
