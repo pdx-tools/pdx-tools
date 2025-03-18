@@ -56,6 +56,7 @@ const ROLES: RolePermissionsMapping = {
     "savefile:update": true,
     "savefile:reprocess": true,
     "leaderboard:rebalance": true,
+    "savefile:og-request": true,
   },
   user: {
     "savefile:create": true,
