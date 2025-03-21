@@ -394,75 +394,137 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
 
   return (
     <div ref={containerRef} className="flex flex-col items-center gap-8 pb-8">
-      <div className="flex flex-col gap-8 lg:flex-row">
-        <Card className="flex items-center gap-3 p-4">
-          <div className="text-2xl font-bold">
-            {formatInt(budgetSelect.operatingProfit(lastMonthBudget))}
+      <div className="grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-3">
+        <Card className="flex items-center gap-3 p-5 transition-all hover:shadow-md">
+          <div
+            className={cx(
+              "rounded-full p-3",
+              budgetSelect.operatingProfit(lastMonthBudget) > 0
+                ? "bg-emerald-100 dark:bg-emerald-900/30"
+                : "bg-rose-100 dark:bg-rose-900/30",
+            )}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={cx(
+                "h-6 w-6",
+                budgetSelect.operatingProfit(lastMonthBudget) > 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-rose-600 dark:text-rose-400",
+              )}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
           </div>
-          <div className="w-36 text-balance leading-none text-gray-500 dark:text-gray-300">
-            Monthly operating profit
+          <div>
+            <div className="text-2xl font-bold">
+              {formatInt(budgetSelect.operatingProfit(lastMonthBudget))}
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-300">
+              Operating profit
+            </div>
           </div>
         </Card>
 
-        <Card className="flex items-center gap-3 p-4">
-          <div className="text-2xl font-bold">
-            {formatInt(totalDucatsSpent)}
+        <Card className="flex items-center gap-3 p-5 transition-all hover:shadow-md">
+          <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900/30">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6 text-blue-600 dark:text-blue-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"
+              />
+            </svg>
           </div>
-          <div className="w-36 text-balance leading-none text-gray-500 dark:text-gray-300">
-            Total ducats spent
+          <div>
+            <div className="text-2xl font-bold">
+              {formatInt(totalDucatsSpent)}
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-300">
+              Total ducats spent
+            </div>
           </div>
         </Card>
 
-        <Card className="flex items-center gap-3 p-4">
-          <div className="text-2xl font-bold">
-            {formatFloat(budgetSelect.capexRatio(totalExpenses) * 100, 2)}%
+        <Card className="flex items-center gap-3 p-5 transition-all hover:shadow-md">
+          <div className="rounded-full bg-amber-100 p-3 dark:bg-amber-900/30">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6 text-amber-600 dark:text-amber-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              />
+            </svg>
           </div>
-          <div className="w-36 text-balance leading-none text-gray-500 dark:text-gray-300">
-            Capital Expediture
+          <div>
+            <div className="text-2xl font-bold">
+              {formatFloat(budgetSelect.capexRatio(totalExpenses) * 100, 2)}%
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-300">
+              Capital Expenditure
+            </div>
           </div>
         </Card>
       </div>
 
-      <ToggleGroup
-        type="single"
-        className="inline-flex self-center"
-        value={budgetInterval}
-        onValueChange={(value) => {
-          if (!value) {
-            return;
-          }
-
-          emitEvent({ kind: "Budget interval switched", interval: value });
-          setBudgetInterval(value as "last-month" | "ytd" | "last-year");
-        }}
-      >
-        <ToggleGroup.Item value="last-month" asChild>
-          <Button shape="none" className="px-4 py-2">
-            Last month
-          </Button>
-        </ToggleGroup.Item>
-        <ToggleGroup.Item value="ytd" asChild>
-          <Button shape="none" className="px-4 py-2">
-            YTD
-          </Button>
-        </ToggleGroup.Item>
-        <ToggleGroup.Item value="last-year" asChild>
-          <Button shape="none" className="px-4 py-2">
-            Last Year
-          </Button>
-        </ToggleGroup.Item>
-      </ToggleGroup>
-
       <div className="text-center">
-        <h3 className="text-bold text-lg font-semibold">
-          Budget Waterfall{" "}
-          {budgetInterval === "last-month"
-            ? `(${new Date(ytdYear, ytdMonth - 1).toLocaleString(undefined, { month: "long" })} ${ytdYear})`
-            : budgetInterval === "ytd"
-              ? `(${ytdYear} YTD)`
-              : `(Year of ${ytdYear - 1})`}
+        <h3 className="text-bold mb-2 text-lg font-semibold">
+          Budget Waterfall
         </h3>
-        {budgetInterval !== "last-month" ? "Monthly Average" : null}
+        <ToggleGroup
+          type="single"
+          className="inline-flex"
+          value={budgetInterval}
+          onValueChange={(value) => {
+            if (!value) {
+              return;
+            }
+
+            emitEvent({ kind: "Budget interval switched", interval: value });
+            setBudgetInterval(value as "last-month" | "ytd" | "last-year");
+          }}
+        >
+          <ToggleGroup.Item value="last-month" asChild>
+            <Button shape="none" className="px-4 py-2">
+              {new Date(ytdYear, ytdMonth - 1).toLocaleString(undefined, {
+                month: "long",
+              })}{" "}
+              {ytdYear}
+            </Button>
+          </ToggleGroup.Item>
+          <ToggleGroup.Item value="ytd" asChild>
+            <Button shape="none" className="px-4 py-2">
+              {ytdYear} YTD
+            </Button>
+          </ToggleGroup.Item>
+          <ToggleGroup.Item value="last-year" asChild>
+            <Button shape="none" className="px-4 py-2">
+              Year of {ytdYear - 1}
+            </Button>
+          </ToggleGroup.Item>
+        </ToggleGroup>
       </div>
 
       <div className="w-full overflow-auto">
@@ -477,6 +539,16 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                 y2={height - marginBottom}
                 className="stroke-black dark:stroke-white"
               />
+
+              <text
+                x={width - marginRight}
+                y={-10}
+                textAnchor="start"
+                fill="currentColor"
+                className="text-sm tracking-tight"
+              >
+                Monthly Average
+              </text>
 
               {Object.values(bars).map((bar, i) => (
                 <g key={i} transform={`translate(0, ${y(barLabels[i])})`}>
@@ -521,22 +593,22 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
         </svg>
       </div>
 
-      <div className="w-full max-w-2xl overflow-auto 2xl:w-auto">
+      <Card className="max-w-full overflow-auto p-4">
         <table>
           <thead>
-            <tr>
-              <th></th>
-              <th className="min-w-24">Last month</th>
-              <th className="min-w-24 leading-none">
+            <tr className="border-b-2 border-gray-300 dark:border-gray-600">
+              <th className="p-2 text-left"></th>
+              <th className="min-w-24 p-2 text-right">Last month</th>
+              <th className="min-w-24 p-2 text-right leading-none">
                 <div>YTD</div>
                 <Mat />
               </th>
-              <th className="min-w-24 leading-none">
+              <th className="min-w-24 p-2 text-right leading-none">
                 <div>Last Year</div>
                 <Mat />
               </th>
-              <th className="min-w-28">Total Spent</th>
-              <th className="max-w-24 text-balance text-sm font-normal leading-none">
+              <th className="min-w-28 p-2 text-right">Total Spent</th>
+              <th className="max-w-24 text-balance p-2 text-right text-sm font-normal leading-none">
                 % of total spent
               </th>
             </tr>
@@ -566,7 +638,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                         <td className="text-right">---</td>
                       </tr>
                     ))}
-                  <tr className="border-b">
+                  <tr className="border-b border-gray-300 dark:border-gray-600">
                     <td className="text-center font-semibold italic">
                       Subtotal
                     </td>
@@ -585,7 +657,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
             </tr>
 
             <tr className="bg-gray-200/50 dark:bg-gray-600/50">
-              <td className="text-center text-lg font-semibold italic">
+              <td className="px-2 text-center text-lg font-semibold italic">
                 Recurring Revenue
               </td>
               {allIncomes.map((x, i) => (
@@ -624,7 +696,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                         <PercentTotal value={totalExpenses[kind][key]} />
                       </tr>
                     ))}
-                  <tr className="border-b font-semibold italic">
+                  <tr className="border-b border-gray-300 font-semibold italic dark:border-gray-600">
                     <td className="text-center">Subtotal</td>
                     {allExpenses.map((x, i) => (
                       <td key={i} className="text-right">
@@ -654,7 +726,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
             </tr>
 
             <tr className="bg-gray-200/50 text-lg font-semibold italic dark:bg-gray-600/50">
-              <td className="text-center">Operating Expenses</td>
+              <td className="px-2 text-center">Operating Expenses</td>
               {allExpenses.map((x, i) => (
                 <td key={i} className="text-right">
                   {formatFloat(budgetSelect.operatingExpenses(x), 2)}
@@ -666,7 +738,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
             </tr>
 
             <tr className="bg-gray-200/50 text-xl font-semibold italic dark:bg-gray-600/50">
-              <td className="text-center">Operating Profit</td>
+              <td className="px-2 text-center">Operating Profit</td>
               {allIncomes.map((x, i) => (
                 <td key={i} className="text-right">
                   {formatFloat(budgetSelect.operatingProfit(x), 2)}
@@ -702,7 +774,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                       <td className="text-right">---</td>
                     </tr>
                   ))}
-                <tr className="border-b">
+                <tr className="border-b border-gray-300 dark:border-gray-600">
                   <td className="text-center font-semibold italic">Subtotal</td>
 
                   {allIncomes.map((x, i) => (
@@ -740,7 +812,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                         <PercentTotal value={totalExpenses[kind][key]} />
                       </tr>
                     ))}
-                  <tr className="border-b font-semibold italic">
+                  <tr className="border-b border-gray-300 font-semibold italic dark:border-gray-600">
                     <td className="text-center">Subtotal</td>
                     {allExpenses.map((x, i) => (
                       <td key={i} className="text-right">
@@ -770,7 +842,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
             </tr>
           </tbody>
         </table>
-      </div>
+      </Card>
 
       <div className="h-[750px] w-full">
         <h3 className="text-bold text-center text-lg font-semibold">
