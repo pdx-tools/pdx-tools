@@ -1282,6 +1282,7 @@ pub struct InstitutionCost {
     pub province_id: ProvinceId,
     pub name: String,
     pub mana_cost: i32,
+    pub current_expand_infrastructure: i32,
     pub additional_expand_infrastructure: i32,
     pub exploit_at: Option<i32>,
     pub current_dev: i32,

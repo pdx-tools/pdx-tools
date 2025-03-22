@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { CountryDetails } from "../../types/models";
 import { Eu4Worker, useEu4Worker } from "../../worker";
 import { Alert } from "@/components/Alert";
@@ -16,6 +16,11 @@ import { Tooltip } from "@/components/Tooltip";
 import { InputNumber } from "@/components/InputNumber";
 import { Link } from "@/components/Link";
 import { Badge } from "@/components/Badge";
+import {
+  calculateInstitutionSteps,
+  consolidateSteps,
+} from "./institutionSteps";
+import styles from "./CountryInstitution.module.css";
 
 function ProvinceModifier(props: InstitutionCost) {
   const actions = useInstitutionActions();
@@ -53,6 +58,60 @@ function ProvinceModifier(props: InstitutionCost) {
   );
 }
 
+function InstructionSteps({ row }: { row: InstitutionCost }) {
+  const steps = useMemo(
+    () => consolidateSteps(calculateInstitutionSteps(row)),
+    [row],
+  );
+
+  return (
+    <div className="space-y-1 text-xs">
+      {steps.map((step, index) => {
+        switch (step.type) {
+          case "develop":
+            return (
+              <div key={`dev-${index}`}>
+                Dev {step.from} → {step.to}
+                {step.followedBy.map((f) =>
+                  f.type == "expand" ? (
+                    <abbr
+                      key={f.type}
+                      title="Then expand infrastructure"
+                      className="cursor-help text-purple-600 no-underline dark:text-purple-400"
+                    >
+                      {" "}
+                      (expand)
+                    </abbr>
+                  ) : (
+                    <abbr
+                      key={f.type}
+                      title="Then exploit development"
+                      className="cursor-help text-amber-600 no-underline dark:text-amber-400"
+                    >
+                      {" "}
+                      (exploit)
+                    </abbr>
+                  ),
+                )}
+              </div>
+            );
+
+          case "expand":
+            return (
+              <div key={`expand-${index}`}>
+                Start by expanding infra{" "}
+                {(step.times ?? 1) > 1 ? ` (${step.times}x)` : ""}
+              </div>
+            );
+
+          case "exploit":
+            return <div key={`exploit-${index}`}>Start by exploiting dev</div>;
+        }
+      })}
+    </div>
+  );
+}
+
 const columnHelper = createColumnHelper<InstitutionCost>();
 const columns = [
   columnHelper.accessor("name", {
@@ -61,8 +120,9 @@ const columns = [
     ),
     enableColumnFilter: true,
     cell: ({ row }) => (
-      <div>
-        {row.original.name} ({row.original.province_id})
+      <div className="font-medium">
+        {row.original.name}{" "}
+        <span className="text-gray-500">({row.original.province_id})</span>
       </div>
     ),
   }),
@@ -73,24 +133,30 @@ const columns = [
       <Table.ColumnHeader column={column} title="Progress" />
     ),
     cell: (info) => (
-      <div className="text-right">{formatFloat(info.getValue(), 3)}%</div>
+      <div className="text-right">
+        <div className="relative pt-1">
+          <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+            <div
+              className="h-1.5 rounded-full bg-blue-500"
+              style={{ width: `${Math.min(100, info.getValue())}%` }}
+            ></div>
+          </div>
+          <div className="mt-1 text-xs font-medium">
+            {formatFloat(info.getValue(), 2)}%
+          </div>
+        </div>
+      </div>
     ),
   }),
 
   columnHelper.accessor("mana_cost", {
     enableColumnFilter: false,
     header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Mana cost" />
-    ),
-    cell: (info) => (
-      <div className="text-right">{formatInt(info.getValue())}</div>
-    ),
-  }),
-
-  columnHelper.accessor("current_dev", {
-    enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Current dev" />
+      <Table.ColumnHeader
+        column={column}
+        className={styles["header"]}
+        title="Mana cost"
+      />
     ),
     cell: (info) => (
       <div className="text-right">{formatInt(info.getValue())}</div>
@@ -114,43 +180,20 @@ const columns = [
     cell: (info) => <ProvinceModifier {...info.row.original} />,
   }),
 
-  columnHelper.accessor("final_dev", {
-    enableColumnFilter: false,
+  columnHelper.display({
+    id: "instructions",
     header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Final dev" />
+      <Tooltip>
+        <Tooltip.Trigger asChild>
+          <Table.ColumnHeader column={column} title="Instructions" />
+        </Tooltip.Trigger>
+        <Tooltip.Content className="max-w-72">
+          Step-by-step instructions to achieve the optimal mana cost
+        </Tooltip.Content>
+      </Tooltip>
     ),
-    cell: (info) => (
-      <div className="text-right">{formatInt(info.getValue())}</div>
-    ),
-  }),
-
-  columnHelper.accessor("exploit_at", {
-    enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Exploit at" />
-    ),
-    cell: (info) => {
-      const value = info.getValue();
-      return (
-        <div className="text-right">
-          {value === undefined ? "---" : formatInt(value)}
-        </div>
-      );
-    },
-  }),
-
-  columnHelper.accessor("additional_expand_infrastructure", {
-    enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader
-        className="w-28"
-        column={column}
-        title="Additional expand infra."
-      />
-    ),
-    cell: (info) => (
-      <div className="text-right">{formatInt(info.getValue())}</div>
-    ),
+    cell: ({ row }) => <InstructionSteps row={row.original} />,
+    size: 250, // Make this column wider to accommodate instructions
   }),
 ];
 

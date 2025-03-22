@@ -4,6 +4,9 @@ use eu4save::{models::Province, CountryTag, ProvinceId};
 use std::{collections::HashMap, ops};
 use wasm_bindgen::JsValue;
 
+// The minimum development required to be able to exploit a province
+const MIN_EXPLOITABLE_DEV: i32 = 4;
+
 const MIN_INSITUTION_POINTS: i32 = 601;
 
 // province institution is out of 100 but points are out of 601
@@ -32,7 +35,9 @@ fn exploit_at(start_dev: i32, institution_progress: f64) -> i32 {
     let final_dev = end_dev(start_dev, institution_progress);
     let institution_points = final_dev * (final_dev + 1) / 2 - start_dev * (start_dev + 1) / 2;
     let extra_points = institution_points + progress_points - MIN_INSITUTION_POINTS;
-    start_dev.max(final_dev - extra_points)
+    start_dev
+        .max(final_dev - extra_points)
+        .max(MIN_EXPLOITABLE_DEV)
 }
 
 // Returns the base dev cost modifier (as a percent) given a current dev.
@@ -460,6 +465,7 @@ impl SaveFileImpl {
                 province_id: x.province_id,
                 name: x.province.name.clone(),
                 mana_cost: x.results.mana_cost,
+                current_expand_infrastructure: x.province.expand_infrastructure,
                 additional_expand_infrastructure: x.results.additional_expand_infrastructure,
                 exploit_at: x.results.exploit_at,
                 current_dev: x.dev,
@@ -817,6 +823,34 @@ mod tests {
                 additional_expand_infrastructure: 2,
                 final_dev: 37,
                 exploit_at: Some(34),
+            }
+        );
+    }
+
+    /// Verify we do not recommend exploiting development at 3
+    #[test]
+    fn test_institution_cost_dev_3() {
+        let prov_mods = ProvinceModifiers::default();
+        let country_mods = CountryModifiers {
+            dev_efficiency: DevEfficiency(0.1),
+            ..CountryModifiers::default()
+        };
+
+        let stats = ProvinceStats {
+            dev: 3,
+            institution_progress: 91.35,
+            current_expand_infrastructure: 0,
+            exploitable: true,
+        };
+
+        let cost = institution_cost(stats, prov_mods, country_mods);
+        assert_eq!(
+            cost,
+            ProvinceDevStrategy {
+                mana_cost: 360,
+                additional_expand_infrastructure: 0,
+                final_dev: 10,
+                exploit_at: Some(4),
             }
         );
     }

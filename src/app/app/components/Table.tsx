@@ -186,6 +186,10 @@ function ColumnHeaderButtonInner<TData, TValue>(
       shape="none"
       ref={ref}
       onClick={() => {
+        if (!column.getCanSort()) {
+          return;
+        }
+
         const sorted = column.getIsSorted();
         if (sorted === "desc") {
           column.clearSorting();
@@ -196,7 +200,7 @@ function ColumnHeaderButtonInner<TData, TValue>(
     >
       {icon}
       <span className={icon ? "sr-only" : ""}>{title}</span>
-      <SortIcon sorted={column.getIsSorted()} />
+      {column.getCanSort() && <SortIcon sorted={column.getIsSorted()} />}
     </Button>
   );
 }
