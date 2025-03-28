@@ -479,6 +479,7 @@ impl<'a> AchievementHunter<'a> {
             self.a_blessed_nation(),
             self.mehmet_ambition(),
             self.tiger_of_mysore(),
+            self.the_third_way(),
             //            self.gothic_invasion(),
         ]
     }
@@ -2822,6 +2823,43 @@ impl<'a> AchievementHunter<'a> {
 
         let desc = "Mysore owns or has subject owns correct provinces";
         result.and(AchievementCondition::new(has_all_provinces, desc));
+        result
+    }
+
+    pub fn the_third_way(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(154);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(self.has_not_switched_nation());
+
+        let started_ibadi = self
+            .country
+            .history
+            .religion
+            .as_ref()
+            .is_some_and(|r| r == "ibadi");
+        let desc = "started Ibadi";
+        result.and(AchievementCondition::new(started_ibadi, desc));
+
+        let is_ibadi = self.country.religion.as_ref().is_some_and(|r| r == "ibadi");
+        let desc = "is Ibadi";
+        result.and(AchievementCondition::new(is_ibadi, desc));
+
+        // Check if there are no provinces with Sunni or Shiite religion in the world
+        let no_sunni_shiite = if result.completed() {
+            !self.save.game.provinces.values().any(|province| {
+                province
+                    .religion
+                    .as_ref()
+                    .is_some_and(|r| r == "sunni" || r == "shiite")
+            })
+        } else {
+            false
+        };
+
+        let desc = "no provinces in the world follow Sunni or Shiite Islam";
+        result.and(AchievementCondition::new(no_sunni_shiite, desc));
+
         result
     }
 
