@@ -46,7 +46,8 @@ impl ReprocessArgs {
                     .files
                     .iter()
                     .flat_map(|fp| WalkDir::new(fp).into_iter().filter_map(|e| e.ok()))
-                    .filter(|e| e.file_type().is_file());
+                    .filter(|e| e.file_type().is_file())
+                    .filter(|e| e.path().extension().is_none());
 
                 for file in files {
                     let path = file.path();
@@ -106,7 +107,8 @@ impl ReprocessArgs {
                     .map(|result| {
                         let (save_id, data) = result?;
 
-                        let save = applib::parser::parse_save_data(&data)?;
+                        let save = applib::parser::parse_save_data(&data)
+                            .with_context(|| format!("save: {save_id}"))?;
 
                         // Ignore any errors from trying to return the buffer,
                         // as if we've iterated through all the files, there
