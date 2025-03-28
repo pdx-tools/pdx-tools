@@ -5,7 +5,7 @@ import { withDb } from "@/server-lib/db/middleware";
 import { latestEu4MinorPatch } from "@/server-lib/game";
 import { withCore } from "@/server-lib/middleware";
 import { LoaderFunctionArgs } from "@remix-run/cloudflare";
-import { sql } from "drizzle-orm";
+import { isNotNull, sql } from "drizzle-orm";
 
 export const action = withCore(
   withDb(async ({ request, context }: LoaderFunctionArgs, { db }) => {
@@ -21,7 +21,7 @@ export const action = withCore(
       .set({
         scoreDays: sql`days * (10 + (${+patch} - LEAST(save_version_second, ${+patch}))) / 10`,
       })
-      .where(sql`cardinality(${table.saves.achieveIds}) != 0`);
+      .where(isNotNull(table.saves.scoreDays));
 
     return Response.json({ msg: "done" });
   }),
