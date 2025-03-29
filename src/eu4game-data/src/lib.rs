@@ -175,6 +175,11 @@ pub fn achievements() -> Vec<Achievement> {
             description: String::from("Have all non-wasteland land provinces in the world be of your religion."),
             difficulty: Difficulty::Insane,
         }, Achievement {
+            id: 154,
+            name: String::from("The Third Way"),
+            description: String::from("Start as an Ibadi nation and eliminate all rival schools of Islam (do not convert to another religion)."),
+            difficulty: Difficulty::VeryHard,
+        }, Achievement {
             id: 157,
             name: String::from("Lazarus"),
             description: String::from("As Serbia, own the entire Balkans as core provinces."),
