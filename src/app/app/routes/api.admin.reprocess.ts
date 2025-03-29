@@ -13,7 +13,7 @@ type ReprocessEntry = {
   save: Partial<ParsedFile>;
 };
 
-export const loader = withCore(
+export const action = withCore(
   withDb(async ({ request, context }: LoaderFunctionArgs, { db }) => {
     const session = await getAuth({ request, context });
     ensurePermissions(session, "savefile:reprocess");
@@ -28,6 +28,6 @@ export const loader = withCore(
         .where(eq(table.saves.id, save.saveId));
     }
 
-    return Response.json(null, { status: 204 });
+    return Response.json({ msg: "done" });
   }),
 );
