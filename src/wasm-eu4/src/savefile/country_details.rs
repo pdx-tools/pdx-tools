@@ -1344,17 +1344,13 @@ impl SaveFileImpl {
         estates
     }
 
-    pub fn country_history(&self, tag: &str) -> CountryHistory {
-        let tag = tag.parse::<CountryTag>().expect("valid country tag");
-        let country = self.query.country(&tag).unwrap();
+    pub fn country_history(&self, tag: &str) -> Option<CountryHistory> {
+        let tag = tag.parse::<CountryTag>().ok()?;
+        let country = self.query.country(&tag)?;
         let game = &self.query.save().game;
         let mut events = Vec::new();
 
-        let nation_events = self
-            .nation_events
-            .iter()
-            .find(|x| x.stored == tag)
-            .expect("expect tag to have a history");
+        let nation_events = self.nation_events.iter().find(|x| x.stored == tag)?;
 
         let resolver = InvertedResolver::new(nation_events);
         if nation_events.initial != nation_events.latest {
@@ -1625,7 +1621,7 @@ impl SaveFileImpl {
             })
         }
 
-        CountryHistory { data: years }
+        Some(CountryHistory { data: years })
     }
 
     fn country_history_monarch_event(

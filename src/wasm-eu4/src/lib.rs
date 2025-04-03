@@ -188,7 +188,7 @@ impl SaveFile {
         self.0.get_country_advisors(tag)
     }
 
-    pub fn get_country_history(&self, tag: &str) -> CountryHistory {
+    pub fn get_country_history(&self, tag: &str) -> Option<CountryHistory> {
         self.0.country_history(tag)
     }
 
