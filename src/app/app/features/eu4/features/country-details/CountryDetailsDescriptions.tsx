@@ -17,7 +17,6 @@ import {
   LightShipIcon,
   ManpowerIcon,
   RulerIcon,
-  NavyTraditionIcon,
   OverextensionIcon,
   PowerProjectionIcon,
   PrestigeIcon,
@@ -54,6 +53,9 @@ import {
   AdminManaFocusedIcon,
   MilitaryManaFocusedIcon,
   DiplomaticManaFocusedIcon,
+  LandMoraleIcon,
+  NavalMoraleIcon,
+  NavyTraditionIcon,
 } from "../../components/icons";
 import { PersonalityAvatar } from "../../components/avatars";
 import { CheckCircleIcon } from "@heroicons/react/24/outline";
@@ -352,6 +354,35 @@ export const CountryDetailsDescriptions = ({
         <div className="grid grid-cols-3 gap-8">
           <div>
             <div className="flex text-right">
+              <LandMoraleIcon alt="Land morale (estimate)" />
+              <span className="grow">
+                {formatFloat(details.armed_forces.landMorale, 2)}
+              </span>
+            </div>
+            <div className="flex text-right">
+              <NavalMoraleIcon alt="Land morale (estimate)" />
+              <span className="grow">
+                {formatFloat(details.armed_forces.navalMorale, 2)}
+              </span>
+            </div>
+            <div className="mt-2 flex text-right">
+              <ProfessionalismIcon />
+              <span className="grow">
+                {formatInt(details.professionalism * 100)}%
+              </span>
+            </div>
+            <div className="flex text-right">
+              <ArmyTraditionIcon />
+              <span className="grow">{formatInt(details.army_tradition)}</span>
+            </div>
+
+            <div className="flex text-right">
+              <NavyTraditionIcon />
+              <span className="grow">{formatInt(details.army_tradition)}</span>
+            </div>
+          </div>
+          <div>
+            <div className="flex text-right">
               <InfantryIcon />
               <span className="grow">
                 {formatInt(details.infantryUnits.count)}
@@ -398,22 +429,6 @@ export const CountryDetailsDescriptions = ({
             <div className="flex text-right">
               <TransportIcon />
               <span className="grow">{formatInt(details.transportUnits)}</span>
-            </div>
-          </div>
-          <div>
-            <div className="flex text-right">
-              <ProfessionalismIcon />
-              <span className="grow">
-                {formatInt(details.professionalism * 100)}%
-              </span>
-            </div>
-            <div className="flex text-right">
-              <ArmyTraditionIcon />
-              <span className="grow">{formatInt(details.army_tradition)}</span>
-            </div>
-            <div className="flex text-right">
-              <NavyTraditionIcon />
-              <span className="grow">{formatInt(details.navy_tradition)}</span>
             </div>
           </div>
         </div>

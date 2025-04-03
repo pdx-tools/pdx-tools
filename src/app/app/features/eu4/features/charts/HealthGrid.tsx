@@ -151,6 +151,23 @@ const columns = [
     cell: (info) => formatFloat(info.getValue().value, 2),
   }),
 
+  columnHelper.accessor("landMorale", {
+    sortingFn: healthSort,
+    header: ({ column }) => (
+      <Table.ColumnHeader
+        column={column}
+        className="justify-end"
+        title="Land morale (estimate)"
+        icon={<GameIconSprite src="land_morale" alt="" />}
+      />
+    ),
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
+    cell: (info) => formatFloat(info.getValue().value, 2),
+  }),
+
   columnHelper.accessor("forceStrength", {
     sortingFn: healthSort,
     header: ({ column }) => (
@@ -243,6 +260,23 @@ const columns = [
             general.shock,
           )} / ${formatInt(general.maneuver)})`;
     },
+  }),
+
+  columnHelper.accessor("navalMorale", {
+    sortingFn: healthSort,
+    header: ({ column }) => (
+      <Table.ColumnHeader
+        column={column}
+        className="justify-end"
+        title="Naval morale (estimate)"
+        icon={<GameIconSprite src="naval_morale" alt="" />}
+      />
+    ),
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
+    cell: (info) => formatFloat(info.getValue().value, 2),
   }),
 
   columnHelper.accessor("navyTradition", {
