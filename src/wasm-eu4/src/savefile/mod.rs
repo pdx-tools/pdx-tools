@@ -1065,6 +1065,14 @@ impl SaveFileImpl {
 
         let max_ideas = countries.iter().map(|x| x.ideas).fold(0, i32::max);
         let max_corruption = countries.iter().map(|x| x.inflation).fold(15., f32::max);
+        let max_land_morale = countries
+            .iter()
+            .map(|x| x.armed_forces.land_morale)
+            .fold(0., f32::max);
+        let max_naval_morale = countries
+            .iter()
+            .map(|x| x.armed_forces.naval_morale)
+            .fold(0., f32::max);
 
         // 0 is dark red / 15 is dark blue
         let blue_max = 15.0;
@@ -1140,6 +1148,12 @@ impl SaveFileImpl {
                             color: 0,
                         }),
 
+                    land_morale: HealthDatum {
+                        value: country.armed_forces.land_morale,
+                        color: (country.armed_forces.land_morale * blue_max / max_land_morale)
+                            as u8,
+                    },
+
                     army_tradition: HealthDatum {
                         value: country.army_tradition,
                         color: (country.army_tradition * blue_max / 100.) as u8,
@@ -1190,6 +1204,12 @@ impl SaveFileImpl {
                             siege: 0,
                             color: 0,
                         }),
+
+                    naval_morale: HealthDatum {
+                        value: country.armed_forces.naval_morale,
+                        color: (country.armed_forces.naval_morale * blue_max / max_naval_morale)
+                            as u8,
+                    },
 
                     navy_tradition: HealthDatum {
                         value: country.navy_tradition,

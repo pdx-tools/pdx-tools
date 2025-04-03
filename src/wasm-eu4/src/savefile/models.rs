@@ -346,6 +346,8 @@ pub struct CountryArmedForces {
     pub transport_units: usize,
     pub max_manpower: f32,
     pub net_manpower: f32,
+    pub land_morale: f32,
+    pub naval_morale: f32,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone, Debug)]
@@ -486,6 +488,7 @@ pub struct CountryHealth {
 
     // army
     pub best_general: LeaderDatum,
+    pub land_morale: HealthDatum,
     pub army_tradition: HealthDatum,
     pub net_manpower: HealthDatum,
     pub force_strength: HealthDatum,
@@ -494,6 +497,7 @@ pub struct CountryHealth {
 
     // navy
     pub best_admiral: LeaderDatum,
+    pub naval_morale: HealthDatum,
     pub navy_tradition: HealthDatum,
     pub ships: HealthDatum,
 

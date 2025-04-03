@@ -443,8 +443,11 @@ impl SaveFileImpl {
         let mut infantry = LandUnitStrength::default();
         let mut cavalry = LandUnitStrength::default();
         let mut artillery = LandUnitStrength::default();
+        let mut max_land_morale = 0.0f32;
 
         for (unit, regiment) in units {
+            max_land_morale = max_land_morale.max(regiment.morale);
+
             match unit {
                 eu4game::game::LandUnitKind::Infantry => {
                     infantry.count += 1;
@@ -483,14 +486,34 @@ impl SaveFileImpl {
         let mut light_ship = 0;
         let mut galley = 0;
         let mut transport = 0;
+        let mut max_naval_morale = 0.0f32;
 
-        for (unit, _regiment) in ships {
+        for (unit, regiment) in ships {
+            // Flagships often have boosted morale, so skip them for morale calculations
+            if regiment.flagship.is_none() {
+                max_naval_morale = max_naval_morale.max(regiment.morale);
+            }
+
             match unit {
                 eu4game::game::NavalUnitKind::HeavyShip => heavy_ship += 1,
                 eu4game::game::NavalUnitKind::LightShip => light_ship += 1,
                 eu4game::game::NavalUnitKind::Galley => galley += 1,
                 eu4game::game::NavalUnitKind::Transport => transport += 1,
             }
+        }
+
+        // If the max land morale is very low, then the country probably has
+        // land maintenance turned down. We don't want to unconditionally divide
+        // by land maintenance though, as countries can lower the maintenance
+        // before the month tick, which would otherwise greatly inflate their
+        // morale.
+        if max_land_morale < 1.0 {
+            max_land_morale /= country.land_maintenance.max(1.0);
+        }
+
+        // Same thing for naval morale
+        if max_naval_morale < 1.0 {
+            max_naval_morale /= country.naval_maintenance.max(1.0);
         }
 
         let (best_general, best_admiral) = country_best_leaders(country);
@@ -515,6 +538,8 @@ impl SaveFileImpl {
             transport_units: transport,
             net_manpower,
             max_manpower,
+            land_morale: max_land_morale,
+            naval_morale: max_naval_morale,
         }
     }
 

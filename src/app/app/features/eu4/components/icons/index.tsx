@@ -40,6 +40,7 @@ export const iconSpriteTitle = {
   infantry_skull: "Attrition",
   inflation: "Inflation",
   innovativeness: "Innovativeness",
+  land_morale: "Land Morale",
   legitimacy: "Legitimacy",
   light_ship: "Light Ships",
   manpower: "Manpower",
@@ -50,6 +51,7 @@ export const iconSpriteTitle = {
   meritocracy: "Meritocracy",
   missionary: "Missionary",
   modifier: "Modifier",
+  naval_morale: "Naval Morale",
   navy_tradition: "Navy Tradition",
   overextension: "Overextension",
   peace: "Peace",
@@ -88,6 +90,7 @@ function iconSpriteDimension(x: keyof typeof data) {
     case "colonist":
     case "merchant":
       return 31;
+    case "land_morale":
     case "capital":
     case "culture":
     case "religion":
@@ -169,6 +172,12 @@ export const CavalryIcon = () => <GameIcon src={"cavalry"} />;
 export const ArtilleryIcon = () => <GameIcon src={"artillery"} />;
 export const ManpowerIcon = ({ alt }: { alt?: string }) => (
   <GameIcon src={"manpower"} alt={alt} />
+);
+export const LandMoraleIcon = ({ alt }: { alt?: string }) => (
+  <GameIcon src="land_morale" alt={alt} />
+);
+export const NavalMoraleIcon = ({ alt }: { alt?: string }) => (
+  <GameIcon src="naval_morale" alt={alt} />
 );
 export const ArmyTraditionIcon = () => <GameIcon src={"army_tradition"} />;
 export const NavyTraditionIcon = () => <GameIcon src={"navy_tradition"} />;
