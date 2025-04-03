@@ -119,7 +119,7 @@ const TableHead = React.forwardRef<
     <th
       ref={ref}
       className={cx(
-        "min-h-12 text-left align-middle font-medium text-gray-800 dark:text-slate-300 [&:has([role=checkbox])]:pr-0",
+        "relative min-h-12 text-left align-middle font-medium text-gray-800 dark:text-slate-300 [&:has([role=checkbox])]:pr-0",
         table.size === "standard" ? "px-4" : "pl-2",
         className,
       )}

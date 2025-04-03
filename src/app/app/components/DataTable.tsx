@@ -13,6 +13,9 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  ColumnOrderState,
+  AccessorKeyColumnDefBase,
+  Cell,
 } from "@tanstack/react-table";
 import { Button } from "./Button";
 import { cx } from "class-variance-authority";
@@ -26,6 +29,7 @@ type DataTableProps<TData> = {
   summary?: React.ReactNode;
   initialSorting?: SortingState;
   className?: string;
+  enableColumnReordering?: boolean;
 } & Partial<TableOptions<TData>> &
   ComponentProps<typeof Table>;
 
@@ -37,18 +41,26 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
   initialSorting = [],
   className,
   enableColumnFilters = false,
+  enableColumnReordering = false,
   size,
   ...options
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(
+    columns.map((col) =>
+      String((col as AccessorKeyColumnDefBase<TData, void>).accessorKey),
+    ),
+  );
+
   const state = useMemo(
     () => ({
       sorting,
       columnFilters,
+      columnOrder: enableColumnReordering ? columnOrder : undefined,
       ...(!pagination && { pageIndex: 0, pageSize: 100000 }),
     }),
-    [sorting, columnFilters, pagination],
+    [sorting, columnFilters, pagination, columnOrder, enableColumnReordering],
   );
 
   const table = useReactTable({
@@ -60,6 +72,7 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
     getPaginationRowModel: getPaginationRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
+    onColumnOrderChange: enableColumnReordering ? setColumnOrder : undefined,
     manualPagination: !pagination,
     state,
     enableColumnFilters,
@@ -67,6 +80,86 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
   });
 
   const rows = table.getRowModel().rows;
+
+  // Drag and drop handlers
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
+  const [hoveredColumnId, setHoveredColumnId] = useState<string | null>(null);
+
+  const handleDragStart = (
+    e: React.DragEvent<HTMLTableCellElement>,
+    columnId: string,
+  ) => {
+    if (!enableColumnReordering) return;
+    setDraggedColumnId(columnId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (
+    e: React.DragEvent<HTMLTableCellElement>,
+    columnId: string,
+  ) => {
+    if (!enableColumnReordering) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+
+    // Prevent unnecessary state updates if the column is already hovered
+    if (
+      draggedColumnId &&
+      draggedColumnId !== columnId &&
+      hoveredColumnId !== columnId
+    ) {
+      setHoveredColumnId(columnId);
+    }
+  };
+
+  const handleDrop = (
+    e: React.DragEvent<HTMLTableCellElement>,
+    targetColumnId: string,
+  ) => {
+    if (
+      !enableColumnReordering ||
+      !draggedColumnId ||
+      draggedColumnId === targetColumnId
+    )
+      return;
+
+    e.preventDefault();
+
+    // Get current column order
+    const newColumnOrder = [...columnOrder];
+
+    // Find positions
+    const draggedIndex = newColumnOrder.findIndex(
+      (id) => id === draggedColumnId,
+    );
+    const targetIndex = newColumnOrder.findIndex((id) => id === targetColumnId);
+
+    // Remove dragged column from array
+    newColumnOrder.splice(draggedIndex, 1);
+
+    // Insert at new position
+    newColumnOrder.splice(targetIndex, 0, draggedColumnId);
+
+    // Update state
+    setColumnOrder(newColumnOrder);
+    setDraggedColumnId(null);
+    setHoveredColumnId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedColumnId(null);
+    setHoveredColumnId(null);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLTableCellElement>) => {
+    // Only clear the hovered state if we're actually leaving the cell
+    // and not just entering a child element
+    if (e.currentTarget.contains(e.relatedTarget as Node)) {
+      return;
+    }
+    setHoveredColumnId(null);
+  };
+
   return (
     <div className={cx("flex flex-col gap-2 rounded-md", className)}>
       <Table size={size}>
@@ -81,18 +174,68 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
                     (header.column.columnDef?.meta as any)?.headClassName,
                     header.colSpan > 1 &&
                       "border-l border-r text-center dark:border-gray-600",
+                    enableColumnReordering && "relative",
+                    enableColumnReordering &&
+                      draggedColumnId !== header.column.id &&
+                      "cursor-grab",
+                    enableColumnReordering &&
+                      draggedColumnId === header.column.id &&
+                      "cursor-grabbing opacity-50",
+                    enableColumnReordering &&
+                      draggedColumnId &&
+                      draggedColumnId !== header.column.id &&
+                      hoveredColumnId === header.column.id &&
+                      "bg-blue-100 transition-colors duration-200 dark:bg-slate-700",
                   )}
                   key={header.id}
+                  draggable={enableColumnReordering}
+                  onDragStart={
+                    enableColumnReordering
+                      ? (e) => handleDragStart(e, header.column.id)
+                      : undefined
+                  }
+                  onDragOver={
+                    enableColumnReordering
+                      ? (e) => handleDragOver(e, header.column.id)
+                      : undefined
+                  }
+                  onDragLeave={
+                    enableColumnReordering
+                      ? (e) => handleDragLeave(e)
+                      : undefined
+                  }
+                  onDrop={
+                    enableColumnReordering
+                      ? (e) => handleDrop(e, header.column.id)
+                      : undefined
+                  }
+                  onDragEnd={enableColumnReordering ? handleDragEnd : undefined}
                 >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                  {header.column.getCanFilter() ? (
-                    <Filter column={header.column} />
-                  ) : null}
+                  {/* Add visual indicator for the drop target */}
+                  {enableColumnReordering &&
+                    draggedColumnId &&
+                    hoveredColumnId === header.column.id && (
+                      <div className="pointer-events-none absolute inset-0 z-10">
+                        <div className="absolute bottom-0 left-0 top-0 w-1 bg-blue-500"></div>
+                      </div>
+                    )}
+
+                  <div
+                    className={cx(
+                      "relative z-20",
+                      draggedColumnId && "pointer-events-none",
+                    )}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                    {header.column.getCanFilter() ? (
+                      <Filter column={header.column} />
+                    ) : null}
+                  </div>
                 </Table.Head>
               ))}
             </Table.Row>
@@ -110,12 +253,7 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
                     <Table.Cell
                       key={cell.id}
                       rowSpan={i == 0 ? cell.row.original.rowSpan : undefined}
-                      className={cx(
-                        cell.column.getIsSorted() &&
-                          "bg-gray-50 dark:bg-slate-700",
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (cell.column.columnDef?.meta as any)?.className,
-                      )}
+                      className={cellClassName<TData>(cell)}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -164,6 +302,24 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
       ) : null}
     </div>
   );
+}
+
+function cellClassName<TData>(cell: Cell<TData, void>): string | undefined {
+  let cz = "";
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const className = (cell.column.columnDef?.meta as any)?.className;
+  if (typeof className === "function") {
+    // Don't add sorted clsas name if the controller
+    cz = className(cell.getValue());
+  } else if (typeof className === "string") {
+    cz = cx(
+      cell.column.getIsSorted() && "bg-gray-50 dark:bg-slate-700",
+      className,
+    );
+  }
+
+  return cz;
 }
 
 function Filter<TData>({ column }: { column: Column<TData, unknown> }) {

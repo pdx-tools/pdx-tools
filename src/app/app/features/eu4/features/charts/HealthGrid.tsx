@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
 import { useVisualizationDispatch } from "@/components/viz";
 import { useAnalysisWorker } from "@/features/eu4/worker";
@@ -9,18 +9,12 @@ import { Flag } from "../../components/avatars";
 import { Alert } from "@/components/Alert";
 import { SortingFn, createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
-import {
-  SortingState,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import { cx } from "class-variance-authority";
 import { HealthDatum } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
 import { GameIconSprite, iconSpriteTitle } from "../../components/icons";
 import { LandForceStrengthTooltip } from "../../components/LandForceStrengthTooltip";
 import { NavalForceStrengthTooltip } from "../../components/NavalForceStrengthTooltip";
+import { DataTable } from "@/components/DataTable";
+import { cx } from "class-variance-authority";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const healthSort: SortingFn<any> = (rowA, rowB, column) =>
@@ -47,7 +41,10 @@ const columns = [
         title="Tax + production + trade + gold"
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => formatInt(info.getValue().value),
   }),
 
@@ -61,7 +58,10 @@ const columns = [
         title={iconSpriteTitle.ducats}
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => formatInt(info.getValue().value),
   }),
 
@@ -75,7 +75,10 @@ const columns = [
         title={iconSpriteTitle.autonomy_development}
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => formatInt(info.getValue().value),
   }),
 
@@ -84,7 +87,10 @@ const columns = [
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Buildings" />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => formatInt(info.getValue().value),
   }),
 
@@ -98,7 +104,10 @@ const columns = [
         title={iconSpriteTitle.inflation}
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => formatFloat(info.getValue().value, 2),
   }),
 
@@ -112,7 +121,10 @@ const columns = [
         title="Best general (by pips)"
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => {
       const general = info.getValue();
       return general.value === 0
@@ -132,7 +144,10 @@ const columns = [
         title={iconSpriteTitle.army_tradition}
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => formatFloat(info.getValue().value, 2),
   }),
 
@@ -146,7 +161,10 @@ const columns = [
         icon={<GameIconSprite src="infantry" alt="" />}
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => (
       <LandForceStrengthTooltip force={info.row.original.armedForces} />
     ),
@@ -162,7 +180,10 @@ const columns = [
         icon={<GameIconSprite src="manpower" alt="" />}
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => `${formatInt(info.getValue().value)}K`,
   }),
 
@@ -176,7 +197,10 @@ const columns = [
         icon={<GameIconSprite src="max_manpower" alt="" />}
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => `${formatInt(info.getValue().value)}K`,
   }),
 
@@ -190,7 +214,10 @@ const columns = [
         icon={<GameIconSprite src="professionalism" alt="" />}
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => formatInt(info.getValue().value * 100) + "%",
   }),
 
@@ -204,7 +231,10 @@ const columns = [
         title="Best admiral (by pips)"
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => {
       const general = info.getValue();
       return general.value === 0
@@ -224,7 +254,10 @@ const columns = [
         title={iconSpriteTitle.navy_tradition}
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => formatFloat(info.getValue().value, 2),
   }),
 
@@ -238,7 +271,10 @@ const columns = [
         title="Ships"
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => (
       <NavalForceStrengthTooltip forces={info.row.original.armedForces} />
     ),
@@ -253,7 +289,10 @@ const columns = [
         title={iconSpriteTitle.stability}
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => formatInt(info.getValue().value),
   }),
 
@@ -262,7 +301,10 @@ const columns = [
     header: ({ column }) => (
       <Table.ColumnHeader column={column} title="Technology" />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => {
       const tech = info.getValue();
       return `(${formatInt(tech.adm)} / ${formatInt(tech.dip)} / ${formatInt(
@@ -280,7 +322,10 @@ const columns = [
         title={iconSpriteTitle.idea_groups}
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => formatInt(info.getValue().value),
   }),
 
@@ -293,7 +338,10 @@ const columns = [
         title={iconSpriteTitle.corruption}
       />
     ),
-    meta: { className: "no-break text-right" },
+    meta: {
+      className: (x: HealthDatum) =>
+        cx("no-break text-right", colorToClass(x.color)),
+    },
     cell: (info) => formatFloat(info.getValue().value, 2),
   }),
 ];
@@ -336,7 +384,6 @@ function colorToClass(x: number) {
 }
 
 export const HealthGrid = () => {
-  const [sorting, setSorting] = useState<SortingState>([]);
   const countryFilter = useTagFilter();
   const visualizationDispatch = useVisualizationDispatch();
 
@@ -346,23 +393,6 @@ export const HealthGrid = () => {
       [countryFilter],
     ),
   );
-
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    manualPagination: true,
-    enablePinning: true,
-    state: {
-      sorting,
-      columnPinning: {
-        left: ["name"],
-      },
-    },
-  });
-  const rows = table.getRowModel().rows;
 
   useEffect(() => {
     visualizationDispatch({
@@ -410,51 +440,17 @@ export const HealthGrid = () => {
   return (
     <>
       <Alert.Error msg={error} />
-      <Table size="small" overflow={false}>
-        <Table.Header>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <Table.Row key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <Table.Head key={header.id}>
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                </Table.Head>
-              ))}
-            </Table.Row>
-          ))}
-        </Table.Header>
-        <Table.Body>
-          {rows.map((row) => (
-            <Table.Row
-              key={row.id}
-              data-state={row.getIsSelected() && "selected"}
-            >
-              {row.getVisibleCells().map((cell) => {
-                const value = cell.getValue();
-
-                return (
-                  <Table.Cell
-                    key={cell.id}
-                    className={cx(
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      (cell.column.columnDef?.meta as any)?.className,
-                      value instanceof Object && "color" in value
-                        ? colorToClass(value.color as number)
-                        : "",
-                    )}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </Table.Cell>
-                );
-              })}
-            </Table.Row>
-          ))}
-        </Table.Body>
-      </Table>
+      <DataTable
+        columns={columns}
+        data={data}
+        size="small"
+        enableColumnReordering={true}
+        initialState={{
+          columnPinning: {
+            left: ["name"],
+          },
+        }}
+      />
     </>
   );
 };
