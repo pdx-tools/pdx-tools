@@ -15,6 +15,7 @@ import { LandForceStrengthTooltip } from "../../components/LandForceStrengthTool
 import { NavalForceStrengthTooltip } from "../../components/NavalForceStrengthTooltip";
 import { DataTable } from "@/components/DataTable";
 import { cx } from "class-variance-authority";
+import { MoraleText } from "../../components/MoraleText";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const healthSort: SortingFn<any> = (rowA, rowB, column) =>
@@ -165,7 +166,7 @@ const columns = [
       className: (x: HealthDatum) =>
         cx("no-break text-right", colorToClass(x.color)),
     },
-    cell: (info) => formatFloat(info.getValue().value, 2),
+    cell: (info) => <MoraleText value={info.getValue().value} />,
   }),
 
   columnHelper.accessor("forceStrength", {
@@ -276,7 +277,7 @@ const columns = [
       className: (x: HealthDatum) =>
         cx("no-break text-right", colorToClass(x.color)),
     },
-    cell: (info) => formatFloat(info.getValue().value, 2),
+    cell: (info) => <MoraleText value={info.getValue().value} />,
   }),
 
   columnHelper.accessor("navyTradition", {
@@ -446,6 +447,7 @@ export const HealthGrid = () => {
               ["general_shock", x.bestGeneral.shock],
               ["general_maneuver", x.bestGeneral.maneuver],
               ["general_siege", x.bestGeneral.siege],
+              ["land_morale", x.landMorale.value],
               ["army_tradition", x.armyTradition.value],
               ["manpower_balance", x.netManpower.value],
               ["force_strength", x.forceStrength.value],
@@ -453,6 +455,7 @@ export const HealthGrid = () => {
               ["admiral_fire", x.bestAdmiral.fire],
               ["admiral_shock", x.bestAdmiral.shock],
               ["admiral_maneuver", x.bestAdmiral.maneuver],
+              ["naval_morale", x.navalMorale.value],
               ["navy_tradition", x.navyTradition.value],
               ["ships", x.ships.value],
               ["stability", x.stability.value],

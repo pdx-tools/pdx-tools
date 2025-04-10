@@ -1067,11 +1067,11 @@ impl SaveFileImpl {
         let max_corruption = countries.iter().map(|x| x.inflation).fold(15., f32::max);
         let max_land_morale = countries
             .iter()
-            .map(|x| x.armed_forces.land_morale)
+            .filter_map(|x| x.armed_forces.land_morale)
             .fold(0., f32::max);
         let max_naval_morale = countries
             .iter()
-            .map(|x| x.armed_forces.naval_morale)
+            .filter_map(|x| x.armed_forces.naval_morale)
             .fold(0., f32::max);
 
         // 0 is dark red / 15 is dark blue
@@ -1148,10 +1148,13 @@ impl SaveFileImpl {
                             color: 0,
                         }),
 
-                    land_morale: HealthDatum {
+                    land_morale: HealthDatumOptional {
                         value: country.armed_forces.land_morale,
-                        color: (country.armed_forces.land_morale * blue_max / max_land_morale)
-                            as u8,
+                        color: country
+                            .armed_forces
+                            .land_morale
+                            .map(|x| (x * blue_max / max_land_morale))
+                            .unwrap_or(blue_min) as u8,
                     },
 
                     army_tradition: HealthDatum {
@@ -1205,10 +1208,13 @@ impl SaveFileImpl {
                             color: 0,
                         }),
 
-                    naval_morale: HealthDatum {
+                    naval_morale: HealthDatumOptional {
                         value: country.armed_forces.naval_morale,
-                        color: (country.armed_forces.naval_morale * blue_max / max_naval_morale)
-                            as u8,
+                        color: country
+                            .armed_forces
+                            .naval_morale
+                            .map(|x| (x * blue_max / max_naval_morale))
+                            .unwrap_or(blue_min) as u8,
                     },
 
                     navy_tradition: HealthDatum {

@@ -502,19 +502,27 @@ impl SaveFileImpl {
             }
         }
 
-        // If the max land morale is very low, then the country probably has
-        // land maintenance turned down. We don't want to unconditionally divide
-        // by land maintenance though, as countries can lower the maintenance
-        // before the month tick, which would otherwise greatly inflate their
-        // morale.
-        if max_land_morale < 1.0 {
-            max_land_morale /= country.land_maintenance.max(1.0);
-        }
+        // Using unit morale as an approximation for total morale is fraught
+        // with edge cases. The biggest is unit morale may not reflect land
+        // maintenance costs which takes at least a month tick to update. We at
+        // least try and mitigate the harm by checking if the morale is at the
+        // minimum value so we can communicate to the user we gave up on the
+        // calculation.
+
+        // Minimum morale should be 0.51, but we use 0.52 for a bit of leeway.
+        const MIN_MORALE: f32 = 0.52;
+        let max_land_morale = if max_land_morale <= MIN_MORALE {
+            None
+        } else {
+            Some(max_land_morale)
+        };
 
         // Same thing for naval morale
-        if max_naval_morale < 1.0 {
-            max_naval_morale /= country.naval_maintenance.max(1.0);
-        }
+        let max_naval_morale = if max_naval_morale <= MIN_MORALE {
+            None
+        } else {
+            Some(max_naval_morale)
+        };
 
         let (best_general, best_admiral) = country_best_leaders(country);
 
