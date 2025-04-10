@@ -1025,11 +1025,12 @@ impl SaveFileImpl {
         let max_buildings = countries.iter().map(|x| x.buildings).fold(0, usize::max);
         let max_inflation = countries.iter().map(|x| x.inflation).fold(20., f32::max);
 
+        const AN_AVERAGE_GENERAL_PIPS: u16 = 10;
         let best_general = countries
             .iter()
             .filter_map(|x| x.armed_forces.best_general.as_ref())
             .map(|x| x.fire + x.shock + x.maneuver + x.siege)
-            .fold(10, u16::max) as f32;
+            .fold(AN_AVERAGE_GENERAL_PIPS, u16::max) as f32;
 
         let max_manpower_balance = countries
             .iter()
@@ -1051,11 +1052,12 @@ impl SaveFileImpl {
             .map(|x| x.armed_forces.max_manpower)
             .fold(0., f32::max);
 
+        const AN_AVERAGE_ADMIRAL_PIPS: u16 = 7;
         let best_admiral = countries
             .iter()
-            .filter_map(|x| x.armed_forces.best_general.as_ref())
+            .filter_map(|x| x.armed_forces.best_admiral.as_ref())
             .map(|x| x.fire + x.shock + x.maneuver)
-            .fold(10, u16::max) as f32;
+            .fold(AN_AVERAGE_ADMIRAL_PIPS, u16::max) as f32;
         let max_ships = countries.iter().map(|x| x.ships()).fold(0, usize::max);
 
         let max_tech = countries
@@ -1195,7 +1197,7 @@ impl SaveFileImpl {
                                 shock: x.shock,
                                 maneuver: x.maneuver,
                                 siege: x.siege,
-                                color: ((9. - (best_admiral - total).min(9.)) * (blue_max / 9.))
+                                color: ((12. - (best_admiral - total).min(12.)) * (blue_max / 12.))
                                     as u8,
                             }
                         })
