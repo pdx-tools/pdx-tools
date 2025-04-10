@@ -62,6 +62,7 @@ import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import { LeaderStats } from "../../components/LeaderStats";
 import { Card } from "@/components/Card";
+import { MoraleText } from "../../components/MoraleText";
 
 interface CountryDetailsProps {
   details: CountryDetails;
@@ -356,13 +357,13 @@ export const CountryDetailsDescriptions = ({
             <div className="flex text-right">
               <LandMoraleIcon alt="Land morale (estimate)" />
               <span className="grow">
-                {formatFloat(details.armed_forces.landMorale, 2)}
+                <MoraleText value={details.armed_forces.landMorale} />
               </span>
             </div>
             <div className="flex text-right">
               <NavalMoraleIcon alt="Land morale (estimate)" />
               <span className="grow">
-                {formatFloat(details.armed_forces.navalMorale, 2)}
+                <MoraleText value={details.armed_forces.navalMorale} />
               </span>
             </div>
             <div className="mt-2 flex text-right">
