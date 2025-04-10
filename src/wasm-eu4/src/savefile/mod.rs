@@ -1558,17 +1558,23 @@ impl SaveFileImpl {
     }
 
     fn all_players(&self) -> Vec<CountryTag> {
-        let mut players = Vec::new();
-        for entry in self.query.save().game.players_countries.chunks_exact(2) {
-            let country_tag = match entry[1].parse::<CountryTag>() {
-                Ok(x) => x,
-                _ => continue,
-            };
+        // Previously this function used `players_countries`, however this
+        // proved inaccurate.
+        //
+        // > `players_countries` seems to keep all players who played so it
+        // > represent the number of unique players who played in that save. But
+        // > the tags are not correct.
+        //
+        // https://discord.com/channels/712465396590182461/712465397135179778/1358140139301507433
+        //
+        // And then we eliminate players who have no cities, so they don't clog
+        // up charts
 
-            players.push(country_tag);
-        }
-
-        players
+        self.query
+            .countries()
+            .filter(|x| x.country.was_player && x.country.num_of_cities > 0)
+            .map(|x| x.tag)
+            .collect()
     }
 
     pub fn province_nation_color<F: Fn(&Province) -> Option<&CountryTag>>(
