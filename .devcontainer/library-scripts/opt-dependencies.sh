@@ -10,6 +10,6 @@ npm install -g npm-check-updates
 
 # Install gcloud
 cd "$HOME"
-curl -o gcloud.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-470.0.0-linux-$(uname -m | sed 's/aarch64/arm/').tar.gz
+curl -o gcloud.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-518.0.0-linux-$(uname -m | sed 's/aarch64/arm/').tar.gz
 tar -xf gcloud.tar.gz
 ./google-cloud-sdk/install.sh --quiet --path-update true
