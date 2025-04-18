@@ -48,7 +48,7 @@ import { ExportMenu } from "./ExportMenu";
 import { compatibilityReport } from "@/lib/compatibility";
 import { captureException } from "@/lib/captureException";
 
-type Interval = "year" | "month" | "week" | "day";
+type Interval = "year" | "month" | "day";
 
 function createTimelapsePayload({
   store,
@@ -72,19 +72,48 @@ function createTimelapsePayload({
   } as const;
 }
 
+// Calculate optimal timelapse parameters to ensure a minimum duration
+function calculateTimelapseParams(timeSpanDays: number) {
+  // Minimum timelapse duration in seconds
+  const MIN_TIMELAPSE_DURATION = 20;
+
+  // Convert to approximate years, months, etc. for calculation
+  const timeSpanYears = timeSpanDays / 365;
+  const timeSpanMonths = timeSpanDays / 30;
+
+  if (timeSpanYears >= MIN_TIMELAPSE_DURATION * 4) {
+    // ^ We use a 4x multiplier to prevent 2-4 yr/s as they seem too slow
+    const fps = Math.min(8, Math.floor(timeSpanYears / MIN_TIMELAPSE_DURATION));
+    return { interval: "year" as Interval, fps: Math.max(fps, 1) };
+  } else if (timeSpanMonths >= MIN_TIMELAPSE_DURATION) {
+    const fps = Math.min(
+      28,
+      Math.floor(timeSpanMonths / MIN_TIMELAPSE_DURATION),
+    );
+    return { interval: "month" as Interval, fps: Math.max(fps, 1) };
+  } else {
+    const fps = Math.min(30, Math.floor(timeSpanDays / MIN_TIMELAPSE_DURATION));
+    return { interval: "day" as Interval, fps: Math.max(fps, 1) };
+  }
+}
+
 export const Timelapse = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [maxFps, setMaxFps] = useState(8);
+  const meta = useEu4Meta();
+  const timelapseEnabled = useIsDatePickerEnabled();
+  const [timelapseSpeed, setTimelapseSpeed] = useState<{
+    interval: Interval;
+    fps: number;
+  }>(() => calculateTimelapseParams(meta.total_days));
+
   const [exportAsMp4, setExportAsMp4] = useState(true);
   const [freezeFrameSeconds, _setFreezeFrameSeconds] = useState(0);
-  const [intervalSelection, setIntervalSelection] = useState<Interval>("year");
   const filename = useSaveFilenameWith(exportAsMp4 ? ".mp4" : ".webm");
   const encoderRef = useRef<TimelapseEncoder | undefined>(undefined);
   const stopTimelapseReq = useRef<boolean>(false);
   const [recordingSupported] = useState(() => TimelapseEncoder.isSupported());
   const map = useEu4Map();
-  const timelapseEnabled = useIsDatePickerEnabled();
   const { updateMap, updateProvinceColors } = useEu4Actions();
   const store = useEu4Context();
 
@@ -94,14 +123,14 @@ export const Timelapse = () => {
     stopTimelapseReq.current = false;
     const timelapsePayload = createTimelapsePayload({
       store,
-      interval: intervalSelection,
+      interval: timelapseSpeed.interval,
     });
 
     try {
       for await (const frame of mapTimelapseCursor(timelapsePayload)) {
         updateMap(frame);
         map.redrawMap();
-        await new Promise((res) => setTimeout(res, 1000 / maxFps));
+        await new Promise((res) => setTimeout(res, 1000 / timelapseSpeed.fps));
         if (stopTimelapseReq.current) {
           return;
         }
@@ -146,7 +175,7 @@ export const Timelapse = () => {
 
     const timelapsePayload = createTimelapsePayload({
       store,
-      interval: intervalSelection,
+      interval: timelapseSpeed.interval,
     });
     try {
       const encoding = exportAsMp4 ? "mp4" : "webm";
@@ -154,7 +183,7 @@ export const Timelapse = () => {
         map,
         encoding,
         frames: mapTimelapseCursor(timelapsePayload),
-        fps: maxFps,
+        fps: timelapseSpeed.fps,
         freezeFrame: freezeFrameSeconds,
         store,
       });
@@ -305,24 +334,33 @@ export const Timelapse = () => {
                 <div>
                   <label>
                     <div>
-                      Timelapse speed: {`${maxFps} ${intervalSelection}`}s/s
+                      Timelapse speed:{" "}
+                      {`${timelapseSpeed.fps} ${timelapseSpeed.interval}`}s/s
                     </div>
                     <Slider
                       className="mt-1"
-                      value={[intervalFpsToSlider(intervalSelection, maxFps)]}
+                      value={[
+                        intervalFpsToSlider(
+                          timelapseSpeed.interval,
+                          timelapseSpeed.fps,
+                        ),
+                      ]}
                       min={1}
                       max={83}
                       onValueChange={(v) => {
                         const value = v[0];
                         if (value <= intervalOffset("month")) {
-                          setIntervalSelection("day");
-                          setMaxFps(value);
+                          setTimelapseSpeed({ interval: "day", fps: value });
                         } else if (value <= intervalOffset("year")) {
-                          setIntervalSelection("month");
-                          setMaxFps(value - intervalOffset("month"));
+                          setTimelapseSpeed({
+                            interval: "month",
+                            fps: value - intervalOffset("month"),
+                          });
                         } else {
-                          setIntervalSelection("year");
-                          setMaxFps(value - intervalOffset("year") + 1);
+                          setTimelapseSpeed({
+                            interval: "year",
+                            fps: value - intervalOffset("year") + 1,
+                          });
                         }
                       }}
                     />
@@ -408,12 +446,11 @@ function intervalFpsToSlider(i: Interval, fps: number) {
 function intervalOffset(i: Interval) {
   switch (i) {
     case "day":
-    case "week":
       return 0;
     case "month":
       return 30;
     case "year":
-      return 54;
+      return 58;
   }
 }
 
