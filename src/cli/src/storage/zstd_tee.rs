@@ -21,7 +21,7 @@ impl ZstdFiles {
 
         let current_name = current_name.to_str().context("utf-8 conversion")?;
         let out_name = path.with_file_name(format!("{}.bin", current_name));
-        let raw_name = path.with_file_name(format!("{}-raw.bin", current_name));
+        let raw_name = extensionless.with_file_name(format!("{}-raw.bin", current_name));
         Ok(ZstdFiles {
             name: String::from(current_name),
             out_path: out_name,
