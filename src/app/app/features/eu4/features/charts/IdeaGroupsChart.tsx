@@ -51,8 +51,8 @@ export const IdeaGroupsChart = () => {
         seedIdeas.push("indigenous");
       }
 
-      type afaf = { count: number; completed: number };
-      const ideas = new Map<string, afaf>(
+      type IdeaGroupStats = { count: number; completed: number };
+      const ideas = new Map<string, IdeaGroupStats>(
         seedIdeas.map((x) => [x, { count: 0, completed: 0 }]),
       );
       for (const idea of rawIdeas) {
@@ -60,6 +60,7 @@ export const IdeaGroupsChart = () => {
         const group = ideas.get(name) || { count: 0, completed: 0 };
         group.count += 1;
         group.completed += idea.completedIdeas === 7 ? 1 : 0;
+        ideas.set(name, group);
       }
 
       const data: IdeaGroupDatum[] = [];
