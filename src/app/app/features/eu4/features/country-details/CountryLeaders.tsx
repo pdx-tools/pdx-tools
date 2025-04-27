@@ -52,7 +52,7 @@ const TagsSelect = ({
         <Select.Item value="ruler">Ruler</Select.Item>
 
         <Button
-          className="ml-1 mt-2 w-full justify-center"
+          className="mx-1 mt-2 justify-center"
           onClick={() => valueUpdate(undefined)}
         >
           Clear

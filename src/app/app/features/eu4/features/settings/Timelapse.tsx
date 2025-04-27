@@ -397,7 +397,7 @@ export const Timelapse = () => {
             </Popover.Content>
           </Popover>
         </div>
-        <div className="whitespace-nowrap text-base opacity-60 font-mono">
+        <div className="whitespace-nowrap font-mono text-base opacity-60">
           <TimelapseDate />
         </div>
       </div>

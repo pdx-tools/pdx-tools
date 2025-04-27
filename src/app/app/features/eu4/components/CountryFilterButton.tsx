@@ -58,10 +58,7 @@ export const CountryFilterButton = () => {
           }}
         >
           <Dialog.Trigger asChild>
-            <Button
-              className="ml-1 mt-2 w-full justify-center"
-              variant="default"
-            >
+            <Button className="mx-1 mt-2 justify-center" variant="default">
               Custom
             </Button>
           </Dialog.Trigger>
