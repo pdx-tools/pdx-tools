@@ -1,5 +1,6 @@
-import React, { ComponentProps, useMemo, useState } from "react";
+import React, { ComponentProps, useId, useMemo, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { Table } from "./Table";
 import {
   Column,
@@ -16,10 +17,40 @@ import {
   ColumnOrderState,
   AccessorKeyColumnDefBase,
   Cell,
+  PaginationState,
 } from "@tanstack/react-table";
 import { Button } from "./Button";
 import { cx } from "class-variance-authority";
 import { Input } from "./Input";
+import { Select } from "./Select";
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+
+interface PaginationSettings {
+  pageSize: PageSize;
+  setPageSize: (size: PageSize) => void;
+}
+
+const usePaginationStore = create<PaginationSettings>()(
+  persist(
+    (set) => ({
+      pageSize: 10,
+
+      // Not using an actions object to avoid issues in persistance:
+      // https://github.com/pmndrs/zustand/issues/457
+      setPageSize: (pageSize: PageSize) => set({ pageSize }),
+    }),
+    {
+      name: "pdx-tools-pagination-settings",
+    }
+  )
+);
+
+const usePageSize = () => usePaginationStore((state) => state.pageSize);
+const usePaginationActions = () => usePaginationStore((state) => state.setPageSize);
 
 type DataTableProps<TData> = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,6 +61,7 @@ type DataTableProps<TData> = {
   initialSorting?: SortingState;
   className?: string;
   enableColumnReordering?: boolean;
+  pageSizeOptions?: readonly number[];
 } & Partial<TableOptions<TData>> &
   ComponentProps<typeof Table>;
 
@@ -42,6 +74,7 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
   className,
   enableColumnFilters = false,
   enableColumnReordering = false,
+  pageSizeOptions = PAGE_SIZE_OPTIONS,
   size,
   ...options
 }: DataTableProps<TData>) {
@@ -53,14 +86,32 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
     ),
   );
 
+  const paginationSelectId = useId();
+  const storedPageSize = usePageSize();
+  const setPageSize = usePaginationActions();
+
+  const [paginationState, setPaginationState] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: storedPageSize,
+  });
+
   const state = useMemo(
     () => ({
       sorting,
       columnFilters,
       columnOrder: enableColumnReordering ? columnOrder : undefined,
-      ...(!pagination && { pageIndex: 0, pageSize: 100000 }),
+      pagination: pagination
+        ? paginationState
+        : { pageIndex: 0, pageSize: 100000 },
     }),
-    [sorting, columnFilters, pagination, columnOrder, enableColumnReordering],
+    [
+      sorting,
+      columnFilters,
+      pagination,
+      paginationState,
+      columnOrder,
+      enableColumnReordering,
+    ],
   );
 
   const table = useReactTable({
@@ -74,6 +125,7 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
     getFilteredRowModel: getFilteredRowModel(),
     onColumnOrderChange: enableColumnReordering ? setColumnOrder : undefined,
     manualPagination: !pagination,
+    onPaginationChange: pagination ? setPaginationState : undefined,
     state,
     enableColumnFilters,
     ...options,
@@ -275,7 +327,37 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
         {summary ? <Table.Footer>{summary}</Table.Footer> : null}
       </Table>
       {pagination ? (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center space-x-2">
+            <label htmlFor={paginationSelectId} className="text-sm font-medium">
+              Rows per page:
+            </label>
+            <Select
+              value={String(table.getState().pagination.pageSize)}
+              onValueChange={(value) => {
+                const newSize = Number(value) as PageSize;
+                table.setPageSize(newSize);
+                setPageSize(newSize);
+              }}
+            >
+              <Select.Trigger
+                id={paginationSelectId}
+                className="w-16 px-2 py-1"
+              >
+                <Select.Value />
+                <Select.Icon asChild>
+                  <ChevronDownIcon className="h-4 w-4 self-end opacity-50" />
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Content>
+                {pageSizeOptions.map((pageSize) => (
+                  <Select.Item key={pageSize} value={String(pageSize)}>
+                    {pageSize}
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select>
+          </div>
           <div className="flex items-center space-x-2">
             <Button
               shape="square"
