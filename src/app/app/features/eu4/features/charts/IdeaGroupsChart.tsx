@@ -51,6 +51,12 @@ export const IdeaGroupsChart = () => {
         seedIdeas.push("indigenous");
       }
 
+      if (meta.savegame_version.second >= 35) {
+        seedIdeas.push("court");
+        seedIdeas.push("infrastructure");
+        seedIdeas.push("mercenary");
+      }
+
       type IdeaGroupStats = { count: number; completed: number };
       const ideas = new Map<string, IdeaGroupStats>(
         seedIdeas.map((x) => [x, { count: 0, completed: 0 }]),
