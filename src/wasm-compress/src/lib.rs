@@ -89,10 +89,7 @@ impl Compression {
         }
     }
 
-    fn _compress_cb(
-        self,
-        f: Option<js_sys::Function>,
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    fn _compress_cb(self, f: Option<js_sys::Function>) -> Result<Vec<u8>, JsError> {
         match self.content {
             Reader::Zip { zip, prelude } => {
                 let mut inflated_size: u64 = 0;
@@ -161,9 +158,8 @@ impl Compression {
         }
     }
 
-    pub fn compress_cb(self, f: Option<js_sys::Function>) -> Result<Vec<u8>, JsValue> {
-        self._compress_cb(f)
-            .map_err(|err| JsValue::from(err.to_string()))
+    pub fn compress_cb(self, f: Option<js_sys::Function>) -> Result<Vec<u8>, JsError> {
+        self._compress_cb(f).map_err(JsError::from)
     }
 }
 
@@ -189,11 +185,11 @@ pub enum ContentType {
 /// - Remux Zstd ZIP archives with Deflate.
 /// - Otherwise, decode the data with Zstd.
 #[wasm_bindgen]
-pub fn download_transformation(data: Vec<u8>) -> Result<Vec<u8>, JsValue> {
-    _download_transformation(data).map_err(|e| JsValue::from(e.to_string()))
+pub fn download_transformation(data: Vec<u8>) -> Result<Vec<u8>, JsError> {
+    _download_transformation(data)
 }
 
-fn _download_transformation(data: Vec<u8>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn _download_transformation(data: Vec<u8>) -> Result<Vec<u8>, JsError> {
     if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
         Ok(zstd::stream::decode_all(data.as_slice())?)
     } else if let Ok(zip) = rawzip::ZipArchive::from_slice(&data) {

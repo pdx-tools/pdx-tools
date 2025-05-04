@@ -47,8 +47,8 @@ impl SaveFile {
         &mut self,
         frequency: FileObservationFrequency,
         save_data: Vec<u8>,
-    ) -> Result<Reparse, JsValue> {
-        self.0.reparse(frequency, save_data).map_err(js_err)
+    ) -> Result<Reparse, JsError> {
+        self.0.reparse(frequency, save_data).map_err(JsError::from)
     }
 
     pub fn get_meta_raw(&self) -> MetaRef {
@@ -259,14 +259,14 @@ impl SaveFile {
         )
     }
 
-    pub fn map_colors(&self, payload: MapPayload) -> Result<Vec<u8>, JsValue> {
+    pub fn map_colors(&self, payload: MapPayload) -> Result<Vec<u8>, JsError> {
         Ok(self.0.map_colors(payload))
     }
 
     pub fn map_cursor(
         &self,
         payload: MapCursorPayload,
-    ) -> Result<savefile::TimelapseIter, JsValue> {
+    ) -> Result<savefile::TimelapseIter, JsError> {
         Ok(self.0.map_cursor(payload))
     }
 
@@ -314,18 +314,14 @@ impl SaveFile {
     }
 }
 
-fn js_err(err: impl std::error::Error) -> JsValue {
-    JsValue::from(err.to_string())
-}
-
 #[wasm_bindgen]
 pub struct SaveFileParsed(Eu4Save, Encoding);
 
 #[wasm_bindgen]
-pub fn parse_meta(data: &[u8]) -> Result<eu4save::models::Meta, JsValue> {
+pub fn parse_meta(data: &[u8]) -> Result<eu4save::models::Meta, JsError> {
     console_error_panic_hook::set_once();
     let tokens = tokens::get_tokens();
-    eu4game::shared::parse_meta(data, tokens).map_err(js_err)
+    eu4game::shared::parse_meta(data, tokens).map_err(JsError::from)
 }
 
 #[wasm_bindgen]
@@ -333,13 +329,12 @@ pub fn parse_save(
     save_data: Vec<u8>,
     game_data: Vec<u8>,
     province_id_to_color_index: Vec<u16>,
-) -> Result<SaveFile, JsValue> {
+) -> Result<SaveFile, JsError> {
     let tokens = tokens::get_tokens();
     let mut parser = Eu4Parser::new();
     let out = parser
         .parse_with(&save_data, tokens)
-        .or_else(|_| parser.with_debug(true).parse_with(&save_data, tokens))
-        .map_err(js_err)?;
+        .or_else(|_| parser.with_debug(true).parse_with(&save_data, tokens))?;
 
     let save = SaveFileParsed(out.save, out.encoding);
     game_save(save, game_data, province_id_to_color_index)
@@ -349,9 +344,8 @@ pub fn game_save(
     save: SaveFileParsed,
     game_data: Vec<u8>,
     province_id_to_color_index: Vec<u16>,
-) -> Result<SaveFile, JsValue> {
-    let game_data = zstd::bulk::decompress(&game_data, 1024 * 1024)
-        .map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+) -> Result<SaveFile, JsError> {
+    let game_data = zstd::bulk::decompress(&game_data, 1024 * 1024)?;
     let game = Game::from_flatbuffer(&game_data);
     // Cast away the lifetime so that we can store it in a wasm-bindgen compatible struct
     let game: Game<'static> = unsafe { std::mem::transmute(game) };
@@ -379,7 +373,7 @@ pub fn game_save(
 }
 
 #[wasm_bindgen]
-pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
+pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsError> {
     if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
         let inflated = zstd::decode_all(data).unwrap();
         _melt(&inflated)
@@ -388,7 +382,7 @@ pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
     }
 }
 
-fn _melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
+fn _melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsError> {
     let mut output = Cursor::new(Vec::new());
     Eu4File::from_slice(data)
         .and_then(|file| {
@@ -399,5 +393,5 @@ fn _melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
             )
         })
         .map(|_| js_sys::Uint8Array::from(output.get_ref().as_slice()))
-        .map_err(|e| JsValue::from_str(e.to_string().as_str()))
+        .map_err(JsError::from)
 }
