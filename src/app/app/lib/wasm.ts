@@ -9,7 +9,7 @@ type Allocated = {
 };
 
 type Wasm<P> = {
-  default(path: P): Promise<unknown>;
+  default(path: { module_or_path: P }): Promise<unknown>;
   melt(data: Uint8Array): Uint8Array;
   set_tokens(tokens: Uint8Array): void;
 };
@@ -40,7 +40,7 @@ export function createWasmGame<
   const loadModule = async () => {
     const [tokenData] = await Promise.all([
       fetchOk(tokenPath).then((x) => x.arrayBuffer()),
-      mod.default(wasmPath),
+      mod.default({ module_or_path: wasmPath }),
     ]);
     mod.set_tokens(new Uint8Array(tokenData));
     initialized = true;

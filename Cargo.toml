@@ -65,8 +65,8 @@ tracing-subscriber = "0.3"
 tsify = { version = "0.4.5", default-features = false }
 vic3save = { path = "src/vic3save" }
 walkdir = "2.3.1"
-wasm-bindgen = { version = "0.2", default-features = false }
-wasm-bindgen-test = "0.3.0"
+wasm-bindgen = { version = "0.2.100", default-features = false }
+wasm-bindgen-test = "0.3.50"
 webp = "0.3"
 zstd = { version = "0.13.0", default-features = false }
 
