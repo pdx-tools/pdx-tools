@@ -2,8 +2,10 @@ import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
 import { useEffect, useRef, useState } from "react";
 
 function containsFiles(e: DragEvent): boolean {
-  const arr = e.dataTransfer?.items;
-  return arr?.length === 1 && arr[0].kind === "file";
+  return (
+    e.dataTransfer?.items?.[0].kind === "file" ||
+    e.dataTransfer?.files?.[0] !== undefined
+  );
 }
 
 export type FileKind =
@@ -16,8 +18,10 @@ export type FileKind =
       file: FileSystemFileHandle;
     };
 
+export type FilesCallback = (files: FileKind[]) => void | Promise<void>;
+
 export interface FileDropProps {
-  onFile: (input: FileKind) => void | Promise<void>;
+  onFile: FilesCallback;
   enabled?: boolean;
 }
 
@@ -33,9 +37,9 @@ export function useFileDrop({ onFile, enabled = true }: FileDropProps) {
   const onFileRef = useRef(onFile);
   useIsomorphicLayoutEffect(() => {
     enabledRef.current = enabled;
-    onFileRef.current = (file: FileKind) => {
+    onFileRef.current = (...args) => {
       try {
-        onFile(file);
+        onFile(...args);
       } finally {
         dragCount.current = 0;
       }
@@ -44,7 +48,7 @@ export function useFileDrop({ onFile, enabled = true }: FileDropProps) {
 
   useEffect(() => {
     async function dragDrop(e: DragEvent) {
-      if (!enabledRef.current || !containsFiles(e)) {
+      if (!enabledRef.current) {
         return;
       }
 
@@ -52,39 +56,42 @@ export function useFileDrop({ onFile, enabled = true }: FileDropProps) {
       e.stopPropagation();
       setHovering(false);
 
+      const fileList: FileKind[] = [];
+
       if (e.dataTransfer && e.dataTransfer.items) {
         const items = e.dataTransfer.items;
-        if (items.length !== 1) {
-          throw Error("unexpected one file drop");
-        }
-
-        if ("getAsFileSystemHandle" in items[0]) {
-          const handle = await items[0].getAsFileSystemHandle();
-          if (handle !== null) {
-            if (handle.kind === "file") {
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if ("getAsFileSystemHandle" in item) {
+            const handle = await item.getAsFileSystemHandle();
+            if (handle !== null && handle.kind === "file") {
               const file = handle as FileSystemFileHandle;
-              onFileRef.current({ kind: "handle", file });
-              return;
+              fileList.push({ kind: "handle", file });
+              continue;
             }
           }
-        }
 
-        const file = items[0].getAsFile();
-        if (file === null) {
-          throw Error("bad dropped file");
-        }
+          const file = item.getAsFile();
+          if (file === null) {
+            continue;
+          }
 
-        onFileRef.current({ kind: "file", file });
+          fileList.push({ kind: "file", file });
+        }
       } else if (e.dataTransfer && e.dataTransfer.files) {
         const files = e.dataTransfer.files;
-        if (files.length !== 1) {
-          throw Error("unexpected one file drop");
+        for (let i = 0; i < files.length; i++) {
+          fileList.push({ kind: "file", file: files[i] });
         }
-
-        onFileRef.current({ kind: "file", file: files[0] });
       } else {
         throw Error("unexpected data transfer");
       }
+
+      if (fileList.length === 0) {
+        throw new Error("no files found in data transfer");
+      }
+
+      onFileRef.current(fileList);
     }
 
     function highlight(e: DragEvent) {

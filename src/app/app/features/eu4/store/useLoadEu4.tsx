@@ -25,8 +25,13 @@ import { check } from "@/lib/isPresent";
 import { captureException } from "@/lib/captureException";
 
 export type Eu4SaveInput =
-  | { kind: "file"; file: File }
-  | { kind: "handle"; file: FileSystemFileHandle; name: string }
+  | { kind: "file"; file: File; files: (File | FileSystemFileHandle)[] }
+  | {
+      kind: "handle";
+      file: FileSystemFileHandle;
+      name: string;
+      files: (File | FileSystemFileHandle)[];
+    }
   | { kind: "server"; saveId: string };
 
 type Eu4LoadState = {
