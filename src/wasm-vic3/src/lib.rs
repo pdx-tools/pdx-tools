@@ -49,11 +49,8 @@ impl SaveFile {
             data: self.0.get_country_stats(tag),
         }
     }
-    pub fn get_country_goods_prices(&self, tag: &str) -> Result<Vic3MarketResponse, JsValue> {
-        let prices = self
-            .0
-            .get_country_goods_prices(tag)
-            .map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+    pub fn get_country_goods_prices(&self, tag: &str) -> Result<Vic3MarketResponse, JsError> {
+        let prices = self.0.get_country_goods_prices(tag)?;
         Ok(Vic3MarketResponse { prices })
     }
 }
@@ -176,8 +173,8 @@ fn _parse_save(data: &[u8]) -> Result<SaveFile, Vic3Error> {
 }
 
 #[wasm_bindgen]
-pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
-    let s = _parse_save(data).map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsError> {
+    let s = _parse_save(data)?;
     Ok(s)
 }
 
@@ -190,8 +187,8 @@ fn _melt(data: &[u8]) -> Result<Vec<u8>, Vic3Error> {
 }
 
 #[wasm_bindgen]
-pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
+pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsError> {
     _melt(data)
         .map(|x| js_sys::Uint8Array::from(x.as_slice()))
-        .map_err(|e| JsValue::from_str(e.to_string().as_str()))
+        .map_err(JsError::from)
 }
