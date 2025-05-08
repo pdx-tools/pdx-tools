@@ -45,12 +45,13 @@ const usePaginationStore = create<PaginationSettings>()(
     }),
     {
       name: "pdx-tools-pagination-settings",
-    }
-  )
+    },
+  ),
 );
 
 const usePageSize = () => usePaginationStore((state) => state.pageSize);
-const usePaginationActions = () => usePaginationStore((state) => state.setPageSize);
+const usePaginationActions = () =>
+  usePaginationStore((state) => state.setPageSize);
 
 type DataTableProps<TData> = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
