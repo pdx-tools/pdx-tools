@@ -760,7 +760,7 @@ fn generate_terrain(tmp_game_dir: &Path) -> anyhow::Result<Vec<(schemas::eu4::Te
             let terrain = match terrain.as_str() {
                 "grasslands" => Some(schemas::eu4::Terrain::Grasslands),
                 "hills" => Some(schemas::eu4::Terrain::Hills),
-                "mountains" => Some(schemas::eu4::Terrain::Mountains),
+                "mountain" => Some(schemas::eu4::Terrain::Mountains),
                 "desert" => Some(schemas::eu4::Terrain::Desert),
                 "marsh" => Some(schemas::eu4::Terrain::Marsh),
                 "farmlands" => Some(schemas::eu4::Terrain::Farmlands),
@@ -774,7 +774,8 @@ fn generate_terrain(tmp_game_dir: &Path) -> anyhow::Result<Vec<(schemas::eu4::Te
                 "jungle" => Some(schemas::eu4::Terrain::Jungle),
                 "steppe" => Some(schemas::eu4::Terrain::Steppe),
                 "glacier" => Some(schemas::eu4::Terrain::Glacier),
-                _ => None,
+                "pti" | "ocean" | "inland_ocean" | "wasteland" | "impassable_mountains" => None,
+                x => panic!("unknown terrain: {}", x),
             }?;
             Some((terrain, data.local_development_cost))
         })
