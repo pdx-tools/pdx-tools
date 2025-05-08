@@ -71,7 +71,8 @@ function InstructionSteps({ row }: { row: InstitutionCost }) {
           case "develop":
             return (
               <div key={`dev-${index}`}>
-                Dev {step.from} → {step.to}
+                Dev {step.from}
+                {step.to !== step.from ? ` → ${step.to}` : ""}
                 {step.followedBy.map((f) =>
                   f.type == "expand" ? (
                     <abbr
@@ -80,7 +81,7 @@ function InstructionSteps({ row }: { row: InstitutionCost }) {
                       className="cursor-help text-purple-600 no-underline dark:text-purple-400"
                     >
                       {" "}
-                      (expand)
+                      (expand){(f.times ?? 1) > 1 ? ` (${f.times}x)` : ""}
                     </abbr>
                   ) : (
                     <abbr
@@ -95,17 +96,6 @@ function InstructionSteps({ row }: { row: InstitutionCost }) {
                 )}
               </div>
             );
-
-          case "expand":
-            return (
-              <div key={`expand-${index}`}>
-                Start by expanding infra{" "}
-                {(step.times ?? 1) > 1 ? ` (${step.times}x)` : ""}
-              </div>
-            );
-
-          case "exploit":
-            return <div key={`exploit-${index}`}>Start by exploiting dev</div>;
         }
       })}
     </div>

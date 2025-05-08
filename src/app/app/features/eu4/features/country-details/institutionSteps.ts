@@ -120,7 +120,10 @@ export function calculateInstitutionSteps({
   return steps;
 }
 
-export type ConsolidatedInstitutionStep = InstitutionStep & {
+export type ConsolidatedInstitutionStep = Extract<
+  InstitutionStep,
+  { type: "develop" }
+> & {
   followedBy: InstitutionStep[];
 };
 
@@ -132,12 +135,28 @@ export type ConsolidatedInstitutionStep = InstitutionStep & {
 export function consolidateSteps(
   steps: InstitutionStep[],
 ): ConsolidatedInstitutionStep[] {
-  const result = [];
+  const result: ConsolidatedInstitutionStep[] = [];
   let stepIdx = 0;
+
   while (stepIdx < steps.length) {
     const currentStep = steps[stepIdx];
-    const followedBy = [];
+    const followedBy: InstitutionStep[] = [];
     stepIdx++;
+
+    // Create a standard develop step, whether the original was develop or expand/exploit
+    const developStep: ConsolidatedInstitutionStep = {
+      type: "develop",
+      from: currentStep.type === "develop" ? currentStep.from : currentStep.at,
+      to: currentStep.type === "develop" ? currentStep.to : currentStep.at,
+      followedBy,
+    };
+
+    // If the current step is expand/exploit, add it to followedBy
+    if (currentStep.type === "expand" || currentStep.type === "exploit") {
+      followedBy.push(currentStep);
+    }
+
+    // Collect any subsequent expand/exploit steps
     while (
       steps[stepIdx]?.type === "expand" ||
       steps[stepIdx]?.type === "exploit"
@@ -145,10 +164,9 @@ export function consolidateSteps(
       followedBy.push(steps[stepIdx]);
       stepIdx++;
     }
-    result.push({
-      ...currentStep,
-      followedBy,
-    });
+
+    result.push(developStep);
   }
+
   return result;
 }
