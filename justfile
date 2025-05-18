@@ -29,22 +29,14 @@ staging: build-app prep-dev-app
   . dev/.env.dev
   cd src/app
   export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
-  npx --yes concurrently@latest \
-    "npx wrangler dev --port 3001" \
+  concurrently \
+    "wrangler dev --port 3001" \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api"
 
 test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-*") test-wasm (cargo "test" "-p" "pdx" "--all-features") test-app
 
 # Disable zstd fat-lto which cause linking issues for tests
 test-wasm: (cargo "test" "--no-default-features" "-p" "wasm-*")
-
-setup:
-  #!/usr/bin/env bash
-  set -euxo pipefail
-
-  ./.devcontainer/library-scripts/npm-dependencies.sh
-  sudo ./.devcontainer/library-scripts/dependencies.sh
-  just npm-ci
 
 npm-ci:
   (cd src/docs && npm ci)
@@ -99,7 +91,7 @@ dev-app: prep-frontend prep-dev-app
   cat src/app/migrations/*.sql | just dev-environment exec -u postgres --no-TTY db psql
 
   export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
-  npx --yes concurrently@latest \
+  concurrently \
     "cd src/app && PORT=3001 npm run dev" \
     "cd src/docs && npm run docusaurus -- start --no-open" \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api"
@@ -116,9 +108,9 @@ test-app *cmd: prep-frontend prep-test-app
   (cd src/app && npm run build:test)
 
   export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
-  cd src/app && npx --yes concurrently@latest --kill-others --success command-2 --passthrough-arguments \
+  cd src/app && concurrently --kill-others --success command-2 --passthrough-arguments \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api" \
-    "npx wrangler dev --env test --port 3000" \
+    "wrangler dev --env test --port 3000" \
     "sleep 2 && npm test -- run {@}" -- "$@"
 
 prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "--wait" "db") (test-environment "up" "-d")
