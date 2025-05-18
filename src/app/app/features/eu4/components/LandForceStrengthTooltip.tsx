@@ -1,5 +1,5 @@
 import { Tooltip } from "@/components/Tooltip";
-import { CountryArmedForces } from "../../../../../wasm-eu4/pkg/wasm_eu4";
+import { CountryArmedForces } from "@pdx.tools/wasm-eu4/wasm_eu4";
 import { formatInt } from "@/lib/format";
 
 export const LandForceStrengthTooltip = ({

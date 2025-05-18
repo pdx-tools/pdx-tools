@@ -159,7 +159,8 @@ impl Compression {
     }
 
     pub fn compress_cb(self, f: Option<js_sys::Function>) -> Result<Vec<u8>, JsError> {
-        self._compress_cb(f)}
+        self._compress_cb(f)
+    }
 }
 
 enum Reader {

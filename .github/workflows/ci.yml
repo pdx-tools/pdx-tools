@@ -82,9 +82,11 @@ jobs:
         env: |
           ASSETS_ACCESS_KEY
           ASSETS_SECRET_KEY
+          CI
         runCmd: |
           just admin-sync-assets && \
           just package-all && \
           just build-wasm-dev && \
+          pnpm install && \
           ${{ matrix.with_tokens && 'just test && ' || '' }} \
           just build-app

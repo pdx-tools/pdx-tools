@@ -1,11 +1,11 @@
 import { gameVersion, resources } from "@/lib/game_gen";
-import { glContextOptions, WebGLMap } from "map";
+import { glContextOptions, WebGLMap } from "@pdx.tools/map";
 import { MapOnlyControls } from "../../types/map";
 import { fetchOk } from "@/lib/fetch";
-import mapVertex from "../../../../../../map/assets/shaders/map.vert?url";
-import mapFragment from "../../../../../../map/assets/shaders/map.frag?url";
-import xbrVertex from "../../../../../../map/assets/shaders/xbr.vert?url";
-import xbrFragment from "../../../../../../map/assets/shaders/xbr.frag?url";
+import mapVertex from "@pdx.tools/map/map.vert?url";
+import mapFragment from "@pdx.tools/map/map.frag?url";
+import xbrVertex from "@pdx.tools/map/xbr.vert?url";
+import xbrFragment from "@pdx.tools/map/xbr.frag?url";
 
 export const shaderUrls = () => ({
   map: {

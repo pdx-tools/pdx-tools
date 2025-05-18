@@ -4,7 +4,12 @@ import { fetchOk } from "@/lib/fetch";
 import { log, logMs } from "@/lib/log";
 import { emitEvent } from "@/lib/events";
 import { timeit } from "@/lib/timeit";
-import { type MapWorker, MapController, createMapWorker, InitToken } from "map";
+import {
+  type MapWorker,
+  MapController,
+  createMapWorker,
+  InitToken,
+} from "@pdx.tools/map";
 import { Dispatch, useRef, useEffect, useReducer } from "react";
 import {
   shaderUrls,

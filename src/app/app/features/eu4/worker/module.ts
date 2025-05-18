@@ -26,7 +26,7 @@ import {
   ActiveWarParticipant,
   TimelapseIter,
   Wars,
-} from "../../../../../wasm-eu4/pkg/wasm_eu4";
+} from "@pdx.tools/wasm-eu4/wasm_eu4";
 import { timeSync } from "@/lib/timeit";
 import { logMs } from "@/lib/log";
 import { createBudget } from "../features/country-details/budget";

@@ -3,7 +3,7 @@ import {
   ArrayBufferTarget as WebmTarget,
 } from "webm-muxer";
 import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4Target } from "mp4-muxer";
-import { IMG_WIDTH, MapController, overlayDate } from "map";
+import { IMG_WIDTH, MapController, overlayDate } from "@pdx.tools/map";
 import { Eu4Worker, getEu4Worker } from "../../worker";
 import { Eu4Store } from "../../store";
 import { log } from "@/lib/log";

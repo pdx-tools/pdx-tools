@@ -21,3 +21,4 @@ node_modules
 *.swp
 .idea
 .vscode/settings.json
+.pnpm-store/

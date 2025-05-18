@@ -8,7 +8,7 @@ import {
   LocalizedTag,
   ProvinceConquer,
   WarBattles,
-} from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+} from "@pdx.tools/wasm-eu4";
 import { Alert } from "@/components/Alert";
 import { Card } from "@/components/Card";
 import { Flag, PersonalityAvatar } from "../../components/avatars";

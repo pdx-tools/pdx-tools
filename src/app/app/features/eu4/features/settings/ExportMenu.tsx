@@ -5,7 +5,7 @@ import { getEu4Worker } from "../../worker";
 import { selectMapPayload, useEu4Context } from "../../store";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { Button } from "@/components/Button";
-import { provinceIdToColorIndexInvert } from "map/src/resources";
+import { provinceIdToColorIndexInvert } from "@pdx.tools/map";
 
 export const ExportMenu = () => {
   const isDeveloper = useIsDeveloper();

@@ -75,11 +75,4 @@ export default defineConfig(({ mode }) => ({
       external: ["wasm_app_bg.wasm"],
     },
   },
-
-  // Need to transition to monorepo and then we can get rid of this
-  server: {
-    fs: {
-      allow: ["../.."],
-    },
-  },
 }));
