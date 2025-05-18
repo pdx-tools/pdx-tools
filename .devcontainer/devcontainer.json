@@ -34,17 +34,19 @@
         "bradlc.vscode-tailwindcss",
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
+        "hverlin.mise-vscode",
         "rust-lang.rust-analyzer",
         "slevesque.shader",
         "styled-components.vscode-styled-components"
       ]
     }
   },
-  "postCreateCommand": "mise trust",
-  "postStartCommand": "mise install --verbose --jobs 1 && mise x -- just npm-ci",
+  "postCreateCommand": "mise trust && mise install --verbose --jobs 1",
+  "postStartCommand": "mise install --verbose --jobs 1 && just npm-ci",
   "forwardPorts": [3001, 3003, 9000],
   "remoteUser": "vscode",
   "remoteEnv": {
+    // Workaround for github's rate limiting when installing mise tools
     "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
   }
 }
