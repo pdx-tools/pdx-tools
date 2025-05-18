@@ -214,8 +214,12 @@ impl<'a> Iterator for DataRows<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.data.len() / self.stride;
-        (len, Some(len))
+        let Some(remaining_bytes_after_row) = self.data.len().checked_sub(self.byte_width) else {
+            return (0, Some(0));
+        };
+
+        let num_rows = 1 + remaining_bytes_after_row / self.stride;
+        (num_rows, Some(num_rows))
     }
 }
 
@@ -253,9 +257,31 @@ impl<'a> Iterator for RgbPixels<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let whole = self.data.len() / self.stride;
-        let rem = self.byte_width - self.ind;
-        (whole + rem, Some(whole + rem))
+        if self.data.len() < self.byte_width {
+            return (0, Some(0));
+        }
+
+        let bytes_per_pixel = if self.use_palette { 1 } else { 3 };
+
+        // Pixels remaining in the current row's data segment (self.data[0...self.byte_width-1])
+        let pixels_in_current_row_segment = (self.byte_width - self.ind) / bytes_per_pixel;
+
+        // Number of full stride lengths that the current self.data slice can cover
+        let num_total_strides_in_data = self.data.len() / self.stride;
+
+        let pixels_per_full_row = self.byte_width / bytes_per_pixel;
+
+        // Calculate pixels from subsequent full rows.
+        // If num_total_strides_in_data is 0 or 1, it means all remaining pixels are within the current stride
+        // (or there's less than one full stride left), so no "subsequent" full rows contribute.
+        let pixels_from_subsequent_rows = if num_total_strides_in_data > 1 {
+            (num_total_strides_in_data - 1) * pixels_per_full_row
+        } else {
+            0
+        };
+
+        let total_remaining = pixels_in_current_row_segment + pixels_from_subsequent_rows;
+        (total_remaining, Some(total_remaining))
     }
 }
 
