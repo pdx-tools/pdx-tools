@@ -51,7 +51,7 @@ rayon = "1"
 regex = "1"
 schemas = { path = "src/schemas" }
 serde = "1.0.195"
-serde-wasm-bindgen = "0.5"
+serde-wasm-bindgen = "0.6.5"
 serde_json = "1.0.114"
 serde_path_to_error = "0.1"
 specta = "1.0.4"
@@ -62,7 +62,7 @@ tokio = "1.28.2"
 tower-http = "0.5.2"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-tsify = { version = "0.4.5", default-features = false }
+tsify = { version = "0.5.5", default-features = false }
 vic3save = { path = "src/vic3save" }
 walkdir = "2.3.1"
 wasm-bindgen = { version = "0.2.100", default-features = false }
