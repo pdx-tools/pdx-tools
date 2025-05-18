@@ -41,56 +41,71 @@ mod tests {
         assert_eq!(image.data().flatten().count(), 6);
         assert_eq!(image.pixels_len(), 6);
 
-        let Pixels::Rgb(pixs) = image.pixels();
-        let pixels: Vec<_> = pixs.collect();
-
-        assert_eq!(
-            pixels,
-            vec![
-                Rgb {
-                    r: 255,
-                    g: 178,
-                    b: 127
-                },
-                Rgb {
-                    r: 127,
-                    g: 255,
-                    b: 244
-                },
-                Rgb {
-                    r: 127,
-                    g: 174,
-                    b: 255
-                },
-                Rgb {
-                    r: 255,
-                    g: 218,
-                    b: 127
-                },
-                Rgb {
-                    r: 255,
-                    g: 127,
-                    b: 138
-                },
-                Rgb {
-                    r: 255,
-                    g: 127,
-                    b: 242
-                },
-            ]
-        );
-
         let Pixels::Rgb(mut pixs) = image.pixels();
-        for i in 6..=0 {
-            assert_eq!(pixs.size_hint(), (i, Some(i)));
-            pixs.next().unwrap();
-        }
+        assert_eq!(pixs.size_hint(), (6, Some(6)));
+        assert_eq!(
+            pixs.next().unwrap(),
+            Rgb {
+                r: 255,
+                g: 178,
+                b: 127
+            }
+        );
+        assert_eq!(pixs.size_hint(), (5, Some(5)));
+        assert_eq!(
+            pixs.next().unwrap(),
+            Rgb {
+                r: 127,
+                g: 255,
+                b: 244
+            }
+        );
+        assert_eq!(pixs.size_hint(), (4, Some(4)));
+        assert_eq!(
+            pixs.next().unwrap(),
+            Rgb {
+                r: 127,
+                g: 174,
+                b: 255
+            }
+        );
+        assert_eq!(pixs.size_hint(), (3, Some(3)));
+        assert_eq!(
+            pixs.next().unwrap(),
+            Rgb {
+                r: 255,
+                g: 218,
+                b: 127
+            }
+        );
+        assert_eq!(pixs.size_hint(), (2, Some(2)));
+        assert_eq!(
+            pixs.next().unwrap(),
+            Rgb {
+                r: 255,
+                g: 127,
+                b: 138
+            }
+        );
+        assert_eq!(pixs.size_hint(), (1, Some(1)));
+        assert_eq!(
+            pixs.next().unwrap(),
+            Rgb {
+                r: 255,
+                g: 127,
+                b: 242
+            }
+        );
+        assert_eq!(pixs.size_hint(), (0, Some(0)));
+        assert_eq!(pixs.next(), None);
 
         let mut data = image.data();
-        for i in 2..=0 {
-            assert_eq!(data.size_hint(), (i, Some(i)));
-            data.next().unwrap();
-        }
+        assert_eq!(data.size_hint(), (2, Some(2)));
+        assert!(data.next().is_some());
+        assert_eq!(data.size_hint(), (1, Some(1)));
+        assert!(data.next().is_some());
+        assert_eq!(data.size_hint(), (0, Some(0)));
+        assert!(data.next().is_none());
     }
 
     #[test]
@@ -107,49 +122,62 @@ mod tests {
         assert_eq!(image.palette().count(), 0);
         assert_eq!(image.pixels_len(), 6);
 
-        let Pixels::Rgb(pixs) = image.pixels();
-        let pixels: Vec<_> = pixs.collect();
-
-        assert_eq!(
-            pixels,
-            vec![
-                Rgb {
-                    r: 255,
-                    g: 178,
-                    b: 127
-                },
-                Rgb {
-                    r: 127,
-                    g: 255,
-                    b: 244
-                },
-                Rgb {
-                    r: 127,
-                    g: 174,
-                    b: 255
-                },
-                Rgb {
-                    r: 255,
-                    g: 218,
-                    b: 127
-                },
-                Rgb {
-                    r: 255,
-                    g: 127,
-                    b: 138
-                },
-                Rgb {
-                    r: 255,
-                    g: 127,
-                    b: 242
-                },
-            ]
-        );
-
         let Pixels::Rgb(mut pixs) = image.pixels();
-        for i in 6..=0 {
-            assert_eq!(pixs.size_hint(), (i, Some(i)));
-            pixs.next().unwrap();
-        }
+        assert_eq!(pixs.size_hint(), (6, Some(6)));
+        assert_eq!(
+            pixs.next().unwrap(),
+            Rgb {
+                r: 255,
+                g: 178,
+                b: 127
+            }
+        );
+        assert_eq!(pixs.size_hint(), (5, Some(5)));
+        assert_eq!(
+            pixs.next().unwrap(),
+            Rgb {
+                r: 127,
+                g: 255,
+                b: 244
+            }
+        );
+        assert_eq!(pixs.size_hint(), (4, Some(4)));
+        assert_eq!(
+            pixs.next().unwrap(),
+            Rgb {
+                r: 127,
+                g: 174,
+                b: 255
+            }
+        );
+        assert_eq!(pixs.size_hint(), (3, Some(3)));
+        assert_eq!(
+            pixs.next().unwrap(),
+            Rgb {
+                r: 255,
+                g: 218,
+                b: 127
+            }
+        );
+        assert_eq!(pixs.size_hint(), (2, Some(2)));
+        assert_eq!(
+            pixs.next().unwrap(),
+            Rgb {
+                r: 255,
+                g: 127,
+                b: 138
+            }
+        );
+        assert_eq!(pixs.size_hint(), (1, Some(1)));
+        assert_eq!(
+            pixs.next().unwrap(),
+            Rgb {
+                r: 255,
+                g: 127,
+                b: 242
+            }
+        );
+        assert_eq!(pixs.size_hint(), (0, Some(0)));
+        assert_eq!(pixs.next(), None);
     }
 }
