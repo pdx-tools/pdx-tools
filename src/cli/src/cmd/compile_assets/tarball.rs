@@ -343,8 +343,8 @@ pub fn parse_game_dir(
                 color: Some(&color),
                 allowed_conversion: Some(allowed_conversions),
                 negotiate_convert_on_dominant_religion: rebels
-                    .map_or(false, |x| x.negotiate_convert_on_dominant_religion),
-                force_convert_on_break: rebels.map_or(false, |x| x.force_convert_on_break),
+                    .is_some_and(|x| x.negotiate_convert_on_dominant_religion),
+                force_convert_on_break: rebels.is_some_and(|x| x.force_convert_on_break),
             },
         );
         religions.push(entry);
@@ -942,7 +942,7 @@ pub fn translate_building_images(
         if sprite
             .texturefile
             .file_name()
-            .map_or(false, |x| x.to_string_lossy().starts_with("latin_"))
+            .is_some_and(|x| x.to_string_lossy().starts_with("latin_"))
         {
             // Map GFX_shipyard texturefile to to
             new_name = format!("{}_westerngfx", new_name);
