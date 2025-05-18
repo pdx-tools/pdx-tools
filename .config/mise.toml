@@ -1,0 +1,14 @@
+[tools]
+"docker-compose" = { version = "2.33.1" }
+"just" = { version = "1.40.0" }
+"node" = { version = "22.15.0" }
+"npm:concurrently" = { version = "9.1.2" }
+"npm:npm-check-updates" = { version = "17.1.18" }
+"npm:wrangler" = { version = "4.15.2" }
+"rust" = { version = "1.87.0" }
+"ubi:cargo-bins/cargo-binstall" = { version = "1.12.5" }
+"ubi:google/flatbuffers" = { version = "25.2.10", matching = "clang", exe = "flatc" }
+"ubi:jqlang/jq" = { version = "jq-1.7.1" }
+"ubi:rustwasm/wasm-pack" = { version = "0.13.1" }
+"ubi:WebAssembly/binaryen" = { version = "version_123", extract_all = "true", bin_path = "bin" }
+"vfox:mise-plugins/vfox-clang" = { version = "18.1.6" }

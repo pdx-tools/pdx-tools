@@ -83,8 +83,8 @@ jobs:
           ASSETS_ACCESS_KEY
           ASSETS_SECRET_KEY
         runCmd: |
-          just admin-sync-assets && \
-          just package-all && \
-          just build-wasm-dev && \
-          ${{ matrix.with_tokens && 'just test && ' || '' }} \
-          just build-app
+          mise x -- just admin-sync-assets && \
+          mise x -- just package-all && \
+          mise x -- just build-wasm-dev && \
+          ${{ matrix.with_tokens && 'mise x -- just test && ' || '' }} \
+          mise x -- just build-app

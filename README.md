@@ -186,17 +186,6 @@ If not using vscode and the Dev Container, one can setup an environment manually
 A Linux environment assumed (WSL on Windows untested but probably supported). The following applications must be installed in order to instantiate the dev environment.
 
 - docker
-- docker compose plugin v2
-- node js, including npm
-- clang
-- jq
-- psql
-- [rust](https://www.rust-lang.org/tools/install)
 - [imagemagick](https://imagemagick.org/index.php) with the `convert` command in `$PATH`
-- [just](https://github.com/casey/just/releases/latest)
 
-Once the above dependencies are installed, the remaining dependencies can be installed with:
-
-```bash
-just setup
-```
+It is recommended to use [`mise`](https://mise.jdx.dev/getting-started.html) to ease installation of remaining dependencies, which can be installed and scoped to the pdx-tools repo via `mise install`. Otherwise see the dependencies and versions to install listed in the [config](./.config/mise.toml).
