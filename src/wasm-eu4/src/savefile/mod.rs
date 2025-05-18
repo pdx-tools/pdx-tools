@@ -979,7 +979,7 @@ impl SaveFileImpl {
                     .game
                     .provinces
                     .values()
-                    .filter(|x| x.owner.as_ref().map_or(false, |o| o == tag))
+                    .filter(|x| x.owner.as_ref() == Some(tag))
                     .map(|x| x.buildings.len())
                     .sum::<usize>();
 

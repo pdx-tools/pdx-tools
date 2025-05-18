@@ -161,7 +161,7 @@ impl<'a> Bmp<'a> {
 
     fn byte_width(&self) -> usize {
         let width = self.dib_header.width.unsigned_abs() as usize;
-        let bytes_per_pixel = (self.dib_header.bpp + 7) / 8;
+        let bytes_per_pixel = self.dib_header.bpp.div_ceil(8);
         width * usize::from(bytes_per_pixel)
     }
 
@@ -169,7 +169,7 @@ impl<'a> Bmp<'a> {
         let byte_width = self.byte_width();
 
         // Windows GDI+ requires that the stride be a multiple of four.
-        4 * ((byte_width + 3) / 4)
+        4 * byte_width.div_ceil(4)
     }
 
     pub fn palette(&self) -> PaletteColors {

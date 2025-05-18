@@ -71,7 +71,7 @@ pub fn english_localization<P: AsRef<Path>>(dir: P) -> anyhow::Result<HashMap<St
         if !entry
             .path()
             .file_name()
-            .map_or(false, |x| x.to_string_lossy().ends_with("english.yml"))
+            .is_some_and(|x| x.to_string_lossy().ends_with("english.yml"))
         {
             continue;
         }

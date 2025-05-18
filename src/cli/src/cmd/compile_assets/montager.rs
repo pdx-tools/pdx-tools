@@ -72,7 +72,7 @@ impl Montager {
                 .arg("-mode")
                 .arg("concatenate")
                 .arg("-tile")
-                .arg(&format!("{cols}x"));
+                .arg(format!("{cols}x"));
 
             if !size.is_empty() {
                 cmd.arg("-geometry");
