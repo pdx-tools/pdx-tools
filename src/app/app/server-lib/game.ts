@@ -9,13 +9,13 @@ import init, {
 // detect if on cloudflare to import the Wasm.Module directly
 if (typeof WebSocketPair !== "undefined") {
   const wasmApp = await import("wasm_app_bg.wasm");
-  initSync(wasmApp.default);
+  initSync({ module: wasmApp.default });
 } else {
   const wasmUrl = await import("./wasm/wasm_app_bg.wasm?url");
   const url = `.${wasmUrl.default}`;
   const fs = await import("node:fs/promises");
   const data = await fs.readFile(url);
-  await init(data);
+  await init({ module_or_path: data });
 }
 
 const withWasm = <T extends Array<unknown>, U>(fn: (...args: T) => U) => {
