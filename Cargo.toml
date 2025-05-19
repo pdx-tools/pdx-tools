@@ -22,7 +22,7 @@ anyhow = "1.0"
 applib = { path = "src/applib" }
 attohttpc = "0.28.0"
 axum = "0.7.5"
-base64 = "0.13"
+base64 = "0.22"
 chrono = "0.4"
 ck3save = { git = "https://github.com/rakaly/ck3save.git" }
 clap = "4.1"

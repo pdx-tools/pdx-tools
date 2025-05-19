@@ -1,4 +1,5 @@
 use crate::Eu4GameError;
+use base64::Engine;
 use eu4save::{
     file::{Eu4Modeller, Eu4SliceFileKind},
     models::{CountryEvent, Eu4Save, GameState, Meta, Monarch},
@@ -52,7 +53,7 @@ impl SaveCheckSummer {
         if let Some(hasher) = self.hasher {
             let hash = hasher.finalize256();
             let bytes = copy_hash_output_to_byte_array(hash);
-            Some(base64::encode(bytes))
+            Some(base64::engine::general_purpose::STANDARD.encode(bytes))
         } else {
             None
         }
@@ -119,7 +120,7 @@ pub fn playthrough_id(query: &Query) -> String {
 
     let output = hash.finalize256();
     let bytes = copy_hash_output_to_byte_array(output);
-    base64::encode(bytes)
+    base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
 pub fn hash_countries(hash: &mut impl HighwayHash, content_date: Eu4Date, save: &Eu4Save) {
@@ -334,5 +335,18 @@ pub fn parse_meta(data: &[u8], resolver: &SegmentedResolver) -> Result<Meta, Eu4
                 Ok(res)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn save_checksummer() {
+        let mut summer = SaveCheckSummer::new(true);
+        summer.append(b"hello");
+        summer.append(b"world");
+        let hash = summer.finish().unwrap();
+        assert_eq!(hash, "/p54eGIaz1s/t1mJgg7qSZwKd+s+R19l1t1xcdou/Yc=");
     }
 }
