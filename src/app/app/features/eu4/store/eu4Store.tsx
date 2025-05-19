@@ -1,6 +1,6 @@
 import { compatibilityReport } from "@/lib/compatibility";
 import { check } from "@/lib/isPresent";
-import { MapController } from "map";
+import { MapController } from "@pdx.tools/map";
 import { pdxApi } from "@/services/appApi";
 import { createContext, useContext, useMemo } from "react";
 import { type StoreApi, createStore, useStore } from "zustand";

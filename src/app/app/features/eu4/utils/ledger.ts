@@ -1,4 +1,4 @@
-import { LocalizedLedger } from "../../../../../wasm-eu4/pkg/wasm_eu4";
+import { LocalizedLedger } from "@pdx.tools/wasm-eu4/wasm_eu4";
 import { LedgerDatum } from "../types/models";
 
 export function workLedgerData(data: LocalizedLedger): LedgerDatum[] {

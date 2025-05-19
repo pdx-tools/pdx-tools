@@ -1,0 +1,16 @@
+packages:
+  - src/docs
+  - src/app
+  - src/map
+  - src/wasm-app/pkg
+  - src/wasm-compress/pkg
+  - src/wasm-ck3/pkg
+  - src/wasm-eu4/pkg
+  - src/wasm-hoi4/pkg
+  - src/wasm-imperator/pkg
+  - src/wasm-vic3/pkg
+
+catalog:
+  comlink: 4.4.2
+  typescript: 5.6.3
+  vite: 5.4.11

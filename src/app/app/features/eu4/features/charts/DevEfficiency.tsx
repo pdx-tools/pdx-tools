@@ -7,7 +7,7 @@ import {
   useVisualizationDispatch,
 } from "@/components/viz";
 import { Alert } from "@/components/Alert";
-import { CountryDevEffiency } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+import { CountryDevEffiency } from "@pdx.tools/wasm-eu4";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";

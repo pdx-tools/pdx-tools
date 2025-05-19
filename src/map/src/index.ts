@@ -9,6 +9,7 @@ export { MapController } from "./MapController";
 export { type InitToken } from "./map-worker";
 export * from "./canvasOverlays";
 export * from "./map-worker-types";
+export { provinceIdToColorIndexInvert } from "./resources";
 
 export function createMapWorker() {
   return new Worker(new URL("./map-worker-bridge", import.meta.url), {

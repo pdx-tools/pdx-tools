@@ -38,11 +38,6 @@ test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-*") test-w
 # Disable zstd fat-lto which cause linking issues for tests
 test-wasm: (cargo "test" "--no-default-features" "-p" "wasm-*")
 
-npm-ci:
-  (cd src/docs && npm ci)
-  (cd src/app && npm ci)
-  (cd src/map && npm ci)
-
 publish-api:
   docker tag ghcr.io/pdx-tools/api:nightly us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
   docker push us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
@@ -61,12 +56,12 @@ publish-app:
   just build-app
   cd src/app
   find build/ -iname "*.map" -delete
-  npm run deploy
+  pnpm deploy
 
 build-app: prep-frontend
-  cd src/docs && npm run build
+  cd src/docs && pnpm build
   cd src/docs/build && cp -r assets blog docs blog.html changelog.html docs.html img ../../app/public/.
-  cd src/app && npm run build
+  cd src/app && pnpm build
 
 build-docker:
   #!/usr/bin/env bash
@@ -86,14 +81,15 @@ static-build *cmd:
 dev-app: prep-frontend prep-dev-app
   #!/usr/bin/env bash
   set -euxo pipefail
+  pnpm install
   . src/app/.env.development
   . dev/.env.dev
   cat src/app/migrations/*.sql | just dev-environment exec -u postgres --no-TTY db psql
 
   export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
   concurrently \
-    "cd src/app && PORT=3001 npm run dev" \
-    "cd src/docs && npm run docusaurus -- start --no-open" \
+    "cd src/app && PORT=3001 pnpm dev" \
+    "cd src/docs && pnpm docusaurus start --no-open" \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api"
 
 test-app *cmd: prep-frontend prep-test-app
@@ -105,13 +101,13 @@ test-app *cmd: prep-frontend prep-test-app
   just cargo build -p pdx-tools-api
   cat src/app/migrations/*.sql | just test-environment exec -u postgres --no-TTY db psql
   mkdir -p src/app/build/client
-  (cd src/app && npm run build:test)
+  (cd src/app && pnpm build:test)
 
   export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
   cd src/app && concurrently --kill-others --success command-2 --passthrough-arguments \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api" \
     "wrangler dev --env test --port 3000" \
-    "sleep 2 && npm test -- run {@}" -- "$@"
+    "sleep 2 && pnpm test -- run {@}" -- "$@"
 
 prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "--wait" "db") (test-environment "up" "-d")
   just wait-for-db test-environment
@@ -152,13 +148,13 @@ build-wasm: build-wasm-dev
 
 build-wasm-dev:
   just tokenize assets/tokens
-  wasm-pack build -t web src/wasm-app --out-dir {{justfile_directory()}}/src/app/app/server-lib/wasm
-  wasm-pack build -t web src/wasm-compress
-  wasm-pack build -t web src/wasm-ck3
-  wasm-pack build -t web src/wasm-eu4
-  wasm-pack build -t web src/wasm-hoi4
-  wasm-pack build -t web src/wasm-imperator
-  wasm-pack build -t web src/wasm-vic3
+  wasm-pack build --scope "pdx.tools" -t web src/wasm-app --out-dir {{justfile_directory()}}/src/app/app/server-lib/wasm
+  wasm-pack build --scope "pdx.tools" -t web src/wasm-compress
+  wasm-pack build --scope "pdx.tools" -t web src/wasm-ck3
+  wasm-pack build --scope "pdx.tools" -t web src/wasm-eu4
+  wasm-pack build --scope "pdx.tools" -t web src/wasm-hoi4
+  wasm-pack build --scope "pdx.tools" -t web src/wasm-imperator
+  wasm-pack build --scope "pdx.tools" -t web src/wasm-vic3
 
 package-all *opts:
   #!/usr/bin/env bash
@@ -244,8 +240,8 @@ tokenize *cmd:
 
 format:
   cargo fmt
-  cd src/app && npm run format
-  cd src/docs && npm run format
+  cd src/app && pnpm format
+  cd src/docs && pnpm format
   cd src/map && npx prettier@latest --write src
 
 prep-frontend:

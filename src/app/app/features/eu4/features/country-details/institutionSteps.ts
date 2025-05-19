@@ -1,4 +1,4 @@
-import { InstitutionCost } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+import { InstitutionCost } from "@pdx.tools/wasm-eu4";
 
 export type InstitutionStep =
   | { type: "develop"; from: number; to: number }
