@@ -1,0 +1,10 @@
+{
+  "name": "pdx.tools-root",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {},
+  "dependencies": {
+    "wrangler": "catalog:"
+  },
+  "packageManager": "pnpm@10.11.0"
+}

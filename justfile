@@ -30,7 +30,7 @@ staging: build-app prep-dev-app
   cd src/app
   export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
   concurrently \
-    "wrangler dev --port 3001" \
+    "pnpm exec wrangler dev --port 3001" \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api"
 
 test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-*") test-wasm (cargo "test" "-p" "pdx" "--all-features") test-app
@@ -106,7 +106,7 @@ test-app *cmd: prep-frontend prep-test-app
   export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
   cd src/app && concurrently --kill-others --success command-2 --passthrough-arguments \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api" \
-    "wrangler dev --env test --port 3000" \
+    "pnpm exec wrangler dev --env test --port 3000" \
     "sleep 2 && pnpm test -- run {@}" -- "$@"
 
 prep-test-app: (test-environment "build") (test-environment "up" "--no-start") (test-environment "up" "--wait" "db") (test-environment "up" "-d")

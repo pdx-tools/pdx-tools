@@ -4,7 +4,6 @@
 "node" = { version = "22.15.0" }
 "npm:concurrently" = { version = "9.1.2" }
 "npm:npm-check-updates" = { version = "17.1.18" }
-"npm:wrangler" = { version = "4.15.2" }
 "pnpm" = { version = "10.11.0" }
 "rust" = { version = "1.87.0", targets = "wasm32-unknown-unknown,x86_64-unknown-linux-musl" }
 "ubi:cargo-bins/cargo-binstall" = { version = "1.12.5" }
