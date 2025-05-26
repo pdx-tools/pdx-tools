@@ -46,7 +46,7 @@ log = "0.4"
 mathru = "0.15.3"
 mimalloc = "0.1.43"
 rand = "0.8"
-rawzip = "0.1.0"
+rawzip = "0.2.0"
 rayon = "1.10"
 regex = "1.11"
 schemas = { path = "src/schemas" }
