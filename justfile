@@ -69,7 +69,7 @@ build-docker:
   docker build -t ghcr.io/pdx-tools/api:nightly -f ./dev/api.dockerfile ./target/x86_64-unknown-linux-musl/release/
 
 build-admin:
-  just static-build --package pdx --features admin --release
+  just cargo build --package pdx --features admin --release
 
 cargo *cmd:
   cargo "$@"
