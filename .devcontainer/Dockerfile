@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 
 USER vscode
 
-RUN curl https://mise.run | sh && \
+RUN curl https://mise.run | MISE_VERSION=v2025.5.8 sh && \
     /bin/bash -c 'echo "eval \"\$(~/.local/bin/mise activate bash --shims)\"" >> ~/.bashrc'
 
 EXPOSE 3001 3003
