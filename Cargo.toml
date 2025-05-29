@@ -28,6 +28,7 @@ ck3save = { git = "https://github.com/rakaly/ck3save.git" }
 clap = "4.5"
 criterion = "0.5"
 csv = "1.3"
+duckdb = { version = "1.2.2", features = ["bundled"] }
 env_logger = "0.11"
 erased-serde = "0.4.5"
 eu4game = { path = "src/eu4game", default-features = false }

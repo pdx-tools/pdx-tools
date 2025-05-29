@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [features]
-admin = ["create_bundle", "tokenize", "dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2"]
+admin = ["create_bundle", "tokenize", "dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2", "dep:duckdb"]
 fun = ["compile_assets", "dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2"]
 
 create_bundle = ["dep:zstd"]
@@ -19,6 +19,7 @@ attohttpc = { features = ["json"], optional = true , workspace = true }
 chrono = { workspace = true }
 clap = { features = ["derive", "env"] , workspace = true }
 csv = { workspace = true }
+duckdb = { workspace = true, optional = true }
 env_logger = { workspace = true }
 eu4game = { optional = true, default-features = false , workspace = true }
 eu4game-data = { optional = true, default-features = false , workspace = true }
