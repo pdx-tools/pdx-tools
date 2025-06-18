@@ -32,7 +32,7 @@ const SheetOverlay = React.forwardRef<
   return (
     <SheetPrimitive.Overlay
       className={cx(
-        "fixed inset-0 z-50 bg-sky-900/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-sky-900/80 backdrop-blur-sm",
         className,
       )}
       {...props}
@@ -98,7 +98,7 @@ const SheetClose = React.forwardRef<
       asChild
       className={cx(
         className,
-        "rounded-sm border-0 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-rose-500",
+        "rounded-sm border-0 opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-rose-500",
       )}
     >
       <Button variant="ghost" style={{ outline: "0" }}>

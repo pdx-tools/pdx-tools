@@ -51,7 +51,7 @@ export const Home = ({ subtitle }: HomeProps) => {
       >
         <div className="mx-auto grid max-w-7xl justify-center gap-8 lg:grid-cols-2 xl:gap-16 2xl:gap-24">
           <div className="flex flex-col gap-y-4 justify-self-end lg:max-w-lg">
-            <h1 className="text-balance text-4xl font-extrabold tracking-tight text-white sm:mt-0 lg:mt-6 lg:text-5xl xl:text-6xl">
+            <h1 className="text-4xl font-extrabold tracking-tight text-balance text-white sm:mt-0 lg:mt-6 lg:text-5xl xl:text-6xl">
               Explore the world{" "}
               <span className="block italic supports-[text-wrap:balance]:inline">
                 you created
@@ -104,7 +104,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             <span className="mr-2 tracking-widest">{formatInt(1000000)}+</span>{" "}
             saves analyzed
           </h2>
-          <p className="mb-6 mt-3 text-center text-xl">
+          <p className="mt-3 mb-6 text-center text-xl">
             Answering questions about your EU4 saves
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-y-6 xl:grid-cols-4">
@@ -176,7 +176,7 @@ export const Home = ({ subtitle }: HomeProps) => {
           <h2 className="text-center text-3xl font-extrabold tracking-tight xl:text-4xl">
             Achievement Leaderboards
           </h2>
-          <p className="mb-6 mt-3 max-w-prose text-center text-xl">
+          <p className="mt-3 mb-6 max-w-prose text-center text-xl">
             Go for gold! Uploaded saves are tagged with{" "}
             <Link href="/eu4/achievements">supported achievements</Link>.
             Competition kept fresh with saves on the latest patch prioritized.
@@ -209,11 +209,11 @@ export const Home = ({ subtitle }: HomeProps) => {
             <div className="flex flex-col gap-y-2">
               <div className="flex items-center gap-x-2">
                 <FirefoxIcon className="h-8 w-8 text-gray-300" />
-                <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
+                <div className="h-6 border-y-0 border-r-0 border-l border-dotted border-gray-300" />
                 <ChromeIcon className="h-8 w-8 text-gray-300" />
-                <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
+                <div className="h-6 border-y-0 border-r-0 border-l border-dotted border-gray-300" />
                 <EdgeIcon className="h-8 w-8 text-gray-300" />
-                <div className="h-6 border-y-0 border-l border-r-0 border-dotted border-gray-300" />
+                <div className="h-6 border-y-0 border-r-0 border-l border-dotted border-gray-300" />
                 <SafariIcon className="h-8 w-8 text-gray-300" />
               </div>
               <div className="text-xs">
@@ -323,7 +323,7 @@ export const Home = ({ subtitle }: HomeProps) => {
           </div>
         </section>
       </div>
-      <footer className="text-balance px-5 py-8 text-center text-sm text-slate-400">
+      <footer className="px-5 py-8 text-center text-sm text-balance text-slate-400">
         <a href="https://www.flaticon.com/free-icons/north">EU4</a>,{" "}
         <a href="https://www.flaticon.com/free-icons/victoria-day">V3</a>, and{" "}
         <a href="https://www.flaticon.com/free-icons/military">HOI4</a> icons
