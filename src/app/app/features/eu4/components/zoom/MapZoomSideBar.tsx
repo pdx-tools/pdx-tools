@@ -4,7 +4,7 @@ import { MinusIcon, PlusIcon } from "@heroicons/react/24/outline";
 
 export const MapZoomSideBar = () => {
   return (
-    <div className={`my-3 flex touch-none select-none flex-col`}>
+    <div className={`my-3 flex touch-none flex-col select-none`}>
       <div className="flex justify-end overflow-hidden whitespace-nowrap">
         <ZoomInSideBarButton key="zoom-in">
           <span className="text-base">Zoom in</span>

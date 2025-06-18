@@ -21,7 +21,7 @@ const columns = [
       <div className="flex items-center space-x-2">
         <AchievementAvatar
           size={64}
-          className="flex-shrink-0"
+          className="shrink-0"
           id={info.row.original.id}
         />
         <div className="flex flex-col space-y-2">
