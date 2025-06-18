@@ -4,7 +4,6 @@
       "@/*": ["./app/*"]
     },
     "types": [
-      "@remix-run/cloudflare",
       "vite/client",
       "@types/wicg-file-system-access"
     ],
@@ -33,5 +32,11 @@
 
     /* If your code runs in the DOM: */
     "lib": ["es2022", "dom", "dom.iterable"]
-  }
+  },
+  "include": [
+    ".react-router/types/**/*",
+    "app/**/*",
+    "**/*.ts",
+    "**/*.tsx"
+  ]
 }

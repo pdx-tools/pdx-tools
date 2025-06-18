@@ -4,7 +4,7 @@ import { withDb } from "@/server-lib/db/middleware";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { ParsedFile } from "@/server-lib/functions";
-import { LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { LoaderFunctionArgs } from "react-router";
 import { eq } from "drizzle-orm";
 import { ensurePermissions } from "@/lib/auth";
 

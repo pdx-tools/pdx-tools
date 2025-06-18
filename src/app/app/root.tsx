@@ -1,4 +1,5 @@
-import { captureRemixErrorBoundaryError } from "@sentry/remix";
+import React from 'react';
+import * as Sentry from "@sentry/react-router";
 import {
   Links,
   Meta,
@@ -7,12 +8,8 @@ import {
   ScrollRestoration,
   useLoaderData,
   useRouteError,
-} from "@remix-run/react";
-import {
-  LinksFunction,
-  LoaderFunctionArgs,
-  MetaFunction,
-} from "@remix-run/cloudflare";
+} from "react-router";
+import { LinksFunction, LoaderFunctionArgs, MetaFunction } from "react-router";
 import tailwind from "@/styles/tailwind.css?url";
 import appCss from "@/styles/styles.css?url";
 import { useState } from "react";
@@ -88,7 +85,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 export const ErrorBoundary = () => {
   const error = useRouteError();
-  captureRemixErrorBoundaryError(error);
+  if (typeof Sentry.captureException === 'function') {
+    Sentry.captureException(error);
+  }
   return (
     <div className="flex h-full justify-center align-middle">
       <Alert variant="error" className="max-w-xl place-self-center px-6 py-4">

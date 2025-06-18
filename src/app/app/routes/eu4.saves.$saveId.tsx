@@ -1,7 +1,7 @@
 import Eu4Ui from "@/features/eu4/Eu4Ui";
 import { seo } from "@/lib/seo";
-import { MetaFunction } from "@remix-run/cloudflare";
-import { useParams } from "@remix-run/react";
+import { MetaFunction } from "react-router";
+import { useParams } from "react-router";
 import { useMemo } from "react";
 
 export const meta: MetaFunction = ({ params: { saveId } }) =>
@@ -21,6 +21,9 @@ type SaveProps = {
 };
 
 const SavePage = ({ saveId }: SaveProps) => {
-  const save = useMemo(() => ({ kind: "server", saveId }) as const, [saveId]);
+  const save = useMemo(() => (({
+    kind: "server",
+    saveId
+  }) as const), [saveId]);
   return <Eu4Ui save={save} />;
 };

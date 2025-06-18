@@ -1,7 +1,7 @@
 import { withDb } from "@/server-lib/db/middleware";
 import { getSaves, NewSchema } from "@/server-lib/fn/new";
 import { withCore } from "@/server-lib/middleware";
-import { LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { LoaderFunctionArgs } from "react-router";
 
 export type NewestSaveResponse = Awaited<ReturnType<typeof getSaves>>;
 

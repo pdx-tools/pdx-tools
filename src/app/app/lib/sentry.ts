@@ -1,5 +1,5 @@
 import { isEnvironmentSupported } from "@/lib/compatibility";
-import * as Sentry from "@sentry/remix";
+import * as Sentry from "@sentry/react-router";
 
 const SENTRY_DSN: string | undefined = import.meta.env.VITE_SENTRY_DSN;
 export const sentryInit = () =>
@@ -9,6 +9,11 @@ export const sentryInit = () =>
     enabled: !!SENTRY_DSN,
     debug: !import.meta.env.PROD,
     tunnel: "/api/tunnel",
+    integrations: [
+      ...(typeof Sentry.reactRouterTracingIntegration === 'function' 
+        ? [Sentry.reactRouterTracingIntegration()] 
+        : []),
+    ],
     ignoreErrors: [
       "ResizeObserver loop completed with undelivered notifications.",
     ],

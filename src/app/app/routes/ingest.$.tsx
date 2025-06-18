@@ -1,4 +1,4 @@
-import type { ActionFunction, LoaderFunction } from "@remix-run/cloudflare";
+import type { ActionFunction, LoaderFunction } from "react-router";
 
 const API_HOST = "eu.i.posthog.com";
 const ASSET_HOST = "eu-assets.i.posthog.com";

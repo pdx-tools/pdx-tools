@@ -10,8 +10,8 @@ import { seo } from "@/lib/seo";
 import { usingDb } from "@/server-lib/db/connection";
 import { fetchAchievement, findAchievement } from "@/server-lib/fn/achievement";
 import { withCore } from "@/server-lib/middleware";
-import { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
-import { Await, useLoaderData } from "@remix-run/react";
+import { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Await, useLoaderData } from "react-router";
 import { Suspense } from "react";
 import { z } from "zod";
 

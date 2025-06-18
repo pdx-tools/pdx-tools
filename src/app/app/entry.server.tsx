@@ -1,11 +1,6 @@
-import type {
-  ActionFunctionArgs,
-  AppLoadContext,
-  EntryContext,
-  LoaderFunctionArgs,
-} from "@remix-run/cloudflare";
-import * as Sentry from "@sentry/remix";
-import { RemixServer } from "@remix-run/react";
+import type { ActionFunctionArgs, AppLoadContext, EntryContext, LoaderFunctionArgs } from "react-router";
+import * as Sentry from "@sentry/react-router";
+import { ServerRouter } from "react-router";
 import { renderToReadableStream } from "react-dom/server";
 import { log } from "./server-lib/logging";
 
@@ -23,7 +18,7 @@ export default async function handleRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
-  remixContext: EntryContext,
+  reactRouterContext: EntryContext,
   loadContext: AppLoadContext,
 ) {
   const controller = new AbortController();
@@ -38,20 +33,23 @@ export default async function handleRequest(
   ];
 
   const body = await renderToReadableStream(
-    <RemixServer
-      context={remixContext}
+    <ServerRouter
+      context={reactRouterContext}
       url={request.url}
-      abortDelay={ABORT_DELAY}
     />,
     {
       signal: controller.signal,
       onError(error: unknown) {
         if (!controller.signal.aborted) {
           log.exception(error, { msg: "streaming error" });
-          Sentry.captureException(error, {
-            extra: { url: request.url },
-          });
-          loadContext.cloudflare.ctx.waitUntil(Sentry.flush(2000));
+          if (typeof Sentry.captureException === 'function') {
+            Sentry.captureException(error, {
+              extra: { url: request.url },
+            });
+          }
+          if (typeof Sentry.flush === 'function') {
+            loadContext.cloudflare.ctx.waitUntil(Sentry.flush(2000));
+          }
         }
         responseStatusCode = 500;
       },
@@ -82,9 +80,13 @@ export function handleError(
     )
   ) {
     log.exception(error, { msg: "server error" });
-    Sentry.captureException(error, {
-      extra: { url: request.url },
-    });
-    context.cloudflare.ctx.waitUntil(Sentry.flush(2000));
+    if (typeof Sentry.captureException === 'function') {
+      Sentry.captureException(error, {
+        extra: { url: request.url },
+      });
+    }
+    if (typeof Sentry.flush === 'function') {
+      context.cloudflare.ctx.waitUntil(Sentry.flush(2000));
+    }
   }
 }

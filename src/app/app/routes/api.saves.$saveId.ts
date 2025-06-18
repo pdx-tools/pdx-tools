@@ -7,7 +7,7 @@ import { NotFoundError, ValidationError } from "@/server-lib/errors";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 

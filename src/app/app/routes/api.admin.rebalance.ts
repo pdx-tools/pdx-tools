@@ -4,7 +4,7 @@ import { table } from "@/server-lib/db";
 import { withDb } from "@/server-lib/db/middleware";
 import { latestEu4MinorPatch } from "@/server-lib/game";
 import { withCore } from "@/server-lib/middleware";
-import { LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { LoaderFunctionArgs } from "react-router";
 import { isNotNull, sql } from "drizzle-orm";
 
 export const action = withCore(

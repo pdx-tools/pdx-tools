@@ -1,37 +1,16 @@
 import { defineConfig } from "vite";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
-import {
-  vitePlugin as remix,
-  cloudflareDevProxyVitePlugin,
-} from "@remix-run/dev";
+import { reactRouter } from "@react-router/dev/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
-import { getLoadContext } from "./load-context";
+import { cloudflare } from "@cloudflare/vite-plugin";
 import path from "node:path";
-
-// https://remix.run/docs/en/main/guides/single-fetch#enable-single-fetch-types
-declare module "@remix-run/cloudflare" {
-  interface Future {
-    v3_singleFetch: true;
-  }
-}
 
 export default defineConfig(({ mode }) => ({
   plugins: [
     tailwindcss(),
-    cloudflareDevProxyVitePlugin({
-      getLoadContext,
-    }),
-    remix({
-      future: {
-        v3_fetcherPersist: true,
-        v3_relativeSplatPath: true,
-        v3_throwAbortReason: true,
-        v3_singleFetch: true,
-        v3_lazyRouteDiscovery: true,
-        v3_routeConfig: true,
-      },
-    }),
+    reactRouter(),
+    cloudflare({ viteEnvironment: { name: "ssr" } }),
     tsconfigPaths(),
   ].concat(
     process.env.PDX_RELEASE

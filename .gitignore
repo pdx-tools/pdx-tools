@@ -18,6 +18,8 @@ dev/.env.*staging
 *.node
 tmp/
 node_modules
+.react-router/
+worker-configuration.d.ts
 *.swp
 .idea
 .vscode/settings.json

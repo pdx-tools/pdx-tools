@@ -15,7 +15,7 @@ import {
 } from "@/server-lib/models";
 import { pdxOg } from "@/server-lib/og";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import { ActionFunctionArgs } from "@remix-run/cloudflare";
+import { ActionFunctionArgs } from "react-router";
 
 async function fileUploadData(req: Request) {
   const maxFileSize = 20 * 1024 * 1024;

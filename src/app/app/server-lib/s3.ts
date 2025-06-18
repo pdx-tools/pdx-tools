@@ -2,7 +2,7 @@ import { AwsClient } from "aws4fetch";
 import { log } from "./logging";
 import { uploadContentType, UploadType } from "./models";
 import { timeit } from "@/lib/timeit";
-import { AppLoadContext } from "@remix-run/cloudflare";
+import { AppLoadContext } from "react-router";
 
 declare const tag: unique symbol;
 export type S3Key = unknown & {
