@@ -72,7 +72,7 @@ const DesktopImageGallery = () => {
         ))}
       </div>
 
-      <div className="flex flex-grow basis-0 flex-col">
+      <div className="flex grow basis-0 flex-col">
         <div className="mb-3 space-x-2">
           <h2 className="inline text-2xl font-semibold tracking-tight xl:text-4xl">
             {selected.title}:

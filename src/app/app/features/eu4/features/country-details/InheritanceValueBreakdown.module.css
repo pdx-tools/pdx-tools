@@ -1,3 +1,5 @@
+@import "tailwindcss" reference;
+
 .table td:nth-child(2) {
   @apply text-right;
 }

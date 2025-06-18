@@ -70,7 +70,9 @@ export const AnnualLedger = ({
     <>
       <Alert.Error msg={error} />
       <div className="h-[calc(100%-1px)]">
-        <AnnualLedgerPropped ledger={data} lookup={lookup} />
+        {data.length != 0 ? (
+          <AnnualLedgerPropped ledger={data} lookup={lookup} />
+        ) : null}
       </div>
     </>
   );

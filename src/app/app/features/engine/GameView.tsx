@@ -120,7 +120,7 @@ const FullscreenPage = ({ children }: React.PropsWithChildren) => {
   return (
     <div
       ref={ref}
-      className={`fixed inset-0 z-10 bg-white dark:bg-slate-900 ${classes["slide-in"]}`}
+      className={`fixed inset-0 z-200 bg-white dark:bg-slate-900 ${classes["slide-in"]}`}
     >
       {children}
     </div>

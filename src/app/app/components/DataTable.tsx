@@ -226,7 +226,7 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (header.column.columnDef?.meta as any)?.headClassName,
                     header.colSpan > 1 &&
-                      "border-l border-r text-center dark:border-gray-600",
+                      "border-r border-l text-center dark:border-gray-600",
                     enableColumnReordering && "relative",
                     enableColumnReordering &&
                       draggedColumnId !== header.column.id &&
@@ -269,7 +269,7 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
                     draggedColumnId &&
                     hoveredColumnId === header.column.id && (
                       <div className="pointer-events-none absolute inset-0 z-10">
-                        <div className="absolute bottom-0 left-0 top-0 w-1 bg-blue-500"></div>
+                        <div className="absolute top-0 bottom-0 left-0 w-1 bg-blue-500"></div>
                       </div>
                     )}
 
