@@ -132,7 +132,7 @@ export const IdeaGroupsChart = () => {
   return (
     <div className="h-[calc(100%-1px)]">
       <Alert.Error msg={error} />
-      <Bar {...config} />
+      {ideaGroups.length != 0 ? <Bar {...config} /> : null}
     </div>
   );
 };

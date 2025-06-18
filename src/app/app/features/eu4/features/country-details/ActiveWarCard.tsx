@@ -470,7 +470,7 @@ export const ActiveWarCard = ({
   const years = war.days / 365;
   const leftDays = war.days % 365;
   return (
-    <Card className="flex flex-col gap-4 p-6 @container/card">
+    <Card className="@container/card flex flex-col gap-4 p-6">
       <div className="flex flex-col items-center">
         <p className="text-xl">{war.name}</p>
         <p>
@@ -480,11 +480,11 @@ export const ActiveWarCard = ({
       </div>
       <div className="flex flex-col gap-2">
         <p className="text-center text-lg">Combatants</p>
-        <div className="flex w-full flex-col gap-8 @3xl/card:flex-row">
-          <div className="grow @container">
+        <div className="flex w-full flex-col gap-4 @3xl/card:flex-row">
+          <div className="@container grow">
             <ParticipantHealth participants={war.attackers} />
           </div>
-          <div className="flex grow flex-col gap-1 @container">
+          <div className="@container flex grow flex-col gap-1">
             <ParticipantHealth participants={war.defenders} />
             <p className="text-right text-xs tracking-tight text-gray-400 @3xl:hidden">
               Additional columns hidden

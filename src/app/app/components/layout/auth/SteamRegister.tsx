@@ -22,7 +22,7 @@ export const SteamRegister = () => {
       >
         <Sheet.Header className="mb-6">
           <Sheet.Close />
-          <Sheet.Title className="text-balance pl-4 text-2xl font-bold">
+          <Sheet.Title className="pl-4 text-2xl font-bold text-balance">
             Register an account with PDX Tools
           </Sheet.Title>
         </Sheet.Header>

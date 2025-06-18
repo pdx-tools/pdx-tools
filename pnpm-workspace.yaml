@@ -17,5 +17,6 @@ catalog:
   wrangler: 3.92.0
 onlyBuiltDependencies:
   - '@sentry/cli'
+  - '@tailwindcss/oxide'
   - esbuild
   - workerd
