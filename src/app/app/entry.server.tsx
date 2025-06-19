@@ -1,16 +1,13 @@
-import type { ActionFunctionArgs, AppLoadContext, EntryContext, LoaderFunctionArgs } from "react-router";
-import * as Sentry from "@sentry/react-router";
+import type {
+  ActionFunctionArgs,
+  AppLoadContext,
+  EntryContext,
+  LoaderFunctionArgs,
+} from "react-router";
 import { ServerRouter } from "react-router";
 import { renderToReadableStream } from "react-dom/server";
 import { log } from "./server-lib/logging";
-
-const SENTRY_DSN: string | undefined = import.meta.env.VITE_SENTRY_DSN;
-if (SENTRY_DSN) {
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    tracesSampleRate: 0.0,
-  });
-}
+import { captureException, flushEvents } from "./server-lib/posthog";
 
 const ABORT_DELAY = 5000;
 
@@ -33,22 +30,18 @@ export default async function handleRequest(
   ];
 
   const body = await renderToReadableStream(
-    <ServerRouter
-      context={reactRouterContext}
-      url={request.url}
-    />,
+    <ServerRouter context={reactRouterContext} url={request.url} />,
     {
       signal: controller.signal,
       onError(error: unknown) {
         if (!controller.signal.aborted) {
           log.exception(error, { msg: "streaming error" });
-          if (typeof Sentry.captureException === 'function') {
-            Sentry.captureException(error, {
-              extra: { url: request.url },
+          if (error instanceof Error) {
+            captureException(error, "ssr_error", {
+              url: request.url,
             });
-          }
-          if (typeof Sentry.flush === 'function') {
-            loadContext.cloudflare.ctx.waitUntil(Sentry.flush(2000));
+
+            loadContext.cloudflare.ctx.waitUntil(flushEvents());
           }
         }
         responseStatusCode = 500;
@@ -80,13 +73,13 @@ export function handleError(
     )
   ) {
     log.exception(error, { msg: "server error" });
-    if (typeof Sentry.captureException === 'function') {
-      Sentry.captureException(error, {
-        extra: { url: request.url },
+
+    if (error instanceof Error) {
+      captureException(error, "server_error", {
+        url: request.url,
       });
-    }
-    if (typeof Sentry.flush === 'function') {
-      context.cloudflare.ctx.waitUntil(Sentry.flush(2000));
+
+      context.cloudflare.ctx.waitUntil(flushEvents());
     }
   }
 }

@@ -35,3 +35,13 @@ export function captureEvent({
     getPostHogClient().capture({ distinctId: userId, event, properties: rest });
   }
 }
+
+export function captureException(
+  error: Error,
+  errorId: string,
+  rest?: Record<string, string>,
+) {
+  getPostHogClient().captureException(error, errorId, {
+    ...rest,
+  });
+}

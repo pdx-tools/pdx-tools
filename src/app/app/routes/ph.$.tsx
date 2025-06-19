@@ -6,7 +6,7 @@ const ASSET_HOST = "eu-assets.i.posthog.com";
 // https://posthog.com/docs/advanced/proxy/remix
 const posthogProxy = async (request: Request) => {
   const url = new URL(request.url);
-  const hostname = url.pathname.startsWith("/ingest/static/")
+  const hostname = url.pathname.startsWith("/ph/static/")
     ? ASSET_HOST
     : API_HOST;
 
@@ -14,7 +14,7 @@ const posthogProxy = async (request: Request) => {
   newUrl.protocol = "https";
   newUrl.hostname = hostname;
   newUrl.port = "443";
-  newUrl.pathname = newUrl.pathname.replace(/^\/ingest/, "");
+  newUrl.pathname = newUrl.pathname.replace(/^\/ph/, "");
 
   const headers = new Headers(request.headers);
   headers.set("host", hostname);

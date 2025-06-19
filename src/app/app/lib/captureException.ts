@@ -1,15 +1,8 @@
-import * as Sentry from "@sentry/react-router";
-
-type CaptureException = typeof Sentry["captureException"];
+import posthog from "posthog-js";
 
 export const captureException = (
-  exception: Parameters<CaptureException>[0],
-  captureContext?: Parameters<CaptureException>[1],
+  exception: Error,
+  captureContext?: Record<string, string>,
 ) => {
-  if (exception && typeof exception === "object" && "stack" in exception) {
-    console.error(exception, exception.stack);
-  } else {
-    console.error(exception);
-  }
-  return Sentry.captureException(exception, captureContext);
+  posthog.captureException(exception, captureContext);
 };

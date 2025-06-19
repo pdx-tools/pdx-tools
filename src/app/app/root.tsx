@@ -1,5 +1,4 @@
-import React from 'react';
-import * as Sentry from "@sentry/react-router";
+import React, { useEffect } from 'react';
 import {
   Links,
   Meta,
@@ -85,9 +84,13 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 export const ErrorBoundary = (_props: Route.ErrorBoundaryProps) => {
   const error = useRouteError();
-  if (typeof Sentry.captureException === 'function') {
-    Sentry.captureException(error);
-  }
+
+  useEffect(() => {
+    if (error instanceof Error) {
+      captureException(error);
+    }
+  }, [error])
+
   return (
     <div className="flex h-full justify-center align-middle">
       <Alert variant="error" className="max-w-xl place-self-center px-6 py-4">

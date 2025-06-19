@@ -17,7 +17,7 @@ export function PostHog() {
         autocapture: false,
         disable_session_recording: true,
         ui_host: "https://eu.posthog.com",
-        api_host: "/ingest",
+        api_host: "/ph",
         person_profiles: "identified_only",
         persistence: "localStorage",
         capture_pageview: false,

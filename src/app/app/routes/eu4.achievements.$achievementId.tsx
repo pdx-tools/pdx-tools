@@ -14,7 +14,6 @@ import type { Route } from "./+types/eu4.achievements.$achievementId";
 import { Await, useLoaderData } from "react-router";
 import { Suspense } from "react";
 import { z } from "zod";
-import { log } from "@/server-lib/logging";
 
 export const meta: Route.MetaFunction = ({ data }) =>
   seo({
@@ -44,7 +43,7 @@ export default function Eu4Achievement(_props: Route.ComponentProps) {
   const { achievement, savesPromise } = useLoaderData<typeof loader>();
   return (
     <WebPage>
-      <AchievementLayout
+       <AchievementLayout
         achievementId={`${achievement.id}`}
         description={achievement.description}
         title={achievement.name}
@@ -59,13 +58,13 @@ export default function Eu4Achievement(_props: Route.ComponentProps) {
             </div>
           )}
         >
-          <Suspense fallback={<LoadingState />}>
+         <Suspense fallback={<LoadingState />}>
             <Await resolve={savesPromise}>
               {(saves) => <AchievementPage achievement={saves} />}
             </Await>
           </Suspense>
         </ErrorBoundary>
-      </AchievementLayout>
+      </AchievementLayout> 
     </WebPage>
   );
 }
