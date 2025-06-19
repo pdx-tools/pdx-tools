@@ -38,6 +38,7 @@
     "app/**/*",
     "**/*.ts",
     "**/*.tsx",
-    "worker-configuration.d.ts"
+    "worker-configuration.d.ts",
+    "custom.d.ts"
   ]
 }

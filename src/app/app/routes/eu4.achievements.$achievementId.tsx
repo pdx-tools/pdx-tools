@@ -14,6 +14,7 @@ import type { Route } from "./+types/eu4.achievements.$achievementId";
 import { Await, useLoaderData } from "react-router";
 import { Suspense } from "react";
 import { z } from "zod";
+import { log } from "@/server-lib/logging";
 
 export const meta: Route.MetaFunction = ({ data }) =>
   seo({
@@ -31,6 +32,7 @@ export const loader = withCore(
     const savesPromise = fetchAchievement(db, achievement).finally(() =>
       close(),
     );
+
     return {
       achievement,
       savesPromise,

@@ -24,11 +24,11 @@ const posthogProxy = async (request: Request) => {
     headers,
     body: request.body,
     duplex: "half",
-  });
+  } as RequestInit);
 };
 
-export const loader: Route.LoaderFunction = async ({ request }) =>
+export const loader = async ({ request }: Route.LoaderArgs) =>
   posthogProxy(request);
 
-export const action: Route.ActionFunction = async ({ request }) =>
+export const action = async ({ request }: Route.ActionArgs) =>
   posthogProxy(request);

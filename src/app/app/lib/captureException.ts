@@ -1,6 +1,6 @@
-import { captureException as sentryCaptureException } from "@sentry/react-router";
+import * as Sentry from "@sentry/react-router";
 
-type CaptureException = typeof sentryCaptureException;
+type CaptureException = typeof Sentry["captureException"];
 
 export const captureException = (
   exception: Parameters<CaptureException>[0],
@@ -11,5 +11,5 @@ export const captureException = (
   } else {
     console.error(exception);
   }
-  return sentryCaptureException(exception, captureContext);
+  return Sentry.captureException(exception, captureContext);
 };
