@@ -4,14 +4,14 @@ import { genId } from "@/server-lib/id";
 import { check } from "@/lib/isPresent";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
-import { AppLoadContext, LoaderFunctionArgs } from "react-router";
+import type { Route } from "./+types/api.login.steam-callback";
 import { withDb } from "@/server-lib/db/middleware";
 import { pdxSession } from "@/server-lib/auth/session";
 import { pdxSteam } from "@/server-lib/steam.server";
 import { userId } from "@/lib/auth";
 
 export const loader = withCore(
-  withDb(async ({ request, context }: LoaderFunctionArgs, { db }) => {
+  withDb(async ({ request, context }: Route.LoaderArgs, { db }) => {
     const searchParams = new URL(request.url).searchParams;
 
     const { steamUid, steamName, genUserId } = import.meta.env.PROD
@@ -75,7 +75,7 @@ export const loader = withCore(
 );
 
 async function steamInfo(
-  context: AppLoadContext,
+  context: Route.LoaderArgs["context"],
   searchParams: URLSearchParams,
 ) {
   const steam = pdxSteam({ context });

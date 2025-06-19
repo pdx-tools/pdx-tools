@@ -1,4 +1,4 @@
-import type { ActionFunction, LoaderFunction } from "react-router";
+import type { Route } from "./+types/ingest.$";
 
 const API_HOST = "eu.i.posthog.com";
 const ASSET_HOST = "eu-assets.i.posthog.com";
@@ -27,8 +27,8 @@ const posthogProxy = async (request: Request) => {
   });
 };
 
-export const loader: LoaderFunction = async ({ request }) =>
+export const loader: Route.LoaderFunction = async ({ request }) =>
   posthogProxy(request);
 
-export const action: ActionFunction = async ({ request }) =>
+export const action: Route.ActionFunction = async ({ request }) =>
   posthogProxy(request);

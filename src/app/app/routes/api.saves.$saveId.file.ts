@@ -1,10 +1,10 @@
 import { log } from "@/server-lib/logging";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import { LoaderFunctionArgs } from "react-router";
+import type { Route } from "./+types/api.saves.$saveId.file";
 import { z } from "zod";
 
 const saveSchema = z.object({ saveId: z.string() });
-export async function loader({ request, params, context }: LoaderFunctionArgs) {
+export async function loader({ request, params, context }: Route.LoaderArgs) {
   const save = saveSchema.parse(params);
   const s3 = pdxS3(pdxCloudflareS3({ context }));
 
@@ -14,11 +14,7 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const cacheKey = new Request(url.toString(), request);
 
-  const cache =
-    "default" in context.cloudflare.caches
-      ? context.cloudflare.caches.default
-      : await context.cloudflare.caches.open("pdx-cache");
-
+  const cache = caches.default;
   let response = await cache.match(cacheKey);
   if (response) {
     log.info({ msg: "cache hit", key: save.saveId });

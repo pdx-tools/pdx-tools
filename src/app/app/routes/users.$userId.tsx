@@ -10,8 +10,8 @@ import { getUser } from "@/server-lib/db";
 import { usingDb } from "@/server-lib/db/connection";
 import { withCore } from "@/server-lib/middleware";
 import { pdxApi, pdxKeys } from "@/services/appApi";
-import { LoaderFunctionArgs, MetaFunction } from "react-router";
 import { Await, useLoaderData, useParams } from "react-router";
+import type { Route } from "./+types/users.$userId"
 import {
   dehydrate,
   HydrationBoundary,
@@ -19,14 +19,14 @@ import {
 } from "@tanstack/react-query";
 import { Suspense } from "react";
 
-export const meta: MetaFunction = ({ params: { userId } }) =>
+export const meta: Route.MetaFunction = ({ params: { userId } }) =>
   seo({
     title: "User saves - PDX Tools",
     description: `EU4 Saves uploaded by user ${userId}`,
   });
 
 export const loader = withCore(
-  async ({ params, context }: LoaderFunctionArgs) => {
+  async ({ params, context }: Route.LoaderArgs) => {
     const { userId: uid } = params;
     if (!uid) {
       throw new Response("Missing user", {
@@ -51,7 +51,7 @@ export const loader = withCore(
   },
 );
 
-export default function UserRoute() {
+export default function UserRoute(_props: Route.ComponentProps) {
   const { prefetch } = useLoaderData<typeof loader>();
   const { userId } = useParams();
 

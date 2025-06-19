@@ -1,22 +1,13 @@
-import init, {
+import {
   initSync,
   achievements,
   eu4_days_to_date,
   latest_eu4_minor_patch,
   type Achievement,
 } from "./wasm/wasm_app";
+import app_wasm from "./wasm/wasm_app_bg.wasm";
 
-// detect if on cloudflare to import the Wasm.Module directly
-if (typeof WebSocketPair !== "undefined") {
-  const wasmApp = await import("wasm_app_bg.wasm");
-  initSync({ module: wasmApp.default });
-} else {
-  const wasmUrl = await import("./wasm/wasm_app_bg.wasm?url");
-  const url = `.${wasmUrl.default}`;
-  const fs = await import("node:fs/promises");
-  const data = await fs.readFile(url);
-  await init({ module_or_path: data });
-}
+initSync({ module: app_wasm });
 
 const withWasm = <T extends Array<unknown>, U>(fn: (...args: T) => U) => {
   return (...args: T): U => {

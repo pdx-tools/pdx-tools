@@ -15,7 +15,7 @@ import {
 } from "@/server-lib/models";
 import { pdxOg } from "@/server-lib/og";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import { ActionFunctionArgs } from "react-router";
+import type { Route } from "./+types/api.saves";
 
 async function fileUploadData(req: Request) {
   const maxFileSize = 20 * 1024 * 1024;
@@ -50,7 +50,7 @@ async function fileUploadData(req: Request) {
 }
 
 export const action = withCore(
-  async ({ request, context }: ActionFunctionArgs) => {
+  async ({ request, context }: Route.ActionArgs) => {
     if (request.method !== "POST") {
       throw Response.json({ msg: "Method not allowed" }, { status: 405 });
     }

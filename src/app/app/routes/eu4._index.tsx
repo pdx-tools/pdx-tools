@@ -6,7 +6,7 @@ import { usingDb } from "@/server-lib/db/connection";
 import { getSaves } from "@/server-lib/fn/new";
 import { withCore } from "@/server-lib/middleware";
 import { pdxKeys } from "@/services/appApi";
-import { LoaderFunctionArgs, MetaFunction } from "react-router";
+import type { Route } from "./+types/eu4._index";
 import { Await, useLoaderData } from "react-router";
 import {
   dehydrate,
@@ -15,13 +15,13 @@ import {
 } from "@tanstack/react-query";
 import { Suspense } from "react";
 
-export const meta: MetaFunction = () =>
+export const meta: Route.MetaFunction = () =>
   seo({
     title: "EU4 - PDX Tools",
     description: "Latest uploaded EU4 saves",
   });
 
-export const loader = withCore(async ({ context }: LoaderFunctionArgs) => {
+export const loader = withCore(async ({ context }: Route.LoaderArgs) => {
   const { db, close } = usingDb(context);
   const queryClient = new QueryClient();
   const prefetch = queryClient
@@ -39,7 +39,7 @@ export const loader = withCore(async ({ context }: LoaderFunctionArgs) => {
   };
 });
 
-export default function Eu4Route() {
+export default function Eu4Route(_props: Route.ComponentProps) {
   const { prefetch } = useLoaderData<typeof loader>();
 
   return (

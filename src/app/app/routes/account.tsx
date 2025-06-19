@@ -2,17 +2,17 @@ import { WebPage } from "@/components/layout/WebPage";
 import { LoggedIn } from "@/components/LoggedIn";
 import { Account } from "@/features/account";
 import { useLoaderData } from "react-router";
-import { LoaderFunctionArgs, MetaFunction } from "react-router";
+import type { Route } from "./+types/account";
 import { pdxSession } from "@/server-lib/auth/session";
 import { seo } from "@/lib/seo";
 
-export const meta: MetaFunction = () =>
+export const meta: Route.MetaFunction = () =>
   seo({
     title: "Account Settings - PDX Tools",
     description: "Update PDX Tools account information",
   });
 
-export const loader = async ({ request, context }: LoaderFunctionArgs) => {
+export const loader = async ({ request, context }: Route.LoaderArgs) => {
   const session = await pdxSession({ request, context }).get();
   if (session.kind !== "user") {
     throw new Error("Not logged in");
@@ -20,7 +20,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   return { session };
 };
 
-export default function AccountRoute() {
+export default function AccountRoute(_props: Route.ComponentProps) {
   const { session } = useLoaderData<typeof loader>();
   return (
     <WebPage>

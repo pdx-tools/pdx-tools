@@ -9,7 +9,7 @@ import {
   useLoaderData,
   useRouteError,
 } from "react-router";
-import { LinksFunction, LoaderFunctionArgs, MetaFunction } from "react-router";
+import type { Route } from "./+types/root"
 import tailwind from "@/styles/tailwind.css?url";
 import appCss from "@/styles/styles.css?url";
 import { useState } from "react";
@@ -35,13 +35,13 @@ import { getErrorMessage } from "./lib/getErrorMessage";
 import { Alert } from "./components/Alert";
 import { Link } from "./components/Link";
 
-export const links: LinksFunction = () => [
+export const links: Route.LinksFunction = () => [
   { rel: "stylesheet", href: tailwind },
   { rel: "stylesheet", href: appCss },
   { rel: "apple-touch-icon", sizes: "180x180", href: appleIconUrl },
 ];
 
-export const meta: MetaFunction = () =>
+export const meta: Route.MetaFunction = () =>
   seo({
     title: "PDX Tools - Modern EU4 Save Analyzer",
     description:
@@ -72,7 +72,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
+export async function loader({ request, context }: Route.LoaderArgs) {
   const queryClient = new QueryClient();
 
   await queryClient.prefetchQuery({
@@ -83,7 +83,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   return { dehydratedState: dehydrate(queryClient) };
 }
 
-export const ErrorBoundary = () => {
+export const ErrorBoundary = (_props: Route.ErrorBoundaryProps) => {
   const error = useRouteError();
   if (typeof Sentry.captureException === 'function') {
     Sentry.captureException(error);
@@ -110,7 +110,7 @@ export const ErrorBoundary = () => {
   );
 };
 
-export default function App() {
+export default function App(_props: Route.ComponentProps) {
   const { dehydratedState } = useLoaderData<typeof loader>();
   const [queryClient] = useState(
     () =>

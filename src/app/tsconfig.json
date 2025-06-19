@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "rootDirs": [".", "./.react-router/types"],
     "paths": {
       "@/*": ["./app/*"]
     },
@@ -34,9 +35,9 @@
     "lib": ["es2022", "dom", "dom.iterable"]
   },
   "include": [
-    ".react-router/types/**/*",
     "app/**/*",
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    "worker-configuration.d.ts"
   ]
 }
