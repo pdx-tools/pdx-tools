@@ -608,7 +608,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                 <Mat />
               </th>
               <th className="min-w-28 p-2 text-right">Total Spent</th>
-              <th className="max-w-24 text-balance p-2 text-right text-sm font-normal leading-none">
+              <th className="max-w-24 p-2 text-right text-sm leading-none font-normal text-balance">
                 % of total spent
               </th>
             </tr>

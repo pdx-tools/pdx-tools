@@ -38,7 +38,7 @@ export const DiploRow = <T extends { tag: string; name: string }>({
   relations: T[] | undefined;
   children: (arg: T) => React.ReactNode;
 }) => {
-  const rowClass = `grid w-full gap-2 grid-cols-[repeat(auto-fill,_minmax(204px,_1fr))]`;
+  const rowClass = `grid w-full gap-2 grid-cols-[repeat(auto-fill,minmax(204px,1fr))]`;
 
   if (relations === undefined || relations.length == 0) {
     return null;
