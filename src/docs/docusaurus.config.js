@@ -27,7 +27,7 @@ const config = {
           "posthog-docusaurus",
           {
             apiKey: process.env.POSTHOG_KEY,
-            appUrl: "/ingest",
+            appUrl: "/ph",
             enableInDevelopment: false,
             ui_host: "https://eu.posthog.com",
           },
