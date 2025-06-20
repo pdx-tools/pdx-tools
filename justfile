@@ -57,7 +57,7 @@ publish-app:
   just build-app
   cd src/app
   find build/ -iname "*.map" -delete
-  pnpm deploy
+  pnpm run deploy
 
 build-app: prep-frontend
   cd src/docs && pnpm build
