@@ -52,6 +52,7 @@ publish-app:
   export PDX_RELEASE=1
   export VITE_EXTERNAL_ADDRESS=$EXTERNAL_ADDRESS
   export VITE_SENTRY_DSN=$SENTRY_DSN
+  export VITE_SENTRY_ORG=$SENTRY_ORG
   export VITE_POSTHOG_KEY=$POSTHOG_KEY
   just build-app
   cd src/app
