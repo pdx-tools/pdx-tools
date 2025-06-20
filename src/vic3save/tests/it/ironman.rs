@@ -30,7 +30,7 @@ fn test_melt_snapshot() -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
-    let zip_data = utils::inflate(utils::request_file("egalitarian_melted3.zip"));
+    let zip_data = utils::inflate(utils::request_file("egalitarian_melted4.zip"));
 
     let file = utils::request_file("egalitarian2.v3");
     let mut file = Vic3File::from_file(file)?;
@@ -38,10 +38,6 @@ fn test_melt_snapshot() -> Result<(), Box<dyn Error>> {
     let options = MeltOptions::new();
     file.melt(options, &*TOKENS, &mut out)?;
 
-    assert_eq!(
-        zip_data,
-        out.into_inner(),
-        "melted file should match snapshot"
-    );
+    assert!(zip_data == out.into_inner(), "melted file should match snapshot");
     Ok(())
 }
