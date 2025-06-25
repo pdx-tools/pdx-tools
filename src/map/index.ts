@@ -1,6 +1,28 @@
 import {wrap, transfer} from "comlink";
 import { MapController } from "./src/MapController";
 import { createMapWorker, type MapWorker } from "./src";
+import mapVertex from "./assets/shaders/map.vert?url";
+import mapFragment from "./assets/shaders/map.frag?url";
+import xbrVertex from "./assets/shaders/xbr.vert?url";
+import xbrFragment from "./assets/shaders/xbr.frag?url";
+import provinces1 from "./assets/game/eu4/images/provinces-1.webp?url";
+import provinces2 from "./assets/game/eu4/images/provinces-2.webp?url";
+import terrain1 from "./assets/game/eu4/images/terrain-1.webp?url";
+import terrain2 from "./assets/game/eu4/images/terrain-2.webp?url";
+import stripes from "./assets/game/eu4/images/stripes.webp?url";
+import colorOrderData from "./assets/game/eu4/data/color-order.bin?url";
+import colorIndexData from "./assets/game/eu4/data/color-index.bin?url";
+import colorMap from "./assets/game/eu4/images/colormap.webp?url";
+import seaImage from "./assets/game/eu4/images/sea-image.webp?url";
+import worldNormal from "./assets/game/eu4/images/world_normal.webp?url";
+import rivers1 from "./assets/game/eu4/images/rivers-1.webp?url";
+import rivers2 from "./assets/game/eu4/images/rivers-2.webp?url";
+import water from "./assets/game/eu4/images/water.webp?url";
+import surfaceRock from "./assets/game/eu4/images/surface_rock.webp?url";
+import surfaceGreen from "./assets/game/eu4/images/surface_green.webp?url";
+import surfaceNormalRock from "./assets/game/eu4/images/surface_normal_rock.webp?url";
+import surfaceNormalGreen from "./assets/game/eu4/images/surface_normal_green.webp?url";
+import heightMap from "./assets/game/eu4/images/heightmap.webp?url";
 
 async function fetchColorData(kind: string) {
   const raw = await fetch(`assets/game/eu4/data/color-${kind}-data.bin`).then(
@@ -12,38 +34,38 @@ async function fetchColorData(kind: string) {
 }
 
 const baseImageUrls = {
-  provinces1: "/assets/game/eu4/images/provinces-1.webp",
-  provinces2: "/assets/game/eu4/images/provinces-2.webp",
-  terrain1: "/assets/game/eu4/images/terrain-1.webp",
-  terrain2: "/assets/game/eu4/images/terrain-2.webp",
-  stripes: "/assets/game/eu4/images/stripes.webp",
+  provinces1,
+  provinces2,
+  terrain1,
+  terrain2,
+  stripes,
 };
 
-const provincesUniqueColorUrl = "/assets/game/eu4/data/color-order.bin";
-const provincesUniqueIndexUrl = "/assets/game/eu4/data/color-index.bin";
+const provincesUniqueColorUrl = colorOrderData;
+const provincesUniqueIndexUrl = colorIndexData;
 
 const terrainUrls = {
-  colorMap: "/assets/game/eu4/images/colormap.webp",
-  sea: "/assets/game/eu4/images/sea-image.webp",
-  normal: "/assets/game/eu4/images/world_normal.webp",
-  rivers1: "/assets/game/eu4/images/rivers-1.webp",
-  rivers2: "/assets/game/eu4/images/rivers-2.webp",
-  water: "/assets/game/eu4/images/water.webp",
-  surfaceRock: "/assets/game/eu4/images/surface_rock.webp",
-  surfaceGreen: "/assets/game/eu4/images/surface_green.webp",
-  surfaceNormalRock: "/assets/game/eu4/images/surface_normal_rock.webp",
-  surfaceNormalGreen: "/assets/game/eu4/images/surface_normal_green.webp",
-  heightMap: "/assets/game/eu4/images/heightmap.webp",
+  colorMap,
+  sea: seaImage,
+  normal: worldNormal,
+  rivers1,
+  rivers2,
+  water,
+  surfaceRock,
+  surfaceGreen,
+  surfaceNormalRock,
+  surfaceNormalGreen,
+  heightMap,
 };
 
 const shaderUrls = {
   map: {
-    vertex: `/assets/shaders/map.vert`,
-    fragment: `/assets/shaders/map.frag`,
+    vertex: mapVertex,
+    fragment: mapFragment,
   },
   xbr: {
-    vertex: `/assets/shaders/xbr.vert`,
-    fragment: `/assets/shaders/xbr.frag`,
+    vertex: xbrVertex,
+    fragment: xbrFragment,
   },
 };
 
