@@ -2,9 +2,23 @@
   "name": "pdx.tools-root",
   "version": "0.0.0",
   "private": true,
-  "scripts": {},
+  "scripts": {
+    "format": "prettier --write '**/*.{js,tsx,css}'"
+  },
   "dependencies": {
     "wrangler": "catalog:"
   },
-  "packageManager": "pnpm@10.11.0"
+  "packageManager": "pnpm@10.11.0",
+  "prettier": {
+    "plugins": [
+      "prettier-plugin-tailwindcss"
+    ],
+    "tailwindFunctions": [
+      "cx"
+    ]
+  },
+  "devDependencies": {
+    "prettier": "3.6.1",
+    "prettier-plugin-tailwindcss": "0.6.12"
+  }
 }

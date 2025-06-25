@@ -12,9 +12,9 @@ export const DropHighlight = () => {
 
   return (
     <div
-      className={`absolute top-0 left-0 z-20 outline-blue-500/50 transition-all duration-200 ${
+      className={`absolute left-0 top-0 z-20 outline-blue-500/50 transition-all duration-200 ${
         isHovering
-          ? `h-full w-full bg-blue-500/25 outline-solid ${classes["overlay-outline"]}`
+          ? `outline-solid h-full w-full bg-blue-500/25 ${classes["overlay-outline"]}`
           : "bg-transparent"
       }`}
     ></div>

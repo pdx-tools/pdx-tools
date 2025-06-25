@@ -218,7 +218,7 @@ export const Timelapse = () => {
 
   return (
     <>
-      <div className="flex items-center gap-2 rounded-tr-lg bg-slate-900 py-2 pr-4 pl-3">
+      <div className="flex items-center gap-2 rounded-tr-lg bg-slate-900 py-2 pl-3 pr-4">
         <div className="flex items-center justify-center">
           <IconButton
             aria-label="Play timelapse"
@@ -397,7 +397,7 @@ export const Timelapse = () => {
             </Popover.Content>
           </Popover>
         </div>
-        <div className="font-mono text-base whitespace-nowrap opacity-60">
+        <div className="whitespace-nowrap font-mono text-base opacity-60">
           <TimelapseDate />
         </div>
       </div>

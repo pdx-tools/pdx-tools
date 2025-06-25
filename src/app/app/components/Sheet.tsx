@@ -98,7 +98,7 @@ const SheetClose = React.forwardRef<
       asChild
       className={cx(
         className,
-        "rounded-sm border-0 opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-rose-500",
+        "rounded-sm border-0 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-rose-500",
       )}
     >
       <Button variant="ghost" style={{ outline: "0" }}>

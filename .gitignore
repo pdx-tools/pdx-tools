@@ -1,6 +1,7 @@
 **/target
 **/*.rs.bk
 dist/
+build/
 assets/eu4-saves
 assets/game-bundles
 assets/game/eu4/1.*
@@ -22,3 +23,16 @@ node_modules
 .idea
 .vscode/settings.json
 .pnpm-store/
+.wrangler
+
+# Docusaurus ignores
+.docusaurus/
+
+# src/app ignores
+src/app/public/assets
+src/app/public/blog*
+src/app/public/changelog*
+src/app/public/docs*
+src/app/public/img
+src/app/app/server-lib/save-parsing-types.ts
+src/app/app/lib/game_gen.ts

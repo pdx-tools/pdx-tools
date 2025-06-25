@@ -55,13 +55,13 @@ function AchievementPlatform({
   return (
     <Card
       className={cx(
-        "relative max-w-64 min-w-64 shadow-lg transition-transform duration-100 lg:hover:scale-105",
+        "relative min-w-64 max-w-64 shadow-lg transition-transform duration-100 lg:hover:scale-105",
         className,
       )}
     >
       <div
         className={cx(
-          "absolute right-0 left-0 mx-auto text-center text-white",
+          "absolute left-0 right-0 mx-auto text-center text-white",
           save.rank === 1 && "-top-9 h-16 w-16",
           save.rank === 2 && "-top-5 h-11 w-11",
           save.rank === 3 && "top-0.5 h-7 w-7",

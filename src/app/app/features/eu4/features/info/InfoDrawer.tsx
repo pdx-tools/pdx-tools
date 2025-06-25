@@ -129,7 +129,7 @@ export const InfoDrawer = () => {
           <AchievementCard achievements={achievements.achievements} />
         ) : null}
         {mods.length > 0 ? (
-          <Card className="max-w-xl min-w-[320px] p-4">
+          <Card className="min-w-[320px] max-w-xl p-4">
             <div className="space-y-2">
               <div className="text-center text-lg">Mods {mods.length}</div>
               <ModList />
@@ -140,7 +140,9 @@ export const InfoDrawer = () => {
       <Divider>Countries</Divider>
       <Alert.Error msg={playerHistories.error} />
       <div className="grid gap-8 md:grid-cols-2">
-        {players?.map((item, i) => <CountryCard key={i} item={item} />)}
+        {players?.map((item, i) => (
+          <CountryCard key={i} item={item} />
+        ))}
       </div>
 
       <Alert.Error msg={greatPowers.error} />

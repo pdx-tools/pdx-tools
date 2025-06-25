@@ -327,7 +327,7 @@ function ParticipantHealth({ participants }: { participants: Participant[] }) {
           <Table.Cell className="text-right">
             {formatInt(totalReserves.reduce((acc, x) => acc + x, 0))}K
           </Table.Cell>
-          <Table.Cell className="hidden text-right @lg:table-cell">
+          <Table.Cell className="@lg:table-cell hidden text-right">
             {formatInt(totalNetCash.reduce((acc, x) => acc + x, 0))}
           </Table.Cell>
           <Table.Cell className="text-right">
@@ -441,7 +441,7 @@ function SideLosses({ participants }: { participants: Participant[] }) {
   return (
     <DataTable
       size="compact"
-      className="max-h-96 max-w-xl grow @3xl/card:grow-0"
+      className="@3xl/card:grow-0 max-h-96 max-w-xl grow"
       columns={totalColumns}
       data={participants}
       summary={
@@ -480,13 +480,13 @@ export const ActiveWarCard = ({
       </div>
       <div className="flex flex-col gap-2">
         <p className="text-center text-lg">Combatants</p>
-        <div className="flex w-full flex-col gap-4 @3xl/card:flex-row">
+        <div className="@3xl/card:flex-row flex w-full flex-col gap-4">
           <div className="@container grow">
             <ParticipantHealth participants={war.attackers} />
           </div>
           <div className="@container flex grow flex-col gap-1">
             <ParticipantHealth participants={war.defenders} />
-            <p className="text-right text-xs tracking-tight text-gray-400 @3xl:hidden">
+            <p className="@3xl:hidden text-right text-xs tracking-tight text-gray-400">
               Additional columns hidden
             </p>
           </div>
@@ -495,8 +495,8 @@ export const ActiveWarCard = ({
 
       <div className="flex flex-col gap-2">
         <p className="text-center text-lg">Casualties</p>
-        <div className="flex w-full flex-col gap-8 @3xl/card:flex-row">
-          <div className="flex grow @3xl/card:justify-end">
+        <div className="@3xl/card:flex-row flex w-full flex-col gap-8">
+          <div className="@3xl/card:justify-end flex grow">
             <SideLosses participants={war.attackers} />
           </div>
           <div className="flex grow">

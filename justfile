@@ -241,9 +241,7 @@ tokenize *cmd:
 
 format:
   cargo fmt
-  cd src/app && pnpm format
-  cd src/docs && pnpm format
-  cd src/map && npx prettier@latest --write src
+  pnpm format
 
 prep-frontend:
   #!/usr/bin/env bash

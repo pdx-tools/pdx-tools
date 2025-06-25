@@ -22,6 +22,6 @@ export const sentryInit = () =>
 
         // Take everything after the last slash in the DSN
         projectId: +(SENTRY_DSN?.split("/").pop() ?? "0"),
-      })
-    ]
+      }),
+    ],
   });
