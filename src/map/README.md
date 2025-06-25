@@ -6,7 +6,9 @@ Prequisites (already installed if using dev container):
 
 - Install Nodejs and PNPM
 
-Instructions:
+To spin up the server on port 8080:
 
-- Install dependencies `pnpm install`
-- Run `pnpm dev` to spin up the dev server on port 8080
+```bash
+pnpm install --filter map
+pnpm dev
+```
