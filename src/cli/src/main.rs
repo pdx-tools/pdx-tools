@@ -15,6 +15,9 @@ mod compile_assets;
 #[path = "cmd/create_bundle.rs"]
 mod create_bundle;
 #[cfg(feature = "admin")]
+#[path = "cmd/duckdb.rs"]
+mod duckdb;
+#[cfg(feature = "admin")]
 #[path = "cmd/reprocess.rs"]
 mod reprocess;
 #[cfg(feature = "tokenize")]
@@ -73,6 +76,8 @@ enum Commands {
     Tokenize(tokenize::TokenizeArgs),
     #[cfg(feature = "admin")]
     Transcode(transcode::TranscodeArgs),
+    #[cfg(feature = "admin")]
+    Duckdb(duckdb::DuckdbArgs),
     #[cfg(feature = "fun")]
     AiDevelopment(ai_development::AiDevelopmentArgs),
     #[cfg(feature = "compile_assets")]
@@ -102,6 +107,8 @@ fn main() -> ExitCode {
         Commands::Tokenize(x) => x.run(),
         #[cfg(feature = "admin")]
         Commands::Transcode(x) => x.run(),
+        #[cfg(feature = "admin")]
+        Commands::Duckdb(x) => x.run(),
         #[cfg(feature = "fun")]
         Commands::AiDevelopment(x) => x.run(),
         #[cfg(feature = "compile_assets")]
