@@ -30,6 +30,7 @@ import {
 import { timeSync } from "@/lib/timeit";
 import { logMs } from "@/lib/log";
 import { createBudget } from "../features/country-details/budget";
+import { saveFiles } from "./init";
 export * from "./init";
 
 export const getRawData = () => wasm.viewData();
@@ -429,4 +430,11 @@ export function eu4GetMapTooltip(
   date: number | undefined,
 ): QuickTipPayload | null {
   return wasm.save.map_quick_tip(province, payload, date) ?? null;
+}
+
+export async function multiSaveProcess(ind: number) {
+  const files = saveFiles();
+  const file = (files[ind] instanceof File) ? files[ind] : await files[ind].getFile();
+  const data = await file.arrayBuffer();
+  return data.byteLength;
 }
