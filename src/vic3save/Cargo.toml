@@ -19,3 +19,4 @@ rawzip = { workspace = true }
 
 [dev-dependencies]
 attohttpc = { workspace = true }
+highway = { workspace = true }

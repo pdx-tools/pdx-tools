@@ -16,9 +16,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             lock.read_to_end(&mut buf)?;
             fmt::run(&buf)
         }
-        "melt" => melt::run(&args[1..]),
-        "stats" => stats_cli::run(&args[1..]),
-        "market" => markets::run(&args[1..]),
+        "melt" => melt::run(&args[2..]),
+        "stats" => stats_cli::run(&args[2..]),
+        "market" => markets::run(&args[2..]),
         x => panic!("unrecognized argument: {}", x),
     }?;
 

@@ -2,7 +2,7 @@ use mathru::algebra::linear::{
     matrix::{General, Solve, Transpose},
     vector::Vector,
 };
-use serde::Deserialize;
+use serde::{de::Visitor, Deserialize, Deserializer};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -78,7 +78,7 @@ impl fmt::Display for Vic3Good {
 
 #[derive(Debug, Deserialize, PartialEq, Default)]
 pub struct BuildingGoods {
-    pub goods: HashMap<Vic3Good, f64>,
+    pub goods: HashMap<Vic3Good, Vic3GoodValue>,
 }
 
 type SparseRow = HashMap<usize, f64>;
@@ -86,8 +86,87 @@ impl BuildingGoods {
     fn as_sparse_row(&self, goods_index: &mut GoodsIdx) -> SparseRow {
         self.goods
             .iter()
-            .map(|(good, amount)| (goods_index.get_idx(*good), *amount))
+            .map(|(good, amount)| (goods_index.get_idx(*good), amount.value()))
             .collect()
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Vic3GoodValue {
+    F64(f64),
+
+    /// New way to represent goods starting in vic3 patch 1.9
+    Object(Vic3GoodValueObject),
+}
+
+impl Vic3GoodValue {
+    pub fn value(&self) -> f64 {
+        match self {
+            Vic3GoodValue::F64(val) => *val,
+            Vic3GoodValue::Object(obj) => obj.value,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct Vic3GoodValueObject {
+    pub value: f64,
+}
+
+struct GoodValueVisitor;
+
+impl<'de> Visitor<'de> for GoodValueVisitor {
+    type Value = Vic3GoodValue;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a float or an object with a value field")
+    }
+
+    fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(Vic3GoodValue::F64(value))
+    }
+
+    fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::MapAccess<'de>,
+    {
+        let obj =
+            Vic3GoodValueObject::deserialize(serde::de::value::MapAccessDeserializer::new(map))?;
+        Ok(Vic3GoodValue::Object(obj))
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        let float_value: f64 = value.parse().map_err(serde::de::Error::custom)?;
+        Ok(Vic3GoodValue::F64(float_value))
+    }
+
+    fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(Vic3GoodValue::F64(value as f64))
+    }
+
+    fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(Vic3GoodValue::F64(value as f64))
+    }
+}
+
+impl<'de> Deserialize<'de> for Vic3GoodValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_map(GoodValueVisitor)
     }
 }
 
@@ -227,7 +306,12 @@ mod tests {
             state: 1,
             staffing: 1.0,
             level: 1,
-            input_goods: BuildingGoods { goods },
+            input_goods: BuildingGoods {
+                goods: goods
+                    .into_iter()
+                    .map(|(k, v)| (k, Vic3GoodValue::F64(v)))
+                    .collect(),
+            },
             goods_cost,
             goods_sales: 0.0,
             output_goods: BuildingGoods {
