@@ -73,7 +73,7 @@ const FlagDrawerTrigger = React.forwardRef<
       shape="none"
       className={cx(
         className,
-        `w-max shrink-0 rounded-r-md p-0 hover:bg-gray-200/70 active:bg-gray-300 dark:hover:bg-slate-700/70 dark:active:bg-slate-700`,
+        `w-max flex-shrink-0 rounded-r-md p-0 hover:bg-gray-200/70 active:bg-gray-300 dark:hover:bg-slate-700/70 dark:active:bg-slate-700`,
       )}
       onClick={() => {
         setSelectedTag(flag.tag);
@@ -204,7 +204,7 @@ const ColonialSubjectFlag = ({ tag, size }: FlagAvatarCoreProps) => {
       <div className="relative">
         <FlagSprite index={overlordIndex} size={size} />
         <div
-          className="absolute top-0 right-0 bottom-0 w-1/2"
+          className="absolute bottom-0 right-0 top-0 w-1/2"
           style={{ backgroundColor: `rgb(${r},${g},${b})` }}
         />
       </div>
@@ -224,7 +224,7 @@ const FlagAvatar = (props: FlagAvatarProps) => {
   const interactive = useInEu4Analysis();
   const flag = <FlagImageImpl {...props} />;
   const withName = (
-    <div className="flex shrink-0 items-center gap-x-2 text-left">
+    <div className="flex flex-shrink-0 items-center gap-x-2 text-left">
       {flag}
       {!props.condensed && <Flag.CountryName />}
     </div>

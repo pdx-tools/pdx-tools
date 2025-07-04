@@ -22,7 +22,7 @@ export const UserSaveTable = ({
           <h2 className="overflow-hidden text-center text-lg font-bold lg:text-2xl">
             {playthroughSaves[0].name}
             {playthroughSaves[0].filename !== playthroughSaves[0].name && (
-              <div className="text-sm leading-tight font-semibold text-gray-600 dark:text-gray-400">
+              <div className="text-sm font-semibold leading-tight text-gray-600 dark:text-gray-400">
                 (playthrough name)
               </div>
             )}

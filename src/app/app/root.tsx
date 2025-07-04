@@ -44,13 +44,15 @@ export const links: LinksFunction = () => [
   { rel: "apple-touch-icon", sizes: "180x180", href: appleIconUrl },
 ];
 
-export const meta: MetaFunction = () =>
-  seo({
+export const meta: MetaFunction = () => [
+  { name: "color-scheme", content: "light dark" },
+  ...seo({
     title: "PDX Tools - Modern EU4 Save Analyzer",
     description:
       "View maps, graphs, and tables of your save and compete in a casual, evergreen leaderboard of EU4 achievement speed runs. Upload and share your save with the world.",
     image: social,
-  });
+  }),
+];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -58,7 +60,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="color-scheme" content="light dark" />
         <Meta />
         <Links />
       </head>

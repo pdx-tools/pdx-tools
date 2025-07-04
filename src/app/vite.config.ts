@@ -5,7 +5,6 @@ import {
   cloudflareDevProxyVitePlugin,
 } from "@remix-run/dev";
 import tsconfigPaths from "vite-tsconfig-paths";
-import tailwindcss from "@tailwindcss/vite";
 import { getLoadContext } from "./load-context";
 import path from "node:path";
 
@@ -18,7 +17,6 @@ declare module "@remix-run/cloudflare" {
 
 export default defineConfig(({ mode }) => ({
   plugins: [
-    tailwindcss(),
     cloudflareDevProxyVitePlugin({
       getLoadContext,
     }),

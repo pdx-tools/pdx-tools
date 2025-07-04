@@ -29,7 +29,7 @@ export const SheetExpansion = ({
           expanded ? "w-full" : "w-[800px] max-w-full",
         )}
       >
-        <Sheet.Header className="z-1 flex items-center gap-2 px-4 pb-4 shadow-md">
+        <Sheet.Header className="z-[1] flex items-center gap-2 px-4 pb-4 shadow-md">
           <Sheet.Close />
           <Button
             shape="square"
