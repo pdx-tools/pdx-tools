@@ -814,7 +814,7 @@ const FilterOverlay = () => {
   }
 
   return (
-    <div className="animate-in slide-in-from-right sticky top-0 left-0 z-10 flex justify-end">
+    <div className="sticky left-0 top-0 z-10 flex justify-end animate-in slide-in-from-right">
       <div className="shadow-md">
         <Button
           shape="none"
@@ -848,7 +848,7 @@ const CountryHistoryVirtualList = ({
   const items = virtualizer.getVirtualItems();
 
   return (
-    <div className="absolute top-0 right-0 bottom-0 left-4">
+    <div className="absolute bottom-0 left-4 right-0 top-0">
       <div
         ref={parentRef}
         className="h-full w-full overflow-y-auto"
@@ -860,7 +860,7 @@ const CountryHistoryVirtualList = ({
         >
           <FilterOverlay />
           <div
-            className="absolute top-0 left-0 w-full"
+            className="absolute left-0 top-0 w-full"
             style={{ transform: `translateY(${items[0]?.start ?? 0}px)` }}
           >
             {items.map((virtualRow) => (

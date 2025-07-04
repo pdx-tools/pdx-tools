@@ -142,7 +142,7 @@ function SelectContent({
               <Command.Item
                 key={row.index}
                 onSelect={() => select(x.tag)}
-                className="absolute top-0 left-0 w-full"
+                className="absolute left-0 top-0 w-full"
                 style={{
                   height: row.size,
                   transform: `translateY(${row.start}px)`,

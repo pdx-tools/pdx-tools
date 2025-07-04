@@ -1,13 +1,11 @@
-@import "tailwindcss" reference;
-
 .overlay-outline {
-  --outline-width: 1rem;
+  --outline-width: theme(spacing.4);
   outline-width: var(--outline-width);
   outline-offset: calc(var(--outline-width) * -1);
 }
 
-@media (width >= theme(--breakpoint-md)) {
+@media screen(md) {
   .overlay-outline {
-    --outline-width: 2rem;
+    --outline-width: theme(spacing.8);
   }
 }

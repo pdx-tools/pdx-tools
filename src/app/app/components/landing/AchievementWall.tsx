@@ -12,7 +12,7 @@ export function AchievementWall() {
 
   return (
     <div className="mt-4 flex h-48">
-      <div className="absolute right-0 left-0">
+      <div className="absolute left-0 right-0">
         <div className="relative flex flex-col items-center gap-4 overflow-hidden">
           <div className="flex -translate-x-5 gap-x-10">
             {fst.map((x) => (
