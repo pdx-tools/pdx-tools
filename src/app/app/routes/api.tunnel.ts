@@ -18,12 +18,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
     throw new Error(`Invalid sentry project id: ${project_id}`);
   }
 
-  // https://github.com/getsentry/sentry-javascript/discussions/5798#discussioncomment-3711950
+  // https://github.com/getsentry/relay/issues/3493
   // https://community.cloudflare.com/t/ip-address-of-the-remote-origin-of-the-request/13080
   const headers = new Headers();
   const forwardedIp = request.headers.get("CF-Connecting-IP");
   if (forwardedIp) {
-    headers.set("X-Forwarded-For", forwardedIp);
+    headers.set("CF-Connecting-IP", forwardedIp);
   }
 
   return fetch(
