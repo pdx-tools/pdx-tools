@@ -297,6 +297,8 @@ async function loadEu4Save(
     progress: 4,
   });
 
+  const initialPoliticalMapColors = new Uint8Array(primary);
+
   const map = await mapControllerTask;
   map.updateProvinceColors(primary, secondary, { country: primary });
 
@@ -312,7 +314,7 @@ async function loadEu4Save(
     meta,
     achievements,
     countries,
-    initialPoliticalMapColors: primary,
+    initialPoliticalMapColors,
     defaultSelectedCountry: defaultSelectedTag,
     saveInfo,
   };
