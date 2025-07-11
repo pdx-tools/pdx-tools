@@ -174,7 +174,7 @@ export const createEu4Store = async ({
       setMapMode: async (mode: Eu4State["mapMode"]) => {
         const countryColors =
           !dateEnabledMapMode(mode) && dateEnabledMapMode(get().mapMode)
-            ? get().save.initialPoliticalMapColors
+            ? new Uint8Array(get().save.initialPoliticalMapColors)
             : undefined;
         set({ mapMode: mode });
         emitEvent({ kind: "Map mode switch", mode });
