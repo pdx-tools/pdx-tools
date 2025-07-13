@@ -112,14 +112,15 @@ impl Compression {
                     if entry.is_dir() {
                         continue;
                     }
-                    files.push((entry.file_safe_path()?.into_owned(), entry.wayfinder()));
+                    let file_name = String::from(entry.file_path().try_normalize()?);
+                    files.push((file_name, entry.wayfinder()));
                 }
 
                 let mut current_size = 0;
                 for (name, wayfinder) in files {
-                    let options = rawzip::ZipEntryOptions::default()
-                        .compression_method(rawzip::CompressionMethod::Zstd);
-                    let mut out_file = out_zip.new_file(&name, options)?;
+                    let mut out_file = out_zip.new_file(&name)
+                        .compression_method(rawzip::CompressionMethod::Zstd)
+                        .create()?;
                     let enc = zstd::stream::Encoder::new(&mut out_file, 7)?;
                     let mut writer = rawzip::ZipDataWriter::new(enc);
                     let entry = zip.get_entry(wayfinder)?;
@@ -198,10 +199,10 @@ fn _download_transformation(data: Vec<u8>) -> Result<Vec<u8>, JsError> {
         let mut out_zip = rawzip::ZipArchiveWriter::new(writer);
         let mut entries = zip.entries();
         while let Ok(Some(entry)) = entries.next_entry() {
-            let name = entry.file_safe_path()?;
-            let options = rawzip::ZipEntryOptions::default()
-                .compression_method(rawzip::CompressionMethod::Deflate);
-            let mut out_file = out_zip.new_file(&name, options)?;
+            let name = entry.file_path().try_normalize()?;
+            let mut out_file = out_zip.new_file(name.as_ref())
+                .compression_method(rawzip::CompressionMethod::Deflate)
+                .create()?;
 
             let writer =
                 flate2::write::DeflateEncoder::new(&mut out_file, flate2::Compression::default());

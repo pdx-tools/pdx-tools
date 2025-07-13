@@ -320,7 +320,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/ck3save.git#0502848cb9ba3eba199bb86d1d30f7e02175b3f2"
+source = "git+https://github.com/rakaly/ck3save.git#bd967deabe77d10c178ec461026b489fd524977e"
 dependencies = [
  "flate2",
  "jomini",
@@ -573,7 +573,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cea14ef9355e3beab063703aa9dab15afd25f0667c341310c1e5274bb1d0da18"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -609,7 +609,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#69a42ba5864342d82dc207d6654197694f5648e2"
+source = "git+https://github.com/rakaly/eu4save.git#3a3f74c6e8a9a794d8e846f2ef104137fa5ccdac"
 dependencies = [
  "flate2",
  "jomini",
@@ -807,7 +807,7 @@ checksum = "9040319a6910b901d5d49cbada4a99db52836a1b63228a05f7e2b7f8feef89b1"
 [[package]]
 name = "hoi4save"
 version = "0.3.4"
-source = "git+https://github.com/rakaly/hoi4save.git#98924fb706b49453b0f0802da45075a69dcf5fc1"
+source = "git+https://github.com/rakaly/hoi4save.git#df3f11e840597dd6761f38c41f500aee8ee55a7a"
 dependencies = [
  "jomini",
  "serde",
@@ -1041,7 +1041,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/imperator-save.git#1d8a66e6512f2003570c8f1292f541342e3904c0"
+source = "git+https://github.com/rakaly/imperator-save.git#d5aeb69b80c21af2db2a65c0db400c81ceb0f4bc"
 dependencies = [
  "flate2",
  "jomini",
@@ -1064,7 +1064,7 @@ checksum = "e04d7f318608d35d4b61ddd75cbdaee86b023ebe2bd5a66ee0915f0bf93095a9"
 dependencies = [
  "hermit-abi 0.5.1",
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1670,9 +1670,9 @@ checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
 
 [[package]]
 name = "rawzip"
-version = "0.2.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f56483ae996be55c2bdfd193157620e8f70608c76416a3a754fd2531ea7f437d"
+checksum = "15175d688c45677b5c1973398e0682a3efd381d3c7c0ccce86791d998986fac7"
 
 [[package]]
 name = "rayon"
@@ -1772,7 +1772,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2069,7 +2069,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2641,7 +2641,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
