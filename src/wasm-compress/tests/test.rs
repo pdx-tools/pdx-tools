@@ -23,7 +23,7 @@ fn test_recompression_zip() {
     let archive = rawzip::ZipArchive::from_slice(compressed.as_slice()).unwrap();
     let mut entries = archive.entries();
     let entry = entries.next_entry().unwrap().unwrap();
-    assert_eq!(entry.file_raw_path(), b"test.txt");
+    assert_eq!(entry.file_path().as_ref(), b"test.txt");
     assert_eq!(entry.compression_method(), CompressionMethod::Zstd);
     let file = archive.get_entry(entry.wayfinder()).unwrap();
     let actual = zstd::decode_all(file.data()).unwrap();
@@ -34,7 +34,7 @@ fn test_recompression_zip() {
     let archive = rawzip::ZipArchive::from_slice(original.as_slice()).unwrap();
     let mut entries = archive.entries();
     let entry = entries.next_entry().unwrap().unwrap();
-    assert_eq!(entry.file_raw_path(), b"test.txt");
+    assert_eq!(entry.file_path().as_ref(), b"test.txt");
     assert_eq!(entry.compression_method(), CompressionMethod::Deflate);
     let file = archive.get_entry(entry.wayfinder()).unwrap();
     let mut buf = Vec::new();

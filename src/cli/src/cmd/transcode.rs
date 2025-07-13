@@ -44,12 +44,13 @@ impl TranscodeArgs {
                     let mut files = Vec::new();
                     let mut entries = zip.entries(&mut buf);
                     while let Some(entry) = entries.next_entry()? {
-                        if !matches!(entry.file_raw_path(), b"meta" | b"gamestate" | b"ai") {
+                        let file_path = entry.file_path();
+                        if !matches!(file_path.as_ref(), b"meta" | b"gamestate" | b"ai") {
                             continue;
                         }
 
                         is_encoded &= entry.compression_method() == rawzip::CompressionMethod::Zstd;
-                        files.push((entry.file_safe_path()?.into_owned(), entry.wayfinder()));
+                        files.push((String::from(file_path.try_normalize()?), entry.wayfinder()));
                     }
 
                     if is_encoded {
@@ -62,9 +63,10 @@ impl TranscodeArgs {
                     let mut out_zip = rawzip::ZipArchiveWriter::new(cursor);
 
                     for (name, wayfinder) in files {
-                        let options = rawzip::ZipEntryOptions::default()
-                            .compression_method(rawzip::CompressionMethod::Zstd);
-                        let mut out_file = out_zip.new_file(&name, options)?;
+                        let mut out_file = out_zip
+                            .new_file(&name)
+                            .compression_method(rawzip::CompressionMethod::Zstd)
+                            .create()?;
                         let enc = zstd::stream::Encoder::new(&mut out_file, 7)?;
                         let mut writer = rawzip::ZipDataWriter::new(enc);
                         let entry = zip.get_entry(wayfinder)?;
