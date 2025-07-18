@@ -118,7 +118,8 @@ impl Compression {
 
                 let mut current_size = 0;
                 for (name, wayfinder) in files {
-                    let mut out_file = out_zip.new_file(&name)
+                    let mut out_file = out_zip
+                        .new_file(&name)
                         .compression_method(rawzip::CompressionMethod::Zstd)
                         .create()?;
                     let enc = zstd::stream::Encoder::new(&mut out_file, 7)?;
@@ -200,7 +201,8 @@ fn _download_transformation(data: Vec<u8>) -> Result<Vec<u8>, JsError> {
         let mut entries = zip.entries();
         while let Ok(Some(entry)) = entries.next_entry() {
             let name = entry.file_path().try_normalize()?;
-            let mut out_file = out_zip.new_file(name.as_ref())
+            let mut out_file = out_zip
+                .new_file(name.as_ref())
                 .compression_method(rawzip::CompressionMethod::Deflate)
                 .create()?;
 

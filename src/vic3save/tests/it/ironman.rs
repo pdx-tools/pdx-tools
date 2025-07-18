@@ -1,8 +1,12 @@
 use crate::utils;
-use jomini::binary::TokenResolver;
-use std::{error::Error, io::{BufWriter, Cursor, Read}, sync::LazyLock};
-use vic3save::{savefile::Vic3Save, BasicTokenResolver, MeltOptions, Vic3File};
 use highway::HighwayHash;
+use jomini::binary::TokenResolver;
+use std::{
+    error::Error,
+    io::{BufWriter, Cursor, Read},
+    sync::LazyLock,
+};
+use vic3save::{savefile::Vic3Save, BasicTokenResolver, MeltOptions, Vic3File};
 
 static TOKENS: LazyLock<BasicTokenResolver> = LazyLock::new(|| {
     let file_data = std::fs::read("assets/vic3.txt")
@@ -39,7 +43,10 @@ fn test_melt_snapshot() -> Result<(), Box<dyn Error>> {
     let options = MeltOptions::new();
     file.melt(options, &*TOKENS, &mut out)?;
 
-    assert!(zip_data == out.into_inner(), "melted file should match snapshot");
+    assert!(
+        zip_data == out.into_inner(),
+        "melted file should match snapshot"
+    );
     Ok(())
 }
 
@@ -78,6 +85,9 @@ fn test_melt_1_9_snapshot() -> Result<(), Box<dyn Error>> {
         "0x{:016x}{:016x}{:016x}{:016x}",
         hash[0], hash[1], hash[2], hash[3]
     );
-    assert_eq!(hex, "0xfa4a5b195b5ea97467df8e74ca9093833cf2745527a666f05116cb684bdcb0d7");
+    assert_eq!(
+        hex,
+        "0xfa4a5b195b5ea97467df8e74ca9093833cf2745527a666f05116cb684bdcb0d7"
+    );
     Ok(())
 }
