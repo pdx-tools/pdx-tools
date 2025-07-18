@@ -15,8 +15,8 @@
     "format": "npx prettier@latest --write '{*.js,src/**/*.{js,tsx,css}}'"
   },
   "dependencies": {
-    "@docusaurus/core": "3.5.1",
-    "@docusaurus/preset-classic": "3.5.1",
+    "@docusaurus/core": "3.8.1",
+    "@docusaurus/preset-classic": "3.8.1",
     "@mdx-js/react": "3.0.1",
     "clsx": "2.1.1",
     "posthog-docusaurus": "2.0.1",
@@ -25,7 +25,7 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "3.5.1"
+    "@docusaurus/module-type-aliases": "3.8.1"
   },
   "browserslist": [
     "defaults and supports webgl2 and supports wasm"
