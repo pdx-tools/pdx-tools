@@ -25,7 +25,7 @@ const SelectTrigger = React.forwardRef<
     <SelectPrimitive.Trigger
       ref={ref}
       className={cx(
-        "flex items-baseline justify-between gap-1 rounded-md border border-solid border-gray-400 bg-transparent text-sm ring-offset-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600",
+        "flex items-baseline justify-between gap-1 rounded-md border border-solid border-gray-400 bg-transparent text-sm ring-offset-white placeholder:text-gray-500 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600",
         className,
       )}
       {...props}
@@ -48,7 +48,7 @@ const SelectContent = React.forwardRef<
       <SelectPrimitive.Content
         ref={ref}
         className={cx(
-          "relative z-[1001] min-w-[6rem] overflow-hidden rounded-md border bg-white shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:border-gray-600 dark:bg-slate-700",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-1001 min-w-24 overflow-hidden rounded-md border bg-white shadow-md dark:border-gray-600 dark:bg-slate-700",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,
@@ -60,7 +60,7 @@ const SelectContent = React.forwardRef<
           className={cx(
             "flex flex-col p-1",
             position === "popper" &&
-              "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+              "h-(--radix-select-trigger-height) w-full min-w-(--radix-select-trigger-width)",
           )}
         >
           {children}
@@ -78,7 +78,7 @@ const SelectLabel = React.forwardRef<
   return (
     <SelectPrimitive.Label
       ref={ref}
-      className={cx("py-1.5 pl-8 pr-2 text-sm font-semibold", className)}
+      className={cx("py-1.5 pr-2 pl-8 text-sm font-semibold", className)}
       {...props}
     />
   );
@@ -93,7 +93,7 @@ const SelectItem = React.forwardRef<
     <SelectPrimitive.Item
       ref={ref}
       className={cx(
-        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-sky-100 focus:text-sky-800 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex w-full cursor-default items-center rounded-sm py-1.5 pr-2 pl-8 text-sm outline-none select-none focus:bg-sky-100 focus:text-sky-800 data-disabled:pointer-events-none data-disabled:opacity-50",
         className,
       )}
       {...props}

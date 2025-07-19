@@ -100,7 +100,7 @@ const CountrySelectGroup = memo(function CountrySelectGroup({
         >
           <CheckIcon
             className={cx(
-              "mr-2 h-4 w-4 opacity-0 data-[selected]:opacity-100",
+              "mr-2 h-4 w-4 opacity-0 data-selected:opacity-100",
               isSelected(x) ? "opacity-100" : "opacity-0",
             )}
           />

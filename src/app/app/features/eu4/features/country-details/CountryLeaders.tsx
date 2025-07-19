@@ -35,7 +35,7 @@ const TagsSelect = ({
       value={value}
       onValueChange={(e) => valueUpdate(e)}
     >
-      <Select.Trigger className="data-[placeholder]:font-semibold" asChild>
+      <Select.Trigger className="data-placeholder:font-semibold" asChild>
         <Button>
           <Select.Value placeholder="Tags" />
           <Select.Icon asChild>
