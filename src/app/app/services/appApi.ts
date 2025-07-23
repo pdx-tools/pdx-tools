@@ -7,7 +7,7 @@ import {
   useSuspenseInfiniteQuery,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import type { Achievement, Difficulty } from "@/server-lib/wasm/wasm_app";
+import type { Achievement, Difficulty } from "@/wasm/wasm_app";
 import type { Eu4Worker } from "@/features/eu4/worker";
 import type { SavePostResponse, UploadMetadaInput } from "@/server-lib/models";
 import { createCompressionWorker } from "@/features/compress";

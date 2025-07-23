@@ -2,7 +2,7 @@ import {
   CountryIncomeLedger,
   CountryExpenseLedger,
   CountryInfo,
-} from "@pdx.tools/wasm-eu4/wasm_eu4";
+} from "@/wasm/wasm_eu4/wasm_eu4";
 import { Losses } from "../utils/losses";
 export type { CountryDetails } from "../worker/module";
 export type {
@@ -40,7 +40,7 @@ export type {
   CountryState,
   TagTransition,
   ProvinceDevelopment,
-} from "@pdx.tools/wasm-eu4";
+} from "@/wasm/wasm_eu4";
 export type { Losses } from "../utils/losses";
 
 export type SaveMode = "Normal" | "Multiplayer" | "IronmanOk" | "IronmanNo";

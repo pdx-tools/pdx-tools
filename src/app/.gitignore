@@ -5,6 +5,7 @@ public/docs*
 public/img
 *_gen.ts
 app/server-lib/save-parsing-types.ts
+app/wasm/
 
 node_modules
 yarn.lock

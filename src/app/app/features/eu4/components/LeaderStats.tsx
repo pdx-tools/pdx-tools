@@ -1,4 +1,4 @@
-import { LeaderKind } from "@pdx.tools/wasm-eu4/wasm_eu4";
+import { LeaderKind } from "@/wasm/wasm_eu4/wasm_eu4";
 
 export const LeaderStats = ({
   kind,

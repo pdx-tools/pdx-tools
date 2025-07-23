@@ -1,6 +1,6 @@
 import { expose, transfer } from "comlink";
-import init, * as wasmModule from "@pdx.tools/wasm-compress";
-import wasmPath from "@pdx.tools/wasm-compress/wasm_compress_bg.wasm?url";
+import init, * as wasmModule from "@/wasm/wasm_compress";
+import wasmPath from "@/wasm/wasm_compress_bg.wasm?url";
 import { timeSync } from "@/lib/timeit";
 import { formatInt } from "@/lib/format";
 import { logMs } from "@/lib/log";

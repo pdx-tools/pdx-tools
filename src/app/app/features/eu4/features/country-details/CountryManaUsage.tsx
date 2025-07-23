@@ -4,7 +4,7 @@ import { Bar, BarConfig, DataPoint, PieTable } from "@/components/viz";
 import { CountryDetails } from "../../types/models";
 import { isDarkMode } from "@/lib/dark";
 import { useEu4Worker } from "../../worker";
-import { CountryMana } from "@pdx.tools/wasm-eu4";
+import { CountryMana } from "@/wasm/wasm_eu4";
 import { Alert } from "@/components/Alert";
 import { formatFloat, formatInt } from "@/lib/format";
 import {

@@ -66,7 +66,7 @@ export default tseslint.config(
       "**/node_modules/**",
       "**/build/**",
       "**/.wrangler/**",
-      "**/wasm/wasm_app*",
+      "**/wasm/**",
     ],
   },
 );

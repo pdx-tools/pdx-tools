@@ -1,1 +1,1 @@
-export type { Hoi4Metadata } from "@pdx.tools/wasm-hoi4";
+export type { Hoi4Metadata } from "@/wasm/wasm_hoi4";

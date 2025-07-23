@@ -1,5 +1,5 @@
-import wasmPath from "@pdx.tools/wasm-eu4/wasm_eu4_bg.wasm?url";
-import * as mod from "@pdx.tools/wasm-eu4/wasm_eu4";
+import wasmPath from "@/wasm/wasm_eu4_bg.wasm?url";
+import * as mod from "@/wasm/wasm_eu4";
 import tokenPath from "../../../../../../assets/tokens/eu4.bin?url";
 import { createWasmGame } from "@/lib/wasm";
 

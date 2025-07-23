@@ -1,1 +1,1 @@
-export type * from "@pdx.tools/wasm-vic3";
+export type * from "@/wasm/wasm_vic3";
