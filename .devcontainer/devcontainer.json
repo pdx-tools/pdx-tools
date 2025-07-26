@@ -11,7 +11,12 @@
   ],
 
   "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "moby": true,
+      "installDockerBuildx": true,
+      "version": "28.3.2",
+      "mobyBuildxVersion": "0.25.0"
+    },
     "ghcr.io/dhoeric/features/google-cloud-cli:1.0.1": {
       "version": "518.0.0"
     }
