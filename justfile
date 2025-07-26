@@ -149,13 +149,14 @@ build-wasm: build-wasm-dev
 
 build-wasm-dev:
   just tokenize assets/tokens
-  wasm-pack build --scope "pdx.tools" -t web src/wasm-app --out-dir {{justfile_directory()}}/src/app/app/server-lib/wasm
-  wasm-pack build --scope "pdx.tools" -t web src/wasm-compress
-  wasm-pack build --scope "pdx.tools" -t web src/wasm-ck3
-  wasm-pack build --scope "pdx.tools" -t web src/wasm-eu4
-  wasm-pack build --scope "pdx.tools" -t web src/wasm-hoi4
-  wasm-pack build --scope "pdx.tools" -t web src/wasm-imperator
-  wasm-pack build --scope "pdx.tools" -t web src/wasm-vic3
+  cargo build --release --target wasm32-unknown-unknown -p wasm-app -p wasm-compress -p wasm-ck3 -p wasm-eu4 -p wasm-hoi4 -p wasm-imperator -p wasm-vic3
+  wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_app.wasm --out-dir {{justfile_directory()}}/src/app/app/wasm
+  wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_compress.wasm --out-dir {{justfile_directory()}}/src/app/app/wasm
+  wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_ck3.wasm --out-dir {{justfile_directory()}}/src/app/app/wasm
+  wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_eu4.wasm --out-dir {{justfile_directory()}}/src/app/app/wasm
+  wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_hoi4.wasm --out-dir {{justfile_directory()}}/src/app/app/wasm
+  wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_imperator.wasm --out-dir {{justfile_directory()}}/src/app/app/wasm
+  wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_vic3.wasm --out-dir {{justfile_directory()}}/src/app/app/wasm
 
 package-all *opts:
   #!/usr/bin/env bash

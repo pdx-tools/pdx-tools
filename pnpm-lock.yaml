@@ -38,24 +38,6 @@ importers:
       '@pdx.tools/map':
         specifier: workspace:*
         version: link:../map
-      '@pdx.tools/wasm-ck3':
-        specifier: workspace:*
-        version: link:../wasm-ck3/pkg
-      '@pdx.tools/wasm-compress':
-        specifier: workspace:*
-        version: link:../wasm-compress/pkg
-      '@pdx.tools/wasm-eu4':
-        specifier: workspace:*
-        version: link:../wasm-eu4/pkg
-      '@pdx.tools/wasm-hoi4':
-        specifier: workspace:*
-        version: link:../wasm-hoi4/pkg
-      '@pdx.tools/wasm-imperator':
-        specifier: workspace:*
-        version: link:../wasm-imperator/pkg
-      '@pdx.tools/wasm-vic3':
-        specifier: workspace:*
-        version: link:../wasm-vic3/pkg
       '@radix-ui/react-dialog':
         specifier: 1.1.2
         version: 1.1.2(@types/react-dom@18.3.1)(@types/react@18.3.12)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -299,20 +281,6 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 6.3.5(@types/node@22.9.0)(jiti@1.21.7)(terser@5.39.2)(yaml@2.8.0)
-
-  src/wasm-app/pkg: {}
-
-  src/wasm-ck3/pkg: {}
-
-  src/wasm-compress/pkg: {}
-
-  src/wasm-eu4/pkg: {}
-
-  src/wasm-hoi4/pkg: {}
-
-  src/wasm-imperator/pkg: {}
-
-  src/wasm-vic3/pkg: {}
 
 packages:
 

@@ -3,7 +3,7 @@ import { CountryDetails } from "../../types/models";
 import { Eu4Worker, useEu4Worker } from "../../worker";
 import { Alert } from "@/components/Alert";
 import { formatFloat, formatInt } from "@/lib/format";
-import { InstitutionCost } from "@pdx.tools/wasm-eu4";
+import { InstitutionCost } from "@/wasm/wasm_eu4";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";

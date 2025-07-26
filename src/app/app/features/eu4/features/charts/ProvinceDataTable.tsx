@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { useAnalysisWorker } from "../../worker";
-import { ProvinceItem, ProvinceList } from "@pdx.tools/wasm-eu4";
+import { ProvinceItem, ProvinceList } from "@/wasm/wasm_eu4";
 import { Alert } from "@/components/Alert";
 import { Table } from "@/components/Table";
 import { createColumnHelper } from "@tanstack/react-table";

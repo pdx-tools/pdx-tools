@@ -1,7 +1,7 @@
 import { timeSync } from "@/lib/timeit";
 import { AchievementsScore } from "../types/models";
 import { wasm } from "./common";
-import * as mod from "@pdx.tools/wasm-eu4/wasm_eu4";
+import * as mod from "@/wasm/wasm_eu4/wasm_eu4";
 import { fetchOk } from "@/lib/fetch";
 import { type Eu4SaveInput } from "../store";
 import { logMs } from "@/lib/log";

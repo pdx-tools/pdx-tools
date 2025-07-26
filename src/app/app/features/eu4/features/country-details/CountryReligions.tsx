@@ -9,7 +9,7 @@ import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
-import { RebelReligion } from "@pdx.tools/wasm-eu4";
+import { RebelReligion } from "@/wasm/wasm_eu4";
 import { Link } from "@/components/Link";
 import { isDarkMode } from "@/lib/dark";
 

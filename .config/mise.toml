@@ -9,6 +9,6 @@
 "ubi:cargo-bins/cargo-binstall" = { version = "1.12.5" }
 "ubi:google/flatbuffers" = { version = "25.2.10", matching = "clang", exe = "flatc" }
 "ubi:jqlang/jq" = { version = "jq-1.7.1" }
-"ubi:rustwasm/wasm-pack" = { version = "0.13.1" }
+"ubi:rustwasm/wasm-bindgen" = { version = "0.2.100", extract_all = "true" }
 "ubi:WebAssembly/binaryen" = { version = "version_123", extract_all = "true", bin_path = "bin" }
 "vfox:mise-plugins/vfox-clang" = { version = "18.1.6" }

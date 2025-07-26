@@ -4,7 +4,7 @@ import {
   consolidateSteps,
   InstitutionStep,
 } from "./institutionSteps";
-import { InstitutionCost } from "@pdx.tools/wasm-eu4";
+import { InstitutionCost } from "@/wasm/wasm_eu4";
 
 // Helper to create institution cost with default values
 function createInstitutionCost(

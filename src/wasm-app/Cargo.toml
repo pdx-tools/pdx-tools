@@ -14,9 +14,3 @@ tsify = { default-features = false, features = ["js"] , workspace = true }
 serde = { features = ["derive"] , workspace = true }
 eu4game-data = { features = ["tsify"] , workspace = true }
 jomini = { workspace = true }
-
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = false
-
-[package.metadata.wasm-pack.profile.dev.wasm-bindgen]
-dwarf-debug-info = true

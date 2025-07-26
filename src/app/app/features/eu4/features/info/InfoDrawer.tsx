@@ -29,7 +29,7 @@ import {
   CompletedAchievement,
   GreatPower,
   PlayerHistory,
-} from "@pdx.tools/wasm-eu4";
+} from "@/wasm/wasm_eu4";
 import { findMap } from "@/lib/findMap";
 import { useList } from "@/hooks/useList";
 import { useSession } from "@/features/account";

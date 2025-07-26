@@ -2,7 +2,7 @@ import { GameDifficulty, Save, saves, users } from "./schema";
 import { ParsedFile } from "../functions";
 import { sql, eq, desc, and, isNotNull, inArray, asc } from "drizzle-orm";
 import { NotFoundError } from "../errors";
-import { Achievement } from "../wasm/wasm_app";
+import { Achievement } from "@/wasm/wasm_app";
 import { eu4DaysToDate } from "../game";
 import { DbConnection } from "./connection";
 import { type UserId } from "@/lib/auth";
