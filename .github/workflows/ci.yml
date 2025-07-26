@@ -11,6 +11,9 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    container:
+      image: ghcr.io/pdx-tools/devcontainer
+      options: --user root -v /var/run/docker.sock:/var/run/docker.sock
     if: |
       github.event_name == 'pull_request' ||
       github.event_name == 'push' ||
@@ -22,22 +25,15 @@ jobs:
             with_tokens: false
           - os: ubuntu-latest
             with_tokens: true
-          - os: ubuntu-24.04-arm
-            with_tokens: true
     name: build / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
     env:
       CARGO_TERM_VERBOSE: true
+      ASSETS_ACCESS_KEY: ${{ secrets.ASSETS_ACCESS_KEY }}
+      ASSETS_SECRET_KEY: ${{ secrets.ASSETS_SECRET_KEY }}
+      GH_PAT: ${{ secrets.GH_PAT }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CI: true
     steps:
-    - name: Remove unwanted software
-      run: |
-        echo "before"
-        df -h
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /opt/ghc
-        echo "after"
-        df -h
-
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
@@ -71,24 +67,26 @@ jobs:
       if: matrix.with_tokens
       run: cd assets/tokens && ln -s tokens/* .
 
-    - name: Build and run Dev Container task
-      uses: devcontainers/ci@v0.3
-      env:
-        ASSETS_ACCESS_KEY: ${{ secrets.ASSETS_ACCESS_KEY }}
-        ASSETS_SECRET_KEY: ${{ secrets.ASSETS_SECRET_KEY }}
-        GH_PAT: ${{ secrets.GH_PAT }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        imageName: ghcr.io/pdx-tools/devcontainer
-        env: |
-          ASSETS_ACCESS_KEY
-          ASSETS_SECRET_KEY
-          CI
-          GITHUB_TOKEN
-        runCmd: |
-          just admin-sync-assets && \
-          just package-all && \
-          just build-wasm-dev && \
-          pnpm install && \
-          ${{ matrix.with_tokens && 'just test && ' || '' }} \
-          just build-app
+    - name: Add vscode to docker group and fix permissions
+      run: |
+        usermod -aG docker vscode
+        chown -R vscode:vscode $GITHUB_WORKSPACE
+
+    - name: build and test
+      run: |
+        su - vscode -c "
+        cd $GITHUB_WORKSPACE
+        eval \"\$(~/.local/bin/mise activate bash --shims)\"
+        export GITHUB_TOKEN='$GITHUB_TOKEN'
+        export ASSETS_ACCESS_KEY='$ASSETS_ACCESS_KEY'
+        export ASSETS_SECRET_KEY='$ASSETS_SECRET_KEY'
+        export GH_PAT='$GH_PAT'
+        export CI='$CI'
+        mise trust --yes && \
+        mise install --verbose --jobs 1
+        just admin-sync-assets && \
+        just package-all && \
+        just build-wasm-dev && \
+        pnpm install && \
+        ${{ matrix.with_tokens && 'just test && ' || '' }} \
+        just build-app"
