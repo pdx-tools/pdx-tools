@@ -303,7 +303,7 @@ where
             (Some(gamestate), None) => Ok(Vic3Zip {
                 archive,
                 gamestate,
-                metadata: Vic3MetaKind::Inlined(SaveHeader::SIZE..offset as usize),
+                metadata: Vic3MetaKind::Inlined(0..offset as usize),
                 header,
             }),
             _ => Err(Vic3ErrorKind::ZipMissingEntry.into()),
