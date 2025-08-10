@@ -8,10 +8,10 @@ export const Divider = ({
   return (
     <div className={cx("relative flex w-full items-center", paddingClassNames)}>
       <div className="w-8 border-0 border-t border-solid border-gray-400/30"></div>
-      <span className="text-bold mx-4 flex-shrink hyphens-none whitespace-nowrap text-lg font-semibold">
+      <span className="text-bold mx-4 shrink text-lg font-semibold hyphens-none whitespace-nowrap">
         {children}
       </span>
-      <div className="flex-grow border-0 border-t border-solid border-gray-400/30"></div>
+      <div className="grow border-0 border-t border-solid border-gray-400/30"></div>
     </div>
   );
 };
