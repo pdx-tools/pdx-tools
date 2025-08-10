@@ -7,6 +7,11 @@ import { type Eu4SaveInput } from "../store";
 import { logMs } from "@/lib/log";
 import { captureException } from "@/lib/captureException";
 
+let multiSaveFiles: (File | FileSystemFileHandle)[] = [];
+export function saveFiles() {
+  return multiSaveFiles;
+}
+
 export const initializeWasm = wasm.initializeModule;
 export async function fetchData(save: Eu4SaveInput) {
   switch (save.kind) {
@@ -14,6 +19,7 @@ export async function fetchData(save: Eu4SaveInput) {
       const file = await save.file.getFile();
       const lastModified = file.lastModified;
       const data = await file.arrayBuffer();
+      multiSaveFiles = save.files;
       wasm.stash(new Uint8Array(data), {
         kind: "handle",
         file: save.file,
@@ -22,6 +28,7 @@ export async function fetchData(save: Eu4SaveInput) {
       return;
     }
     case "file": {
+      multiSaveFiles = save.files;
       const data = await save.file.arrayBuffer();
       wasm.stash(new Uint8Array(data), { kind: "file", file: save.file });
       return;
