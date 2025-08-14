@@ -14,15 +14,15 @@ tokenize = ["dep:zstd", "dep:schemas"]
 
 [dependencies]
 anyhow = { workspace = true }
-applib = { optional = true , workspace = true }
+applib = { optional = true , workspace = true, default-features = false, features = ["zstd_c"] }
 attohttpc = { features = ["json"], optional = true , workspace = true }
 chrono = { workspace = true }
 clap = { features = ["derive", "env"] , workspace = true }
 csv = { workspace = true }
 env_logger = { workspace = true }
-eu4game = { optional = true, default-features = false , workspace = true }
+eu4game = { optional = true, default-features = false , workspace = true, features = ["zstd_c"] }
 eu4game-data = { optional = true, default-features = false , workspace = true }
-eu4save = { default-features = false, features = ["serialize", "zstd"], optional = true , workspace = true }
+eu4save = { default-features = false, features = ["serialize", "zstd_c"], optional = true , workspace = true }
 flate2 = { optional = true, default-features = false, features = ["zlib-rs"] , workspace = true }
 highway = { workspace = true }
 jomini = { optional = true , workspace = true }

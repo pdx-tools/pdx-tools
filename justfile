@@ -35,8 +35,7 @@ staging: build-app prep-dev-app
 
 test: (cargo "test" "--workspace" "--exclude" "pdx" "--exclude" "wasm-*") test-wasm (cargo "test" "-p" "pdx" "--all-features") test-app
 
-# Disable zstd fat-lto which cause linking issues for tests
-test-wasm: (cargo "test" "--no-default-features" "-p" "wasm-*")
+test-wasm: (cargo "test" "--no-default-features" "--features" "zstd_rust" "-p" "wasm-*")
 
 publish-api:
   docker tag ghcr.io/pdx-tools/api:nightly us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
@@ -149,7 +148,7 @@ build-wasm: build-wasm-dev
 
 build-wasm-dev:
   just tokenize assets/tokens
-  cargo build --release --target wasm32-unknown-unknown -p wasm-app -p wasm-compress -p wasm-ck3 -p wasm-eu4 -p wasm-hoi4 -p wasm-imperator -p wasm-vic3
+  cargo build --release --no-default-features --features zstd_c_fat_lto --features zstd_c --target wasm32-unknown-unknown -p 'wasm-*'
   wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_app.wasm --out-dir {{justfile_directory()}}/src/app/app/wasm
   wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_compress.wasm --out-dir {{justfile_directory()}}/src/app/app/wasm
   wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_ck3.wasm --out-dir {{justfile_directory()}}/src/app/app/wasm

@@ -3,6 +3,48 @@ use std::io::{Cursor, Read, Write};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
+// Read trait is imported above, only need additional import for ruzstd when used
+
+#[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
+struct RuzstdEncoder<W: Write> {
+    writer: W,
+    buffer: Vec<u8>,
+}
+
+#[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
+impl<W: Write> RuzstdEncoder<W> {
+    fn new(writer: W) -> Self {
+        Self {
+            writer,
+            buffer: Vec::new(),
+        }
+    }
+
+    fn finish(mut self) -> Result<W, std::io::Error> {
+        let cursor = Cursor::new(&self.buffer);
+        let compressed = ruzstd::encoding::compress_to_vec(
+            cursor,
+            ruzstd::encoding::CompressionLevel::Uncompressed,
+        );
+        self.writer.write_all(&compressed)?;
+        self.writer.flush()?;
+        Ok(self.writer)
+    }
+}
+
+#[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
+impl<W: Write> Write for RuzstdEncoder<W> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.buffer.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        // Don't flush to writer until finish() is called
+        Ok(())
+    }
+}
+
 struct ProgressReader<'a, R> {
     reader: R,
     current_size: usize,
@@ -122,7 +164,10 @@ impl Compression {
                         .new_file(&name)
                         .compression_method(rawzip::CompressionMethod::Zstd)
                         .create()?;
+                    #[cfg(feature = "zstd_c")]
                     let enc = zstd::stream::Encoder::new(&mut out_file, 7)?;
+                    #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
+                    let enc = RuzstdEncoder::new(&mut out_file);
                     let mut writer = rawzip::ZipDataWriter::new(enc);
                     let entry = zip.get_entry(wayfinder)?;
                     let reader = flate2::read::DeflateDecoder::new(entry.data());
@@ -132,7 +177,10 @@ impl Compression {
                     let written = std::io::copy(&mut reader, &mut writer)?;
                     debug_assert_eq!(written, wayfinder.uncompressed_size_hint());
                     let (zstd_writer, output) = writer.finish()?;
+                    #[cfg(feature = "zstd_c")]
                     zstd_writer.finish()?;
+                    #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
+                    zstd_writer.finish()?; // RuzstdEncoder also has finish()
                     out_file.finish(output)?;
                     current_size += wayfinder.uncompressed_size_hint() as usize;
                 }
@@ -140,12 +188,29 @@ impl Compression {
                 Ok(out_zip.finish()?.into_inner())
             }
             Reader::Data(data) => {
-                let out = Cursor::new(Vec::with_capacity(data.len() / 10));
                 let inner = Cursor::new(data.as_slice());
                 let mut reader = ProgressReader::new(inner, data.len(), f.as_ref());
-                let mut encoder = zstd::Encoder::new(out, 7).unwrap();
-                std::io::copy(&mut reader, &mut encoder)?;
-                Ok(encoder.finish()?.into_inner())
+
+                #[cfg(feature = "zstd_c")]
+                {
+                    let out = Cursor::new(Vec::<u8>::with_capacity(data.len() / 10));
+                    let mut encoder = zstd::Encoder::new(out, 7).unwrap();
+                    std::io::copy(&mut reader, &mut encoder)?;
+                    Ok(encoder.finish()?.into_inner())
+                }
+
+                #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
+                {
+                    // ruzstd doesn't have streaming compression, so we need to read all data first
+                    let mut input_data = Vec::new();
+                    reader.read_to_end(&mut input_data)?;
+                    let cursor = Cursor::new(&input_data);
+                    let compressed = ruzstd::encoding::compress_to_vec(
+                        cursor,
+                        ruzstd::encoding::CompressionLevel::Uncompressed,
+                    );
+                    Ok(compressed)
+                }
             }
         }
     }
@@ -192,8 +257,26 @@ pub fn download_transformation(data: Vec<u8>) -> Result<Vec<u8>, JsError> {
 }
 
 fn _download_transformation(data: Vec<u8>) -> Result<Vec<u8>, JsError> {
-    if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-        Ok(zstd::stream::decode_all(data.as_slice())?)
+    // Check for zstd magic number and decode if found
+    #[cfg(feature = "zstd_c")]
+    let is_zstd = data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes());
+    #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
+    let is_zstd = data.len() >= 4 && &data[..4] == &[0x28, 0xB5, 0x2F, 0xFD];
+
+    if is_zstd {
+        #[cfg(feature = "zstd_c")]
+        return Ok(zstd::stream::decode_all(data.as_slice())?);
+
+        #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
+        {
+            let mut decoder = ruzstd::decoding::StreamingDecoder::new(&data[..])
+                .map_err(|e| JsError::new(&format!("StreamingDecoder creation error: {:?}", e)))?;
+            let mut output = Vec::new();
+            decoder
+                .read_to_end(&mut output)
+                .map_err(|e| JsError::new(&format!("Decompression error: {:?}", e)))?;
+            return Ok(output);
+        }
     } else if let Ok(zip) = rawzip::ZipArchive::from_slice(&data) {
         let out = Vec::with_capacity(data.len() * 2);
         let writer = Cursor::new(out);
@@ -211,7 +294,19 @@ fn _download_transformation(data: Vec<u8>) -> Result<Vec<u8>, JsError> {
             let mut writer = rawzip::ZipDataWriter::new(writer);
 
             let entry = zip.get_entry(entry.wayfinder())?;
+            #[cfg(feature = "zstd_c")]
             zstd::stream::copy_decode(entry.data(), &mut writer)?;
+
+            #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
+            {
+                let entry_data = entry.data();
+                let mut decoder =
+                    ruzstd::decoding::StreamingDecoder::new(entry_data).map_err(|e| {
+                        JsError::new(&format!("StreamingDecoder creation error: {:?}", e))
+                    })?;
+                std::io::copy(&mut decoder, &mut writer)
+                    .map_err(|e| JsError::new(&format!("Decompression error: {:?}", e)))?;
+            }
             let (_, output) = writer.finish()?;
             out_file.finish(output)?;
         }

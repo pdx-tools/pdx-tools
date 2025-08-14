@@ -20,6 +20,8 @@ use savefile::{
     MapPayloadKind, MapQuickTipPayload, Monitor, ProvinceDetails, Reparse, RootTree, SaveFileImpl,
     TagFilterPayloadRaw, WarInfo,
 };
+#[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
+use std::io::Read;
 use std::{collections::HashMap, io::Cursor};
 use wasm_bindgen::prelude::*;
 
@@ -345,7 +347,19 @@ pub fn game_save(
     game_data: Vec<u8>,
     province_id_to_color_index: Vec<u16>,
 ) -> Result<SaveFile, JsError> {
+    #[cfg(feature = "zstd_c")]
     let game_data = zstd::bulk::decompress(&game_data, 1024 * 1024)?;
+
+    #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
+    let game_data = {
+        let mut decoder = ruzstd::decoding::FrameDecoder::new();
+        let mut output = vec![0u8; 1024 * 1024]; // Initial buffer size
+        let bytes_decoded = decoder
+            .decode_all(&game_data[..], &mut output)
+            .map_err(|e| JsError::new(&format!("Decompression error: {:?}", e)))?;
+        output.resize(bytes_decoded, 0);
+        output
+    };
     let game = Game::from_flatbuffer(&game_data);
     // Cast away the lifetime so that we can store it in a wasm-bindgen compatible struct
     let game: Game<'static> = unsafe { std::mem::transmute(game) };
@@ -374,11 +388,30 @@ pub fn game_save(
 
 #[wasm_bindgen]
 pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsError> {
-    if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-        let inflated = zstd::decode_all(data).unwrap();
-        _melt(&inflated)
-    } else {
-        _melt(data)
+    #[cfg(feature = "zstd_c")]
+    {
+        if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
+            let inflated = zstd::decode_all(data).unwrap();
+            _melt(&inflated)
+        } else {
+            _melt(data)
+        }
+    }
+
+    #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
+    {
+        // ruzstd magic number check
+        if data.len() >= 4 && &data[..4] == &[0x28, 0xB5, 0x2F, 0xFD] {
+            let mut decoder = ruzstd::decoding::StreamingDecoder::new(&data[..])
+                .map_err(|e| JsError::new(&format!("StreamingDecoder creation error: {:?}", e)))?;
+            let mut inflated = Vec::new();
+            decoder
+                .read_to_end(&mut inflated)
+                .map_err(|e| JsError::new(&format!("Decompression error: {:?}", e)))?;
+            _melt(&inflated)
+        } else {
+            _melt(data)
+        }
     }
 }
 

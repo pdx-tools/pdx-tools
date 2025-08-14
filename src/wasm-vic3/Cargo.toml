@@ -8,7 +8,10 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["zstd/fat-lto"]
+default = ["zstd_rust"]
+zstd_c = ["dep:zstd"]
+zstd_c_fat_lto = ["zstd_c", "zstd/fat-lto"]
+zstd_rust = ["dep:ruzstd"]
 
 [dependencies]
 jomini = { workspace = true }
@@ -18,5 +21,6 @@ serde-wasm-bindgen = { workspace = true }
 serde = { features = ["derive"] , workspace = true }
 vic3save = { workspace = true }
 js-sys = { workspace = true }
+ruzstd = { optional = true, workspace = true }
 tsify = { default-features = false, features = ["js"] , workspace = true }
-zstd = { default-features = false , workspace = true }
+zstd = { default-features = false, optional = true, workspace = true }

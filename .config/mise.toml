@@ -12,3 +12,8 @@
 "ubi:rustwasm/wasm-bindgen" = { version = "0.2.100", extract_all = "true" }
 "ubi:WebAssembly/binaryen" = { version = "version_123", extract_all = "true", bin_path = "bin" }
 "vfox:mise-plugins/vfox-clang" = { version = "18.1.6" }
+
+[tasks.build-wasm-dev]
+description = "Build wasm"
+run = ["cargo build --release --no-default-features --features zstd_c_fat_lto --features zstd_c --target wasm32-unknown-unknown -p wasm-*"]
+run_windows = ["cargo build --release --no-default-features --features zstd_rust --target wasm32-unknown-unknown -p wasm-*"]
