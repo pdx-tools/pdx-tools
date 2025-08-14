@@ -8,11 +8,17 @@ publish = false
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = ["zstd_rust"]
+zstd_c = ["dep:zstd"]
+zstd_rust = ["dep:ruzstd"]
+
 [dependencies]
-wasm-bindgen = { workspace = true }
 flate2 = { default-features = false, features = ["zlib-rs"] , workspace = true }
-rawzip = { workspace = true }
-zstd = { default-features = false, workspace = true }
 js-sys = { workspace = true }
-tsify = { default-features = false, features = ["js"] , workspace = true }
+rawzip = { workspace = true }
+ruzstd = { optional = true, workspace = true }
 serde = { features = ["derive"] , workspace = true }
+tsify = { default-features = false, features = ["js"] , workspace = true }
+wasm-bindgen = { workspace = true }
+zstd = { default-features = false, optional = true, workspace = true }

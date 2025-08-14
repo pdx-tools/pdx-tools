@@ -95,3 +95,22 @@ jobs:
           pnpm install && \
           ${{ matrix.with_tokens && 'just test && ' || '' }} \
           just build-app
+
+  build-ng:
+    runs-on: ${{ matrix.os }}
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'safe to test'))
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+          - os: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          cache: false   # rust wasm target is not cached
+      - run: mise run build-wasm-dev

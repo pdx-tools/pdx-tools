@@ -9,19 +9,23 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["zstd/fat-lto"]
+default = ["zstd_rust"]
+zstd_c = ["dep:zstd", "eu4save/zstd_c", "eu4game/zstd_c"]
+zstd_c_fat_lto = ["zstd_c", "zstd/fat-lto"]
+zstd_rust = ["dep:ruzstd", "eu4save/zstd_rust", "eu4game/zstd_rust"]
 
 [dependencies]
+eu4game = { default-features = false , workspace = true }
+eu4save = { default-features = false, features = ["tsify"] , workspace = true }
 jomini = { workspace = true }
 js-sys = { workspace = true }
-wasm-bindgen = { workspace = true }
+ruzstd = { optional = true, workspace = true }
+schemas = { workspace = true }
 serde = { features = ["derive"] , workspace = true }
 serde-wasm-bindgen = { workspace = true }
-eu4save = { default-features = false, features = ["zstd", "tsify"] , workspace = true }
-eu4game = { default-features = false , workspace = true }
-schemas = { workspace = true }
 tsify = { default-features = false, features = ["js"] , workspace = true }
-zstd = { default-features = false , workspace = true }
+wasm-bindgen = { workspace = true }
+zstd = { default-features = false, optional = true, workspace = true }
 
 [dev-dependencies]
 wasm-bindgen-test = { workspace = true }

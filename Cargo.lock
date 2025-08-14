@@ -588,6 +588,7 @@ dependencies = [
  "highway",
  "jomini",
  "regex",
+ "ruzstd",
  "schemas",
  "serde",
  "serde_path_to_error",
@@ -609,11 +610,12 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#3a3f74c6e8a9a794d8e846f2ef104137fa5ccdac"
+source = "git+https://github.com/rakaly/eu4save.git#d938818c527e8344ed7db05e833141b0ce1ba882"
 dependencies = [
  "flate2",
  "jomini",
  "rawzip",
+ "ruzstd",
  "serde",
  "specta",
  "thiserror 2.0.12",
@@ -1782,6 +1784,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eded382c5f5f786b989652c49544c4877d9f015cc22e145a5ea8ea66c2921cd2"
 
 [[package]]
+name = "ruzstd"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3640bec8aad418d7d03c72ea2de10d5c646a598f9883c7babc160d91e3c1b26c"
+dependencies = [
+ "twox-hash",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2318,6 +2329,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "twox-hash"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b907da542cbced5261bd3256de1b3a1bf340a3d37f93425a07362a1d687de56"
+
+[[package]]
 name = "typeid"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2518,6 +2535,7 @@ dependencies = [
  "ck3save",
  "jomini",
  "js-sys",
+ "ruzstd",
  "schemas",
  "serde",
  "serde-wasm-bindgen",
@@ -2532,6 +2550,7 @@ dependencies = [
  "flate2",
  "js-sys",
  "rawzip",
+ "ruzstd",
  "serde",
  "tsify",
  "wasm-bindgen",
@@ -2546,6 +2565,7 @@ dependencies = [
  "eu4save",
  "jomini",
  "js-sys",
+ "ruzstd",
  "schemas",
  "serde",
  "serde-wasm-bindgen",
@@ -2562,6 +2582,7 @@ dependencies = [
  "hoi4save",
  "jomini",
  "js-sys",
+ "ruzstd",
  "schemas",
  "serde",
  "serde-wasm-bindgen",
@@ -2577,6 +2598,7 @@ dependencies = [
  "imperator-save",
  "jomini",
  "js-sys",
+ "ruzstd",
  "schemas",
  "serde",
  "serde-wasm-bindgen",
@@ -2590,6 +2612,7 @@ version = "0.1.0"
 dependencies = [
  "jomini",
  "js-sys",
+ "ruzstd",
  "schemas",
  "serde",
  "serde-wasm-bindgen",

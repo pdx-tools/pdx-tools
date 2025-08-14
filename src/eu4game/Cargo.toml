@@ -6,21 +6,24 @@ edition = "2021"
 publish = false
 
 [features]
-default = ["embedded"]
+default = ["embedded", "zstd_rust"]
 embedded = ["eu4game-data/embedded"]
+zstd_rust = ["dep:ruzstd", "eu4save/zstd_rust"]
+zstd_c = ["dep:zstd", "eu4save/zstd_c"]
 
 [dependencies]
 jomini = { workspace = true }
 erased-serde = { workspace = true }
 eu4game-data = { workspace = true }
-eu4save = { default-features = false, features = ["zstd"] , workspace = true }
+eu4save = { default-features = false , workspace = true }
 schemas = { features = ["inline"] , workspace = true }
 serde = { features = ["derive"] , workspace = true }
 serde_path_to_error = { workspace = true }
 highway = { workspace = true }
 base64 = { workspace = true }
 thiserror = { workspace = true }
-zstd = { default-features = false , workspace = true }
+ruzstd = { optional = true, workspace = true }
+zstd = { default-features = false, optional = true, workspace = true }
 
 [dev-dependencies]
 attohttpc = { workspace = true }
