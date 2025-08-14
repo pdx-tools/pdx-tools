@@ -587,14 +587,13 @@ dependencies = [
  "eu4save",
  "highway",
  "jomini",
+ "pdx-zstd",
  "regex",
- "ruzstd",
  "schemas",
  "serde",
  "serde_path_to_error",
  "thiserror 2.0.12",
  "walkdir",
- "zstd",
 ]
 
 [[package]]
@@ -1510,6 +1509,14 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "webp",
+]
+
+[[package]]
+name = "pdx-zstd"
+version = "0.1.0"
+dependencies = [
+ "ruzstd",
+ "zstd",
 ]
 
 [[package]]
@@ -2535,12 +2542,11 @@ dependencies = [
  "ck3save",
  "jomini",
  "js-sys",
- "ruzstd",
+ "pdx-zstd",
  "schemas",
  "serde",
  "serde-wasm-bindgen",
  "wasm-bindgen",
- "zstd",
 ]
 
 [[package]]
@@ -2549,12 +2555,11 @@ version = "0.1.0"
 dependencies = [
  "flate2",
  "js-sys",
+ "pdx-zstd",
  "rawzip",
- "ruzstd",
  "serde",
  "tsify",
  "wasm-bindgen",
- "zstd",
 ]
 
 [[package]]
@@ -2565,14 +2570,13 @@ dependencies = [
  "eu4save",
  "jomini",
  "js-sys",
- "ruzstd",
+ "pdx-zstd",
  "schemas",
  "serde",
  "serde-wasm-bindgen",
  "tsify",
  "wasm-bindgen",
  "wasm-bindgen-test",
- "zstd",
 ]
 
 [[package]]
@@ -2582,13 +2586,12 @@ dependencies = [
  "hoi4save",
  "jomini",
  "js-sys",
- "ruzstd",
+ "pdx-zstd",
  "schemas",
  "serde",
  "serde-wasm-bindgen",
  "tsify",
  "wasm-bindgen",
- "zstd",
 ]
 
 [[package]]
@@ -2598,12 +2601,11 @@ dependencies = [
  "imperator-save",
  "jomini",
  "js-sys",
- "ruzstd",
+ "pdx-zstd",
  "schemas",
  "serde",
  "serde-wasm-bindgen",
  "wasm-bindgen",
- "zstd",
 ]
 
 [[package]]
@@ -2612,14 +2614,13 @@ version = "0.1.0"
 dependencies = [
  "jomini",
  "js-sys",
- "ruzstd",
+ "pdx-zstd",
  "schemas",
  "serde",
  "serde-wasm-bindgen",
  "tsify",
  "vic3save",
  "wasm-bindgen",
- "zstd",
 ]
 
 [[package]]

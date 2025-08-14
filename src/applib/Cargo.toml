@@ -6,8 +6,8 @@ publish = false
 
 [features]
 default = ["zstd_rust"]
-zstd_c = ["eu4save/zstd_c"]
-zstd_rust = ["eu4save/zstd_rust"]
+zstd_c = ["eu4save/zstd_c", "eu4game/zstd_c"]
+zstd_rust = ["eu4save/zstd_rust", "eu4game/zstd_rust"]
 
 [dependencies]
 serde = { features = ["derive"], workspace = true }
