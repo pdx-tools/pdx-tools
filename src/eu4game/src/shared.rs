@@ -9,8 +9,6 @@ use eu4save::{
 use highway::{HighwayHash, HighwayHasher, Key};
 use serde::{de::DeserializeOwned, Deserializer};
 use std::io::Read;
-#[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
-use std::io::Cursor;
 
 // This file contains code that is shared between the server and wasm, but not strictly relevant to
 // the save file.
@@ -223,57 +221,24 @@ impl Eu4Parser {
         resolver: &SegmentedResolver,
     ) -> Result<Eu4SaveOutput, Eu4GameError> {
         let mut hasher = SaveCheckSummer::new(self.hash);
-        #[cfg(feature = "zstd_c")]
-        {
-            if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-                let reader = zstd::Decoder::new(data).map_err(Eu4GameError::ZstdInflate)?;
-                let (save, encoding) = {
-                    let mut reader = SaveCheckSummerReader {
-                        reader: Box::new(reader),
-                        hasher: &mut hasher,
-                    };
-                    let mut modeller = Eu4Modeller::from_reader(&mut reader, resolver);
-                    let save: Eu4Save = self.deserialize(&mut modeller)?;
-                    let encoding = modeller.encoding();
-                    (save, encoding)
+        if pdx_zstd::is_zstd_compressed(data) {
+            let reader = pdx_zstd::Decoder::from_slice(data)?;
+            let (save, encoding) = {
+                let mut reader = SaveCheckSummerReader {
+                    reader: Box::new(reader),
+                    hasher: &mut hasher,
                 };
-                return Ok(Eu4SaveOutput {
-                    save,
-                    encoding,
-                    hash: hasher.finish(),
-                });
-            }
-        }
-        
-        #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
-        {
-            if data.len() >= 4 && &data[..4] == &[0x28, 0xB5, 0x2F, 0xFD] {
-                let reader = {
-                    let mut decoder = ruzstd::decoding::StreamingDecoder::new(data)
-                        .map_err(|e| Eu4GameError::ZstdInflate(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("StreamingDecoder error: {:?}", e))))?;
-                    let mut decompressed = Vec::new();
-                    decoder.read_to_end(&mut decompressed)
-                        .map_err(Eu4GameError::ZstdInflate)?;
-                    Cursor::new(decompressed)
-                };
-                let (save, encoding) = {
-                    let mut reader = SaveCheckSummerReader {
-                        reader: Box::new(reader),
-                        hasher: &mut hasher,
-                    };
-                    let mut modeller = Eu4Modeller::from_reader(&mut reader, resolver);
-                    let save: Eu4Save = self.deserialize(&mut modeller)?;
-                    let encoding = modeller.encoding();
-                    (save, encoding)
-                };
-                return Ok(Eu4SaveOutput {
-                    save,
-                    encoding,
-                    hash: hasher.finish(),
-                });
-            }
-        }
-        {
+                let mut modeller = Eu4Modeller::from_reader(&mut reader, resolver);
+                let save: Eu4Save = self.deserialize(&mut modeller)?;
+                let encoding = modeller.encoding();
+                (save, encoding)
+            };
+            Ok(Eu4SaveOutput {
+                save,
+                encoding,
+                hash: hasher.finish(),
+            })
+        } else {
             let mut file = Eu4File::from_slice(data)?;
             let file_size = file.size();
             if file_size > 300 * 1024 * 1024 {
@@ -349,31 +314,12 @@ impl Eu4Parser {
 }
 
 pub fn parse_meta(data: &[u8], resolver: &SegmentedResolver) -> Result<Meta, Eu4GameError> {
-    #[cfg(feature = "zstd_c")]
-    {
-        if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-            let mut decoder = zstd::Decoder::new(data).map_err(Eu4GameError::ZstdInflate)?;
-            let mut modeller = Eu4Modeller::from_reader(&mut decoder, resolver);
-            return Ok(modeller.deserialize()?);
-        }
+    if pdx_zstd::is_zstd_compressed(data) {
+        let mut decoder = pdx_zstd::Decoder::from_slice(data)?;
+        let mut modeller = Eu4Modeller::from_reader(&mut decoder, resolver);
+        return Ok(modeller.deserialize()?);
     }
-    
-    #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
-    {
-        if data.len() >= 4 && &data[..4] == &[0x28, 0xB5, 0x2F, 0xFD] {
-            let mut decoder = {
-                let mut stream_decoder = ruzstd::decoding::StreamingDecoder::new(data)
-                    .map_err(|e| Eu4GameError::ZstdInflate(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("StreamingDecoder error: {:?}", e))))?;
-                let mut decompressed = Vec::new();
-                stream_decoder.read_to_end(&mut decompressed)
-                    .map_err(Eu4GameError::ZstdInflate)?;
-                Cursor::new(decompressed)
-            };
-            let mut modeller = Eu4Modeller::from_reader(&mut decoder, resolver);
-            return Ok(modeller.deserialize()?);
-        }
-    }
-    
+
     {
         let file = Eu4File::from_slice(data)?;
         match file.kind() {
