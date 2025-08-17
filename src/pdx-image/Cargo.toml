@@ -1,0 +1,19 @@
+[package]
+name = "pdx-image"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[features]
+default = ["rust"]
+imagemagick = []
+rust = ["dep:image", "dep:webp"]
+
+[[bin]]
+name = "pdx-image"
+path = "src/bin/pdx_image.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+image = { optional = true, git = "https://github.com/RunDevelopment/image", branch = "dds", default-features = false, features = ["dds", "bmp", "tga", "png"] }
+webp = { optional = true, workspace = true }

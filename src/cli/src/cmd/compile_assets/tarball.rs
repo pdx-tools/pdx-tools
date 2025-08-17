@@ -7,22 +7,32 @@ use super::{
 };
 use crate::rawbmp::{self, Pixels, Rgb};
 use crate::zstd_tee::ZstdTee;
-use anyhow::{bail, Context};
+use anyhow::Context;
 use eu4save::{CountryTag, Eu4File, ProvinceId};
+use pdx_image::{ConvertOptions, ImageBackend, ImageBackendType};
 use mapper::GameProvince;
 use serde::{de::IgnoredAny, Deserialize};
 use std::collections::HashMap;
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::{collections::HashSet, process::Command};
+use std::collections::HashSet;
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone)]
 pub struct PackageOptions {
     pub common: bool,
     pub regen: bool,
+    pub rust_images: bool,
     pub path: PathBuf,
+}
+
+fn create_image_backend(use_rust: bool) -> ImageBackendType {
+    if use_rust {
+        ImageBackendType::new_rust()
+    } else {
+        ImageBackendType::new_imagemagick()
+    }
 }
 
 pub fn parse_game_bundle(options: &PackageOptions) -> anyhow::Result<()> {
@@ -45,7 +55,8 @@ pub fn parse_game_bundle(options: &PackageOptions) -> anyhow::Result<()> {
 
     let dir = tempfile::tempdir()?;
     archive.unpack(dir.path())?;
-    parse_game_dir(dir.path(), &game_dir, &game_version, options)
+    let backend = create_image_backend(options.rust_images);
+    parse_game_dir(dir.path(), &game_dir, &game_version, options, &backend)
 }
 
 pub fn parse_game_dir(
@@ -53,20 +64,21 @@ pub fn parse_game_dir(
     out_game_dir: &Path,
     game_version: &str,
     options: &PackageOptions,
+    backend: &ImageBackendType,
 ) -> anyhow::Result<()> {
     let localization = localization::english_localization(tmp_game_dir.join("localisation"))?;
 
     let countries = generate_countries(tmp_game_dir, &localization)?;
-    let tc = generate_trade_company_investments(tmp_game_dir, &localization, options)?;
-    let persons = generate_ruler_personalities(tmp_game_dir, &localization, options)?;
-    let advs = generate_advisors(tmp_game_dir, &localization, options)?;
+    let tc = generate_trade_company_investments(tmp_game_dir, &localization, options, backend)?;
+    let persons = generate_ruler_personalities(tmp_game_dir, &localization, options, backend)?;
+    let advs = generate_advisors(tmp_game_dir, &localization, options, backend)?;
     let (total_provs, provs) = generate_provinces(tmp_game_dir, game_version)?;
     let terrain = generate_terrain(tmp_game_dir)?;
-    translate_flags(tmp_game_dir, options).context("country flag error")?;
-    translate_achievements_images(tmp_game_dir, options).context("achievement images error")?;
-    translate_building_images(tmp_game_dir, options).context("building images error")?;
+    translate_flags(tmp_game_dir, options, backend).context("country flag error")?;
+    translate_achievements_images(tmp_game_dir, options, backend).context("achievement images error")?;
+    translate_building_images(tmp_game_dir, options, backend).context("building images error")?;
     let center_locations =
-        translate_map(tmp_game_dir, out_game_dir, options).context("map error")?;
+        translate_map(tmp_game_dir, out_game_dir, options, backend).context("map error")?;
 
     let mut buffer = schemas::flatbuffers::FlatBufferBuilder::new();
 
@@ -560,6 +572,7 @@ fn generate_trade_company_investments(
     tmp_game_dir: &Path,
     localization: &HashMap<String, String>,
     options: &PackageOptions,
+    backend: &ImageBackendType,
 ) -> anyhow::Result<HashMap<String, String>> {
     #[derive(Debug, Deserialize)]
     struct InvestmentData {
@@ -599,11 +612,13 @@ fn generate_trade_company_investments(
             name: "investments",
             base_path: out_dir.to_path_buf(),
             encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
-            args: &[],
+            background_transparent: false,
+            auto_orient: false,
+            alpha_off: false,
             sizes: &[],
         };
 
-        montage.montage(&sprite_images)?;
+        montage.montage(&sprite_images, backend)?;
     }
 
     let name_ids: HashSet<_> = data.keys().map(|name_id| name_id.as_str()).collect();
@@ -626,6 +641,7 @@ fn generate_ruler_personalities(
     tmp_game_dir: &Path,
     localization: &HashMap<String, String>,
     options: &PackageOptions,
+    backend: &ImageBackendType,
 ) -> anyhow::Result<HashMap<String, String>> {
     let persons = WalkDir::new(tmp_game_dir.join("common").join("ruler_personalities"))
         .into_iter()
@@ -681,11 +697,13 @@ fn generate_ruler_personalities(
             name: "personalities",
             base_path: out_dir.to_path_buf(),
             encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
-            args: &["-background", "transparent"],
+            background_transparent: true,
+            auto_orient: false,
+            alpha_off: false,
             sizes: &[],
         };
 
-        montage.montage(&personalities_order)?;
+        montage.montage(&personalities_order, backend)?;
     }
 
     let translate: HashMap<_, _> = localization
@@ -701,6 +719,7 @@ fn generate_advisors(
     tmp_game_dir: &Path,
     localization: &HashMap<String, String>,
     options: &PackageOptions,
+    backend: &ImageBackendType,
 ) -> anyhow::Result<HashMap<String, String>> {
     let persons = WalkDir::new(tmp_game_dir.join("common").join("advisortypes"))
         .sort_by_file_name()
@@ -739,11 +758,13 @@ fn generate_advisors(
             name: "advisors",
             base_path: out_dir.to_path_buf(),
             encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
-            args: &["-background", "transparent"],
+            background_transparent: true,
+            auto_orient: false,
+            alpha_off: false,
             sizes: &["48x48", "64x64", "77x77"],
         };
 
-        montage.montage(&advisors_montage)?;
+        montage.montage(&advisors_montage, backend)?;
     }
 
     let translate = advisors.into_iter().collect::<HashMap<_, _>>();
@@ -866,6 +887,7 @@ fn generate_provinces(
 pub fn translate_achievements_images(
     tmp_game_dir: &Path,
     options: &PackageOptions,
+    backend: &ImageBackendType,
 ) -> anyhow::Result<()> {
     if !options.common {
         return Ok(());
@@ -906,11 +928,13 @@ pub fn translate_achievements_images(
         name: "achievements",
         base_path: base_achievement_path.to_path_buf(),
         encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
-        args: &["-background", "transparent"],
+        background_transparent: true,
+        auto_orient: false,
+        alpha_off: false,
         sizes: &[],
     };
 
-    montage.montage(&achieves)?;
+    montage.montage(&achieves, backend)?;
 
     Ok(())
 }
@@ -918,6 +942,7 @@ pub fn translate_achievements_images(
 pub fn translate_building_images(
     tmp_game_dir: &Path,
     options: &PackageOptions,
+    backend: &ImageBackendType,
 ) -> anyhow::Result<()> {
     if !options.common {
         return Ok(());
@@ -973,31 +998,34 @@ pub fn translate_building_images(
 
     // Turn alpha off as else buildings like latin_admiralty are converted to
     // something that is completely transparent
-    let args = &["-background", "white", "-alpha", "Off", "-auto-orient"];
     let montage = Montager {
         name: "westerngfx",
         base_path: base_path.to_path_buf(),
         encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
-        args,
+        background_transparent: false, // white background
+        auto_orient: true,
+        alpha_off: true, // Important: prevents buildings from becoming transparent
         sizes: &[],
     };
 
-    montage.montage(&western_buildings)?;
+    montage.montage(&western_buildings, backend)?;
 
     let montage = Montager {
         name: "global",
         base_path: base_path.to_path_buf(),
         encoding: montager::Encoding::Webp(montager::WebpQuality::Quality(90)),
-        args,
+        background_transparent: false, // white background
+        auto_orient: true,
+        alpha_off: false,
         sizes: &[],
     };
 
-    montage.montage(&global_buildings)?;
+    montage.montage(&global_buildings, backend)?;
 
     Ok(())
 }
 
-pub fn translate_flags(tmp_game_dir: &Path, options: &PackageOptions) -> anyhow::Result<()> {
+pub fn translate_flags(tmp_game_dir: &Path, options: &PackageOptions, backend: &ImageBackendType) -> anyhow::Result<()> {
     if !options.common {
         return Ok(());
     }
@@ -1028,11 +1056,13 @@ pub fn translate_flags(tmp_game_dir: &Path, options: &PackageOptions) -> anyhow:
 
         // flag images are mostly 128x128 but there are a
         // few 256x256, and 48x48 is max flag avatar size
-        args: &["-background", "white", "-alpha", "Off", "-auto-orient"],
+        background_transparent: false, // white background
+        auto_orient: true,
+        alpha_off: false,
         sizes: &["8x8", "48x48", "64x64", "128x128"],
     };
 
-    montage.montage(&tmp_flags)?;
+    montage.montage(&tmp_flags, backend)?;
     Ok(())
 }
 
@@ -1040,6 +1070,7 @@ pub fn translate_map(
     tmp_game_dir: &Path,
     out_game_dir: &Path,
     options: &PackageOptions,
+    backend: &ImageBackendType,
 ) -> anyhow::Result<HashMap<u16, (u16, u16)>> {
     let base_image_dir = out_game_dir.join("map");
     std::fs::create_dir_all(&base_image_dir)
@@ -1061,23 +1092,19 @@ pub fn translate_map(
                 continue;
             }
 
-            let child = Command::new("convert")
-                .arg(&image_path)
-                .arg("-strip")
-                .arg("-crop")
-                .arg(format!("2816x2048+{}+0", (i - 1) * 2816))
-                .arg("-define")
-                .arg("webp:lossless=true")
-                .arg(out_path)
-                .output()
-                .context("imagemagick convert failed")?;
+            let options = ConvertOptions {
+                webp_quality: pdx_image::WebpQuality::Lossless,
+                strip_profiles: true,
+                crop: Some(pdx_image::CropParams {
+                    width: 2816,
+                    height: 2048,
+                    x: (i - 1) * 2816,
+                    y: 0,
+                }),
+                ..Default::default()
+            };
 
-            if !child.status.success() {
-                bail!(
-                    "convert failed with: {}",
-                    String::from_utf8_lossy(&child.stderr)
-                );
-            }
+            backend.convert_image(&image_path, out_path, &options)?;
         }
     }
 
@@ -1092,20 +1119,13 @@ pub fn translate_map(
             continue;
         }
 
-        let child = Command::new("convert")
-            .arg(image_path)
-            .arg("-strip")
-            .arg("-define")
-            .arg("webp:lossless=true")
-            .arg(&out_path)
-            .output()?;
+        let convert_options = ConvertOptions {
+            webp_quality: pdx_image::WebpQuality::Lossless,
+            strip_profiles: true,
+            ..Default::default()
+        };
 
-        if !child.status.success() {
-            bail!(
-                "convert failed with: {}",
-                String::from_utf8_lossy(&child.stderr)
-            );
-        }
+        backend.convert_image(image_path, &out_path, &convert_options)?;
     }
 
     for image in &[
@@ -1127,21 +1147,9 @@ pub fn translate_map(
             continue;
         }
 
-        let mut child = Command::new("convert");
-        child.arg(image_path);
+        let convert_options = ConvertOptions::default();
 
-        if *image == "heightmap.bmp" {
-            child.arg("-resize");
-            child.arg("2816x1024");
-        }
-
-        let out = child.arg(&out_path).output()?;
-        if !out.status.success() {
-            bail!(
-                "convert failed with: {}",
-                String::from_utf8_lossy(&out.stderr)
-            );
-        }
+        backend.convert_image(image_path, &out_path, &convert_options)?;
     }
 
     for image in &["terrain/atlas_normal0.dds", "terrain/atlas0.dds"] {
@@ -1159,25 +1167,23 @@ pub fn translate_map(
                 continue;
             }
 
-            let crop = match *i {
-                "rock" => "512x512+1024+512",
-                "green" => "512x512+512+1024",
+            let (crop_x, crop_y) = match *i {
+                "rock" => (1024, 512),
+                "green" => (512, 1024),
                 _ => unreachable!(),
             };
 
-            let child = Command::new("convert")
-                .arg(&image_path)
-                .arg("-crop")
-                .arg(crop)
-                .arg(&out_path)
-                .output()?;
+            let convert_options = ConvertOptions {
+                crop: Some(pdx_image::CropParams {
+                    width: 512,
+                    height: 512,
+                    x: crop_x,
+                    y: crop_y,
+                }),
+                ..Default::default()
+            };
 
-            if !child.status.success() {
-                bail!(
-                    "convert failed with: {}",
-                    String::from_utf8_lossy(&child.stderr)
-                );
-            }
+            backend.convert_image(&image_path, &out_path, &convert_options)?;
         }
     }
 

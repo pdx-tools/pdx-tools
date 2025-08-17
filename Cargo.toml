@@ -6,6 +6,7 @@ members = [
     "src/cli",
     "src/eu4game",
     "src/eu4game-data",
+    "src/pdx-image",
     "src/pdx-zstd",
     "src/schemas",
     "src/vic3save",
@@ -39,13 +40,14 @@ flate2 = { version = "1.1.0", default-features = false }
 getrandom = "0.2"
 highway = "1.3"
 hoi4save = { git = "https://github.com/rakaly/hoi4save.git" }
-image = { version = "0.25.2", default-features = false }
+image = { git = "https://github.com/RunDevelopment/image", branch = "dds", default-features = false }
 imperator-save = { git = "https://github.com/rakaly/imperator-save.git" }
 jomini = "0.28.0"
 js-sys = "0.3"
 log = "0.4"
 mathru = "0.15.3"
 mimalloc = "0.1.43"
+pdx-image = { path = "src/pdx-image", default-features = false }
 pdx-zstd = { path = "src/pdx-zstd", default-features = false }
 rand = "0.8"
 rawzip = "0.3.1"

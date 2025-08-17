@@ -121,6 +121,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "astc-decode"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d6058e6202e20b7fa445692ec4b77ca8eb02508091fcd479ea753d9f60e376b"
+
+[[package]]
 name = "attohttpc"
 version = "0.29.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -508,6 +514,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dds"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fe57b94813bbd438e2fb1df420ab1d875e54767001f96ab72eb3a8ac0a78302"
+dependencies = [
+ "astc-decode",
+ "bitflags 2.9.1",
+ "glam",
+ "rayon",
+ "resize",
+ "zerocopy",
+]
+
+[[package]]
 name = "displaydoc"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -764,6 +784,12 @@ name = "gimli"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
+
+[[package]]
+name = "glam"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "151665d9be52f9bb40fc7966565d39666f2d1e69233571b71b87791c7e0528b3"
 
 [[package]]
 name = "glob"
@@ -1035,6 +1061,17 @@ checksum = "db35664ce6b9810857a38a906215e75a9c879f0696556a39f59c62829710251a"
 dependencies = [
  "bytemuck",
  "byteorder-lite",
+ "num-traits",
+]
+
+[[package]]
+name = "image"
+version = "0.25.6"
+source = "git+https://github.com/RunDevelopment/image?branch=dds#185d5f1e334e252c3686fc39716afd16c4fa1fc9"
+dependencies = [
+ "bytemuck",
+ "byteorder-lite",
+ "dds",
  "num-traits",
  "png",
 ]
@@ -1483,6 +1520,7 @@ dependencies = [
  "jomini",
  "log",
  "mimalloc",
+ "pdx-image",
  "rawzip",
  "rayon",
  "regex",
@@ -1496,13 +1534,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdx-image"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "image 0.25.6 (git+https://github.com/RunDevelopment/image?branch=dds)",
+ "webp",
+]
+
+[[package]]
 name = "pdx-tools-api"
 version = "0.1.0"
 dependencies = [
  "applib",
  "axum",
  "eu4game",
- "image",
+ "image 0.25.6 (git+https://github.com/RunDevelopment/image?branch=dds)",
  "mimalloc",
  "tokio",
  "tower-http",
@@ -1755,6 +1802,22 @@ name = "regex-syntax"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
+
+[[package]]
+name = "resize"
+version = "0.8.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87a103d0b47e783f4579149402f7499397ab25540c7a57b2f70487a5d2d20ef0"
+dependencies = [
+ "rayon",
+ "rgb",
+]
+
+[[package]]
+name = "rgb"
+version = "0.8.52"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c6a884d2998352bb4daf0183589aec883f16a6da1f4dde84d8e2e9a5409a1ce"
 
 [[package]]
 name = "rustc-demangle"
@@ -2639,7 +2702,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f53152f51fb5af0c08484c33d16cca96175881d1f3dec068c23b31a158c2d99"
 dependencies = [
- "image",
+ "image 0.25.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "libwebp-sys",
 ]
 

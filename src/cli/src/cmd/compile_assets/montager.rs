@@ -1,10 +1,10 @@
 use std::{
     io::{BufWriter, Write},
     path::{Path, PathBuf},
-    process::Command,
 };
 
-use anyhow::bail;
+use anyhow::Result;
+use pdx_image::{ImageBackend, MontageOptions, TileGeometry, WebpQuality as BackendWebpQuality};
 
 pub enum WebpQuality {
     #[allow(dead_code)]
@@ -16,19 +16,31 @@ pub enum Encoding {
     Webp(WebpQuality),
 }
 
+impl From<&WebpQuality> for BackendWebpQuality {
+    fn from(quality: &WebpQuality) -> Self {
+        match quality {
+            WebpQuality::Lossless => BackendWebpQuality::Lossless,
+            WebpQuality::Quality(q) => BackendWebpQuality::Quality(*q as u8),
+        }
+    }
+}
+
 pub struct Montager {
     pub name: &'static str,
     pub base_path: PathBuf,
     pub encoding: Encoding,
-    pub args: &'static [&'static str],
+    pub background_transparent: bool,
+    pub auto_orient: bool,
+    pub alpha_off: bool,
     pub sizes: &'static [&'static str],
 }
 
 impl Montager {
-    pub fn montage<KEY, PATH>(&self, data: &[(KEY, PATH)]) -> anyhow::Result<()>
+    pub fn montage<KEY, PATH, B>(&self, data: &[(KEY, PATH)], backend: &B) -> Result<()>
     where
         KEY: AsRef<str>,
         PATH: AsRef<Path>,
+        B: ImageBackend,
     {
         let json_path = self.base_path.join(format!("{}.json", self.name));
         let data_file = std::fs::File::create(json_path)?;
@@ -47,50 +59,68 @@ impl Montager {
         json.flush()?;
 
         if self.sizes.is_empty() {
-            self.imagemagick(data, &[""])?;
+            self.create_montage_with_backend(data, &[""], backend)?;
         } else {
-            self.imagemagick(data, self.sizes)?;
+            self.create_montage_with_backend(data, self.sizes, backend)?;
         };
 
         Ok(())
     }
 
-    fn imagemagick<KEY, PATH>(
+    fn create_montage_with_backend<KEY, PATH, B>(
         &self,
         data: &[(KEY, PATH)],
         sizes: &[&str],
-    ) -> Result<(), anyhow::Error>
+        backend: &B,
+    ) -> Result<()>
     where
         KEY: AsRef<str>,
         PATH: AsRef<Path>,
+        B: ImageBackend,
     {
         for size in sizes {
-            let cols = (data.len() as f64).sqrt().ceil();
+            let webp_quality = match &self.encoding {
+                Encoding::Webp(quality) => quality.into(),
+            };
 
-            let mut cmd = Command::new("montage");
-            cmd.args(self.args)
-                .arg("-mode")
-                .arg("concatenate")
-                .arg("-tile")
-                .arg(format!("{cols}x"));
+            let background_color = if self.background_transparent {
+                None
+            } else {
+                Some((255, 255, 255)) // Default to white background
+            };
 
-            if !size.is_empty() {
-                cmd.arg("-geometry");
-                cmd.arg(size);
-            }
-
-            match self.encoding {
-                Encoding::Webp(WebpQuality::Lossless) => {
-                    cmd.arg("-define").arg("webp:lossless=true");
-                }
-                Encoding::Webp(WebpQuality::Quality(q)) => {
-                    cmd.arg("-quality").arg(format!("{}", q));
+            let tile_geometry = if size.is_empty() {
+                None
+            } else {
+                // Parse size string like "64x64" or "48x48"
+                if let Some(x_pos) = size.find('x') {
+                    let width: u32 = size[..x_pos].parse().map_err(|_| {
+                        anyhow::anyhow!("Invalid width in size: {}", size)
+                    })?;
+                    let height: u32 = size[x_pos + 1..].parse().map_err(|_| {
+                        anyhow::anyhow!("Invalid height in size: {}", size)
+                    })?;
+                    Some(TileGeometry { width, height })
+                } else {
+                    return Err(anyhow::anyhow!("Invalid size format: {}, expected WIDTHxHEIGHT", size));
                 }
             };
 
-            for (_, path) in data {
-                cmd.arg(path.as_ref());
-            }
+            let options = MontageOptions {
+                grid_cols: 0, // auto-calculate
+                tile_geometry,
+                webp_quality,
+                background_color,
+                background_transparent: self.background_transparent,
+                auto_orient: self.auto_orient,
+                alpha_off: self.alpha_off,
+            };
+
+            // Convert data to the format expected by backend
+            let image_data: Vec<(String, &Path)> = data
+                .iter()
+                .map(|(key, path)| (key.as_ref().to_string(), path.as_ref()))
+                .collect();
 
             let img_path = if size.is_empty() {
                 self.base_path.join(format!("{}.webp", self.name))
@@ -100,16 +130,7 @@ impl Montager {
                     .join(format!("{}_{}.webp", self.name, size_filename))
             };
 
-            cmd.arg(img_path);
-            let child = cmd.output()?;
-
-            if !child.status.success() {
-                bail!(
-                    "{} convert failed with: {}",
-                    self.name,
-                    String::from_utf8_lossy(&child.stderr)
-                );
-            }
+            backend.create_montage(&image_data, &img_path, &options)?;
         }
         Ok(())
     }

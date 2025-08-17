@@ -9,7 +9,7 @@ admin = ["create_bundle", "tokenize", "dep:applib", "dep:eu4game", "dep:eu4save"
 fun = ["compile_assets", "dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2"]
 
 create_bundle = ["dep:zstd"]
-compile_assets = ["dep:attohttpc", "dep:eu4save", "dep:jomini", "dep:eu4game-data", "dep:schemas", "schemas?/inline", "dep:zstd"]
+compile_assets = ["dep:attohttpc", "dep:eu4save", "dep:jomini", "dep:eu4game-data", "dep:schemas", "schemas?/inline", "dep:zstd", "dep:pdx-image"]
 tokenize = ["dep:zstd", "dep:schemas"]
 
 [dependencies]
@@ -27,6 +27,7 @@ flate2 = { optional = true, default-features = false, features = ["zlib-rs"] , w
 highway = { workspace = true }
 jomini = { optional = true , workspace = true }
 log = { workspace = true }
+pdx-image = { optional = true, workspace = true, features = ["rust"] }
 rayon = { workspace = true }
 regex = { workspace = true }
 schemas = { optional = true , workspace = true }

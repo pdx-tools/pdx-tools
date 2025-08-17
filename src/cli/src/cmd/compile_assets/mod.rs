@@ -29,6 +29,10 @@ pub struct CompileAssetsArgs {
     #[clap(long)]
     regen: bool,
 
+    /// Use pure Rust image processing instead of ImageMagick
+    #[clap(long)]
+    rust_images: bool,
+
     /// Path to asset bundle
     #[clap(value_parser)]
     bundle_path: PathBuf,
@@ -39,6 +43,7 @@ impl CompileAssetsArgs {
         let options = PackageOptions {
             common: !self.skip_common,
             regen: self.regen,
+            rust_images: self.rust_images,
             path: self.bundle_path.clone(),
         };
 
