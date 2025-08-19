@@ -1,19 +1,158 @@
 [tools]
-"docker-compose" = { version = "2.33.1" }
-"just" = { version = "1.40.0" }
+"aqua:pnpm" = { version = "10.11.0" }
 "node" = { version = "22.15.0" }
 "npm:concurrently" = { version = "9.1.2" }
 "npm:npm-check-updates" = { version = "17.1.18" }
-"pnpm" = { version = "10.11.0" }
 "rust" = { version = "1.87.0", targets = "wasm32-unknown-unknown,x86_64-unknown-linux-musl" }
 "ubi:cargo-bins/cargo-binstall" = { version = "1.12.5" }
+"ubi:casey/just" = { version = "1.40.0" }
+"ubi:docker/compose" = { version = "2.33.1", rename_exe = "docker-compose" }
 "ubi:google/flatbuffers" = { version = "25.2.10", matching = "clang", exe = "flatc" }
 "ubi:jqlang/jq" = { version = "jq-1.7.1" }
 "ubi:rustwasm/wasm-bindgen" = { version = "0.2.100", extract_all = "true" }
 "ubi:WebAssembly/binaryen" = { version = "version_123", extract_all = "true", bin_path = "bin" }
 "vfox:mise-plugins/vfox-clang" = { version = "18.1.6" }
 
-[tasks.build-wasm-dev]
-description = "Build wasm"
+[tasks."build:cargo-wasm"]
 run = ["cargo build --release --no-default-features --features zstd_c_fat_lto --features zstd_c --target wasm32-unknown-unknown -p wasm-*"]
 run_windows = ["cargo build --release --no-default-features --features zstd_rust --target wasm32-unknown-unknown -p wasm-*"]
+hide = true
+
+[tasks."build:wasm-bindgen"]
+depends = ['build:cargo-wasm']
+run = [
+    'wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/{{arg(name="rust_package")}}.wasm --out-dir ./src/app/app/wasm'
+]
+hide = true
+
+[tasks."build:wasm"]
+description = "Build wasm"
+depends = [
+    'build:wasm-bindgen wasm_app',
+    'build:wasm-bindgen wasm_ck3',
+    'build:wasm-bindgen wasm_compress',
+    'build:wasm-bindgen wasm_eu4',
+    'build:wasm-bindgen wasm_hoi4',
+    'build:wasm-bindgen wasm_imperator',
+    'build:wasm-bindgen wasm_vic3',
+]
+
+[tasks.wasm-opt]
+run = [
+    'wasm-opt -O2 ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg.wasm -o ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg_optimized.wasm',
+    'mv ./src/app/app/wasm/{{arg(name="rust_package",i=0)}}_bg_optimized.wasm ./src/app/app/wasm/{{arg(name="rust_package",i=0)}}_bg.wasm',
+]
+run_windows = [
+    'wasm-opt -O2 ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg.wasm -o ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg_optimized.wasm',
+    'move .\\src\\app\\app\\wasm\\{{arg(name="rust_package", i=0)}}_bg_optimized.wasm .\\src\\app\\app\\wasm\\{{arg(name="rust_package", i=0)}}_bg.wasm'
+]
+hide = true
+
+[tasks."optimize:wasm:app"]
+wait_for = ["build:wasm-bindgen wasm_app"]
+run = ["mise run wasm-opt wasm_app"]
+hide = true
+
+[tasks."optimize:wasm:ck3"]
+wait_for = ["build:wasm-bindgen wasm_ck3"]
+run = ["mise run wasm-opt wasm_ck3"]
+hide = true
+
+[tasks."optimize:wasm:compress"]
+wait_for = ["build:wasm-bindgen wasm_compress"]
+run = ["mise run wasm-opt wasm_compress"]
+hide = true
+
+[tasks."optimize:wasm:eu4"]
+wait_for = ["build:wasm-bindgen wasm_eu4"]
+run = ["mise run wasm-opt wasm_eu4"]
+hide = true
+
+[tasks."optimize:wasm:hoi4"]
+wait_for = ["build:wasm-bindgen wasm_hoi4"]
+run = ["mise run wasm-opt wasm_hoi4"]
+hide = true
+
+[tasks."optimize:wasm:imperator"]
+wait_for = ["build:wasm-bindgen wasm_imperator"]
+run = ["mise run wasm-opt wasm_imperator"]
+hide = true
+
+[tasks."optimize:wasm:vic3"]
+wait_for = ["build:wasm-bindgen wasm_vic3"]
+run = ["mise run wasm-opt wasm_vic3"]
+hide = true
+
+[tasks.pnpm-install]
+run = "pnpm install --optimistic-repeat-install"
+sources = ["pnpm-lock.yaml"]
+hide = true
+
+[tasks."dev:app:setup:types"]
+description = "Generate TypeScript types from Rust"
+run = "cargo run -p applib --bin types"
+hide = true
+
+[tasks."dev:app:setup:assets"]
+run = "node ./.config/mise/tasks/setup-assets.mjs"
+hide = true
+
+[tasks."dev:app"]
+description = "Run pdx.tools frontend development"
+depends = ["pnpm-install", "dev:app:setup:*", "tokenize"]
+wait_for = ["build:wasm"]
+dir = "./src/app"
+run = "pnpm run dev"
+
+[tasks."dev:map"]
+description = "Run the sample map demo without compiling Rust"
+depends = ["pnpm-install"]
+dir = "./src/map"
+run = "pnpm run dev"
+
+[tasks."dev:docs"]
+description = "Run the docs"
+depends = ["pnpm-install"]
+dir = "./src/docs"
+run = "pnpm run docusaurus start --no-open"
+
+[tasks.tokenize]
+description = "Preprocess the ironman tokens for distribution"
+sources = ["./assets/tokens/*.txt"]
+outputs = ["./assets/tokens/*.bin"]
+run = "cargo run --package pdx --features tokenize -- tokenize ./assets/tokens"
+
+[tasks."build:docs:docusaurus"]
+depends = ["pnpm-install"]
+dir = "src/docs"
+hide = true
+run = "pnpm run build"
+
+[tasks."build:docs"]
+depends = ["build:docs:docusaurus"]
+dir = "src/docs/build"
+hide = true
+run = [
+    "cp -r assets blog docs blog.html changelog.html docs.html img ../../app/public/."
+]
+run_windows = [
+    "xcopy assets ..\\..\\app\\public\\assets /E /I /Y",
+    "xcopy blog ..\\..\\app\\public\\blog /E /I /Y",
+    "xcopy docs ..\\..\\app\\public\\docs /E /I /Y",
+    "xcopy blog.html ..\\..\\app\\public /I /Y",
+    "xcopy docs.html ..\\..\\app\\public /I /Y",
+    "xcopy img ..\\..\\app\\public\\img /E /I /Y",
+]
+
+[tasks."build:app"]
+description = "Build pdx.tools frontend for deployment"
+depends = ["pnpm-install", "build:docs", "build:wasm", "optimize:wasm:*", "dev:app:setup:*", "tokenize"]
+dir = "src/app"
+run = [
+    "pnpm run build",
+    "cp app/wasm/wasm_app_bg.wasm build/server/assets/."
+]
+run_windows = [
+    "pnpm run build",
+    "xcopy app\\wasm\\wasm_app_bg.wasm build\\server\\assets\\. /I /Y",
+]

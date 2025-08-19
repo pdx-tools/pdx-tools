@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "paths": {
+      "@/images/eu4/*": ["../../assets/game/eu4/common/images/*"],
       "@/*": ["./app/*"]
     },
     "types": [
