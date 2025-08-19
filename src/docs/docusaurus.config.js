@@ -72,7 +72,7 @@ const config = {
         style: "dark",
         logo: {
           alt: "PDX Tools Logo",
-          src: "img/logo.svg",
+          src: "img/app.svg",
           href: "/docs",
           width: 48,
           height: 48,

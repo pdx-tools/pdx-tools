@@ -7,15 +7,14 @@
   "description": "",
   "scripts": {
     "dev": "remix vite:dev --port 3001",
-    "build": "remix vite:build && npm run copy-wasm",
-    "build:test": "NODE_ENV=development remix vite:build && npm run copy-wasm",
+    "build": "remix vite:build",
+    "build:test": "NODE_ENV=development remix vite:build",
     "deploy": "wrangler deploy",
     "format": "prettier --write .",
     "generate": "drizzle-kit generate --config drizzle-kit.config.ts",
     "start": "just staging",
     "test": "vitest",
     "lint": "eslint",
-    "copy-wasm": "cp app/wasm/wasm_app_bg.wasm build/server/assets/.",
     "typegen": "wrangler types"
   },
   "keywords": [],
