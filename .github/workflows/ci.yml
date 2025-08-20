@@ -106,11 +106,61 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: windows-latest
           - os: ubuntu-latest
+            with_tokens: false
+          - os: ubuntu-latest
+            with_tokens: true
+          - os: windows-latest
+            with_tokens: false
+          - os: windows-latest
+            with_tokens: true
+    name: build-ng / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install imagemagick
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          convert -version
+
+          # For some reason imagemagick's path policy is set to none on github actions
+          # and we need it for sending hundreds of file paths to imagemagick.
+          sudo sed -i 's/rights="none"/rights="read|write"/gI' "/etc/ImageMagick-6/policy.xml"
+          identify -list policy
+      - name: Cache assets
+        uses: actions/cache@v4
+        with:
+          path: |
+            assets/game-bundles
+            assets/eu4-saves
+            src/vic3save/assets
+          key: asset-cache
+
+      - uses: actions/checkout@v4
+        name: Clone tokens
+        if: matrix.with_tokens
+        with:
+          path: assets/tokens
+          repository: pdx-tools/tokens
+          token: ${{secrets.GH_PAT}}
+
+      - name: Link tokens
+        if: matrix.with_tokens
+        run: cd assets/tokens && ln -s tokens/* .
+
       - uses: jdx/mise-action@v2
         with:
           cache: false   # rust wasm target is not cached
-      - run: mise run build:app
+      - name: Asset pipeline
+        if: matrix.with_tokens # if tokens are enabled, process game bundles
+        env:
+          ASSETS_ACCESS_KEY: ${{ matrix.with_tokens && secrets.ASSETS_ACCESS_KEY || '' }}
+          ASSETS_SECRET_KEY: ${{ matrix.with_tokens && secrets.ASSETS_SECRET_KEY || '' }}
+        run: |
+          mise -E admin run admin:sync-assets
+          mise -E admin run admin:package-all
+      - run: |
+          mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm ::: test:cli' }}
+          ${{ matrix.with_tokens && 'mise run test:app' || '' }}
+          mise run build:app

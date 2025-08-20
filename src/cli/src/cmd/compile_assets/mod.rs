@@ -3,6 +3,7 @@ mod area;
 mod assets;
 mod continents;
 mod cultures;
+mod imagemagick;
 mod localization;
 pub mod mapper;
 mod montager;

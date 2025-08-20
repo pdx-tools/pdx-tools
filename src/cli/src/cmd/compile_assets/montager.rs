@@ -1,9 +1,10 @@
 use std::{
+    fs,
     io::{BufWriter, Write},
     path::{Path, PathBuf},
-    process::Command,
 };
 
+use super::imagemagick;
 use anyhow::bail;
 
 pub enum WebpQuality {
@@ -67,7 +68,7 @@ impl Montager {
         for size in sizes {
             let cols = (data.len() as f64).sqrt().ceil();
 
-            let mut cmd = Command::new("montage");
+            let mut cmd = imagemagick::imagemagick_command("montage")?;
             cmd.args(self.args)
                 .arg("-mode")
                 .arg("concatenate")
@@ -88,10 +89,6 @@ impl Montager {
                 }
             };
 
-            for (_, path) in data {
-                cmd.arg(path.as_ref());
-            }
-
             let img_path = if size.is_empty() {
                 self.base_path.join(format!("{}.webp", self.name))
             } else {
@@ -100,8 +97,26 @@ impl Montager {
                     .join(format!("{}_{}.webp", self.name, size_filename))
             };
 
-            cmd.arg(img_path);
+            // Use response file to avoid command line length limits on Windows
+            let response_path = img_path.with_extension("txt");
+            {
+                let response_file = fs::File::create(&response_path)?;
+                let mut response_writer = BufWriter::new(response_file);
+                
+                for (_, path) in data {
+                    write!(response_writer, "{} ", path.as_ref().display())?;
+                }
+                response_writer.flush()?;
+            }
+
+            println!("file data: {}", std::fs::read_to_string(&response_path)?);
+            
+            cmd.arg(format!("@{}", response_path.display()));
+            cmd.arg(img_path.as_os_str());
             let child = cmd.output()?;
+            
+            // Clean up response file
+            let _ = fs::remove_file(&response_path);
 
             if !child.status.success() {
                 bail!(
