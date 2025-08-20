@@ -1,3 +1,4 @@
+use super::imagemagick;
 use super::mapper::parse_terrain_txt;
 use super::montager::{self, Montager};
 use super::religion::religion_rebels;
@@ -11,11 +12,10 @@ use anyhow::{bail, Context};
 use eu4save::{CountryTag, Eu4File, ProvinceId};
 use mapper::GameProvince;
 use serde::{de::IgnoredAny, Deserialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::{collections::HashSet, process::Command};
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone)]
@@ -1003,9 +1003,16 @@ pub fn translate_flags(tmp_game_dir: &Path, options: &PackageOptions) -> anyhow:
     }
 
     let base_flag_path = Path::new("assets/game/eu4/common/images/flags");
-    std::fs::create_dir_all(base_flag_path)?;
+    std::fs::create_dir_all(base_flag_path)
+        .with_context(|| format!("unable to create: {}", base_flag_path.display()))?;
 
-    let flag_data_file = std::fs::File::create(base_flag_path.join("flags.json"))?;
+    let flag_data_file =
+        std::fs::File::create(base_flag_path.join("flags.json")).with_context(|| {
+            format!(
+                "unable to create: {}",
+                base_flag_path.join("flags.json").display()
+            )
+        })?;
     let mut flag_json = BufWriter::new(flag_data_file);
     flag_json.write_all(&b"{\n"[..])?;
 
@@ -1032,7 +1039,9 @@ pub fn translate_flags(tmp_game_dir: &Path, options: &PackageOptions) -> anyhow:
         sizes: &["8x8", "48x48", "64x64", "128x128"],
     };
 
-    montage.montage(&tmp_flags)?;
+    montage
+        .montage(&tmp_flags)
+        .context("unable to create country flag montage")?;
     Ok(())
 }
 
@@ -1061,7 +1070,7 @@ pub fn translate_map(
                 continue;
             }
 
-            let child = Command::new("convert")
+            let child = imagemagick::imagemagick_command("convert")?
                 .arg(&image_path)
                 .arg("-strip")
                 .arg("-crop")
@@ -1092,7 +1101,7 @@ pub fn translate_map(
             continue;
         }
 
-        let child = Command::new("convert")
+        let child = imagemagick::imagemagick_command("convert")?
             .arg(image_path)
             .arg("-strip")
             .arg("-define")
@@ -1127,7 +1136,7 @@ pub fn translate_map(
             continue;
         }
 
-        let mut child = Command::new("convert");
+        let mut child = imagemagick::imagemagick_command("convert")?;
         child.arg(image_path);
 
         if *image == "heightmap.bmp" {
@@ -1165,7 +1174,7 @@ pub fn translate_map(
                 _ => unreachable!(),
             };
 
-            let child = Command::new("convert")
+            let child = imagemagick::imagemagick_command("convert")?
                 .arg(&image_path)
                 .arg("-crop")
                 .arg(crop)

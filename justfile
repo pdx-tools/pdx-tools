@@ -159,23 +159,8 @@ build-wasm-dev:
 
 package-all *opts:
   #!/usr/bin/env bash
-  set -euxo pipefail
-  package() {
-    length=$(($#-1))
-    array=${@:1:$length}
-    ./target/release/pdx compile-assets ${array} "${@: -1}"
-  }
-
   cargo build --release --package pdx --features compile_assets
-
-  LAST_BUNDLE=$(ls assets/game-bundles/eu4-* | grep -v common | sort -n | tail -n1)
-  for BUNDLE in $(ls assets/game-bundles/eu4-* | grep -v common | sort -n); do
-    if [ "$BUNDLE" = "$LAST_BUNDLE" ]; then
-      package "$@" "$BUNDLE"
-    else
-      package "$@" --skip-common "$BUNDLE"
-    fi;
-  done;
+  node ./.config/mise/tasks/package-all.mjs
 
 pdx cmd *args:
   cargo run --release --package pdx --features {{replace(cmd, "-", "_")}} -- "$@"

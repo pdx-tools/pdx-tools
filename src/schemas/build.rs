@@ -37,7 +37,12 @@ fn main() {
         let tokens = Path::new(&path);
         let exists = tokens.exists();
         let token_path = if exists {
-            tokens.canonicalize().unwrap().display().to_string()
+            tokens
+                .canonicalize()
+                .unwrap()
+                .display()
+                .to_string()
+                .replace('\\', "/")
         } else {
             String::from("")
         };
