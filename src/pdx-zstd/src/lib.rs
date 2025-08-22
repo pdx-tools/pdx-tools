@@ -32,8 +32,7 @@ pub fn decode_all(data: &[u8]) -> Result<Vec<u8>> {
 pub fn copy_decode<W: Write>(data: &[u8], writer: &mut W) -> Result<()> {
     #[cfg(feature = "zstd_c")]
     {
-        zstd::stream::copy_decode(data, writer)
-            .map_err(|e| Error::Zstd(Box::new(e)))
+        zstd::stream::copy_decode(data, writer).map_err(|e| Error::Zstd(Box::new(e)))
     }
     #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
     {
@@ -48,8 +47,7 @@ pub fn copy_decode<W: Write>(data: &[u8], writer: &mut W) -> Result<()> {
 pub fn encode_all(data: &[u8], level: i32) -> Result<Vec<u8>> {
     #[cfg(feature = "zstd_c")]
     {
-        zstd::stream::encode_all(data, level)
-            .map_err(|e| Error::Zstd(Box::new(e)))
+        zstd::stream::encode_all(data, level).map_err(|e| Error::Zstd(Box::new(e)))
     }
     #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
     {
@@ -77,8 +75,7 @@ impl<'a> Decoder<'a> {
     pub fn from_slice(data: &'a [u8]) -> Result<Self> {
         #[cfg(feature = "zstd_c")]
         {
-            let decoder = zstd::Decoder::new(data)
-                .map_err(|e| Error::Zstd(Box::new(e)))?;
+            let decoder = zstd::Decoder::new(data).map_err(|e| Error::Zstd(Box::new(e)))?;
             Ok(Self { inner: decoder })
         }
         #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
@@ -160,8 +157,8 @@ impl<W: Write> Encoder<W> {
     pub fn new(writer: W, level: i32) -> Result<Self> {
         #[cfg(feature = "zstd_c")]
         {
-            let encoder = zstd::Encoder::new(writer, level)
-                .map_err(|e| Error::Zstd(Box::new(e)))?;
+            let encoder =
+                zstd::Encoder::new(writer, level).map_err(|e| Error::Zstd(Box::new(e)))?;
             Ok(Self {
                 inner: EncoderInner::ZstdC(encoder),
             })
@@ -177,9 +174,7 @@ impl<W: Write> Encoder<W> {
     pub fn finish(self) -> Result<W> {
         match self.inner {
             #[cfg(feature = "zstd_c")]
-            EncoderInner::ZstdC(encoder) => encoder
-                .finish()
-                .map_err(|e| Error::Zstd(Box::new(e))),
+            EncoderInner::ZstdC(encoder) => encoder.finish().map_err(|e| Error::Zstd(Box::new(e))),
             #[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
             EncoderInner::ZstdRust(encoder) => Ok(encoder.finish()?),
         }
