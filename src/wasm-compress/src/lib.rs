@@ -78,7 +78,13 @@ impl Compression {
         let locator = rawzip::ZipLocator::new().max_search_space(1024);
         match locator.locate_in_slice(data) {
             Ok(zip) => {
-                let prelude = zip.as_bytes()[0..zip.base_offset() as usize].to_vec();
+                let prelude = zip
+                    .entries()
+                    .filter_map(Result::ok)
+                    .map(|x| x.local_header_offset())
+                    .min()
+                    .unwrap_or(zip.directory_offset());
+                let prelude = zip.as_bytes()[0..prelude as usize].to_vec();
                 Compression {
                     content: Reader::Zip { zip, prelude },
                 }
@@ -100,11 +106,13 @@ impl Compression {
                     total_size += entry.uncompressed_size_hint() as usize;
                 }
 
-                let out: Vec<u8> = Vec::with_capacity((inflated_size + zip.base_offset()) as usize);
+                let out: Vec<u8> =
+                    Vec::with_capacity((inflated_size + prelude.len() as u64) as usize);
                 let mut writer = Cursor::new(out);
                 writer.write_all(&prelude)?;
-                let mut out_zip =
-                    rawzip::ZipArchiveWriter::at_offset(zip.base_offset()).build(writer);
+                let mut out_zip = rawzip::ZipArchiveWriter::builder()
+                    .with_offset(prelude.len() as u64)
+                    .build(writer);
 
                 let mut files = Vec::new();
                 let mut entries = zip.entries();
@@ -118,12 +126,12 @@ impl Compression {
 
                 let mut current_size = 0;
                 for (name, wayfinder) in files {
-                    let mut out_file = out_zip
+                    let (mut out_file, config) = out_zip
                         .new_file(&name)
                         .compression_method(rawzip::CompressionMethod::Zstd)
-                        .create()?;
+                        .start()?;
                     let enc = pdx_zstd::Encoder::new(&mut out_file, 7)?;
-                    let mut writer = rawzip::ZipDataWriter::new(enc);
+                    let mut writer = config.wrap(enc);
                     let entry = zip.get_entry(wayfinder)?;
                     let reader = flate2::read::DeflateDecoder::new(entry.data());
                     let reader = entry.verifying_reader(reader);
@@ -202,14 +210,14 @@ fn _download_transformation(data: Vec<u8>) -> Result<Vec<u8>, JsError> {
         let mut entries = zip.entries();
         while let Ok(Some(entry)) = entries.next_entry() {
             let name = entry.file_path().try_normalize()?;
-            let mut out_file = out_zip
+            let (mut out_file, config) = out_zip
                 .new_file(name.as_ref())
                 .compression_method(rawzip::CompressionMethod::Deflate)
-                .create()?;
+                .start()?;
 
             let writer =
                 flate2::write::DeflateEncoder::new(&mut out_file, flate2::Compression::default());
-            let mut writer = rawzip::ZipDataWriter::new(writer);
+            let mut writer = config.wrap(writer);
 
             let entry = zip.get_entry(entry.wayfinder())?;
             pdx_zstd::copy_decode(entry.data(), &mut writer)?;

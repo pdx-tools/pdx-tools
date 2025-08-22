@@ -280,12 +280,13 @@ where
         buf: &mut [u8],
         header: SaveHeader,
     ) -> Result<Self, Vic3Error> {
-        let offset = archive.base_offset();
+        let mut offset = archive.directory_offset();
         let mut entries = archive.entries(buf);
         let mut gamestate = None;
         let mut metadata = None;
 
         while let Some(entry) = entries.next_entry().map_err(Vic3ErrorKind::Zip)? {
+            offset = offset.min(entry.local_header_offset());
             match entry.file_path().as_ref() {
                 b"gamestate" => gamestate = Some(entry.wayfinder()),
                 b"meta" => metadata = Some(entry.wayfinder()),
@@ -330,7 +331,7 @@ where
         Ok(data)
     }
 
-    pub fn meta(&self) -> Result<Vic3Entry<'_, rawzip::ZipReader<'_, R>, R>, Vic3Error> {
+    pub fn meta(&self) -> Result<Vic3Entry<rawzip::ZipReader<&R>, &R>, Vic3Error> {
         let kind = match &self.metadata {
             Vic3MetaKind::Inlined(x) => {
                 let mut entry = vec![0u8; x.len()];
@@ -399,18 +400,18 @@ pub enum Vic3MetaKind {
 }
 
 #[derive(Debug)]
-pub struct Vic3Entry<'archive, R, ReadAt> {
-    inner: Vic3EntryKind<'archive, R, ReadAt>,
+pub struct Vic3Entry<R, ReadAt> {
+    inner: Vic3EntryKind<R, ReadAt>,
     header: SaveHeader,
 }
 
 #[derive(Debug)]
-pub enum Vic3EntryKind<'archive, R, ReadAt> {
+pub enum Vic3EntryKind<R, ReadAt> {
     Inlined(Cursor<Vec<u8>>),
-    Zip(ZipVerifier<'archive, CompressedFileReader<R>, ReadAt>),
+    Zip(ZipVerifier<CompressedFileReader<R>, ReadAt>),
 }
 
-impl<R, ReadAt> Read for Vic3Entry<'_, R, ReadAt>
+impl<R, ReadAt> Read for Vic3Entry<R, ReadAt>
 where
     R: Read,
     ReadAt: ReaderAt,
@@ -423,7 +424,7 @@ where
     }
 }
 
-impl<'archive, R, ReadAt> Vic3Entry<'archive, R, ReadAt>
+impl<R, ReadAt> Vic3Entry<R, ReadAt>
 where
     R: Read,
     ReadAt: ReaderAt,
@@ -431,7 +432,7 @@ where
     pub fn deserializer<'a, RES>(
         &'a mut self,
         resolver: RES,
-    ) -> Vic3Modeller<&'a mut Vic3Entry<'archive, R, ReadAt>, RES>
+    ) -> Vic3Modeller<&'a mut Vic3Entry<R, ReadAt>, RES>
     where
         RES: TokenResolver,
     {

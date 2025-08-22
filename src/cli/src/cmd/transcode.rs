@@ -63,12 +63,12 @@ impl TranscodeArgs {
                     let mut out_zip = rawzip::ZipArchiveWriter::new(cursor);
 
                     for (name, wayfinder) in files {
-                        let mut out_file = out_zip
+                        let (mut out_file, config) = out_zip
                             .new_file(&name)
                             .compression_method(rawzip::CompressionMethod::Zstd)
-                            .create()?;
+                            .start()?;
                         let enc = zstd::stream::Encoder::new(&mut out_file, 7)?;
-                        let mut writer = rawzip::ZipDataWriter::new(enc);
+                        let mut writer = config.wrap(enc);
                         let entry = zip.get_entry(wayfinder)?;
                         let reader = flate2::read::DeflateDecoder::new(entry.reader());
                         let mut reader = entry.verifying_reader(reader);
