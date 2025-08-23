@@ -2,7 +2,7 @@
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { readdir, access, mkdir, writeFile, copyFile, readFile, stat } from 'fs/promises';
+import { readdir, access, mkdir, writeFile, copyFile, readFile, stat, rmdir, rm } from 'fs/promises';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -81,8 +81,87 @@ const hasCommand = async (command) => {
   }
 };
 
+const findLatestBundle = async () => {
+  const eu4AssetsDir = join(projectRoot, 'assets/game/eu4');
+  
+  if (!await exists(eu4AssetsDir)) {
+    return null;
+  }
+
+  const contents = await readdir(eu4AssetsDir);
+  const versions = contents
+    .filter(item => item !== 'common' && /^\d+\.\d+$/.test(item))
+    .sort((a, b) => {
+      const [aMajor, aMinor] = a.split('.').map(Number);
+      const [bMajor, bMinor] = b.split('.').map(Number);
+      return bMajor === aMajor ? bMinor - aMinor : bMajor - aMajor;
+    });
+
+  // Find the latest version that has common/images directory
+  for (const version of versions) {
+    const commonImagesDir = join(eu4AssetsDir, version, 'common', 'images');
+    if (await exists(commonImagesDir)) {
+      return { version, path: commonImagesDir };
+    }
+  }
+
+  return null;
+};
+
+const copyDirectoryRecursive = async (src, dest) => {
+  try {
+    await mkdir(dest, { recursive: true });
+    const entries = await readdir(src, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const srcPath = join(src, entry.name);
+      const destPath = join(dest, entry.name);
+
+      if (entry.isDirectory()) {
+        await copyDirectoryRecursive(srcPath, destPath);
+      } else {
+        await copyFile(srcPath, destPath);
+      }
+    }
+  } catch (error) {
+    console.warn(`Failed to copy directory ${src} to ${dest}: ${error.message}`);
+  }
+};
+
+const updateCommonImages = async () => {
+  console.log('🖼️  Updating common images from latest bundle...');
+  
+  const latestBundle = await findLatestBundle();
+  if (!latestBundle) {
+    console.log('  ⚠️  No compiled game bundle with images found, skipping image update');
+    return;
+  }
+
+  console.log(`  📦 Found latest bundle: ${latestBundle.version}`);
+
+  const commonImagesDir = join(projectRoot, 'assets/game/eu4/common/images');
+
+  // Copy subdirectories from latest bundle
+  const bundleImagesDir = latestBundle.path;
+  const bundleEntries = await readdir(bundleImagesDir, { withFileTypes: true });
+
+  for (const entry of bundleEntries) {
+    if (entry.isDirectory()) {
+      const srcPath = join(bundleImagesDir, entry.name);
+      const destPath = join(commonImagesDir, entry.name);
+      await copyDirectoryRecursive(srcPath, destPath);
+      console.log(`  📁 Copied directory: ${entry.name}`);
+    }
+  }
+
+  console.log('  ✅ Common images updated successfully');
+};
+
 // Main script
 async function setupAssets() {
+  // Update common images from latest bundle first
+  await updateCommonImages();
+
   const gitignoreContent = await readFile(join(projectRoot, '.gitignore'), 'utf-8');
   const eu4ImagePaths = gitignoreContent
     .split('\n')

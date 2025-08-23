@@ -29,7 +29,6 @@ impl ZstdFiles {
         })
     }
 
-    #[allow(dead_code)] // Only used in tokenize command
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -68,7 +67,6 @@ impl ZstdTee {
         })
     }
 
-    #[allow(dead_code)] // Not used in the tokenize command
     pub fn create<P: AsRef<Path>>(p: P) -> anyhow::Result<Self> {
         let files = ZstdFiles::from_path(p)?;
         Self::from_zstd_files(files)

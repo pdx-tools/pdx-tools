@@ -1,5 +1,6 @@
-use crate::rawbmp::{Bmp, Pixels, Rgb};
 use clap::Args;
+use pdx_assets::eu4::data::map;
+use rawbmp::{Bmp, Pixels, Rgb};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -17,7 +18,7 @@ impl SmallestProvinceArgs {
     pub fn run(&self) -> anyhow::Result<ExitCode> {
         let definitions = Path::new(&self.map_dir).join("definition.csv");
         let definitions = std::fs::read(&definitions)?;
-        let definitions = crate::compile_assets::mapper::parse_definition(&definitions);
+        let definitions = map::parse_definition(&definitions);
         let definitions: HashMap<Rgb, u16> = definitions.into_iter().map(|(k, v)| (v, k)).collect();
 
         let provinces_bmp = Path::new(&self.map_dir).join("provinces.bmp");

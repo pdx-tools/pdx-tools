@@ -1,22 +1,22 @@
-use super::imagemagick;
-use super::mapper::parse_terrain_txt;
-use super::montager::{self, Montager};
-use super::religion::religion_rebels;
-use super::{
-    achievements, area, assets, continents, cultures, localization, mapper, personalities, regions,
-    religion, sprites, superregion,
-};
-use crate::rawbmp::{self, Pixels, Rgb};
-use crate::zstd_tee::ZstdTee;
 use anyhow::{bail, Context};
 use eu4save::{CountryTag, Eu4File, ProvinceId};
-use mapper::GameProvince;
+use map::GameProvince;
+use pdx_assets::eu4::data::map::parse_terrain_txt;
+use pdx_assets::eu4::data::religion::religion_rebels;
+use pdx_assets::eu4::data::{
+    achievements, area, continents, cultures, localization, map, personalities, regions, religion,
+    sprites, superregion,
+};
+use pdx_assets::{http, imagemagick, ZstdTee};
+use rawbmp::{self, Pixels, Rgb};
 use serde::{de::IgnoredAny, Deserialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+
+use crate::compile_assets::montager::{self, Montager};
 
 #[derive(Debug, Clone)]
 pub struct PackageOptions {
@@ -788,14 +788,14 @@ fn generate_provinces(
     game_version: &str,
 ) -> anyhow::Result<(usize, Vec<GameProvince>)> {
     let map_data = fs::read(tmp_game_dir.join("map").join("default.map"))?;
-    let default_map = mapper::parse_default_map(&map_data[..]);
+    let default_map = map::parse_default_map(&map_data[..]);
     let ocean_provs: HashSet<_> = default_map
         .lakes
         .iter()
         .chain(default_map.sea_starts.iter())
         .collect();
 
-    let data = assets::request(format!("terrain/terrain-{}.eu4", game_version));
+    let data = http::request(format!("terrain/terrain-{}.eu4", game_version));
     let save_file = Eu4File::from_slice(&data)?;
     let tokens = schemas::resolver::Eu4FlatTokens::new();
     let breakpoint = tokens.breakpoint();
@@ -1054,8 +1054,6 @@ pub fn translate_map(
     std::fs::create_dir_all(&base_image_dir)
         .with_context(|| format!("unable to create: {}", base_image_dir.display()))?;
 
-    // strip any profiles that the browser may misinterpret
-
     // these images need to remain 32bit
     for image in &["provinces.bmp", "terrain.bmp", "rivers.bmp"] {
         let image_path = tmp_game_dir.join("map").join(image);
@@ -1193,7 +1191,7 @@ pub fn translate_map(
     let definitions = tmp_game_dir.join("map").join("definition.csv");
     let definitions = std::fs::read(&definitions)
         .with_context(|| format!("unable to read: {}", definitions.display()))?;
-    let mut definitions = mapper::parse_definition(&definitions);
+    let mut definitions = map::parse_definition(&definitions);
     definitions.insert(0, Rgb::from((0, 0, 0)));
 
     let mut definitions: Vec<(_, _)> = definitions.iter().map(|(id, rgb)| (rgb, id)).collect();

@@ -1,4 +1,4 @@
-use jomini::{text::ObjectReader, Windows1252Encoding};
+use jomini::{Windows1252Encoding, text::ObjectReader};
 use serde::Deserialize;
 use std::collections::HashMap;
 

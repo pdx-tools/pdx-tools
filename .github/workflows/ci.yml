@@ -159,7 +159,7 @@ jobs:
           ASSETS_SECRET_KEY: ${{ matrix.with_tokens && secrets.ASSETS_SECRET_KEY || '' }}
         run: |
           mise -E admin run admin:sync-assets
-          mise -E admin run admin:package-all
+          mise -E admin run admin:assets:compile:all
       - run: |
           mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm ::: test:cli' }}
           ${{ matrix.with_tokens && 'mise run test:app' || '' }}
