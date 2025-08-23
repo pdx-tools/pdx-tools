@@ -1,11 +1,10 @@
+use anyhow::bail;
+use pdx_assets::images::imagemagick;
 use std::{
     fs,
     io::{BufWriter, Write},
     path::{Path, PathBuf},
 };
-
-use super::imagemagick;
-use anyhow::bail;
 
 pub enum WebpQuality {
     #[allow(dead_code)]
@@ -102,7 +101,7 @@ impl Montager {
             {
                 let response_file = fs::File::create(&response_path)?;
                 let mut response_writer = BufWriter::new(response_file);
-                
+
                 for (_, path) in data {
                     write!(response_writer, "{} ", path.as_ref().display())?;
                 }
@@ -110,11 +109,11 @@ impl Montager {
             }
 
             println!("file data: {}", std::fs::read_to_string(&response_path)?);
-            
+
             cmd.arg(format!("@{}", response_path.display()));
             cmd.arg(img_path.as_os_str());
             let child = cmd.output()?;
-            
+
             // Clean up response file
             let _ = fs::remove_file(&response_path);
 

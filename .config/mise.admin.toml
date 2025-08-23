@@ -5,6 +5,8 @@ _.file = { path = ".env", redact = true }
 run = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key="${ASSETS_SECRET_KEY}" --s3-access-key-id="${ASSETS_ACCESS_KEY}" copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.'
 run_windows = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key=%ASSETS_SECRET_KEY% --s3-access-key-id=%ASSETS_ACCESS_KEY% copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.'
 
-[tasks."admin:package-all"]
-depends = ["build:asset-pipeline"]
-run = "node ./.config/mise/tasks/package-all.mjs"
+[tasks."admin:assets:compile:all"]
+run = [
+    "cargo build --release --package pdx-assets",
+    "node ./.config/mise/tasks/compile-all-assets.mjs"
+]   

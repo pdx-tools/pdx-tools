@@ -77,10 +77,6 @@ dir = "src/app"
 run = ["pnpm run build"]
 run_windows = ["pnpm run build"]
 
-[tasks."build:asset-pipeline"]
-hide = true
-run = "cargo build --release --package pdx --features compile_assets"
-
 [tasks.wasm-opt]
 run = [
     'wasm-opt -O2 ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg.wasm -o ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg_optimized.wasm',
@@ -237,6 +233,14 @@ hide = true
 [tasks.asset-pipeline]
 description = "Run the asset pipeline over a game bundle and output digested game files"
 run = "cargo run --release --package pdx --features compile_assets -- compile-assets"
+
+[tasks."assets:bundle"]
+description = "Create a game asset bundle"
+run = "cargo run --release --package pdx-assets -- bundle"
+
+[tasks."assets:compile"]
+description = "Compile a game asset bundle"
+run = "cargo run --release --package pdx-assets -- compile"
 
 [tasks."start:services:dev"]
 description = "Run services for development"

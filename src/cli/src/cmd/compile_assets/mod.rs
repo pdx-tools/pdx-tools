@@ -1,19 +1,5 @@
-mod achievements;
-mod area;
-mod assets;
-mod continents;
-mod cultures;
-mod imagemagick;
-mod localization;
-pub mod mapper;
 mod montager;
-mod personalities;
-mod regions;
-mod religion;
-mod sprites;
-mod superregion;
-mod tarball;
-mod vec_pair;
+pub mod tarball;
 
 use self::tarball::PackageOptions;
 use clap::Args;

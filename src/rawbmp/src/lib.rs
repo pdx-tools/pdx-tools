@@ -12,9 +12,6 @@ mod errors;
 mod utils;
 
 pub use bmp::*;
-
-// in case this is ever made into a library
-#[allow(unused_imports)]
 pub use errors::*;
 
 #[cfg(test)]
@@ -23,7 +20,7 @@ mod tests {
 
     #[test]
     pub fn bit8test() {
-        let data = include_bytes!("../../tests/fixtures/8bit.bmp");
+        let data = include_bytes!("../tests/fixtures/8bit.bmp");
         let image = Bmp::parse(&data[..]).unwrap();
         assert_eq!(image.header.bytes, 86);
         assert_eq!(image.header.pixel_offset, 78);
@@ -110,7 +107,7 @@ mod tests {
 
     #[test]
     pub fn bit24test() {
-        let data = include_bytes!("../../tests/fixtures/24bit.bmp");
+        let data = include_bytes!("../tests/fixtures/24bit.bmp");
         let image = Bmp::parse(&data[..]).unwrap();
         assert_eq!(image.header.bytes, 78);
         assert_eq!(image.header.pixel_offset, 54);

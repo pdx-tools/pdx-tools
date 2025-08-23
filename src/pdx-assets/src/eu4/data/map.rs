@@ -1,16 +1,12 @@
-#![allow(dead_code)]
-// This code may prove useful in the future,
-// and I don't want to lose it.
-
-use crate::rawbmp::{Bmp, Pixels, Rgb};
 use eu4save::ProvinceId;
 use jomini::Scalar;
+use rawbmp::{Bmp, Pixels, Rgb};
 use serde::Deserialize;
 use std::{collections::HashMap, io::Cursor};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Terrain {
-    #[serde(default, deserialize_with = "super::vec_pair::deserialize_vec_pair")]
+    #[serde(default, deserialize_with = "crate::de::deserialize_vec_pair")]
     pub categories: Vec<(String, TerrainCategory)>,
     pub terrain: HashMap<String, GraphicalTerrain>,
     pub tree: HashMap<String, TreeTerrain>,

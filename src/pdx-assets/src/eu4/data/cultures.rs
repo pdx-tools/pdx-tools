@@ -1,6 +1,6 @@
 use serde::{
-    de::{self, IgnoredAny},
     Deserialize, Deserializer,
+    de::{self, IgnoredAny},
 };
 use std::collections::HashMap;
 use std::fmt;

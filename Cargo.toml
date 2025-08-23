@@ -4,14 +4,16 @@ members = [
     "src/api",
     "src/applib",
     "src/cli",
-    "src/eu4game",
     "src/eu4game-data",
+    "src/eu4game",
+    "src/pdx-assets",
     "src/pdx-zstd",
+    "src/rawbmp",
     "src/schemas",
     "src/vic3save",
     "src/wasm-app",
-    "src/wasm-compress",
     "src/wasm-ck3",
+    "src/wasm-compress",
     "src/wasm-eu4",
     "src/wasm-hoi4",
     "src/wasm-imperator",
@@ -46,8 +48,10 @@ js-sys = "0.3"
 log = "0.4"
 mathru = "0.15.3"
 mimalloc = "0.1.43"
+pdx-assets = { path = "src/pdx-assets" }
 pdx-zstd = { path = "src/pdx-zstd", default-features = false }
 rand = "0.8"
+rawbmp = { path = "src/rawbmp" }
 rawzip = "0.4.0"
 rayon = "1.10"
 regex = "1.11"

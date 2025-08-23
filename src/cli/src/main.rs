@@ -39,15 +39,6 @@ mod province_names;
 #[path = "cmd-fun/smallest_province.rs"]
 mod smallest_province;
 
-/* Shared modules */
-
-#[allow(dead_code)]
-#[cfg(any(feature = "compile_assets", feature = "fun"))]
-mod rawbmp;
-#[cfg(any(feature = "tokenize", feature = "compile_assets"))]
-#[path = "storage/zstd_tee.rs"]
-mod zstd_tee;
-
 use clap::{Parser, Subcommand};
 use cli::InfoLevel;
 use std::process::ExitCode;
