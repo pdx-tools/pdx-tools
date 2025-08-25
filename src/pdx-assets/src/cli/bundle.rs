@@ -26,7 +26,7 @@ impl BundleArgs {
         let tracking_provider = FileAccessTracker::new(directory_provider);
 
         let game_compiler = Eu4AssetCompliler;
-        let imaging = ImageMagickProcessor::new();
+        let imaging = ImageMagickProcessor::create()?;
 
         let options = PackageOptions::dry_run();
         let compilation_output = game_compiler.compile_assets(

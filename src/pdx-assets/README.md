@@ -11,3 +11,4 @@ Some tasks the asset pipeline is responsible for:
 - Optimize images for size
 - Compile game data into prepared flatbuffers data so that the web client can avoid time spent parsing data
 - Collate individual images into spritesheet montages.
+- Downloading and vendoring imagemagick (windows only).

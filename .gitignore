@@ -12,6 +12,7 @@ assets/game/eu4/common/images/tc-investments
 assets/game/eu4/common/images/achievements/*
 !assets/game/eu4/common/images/achievements/10000.png
 assets/tokens
+assets/vendored/
 .env
 dev/.env.*prod
 dev/.env.*staging

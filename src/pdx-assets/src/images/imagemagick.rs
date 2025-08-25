@@ -3,7 +3,7 @@ use super::{
     WebpQuality,
 };
 use crate::images::ImageError;
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
@@ -39,18 +39,162 @@ pub fn imagemagick_command(subcommand: &str) -> anyhow::Result<Command> {
     )
 }
 
-#[derive(Debug, Default)]
-pub struct ImageMagickProcessor;
+#[derive(Debug, Clone)]
+enum MagickCommand {
+    Magick,
+    Direct,
+    Downloaded(PathBuf),
+}
+
+#[derive(Debug)]
+pub struct ImageMagickProcessor {
+    command_type: MagickCommand,
+}
 
 impl ImageMagickProcessor {
-    pub fn new() -> Self {
-        Self
+    pub fn create() -> Result<Self> {
+        // First try 'magick' command (ImageMagick 7+)
+        if Self::check_magick_command() {
+            return Ok(Self {
+                command_type: MagickCommand::Magick,
+            });
+        }
+
+        // Then try direct 'convert' command (ImageMagick 6)
+        if Self::check_direct_command("convert") {
+            return Ok(Self {
+                command_type: MagickCommand::Direct,
+            });
+        }
+
+        // Check if ImageMagick is already downloaded in vendored directory
+        if std::env::consts::OS == "windows" {
+            let vendored_magick = PathBuf::from("assets/vendored/imagemagick/magick.exe");
+            if vendored_magick.exists() {
+                return Ok(Self {
+                    command_type: MagickCommand::Downloaded(vendored_magick),
+                });
+            }
+        }
+
+        // On Windows, attempt to download ImageMagick
+        if std::env::consts::OS == "windows" {
+            let path = Self::download_imagemagick().context("Failed to download ImageMagick")?;
+            return Ok(Self {
+                command_type: MagickCommand::Downloaded(path),
+            });
+        }
+
+        bail!("ImageMagick not found. Please install ImageMagick ('magick' or 'convert' command)")
+    }
+
+    fn get_command(&self, subcommand: &str) -> Result<Command> {
+        match &self.command_type {
+            MagickCommand::Magick => {
+                let mut cmd = Command::new("magick");
+                if subcommand != "convert" {
+                    cmd.arg(subcommand);
+                }
+                Ok(cmd)
+            }
+            MagickCommand::Direct => Ok(Command::new(subcommand)),
+            MagickCommand::Downloaded(path) => {
+                let mut cmd = Command::new(path);
+                if subcommand != "convert" {
+                    cmd.arg(subcommand);
+                }
+                Ok(cmd)
+            }
+        }
+    }
+
+    fn check_magick_command() -> bool {
+        Command::new("magick")
+            .arg("--version")
+            .output()
+            .is_ok_and(|output| output.status.success())
+    }
+
+    fn check_direct_command(subcommand: &str) -> bool {
+        Command::new(subcommand)
+            .arg("--version")
+            .output()
+            .is_ok_and(|output| output.status.success())
+    }
+
+    fn download_imagemagick() -> Result<PathBuf> {
+        // Use persistent vendored directory
+        let vendored_dir = PathBuf::from("assets/vendored/imagemagick");
+        let magick_exe = vendored_dir.join("magick.exe");
+        let url =
+            "https://imagemagick.org/archive/binaries/ImageMagick-7.1.2-2-portable-Q8-x64.zip";
+
+        // Create vendored directory
+        fs::create_dir_all(&vendored_dir).context("Failed to create vendored directory")?;
+
+        let response = attohttpc::get(url)
+            .send()
+            .context("Failed to download ImageMagick")?;
+
+        if !response.status().is_success() {
+            bail!("Failed to download ImageMagick: HTTP {}", response.status());
+        }
+
+        let data = response.bytes().context("Failed to read response body")?;
+
+        // Extract directly to vendored directory
+        let archive =
+            rawzip::ZipArchive::from_slice(&data).context("Failed to parse zip archive")?;
+
+        let mut entries = archive.entries();
+        while let Some(entry) = entries.next_entry()? {
+            if entry.is_dir() {
+                continue;
+            }
+
+            let wayfinder = entry.wayfinder();
+            let zip_entry = archive
+                .get_entry(wayfinder)
+                .context("Failed to get zip entry")?;
+            let Ok(entry_file_path) = entry.file_path().try_normalize() else {
+                continue;
+            };
+            let entry_file_name = entry_file_path.as_str().split("/").last().unwrap();
+            let extract_path = vendored_dir.join(entry_file_name);
+            let mut output_file =
+                fs::File::create(&extract_path).context("Failed to create extracted file")?;
+
+            match entry.compression_method() {
+                rawzip::CompressionMethod::Store => {
+                    output_file
+                        .write_all(&zip_entry.data())
+                        .context("Failed to write extracted file")?;
+                }
+                rawzip::CompressionMethod::Deflate => {
+                    let decoder = flate2::read::DeflateDecoder::new(zip_entry.data());
+                    let mut reader = zip_entry.verifying_reader(decoder);
+                    std::io::copy(&mut reader, &mut output_file)
+                        .context("Failed to extract file")?;
+                }
+                _ => {
+                    bail!("Unsupported compression method in zip entry");
+                }
+            }
+        }
+
+        ensure!(
+            magick_exe.exists(),
+            "Extracted ImageMagick executable not found"
+        );
+
+        println!("ImageMagick downloaded to: {}", magick_exe.display());
+        Ok(magick_exe)
     }
 }
 
 impl ImageProcessor for ImageMagickProcessor {
     fn convert(&self, request: ConvertRequest) -> Result<()> {
-        let mut cmd = imagemagick_command("convert")?;
+        let mut cmd = self.get_command("convert")?;
         cmd.arg(&request.input_path);
 
         // Always strip metadata/profiles for web assets
@@ -121,7 +265,7 @@ impl ImageProcessor for ImageMagickProcessor {
         let response_path = request.output_path.with_extension("txt");
         self.create_response_file(request.images, &response_path)?;
 
-        let mut cmd = imagemagick_command("montage")?;
+        let mut cmd = self.get_command("montage")?;
 
         // Always auto-orient images for web assets
         cmd.arg("-auto-orient");
@@ -218,7 +362,7 @@ impl ImageMagickProcessor {
         let mut response_writer = BufWriter::new(response_file);
 
         for (_, path) in images {
-            write!(response_writer, "{} ", path.display())?;
+            write!(response_writer, "'{}' ", path.display())?;
         }
         response_writer.flush()?;
         Ok(())

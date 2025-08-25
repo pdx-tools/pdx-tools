@@ -44,7 +44,7 @@ impl CompileArgs {
         })?;
 
         let asset_compiler = Eu4AssetCompliler;
-        let imaging = ImageMagickProcessor::new();
+        let imaging = ImageMagickProcessor::create()?;
 
         let options = PackageOptions {
             dry_run: false,
