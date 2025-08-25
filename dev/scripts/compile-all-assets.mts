@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const projectRoot = resolve(__dirname, "..", "..", "..");
+const projectRoot = resolve(__dirname, "..", "..");
 const isWindows = process.platform === "win32";
 const pdxAssetsBinary = join(projectRoot, "target", "release", isWindows ? "pdx-assets.exe" : "pdx-assets");
 

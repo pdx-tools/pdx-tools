@@ -2,7 +2,7 @@ use anyhow::Context;
 use clap::Args;
 use highway::HighwayHash;
 use log::{debug, info};
-use pdx_assets::{ZstdFiles, ZstdTee};
+use pdx_zstd::zstd_tee::{ZstdFiles, ZstdTee};
 use std::{
     fs::File,
     io::{self, BufRead, BufReader, Cursor, Write},

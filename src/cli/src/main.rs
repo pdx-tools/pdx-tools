@@ -8,12 +8,6 @@ mod cli;
 
 /* Commands */
 
-#[cfg(feature = "compile_assets")]
-#[path = "cmd/compile_assets/mod.rs"]
-mod compile_assets;
-#[cfg(feature = "create_bundle")]
-#[path = "cmd/create_bundle.rs"]
-mod create_bundle;
 #[cfg(feature = "admin")]
 #[path = "cmd/reprocess.rs"]
 mod reprocess;
@@ -56,8 +50,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    #[cfg(feature = "create_bundle")]
-    CreateBundle(create_bundle::CreateBundleArgs),
     #[cfg(feature = "admin")]
     Reprocess(reprocess::ReprocessArgs),
     #[cfg(feature = "tokenize")]
@@ -66,8 +58,6 @@ enum Commands {
     Transcode(transcode::TranscodeArgs),
     #[cfg(feature = "fun")]
     AiDevelopment(ai_development::AiDevelopmentArgs),
-    #[cfg(feature = "compile_assets")]
-    CompileAssets(compile_assets::CompileAssetsArgs),
     #[cfg(feature = "fun")]
     ProvinceBorders(province_borders::ProvinceBordersArgs),
     #[cfg(feature = "fun")]
@@ -85,8 +75,6 @@ fn main() -> ExitCode {
         .init();
 
     let exit_code = match &cli.command {
-        #[cfg(feature = "create_bundle")]
-        Commands::CreateBundle(x) => x.run(),
         #[cfg(feature = "admin")]
         Commands::Reprocess(x) => x.run(),
         #[cfg(feature = "tokenize")]
@@ -95,8 +83,6 @@ fn main() -> ExitCode {
         Commands::Transcode(x) => x.run(),
         #[cfg(feature = "fun")]
         Commands::AiDevelopment(x) => x.run(),
-        #[cfg(feature = "compile_assets")]
-        Commands::CompileAssets(x) => x.run(),
         #[cfg(feature = "fun")]
         Commands::ProvinceBorders(x) => x.run(),
         #[cfg(feature = "fun")]

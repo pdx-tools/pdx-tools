@@ -67,7 +67,7 @@ impl TranscodeArgs {
                             .new_file(&name)
                             .compression_method(rawzip::CompressionMethod::Zstd)
                             .start()?;
-                        let enc = zstd::stream::Encoder::new(&mut out_file, 7)?;
+                        let enc = pdx_zstd::Encoder::new(&mut out_file, 7)?;
                         let mut writer = config.wrap(enc);
                         let entry = zip.get_entry(wayfinder)?;
                         let reader = flate2::read::DeflateDecoder::new(entry.reader());
@@ -87,7 +87,7 @@ impl TranscodeArgs {
                     file.read_exact(&mut header)
                         .with_context(|| format!("unable to read header: {}", path.display()))?;
 
-                    if header == zstd::zstd_safe::MAGICNUMBER.to_le_bytes() {
+                    if pdx_zstd::is_zstd_compressed(&header) {
                         println!("{} already zstd", path.display());
                         continue;
                     }
@@ -97,7 +97,7 @@ impl TranscodeArgs {
 
                     let out = Vec::with_capacity(file_length as usize);
                     let mut cursor = Cursor::new(out);
-                    let mut encoder = zstd::Encoder::new(&mut cursor, 7)?;
+                    let mut encoder = pdx_zstd::Encoder::new(&mut cursor, 7)?;
                     std::io::copy(&mut file, &mut encoder)
                         .with_context(|| format!("unable to copy: {}", path.display()))?;
                     encoder
