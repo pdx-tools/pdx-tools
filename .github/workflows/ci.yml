@@ -114,10 +114,12 @@ jobs:
             with_tokens: false
           - os: windows-latest
             with_tokens: true
+          - os: macos-15
+            with_tokens: false # docker not supported on macos gh actions
     name: build-ng / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install imagemagick
+      - name: Install dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
@@ -128,6 +130,14 @@ jobs:
           # and we need it for sending hundreds of file paths to imagemagick.
           sudo sed -i 's/rights="none"/rights="read|write"/gI' "/etc/ImageMagick-6/policy.xml"
           identify -list policy
+      - name: Install dependencies (macos)
+        if: matrix.os == 'macos-15'
+        run: |
+          brew install imagemagick
+
+          # Use brew installed llvm for zstd compilation
+          echo "/opt/homebrew/opt/llvm@18/bin" >> $GITHUB_PATH
+
       - name: Cache assets
         uses: actions/cache@v4
         with:
