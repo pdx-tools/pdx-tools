@@ -68,10 +68,9 @@ where
     let units = extract_units(fs)?;
 
     translate_flags(fs, imaging, out_dir, options).context("country flag error")?;
-    translate_achievements_imagings(fs, imaging, out_dir, options)
-        .context("achievement imagings error")?;
-    translate_building_imagings(fs, imaging, out_dir, options)
-        .context("building imagings error")?;
+    translate_achievements_images(fs, imaging, out_dir, options)
+        .context("achievement images error")?;
+    translate_building_images(fs, imaging, out_dir, options).context("building images error")?;
 
     let center_locations = translate_map(fs, imaging, out_dir, options)?;
     let definitions = fs.read_file("map/definition.csv")?;
@@ -209,7 +208,7 @@ where
     let gfx = sprites::parse_sprites(&gfx_data[..]);
     let sprites: HashMap<String, PathBuf> =
         gfx.into_iter().map(|x| (x.name, x.texturefile)).collect();
-    let sprite_imagings = data
+    let sprite_images = data
         .iter()
         .map(|(name, investment)| {
             let sprite_path = sprites.get(&investment.sprite).unwrap();
@@ -219,12 +218,12 @@ where
         .collect::<anyhow::Result<Vec<_>>>()?;
 
     if !options.dry_run && !options.minimal {
-        let imaging_out_dir = Path::new(&out_dir).join("common/imagings/tc-investments");
-        std::fs::create_dir_all(&imaging_out_dir)?;
+        let image_out_dir = Path::new(&out_dir).join("common/images/tc-investments");
+        std::fs::create_dir_all(&image_out_dir)?;
 
         let montage_request = crate::images::MontageRequest {
-            images: &sprite_imagings,
-            output_path: imaging_out_dir.join("investments.webp"),
+            images: &sprite_images,
+            output_path: image_out_dir.join("investments.webp"),
             format: crate::images::OutputFormat::Webp {
                 quality: crate::images::WebpQuality::Quality(90),
             },
@@ -306,12 +305,12 @@ where
     personalities_order.sort_unstable();
 
     if !options.dry_run && !options.minimal {
-        let imaging_out_dir = Path::new(&out_dir).join("common/imagings/personalities");
-        std::fs::create_dir_all(&imaging_out_dir)?;
+        let image_out_dir = Path::new(&out_dir).join("common/images/personalities");
+        std::fs::create_dir_all(&image_out_dir)?;
 
         let montage_request = crate::images::MontageRequest {
             images: &personalities_order,
-            output_path: imaging_out_dir.join("personalities.webp"),
+            output_path: image_out_dir.join("personalities.webp"),
             format: crate::images::OutputFormat::Webp {
                 quality: crate::images::WebpQuality::Quality(90),
             },
@@ -365,8 +364,8 @@ where
         .collect::<anyhow::Result<Vec<_>>>()?;
 
     if !options.dry_run && !options.minimal {
-        let imaging_out_dir = Path::new(&out_dir).join("common/imagings/advisors");
-        std::fs::create_dir_all(&imaging_out_dir)?;
+        let image_out_dir = Path::new(&out_dir).join("common/images/advisors");
+        std::fs::create_dir_all(&image_out_dir)?;
 
         // Create multiple montages for different sizes
         for &size in &[48, 64, 77] {
@@ -374,7 +373,7 @@ where
             let output_filename = format!("advisors_x{}.webp", size);
             let montage_request = crate::images::MontageRequest {
                 images: &advisors_montage,
-                output_path: imaging_out_dir.join(output_filename),
+                output_path: image_out_dir.join(output_filename),
                 format: crate::images::OutputFormat::Webp {
                     quality: crate::images::WebpQuality::Quality(90),
                 },
@@ -678,7 +677,7 @@ where
         return Ok(());
     }
 
-    let base_flag_path = Path::new(&out_dir).join("common/imagings/flags");
+    let base_flag_path = Path::new(&out_dir).join("common/images/flags");
     std::fs::create_dir_all(&base_flag_path)
         .with_context(|| format!("unable to create: {}", base_flag_path.display()))?;
 
@@ -725,7 +724,7 @@ where
     Ok(())
 }
 
-fn translate_achievements_imagings<P, I>(
+fn translate_achievements_images<P, I>(
     fs: &P,
     imaging: &I,
     out_dir: &Path,
@@ -757,7 +756,7 @@ where
         return Ok(());
     }
 
-    let base_achievements_path = Path::new(&out_dir).join("common/imagings/achievements");
+    let base_achievements_path = Path::new(&out_dir).join("common/images/achievements");
     std::fs::create_dir_all(&base_achievements_path)
         .with_context(|| format!("unable to create: {}", base_achievements_path.display()))?;
 
@@ -775,12 +774,12 @@ where
 
     imaging
         .montage(montage_request)
-        .context("unable to create achievement imagings montage")?;
+        .context("unable to create achievement images montage")?;
 
     Ok(())
 }
 
-fn translate_building_imagings<P, I>(
+fn translate_building_images<P, I>(
     fs: &P,
     imaging: &I,
     out_dir: &Path,
@@ -790,7 +789,7 @@ where
     P: FileProvider + ?Sized,
     I: crate::images::ImageProcessor,
 {
-    let base_path = Path::new(&out_dir).join("common/imagings/buildings");
+    let base_path = Path::new(&out_dir).join("common/images/buildings");
     if !options.dry_run && !options.minimal {
         std::fs::create_dir_all(&base_path)
             .with_context(|| format!("unable to create: {}", base_path.display()))?;
@@ -804,7 +803,7 @@ where
 
     for sprite in sprites {
         let mut new_name = String::from(sprite.name.get(4..).unwrap());
-        let imaging_path = sprite.texturefile.to_string_lossy().replace("//", "/");
+        let image_path = sprite.texturefile.to_string_lossy().replace("//", "/");
 
         // Find buildings like "latin_temple.tga" which should have their name "GFX_temple",
         // mapped to temple_westerngfx
@@ -825,18 +824,18 @@ where
             new_name = new_name.replace("muslim", "muslimgfx");
         }
 
-        let tga_path = format!("{}.tga", imaging_path.trim_end_matches(".dds"));
-        let dds_path = format!("{}.dds", imaging_path.trim_end_matches(".tga"));
+        let tga_path = format!("{}.tga", image_path.trim_end_matches(".dds"));
+        let dds_path = format!("{}.dds", image_path.trim_end_matches(".tga"));
 
-        let final_imaging_path = if fs.file_exists(&tga_path) {
+        let final_image_path = if fs.file_exists(&tga_path) {
             tga_path
         } else if fs.file_exists(&dds_path) {
             dds_path
         } else {
-            imaging_path.to_string()
+            image_path.to_string()
         };
 
-        let file_handle = fs.fs_file(&final_imaging_path)?;
+        let file_handle = fs.fs_file(&final_image_path)?;
 
         if new_name.ends_with("westerngfx") {
             western_buildings.push((new_name, file_handle.path));
@@ -892,13 +891,13 @@ where
     P: FileProvider + ?Sized,
     I: crate::images::ImageProcessor,
 {
-    let base_imaging_dir = out_game_dir.join("map");
+    let base_image_dir = out_game_dir.join("map");
     if !options.dry_run {
-        std::fs::create_dir_all(&base_imaging_dir)
-            .with_context(|| format!("unable to create: {}", base_imaging_dir.display()))?;
+        std::fs::create_dir_all(&base_image_dir)
+            .with_context(|| format!("unable to create: {}", base_image_dir.display()))?;
     }
 
-    // Process province, terrain, and river maps (32-bit imagings)
+    // Process province, terrain, and river maps (32-bit images)
     for image in &["provinces.bmp", "terrain.bmp", "rivers.bmp"] {
         let image_path = format!("map/{}", image);
         let file_handle = fs.fs_file(&image_path)?;
@@ -910,7 +909,7 @@ where
 
         let mut end_filename = file_stem.to_os_string();
         end_filename.push("-%d.webp");
-        let out_path = base_imaging_dir.join(&end_filename);
+        let out_path = base_image_dir.join(&end_filename);
         let convert_request = crate::images::ConvertRequest {
             input_path: file_handle.path.clone(),
             output_path: out_path,
@@ -927,8 +926,8 @@ where
 
     // Process occupation terrain
     for image in &["terrain/occupation.dds"] {
-        let imaging_path = format!("map/{}", image);
-        let file_handle = fs.fs_file(&imaging_path)?;
+        let image_path = format!("map/{}", image);
+        let file_handle = fs.fs_file(&image_path)?;
         if options.dry_run {
             continue;
         }
@@ -936,7 +935,7 @@ where
         let file_stem = Path::new(image).file_stem().unwrap();
         let mut end_filename = file_stem.to_os_string();
         end_filename.push(".webp");
-        let out_path = base_imaging_dir.join(&end_filename);
+        let out_path = base_image_dir.join(&end_filename);
 
         let convert_request = crate::images::ConvertRequest {
             input_path: file_handle.path,
@@ -969,7 +968,7 @@ where
         let file_stem = Path::new(image).file_stem().unwrap();
         let mut end_filename = file_stem.to_os_string();
         end_filename.push(".webp");
-        let out_path = base_imaging_dir.join(&end_filename);
+        let out_path = base_image_dir.join(&end_filename);
 
         let operation = if *image == "heightmap.bmp" {
             Some(crate::images::ImageOperation::Resize(
@@ -1006,7 +1005,7 @@ where
             end_filename.push("_");
             end_filename.push(i);
             end_filename.push(".webp");
-            let out_path = base_imaging_dir.join(&end_filename);
+            let out_path = base_image_dir.join(&end_filename);
 
             let crop_geometry = match *i {
                 "rock" => crate::images::CropGeometry::new(512, 512, 1024, 512),
