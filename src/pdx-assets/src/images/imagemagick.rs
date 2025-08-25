@@ -70,6 +70,12 @@ impl ImageProcessor for ImageMagickProcessor {
                         crop.width, crop.height, crop.x_offset, crop.y_offset
                     ));
                 }
+                ImageOperation::Tile(tile) => {
+                    cmd.arg("-crop");
+                    cmd.arg(format!("{}x{}@", tile.columns, tile.rows));
+                    cmd.arg("-scene");
+                    cmd.arg("1");
+                }
             }
         }
 

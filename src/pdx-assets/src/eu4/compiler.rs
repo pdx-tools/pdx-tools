@@ -908,23 +908,21 @@ where
 
         let file_stem = Path::new(image).file_stem().unwrap();
 
-        for i in 1..=2 {
-            let mut end_filename = file_stem.to_os_string();
-            end_filename.push(format!("-{}.webp", i));
-            let out_path = base_imaging_dir.join(&end_filename);
-            let convert_request = crate::images::ConvertRequest {
-                input_path: file_handle.path.clone(),
-                output_path: out_path,
-                format: crate::images::OutputFormat::Webp {
-                    quality: crate::images::WebpQuality::Lossless,
-                },
-                operation: Some(crate::images::ImageOperation::Crop(
-                    crate::images::CropGeometry::new(2816, 2048, (i - 1) * 2816, 0),
-                )),
-            };
+        let mut end_filename = file_stem.to_os_string();
+        end_filename.push("-%d.webp");
+        let out_path = base_imaging_dir.join(&end_filename);
+        let convert_request = crate::images::ConvertRequest {
+            input_path: file_handle.path.clone(),
+            output_path: out_path,
+            format: crate::images::OutputFormat::Webp {
+                quality: crate::images::WebpQuality::Lossless,
+            },
+            operation: Some(crate::images::ImageOperation::Tile(
+                crate::images::TileGeometry::new(2, 1),
+            )),
+        };
 
-            imaging.convert(convert_request).context("convert failed")?;
-        }
+        imaging.convert(convert_request).context("convert failed")?;
     }
 
     // Process occupation terrain
