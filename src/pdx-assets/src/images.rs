@@ -81,7 +81,20 @@ pub enum WebpQuality {
 }
 
 #[derive(Debug, Clone)]
+pub struct TileGeometry {
+    pub columns: u32,
+    pub rows: u32,
+}
+
+impl TileGeometry {
+    pub fn new(columns: u32, rows: u32) -> Self {
+        Self { columns, rows }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ImageOperation {
     Resize(Geometry),
     Crop(CropGeometry),
+    Tile(TileGeometry),
 }
