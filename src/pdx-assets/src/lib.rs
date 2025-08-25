@@ -8,10 +8,8 @@ mod file_tracker;
 pub mod http;
 pub mod images;
 pub mod steam;
-mod zstd_tee;
 
 pub use cli::*;
 pub use file_provider::*;
 pub use file_tracker::*;
 pub use images::*;
-pub use zstd_tee::*;

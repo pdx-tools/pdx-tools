@@ -12,7 +12,6 @@
     "deploy": "wrangler deploy",
     "format": "prettier --write .",
     "generate": "drizzle-kit generate --config drizzle-kit.config.ts",
-    "start": "just staging",
     "test": "vitest",
     "lint": "eslint",
     "typegen": "wrangler types"

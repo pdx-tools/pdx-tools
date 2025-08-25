@@ -11,7 +11,7 @@ on:
     - cron: '0 2 * * *'
 
 jobs:
-  build:
+  devcontainer:
     runs-on: ${{ matrix.os }}
     if: |
       github.event_name == 'pull_request' ||
@@ -25,9 +25,7 @@ jobs:
             with_tokens: false
           - os: ubuntu-latest
             with_tokens: true
-          - os: ubuntu-24.04-arm
-            with_tokens: true
-    name: build / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
+    name: devcontainer / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
     env:
       CARGO_TERM_VERBOSE: true
     steps:
@@ -89,14 +87,13 @@ jobs:
           CI
           GITHUB_TOKEN
         runCmd: |
-          just admin-sync-assets && \
-          just package-all && \
-          just build-wasm-dev && \
-          pnpm install && \
-          ${{ matrix.with_tokens && 'just test && ' || '' }} \
-          just build-app
+          mise run admin:assets:sync && \
+          mise run admin:assets:compile:all && \
+          mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm ::: test:cli' }}
+          ${{ matrix.with_tokens && 'mise run test:app' || '' }}
+          mise run build:app
 
-  build-ng:
+  build:
     runs-on: ${{ matrix.os }}
     if: |
       github.event_name == 'pull_request' ||
@@ -117,7 +114,7 @@ jobs:
             with_tokens: true
           - os: macos-15
             with_tokens: false # docker not supported on macos gh actions
-    name: build-ng / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
+    name: build / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies (Linux)
@@ -182,8 +179,8 @@ jobs:
           ASSETS_ACCESS_KEY: ${{ matrix.with_tokens && secrets.ASSETS_ACCESS_KEY || '' }}
           ASSETS_SECRET_KEY: ${{ matrix.with_tokens && secrets.ASSETS_SECRET_KEY || '' }}
         run: |
-          mise -E admin run admin:sync-assets
-          mise -E admin run admin:assets:compile:all
+          mise run admin:assets:sync
+          mise run admin:assets:compile:all
       - run: |
           mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm ::: test:cli' }}
           ${{ matrix.with_tokens && 'mise run test:app' || '' }}

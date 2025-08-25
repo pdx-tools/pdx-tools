@@ -9,11 +9,12 @@ attohttpc = { workspace = true }
 clap = { features = ["derive"] , workspace = true }
 csv = { workspace = true }
 env_logger = { workspace = true }
+eu4game-data = { default-features = false , workspace = true }
 eu4save = { default-features = false , workspace = true, features = ["zstd_c"] }
 flate2 = { workspace = true, default-features = false, features = ["zlib-rs"]}
 jomini = { workspace = true }
-eu4game-data = { default-features = false , workspace = true }
 log = { workspace = true }
+pdx-zstd = { workspace = true, default-features = false, features = ["zstd_c"] }
 rawbmp = { workspace = true }
 rawzip = { workspace = true }
 regex = { workspace = true }

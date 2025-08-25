@@ -7,7 +7,7 @@ import { readdir } from "fs/promises";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const projectRoot = resolve(__dirname, '..', '..', '..');
+const projectRoot = resolve(__dirname, '..', '..');
 
 const execCommand = async (command: string, options = {}) => {
     console.log(`Executing: ${command}`);

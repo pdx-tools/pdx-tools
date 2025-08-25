@@ -10,7 +10,7 @@ const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const projectRoot = resolve(__dirname, '..', '..', '..');
+const projectRoot = resolve(__dirname, '..', '..');
 
 // Helper functions
 const exists = async (path: string) => {

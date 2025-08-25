@@ -1,3 +1,4 @@
+use crate::FileProvider;
 use crate::asset_compilers::PackageOptions;
 use crate::eu4::data::map::{self, GameProvince};
 use crate::eu4::data::religion::religion_rebels;
@@ -6,9 +7,9 @@ use crate::eu4::data::{
     sprites, superregion,
 };
 use crate::http;
-use crate::{FileProvider, zstd_tee::ZstdTee};
 use anyhow::Context;
 use eu4save::{CountryTag, Eu4File, ProvinceId};
+use pdx_zstd::zstd_tee::ZstdTee;
 use rawbmp::{Pixels, Rgb};
 use regex::Regex;
 use serde::{Deserialize, de::IgnoredAny};
@@ -1475,6 +1476,7 @@ fn generate_output_files(out_game_dir: &Path, game_data: &GameData) -> anyhow::R
     let mut writer = ZstdTee::create(out_game_dir.join("data"))?;
     writer.write_all(raw)?;
     writer.flush()?;
+    writer.finish()?;
 
     Ok(())
 }
