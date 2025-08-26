@@ -167,7 +167,7 @@ impl ImageMagickProcessor {
             match entry.compression_method() {
                 rawzip::CompressionMethod::Store => {
                     output_file
-                        .write_all(&zip_entry.data())
+                        .write_all(zip_entry.data())
                         .context("Failed to write extracted file")?;
                 }
                 rawzip::CompressionMethod::Deflate => {
