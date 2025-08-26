@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {},
   "dependencies": {
+    "concurrently": "9.2.1",
     "wrangler": "catalog:"
   },
   "packageManager": "pnpm@10.11.0"
