@@ -1,8 +1,6 @@
 [tools]
 "aqua:pnpm" = { version = "10.11.0" }
 "node" = { version = "22.15.0" }
-"npm:concurrently" = { version = "9.1.2" }
-"npm:npm-check-updates" = { version = "17.1.18" }
 "rust" = { version = "1.87.0", targets = "wasm32-unknown-unknown,x86_64-unknown-linux-musl" }
 "ubi:cargo-bins/cargo-binstall" = { version = "1.12.5" }
 "ubi:casey/just" = { version = "1.40.0" }
@@ -186,7 +184,7 @@ depends = [
 ]
 dir = "src/app"
 env.WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB = "postgres://app_user:mercantilismbaby@localhost:5433/postgres"
-run = ['concurrently --kill-others --success command-2 --passthrough-arguments "mise run serve:api:test" "pnpm exec wrangler dev --env test --port 3000" "sleep 2 && pnpm test -- run {@}"']
+run = ['pnpm exec concurrently --kill-others --success command-2 --passthrough-arguments "mise run serve:api:test" "pnpm exec wrangler dev --env test --port 3000" "sleep 2 && pnpm test -- run {@}"']
 
 [tasks."env:dev"]
 description = "Run backend services (eg: postgres, s3) configured for development"

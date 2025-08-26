@@ -29,7 +29,7 @@ staging: build-app prep-dev-app
   . dev/.env.dev
   cd src/app
   export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
-  concurrently \
+  pnpm exec concurrently \
     "pnpm exec wrangler dev --port 3001" \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api"
 
@@ -87,7 +87,7 @@ dev-app: prep-frontend prep-dev-app
   cat src/app/migrations/*.sql | just dev-environment exec -u postgres --no-TTY db psql
 
   export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
-  concurrently \
+  pnpm exec concurrently \
     "cd src/app && PORT=3001 pnpm dev" \
     "cd src/docs && pnpm docusaurus start --no-open" \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api"
@@ -104,7 +104,7 @@ test-app *cmd: prep-frontend prep-test-app
   (cd src/app && pnpm build:test && cp app/wasm/wasm_app_bg.wasm build/server/assets/.)
 
   export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB="postgresql://$DATABASE_USER:$DATABASE_PASSWORD@localhost:$DATABASE_PORT/postgres"
-  cd src/app && concurrently --kill-others --success command-2 --passthrough-arguments \
+  cd src/app && pnpm exec concurrently --kill-others --success command-2 --passthrough-arguments \
     "PORT=$PARSE_API_PORT just cargo run -p pdx-tools-api" \
     "pnpm exec wrangler dev --env test --port 3000" \
     "sleep 2 && pnpm test -- run {@}" -- "$@"
