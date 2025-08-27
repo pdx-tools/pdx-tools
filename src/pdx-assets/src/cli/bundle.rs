@@ -1,7 +1,7 @@
 use crate::asset_compilers::{Eu4AssetCompliler, GameAssetCompiler, PackageOptions};
 use crate::bundler::{AssetBundler, AssetManifest};
 use crate::images::imagemagick::ImageMagickProcessor;
-use crate::{DirectoryProvider, FileAccessTracker};
+use crate::{DirectoryProvider, FileAccessTracker, steam};
 use anyhow::{Context, Result};
 use clap::Args;
 use std::io::stdout;
@@ -13,7 +13,7 @@ use std::process::ExitCode;
 pub struct BundleArgs {
     /// Game directory containing source files
     #[clap(value_parser)]
-    game_directory: PathBuf,
+    game_directory: Option<PathBuf>,
 
     /// Output directory
     #[clap(value_parser)]
@@ -22,19 +22,26 @@ pub struct BundleArgs {
 
 impl BundleArgs {
     pub fn run(&self) -> Result<ExitCode> {
-        let directory_provider = DirectoryProvider::new(&self.game_directory);
+        // Get source path: use provided path or auto-detect
+        let game_directory = match self.game_directory.as_ref() {
+            Some(path) => path.clone(),
+            None => steam::detect_steam_eu4_path()?,
+        };
+
+        let directory_provider = DirectoryProvider::new(&game_directory);
         let tracking_provider = FileAccessTracker::new(directory_provider);
 
         let game_compiler = Eu4AssetCompliler;
         let imaging = ImageMagickProcessor::create()?;
 
+        let out_dir = match self.out_directory.as_ref() {
+            Some(dir) => dir.clone(),
+            None => PathBuf::from("."),
+        };
+
         let options = PackageOptions::dry_run();
-        let compilation_output = game_compiler.compile_assets(
-            &tracking_provider,
-            &imaging,
-            &self.game_directory,
-            &options,
-        )?;
+        let compilation_output =
+            game_compiler.compile_assets(&tracking_provider, &imaging, &out_dir, &options)?;
 
         let zip_filename = format!("eu4-{}.zip", compilation_output.game_version);
 
@@ -43,7 +50,7 @@ impl BundleArgs {
 
         let manifest = AssetManifest::new(
             compilation_output.game_version,
-            self.game_directory.to_path_buf(),
+            game_directory,
             accessed_files,
         );
 

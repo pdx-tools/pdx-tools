@@ -7,6 +7,7 @@ mod file_provider;
 mod file_tracker;
 pub mod http;
 pub mod images;
+pub mod steam;
 mod zstd_tee;
 
 pub use cli::*;
