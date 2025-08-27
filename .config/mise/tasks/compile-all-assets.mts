@@ -12,7 +12,7 @@ const isWindows = process.platform === "win32";
 const pdxAssetsBinary = join(projectRoot, "target", "release", isWindows ? "pdx-assets.exe" : "pdx-assets");
 
 // Helper functions
-const exists = async (path) => {
+const exists = async (path: string) => {
   try {
     await access(path);
     return true;
@@ -21,7 +21,7 @@ const exists = async (path) => {
   }
 };
 
-const execCommand = async (command, args = [], options = {}) => {
+const execCommand = async (command: string, args: string[] = [], options = {}) => {
   console.log(`Executing: ${command} ${args.join(' ')}`);
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -32,7 +32,7 @@ const execCommand = async (command, args = [], options = {}) => {
 
     child.on("close", (code) => {
       if (code === 0) {
-        resolve();
+        resolve(void 0);
       } else {
         reject(new Error(`Command failed with exit code ${code}`));
       }
@@ -46,7 +46,6 @@ const execCommand = async (command, args = [], options = {}) => {
 
 async function packageAll() {
   const args = process.argv.slice(2);
-  const dryRun = args.includes("--dry-run");
   const opts = args.filter((arg) => arg !== "--dry-run");
 
   const gameBundlesDir = join(projectRoot, "assets/game-bundles");
@@ -67,10 +66,10 @@ async function packageAll() {
       const bMatch = b.match(/(\d+)\.(\d+)/);
 
       if (aMatch && bMatch) {
-        const aMajor = parseInt(aMatch[1], 10);
-        const aMinor = parseInt(aMatch[2], 10);
-        const bMajor = parseInt(bMatch[1], 10);
-        const bMinor = parseInt(bMatch[2], 10);
+        const aMajor = parseInt(aMatch[1] ?? "0", 10);
+        const aMinor = parseInt(aMatch[2] ?? "0", 10);
+        const bMajor = parseInt(bMatch[1] ?? "0", 10);
+        const bMinor = parseInt(bMatch[2] ?? "0", 10);
 
         if (aMajor !== bMajor) {
           return aMajor - bMajor;
@@ -84,25 +83,23 @@ async function packageAll() {
 
   console.log(`📦 Found ${zipBundles.length} bundles to process`);
 
-  if (zipBundles.length === 0) {
-    return;
-  }
-
   // Process all bundles except the last one with --minimal flag
   // Last bundle gets no --minimal flag
   const lastBundle = zipBundles.pop();
+  if (lastBundle === undefined) {
+    return;
+  }
+
   const lastBundlePath = join(gameBundlesDir, lastBundle);
 
   // Process the last bundle without --minimal flag
   console.log(`Processing ${lastBundle} (final bundle)`);
   await execCommand(pdxAssetsBinary, ['compile', ...opts, lastBundlePath]);
 
-  let tasks = [];
-  for (let i = 0; i < zipBundles.length; i++) {
-    const bundle = zipBundles[i];
+  const tasks = zipBundles.map((bundle) => {
     const bundlePath = join(gameBundlesDir, bundle);
-    tasks.push(execCommand(pdxAssetsBinary, ['compile', '--minimal', ...opts, bundlePath]));
-  }
+    return execCommand(pdxAssetsBinary, ['compile', '--minimal', ...opts, bundlePath]);
+  });
 
   await Promise.all(tasks);
 }

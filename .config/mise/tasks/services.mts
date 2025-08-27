@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = resolve(__dirname, '..', '..', '..');
 
-const execCommand = async (command, options = {}) => {
+const execCommand = async (command: string, options = {}) => {
     console.log(`Executing: ${command}`);
     return new Promise((resolve, reject) => {
         const isWindows = process.platform === 'win32';
@@ -24,7 +24,7 @@ const execCommand = async (command, options = {}) => {
         
         child.on('close', (code) => {
             if (code === 0) {
-                resolve();
+                resolve(void 0);
             } else {
                 reject(new Error(`Command failed with exit code ${code}`));
             }

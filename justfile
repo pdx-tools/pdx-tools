@@ -248,4 +248,4 @@ format:
 prep-frontend:
   #!/usr/bin/env bash
   cargo run -p applib --bin types
-  node ./.config/mise/tasks/setup-assets.mjs
+  node ./.config/mise/tasks/setup-assets.mts

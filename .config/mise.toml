@@ -1,6 +1,6 @@
 [tools]
 "aqua:pnpm" = { version = "10.11.0" }
-"node" = { version = "22.15.0" }
+"node" = { version = "22.18.0" }
 "rust" = { version = "1.87.0", targets = "wasm32-unknown-unknown,x86_64-unknown-linux-musl" }
 "ubi:cargo-bins/cargo-binstall" = { version = "1.12.5" }
 "ubi:casey/just" = { version = "1.40.0" }
@@ -127,7 +127,7 @@ run = "cargo run -p applib --bin types"
 hide = true
 
 [tasks."dev:app:setup:assets"]
-run = "node ./.config/mise/tasks/setup-assets.mjs"
+run = "node ./.config/mise/tasks/setup-assets.mts"
 hide = true
 
 [tasks."dev:app"]
@@ -242,8 +242,8 @@ run = "cargo run --release --package pdx-assets -- compile"
 
 [tasks."start:services:dev"]
 description = "Run services for development"
-run = ["node ./.config/mise/tasks/services.mjs --dev"]
+run = ["node ./.config/mise/tasks/services.mts --dev"]
 
 [tasks."start:services:test"]
 description = "Run services for testing"
-run = ["node ./.config/mise/tasks/services.mjs --test"]
+run = ["node ./.config/mise/tasks/services.mts --test"]

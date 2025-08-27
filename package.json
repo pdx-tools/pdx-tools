@@ -7,5 +7,8 @@
     "concurrently": "9.2.1",
     "wrangler": "catalog:"
   },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  },
   "packageManager": "pnpm@10.11.0"
 }
