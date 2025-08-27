@@ -52,7 +52,7 @@ pdx-assets = { path = "src/pdx-assets" }
 pdx-zstd = { path = "src/pdx-zstd", default-features = false }
 rand = "0.8"
 rawbmp = { path = "src/rawbmp" }
-rawzip = "0.4.0"
+rawzip = "0.4.1"
 rayon = "1.10"
 regex = "1.11"
 ruzstd = { version = "0.8.0" }
