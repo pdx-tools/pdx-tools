@@ -10,6 +10,7 @@ packages:
   - src/wasm-imperator/pkg
   - src/wasm-vic3/pkg
 catalog:
+  '@types/node': 22.18.0
   comlink: 4.4.2
   typescript: 5.6.3
   vite: 6.3.5

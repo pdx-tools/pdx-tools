@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 const projectRoot = resolve(__dirname, '..', '..', '..');
 
 // Helper functions
-const exists = async (path) => {
+const exists = async (path: string) => {
   try {
     await access(path);
     return true;
@@ -22,7 +22,7 @@ const exists = async (path) => {
   }
 };
 
-const execCommand = async (command, options = {}) => {
+const execCommand = async (command: string, options = {}) => {
   try {
     const { stdout, stderr } = await execAsync(command, {
       cwd: projectRoot,
@@ -35,12 +35,12 @@ const execCommand = async (command, options = {}) => {
     return stdout;
   } catch (error) {
     console.error(`Command failed: ${command}`);
-    console.error(`Error: ${error.message}`);
+    console.error(`Error: ${(error as Error).message}`);
     throw error;
   }
 };
 
-const createFileIfEmpty = async (filePath, content) => {
+const createFileIfEmpty = async (filePath: string, content: string) => {
   const fileExists = await exists(filePath);
   if (!fileExists) {
     await writeFile(filePath, content);
@@ -55,25 +55,25 @@ const createFileIfEmpty = async (filePath, content) => {
       console.log(`Created placeholder: ${filePath}`);
     }
   } catch (error) {
-    console.warn(`Could not check file size for ${filePath}: ${error.message}`);
+    console.warn(`Could not check file size for ${filePath}: ${(error as Error).message}`);
     await writeFile(filePath, content);
   }
 };
 
-const touchFile = async (filePath) => {
+const touchFile = async (filePath: string) => {
   if (!await exists(filePath)) {
     await writeFile(filePath, '');
   }
 };
 
-const hasCommand = async (command) => {
+const hasCommand = async (command: string) => {
   try {
-    await execAsync(`command -v ${command}`, { stdio: 'ignore' });
+    await execAsync(`command -v ${command}`);
     return true;
   } catch {
     try {
       // Windows fallback
-      await execAsync(`where ${command}`, { stdio: 'ignore' });
+      await execAsync(`where ${command}`);
       return true;
     } catch {
       return false;
@@ -94,7 +94,7 @@ const findLatestBundle = async () => {
     .sort((a, b) => {
       const [aMajor, aMinor] = a.split('.').map(Number);
       const [bMajor, bMinor] = b.split('.').map(Number);
-      return bMajor === aMajor ? bMinor - aMinor : bMajor - aMajor;
+      return bMajor === aMajor ? bMinor! - aMinor! : bMajor! - aMajor!;
     });
 
   // Find the latest version that has common/images directory
@@ -108,7 +108,7 @@ const findLatestBundle = async () => {
   return null;
 };
 
-const copyDirectoryRecursive = async (src, dest) => {
+const copyDirectoryRecursive = async (src: string, dest: string) => {
   try {
     await mkdir(dest, { recursive: true });
     const entries = await readdir(src, { withFileTypes: true });
@@ -124,7 +124,7 @@ const copyDirectoryRecursive = async (src, dest) => {
       }
     }
   } catch (error) {
-    console.warn(`Failed to copy directory ${src} to ${dest}: ${error.message}`);
+    console.warn(`Failed to copy directory ${src} to ${dest}: ${(error as Error).message}`);
   }
 };
 
@@ -215,12 +215,11 @@ async function setupAssets() {
       await writeFile(join(dlcDir, 'dlc-sprites.webp'), '');
     }
 
-    // Generate DLC sprites JSON (matching original jq logic)
-    const dlcData = {};
-    dlcImages.forEach((image, index) => {
+    // Generate DLC sprites JSON
+    const dlcData = Object.fromEntries(dlcImages.map((image, index) => {
       const name = image.replace(/\.[^/.]+$/, ''); // Remove extension
-      dlcData[name] = index;
-    });
+      return [name, index]
+    }));
     await writeFile(join(dlcDir, 'dlc-sprites.json'), JSON.stringify(dlcData));
   }
 
@@ -246,11 +245,10 @@ async function setupAssets() {
     }
 
     // Generate icons JSON
-    const iconsData = {};
-    iconFiles.forEach((icon, index) => {
+    const iconsData = Object.fromEntries(iconFiles.map((icon, index) => {
       const name = icon.replace(/\.[^/.]+$/, '').replace('icon_', ''); // Remove extension and 'icon_' prefix
-      iconsData[name] = index;
-    });
+      return [name, index];
+    }));
     await writeFile(join(iconsDir, 'icons.json'), JSON.stringify(iconsData));
   }
 
@@ -308,7 +306,7 @@ async function setupAssets() {
 
   // Check for EU4 asset versions
   const eu4AssetsDir = join(projectRoot, 'assets/game/eu4');
-  let versions = [];
+  let versions: string[] = [];
 
   if (await exists(eu4AssetsDir)) {
     const eu4Contents = await readdir(eu4AssetsDir);
@@ -317,7 +315,7 @@ async function setupAssets() {
       .sort((a, b) => {
         const [aMajor, aMinor] = a.split('.').map(Number);
         const [bMajor, bMinor] = b.split('.').map(Number);
-        return aMajor === bMajor ? aMinor - bMinor : aMajor - bMajor;
+        return aMajor === bMajor ? aMinor! - bMinor! : aMajor! - bMajor!;
       });
   }
 

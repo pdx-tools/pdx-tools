@@ -8,5 +8,5 @@ run_windows = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.b
 [tasks."admin:assets:compile:all"]
 run = [
     "cargo build --release --package pdx-assets",
-    "node ./.config/mise/tasks/compile-all-assets.mjs"
+    "node ./.config/mise/tasks/compile-all-assets.mts"
 ]   
