@@ -429,10 +429,10 @@ where
     R: Read,
     ReadAt: ReaderAt,
 {
-    pub fn deserializer<'a, RES>(
-        &'a mut self,
+    pub fn deserializer<RES>(
+        &mut self,
         resolver: RES,
-    ) -> Vic3Modeller<&'a mut Vic3Entry<R, ReadAt>, RES>
+    ) -> Vic3Modeller<&mut Vic3Entry<R, ReadAt>, RES>
     where
         RES: TokenResolver,
     {
