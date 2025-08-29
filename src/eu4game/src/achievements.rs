@@ -659,18 +659,30 @@ impl<'a> AchievementHunter<'a> {
         let mut result = AchievementResult::new(49);
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
-        let is_ryu = self.tag == "RYU";
-        result.and(AchievementCondition::new(is_ryu, "is RYU tag"));
 
-        let self_and_non_tributaries: HashSet<&CountryTag> = self
-            .self_and_subjects
-            .iter()
-            .filter(|x| {
-                self.query
-                    .country(x)
-                    .is_some_and(|x| x.tribute_type.is_none())
-            })
-            .collect();
+        let started_as_ryu = self.starting_country == "RYU";
+        result.and(AchievementCondition::new(started_as_ryu, "started as RYU"));
+
+        // Get Ryukyu and its non-tributary subjects
+        let ryu_tag = CountryTag::new(*b"RYU");
+        let mut allowed_countries: HashSet<CountryTag> = HashSet::new();
+
+        // Always allow the player's current country
+        allowed_countries.insert(self.tag);
+
+        // Get RYU's subjects (non-tributaries) if RYU exists
+        if let Some(ryu_country) = self.query.country(&ryu_tag) {
+            allowed_countries.insert(ryu_tag);
+
+            // Add RYU's non-tributary subjects
+            for subject_tag in &ryu_country.subjects {
+                if let Some(subject_country) = self.query.country(subject_tag) {
+                    if subject_country.tribute_type.is_none() {
+                        allowed_countries.insert(*subject_tag);
+                    }
+                }
+            }
+        }
 
         let owned = self
             .save
@@ -678,9 +690,9 @@ impl<'a> AchievementHunter<'a> {
             .provinces
             .values()
             .filter_map(|x| x.owner)
-            .all(|x| self_and_non_tributaries.contains(&x));
+            .all(|x| allowed_countries.contains(&x));
 
-        let desc = "only existing countries are self and non-tributary subjects";
+        let desc = "only existing countries are the player, RYU, and RYU's non-tributary subjects";
         result.and(AchievementCondition::new(owned, desc));
         result
     }
