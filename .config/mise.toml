@@ -185,13 +185,13 @@ run = ['pnpm exec concurrently --kill-others --success command-2 --passthrough-a
 description = "Run backend services (eg: postgres, s3) configured for development"
 dir = "dev"
 hide = true
-run = ["docker compose -f ./docker-compose.dev.yml --env-file ../src/app/.env.development --env-file ../src/app/.dev.vars --env-file .env.dev --project-name pdx_dev"]
+run = ["docker-compose -f ./docker-compose.dev.yml --env-file ../src/app/.env.development --env-file ../src/app/.dev.vars --env-file .env.dev --project-name pdx_dev"]
 
 [tasks."env:test"]
 description = "Run backend services (eg: postgres, s3) configured for testing"
 dir = "dev"
 hide = true
-run = ["docker compose -f ./docker-compose.test.yml --env-file ../src/app/.env.test --env-file ../src/app/.dev.vars.test --env-file .env.test --project-name pdx_test"]
+run = ["docker-compose -f ./docker-compose.test.yml --env-file ../src/app/.env.test --env-file ../src/app/.dev.vars.test --env-file .env.test --project-name pdx_test"]
 
 [tasks."serve:api:dev"]
 depends = ["tokenize"]
