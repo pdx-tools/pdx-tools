@@ -186,7 +186,7 @@ If not using vscode and the Dev Container, one can setup an environment manually
 A Linux environment assumed (WSL on Windows untested but probably supported). The following applications must be installed in order to instantiate the dev environment.
 
 - docker
-- docker compose plugin v2
+- docker compose plugin v2 or Legacy docker-compose (`docker-compose`)
 - node js, including npm
 - clang
 - jq

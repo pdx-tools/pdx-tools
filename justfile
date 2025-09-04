@@ -195,7 +195,14 @@ dev-environment +cmd:
   #!/usr/bin/env bash
   set -euxo pipefail
   cd dev
-  docker compose -f ./docker-compose.dev.yml --env-file ../src/app/.env.development --env-file ../src/app/.dev.vars --env-file .env.dev --project-name pdx_dev "$@"
+
+  # Fallback to docker-compose if docker compose is not available
+  if docker compose version &>/dev/null; then
+    docker compose -f ./docker-compose.dev.yml --env-file ../src/app/.env.development --env-file ../src/app/.dev.vars --env-file .env.dev --project-name pdx_dev "$@"
+  else
+    docker-compose -f ./docker-compose.dev.yml --env-file ../src/app/.env.development --env-file ../src/app/.dev.vars --env-file .env.dev --project-name pdx_dev "$@"
+  fi
+
 
 test-environment +cmd:
   #!/usr/bin/env bash
