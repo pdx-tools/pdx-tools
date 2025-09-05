@@ -916,6 +916,99 @@ impl SaveFileImpl {
             .collect()
     }
 
+    pub fn get_province_development_histogram(&self, payload: TagFilterPayloadRaw) -> ProvinceDevHistogram {
+        let filter = TagFilterPayload::from(payload);
+        let matching_tags = self.matching_tags(&filter);
+
+        // Collect development values for provinces owned by matching countries
+        let mut developments: Vec<f32> = self.query
+            .save()
+            .game
+            .provinces
+            .values()
+            .filter_map(|province| {
+                let owner_tag = province.owner.as_ref()?;
+
+                if !matching_tags.contains(owner_tag) {
+                    return None;
+                }
+
+                let development = province.base_tax + province.base_production + province.base_manpower;
+                Some(development)
+            })
+            .collect();
+
+        if developments.is_empty() {
+            return ProvinceDevHistogram {
+                buckets: Vec::new(),
+                total_provinces: 0,
+                average_dev: 0.0,
+                median_dev: 0.0,
+                max_dev: 0.0,
+                min_dev: 0.0,
+            };
+        }
+
+        // Sort for median calculation
+        developments.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+        let total_provinces = developments.len();
+        let min_dev = developments[0];
+        let max_dev = developments[total_provinces - 1];
+        let average_dev = developments.iter().sum::<f32>() / total_provinces as f32;
+        let median_dev = if total_provinces % 2 == 0 {
+            (developments[total_provinces / 2 - 1] + developments[total_provinces / 2]) / 2.0
+        } else {
+            developments[total_provinces / 2]
+        };
+
+        // Create histogram buckets
+        const NUM_BUCKETS: usize = 20;
+        let range = max_dev - min_dev;
+        let bucket_width = if range > 0.0 { range / NUM_BUCKETS as f32 } else { 1.0 };
+
+        let mut buckets = vec![0usize; NUM_BUCKETS];
+
+        for &dev in &developments {
+            let bucket_index = if dev >= max_dev {
+                NUM_BUCKETS - 1
+            } else {
+                ((dev - min_dev) / bucket_width).floor() as usize
+            };
+            buckets[bucket_index] += 1;
+        }
+
+        // Convert to response format
+        let histogram_buckets: Vec<HistogramBucket> = buckets
+            .into_iter()
+            .enumerate()
+            .map(|(i, count)| {
+                let min_bucket_dev = min_dev + (i as f32 * bucket_width);
+                let max_bucket_dev = if i == NUM_BUCKETS - 1 {
+                    max_dev
+                } else {
+                    min_dev + ((i + 1) as f32 * bucket_width)
+                };
+
+                HistogramBucket {
+                    min_dev: min_bucket_dev,
+                    max_dev: max_bucket_dev,
+                    count,
+                    percentage: (count as f32 / total_provinces as f32) * 100.0,
+                }
+            })
+            .collect();
+
+        ProvinceDevHistogram {
+            buckets: histogram_buckets,
+            total_provinces,
+            average_dev,
+            median_dev,
+            max_dev,
+            min_dev,
+        }
+    }
+
     pub fn get_health(&self, payload: TagFilterPayloadRaw) -> HealthData {
         struct CountryHealthDatum {
             tag: CountryTag,
