@@ -73,12 +73,7 @@ run = ["pnpm run build"]
 
 [tasks.wasm-opt]
 run = [
-    'wasm-opt -O2 ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg.wasm -o ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg_optimized.wasm',
-    'mv ./src/app/app/wasm/{{arg(name="rust_package",i=0)}}_bg_optimized.wasm ./src/app/app/wasm/{{arg(name="rust_package",i=0)}}_bg.wasm',
-]
-run_windows = [
-    'wasm-opt -O2 ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg.wasm -o ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg_optimized.wasm',
-    'move .\\src\\app\\app\\wasm\\{{arg(name="rust_package", i=0)}}_bg_optimized.wasm .\\src\\app\\app\\wasm\\{{arg(name="rust_package", i=0)}}_bg.wasm'
+    'wasm-opt -O2 ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg.wasm -o ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg.wasm',
 ]
 hide = true
 
