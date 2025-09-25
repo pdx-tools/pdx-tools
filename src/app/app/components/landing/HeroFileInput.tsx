@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { DocumentIcon } from "@heroicons/react/24/solid";
 import { useFilePublisher } from "@/features/engine";
-import { useFileDrop } from "@/hooks/useFileDrop";
+import { FileKind, useFileDrop } from "@/hooks/useFileDrop";
 import compassSymbol from "./compass-symbol.webp";
 import queenSymbol from "./queen.webp";
 import militaryRank from "./military-rank.webp";
@@ -89,8 +89,9 @@ export const HeroFileInput = () => {
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.currentTarget.files && e.currentTarget.files[0]) {
-      publishFile({ kind: "file", file: e.currentTarget.files[0] });
+    const files = e.currentTarget.files;
+    if (files?.[0] !== undefined) {
+      publishFile([...files].map((file) => ({ kind: "file", file })));
       e.currentTarget.value = "";
     }
   };
@@ -126,6 +127,7 @@ export const HeroFileInput = () => {
       <input
         id="analyze-box-file-input"
         ref={fileInputRef}
+        multiple={true}
         type="file"
         className="peer absolute opacity-0"
         onChange={handleChange}
@@ -140,10 +142,10 @@ export const HeroFileInput = () => {
     <button
       className={className}
       onClick={async () => {
-        let fileHandle: FileSystemFileHandle;
+        let files: FileKind[];
         try {
           const result = await window.showOpenFilePicker({
-            multiple: false,
+            multiple: true,
             types: [
               {
                 description: "PDX Files",
@@ -153,14 +155,17 @@ export const HeroFileInput = () => {
               },
             ],
           });
-          fileHandle = result[0];
+          files = result.map((fileHandle) => ({
+            kind: "handle",
+            file: fileHandle,
+          }));
         } catch (_ex) {
           // User closing without selecting a file throws an exception
           // so we swallow it.
           return;
         }
 
-        publishFile({ kind: "handle", file: fileHandle });
+        publishFile(files);
       }}
     >
       {children}
