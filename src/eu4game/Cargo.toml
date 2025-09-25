@@ -5,6 +5,9 @@ authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
 edition = "2021"
 publish = false
 
+[lints]
+workspace = true
+
 [features]
 default = ["embedded", "zstd_rust"]
 embedded = ["eu4game-data/embedded"]

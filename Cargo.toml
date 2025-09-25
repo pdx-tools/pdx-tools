@@ -75,6 +75,8 @@ wasm-bindgen-test = "0.3.50"
 webp = "0.3"
 zstd = { version = "0.13.0", default-features = false }
 
+[workspace.lints]
+
 [profile.release]
 lto = true
 codegen-units = 1

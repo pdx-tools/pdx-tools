@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[lints]
+workspace = true
+
 [features]
 admin = ["tokenize", "dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2", "dep:pdx-zstd"]
 fun = ["dep:applib", "dep:eu4game", "dep:eu4save", "dep:flate2", "dep:rawbmp", "dep:pdx-assets", "dep:schemas"]
