@@ -1,7 +1,6 @@
 FROM mcr.microsoft.com/devcontainers/base:1-bookworm
 
 RUN apt-get update && apt-get install -y \
-      clang \
       imagemagick \
       libssl-dev \
       musl-tools \
