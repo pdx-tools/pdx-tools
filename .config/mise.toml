@@ -1,7 +1,7 @@
 [tools]
 "aqua:pnpm" = { version = "10.11.0" }
 "node" = { version = "22.18.0" }
-"rust" = { version = "1.87.0", targets = "wasm32-unknown-unknown,x86_64-unknown-linux-musl" }
+"rust" = { version = "1.90.0", targets = "wasm32-unknown-unknown,x86_64-unknown-linux-musl" }
 "ubi:cargo-bins/cargo-binstall" = { version = "1.12.5" }
 "ubi:docker/compose" = { version = "2.33.1", rename_exe = "docker-compose" }
 "ubi:google/flatbuffers" = { version = "25.2.10", matching = "clang", exe = "flatc" }
