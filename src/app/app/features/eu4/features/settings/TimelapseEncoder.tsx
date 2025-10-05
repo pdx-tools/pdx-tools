@@ -1,8 +1,12 @@
 import {
-  Muxer as WebMMuxer,
-  ArrayBufferTarget as WebmTarget,
-} from "webm-muxer";
-import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4Target } from "mp4-muxer";
+  Output,
+  WebMOutputFormat,
+  Mp4OutputFormat,
+  BufferTarget,
+  EncodedVideoPacketSource,
+  EncodedPacket,
+  type VideoCodec,
+} from "mediabunny";
 import { IMG_WIDTH, MapController, overlayDate } from "@pdx.tools/map";
 import { Eu4Worker, getEu4Worker } from "../../worker";
 import { Eu4Store } from "../../store";
@@ -39,13 +43,13 @@ export class TimelapseEncoder {
   private frameCount: number = 0;
   private stopRequested: boolean = false;
   private textMetrics: TextMetrics | undefined;
+  private pendingAdds: Promise<void>[] = [];
 
   private constructor(
     private map: MapController,
     config: EncoderConfig,
-    private muxer:
-      | { kind: "webm"; mux: WebMMuxer<WebmTarget> }
-      | { kind: "mp4"; mux: Mp4Muxer<Mp4Target> },
+    private output: Output<Mp4OutputFormat | WebMOutputFormat, BufferTarget>,
+    private videoSource: EncodedVideoPacketSource,
     private ctx2d: CanvasRenderingContext2D,
     private frames: ReturnType<typeof mapTimelapseCursor>,
     private fontFamily: string,
@@ -54,7 +58,11 @@ export class TimelapseEncoder {
     private store: Eu4Store,
   ) {
     this.encoder = new VideoEncoder({
-      output: (chunk, meta) => this.muxer.mux.addVideoChunk(chunk, meta ?? {}),
+      output: (chunk, meta) => {
+        const packet = EncodedPacket.fromEncodedChunk(chunk);
+        const addPromise = this.videoSource.add(packet, meta);
+        this.pendingAdds.push(addPromise);
+      },
       error: (e) => (this.error = e),
     });
 
@@ -134,17 +142,19 @@ export class TimelapseEncoder {
     this.stopRequested = true;
   }
 
-  finish() {
-    this.muxer.mux.finalize();
-    const out = this.muxer.mux.target.buffer;
-    if (out == null) {
-      throw new Error("empty muxer");
-    }
+  async finish() {
+    await this.encoder.flush();
+    await Promise.all(this.pendingAdds);
     this.encoder.close();
+    this.videoSource.close();
+    await this.output.finalize();
 
-    return new Blob([out], {
-      type: this.muxer.kind == "mp4" ? "video/mp4" : "video/webm",
-    });
+    const out = this.output.target.buffer;
+    if (out === null) {
+      throw new Error("Expected output buffer to be defined");
+    }
+
+    return new Blob([out], { type: this.output.format.mimeType });
   }
 
   static isSupported() {
@@ -207,8 +217,8 @@ export class TimelapseEncoder {
       encoding == "mp4"
         ? ([["avc1.424034", "avc"]] as const)
         : ([
-            ["vp09.00.10.08", "V_VP9"],
-            ["vp8", "V_VP8"],
+            ["vp09.00.10.08", "vp9"],
+            ["vp8", "vp8"],
           ] as const);
     const { config, muxCodec } = await findSupportedEncoder(codecs);
 
@@ -219,40 +229,27 @@ export class TimelapseEncoder {
       throw new Error("expected recording canvas 2d contex to be defined");
     }
 
-    const muxer =
+    const format =
       encoding == "mp4"
-        ? ({
-            kind: "mp4",
-            mux: new Mp4Muxer({
-              target: new Mp4Target(),
-              fastStart: "in-memory",
-              firstTimestampBehavior: "offset",
-              video: {
-                codec: "avc",
-                width: ctx2d.canvas.width,
-                height: ctx2d.canvas.height,
-              },
-            }),
-          } as const)
-        : ({
-            kind: "webm",
-            mux: new WebMMuxer({
-              target: new WebmTarget(),
-              firstTimestampBehavior: "offset",
-              video: {
-                codec: muxCodec,
-                width: ctx2d.canvas.width,
-                height: ctx2d.canvas.height,
-              },
-            }),
-          } as const);
+        ? new Mp4OutputFormat({ fastStart: "in-memory" })
+        : new WebMOutputFormat();
+
+    const output = new Output({
+      format,
+      target: new BufferTarget(),
+    });
+
+    const videoSource = new EncodedVideoPacketSource(muxCodec as VideoCodec);
+    output.addVideoTrack(videoSource);
+    await output.start();
 
     const fontFamily = getComputedStyle(document.body).fontFamily;
 
     return new TimelapseEncoder(
       map,
       config,
-      muxer,
+      output,
+      videoSource,
       ctx2d,
       frames,
       fontFamily,
