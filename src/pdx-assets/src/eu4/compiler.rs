@@ -228,7 +228,7 @@ where
             format: crate::images::OutputFormat::Webp {
                 quality: crate::images::WebpQuality::Quality(90),
             },
-            geometry: None,
+            geometries: vec![],
             background: None,
             additional_args: vec![],
         };
@@ -315,7 +315,7 @@ where
             format: crate::images::OutputFormat::Webp {
                 quality: crate::images::WebpQuality::Quality(90),
             },
-            geometry: None,
+            geometries: vec![],
             background: Some(crate::images::Color::Transparent),
             additional_args: vec![],
         };
@@ -368,23 +368,22 @@ where
         let image_out_dir = Path::new(&out_dir).join("common/images/advisors");
         std::fs::create_dir_all(&image_out_dir)?;
 
-        // Create multiple montages for different sizes
-        for &size in &[48, 64, 77] {
-            let geometry = Some(crate::images::Geometry::new(size, size));
-            let output_filename = format!("advisors_x{}.webp", size);
-            let montage_request = crate::images::MontageRequest {
-                images: &advisors_montage,
-                output_path: image_out_dir.join(output_filename),
-                format: crate::images::OutputFormat::Webp {
-                    quality: crate::images::WebpQuality::Quality(90),
-                },
-                geometry,
-                background: Some(crate::images::Color::Transparent),
-                additional_args: vec![],
-            };
+        let montage_request = crate::images::MontageRequest {
+            images: &advisors_montage,
+            output_path: image_out_dir.join("advisors.webp"),
+            format: crate::images::OutputFormat::Webp {
+                quality: crate::images::WebpQuality::Quality(90),
+            },
+            geometries: vec![
+                crate::images::Geometry::new(48, 48),
+                crate::images::Geometry::new(64, 64),
+                crate::images::Geometry::new(77, 77),
+            ],
+            background: Some(crate::images::Color::Transparent),
+            additional_args: vec![],
+        };
 
-            imaging.montage(montage_request)?;
-        }
+        imaging.montage(montage_request)?;
     }
 
     let translate = advisors.into_iter().collect::<HashMap<_, _>>();
@@ -682,45 +681,25 @@ where
     std::fs::create_dir_all(&base_flag_path)
         .with_context(|| format!("unable to create: {}", base_flag_path.display()))?;
 
-    let flag_data_file =
-        std::fs::File::create(base_flag_path.join("flags.json")).with_context(|| {
-            format!(
-                "unable to create: {}",
-                base_flag_path.join("flags.json").display()
-            )
-        })?;
-    let mut flag_json = BufWriter::new(flag_data_file);
-    flag_json.write_all(&b"{\n"[..])?;
+    let montage_request = crate::images::MontageRequest {
+        images: &flags_with_paths,
+        output_path: base_flag_path.join("flags.webp"),
+        format: crate::images::OutputFormat::Webp {
+            quality: crate::images::WebpQuality::Quality(90),
+        },
+        geometries: vec![
+            crate::images::Geometry::new(8, 8),
+            crate::images::Geometry::new(48, 48),
+            crate::images::Geometry::new(64, 64),
+            crate::images::Geometry::new(128, 128),
+        ],
+        background: Some(crate::images::Color::White),
+        additional_args: vec!["-alpha".to_string(), "Off".to_string()],
+    };
 
-    // Write JSON mapping
-    for (i, (tag, _)) in flags_with_paths.iter().enumerate() {
-        if i != 0 {
-            flag_json.write_all(&b","[..])?;
-        }
-        write!(flag_json, "\"{}\":{}", tag, i)?;
-    }
-    flag_json.write_all(&b"\n}"[..])?;
-    flag_json.flush()?;
-
-    // Create montage using trait
-    for &size in &[8, 48, 64, 128] {
-        let geometry = Some(crate::images::Geometry::new(size, size));
-        let output_filename = format!("flags_x{}.webp", size);
-        let montage_request = crate::images::MontageRequest {
-            images: &flags_with_paths,
-            output_path: base_flag_path.join(output_filename),
-            format: crate::images::OutputFormat::Webp {
-                quality: crate::images::WebpQuality::Quality(90),
-            },
-            geometry,
-            background: Some(crate::images::Color::White),
-            additional_args: vec!["-alpha".to_string(), "Off".to_string()],
-        };
-
-        imaging
-            .montage(montage_request)
-            .context("unable to create country flag montage")?;
-    }
+    imaging
+        .montage(montage_request)
+        .context("unable to create country flag montage")?;
 
     Ok(())
 }
@@ -768,7 +747,7 @@ where
         format: crate::images::OutputFormat::Webp {
             quality: crate::images::WebpQuality::Quality(90),
         },
-        geometry: Some(crate::images::Geometry::new(64, 64)),
+        geometries: vec![crate::images::Geometry::new(64, 64)],
         background: Some(crate::images::Color::Transparent),
         additional_args: vec![],
     };
@@ -859,7 +838,7 @@ where
         format: crate::images::OutputFormat::Webp {
             quality: crate::images::WebpQuality::Quality(90),
         },
-        geometry: None,
+        geometries: vec![],
         background: Some(crate::images::Color::White),
         additional_args: additional_args.clone(),
     };
@@ -872,7 +851,7 @@ where
         format: crate::images::OutputFormat::Webp {
             quality: crate::images::WebpQuality::Quality(90),
         },
-        geometry: None,
+        geometries: vec![],
         background: Some(crate::images::Color::White),
         additional_args,
     };
