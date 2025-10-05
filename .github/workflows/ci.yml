@@ -139,11 +139,12 @@ jobs:
       - name: Cache assets
         uses: actions/cache@v4
         with:
+          key: asset-cache
+          enableCrossOsArchive: true # shared cache between OSes
           path: |
             assets/game-bundles
             assets/eu4-saves
             src/vic3save/assets
-          key: asset-cache
 
       - uses: actions/checkout@v4
         name: Clone tokens
