@@ -190,7 +190,7 @@ export const Timelapse = () => {
       encoderRef.current = encoder;
 
       await encoder.encodeTimelapse();
-      const blob = encoder.finish();
+      const blob = await encoder.finish();
 
       setIsRecording(false);
       restoreMapState();
