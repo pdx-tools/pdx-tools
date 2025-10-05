@@ -17,7 +17,7 @@ use models::CountryDevEfficiencies;
 use savefile::{
     AchievementsScore, CountryAdvisors, CountryDetails, CountryReligions, Estate,
     FileObservationFrequency, HealthData, LocalizedLedger, MapCursorPayload, MapPayload,
-    MapPayloadKind, MapQuickTipPayload, Monitor, ProvinceDetails, Reparse, RootTree, SaveFileImpl,
+    MapPayloadKind, MapQuickTipPayload, Monitor, ProvinceDetails, ProvinceDevHistogram, Reparse, RootTree, SaveFileImpl,
     TagFilterPayloadRaw, WarInfo,
 };
 use std::{collections::HashMap, io::Cursor};
@@ -311,6 +311,10 @@ impl SaveFile {
 
     pub fn monitoring_data(&self) -> Monitor {
         self.0.monitoring_data()
+    }
+
+    pub fn get_province_development_histogram(&self, payload: TagFilterPayloadRaw) -> ProvinceDevHistogram {
+        self.0.get_province_development_histogram(payload)
     }
 }
 
