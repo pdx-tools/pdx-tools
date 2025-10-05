@@ -48,10 +48,10 @@ fn parse_localization(data: &str) -> HashMap<String, String> {
             }
 
             if let Some(field2) = splits.next() {
-                if let Some(v) = quote_container.captures(field2) {
-                    if let Some(prev) = result.insert(String::from(key), String::from(&v[1])) {
-                        panic!("previous localization value: {}", prev);
-                    }
+                if let Some(v) = quote_container.captures(field2)
+                    && let Some(prev) = result.insert(String::from(key), String::from(&v[1]))
+                {
+                    panic!("previous localization value: {}", prev);
                 }
             } else {
                 panic!("no value found for {}", key);

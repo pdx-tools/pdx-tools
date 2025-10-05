@@ -127,27 +127,6 @@ pub enum ProvinceHistoryEventKind {
     Demolished(GfxObj),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct LedgerDatum {
-    pub name: String,
-    pub tag: String,
-    pub x: u16,
-    pub y: f32,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct LedgerData {
-    pub data: Vec<LedgerDatum>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct AnnualLedgers {
-    pub score: LedgerData,
-    pub inflation: LedgerData,
-    pub income: LedgerData,
-    pub size: LedgerData,
-}
-
 #[derive(Tsify, Debug, Serialize)]
 pub struct GameVersion {
     pub first: u16,
@@ -175,20 +154,6 @@ pub struct AchievementsScore {
     pub patch: GameVersion,
     pub score: i32,
     pub achievements: Vec<CompletedAchievement>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct BuildingHistory<'a> {
-    pub building: &'a str,
-    pub year: i32,
-    pub count: i32,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NationSizeHistory {
-    pub tag: CountryTag,
-    pub year: u16,
-    pub count: i32,
 }
 
 #[derive(Tsify, Serialize, Debug)]

@@ -134,7 +134,7 @@ impl<'a> Bmp<'a> {
         })
     }
 
-    pub fn data(&self) -> DataRows {
+    pub fn data(&self) -> DataRows<'_> {
         DataRows {
             data: self.pixel_data,
             byte_width: self.byte_width(),
@@ -142,7 +142,7 @@ impl<'a> Bmp<'a> {
         }
     }
 
-    pub fn pixels(&self) -> Pixels {
+    pub fn pixels(&self) -> Pixels<'_> {
         Pixels::Rgb(RgbPixels {
             data: self.pixel_data,
             ind: 0,
@@ -172,7 +172,7 @@ impl<'a> Bmp<'a> {
         4 * byte_width.div_ceil(4)
     }
 
-    pub fn palette(&self) -> PaletteColors {
+    pub fn palette(&self) -> PaletteColors<'_> {
         PaletteColors {
             palette_data: self.palette_data,
         }

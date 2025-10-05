@@ -329,7 +329,7 @@ impl<'a> Game<'a> {
             .collect()
     }
 
-    pub fn land_units(&self) -> impl Iterator<Item = LandUnit> {
+    pub fn land_units(&self) -> impl Iterator<Item = LandUnit<'_>> {
         self.data.land_units().unwrap().iter().map(|x| LandUnit {
             name: x.name(),
             kind: match x.kind() {
@@ -340,7 +340,7 @@ impl<'a> Game<'a> {
         })
     }
 
-    pub fn naval_units(&self) -> impl Iterator<Item = NavalUnit> {
+    pub fn naval_units(&self) -> impl Iterator<Item = NavalUnit<'_>> {
         self.data.naval_units().unwrap().iter().map(|x| NavalUnit {
             name: x.name(),
             kind: match x.kind() {
