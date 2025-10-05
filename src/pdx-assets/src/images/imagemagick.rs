@@ -1,5 +1,5 @@
 use super::{
-    Color, ConvertRequest, ImageOperation, ImageProcessor, MontageRequest, OutputFormat,
+    Color, ConvertRequest, Geometry, ImageOperation, ImageProcessor, MontageRequest, OutputFormat,
     WebpQuality,
 };
 use crate::images::ImageError;
@@ -255,7 +255,7 @@ impl ImageProcessor for ImageMagickProcessor {
     }
 
     fn montage(&self, request: MontageRequest<'_>) -> Result<()> {
-        // Create JSON index file
+        // Create JSON index file once at the base output path
         self.create_montage_index(&request)?;
 
         // Calculate auto-square tile layout
@@ -265,65 +265,91 @@ impl ImageProcessor for ImageMagickProcessor {
         let response_path = request.output_path.with_extension("txt");
         self.create_response_file(request.images, &response_path)?;
 
-        let mut cmd = self.get_command("montage")?;
+        // Determine if we need to add size suffixes
+        let add_suffix = request.geometries.len() > 1;
 
-        // Always auto-orient images for web assets
-        cmd.arg("-auto-orient");
+        // If no geometries specified, create one montage at original size
+        let geometries_to_process: Vec<Option<&Geometry>> = if request.geometries.is_empty() {
+            vec![None]
+        } else {
+            request.geometries.iter().map(Some).collect()
+        };
 
-        // Add additional arguments
-        cmd.args(&request.additional_args);
+        for geometry in geometries_to_process {
+            let mut cmd = self.get_command("montage")?;
 
-        // Montage mode and layout
-        cmd.arg("-mode");
-        cmd.arg("concatenate");
-        cmd.arg("-tile");
-        cmd.arg(&tile_spec);
+            // Always auto-orient images for web assets
+            cmd.arg("-auto-orient");
 
-        // Geometry if specified
-        if let Some(geometry) = &request.geometry {
-            cmd.arg("-geometry");
-            cmd.arg(format!("{}x{}", geometry.width, geometry.height));
-        }
+            // Add additional arguments
+            cmd.args(&request.additional_args);
 
-        // Background color
-        if let Some(color) = &request.background {
-            cmd.arg("-background");
-            cmd.arg(color_to_string(color));
-        }
+            // Montage mode and layout
+            cmd.arg("-mode");
+            cmd.arg("concatenate");
+            cmd.arg("-tile");
+            cmd.arg(&tile_spec);
 
-        // Output format settings
-        match &request.format {
-            OutputFormat::Webp { quality } => match quality {
-                WebpQuality::Lossless => {
-                    cmd.arg("-define");
-                    cmd.arg("webp:lossless=true");
+            // Geometry if specified
+            if let Some(geom) = geometry {
+                cmd.arg("-geometry");
+                cmd.arg(format!("{}x{}", geom.width, geom.height));
+            }
+
+            // Background color
+            if let Some(color) = &request.background {
+                cmd.arg("-background");
+                cmd.arg(color_to_string(color));
+            }
+
+            // Output format settings
+            match &request.format {
+                OutputFormat::Webp { quality } => match quality {
+                    WebpQuality::Lossless => {
+                        cmd.arg("-define");
+                        cmd.arg("webp:lossless=true");
+                    }
+                    WebpQuality::Quality(q) => {
+                        cmd.arg("-quality");
+                        cmd.arg(q.to_string());
+                    }
+                },
+                OutputFormat::Png => {
+                    // PNG doesn't need special args
                 }
-                WebpQuality::Quality(q) => {
-                    cmd.arg("-quality");
-                    cmd.arg(q.to_string());
+            }
+
+            // Determine output path with or without size suffix
+            let output_path = if add_suffix && let Some(geom) = geometry {
+                // Add _x{size} suffix before extension
+                let stem = request.output_path.file_stem().unwrap().to_str().unwrap();
+                let extension = request.output_path.extension().unwrap().to_str().unwrap();
+                request
+                    .output_path
+                    .with_file_name(format!("{}_x{}.{}", stem, geom.width, extension))
+            } else {
+                request.output_path.clone()
+            };
+
+            // Input files from response file
+            cmd.arg(format!("@{}", response_path.display()));
+            cmd.arg(&output_path);
+
+            let output = cmd.output()?;
+
+            if !output.status.success() {
+                // Clean up response file before returning error
+                let _ = fs::remove_file(&response_path);
+                return Err(ImageError::ImageMagickFailed {
+                    command: "montage".to_string(),
+                    stderr: String::from_utf8_lossy(&output.stderr).to_string(),
                 }
-            },
-            OutputFormat::Png => {
-                // PNG doesn't need special args
+                .into());
             }
         }
-
-        // Input files from response file
-        cmd.arg(format!("@{}", response_path.display()));
-        cmd.arg(&request.output_path);
-
-        let output = cmd.output()?;
 
         // Clean up response file
         let _ = fs::remove_file(&response_path);
-
-        if !output.status.success() {
-            return Err(ImageError::ImageMagickFailed {
-                command: "montage".to_string(),
-                stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-            }
-            .into());
-        }
 
         Ok(())
     }

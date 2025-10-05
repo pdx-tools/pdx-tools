@@ -24,7 +24,7 @@ pub struct MontageRequest<'a> {
     pub images: &'a [(String, PathBuf)],
     pub output_path: PathBuf,
     pub format: OutputFormat,
-    pub geometry: Option<Geometry>,
+    pub geometries: Vec<Geometry>,
     pub background: Option<Color>,
     pub additional_args: Vec<String>,
 }
