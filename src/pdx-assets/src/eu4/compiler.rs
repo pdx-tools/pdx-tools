@@ -663,11 +663,11 @@ where
     for flag_file in flag_files {
         // Extract flag name from path
         let path = Path::new(&flag_file);
-        if let Some(file_stem) = path.file_stem() {
-            if let Some(tag) = file_stem.to_str() {
-                let file_handle = fs.fs_file(&flag_file)?;
-                flags_with_paths.push((tag.to_string(), file_handle.path.clone()));
-            }
+        if let Some(file_stem) = path.file_stem()
+            && let Some(tag) = file_stem.to_str()
+        {
+            let file_handle = fs.fs_file(&flag_file)?;
+            flags_with_paths.push((tag.to_string(), file_handle.path.clone()));
         }
     }
 

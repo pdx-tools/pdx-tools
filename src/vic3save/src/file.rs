@@ -35,7 +35,7 @@ pub struct Vic3File {}
 
 impl Vic3File {
     /// Creates a Vic3 file from a slice of data
-    pub fn from_slice(data: &[u8]) -> Result<Vic3SliceFile, Vic3Error> {
+    pub fn from_slice(data: &[u8]) -> Result<Vic3SliceFile<'_>, Vic3Error> {
         let header = SaveHeader::from_slice(data)?;
         let data = &data[header.header_len()..];
 
@@ -119,7 +119,7 @@ pub struct Vic3SliceFile<'a> {
 }
 
 impl<'a> Vic3SliceFile<'a> {
-    pub fn kind(&self) -> &Vic3SliceFileKind {
+    pub fn kind(&self) -> &Vic3SliceFileKind<'_> {
         &self.kind
     }
 
@@ -483,7 +483,7 @@ impl<'a> Vic3ParsedText<'a> {
         Ok(Vic3ParsedText { tape })
     }
 
-    pub fn reader(&self) -> ObjectReader<Utf8Encoding> {
+    pub fn reader(&self) -> ObjectReader<'_, '_, Utf8Encoding> {
         self.tape.utf8_reader()
     }
 }

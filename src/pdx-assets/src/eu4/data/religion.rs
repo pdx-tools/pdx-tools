@@ -119,10 +119,10 @@ fn dominant_religion_key(reader: ObjectReader<Windows1252Encoding>) -> bool {
     for (key, _, value) in reader.fields() {
         if key.read_str() == "dominant_religion" {
             return true;
-        } else if let Ok(obj) = value.read_object() {
-            if dominant_religion_key(obj) {
-                return true;
-            }
+        } else if let Ok(obj) = value.read_object()
+            && dominant_religion_key(obj)
+        {
+            return true;
         }
     }
 
@@ -133,10 +133,10 @@ fn convert_on_break(reader: ObjectReader<Windows1252Encoding>) -> bool {
     for (key, _, value) in reader.fields() {
         if key.read_str() == "change_religion" {
             return true;
-        } else if let Ok(obj) = value.read_object() {
-            if convert_on_break(obj) {
-                return true;
-            }
+        } else if let Ok(obj) = value.read_object()
+            && convert_on_break(obj)
+        {
+            return true;
         }
     }
 

@@ -1155,7 +1155,7 @@ impl SaveFileImpl {
                         color: country
                             .armed_forces
                             .land_morale
-                            .map(|x| (x * blue_max / max_land_morale))
+                            .map(|x| x * blue_max / max_land_morale)
                             .unwrap_or(blue_min) as u8,
                     },
 
@@ -1215,7 +1215,7 @@ impl SaveFileImpl {
                         color: country
                             .armed_forces
                             .naval_morale
-                            .map(|x| (x * blue_max / max_naval_morale))
+                            .map(|x| x * blue_max / max_naval_morale)
                             .unwrap_or(blue_min) as u8,
                     },
 

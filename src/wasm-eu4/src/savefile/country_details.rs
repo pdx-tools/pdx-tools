@@ -1299,7 +1299,7 @@ impl SaveFileImpl {
         result
     }
 
-    pub fn get_country_estates(&self, tag: &str) -> Vec<Estate> {
+    pub fn get_country_estates(&self, tag: &str) -> Vec<Estate<'_>> {
         let tag = tag.parse::<CountryTag>().unwrap();
         let country = self.query.country(&tag).unwrap();
 
