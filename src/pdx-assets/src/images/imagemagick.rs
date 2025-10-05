@@ -263,7 +263,7 @@ impl ImageProcessor for ImageMagickProcessor {
 
         // Use response file to avoid command line length limits on Windows
         let response_path = request.output_path.with_extension("txt");
-        self.create_response_file(request.images, &response_path)?;
+        let response_file = self.create_response_file(request.images, response_path)?;
 
         // Determine if we need to add size suffixes
         let add_suffix = request.geometries.len() > 1;
@@ -332,14 +332,12 @@ impl ImageProcessor for ImageMagickProcessor {
             };
 
             // Input files from response file
-            cmd.arg(format!("@{}", response_path.display()));
+            cmd.arg(format!("@{}", response_file.path().display()));
             cmd.arg(&output_path);
 
             let output = cmd.output()?;
 
             if !output.status.success() {
-                // Clean up response file before returning error
-                let _ = fs::remove_file(&response_path);
                 return Err(ImageError::ImageMagickFailed {
                     command: "montage".to_string(),
                     stderr: String::from_utf8_lossy(&output.stderr).to_string(),
@@ -348,10 +346,28 @@ impl ImageProcessor for ImageMagickProcessor {
             }
         }
 
-        // Clean up response file
-        let _ = fs::remove_file(&response_path);
-
         Ok(())
+    }
+}
+
+/// ImageMagick response file that gets deleted when dropped
+struct ResponseFile {
+    path: PathBuf,
+}
+
+impl ResponseFile {
+    fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+
+    fn path(&self) -> &PathBuf {
+        &self.path
+    }
+}
+
+impl Drop for ResponseFile {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
     }
 }
 
@@ -382,16 +398,16 @@ impl ImageMagickProcessor {
     fn create_response_file(
         &self,
         images: &[(String, PathBuf)],
-        response_path: &PathBuf,
-    ) -> Result<()> {
-        let response_file = fs::File::create(response_path)?;
+        response_path: PathBuf,
+    ) -> Result<ResponseFile> {
+        let response_file = fs::File::create(&response_path)?;
         let mut response_writer = BufWriter::new(response_file);
 
         for (_, path) in images {
             write!(response_writer, "'{}' ", path.display())?;
         }
         response_writer.flush()?;
-        Ok(())
+        Ok(ResponseFile::new(response_path))
     }
 }
 
