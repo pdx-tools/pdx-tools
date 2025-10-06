@@ -30,6 +30,25 @@ pub fn encode_all(data: &[u8], level: i32) -> Result<Vec<u8>> {
     Ok(ruzstd::encoding::compress_to_vec(cursor, compression_level))
 }
 
+pub fn decode_to(input: &[u8], dst: &mut [u8]) -> Result<()> {
+    let mut decoder =
+        ruzstd::decoding::StreamingDecoder::new(input).map_err(|e| Error::Zstd(Box::new(e)))?;
+
+    decoder.read_exact(dst)?;
+
+    // Verify that all data has been consumed (buffer size matches decompressed size)
+    let mut buf = [0u8; 1];
+    let n = decoder.read(&mut buf)?;
+    if n != 0 {
+        return Err(Error::Zstd(Box::new(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "decompressed data is larger than expected",
+        ))));
+    }
+
+    Ok(())
+}
+
 pub struct Decoder<'a> {
     inner: Cursor<Vec<u8>>,
     phantom: std::marker::PhantomData<&'a ()>,
