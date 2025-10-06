@@ -156,7 +156,11 @@ hide = true
 [tasks."test:cargo"]
 description = "Run all cargo (Rust) tests"
 depends = ["tokenize", "test:wasm", "test:cli"]
-run = ["cargo test --workspace --exclude pdx --exclude wasm-*"]
+run = [
+    "cargo test -p pdx-zstd --no-default-features --features zstd_c",
+    "cargo test -p pdx-zstd --no-default-features --features zstd_rust",
+    "cargo test --workspace --exclude pdx --exclude wasm-*",
+]
 
 [tasks."test:app:build"]
 depends = ["pnpm-install", "dev:app:setup:*", "build:wasm"]
