@@ -3,6 +3,8 @@ resolver = "2"
 members = [
     "src/api",
     "src/applib",
+    "src/bumpalo-serde-derive",
+    "src/bumpalo-serde",
     "src/cli",
     "src/eu4game-data",
     "src/eu4game",
@@ -28,6 +30,8 @@ applib = { path = "src/applib", default-features = false }
 attohttpc = "0.29.0"
 axum = "0.8.4"
 base64 = "0.22"
+bumpalo = "3.19"
+bumpalo-serde-derive = { path = "src/bumpalo-serde-derive" }
 bytemuck = { version = "1.24" }
 ck3save = { git = "https://github.com/rakaly/ck3save.git" }
 clap = "4.5"
@@ -54,6 +58,7 @@ mimalloc = "0.1.43"
 pdx-assets = { path = "src/pdx-assets" }
 pdx-map = { path = "src/pdx-map", default-features = false }
 pdx-zstd = { path = "src/pdx-zstd", default-features = false }
+quote = "1.0.34"
 rand = "0.8"
 rawbmp = { path = "src/rawbmp" }
 rawzip = "0.4.1"
@@ -66,6 +71,7 @@ serde_json = "1.0.114"
 serde_path_to_error = "0.1"
 serde-wasm-bindgen = "0.6.5"
 specta = "1.0.4"
+syn = { version = "2.0.50", features = ["derive"] }
 tempfile = "3.3"
 thiserror = "2.0.0"
 tokio = "1.45.0"

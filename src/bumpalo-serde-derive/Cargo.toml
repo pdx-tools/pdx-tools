@@ -1,0 +1,13 @@
+[package]
+name = "bumpalo-serde-derive"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { workspace = true, features = ["derive"] }
+quote = { workspace = true }
+bumpalo = { workspace = true, features = ["collections"] }
+serde = { workspace = true }

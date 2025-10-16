@@ -259,9 +259,29 @@ checksum = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"
 
 [[package]]
 name = "bumpalo"
-version = "3.17.0"
+version = "3.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1628fb46dfa0b37568d12e5edd512553eccf6a22a78e8bde00bb4aed84d5bdbf"
+checksum = "46c5e41b57b8bba42a04676d81cb89e9ee8e859a1a66f80a5a72e1cb76b34d43"
+
+[[package]]
+name = "bumpalo-serde"
+version = "0.1.0"
+dependencies = [
+ "bumpalo",
+ "bumpalo-serde-derive",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "bumpalo-serde-derive"
+version = "0.1.0"
+dependencies = [
+ "bumpalo",
+ "quote",
+ "serde",
+ "syn 2.0.101",
+]
 
 [[package]]
 name = "bytemuck"
