@@ -28,6 +28,7 @@ serde = { features = ["derive"] , workspace = true }
 serde-wasm-bindgen = { workspace = true }
 tsify = { default-features = false, features = ["js"] , workspace = true }
 wasm-bindgen = { workspace = true }
+pdx-map = { workspace = true, default-features = false }
 
 [dev-dependencies]
 wasm-bindgen-test = { workspace = true }
