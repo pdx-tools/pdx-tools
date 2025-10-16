@@ -1,0 +1,13 @@
+[package]
+name = "bumpalo-serde"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bumpalo = { workspace = true, features = ["collections"] }
+serde = { workspace = true }
+bumpalo-serde-derive = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
