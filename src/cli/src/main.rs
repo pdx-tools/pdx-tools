@@ -17,6 +17,9 @@ mod tokenize;
 #[cfg(feature = "admin")]
 #[path = "cmd/transcode.rs"]
 mod transcode;
+#[cfg(feature = "admin")]
+#[path = "cmd/color_mapper.rs"]
+mod color_mapper;
 
 /* Fun commands */
 
@@ -56,6 +59,8 @@ enum Commands {
     Tokenize(tokenize::TokenizeArgs),
     #[cfg(feature = "admin")]
     Transcode(transcode::TranscodeArgs),
+    #[cfg(feature = "admin")]
+    ColorMapper(color_mapper::ColorMapperArgs),
     #[cfg(feature = "fun")]
     AiDevelopment(ai_development::AiDevelopmentArgs),
     #[cfg(feature = "fun")]
@@ -81,6 +86,8 @@ fn main() -> ExitCode {
         Commands::Tokenize(x) => x.run(),
         #[cfg(feature = "admin")]
         Commands::Transcode(x) => x.run(),
+        #[cfg(feature = "admin")]
+        Commands::ColorMapper(x) => x.run(),
         #[cfg(feature = "fun")]
         Commands::AiDevelopment(x) => x.run(),
         #[cfg(feature = "fun")]

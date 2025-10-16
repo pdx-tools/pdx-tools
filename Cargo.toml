@@ -7,6 +7,7 @@ members = [
     "src/eu4game-data",
     "src/eu4game",
     "src/pdx-assets",
+    "src/pdx-map",
     "src/pdx-zstd",
     "src/rawbmp",
     "src/schemas",
@@ -17,6 +18,7 @@ members = [
     "src/wasm-eu4",
     "src/wasm-hoi4",
     "src/wasm-imperator",
+    "src/wasm-pdx-map",
     "src/wasm-vic3",
 ]
 
@@ -26,6 +28,7 @@ applib = { path = "src/applib", default-features = false }
 attohttpc = "0.29.0"
 axum = "0.8.4"
 base64 = "0.22"
+bytemuck = { version = "1.24" }
 ck3save = { git = "https://github.com/rakaly/ck3save.git" }
 clap = "4.5"
 criterion = "0.5"
@@ -37,17 +40,19 @@ eu4game-data = { path = "src/eu4game-data", default-features = false }
 eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false }
 flatbuffers = "25.2.10"
 flate2 = { version = "1.1.0", default-features = false }
+futures-channel = { version = "0.3.31" }
 getrandom = "0.2"
 highway = "1.3"
 hoi4save = { git = "https://github.com/rakaly/hoi4save.git" }
 image = { version = "0.25.2", default-features = false }
 imperator-save = { git = "https://github.com/rakaly/imperator-save.git" }
 jomini = "0.29.0"
-js-sys = "0.3"
+js-sys = "0.3.77"
 log = "0.4"
 mathru = "0.15.3"
 mimalloc = "0.1.43"
 pdx-assets = { path = "src/pdx-assets" }
+pdx-map = { path = "src/pdx-map", default-features = false }
 pdx-zstd = { path = "src/pdx-zstd", default-features = false }
 rand = "0.8"
 rawbmp = { path = "src/rawbmp" }
@@ -71,8 +76,11 @@ tsify = { version = "0.5.5", default-features = false }
 vic3save = { path = "src/vic3save" }
 walkdir = "2.5.0"
 wasm-bindgen = { version = "0.2.100", default-features = false }
+wasm-bindgen-futures = "0.4.50"
 wasm-bindgen-test = "0.3.50"
+web-sys = "0.3.77"
 webp = "0.3"
+wgpu = { version = "27.0" }
 zstd = { version = "0.13.0", default-features = false }
 
 [workspace.lints]

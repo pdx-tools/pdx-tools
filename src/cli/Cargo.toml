@@ -16,6 +16,7 @@ tokenize = ["dep:pdx-zstd", "dep:schemas"]
 [dependencies]
 anyhow = { workspace = true }
 applib = { optional = true , workspace = true, default-features = false, features = ["zstd_c"] }
+bytemuck = { workspace = true }
 clap = { features = ["derive", "env"] , workspace = true }
 csv = { workspace = true }
 env_logger = { workspace = true }
@@ -25,6 +26,7 @@ flate2 = { optional = true, default-features = false, features = ["zlib-rs"] , w
 highway = { workspace = true }
 log = { workspace = true }
 pdx-assets = { workspace = true, optional = true }
+pdx-map = { workspace = true, default-features = false }
 pdx-zstd = { workspace = true, optional = true, default-features = false, features = ["zstd_c"] }
 rawbmp = { workspace = true, optional = true }
 rawzip = { workspace = true }

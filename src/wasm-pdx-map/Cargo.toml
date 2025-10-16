@@ -1,0 +1,17 @@
+[package]
+name = "wasm-pdx-map"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+js-sys = { workspace = true }
+pdx-map = { workspace = true, features = ["render"] }
+serde = { workspace = true, features = ["derive"] }
+serde-wasm-bindgen = { workspace = true }
+tsify = { workspace = true, default-features = false, features = ["js"] }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+web-sys = { workspace = true, features = ["OffscreenCanvas"] }

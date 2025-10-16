@@ -26,6 +26,12 @@ hide = true
 depends = ["build:wasm-bindgen wasm_app"]
 hide = true
 
+[tasks."build:wasm:pdx_map"]
+run = [
+    'wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_pdx_map.wasm --out-dir ./src/pdx-map-playground/src/workers/wasm'
+]
+hide = true
+
 [tasks."build:wasm"]
 description = "Build wasm"
 depends = [
@@ -35,6 +41,7 @@ depends = [
     'build:wasm-bindgen wasm_eu4',
     'build:wasm-bindgen wasm_hoi4',
     'build:wasm-bindgen wasm_imperator',
+    'build:wasm-bindgen wasm_pdx_map',
     'build:wasm-bindgen wasm_vic3',
 ]
 
