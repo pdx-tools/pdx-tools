@@ -13,6 +13,17 @@ pub fn encode_all(data: &[u8], level: i32) -> Result<Vec<u8>> {
     zstd::stream::encode_all(data, level).map_err(|e| Error::Zstd(Box::new(e)))
 }
 
+pub fn decode_to(input: &[u8], dst: &mut [u8]) -> Result<()> {
+    let count = zstd::bulk::decompress_to_buffer(input, dst)?;
+    if count != dst.len() {
+        return Err(Error::Zstd(Box::new(std::io::Error::new(
+            std::io::ErrorKind::UnexpectedEof,
+            "decompressed data is smaller than expected",
+        ))));
+    }
+    Ok(())
+}
+
 pub struct Decoder<'a> {
     inner: zstd::Decoder<'static, std::io::BufReader<&'a [u8]>>,
 }
