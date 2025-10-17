@@ -515,7 +515,7 @@ mod tests {
         let colors = create_test_colors();
         let filled = LocationArrays::from_iter(colors.into_iter());
         assert!(!filled.is_empty());
-        assert!(filled.len() > 0);
+        assert_ne!(filled.len(), 0);
     }
 
     #[test]

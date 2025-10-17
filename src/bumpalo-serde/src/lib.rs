@@ -483,7 +483,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json;
 
     // Provide bumpalo_serde as an alias to crate for the derive macro in tests
     use crate as bumpalo_serde;

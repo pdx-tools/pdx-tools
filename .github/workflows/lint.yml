@@ -1,0 +1,27 @@
+name: Lint
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [master]
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: rustup target add wasm32-unknown-unknown
+      - run: rustup component add rustfmt
+      - name: Check formatting
+        run: mise run format:check
+
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: rustup target add wasm32-unknown-unknown
+      - run: rustup component add clippy
+      - run: mise run lint

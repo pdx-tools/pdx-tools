@@ -37,9 +37,8 @@
     
       "extensions": [
         "bradlc.vscode-tailwindcss",
-        "dbaeumer.vscode-eslint",
+        "oxc.oxc-vscode",
         "esbenp.prettier-vscode",
-        "hverlin.mise-vscode",
         "rust-lang.rust-analyzer",
         "slevesque.shader",
         "vadimcn.vscode-lldb"
