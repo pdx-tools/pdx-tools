@@ -1828,7 +1828,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
-name = "pdx"
+name = "pdx-admin-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1843,10 +1843,8 @@ dependencies = [
  "highway",
  "log",
  "mimalloc",
- "pdx-assets",
  "pdx-map",
  "pdx-zstd",
- "rawbmp",
  "rawzip",
  "rayon",
  "schemas",
@@ -1883,6 +1881,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdx-fun-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "env_logger",
+ "eu4game",
+ "eu4save",
+ "log",
+ "mimalloc",
+ "pdx-assets",
+ "rawbmp",
+ "schemas",
+ "walkdir",
+]
+
+[[package]]
 name = "pdx-map"
 version = "0.1.0"
 dependencies = [
@@ -1901,6 +1916,19 @@ dependencies = [
  "pdx-map",
  "rstest",
  "tokio",
+]
+
+[[package]]
+name = "pdx-tokenize-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "env_logger",
+ "highway",
+ "log",
+ "pdx-zstd",
+ "schemas",
 ]
 
 [[package]]

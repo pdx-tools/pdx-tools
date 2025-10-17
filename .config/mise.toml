@@ -156,17 +156,13 @@ depends = ["build:wasm", "dev:app", "dev:docs", "start:services:dev", "serve:api
 run = "cargo test -p wasm-*"
 hide = true
 
-[tasks."test:cli"]
-run = "cargo test -p pdx --all-features"
-hide = true
-
 [tasks."test:cargo"]
 description = "Run all cargo (Rust) tests"
-depends = ["tokenize", "test:wasm", "test:cli"]
+depends = ["tokenize", "test:wasm"]
 run = [
     "cargo test -p pdx-zstd --no-default-features --features zstd_c",
     "cargo test -p pdx-zstd --no-default-features --features zstd_rust",
-    "cargo test --workspace --exclude pdx --exclude wasm-*",
+    "cargo test --workspace --exclude wasm-*",
 ]
 
 [tasks."test:app:build"]
@@ -216,7 +212,7 @@ run = ["cargo run -p pdx-tools-api"]
 description = "Preprocess the ironman tokens for distribution"
 sources = ["./assets/tokens/*.txt"]
 outputs = ["./assets/tokens/*.bin"]
-run = "cargo run --package pdx --features tokenize -- tokenize ./assets/tokens"
+run = "cargo run --package pdx-tokenize-cli -- ./assets/tokens"
 
 [tasks."copy-wasm"]
 wait_for = ["test:app:build", "build:app"]
@@ -278,7 +274,7 @@ run = [
 ]
 
 [tasks."admin:build:cli"]
-run = "cargo build --package pdx --features admin --release --target x86_64-unknown-linux-musl"
+run = "cargo build --package pdx-admin-cli --release --target x86_64-unknown-linux-musl"
 
 [tasks."release:build:docker"]
 wait_for = ["release:build:api"]
