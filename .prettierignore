@@ -1,0 +1,10 @@
+src/app/migrations/
+**/build/
+src/app/server-lib/wasm/
+src/app/features/**/*.json
+src/app/public/assets
+src/app/public/blog*
+src/app/public/changelog*
+src/app/public/docs*
+src/app/public/img
+src/app/app/wasm/

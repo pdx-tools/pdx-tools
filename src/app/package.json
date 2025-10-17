@@ -10,7 +10,6 @@
     "build": "remix vite:build",
     "build:test": "NODE_ENV=development remix vite:build",
     "deploy": "wrangler deploy",
-    "format": "prettier --write .",
     "generate": "drizzle-kit generate --config drizzle-kit.config.ts",
     "test": "vitest",
     "lint": "eslint",
@@ -19,14 +18,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "prettier": {
-    "plugins": [
-      "prettier-plugin-tailwindcss"
-    ],
-    "tailwindFunctions": [
-      "cx"
-    ]
-  },
   "dependencies": {
     "@ant-design/plots": "1.2.5",
     "@heroicons/react": "2.1.5",
@@ -89,8 +80,6 @@
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "5.2.0",
     "postcss": "8.4.49",
-    "prettier": "3.4.2",
-    "prettier-plugin-tailwindcss": "0.6.14",
     "tailwindcss": "4.1.14",
     "tailwindcss-animate": "1.0.7",
     "typescript": "catalog:",

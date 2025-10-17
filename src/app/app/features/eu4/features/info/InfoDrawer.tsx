@@ -140,7 +140,9 @@ export const InfoDrawer = () => {
       <Divider>Countries</Divider>
       <Alert.Error msg={playerHistories.error} />
       <div className="grid gap-8 md:grid-cols-2">
-        {players?.map((item, i) => <CountryCard key={i} item={item} />)}
+        {players?.map((item, i) => (
+          <CountryCard key={i} item={item} />
+        ))}
       </div>
 
       <Alert.Error msg={greatPowers.error} />

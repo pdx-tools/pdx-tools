@@ -251,27 +251,20 @@ description = "Run services for testing"
 run = ["node ./dev/scripts/services.mts --test"]
 
 [tasks.format]
-depends = ["format:**"]
 description = "Format code"
+depends = ["pnpm-install"]
+run = [
+    "cargo fmt --all",
+    "pnpm run format",
+]
 
-[tasks."format:rust"]
-run = "cargo fmt --all"
-hide = true
-
-[tasks."format:js:app"]
-dir = "src/app"
-hide = true
-run = "pnpm format"
-
-[tasks."format:js:docs"]
-dir = "src/docs"
-hide = true
-run = "pnpm format"
-
-[tasks."format:js:map"]
-dir = "src/map"
-hide = true
-run = "pnpm exec prettier@latest --write src"
+[tasks."format:check"]
+description = "Check that code is formatted"
+depends = ["pnpm-install"]
+run = [
+    "cargo fmt --all --check",
+    "pnpm run format:check",
+]
 
 [tasks."admin:assets:sync"]
 env._.file = { path = ".env", redact = true }

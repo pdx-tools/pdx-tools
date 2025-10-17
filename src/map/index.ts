@@ -1,4 +1,4 @@
-import {wrap, transfer} from "comlink";
+import { wrap, transfer } from "comlink";
 import { MapController } from "./src/MapController";
 import { createMapWorker, type MapWorker } from "./src";
 import mapVertex from "./assets/shaders/map.vert?url";
@@ -26,7 +26,7 @@ import heightMap from "./assets/game/eu4/images/heightmap.webp?url";
 
 async function fetchColorData(kind: string) {
   const raw = await fetch(`assets/game/eu4/data/color-${kind}-data.bin`).then(
-    (x) => x.arrayBuffer()
+    (x) => x.arrayBuffer(),
   );
   const primary = new Uint8Array(raw, 0, raw.byteLength / 2);
   const secondary = new Uint8Array(raw, raw.byteLength / 2);
@@ -111,14 +111,14 @@ async function main() {
     worker.withResources(
       baseImageUrls,
       provincesUniqueColorUrl,
-      provincesUniqueIndexUrl
+      provincesUniqueIndexUrl,
     ),
     worker.withTerrainImages(terrainUrls, {
       eager: initial.renderTerrain ?? false,
     }),
   ])
     .then(([init, resources, terrain]) =>
-      worker.withMap(window.devicePixelRatio, init, resources, terrain)
+      worker.withMap(window.devicePixelRatio, init, resources, terrain),
     )
     .then((map) => new MapController(worker, map, canvas, container));
 
@@ -127,7 +127,7 @@ async function main() {
 
   map.attachDOMHandlers();
   map.register({
-    onProvinceHover: (e) => hoveredEl.textContent = e.toString(),
+    onProvinceHover: (e) => (hoveredEl.textContent = e.toString()),
     onProvinceSelect: (e) => {
       selectedEl.textContent = e.provinceId.toString();
       map.highlightProvince(e);
@@ -138,13 +138,13 @@ async function main() {
         cancellations += `(queued: viewport ${e.viewportDrawsQueued} / redraw ${e.mapDrawsQueued}) `;
       }
       console.log(
-        `Canvas content redrawn ${cancellations}in: ${e.elapsedMs.toFixed(2)}ms`
+        `Canvas content redrawn ${cancellations}in: ${e.elapsedMs.toFixed(2)}ms`,
       );
       renderEl.textContent = `${e.elapsedMs.toFixed(2)}ms`;
     },
-  })
+  });
   map.updateProvinceColors(primaryPoliticalColors, secondaryPoliticalColors, {
-    country: primaryPoliticalColors
+    country: primaryPoliticalColors,
   });
   map.update(initial);
   map.redrawMap();
@@ -158,7 +158,7 @@ async function main() {
         map.updateProvinceColors(
           primaryPoliticalColors,
           secondaryPoliticalColors,
-          {draw: true}
+          { draw: true },
         );
         break;
       }
@@ -168,7 +168,7 @@ async function main() {
         map.updateProvinceColors(
           primaryPoliticalPlayerColors,
           secondaryPoliticalPlayerColors,
-          {draw: true}
+          { draw: true },
         );
         break;
       }
@@ -178,7 +178,7 @@ async function main() {
         map.updateProvinceColors(
           primaryReligionColors,
           secondaryReligionColors,
-          {draw: true}
+          { draw: true },
         );
         break;
       }
@@ -188,7 +188,7 @@ async function main() {
         map.updateProvinceColors(
           primaryReligionPlayerColors,
           secondaryReligionPlayerColors,
-          {draw: true}
+          { draw: true },
         );
         break;
       }

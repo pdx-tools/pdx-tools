@@ -186,3 +186,14 @@ jobs:
           mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm ::: test:cli' }}
           ${{ matrix.with_tokens && 'mise run test:app' || '' }}
           mise run build:app
+
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - uses: jdx/mise-action@v2
+    - run: rustup target add wasm32-unknown-unknown
+    - run: rustup component add rustfmt
+    - name: Check formatting
+      run: mise run format:check
