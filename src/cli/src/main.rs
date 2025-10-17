@@ -9,6 +9,9 @@ mod cli;
 /* Commands */
 
 #[cfg(feature = "admin")]
+#[path = "cmd/color_mapper.rs"]
+mod color_mapper;
+#[cfg(feature = "admin")]
 #[path = "cmd/reprocess.rs"]
 mod reprocess;
 #[cfg(feature = "tokenize")]
@@ -17,9 +20,6 @@ mod tokenize;
 #[cfg(feature = "admin")]
 #[path = "cmd/transcode.rs"]
 mod transcode;
-#[cfg(feature = "admin")]
-#[path = "cmd/color_mapper.rs"]
-mod color_mapper;
 
 /* Fun commands */
 

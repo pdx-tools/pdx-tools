@@ -1,0 +1,17 @@
+[package]
+name = "pdx-map-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+image = { workspace = true, features = ["png", "bmp"] }
+pdx-map = { workspace = true, features = ["render"] }
+tokio = { workspace = true, features = ["rt"] }
+
+[dev-dependencies]
+rstest = { workspace = true }
+
+[lints]
+workspace = true

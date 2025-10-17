@@ -217,7 +217,7 @@ impl LocationArrays {
 
     pub fn from_data(data: Vec<u32>) -> Self {
         assert!(
-            data.len() % ARRAYS_IN_LOCATION_DATA == 0,
+            data.len().is_multiple_of(ARRAYS_IN_LOCATION_DATA),
             "Data length must be multiple of {ARRAYS_IN_LOCATION_DATA}",
         );
         Self {
