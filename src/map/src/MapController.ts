@@ -99,7 +99,7 @@ export class MapController {
     let secondaryPointer: PointerEvent | null = null;
     let pointerDiff = 0;
     const canvas = this.canvas;
-    const controller = this;
+    const controller = this; // oxlint-disable-line no-this-alias
 
     function moveCamera(e: MouseEvent) {
       const newPos = [e.clientX, e.clientY];
@@ -110,7 +110,7 @@ export class MapController {
       controller.mousePos = newPos;
     }
 
-    function handleMouseUp(e: MouseEvent) {
+    function handleMouseUp(_e: MouseEvent) {
       canvas.removeEventListener("pointermove", moveCamera);
       canvas.removeEventListener("pointerup", handleMouseUp);
     }

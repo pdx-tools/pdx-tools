@@ -58,7 +58,8 @@ function offscreenCompatibility() {
     const canvas = new OffscreenCanvas(100, 100);
     const ctx = canvas.getContext("webgl2");
     return { enabled: ctx !== null };
-  } catch (_ex) {
+  } catch (e) {
+    console.debug("OffscreenCanvas or WebGL2 not supported", e);
     return { enabled: false };
   }
 }

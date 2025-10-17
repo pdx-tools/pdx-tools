@@ -16,6 +16,7 @@ import { NewestSaveResponse } from "@/routes/api.new";
 import { UserSaves } from "@/server-lib/db";
 import { SaveResponse } from "@/routes/api.saves.$saveId";
 import { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
+import { log } from "@/lib/log";
 export type { GameDifficulty } from "@/server-lib/save-parsing-types";
 export type { Achievement, Difficulty as AchievementDifficulty };
 
@@ -180,7 +181,8 @@ export const pdxApi = {
                   try {
                     const err = JSON.parse(request.response).msg;
                     reject(new Error(err));
-                  } catch (_ex) {
+                  } catch (e) {
+                    log("Failed to parse upload error response", e);
                     reject(new Error(`unknown error: ${request.response}`));
                   }
                 }

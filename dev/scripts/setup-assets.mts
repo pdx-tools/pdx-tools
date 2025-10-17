@@ -2,7 +2,7 @@
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { readdir, access, mkdir, writeFile, copyFile, readFile, stat, rmdir, rm } from 'fs/promises';
+import { readdir, access, mkdir, writeFile, copyFile, readFile, stat } from 'fs/promises';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 

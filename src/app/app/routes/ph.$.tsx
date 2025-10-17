@@ -22,6 +22,9 @@ const posthogProxy = async (request: Request) => {
   return fetch(newUrl, {
     method: request.method,
     headers,
+
+    // Disable lint using a body in GET requests as this is from the PostHog docs.
+    // oxlint-disable-next-line no-invalid-fetch-options
     body: request.body,
     duplex: "half",
   });

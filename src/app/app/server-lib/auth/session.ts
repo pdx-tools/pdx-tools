@@ -36,7 +36,7 @@ export const pdxSession = ({
         const session = await storage.getSession(request.headers.get("Cookie"));
         const parsed = SessionPayloadSchema.parse(session.data);
         return { kind: "user", ...parsed } as const;
-      } catch (_ex) {
+      } catch {
         return { kind: "guest" } as const;
       }
     },

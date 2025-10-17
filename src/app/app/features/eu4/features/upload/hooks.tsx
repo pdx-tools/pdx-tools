@@ -14,7 +14,7 @@ export const useFileUpload = () => {
   const filename = useSaveFilename();
 
   return useMemo(() => {
-    const { mutate, mutateAsync, ...rest } = addEndpoint;
+    const { ...rest } = addEndpoint;
     return {
       ...rest,
       progress,

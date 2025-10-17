@@ -201,8 +201,8 @@ export class TimelapseEncoder {
           if (support.config) {
             return { config: support.config, muxCodec };
           }
-        } catch (_ex) {
-          // Unsupported configuration, so we skip to the next one
+        } catch (e) {
+          console.debug(`Skipping unsupported codec: ${codec}`, e);
         }
       }
 

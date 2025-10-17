@@ -154,9 +154,8 @@ export const HeroFileInput = () => {
             ],
           });
           fileHandle = result[0];
-        } catch (_ex) {
-          // User closing without selecting a file throws an exception
-          // so we swallow it.
+        } catch (e) {
+          console.debug("File selection error, user may have cancelled", e);
           return;
         }
 
