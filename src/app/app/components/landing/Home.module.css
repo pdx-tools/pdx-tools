@@ -15,7 +15,8 @@
 @media (prefers-color-scheme: dark) {
   .main {
     /* https://heropatterns.com/ */
-    background: repeating-linear-gradient(
+    background:
+      repeating-linear-gradient(
         300deg,
         oklch(20.8% 0.042 265.755) 0%,
         color-mix(in oklab, oklch(20.8% 0.042 265.755) 87%, transparent) 10%,
