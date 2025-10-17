@@ -1,0 +1,21 @@
+[package]
+name = "pdx-tokenize-cli"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "pdx-tokenize"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { features = ["derive", "env"], workspace = true }
+env_logger = { workspace = true }
+highway = { workspace = true }
+log = { workspace = true }
+pdx-zstd = { workspace = true, default-features = false, features = ["zstd_c"] }
+schemas = { workspace = true }

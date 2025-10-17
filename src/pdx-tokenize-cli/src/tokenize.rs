@@ -1,5 +1,4 @@
 use anyhow::Context;
-use clap::Args;
 use highway::HighwayHash;
 use log::{debug, info};
 use pdx_zstd::zstd_tee::{ZstdFiles, ZstdTee};
@@ -10,10 +9,8 @@ use std::{
     process::ExitCode,
 };
 
-/// Converts token text files into flatbuffers
-#[derive(Args)]
 pub struct TokenizeArgs {
-    tokens_dir: PathBuf,
+    pub tokens_dir: PathBuf,
 }
 
 impl TokenizeArgs {

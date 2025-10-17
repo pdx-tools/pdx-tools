@@ -89,7 +89,7 @@ jobs:
         runCmd: |
           mise run admin:assets:sync && \
           mise run admin:assets:compile:all && \
-          mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm ::: test:cli' }}
+          mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm' }}
           ${{ matrix.with_tokens && 'mise run test:app' || '' }}
           mise run build:app
 
@@ -183,7 +183,7 @@ jobs:
           mise run admin:assets:sync
           mise run admin:assets:compile:all
       - run: |
-          mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm ::: test:cli' }}
+          mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm' }}
           ${{ matrix.with_tokens && 'mise run test:app' || '' }}
           mise run build:app
 
