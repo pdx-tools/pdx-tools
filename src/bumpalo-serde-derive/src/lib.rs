@@ -7,7 +7,7 @@ pub fn derive_arena_deserialize(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     match expand_arena_deserialize(&input) {
-        Ok(tokens) => tokens.into(),
+        Ok(tokens) => tokens,
         Err(err) => err.to_compile_error().into(),
     }
 }
@@ -56,7 +56,7 @@ fn expand_struct_with_named_fields(
 ) -> syn::Result<TokenStream> {
     let field_info: Vec<FieldInfo> = fields
         .iter()
-        .map(|field| parse_field_attributes(field))
+        .map(parse_field_attributes)
         .collect::<syn::Result<Vec<_>>>()?;
 
     let visitor_name = format_ident!("{}Visitor", name);
@@ -197,7 +197,7 @@ fn expand_struct_with_named_fields(
     // Only add arena lifetime if it doesn't already exist
     if !generics
         .lifetimes()
-        .any(|lt| lt.lifetime.ident.to_string() == arena_lifetime)
+        .any(|lt| lt.lifetime.ident == arena_lifetime)
     {
         new_generics.params.insert(
             0,
@@ -332,7 +332,7 @@ fn expand_struct_with_unnamed_fields(
     // Only add arena lifetime if it doesn't already exist
     if !generics
         .lifetimes()
-        .any(|lt| lt.lifetime.ident.to_string() == arena_lifetime)
+        .any(|lt| lt.lifetime.ident == arena_lifetime)
     {
         new_generics.params.insert(
             0,
@@ -379,7 +379,7 @@ fn expand_unit_struct(
     // Only add arena lifetime if it doesn't already exist
     if !generics
         .lifetimes()
-        .any(|lt| lt.lifetime.ident.to_string() == arena_lifetime)
+        .any(|lt| lt.lifetime.ident == arena_lifetime)
     {
         new_generics.params.insert(
             0,
@@ -415,7 +415,7 @@ fn expand_enum(
     // Only add arena lifetime if it doesn't already exist
     if !generics
         .lifetimes()
-        .any(|lt| lt.lifetime.ident.to_string() == arena_lifetime)
+        .any(|lt| lt.lifetime.ident == arena_lifetime)
     {
         new_generics.params.insert(
             0,
@@ -523,7 +523,7 @@ fn is_arena_type(ty: &Type, arena_lifetime: &str) -> bool {
         Type::Reference(type_ref) => {
             // Check for &'arena T where arena_lifetime matches
             if let Some(lifetime) = &type_ref.lifetime {
-                lifetime.ident.to_string() == arena_lifetime
+                lifetime.ident == arena_lifetime
             } else {
                 false
             }
@@ -538,10 +538,10 @@ fn is_arena_type(ty: &Type, arena_lifetime: &str) -> bool {
                 // Check if the type has generic parameters with arena lifetime
                 if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
                     for arg in &args.args {
-                        if let syn::GenericArgument::Lifetime(lt) = arg {
-                            if lt.ident.to_string() == arena_lifetime {
-                                return true;
-                            }
+                        if let syn::GenericArgument::Lifetime(lt) = arg
+                            && lt.ident == arena_lifetime
+                        {
+                            return true;
                         }
                     }
                 }
@@ -628,14 +628,14 @@ fn is_option_type(ty: &Type) -> bool {
 fn is_option_with_arena_type(ty: &Type, arena_lifetime: &str) -> bool {
     match ty {
         Type::Path(type_path) => {
-            if let Some(segment) = type_path.path.segments.last() {
-                if segment.ident == "Option" {
-                    // Check if the Option contains an arena type
-                    if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
-                        if let Some(syn::GenericArgument::Type(inner_type)) = args.args.first() {
-                            return is_arena_type(inner_type, arena_lifetime);
-                        }
-                    }
+            if let Some(segment) = type_path.path.segments.last()
+                && segment.ident == "Option"
+            {
+                // Check if the Option contains an arena type
+                if let syn::PathArguments::AngleBracketed(args) = &segment.arguments
+                    && let Some(syn::GenericArgument::Type(inner_type)) = args.args.first()
+                {
+                    return is_arena_type(inner_type, arena_lifetime);
                 }
             }
             false
@@ -649,7 +649,7 @@ fn is_slice_reference(ty: &Type, arena_lifetime: &str) -> bool {
         Type::Reference(type_ref) => {
             // Check if it's a reference to a slice with arena lifetime
             if let Some(lifetime) = &type_ref.lifetime {
-                if lifetime.ident.to_string() == arena_lifetime {
+                if lifetime.ident == arena_lifetime {
                     matches!(*type_ref.elem, Type::Slice(_))
                 } else {
                     false
@@ -720,7 +720,7 @@ fn expand_owned_type_passthrough(
     // Only add arena lifetime if it doesn't already exist
     if !generics
         .lifetimes()
-        .any(|lt| lt.lifetime.ident.to_string() == arena_lifetime)
+        .any(|lt| lt.lifetime.ident == arena_lifetime)
     {
         new_generics.params.insert(
             0,
