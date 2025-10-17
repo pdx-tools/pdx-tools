@@ -127,17 +127,17 @@ fn expand_struct_with_named_fields(
                 if let Some(element_type) = get_slice_element_type(field_type) {
                     quote! {
                         #field_name = Some(map.next_value_seed(
-                            arena_deserializer::SliceDeserializer::<#element_type>::new(allocator)
+                            bumpalo_serde::SliceDeserializer::<#element_type>::new(allocator)
                         )?);
                     }
                 } else {
                     quote! {
-                        #field_name = Some(map.next_value_seed(arena_deserializer::ArenaSeed::new(allocator))?);
+                        #field_name = Some(map.next_value_seed(bumpalo_serde::ArenaSeed::new(allocator))?);
                     }
                 }
             } else if is_arena_type(field_type, arena_lifetime) || is_option_with_arena_type(field_type, arena_lifetime) {
                 quote! {
-                    #field_name = Some(map.next_value_seed(arena_deserializer::ArenaSeed::new(allocator))?);
+                    #field_name = Some(map.next_value_seed(bumpalo_serde::ArenaSeed::new(allocator))?);
                 }
             } else {
                 quote! {
@@ -211,7 +211,7 @@ fn expand_struct_with_named_fields(
     };
 
     let output = quote! {
-        impl #new_impl_generics arena_deserializer::ArenaDeserialize<#arena_lifetime_syn> for #name #ty_generics #new_where_clause {
+        impl #new_impl_generics bumpalo_serde::ArenaDeserialize<#arena_lifetime_syn> for #name #ty_generics #new_where_clause {
             fn deserialize_in_arena<'de, D>(deserializer: D, allocator: &#arena_lifetime_syn bumpalo::Bump) -> Result<Self, D::Error>
             where
                 D: serde::Deserializer<'de>,
@@ -343,7 +343,7 @@ fn expand_struct_with_unnamed_fields(
 
     let deserialize_impl = if is_arena_type(field_type, arena_lifetime) {
         quote! {
-            let inner = <arena_deserializer::ArenaSeed::<#field_type> as serde::de::DeserializeSeed>::deserialize(arena_deserializer::ArenaSeed::<#field_type>::new(allocator), deserializer)?;
+            let inner = <bumpalo_serde::ArenaSeed::<#field_type> as serde::de::DeserializeSeed>::deserialize(bumpalo_serde::ArenaSeed::<#field_type>::new(allocator), deserializer)?;
             Ok(#name(inner))
         }
     } else {
@@ -354,7 +354,7 @@ fn expand_struct_with_unnamed_fields(
     };
 
     let output = quote! {
-            impl #new_impl_generics arena_deserializer::ArenaDeserialize<#arena_lifetime_syn> for #name #ty_generics #new_where_clause {
+            impl #new_impl_generics bumpalo_serde::ArenaDeserialize<#arena_lifetime_syn> for #name #ty_generics #new_where_clause {
             fn deserialize_in_arena<'de, D>(deserializer: D, allocator: &#arena_lifetime_syn bumpalo::Bump) -> Result<Self, D::Error>
             where
                 D: serde::Deserializer<'de>,
@@ -389,7 +389,7 @@ fn expand_unit_struct(
     let (new_impl_generics, _, new_where_clause) = new_generics.split_for_impl();
 
     let output = quote! {
-        impl #new_impl_generics arena_deserializer::ArenaDeserialize<#arena_lifetime_syn> for #name #ty_generics #new_where_clause {
+        impl #new_impl_generics bumpalo_serde::ArenaDeserialize<#arena_lifetime_syn> for #name #ty_generics #new_where_clause {
             fn deserialize_in_arena<'de, D>(deserializer: D, _allocator: &#arena_lifetime_syn bumpalo::Bump) -> Result<Self, D::Error>
             where
                 D: serde::Deserializer<'de>,
@@ -425,7 +425,7 @@ fn expand_enum(
     let (new_impl_generics, _, new_where_clause) = new_generics.split_for_impl();
 
     let output = quote! {
-        impl #new_impl_generics arena_deserializer::ArenaDeserialize<#arena_lifetime_syn> for #name #ty_generics #new_where_clause {
+        impl #new_impl_generics bumpalo_serde::ArenaDeserialize<#arena_lifetime_syn> for #name #ty_generics #new_where_clause {
             fn deserialize_in_arena<'de, D>(deserializer: D, _allocator: &#arena_lifetime_syn bumpalo::Bump) -> Result<Self, D::Error>
             where
                 D: serde::Deserializer<'de>,
@@ -730,7 +730,7 @@ fn expand_owned_type_passthrough(
     let (new_impl_generics, _, new_where_clause) = new_generics.split_for_impl();
 
     let output = quote! {
-        impl #new_impl_generics arena_deserializer::ArenaDeserialize<#arena_lifetime_syn> for #name #ty_generics #new_where_clause {
+        impl #new_impl_generics bumpalo_serde::ArenaDeserialize<#arena_lifetime_syn> for #name #ty_generics #new_where_clause {
             fn deserialize_in_arena<'de, D>(deserializer: D, _allocator: &#arena_lifetime_syn bumpalo::Bump) -> Result<Self, D::Error>
             where
                 D: serde::Deserializer<'de>,

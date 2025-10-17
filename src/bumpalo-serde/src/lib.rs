@@ -485,8 +485,8 @@ mod tests {
     use super::*;
     use serde_json;
 
-    // Provide arena_deserializer as an alias to crate for the derive macro in tests
-    use crate as arena_deserializer;
+    // Provide bumpalo_serde as an alias to crate for the derive macro in tests
+    use crate as bumpalo_serde;
 
     // Example custom deserializer function
     fn deserialize_map_as_pair_seq<'de, 'bump, D>(
