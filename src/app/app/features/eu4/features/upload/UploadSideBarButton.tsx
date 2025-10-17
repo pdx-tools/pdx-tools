@@ -1,5 +1,5 @@
 import {
-  SideBarButtonProps,
+  type SideBarButtonProps,
   SideBarButton,
 } from "@/features/eu4/components/SideBarButton";
 import { useFileUpload } from "./hooks";
@@ -12,7 +12,7 @@ import { useEu4Meta, useSaveFilename } from "../../store";
 import { UploadDrawerContent } from "./UploadDrawerContent";
 import { Sheet } from "@/components/Sheet";
 import { Link } from "@/components/Link";
-import { SavePostResponse } from "@/server-lib/models";
+import type { SavePostResponse } from "@/server-lib/models";
 
 export const UploadSideBarButton = ({
   children,

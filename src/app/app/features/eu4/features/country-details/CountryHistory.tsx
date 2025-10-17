@@ -1,13 +1,13 @@
 import { memo, useCallback, useMemo, useRef } from "react";
-import { CountryDetails } from "../../types/models";
+import { type CountryDetails } from "../../types/models";
 import { useEu4Worker } from "../../worker";
 import {
-  CountryHistoryEvent,
-  CountryHistoryYear,
-  LeaderKind,
-  LocalizedTag,
-  ProvinceConquer,
-  WarBattles,
+  type CountryHistoryEvent,
+  type CountryHistoryYear,
+  type LeaderKind,
+  type LocalizedTag,
+  type ProvinceConquer,
+  type WarBattles,
 } from "@/wasm/wasm_eu4";
 import { Alert } from "@/components/Alert";
 import { Card } from "@/components/Card";
@@ -40,7 +40,7 @@ import {
 } from "../../components/icons";
 import { AdvisorImage } from "../../components/AdvisorImage";
 import { LeaderStats } from "../../components/LeaderStats";
-import { Losses, expandLosses } from "../../utils/losses";
+import { type Losses, expandLosses } from "../../utils/losses";
 import {
   abbreviateInt,
   formatInt,

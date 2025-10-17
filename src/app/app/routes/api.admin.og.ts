@@ -4,7 +4,7 @@ import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { pdxOg } from "@/server-lib/og";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import { LoaderFunctionArgs } from "@remix-run/cloudflare";
+import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { z } from "zod";
 
 const saveSchema = z.object({ saveId: z.string() });

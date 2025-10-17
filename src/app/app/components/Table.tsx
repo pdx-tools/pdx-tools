@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Column, SortDirection } from "@tanstack/react-table";
+import type { Column, SortDirection } from "@tanstack/react-table";
 import { cx } from "class-variance-authority";
 import { Button } from "./Button";
 import {

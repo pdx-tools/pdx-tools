@@ -1,13 +1,16 @@
 import { ensurePermissions } from "@/lib/auth";
 import { getAuth } from "@/server-lib/auth/session";
 import { saveView, table, toApiSave } from "@/server-lib/db";
-import { DbConnection } from "@/server-lib/db/connection";
+import type { DbConnection } from "@/server-lib/db/connection";
 import { withDb } from "@/server-lib/db/middleware";
 import { NotFoundError, ValidationError } from "@/server-lib/errors";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import type {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+} from "@remix-run/cloudflare";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from "react";
 import {
   Treemap,
-  TreemapConfig,
+  type TreemapConfig,
   useVisualizationDispatch,
 } from "@/components/viz";
 import { useAnalysisWorker } from "@/features/eu4/worker";

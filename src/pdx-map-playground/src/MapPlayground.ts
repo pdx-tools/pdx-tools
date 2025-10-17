@@ -1,5 +1,5 @@
-import { wrap, Remote, transfer } from "comlink";
-import type { createMapEngine } from "./workers/map/map-module";
+import { wrap, type Remote, transfer } from "comlink";
+import { createMapEngine } from "./workers/map/map-module";
 import "./styles.css";
 
 export type PdxMapWorkerModule = typeof import("./workers/map/map-module");

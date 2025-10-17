@@ -1,9 +1,9 @@
 import {
-  CountryState,
-  ProvinceCountryImprovement,
-  ProvinceDetails,
-  ProvinceHistoryEvent,
-  TradeCompanyInvestments,
+  type CountryState,
+  type ProvinceCountryImprovement,
+  type ProvinceDetails,
+  type ProvinceHistoryEvent,
+  type TradeCompanyInvestments,
 } from "../../types/models";
 import {
   TcInvestmentAvatar,

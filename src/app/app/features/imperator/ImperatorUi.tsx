@@ -3,7 +3,7 @@ import { logMs } from "@/lib/log";
 import { timeit } from "@/lib/timeit";
 import { getImperatorWorker } from "./worker";
 import { MeltButton } from "@/components/MeltButton";
-import { ImperatorMetadata } from "./worker/types";
+import type { ImperatorMetadata } from "./worker/types";
 import { emitEvent } from "@/lib/events";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";

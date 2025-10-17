@@ -5,7 +5,7 @@ import development from "./images/mapmode_development.png";
 import battles from "./images/mapmode_battles.png";
 import technology from "./images/mapmode_tech.png";
 import terrain from "./images/mapmode_terrain.png";
-import { MapControls } from "../../types/map";
+import type { MapControls } from "../../types/map";
 
 function modeLookup(mode: MapControls["mode"]) {
   switch (mode) {

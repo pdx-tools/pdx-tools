@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  Eu4Worker,
-  FileObservationFrequency,
+  type Eu4Worker,
+  type FileObservationFrequency,
   useEu4Worker,
 } from "../../worker";
 import { useEu4Actions, useWatcher } from "../../store";

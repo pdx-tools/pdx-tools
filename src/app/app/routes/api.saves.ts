@@ -1,7 +1,7 @@
 import { ensurePermissions } from "@/lib/auth";
 import { timeit } from "@/lib/timeit";
 import { getAuth } from "@/server-lib/auth/session";
-import { NewSave, table, toDbDifficulty } from "@/server-lib/db";
+import { type NewSave, table, toDbDifficulty } from "@/server-lib/db";
 import { usingDb } from "@/server-lib/db/connection";
 import { ValidationError } from "@/server-lib/errors";
 import { pdxFns } from "@/server-lib/functions";
@@ -10,12 +10,12 @@ import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import {
   headerMetadata,
-  SavePostResponse,
+  type SavePostResponse,
   uploadMetadata,
 } from "@/server-lib/models";
 import { pdxOg } from "@/server-lib/og";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import { ActionFunctionArgs } from "@remix-run/cloudflare";
+import { type ActionFunctionArgs } from "@remix-run/cloudflare";
 
 async function fileUploadData(req: Request) {
   const maxFileSize = 20 * 1024 * 1024;

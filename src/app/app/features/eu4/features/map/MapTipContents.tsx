@@ -1,7 +1,7 @@
-import { QuickTipPayload } from "../../types/map";
+import type { QuickTipPayload } from "../../types/map";
 import { Flag } from "../../components/avatars";
 import { formatInt } from "@/lib/format";
-import { LocalizedTag } from "../../types/models";
+import type { LocalizedTag } from "../../types/models";
 
 interface MapTipContentsProps {
   tip: QuickTipPayload;

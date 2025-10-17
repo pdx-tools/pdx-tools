@@ -1,6 +1,6 @@
 import { useVisualization } from "@/components/viz";
 import { Button } from "@/components/Button";
-import { VizModules } from "../../types/visualizations";
+import type { VizModules } from "../../types/visualizations";
 import { downloadData } from "@/lib/downloadData";
 import { useSaveFilenameWith } from "../../store";
 import { IconButton } from "@/components/IconButton";

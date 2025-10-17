@@ -1,6 +1,6 @@
 import { pdxSession } from "@/server-lib/auth/session";
 import { withCore } from "@/server-lib/middleware";
-import { LoaderFunctionArgs } from "@remix-run/cloudflare";
+import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
 
 export const loader = withCore(
   async ({ request, context }: LoaderFunctionArgs) => {

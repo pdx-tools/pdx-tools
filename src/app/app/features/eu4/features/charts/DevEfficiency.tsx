@@ -3,11 +3,11 @@ import { useTagFilter } from "../../store";
 import { useAnalysisWorker } from "../../worker";
 import {
   Scatter,
-  ScatterConfig,
+  type ScatterConfig,
   useVisualizationDispatch,
 } from "@/components/viz";
 import { Alert } from "@/components/Alert";
-import { CountryDevEffiency } from "@/wasm/wasm_eu4";
+import type { CountryDevEffiency } from "@/wasm/wasm_eu4";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";

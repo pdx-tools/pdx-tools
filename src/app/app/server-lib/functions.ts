@@ -1,5 +1,5 @@
 import { fetchOk, fetchOkJson } from "@/lib/fetch";
-import { ParseResult } from "./save-parsing-types";
+import type { ParseResult } from "./save-parsing-types";
 export type * from "./save-parsing-types";
 
 export const pdxFns = ({ endpoint }: { endpoint: string }) => {

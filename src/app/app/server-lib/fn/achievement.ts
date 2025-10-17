@@ -2,7 +2,7 @@ import { getAchievementDb } from "@/server-lib/db";
 import { NotFoundError } from "@/server-lib/errors";
 import { getAchievement } from "@/server-lib/game";
 import { z } from "zod";
-import { DbConnection } from "../db/connection";
+import type { DbConnection } from "../db/connection";
 
 export async function fetchAchievement(
   db: DbConnection,

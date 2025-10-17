@@ -1,5 +1,5 @@
 import {
-  SideBarButtonProps,
+  type SideBarButtonProps,
   SideBarButton,
 } from "../../components/SideBarButton";
 import {

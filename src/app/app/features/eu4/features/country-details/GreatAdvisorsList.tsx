@@ -1,4 +1,4 @@
-import { GreatAdvisor } from "../../types/models";
+import type { GreatAdvisor } from "../../types/models";
 import { AdvisorAvatar } from "@/features/eu4/components/avatars";
 import classes from "./GreatAdvisorsList.module.css";
 

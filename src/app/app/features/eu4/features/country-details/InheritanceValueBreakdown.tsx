@@ -1,4 +1,4 @@
-import { CountryDetails } from "../../types/models";
+import type { CountryDetails } from "../../types/models";
 import classes from "./InheritanceValueBreakdown.module.css";
 import { useIsJuniorPartner } from "./detailHooks";
 import { useEu4Meta } from "../../store";

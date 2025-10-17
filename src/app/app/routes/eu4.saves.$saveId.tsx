@@ -1,6 +1,6 @@
 import Eu4Ui from "@/features/eu4/Eu4Ui";
 import { seo } from "@/lib/seo";
-import { MetaFunction } from "@remix-run/cloudflare";
+import type { MetaFunction } from "@remix-run/cloudflare";
 import { useParams } from "@remix-run/react";
 import { useMemo } from "react";
 

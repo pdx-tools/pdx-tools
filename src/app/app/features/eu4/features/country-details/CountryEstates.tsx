@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { CountryDetails, Estate } from "../../types/models";
+import type { CountryDetails, Estate } from "../../types/models";
 import { useEu4Worker } from "../../worker";
 import React from "react";
 import { formatInt, sentenceCasing } from "@/lib/format";

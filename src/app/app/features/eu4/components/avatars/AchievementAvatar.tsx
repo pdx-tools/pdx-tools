@@ -1,4 +1,4 @@
-import { Sprite, SpriteDimension, spriteDimension } from "../Sprite";
+import { Sprite, type SpriteDimension, spriteDimension } from "../Sprite";
 import data from "@/images/eu4/achievements/achievements.json";
 import achievementImage from "@/images/eu4/achievements/achievements.webp";
 import customAchievement from "@/images/eu4/achievements/10000.png";

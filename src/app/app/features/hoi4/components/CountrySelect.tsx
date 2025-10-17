@@ -1,4 +1,10 @@
-import { PropsWithChildren, useCallback, useState, memo, useRef } from "react";
+import {
+  type PropsWithChildren,
+  useCallback,
+  useState,
+  memo,
+  useRef,
+} from "react";
 import { Popover } from "@/components/Popover";
 import { Command } from "@/components/Command";
 import { PlayIcon } from "@heroicons/react/20/solid";
@@ -6,7 +12,7 @@ import { CheckIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/Button";
 import { cx } from "class-variance-authority";
 import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
-import { Hoi4Metadata } from "../worker/types";
+import { type Hoi4Metadata } from "../worker/types";
 
 export const CountrySelect = memo(function CountrySelect({
   children,

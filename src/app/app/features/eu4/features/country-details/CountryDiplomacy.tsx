@@ -1,7 +1,7 @@
 import { formatInt, sentenceCasing } from "@/lib/format";
 import { useCallback, useMemo } from "react";
 import { Flag } from "../../components/avatars";
-import { CountryDetails, DiplomacyEntry } from "../../types/models";
+import type { CountryDetails, DiplomacyEntry } from "../../types/models";
 import { isOfType } from "@/lib/isPresent";
 
 const isColony = (subjectType: string) => {

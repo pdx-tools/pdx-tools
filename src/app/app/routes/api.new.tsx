@@ -1,7 +1,7 @@
 import { withDb } from "@/server-lib/db/middleware";
 import { getSaves, NewSchema } from "@/server-lib/fn/new";
 import { withCore } from "@/server-lib/middleware";
-import { LoaderFunctionArgs } from "@remix-run/cloudflare";
+import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
 
 export type NewestSaveResponse = Awaited<ReturnType<typeof getSaves>>;
 

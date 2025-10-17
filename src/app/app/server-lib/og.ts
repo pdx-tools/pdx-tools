@@ -2,7 +2,7 @@ import { fetchOk } from "@/lib/fetch";
 import { log } from "./logging";
 import { timeit } from "@/lib/timeit";
 import { pdxS3 } from "./s3";
-import { AppLoadContext } from "@remix-run/server-runtime";
+import type { AppLoadContext } from "@remix-run/server-runtime";
 import { pdxFns } from "./functions";
 
 export const pdxOg = ({

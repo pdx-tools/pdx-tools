@@ -1,5 +1,5 @@
 import { AnnualLedger } from "./AnnualLedger";
-import { LedgerSelection, useLedgerData } from "./hooks";
+import { type LedgerSelection, useLedgerData } from "./hooks";
 
 const selectAnnualIncomeData: LedgerSelection = (worker, filter) =>
   worker.eu4GetAnnualIncomeData(filter);

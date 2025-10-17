@@ -3,7 +3,7 @@ import { Eu4CanvasOverlay } from "./Eu4CanvasOverlay";
 import { AppLoading } from "@/components/AppLoading";
 import { ProgressBar } from "@/components/ProgressBar";
 import { developerLog } from "@/lib/log";
-import { Eu4SaveInput, useLoadEu4, Eu4StoreProvider } from "./store";
+import { type Eu4SaveInput, useLoadEu4, Eu4StoreProvider } from "./store";
 import { BrowserCheck } from "@/components/landing/BrowserCheck";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";

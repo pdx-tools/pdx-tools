@@ -1,7 +1,7 @@
 import { InfoDrawer } from "./InfoDrawer";
 import { SaveMode } from "../../components/save-mode";
 import {
-  SideBarButtonProps,
+  type SideBarButtonProps,
   SideBarButton,
 } from "../../components/SideBarButton";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";

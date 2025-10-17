@@ -1,4 +1,4 @@
-import { expose, Remote } from "comlink";
+import { expose, type Remote } from "comlink";
 import * as Hoi4Mod from "./module";
 
 expose(Hoi4Mod);

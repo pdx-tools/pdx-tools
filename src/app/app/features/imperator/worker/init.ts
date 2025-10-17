@@ -1,5 +1,5 @@
 import { wasm } from "./common";
-import { ImperatorMetadata } from "./types";
+import type { ImperatorMetadata } from "./types";
 
 export const initializeWasm = wasm.initializeModule;
 export async function fetchData(file: File) {

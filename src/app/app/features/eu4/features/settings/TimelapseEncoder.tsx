@@ -8,8 +8,8 @@ import {
   type VideoCodec,
 } from "mediabunny";
 import { IMG_WIDTH, MapController, overlayDate } from "@pdx.tools/map";
-import { Eu4Worker, getEu4Worker } from "../../worker";
-import { Eu4Store } from "../../store";
+import { type Eu4Worker, getEu4Worker } from "../../worker";
+import { type Eu4Store } from "../../store";
 import { log } from "@/lib/log";
 import { formatInt } from "@/lib/format";
 

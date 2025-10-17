@@ -6,7 +6,7 @@ import { AchievementAvatar, Flag } from "@/features/eu4/components/avatars";
 import { Aar } from "./Aar";
 import { ModList } from "./ModList";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
-import { useEu4Worker, Eu4Worker } from "@/features/eu4/worker";
+import { useEu4Worker, type Eu4Worker } from "@/features/eu4/worker";
 import {
   emptyEu4CountryFilter,
   initialEu4CountryFilter,
@@ -26,9 +26,9 @@ import { EyeIcon } from "@heroicons/react/24/outline";
 import { formatInt } from "@/lib/format";
 import { Card } from "@/components/Card";
 import {
-  CompletedAchievement,
-  GreatPower,
-  PlayerHistory,
+  type CompletedAchievement,
+  type GreatPower,
+  type PlayerHistory,
 } from "@/wasm/wasm_eu4";
 import { findMap } from "@/lib/findMap";
 import { useList } from "@/hooks/useList";

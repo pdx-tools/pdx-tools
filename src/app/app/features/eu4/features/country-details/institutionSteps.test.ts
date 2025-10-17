@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   calculateInstitutionSteps,
   consolidateSteps,
-  InstitutionStep,
+  type InstitutionStep,
 } from "./institutionSteps";
-import { InstitutionCost } from "@/wasm/wasm_eu4";
+import type { InstitutionCost } from "@/wasm/wasm_eu4";
 
 // Helper to create institution cost with default values
 function createInstitutionCost(

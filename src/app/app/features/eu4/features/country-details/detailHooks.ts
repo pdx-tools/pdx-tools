@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { CountryDetails } from "../../types/models";
+import type { CountryDetails } from "../../types/models";
 
 export const useIsJuniorPartner = (details: CountryDetails) => {
   return useMemo(

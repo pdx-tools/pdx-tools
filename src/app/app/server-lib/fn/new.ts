@@ -1,7 +1,7 @@
 import { saveView, table, toApiSave } from "@/server-lib/db";
 import { sql, eq, lt, desc } from "drizzle-orm";
 import { z } from "zod";
-import { DbConnection } from "../db/connection";
+import type { DbConnection } from "../db/connection";
 
 export const NewSchema = z.object({
   pageSize: z

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ProvinceDetailsDescriptions } from "./ProvinceDetailsDescriptions";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
 import { useEu4Map } from "../../store";
-import { ProvinceDetails } from "../../types/models";
+import type { ProvinceDetails } from "../../types/models";
 import { getEu4Worker } from "../../worker";
 import { Sheet } from "@/components/Sheet";
 

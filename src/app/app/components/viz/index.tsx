@@ -1,4 +1,4 @@
-import React, { ComponentType, lazy, Suspense } from "react";
+import React, { type ComponentType, lazy, Suspense } from "react";
 import type {
   LineConfig as LineConfigImpl,
   PieConfig,

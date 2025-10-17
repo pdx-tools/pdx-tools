@@ -27,6 +27,7 @@ depends = ["build:wasm-bindgen wasm_app"]
 hide = true
 
 [tasks."build:wasm:pdx_map"]
+depends = ["build:cargo-wasm"]
 run = [
     'wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_pdx_map.wasm --out-dir ./src/pdx-map-playground/src/workers/wasm'
 ]
@@ -36,6 +37,7 @@ hide = true
 description = "Build wasm"
 depends = [
     'build:wasm:app',
+    'build:wasm:pdx_map',
     'build:wasm-bindgen wasm_ck3',
     'build:wasm-bindgen wasm_compress',
     'build:wasm-bindgen wasm_eu4',
@@ -268,6 +270,11 @@ run = [
     "cargo clippy --all-targets --all-features --workspace -- -D warnings",
     "pnpm run lint --deny-warnings"
 ]
+
+[tasks.typecheck]
+wait_for = ["build:wasm", "dev:app:setup:*"]
+depends = ["pnpm-install"]
+run = "pnpm run typecheck"
 
 [tasks."admin:assets:sync"]
 env._.file = { path = ".env", redact = true }

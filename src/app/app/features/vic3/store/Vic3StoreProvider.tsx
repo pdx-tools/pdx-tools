@@ -1,4 +1,4 @@
-import { Vic3SaveContext, Vic3Store } from "./vic3Store";
+import { Vic3SaveContext, type Vic3Store } from "./vic3Store";
 
 type Vic3StoreProviderProps = React.PropsWithChildren<{ store: Vic3Store }>;
 export function Vic3StoreProvider({ children, store }: Vic3StoreProviderProps) {

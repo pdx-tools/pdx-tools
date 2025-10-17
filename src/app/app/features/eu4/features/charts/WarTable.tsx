@@ -6,7 +6,7 @@ import { createCsv } from "@/lib/csv";
 import { useVisualizationDispatch } from "@/components/viz";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { useTagFilter } from "../../store";
-import { War, WarSide } from "../../worker/module";
+import type { War, WarSide } from "../../worker/module";
 import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";
 import { SheetExpansion } from "../../components/SheetExpansion";

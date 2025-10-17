@@ -1,5 +1,5 @@
 import { Card } from "@/components/Card";
-import { CountryDetails } from "../../types/models";
+import type { CountryDetails } from "../../types/models";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";

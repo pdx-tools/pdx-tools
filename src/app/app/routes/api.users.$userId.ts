@@ -2,7 +2,7 @@ import { userId } from "@/lib/auth";
 import { getUser } from "@/server-lib/db";
 import { withDb } from "@/server-lib/db/middleware";
 import { withCore } from "@/server-lib/middleware";
-import { LoaderFunctionArgs } from "@remix-run/cloudflare";
+import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { z } from "zod";
 
 const UserParams = z.object({ userId: z.string() });

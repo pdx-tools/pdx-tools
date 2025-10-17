@@ -1,10 +1,10 @@
-import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { downloadData } from "@/lib/downloadData";
 import { ToggleRow } from "./ToggleRow";
 import { IMG_HEIGHT, IMG_WIDTH } from "@pdx.tools/map";
 import { mapTimelapseCursor, TimelapseEncoder } from "./TimelapseEncoder";
 import {
-  Eu4Store,
+  type Eu4Store,
   selectDate,
   useEu4Actions,
   useEu4Context,

@@ -1,4 +1,4 @@
-import { Eu4SaveContext, Eu4Store } from "./eu4Store";
+import { Eu4SaveContext, type Eu4Store } from "./eu4Store";
 
 type Eu4StoreProviderProps = React.PropsWithChildren<{ store: Eu4Store }>;
 export function Eu4StoreProvider({ children, store }: Eu4StoreProviderProps) {

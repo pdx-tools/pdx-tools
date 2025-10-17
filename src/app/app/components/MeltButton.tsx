@@ -1,6 +1,6 @@
 import { downloadData } from "@/lib/downloadData";
 import { emitEvent } from "@/lib/events";
-import { DetectedDataType } from "@/features/engine";
+import type { DetectedDataType } from "@/features/engine";
 import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 import { LoadingIcon } from "./icons/LoadingIcon";

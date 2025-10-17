@@ -1,6 +1,6 @@
-import { GameDifficulty } from "@/services/appApi";
-import { AchievementDifficulty } from "../services/appApi";
-import { SortingFn } from "@tanstack/react-table";
+import type { GameDifficulty } from "@/services/appApi";
+import type { AchievementDifficulty } from "../services/appApi";
+import type { SortingFn } from "@tanstack/react-table";
 
 export const difficultyText = (
   diff: AchievementDifficulty | GameDifficulty,

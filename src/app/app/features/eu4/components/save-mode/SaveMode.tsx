@@ -1,4 +1,4 @@
-import { SaveMode as Mode } from "../../types/models";
+import type { SaveMode as Mode } from "../../types/models";
 import ironmanNo from "./ironman-no.png";
 import ironmanOk from "./ironman-ok.png";
 import { Tooltip } from "@/components/Tooltip";

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   SideBarButton,
-  SideBarButtonProps,
+  type SideBarButtonProps,
 } from "../../components/SideBarButton";
 import { VisualizationProvider } from "@/components/viz";
 import {
@@ -9,7 +9,7 @@ import {
   useSideBarContainerRef,
 } from "../../components/SideBarContainer";
 import { Sheet } from "@/components/Sheet";
-import { VizModules } from "../../types/visualizations";
+import type { VizModules } from "../../types/visualizations";
 import { cx } from "class-variance-authority";
 import { VizRenderer } from "./VizRenderer";
 import { ChartDrawerTitle } from "./ChartDrawerTitle";

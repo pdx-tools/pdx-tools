@@ -1,4 +1,4 @@
-import { AppLoadContext } from "@remix-run/cloudflare";
+import type { AppLoadContext } from "@remix-run/cloudflare";
 import { ValidationError } from "./errors";
 import { fetchOk, fetchOkJson } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";

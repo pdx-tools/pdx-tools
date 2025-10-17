@@ -1,6 +1,6 @@
 import React from "react";
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu";
-import { VariantProps, cva, cx } from "class-variance-authority";
+import { type VariantProps, cva, cx } from "class-variance-authority";
 
 const NavigationMenuRoot = React.forwardRef<
   React.ElementRef<typeof NavigationMenuPrimitive.Root>,

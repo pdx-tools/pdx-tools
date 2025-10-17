@@ -1,4 +1,4 @@
-import { DetectedDataType } from "@/features/engine";
+import type { DetectedDataType } from "@/features/engine";
 import posthog from "posthog-js";
 import { log } from "./log";
 

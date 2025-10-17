@@ -1,4 +1,4 @@
-import { expose, Remote } from "comlink";
+import { expose, type Remote } from "comlink";
 import * as ImperatorMod from "./module";
 
 expose(ImperatorMod);

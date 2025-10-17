@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getErrorMessage } from "@/lib/getErrorMessage";
-import { Hoi4Worker } from "../worker/bridge";
+import type { Hoi4Worker } from "../worker/bridge";
 import { getHoi4Worker } from "../worker";
 import { captureException } from "@/lib/captureException";
 
