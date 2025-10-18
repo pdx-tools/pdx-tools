@@ -6,22 +6,22 @@ import { usingDb } from "@/server-lib/db/connection";
 import { getSaves } from "@/server-lib/fn/new";
 import { withCore } from "@/server-lib/middleware";
 import { pdxKeys } from "@/services/appApi";
-import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
-import { Await, useLoaderData } from "@remix-run/react";
+import { Await, useLoaderData } from "react-router";
 import {
   dehydrate,
   HydrationBoundary,
   QueryClient,
 } from "@tanstack/react-query";
 import { Suspense } from "react";
+import type { Route } from "./+types/eu4._index";
 
-export const meta: MetaFunction = () =>
+export const meta = () =>
   seo({
     title: "EU4 - PDX Tools",
     description: "Latest uploaded EU4 saves",
   });
 
-export const loader = withCore(async ({ context }: LoaderFunctionArgs) => {
+export const loader = withCore(async ({ context }: Route.LoaderArgs) => {
   const { db, close } = usingDb(context);
   const queryClient = new QueryClient();
   const prefetch = queryClient

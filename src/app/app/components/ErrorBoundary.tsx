@@ -1,5 +1,5 @@
 import React from "react";
-import * as Sentry from "@sentry/remix";
+import * as Sentry from "@sentry/react-router";
 
 type FallbackRender = (errorData: {
   error: unknown;

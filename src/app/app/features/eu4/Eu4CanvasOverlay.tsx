@@ -28,7 +28,7 @@ import {
 import { ChartAreaIcon } from "@/components/icons/ChartAreaIcon";
 import { FileSyncIcon } from "@/components/icons/FileSyncIcon";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { Link as UnstyledLink, useLocation } from "@remix-run/react";
+import { Link as UnstyledLink, useLocation } from "react-router";
 
 export const Eu4CanvasOverlay = () => {
   const serverFile = useIsServerSaveFile();

@@ -84,7 +84,6 @@ run_windows = [
 [tasks."build:app"]
 description = "Build pdx.tools frontend for deployment"
 depends = ["pnpm-install", "build:docs", "build:wasm", "optimize:wasm:*", "dev:app:setup:*", "tokenize"]
-depends_post = ["copy-wasm"]
 dir = "src/app"
 run = ["pnpm run build"]
 
@@ -129,9 +128,19 @@ wait_for = ["build:wasm-bindgen wasm_vic3"]
 run = ["{{mise_bin}} wasm-opt wasm_vic3"]
 hide = true
 
-[tasks."dev:app:setup:types"]
-description = "Generate TypeScript types from Rust"
+[tasks."dev:app:setup:types:cargo"]
+description = "Generate TypeScript types"
 run = "cargo run -p applib --bin types"
+hide = true
+
+[tasks."dev:app:setup:types:js"]
+depends = ["pnpm-install"]
+description = "Generate TypeScript types"
+dir = "./src/app"
+run = [
+    "pnpm exec wrangler types",
+    "pnpm exec react-router typegen",
+]
 hide = true
 
 [tasks."dev:app:setup:assets"]
@@ -140,9 +149,8 @@ hide = true
 
 [tasks."dev:app"]
 description = "Run pdx.tools frontend development"
-depends = ["pnpm-install", "dev:app:setup:*", "tokenize", "build:wasm"]
+depends = ["pnpm-install", "dev:app:setup:**", "tokenize", "build:wasm"]
 dir = "./src/app"
-env.WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB = "postgres://app_user:mercantilismbaby2@localhost:5432/postgres"
 run = ["pnpm run dev"]
 
 [tasks."dev:map"]
@@ -177,8 +185,8 @@ run = [
 [tasks."test:app:build"]
 depends = ["pnpm-install", "dev:app:setup:*", "build:wasm"]
 dir = "src/app"
-env.NODE_ENV = "development"
-run = "pnpm build"
+run = "pnpm build --mode test"
+env.NODE_ENV = "test"
 hide = true
 
 [tasks."test:app"]
@@ -186,12 +194,10 @@ description = "Test the application and backend services"
 depends = [
     "build:api",
     "test:app:build",
-    "copy-wasm",
     "start:services:test -d"
 ]
 dir = "src/app"
-env.WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB = "postgres://app_user:mercantilismbaby@localhost:5433/postgres"
-run = ['pnpm exec concurrently --kill-others --success command-2 --passthrough-arguments "mise run serve:api:test" "pnpm exec wrangler dev --env test --port 3000" "sleep 2 && pnpm test -- run {@}"']
+run = ['pnpm exec concurrently --kill-others --success command-2 --passthrough-arguments "mise run serve:api:test" "pnpm run preview --mode test" "sleep 2 && pnpm test -- run {@}"']
 
 [tasks."env:dev"]
 description = "Run backend services (eg: postgres, s3) configured for development"
@@ -222,13 +228,6 @@ description = "Preprocess the ironman tokens for distribution"
 sources = ["./assets/tokens/*.txt"]
 outputs = ["./assets/tokens/*.bin"]
 run = "cargo run --package pdx-tokenize-cli -- ./assets/tokens"
-
-[tasks."copy-wasm"]
-wait_for = ["test:app:build", "build:app"]
-hide = true
-dir = "src/app"
-run = "cp app/wasm/wasm_app_bg.wasm build/server/assets/."
-run_windows = "xcopy app\\wasm\\wasm_app_bg.wasm build\\server\\assets\\. /I /Y"
 
 [tasks.pnpm-install]
 run = "pnpm install --optimistic-repeat-install"

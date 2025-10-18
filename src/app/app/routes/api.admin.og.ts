@@ -4,12 +4,12 @@ import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { pdxOg } from "@/server-lib/og";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { z } from "zod";
+import type { Route } from "./+types/api.admin.og";
 
 const saveSchema = z.object({ saveId: z.string() });
 export const action = withCore(
-  async ({ request, context }: LoaderFunctionArgs) => {
+  async ({ request, context }: Route.ActionArgs) => {
     const session = await getAuth({ request, context });
     ensurePermissions(session, "savefile:og-request");
     const body = await request.json();

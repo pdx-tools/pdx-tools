@@ -1,11 +1,17 @@
-import { captureException as sentryCaptureException } from "@sentry/remix";
+import type { captureException as SentryCaptureException } from "@sentry/react-router";
 
-type CaptureException = typeof sentryCaptureException;
+type CaptureException = typeof SentryCaptureException;
+type CaptureExceptionImpl = (
+  exception: Parameters<CaptureException>[0],
+  captureContext?: Parameters<CaptureException>[1],
+) => ReturnType<CaptureException>;
+
+let captureImplementation: CaptureExceptionImpl | undefined;
 
 export const captureException = (
   exception: Parameters<CaptureException>[0],
   captureContext?: Parameters<CaptureException>[1],
-) => {
+): ReturnType<CaptureException> | undefined => {
   if (
     exception !== null &&
     typeof exception === "object" &&
@@ -15,5 +21,12 @@ export const captureException = (
   } else {
     console.error(exception);
   }
-  return sentryCaptureException(exception, captureContext);
+
+  return captureImplementation?.(exception, captureContext);
+};
+
+export const setCaptureExceptionImplementation = (
+  implementation: CaptureExceptionImpl | undefined,
+) => {
+  captureImplementation = implementation;
 };

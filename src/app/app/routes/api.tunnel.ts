@@ -1,6 +1,6 @@
-import type { ActionFunctionArgs } from "@remix-run/cloudflare";
+import type { Route } from "./+types/api.tunnel";
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function action({ request, context }: Route.ActionArgs) {
   const body = await request.text();
   const [piece] = body.split("\n");
   const header = JSON.parse(piece) as { dsn: string };
