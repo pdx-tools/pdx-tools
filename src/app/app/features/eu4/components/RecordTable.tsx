@@ -8,7 +8,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { Link } from "@/components/Link";
-import { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
+import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
 
 type AchievementData = AchievementApiResponse;
 

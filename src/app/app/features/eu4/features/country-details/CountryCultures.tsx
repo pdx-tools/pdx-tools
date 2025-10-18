@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
-import { CountryDetails, CountryCulture } from "../../types/models";
+import type { CountryDetails, CountryCulture } from "../../types/models";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { Tooltip } from "@/components/Tooltip";
 import { Alert } from "@/components/Alert";

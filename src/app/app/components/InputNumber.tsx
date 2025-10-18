@@ -1,6 +1,6 @@
 import React, {
-  ComponentPropsWithoutRef,
-  ElementRef,
+  type ComponentPropsWithoutRef,
+  type ElementRef,
   forwardRef,
   useState,
 } from "react";

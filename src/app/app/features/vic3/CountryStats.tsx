@@ -2,7 +2,7 @@ import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { createColumnHelper } from "@tanstack/react-table";
 import { formatFloat } from "@/lib/format";
-import { Vic3GraphData } from "./worker/types";
+import type { Vic3GraphData } from "./worker/types";
 
 export interface CountryStatsProps {
   stats: Vic3GraphData[];

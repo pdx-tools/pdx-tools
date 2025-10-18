@@ -1,6 +1,6 @@
-import { VariantProps, cva, cx } from "class-variance-authority";
+import { type VariantProps, cva, cx } from "class-variance-authority";
 import { Link as LinkPrimitive } from "@remix-run/react";
-import React, { ComponentPropsWithoutRef } from "react";
+import React, { type ComponentPropsWithoutRef } from "react";
 
 const linkVariants = cva("underline-offset-4 hover:underline", {
   variants: {

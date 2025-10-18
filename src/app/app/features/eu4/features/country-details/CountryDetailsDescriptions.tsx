@@ -1,5 +1,5 @@
 import { formatFloat, formatInt } from "@/lib/format";
-import { CountryDetails } from "@/features/eu4/types/models";
+import type { CountryDetails } from "@/features/eu4/types/models";
 import { InheritanceValueBreakdown } from "./InheritanceValueBreakdown";
 import { useIsJuniorPartner } from "./detailHooks";
 import {

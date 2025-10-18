@@ -1,7 +1,7 @@
-import React, { ComponentType, lazy, Suspense, useMemo } from "react";
-import { Vic3GraphData } from "./worker/types";
+import React, { type ComponentType, lazy, Suspense, useMemo } from "react";
+import type { Vic3GraphData } from "./worker/types";
 import { formatFloat } from "@/lib/format";
-import { DualAxesConfig } from "@ant-design/plots";
+import type { DualAxesConfig } from "@ant-design/plots";
 import { isDarkMode } from "@/lib/dark";
 
 export interface CountryChartProps {

@@ -1,19 +1,24 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { incomeLedgerAliases } from "./data";
 import { formatFloat, formatInt } from "@/lib/format";
-import { CountryDetails } from "../../types/models";
+import { type CountryDetails } from "../../types/models";
 import { axisTop } from "d3-axis";
 import { scaleBand, scaleLinear } from "d3-scale";
 import { select } from "d3-selection";
 import { cx } from "class-variance-authority";
-import { Budget, budgetSelect, createBudget, expenseBudget } from "./budget";
+import {
+  type Budget,
+  budgetSelect,
+  createBudget,
+  expenseBudget,
+} from "./budget";
 import { Card } from "@/components/Card";
 import { useEu4Meta } from "../../store";
 import { Button } from "@/components/Button";
 import { ToggleGroup } from "@/components/ToggleGroup";
 import { throttle } from "@/lib/throttle";
 import { isDarkMode } from "@/lib/dark";
-import { Treemap, TreemapConfig } from "@/components/viz";
+import { Treemap, type TreemapConfig } from "@/components/viz";
 import { emitEvent } from "@/lib/events";
 import { classicCyclic } from "@/lib/colors";
 

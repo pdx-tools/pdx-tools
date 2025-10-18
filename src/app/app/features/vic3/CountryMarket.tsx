@@ -2,7 +2,7 @@ import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { createColumnHelper } from "@tanstack/react-table";
 import { formatFloat } from "@/lib/format";
-import { Vic3GoodPrice } from "./worker/types";
+import type { Vic3GoodPrice } from "./worker/types";
 
 export interface CountryMarketProps {
   goods_prices: Vic3GoodPrice[];

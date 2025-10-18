@@ -10,7 +10,7 @@ import { getUser } from "@/server-lib/db";
 import { usingDb } from "@/server-lib/db/connection";
 import { withCore } from "@/server-lib/middleware";
 import { pdxApi, pdxKeys } from "@/services/appApi";
-import { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
+import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { Await, useLoaderData, useParams } from "@remix-run/react";
 import {
   dehydrate,

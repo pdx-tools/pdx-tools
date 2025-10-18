@@ -3,7 +3,7 @@ import { logMs } from "@/lib/log";
 import { timeit } from "@/lib/timeit";
 import { getCk3Worker } from "./worker";
 import { MeltButton } from "@/components/MeltButton";
-import { Ck3Metadata } from "./worker/types";
+import type { Ck3Metadata } from "./worker/types";
 import { emitEvent } from "@/lib/events";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";

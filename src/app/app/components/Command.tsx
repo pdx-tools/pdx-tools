@@ -1,5 +1,5 @@
 import React from "react";
-import { DialogProps } from "@radix-ui/react-dialog";
+import type { DialogProps } from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { Dialog } from "@/components/Dialog";

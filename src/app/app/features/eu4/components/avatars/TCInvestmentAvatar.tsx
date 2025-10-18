@@ -1,6 +1,6 @@
-import { LocalizedObj } from "@/features/eu4/types/models";
+import { type LocalizedObj } from "@/features/eu4/types/models";
 import { Tooltip } from "@/components/Tooltip";
-import { Sprite, SpriteDimension, spriteDimension } from "../Sprite";
+import { Sprite, type SpriteDimension, spriteDimension } from "../Sprite";
 import investmentData from "@/images/eu4/tc-investments/investments.json";
 import investmentImage from "@/images/eu4/tc-investments/investments.webp";
 

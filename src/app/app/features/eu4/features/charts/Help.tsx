@@ -1,5 +1,5 @@
 import { Link } from "@/components/Link";
-import { VizModules } from "../../types/visualizations";
+import type { VizModules } from "../../types/visualizations";
 import { FinancialHelp } from "./FinancialHelp";
 
 interface HelpProps {

@@ -1,6 +1,6 @@
 import { check } from "@/lib/isPresent";
 import {
-  AppLoadContext,
+  type AppLoadContext,
   createCookieSessionStorage,
 } from "@remix-run/cloudflare";
 import { z } from "zod";
@@ -8,7 +8,7 @@ import { parseBasicAuth } from "./basic";
 import { oneshotDb } from "../db/connection";
 import { apiKeyAtRest, table } from "../db";
 import { eq } from "drizzle-orm";
-import { LoggedInUser, userId } from "@/lib/auth";
+import { type LoggedInUser, userId } from "@/lib/auth";
 
 export type PdxSessionStorage = ReturnType<typeof pdxSession>;
 export const pdxSession = ({

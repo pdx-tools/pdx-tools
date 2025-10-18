@@ -8,9 +8,9 @@ import {
   type MapWorker,
   MapController,
   createMapWorker,
-  InitToken,
+  type InitToken,
 } from "@pdx.tools/map";
-import { Dispatch, useRef, useEffect, useReducer } from "react";
+import { type Dispatch, useRef, useEffect, useReducer } from "react";
 import {
   shaderUrls,
   fetchProvinceUniqueIndex,
@@ -18,7 +18,7 @@ import {
 } from "../features/map/resources";
 import { getEu4Worker } from "../worker";
 import {
-  Eu4Store,
+  type Eu4Store,
   initialEu4CountryFilter,
   createEu4Store,
   loadSettings,

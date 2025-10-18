@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { difficultySort, difficultyText } from "@/lib/difficulty";
-import { Achievement } from "@/services/appApi";
+import type { Achievement } from "@/services/appApi";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";

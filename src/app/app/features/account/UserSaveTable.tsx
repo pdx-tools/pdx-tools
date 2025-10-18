@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { diff } from "@/lib/dates";
 import { groupBy } from "@/lib/groupBy";
 import { SaveCard } from "./SaveCard";
-import { type UserSaves } from "@/server-lib/db";
+import type { UserSaves } from "@/server-lib/db";
 
 interface UserSaveTableProps {
   saves: UserSaves["saves"];

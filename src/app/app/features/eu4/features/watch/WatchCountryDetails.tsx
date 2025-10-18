@@ -23,8 +23,8 @@ import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";
 import { DataTable } from "@/components/DataTable";
 import { TableCellsIcon } from "@heroicons/react/24/outline";
-import { MonitorData } from "../../worker/module";
-import { Eu4Date } from "../../types/models";
+import type { MonitorData } from "../../worker/module";
+import type { Eu4Date } from "../../types/models";
 
 type MonitorRow = MonitorData["countries"][number] & {
   date: Eu4Date;

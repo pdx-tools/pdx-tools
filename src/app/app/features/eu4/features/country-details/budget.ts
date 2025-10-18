@@ -1,4 +1,7 @@
-import { CountryExpenseLedger, CountryIncomeLedger } from "../../types/models";
+import type {
+  CountryExpenseLedger,
+  CountryIncomeLedger,
+} from "../../types/models";
 
 function pick<T extends object, K extends keyof T>(
   obj: T,

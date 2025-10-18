@@ -1,5 +1,5 @@
 import React from "react";
-import { RankedSave, RecordTable } from "./components/RecordTable";
+import { type RankedSave, RecordTable } from "./components/RecordTable";
 import { AchievementAvatar } from "./components/avatars";
 import { Card } from "@/components/Card";
 import { formatFloat, formatInt } from "@/lib/format";
@@ -9,7 +9,7 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { Link } from "@/components/Link";
 import { difficultyColor, difficultyText } from "@/lib/difficulty";
 import { Tooltip } from "@/components/Tooltip";
-import { type fetchAchievement } from "@/server-lib/fn/achievement";
+import type { fetchAchievement } from "@/server-lib/fn/achievement";
 
 export const AchievementLayout = ({
   achievementId,

@@ -2,7 +2,7 @@ import { getAuth } from "@/server-lib/auth/session";
 import { apiKeyAtRest, table } from "@/server-lib/db";
 import { withDb } from "@/server-lib/db/middleware";
 import { withCore } from "@/server-lib/middleware";
-import { ActionFunctionArgs } from "@remix-run/cloudflare";
+import type { ActionFunctionArgs } from "@remix-run/cloudflare";
 import { eq } from "drizzle-orm";
 
 export const action = withCore(

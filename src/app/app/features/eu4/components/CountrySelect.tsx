@@ -1,5 +1,5 @@
 import {
-  PropsWithChildren,
+  type PropsWithChildren,
   useCallback,
   useState,
   memo,
@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Popover } from "@/components/Popover";
 import { Command } from "@/components/Command";
-import { EnhancedCountryInfo } from "../types/models";
+import type { EnhancedCountryInfo } from "../types/models";
 import { PlayIcon } from "@heroicons/react/20/solid";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import { useExistedAiCountries, useHumanCountries } from "../store";

@@ -1,6 +1,6 @@
 import React from "react";
-import { CountryDetails } from "../../types/models";
-import { Bar, BarConfig } from "@/components/viz";
+import { type CountryDetails } from "../../types/models";
+import { Bar, type BarConfig } from "@/components/viz";
 
 interface CountryBuildingCountProps {
   details: CountryDetails;

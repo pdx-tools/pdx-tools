@@ -1,4 +1,4 @@
-import { expose, Remote } from "comlink";
+import { expose, type Remote } from "comlink";
 import * as Vic3Mod from "./module";
 
 expose(Vic3Mod);

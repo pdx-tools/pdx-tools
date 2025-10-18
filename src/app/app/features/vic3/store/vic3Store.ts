@@ -1,5 +1,5 @@
-import { StoreApi, create, useStore } from "zustand";
-import { Vic3Metadata } from "../worker/types";
+import { type StoreApi, create, useStore } from "zustand";
+import { type Vic3Metadata } from "../worker/types";
 import { createContext, useContext } from "react";
 import { check } from "@/lib/isPresent";
 

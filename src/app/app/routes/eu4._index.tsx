@@ -6,7 +6,7 @@ import { usingDb } from "@/server-lib/db/connection";
 import { getSaves } from "@/server-lib/fn/new";
 import { withCore } from "@/server-lib/middleware";
 import { pdxKeys } from "@/services/appApi";
-import { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
+import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { Await, useLoaderData } from "@remix-run/react";
 import {
   dehydrate,

@@ -1,4 +1,4 @@
-import { FailedHeir, RunningMonarch } from "../../types/models";
+import type { FailedHeir, RunningMonarch } from "../../types/models";
 import { formatFloat, formatInt } from "@/lib/format";
 import { Flag, PersonalityAvatar } from "@/features/eu4/components/avatars";
 import { createColumnHelper } from "@tanstack/react-table";

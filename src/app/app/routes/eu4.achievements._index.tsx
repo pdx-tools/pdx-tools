@@ -2,7 +2,7 @@ import { WebPage } from "@/components/layout/WebPage";
 import { AchievementsPage } from "@/features/eu4/AchievementsPage";
 import { seo } from "@/lib/seo";
 import { loadAchievements } from "@/server-lib/game";
-import { MetaFunction } from "@remix-run/cloudflare";
+import type { MetaFunction } from "@remix-run/cloudflare";
 import { useLoaderData } from "@remix-run/react";
 
 export const meta: MetaFunction = () =>

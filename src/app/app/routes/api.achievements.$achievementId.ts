@@ -1,8 +1,8 @@
-import { DbConnection } from "@/server-lib/db/connection";
+import type { DbConnection } from "@/server-lib/db/connection";
 import { withDb } from "@/server-lib/db/middleware";
 import { fetchAchievement, findAchievement } from "@/server-lib/fn/achievement";
 import { withCore } from "@/server-lib/middleware";
-import { LoaderFunctionArgs } from "@remix-run/cloudflare";
+import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { z } from "zod";
 
 export type AchievementApiResponse = Awaited<ReturnType<typeof getAchievement>>;

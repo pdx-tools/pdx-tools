@@ -18,11 +18,15 @@ import type {
   OwnedDevelopmentStates,
   CountryAdvisors,
 } from "../types/models";
-import { MapPayload, QuickTipPayload } from "../types/map";
+import type { MapPayload, QuickTipPayload } from "../types/map";
 import { workLedgerData } from "../utils/ledger";
 import { expandLosses } from "../utils/losses";
 import { wasm } from "./common";
-import { ActiveWarParticipant, TimelapseIter, Wars } from "@/wasm/wasm_eu4";
+import type {
+  ActiveWarParticipant,
+  TimelapseIter,
+  Wars,
+} from "@/wasm/wasm_eu4";
 import { timeSync } from "@/lib/timeit";
 import { logMs } from "@/lib/log";
 import { createBudget } from "../features/country-details/budget";

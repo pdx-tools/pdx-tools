@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { TableLosses } from "./hooks";
+import type { TableLosses } from "./hooks";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { formatFloat, formatInt } from "@/lib/format";
 import { type SingleCountryWarCasualties } from "@/features/eu4/worker/module";
@@ -8,7 +8,7 @@ import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
-import { Losses } from "@/features/eu4/utils/losses";
+import type { Losses } from "@/features/eu4/utils/losses";
 
 interface CountryNavyCasualtiesWarTableProps {
   record: TableLosses;

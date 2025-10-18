@@ -1,6 +1,6 @@
 import {
-  ComponentProps,
-  ComponentType,
+  type ComponentProps,
+  type ComponentType,
   lazy,
   Suspense,
   useEffect,
@@ -10,7 +10,7 @@ import {
 import { WebPage } from "@/components/layout";
 import { PageDropOverlay } from "./components/PageDropOverlay";
 import {
-  SaveGameInput,
+  type SaveGameInput,
   useEngineActions,
   useSaveFileInput,
 } from "./engineStore";

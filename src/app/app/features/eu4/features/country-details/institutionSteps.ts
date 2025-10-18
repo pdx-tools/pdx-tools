@@ -1,4 +1,4 @@
-import { InstitutionCost } from "@/wasm/wasm_eu4";
+import type { InstitutionCost } from "@/wasm/wasm_eu4";
 
 export type InstitutionStep =
   | { type: "develop"; from: number; to: number }

@@ -5,7 +5,8 @@
   "scripts": {
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,css}\"",
-    "lint": "oxlint"
+    "lint": "oxlint",
+    "typecheck": "tsc --build"
   },
   "dependencies": {
     "concurrently": "9.2.1",
@@ -15,7 +16,8 @@
     "@types/node": "catalog:",
     "oxlint": "1.23.0",
     "prettier-plugin-tailwindcss": "0.7.0",
-    "prettier": "3.6.2"
+    "prettier": "3.6.2",
+    "typescript": "catalog:"
   },
   "prettier": {
     "plugins": [

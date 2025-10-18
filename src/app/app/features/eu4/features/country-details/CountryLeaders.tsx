@@ -1,6 +1,6 @@
 import { useEu4Worker } from "@/features/eu4/worker";
 import { useCallback, useState } from "react";
-import { CountryDetails, CountryLeader } from "../../types/models";
+import type { CountryDetails, CountryLeader } from "../../types/models";
 import { Badge } from "@/components/Badge";
 import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";

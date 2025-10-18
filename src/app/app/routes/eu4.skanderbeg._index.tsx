@@ -1,7 +1,7 @@
 import { WebPage } from "@/components/layout";
 import { SkanderbegAlert } from "@/features/eu4/components/SkanderbegAlert";
 import { seo } from "@/lib/seo";
-import { MetaFunction } from "@remix-run/cloudflare";
+import type { MetaFunction } from "@remix-run/cloudflare";
 
 export const meta: MetaFunction = () =>
   seo({

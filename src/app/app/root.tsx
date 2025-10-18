@@ -9,9 +9,9 @@ import {
   useRouteError,
 } from "@remix-run/react";
 import {
-  LinksFunction,
-  LoaderFunctionArgs,
-  MetaFunction,
+  type LinksFunction,
+  type LoaderFunctionArgs,
+  type MetaFunction,
 } from "@remix-run/cloudflare";
 import tailwind from "@/styles/tailwind.css?url";
 import appCss from "@/styles/styles.css?url";

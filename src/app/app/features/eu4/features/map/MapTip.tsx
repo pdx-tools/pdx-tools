@@ -5,7 +5,7 @@ import {
   useEu4Map,
   useEu4MapMode,
 } from "../../store";
-import { QuickTipPayload } from "../../types/map";
+import type { QuickTipPayload } from "../../types/map";
 import { getEu4Worker } from "../../worker";
 import { MapTipContents } from "./MapTipContents";
 

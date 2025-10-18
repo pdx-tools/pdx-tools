@@ -1,5 +1,5 @@
 import { pdxSession } from "@/server-lib/auth/session";
-import { ActionFunctionArgs, redirect } from "@remix-run/cloudflare";
+import { type ActionFunctionArgs, redirect } from "@remix-run/cloudflare";
 
 export async function action({ request, context }: ActionFunctionArgs) {
   const sessionStorage = pdxSession({ request, context });

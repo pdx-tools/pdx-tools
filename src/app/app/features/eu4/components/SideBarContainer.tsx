@@ -1,4 +1,4 @@
-import React, { RefObject, useRef } from "react";
+import React, { type RefObject, useRef } from "react";
 
 interface SideBarContainerContext {
   containerRef: RefObject<HTMLDivElement>;
