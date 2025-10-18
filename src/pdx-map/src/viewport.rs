@@ -7,6 +7,7 @@ pub struct ViewportBounds {
     pub y: u32,
     pub width: u32,
     pub height: u32,
+    pub zoom_level: f32,
 }
 
 /// Platform-agnostic map navigation and viewport controller
@@ -165,6 +166,7 @@ impl MapViewport {
             y: self.viewport_y,
             width,
             height,
+            zoom_level: self.zoom_level,
         }
     }
 

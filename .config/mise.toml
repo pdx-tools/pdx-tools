@@ -26,8 +26,15 @@ hide = true
 depends = ["build:wasm-bindgen wasm_app"]
 hide = true
 
+[tasks."build:pdx_map"]
+hide = true
+run = [
+    "cargo build --release -p wasm-pdx-map --target wasm32-unknown-unknown",
+    { task = "build:wasm:pdx_map" }
+]
+
 [tasks."build:wasm:pdx_map"]
-depends = ["build:cargo-wasm"]
+wait_for = ["build:cargo-wasm"]
 run = [
     'wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_pdx_map.wasm --out-dir ./src/pdx-map-playground/src/workers/wasm'
 ]

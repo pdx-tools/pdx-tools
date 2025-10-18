@@ -65,7 +65,7 @@ struct ComputeUniforms {
     background_color: [u32; 4],
 
     table_size: u32,
-    _padding1: u32,
+    zoom_level: f32,
     viewport_x_offset: u32,
     viewport_y_offset: u32,
 
@@ -844,7 +844,7 @@ impl Renderer {
             enable_owner_borders: if self.enable_owner_borders { 1 } else { 0 },
             background_color: [248, 248, 248, 255],
             table_size: self.location_arrays.len() as u32,
-            _padding1: 0,
+            zoom_level: bounds.zoom_level,
             viewport_x_offset: bounds.x,
             viewport_y_offset: bounds.y,
             canvas_width: texture.width(),
