@@ -1,13 +1,13 @@
 struct ComputeUniforms {
     tile_width: u32,
-    tile_height: u32, 
+    tile_height: u32,
     enable_location_borders: u32,
     enable_owner_borders: u32,
-    
+
     background_color: vec4<u32>,
-    
+
     table_size: u32,
-    _padding1: u32,
+    zoom_level: f32,
     viewport_x_offset: u32,
     viewport_y_offset: u32,
 
@@ -149,6 +149,7 @@ fn get_color_key_at(global_x: i32, global_y: i32) -> u32 {
     return pack_rgb(r, g, b);
 }
 
+
 // Check if this pixel should be a location border (4-neighbor color difference)
 fn is_location_border_pixel(global_x: i32, global_y: i32, center_location_idx: u32) -> bool {
     if (uniforms.enable_location_borders == 0u) {
@@ -160,7 +161,22 @@ fn is_location_border_pixel(global_x: i32, global_y: i32, center_location_idx: u
     if ((state_flags & STATE_NO_LOCATION_BORDERS) != 0u) {
         return false;
     }
-    
+
+    // Get stripe info for current location
+    let primary_color = get_primary_color_by_index(center_location_idx, 0u);
+    let secondary_color = get_secondary_color_by_index(center_location_idx, 0u);
+    let has_stripes = primary_color != secondary_color && secondary_color != 0u;
+
+    // Check if we're in secondary color zone
+    var in_secondary_zone = false;
+    if (has_stripes) {
+        let base_frequency = 8.0;
+        let stripe_frequency = max(2.0, base_frequency / uniforms.zoom_level);
+        let pattern_val = (f32(global_x) + f32(global_y)) / stripe_frequency;
+        let f = fract(pattern_val);
+        in_secondary_zone = f > 0.5;
+    }
+
     // Check 4 neighbors: up, down, left, right
     let neighbors = array<vec2<i32>, 4>(
         vec2<i32>(global_x, global_y - 1), // up
@@ -168,14 +184,24 @@ fn is_location_border_pixel(global_x: i32, global_y: i32, center_location_idx: u
         vec2<i32>(global_x - 1, global_y), // left
         vec2<i32>(global_x + 1, global_y)  // right
     );
-    
+
     for (var i = 0; i < 4; i++) {
         let neighbor_location_idx = get_location_index_at(neighbors[i].x, neighbors[i].y);
         if (neighbor_location_idx != center_location_idx) {
-            return true; // Found a neighbor with different location
+            // Different location found
+
+            // If we're in secondary zone, check if neighbor has same secondary color
+            if (in_secondary_zone) {
+                let neighbor_secondary = get_secondary_color_by_index(neighbor_location_idx, 0u);
+                if (neighbor_secondary == secondary_color) {
+                    continue; // Same secondary color, don't draw border here
+                }
+            }
+
+            return true; // Draw border
         }
     }
-    
+
     return false; // All neighbors have same location
 }
 
@@ -210,16 +236,30 @@ fn is_owner_border_pixel(global_x: i32, global_y: i32, center_location_idx: u32,
     return false; // All neighbors have same owner or no mapping
 }
 
-// Create stripe pattern when primary and secondary colors differ
+// Create a crisp, anti-aliased stripe pattern
 fn create_stripe_pattern(global_x: i32, global_y: i32, primary_color: u32, secondary_color: u32) -> vec4<f32> {
-    // Use diagonal stripe pattern - every 4 pixels switch between primary and secondary
-    let stripe_frequency = 4;
-    let diagonal = (global_x + global_y) / stripe_frequency;
-    let use_secondary = (diagonal % 2) == 0;
-    
-    let color_to_use = select(primary_color, secondary_color, use_secondary);
-    let rgb = unpack_color(color_to_use);
-    return vec4<f32>(rgb.r, rgb.g, rgb.b, 1.0);
+    // 1. Calculate a continuous, floating-point value for the pattern
+    let base_frequency = 8.0;
+    let stripe_frequency = max(2.0, base_frequency / uniforms.zoom_level);
+    let pattern_val = (f32(global_x) + f32(global_y)) / stripe_frequency;
+
+    // 2. Calculate the pattern's change across one pixel (our analytical fwidth)
+    let width = 2.0 / stripe_frequency;
+    let half_width = width / 2.0;
+
+    // 3. Get the fractional part to create repeating bands.
+    let f = fract(pattern_val);
+
+    // 4. Use smoothstep with a more precise range for a sharper transition.
+    // The blend now happens exactly centered around the 0.5 mark.
+    let blend_factor = smoothstep(0.5 - half_width, 0.5 + half_width, f);
+
+    // 5. Unpack and mix the colors
+    let primary_rgb = unpack_color(primary_color);
+    let secondary_rgb = unpack_color(secondary_color);
+    let mixed_rgb = mix(primary_rgb, secondary_rgb, blend_factor);
+
+    return vec4<f32>(mixed_rgb, 1.0);
 }
 
 @compute @workgroup_size(8, 8)

@@ -169,6 +169,7 @@ impl<R: MapRenderer> ScreenshotRenderer<R> {
             y: 0,
             width: self.tile_width,
             height: self.tile_height,
+            zoom_level: 1.0,
         };
         self.renderer.render_scene(west_bounds);
     }
@@ -180,6 +181,7 @@ impl<R: MapRenderer> ScreenshotRenderer<R> {
             y: 0,
             width: self.tile_width,
             height: self.tile_height,
+            zoom_level: 1.0,
         };
         self.renderer.render_scene(east_bounds);
     }
