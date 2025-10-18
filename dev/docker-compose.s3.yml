@@ -13,7 +13,7 @@ services:
       - s3
     entrypoint: >
       /bin/bash -c "
-      /usr/bin/mc config --insecure host add myminio $${SCHEME-http}://s3:9000 miniominio minio12minio;
+      /usr/bin/mc alias --insecure set myminio $${SCHEME-http}://s3:9000 miniominio minio12minio;
       /usr/bin/mc mb --insecure --ignore-existing myminio/savefiles;
       exit 0;
       "

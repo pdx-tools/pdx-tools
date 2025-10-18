@@ -10,12 +10,12 @@ import { seo } from "@/lib/seo";
 import { usingDb } from "@/server-lib/db/connection";
 import { fetchAchievement, findAchievement } from "@/server-lib/fn/achievement";
 import { withCore } from "@/server-lib/middleware";
-import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
-import { Await, useLoaderData } from "@remix-run/react";
+import { Await, useLoaderData } from "react-router";
 import { Suspense } from "react";
 import { z } from "zod";
+import type { Route } from "./+types/eu4.achievements.$achievementId";
 
-export const meta: MetaFunction<typeof loader> = ({ data }) =>
+export const meta = ({ data }: Route.MetaArgs) =>
   seo({
     title: `${data?.achievement.name} Leaderboard`,
     description: `Top EU4 saves for ${data?.achievement.name}: ${data?.achievement.description}`,
@@ -23,7 +23,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) =>
 
 const ParamSchema = z.object({ achievementId: z.string() });
 export const loader = withCore(
-  async ({ params: rawParams, context }: LoaderFunctionArgs) => {
+  async ({ params: rawParams, context }: Route.LoaderArgs) => {
     const params = ParamSchema.parse(rawParams);
     const achievement = findAchievement(params);
 

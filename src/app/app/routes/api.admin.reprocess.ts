@@ -4,9 +4,9 @@ import { withDb } from "@/server-lib/db/middleware";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import type { ParsedFile } from "@/server-lib/functions";
-import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { eq } from "drizzle-orm";
 import { ensurePermissions } from "@/lib/auth";
+import type { Route } from "./+types/api.admin.reprocess";
 
 type ReprocessEntry = {
   saveId: string;
@@ -14,7 +14,7 @@ type ReprocessEntry = {
 };
 
 export const action = withCore(
-  withDb(async ({ request, context }: LoaderFunctionArgs, { db }) => {
+  withDb(async ({ request, context }: Route.ActionArgs, { db }) => {
     const session = await getAuth({ request, context });
     ensurePermissions(session, "savefile:reprocess");
 

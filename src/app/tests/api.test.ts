@@ -15,7 +15,7 @@ import type { SaveResponse } from "@/routes/api.saves.$saveId";
 import type { NewKeyResponse } from "@/services/appApi";
 
 const dbConnection = check(
-  process.env["WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB"],
+  process.env["CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB"],
 );
 
 beforeEach(async () => {

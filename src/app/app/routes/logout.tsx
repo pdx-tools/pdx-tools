@@ -1,8 +1,8 @@
 import { pdxSession } from "@/server-lib/auth/session";
-import { redirect } from "@remix-run/cloudflare";
-import type { ActionFunctionArgs } from "@remix-run/cloudflare";
+import { redirect } from "react-router";
+import type { Route } from "./+types/logout";
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function action({ request, context }: Route.ActionArgs) {
   const sessionStorage = pdxSession({ request, context });
   return redirect("/", {
     headers: {

@@ -1,33 +1,19 @@
 import type {
   ActionFunctionArgs,
-  AppLoadContext,
   EntryContext,
   LoaderFunctionArgs,
-} from "@remix-run/cloudflare";
-import * as Sentry from "@sentry/remix";
-import { RemixServer } from "@remix-run/react";
+} from "react-router";
+import { ServerRouter } from "react-router";
 import { renderToReadableStream } from "react-dom/server";
 import { log } from "./server-lib/logging";
-
-const SENTRY_DSN: string | undefined = import.meta.env.VITE_SENTRY_DSN;
-if (SENTRY_DSN) {
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    tracesSampleRate: 0.0,
-  });
-}
-
-const ABORT_DELAY = 5000;
 
 export default async function handleRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
-  remixContext: EntryContext,
-  loadContext: AppLoadContext,
+  reactRouterContext: EntryContext,
 ) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), ABORT_DELAY);
 
   const globalCsp = [
     "default-src 'self'",
@@ -38,27 +24,17 @@ export default async function handleRequest(
   ];
 
   const body = await renderToReadableStream(
-    <RemixServer
-      context={remixContext}
-      url={request.url}
-      abortDelay={ABORT_DELAY}
-    />,
+    <ServerRouter context={reactRouterContext} url={request.url} />,
     {
       signal: controller.signal,
       onError(error: unknown) {
         if (!controller.signal.aborted) {
           log.exception(error, { msg: "streaming error" });
-          Sentry.captureException(error, {
-            extra: { url: request.url },
-          });
-          loadContext.cloudflare.ctx.waitUntil(Sentry.flush(2000));
         }
         responseStatusCode = 500;
       },
     },
   );
-
-  body.allReady.then(() => clearTimeout(timeoutId));
 
   responseHeaders.set("Content-Type", "text/html");
   responseHeaders.set("Content-Security-Policy", globalCsp.join("; "));
@@ -70,7 +46,7 @@ export default async function handleRequest(
 
 export function handleError(
   error: unknown,
-  { request, context }: LoaderFunctionArgs | ActionFunctionArgs,
+  { request }: LoaderFunctionArgs | ActionFunctionArgs,
 ) {
   if (
     !request.signal.aborted &&
@@ -82,9 +58,5 @@ export function handleError(
     )
   ) {
     log.exception(error, { msg: "server error" });
-    Sentry.captureException(error, {
-      extra: { url: request.url },
-    });
-    context.cloudflare.ctx.waitUntil(Sentry.flush(2000));
   }
 }

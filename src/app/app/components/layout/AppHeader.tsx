@@ -9,7 +9,7 @@ import { Button } from "@/components/Button";
 import { UserIcon } from "@heroicons/react/24/outline";
 import { DiscordIcon, GithubIcon } from "../icons";
 import { useSession } from "@/features/account";
-import { Form } from "@remix-run/react";
+import { Form } from "react-router";
 
 const HeaderMenu = () => {
   const session = useSession();

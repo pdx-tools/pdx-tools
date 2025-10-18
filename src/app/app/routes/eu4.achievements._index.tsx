@@ -2,10 +2,9 @@ import { WebPage } from "@/components/layout/WebPage";
 import { AchievementsPage } from "@/features/eu4/AchievementsPage";
 import { seo } from "@/lib/seo";
 import { loadAchievements } from "@/server-lib/game";
-import type { MetaFunction } from "@remix-run/cloudflare";
-import { useLoaderData } from "@remix-run/react";
+import { useLoaderData } from "react-router";
 
-export const meta: MetaFunction = () =>
+export const meta = () =>
   seo({
     title: "EU4 Achievements - PDX Tools",
     description: "List of supported EU4 achievements on PDX.Tools",

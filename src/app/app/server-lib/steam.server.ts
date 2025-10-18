@@ -1,9 +1,9 @@
-import type { AppLoadContext } from "@remix-run/cloudflare";
 import { ValidationError } from "./errors";
 import { fetchOk, fetchOkJson } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import { log } from "./logging";
 import { z } from "zod";
+import type { AppLoadContext } from "react-router";
 
 const SteamSchema = z.object({
   response: z.object({
