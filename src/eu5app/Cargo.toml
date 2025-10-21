@@ -1,0 +1,25 @@
+[package]
+name = "eu5app"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["zstd_rust"]
+zstd_c = ["pdx-zstd/zstd_c"]
+zstd_rust = ["pdx-zstd/zstd_rust"]
+
+[dependencies]
+anyhow = { workspace = true }
+bytemuck = { workspace = true, features = ["derive"] }
+eu5save = { workspace = true }
+image = { workspace = true }
+jomini =  { workspace = true }
+postcard = { version = "1.1.3", default-features = false, features = ["use-std"] }
+rawzip = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+pdx-map = { workspace = true, default-features = false }
+pdx-zstd = { workspace = true, default-features = false }
+
+[dev-dependencies]
+rstest = { workspace = true }

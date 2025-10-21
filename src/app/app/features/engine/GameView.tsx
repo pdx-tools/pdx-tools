@@ -6,6 +6,7 @@ import { useEngineActions, useSaveFileInput } from "./engineStore";
 import type { SaveGameInput } from "./engineStore";
 import classes from "./GameView.module.css";
 import type Eu4Ui from "@/features/eu4/Eu4Ui";
+import type Eu5Ui from "@/features/eu5/Eu5Ui";
 import type Ck3Ui from "@/features/ck3/Ck3Ui";
 import type Hoi4Ui from "@/features/hoi4/Hoi4Ui";
 import type ImperatorUi from "@/features/imperator/ImperatorUi";
@@ -25,6 +26,10 @@ function timeModule<T>(fn: () => Promise<T>, module: string): () => Promise<T> {
 
 const DynamicEu4: ComponentType<ComponentProps<typeof Eu4Ui>> = lazy(
   timeModule(() => import("@/features/eu4/Eu4Ui"), "eu4"),
+);
+
+const DynamicEu5: ComponentType<ComponentProps<typeof Eu5Ui>> = lazy(
+  timeModule(() => import("@/features/eu5/Eu5Ui"), "eu5"),
 );
 
 const DynamicCk3: ComponentType<ComponentProps<typeof Ck3Ui>> = lazy(
@@ -54,6 +59,15 @@ const gameRenderer = (savegame: SaveGameInput | null) => {
         component: () => (
           <Suspense fallback={null}>
             <DynamicEu4 save={savegame.data} />
+          </Suspense>
+        ),
+      } as const;
+    case "eu5":
+      return {
+        kind: "full-screen",
+        component: () => (
+          <Suspense fallback={null}>
+            <DynamicEu5 save={savegame.data} />
           </Suspense>
         ),
       } as const;

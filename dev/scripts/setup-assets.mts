@@ -185,7 +185,7 @@ async function setupAssets() {
   // Create empty token files for devs without them (touch equivalent)
   console.log('🔑 Creating token placeholders...');
   await mkdir(join(projectRoot, 'assets/tokens'), { recursive: true });
-  const games = ['eu4', 'ck3', 'hoi4', 'imperator', 'vic3'];
+  const games = ['eu4', 'eu5', 'ck3', 'hoi4', 'imperator', 'vic3'];
   for (const game of games) {
     const binFile = join(projectRoot, 'assets/tokens', `${game}.bin`);
     const txtFile = join(projectRoot, 'assets/tokens', `${game}.txt`);
@@ -424,4 +424,10 @@ export const dataUrls = (x: any): any => { throw new Error(msg); }
   await writeFile(outputFile, content);
 }
 
+async function setupAssetEu5() {
+  await mkdir(join(projectRoot, 'assets', 'game', 'eu5'), { recursive: true });
+  await touchFile(join(projectRoot, 'assets', 'game', 'eu5', 'eu5-1.0.zip'));
+}
+
 await setupAssets()
+await setupAssetEu5();

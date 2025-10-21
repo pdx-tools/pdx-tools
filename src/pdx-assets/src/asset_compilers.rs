@@ -55,3 +55,28 @@ impl GameAssetCompiler for Eu4AssetCompliler {
         Ok(CompilationOutput { game_version })
     }
 }
+
+pub struct Eu5AssetCompiler;
+
+impl GameAssetCompiler for Eu5AssetCompiler {
+    fn compile_assets<P: FileProvider, I: ImageProcessor>(
+        &self,
+        provider: &P,
+        imaging: &I,
+        out_dir: &Path,
+        options: &PackageOptions,
+    ) -> Result<CompilationOutput> {
+        // Extract game version (placeholder - implement version extraction)
+        let game_version = "1.0".to_string();
+
+        crate::eu5::compiler::compile_game_bundle(
+            provider,
+            imaging,
+            out_dir,
+            &game_version,
+            options,
+        )?;
+
+        Ok(CompilationOutput { game_version })
+    }
+}
