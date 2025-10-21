@@ -28,6 +28,9 @@ jobs:
     name: devcontainer / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
     env:
       CARGO_TERM_VERBOSE: true
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_TERM_COLOR: always
     steps:
     - name: Remove unwanted software
       run: |
@@ -115,6 +118,10 @@ jobs:
           - os: macos-15
             with_tokens: false # docker not supported on macos gh actions
     name: build / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
+    env:
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies (Linux)
