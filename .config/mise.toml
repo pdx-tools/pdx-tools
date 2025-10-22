@@ -235,10 +235,6 @@ run = "pnpm install --optimistic-repeat-install"
 sources = ["pnpm-lock.yaml"]
 hide = true
 
-[tasks.asset-pipeline]
-description = "Run the asset pipeline over a game bundle and output digested game files"
-run = "cargo run --release --package pdx --features compile_assets -- compile-assets"
-
 [tasks."assets:bundle"]
 description = "Create a game asset bundle"
 run = "cargo run --release --package pdx-assets -- bundle"
