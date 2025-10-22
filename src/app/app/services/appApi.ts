@@ -1,6 +1,6 @@
 import { fetchOk, fetchOkJson, sendJson } from "@/lib/fetch";
+import type { QueryClient } from "@tanstack/react-query";
 import {
-  QueryClient,
   useMutation,
   useQuery,
   useQueryClient,

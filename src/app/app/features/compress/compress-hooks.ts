@@ -1,8 +1,9 @@
 import { wrap, transfer, releaseProxy, proxy } from "comlink";
 import { useEffect, useMemo, useRef } from "react";
 import type { ProgressCb } from "./compress-worker";
+import type * as CompressWorkerModule from "./compress-worker";
 
-type CompressionWorker = typeof import("./compress-worker").obj;
+type CompressionWorker = typeof CompressWorkerModule.obj;
 export function createCompressionWorker() {
   const worker = new Worker(new URL("./compress-worker", import.meta.url), {
     type: "module",

@@ -1,8 +1,9 @@
 import { wrap, type Remote, transfer } from "comlink";
-import { createMapEngine } from "./workers/map/map-module";
+import type { createMapEngine } from "./workers/map/map-module";
+import type * as PdxMapWorkerModuleDefinition from "./workers/map/map-module";
 import "./styles.css";
 
-export type PdxMapWorkerModule = typeof import("./workers/map/map-module");
+export type PdxMapWorkerModule = typeof PdxMapWorkerModuleDefinition;
 export type PdxMapWorker = Remote<PdxMapWorkerModule>;
 export type MapEngine = Remote<Awaited<ReturnType<typeof createMapEngine>>>;
 

@@ -1,5 +1,6 @@
-import { GLResources, setupFramebufferTexture } from "./glResources";
-import { ProvinceFinder } from "./ProvinceFinder";
+import type { GLResources } from "./glResources";
+import { setupFramebufferTexture } from "./glResources";
+import type { ProvinceFinder } from "./ProvinceFinder";
 import type { TerrainOverlayResources } from "./types";
 
 export const IMG_HEIGHT = 2048;

@@ -7,7 +7,8 @@ import {
   EncodedPacket,
   type VideoCodec,
 } from "mediabunny";
-import { IMG_WIDTH, MapController, overlayDate } from "@pdx.tools/map";
+import type { MapController } from "@pdx.tools/map";
+import { IMG_WIDTH, overlayDate } from "@pdx.tools/map";
 import { type Eu4Worker, getEu4Worker } from "../../worker";
 import { type Eu4Store } from "../../store";
 import { log } from "@/lib/log";
