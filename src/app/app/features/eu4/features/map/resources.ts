@@ -1,5 +1,6 @@
 import { gameVersion, resources } from "@/lib/game_gen";
-import { glContextOptions, WebGLMap } from "@pdx.tools/map";
+import type { WebGLMap } from "@pdx.tools/map";
+import { glContextOptions } from "@pdx.tools/map";
 import type { MapOnlyControls } from "../../types/map";
 import { fetchOk } from "@/lib/fetch";
 import mapVertex from "@pdx.tools/map/map.vert?url";

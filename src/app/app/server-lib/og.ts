@@ -1,7 +1,7 @@
 import { fetchOk } from "@/lib/fetch";
 import { log } from "./logging";
 import { timeit } from "@/lib/timeit";
-import { pdxS3 } from "./s3";
+import type { pdxS3 } from "./s3";
 import type { AppLoadContext } from "@remix-run/server-runtime";
 import { pdxFns } from "./functions";
 

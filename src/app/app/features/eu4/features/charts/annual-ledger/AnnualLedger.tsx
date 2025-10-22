@@ -7,7 +7,7 @@ import {
 import { type LedgerDatum } from "@/features/eu4/types/models";
 import { createCsv } from "@/lib/csv";
 import { useCountryNameLookup } from "@/features/eu4/store";
-import { useLedgerData } from "./hooks";
+import type { useLedgerData } from "./hooks";
 import { Alert } from "@/components/Alert";
 import { isDarkMode } from "@/lib/dark";
 

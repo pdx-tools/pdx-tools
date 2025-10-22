@@ -1,4 +1,4 @@
-import { GLResources } from "./glResources";
+import type { GLResources } from "./glResources";
 
 export class MapShader {
   private constructor(

@@ -1,4 +1,5 @@
 import type { Remote } from "comlink";
+import type * as ImperatorWorkerModuleDefinition from "./module";
 
 export interface ImperatorMetadata {
   date: string;
@@ -6,5 +7,5 @@ export interface ImperatorMetadata {
   isMeltable: boolean;
 }
 
-export type ImperatorWorkerModule = typeof import("./module");
+export type ImperatorWorkerModule = typeof ImperatorWorkerModuleDefinition;
 export type ImperatorWorker = Remote<ImperatorWorkerModule>;

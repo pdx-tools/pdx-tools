@@ -1,9 +1,9 @@
 import { timeSync } from "@/lib/timeit";
 import type { AchievementsScore } from "../types/models";
 import { wasm } from "./common";
-import * as mod from "@/wasm/wasm_eu4";
+import type * as mod from "@/wasm/wasm_eu4";
 import { fetchOk } from "@/lib/fetch";
-import { type Eu4SaveInput } from "../store";
+import type { Eu4SaveInput } from "../store";
 import { logMs } from "@/lib/log";
 import { captureException } from "@/lib/captureException";
 

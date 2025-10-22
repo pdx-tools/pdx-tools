@@ -1,6 +1,6 @@
 import type { StaticResources, TerrainOverlayResources } from "./types";
-import { MapShader } from "./MapShader";
-import { XbrShader } from "./XbrShader";
+import type { MapShader } from "./MapShader";
+import type { XbrShader } from "./XbrShader";
 import {
   IMG_WIDTH,
   IMG_HEIGHT,
