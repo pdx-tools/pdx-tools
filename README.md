@@ -1,15 +1,24 @@
 <h1 align="center">
 <a href="https://pdx.tools">PDX Tools</a>
   <br/>
+  Explore the world you created
+  <br/>
   <a href="https://discord.gg/rCpNWQW"><img alt="Discord" src="https://img.shields.io/discord/712465396590182461?logo=discord&logoColor=white"></a> <a href="https://github.com/pdx-tools/pdx-tools/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/pdx-tools/pdx-tools/actions/workflows/ci.yml/badge.svg"></a> 
 <br/>
 <br/>
   <img src="src/app/app/components/landing/gallery-map.webp?raw=true">
 </h1>
 
-PDX Tools is a modern [EU4](https://en.wikipedia.org/wiki/Europa_Universalis_IV) save file analyzer that allow users to view maps, graphs, and data tables of their save all within the browser. If the user desires, they can upload the save and share it with the world, while also being elibigle to compete in achievement speedrun leaderboards.
+PDX.Tools is the workbench for [EU4](https://en.wikipedia.org/wiki/Europa_Universalis_IV) insights and storytelling. No installs, just drop a save file and watch your world unfold. Everything parses locally until you choose to share.
 
-PDX Tools has a modular structure and can be expanded to handle any game. Currently [CK3](https://en.wikipedia.org/wiki/Crusader_Kings_III), [HOI4](https://en.wikipedia.org/wiki/Hearts_of_Iron_IV), [Victoria 3](https://en.wikipedia.org/wiki/Victoria_3), and [Imperator](https://en.wikipedia.org/wiki/Imperator:_Rome) saves can also be analyzed, though functionality is limited to just melting (conversion of a binary save to plaintext).
+Ready to explore maps, timelapses, and charts?
+
+- See the hidden levers: Analyze institution development pushes, plan religion swaps, line up inheritances, and discover events that haven't fired yet so you can pivot before it's too late.
+- Stay in the flow: Surface the same stats you'd dig for in-game, only faster than launching the client.
+- Keep every era alive: Load saves on old patches alongside the latest version and compare them in one place.
+- Tell richer stories: With interactive maps, time-lapse videos, screenshots, new map-modes, and offline exports, AARs practically write themselves.
+- Share and compete: Upload saves and compete in the global achievement speedrun board that favors recent patches, keeping the leaderboard evergreen and fresh.
+- Extensible: Support already stretches beyond EU4 to [CK3](https://en.wikipedia.org/wiki/Crusader_Kings_III), [HOI4](https://en.wikipedia.org/wiki/Hearts_of_Iron_IV), [Victoria 3](https://en.wikipedia.org/wiki/Victoria_3), and [Imperator](https://en.wikipedia.org/wiki/Imperator:_Rome). Every adapter melts binary saves into human readable files, and are ripe for contributions!
 
 ## Contributor Guide
 
