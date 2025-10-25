@@ -3,8 +3,10 @@ import { check } from "@/lib/isPresent";
 import type { MapController } from "@pdx.tools/map";
 import { pdxApi } from "@/services/appApi";
 import { createContext, useContext, useMemo } from "react";
-import { type StoreApi, createStore, useStore } from "zustand";
-import { type MapPayload, mapModes } from "../types/map";
+import { createStore, useStore } from "zustand";
+import type { StoreApi } from "zustand";
+import { mapModes } from "../types/map";
+import type { MapPayload } from "../types/map";
 import type {
   CountryMatcher,
   AchievementsScore,

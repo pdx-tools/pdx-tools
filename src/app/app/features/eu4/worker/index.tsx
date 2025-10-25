@@ -2,7 +2,7 @@ import { wrap } from "comlink";
 export { useEu4Worker } from "./useEu4Worker";
 export { useAnalysisWorker } from "./useAnalysisWorker";
 export { type FileObservationFrequency } from "./init";
-import { type Eu4Worker, type Eu4WorkerModule } from "./types";
+import type { Eu4Worker, Eu4WorkerModule } from "./types";
 export * from "./types";
 
 function createWorker(): Eu4Worker {

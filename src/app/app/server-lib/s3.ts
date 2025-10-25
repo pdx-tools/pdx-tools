@@ -1,8 +1,9 @@
 import { AwsClient } from "aws4fetch";
 import { log } from "./logging";
-import { uploadContentType, type UploadType } from "./models";
+import { uploadContentType } from "./models";
+import type { UploadType } from "./models";
 import { timeit } from "@/lib/timeit";
-import { type AppLoadContext } from "@remix-run/cloudflare";
+import type { AppLoadContext } from "@remix-run/cloudflare";
 
 declare const tag: unique symbol;
 export type S3Key = unknown & {

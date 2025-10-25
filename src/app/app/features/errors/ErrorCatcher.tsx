@@ -1,4 +1,5 @@
-import React, { type ErrorInfo } from "react";
+import React from "react";
+import type { ErrorInfo } from "react";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { captureException } from "@/lib/captureException";
 import { Alert } from "@/components/Alert";

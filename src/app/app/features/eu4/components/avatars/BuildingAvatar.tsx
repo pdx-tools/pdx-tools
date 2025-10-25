@@ -1,6 +1,7 @@
-import { type GfxObj } from "@/features/eu4/types/models";
+import type { GfxObj } from "@/features/eu4/types/models";
 import { Tooltip } from "@/components/Tooltip";
-import { Sprite, type SpriteDimension, spriteDimension } from "../Sprite";
+import { Sprite, spriteDimension } from "../Sprite";
+import type { SpriteDimension } from "../Sprite";
 import globalSpriteData from "@/images/eu4/buildings/global.json";
 import westernSpriteData from "@/images/eu4/buildings/westerngfx.json";
 import globalSpriteSrc from "@/images/eu4/buildings/global.webp";

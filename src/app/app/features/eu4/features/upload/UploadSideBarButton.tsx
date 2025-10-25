@@ -1,7 +1,5 @@
-import {
-  type SideBarButtonProps,
-  SideBarButton,
-} from "@/features/eu4/components/SideBarButton";
+import { SideBarButton } from "@/features/eu4/components/SideBarButton";
+import type { SideBarButtonProps } from "@/features/eu4/components/SideBarButton";
 import { useFileUpload } from "./hooks";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
 import { Alert } from "@/components/Alert";

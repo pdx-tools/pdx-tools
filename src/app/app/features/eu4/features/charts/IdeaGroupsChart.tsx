@@ -1,10 +1,8 @@
 import { useCallback, useEffect } from "react";
-import { useAnalysisWorker, type Eu4Worker } from "@/features/eu4/worker";
-import {
-  Bar,
-  type BarConfig,
-  useVisualizationDispatch,
-} from "@/components/viz";
+import { useAnalysisWorker } from "@/features/eu4/worker";
+import type { Eu4Worker } from "@/features/eu4/worker";
+import { Bar, useVisualizationDispatch } from "@/components/viz";
+import type { BarConfig } from "@/components/viz";
 import { createCsv } from "@/lib/csv";
 import { useEu4Meta, useTagFilter } from "../../store";
 import { Alert } from "@/components/Alert";

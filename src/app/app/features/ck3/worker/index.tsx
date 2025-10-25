@@ -1,5 +1,5 @@
 import { wrap } from "comlink";
-import { type Ck3WorkerModule } from "./types";
+import type { Ck3WorkerModule } from "./types";
 export { type Ck3Worker } from "./types";
 
 function createWorker() {

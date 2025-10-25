@@ -1,9 +1,7 @@
 import { InfoDrawer } from "./InfoDrawer";
 import { SaveMode } from "../../components/save-mode";
-import {
-  type SideBarButtonProps,
-  SideBarButton,
-} from "../../components/SideBarButton";
+import { SideBarButton } from "../../components/SideBarButton";
+import type { SideBarButtonProps } from "../../components/SideBarButton";
 import { SideBarContainerProvider } from "../../components/SideBarContainer";
 import { DownloadButton } from "./DownloadButton";
 import { useEu4Meta, useServerSaveFile } from "../../store";

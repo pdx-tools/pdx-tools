@@ -1,10 +1,10 @@
-import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { MouseEvent } from "react";
 import { downloadData } from "@/lib/downloadData";
 import { ToggleRow } from "./ToggleRow";
 import { IMG_HEIGHT, IMG_WIDTH } from "@pdx.tools/map";
 import { mapTimelapseCursor, TimelapseEncoder } from "./TimelapseEncoder";
 import {
-  type Eu4Store,
   selectDate,
   useEu4Actions,
   useEu4Context,
@@ -21,6 +21,7 @@ import {
   useShowProvinceBorders,
   useTerrainOverlay,
 } from "../../store";
+import type { Eu4Store } from "../../store";
 import { IconButton } from "@/components/IconButton";
 import { Button } from "@/components/Button";
 import { Slider } from "@/components/Slider";

@@ -1,11 +1,12 @@
-import { type GameDifficulty, type Save, saves, users } from "./schema";
-import { type ParsedFile } from "../functions";
+import { saves, users } from "./schema";
+import type { GameDifficulty, Save } from "./schema";
+import type { ParsedFile } from "../functions";
 import { sql, eq, desc, and, isNotNull, inArray, asc } from "drizzle-orm";
 import { NotFoundError } from "../errors";
-import { type Achievement } from "@/wasm/wasm_app";
+import type { Achievement } from "@/wasm/wasm_app";
 import { eu4DaysToDate } from "../game";
-import { type DbConnection } from "./connection";
-import { type UserId } from "@/lib/auth";
+import type { DbConnection } from "./connection";
+import type { UserId } from "@/lib/auth";
 export {
   type User,
   type Save,

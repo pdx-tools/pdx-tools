@@ -5,12 +5,13 @@ import {
   BufferTarget,
   EncodedVideoPacketSource,
   EncodedPacket,
-  type VideoCodec,
 } from "mediabunny";
+import type { VideoCodec } from "mediabunny";
 import type { MapController } from "@pdx.tools/map";
 import { IMG_WIDTH, overlayDate } from "@pdx.tools/map";
-import { type Eu4Worker, getEu4Worker } from "../../worker";
-import { type Eu4Store } from "../../store";
+import { getEu4Worker } from "../../worker";
+import type { Eu4Worker } from "../../worker";
+import type { Eu4Store } from "../../store";
 import { log } from "@/lib/log";
 import { formatInt } from "@/lib/format";
 

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { type TableLosses, useCountryCasualtyData } from "./hooks";
+import { useCountryCasualtyData } from "./hooks";
+import type { TableLosses } from "./hooks";
 import { CountriesNavyCasualtiesWarTable } from "./CountriesNavyCasualtiesWarTable";
 import { Flag } from "@/features/eu4/components/avatars";
 import { useVisualizationDispatch } from "@/components/viz";

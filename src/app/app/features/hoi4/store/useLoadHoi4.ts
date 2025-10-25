@@ -1,4 +1,5 @@
-import { type Hoi4Store, createHoi4Store } from "./hoi4Store";
+import { createHoi4Store } from "./hoi4Store";
+import type { Hoi4Store } from "./hoi4Store";
 import { useEffect, useReducer } from "react";
 import { pdxAbortController } from "@/lib/abortController";
 import { timeit } from "@/lib/timeit";

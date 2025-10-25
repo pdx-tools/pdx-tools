@@ -1,5 +1,6 @@
 import React from "react";
-import { type RankedSave, RecordTable } from "./components/RecordTable";
+import { RecordTable } from "./components/RecordTable";
+import type { RankedSave } from "./components/RecordTable";
 import { AchievementAvatar } from "./components/avatars";
 import { Card } from "@/components/Card";
 import { formatFloat, formatInt } from "@/lib/format";

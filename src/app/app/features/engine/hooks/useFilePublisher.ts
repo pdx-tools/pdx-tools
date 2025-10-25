@@ -1,9 +1,6 @@
-import { type FileKind } from "@/hooks/useFileDrop";
-import {
-  extensionType,
-  type SaveGameInput,
-  useEngineActions,
-} from "../engineStore";
+import type { FileKind } from "@/hooks/useFileDrop";
+import { extensionType, useEngineActions } from "../engineStore";
+import type { SaveGameInput } from "../engineStore";
 
 type AnalyzeInput = FileKind;
 

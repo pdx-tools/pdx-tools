@@ -1,17 +1,18 @@
 import fs from "node:fs/promises";
 import { fetchOk, fetchOkJson, sendJsonAs } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
-import { table, type UserSaves } from "@/server-lib/db";
+import { table } from "@/server-lib/db";
+import type { UserSaves } from "@/server-lib/db";
 import { oneshotDb } from "@/server-lib/db/connection";
 import { beforeEach, expect, test } from "vitest";
-import { type SavePostResponse } from "@/server-lib/models";
+import type { SavePostResponse } from "@/server-lib/models";
 import { pdxFns } from "@/server-lib/functions";
 import { pdxS3 } from "@/server-lib/s3";
-import { type AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
-import { type NewestSaveResponse } from "@/routes/api.new";
-import { type PdxSession } from "@/server-lib/auth/session";
-import { type SaveResponse } from "@/routes/api.saves.$saveId";
-import { type NewKeyResponse } from "@/services/appApi";
+import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
+import type { NewestSaveResponse } from "@/routes/api.new";
+import type { PdxSession } from "@/server-lib/auth/session";
+import type { SaveResponse } from "@/routes/api.saves.$saveId";
+import type { NewKeyResponse } from "@/services/appApi";
 
 const dbConnection = check(
   process.env["WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB"],

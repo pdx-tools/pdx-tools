@@ -1,5 +1,5 @@
 import { wrap } from "comlink";
-import { type Vic3WorkerModule } from "./types";
+import type { Vic3WorkerModule } from "./types";
 export { type Vic3Worker } from "./types";
 
 function createWorker() {

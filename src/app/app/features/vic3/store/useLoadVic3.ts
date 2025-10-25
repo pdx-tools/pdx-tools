@@ -4,7 +4,8 @@ import { timeit } from "@/lib/timeit";
 import { getVic3Worker } from "../worker";
 import { useEffect, useReducer } from "react";
 import { pdxAbortController } from "@/lib/abortController";
-import { type Vic3Store, createVic3Store } from "./vic3Store";
+import { createVic3Store } from "./vic3Store";
+import type { Vic3Store } from "./vic3Store";
 import { captureException } from "@/lib/captureException";
 
 export type Vic3SaveInput =

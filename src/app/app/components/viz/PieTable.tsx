@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
-import { LegendColor, Pie, type PieConfig } from "@/components/viz";
+import { LegendColor, Pie } from "@/components/viz";
+import type { PieConfig } from "@/components/viz";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";

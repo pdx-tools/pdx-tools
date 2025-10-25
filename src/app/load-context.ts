@@ -1,4 +1,4 @@
-import { type PlatformProxy } from "wrangler";
+import type { PlatformProxy } from "wrangler";
 
 type GetLoadContextArgs = {
   request: Request;

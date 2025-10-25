@@ -1,4 +1,5 @@
-import { cva, cx, type VariantProps } from "class-variance-authority";
+import { cva, cx } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
 import React from "react";
 
 const cardVariants = cva(
