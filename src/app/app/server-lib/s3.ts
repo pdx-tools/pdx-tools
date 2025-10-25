@@ -3,7 +3,7 @@ import { log } from "./logging";
 import { uploadContentType } from "./models";
 import type { UploadType } from "./models";
 import { timeit } from "@/lib/timeit";
-import type { AppLoadContext } from "@remix-run/cloudflare";
+import type { AppLoadContext } from "react-router";
 
 declare const tag: unique symbol;
 export type S3Key = unknown & {

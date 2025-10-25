@@ -1,4 +1,3 @@
-import { captureRemixErrorBoundaryError } from "@sentry/remix";
 import {
   Links,
   Meta,
@@ -7,12 +6,12 @@ import {
   ScrollRestoration,
   useLoaderData,
   useRouteError,
-} from "@remix-run/react";
+} from "react-router";
 import type {
   LinksFunction,
   LoaderFunctionArgs,
   MetaFunction,
-} from "@remix-run/cloudflare";
+} from "react-router";
 import tailwind from "@/styles/tailwind.css?url";
 import appCss from "@/styles/styles.css?url";
 import { useState } from "react";
@@ -88,7 +87,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 export const ErrorBoundary = () => {
   const error = useRouteError();
-  captureRemixErrorBoundaryError(error);
+  captureException(error);
   return (
     <div className="flex h-full justify-center align-middle">
       <Alert variant="error" className="max-w-xl place-self-center px-6 py-4">

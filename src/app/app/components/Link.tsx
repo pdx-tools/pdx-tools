@@ -1,6 +1,6 @@
 import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
-import { Link as LinkPrimitive } from "@remix-run/react";
+import { Link as LinkPrimitive } from "react-router";
 import React from "react";
 import type { ComponentPropsWithoutRef } from "react";
 

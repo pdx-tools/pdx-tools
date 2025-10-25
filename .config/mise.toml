@@ -129,9 +129,19 @@ wait_for = ["build:wasm-bindgen wasm_vic3"]
 run = ["{{mise_bin}} wasm-opt wasm_vic3"]
 hide = true
 
-[tasks."dev:app:setup:types"]
-description = "Generate TypeScript types from Rust"
+[tasks."dev:app:setup:types:cargo"]
+description = "Generate TypeScript types"
 run = "cargo run -p applib --bin types"
+hide = true
+
+[tasks."dev:app:setup:types:js"]
+depends = ["pnpm-install"]
+description = "Generate TypeScript types"
+dir = "./src/app"
+run = [
+    "pnpm exec wrangler types",
+    "pnpm exec react-router typegen",
+]
 hide = true
 
 [tasks."dev:app:setup:assets"]
@@ -142,7 +152,7 @@ hide = true
 description = "Run pdx.tools frontend development"
 depends = ["pnpm-install", "dev:app:setup:*", "tokenize", "build:wasm"]
 dir = "./src/app"
-env.WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB = "postgres://app_user:mercantilismbaby2@localhost:5432/postgres"
+env.CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB = "postgres://app_user:mercantilismbaby2@localhost:5432/postgres"
 run = ["pnpm run dev"]
 
 [tasks."dev:map"]
@@ -178,6 +188,7 @@ run = [
 depends = ["pnpm-install", "dev:app:setup:*", "build:wasm"]
 dir = "src/app"
 env.NODE_ENV = "development"
+env.CLOUDFLARE_ENV = "test"
 run = "pnpm build"
 hide = true
 
@@ -190,8 +201,8 @@ depends = [
     "start:services:test -d"
 ]
 dir = "src/app"
-env.WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB = "postgres://app_user:mercantilismbaby@localhost:5433/postgres"
-run = ['pnpm exec concurrently --kill-others --success command-2 --passthrough-arguments "mise run serve:api:test" "pnpm exec wrangler dev --env test --port 3000" "sleep 2 && pnpm test -- run {@}"']
+env.CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB = "postgres://app_user:mercantilismbaby@localhost:5433/postgres"
+run = ['pnpm exec concurrently --kill-others --success command-2 --passthrough-arguments "mise run serve:api:test" "pnpm exec wrangler dev --port 3000" "sleep 2 && pnpm test -- run {@}"']
 
 [tasks."env:dev"]
 description = "Run backend services (eg: postgres, s3) configured for development"
@@ -227,7 +238,7 @@ run = "cargo run --package pdx-tokenize-cli -- ./assets/tokens"
 wait_for = ["test:app:build", "build:app"]
 hide = true
 dir = "src/app"
-run = "cp app/wasm/wasm_app_bg.wasm build/server/assets/."
+run = "mkdir -p build/server/assets && cp app/wasm/wasm_app_bg.wasm build/server/assets/."
 run_windows = "xcopy app\\wasm\\wasm_app_bg.wasm build\\server\\assets\\. /I /Y"
 
 [tasks.pnpm-install]

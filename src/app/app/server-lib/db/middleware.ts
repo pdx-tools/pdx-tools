@@ -1,4 +1,4 @@
-import type { AppLoadContext } from "@remix-run/cloudflare";
+import type { AppLoadContext } from "react-router";
 import { usingDb } from "./connection";
 import type { DbConnection } from "./connection";
 
