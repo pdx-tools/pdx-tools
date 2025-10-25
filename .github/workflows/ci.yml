@@ -166,7 +166,15 @@ jobs:
         run: cd assets/tokens && ln -s tokens/* .
 
       - uses: jdx/mise-action@v2
+        with:
+          cache: false
+
       - run: rustup target add wasm32-unknown-unknown
+
+      # Trial out rust caching with the slowest run:
+      - name: Cache Rust dependencies
+        if: matrix.os == 'windows-latest' && matrix.with_tokens
+        uses: Swatinem/rust-cache@v2
 
       - name: Get pnpm store directory
         shell: bash
