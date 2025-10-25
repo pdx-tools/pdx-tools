@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { pdxApi } from "@/services/appApi";
-import { Button, type ButtonProps } from "@/components/Button";
+import { Button } from "@/components/Button";
+import type { ButtonProps } from "@/components/Button";
 import { Dialog } from "@/components/Dialog";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { toast } from "sonner";

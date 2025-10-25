@@ -1,23 +1,26 @@
-import React, { type ComponentProps, useId, useMemo, useState } from "react";
+import React, { useId, useMemo, useState } from "react";
+import type { ComponentProps } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { Table } from "./Table";
 import {
-  type Column,
-  type ColumnDef,
-  type ColumnFiltersState,
-  type SortingState,
-  type TableOptions,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-  type ColumnOrderState,
-  type AccessorKeyColumnDefBase,
-  type Cell,
-  type PaginationState,
+} from "@tanstack/react-table";
+import type {
+  Column,
+  ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  TableOptions,
+  ColumnOrderState,
+  AccessorKeyColumnDefBase,
+  Cell,
+  PaginationState,
 } from "@tanstack/react-table";
 import { Button } from "./Button";
 import { cx } from "class-variance-authority";

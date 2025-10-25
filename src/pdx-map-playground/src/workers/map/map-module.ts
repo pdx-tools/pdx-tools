@@ -1,8 +1,5 @@
-import init, {
-  PdxCanvasSurface,
-  PdxMapRenderer,
-  type CanvasDisplay,
-} from "../wasm/wasm_pdx_map";
+import init, { PdxCanvasSurface, PdxMapRenderer } from "../wasm/wasm_pdx_map";
+import type { CanvasDisplay } from "../wasm/wasm_pdx_map";
 import wasmPath from "../wasm/wasm_pdx_map_bg.wasm?url";
 import { proxy } from "comlink";
 

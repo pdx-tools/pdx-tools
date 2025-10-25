@@ -4,13 +4,10 @@ import { fetchOk } from "@/lib/fetch";
 import { log, logMs } from "@/lib/log";
 import { emitEvent } from "@/lib/events";
 import { timeit } from "@/lib/timeit";
-import {
-  type MapWorker,
-  MapController,
-  createMapWorker,
-  type InitToken,
-} from "@pdx.tools/map";
-import { type Dispatch, useRef, useEffect, useReducer } from "react";
+import { MapController, createMapWorker } from "@pdx.tools/map";
+import type { MapWorker, InitToken } from "@pdx.tools/map";
+import { useRef, useEffect, useReducer } from "react";
+import type { Dispatch } from "react";
 import {
   shaderUrls,
   fetchProvinceUniqueIndex,
@@ -18,11 +15,11 @@ import {
 } from "../features/map/resources";
 import { getEu4Worker } from "../worker";
 import {
-  type Eu4Store,
   initialEu4CountryFilter,
   createEu4Store,
   loadSettings,
 } from "./eu4Store";
+import type { Eu4Store } from "./eu4Store";
 import { dataUrls, gameVersion } from "@/lib/game_gen";
 import { pdxAbortController } from "@/lib/abortController";
 import { downloadData } from "@/lib/downloadData";

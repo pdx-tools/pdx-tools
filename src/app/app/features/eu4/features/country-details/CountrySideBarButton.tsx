@@ -1,8 +1,6 @@
 import { useCallback, useState } from "react";
-import {
-  SideBarButton,
-  type SideBarButtonProps,
-} from "@/features/eu4/components/SideBarButton";
+import { SideBarButton } from "@/features/eu4/components/SideBarButton";
+import type { SideBarButtonProps } from "@/features/eu4/components/SideBarButton";
 import { VisualizationProvider } from "@/components/viz/visualization-context";
 import {
   SideBarContainerProvider,

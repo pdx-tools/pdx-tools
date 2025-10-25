@@ -1,5 +1,6 @@
 import React from "react";
-import { cva, type VariantProps, cx } from "class-variance-authority";
+import { cva, cx } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 
 const alert = cva("relative w-full border-2 border-solid flex", {

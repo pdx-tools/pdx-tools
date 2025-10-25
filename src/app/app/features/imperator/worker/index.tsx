@@ -1,5 +1,5 @@
 import { wrap } from "comlink";
-import { type ImperatorWorkerModule } from "./types";
+import type { ImperatorWorkerModule } from "./types";
 export { type ImperatorWorker } from "./types";
 
 function createWorker() {

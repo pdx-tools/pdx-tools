@@ -1,8 +1,6 @@
 import { useState } from "react";
-import {
-  SideBarButton,
-  type SideBarButtonProps,
-} from "../../components/SideBarButton";
+import { SideBarButton } from "../../components/SideBarButton";
+import type { SideBarButtonProps } from "../../components/SideBarButton";
 import { VisualizationProvider } from "@/components/viz";
 import {
   SideBarContainerProvider,

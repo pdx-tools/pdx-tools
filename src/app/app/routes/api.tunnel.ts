@@ -1,4 +1,4 @@
-import { type ActionFunctionArgs } from "@remix-run/cloudflare";
+import type { ActionFunctionArgs } from "@remix-run/cloudflare";
 
 export async function action({ request, context }: ActionFunctionArgs) {
   const body = await request.text();

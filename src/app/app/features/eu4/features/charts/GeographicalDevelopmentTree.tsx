@@ -1,9 +1,6 @@
 import { useCallback, useEffect } from "react";
-import {
-  Treemap,
-  type TreemapConfig,
-  useVisualizationDispatch,
-} from "@/components/viz";
+import { Treemap, useVisualizationDispatch } from "@/components/viz";
+import type { TreemapConfig } from "@/components/viz";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { formatInt } from "@/lib/format";
 import { createCsv } from "@/lib/csv";

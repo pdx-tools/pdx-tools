@@ -1,6 +1,7 @@
 import React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
-import { cva, cx, type VariantProps } from "class-variance-authority";
+import { cva, cx } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
 import { Button } from "./Button";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 

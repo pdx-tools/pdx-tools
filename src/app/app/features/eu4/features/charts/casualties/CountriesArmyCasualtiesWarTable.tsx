@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import type { TableLosses } from "./hooks";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { formatFloat, formatInt } from "@/lib/format";
-import { type SingleCountryWarCasualties } from "@/features/eu4/worker/module";
+import type { SingleCountryWarCasualties } from "@/features/eu4/worker/module";
 import { Tooltip } from "@/components/Tooltip";
 import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";

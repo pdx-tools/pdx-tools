@@ -1,15 +1,12 @@
 import { useCallback, useEffect } from "react";
-import {
-  Treemap,
-  type TreemapConfig,
-  useVisualizationDispatch,
-} from "@/components/viz";
+import { Treemap, useVisualizationDispatch } from "@/components/viz";
+import type { TreemapConfig } from "@/components/viz";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { createCsv } from "@/lib/csv";
 import { useTagFilter } from "../../store";
-import {
-  type OwnedDevelopmentStates,
-  type ProvinceDevelopment,
+import type {
+  OwnedDevelopmentStates,
+  ProvinceDevelopment,
 } from "../../types/models";
 import { Flag } from "../../components/avatars";
 import { formatInt } from "@/lib/format";

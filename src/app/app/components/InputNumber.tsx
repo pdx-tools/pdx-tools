@@ -1,9 +1,5 @@
-import React, {
-  type ComponentPropsWithoutRef,
-  type ElementRef,
-  forwardRef,
-  useState,
-} from "react";
+import React, { forwardRef, useState } from "react";
+import type { ComponentPropsWithoutRef, ElementRef } from "react";
 import { Input } from "@/components/Input";
 import { keyboardTrigger } from "@/lib/keyboardTrigger";
 

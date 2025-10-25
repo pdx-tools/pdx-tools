@@ -1,10 +1,7 @@
 import React, { useEffect } from "react";
-import {
-  Line,
-  type LineConfig,
-  useVisualizationDispatch,
-} from "@/components/viz";
-import { type LedgerDatum } from "@/features/eu4/types/models";
+import { Line, useVisualizationDispatch } from "@/components/viz";
+import type { LineConfig } from "@/components/viz";
+import type { LedgerDatum } from "@/features/eu4/types/models";
 import { createCsv } from "@/lib/csv";
 import { useCountryNameLookup } from "@/features/eu4/store";
 import type { useLedgerData } from "./hooks";

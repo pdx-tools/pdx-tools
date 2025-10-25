@@ -1,4 +1,5 @@
-import React, { type ComponentType, lazy, Suspense, useMemo } from "react";
+import React, { lazy, Suspense, useMemo } from "react";
+import type { ComponentType } from "react";
 import type { Vic3GraphData } from "./worker/types";
 import { formatFloat } from "@/lib/format";
 import type { DualAxesConfig } from "@ant-design/plots";

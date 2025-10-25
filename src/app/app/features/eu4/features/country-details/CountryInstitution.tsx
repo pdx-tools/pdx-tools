@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
-import { type CountryDetails } from "../../types/models";
-import { type Eu4Worker, useEu4Worker } from "../../worker";
+import type { CountryDetails } from "../../types/models";
+import { useEu4Worker } from "../../worker";
+import type { Eu4Worker } from "../../worker";
 import { Alert } from "@/components/Alert";
 import { formatFloat, formatInt } from "@/lib/format";
-import { type InstitutionCost } from "@/wasm/wasm_eu4";
+import type { InstitutionCost } from "@/wasm/wasm_eu4";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";

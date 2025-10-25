@@ -8,10 +8,10 @@ import {
   useLoaderData,
   useRouteError,
 } from "@remix-run/react";
-import {
-  type LinksFunction,
-  type LoaderFunctionArgs,
-  type MetaFunction,
+import type {
+  LinksFunction,
+  LoaderFunctionArgs,
+  MetaFunction,
 } from "@remix-run/cloudflare";
 import tailwind from "@/styles/tailwind.css?url";
 import appCss from "@/styles/styles.css?url";

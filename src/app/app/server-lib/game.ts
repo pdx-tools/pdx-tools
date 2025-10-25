@@ -3,8 +3,8 @@ import init, {
   achievements,
   eu4_days_to_date,
   latest_eu4_minor_patch,
-  type Achievement,
 } from "@/wasm/wasm_app";
+import type { Achievement } from "@/wasm/wasm_app";
 
 // detect if on cloudflare to import the Wasm.Module directly
 if (typeof WebSocketPair !== "undefined") {

@@ -1,7 +1,7 @@
-import {
-  type BaseImageResourceUrls,
-  type ShaderSourceUrls,
-  type TerrainOverlayResourcesUrls,
+import type {
+  BaseImageResourceUrls,
+  ShaderSourceUrls,
+  TerrainOverlayResourcesUrls,
 } from "./types";
 
 export async function fetchOk(...args: Parameters<typeof fetch>) {

@@ -1,19 +1,9 @@
-import {
-  type ComponentProps,
-  type ComponentType,
-  lazy,
-  Suspense,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
+import type { ComponentProps, ComponentType } from "react";
 import { WebPage } from "@/components/layout";
 import { PageDropOverlay } from "./components/PageDropOverlay";
-import {
-  type SaveGameInput,
-  useEngineActions,
-  useSaveFileInput,
-} from "./engineStore";
+import { useEngineActions, useSaveFileInput } from "./engineStore";
+import type { SaveGameInput } from "./engineStore";
 import classes from "./GameView.module.css";
 import type Eu4Ui from "@/features/eu4/Eu4Ui";
 import type Ck3Ui from "@/features/ck3/Ck3Ui";

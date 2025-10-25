@@ -1,6 +1,7 @@
 import { wrap, transfer } from "comlink";
 import { MapController } from "./src/MapController";
-import { createMapWorker, type MapWorker } from "./src";
+import { createMapWorker } from "./src";
+import type { MapWorker } from "./src";
 import mapVertex from "./assets/shaders/map.vert?url";
 import mapFragment from "./assets/shaders/map.frag?url";
 import xbrVertex from "./assets/shaders/xbr.vert?url";

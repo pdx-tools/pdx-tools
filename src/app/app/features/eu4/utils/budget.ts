@@ -2,11 +2,11 @@ import {
   filterToRecurringExpenses,
   filterToRecurringIncome,
 } from "../features/country-details/data";
-import {
-  type CountryExpenses,
-  type CountryIncome,
-  type LocalizedCountryExpense,
-  type LocalizedCountryIncome,
+import type {
+  CountryExpenses,
+  CountryIncome,
+  LocalizedCountryExpense,
+  LocalizedCountryIncome,
 } from "../types/models";
 
 export const reduceToTableLedger = (

@@ -8,12 +8,12 @@ import { MeltButton } from "@/components/MeltButton";
 import { Alert } from "@/components/Alert";
 import { VisualizationProvider } from "@/components/viz";
 import {
-  type Vic3SaveInput,
   Vic3StoreProvider,
   useLoadVic3,
   useSaveFilename,
   useVic3Meta,
 } from "./store";
+import type { Vic3SaveInput } from "./store";
 import { useVic3Worker } from "./worker/useVic3Worker";
 import { ExportDataButton } from "./ExportDataButton";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
