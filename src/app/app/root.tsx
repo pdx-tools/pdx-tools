@@ -7,10 +7,10 @@ import {
   useLoaderData,
   useRouteError,
 } from "react-router";
-import {
-  type LinksFunction,
-  type LoaderFunctionArgs,
-  type MetaFunction,
+import type {
+  LinksFunction,
+  LoaderFunctionArgs,
+  MetaFunction,
 } from "react-router";
 import tailwind from "@/styles/tailwind.css?url";
 import appCss from "@/styles/styles.css?url";

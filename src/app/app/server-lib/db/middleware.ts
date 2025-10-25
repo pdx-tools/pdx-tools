@@ -1,5 +1,6 @@
 import type { AppLoadContext } from "react-router";
-import { type DbConnection, usingDb } from "./connection";
+import { usingDb } from "./connection";
+import type { DbConnection } from "./connection";
 
 export type DbRoute = { db: DbConnection };
 export function withDb<

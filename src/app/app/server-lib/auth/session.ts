@@ -1,5 +1,6 @@
 import { check } from "@/lib/isPresent";
-import { createCookieSessionStorage, type AppLoadContext } from "react-router";
+import { createCookieSessionStorage } from "react-router";
+import type { AppLoadContext } from "react-router";
 import { z } from "zod";
 import { parseBasicAuth } from "./basic";
 import { oneshotDb } from "../db/connection";
