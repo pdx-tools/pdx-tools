@@ -7,12 +7,9 @@ import { NotFoundError, ValidationError } from "@/server-lib/errors";
 import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import type {
-  ActionFunctionArgs,
-  LoaderFunctionArgs,
-} from "@remix-run/cloudflare";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import type { Route } from "./+types/api.saves.$saveId";
 
 const SaveParam = z.object({
   saveId: z.string(),
@@ -50,7 +47,7 @@ async function getSave(db: DbConnection, params: { saveId: string }) {
 }
 
 export const loader = withCore(
-  withDb(async ({ params: rawParams }: LoaderFunctionArgs, { db }) => {
+  withDb(async ({ params: rawParams }: Route.LoaderArgs, { db }) => {
     const params = SaveParam.parse(rawParams);
     return Response.json(await getSave(db, params));
   }),
@@ -59,7 +56,7 @@ export const loader = withCore(
 export const action = withCore(
   withDb(
     async (
-      { request, params: rawParams, context }: ActionFunctionArgs,
+      { request, params: rawParams, context }: Route.ActionArgs,
       { db },
     ) => {
       const params = SaveParam.parse(rawParams);

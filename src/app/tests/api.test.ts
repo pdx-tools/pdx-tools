@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import { fetchOk, fetchOkJson, sendJsonAs } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
-import { table } from "@/server-lib/db";
+import { saves, users } from "@/server-lib/db/schema";
 import type { UserSaves } from "@/server-lib/db";
 import { oneshotDb } from "@/server-lib/db/connection";
 import { beforeEach, expect, test } from "vitest";
@@ -14,14 +14,13 @@ import type { PdxSession } from "@/server-lib/auth/session";
 import type { SaveResponse } from "@/routes/api.saves.$saveId";
 import type { NewKeyResponse } from "@/services/appApi";
 
-const dbConnection = check(
-  process.env["WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB"],
-);
+const dbConnection =
+  "postgres://app_user:mercantilismbaby@localhost:5433/postgres";
 
 beforeEach(async () => {
   await oneshotDb(dbConnection, async (db) => {
-    await db.delete(table.saves);
-    await db.delete(table.users);
+    await db.delete(saves);
+    await db.delete(users);
   });
 });
 

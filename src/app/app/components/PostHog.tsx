@@ -6,7 +6,7 @@ import {
 } from "@/lib/compatibility";
 import { emitEvent } from "@/lib/events";
 import { PostHogProvider } from "posthog-js/react";
-import { useLocation } from "@remix-run/react";
+import { useLocation } from "react-router";
 
 export function PostHog() {
   const location = useLocation();

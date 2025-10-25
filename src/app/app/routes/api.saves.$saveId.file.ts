@@ -1,10 +1,10 @@
 import { log } from "@/server-lib/logging";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { z } from "zod";
+import type { Route } from "./+types/api.saves.$saveId.file";
 
 const saveSchema = z.object({ saveId: z.string() });
-export async function loader({ request, params, context }: LoaderFunctionArgs) {
+export async function loader({ request, params, context }: Route.LoaderArgs) {
   const save = saveSchema.parse(params);
   const s3 = pdxS3(pdxCloudflareS3({ context }));
 
@@ -14,10 +14,12 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const cacheKey = new Request(url.toString(), request);
 
-  const cache =
-    "default" in context.cloudflare.caches
-      ? context.cloudflare.caches.default
-      : await context.cloudflare.caches.open("pdx-cache");
+  let cache: Cache;
+  if ("default" in context.cloudflare.caches) {
+    cache = context.cloudflare.caches.default as Cache;
+  } else {
+    cache = await context.cloudflare.caches.open("pdx-cache");
+  }
 
   let response = await cache.match(cacheKey);
   if (response) {

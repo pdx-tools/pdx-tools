@@ -1,4 +1,4 @@
-import type { ActionFunction, LoaderFunction } from "@remix-run/cloudflare";
+import type { Route } from "./+types/ph.$";
 
 const API_HOST = "eu.i.posthog.com";
 const ASSET_HOST = "eu-assets.i.posthog.com";
@@ -19,19 +19,20 @@ const posthogProxy = async (request: Request) => {
   const headers = new Headers(request.headers);
   headers.set("host", hostname);
 
-  return fetch(newUrl, {
+  const init: RequestInit & { duplex?: "half" } = {
     method: request.method,
     headers,
-
     // Disable lint using a body in GET requests as this is from the PostHog docs.
     // oxlint-disable-next-line no-invalid-fetch-options
-    body: request.body,
-    duplex: "half",
-  });
+    body: request.body as BodyInit | null,
+  };
+  init.duplex = "half";
+
+  return fetch(newUrl, init);
 };
 
-export const loader: LoaderFunction = async ({ request }) =>
+export const loader = async ({ request }: Route.LoaderArgs) =>
   posthogProxy(request);
 
-export const action: ActionFunction = async ({ request }) =>
+export const action = async ({ request }: Route.ActionArgs) =>
   posthogProxy(request);

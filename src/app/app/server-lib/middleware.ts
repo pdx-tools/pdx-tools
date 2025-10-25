@@ -2,7 +2,7 @@ import { NotFoundError, ValidationError } from "./errors";
 import { log } from "./logging";
 import { ZodError } from "zod";
 import { flushEvents } from "./posthog";
-import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
+import type { LoaderFunctionArgs } from "react-router";
 import { AuthorizationError } from "@/lib/auth";
 
 export function withCore<

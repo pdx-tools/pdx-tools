@@ -1,6 +1,6 @@
 import { WebPage } from "@/components/layout";
 import { seo } from "@/lib/seo";
-import type { MetaFunction } from "@remix-run/cloudflare";
+import type { MetaFunction } from "react-router";
 
 export const meta: MetaFunction = () =>
   seo({

@@ -1,6 +1,6 @@
 import { check } from "@/lib/isPresent";
-import { createCookieSessionStorage } from "@remix-run/cloudflare";
-import type { AppLoadContext } from "@remix-run/cloudflare";
+import { createCookieSessionStorage } from "react-router";
+import type { AppLoadContext } from "react-router";
 import { z } from "zod";
 import { parseBasicAuth } from "./basic";
 import { oneshotDb } from "../db/connection";
@@ -20,7 +20,9 @@ export const pdxSession = ({
   const storage = createCookieSessionStorage({
     cookie: {
       name: "sid",
-      secrets: [check(context.cloudflare.env.SESSION_SECRET)],
+      secrets: [
+        check(context.cloudflare.env.SESSION_SECRET, "missing session secret"),
+      ],
       sameSite: "strict",
       httpOnly: true,
       secure: true,

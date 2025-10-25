@@ -1,21 +1,31 @@
 {
   "extends": "../../dev/tsconfig.base.json",
   "compilerOptions": {
+    "rootDirs": [".", "./.react-router/types"],
     "paths": {
       "@/images/eu4/*": ["../../assets/game/eu4/common/images/*"],
       "@/*": ["./app/*"]
     },
     "types": [
-      "@remix-run/cloudflare",
       "vite/client",
-      "@types/wicg-file-system-access"
+      "@types/wicg-file-system-access",
+      "./worker-configuration.d.ts"
     ],
+    "moduleResolution": "bundler",
 
     "jsx": "react-jsx",
 
     /* If your code runs in the DOM: */
     "lib": ["es2022", "dom", "dom.iterable"]
   },
+  "include": [
+    ".react-router/types/**/*",
+    "worker-configuration.d.ts",
+    "env.d.ts",
+    "app/**/*",
+    "tests/**/*",
+    "server.ts",
+  ],
   "exclude": [
     "node_modules",
     "**/node_modules",

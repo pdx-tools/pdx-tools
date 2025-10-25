@@ -1,9 +1,8 @@
 import { WebPage } from "@/components/layout";
 import { SkanderbegAlert } from "@/features/eu4/components/SkanderbegAlert";
 import { seo } from "@/lib/seo";
-import type { MetaFunction } from "@remix-run/cloudflare";
 
-export const meta: MetaFunction = () =>
+export const meta = () =>
   seo({
     title: `Skanderbeg | PDX Tools`,
     description: `Analyze EU4 save file that have been uploaded to Skanderbeg`,
