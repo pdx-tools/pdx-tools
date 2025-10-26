@@ -38,7 +38,7 @@ export const melt = () => wasm.melt();
 let provinceIdToColorIndex = new Uint16Array();
 
 export function eu4SetProvinceIdToColorIndex(
-  _provinceIdToColorIndex: Uint16Array,
+  _provinceIdToColorIndex: Uint16Array<ArrayBuffer>,
 ) {
   provinceIdToColorIndex = _provinceIdToColorIndex;
 }
@@ -48,13 +48,14 @@ export function eu4GetProvinceIdToColorIndex() {
 }
 
 export type MapColors = {
-  primary: Uint8Array;
-  secondary: Uint8Array;
-  country?: Uint8Array;
+  primary: Uint8Array<ArrayBuffer>;
+  secondary: Uint8Array<ArrayBuffer>;
+  country?: Uint8Array<ArrayBuffer>;
 };
 
 export function eu4MapColors(payload: MapPayload): MapColors {
-  const arr = wasm.save.map_colors(payload);
+  // Wasm-bindgen does not return SharedArrayBuffers so this cast is safe
+  const arr = wasm.save.map_colors(payload) as Uint8Array<ArrayBuffer>;
   if (payload.kind == "political") {
     const primary = arr.subarray(0, arr.length / 2);
     const secondary = arr.subarray(arr.length / 2);

@@ -83,13 +83,15 @@ export function createWasmGame<
       }
     }
 
-    async melt() {
+    async melt(): Promise<Uint8Array<ArrayBuffer>> {
       const data = await this.viewData();
-      const melt = this.module.melt(data);
+
+      // we know that wasm-bindgen does not return shared array buffers.
+      const melt = this.module.melt(data) as Uint8Array<ArrayBuffer>;
       return transfer(melt, [melt.buffer]);
     }
 
-    stash(data: Uint8Array, stashOp: StashOp) {
+    stash(data: Uint8Array<ArrayBuffer>, stashOp: StashOp) {
       bytes = data;
       stashed = stashOp;
     }
