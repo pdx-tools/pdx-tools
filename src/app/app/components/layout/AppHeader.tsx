@@ -10,6 +10,10 @@ import { UserIcon } from "@heroicons/react/24/outline";
 import { DiscordIcon, GithubIcon } from "../icons";
 import { useSession } from "@/features/account";
 import { Form } from "react-router";
+import { WhatsNewButton } from "@/features/whats-new/WhatsNewButton";
+import { WhatsNewDrawer } from "@/features/whats-new/WhatsNewDrawer";
+import { WhatsNewBanner } from "@/features/whats-new/WhatsNewBanner";
+import { useWhatsNew } from "@/features/whats-new/useWhatsNew";
 
 const HeaderMenu = () => {
   const session = useSession();
@@ -40,7 +44,11 @@ const HeaderMenu = () => {
               About
             </NavigationMenu.Trigger>
             <NavigationMenu.Content className="bg-slate-900 p-4">
-              <NavigationMenu.Link asChild variant="button">
+              <NavigationMenu.Link
+                asChild
+                variant="button"
+                className="lg:hidden"
+              >
                 <Link variant="ghost" href="/changelog">
                   Changelog
                 </Link>
@@ -87,6 +95,9 @@ const HeaderMenu = () => {
       </NavigationMenu>
 
       <div className="flex grow items-center justify-end gap-6 self-center text-end">
+        <div className="hidden lg:block">
+          <WhatsNewMenuItem />
+        </div>
         <Link
           href="https://github.com/pdx-tools/pdx-tools"
           className="hidden opacity-75 hover:opacity-100 focus-visible:opacity-100 lg:block"
@@ -108,7 +119,7 @@ const HeaderMenu = () => {
         ) : (
           <NavigationMenu>
             <NavigationMenu.List>
-              <NavigationMenu.Item className="mr-16 xl:mr-0">
+              <NavigationMenu.Item className="mr-4 xl:mr-0">
                 <NavigationMenu.Trigger asChild>
                   <Button shape="circle" style={{ backgroundColor: "white" }}>
                     <UserIcon className="h-4 w-4 text-black" />
@@ -153,6 +164,7 @@ export const CurrentAnnouncement: (() => React.ReactElement) | undefined =
 
 export const AppHeader = () => {
   const { resetSaveAnalysis } = useEngineActions();
+
   return (
     <div className="flex flex-col">
       {CurrentAnnouncement && (
@@ -160,6 +172,7 @@ export const AppHeader = () => {
           <CurrentAnnouncement />
         </AnnouncementBar>
       )}
+      <WhatsNewBanner />
 
       <div className="h-16 bg-slate-900 px-4">
         <div className="mx-auto flex h-full w-full max-w-screen-xl items-center">
@@ -179,4 +192,20 @@ export const AppHeader = () => {
       </div>
     </div>
   );
+};
+
+const WhatsNewMenuItem = () => {
+  const { hasUnread } = useWhatsNew();
+
+  // If we have unread then we can show the drawer, otherwise
+  // we'll just link out to the changelog page.
+  if (hasUnread) {
+    return (
+      <WhatsNewDrawer>
+        <WhatsNewButton />
+      </WhatsNewDrawer>
+    );
+  } else {
+    return <WhatsNewButton isLink />;
+  }
 };
