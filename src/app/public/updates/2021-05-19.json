@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "add \"% from Attrition\" column in Country Army Casualties visualization"
+    ],
+    "fixes": [
+      "numbers in melted output better matches plaintext output",
+      "fixed some ids being melted as dates instead of numbers",
+      "expand visualization navigation links so they fix on page"
+    ]
+  }
+}

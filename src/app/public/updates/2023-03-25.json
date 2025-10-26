@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [
+      "Clicking a country's flag now opens their details",
+      "Show controlling rebel faction"
+    ],
+    "fixes": []
+  }
+}

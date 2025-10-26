@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "improvements": [
+      "Political timelapse now includes occupations",
+      "Map mode borders now work on timelapses and historical maps",
+      "Additional map settings are persisted across sessions",
+      "Clicking off a province onto a wasteland or sea tile will close an open province drawer"
+    ],
+    "fixes": [
+      "Religion map mode and timelapse are consistent in that both compare the province's religion with owner's state religion instead of the controller's state religion."
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Add re-reconquista achievement"
+    ],
+    "fixes": [
+      "Remove accidental PDX Tools logo on uploaded saves",
+      "Prevent long save names from overflowing the drawer"
+    ]
+  }
+}

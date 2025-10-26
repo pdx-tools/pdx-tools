@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "parse more leviathan saves (leaders with missing ids)"
+    ]
+  }
+}

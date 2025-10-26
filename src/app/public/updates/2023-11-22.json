@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix timelapse bug where certain countries would have the incorrect color"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Reinstate pagination on large tables to fix performance",
+      "Fix country national ideas wrapping onto another line",
+      "Fix map tip having too large of a top gap"
+    ]
+  }
+}

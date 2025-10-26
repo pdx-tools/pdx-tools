@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix initial map render omitting stripes and highlights"
+    ]
+  }
+}

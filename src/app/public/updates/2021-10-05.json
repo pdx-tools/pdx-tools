@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix melting uploaded saves in new compression scheme"
+    ]
+  }
+}

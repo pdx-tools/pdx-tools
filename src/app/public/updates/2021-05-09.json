@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "split percent into new column for pie chart tables",
+      "locale specific number formatting",
+      "add more column separator bars in war tab to make columns more distinguishable"
+    ],
+    "fixes": [
+      "align numeric columns in war info page to the right"
+    ]
+  }
+}

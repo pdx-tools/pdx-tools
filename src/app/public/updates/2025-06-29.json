@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix issues loading Ck3, Vic3, and Imperator saves"
+    ]
+  }
+}

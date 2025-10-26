@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Add development tree visualization"
+    ],
+    "fixes": [
+      "Add tooltips to map ui buttons"
+    ]
+  }
+}

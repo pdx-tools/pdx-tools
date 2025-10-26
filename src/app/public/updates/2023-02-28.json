@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Added infinite pagination for the latest uploaded eu4 saves"
+    ],
+    "fixes": []
+  }
+}

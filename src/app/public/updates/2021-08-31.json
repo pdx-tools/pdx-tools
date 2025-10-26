@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix achievements page crash due to missing custom achievement",
+      "Fix incorrect achievement score comparison in upload allowing slower saves to be seen as record breaking"
+    ]
+  }
+}

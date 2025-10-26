@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Player calculation updated to look at \"was_player\" countries that have at least one city",
+      "Remove morale speculation when armies are at minimum morale",
+      "Fix crash on history page when the country had no history",
+      "Fix logic error for best admiral calculation in health heatmap causing incorrect colors"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Chart filters default to players and great powers if there are too many nations to display for the visualization"
+    ],
+    "fixes": []
+  }
+}

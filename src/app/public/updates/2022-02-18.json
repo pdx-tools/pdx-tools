@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix permission issue for saves on google drive",
+      "Fix map tips appearing when panning the map",
+      "Fix possibility for accidental zoom on map UI controls"
+    ]
+  }
+}

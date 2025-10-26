@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "Internal dependencies updated"
+    ],
+    "fixes": [
+      "Fix overly precise pie chart tooltip",
+      "Fix layout shift when timelapse is selected in image gallery",
+      "Fix conflicting tailwind height classes on map buttons"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "add great advisor list to country details"
+    ],
+    "fixes": [
+      "melted output omits carriage return in favor of just newlines"
+    ]
+  }
+}

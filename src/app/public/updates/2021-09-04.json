@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Allow reporting of saves that fail to parse"
+    ],
+    "fixes": []
+  }
+}

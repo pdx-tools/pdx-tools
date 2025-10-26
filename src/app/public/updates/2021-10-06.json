@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix timeline slider from selecting surrounding text on firefox"
+    ]
+  }
+}

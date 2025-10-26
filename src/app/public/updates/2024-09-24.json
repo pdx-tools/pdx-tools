@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Screenshot positioned on timelapse bar and includes date in screenshot",
+      "Timelapse recording now shows view options before recording",
+      "Faster and smoother initialization of map"
+    ],
+    "fixes": []
+  }
+}

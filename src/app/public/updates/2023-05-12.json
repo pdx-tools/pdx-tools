@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix timelapse eyalet country colors",
+      "Fix detection of Holy Roman Empire tag for Ruina Imperii achievement"
+    ]
+  }
+}

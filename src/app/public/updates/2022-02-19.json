@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix chrome incorrectly detected as not compatible on Windows and Linux",
+      "Fix stuck back button on home page"
+    ]
+  }
+}

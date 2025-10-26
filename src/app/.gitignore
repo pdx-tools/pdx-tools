@@ -3,6 +3,7 @@ public/blog*
 public/changelog*
 public/docs*
 public/img
+public/updates.json
 *_gen.ts
 app/server-lib/save-parsing-types.ts
 app/wasm/

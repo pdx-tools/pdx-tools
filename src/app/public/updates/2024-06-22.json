@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix map shader \"no default precision defined\" error"
+    ]
+  }
+}

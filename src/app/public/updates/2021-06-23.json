@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "update web libraries to latest"
+    ],
+    "fixes": [
+      "fix war participant dates spanning multiple lines"
+    ]
+  }
+}

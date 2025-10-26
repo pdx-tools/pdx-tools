@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix EU4 melted output on uploaded files having missing quotes"
+    ]
+  }
+}

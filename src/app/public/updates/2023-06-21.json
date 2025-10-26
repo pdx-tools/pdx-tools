@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Add a new watch feature to update PDX Tools as save file changes"
+    ],
+    "fixes": []
+  }
+}

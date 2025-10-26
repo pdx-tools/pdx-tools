@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Add mana expenditure statistics"
+    ],
+    "fixes": [
+      "Exclude negative values from pie graphs"
+    ]
+  }
+}

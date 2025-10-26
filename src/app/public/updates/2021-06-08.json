@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "melt dates from modded EU4 saves prior to 5000 BC"
+    ]
+  }
+}

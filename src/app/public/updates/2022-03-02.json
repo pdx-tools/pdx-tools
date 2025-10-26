@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Support for EU4 1.33 uploads",
+      "Add support for Not just Pizza achievement",
+      "Updated Knights of the Caribbean province requirements to latest"
+    ],
+    "fixes": []
+  }
+}

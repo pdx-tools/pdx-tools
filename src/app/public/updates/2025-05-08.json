@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix incorrect dev cost modifier for mountain provinces",
+      "Fix omission of exploit step in dev push institution"
+    ]
+  }
+}

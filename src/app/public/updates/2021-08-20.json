@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Exported map with terrain overlay are now exported in a lossy format (webp)",
+      "Fix regression in mana spend labels for 1.31 saves"
+    ]
+  }
+}

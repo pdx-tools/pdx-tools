@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Show province breakdown in gc tooltip"
+    ],
+    "fixes": [
+      "Include administrative efficiency idea in gc calc",
+      "Fix closing the save file when the province view is closed via escape"
+    ]
+  }
+}

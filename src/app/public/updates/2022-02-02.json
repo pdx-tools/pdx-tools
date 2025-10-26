@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Expose warning on major map performance caveats"
+    ],
+    "fixes": []
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Increase map terrain brightness at higher zoom levels",
+      "Use a better blue for water on the map"
+    ]
+  }
+}

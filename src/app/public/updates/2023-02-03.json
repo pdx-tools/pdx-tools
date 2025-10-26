@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Triple pass parser for faster load times"
+    ],
+    "fixes": [
+      "Fix sorting country centralizing states when undefined"
+    ]
+  }
+}

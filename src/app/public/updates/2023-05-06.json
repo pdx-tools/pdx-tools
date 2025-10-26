@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Replace mp4 export implementation from ffmpeg with mp4-muxer"
+    ],
+    "fixes": []
+  }
+}

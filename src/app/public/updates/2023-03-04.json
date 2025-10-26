@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix map panning on touch screen devices",
+      "Update province devastation format",
+      "Properly warn users when browser has major performance caveats"
+    ]
+  }
+}

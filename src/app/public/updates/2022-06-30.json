@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Improve performance of save parsing"
+    ],
+    "fixes": [
+      "Fix country flags flipped upside down"
+    ]
+  }
+}
