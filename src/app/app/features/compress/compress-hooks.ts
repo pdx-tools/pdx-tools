@@ -16,12 +16,12 @@ export function createCompressionWorker() {
       workerApi[releaseProxy]();
       worker.terminate();
     },
-    compress: async (data: Uint8Array, cb: ProgressCb) => {
+    compress: async (data: Uint8Array<ArrayBuffer>, cb: ProgressCb) => {
       await workerApi.loadWasm();
       return workerApi.compress(transfer(data, [data.buffer]), proxy(cb));
     },
 
-    transform: async (data: Uint8Array) => {
+    transform: async (data: Uint8Array<ArrayBuffer>) => {
       await workerApi.loadWasm();
       return workerApi.transform(transfer(data, [data.buffer]));
     },
@@ -38,7 +38,7 @@ export const useCompression = () => {
 
   return useMemo(
     () => ({
-      transform: async (data: Uint8Array) =>
+      transform: async (data: Uint8Array<ArrayBuffer>) =>
         (worker.current ??= createCompressionWorker()).transform(data),
     }),
     [],

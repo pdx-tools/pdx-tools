@@ -103,7 +103,7 @@ export const pdxS3 = ({
     },
 
     uploadFileToS3: async (
-      body: Buffer | Uint8Array,
+      body: Buffer<ArrayBuffer> | Uint8Array<ArrayBuffer>,
       filename: string,
       upload: UploadType,
     ) => {
