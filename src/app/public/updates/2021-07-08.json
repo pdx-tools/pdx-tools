@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [
+      "Change the display of mods into an expandable bulleted list",
+      "Allow other sites to post a file to analyze in PDX Tools"
+    ],
+    "fixes": []
+  }
+}

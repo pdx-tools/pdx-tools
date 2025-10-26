@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "Refreshed country budget screen",
+      "Update CK3 ironman support to 1.13"
+    ],
+    "fixes": [
+      "Fix active war tooltips displayed offscreen",
+      "Fix geographical development tree unreadable text in dark mode"
+    ]
+  }
+}

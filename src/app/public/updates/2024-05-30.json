@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Add wraparound map panning"
+    ],
+    "fixes": [
+      "Fix professionalism formatting in country details"
+    ]
+  }
+}

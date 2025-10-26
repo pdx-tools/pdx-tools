@@ -147,6 +147,10 @@ hide = true
 run = "node ./dev/scripts/setup-assets.mts"
 hide = true
 
+[tasks."dev:app:setup:changelog"]
+run = "node ./dev/scripts/generate-updates-index.mts"
+hide = true
+
 [tasks."dev:app"]
 description = "Run pdx.tools frontend development"
 depends = ["pnpm-install", "dev:app:setup:**", "tokenize", "build:wasm"]

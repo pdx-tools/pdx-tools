@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Preserve decimal dev cost modifier in institution pushing"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Save file watcher has new option \"every save\" to update whenever the save file changes",
+      "Add rebel religion flip breakdown in country religion tab"
+    ],
+    "fixes": [
+      "Polyfill throwIfAborted to support older browsers"
+    ]
+  }
+}

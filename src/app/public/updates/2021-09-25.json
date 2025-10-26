@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix provinces in the timeline failing to become highlighted"
+    ]
+  }
+}

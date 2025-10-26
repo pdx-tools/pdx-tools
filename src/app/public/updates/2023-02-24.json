@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Major under the hood work. Most of it should go unnoticed. The biggest difference will be using the escape key instead of the browser back button to exit the analysis of a local save."
+    ],
+    "fixes": []
+  }
+}

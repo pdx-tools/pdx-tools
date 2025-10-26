@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [
+      "Colonial subject flag support",
+      "Improved performance of map rendering on firefox"
+    ],
+    "fixes": []
+  }
+}

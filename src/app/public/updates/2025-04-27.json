@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Show 1.35 ideas of Court, Mercenary, and Infrastructure in Idea Groups Picked chart",
+      "Include a data table pagination size picker that is persisted across sessions."
+    ]
+  }
+}

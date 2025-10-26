@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "There's been a tweak to the UI. Hopefully it's not too noticeable. The country map/data filter has been watered down, so let me know if you miss the old view",
+      "Everyone has been logged out",
+      "Lots of optimizations, so pdx.tools should now be faster, scale a bit better, and be cheaper to run."
+    ],
+    "fixes": []
+  },
+  "headline": "Been awhile, but I've been working behind the scenes on an update that should...",
+  "summary": "Been awhile, but I've been working behind the scenes on an update that should set a better foundation for the future. It's live today"
+}

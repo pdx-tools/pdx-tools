@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "\"Include subjects\" now includes subjects of subjects",
+      "Fix error about \"pdxScreenshot\" when loading more than one save"
+    ]
+  }
+}

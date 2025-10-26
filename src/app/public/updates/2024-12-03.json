@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Non-functional Skanderbeg support has been removed"
+    ]
+  }
+}

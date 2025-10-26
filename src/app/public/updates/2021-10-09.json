@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix bug causing shared saves to be inaccessible"
+    ]
+  }
+}

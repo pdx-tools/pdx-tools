@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Expose random new world seed",
+      "Warn that melted random new world saves can't be resumed in EU4"
+    ],
+    "fixes": [
+      "Fix rare parsing error for EU4 ironman saves"
+    ]
+  }
+}

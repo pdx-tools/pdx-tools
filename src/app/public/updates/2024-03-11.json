@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix country history tab to work on latest browsers"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Performance optimizations when parsing saves"
+    ],
+    "fixes": [
+      "Fix enabled terrain overlay when performance caveat is detected"
+    ]
+  }
+}

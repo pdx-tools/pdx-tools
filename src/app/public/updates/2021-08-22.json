@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix incorrect color calculations for technology map mode"
+    ]
+  }
+}

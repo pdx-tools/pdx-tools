@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Add estimated land / naval morale to health heatmap and country details",
+      "Add drag and drop column reordering to health heatmap"
+    ],
+    "fixes": [
+      "Improved Chinese support"
+    ]
+  }
+}

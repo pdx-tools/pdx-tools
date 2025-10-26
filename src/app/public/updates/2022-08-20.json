@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Add royal marriage PU guide"
+    ],
+    "fixes": [
+      "Reinstate inheritance value for junior partners. Instead hide the inheritance window."
+    ]
+  }
+}

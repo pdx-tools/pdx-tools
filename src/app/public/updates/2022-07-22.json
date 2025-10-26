@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "Add religion timelapse",
+      "Optimize political map timeline calculations"
+    ],
+    "fixes": [
+      "Fix occassional poor quality and performance of mp4 transcode",
+      "Further fix for country flag orientation"
+    ]
+  }
+}

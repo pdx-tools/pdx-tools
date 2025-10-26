@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix blank map on export view",
+      "Fix WebGL warning on firefox about incurring lazy initialization"
+    ]
+  }
+}

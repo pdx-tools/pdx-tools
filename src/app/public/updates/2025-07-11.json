@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix swapping between map modes where timelapse support is toggled"
+    ]
+  }
+}

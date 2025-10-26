@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Add achievement podium",
+      "Add max manpower to health heatmap"
+    ],
+    "fixes": [
+      "Synchronize how forces are calculated between health heatmap and country's current active wars"
+    ]
+  }
+}

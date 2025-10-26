@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix colonial nation flags displayed as the rebel flag in map tips",
+      "Fix saves with many achievements breaking layout of components"
+    ]
+  }
+}

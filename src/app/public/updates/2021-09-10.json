@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Countries that are near white have their color inverted on graphs"
+    ]
+  }
+}

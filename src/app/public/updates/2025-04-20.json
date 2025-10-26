@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix Idea Groups Picked chart only showing 1.31 ideas",
+      "Use a monospace font for timelapse date to avoid layout shift"
+    ]
+  }
+}

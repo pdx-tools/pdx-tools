@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "Add map performance diagnostics"
+    ],
+    "fixes": [
+      "Fix incorrect values for open graph metadata",
+      "Fix entering text into chart selection drop down causing crash",
+      "Move \"X\" to clear country in country filter to left hand side"
+    ]
+  }
+}

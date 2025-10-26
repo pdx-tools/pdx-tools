@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix exported map to contain map mode in filename"
+    ]
+  }
+}

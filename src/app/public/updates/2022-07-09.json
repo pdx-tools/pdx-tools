@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Small reduction in memory and network usage with new token format"
+    ],
+    "fixes": []
+  }
+}

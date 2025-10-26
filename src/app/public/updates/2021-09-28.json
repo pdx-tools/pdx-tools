@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Incorrect URL for API docs in menu"
+    ]
+  }
+}

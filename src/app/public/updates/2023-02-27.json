@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Renamed \"Overextension\" to \"No Core\" in Owned Development States"
+    ]
+  }
+}

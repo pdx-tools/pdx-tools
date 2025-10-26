@@ -6,6 +6,29 @@ const darkCodeTheme = themes.dracula;
 const repo = "https://github.com/pdx-tools/pdx-tools";
 const url = "https://pdx.tools";
 
+/** @type {import('@docusaurus/types').Config["plugins"]} */
+const plugins = [
+  [
+    require.resolve("./plugins/updates"),
+    {
+      updatesDir: "../app/public/updates",
+      indexPath: "../app/public/updates.json",
+    },
+  ],
+];
+
+if (process.env.POSTHOG_KEY) {
+  plugins.push([
+    "posthog-docusaurus",
+    {
+      apiKey: process.env.POSTHOG_KEY,
+      appUrl: "/ph",
+      enableInDevelopment: false,
+      ui_host: "https://eu.posthog.com",
+    },
+  ]);
+}
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: "PDX Tools",
@@ -21,19 +44,7 @@ const config = {
     locales: ["en"],
   },
 
-  plugins: process.env.POSTHOG_KEY
-    ? [
-        [
-          "posthog-docusaurus",
-          {
-            apiKey: process.env.POSTHOG_KEY,
-            appUrl: "/ph",
-            enableInDevelopment: false,
-            ui_host: "https://eu.posthog.com",
-          },
-        ],
-      ]
-    : [],
+  plugins,
 
   presets: [
     [

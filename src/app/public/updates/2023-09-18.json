@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Breakdown of rebel conversion of state religion"
+    ],
+    "fixes": [
+      "Fix color order of mana usage to be consistent",
+      "Update mana expenditure calculations for 1.35"
+    ]
+  }
+}

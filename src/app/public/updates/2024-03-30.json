@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Improve performance of country selection and filtering",
+      "Improve country selection filtering where the input can always match on either name or tag, but exact matches on either will take precedent"
+    ]
+  }
+}

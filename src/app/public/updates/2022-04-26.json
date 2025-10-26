@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Add export data as csv to chart view"
+    ]
+  }
+}

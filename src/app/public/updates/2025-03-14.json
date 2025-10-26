@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Update to support HOI4 1.16.0 saves",
+      "Update to support CK3 1.14.3 saves"
+    ],
+    "fixes": [
+      "Fix styling of the register page"
+    ]
+  }
+}

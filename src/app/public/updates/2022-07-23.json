@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Add country culture breakdown"
+    ],
+    "fixes": [
+      "Fix save parsing for saves without change culture progress"
+    ]
+  }
+}

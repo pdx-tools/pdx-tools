@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix false negative for Spaghetti Western"
+    ]
+  }
+}

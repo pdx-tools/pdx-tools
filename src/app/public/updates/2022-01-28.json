@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Add inheritance value calculations"
+    ],
+    "fixes": [
+      "Collapse ruler personalities onto one line"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix missing prosperity error for EU4 1.34.3 saves"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Ensure consistent colors for Geographical Development Treemap"
+    ]
+  }
+}

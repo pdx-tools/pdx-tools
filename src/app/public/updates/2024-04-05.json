@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [
+      "Redesigned player info screen",
+      "Transition to serving flags as sprites"
+    ],
+    "fixes": []
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "Change AI country filter to discard \"greats\" with less than 100 development",
+      "Update ledgers to show past AI greats"
+    ],
+    "fixes": [
+      "Use only whole numbers in total expense breakdown",
+      "Apply overflow calculations to country budget"
+    ]
+  }
+}

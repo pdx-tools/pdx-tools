@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Add map compatibility with lower end devices with a max texture size of 4096"
+    ],
+    "fixes": [
+      "Fix poor map visuals on mobile devices",
+      "Fix map flicker on resize"
+    ]
+  }
+}

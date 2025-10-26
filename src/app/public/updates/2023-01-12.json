@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Add VP9 encoder codec to timelapse"
+    ],
+    "fixes": [
+      "Fix timelapse at end date when country filter is enabled"
+    ]
+  }
+}

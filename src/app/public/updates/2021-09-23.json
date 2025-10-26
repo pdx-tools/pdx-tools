@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "improvements": [
+      "New storage scheme that reduces save bandwidth by 2-3x and can reduce parse times by up to 2x",
+      "Increase everyone's available save slots to 100",
+      "More efficient caching mechanism"
+    ],
+    "fixes": [
+      "Lock map renders to 60 FPS",
+      "Fix fluctuating save download progress"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Show melting button for saves that are plaintext but compressed"
+    ],
+    "fixes": []
+  }
+}
