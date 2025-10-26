@@ -10,18 +10,17 @@ import type Ck3Ui from "@/features/ck3/Ck3Ui";
 import type Hoi4Ui from "@/features/hoi4/Hoi4Ui";
 import type ImperatorUi from "@/features/imperator/ImperatorUi";
 import type Vic3Ui from "@/features/vic3/vic3Ui";
-import { timeit } from "@/lib/timeit";
-import { logMs } from "@/lib/log";
+import { timeAsync } from "@/lib/timeit";
 import { useWindowMessageDrop } from "./hooks/useWindowMessageDrop";
 
 function timeModule<T>(fn: () => Promise<T>, module: string): () => Promise<T> {
-  return () =>
-    timeit(fn).then((x) => {
-      if (typeof window !== "undefined") {
-        logMs(x, `load ${module} module`);
-      }
-      return x.data;
-    });
+  return () => {
+    if (typeof window === "undefined") {
+      return fn();
+    }
+
+    return timeAsync(`load ${module} module`, fn);
+  };
 }
 
 const DynamicEu4: ComponentType<ComponentProps<typeof Eu4Ui>> = lazy(

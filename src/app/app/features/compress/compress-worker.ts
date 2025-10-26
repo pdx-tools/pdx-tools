@@ -3,7 +3,6 @@ import init, * as wasmModule from "../../wasm/wasm_compress";
 import wasmPath from "../../wasm/wasm_compress_bg.wasm?url";
 import { timeSync } from "@/lib/timeit";
 import { formatInt } from "@/lib/format";
-import { logMs } from "@/lib/log";
 
 export type ProgressCb = (portion: number) => void;
 
@@ -13,22 +12,27 @@ export const obj = {
   },
 
   compress(data: Uint8Array<ArrayBuffer>, cb: ProgressCb) {
-    const compression = timeSync(() => wasmModule.init_compression(data));
-    const content_type = compression.data.content_type();
-    logMs(compression, "initialized compression");
+    const compression = timeSync("initialized compression", () =>
+      wasmModule.init_compression(data),
+    );
+    const content_type = compression.content_type();
 
-    const deflated = timeSync(() => compression.data.compress_cb(cb));
     const startKb = formatInt(data.length / 1024);
-    const endKb = formatInt(deflated.data.length / 1024);
-    logMs(deflated, `compressed: ${startKb}kB to ${endKb}kB`);
+    const deflated = timeSync(
+      (result) => {
+        const endKb = formatInt(result.length / 1024);
+        return `compressed: ${startKb}kB to ${endKb}kB`;
+      },
+      () => compression.compress_cb(cb),
+    );
 
     return transfer(
       {
         contentType: content_type,
         // we know that wasm-bindgen does not return shared array buffers.
-        data: deflated.data as Uint8Array<ArrayBuffer>,
+        data: deflated as Uint8Array<ArrayBuffer>,
       },
-      [deflated.data.buffer],
+      [deflated.buffer],
     );
   },
 

@@ -28,7 +28,6 @@ import type {
   Wars,
 } from "@/wasm/wasm_eu4";
 import { timeSync } from "@/lib/timeit";
-import { logMs } from "@/lib/log";
 import { createBudget } from "../features/country-details/budget";
 export * from "./init";
 
@@ -180,9 +179,9 @@ export function eu4GetCountrymana(tag: string) {
 }
 
 export function eu4GetCountryHistory(tag: string) {
-  const timed = timeSync(() => wasm.save.get_country_history(tag));
-  logMs(timed, "country history calculation");
-  return timed.data;
+  return timeSync("country history calculation", () =>
+    wasm.save.get_country_history(tag),
+  );
 }
 
 export function eu4GetCountryInstitutionPush(
@@ -191,7 +190,7 @@ export function eu4GetCountryInstitutionPush(
   expandInfrastructureCost: number,
   overrides: Map<number, number>,
 ) {
-  const timed = timeSync(() =>
+  return timeSync("country institution push calculation", () =>
     wasm.save.get_country_institutions(
       tag,
       countryDevelopmentModifier,
@@ -199,8 +198,6 @@ export function eu4GetCountryInstitutionPush(
       overrides,
     ),
   );
-  logMs(timed, "country institution push calculation");
-  return timed.data;
 }
 
 export function eu4GetCountryProvinceCulture(tag: string): CountryCulture[] {

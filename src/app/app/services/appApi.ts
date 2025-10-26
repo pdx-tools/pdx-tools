@@ -8,7 +8,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import type { Achievement, Difficulty } from "@/wasm/wasm_app";
-import type { Eu4Worker } from "@/features/eu4/worker";
+import { getEu4Worker } from "@/features/eu4/worker";
 import type { SavePostResponse, UploadMetadaInput } from "@/server-lib/models";
 import { createCompressionWorker } from "@/features/compress";
 import type { PdxSession } from "@/server-lib/auth/session";
@@ -116,12 +116,10 @@ export const pdxApi = {
       return useMutation({
         onSuccess: invalidateSaves(queryClient),
         mutationFn: async ({
-          worker,
           dispatch,
           values,
           signal,
         }: {
-          worker: Eu4Worker;
           dispatch: (arg: { kind: "progress"; progress: number }) => void;
           values: { aar?: string; filename: string };
           signal?: AbortSignal;
@@ -132,6 +130,7 @@ export const pdxApi = {
             const data = new FormData();
             dispatch({ kind: "progress", progress: 5 });
 
+            const worker = getEu4Worker();
             const rawFileData = await worker.getRawData();
             dispatch({ kind: "progress", progress: 10 });
 
