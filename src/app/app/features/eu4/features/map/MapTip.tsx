@@ -156,7 +156,7 @@ function MapTipProvince({
   setMapTip: (arg: QuickTipPayload | null) => void;
   setTimerDisplay: (arg: boolean) => void;
 }) {
-  const tooltipTimer = useRef<ReturnType<typeof setTimeout>>();
+  const tooltipTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const mapMode = useEu4MapMode();
   const store = useEu4Context();
 

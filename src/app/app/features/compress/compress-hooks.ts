@@ -29,7 +29,7 @@ export function createCompressionWorker() {
 }
 
 export const useCompression = () => {
-  const worker = useRef<ReturnType<typeof createCompressionWorker>>();
+  const worker = useRef<ReturnType<typeof createCompressionWorker>>(undefined);
 
   useEffect(() => {
     const current = worker.current;
