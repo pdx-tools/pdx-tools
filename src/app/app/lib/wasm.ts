@@ -1,8 +1,7 @@
 import { fetchOk } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import { transfer } from "comlink";
-import { timeit } from "./timeit";
-import { logMs } from "./log";
+import { timeAsync } from "./timeit";
 
 type Allocated = {
   free(): void;
@@ -115,17 +114,17 @@ export function createWasmGame<
       }
 
       async function poll() {
-        const file = await timeit(() => handle.getFile());
-        logMs(file, "poll file");
-        if (file.data.lastModified <= lastModified) {
+        const file = await timeAsync("poll file", () => handle.getFile());
+        if (file.lastModified <= lastModified) {
           return;
         }
 
-        lastModified = file.data.lastModified;
+        lastModified = file.lastModified;
         stashed = { kind: "handle", file: handle, lastModified };
-        const bytes = await timeit(() => file.data.arrayBuffer());
-        logMs(bytes, "read polled file");
-        await callback(new Uint8Array(bytes.data));
+        const bytes = await timeAsync("read polled file", () =>
+          file.arrayBuffer(),
+        );
+        await callback(new Uint8Array(bytes));
       }
 
       intervalCheck();

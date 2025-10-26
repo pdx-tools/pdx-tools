@@ -4,7 +4,6 @@ import { wasm } from "./common";
 import type * as mod from "@/wasm/wasm_eu4";
 import { fetchOk } from "@/lib/fetch";
 import type { Eu4SaveInput } from "../store";
-import { logMs } from "@/lib/log";
 import { captureException } from "@/lib/captureException";
 
 export const initializeWasm = wasm.initializeModule;
@@ -117,13 +116,17 @@ export function startFileObserver<T>(
 ) {
   observer = wasm.startFileObserver((data) => {
     try {
-      const reparse = timeSync(() => wasm.save.reparse(frequency, data));
-      if (reparse.data.kind === "tooSoon") {
-        logMs(reparse, `save date too soon to update: ${reparse.data.date}`);
+      const reparse = timeSync(
+        (result) =>
+          result.kind === "tooSoon"
+            ? `save date too soon to update: ${result.date}`
+            : "reparsed save",
+        () => wasm.save.reparse(frequency, data),
+      );
+      if (reparse.kind === "tooSoon") {
         return;
       }
 
-      logMs(reparse, "reparsed save");
       const achievements = wasm.save.get_achievements();
       cb({ meta: getMeta(wasm.save), achievements });
     } catch (ex) {

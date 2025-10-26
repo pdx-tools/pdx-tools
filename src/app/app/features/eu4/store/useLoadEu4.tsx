@@ -1,9 +1,9 @@
 import { transfer, wrap } from "comlink";
 import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
 import { fetchOk } from "@/lib/fetch";
-import { log, logMs } from "@/lib/log";
+import { log } from "@/lib/log";
 import { emitEvent } from "@/lib/events";
-import { timeit } from "@/lib/timeit";
+import { timeAsync } from "@/lib/timeit";
 import { MapController, createMapWorker } from "@pdx.tools/map";
 import type { MapWorker, InitToken } from "@pdx.tools/map";
 import { useRef, useEffect, useReducer } from "react";
@@ -93,10 +93,9 @@ function runTask<T>(
   dispatch: Dispatch<Eu4LoadActions>,
   { fn, name, progress }: Task<T>,
 ) {
-  return timeit(fn).then((res) => {
-    logMs(res, name);
+  return timeAsync(name, fn).then((result) => {
     dispatch({ kind: "progress", value: progress });
-    return res.data;
+    return result;
   });
 }
 
