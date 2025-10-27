@@ -92,76 +92,130 @@ fn expand_struct_with_named_fields(
         })
         .collect();
 
+    // Generate field initialization for the visitor
+    let field_initializations: Vec<_> = field_info
+        .iter()
+        .map(|info| {
+            let field_name = &info.ident;
+            if info.duplicated {
+                quote! {
+                    let mut #field_name = bumpalo::collections::Vec::new_in(allocator);
+                }
+            } else {
+                quote! {
+                    let mut #field_name = None;
+                }
+            }
+        })
+        .collect();
+
     // Generate field handling using enum variants
     let field_handling: Vec<_> = field_info
         .iter()
         .enumerate()
-        .map(|(i, info)| {
+        .map(|(i, info)| -> syn::Result<_> {
             let field_name = &info.ident;
             let field_type = &info.ty;
             let field_str = &info.name;
             let variant_name = format_ident!("Field{}", i);
 
-            let deserialize_logic = if let Some(deserialize_with) = &info.deserialize_with {
-                quote! {
-                    #field_name = Some({
-                        struct CustomFieldSeed<'bump> {
-                            allocator: &'bump bumpalo::Bump,
-                        }
-
-                        impl<'de, 'bump> serde::de::DeserializeSeed<'de> for CustomFieldSeed<'bump> {
-                            type Value = #field_type;
-
-                            fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-                            where
-                                D: serde::Deserializer<'de>,
-                            {
-                                #deserialize_with(deserializer, self.allocator)
-                            }
-                        }
-
-                        map.next_value_seed(CustomFieldSeed { allocator })?
-                    });
+            if info.duplicated {
+                if info.deserialize_with.is_some() {
+                    return Err(syn::Error::new_spanned(
+                        &info.ident,
+                        "duplicated attribute cannot be combined with deserialize_with",
+                    ));
                 }
-            } else if is_slice_reference(field_type, arena_lifetime) {
-                if let Some(element_type) = get_slice_element_type(field_type) {
-                    quote! {
-                        #field_name = Some(map.next_value_seed(
-                            bumpalo_serde::SliceDeserializer::<#element_type>::new(allocator)
-                        )?);
+                if !is_slice_reference(field_type, arena_lifetime) {
+                    return Err(syn::Error::new_spanned(
+                        field_type,
+                        "duplicated attribute requires a slice reference field like &'arena [T]",
+                    ));
+                }
+                let element_type = get_slice_element_type(field_type).ok_or_else(|| {
+                    syn::Error::new_spanned(
+                        field_type,
+                        "duplicated attribute requires a slice element type",
+                    )
+                })?;
+
+                Ok(quote! {
+                    __Field::#variant_name => {
+                        #field_name.push(
+                            map.next_value_seed(
+                                bumpalo_serde::ArenaSeed::<#element_type>::new(allocator)
+                            )?
+                        );
                     }
-                } else {
+                })
+            } else {
+                let deserialize_logic = if let Some(deserialize_with) = &info.deserialize_with {
+                    quote! {
+                        #field_name = Some({
+                            struct CustomFieldSeed<'bump> {
+                                allocator: &'bump bumpalo::Bump,
+                            }
+
+                            impl<'de, 'bump> serde::de::DeserializeSeed<'de> for CustomFieldSeed<'bump> {
+                                type Value = #field_type;
+
+                                fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+                                where
+                                    D: serde::Deserializer<'de>,
+                                {
+                                    #deserialize_with(deserializer, self.allocator)
+                                }
+                            }
+
+                            map.next_value_seed(CustomFieldSeed { allocator })?
+                        });
+                    }
+                } else if is_slice_reference(field_type, arena_lifetime) {
+                    if let Some(element_type) = get_slice_element_type(field_type) {
+                        quote! {
+                            #field_name = Some(map.next_value_seed(
+                                bumpalo_serde::SliceDeserializer::<#element_type>::new(allocator)
+                            )?);
+                        }
+                    } else {
+                        quote! {
+                            #field_name = Some(map.next_value_seed(bumpalo_serde::ArenaSeed::new(allocator))?);
+                        }
+                    }
+                } else if is_arena_type(field_type, arena_lifetime)
+                    || is_option_with_arena_type(field_type, arena_lifetime)
+                {
                     quote! {
                         #field_name = Some(map.next_value_seed(bumpalo_serde::ArenaSeed::new(allocator))?);
                     }
-                }
-            } else if is_arena_type(field_type, arena_lifetime) || is_option_with_arena_type(field_type, arena_lifetime) {
-                quote! {
-                    #field_name = Some(map.next_value_seed(bumpalo_serde::ArenaSeed::new(allocator))?);
-                }
-            } else {
-                quote! {
-                    #field_name = Some(map.next_value()?);
-                }
-            };
-
-            quote! {
-                __Field::#variant_name => {
-                    if #field_name.is_some() {
-                        return Err(serde::de::Error::duplicate_field(#field_str));
+                } else {
+                    quote! {
+                        #field_name = Some(map.next_value()?);
                     }
-                    #deserialize_logic
-                }
+                };
+
+                Ok(quote! {
+                    __Field::#variant_name => {
+                        if #field_name.is_some() {
+                            return Err(serde::de::Error::duplicate_field(#field_str));
+                        }
+                        #deserialize_logic
+                    }
+                })
             }
         })
-        .collect();
+        .collect::<syn::Result<Vec<_>>>()?;
 
     // Generate field extraction with defaults
     let field_extractions: Vec<_> = field_info
         .iter()
         .map(|info| {
             let field_name = &info.ident;
-            if info.has_default {
+            if info.duplicated {
+                quote! {
+                    let #field_name = #field_name.into_bump_slice();
+                }
+            } else if info.has_default {
                 quote! {
                     let #field_name = #field_name.unwrap_or_default();
                 }
@@ -275,7 +329,7 @@ fn expand_struct_with_named_fields(
                     {
                         let allocator = self.allocator;
                         #(
-                            let mut #field_assignments = None;
+                            #field_initializations
                         )*
 
                         while let Some(key) = map.next_key::<__Field>()? {
@@ -446,6 +500,7 @@ struct FieldInfo {
     aliases: Vec<String>,
     has_default: bool,
     deserialize_with: Option<syn::Path>,
+    duplicated: bool,
 }
 
 fn parse_field_attributes(field: &syn::Field) -> syn::Result<FieldInfo> {
@@ -455,6 +510,7 @@ fn parse_field_attributes(field: &syn::Field) -> syn::Result<FieldInfo> {
     let mut aliases = Vec::new();
     let mut has_default = false;
     let mut deserialize_with = None;
+    let mut duplicated = false;
 
     for attr in &field.attrs {
         if attr.path().is_ident("arena") {
@@ -486,6 +542,9 @@ fn parse_field_attributes(field: &syn::Field) -> syn::Result<FieldInfo> {
                                         Some(syn::parse_str::<syn::Path>(&s.value())?);
                                 }
                             }
+                            Meta::Path(path) if path.is_ident("duplicated") => {
+                                duplicated = true;
+                            }
                             _ => {
                                 return Err(syn::Error::new_spanned(
                                     meta,
@@ -515,6 +574,7 @@ fn parse_field_attributes(field: &syn::Field) -> syn::Result<FieldInfo> {
         aliases,
         has_default,
         deserialize_with,
+        duplicated,
     })
 }
 

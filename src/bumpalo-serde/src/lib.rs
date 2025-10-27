@@ -522,6 +522,15 @@ mod tests {
     #[derive(ArenaDeserialize)]
     struct CitizenData<'bump>(&'bump [u8]);
 
+    #[derive(ArenaDeserialize)]
+    struct DuplicatedHolder<'bump> {
+        flag: bool,
+        #[arena(duplicated)]
+        values: &'bump [u32],
+        #[arena(duplicated)]
+        names: &'bump [&'bump str],
+    }
+
     #[test]
     fn test_basic_struct_deserialization() {
         let allocator = bumpalo::Bump::new();
@@ -566,6 +575,45 @@ mod tests {
         assert_eq!(citizen.age, 0); // Default value for i16
         assert_eq!(citizen.data.0, &[4, 5, 6]);
         assert_eq!(citizen.tags.len(), 0); // Empty tags array
+    }
+
+    #[test]
+    fn test_duplicated_fields_collect_values() {
+        let allocator = bumpalo::Bump::new();
+
+        let json = r#"{
+            "flag": true,
+            "values": 10,
+            "names": "alpha",
+            "values": 20,
+            "names": "beta",
+            "names": "gamma"
+        }"#;
+
+        let mut deserializer = serde_json::Deserializer::from_str(json);
+        let holder: DuplicatedHolder =
+            DuplicatedHolder::deserialize_in_arena(&mut deserializer, &allocator).unwrap();
+
+        assert!(holder.flag);
+        assert_eq!(holder.values, &[10, 20]);
+        assert_eq!(holder.names, &["alpha", "beta", "gamma"]);
+    }
+
+    #[test]
+    fn test_duplicated_fields_default_empty_slice() {
+        let allocator = bumpalo::Bump::new();
+
+        let json = r#"{
+            "flag": false
+        }"#;
+
+        let mut deserializer = serde_json::Deserializer::from_str(json);
+        let holder: DuplicatedHolder =
+            DuplicatedHolder::deserialize_in_arena(&mut deserializer, &allocator).unwrap();
+
+        assert!(!holder.flag);
+        assert!(holder.values.is_empty());
+        assert!(holder.names.is_empty());
     }
 
     #[test]
