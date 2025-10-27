@@ -5,13 +5,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
-const updatesDir = path.join(rootDir, "src", "app", "public", "updates");
-const outputPath = path.join(rootDir, "src", "app", "public", "updates.json");
+const whatsNewDir = path.join(rootDir, "src", "app", "public", "whats-new");
+const outputPath = path.join(rootDir, "src", "app", "public", "whats-new.json");
 
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 async function main() {
-  const entries = await readdir(updatesDir, { withFileTypes: true });
+  const entries = await readdir(whatsNewDir, { withFileTypes: true });
   const dates: string[] = [];
   for (const entry of entries) {
     if (!entry.isFile()) continue;

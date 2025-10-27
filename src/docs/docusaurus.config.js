@@ -9,10 +9,10 @@ const url = "https://pdx.tools";
 /** @type {import('@docusaurus/types').Config["plugins"]} */
 const plugins = [
   [
-    require.resolve("./plugins/updates"),
+    require.resolve("./plugins/whats-new"),
     {
-      updatesDir: "../app/public/updates",
-      indexPath: "../app/public/updates.json",
+      updatesDir: "../app/public/whats-new",
+      indexPath: "../app/public/whats-new.json",
     },
   ],
 ];

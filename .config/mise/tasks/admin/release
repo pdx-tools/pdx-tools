@@ -18,6 +18,12 @@ if [[ $(git status --porcelain --untracked-files=no) ]]; then
     exit 1
 fi
 
+today=$(date +%F)
+if ! grep -Fq "\"${today}\"" src/app/public/whats-new.json; then
+    echo "No changelog entry for ${today} found in src/app/public/whats-new/"
+    exit 1
+fi
+
 export VITE_EXTERNAL_ADDRESS=$EXTERNAL_ADDRESS
 export VITE_SENTRY_DSN=$SENTRY_DSN
 export VITE_SENTRY_ORG=$SENTRY_ORG

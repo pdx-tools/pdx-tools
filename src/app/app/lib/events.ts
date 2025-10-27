@@ -41,6 +41,11 @@ export type Event =
   | {
       kind: "Budget interval switched";
       interval: string;
+    }
+  | {
+      kind: "Whats new clicked";
+      source: "button" | "banner";
+      latestRelease?: string;
     };
 
 let isRecording = false;
