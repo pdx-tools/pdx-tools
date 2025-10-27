@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Add a \"What's New\" notification badge so users know what recent changes have been made",
+      "Major dependency updates. Should not be noticeable to users."
+    ]
+  }
+}
