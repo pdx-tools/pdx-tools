@@ -30,3 +30,6 @@ node_modules
 
 .react-router/
 worker-configuration.d.ts
+
+# Generated docs content
+src/docs/src/pages/changelog.mdx
