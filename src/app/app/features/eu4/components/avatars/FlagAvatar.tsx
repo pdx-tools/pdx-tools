@@ -144,7 +144,7 @@ const dimensions = spriteDimension({
 // in a weird gap in chrome so we have to use outline with a negative
 // offset to account for the avatar's border radius.
 const className =
-  "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500 dark:outline-gray-800";
+  "shrink-0 outline -outline-offset-1 outline-gray-500 dark:outline-gray-800";
 
 function RebFlag({ size }: { size?: AvatarSize }) {
   const factor = sizeFactor(size);
