@@ -60,7 +60,7 @@ run = "cargo build -p pdx-tools-api"
 hide = true
 
 [tasks."build:docs:docusaurus"]
-depends = ["pnpm-install"]
+depends = ["pnpm-install", "docs:setup:changelog"]
 dir = "src/docs"
 hide = true
 run = "pnpm run build"
@@ -148,7 +148,12 @@ run = "node ./dev/scripts/setup-assets.mts"
 hide = true
 
 [tasks."dev:app:setup:changelog"]
-run = "node ./dev/scripts/generate-updates-index.mts"
+run = "node ./dev/scripts/generate-changelog-index.mts"
+hide = true
+
+[tasks."docs:setup:changelog"]
+depends = ["dev:app:setup:changelog"]
+run = "node ./dev/scripts/generate-changelog.mts"
 hide = true
 
 [tasks."dev:app"]
@@ -165,7 +170,7 @@ run = "pnpm run dev"
 
 [tasks."dev:docs"]
 description = "Run the docs"
-depends = ["pnpm-install"]
+depends = ["pnpm-install", "docs:setup:changelog"]
 dir = "./src/docs"
 run = "pnpm run docusaurus start --no-open"
 
