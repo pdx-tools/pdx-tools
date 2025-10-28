@@ -31,7 +31,6 @@
     "@radix-ui/react-tabs": "1.1.13",
     "@radix-ui/react-toggle-group": "1.1.11",
     "@radix-ui/react-tooltip": "1.2.8",
-    "@react-router/cloudflare": "7.9.4",
     "@sentry/cloudflare": "10.20.0",
     "@sentry/react-router": "10.20.0",
     "@sentry/vite-plugin": "4.4.0",
@@ -61,7 +60,7 @@
     "zustand": "5.0.2"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.13.13",
+    "@cloudflare/vite-plugin": "1.13.13",
     "@react-router/dev": "7.9.4",
     "@react-router/fs-routes": "7.9.4",
     "@tailwindcss/vite": "4.1.14",
