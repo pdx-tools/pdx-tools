@@ -18,7 +18,7 @@
     "@docusaurus/preset-classic": "3.8.1",
     "@mdx-js/react": "3.0.1",
     "clsx": "2.1.1",
-    "posthog-docusaurus": "2.0.1",
+    "posthog-docusaurus": "2.0.5",
     "prism-react-renderer": "2.3.1",
     "react": "catalog:",
     "react-dom": "catalog:"
