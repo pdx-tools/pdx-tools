@@ -6,7 +6,7 @@ import {
   IMG_HEIGHT,
   IMG_PADDED_WIDTH,
   SPLIT_IMG_PADDED_WIDTH,
-} from "./map";
+} from "./mapDimensions";
 import { notNull } from "./nullcheck";
 
 const MAX_TEXTURE_SIZE = 4096;

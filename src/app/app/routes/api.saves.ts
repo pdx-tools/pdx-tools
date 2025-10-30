@@ -10,6 +10,7 @@ import { ValidationError } from "@/server-lib/errors";
 import { pdxFns } from "@/server-lib/functions";
 import { genId } from "@/server-lib/id";
 import { log } from "@/server-lib/logging";
+import { captureEvent } from "@/server-lib/posthog";
 import { withCore } from "@/server-lib/middleware";
 import { headerMetadata, uploadMetadata } from "@/server-lib/models";
 import type { SavePostResponse } from "@/server-lib/models";
@@ -114,7 +115,7 @@ export const action = withCore(
         close();
       }
 
-      log.event({
+      captureEvent({
         userId: session.id,
         event: "Save created",
         key: saveId,

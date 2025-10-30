@@ -14,7 +14,7 @@ import type {
   MapDate,
   CountryTag,
 } from "../types/models";
-import { getEu4Worker } from "../worker";
+import { getEu4Worker } from "../worker/getEu4Worker";
 import type {
   EnhancedMeta,
   FileObservationFrequency,

@@ -8,7 +8,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import type { Achievement, Difficulty } from "@/wasm/wasm_app";
-import { getEu4Worker } from "@/features/eu4/worker";
+import { getEu4Worker } from "@/features/eu4/worker/getEu4Worker";
 import type { SavePostResponse, UploadMetadaInput } from "@/server-lib/models";
 import { createCompressionWorker } from "@/features/compress";
 import type { PdxSession } from "@/server-lib/auth/session";

@@ -2,7 +2,7 @@ import { table } from "@/server-lib/db";
 import { sql } from "drizzle-orm";
 import { genId } from "@/server-lib/id";
 import { check } from "@/lib/isPresent";
-import { log } from "@/server-lib/logging";
+import { captureEvent } from "@/server-lib/posthog";
 import { withCore } from "@/server-lib/middleware";
 import type { AppLoadContext } from "react-router";
 import { withDb } from "@/server-lib/db/middleware";
@@ -38,7 +38,7 @@ export const loader = withCore(
       });
 
     const user = check(users.at(0), "expected user");
-    log.event({
+    captureEvent({
       userId: user.userId,
       event: user.inserted ? "User created" : "User updated",
     });

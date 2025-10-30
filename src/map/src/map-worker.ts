@@ -1,6 +1,6 @@
 import { overlayDate } from "./canvasOverlays";
 import { GLResources } from "./glResources";
-import { glContextOptions, IMG_HEIGHT, IMG_WIDTH, WebGLMap } from "./map";
+import { glContextOptions, WebGLMap } from "./map";
 import type {
   DrawEvent,
   MouseEvent,
@@ -8,6 +8,7 @@ import type {
   UserRect,
   WheelEvent,
 } from "./map";
+import { IMG_HEIGHT, IMG_WIDTH } from "./mapDimensions";
 import { MapShader } from "./MapShader";
 import { ProvinceFinder } from "./ProvinceFinder";
 import {

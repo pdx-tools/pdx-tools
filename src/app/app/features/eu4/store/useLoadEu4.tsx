@@ -13,7 +13,7 @@ import {
   fetchProvinceUniqueIndex,
   resourceUrls,
 } from "../features/map/resources";
-import { getEu4Worker } from "../worker";
+import { getEu4Worker } from "../worker/getEu4Worker";
 import {
   initialEu4CountryFilter,
   createEu4Store,

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { getEu4Worker } from "@/features/eu4/worker";
+import { getEu4Worker } from "./getEu4Worker";
 import type { Eu4Worker } from "@/features/eu4/worker";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { useOnNewSave } from "./useOnNewSave";
