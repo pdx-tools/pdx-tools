@@ -1,5 +1,4 @@
 import { toErrorWithMessage } from "@/lib/getErrorMessage";
-import { captureEvent } from "./posthog";
 
 export type LogMessage = {
   [x: string]: unknown;
@@ -8,15 +7,6 @@ export type LogMessage = {
 class Log {
   private dateFmt(): string {
     return new Date().toJSON();
-  }
-
-  public event({
-    userId,
-    event,
-    ...rest
-  }: { userId: string; event: string } & LogMessage) {
-    captureEvent({ userId, event });
-    this.info({ event, user: userId, ...rest });
   }
 
   public info(data: LogMessage) {

@@ -2,11 +2,13 @@ import type { GLResources } from "./glResources";
 import { setupFramebufferTexture } from "./glResources";
 import type { ProvinceFinder } from "./ProvinceFinder";
 import type { TerrainOverlayResources } from "./types";
+import {
+  IMG_HEIGHT,
+  IMG_WIDTH,
+  IMG_PADDED_WIDTH,
+  SPLIT_IMG_PADDED_WIDTH,
+} from "./mapDimensions";
 
-export const IMG_HEIGHT = 2048;
-export const IMG_WIDTH = 5632;
-export const IMG_PADDED_WIDTH = 8192;
-export const SPLIT_IMG_PADDED_WIDTH = 4096;
 const IMG_ASPECT = IMG_WIDTH / IMG_HEIGHT;
 
 export interface MouseEvent {

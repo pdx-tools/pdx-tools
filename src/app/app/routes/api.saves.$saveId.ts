@@ -4,7 +4,7 @@ import { saveView, table, toApiSave } from "@/server-lib/db";
 import type { DbConnection } from "@/server-lib/db/connection";
 import { withDb } from "@/server-lib/db/middleware";
 import { NotFoundError, ValidationError } from "@/server-lib/errors";
-import { log } from "@/server-lib/logging";
+import { captureEvent } from "@/server-lib/posthog";
 import { withCore } from "@/server-lib/middleware";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
 import { eq } from "drizzle-orm";
@@ -79,7 +79,7 @@ export const action = withCore(
             ensurePermissions(session, "savefile:update", rows.at(0));
           });
 
-          log.event({
+          captureEvent({
             userId: session.id,
             event: "Save patched",
             key: params.saveId,
@@ -99,7 +99,7 @@ export const action = withCore(
               s3.deleteFile(s3.keys.preview(params.saveId)),
             ]);
           });
-          log.event({
+          captureEvent({
             userId: session.id,
             event: "Save deleted",
             key: params.saveId,

@@ -2,7 +2,6 @@ import React, { lazy, Suspense } from "react";
 import type { ComponentType } from "react";
 import type {
   LineConfig as LineConfigImpl,
-  PieConfig,
   BarConfig,
   Treemap as TreemapImpl,
   ScatterConfig,
@@ -29,15 +28,7 @@ export const Line = React.memo(({ ...props }: LineConfig) => (
   </Suspense>
 ));
 
-const LazyPie = lazy(() =>
-  import("@ant-design/plots").then((mod) => ({ default: mod.Pie })),
-);
-
-export const Pie: ComponentType<PieConfig> = React.memo((props) => (
-  <Suspense fallback={null}>
-    <LazyPie {...props} />
-  </Suspense>
-));
+export { Pie, type PieConfig } from "./Pie";
 
 const LazyBar = lazy(() =>
   import("@ant-design/plots").then((mod) => ({ default: mod.Bar })),
@@ -78,4 +69,4 @@ export {
 export * from "./LegendColor";
 export * from "./PieTable";
 
-export type { LineConfig, PieConfig, BarConfig, ScatterConfig };
+export type { LineConfig, BarConfig, ScatterConfig };
