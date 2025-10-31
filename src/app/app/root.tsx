@@ -33,9 +33,7 @@ import { pdxSession } from "./server-lib/auth/session";
 import { seo } from "./lib/seo";
 import appleIconUrl from "./components/head/apple-touch-icon.png";
 import social from "./components/landing/social.png";
-import { getErrorMessage } from "./lib/getErrorMessage";
-import { Alert } from "./components/Alert";
-import { Link } from "./components/Link";
+import { ErrorDisplay } from "@/features/errors";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: tailwind },
@@ -87,25 +85,23 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 export const ErrorBoundary = () => {
   const error = useRouteError();
-  captureException(error);
+  const eventId = captureException(error) ?? null;
   return (
-    <div className="flex h-full justify-center align-middle">
-      <Alert variant="error" className="max-w-xl place-self-center px-6 py-4">
-        <Alert.Title>PDX Tools Crashed!</Alert.Title>
-        <Alert.Description className="pt-2">
-          <p>{getErrorMessage(error)}</p>
-          <p>
-            If you keep getting this error, please report the issue on our{" "}
-            <Link variant="dark" href="https://discord.gg/rCpNWQW">
-              Discord
-            </Link>{" "}
-            or{" "}
-            <Link variant="dark" href="https://github.com/pdx-tools/pdx-tools">
-              Github
-            </Link>
-          </p>
-        </Alert.Description>
-      </Alert>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <ErrorDisplay
+        title="PDX Tools crashed"
+        message={
+          <>
+            <p>We ran into an unexpected error while loading this page.</p>
+            <p className="mt-2">
+              Try refreshing the page. If the problem continues, use the support
+              links below to share what happened.
+            </p>
+          </>
+        }
+        error={error}
+        eventId={eventId}
+      />
     </div>
   );
 };

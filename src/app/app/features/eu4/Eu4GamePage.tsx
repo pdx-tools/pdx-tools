@@ -3,9 +3,8 @@ import { Button } from "@/components/Button";
 import { NewestSavesTable } from "./components/NewestSavesTable";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { Link } from "@/components/Link";
-import { Alert } from "@/components/Alert";
 import { LoadingState } from "@/components/LoadingState";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorCatcher, ErrorDisplay } from "@/features/errors";
 
 const saves = [
   ["1.29", "/eu4/saves/10loz22jqw1l"],
@@ -43,18 +42,17 @@ export const Eu4GamePage = () => {
       </div>
       <div className="flex flex-col gap-2">
         <Suspense fallback={<LoadingState />}>
-          <ErrorBoundary
-            fallback={({ error }) => (
-              <div className="m-8">
-                <Alert.Error
-                  className="px-4 py-2"
-                  msg={`Failed to fetch latest saves: ${error}`}
-                />
-              </div>
+          <ErrorCatcher
+            fallback={(args) => (
+              <ErrorDisplay
+                {...args}
+                className="m-8"
+                title="Failed to load latest EU4 saves"
+              />
             )}
           >
             <NewestSavesTable />
-          </ErrorBoundary>
+          </ErrorCatcher>
         </Suspense>
       </div>
     </div>
