@@ -39,7 +39,7 @@ export const Flag = RootFlag as typeof RootFlag & {
 };
 
 const FlagTooltip = React.forwardRef<
-  React.ElementRef<typeof Tooltip.Trigger>,
+  React.ComponentRef<typeof Tooltip.Trigger>,
   React.ComponentPropsWithoutRef<typeof Tooltip.Trigger> & {
     showName?: boolean;
   }
@@ -59,7 +59,7 @@ const FlagTooltip = React.forwardRef<
 Flag.Tooltip = FlagTooltip;
 
 const FlagDrawerTrigger = React.forwardRef<
-  React.ElementRef<typeof Button>,
+  React.ComponentRef<typeof Button>,
   React.ComponentPropsWithoutRef<typeof Tooltip.Trigger>
 >(function FlagDrawerTrigger({ children, className, ...props }, ref) {
   const flag = useFlag();

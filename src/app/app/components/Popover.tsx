@@ -11,7 +11,7 @@ export const Popover = PopoverPrimitive.Root as typeof PopoverPrimitive.Root & {
 Popover.Arrow = PopoverPrimitive.Arrow;
 Popover.Trigger = PopoverPrimitive.Trigger;
 const PopoverContent = React.forwardRef<
-  React.ElementRef<typeof PopoverPrimitive.Content>,
+  React.ComponentRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
 >(function PopoverContent(
   { className, align = "center", sideOffset = 4, ...props },

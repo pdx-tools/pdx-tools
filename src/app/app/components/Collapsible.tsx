@@ -12,7 +12,7 @@ Collapsible.Trigger = CollapsiblePrimitive.Trigger;
 Collapsible.Content = CollapsiblePrimitive.Content;
 
 const CollapsibleTrigger = React.forwardRef<
-  React.ElementRef<typeof CollapsiblePrimitive.Trigger>,
+  React.ComponentRef<typeof CollapsiblePrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger> & {
     showChevron?: boolean;
   }
@@ -39,7 +39,7 @@ const CollapsibleTrigger = React.forwardRef<
 Collapsible.Trigger = CollapsibleTrigger;
 
 const CollapsibleContent = React.forwardRef<
-  React.ElementRef<typeof CollapsiblePrimitive.Content>,
+  React.ComponentRef<typeof CollapsiblePrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>
 >(function CollapsibleContent({ className, children, ...props }, ref) {
   return (

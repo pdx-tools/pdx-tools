@@ -7,7 +7,7 @@ type SliderProps = {
 } & React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>;
 
 export const Slider = React.forwardRef<
-  React.ElementRef<typeof SliderPrimitive.Root>,
+  React.ComponentRef<typeof SliderPrimitive.Root>,
   SliderProps
 >(function Slider({ className, rounded = true, ...props }, ref) {
   return (

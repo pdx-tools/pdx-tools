@@ -12,7 +12,7 @@ export const Tooltip = TooltipPrimitive.Root as typeof TooltipPrimitive.Root & {
 Tooltip.Provider = TooltipPrimitive.Provider;
 
 const TooltipTrigger = React.forwardRef<
-  React.ElementRef<typeof TooltipPrimitive.Trigger>,
+  React.ComponentRef<typeof TooltipPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Trigger>
 >(function TooltipTrigger({ className, asChild, ...props }, ref) {
   return (
@@ -27,7 +27,7 @@ const TooltipTrigger = React.forwardRef<
 Tooltip.Trigger = TooltipTrigger;
 
 const TooltipContent = React.forwardRef<
-  React.ElementRef<typeof TooltipPrimitive.Content>,
+  React.ComponentRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
 >(function TooltipContent({ className, sideOffset = 4, ...props }, ref) {
   if (!("document" in globalThis)) {
