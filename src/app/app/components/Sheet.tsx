@@ -27,7 +27,7 @@ Sheet.Trigger = SheetPrimitive.Trigger;
 Sheet.Portal = SheetPrimitive.Portal;
 
 const SheetOverlay = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Overlay>,
+  React.ComponentRef<typeof SheetPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
 >(function SheetOverLay({ className, ...props }, ref) {
   return (
@@ -67,7 +67,7 @@ interface SheetContentProps
     VariantProps<typeof sheetVariants> {}
 
 const SheetContent = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Content>,
+  React.ComponentRef<typeof SheetPrimitive.Content>,
   SheetContentProps
 >(function SheetContent(
   { side = "right", className, children, ...props },
@@ -89,7 +89,7 @@ const SheetContent = React.forwardRef<
 Sheet.Content = SheetContent;
 
 const SheetClose = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Close>,
+  React.ComponentRef<typeof SheetPrimitive.Close>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Close>
 >(function SheetClose({ className, ...props }, ref) {
   return (
@@ -145,7 +145,7 @@ const SheetFooter = ({
 Sheet.Footer = SheetFooter;
 
 const SheetTitle = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Title>,
+  React.ComponentRef<typeof SheetPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
 >(function SheetTitle({ className, ...props }, ref) {
   return (
@@ -159,7 +159,7 @@ const SheetTitle = React.forwardRef<
 Sheet.Title = SheetTitle;
 
 const SheetDescription = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Description>,
+  React.ComponentRef<typeof SheetPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Description>
 >(function SheetDescription({ className, ...props }, ref) {
   return (

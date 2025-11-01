@@ -18,7 +18,7 @@ Select.Value = SelectPrimitive.Value;
 Select.Icon = SelectPrimitive.Icon;
 
 const SelectTrigger = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Trigger>,
+  React.ComponentRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
 >(function SelectTrigger({ className, children, ...props }, ref) {
   return (
@@ -37,7 +37,7 @@ const SelectTrigger = React.forwardRef<
 Select.Trigger = SelectTrigger;
 
 const SelectContent = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Content>,
+  React.ComponentRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
 >(function SelectContent(
   { className, children, position = "popper", ...props },
@@ -72,7 +72,7 @@ const SelectContent = React.forwardRef<
 Select.Content = SelectContent;
 
 const SelectLabel = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Label>,
+  React.ComponentRef<typeof SelectPrimitive.Label>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>
 >(function SelectLabel({ className, ...props }, ref) {
   return (
@@ -86,7 +86,7 @@ const SelectLabel = React.forwardRef<
 Select.Label = SelectLabel;
 
 const SelectItem = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Item>,
+  React.ComponentRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
 >(function SelectItem({ className, children, ...props }, ref) {
   return (
@@ -111,7 +111,7 @@ const SelectItem = React.forwardRef<
 Select.Item = SelectItem;
 
 const SelectSeparator = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Separator>,
+  React.ComponentRef<typeof SelectPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>
 >(function SelectSeparator({ className, ...props }, ref) {
   return (

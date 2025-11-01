@@ -4,7 +4,7 @@ import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
 
 const NavigationMenuRoot = React.forwardRef<
-  React.ElementRef<typeof NavigationMenuPrimitive.Root>,
+  React.ComponentRef<typeof NavigationMenuPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Root>
 >(function NavigationMenuRoot({ className, children, ...props }, ref) {
   return (
@@ -35,7 +35,7 @@ export const NavigationMenu =
 NavigationMenu.Item = NavigationMenuPrimitive.Item;
 
 const NavigationMenuList = React.forwardRef<
-  React.ElementRef<typeof NavigationMenuPrimitive.List>,
+  React.ComponentRef<typeof NavigationMenuPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.List>
 >(function NavigationMenuList({ className, ...props }, ref) {
   return (
@@ -68,7 +68,7 @@ const navigationMenuTriggerStyle = cva(
 );
 
 const NavigationMenuTrigger = React.forwardRef<
-  React.ElementRef<typeof NavigationMenuPrimitive.Trigger>,
+  React.ComponentRef<typeof NavigationMenuPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Trigger>
 >(function NavigationMenuTrigger({ className, children, ...props }, ref) {
   return (
@@ -90,7 +90,7 @@ const NavigationMenuTrigger = React.forwardRef<
 NavigationMenu.Trigger = NavigationMenuTrigger;
 
 const NavigationMenuContent = React.forwardRef<
-  React.ElementRef<typeof NavigationMenuPrimitive.Content>,
+  React.ComponentRef<typeof NavigationMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Content>
 >(function NavigationMenuContent({ className, ...props }, ref) {
   return (
@@ -111,7 +111,7 @@ interface NavigationMenuLinkProps
     VariantProps<typeof navigationMenuTriggerStyle> {}
 
 const NavigationMenuLink = React.forwardRef<
-  React.ElementRef<typeof NavigationMenuPrimitive.Link>,
+  React.ComponentRef<typeof NavigationMenuPrimitive.Link>,
   NavigationMenuLinkProps
 >(function NavigationMenuLink({ className, variant, ...props }, ref) {
   return (
@@ -125,7 +125,7 @@ const NavigationMenuLink = React.forwardRef<
 NavigationMenu.Link = NavigationMenuLink;
 
 const NavigationMenuViewport = React.forwardRef<
-  React.ElementRef<typeof NavigationMenuPrimitive.Viewport>,
+  React.ComponentRef<typeof NavigationMenuPrimitive.Viewport>,
   React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Viewport>
 >(function NavigationMenuViewport({ className, ...props }, ref) {
   return (
@@ -143,7 +143,7 @@ const NavigationMenuViewport = React.forwardRef<
 NavigationMenu.Viewport = NavigationMenuViewport;
 
 const NavigationMenuIndicator = React.forwardRef<
-  React.ElementRef<typeof NavigationMenuPrimitive.Indicator>,
+  React.ComponentRef<typeof NavigationMenuPrimitive.Indicator>,
   React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Indicator>
 >(function NavigationMenuIndicator({ className, ...props }, ref) {
   return (

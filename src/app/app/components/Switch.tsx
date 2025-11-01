@@ -3,7 +3,7 @@ import * as SwitchPrimitives from "@radix-ui/react-switch";
 import { cx } from "class-variance-authority";
 
 export const Switch = React.forwardRef<
-  React.ElementRef<typeof SwitchPrimitives.Root>,
+  React.ComponentRef<typeof SwitchPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>
 >(function Switch({ className, ...props }, ref) {
   return (
