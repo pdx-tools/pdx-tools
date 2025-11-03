@@ -99,7 +99,7 @@ fn expand_struct_with_named_fields(
             let field_name = &info.ident;
             if info.duplicated {
                 quote! {
-                    let mut #field_name = bumpalo::collections::Vec::new_in(allocator);
+                    let mut #field_name = bumpalo::collections::Vec::new_in(__allocator);
                 }
             } else {
                 quote! {
@@ -142,8 +142,8 @@ fn expand_struct_with_named_fields(
                 Ok(quote! {
                     __Field::#variant_name => {
                         #field_name.push(
-                            map.next_value_seed(
-                                bumpalo_serde::ArenaSeed::<#element_type>::new(allocator)
+                            __map.next_value_seed(
+                                bumpalo_serde::ArenaSeed::<#element_type>::new(__allocator)
                             )?
                         );
                     }
@@ -167,30 +167,30 @@ fn expand_struct_with_named_fields(
                                 }
                             }
 
-                            map.next_value_seed(CustomFieldSeed { allocator })?
+                            __map.next_value_seed(CustomFieldSeed { allocator: __allocator })?
                         });
                     }
                 } else if is_slice_reference(field_type, arena_lifetime) {
                     if let Some(element_type) = get_slice_element_type(field_type) {
                         quote! {
-                            #field_name = Some(map.next_value_seed(
-                                bumpalo_serde::SliceDeserializer::<#element_type>::new(allocator)
+                            #field_name = Some(__map.next_value_seed(
+                                bumpalo_serde::SliceDeserializer::<#element_type>::new(__allocator)
                             )?);
                         }
                     } else {
                         quote! {
-                            #field_name = Some(map.next_value_seed(bumpalo_serde::ArenaSeed::new(allocator))?);
+                            #field_name = Some(__map.next_value_seed(bumpalo_serde::ArenaSeed::new(__allocator))?);
                         }
                     }
                 } else if is_arena_type(field_type, arena_lifetime)
                     || is_option_with_arena_type(field_type, arena_lifetime)
                 {
                     quote! {
-                        #field_name = Some(map.next_value_seed(bumpalo_serde::ArenaSeed::new(allocator))?);
+                        #field_name = Some(__map.next_value_seed(bumpalo_serde::ArenaSeed::new(__allocator))?);
                     }
                 } else {
                     quote! {
-                        #field_name = Some(map.next_value()?);
+                        #field_name = Some(__map.next_value()?);
                     }
                 };
 
@@ -323,21 +323,21 @@ fn expand_struct_with_named_fields(
                         formatter.write_str(concat!("struct ", stringify!(#name)))
                     }
 
-                    fn visit_map<V>(self, mut map: V) -> Result<#name #ty_generics, V::Error>
+                    fn visit_map<V>(self, mut __map: V) -> Result<#name #ty_generics, V::Error>
                     where
                         V: serde::de::MapAccess<'de>,
                     {
-                        let allocator = self.allocator;
+                        let __allocator = self.allocator;
                         #(
                             #field_initializations
                         )*
 
-                        while let Some(key) = map.next_key::<__Field>()? {
-                            match key {
+                        while let Some(__key) = __map.next_key::<__Field>()? {
+                            match __key {
                                 #(#field_handling)*
                                 __Field::__ignore => {
                                     // Skip unknown fields
-                                    map.next_value::<serde::de::IgnoredAny>()?;
+                                    __map.next_value::<serde::de::IgnoredAny>()?;
                                 }
                             }
                         }
