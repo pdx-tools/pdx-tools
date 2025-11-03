@@ -13,6 +13,7 @@ const badge = cva(
         default:
           "bg-gray-100 border border-solid border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-white",
         gold: "bg-amber-100 border border-solid border-amber-200 dark:bg-amber-800 dark:border-amber-700 dark:text-white",
+        ghost: "border-0",
       },
     },
     defaultVariants: {
