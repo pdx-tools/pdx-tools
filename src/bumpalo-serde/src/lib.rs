@@ -907,4 +907,65 @@ mod tests {
         assert_eq!(result.inner.number, 42);
         assert_eq!(result.outer_data, "outer");
     }
+
+    /// Test that field named 'key' doesn't cause shadowing issues
+    #[test]
+    fn test_field_named_key() {
+        let allocator = bumpalo::Bump::new();
+
+        #[derive(ArenaDeserialize)]
+        struct WithKey<'bump> {
+            key: &'bump str,
+            value: i32,
+        }
+
+        let json = r#"{"key": "my_key", "value": 42}"#;
+        let mut deserializer = serde_json::Deserializer::from_str(json);
+
+        let result: WithKey = WithKey::deserialize_in_arena(&mut deserializer, &allocator).unwrap();
+
+        assert_eq!(result.key, "my_key");
+        assert_eq!(result.value, 42);
+    }
+
+    /// Test that field named 'allocator' doesn't cause shadowing issues
+    #[test]
+    fn test_field_named_allocator() {
+        let allocator = bumpalo::Bump::new();
+
+        #[derive(ArenaDeserialize)]
+        struct WithAllocator<'bump> {
+            allocator: &'bump str,
+            name: String,
+        }
+
+        let json = r#"{"allocator": "bump_allocator", "name": "test"}"#;
+        let mut deserializer = serde_json::Deserializer::from_str(json);
+
+        let result: WithAllocator =
+            WithAllocator::deserialize_in_arena(&mut deserializer, &allocator).unwrap();
+
+        assert_eq!(result.allocator, "bump_allocator");
+        assert_eq!(result.name, "test");
+    }
+
+    /// Test that field named 'map' doesn't cause shadowing issues
+    #[test]
+    fn test_field_named_map() {
+        let allocator = bumpalo::Bump::new();
+
+        #[derive(ArenaDeserialize)]
+        struct WithMap<'bump> {
+            map: &'bump str,
+            count: u32,
+        }
+
+        let json = r#"{"map": "some_map", "count": 99}"#;
+        let mut deserializer = serde_json::Deserializer::from_str(json);
+
+        let result: WithMap = WithMap::deserialize_in_arena(&mut deserializer, &allocator).unwrap();
+
+        assert_eq!(result.map, "some_map");
+        assert_eq!(result.count, 99);
+    }
 }
