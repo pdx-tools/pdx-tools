@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [
+      "Add support for EU5",
+      "Add support for CK3 1.18 saves",
+      "Add support for Vic3 1.10 saves"
+    ]
+  }
+}
