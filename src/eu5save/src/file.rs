@@ -14,6 +14,7 @@ use std::{
 };
 
 /// Entrypoint for parsing Eu5 saves
+#[derive(Debug, Clone)]
 pub struct Eu5File<R> {
     kind: Eu5FileKind<R>,
 }
@@ -90,6 +91,7 @@ impl Eu5File<()> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum Eu5FileKind<R> {
     Uncompressed(SaveDataKind<R>),
     Zip(Box<Eu5Zip<R>>),
