@@ -141,7 +141,7 @@ impl<R: ReaderAt> Eu5File<R> {
         }
     }
 
-    pub fn meta(&self) -> SaveBodyKind<RangeReader<&R>> {
+    pub fn meta(&self) -> Eu5Meta<RangeReader<&R>> {
         match self.kind() {
             Eu5FileKind::Zip(archive) => archive.meta(),
             Eu5FileKind::Uncompressed(x) => x.meta(),
@@ -254,12 +254,13 @@ where
         RangeReader::new(self.archive.get_ref(), x.start as u64..x.end as u64)
     }
 
-    pub fn meta(&self) -> SaveBodyKind<RangeReader<&R>> {
-        if self.header.kind().is_text() {
+    pub fn meta(&self) -> Eu5Meta<RangeReader<&R>> {
+        let body = if self.header.kind().is_text() {
             SaveBodyKind::Text(SaveBody::new(self.meta_reader()))
         } else {
             SaveBodyKind::Binary(SaveBody::new(self.meta_reader()))
-        }
+        };
+        Eu5Meta::new(body, self.header.clone())
     }
 
     pub fn gamestate(&self) -> Result<SaveBodyKind<ZipEntry<&R>>, Eu5Error> {
@@ -394,17 +395,68 @@ impl<R> SaveDataKind<R> {
 }
 
 impl<R: ReaderAt> SaveDataKind<R> {
-    pub fn meta(&self) -> SaveBodyKind<RangeReader<&R>> {
-        match self {
+    pub fn meta(&self) -> Eu5Meta<RangeReader<&R>> {
+        let body = match self {
             SaveDataKind::Text(data) => SaveBodyKind::Text(data.meta()),
             SaveDataKind::Binary(data) => SaveBodyKind::Binary(data.meta()),
-        }
+        };
+        Eu5Meta::new(body, self.header().clone())
     }
 
     pub fn gamestate(&self) -> SaveBodyKind<&R> {
         match self {
             SaveDataKind::Text(data) => SaveBodyKind::Text(data.body.as_ref()),
             SaveDataKind::Binary(data) => SaveBodyKind::Binary(data.body.as_ref()),
+        }
+    }
+}
+
+/// Metadata (header + body)
+#[derive(Debug)]
+pub struct Eu5Meta<R> {
+    pub body: SaveBodyKind<R>,
+    pub header: SaveHeader,
+}
+
+impl<R> Eu5Meta<R> {
+    pub fn new(body: SaveBodyKind<R>, header: SaveHeader) -> Self {
+        Eu5Meta { body, header }
+    }
+
+    pub fn into_body(self) -> SaveBodyKind<R> {
+        self.body
+    }
+}
+
+impl<R: Read> Read for Eu5Meta<R> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.body.read(buf)
+    }
+}
+
+impl<R: ReaderAt + Read> Eu5Meta<R> {
+    pub fn melt<Resolver, Writer>(
+        &mut self,
+        options: MeltOptions,
+        resolver: Resolver,
+        mut output: Writer,
+    ) -> Result<melt::MeltedDocument, Eu5Error>
+    where
+        Resolver: TokenResolver,
+        Writer: Write,
+    {
+        match &mut self.body {
+            SaveBodyKind::Text(_) => {
+                let mut new_header = self.header.clone();
+                new_header.set_kind(crate::SaveHeaderKind::Text);
+                new_header.write(&mut output)?;
+                std::io::copy(&mut self.body, &mut output)?;
+                Ok(melt::MeltedDocument::new())
+            }
+            SaveBodyKind::Binary(_) => {
+                let header = self.header.clone();
+                melt::melt(&mut self.body, &mut output, resolver, options, header)
+            }
         }
     }
 }

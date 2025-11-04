@@ -16,11 +16,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let file = Eu5File::from_slice(&data)?;
     let arena = bumpalo::Bump::new();
 
-    let meta = match file.meta() {
-        SaveBodyKind::Text(mut save_body) => {
+    let mut eu5_meta = file.meta();
+    let meta = match &mut eu5_meta.body {
+        SaveBodyKind::Text(save_body) => {
             ZipPrelude::deserialize_in_arena(&mut save_body.deserializer(), &arena)?
         }
-        SaveBodyKind::Binary(mut save_body) => {
+        SaveBodyKind::Binary(save_body) => {
             ZipPrelude::deserialize_in_arena(&mut save_body.deserializer(&resolver), &arena)?
         }
     };
