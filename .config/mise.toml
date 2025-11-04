@@ -236,8 +236,6 @@ run = ["cargo run -p pdx-tools-api"]
 
 [tasks.tokenize]
 description = "Preprocess the ironman tokens for distribution"
-sources = ["./assets/tokens/*.txt"]
-outputs = ["./assets/tokens/*.bin"]
 run = "cargo run --package pdx-tokenize-cli -- ./assets/tokens"
 
 [tasks.pnpm-install]
