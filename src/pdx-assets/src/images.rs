@@ -72,6 +72,7 @@ pub enum Color {
 pub enum OutputFormat {
     Webp { quality: WebpQuality },
     Png,
+    Raw,
 }
 
 #[derive(Debug, Clone)]

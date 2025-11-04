@@ -11,6 +11,7 @@ assets/game/eu4/common/images/personalities
 assets/game/eu4/common/images/tc-investments
 assets/game/eu4/common/images/achievements/*
 !assets/game/eu4/common/images/achievements/10000.png
+assets/game/eu5
 assets/tokens
 assets/vendored/
 .env

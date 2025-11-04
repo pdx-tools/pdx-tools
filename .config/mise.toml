@@ -48,6 +48,8 @@ depends = [
     'build:wasm-bindgen wasm_ck3',
     'build:wasm-bindgen wasm_compress',
     'build:wasm-bindgen wasm_eu4',
+    'build:wasm-bindgen wasm_eu5_map',
+    'build:wasm-bindgen wasm_eu5',
     'build:wasm-bindgen wasm_hoi4',
     'build:wasm-bindgen wasm_imperator',
     'build:wasm-bindgen wasm_pdx_map',
@@ -83,7 +85,7 @@ run_windows = [
 
 [tasks."build:app"]
 description = "Build pdx.tools frontend for deployment"
-depends = ["pnpm-install", "build:docs", "build:wasm", "optimize:wasm:*", "dev:app:setup:*", "tokenize"]
+depends = ["pnpm-install", "build:docs", "build:wasm", "optimize:wasm:*", "dev:app:setup:**", "tokenize"]
 dir = "src/app"
 run = ["pnpm run build"]
 
@@ -192,7 +194,7 @@ run = [
 ]
 
 [tasks."test:app:build"]
-depends = ["pnpm-install", "dev:app:setup:*", "build:wasm"]
+depends = ["pnpm-install", "dev:app:setup:**", "build:wasm"]
 dir = "src/app"
 run = "pnpm build --mode test"
 env.NODE_ENV = "test"
@@ -283,7 +285,7 @@ run = [
 ]
 
 [tasks.typecheck]
-wait_for = ["build:wasm", "dev:app:setup:*"]
+wait_for = ["build:wasm", "dev:app:setup:**"]
 depends = ["pnpm-install"]
 run = "pnpm run typecheck"
 

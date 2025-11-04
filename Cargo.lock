@@ -424,6 +424,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
+name = "cobs"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fa961b519f0b462e3a3b4a34b64d119eeaca1d59af726fe450bbba07a9fc0a1"
+dependencies = [
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "codespan-reporting"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -620,6 +629,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
+name = "embedded-io"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef1a6892d9eef45c8fa6b9e0086428a2cca8491aca8f787c534a3d6d0bcb3ced"
+
+[[package]]
+name = "embedded-io"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
+
+[[package]]
 name = "env_filter"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -713,6 +734,52 @@ dependencies = [
  "tsify",
  "wasm-bindgen",
  "zstd",
+]
+
+[[package]]
+name = "eu5app"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "eu5save",
+ "image",
+ "jomini",
+ "pdx-map",
+ "pdx-zstd",
+ "postcard",
+ "rawzip",
+ "rstest",
+ "serde",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "eu5native"
+version = "0.1.0"
+dependencies = [
+ "bumpalo",
+ "bumpalo-serde",
+ "clap",
+ "eu5app",
+ "eu5save",
+ "image",
+ "pdx-map",
+ "tokio",
+]
+
+[[package]]
+name = "eu5save"
+version = "0.1.0"
+dependencies = [
+ "bumpalo",
+ "bumpalo-serde",
+ "flate2",
+ "jomini",
+ "rawzip",
+ "rstest",
+ "serde",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -1864,11 +1931,14 @@ dependencies = [
  "env_logger",
  "eu4game-data",
  "eu4save",
+ "eu5app",
+ "eu5save",
  "flate2",
  "jomini",
  "log",
  "mimalloc",
  "pdx-zstd",
+ "postcard",
  "rawbmp",
  "rawzip",
  "regex",
@@ -2033,6 +2103,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8a2f0d8d040d7848a709caf78912debcc3f33ee4b3cac47d73d1e1069e83507"
 dependencies = [
  "portable-atomic",
+]
+
+[[package]]
+name = "postcard"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6764c3b5dd454e283a30e6dfe78e9b31096d9e32036b5d1eaac7a6119ccb9a24"
+dependencies = [
+ "cobs",
+ "embedded-io 0.4.0",
+ "embedded-io 0.6.1",
+ "serde",
 ]
 
 [[package]]
@@ -3160,6 +3242,41 @@ dependencies = [
  "tsify",
  "wasm-bindgen",
  "wasm-bindgen-test",
+]
+
+[[package]]
+name = "wasm-eu5"
+version = "0.1.0"
+dependencies = [
+ "bumpalo",
+ "bumpalo-serde",
+ "eu5app",
+ "eu5save",
+ "jomini",
+ "js-sys",
+ "pdx-map",
+ "pdx-zstd",
+ "schemas",
+ "serde",
+ "serde-wasm-bindgen",
+ "tsify",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "wasm-eu5-map"
+version = "0.1.0"
+dependencies = [
+ "eu5app",
+ "js-sys",
+ "pdx-map",
+ "serde",
+ "serde-wasm-bindgen",
+ "tsify",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-pdx-map",
+ "web-sys",
 ]
 
 [[package]]

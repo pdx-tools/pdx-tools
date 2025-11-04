@@ -7,6 +7,9 @@ members = [
     "src/bumpalo-serde",
     "src/eu4game-data",
     "src/eu4game",
+    "src/eu5app",
+    "src/eu5native",
+    "src/eu5save",
     "src/pdx-admin-cli",
     "src/pdx-assets",
     "src/pdx-fun-cli",
@@ -25,6 +28,8 @@ members = [
     "src/wasm-imperator",
     "src/wasm-pdx-map",
     "src/wasm-vic3",
+    "src/wasm-eu5",
+    "src/wasm-eu5-map"
 ]
 
 [workspace.dependencies]
@@ -34,6 +39,7 @@ attohttpc = "0.29.0"
 axum = "0.8.4"
 base64 = "0.22"
 bumpalo = "3.19"
+bumpalo-serde = { path = "src/bumpalo-serde" }
 bumpalo-serde-derive = { path = "src/bumpalo-serde-derive" }
 bytemuck = { version = "1.24" }
 ck3save = { git = "https://github.com/rakaly/ck3save.git" }
@@ -45,6 +51,8 @@ erased-serde = "0.4.5"
 eu4game = { path = "src/eu4game", default-features = false }
 eu4game-data = { path = "src/eu4game-data", default-features = false }
 eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = false }
+eu5app = { path = "src/eu5app", default-features = false }
+eu5save = { path = "src/eu5save", default-features = false }
 flatbuffers = "25.2.10"
 flate2 = { version = "1.1.0", default-features = false }
 futures-channel = { version = "0.3.31" }
@@ -88,6 +96,7 @@ walkdir = "2.5.0"
 wasm-bindgen = { version = "0.2.100", default-features = false }
 wasm-bindgen-futures = "0.4.50"
 wasm-bindgen-test = "0.3.50"
+wasm-pdx-map = { path = "src/wasm-pdx-map" }
 web-sys = "0.3.77"
 webp = "0.3"
 wgpu = { version = "27.0" }

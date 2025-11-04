@@ -1,0 +1,27 @@
+[package]
+name = "wasm-eu5-map"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["zstd_rust"]
+zstd_c = ["eu5app/zstd_c"]
+zstd_rust = ["eu5app/zstd_rust"]
+
+[dependencies]
+eu5app = { workspace = true, default-features = false }
+js-sys = { workspace = true }
+pdx-map = { workspace = true }
+wasm-pdx-map = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde-wasm-bindgen = { workspace = true }
+tsify = { workspace = true, default-features = false, features = ["js"] }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+web-sys = { workspace = true, features = ["OffscreenCanvas"] }

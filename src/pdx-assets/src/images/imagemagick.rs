@@ -238,11 +238,21 @@ impl ImageProcessor for ImageMagickProcessor {
             OutputFormat::Png => {
                 // PNG doesn't need special args for basic conversion
             }
+            OutputFormat::Raw => {
+                // For raw output, we need to specify depth and format
+                cmd.arg("-depth");
+                cmd.arg("8");
+            }
         }
 
-        cmd.arg(&request.output_path);
+        // For raw format, prepend "rgba:" to the output path
+        if matches!(request.format, OutputFormat::Raw) {
+            cmd.arg(format!("rgba:{}", request.output_path.display()));
+        } else {
+            cmd.arg(&request.output_path);
+        }
 
-        let output = cmd.output()?;
+        let output = cmd.output().context("imagemagick convert failed")?;
         if !output.status.success() {
             return Err(ImageError::ImageMagickFailed {
                 command: "convert".to_string(),
@@ -316,6 +326,10 @@ impl ImageProcessor for ImageMagickProcessor {
                 },
                 OutputFormat::Png => {
                     // PNG doesn't need special args
+                }
+                OutputFormat::Raw => {
+                    // Raw format not supported for montage
+                    bail!("Raw format is not supported for montage operations");
                 }
             }
 

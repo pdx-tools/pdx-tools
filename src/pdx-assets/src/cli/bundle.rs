@@ -1,7 +1,9 @@
-use crate::asset_compilers::{Eu4AssetCompliler, GameAssetCompiler, PackageOptions};
+use crate::asset_compilers::{
+    Eu4AssetCompliler, Eu5AssetCompiler, GameAssetCompiler, PackageOptions,
+};
 use crate::bundler::{AssetBundler, AssetManifest};
 use crate::images::imagemagick::ImageMagickProcessor;
-use crate::{DirectoryProvider, FileAccessTracker, steam};
+use crate::{DirectoryProvider, FileAccessTracker, Game, steam};
 use anyhow::{Context, Result};
 use clap::Args;
 use std::io::stdout;
@@ -18,6 +20,10 @@ pub struct BundleArgs {
     /// Output directory
     #[clap(value_parser)]
     out_directory: Option<PathBuf>,
+
+    /// Game to bundle (eu4 or eu5). If not specified, attempts to auto-detect from source
+    #[clap(long)]
+    game: Option<String>,
 }
 
 impl BundleArgs {
@@ -31,7 +37,9 @@ impl BundleArgs {
         let directory_provider = DirectoryProvider::new(&game_directory);
         let tracking_provider = FileAccessTracker::new(directory_provider);
 
-        let game_compiler = Eu4AssetCompliler;
+        // Determine which game to bundle
+        let game = self.detect_game(&tracking_provider)?;
+
         let imaging = ImageMagickProcessor::create()?;
 
         let out_dir = match self.out_directory.as_ref() {
@@ -40,10 +48,18 @@ impl BundleArgs {
         };
 
         let options = PackageOptions::dry_run();
-        let compilation_output =
-            game_compiler.compile_assets(&tracking_provider, &imaging, &out_dir, &options)?;
+        let compilation_output = match game {
+            Game::Eu4 => {
+                let game_compiler = Eu4AssetCompliler;
+                game_compiler.compile_assets(&tracking_provider, &imaging, &out_dir, &options)?
+            }
+            Game::Eu5 => {
+                let game_compiler = Eu5AssetCompiler;
+                game_compiler.compile_assets(&tracking_provider, &imaging, &out_dir, &options)?
+            }
+        };
 
-        let zip_filename = format!("eu4-{}.zip", compilation_output.game_version);
+        let zip_filename = format!("{}-{}.zip", game, compilation_output.game_version);
 
         // Extract tracked file access
         let accessed_files = tracking_provider.get_accessed_files();
@@ -83,7 +99,17 @@ impl BundleArgs {
             println!("Compression ratio: {:.1}%", ratio);
         }
 
-        println!("Asset bundle created successfully!");
+        println!("Asset bundle created successfully for {}!", game);
         Ok(ExitCode::SUCCESS)
+    }
+
+    fn detect_game(&self, provider: &FileAccessTracker<DirectoryProvider>) -> Result<Game> {
+        // If explicitly specified, use that
+        if let Some(game_str) = &self.game {
+            game_str.parse()
+        } else {
+            // Auto-detect based on file structure
+            Game::detect(provider)
+        }
     }
 }

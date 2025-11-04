@@ -104,6 +104,7 @@ export const HeroFileInput = () => {
 
   const acceptedFiles: `.${string}`[] = [
     ".eu4",
+    ".eu5",
     ".ck3",
     ".hoi4",
     ".rome",
@@ -129,7 +130,7 @@ export const HeroFileInput = () => {
         type="file"
         className="peer absolute opacity-0"
         onChange={handleChange}
-        accept=".eu4, .ck3, .hoi4, .rome, .v3"
+        accept={acceptedFiles.join(",")}
       />
 
       <label htmlFor="analyze-box-file-input" className={className}>

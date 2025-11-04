@@ -15,7 +15,7 @@ pub struct TokenizeArgs {
 
 impl TokenizeArgs {
     pub fn run(&self) -> anyhow::Result<ExitCode> {
-        for game in ["eu4", "ck3", "hoi4", "imperator", "vic3"] {
+        for game in ["eu4", "eu5", "ck3", "hoi4", "imperator", "vic3"] {
             let token_file = self.tokens_dir.join(game).with_extension("txt");
             if token_file.exists() {
                 let file = File::open(&token_file)?;

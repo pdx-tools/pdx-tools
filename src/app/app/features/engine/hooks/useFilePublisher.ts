@@ -26,6 +26,34 @@ async function inputSaveGame(input: AnalyzeInput): Promise<SaveGameInput> {
         };
       }
     }
+    case "eu5": {
+      if (input.kind === "handle") {
+        const name = (await input.file.getFile()).name;
+        return {
+          kind: "eu5",
+          data: {
+            kind: "handle",
+            file: input.file,
+            name,
+          },
+        };
+      } else {
+        return {
+          kind: "eu5",
+          data: input,
+        };
+      }
+    }
+    case "ck3":
+    case "hoi4":
+    case "imperator": {
+      const file =
+        input.kind === "handle" ? await input.file.getFile() : input.file;
+      return {
+        kind: game,
+        file,
+      };
+    }
     default: {
       const file =
         input.kind === "handle" ? await input.file.getFile() : input.file;
