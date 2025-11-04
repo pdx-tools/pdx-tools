@@ -6,6 +6,7 @@ import compassSymbol from "./compass-symbol.webp";
 import queenSymbol from "./queen.webp";
 import militaryRank from "./military-rank.webp";
 import { cx } from "class-variance-authority";
+import { Badge } from "@/components/Badge";
 
 function Eu4FileIcon() {
   return (
@@ -96,7 +97,7 @@ export const HeroFileInput = () => {
   };
 
   const className = cx(
-    "m-8 flex w-full cursor-pointer flex-col items-center rounded-2xl border-0 p-4 text-center outline-4 transition-all duration-150 outline-dashed peer-focus:text-blue-200 peer-focus:outline-blue-500 hover:bg-black/10 hover:text-blue-200 hover:outline-blue-500 lg:p-8 xl:p-16",
+    "relative m-8 flex w-full cursor-pointer flex-col items-center rounded-2xl border-0 p-4 text-center outline-4 transition-all duration-150 outline-dashed peer-focus:text-blue-200 peer-focus:outline-blue-500 hover:bg-black/10 hover:text-blue-200 hover:outline-blue-500 lg:p-8 xl:p-16",
     !isHovering
       ? "bg-black/20 text-white outline-white/50"
       : "bg-black/10 text-blue-200 outline-blue-500",
@@ -113,6 +114,20 @@ export const HeroFileInput = () => {
 
   const children = (
     <>
+      <div className="absolute -top-5 left-1/2 -translate-x-1/2 sm:-top-6">
+        <Badge
+          variant="ghost"
+          className="flex items-center gap-2 border-0 bg-emerald-200/90 px-4 py-1 text-xs font-semibold text-emerald-900 shadow-lg ring-1 shadow-emerald-900/10 ring-emerald-100/80 sm:text-sm"
+        >
+          <Badge
+            variant="ghost"
+            className="border-0 bg-emerald-500 px-2 py-0.5 text-[10px] tracking-wide text-white uppercase shadow shadow-emerald-950/20 sm:text-xs"
+          >
+            New
+          </Badge>
+          EU5
+        </Badge>
+      </div>
       <Eu4FileIcon />
       <V3FileIcon />
       <Hoi4FileIcon />
