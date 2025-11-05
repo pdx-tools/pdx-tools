@@ -35,7 +35,7 @@ impl Eu5File<()> {
                 let mut buf = vec![0u8; rawzip::RECOMMENDED_BUFFER_SIZE];
                 let zip = Eu5Zip::try_from_archive(archive, &mut buf, header.clone())?;
                 Ok(Eu5File {
-                    kind: Eu5FileKind::Zip(Box::new(zip)),
+                    kind: Eu5FileKind::Zip(zip),
                 })
             }
             _ if header.kind().is_binary() => Ok(Eu5File {
@@ -66,7 +66,7 @@ impl Eu5File<()> {
             Ok(archive) => {
                 let zip = Eu5Zip::try_from_archive(archive, &mut buf, header.clone())?;
                 Ok(Eu5File {
-                    kind: Eu5FileKind::Zip(Box::new(zip)),
+                    kind: Eu5FileKind::Zip(zip),
                 })
             }
             Err((file, _)) => {
@@ -94,7 +94,7 @@ impl Eu5File<()> {
 #[derive(Debug, Clone)]
 pub enum Eu5FileKind<R> {
     Uncompressed(SaveDataKind<R>),
-    Zip(Box<Eu5Zip<R>>),
+    Zip(Eu5Zip<R>),
 }
 
 impl<R> Eu5File<R> {
@@ -143,7 +143,7 @@ impl<R: ReaderAt> Eu5File<R> {
         }
     }
 
-    pub fn meta(&self) -> Eu5Meta<RangeReader<&R>> {
+    pub fn meta(&self) -> Eu5MetaKind<RangeReader<&R>> {
         match self.kind() {
             Eu5FileKind::Zip(archive) => archive.meta(),
             Eu5FileKind::Uncompressed(x) => x.meta(),
@@ -251,18 +251,17 @@ where
         }
     }
 
-    fn meta_reader(&self) -> RangeReader<&R> {
-        let x = &self.metadata;
-        RangeReader::new(self.archive.get_ref(), x.start as u64..x.end as u64)
-    }
-
-    pub fn meta(&self) -> Eu5Meta<RangeReader<&R>> {
-        let body = if self.header.kind().is_text() {
-            SaveBodyKind::Text(SaveBody::new(self.meta_reader()))
+    pub fn meta(&self) -> Eu5MetaKind<RangeReader<&R>> {
+        let archive_ref = self.archive.get_ref();
+        let meta_reader = RangeReader::new(
+            archive_ref,
+            self.metadata.start as u64..self.metadata.end as u64,
+        );
+        if self.header.kind().is_text() {
+            Eu5MetaKind::Text(Eu5Meta::new(meta_reader, self.header.clone()))
         } else {
-            SaveBodyKind::Binary(SaveBody::new(self.meta_reader()))
-        };
-        Eu5Meta::new(body, self.header.clone())
+            Eu5MetaKind::Binary(Eu5Meta::new(meta_reader, self.header.clone()))
+        }
     }
 
     pub fn gamestate(&self) -> Result<SaveBodyKind<ZipEntry<&R>>, Eu5Error> {
@@ -342,12 +341,12 @@ impl<R: ReaderAt> SaveData<BinaryEncoding, R> {
     }
 }
 
-impl<R: Read> SaveData<BinaryEncoding, R> {
+impl<R: ReaderAt> SaveData<BinaryEncoding, R> {
     pub fn deserializer<'res, RES: TokenResolver>(
-        &mut self,
+        &self,
         resolver: &'res RES,
-    ) -> BinaryReaderDeserializer<'res, RES, Eu5Flavor, &mut R> {
-        self.body.deserializer(resolver)
+    ) -> Eu5BinaryDeserializer<'res, RES, impl Read + '_> {
+        binary_deserializer(resolver, self.body.cursor())
     }
 }
 
@@ -364,9 +363,9 @@ impl<R: ReaderAt> SaveData<TextEncoding, R> {
     }
 }
 
-impl<R: Read> SaveData<TextEncoding, R> {
-    pub fn deserializer(&mut self) -> TextReaderDeserializer<&mut R, Utf8Encoding> {
-        self.body.deserializer()
+impl<R: ReaderAt> SaveData<TextEncoding, R> {
+    pub fn deserializer(&self) -> Eu5TextDeserializer<impl Read + '_> {
+        text_deserializer(self.body.cursor())
     }
 }
 
@@ -396,13 +395,32 @@ impl<R> SaveDataKind<R> {
     }
 }
 
+/// Result of extracting metadata - encoded variant tells us the encoding type
+pub enum Eu5MetaKind<R> {
+    Text(Eu5Meta<TextEncoding, R>),
+    Binary(Eu5Meta<BinaryEncoding, R>),
+}
+
 impl<R: ReaderAt> SaveDataKind<R> {
-    pub fn meta(&self) -> Eu5Meta<RangeReader<&R>> {
-        let body = match self {
-            SaveDataKind::Text(data) => SaveBodyKind::Text(data.meta()),
-            SaveDataKind::Binary(data) => SaveBodyKind::Binary(data.meta()),
+    pub fn meta(&self) -> Eu5MetaKind<RangeReader<&R>> {
+        let header = self.header().clone();
+
+        // Get the body base offset and reader
+        let (body_offset, reader) = match self {
+            SaveDataKind::Text(data) => (data.body.base_offset(), data.body.get_ref()),
+            SaveDataKind::Binary(data) => (data.body.base_offset(), data.body.get_ref()),
         };
-        Eu5Meta::new(body, self.header().clone())
+
+        // Metadata starts right after the header, accounting for the body offset
+        let metadata_range = body_offset..body_offset + header.metadata_len();
+
+        let meta_reader = RangeReader::new(reader, metadata_range.clone());
+
+        if header.kind().is_text() {
+            Eu5MetaKind::Text(Eu5Meta::new(meta_reader, header))
+        } else {
+            Eu5MetaKind::Binary(Eu5Meta::new(meta_reader, header))
+        }
     }
 
     pub fn gamestate(&self) -> SaveBodyKind<&R> {
@@ -414,56 +432,82 @@ impl<R: ReaderAt> SaveDataKind<R> {
 }
 
 /// Metadata (header + body)
-#[derive(Debug)]
-pub struct Eu5Meta<R> {
-    pub body: SaveBodyKind<R>,
-    pub header: SaveHeader,
+#[derive(Debug, Clone)]
+pub struct Eu5Meta<E, R> {
+    reader: R,
+    header: SaveHeader,
+    _encoding: std::marker::PhantomData<E>,
 }
 
-impl<R> Eu5Meta<R> {
-    pub fn new(body: SaveBodyKind<R>, header: SaveHeader) -> Self {
-        Eu5Meta { body, header }
+impl<E, R> Eu5Meta<E, R> {
+    pub fn new(reader: R, header: SaveHeader) -> Self {
+        Eu5Meta {
+            reader,
+            header,
+            _encoding: std::marker::PhantomData,
+        }
     }
 
-    pub fn into_body(self) -> SaveBodyKind<R> {
-        self.body
+    pub fn header(&self) -> &SaveHeader {
+        &self.header
     }
 }
 
-impl<R: Read> Read for Eu5Meta<R> {
+impl<R: Read> Read for Eu5Meta<TextEncoding, R> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        self.body.read(buf)
+        self.reader.read(buf)
     }
 }
 
-impl<R: ReaderAt + Read> Eu5Meta<R> {
+impl<R: Read> Read for Eu5Meta<BinaryEncoding, R> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.reader.read(buf)
+    }
+}
+
+impl<R: Read> Eu5Meta<TextEncoding, R> {
+    pub fn melt<Writer>(&mut self, mut output: Writer) -> Result<melt::MeltedDocument, Eu5Error>
+    where
+        Writer: Write,
+    {
+        let mut new_header = self.header.clone();
+        new_header.set_kind(crate::SaveHeaderKind::Text);
+        new_header.write(&mut output)?;
+        std::io::copy(&mut self.reader, &mut output)?;
+        Ok(melt::MeltedDocument::new())
+    }
+
+    pub fn deserializer(&mut self) -> Eu5TextDeserializer<&mut R> {
+        text_deserializer(&mut self.reader)
+    }
+}
+
+impl<R: ReaderAt> Eu5Meta<BinaryEncoding, R> {
     pub fn melt<Resolver, Writer>(
         &mut self,
         options: MeltOptions,
         resolver: Resolver,
-        mut output: Writer,
+        output: Writer,
     ) -> Result<melt::MeltedDocument, Eu5Error>
     where
         Resolver: TokenResolver,
         Writer: Write,
     {
-        match &mut self.body {
-            SaveBodyKind::Text(_) => {
-                let mut new_header = self.header.clone();
-                new_header.set_kind(crate::SaveHeaderKind::Text);
-                new_header.write(&mut output)?;
-                std::io::copy(&mut self.body, &mut output)?;
-                Ok(melt::MeltedDocument::new())
-            }
-            SaveBodyKind::Binary(_) => {
-                let header = self.header.clone();
-                melt::melt(&mut self.body, &mut output, resolver, options, header)
-            }
-        }
+        let mut cursor = ReaderAtCursor::new_at(&self.reader, 0);
+        melt::melt(&mut cursor, output, resolver, options, self.header.clone())
     }
 }
 
-#[derive(Debug)]
+impl<R: Read> Eu5Meta<BinaryEncoding, R> {
+    pub fn deserializer<'res, RES: TokenResolver>(
+        &mut self,
+        resolver: &'res RES,
+    ) -> Eu5BinaryDeserializer<'res, RES, &mut R> {
+        binary_deserializer(resolver, &mut self.reader)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum SaveBodyKind<R> {
     Text(SaveBody<TextEncoding, R>),
     Binary(SaveBody<BinaryEncoding, R>),
@@ -509,7 +553,7 @@ impl<R, E> SaveBody<E, R> {
         &self.reader
     }
 
-    pub fn into_inner(self) -> R {
+    fn into_inner(self) -> R {
         self.reader
     }
 
@@ -527,7 +571,7 @@ impl<R, E> SaveBody<E, R> {
 }
 
 impl<E, R: ReaderAt> SaveBody<E, R> {
-    fn cursor(&self) -> ReaderAtCursor<'_, R> {
+    pub fn cursor(&self) -> ReaderAtCursor<'_, R> {
         ReaderAtCursor::new_at(&self.reader, self.base_offset)
     }
 }
@@ -539,9 +583,8 @@ impl<R: Read, E> Read for SaveBody<E, R> {
 }
 
 impl<R: Read> SaveBody<TextEncoding, R> {
-    pub fn deserializer(&mut self) -> TextReaderDeserializer<&mut R, Utf8Encoding> {
-        let reader = jomini::text::TokenReader::new(&mut self.reader);
-        TextDeserializer::from_utf8_reader(reader)
+    pub fn deserializer(&mut self) -> Eu5TextDeserializer<&mut R> {
+        text_deserializer(&mut self.reader)
     }
 }
 
@@ -549,9 +592,8 @@ impl<R: Read> SaveBody<BinaryEncoding, R> {
     pub fn deserializer<'res, RES: TokenResolver>(
         &mut self,
         resolver: &'res RES,
-    ) -> BinaryReaderDeserializer<'res, RES, Eu5Flavor, &mut R> {
-        BinaryDeserializerBuilder::with_flavor(Eu5Flavor::new())
-            .from_reader(&mut self.reader, resolver)
+    ) -> Eu5BinaryDeserializer<'res, RES, &mut R> {
+        binary_deserializer(resolver, &mut self.reader)
     }
 }
 
@@ -568,7 +610,7 @@ impl<R: ReaderAt> Read for ZipEntry<R> {
 }
 
 /// Wrapper that adapts ReaderAt to the Read trait
-struct ReaderAtCursor<'a, R: ReaderAt> {
+pub struct ReaderAtCursor<'a, R> {
     reader: &'a R,
     position: u64,
 }
@@ -587,6 +629,27 @@ impl<'a, R: ReaderAt> Read for ReaderAtCursor<'a, R> {
         self.position += n as u64;
         Ok(n)
     }
+}
+
+/// Type alias for Eu5 text deserializer
+///
+/// A lazy way to avoid the need to reimplement deserializer
+pub type Eu5TextDeserializer<R> = TextReaderDeserializer<R, Utf8Encoding>;
+pub type Eu5BinaryDeserializer<'res, RES, R> = BinaryReaderDeserializer<'res, RES, Eu5Flavor, R>;
+
+pub fn text_deserializer<R: Read>(reader: R) -> Eu5TextDeserializer<R> {
+    TextDeserializer::from_utf8_reader(jomini::text::TokenReader::new(reader))
+}
+
+pub fn binary_deserializer<'res, RES, R>(
+    resolver: &'res RES,
+    reader: R,
+) -> Eu5BinaryDeserializer<'res, RES, R>
+where
+    RES: TokenResolver,
+    R: Read,
+{
+    BinaryDeserializerBuilder::with_flavor(Eu5Flavor::new()).from_reader(reader, resolver)
 }
 
 #[derive(Debug, Clone, Copy)]

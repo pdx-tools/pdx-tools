@@ -61,6 +61,7 @@ jobs:
           assets/game-bundles
           assets/eu4-saves
           src/vic3save/assets
+          src/eu5save/assets
         key: asset-cache
 
     - uses: actions/checkout@v4

@@ -202,12 +202,11 @@ impl Eu5MetaParser {
             .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
         let arena = bumpalo::Bump::with_capacity(100 * 1024 * 1024);
         let meta = {
-            let eu5_meta = file.meta();
-            let meta = match eu5_meta.into_body() {
-                eu5save::SaveBodyKind::Text(mut text) => {
+            let meta = match file.meta() {
+                eu5save::Eu5MetaKind::Text(mut text) => {
                     ZipPrelude::deserialize_in_arena(&mut text.deserializer(), &arena)
                 }
-                eu5save::SaveBodyKind::Binary(mut bin) => {
+                eu5save::Eu5MetaKind::Binary(mut bin) => {
                     let mut deser = bin.deserializer(&self.resolver);
                     ZipPrelude::deserialize_in_arena(&mut deser, &arena)
                 }
