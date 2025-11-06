@@ -154,8 +154,36 @@ fn binary_api_assertions<R: ReaderAt>(save: Eu5File<R>, resolver: &BasicTokenRes
     assert_eq!(metadata, expected_metadata);
 
     // Verify that we can Read the metadata
+    let eu5save::Eu5MetaKind::Binary(binary_meta) = save.meta() else {
+        panic!("expected binary metadata");
+    };
     let mut reader = jomini::binary::TokenReader::new(binary_meta);
-    while reader.next().unwrap().is_some() {}
+    assert!(reader.next().unwrap().is_some());
+
+    // Verify we can melt the metadata
+    let eu5save::Eu5MetaKind::Binary(mut binary_meta) = save.meta() else {
+        panic!("expected binary metadata");
+    };
+    let mut melted_metadata = Vec::new();
+    let melt_options = MeltOptions::default();
+    binary_meta
+        .melt(melt_options, resolver, &mut melted_metadata)
+        .unwrap();
+
+    // Verify melted metadata can be re-parsed as text
+    let melted_meta_save =
+        Eu5File::from_slice(melted_metadata.as_slice()).expect("failed to parse melted metadata");
+    assert!(melted_meta_save.header().kind().is_text());
+
+    // Verify the melted metadata content starts with "metadata={"
+    assert!(
+        melted_metadata[melted_meta_save.header().header_len()..].starts_with(b"metadata={"),
+        "melted metadata should start with 'metadata={{'"
+    );
+
+    let eu5save::Eu5MetaKind::Text(_) = melted_meta_save.meta() else {
+        panic!("melted metadata should be text format");
+    };
 
     // Verify that we can deserialize the gamestate
     let eu5save::SaveBodyKind::Binary(mut bin_gamestate) = save.gamestate().unwrap() else {

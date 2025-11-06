@@ -482,7 +482,7 @@ impl<R: Read> Eu5Meta<TextEncoding, R> {
     }
 }
 
-impl<R: ReaderAt> Eu5Meta<BinaryEncoding, R> {
+impl<R: Read> Eu5Meta<BinaryEncoding, R> {
     pub fn melt<Resolver, Writer>(
         &mut self,
         options: MeltOptions,
@@ -493,8 +493,13 @@ impl<R: ReaderAt> Eu5Meta<BinaryEncoding, R> {
         Resolver: TokenResolver,
         Writer: Write,
     {
-        let mut cursor = ReaderAtCursor::new_at(&self.reader, 0);
-        melt::melt(&mut cursor, output, resolver, options, self.header.clone())
+        melt::melt(
+            &mut self.reader,
+            output,
+            resolver,
+            options,
+            self.header.clone(),
+        )
     }
 }
 
