@@ -772,13 +772,16 @@ dependencies = [
 name = "eu5save"
 version = "0.1.0"
 dependencies = [
+ "attohttpc",
  "bumpalo",
  "bumpalo-serde",
  "flate2",
+ "highway",
  "jomini",
  "rawzip",
  "rstest",
  "serde",
+ "tempfile",
  "thiserror 2.0.12",
 ]
 

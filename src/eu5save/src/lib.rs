@@ -12,3 +12,4 @@ pub use file::*;
 pub use header::*;
 pub use jomini::binary::{BasicTokenResolver, FailedResolveStrategy};
 pub use melt::*;
+pub use rawzip::ReaderAt;

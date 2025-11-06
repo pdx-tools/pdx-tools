@@ -16,4 +16,7 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+attohttpc = { workspace = true }
+highway = { workspace = true }
 rstest = { workspace = true }
+tempfile = { workspace = true }
