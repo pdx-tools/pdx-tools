@@ -27,14 +27,16 @@ pub fn request<S: AsRef<str>>(input: S) -> Vec<u8> {
         let mut attempts = 0;
         loop {
             match attohttpc::get(&url).send() {
-                Ok(resp) => {
+                Ok(mut resp) => {
                     if !resp.is_success() {
                         panic!("expected a 200 code from s3");
                     } else {
-                        let data = resp.bytes().unwrap();
+                        // Atomic rename to avoid reading partial writes
+                        let mut tmp = tempfile::NamedTempFile::new().expect("to create tempfile");
+                        std::io::copy(&mut resp, &mut tmp).expect("to copy to tempfile");
                         std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
-                        std::fs::write(&cache, &data).unwrap();
-                        return data;
+                        std::fs::rename(tmp.path(), &cache).unwrap();
+                        return fs::read(&cache).unwrap();
                     }
                 }
                 Err(e) => {

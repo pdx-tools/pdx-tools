@@ -33,9 +33,12 @@ pub fn request_file<S: AsRef<str>>(input: S) -> File {
                         if !resp.is_success() {
                             panic!("expected a 200 code from s3");
                         } else {
+                            // Atomic rename to avoid reading partial writes
+                            let mut tmp =
+                                tempfile::NamedTempFile::new().expect("to create tempfile");
+                            std::io::copy(&mut resp, &mut tmp).expect("to copy to tempfile");
                             std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
-                            let mut f = std::fs::File::create(&cache).unwrap();
-                            std::io::copy(&mut resp, &mut f).unwrap();
+                            std::fs::rename(tmp.path(), &cache).unwrap();
                             break;
                         }
                     }
