@@ -1,7 +1,7 @@
 use crate::{Eu5Date, Eu5Error, Eu5ErrorKind, Eu5Flavor, SaveHeader, SaveHeaderKind};
 use jomini::{
     TextWriterBuilder,
-    binary::{BinaryFlavor, FailedResolveStrategy, Token, TokenReader, TokenResolver},
+    binary::{self, BinaryFlavor, FailedResolveStrategy, Token, TokenReader, TokenResolver},
     common::PdsDate,
 };
 use std::{
@@ -135,12 +135,27 @@ where
     while let Some(token) = reader.next()? {
         has_read = true;
         match token {
-            Token::Id(x) => {
-                if let Some(id) = resolver.resolve(x) {
+            Token::Id(x) => match resolver.resolve(x) {
+                Some(id) => {
+                    // Skip ironman flag so the game doesn't re-enable it when
+                    // loading the melted save
+                    if id == "ironman" && !options.verbatim {
+                        let mut next = reader.read()?;
+                        if matches!(next, binary::Token::Equal) {
+                            next = reader.read()?;
+                        }
+
+                        if matches!(next, binary::Token::Open) {
+                            reader.skip_container()?;
+                        }
+                        continue;
+                    }
+
                     known_date = id == "date";
                     known_number = id == "seed";
                     wtr.write_unquoted(id.as_bytes())?;
-                } else {
+                }
+                None => {
                     known_date = false;
                     known_number = false;
                     match options.on_failed_resolve {
@@ -164,7 +179,7 @@ where
                         }
                     }
                 }
-            }
+            },
             Token::Open => wtr.write_start()?,
             Token::Close => {
                 wtr.write_end()?;
