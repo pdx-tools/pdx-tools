@@ -526,7 +526,7 @@ impl<'bump> Eu5Session<'bump> {
     }
 
     pub fn get_player_capital_coordinates(&self) -> Option<(u16, u16)> {
-        let player_country = self.gamestate.played_country.as_ref()?.country;
+        let player_country = self.gamestate.played_countries.first()?.country;
 
         // Get the player's country data to access the capital field
         let country_idx = self.gamestate.countries.get(player_country)?;
