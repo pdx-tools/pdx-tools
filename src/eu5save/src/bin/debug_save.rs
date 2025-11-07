@@ -69,15 +69,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{:?}", save.countries.index(swe).tag().to_str());
     println!("{:?}", save.countries.index(swe).data());
 
-    if let Some(pc) = &save.played_country {
+    for player in save.played_countries {
         println!(
-            "{:?} {:?}",
-            pc.country,
-            save.countries.get_entry(pc.country).unwrap().tag().to_str()
+            "{} {:?} {:?}",
+            player.name,
+            player.country,
+            save.countries
+                .get_entry(player.country)
+                .unwrap()
+                .tag()
+                .to_str()
         );
 
         for dep in save.diplomacy_manager.dependencies() {
-            if dep.first == pc.country || dep.second == pc.country {
+            if dep.first == player.country || dep.second == player.country {
                 println!("{dep:?}");
             }
         }

@@ -72,7 +72,8 @@ pub struct Gamestate<'bump> {
     pub population: population::PopulationDirectory<'bump>,
     pub countries: countries::Countries<'bump>,
     pub locations: Locations<'bump>,
-    pub played_country: Option<PlayedCountry>,
+    #[arena(duplicated, alias = "played_country")]
+    pub played_countries: &'bump [PlayedCountry<'bump>],
     pub diplomacy_manager: DiplomacyManager<'bump>,
     pub market_manager: MarketManager<'bump>,
     pub building_manager: BuildingManager<'bump>,
@@ -92,7 +93,8 @@ pub struct Province<'bump> {
 }
 
 #[derive(Debug, ArenaDeserialize, PartialEq)]
-pub struct PlayedCountry {
+pub struct PlayedCountry<'bump> {
+    pub name: BStr<'bump>,
     pub country: countries::CountryId,
 }
 
