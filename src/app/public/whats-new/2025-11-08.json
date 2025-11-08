@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "EU5 screenshots now include date and playthrough name in filename"
+    ],
+    "fixes": [
+      "Fix crash when loading saves that contained ownerless buildings"
+    ]
+  }
+}
