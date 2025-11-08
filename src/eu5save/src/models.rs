@@ -267,7 +267,9 @@ impl<'bump> Gamestate<'bump> {
         self.building_manager
             .database
             .iter()
-            .filter(|building| building.location == location_id && building.owner == location_owner)
+            .filter(|building| {
+                building.location == location_id && building.owner == Some(location_owner)
+            })
             .map(|building| building.level)
             .sum()
     }

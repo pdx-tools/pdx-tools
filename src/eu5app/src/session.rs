@@ -132,7 +132,7 @@ impl<'bump> Eu5Session<'bump> {
                 let location = self.gamestate.locations.index(loc_idx).location();
 
                 // Only count if building owner matches location owner
-                if location.owner == Some(building.owner) {
+                if location.owner == building.owner {
                     levels[loc_idx] += building.level;
                 }
             }
