@@ -705,6 +705,7 @@ dependencies = [
  "schemas",
  "serde",
  "serde_path_to_error",
+ "tempfile",
  "thiserror 2.0.12",
  "walkdir",
 ]
@@ -3068,6 +3069,7 @@ dependencies = [
  "rawzip",
  "serde",
  "serde_path_to_error",
+ "tempfile",
  "thiserror 2.0.12",
 ]
 
