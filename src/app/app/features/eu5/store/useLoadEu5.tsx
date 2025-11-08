@@ -95,7 +95,7 @@ async function loadEu5Save(
   const filename =
     saveInput.kind === "handle" ? saveInput.name : saveInput.file.name;
 
-  const engine = await run({
+  const { engine, saveDate, playthroughName } = await run({
     fn: () =>
       createLoadedEngine(
         saveInput,
@@ -112,7 +112,7 @@ async function loadEu5Save(
 
   emitEvent({ kind: "Save parsed", game: "eu5", source: "local" });
 
-  const store = createEu5Store(engine, filename);
+  const store = createEu5Store(engine, filename, saveDate, playthroughName);
   return { store, engine };
 }
 

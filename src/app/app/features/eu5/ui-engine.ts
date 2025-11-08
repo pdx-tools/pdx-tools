@@ -407,7 +407,7 @@ export async function createLoadedEngine(
     container: HTMLElement;
   },
   onProgress?: (increment: number) => void,
-): Promise<AppEngine> {
+): Promise<{ engine: AppEngine; saveDate: string; playthroughName: string }> {
   const { offscreen, container } = canvas;
 
   const bounds = container.getBoundingClientRect();
@@ -440,9 +440,16 @@ export async function createLoadedEngine(
     onProgress,
   );
 
+  const metadata = await gameInstance.getSaveMetadata();
+
   const initialState: Partial<AppState> = {
     canvasSize: { width: snappedWidth.logical, height: snappedHeight.logical },
   };
 
-  return new Eu5UIEngine(gameInstance, workers, initialState);
+  const engine = new Eu5UIEngine(gameInstance, workers, initialState);
+  return {
+    engine,
+    saveDate: metadata.date,
+    playthroughName: metadata.playthroughName,
+  };
 }
