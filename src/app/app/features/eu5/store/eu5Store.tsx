@@ -8,6 +8,8 @@ type Eu5State = {
   engine: AppEngine;
   appState: AppState;
   filename: string;
+  saveDate: string;
+  playthroughName: string;
 };
 
 export type Eu5Store = StoreApi<Eu5State>;
@@ -17,11 +19,15 @@ export const Eu5Context = createContext<Eu5Store | null>(null);
 export const createEu5Store = (
   engine: AppEngine,
   filename: string,
+  saveDate: string,
+  playthroughName: string,
 ): Eu5Store => {
   const store = createStore<Eu5State>()(() => ({
     engine,
     appState: engine.getState(),
     filename,
+    saveDate,
+    playthroughName,
   }));
 
   // Subscribe to engine state changes
@@ -56,3 +62,6 @@ export const useEu5IsGeneratingScreenshot = () =>
 export const useEu5MapModeRange = () =>
   useEu5Store((x) => x.appState.mapModeRange);
 export const useSaveFilename = () => useEu5Store((x) => x.filename);
+export const useEu5SaveDate = () => useEu5Store((x) => x.saveDate);
+export const useEu5PlaythroughName = () =>
+  useEu5Store((x) => x.playthroughName);

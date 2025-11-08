@@ -59,6 +59,7 @@ export const createGame = async (
     metaParser.init(new Uint8Array(saveData)),
   );
 
+  const metadata = saveParser.meta();
   const gameDataTask = bundleFetch();
 
   const gamestate = timeSync("Parse Gamestate", () =>
@@ -130,6 +131,9 @@ export const createGame = async (
     },
     getDate: () => {
       return app.get_date();
+    },
+    getSaveMetadata: () => {
+      return metadata;
     },
     canHighlightLocation: (locationId: number) => {
       return app.can_highlight_location(locationId);

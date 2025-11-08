@@ -6,6 +6,8 @@ import {
   useEu5OwnerBorders,
   useEu5IsGeneratingScreenshot,
   useSaveFilename,
+  useEu5SaveDate,
+  useEu5PlaythroughName,
 } from "./store";
 import { Eu5MapLegend } from "./Eu5MapLegend";
 import { CameraIcon } from "@heroicons/react/24/solid";
@@ -256,12 +258,14 @@ function Screenshot() {
   const engine = useEu5Engine();
   const mapMode = useEu5MapMode();
   const isGeneratingScreenshot = useEu5IsGeneratingScreenshot();
+  const saveDate = useEu5SaveDate();
+  const playthroughName = useEu5PlaythroughName();
 
   const { isLoading, run } = useTriggeredAction({
     action: async (fullResolution: boolean) => {
       try {
         const blob = await engine.trigger.generateScreenshot(fullResolution);
-        const filename = `eu5-screenshot-${mapMode}.png`;
+        const filename = `${playthroughName}-${saveDate}-${mapMode}.png`;
         downloadData(blob, filename);
         toast.success(`Screenshot downloaded`, {
           duration: 2000,

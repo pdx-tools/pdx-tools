@@ -227,5 +227,9 @@ export function saveWorker(
     getMapModeRange: async (mode: MapMode): Promise<MapModeRange> => {
       return await saveEngine.getMapModeRange(mode);
     },
+
+    getSaveMetadata: async () => {
+      return await saveEngine.getSaveMetadata();
+    },
   };
 }

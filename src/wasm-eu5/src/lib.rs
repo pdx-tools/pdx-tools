@@ -122,12 +122,13 @@ impl From<CanvasDisplay> for CanvasDimensions {
     }
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
+#[derive(Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct Eu5SaveMetadata {
     version: GameVersion,
     date: Eu5Date,
+    playthrough_name: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
@@ -216,6 +217,7 @@ impl Eu5MetaParser {
             Eu5SaveMetadata {
                 version: meta.metadata.version,
                 date: meta.metadata.date,
+                playthrough_name: meta.metadata.playthrough_name.to_string(),
             }
         };
 
@@ -246,7 +248,7 @@ pub struct Eu5SaveParser {
 impl Eu5SaveParser {
     #[wasm_bindgen]
     pub fn meta(&self) -> Eu5SaveMetadata {
-        self.meta
+        self.meta.clone()
     }
 
     #[wasm_bindgen]
