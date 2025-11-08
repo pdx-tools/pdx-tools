@@ -32,50 +32,75 @@ pub struct CompileArgs {
 
 impl CompileArgs {
     pub fn run(&self) -> Result<ExitCode> {
-        let output = self
+        let base_output = self
             .output
             .clone()
             .unwrap_or_else(|| PathBuf::from("assets/game"));
 
-        // Create output directory if it doesn't exist
-        std::fs::create_dir_all(&output)
-            .with_context(|| format!("Failed to create output directory: {}", output.display()))?;
+        // Create base output directory if it doesn't exist
+        std::fs::create_dir_all(&base_output).with_context(|| {
+            format!(
+                "Failed to create output directory: {}",
+                base_output.display()
+            )
+        })?;
 
-        // Get source path: use provided path or auto-detect (defaults to EU4)
-        let source_path = match &self.source_path {
-            Some(path) => path.clone(),
-            None => steam::detect_steam_eu4_path()?,
+        // Determine which games to compile
+        let games_to_process: Vec<(Game, PathBuf)> = match self.source_path.as_ref() {
+            Some(path) => {
+                // Path provided: detect game from source
+                let provider = create_provider(path).with_context(|| {
+                    format!("Failed to create provider for: {}", path.display())
+                })?;
+                let game = self.detect_game(&provider)?;
+                vec![(game, path.clone())]
+            }
+            None => {
+                // No path provided
+                if let Some(game_str) = &self.game {
+                    // --game specified without path: detect specific game from Steam
+                    let game: Game = game_str.parse()?;
+                    let path = steam::detect_steam_game_path(game)?;
+                    vec![(game, path)]
+                } else {
+                    // No path and no --game: detect all installed games from Steam
+                    steam::detect_all_installed_games()?
+                }
+            }
         };
 
-        // Auto-detect source type and create appropriate provider
-        let provider = create_provider(&source_path)
-            .with_context(|| format!("Failed to create provider for: {}", source_path.display()))?;
-
-        // Determine which game to compile
-        let game = self.detect_game(&provider)?;
-
         let imaging = ImageMagickProcessor::create()?;
-
         let options = PackageOptions {
             dry_run: false,
             minimal: self.minimal,
         };
 
-        let result = match game {
-            Game::Eu4 => {
-                let asset_compiler = Eu4AssetCompliler;
-                asset_compiler.compile_assets(&provider, &imaging, &output, &options)?
-            }
-            Game::Eu5 => {
-                let asset_compiler = Eu5AssetCompiler;
-                asset_compiler.compile_assets(&provider, &imaging, &output, &options)?
-            }
-        };
+        // Process each game
+        for (game, source_path) in games_to_process {
+            println!("\n=== Compiling {} ===\n", game);
 
-        println!(
-            "Asset processing completed successfully for {} ({})!",
-            game, &result.game_version
-        );
+            // Auto-detect source type and create appropriate provider
+            let provider = create_provider(&source_path).with_context(|| {
+                format!("Failed to create provider for: {}", source_path.display())
+            })?;
+
+            let result = match game {
+                Game::Eu4 => {
+                    let asset_compiler = Eu4AssetCompliler;
+                    asset_compiler.compile_assets(&provider, &imaging, &base_output, &options)?
+                }
+                Game::Eu5 => {
+                    let asset_compiler = Eu5AssetCompiler;
+                    asset_compiler.compile_assets(&provider, &imaging, &base_output, &options)?
+                }
+            };
+
+            println!(
+                "Asset processing completed successfully for {} ({})!",
+                game, &result.game_version
+            );
+        }
+
         Ok(ExitCode::SUCCESS)
     }
 
