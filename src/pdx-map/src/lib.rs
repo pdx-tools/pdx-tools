@@ -7,6 +7,8 @@ mod app;
 #[cfg(feature = "render")]
 mod error;
 #[cfg(feature = "render")]
+mod overlay;
+#[cfg(feature = "render")]
 mod renderer;
 
 pub use color::GpuColor;
@@ -17,6 +19,10 @@ pub use viewport::*;
 pub use app::{MapApp, ScreenshotRenderer};
 #[cfg(feature = "render")]
 pub use error::{RenderError, RenderErrorKind};
+#[cfg(feature = "render")]
+pub use overlay::{OverlayMiddleware, OverlayTarget};
+#[cfg(feature = "render")]
+pub use renderer::OverlayCapableRenderer;
 #[cfg(feature = "render")]
 pub use renderer::{
     ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, MapRenderer, MapTexture,
