@@ -128,6 +128,7 @@ pub struct Location<'bump> {
 
 #[derive(Debug, Default, ArenaDeserialize)]
 pub struct LocationPopulation<'bump> {
+    #[arena(default)]
     pub pops: &'bump [models::PopId],
 }
 
