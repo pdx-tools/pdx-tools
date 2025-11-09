@@ -129,7 +129,9 @@ impl<'bump> bumpalo_serde::ArenaDeserialize<'bump> for DiplomacyManager<'bump> {
 
 #[derive(Debug, Deserialize, PartialEq, bumpalo_serde::ArenaDeserialize)]
 pub struct DiplomacyDependency {
+    #[arena(default)]
     pub first: CountryId,
+    #[arena(default)]
     pub second: CountryId,
     pub start_date: Option<Eu5Date>,
     pub subject_type: DiplomacySubjectType,

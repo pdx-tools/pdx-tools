@@ -45,7 +45,9 @@ impl SubUnitId {
 
 #[derive(Debug, ArenaDeserialize, PartialEq)]
 pub struct SubUnit<'bump> {
+    #[arena(default)]
     pub owner: CountryId,
+    #[arena(default)]
     pub controller: CountryId,
     pub home: LocationId,
     pub unit: UnitId,

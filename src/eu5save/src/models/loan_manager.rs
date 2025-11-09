@@ -49,8 +49,10 @@ pub struct Loan {
     pub interest: f64,
     #[arena(default)]
     pub month: u32,
+    #[arena(default)]
     pub borrower: CountryId,
-    pub lender: Option<CountryId>,
+    #[arena(default)]
+    pub lender: CountryId,
 }
 
 #[inline]

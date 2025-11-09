@@ -97,8 +97,10 @@ impl<'bump> Locations<'bump> {
 
 #[derive(Debug, ArenaDeserialize)]
 pub struct Location<'bump> {
-    pub owner: Option<CountryId>,
-    pub controller: Option<CountryId>,
+    #[arena(default)]
+    pub owner: CountryId,
+    #[arena(default)]
+    pub controller: CountryId,
     pub religion: Option<ReligionId>,
     #[arena(default)]
     pub control: f64, // 0.0 to 1.0

@@ -15,6 +15,8 @@ use std::{collections::HashMap, fmt, num::NonZeroU32, ops::Index};
 pub struct CountryId(u32);
 
 impl CountryId {
+    const DUMMY: CountryId = CountryId(0);
+
     #[inline]
     pub fn new(id: u32) -> Self {
         CountryId(id)
@@ -23,6 +25,17 @@ impl CountryId {
     #[inline]
     pub fn value(self) -> u32 {
         self.0
+    }
+
+    #[inline]
+    pub fn is_dummy(&self) -> bool {
+        *self == CountryId::DUMMY
+    }
+}
+
+impl Default for CountryId {
+    fn default() -> Self {
+        CountryId::DUMMY
     }
 }
 

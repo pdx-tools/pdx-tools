@@ -50,7 +50,8 @@ pub struct Building<'bump> {
     #[arena(default)]
     pub level: f64,
     pub location: LocationId,
-    pub owner: Option<CountryId>,
+    #[arena(default)]
+    pub owner: CountryId,
 }
 
 #[inline]

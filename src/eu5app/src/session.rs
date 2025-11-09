@@ -179,7 +179,7 @@ impl<'bump> Eu5Session<'bump> {
         let save_location_entry = self.gamestate.locations.index(location_idx);
         let save_location = save_location_entry.location();
 
-        if save_location.owner.is_none() {
+        if save_location.owner.is_dummy() {
             return GpuColor::UNOWNED;
         }
 
@@ -201,7 +201,7 @@ impl<'bump> Eu5Session<'bump> {
         let save_location_entry = self.gamestate.locations.index(location_idx);
         let save_location = save_location_entry.location();
 
-        if save_location.owner.is_none() {
+        if save_location.owner.is_dummy() {
             return GpuColor::UNOWNED;
         }
 
@@ -223,7 +223,7 @@ impl<'bump> Eu5Session<'bump> {
         let save_location_entry = self.gamestate.locations.index(location_idx);
         let save_location = save_location_entry.location();
 
-        if save_location.owner.is_none() {
+        if save_location.owner.is_dummy() {
             return GpuColor::UNOWNED;
         }
 
@@ -276,7 +276,7 @@ impl<'bump> Eu5Session<'bump> {
         let save_location_entry = self.gamestate.locations.index(location_idx);
         let save_location = save_location_entry.location();
 
-        if save_location.owner.is_none() {
+        if save_location.owner.is_dummy() {
             return GpuColor::UNOWNED;
         }
 
@@ -309,7 +309,7 @@ impl<'bump> Eu5Session<'bump> {
         let save_location_entry = self.gamestate.locations.index(location_idx);
         let save_location = save_location_entry.location();
 
-        if save_location.owner.is_none() {
+        if save_location.owner.is_dummy() {
             return GpuColor::UNOWNED;
         }
 
@@ -334,7 +334,7 @@ impl<'bump> Eu5Session<'bump> {
         let save_location_entry = self.gamestate.locations.index(location_idx);
         let save_location = save_location_entry.location();
 
-        if save_location.owner.is_none() {
+        if save_location.owner.is_dummy() {
             return GpuColor::UNOWNED;
         }
 
@@ -347,14 +347,11 @@ impl<'bump> Eu5Session<'bump> {
         get_country: F,
     ) -> GpuColor
     where
-        F: Fn(&eu5save::models::Location) -> Option<eu5save::models::CountryId>,
+        F: Fn(&eu5save::models::Location) -> eu5save::models::CountryId,
     {
         let save_location_entry = self.gamestate.locations.index(location_idx);
         let save_location = save_location_entry.location();
-        let Some(country_id) = get_country(save_location) else {
-            return GpuColor::UNOWNED;
-        };
-
+        let country_id = get_country(save_location);
         let Some(country_idx) = self.gamestate.countries.get(country_id) else {
             return GpuColor::UNOWNED;
         };
@@ -428,11 +425,7 @@ impl<'bump> Eu5Session<'bump> {
     pub fn owner_religion_color(&self, location_idx: eu5save::models::LocationIdx) -> GpuColor {
         let save_location_entry = self.gamestate.locations.index(location_idx);
         let save_location = save_location_entry.location();
-
-        let Some(owner_id) = save_location.owner else {
-            // No owner - return the primary color (location religion)
-            return self.location_religion_color(location_idx);
-        };
+        let owner_id = save_location.owner;
 
         let Some(country_idx) = self.gamestate.countries.get(owner_id) else {
             return self.location_religion_color(location_idx);
@@ -601,11 +594,7 @@ impl<'bump> Eu5Session<'bump> {
 
         for location_entry in self.gamestate.locations.iter() {
             let location = location_entry.location();
-
-            let Some(owner_id) = location.owner else {
-                continue;
-            };
-
+            let owner_id = location.owner;
             let Some(owner_idx) = self.gamestate.countries.get(owner_id) else {
                 continue;
             };
@@ -800,10 +789,7 @@ impl<'bump> Eu5Session<'bump> {
         // Iterate through all locations using the locations database
         for location_entry in self.gamestate.locations.iter() {
             let location = location_entry.location();
-
-            let Some(owner) = location.owner else {
-                continue; // Skip if no owner
-            };
+            let owner = location.owner;
 
             let Some(raw_material) = location.raw_material else {
                 continue; // Skip if no raw material
@@ -976,10 +962,7 @@ impl<'bump> Eu5Session<'bump> {
         for location_entry in self.gamestate.locations.iter() {
             let location = location_entry.location();
 
-            let Some(owner_id) = location.owner else {
-                continue; // Skip unowned locations
-            };
-
+            let owner_id = location.owner;
             let Some(owner_idx) = self.gamestate.countries.get(owner_id) else {
                 continue;
             };

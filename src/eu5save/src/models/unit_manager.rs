@@ -45,6 +45,7 @@ impl UnitId {
 
 #[derive(Debug, ArenaDeserialize, PartialEq)]
 pub struct Unit {
+    #[arena(default)]
     pub country: CountryId,
     pub leader: Option<CharacterId>,
 }
