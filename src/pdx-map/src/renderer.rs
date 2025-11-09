@@ -5,8 +5,8 @@ use wgpu::SurfaceTarget;
 use crate::error::RenderError;
 use crate::{CanvasDimensions, GpuColor, LocationArrays, LocationFlags, ViewportBounds};
 
-/// Maximum texture dimension supported (conservative default for WebGPU compatibility)
-const MAX_TEXTURE_DIMENSION: u32 = 16384;
+/// Maximum texture dimension supported
+const MAX_TEXTURE_DIMENSION: u32 = 8192;
 
 /// Combines a texture and its view for map rendering operations
 #[derive(Debug)]
@@ -191,7 +191,6 @@ impl GpuContext {
 
     /// Initialize GPU device, adapter, buffers, and pipelines from an adapter
     async fn from_adapter(adapter: wgpu::Adapter) -> Result<Self, RenderError> {
-        // Use conservative max dimension for compatibility
         let limits = wgpu::Limits {
             max_texture_dimension_2d: MAX_TEXTURE_DIMENSION,
             ..Default::default()
