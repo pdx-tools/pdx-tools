@@ -4,7 +4,8 @@
       "EU5 screenshots now include date and playthrough name in filename"
     ],
     "fixes": [
-      "Fix crash when loading saves that contained ownerless buildings"
+      "Fix crash parsing EU5 saves that contained ownerless buildings",
+      "Fix crash parsing EU5 saves with missing location pops"
     ]
   }
 }
