@@ -47,7 +47,8 @@ impl CharacterId {
 
 #[derive(Debug, ArenaDeserialize, PartialEq)]
 pub struct Character<'bump> {
-    pub country: Option<CountryId>,
+    #[arena(default)]
+    pub country: CountryId,
     pub first_name: BStr<'bump>,
     #[arena(default)]
     pub adm: f64,

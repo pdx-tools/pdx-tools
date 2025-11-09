@@ -309,14 +309,10 @@ impl<'bump> Eu5MapApp<'bump> {
                 location.flags_mut().set(LocationFlags::HIGHLIGHTED);
             }
         } else {
-            // For other map modes, use owner-based highlighting
-            let Some(owner) = location.owner else {
-                return;
-            };
-
+            let owner = location.owner;
             let mut idxs = self.session.gamestate.locations.create_index(false);
             for entry in self.session.gamestate.locations.iter() {
-                idxs[entry.idx()] = entry.location().owner == Some(owner);
+                idxs[entry.idx()] = entry.location().owner == owner;
             }
 
             let mut iter = self.location_arrays.iter_mut();

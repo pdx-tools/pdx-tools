@@ -259,17 +259,10 @@ impl<'bump> Gamestate<'bump> {
         location_id: LocationId,
         location: &Location,
     ) -> f64 {
-        let location_owner = match location.owner {
-            Some(owner) => owner,
-            None => return 0.0,
-        };
-
         self.building_manager
             .database
             .iter()
-            .filter(|building| {
-                building.location == location_id && building.owner == Some(location_owner)
-            })
+            .filter(|building| building.location == location_id && building.owner == location.owner)
             .map(|building| building.level)
             .sum()
     }

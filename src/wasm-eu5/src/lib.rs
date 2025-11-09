@@ -503,9 +503,12 @@ impl Eu5App {
                         .and_then(|rid| self.app.session().gamestate().religion_manager.lookup(rid))
                         .map(|r| r.name.to_str().to_string());
 
-                    let owner_rel_name = location
-                        .owner
-                        .and_then(|owner_id| self.app.session().gamestate().countries.get(owner_id))
+                    let owner_rel_name = self
+                        .app
+                        .session()
+                        .gamestate()
+                        .countries
+                        .get(location.owner)
                         .and_then(|owner_idx| {
                             self.app
                                 .session()
@@ -587,10 +590,7 @@ impl Eu5App {
                 };
             }
 
-            let Some(owner_id) = location.owner else {
-                return HoverDisplayData::Clear;
-            };
-
+            let owner_id = location.owner;
             let Some(country) = self.app.session().gamestate().countries.get_entry(owner_id) else {
                 return HoverDisplayData::Clear;
             };
@@ -651,7 +651,7 @@ impl Eu5App {
 
                     // Iterate through all locations owned by this country
                     for entry in self.app.session().gamestate().locations.iter() {
-                        if entry.location().owner == Some(owner_id) {
+                        if entry.location().owner == owner_id {
                             let loc = entry.location();
                             dev_sum += loc.development;
                             pop_sum +=
