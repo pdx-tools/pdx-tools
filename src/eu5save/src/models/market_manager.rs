@@ -1,4 +1,5 @@
 use crate::models::bstr::BStr;
+use crate::models::de::Maybe;
 use crate::models::{Color, LocationId, deserialize_vec_capacity};
 use bumpalo_serde::{ArenaDeserialize, ArenaSeed};
 use core::fmt;
@@ -19,7 +20,7 @@ impl<'bump> MarketManager<'bump> {
         if let Some(location) = self.database.ids.get(id.value() as usize)
             && id == *location
         {
-            return Some(&self.database.values[id.value() as usize]);
+            return self.database.values[id.value() as usize].as_ref();
         }
 
         let pos = self
@@ -27,7 +28,7 @@ impl<'bump> MarketManager<'bump> {
             .ids
             .iter()
             .position(|location| location == &id)?;
-        Some(&self.database.values[pos])
+        self.database.values[pos].as_ref()
     }
 
     pub fn len(&self) -> usize {
@@ -75,12 +76,12 @@ impl MarketId {
 #[derive(Debug, PartialEq)]
 pub struct MarketDatabase<'bump> {
     ids: &'bump [MarketId],
-    values: &'bump [Market<'bump>],
+    values: &'bump [Option<Market<'bump>>],
 }
 
 impl MarketDatabase<'_> {
     pub fn iter(&self) -> impl Iterator<Item = &Market<'_>> {
-        self.values.iter()
+        self.values.iter().filter_map(|x| x.as_ref())
     }
 }
 
@@ -140,10 +141,10 @@ where
             let mut market_values = bumpalo::collections::Vec::with_capacity_in(128, self.0);
             while let Some((key, value)) = map.next_entry_seed(
                 ArenaSeed::new(self.0),
-                ArenaSeed::<Market<'bump>>::new(self.0),
+                ArenaSeed::<Maybe<Market<'bump>>>::new(self.0),
             )? {
                 market_ids.push(key);
-                market_values.push(value);
+                market_values.push(value.into_value());
             }
 
             let ids = market_ids.into_bump_slice();
