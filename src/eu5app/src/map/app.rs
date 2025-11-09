@@ -311,8 +311,10 @@ impl<'bump> Eu5MapApp<'bump> {
         } else {
             let owner = location.owner;
             let mut idxs = self.session.gamestate.locations.create_index(false);
-            for entry in self.session.gamestate.locations.iter() {
-                idxs[entry.idx()] = entry.location().owner == owner;
+            if !owner.is_dummy() {
+                for entry in self.session.gamestate.locations.iter() {
+                    idxs[entry.idx()] = entry.location().owner == owner;
+                }
             }
 
             let mut iter = self.location_arrays.iter_mut();

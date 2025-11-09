@@ -420,16 +420,20 @@ impl Eu5App {
         const DETAIL_THRESHOLD: f32 = 0.85;
         let should_show_location = zoom >= DETAIL_THRESHOLD;
 
+        let location = self
+            .app
+            .session()
+            .gamestate()
+            .locations
+            .index(location_idx)
+            .location();
+
+        if location.owner.is_dummy() {
+            return HoverDisplayData::Clear;
+        }
+
         if should_show_location {
-            // Detail zoom - return location data with mode-specific information
             let location_name = self.app.session().location_name(location_idx).to_string();
-            let location = self
-                .app
-                .session()
-                .gamestate()
-                .locations
-                .index(location_idx)
-                .location();
 
             // Collect mode-specific data based on current map mode
             let (
@@ -546,15 +550,6 @@ impl Eu5App {
                 owner_religion_name,
             }
         } else {
-            // Overview zoom - return country data with aggregated mode-specific information
-            let location = self
-                .app
-                .session()
-                .gamestate()
-                .locations
-                .index(location_idx)
-                .location();
-
             // For Markets mode, show market center name instead of country info
             if matches!(current_map_mode, eu5app::MapMode::Markets) {
                 let Some(market_id) = location.market else {
