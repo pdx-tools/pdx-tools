@@ -1,7 +1,7 @@
 import React from "react";
 import { RecordTable } from "./components/RecordTable";
 import type { RankedSave } from "./components/RecordTable";
-import { AchievementAvatar } from "./components/avatars";
+import { AchievementAvatar, Flag } from "./components/avatars";
 import { Card } from "@/components/Card";
 import { formatFloat, formatInt } from "@/lib/format";
 import { cx } from "class-variance-authority";
@@ -138,6 +138,7 @@ function AchievementPlatform({
             <p className="text-gray-600 dark:text-gray-400">
               <TimeAgo date={save.upload_time} />
             </p>
+            <CountrySummary save={save} />
           </div>
         </div>
 
@@ -172,6 +173,56 @@ export const AchievementPodium = ({
       {gold && <AchievementPlatform save={gold} className="lg:order-2" />}
       {silver && <AchievementPlatform save={silver} className="lg:order-1" />}
       {bronze && <AchievementPlatform save={bronze} className="lg:order-3" />}
+    </div>
+  );
+};
+
+const CountrySummary = ({ save }: { save: RankedSave }) => {
+  if (
+    !save.player_start_tag ||
+    !save.player_start_tag_name ||
+    !save.player_tag ||
+    !save.player_tag_name
+  ) {
+    return null;
+  }
+
+  const current = {
+    tag: save.player_tag,
+    name: save.player_tag_name,
+  };
+
+  const start = {
+    tag: save.player_start_tag,
+    name: save.player_start_tag_name,
+  };
+  const stayedSame = start.tag === current.tag;
+
+  if (stayedSame) {
+    return (
+      <div className="mt-4">
+        <Flag name={save.player_tag_name} tag={save.player_tag}>
+          <Flag.Tooltip showName>
+            <Flag.Image size="xs" />
+          </Flag.Tooltip>
+        </Flag>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 flex items-center justify-center gap-2">
+      <Flag name={save.player_start_tag_name} tag={save.player_start_tag}>
+        <Flag.Tooltip showName>
+          <Flag.Image size="xs" />
+        </Flag.Tooltip>
+      </Flag>
+      <span className="text-gray-500 dark:text-gray-400">→</span>
+      <Flag name={save.player_tag_name} tag={save.player_tag}>
+        <Flag.Tooltip showName>
+          <Flag.Image size="xs" />
+        </Flag.Tooltip>
+      </Flag>
     </div>
   );
 };
