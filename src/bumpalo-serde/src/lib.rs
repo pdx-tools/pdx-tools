@@ -1,4 +1,11 @@
+pub use bumpalo::Bump;
 pub use bumpalo_serde_derive::ArenaDeserialize;
+
+mod tracked;
+
+// Re-export tracked deserialization types
+pub use tracked::{Deserializer as TrackedDeserializer, Track, deserialize as tracked_deserialize};
+pub use tracked::{Error as TrackedError, Path, Segment, Segments};
 
 use bumpalo::collections::{String as BumpString, Vec as BumpVec};
 use serde::de::{DeserializeSeed, Deserializer, SeqAccess, Visitor};
