@@ -7,7 +7,7 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
-        default: "dark:bg-slate-800",
+        default: "bg-slate-50 dark:bg-slate-800",
         ghost: "",
       },
     },
