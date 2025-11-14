@@ -163,6 +163,31 @@ impl Country<'_> {
     }
 }
 
+/// A country name is deceptively complex:
+///
+/// ```ignore
+/// country_name="TEU"
+/// ```
+///
+/// ```ignore
+/// country_name={
+///    name="CIVILWAR_FACTION_nobles_estate_NAME"
+///    adjective="CIVILWAR_FACTION_nobles_estate_ADJECTIVE"
+///    base="DNS"
+/// }
+/// ```
+///
+/// ```ignore
+/// country_name={
+///    name="CIVILWAR_FACTION_nobles_estate_NAME"
+///    adjective="CIVILWAR_FACTION_nobles_estate_ADJECTIVE"
+///    base={
+///        name="UNN"
+///        override_name="oyama_dynasty"
+///        override_adj="oyama_dynasty"
+///    }
+/// }
+/// ```
 #[derive(Debug, Clone)]
 pub enum CountryName<'bump> {
     Tag(BStr<'bump>),
@@ -170,10 +195,10 @@ pub enum CountryName<'bump> {
 }
 
 impl<'bump> CountryName<'bump> {
-    pub fn base(&self) -> BStr<'bump> {
+    pub fn name(&self) -> BStr<'bump> {
         match self {
             CountryName::Tag(tag) => *tag,
-            CountryName::Object(obj) => obj.base,
+            CountryName::Object(obj) => obj.name,
         }
     }
 }
@@ -181,7 +206,6 @@ impl<'bump> CountryName<'bump> {
 #[derive(Debug, Clone, ArenaDeserialize)]
 pub struct CountryNameObject<'bump> {
     pub name: BStr<'bump>, // e.g., "CIVILWAR_FACTION_nobles_estate_NAME"
-    pub base: BStr<'bump>, // e.g., "DNS"
 }
 
 #[derive(Debug, Clone, Deserialize, ArenaDeserialize)]

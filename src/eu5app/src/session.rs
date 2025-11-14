@@ -99,7 +99,7 @@ impl<'bump> Eu5Session<'bump> {
         &'b self,
         country_name: &'a eu5save::models::CountryName,
     ) -> &'a str {
-        let tag = country_name.base().to_str();
+        let tag = country_name.name().to_str();
         self.country_localizations
             .get(tag)
             .map(|s| s.as_str())
