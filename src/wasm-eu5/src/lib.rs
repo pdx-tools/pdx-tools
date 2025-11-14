@@ -10,6 +10,8 @@ use eu5save::{
 use schemas::FlatResolver;
 use serde::{Deserialize, Serialize};
 use std::io::Cursor;
+use std::ops::Deref;
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify, PartialEq)]
@@ -123,12 +125,24 @@ impl From<CanvasDisplay> for CanvasDimensions {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct Eu5SaveMetadata {
     version: GameVersion,
     date: Eu5Date,
     playthrough_name: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[serde(transparent)]
+pub struct Eu5SaveMetadataHandle(Rc<Eu5SaveMetadata>);
+
+impl Deref for Eu5SaveMetadataHandle {
+    type Target = Eu5SaveMetadata;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
@@ -227,7 +241,7 @@ impl Eu5MetaParser {
 
         Ok(Eu5SaveParser {
             resolver: self.resolver,
-            meta,
+            meta: Eu5SaveMetadataHandle(Rc::new(meta)),
             archive: file,
             arena,
             _data: save,
@@ -238,7 +252,7 @@ impl Eu5MetaParser {
 #[wasm_bindgen]
 pub struct Eu5SaveParser {
     resolver: &'static FlatResolver<'static>,
-    meta: Eu5SaveMetadata,
+    meta: Eu5SaveMetadataHandle,
     archive: Eu5File<&'static [u8]>,
     arena: bumpalo::Bump,
     _data: Vec<u8>,
@@ -247,7 +261,7 @@ pub struct Eu5SaveParser {
 #[wasm_bindgen]
 impl Eu5SaveParser {
     #[wasm_bindgen]
-    pub fn meta(&self) -> Eu5SaveMetadata {
+    pub fn meta(&self) -> Eu5SaveMetadataHandle {
         self.meta.clone()
     }
 
@@ -279,7 +293,7 @@ impl Eu5SaveParser {
 
 #[wasm_bindgen]
 pub struct Eu5WasmGamestate {
-    meta: Eu5SaveMetadata,
+    meta: Eu5SaveMetadataHandle,
     game: Gamestate<'static>,
     arena: bumpalo::Bump,
 }
@@ -302,7 +316,7 @@ impl Eu5WasmGameBundle {
 #[wasm_bindgen]
 pub struct Eu5App {
     app: Eu5MapApp<'static>,
-    meta: Eu5SaveMetadata,
+    meta: Eu5SaveMetadataHandle,
     #[expect(dead_code)]
     arena: bumpalo::Bump,
 }

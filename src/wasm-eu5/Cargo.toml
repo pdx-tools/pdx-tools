@@ -24,7 +24,7 @@ js-sys = { workspace = true }
 pdx-map = { workspace = true, default-features = false }
 pdx-zstd = { workspace = true }
 schemas = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive", "rc"] }
 serde-wasm-bindgen = { workspace = true }
 tsify = { workspace = true, default-features = false, features = ["js"] }
 wasm-bindgen = { workspace = true }
