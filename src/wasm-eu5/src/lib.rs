@@ -1,4 +1,4 @@
-use bumpalo_serde::ArenaDeserialize;
+use bumpalo_serde::{ArenaDeserialize, Track, TrackedDeserializer};
 use eu5app::TableCell as Eu5TableCell;
 use eu5app::{CanvasDimensions, Eu5MapApp, Eu5Session, MapMode as Eu5MapMode, OptimizedGameData};
 use eu5save::Eu5File;
@@ -216,17 +216,28 @@ impl Eu5MetaParser {
         let file = eu5save::Eu5File::from_slice(&save)
             .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
         let arena = bumpalo::Bump::with_capacity(100 * 1024 * 1024);
+
+        let mut path_buf = Vec::new();
+        let track = Track::new_with(&mut path_buf);
         let meta = {
             let meta = match file.meta() {
                 eu5save::Eu5MetaKind::Text(mut text) => {
-                    ZipPrelude::deserialize_in_arena(&mut text.deserializer(), &arena)
+                    let mut deser = text.deserializer();
+                    let tracked_deser = TrackedDeserializer::new(&mut deser, &track);
+                    ZipPrelude::deserialize_in_arena(tracked_deser, &arena)
                 }
                 eu5save::Eu5MetaKind::Binary(mut bin) => {
                     let mut deser = bin.deserializer(&self.resolver);
-                    ZipPrelude::deserialize_in_arena(&mut deser, &arena)
+                    let tracked_deser = TrackedDeserializer::new(&mut deser, &track);
+                    ZipPrelude::deserialize_in_arena(tracked_deser, &arena)
                 }
             }
-            .map_err(|e| JsError::new(&format!("Failed to parse metadata: {e}")))?;
+            .map_err(|e| {
+                JsError::new(&format!(
+                    "Failed to parse metadata (path: {}): {e}",
+                    track.path()
+                ))
+            })?;
 
             Eu5SaveMetadata {
                 version: meta.metadata.version,
@@ -269,16 +280,31 @@ impl Eu5SaveParser {
     pub fn parse_gamestate(self) -> Result<Eu5WasmGamestate, JsError> {
         // Deserialize with a dynamic dispatch read implementation. This is not
         // technically required, but it significantly helps out compile times.
-        let game = match self.archive.gamestate().unwrap() {
+        let gamestate_body = self
+            .archive
+            .gamestate()
+            .map_err(|e| JsError::new(&format!("unable to retrieve game state data: {e}")))?;
+
+        let mut path_buf = Vec::new();
+        let track = Track::new_with(&mut path_buf);
+        let game = match gamestate_body {
             eu5save::SaveBodyKind::Text(mut x) => {
-                Gamestate::deserialize_in_arena(&mut x.deserializer(), &self.arena)
+                let mut deser = x.deserializer();
+                let tracked_deser = TrackedDeserializer::new(&mut deser, &track);
+                Gamestate::deserialize_in_arena(tracked_deser, &self.arena)
             }
             eu5save::SaveBodyKind::Binary(mut x) => {
                 let mut deser = x.deserializer(&self.resolver);
-                Gamestate::deserialize_in_arena(&mut deser, &self.arena)
+                let tracked_deser = TrackedDeserializer::new(&mut deser, &track);
+                Gamestate::deserialize_in_arena(tracked_deser, &self.arena)
             }
         }
-        .map_err(|e| JsError::new(&format!("Failed to parse game state: {e}")))?;
+        .map_err(|e| {
+            JsError::new(&format!(
+                "Failed to parse game state (path: {}): {e}",
+                track.path()
+            ))
+        })?;
 
         // Transmute the lifetime to 'static for WASM boundary
         let game: Gamestate<'static> = unsafe { std::mem::transmute(game) };

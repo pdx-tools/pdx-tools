@@ -1,4 +1,4 @@
-use bumpalo_serde::ArenaDeserialize;
+use bumpalo_serde::{ArenaDeserialize, Track, TrackedDeserializer};
 use eu5save::{
     BasicTokenResolver, Eu5File, SaveBodyKind, SaveDataKind,
     models::{CountryId, Gamestate, ZipPrelude},
@@ -16,13 +16,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let file = Eu5File::from_slice(&data)?;
     let arena = bumpalo::Bump::new();
 
+    let mut path_buf = Vec::new();
+    let track = Track::new_with(&mut path_buf);
     let meta = match file.meta() {
         eu5save::Eu5MetaKind::Text(mut meta) => {
-            ZipPrelude::deserialize_in_arena(&mut meta.deserializer(), &arena)?
+            let mut deser = meta.deserializer();
+            let tracked_deser = TrackedDeserializer::new(&mut deser, &track);
+            match ZipPrelude::deserialize_in_arena(tracked_deser, &arena) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("metadata parse error at {}: {}", track.path(), err);
+                    return Err(err.into());
+                }
+            }
         }
         eu5save::Eu5MetaKind::Binary(mut meta) => {
             let mut deser = meta.deserializer(&resolver);
-            ZipPrelude::deserialize_in_arena(&mut deser, &arena)?
+            let tracked_deser = TrackedDeserializer::new(&mut deser, &track);
+            match ZipPrelude::deserialize_in_arena(tracked_deser, &arena) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("metadata parse error at {}: {}", track.path(), err);
+                    return Err(err.into());
+                }
+            }
         }
     };
 
@@ -51,13 +68,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
     }
 
+    let mut path_buf = Vec::new();
+    let track = Track::new_with(&mut path_buf);
     let save = match file.gamestate()? {
         SaveBodyKind::Text(mut x) => {
-            Gamestate::deserialize_in_arena(&mut x.deserializer(), &arena)?
+            let mut deser = x.deserializer();
+            let tracked_deser = TrackedDeserializer::new(&mut deser, &track);
+            match Gamestate::deserialize_in_arena(tracked_deser, &arena) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("gamestate parse error at {}: {}", track.path(), err);
+                    return Err(err.into());
+                }
+            }
         }
         SaveBodyKind::Binary(mut x) => {
             let mut deser = x.deserializer(&resolver);
-            Gamestate::deserialize_in_arena(&mut deser, &arena)?
+            let tracked_deser = TrackedDeserializer::new(&mut deser, &track);
+            match Gamestate::deserialize_in_arena(tracked_deser, &arena) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("gamestate parse error at {}: {}", track.path(), err);
+                    return Err(err.into());
+                }
+            }
         }
     };
 
