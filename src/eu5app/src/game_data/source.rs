@@ -3,6 +3,7 @@ use crate::map::{EU5_TILE_HEIGHT, EU5_TILE_WIDTH};
 use crate::models::GameLocationData;
 use crate::parsing::{parse_default_map, parse_locations_data, parse_named_locations};
 use anyhow::{Context, Result, ensure};
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
@@ -12,6 +13,7 @@ pub struct SourceGameData {
     locations: Vec<GameLocationData>,
     west_texture: Vec<u8>,
     east_texture: Vec<u8>,
+    country_localizations: HashMap<String, String>,
 }
 
 impl SourceGameData {
@@ -33,6 +35,20 @@ impl SourceGameData {
 
         let locations = parse_locations_data(named_locations, &default_map);
 
+        // Parse country localizations
+        let country_localizations_path =
+            base_dir.join("game/main_menu/localization/english/country_names_l_english.yml");
+        let country_localizations_data = fs::read_to_string(&country_localizations_path)
+            .with_context(|| {
+                format!(
+                    "Failed to read country localizations: {}",
+                    country_localizations_path.display()
+                )
+            })?;
+        let all_localizations =
+            crate::parsing::parse_localization_string(&country_localizations_data);
+        let country_localizations = crate::parsing::country_localization(&all_localizations);
+
         // Split locations.png into west/east RGBA buffers eagerly
         let locations_png_path = base_dir.join("game/in_game/map_data/locations.png");
         let locations_png = fs::read(&locations_png_path).with_context(|| {
@@ -47,6 +63,7 @@ impl SourceGameData {
             locations,
             west_texture,
             east_texture,
+            country_localizations,
         })
     }
 
@@ -61,6 +78,7 @@ impl SourceGameData {
         let mut named_locations_data = None;
         let mut default_map_data = None;
         let mut locations_png = None;
+        let mut country_localizations_data = None;
 
         // Read all required files from the source bundle
         for entry in archive.entries() {
@@ -83,6 +101,11 @@ impl SourceGameData {
                     let entry_data = archive.get_entry(wayfinder)?;
                     locations_png = Some(entry_data.data().to_vec());
                 }
+                b"game/main_menu/localization/english/country_names_l_english.yml" => {
+                    let wayfinder = entry.wayfinder();
+                    let entry_data = archive.get_entry(wayfinder)?;
+                    country_localizations_data = Some(entry_data.data().to_vec());
+                }
                 _ => {} // Skip other files
             }
         }
@@ -94,10 +117,19 @@ impl SourceGameData {
             .ok_or_else(|| anyhow::anyhow!("Missing default.map in source bundle"))?;
         let locations_png = locations_png
             .ok_or_else(|| anyhow::anyhow!("Missing locations.png in source bundle"))?;
+        let country_localizations_data = country_localizations_data.ok_or_else(|| {
+            anyhow::anyhow!("Missing country_names_l_english.yml in source bundle")
+        })?;
 
         let named_locations = parse_named_locations(&named_locations_data[..])?;
         let default_map = parse_default_map(&default_map_data[..])?;
         let locations = parse_locations_data(named_locations, &default_map);
+
+        // Parse country localizations
+        let country_localizations_str = String::from_utf8_lossy(&country_localizations_data);
+        let all_localizations =
+            crate::parsing::parse_localization_string(&country_localizations_str);
+        let country_localizations = crate::parsing::country_localization(&all_localizations);
 
         // Split locations.png into west/east textures
         let (west_texture, east_texture) = split_locations_png(&locations_png)?;
@@ -106,6 +138,7 @@ impl SourceGameData {
             locations,
             west_texture,
             east_texture,
+            country_localizations,
         })
     }
 }
@@ -123,6 +156,10 @@ impl GameDataProvider for SourceGameData {
     fn east_texture(&self, dst: &mut [u8]) -> Result<(), Box<dyn std::error::Error>> {
         dst.copy_from_slice(&self.east_texture);
         Ok(())
+    }
+
+    fn country_localizations(&self) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
+        Ok(self.country_localizations.clone())
     }
 }
 

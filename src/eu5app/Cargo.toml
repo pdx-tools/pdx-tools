@@ -21,5 +21,8 @@ thiserror = { workspace = true }
 pdx-map = { workspace = true, default-features = false }
 pdx-zstd = { workspace = true, default-features = false }
 
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+regex = { workspace = true }
+
 [dev-dependencies]
 rstest = { workspace = true }

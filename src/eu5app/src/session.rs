@@ -22,6 +22,7 @@ pub struct Eu5Session<'bump> {
     location_color_id: LocationIndexedVec<GpuColor>,
     location_coordinates: LocationIndexedVec<(u16, u16)>,
     location_building_levels: OnceCell<LocationIndexedVec<f64>>,
+    country_localizations: HashMap<String, String>,
 }
 
 impl<'bump> Eu5Session<'bump> {
@@ -30,6 +31,7 @@ impl<'bump> Eu5Session<'bump> {
         game_data: impl GameDataProvider,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let game_locations = game_data.locations()?;
+        let country_localizations = game_data.country_localizations()?;
         let name_lookup = game_locations
             .iter()
             .enumerate()
@@ -87,7 +89,21 @@ impl<'bump> Eu5Session<'bump> {
             location_color_id,
             location_coordinates,
             location_building_levels: OnceCell::new(),
+            country_localizations,
         })
+    }
+
+    /// Get localized country name from a country tag.
+    /// Returns the localized name if available, otherwise returns the tag itself.
+    pub fn localized_country_name<'a, 'b: 'a>(
+        &'b self,
+        country_name: &'a eu5save::models::CountryName,
+    ) -> &'a str {
+        let tag = country_name.base().to_str();
+        self.country_localizations
+            .get(tag)
+            .map(|s| s.as_str())
+            .unwrap_or(tag)
     }
 
     pub fn gamestate(&self) -> &Gamestate<'bump> {
@@ -632,13 +648,13 @@ impl<'bump> Eu5Session<'bump> {
             let tag = entry.tag().to_str();
             let display_name = entry
                 .data()
-                .map(|data| data.country_name.to_string())
+                .map(|data| self.localized_country_name(&data.country_name))
                 .filter(|name| !name.trim().is_empty())
-                .unwrap_or_else(|| tag.to_string());
+                .unwrap_or(tag);
 
             summaries.push(CountryOwnershipSummary {
                 id: entry.id(),
-                label: display_name,
+                label: display_name.to_string(),
                 direct,
                 realm_total,
             });
@@ -879,7 +895,8 @@ impl<'bump> Eu5Session<'bump> {
                     .countries
                     .get(location_data.owner_id)
                     .and_then(|idx| self.gamestate.countries.index(idx).data())
-                    .map(|x| x.country_name.to_string())
+                    .map(|x| self.localized_country_name(&x.country_name))
+                    .map(|s| s.to_string())
                     .unwrap_or_else(|| format!("C{}", location_data.owner_id.value()));
 
                 vec![
@@ -1013,13 +1030,13 @@ impl<'bump> Eu5Session<'bump> {
             let tag = entry.tag().to_str();
             let display_name = entry
                 .data()
-                .map(|data| data.country_name.to_string())
+                .map(|data| self.localized_country_name(&data.country_name))
                 .filter(|name| !name.trim().is_empty())
-                .unwrap_or_else(|| tag.to_string());
+                .unwrap_or(tag);
 
             country_summaries.push(CountrySummary {
                 id: entry.id(),
-                label: display_name,
+                label: display_name.to_string(),
                 avg_levels,
             });
         }
@@ -1063,7 +1080,8 @@ impl<'bump> Eu5Session<'bump> {
                     .countries
                     .get(location_data.owner_id)
                     .and_then(|idx| self.gamestate.countries.index(idx).data())
-                    .map(|x| x.country_name.to_string())
+                    .map(|x| self.localized_country_name(&x.country_name))
+                    .map(|s| s.to_string())
                     .unwrap_or_else(|| format!("C{}", location_data.owner_id.value()));
 
                 vec![

@@ -116,8 +116,7 @@ impl<'bump> Countries<'bump> {
 
 #[derive(Debug, Clone, ArenaDeserialize)]
 pub struct Country<'bump> {
-    #[arena(deserialize_with = "deserialize_country_name")]
-    pub country_name: BStr<'bump>,
+    pub country_name: CountryName<'bump>,
     pub color: Option<Color>,
     pub capital: Option<LocationId>,
     pub historical_population: &'bump [f64],
@@ -162,6 +161,27 @@ impl Country<'_> {
     pub fn economic_base(&self) -> f64 {
         self.current_tax_base + self.monthly_trade_value
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum CountryName<'bump> {
+    Tag(BStr<'bump>),
+    Object(CountryNameObject<'bump>),
+}
+
+impl<'bump> CountryName<'bump> {
+    pub fn base(&self) -> BStr<'bump> {
+        match self {
+            CountryName::Tag(tag) => *tag,
+            CountryName::Object(obj) => obj.base,
+        }
+    }
+}
+
+#[derive(Debug, Clone, ArenaDeserialize)]
+pub struct CountryNameObject<'bump> {
+    pub name: BStr<'bump>, // e.g., "CIVILWAR_FACTION_nobles_estate_NAME"
+    pub base: BStr<'bump>, // e.g., "DNS"
 }
 
 #[derive(Debug, Clone, Deserialize, ArenaDeserialize)]
@@ -431,69 +451,62 @@ enum CountryField {
     Other,
 }
 
-#[inline]
-pub fn deserialize_country_name<'de, 'bump, D>(
-    deserializer: D,
-    alloc: &'bump bumpalo::Bump,
-) -> Result<BStr<'bump>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct CountryNameVisitor<'bump>(&'bump bumpalo::Bump);
+impl<'bump> ArenaDeserialize<'bump> for CountryName<'bump> {
+    fn deserialize_in_arena<'de, D>(
+        deserializer: D,
+        allocator: &'bump bumpalo::Bump,
+    ) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct CountryNameVisitor<'bump>(&'bump bumpalo::Bump);
+        impl<'de, 'bump> serde::de::Visitor<'de> for CountryNameVisitor<'bump> {
+            type Value = CountryName<'bump>;
 
-    #[derive(Debug, ArenaDeserialize)]
-    #[expect(dead_code)]
-    struct CountryNameObject<'bump> {
-        name: BStr<'bump>,
-        adjective: Option<BStr<'bump>>,
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a country name")
+            }
+
+            fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                self.visit_bytes(v.as_bytes())
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                self.visit_bytes(v.as_bytes())
+            }
+
+            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                self.visit_str(&v)
+            }
+
+            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(CountryName::Tag(BStr::new(self.0.alloc_slice_copy(v))))
+            }
+
+            fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::MapAccess<'de>,
+            {
+                let deser = MapAccessDeserializer::new(map);
+                let country = CountryNameObject::deserialize_in_arena(deser, self.0)?;
+                Ok(CountryName::Object(country))
+            }
+        }
+
+        deserializer.deserialize_map(CountryNameVisitor(allocator))
     }
-
-    impl<'de, 'bump> serde::de::Visitor<'de> for CountryNameVisitor<'bump> {
-        type Value = BStr<'bump>;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("a country name")
-        }
-
-        fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            self.visit_bytes(v.as_bytes())
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            self.visit_bytes(v.as_bytes())
-        }
-
-        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            self.visit_str(&v)
-        }
-
-        fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(BStr::new(self.0.alloc_slice_copy(v)))
-        }
-
-        fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
-        where
-            A: serde::de::MapAccess<'de>,
-        {
-            let deser = MapAccessDeserializer::new(map);
-            let country = CountryNameObject::deserialize_in_arena(deser, self.0)?;
-            Ok(country.name)
-        }
-    }
-
-    deserializer.deserialize_map(CountryNameVisitor(alloc))
 }
 
 pub struct CountriesIter<'a> {

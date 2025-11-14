@@ -606,7 +606,12 @@ impl Eu5App {
 
             let country_name = country
                 .data()
-                .map(|data| data.country_name.to_str().to_string())
+                .map(|data| {
+                    self.app
+                        .session()
+                        .localized_country_name(&data.country_name)
+                })
+                .map(|s| s.to_string())
                 .unwrap_or_else(|| format!("C{}", owner_id.value()));
 
             let country_tag = country.tag().to_str().to_string();
