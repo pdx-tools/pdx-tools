@@ -70,16 +70,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{:?}", save.countries.index(swe).data());
 
     for player in save.played_countries {
-        println!(
-            "{} {:?} {:?}",
-            player.name,
-            player.country,
-            save.countries
-                .get_entry(player.country)
-                .unwrap()
-                .tag()
-                .to_str()
-        );
+        match save.countries.get_entry(player.country) {
+            None => println!(
+                "Player country not found: {} {:?}",
+                player.name, player.country
+            ),
+            Some(country) => println!(
+                "Player country: {} {:?} - {:?}",
+                player.name,
+                player.country,
+                country.tag().to_str()
+            ),
+        }
 
         for dep in save.diplomacy_manager.dependencies() {
             if dep.first == player.country || dep.second == player.country {

@@ -3,7 +3,8 @@ use crate::{
     models::{CountryId, LocationId, bstr::BStr, de::Maybe},
 };
 use bumpalo_serde::{ArenaDeserialize, ArenaSeed};
-use serde::{Deserialize, de};
+use serde::de::value::MapAccessDeserializer;
+use serde::{Deserialize, Deserializer, de};
 use std::fmt;
 
 #[derive(Debug, PartialEq, ArenaDeserialize)]
@@ -49,6 +50,7 @@ impl CharacterId {
 pub struct Character<'bump> {
     #[arena(default)]
     pub country: CountryId,
+    #[arena(deserialize_with = "deserialize_first_name")]
     pub first_name: BStr<'bump>,
     #[arena(default)]
     pub adm: f64,
@@ -60,6 +62,71 @@ pub struct Character<'bump> {
     pub birth_date: Eu5Date,
     pub father: Option<CharacterId>,
     pub mother: Option<CharacterId>,
+}
+
+#[inline]
+fn deserialize_first_name<'de, 'bump, D>(
+    deserializer: D,
+    alloc: &'bump bumpalo::Bump,
+) -> Result<BStr<'bump>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct FirstNameVisitor<'bump>(&'bump bumpalo::Bump);
+
+    #[derive(Debug, ArenaDeserialize)]
+    struct FirstNameObject<'bump> {
+        #[expect(dead_code)] // unused
+        name: BStr<'bump>,
+        custom_name: BStr<'bump>,
+    }
+
+    impl<'de, 'bump> de::Visitor<'de> for FirstNameVisitor<'bump> {
+        type Value = BStr<'bump>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a first name")
+        }
+
+        fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            self.visit_bytes(v.as_bytes())
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            self.visit_bytes(v.as_bytes())
+        }
+
+        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            self.visit_str(&v)
+        }
+
+        fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(BStr::new(self.0.alloc_slice_copy(v)))
+        }
+
+        fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+        where
+            A: de::MapAccess<'de>,
+        {
+            let deser = MapAccessDeserializer::new(map);
+            let first_name = FirstNameObject::deserialize_in_arena(deser, self.0)?;
+            Ok(first_name.custom_name)
+        }
+    }
+
+    deserializer.deserialize_map(FirstNameVisitor(alloc))
 }
 
 #[inline]
@@ -100,4 +167,40 @@ where
     }
 
     deserializer.deserialize_map(CharacterVisitor(allocator))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bumpalo_serde::ArenaDeserialize;
+    use jomini::TextDeserializer;
+
+    #[test]
+    fn test_first_name_simple_string() {
+        let data = r#"first_name="Margret Thatcher"
+birth_date=1925.1.1"#;
+        let allocator = bumpalo::Bump::new();
+        let d = TextDeserializer::from_utf8_slice(data.as_bytes())
+            .expect("Failed to create deserializer");
+        let character: Character = Character::deserialize_in_arena(&d, &allocator)
+            .expect("Failed to deserialize character with simple first_name");
+
+        assert_eq!(character.first_name.to_str(), "Margret Thatcher");
+    }
+
+    #[test]
+    fn test_first_name_object_with_custom_name() {
+        let data = r#"first_name={
+name="name_william"
+custom_name="Margret Thatcher"
+}
+birth_date=1925.1.1"#;
+        let allocator = bumpalo::Bump::new();
+        let d = TextDeserializer::from_utf8_slice(data.as_bytes())
+            .expect("Failed to create deserializer");
+        let character: Character = Character::deserialize_in_arena(&d, &allocator)
+            .expect("Failed to deserialize character with object first_name with custom_name");
+
+        assert_eq!(character.first_name.to_str(), "Margret Thatcher");
+    }
 }
