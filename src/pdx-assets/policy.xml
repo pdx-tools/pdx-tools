@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policymap [
+  <!ELEMENT policymap (policy)*>
+  <!ATTLIST policymap xmlns CDATA #FIXED ''>
+  <!ELEMENT policy EMPTY>
+  <!ATTLIST policy xmlns CDATA #FIXED '' domain NMTOKEN #REQUIRED
+    name NMTOKEN #IMPLIED pattern CDATA #IMPLIED rights NMTOKEN #IMPLIED
+    stealth NMTOKEN #IMPLIED value CDATA #IMPLIED>
+]>
+<!--
+  ImageMagick policy configuration for pdx-assets.
+
+  This policy file is bundled with pdx-assets to ensure ImageMagick can process
+  large game asset files (particularly EU5 locations.png which is 16384x8192).
+
+  Resource limits are set to handle:
+  - EU5 locations.png: 16384x8192 pixels (134.2 MP)
+  - Large texture processing and tiling operations
+
+  Path rights are set to "read|write" to allow file list operations needed
+  for montage commands.
+-->
+<policymap>
+  <!-- Resource limits sized for EU5 map dimensions (16384x8192) -->
+  <policy domain="resource" name="memory" value="2GiB"/>
+  <policy domain="resource" name="map" value="4GiB"/>
+  <policy domain="resource" name="width" value="20KP"/>
+  <policy domain="resource" name="height" value="10KP"/>
+  <policy domain="resource" name="area" value="200MP"/>
+  <policy domain="resource" name="disk" value="8GiB"/>
+
+  <!-- Allow path operations for file lists (needed for montage with response files) -->
+  <policy domain="path" rights="read|write" pattern="@*"/>
+
+  <!-- Security: Disable potentially dangerous delegates and coders -->
+  <policy domain="delegate" rights="none" pattern="URL" />
+  <policy domain="delegate" rights="none" pattern="HTTPS" />
+  <policy domain="delegate" rights="none" pattern="HTTP" />
+  <policy domain="coder" rights="none" pattern="PS" />
+  <policy domain="coder" rights="none" pattern="PS2" />
+  <policy domain="coder" rights="none" pattern="PS3" />
+  <policy domain="coder" rights="none" pattern="EPS" />
+  <policy domain="coder" rights="none" pattern="PDF" />
+  <policy domain="coder" rights="none" pattern="XPS" />
+</policymap>
