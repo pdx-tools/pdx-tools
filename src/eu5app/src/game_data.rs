@@ -11,11 +11,13 @@ pub mod source;
 pub use source::SourceGameData;
 
 use crate::models::GameLocationData;
+use std::collections::HashMap;
 
 pub trait GameDataProvider {
     fn locations(&self) -> Result<Vec<GameLocationData>, Box<dyn std::error::Error>>;
     fn west_texture(&self, dst: &mut [u8]) -> Result<(), Box<dyn std::error::Error>>;
     fn east_texture(&self, dst: &mut [u8]) -> Result<(), Box<dyn std::error::Error>>;
+    fn country_localizations(&self) -> Result<HashMap<String, String>, Box<dyn std::error::Error>>;
 }
 
 // Unified API - enum on native, type alias on WASM
@@ -69,6 +71,13 @@ impl GameDataProvider for Eu5GameData {
         match self {
             Self::Optimized(data) => data.east_texture(dst),
             Self::Source(data) => data.east_texture(dst),
+        }
+    }
+
+    fn country_localizations(&self) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
+        match self {
+            Self::Optimized(data) => data.country_localizations(),
+            Self::Source(data) => data.country_localizations(),
         }
     }
 }

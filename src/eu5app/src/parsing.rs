@@ -5,6 +5,9 @@ use eu5save::hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use std::io::Read;
 
+#[cfg(not(target_family = "wasm"))]
+use std::collections::HashMap;
+
 #[derive(Debug)]
 pub struct DefaultMap {
     pub water_locations: FxHashSet<String>,
@@ -78,4 +81,91 @@ pub fn parse_locations_data(
             }
         })
         .collect()
+}
+
+/// Parse a single localization file in the format:
+#[cfg(not(target_family = "wasm"))]
+pub fn parse_localization_string(data: &str) -> HashMap<String, String> {
+    let quote_container = regex::Regex::new("\"(.*)\"").unwrap();
+    let mut result = HashMap::new();
+
+    for line in data.lines().skip(1) {
+        let mut splits = line.split(':');
+        if let Some(field) = splits.next() {
+            let key = field.trim();
+
+            // skip comments and blanks
+            if key.starts_with('#') || key.is_empty() {
+                continue;
+            }
+
+            if let Some(field2) = splits.next()
+                && let Some(v) = quote_container.captures(field2)
+            {
+                result.insert(String::from(key), String::from(&v[1]));
+            }
+        }
+    }
+
+    result
+}
+
+/// Extract country localizations from the parsed data.
+/// Filters for uppercase tags and excludes adjectives (_ADJ suffix).
+#[cfg(not(target_family = "wasm"))]
+pub fn country_localization(localizations: &HashMap<String, String>) -> HashMap<String, String> {
+    localizations
+        .iter()
+        .filter(|(key, _)| {
+            !key.is_empty()
+                && key.chars().all(|c| c.is_uppercase() || c == '_')
+                && !key.ends_with("_ADJ")
+        })
+        .map(|(key, value)| (key.clone(), value.clone()))
+        .collect()
+}
+
+#[cfg(all(test, not(target_family = "wasm")))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_localization() {
+        let data = r#"l_english:
+ TEU: "Teutonic Order"
+ TEU_ADJ: "Teutonic"
+ MEDICI: "Medici"
+ MEDICI_ADJ: "Medici"
+ DNS: "Kalmar Union"
+ DNS_ADJ: "Kalmar"
+ # Comment line
+"#;
+        let parsed = parse_localization_string(data);
+        assert_eq!(parsed.get("TEU").unwrap(), "Teutonic Order");
+        assert_eq!(parsed.get("TEU_ADJ").unwrap(), "Teutonic");
+        assert_eq!(parsed.get("MEDICI").unwrap(), "Medici");
+        assert_eq!(parsed.get("DNS").unwrap(), "Kalmar Union");
+    }
+
+    #[test]
+    fn test_country_localization() {
+        let mut localizations = HashMap::new();
+        localizations.insert("TEU".to_string(), "Teutonic Order".to_string());
+        localizations.insert("TEU_ADJ".to_string(), "Teutonic".to_string());
+        localizations.insert("MEDICI".to_string(), "Medici".to_string());
+        localizations.insert("MEDICI_ADJ".to_string(), "Medici".to_string());
+        localizations.insert("DNS".to_string(), "Kalmar Union".to_string());
+        localizations.insert("DNS_ADJ".to_string(), "Kalmar".to_string());
+        localizations.insert("abc".to_string(), "lowercase".to_string());
+
+        let countries = country_localization(&localizations);
+
+        assert_eq!(countries.get("TEU").unwrap(), "Teutonic Order");
+        assert_eq!(countries.get("MEDICI").unwrap(), "Medici");
+        assert_eq!(countries.get("DNS").unwrap(), "Kalmar Union");
+        assert!(!countries.contains_key("TEU_ADJ")); // Adjectives filtered out
+        assert!(!countries.contains_key("MEDICI_ADJ")); // Adjectives filtered out
+        assert!(!countries.contains_key("abc")); // Lowercase filtered out
+        assert_eq!(countries.len(), 3);
+    }
 }

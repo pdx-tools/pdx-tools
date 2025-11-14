@@ -750,6 +750,7 @@ dependencies = [
  "pdx-zstd",
  "postcard",
  "rawzip",
+ "regex",
  "rstest",
  "serde",
  "thiserror 2.0.12",

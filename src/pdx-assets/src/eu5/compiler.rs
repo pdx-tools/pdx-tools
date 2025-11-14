@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use eu5app::parsing::{parse_default_map, parse_locations_data, parse_named_locations};
 use eu5save::hash::FnvHashMap;
 use rawzip::CompressionMethod;
+use std::collections::HashMap;
 use std::io::Read;
 use std::path::Path;
 
@@ -27,6 +28,9 @@ where
     let default_map = parse_default_map(&default_map_data[..])?;
 
     let mut location_lookup = parse_locations_data(named_locations, &default_map);
+
+    // Parse country localizations
+    let country_localizations = extract_country_localizations(fs)?;
 
     // Split location texture into two tiles
     let locations_file = fs.fs_file("game/in_game/map_data/locations.png")?;
@@ -121,6 +125,25 @@ where
         compressed_size
     );
 
+    // Write country_localization.bin
+    let (mut entry, config) = archive
+        .new_file("country_localization.bin")
+        .compression_method(CompressionMethod::Zstd)
+        .start()?;
+    let encoder = pdx_zstd::Encoder::new(&mut entry, 7)?;
+    let mut writer = config.wrap(encoder);
+    postcard::to_io(&country_localizations, &mut writer)?;
+    let (encoder, out) = writer.finish()?;
+    let uncompressed_size = out.uncompressed_size();
+    encoder.finish()?;
+    let compressed_size = entry.finish(out)?;
+
+    log::info!(
+        "country_localization.bin: uncompressed={}, compressed={}",
+        uncompressed_size,
+        compressed_size
+    );
+
     // Write texture files
     for (filename, rgba_path) in [
         ("locations-0.rgba", &west_rgba_path),
@@ -143,4 +166,27 @@ where
 
     log::info!("Created EU5 game bundle at: {}", bundle_path.display());
     Ok(())
+}
+
+/// Extract country localizations from the game files.
+/// Reads localization files from the game's localization directory and filters
+/// for country tags.
+fn extract_country_localizations<P: FileProvider + ?Sized>(
+    fs: &P,
+) -> Result<HashMap<String, String>> {
+    let localization_file = "game/main_menu/localization/english/country_names_l_english.yml";
+
+    // Read the country names localization file
+    let country_names_data = fs.read_file(localization_file)?;
+    let country_names_str = String::from_utf8_lossy(&country_names_data);
+
+    // Parse and extract country localizations
+    let all_localizations = eu5app::parsing::parse_localization_string(&country_names_str);
+    let country_localizations = eu5app::parsing::country_localization(&all_localizations);
+
+    log::info!(
+        "Extracted {} country localizations",
+        country_localizations.len()
+    );
+    Ok(country_localizations)
 }
