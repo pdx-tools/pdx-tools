@@ -46,7 +46,7 @@
       ]
     }
   },
-  "postCreateCommand": "mise trust && mise install --verbose --jobs 1",
+  "postCreateCommand": "sudo cp src/pdx-assets/policy.xml /etc/ImageMagick-6/policy.xml && mise trust && mise install --verbose --jobs 1",
   "postStartCommand": "mise install --verbose --jobs 1",
   "forwardPorts": [3001, 3003, 9000],
   "remoteUser": "vscode",

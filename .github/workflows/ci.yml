@@ -132,10 +132,8 @@ jobs:
           sudo apt-get install -y imagemagick
           convert -version
 
-          # For some reason imagemagick's path policy is set to none on github actions
-          # and we need it for sending hundreds of file paths to imagemagick.
-          sudo sed -i 's/rights="none"/rights="read|write"/gI' "/etc/ImageMagick-6/policy.xml"
-          identify -list policy
+          # Use bundled permissive policy.xml for file and large image processing
+          sudo cp src/pdx-assets/policy.xml /etc/ImageMagick-6/policy.xml
       - name: Install dependencies (macos)
         if: matrix.os == 'macos-15'
         run: |

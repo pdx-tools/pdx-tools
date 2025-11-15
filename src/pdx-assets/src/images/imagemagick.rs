@@ -89,23 +89,29 @@ impl ImageMagickProcessor {
     }
 
     fn get_command(&self, subcommand: &str) -> Result<Command> {
-        match &self.command_type {
+        let mut cmd = match &self.command_type {
             MagickCommand::Magick => {
                 let mut cmd = Command::new("magick");
                 if subcommand != "convert" {
                     cmd.arg(subcommand);
                 }
-                Ok(cmd)
+                cmd
             }
-            MagickCommand::Direct => Ok(Command::new(subcommand)),
+            MagickCommand::Direct => Command::new(subcommand),
             MagickCommand::Downloaded(path) => {
                 let mut cmd = Command::new(path);
                 if subcommand != "convert" {
                     cmd.arg(subcommand);
                 }
-                Ok(cmd)
+                cmd
             }
-        }
+        };
+
+        // Use bundled policy.xml to ensure adequate resource limits for large images
+        // (EU5 locations.png is 16384x8192) and to allow path operations for file lists
+        cmd.env("MAGICK_CONFIGURE_PATH", env!("CARGO_MANIFEST_DIR"));
+
+        Ok(cmd)
     }
 
     fn check_magick_command() -> bool {
