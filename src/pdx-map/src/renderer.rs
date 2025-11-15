@@ -4,6 +4,7 @@ use wgpu::SurfaceTarget;
 
 use crate::error::RenderError;
 use crate::{CanvasDimensions, GpuColor, LocationArrays, LocationFlags, ViewportBounds};
+use crate::{OverlayMiddleware, OverlayTarget};
 
 /// Maximum texture dimension supported
 const MAX_TEXTURE_DIMENSION: u32 = 8192;
@@ -617,6 +618,8 @@ pub struct Renderer {
     viewport_bind_group: wgpu::BindGroup,
 }
 
+const VIEWPORT_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
 impl Renderer {
     pub fn new(
         pipelines: GpuContext,
@@ -754,7 +757,8 @@ impl Renderer {
             format: wgpu::TextureFormat::Rgba8Unorm,
             usage: wgpu::TextureUsages::STORAGE_BINDING
                 | wgpu::TextureUsages::COPY_SRC
-                | wgpu::TextureUsages::TEXTURE_BINDING,
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: &[],
         })
     }
@@ -830,13 +834,25 @@ impl Renderer {
     }
 
     pub fn render_scene(&self, bounds: ViewportBounds) {
-        let texture = &self.viewport_output_texture;
-
-        // Upload the location arrays to GPU buffers (only if dirty)
         self.ensure_location_arrays_uploaded();
+        let uniforms = self.compute_uniforms(bounds);
+        self.upload_uniforms(&uniforms);
+        self.process_viewport(&uniforms);
+    }
 
-        // Update uniform buffer with viewport parameters
-        let uniforms = ComputeUniforms {
+    pub fn render_scene_with_overlay(
+        &self,
+        bounds: ViewportBounds,
+        overlay: Option<&mut dyn OverlayMiddleware>,
+    ) {
+        self.ensure_location_arrays_uploaded();
+        let uniforms = self.compute_uniforms(bounds);
+        self.upload_uniforms(&uniforms);
+        self.process_viewport_with_overlay(&uniforms, overlay);
+    }
+
+    fn compute_uniforms(&self, bounds: ViewportBounds) -> ComputeUniforms {
+        ComputeUniforms {
             tile_width: self.tile_width,
             tile_height: self.tile_height,
             enable_location_borders: if self.enable_location_borders { 1 } else { 0 },
@@ -846,22 +862,21 @@ impl Renderer {
             zoom_level: bounds.zoom_level,
             viewport_x_offset: bounds.x,
             viewport_y_offset: bounds.y,
-            canvas_width: texture.width(),
-            canvas_height: texture.height(),
+            canvas_width: self.viewport_width,
+            canvas_height: self.viewport_height,
             world_width: bounds.width,
             world_height: bounds.height,
-        };
+        }
+    }
 
+    fn upload_uniforms(&self, uniforms: &ComputeUniforms) {
         self.gpu
             .queue
-            .write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
-
-        self.process_viewport(&uniforms);
+            .write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[*uniforms]));
     }
 
     // Process viewport with compute shader
     fn process_viewport(&self, uniforms: &ComputeUniforms) {
-        // Dispatch compute shader for viewport-sized area
         let mut encoder = self
             .gpu
             .device
@@ -869,24 +884,71 @@ impl Renderer {
                 label: Some("Viewport Compute Encoder"),
             });
 
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Viewport Compute Pass"),
-                timestamp_writes: None,
+        self.encode_compute_pass(&mut encoder, uniforms);
+
+        self.gpu.queue.submit(std::iter::once(encoder.finish()));
+    }
+
+    fn process_viewport_with_overlay(
+        &self,
+        uniforms: &ComputeUniforms,
+        overlay: Option<&mut dyn OverlayMiddleware>,
+    ) {
+        let mut encoder = self
+            .gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Viewport Compute Encoder"),
             });
 
-            compute_pass.set_pipeline(&self.compute_pipeline);
-            compute_pass.set_bind_group(0, &self.viewport_bind_group, &[]);
+        self.encode_compute_pass(&mut encoder, uniforms);
 
-            // 8x8 workgroup size for canvas area
-            let workgroup_size = 8;
-            let workgroups_x = uniforms.canvas_width.div_ceil(workgroup_size);
-            let workgroups_y = uniforms.canvas_height.div_ceil(workgroup_size);
+        if let Some(overlay) = overlay {
+            let target = OverlayTarget {
+                view: &self.viewport_output_view,
+                format: VIEWPORT_TEXTURE_FORMAT,
+                width: self.viewport_width,
+                height: self.viewport_height,
+            };
+            overlay.prepare(&self.gpu.device, &self.gpu.queue, &target);
 
-            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
+            {
+                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Overlay Render Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: target.view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                        depth_slice: None,
+                    })],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+                overlay.render(&mut render_pass, &target);
+            }
         }
 
         self.gpu.queue.submit(std::iter::once(encoder.finish()));
+    }
+
+    fn encode_compute_pass(&self, encoder: &mut wgpu::CommandEncoder, uniforms: &ComputeUniforms) {
+        let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("Viewport Compute Pass"),
+            timestamp_writes: None,
+        });
+
+        compute_pass.set_pipeline(&self.compute_pipeline);
+        compute_pass.set_bind_group(0, &self.viewport_bind_group, &[]);
+
+        let workgroup_size = 8;
+        let workgroups_x = uniforms.canvas_width.div_ceil(workgroup_size);
+        let workgroups_y = uniforms.canvas_height.div_ceil(workgroup_size);
+
+        compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
     }
 
     fn ensure_location_arrays_uploaded(&self) {
@@ -1126,6 +1188,14 @@ impl SurfaceMapRenderer {
         self.renderer.render_scene(bounds)
     }
 
+    pub fn render_scene_with_overlay(
+        &self,
+        bounds: ViewportBounds,
+        overlay: Option<&mut dyn OverlayMiddleware>,
+    ) {
+        self.renderer.render_scene_with_overlay(bounds, overlay);
+    }
+
     pub fn set_location_borders(&mut self, enabled: bool) {
         self.renderer.enable_location_borders = enabled;
     }
@@ -1345,6 +1415,16 @@ impl MapRenderer for SurfaceMapRenderer {
     }
 }
 
+impl OverlayCapableRenderer for SurfaceMapRenderer {
+    fn render_scene_with_overlay(
+        &self,
+        bounds: ViewportBounds,
+        overlay: Option<&mut dyn OverlayMiddleware>,
+    ) {
+        self.render_scene_with_overlay(bounds, overlay);
+    }
+}
+
 impl SurfaceRenderer for SurfaceMapRenderer {
     fn present(&self) -> Result<(), RenderError> {
         self.present()
@@ -1530,6 +1610,14 @@ impl HeadlessMapRenderer {
         let tile_height = self.renderer.tile_height;
         crate::ScreenshotRenderer::new(self, tile_width, tile_height)
     }
+
+    pub fn render_scene_with_overlay(
+        &self,
+        bounds: ViewportBounds,
+        overlay: Option<&mut dyn OverlayMiddleware>,
+    ) {
+        self.renderer.render_scene_with_overlay(bounds, overlay);
+    }
 }
 
 impl MapRenderer for HeadlessMapRenderer {
@@ -1563,6 +1651,16 @@ impl MapRenderer for HeadlessMapRenderer {
     }
 }
 
+impl OverlayCapableRenderer for HeadlessMapRenderer {
+    fn render_scene_with_overlay(
+        &self,
+        bounds: ViewportBounds,
+        overlay: Option<&mut dyn OverlayMiddleware>,
+    ) {
+        self.render_scene_with_overlay(bounds, overlay);
+    }
+}
+
 /// Trait defining common functionality for map renderers
 pub trait MapRenderer {
     /// Set the location arrays data
@@ -1584,6 +1682,14 @@ pub trait MapRenderer {
 
     /// Render a scene with given viewport bounds
     fn render_scene(&self, bounds: ViewportBounds);
+}
+
+pub trait OverlayCapableRenderer: MapRenderer {
+    fn render_scene_with_overlay(
+        &self,
+        bounds: ViewportBounds,
+        overlay: Option<&mut dyn OverlayMiddleware>,
+    );
 }
 
 /// Trait for surface-based renderers that can present to screen

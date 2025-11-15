@@ -762,6 +762,7 @@ version = "0.1.0"
 dependencies = [
  "bumpalo",
  "bumpalo-serde",
+ "bytemuck",
  "clap",
  "eu5app",
  "eu5save",

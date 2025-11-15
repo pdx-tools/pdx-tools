@@ -1,6 +1,6 @@
 use crate::{
-    CanvasDimensions, GpuColor, GpuLocationIdx, MapRenderer, MapViewport, RenderError,
-    SurfaceMapRenderer, SurfaceRenderer, ViewportBounds,
+    CanvasDimensions, GpuColor, GpuLocationIdx, MapRenderer, MapViewport, OverlayCapableRenderer,
+    OverlayMiddleware, RenderError, SurfaceMapRenderer, SurfaceRenderer, ViewportBounds,
     renderer::{ColorIdReadback, HeadlessMapRenderer, QueuedWorkFuture},
 };
 
@@ -184,6 +184,36 @@ impl<R: MapRenderer> ScreenshotRenderer<R> {
             zoom_level: 1.0,
         };
         self.renderer.render_scene(east_bounds);
+    }
+
+    pub fn render_west_with_overlay(&self, overlay: Option<&mut dyn OverlayMiddleware>)
+    where
+        R: OverlayCapableRenderer,
+    {
+        let west_bounds = ViewportBounds {
+            x: 0,
+            y: 0,
+            width: self.tile_width,
+            height: self.tile_height,
+            zoom_level: 1.0,
+        };
+        self.renderer
+            .render_scene_with_overlay(west_bounds, overlay);
+    }
+
+    pub fn render_east_with_overlay(&self, overlay: Option<&mut dyn OverlayMiddleware>)
+    where
+        R: OverlayCapableRenderer,
+    {
+        let east_bounds = ViewportBounds {
+            x: self.tile_width,
+            y: 0,
+            width: self.tile_width,
+            height: self.tile_height,
+            zoom_level: 1.0,
+        };
+        self.renderer
+            .render_scene_with_overlay(east_bounds, overlay);
     }
 }
 

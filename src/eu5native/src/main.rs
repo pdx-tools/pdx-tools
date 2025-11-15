@@ -2,7 +2,10 @@ use bumpalo_serde::ArenaDeserialize;
 use clap::Parser;
 use eu5app::{Eu5GameData, Eu5MapApp, Eu5Session, GameDataProvider, MapMode};
 use eu5save::{BasicTokenResolver, Eu5File, SaveBodyKind, models::Gamestate};
+use overlay::DateOverlay;
 use std::path::PathBuf;
+
+mod overlay;
 
 /// EU5 native map renderer - renders EU5 save files to PNG images
 #[derive(Parser, Debug)]
@@ -22,7 +25,7 @@ struct Args {
     tokens: PathBuf,
 
     /// Output PNG file path
-    #[arg(short = 'o', long, default_value = "locations-development-mode.png")]
+    #[arg(short = 'o', long, default_value = "locations.png")]
     output: PathBuf,
 }
 
@@ -104,6 +107,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         tile_height,
     )?;
 
+    let save_date = save.metadata.date.date_fmt().to_string();
     let session = Eu5Session::new(save, game_provider)?;
     let mut map_app = Eu5MapApp::new(session)?;
 
@@ -114,10 +118,11 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let mut combined_buffer = vec![0u8; (full_width * full_height * 4) as usize];
 
     let mut screenshot_renderer = renderer.into_screenshot_renderer();
+    let mut date_overlay = DateOverlay::new(save_date, 20);
 
     // Render west tile and copy to left half of buffer
     let start = std::time::Instant::now();
-    screenshot_renderer.render_west();
+    screenshot_renderer.render_west_with_overlay(Some(&mut date_overlay));
     println!("Rendered west tile in {}ms", start.elapsed().as_millis());
 
     let start = std::time::Instant::now();
@@ -131,7 +136,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
 
     // Render east tile and copy to right half of buffer
     let start = std::time::Instant::now();
-    screenshot_renderer.render_east();
+    screenshot_renderer.render_east_with_overlay(None);
     println!("Rendered east tile in {}ms", start.elapsed().as_millis());
 
     let start = std::time::Instant::now();
