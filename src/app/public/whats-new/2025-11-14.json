@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "Add EU5 country localizations",
+      "Update achievement leaderboard podium to include country information"
+    ],
+    "fixes": [
+      "Fix crash when parsing EU5 saves with character custom names",
+      "Fix bleed-thru on EU5 error dialog for non-dark mode users"
+    ]
+  }
+}
