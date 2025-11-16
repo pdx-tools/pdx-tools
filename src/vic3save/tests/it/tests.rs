@@ -1,7 +1,7 @@
 use crate::utils;
 use serde::Deserialize;
 use std::error::Error;
-use vic3save::{file::Vic3SliceFileKind, Vic3Date, Vic3File};
+use vic3save::{JominiFileKind, SaveDataKind, Vic3Date, Vic3File};
 
 #[test]
 fn can_parse_debug() -> Result<(), Box<dyn Error>> {
@@ -19,7 +19,7 @@ fn can_parse_debug() -> Result<(), Box<dyn Error>> {
     let data = utils::inflate(utils::request_file("chile-debug.zip"));
 
     let file = Vic3File::from_slice(&data)?;
-    let Vic3SliceFileKind::Text(text) = file.kind() else {
+    let JominiFileKind::Uncompressed(SaveDataKind::Text(text)) = file.kind() else {
         panic!("Expected text file");
     };
 

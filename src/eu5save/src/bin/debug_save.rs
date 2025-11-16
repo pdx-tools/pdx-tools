@@ -1,6 +1,6 @@
 use bumpalo_serde::ArenaDeserialize;
 use eu5save::{
-    BasicTokenResolver, Eu5File, SaveBodyKind, SaveDataKind,
+    BasicTokenResolver, Eu5BinaryDeserialization, Eu5File, SaveContentKind, SaveDataKind,
     models::{CountryId, Gamestate, ZipPrelude},
 };
 use jomini::common::PdsDate;
@@ -16,11 +16,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let file = Eu5File::from_slice(&data)?;
     let arena = bumpalo::Bump::new();
 
-    let meta = match file.meta() {
-        eu5save::Eu5MetaKind::Text(mut meta) => {
+    let meta = match file.meta()? {
+        eu5save::SaveMetadataKind::Text(mut meta) => {
             ZipPrelude::deserialize_in_arena(&mut meta.deserializer(), &arena)?
         }
-        eu5save::Eu5MetaKind::Binary(mut meta) => {
+        eu5save::SaveMetadataKind::Binary(mut meta) => {
             let mut deser = meta.deserializer(&resolver);
             ZipPrelude::deserialize_in_arena(&mut deser, &arena)?
         }
@@ -35,27 +35,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let start = std::time::Instant::now();
     let file = Eu5File::from_file(file)?;
     match file.kind() {
-        eu5save::Eu5FileKind::Uncompressed(SaveDataKind::Text(_)) => {
+        eu5save::JominiFileKind::Uncompressed(SaveDataKind::Text(_)) => {
             println!("Uncompressed text save")
         }
-        eu5save::Eu5FileKind::Uncompressed(SaveDataKind::Binary(_)) => {
+        eu5save::JominiFileKind::Uncompressed(SaveDataKind::Binary(_)) => {
             println!("Uncompressed binary save")
         }
-        eu5save::Eu5FileKind::Zip(x) if file.header().kind().is_binary() => println!(
+        eu5save::JominiFileKind::Zip(x) if file.header().kind().is_binary() => println!(
             "Compressed binary save: {} bytes uncompressed",
             x.gamestate_uncompressed_hint()
         ),
-        eu5save::Eu5FileKind::Zip(x) => println!(
+        eu5save::JominiFileKind::Zip(x) => println!(
             "Compressed text save: {} bytes uncompressed",
             x.gamestate_uncompressed_hint()
         ),
     }
 
     let save = match file.gamestate()? {
-        SaveBodyKind::Text(mut x) => {
+        SaveContentKind::Text(mut x) => {
             Gamestate::deserialize_in_arena(&mut x.deserializer(), &arena)?
         }
-        SaveBodyKind::Binary(mut x) => {
+        SaveContentKind::Binary(mut x) => {
             let mut deser = x.deserializer(&resolver);
             Gamestate::deserialize_in_arena(&mut deser, &arena)?
         }

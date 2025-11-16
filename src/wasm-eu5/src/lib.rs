@@ -1,8 +1,8 @@
 use bumpalo_serde::ArenaDeserialize;
 use eu5app::TableCell as Eu5TableCell;
 use eu5app::{CanvasDimensions, Eu5MapApp, Eu5Session, MapMode as Eu5MapMode, OptimizedGameData};
-use eu5save::Eu5File;
 use eu5save::models::ZipPrelude;
+use eu5save::{Eu5BinaryDeserialization, Eu5ErrorKind, Eu5File, Eu5Melt};
 use eu5save::{
     Eu5Date, FailedResolveStrategy, MeltOptions,
     models::{GameVersion, Gamestate},
@@ -217,11 +217,14 @@ impl Eu5MetaParser {
             .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
         let arena = bumpalo::Bump::with_capacity(100 * 1024 * 1024);
         let meta = {
-            let meta = match file.meta() {
-                eu5save::Eu5MetaKind::Text(mut text) => {
+            let meta = match file
+                .meta()
+                .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?
+            {
+                eu5save::SaveMetadataKind::Text(mut text) => {
                     ZipPrelude::deserialize_in_arena(&mut text.deserializer(), &arena)
                 }
-                eu5save::Eu5MetaKind::Binary(mut bin) => {
+                eu5save::SaveMetadataKind::Binary(mut bin) => {
                     let mut deser = bin.deserializer(&self.resolver);
                     ZipPrelude::deserialize_in_arena(&mut deser, &arena)
                 }
@@ -270,10 +273,10 @@ impl Eu5SaveParser {
         // Deserialize with a dynamic dispatch read implementation. This is not
         // technically required, but it significantly helps out compile times.
         let game = match self.archive.gamestate().unwrap() {
-            eu5save::SaveBodyKind::Text(mut x) => {
+            eu5save::SaveContentKind::Text(mut x) => {
                 Gamestate::deserialize_in_arena(&mut x.deserializer(), &self.arena)
             }
-            eu5save::SaveBodyKind::Binary(mut x) => {
+            eu5save::SaveContentKind::Binary(mut x) => {
                 let mut deser = x.deserializer(&self.resolver);
                 Gamestate::deserialize_in_arena(&mut deser, &self.arena)
             }
@@ -878,10 +881,10 @@ impl BufferParts {
 }
 
 fn _melt(data: &[u8]) -> Result<Vec<u8>, eu5save::Eu5Error> {
-    let file = eu5save::Eu5File::from_slice(data)?;
+    let file = eu5save::Eu5File::from_slice(data).map_err(Eu5ErrorKind::from)?;
     let mut out = Cursor::new(Vec::new());
     let options = MeltOptions::new().on_failed_resolve(FailedResolveStrategy::Ignore);
-    file.melt(options, tokens::get_tokens(), &mut out)?;
+    (&file).melt(options, tokens::get_tokens(), &mut out)?;
     Ok(out.into_inner())
 }
 

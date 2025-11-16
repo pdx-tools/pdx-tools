@@ -9,14 +9,14 @@ workspace = true
 [dependencies]
 bumpalo-serde = { workspace = true }
 bumpalo = { workspace = true, features = ["collections"] }
-flate2 = { workspace = true, default-features = false, features = ["zlib-rs"] }
 jomini =  { workspace = true }
-rawzip = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
 attohttpc = { workspace = true }
+flate2 = { workspace = true, default-features = false, features = ["zlib-rs"] }
 highway = { workspace = true }
+rawzip = { workspace = true }
 rstest = { workspace = true }
 tempfile = { workspace = true }

@@ -1,4 +1,4 @@
-use eu5save::{BasicTokenResolver, Eu5File, FailedResolveStrategy, MeltOptions};
+use eu5save::{BasicTokenResolver, Eu5File, Eu5Melt, FailedResolveStrategy, MeltOptions};
 use std::{env, io::BufWriter};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -11,6 +11,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let handle = stdout.lock();
     let mut buffer = BufWriter::new(handle);
     let options = MeltOptions::new().on_failed_resolve(FailedResolveStrategy::Error);
-    file.melt(options, &resolver, &mut buffer)?;
+    (&file).melt(options, &resolver, &mut buffer)?;
     Ok(())
 }
