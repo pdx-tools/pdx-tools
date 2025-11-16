@@ -61,6 +61,7 @@ impl ReligionId {
 pub struct Religion<'bump> {
     pub name: BStr<'bump>,
     pub key: BStr<'bump>,
+    #[arena(default)]
     pub color: Color,
 }
 

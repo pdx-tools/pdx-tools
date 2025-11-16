@@ -377,7 +377,7 @@ impl<'bump> Eu5Session<'bump> {
             .countries
             .index(country_idx)
             .data()
-            .and_then(|data| data.color);
+            .map(|data| data.color);
 
         let Some(country_color) = country_color else {
             return GpuColor::UNOWNED;
@@ -393,7 +393,7 @@ impl<'bump> Eu5Session<'bump> {
                 .countries
                 .index(current_overlord)
                 .data()
-                .and_then(|data| data.color);
+                .map(|data| data.color);
 
             if let Some(dep_color) = dep_color {
                 current_overlord_color = dep_color;
