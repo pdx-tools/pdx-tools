@@ -117,9 +117,12 @@ impl<'bump> Countries<'bump> {
 #[derive(Debug, Clone, ArenaDeserialize)]
 pub struct Country<'bump> {
     pub country_name: CountryName<'bump>,
-    pub color: Option<Color>,
+    #[arena(default)]
+    pub color: Color,
     pub capital: Option<LocationId>,
+    #[arena(default)]
     pub historical_population: &'bump [f64],
+    #[arena(default)]
     pub historical_tax_base: &'bump [f64],
     #[arena(default)]
     pub previous_tags: &'bump [CountryTag<'bump>],

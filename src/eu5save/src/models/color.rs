@@ -2,7 +2,7 @@ use bumpalo_serde::ArenaDeserialize;
 use serde::de::{self, Deserialize, value::SeqAccessDeserializer};
 use std::fmt;
 
-#[derive(Debug, PartialEq, Clone, Copy, ArenaDeserialize)]
+#[derive(Debug, Default, PartialEq, Clone, Copy, ArenaDeserialize)]
 pub struct Color(pub [u8; 3]);
 
 struct ColorVisitor;

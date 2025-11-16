@@ -88,8 +88,9 @@ impl MarketDatabase<'_> {
 #[derive(Debug, ArenaDeserialize, PartialEq)]
 pub struct Market<'bump> {
     pub center: LocationId,
+    #[arena(default)]
     pub color: Color,
-    #[arena(deserialize_with = "deserialize_market_goods")]
+    #[arena(default, deserialize_with = "deserialize_market_goods")]
     pub goods: &'bump [MarketGood<'bump>],
 }
 
