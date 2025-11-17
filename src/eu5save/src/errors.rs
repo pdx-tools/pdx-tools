@@ -36,17 +36,14 @@ impl From<jomini::binary::ReaderError> for Eu5Error {
 /// Specific type of error
 #[derive(thiserror::Error, Debug)]
 pub enum Eu5ErrorKind {
-    #[error("unable to parse as zip: {0}")]
-    Zip(#[from] rawzip::Error),
-
-    #[error("missing gamestate entry in zip")]
-    ZipMissingEntry,
-
     #[error("invalid header")]
     InvalidHeader,
 
     #[error("parser error: {0}")]
     Jomini(#[from] jomini::Error),
+
+    #[error("file envelope error: {0}")]
+    Envelope(#[from] jomini::envelope::EnvelopeError),
 
     #[error("binary reader error: {0}")]
     BinaryReader(#[from] jomini::binary::ReaderError),

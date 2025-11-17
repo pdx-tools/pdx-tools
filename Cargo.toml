@@ -54,14 +54,14 @@ eu4save = { git = "https://github.com/rakaly/eu4save.git", default-features = fa
 eu5app = { path = "src/eu5app", default-features = false }
 eu5save = { path = "src/eu5save", default-features = false }
 flatbuffers = "25.2.10"
-flate2 = { version = "1.1.0", default-features = false }
+flate2 = { version = "1.1.5", default-features = false }
 futures-channel = { version = "0.3.31" }
 getrandom = "0.2"
 highway = "1.3"
 hoi4save = { git = "https://github.com/rakaly/hoi4save.git" }
 image = { version = "0.25.2", default-features = false }
 imperator-save = { git = "https://github.com/rakaly/imperator-save.git" }
-jomini = "0.29.0"
+jomini = { version = "0.30", features = ["envelope"] }
 js-sys = "0.3.77"
 log = "0.4"
 mathru = "0.15.3"

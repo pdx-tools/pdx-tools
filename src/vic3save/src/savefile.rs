@@ -1,6 +1,4 @@
-use crate::markets::Vic3Building;
-use crate::stats::Vic3CountryStats;
-use crate::Vic3Date;
+use crate::{markets::Vic3Building, stats::Vic3CountryStats, Vic3Date};
 use serde::{
     de::{self, DeserializeOwned, Unexpected},
     Deserialize, Deserializer,

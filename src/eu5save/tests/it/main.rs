@@ -1,4 +1,7 @@
-use eu5save::{BasicTokenResolver, Eu5File, MeltOptions, ReaderAt, SaveDataKind};
+use eu5save::{
+    BasicTokenResolver, Eu5BinaryDeserialization, Eu5File, Eu5Melt, Eu5TextMelt, MeltOptions,
+    ReaderAt, SaveDataKind,
+};
 use highway::HighwayHash;
 use serde::Deserialize;
 use std::io::{BufWriter, Read, Seek, Write};
@@ -38,7 +41,7 @@ fn create_test_resolver() -> BasicTokenResolver {
     BasicTokenResolver::from_text_lines(tokens.as_slice()).expect("failed to create resolver")
 }
 
-fn text_api_assertions<R: ReaderAt>(data: &[u8], save: Eu5File<R>) {
+fn text_api_assertions<R: ReaderAt>(data: &[u8], mut save: Eu5File<R>) {
     assert_eq!(save.header().header_len(), 24);
     assert_eq!(save.header().metadata_len(), 321394);
     assert_eq!(save.header().kind(), eu5save::SaveHeaderKind::Text);
@@ -50,11 +53,22 @@ fn text_api_assertions<R: ReaderAt>(data: &[u8], save: Eu5File<R>) {
         },
     };
 
+    let melted_hash = {
+        // We know this is uncompressed text:
+        let eu5save::JominiFileKind::Uncompressed(SaveDataKind::Text(txt)) = save.kind_mut() else {
+            panic!("expected uncompressed text save");
+        };
+
+        with_hasher(|hasher| {
+            (&*txt).melt(hasher).unwrap();
+        })
+    };
+
     // verify the metadata is extracted as expected
-    let meta_kind = save.meta();
+    let meta_kind = save.meta().unwrap();
 
     // Extract the text metadata
-    let eu5save::Eu5MetaKind::Text(mut text_meta) = meta_kind else {
+    let eu5save::SaveMetadataKind::Text(mut text_meta) = meta_kind else {
         panic!("expected text metadata");
     };
 
@@ -69,13 +83,13 @@ fn text_api_assertions<R: ReaderAt>(data: &[u8], save: Eu5File<R>) {
     assert_eq!(meta_hash, input_hash);
 
     // Verify we can melt the metadata
-    let meta_kind = save.meta();
-    let eu5save::Eu5MetaKind::Text(mut text_meta) = meta_kind else {
+    let meta_kind = save.meta().unwrap();
+    let eu5save::SaveMetadataKind::Text(mut text_meta) = meta_kind else {
         panic!("expected text metadata");
     };
 
     let melted_meta_hash = with_hasher(|hasher| {
-        text_meta.melt(hasher).unwrap();
+        Eu5TextMelt::melt(&mut text_meta, hasher).unwrap();
     });
 
     // The melted metadata should match the input metadata bytes
@@ -84,15 +98,14 @@ fn text_api_assertions<R: ReaderAt>(data: &[u8], save: Eu5File<R>) {
     assert_eq!(melted_meta_hash, expected_meta_hash);
 
     // Verify that one can deserialize the metadata
-    let eu5save::Eu5MetaKind::Text(mut text_meta) = save.meta() else {
+    let eu5save::SaveMetadataKind::Text(mut text_meta) = save.meta().unwrap() else {
         panic!("expected text metadata");
     };
 
     let metadata: TestGamestate = text_meta.deserializer().deserialize().unwrap();
     assert_eq!(metadata, expected_metadata);
 
-    // Now we move onto introspecting the save. We know this is uncompressed text:
-    let eu5save::Eu5FileKind::Uncompressed(SaveDataKind::Text(txt)) = save.kind() else {
+    let eu5save::JominiFileKind::Uncompressed(SaveDataKind::Text(txt)) = save.kind() else {
         panic!("expected uncompressed text save");
     };
 
@@ -101,12 +114,12 @@ fn text_api_assertions<R: ReaderAt>(data: &[u8], save: Eu5File<R>) {
     assert_eq!(metadata, expected_metadata);
 
     // Next we verify that the gamestate can be read, melted, and deserialized.
-    let eu5save::SaveBodyKind::Text(mut txt_gamestate) = save.gamestate().unwrap() else {
+    let eu5save::SaveContentKind::Text(mut txt_gamestate) = save.gamestate().unwrap() else {
         panic!("expected text gamestate");
     };
 
     let gamestate_hash = hash_read(&mut txt_gamestate);
-    let eu5save::SaveBodyKind::Text(mut txt_gamestate) = save.gamestate().unwrap() else {
+    let eu5save::SaveContentKind::Text(mut txt_gamestate) = save.gamestate().unwrap() else {
         panic!("expected text gamestate");
     };
     let gamestate_metadata: TestGamestate = txt_gamestate.deserializer().deserialize().unwrap();
@@ -124,9 +137,6 @@ fn text_api_assertions<R: ReaderAt>(data: &[u8], save: Eu5File<R>) {
     // (And if it matches input bytes then we know that melted output will have
     // the same parsing behavior).
     let input_hash = hash_read(data);
-    let melted_hash = with_hasher(|hasher| {
-        txt.melt(hasher).unwrap();
-    });
     assert_eq!(input_hash, melted_hash);
     assert_eq!(
         input_hash,
@@ -134,7 +144,7 @@ fn text_api_assertions<R: ReaderAt>(data: &[u8], save: Eu5File<R>) {
     );
 }
 
-fn binary_api_assertions<R: ReaderAt>(save: Eu5File<R>, resolver: &BasicTokenResolver) {
+fn binary_api_assertions<R: ReaderAt>(mut save: Eu5File<R>, resolver: &BasicTokenResolver) {
     assert_eq!(save.header().header_len(), 24);
     assert!(save.header().kind().is_binary());
 
@@ -144,8 +154,22 @@ fn binary_api_assertions<R: ReaderAt>(save: Eu5File<R>, resolver: &BasicTokenRes
         },
     };
 
+    let melted_output = {
+        // Melt the binary save to text and verify the result
+        let eu5save::JominiFileKind::Zip(zip) = save.kind_mut() else {
+            panic!("expected compressed binary save");
+        };
+
+        let mut melted_output = Vec::new();
+        let melt_options = MeltOptions::default();
+        (&*zip)
+            .melt(melt_options, resolver, &mut melted_output)
+            .unwrap();
+        melted_output
+    };
+
     // Verify the metadata is extracted as expected and is binary
-    let eu5save::Eu5MetaKind::Binary(mut binary_meta) = save.meta() else {
+    let eu5save::SaveMetadataKind::Binary(mut binary_meta) = save.meta().unwrap() else {
         panic!("expected binary metadata");
     };
 
@@ -154,14 +178,14 @@ fn binary_api_assertions<R: ReaderAt>(save: Eu5File<R>, resolver: &BasicTokenRes
     assert_eq!(metadata, expected_metadata);
 
     // Verify that we can Read the metadata
-    let eu5save::Eu5MetaKind::Binary(binary_meta) = save.meta() else {
+    let eu5save::SaveMetadataKind::Binary(binary_meta) = save.meta().unwrap() else {
         panic!("expected binary metadata");
     };
     let mut reader = jomini::binary::TokenReader::new(binary_meta);
     assert!(reader.next().unwrap().is_some());
 
     // Verify we can melt the metadata
-    let eu5save::Eu5MetaKind::Binary(mut binary_meta) = save.meta() else {
+    let eu5save::SaveMetadataKind::Binary(mut binary_meta) = save.meta().unwrap() else {
         panic!("expected binary metadata");
     };
     let mut melted_metadata = Vec::new();
@@ -181,12 +205,12 @@ fn binary_api_assertions<R: ReaderAt>(save: Eu5File<R>, resolver: &BasicTokenRes
         "melted metadata should start with 'metadata={{'"
     );
 
-    let eu5save::Eu5MetaKind::Text(_) = melted_meta_save.meta() else {
+    let eu5save::SaveMetadataKind::Text(_) = melted_meta_save.meta().unwrap() else {
         panic!("melted metadata should be text format");
     };
 
     // Verify that we can deserialize the gamestate
-    let eu5save::SaveBodyKind::Binary(mut bin_gamestate) = save.gamestate().unwrap() else {
+    let eu5save::SaveContentKind::Binary(mut bin_gamestate) = save.gamestate().unwrap() else {
         panic!("expected binary gamestate");
     };
 
@@ -195,28 +219,18 @@ fn binary_api_assertions<R: ReaderAt>(save: Eu5File<R>, resolver: &BasicTokenRes
     assert_eq!(gamestate_metadata, expected_metadata);
 
     // Verify that we can Read the gamestate
-    let eu5save::SaveBodyKind::Binary(bin_gamestate) = save.gamestate().unwrap() else {
+    let eu5save::SaveContentKind::Binary(bin_gamestate) = save.gamestate().unwrap() else {
         panic!("expected binary gamestate");
     };
     let mut reader = jomini::binary::TokenReader::new(bin_gamestate);
     while reader.next().unwrap().is_some() {}
-
-    // Melt the binary save to text and verify the result
-    let eu5save::Eu5FileKind::Zip(zip) = save.kind() else {
-        panic!("expected compressed binary save");
-    };
-
-    let mut melted_output = Vec::new();
-    let melt_options = MeltOptions::default();
-    zip.melt(melt_options, resolver, &mut melted_output)
-        .unwrap();
 
     // Parse the melted output as a new Eu5File and verify it's text
     let melted_save =
         Eu5File::from_slice(melted_output.as_slice()).expect("failed to parse melted save");
 
     assert!(melted_save.header().kind().is_text());
-    let eu5save::Eu5FileKind::Uncompressed(SaveDataKind::Text(_)) = melted_save.kind() else {
+    let eu5save::JominiFileKind::Uncompressed(SaveDataKind::Text(_)) = melted_save.kind() else {
         panic!("expected melted save to be uncompressed text");
     };
 

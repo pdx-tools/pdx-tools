@@ -1,8 +1,9 @@
-use crate::{Eu5Date, Eu5Error, Eu5ErrorKind, Eu5Flavor, SaveHeader, SaveHeaderKind};
+use crate::{Eu5Date, Eu5Error, Eu5ErrorKind, Eu5Flavor};
 use jomini::{
     TextWriterBuilder,
     binary::{self, BinaryFlavor, FailedResolveStrategy, Token, TokenReader, TokenResolver},
     common::PdsDate,
+    envelope::{SaveHeader, SaveHeaderKind},
 };
 use std::{
     collections::HashSet,

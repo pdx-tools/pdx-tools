@@ -374,11 +374,9 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/ck3save.git#72145614bcb9a30cfdba0885a95507f1da97deb7"
+source = "git+https://github.com/rakaly/ck3save.git#176131e5368733267aa186a11b4afe713a812f77"
 dependencies = [
- "flate2",
  "jomini",
- "rawzip",
  "serde",
  "thiserror 2.0.12",
 ]
@@ -723,7 +721,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#88de44765daffb82efd8e6bf90a1309ab5eaa44b"
+source = "git+https://github.com/rakaly/eu4save.git#cb763062ee709dbbe40e26a606b721401cb2f311"
 dependencies = [
  "flate2",
  "jomini",
@@ -814,9 +812,9 @@ dependencies = [
 
 [[package]]
 name = "flate2"
-version = "1.1.1"
+version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ced92e76e966ca2fd84c8f7aa01a4aea65b0eb6648d72f7c8f3e2764a67fece"
+checksum = "bfe33edd8e85a12a67454e37f8c75e730830d83e313556ab9ebf9ee7fbeb3bfb"
 dependencies = [
  "crc32fast",
  "libz-rs-sys",
@@ -1126,7 +1124,7 @@ checksum = "9040319a6910b901d5d49cbada4a99db52836a1b63228a05f7e2b7f8feef89b1"
 [[package]]
 name = "hoi4save"
 version = "0.4.0"
-source = "git+https://github.com/rakaly/hoi4save.git#22baaf641c55eeb04441d4852f3186a94e1a635d"
+source = "git+https://github.com/rakaly/hoi4save.git#ae0334d9b8cd5969e17016648e5e7a25be3a1c33"
 dependencies = [
  "jomini",
  "serde",
@@ -1336,11 +1334,9 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/imperator-save.git#af384d040a16d3e880447627a888354770fd3ba1"
+source = "git+https://github.com/rakaly/imperator-save.git#73ab8500ab236da1bf869a4fdc2dc52b0ba4ace9"
 dependencies = [
- "flate2",
  "jomini",
- "rawzip",
  "serde",
  "thiserror 2.0.12",
 ]
@@ -1435,12 +1431,14 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.29.0"
+version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90fe8c2789c4132f5741a6f691fefeeb40806a23ff346dc2a20ed5353220be8e"
+checksum = "debb135aec9b2908825711276118e0376f4dcbe764f956ee3ec66da7df66bfbd"
 dependencies = [
+ "flate2",
  "itoa",
  "jomini_derive",
+ "rawzip",
  "serde",
  "serde_json",
 ]
@@ -1542,9 +1540,9 @@ dependencies = [
 
 [[package]]
 name = "libz-rs-sys"
-version = "0.5.0"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6489ca9bd760fe9642d7644e827b0c9add07df89857b0416ee15c1cc1a3b8c5a"
+checksum = "840db8cf39d9ec4dd794376f38acc40d0fc65eec2a8f484f7fd375b84602becd"
 dependencies = [
  "zlib-rs",
 ]
@@ -3805,9 +3803,9 @@ dependencies = [
 
 [[package]]
 name = "zlib-rs"
-version = "0.5.0"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "868b928d7949e09af2f6086dfc1e01936064cc7a819253bce650d4e2a2d63ba8"
+checksum = "2f06ae92f42f5e5c42443fd094f245eb656abf56dd7cce9b8b263236565e00f2"
 
 [[package]]
 name = "zstd"

@@ -1,5 +1,5 @@
 use jomini::binary;
-use std::{fmt, io};
+use std::io;
 
 /// A Vic3 Error
 #[derive(thiserror::Error, Debug)]
@@ -26,29 +26,23 @@ impl From<Vic3ErrorKind> for Vic3Error {
 /// Specific type of error
 #[derive(thiserror::Error, Debug)]
 pub enum Vic3ErrorKind {
-    #[error("unable to parse as zip: {0}")]
-    Zip(#[from] rawzip::Error),
-
-    #[error("missing zip entry in zip")]
-    ZipMissingEntry,
-
-    #[error("unable to parse due to: {0}")]
-    Parse(#[source] jomini::Error),
-
     #[error("unable to deserialize due to: {0}")]
     Deserialize(#[source] jomini::Error),
 
     #[error("unable to deserialize due to: {0}")]
     DeserializeDebug(String),
 
-    #[error("unable to deserialize due to: {msg}. This shouldn't occur as this is a deserializer wrapper")]
-    DeserializeImpl { msg: String },
-
     #[error("error while writing output: {0}")]
     Writer(#[source] jomini::Error),
 
     #[error("unknown binary token encountered: {token_id:#x}")]
     UnknownToken { token_id: u16 },
+
+    #[error("parsing error: {0}")]
+    Jomini(#[from] jomini::Error),
+
+    #[error("file envelope error: {0}")]
+    Envelope(#[from] jomini::envelope::EnvelopeError),
 
     #[error("binary file encountered but token resolver is empty. This may mean a programmatic error where an application was compiled without ironman tokens")]
     NoTokens,
@@ -63,29 +57,23 @@ pub enum Vic3ErrorKind {
     Io(#[from] io::Error),
 }
 
-impl serde::de::Error for Vic3Error {
-    fn custom<T: fmt::Display>(msg: T) -> Self {
-        Vic3Error::new(Vic3ErrorKind::DeserializeImpl {
-            msg: msg.to_string(),
-        })
-    }
-}
-
 impl From<jomini::Error> for Vic3Error {
     fn from(value: jomini::Error) -> Self {
-        let kind = match value.into_kind() {
-            jomini::ErrorKind::Deserialize(x) => match x.kind() {
+        if let jomini::ErrorKind::Deserialize(_) = value.kind() {
+            let jomini::ErrorKind::Deserialize(x) = value.into_kind() else {
+                unreachable!()
+            };
+
+            let kind = match x.kind() {
                 &jomini::DeserializeErrorKind::UnknownToken { token_id } => {
                     Vic3ErrorKind::UnknownToken { token_id }
                 }
                 _ => Vic3ErrorKind::Deserialize(x.into()),
-            },
-            _ => Vic3ErrorKind::DeserializeImpl {
-                msg: String::from("unexpected error"),
-            },
-        };
-
-        Vic3Error::new(kind)
+            };
+            Vic3Error::new(kind)
+        } else {
+            Vic3Error::new(Vic3ErrorKind::Jomini(value))
+        }
     }
 }
 
@@ -98,6 +86,12 @@ impl From<io::Error> for Vic3Error {
 impl From<binary::ReaderError> for Vic3Error {
     fn from(value: binary::ReaderError) -> Self {
         Self::from(jomini::Error::from(value))
+    }
+}
+
+impl From<jomini::envelope::EnvelopeError> for Vic3Error {
+    fn from(value: jomini::envelope::EnvelopeError) -> Self {
+        Vic3Error::from(Vic3ErrorKind::from(value))
     }
 }
 

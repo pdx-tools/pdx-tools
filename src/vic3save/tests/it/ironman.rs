@@ -6,7 +6,10 @@ use std::{
     io::{BufWriter, Cursor, Read},
     sync::LazyLock,
 };
-use vic3save::{savefile::Vic3Save, BasicTokenResolver, MeltOptions, Vic3File};
+use vic3save::{
+    savefile::Vic3Save, BasicTokenResolver, DeserializeVic3, JominiFileKind, MeltOptions, Vic3File,
+    Vic3Melt,
+};
 
 static TOKENS: LazyLock<BasicTokenResolver> = LazyLock::new(|| {
     let file_data = std::fs::read("assets/vic3.txt")
@@ -22,8 +25,8 @@ fn test_parse_ironman() -> Result<(), Box<dyn Error>> {
     }
 
     let file = utils::request_file("egalitarian2.v3");
-    let mut file = Vic3File::from_file(file)?;
-    let save: Vic3Save = file.parse_save(&*TOKENS)?;
+    let file = Vic3File::from_file(file)?;
+    let save: Vic3Save = (&file).deserialize(&*TOKENS)?;
 
     assert_eq!(save.meta_data.version, String::from("1.7.1"));
     Ok(())
@@ -38,10 +41,10 @@ fn test_melt_snapshot() -> Result<(), Box<dyn Error>> {
     let zip_data = utils::inflate(utils::request_file("egalitarian_melted4.zip"));
 
     let file = utils::request_file("egalitarian2.v3");
-    let mut file = Vic3File::from_file(file)?;
+    let file = Vic3File::from_file(file)?;
     let mut out = Cursor::new(Vec::new());
     let options = MeltOptions::new();
-    file.melt(options, &*TOKENS, &mut out)?;
+    (&file).melt(options, &*TOKENS, &mut out)?;
 
     assert!(
         zip_data == out.into_inner(),
@@ -60,8 +63,8 @@ fn test_parse_ironman_slice() -> Result<(), Box<dyn Error>> {
     let mut content = Vec::new();
     file.read_to_end(&mut content)?;
     let file = Vic3File::from_slice(&content)?;
-    assert_eq!(file.encoding(), vic3save::Encoding::BinaryZip);
-    let save: Vic3Save = file.parse_save(&*TOKENS)?;
+    assert_eq!(file.header().kind(), vic3save::SaveHeaderKind::SplitBinary);
+    let save: Vic3Save = (&file).deserialize(&*TOKENS)?;
 
     assert_eq!(save.meta_data.version, String::from("1.9.2"));
     Ok(())
@@ -79,7 +82,7 @@ fn test_melt_1_9_snapshot() -> Result<(), Box<dyn Error>> {
     let file = Vic3File::from_slice(&content)?;
     let hasher = highway::HighwayHasher::default();
     let mut writer = BufWriter::with_capacity(0x8000, hasher);
-    file.melt(MeltOptions::new(), &*TOKENS, &mut writer)?;
+    (&file).melt(MeltOptions::new(), &*TOKENS, &mut writer)?;
     let hash = writer.into_inner().unwrap().finalize256();
     let hex = format!(
         "0x{:016x}{:016x}{:016x}{:016x}",
@@ -102,7 +105,7 @@ fn test_melt_1_9_meta_snapshot() -> Result<(), Box<dyn Error>> {
     let mut content = Vec::new();
     file.read_to_end(&mut content)?;
     let file = Vic3File::from_slice(&content)?;
-    let vic3save::file::Vic3SliceFileKind::Zip(vic3_zip) = file.kind() else {
+    let JominiFileKind::Zip(vic3_zip) = file.kind() else {
         panic!("Expected a zip file kind");
     };
     let mut meta = vic3_zip.meta().unwrap();
@@ -132,7 +135,7 @@ fn test_melt_inlined_meta_snapshot() -> Result<(), Box<dyn Error>> {
     let data = include_bytes!("../fixtures/inlined_meta.v3");
 
     let file = Vic3File::from_slice(&data[..])?;
-    let vic3save::file::Vic3SliceFileKind::Zip(vic3_zip) = file.kind() else {
+    let JominiFileKind::Zip(vic3_zip) = file.kind() else {
         panic!("Expected a zip file kind");
     };
     let mut meta = vic3_zip.meta().unwrap();
