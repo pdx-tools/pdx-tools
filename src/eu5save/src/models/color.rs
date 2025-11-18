@@ -2,8 +2,16 @@ use bumpalo_serde::ArenaDeserialize;
 use serde::de::{self, Deserialize, value::SeqAccessDeserializer};
 use std::fmt;
 
-#[derive(Debug, Default, PartialEq, Clone, Copy, ArenaDeserialize)]
+#[derive(Debug, PartialEq, Clone, Copy, ArenaDeserialize)]
 pub struct Color(pub [u8; 3]);
+
+impl Default for Color {
+    fn default() -> Self {
+        // Default to the "unowned" color so that an unowned location will use
+        // country id 0's color (gray)
+        Color([128, 128, 128])
+    }
+}
 
 struct ColorVisitor;
 
