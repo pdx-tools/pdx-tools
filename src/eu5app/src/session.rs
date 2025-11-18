@@ -265,16 +265,29 @@ impl<'bump> Eu5Session<'bump> {
             return GpuColor::DEBUG;
         };
 
-        let market_color = GpuColor::from(market.color.0);
-        let market_access = save_location.market_access.clamp(0.0, 1.0);
+        // Get the market center location's owner color
+        let market_center_owner_color = self
+            .gamestate
+            .locations
+            .get(market.center)
+            .map(|center_idx| self.location_political_color(center_idx))
+            .unwrap_or(GpuColor::UNOWNED);
 
-        // Define dark red for low market access
+        let market_color = GpuColor::from(market.color.0);
+
+        // Blend market color (subject) with market center owner color (overlord) using HSV
+        let owner_rgb = market_center_owner_color.rgb();
+        let market_rgb = market_color.rgb();
+        let blended_rgb = crate::subject_color::blend_color(market_rgb, owner_rgb);
+        let blended_color = GpuColor::from_rgb(blended_rgb.0, blended_rgb.1, blended_rgb.2);
+
+        // Apply market access: blend with dark red for low access
+        let market_access = save_location.market_access.clamp(0.0, 1.0);
         let dark_red = GpuColor::from_rgb(20, 5, 5);
 
-        // Blend market color with dark red based on market access
-        // market_access = 1.0 -> pure market color
+        // market_access = 1.0 -> market center owner+market blend
         // market_access = 0.0 -> dark red
-        dark_red.blend(market_color, market_access as f32)
+        dark_red.blend(blended_color, market_access as f32)
     }
 
     pub fn location_rgo_level_color(
