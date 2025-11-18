@@ -1,0 +1,6 @@
+{
+  "sections": {
+    "improvements": ["Blend market center owner color with market color"],
+    "fixes": ["Fix black color used for unowned EU5 locations"]
+  }
+}
