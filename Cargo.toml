@@ -109,8 +109,7 @@ lto = "thin"
 codegen-units = 1
 
 [profile.bench]
-lto = "thin"
-codegen-units = 1
+debug = true
 
 # We override the test profile so that our tests run in a tolerable time as
 # some of the asset files are heavyweight and can take a significant amount of
