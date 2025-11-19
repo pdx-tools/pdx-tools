@@ -1,10 +1,17 @@
+use bumpalo_serde::ArenaDeserialize;
 use eu5save::{
     BasicTokenResolver, Eu5BinaryDeserialization, Eu5File, Eu5Melt, Eu5TextMelt, MeltOptions,
     ReaderAt, SaveDataKind,
+    models::{Gamestate, ZipPrelude},
 };
 use highway::HighwayHash;
+use jomini::binary::TokenResolver;
+use rstest::rstest;
 use serde::Deserialize;
-use std::io::{BufWriter, Read, Seek, Write};
+use std::{
+    io::{BufWriter, Read, Seek, Write},
+    sync::LazyLock,
+};
 
 mod utils;
 
@@ -272,4 +279,72 @@ fn test_binary_api() {
 
     let save = Eu5File::from_slice(data.as_slice()).expect("failed to parse save from slice");
     binary_api_assertions(save, &resolver);
+}
+
+static TOKENS: LazyLock<BasicTokenResolver> = LazyLock::new(|| {
+    let file_data = std::fs::read("assets/eu5.txt").unwrap_or_default();
+    let resolver = BasicTokenResolver::from_text_lines(file_data.as_slice()).unwrap();
+    if resolver.is_empty() {
+        eprintln!("EU5 binary tokens not loaded");
+    } else {
+        eprintln!("EU5 binary tokens loaded");
+    }
+    resolver
+});
+
+fn can_deserialize_meta(file: &Eu5File<impl ReaderAt>) {
+    let resolver = &*TOKENS;
+    let bump = bumpalo::Bump::new();
+    match file.meta().unwrap() {
+        eu5save::SaveMetadataKind::Text(mut txt) => {
+            ZipPrelude::deserialize_in_arena(&mut txt.deserializer(), &bump)
+                .expect("failed to deserialize text metadata");
+        }
+        eu5save::SaveMetadataKind::Binary(mut bin) => {
+            // Skip deserialization if we don't have tokens
+            if resolver.is_empty() {
+                return;
+            }
+            ZipPrelude::deserialize_in_arena(&mut bin.deserializer(resolver), &bump)
+                .expect("failed to deserialize binary metadata");
+        }
+    }
+}
+
+fn can_deserialize_gamestate(file: &Eu5File<impl ReaderAt>) {
+    let resolver = &*TOKENS;
+    let bump = bumpalo::Bump::new();
+    match file.gamestate().unwrap() {
+        eu5save::SaveContentKind::Text(mut txt) => {
+            Gamestate::deserialize_in_arena(&mut txt.deserializer(), &bump)
+                .expect("failed to deserialize text gamestate");
+        }
+        eu5save::SaveContentKind::Binary(mut bin) => {
+            // Skip deserialization if we don't have tokens
+            if resolver.is_empty() {
+                return;
+            }
+            Gamestate::deserialize_in_arena(&mut bin.deserializer(resolver), &bump)
+                .expect("failed to deserialize binary gamestate");
+        }
+    }
+}
+
+#[rstest]
+#[case("ironman-1.0.eu5")]
+#[case("debug-1.0.zip")]
+#[case("Clandeboye.eu5")]
+#[case("mp_cas_1374_03_06.eu5")]
+fn deserialization_regression_test(#[case] filename: &str) {
+    let file = utils::request_file(filename);
+    if filename.ends_with(".zip") {
+        let data = utils::inflate(file);
+        let save = Eu5File::from_slice(data.as_slice()).unwrap();
+        can_deserialize_meta(&save);
+        can_deserialize_gamestate(&save);
+    } else {
+        let save = Eu5File::from_file(file).unwrap();
+        can_deserialize_meta(&save);
+        can_deserialize_gamestate(&save);
+    }
 }
