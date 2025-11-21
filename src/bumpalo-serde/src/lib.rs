@@ -1,4 +1,7 @@
+pub use bumpalo::Bump;
 pub use bumpalo_serde_derive::ArenaDeserialize;
+
+pub mod tracked;
 
 use bumpalo::collections::{String as BumpString, Vec as BumpVec};
 use serde::de::{DeserializeSeed, Deserializer, SeqAccess, Visitor};
