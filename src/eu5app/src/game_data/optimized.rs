@@ -1,4 +1,5 @@
-use crate::game_data::{GameDataProvider, models::GameLocationData};
+use crate::game_data::GameDataProvider;
+use crate::models::GameLocationData;
 use rawzip::{CompressionMethod, ZipArchive, ZipArchiveEntryWayfinder, ZipSliceArchive};
 use std::collections::HashMap;
 

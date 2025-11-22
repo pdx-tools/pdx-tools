@@ -1,6 +1,6 @@
 use crate::{
-    GameDataProvider, OverlayBodyConfig, OverlayTable, TableCell, map::MapMode, models::Terrain,
-    subject_color,
+    MapMode, OverlayBodyConfig, OverlayTable, TableCell, game_data::GameDataProvider,
+    models::Terrain, session::Eu5LoadedSave, subject_color,
 };
 use eu5save::{
     hash::{FnvHashMap, FxHashMap},
@@ -9,27 +9,39 @@ use eu5save::{
         RawMaterialsName,
     },
 };
-use pdx_map::{GpuColor, LocationArrays, LocationFlags};
+use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
 use std::cell::OnceCell;
 use std::collections::HashMap;
 
-/// An EU5 session is characterized as the combination of the saved game state
-/// found in a save file with patch-specific game data.
-pub struct Eu5Session<'bump> {
-    pub(crate) gamestate: Gamestate<'bump>,
+/// An EU5 workspace combines the saved game state with patch-specific game data,
+/// and manages rendering state including map modes and GPU data structures.
+pub struct Eu5Workspace {
+    // Arena-owned gamestate from Eu5LoadedSave
+    #[expect(dead_code)]
+    arena: bumpalo::Bump,
+    gamestate: Gamestate<'static>,
+
+    // Session data (relationships and indices)
     overlord_of: CountryIndexedVecOwned<Option<CountryIdx>>,
     location_terrain: LocationIndexedVec<Terrain>,
-    location_color_id: LocationIndexedVec<GpuColor>,
     location_coordinates: LocationIndexedVec<(u16, u16)>,
     location_building_levels: OnceCell<LocationIndexedVec<f64>>,
     country_localizations: HashMap<String, String>,
+
+    // Map app state (rendering)
+    current_map_mode: MapMode,
+    location_arrays: pdx_map::LocationArrays,
+    gpu_indices: LocationIndexedVec<GpuLocationIdx>,
 }
 
-impl<'bump> Eu5Session<'bump> {
+impl Eu5Workspace {
+    /// Create a new workspace from loaded save data and game data provider
     pub fn new(
-        gamestate: Gamestate<'bump>,
+        loaded_save: Eu5LoadedSave,
         game_data: impl GameDataProvider,
     ) -> Result<Self, Box<dyn std::error::Error>> {
+        let (arena, gamestate) = loaded_save.into_parts();
+
         let game_locations = game_data.locations()?;
         let country_localizations = game_data.country_localizations()?;
         let name_lookup = game_locations
@@ -82,15 +94,32 @@ impl<'bump> Eu5Session<'bump> {
             location_coordinates[location.idx()] = coordinates;
         }
 
-        Ok(Self {
+        let location_arrays = LocationArrays::new();
+        let gpu_indices = gamestate.locations.create_index(GpuLocationIdx::new(0));
+
+        let mut workspace = Self {
+            arena,
             gamestate,
             overlord_of,
             location_terrain,
-            location_color_id,
             location_coordinates,
             location_building_levels: OnceCell::new(),
             country_localizations,
-        })
+            current_map_mode: MapMode::Political,
+            location_arrays,
+            gpu_indices,
+        };
+
+        workspace.location_arrays = workspace.build_location_arrays(&location_color_id)?;
+
+        let mut location_iter = workspace.location_arrays.iter_mut();
+        while let Some(gpu_location) = location_iter.next_location() {
+            let loc_idx = eu5save::models::LocationIdx::new(gpu_location.location_id().value());
+            let gpu_idx = GpuLocationIdx::new(gpu_location.index().value());
+            workspace.gpu_indices[loc_idx] = gpu_idx;
+        }
+
+        Ok(workspace)
     }
 
     /// Get localized country name from a country tag.
@@ -106,7 +135,7 @@ impl<'bump> Eu5Session<'bump> {
             .unwrap_or(tag)
     }
 
-    pub fn gamestate(&self) -> &Gamestate<'bump> {
+    pub fn gamestate(&self) -> &Gamestate<'static> {
         &self.gamestate
     }
 
@@ -501,16 +530,18 @@ impl<'bump> Eu5Session<'bump> {
         }
     }
 
-    pub fn get_location_arrays(&self) -> Result<LocationArrays, Box<dyn std::error::Error>> {
-        let location_data =
-            self.location_color_id
-                .iter()
-                .copied()
-                .enumerate()
-                .map(|(idx, color)| {
-                    let loc_id = pdx_map::LocationId::new(idx as u32);
-                    (loc_id, color)
-                });
+    fn build_location_arrays(
+        &mut self,
+        location_color_id: &LocationIndexedVec<GpuColor>,
+    ) -> Result<LocationArrays, Box<dyn std::error::Error>> {
+        let location_data = location_color_id
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(idx, color)| {
+                let loc_id = pdx_map::LocationId::new(idx as u32);
+                (loc_id, color)
+            });
 
         let mut locations = LocationArrays::from_iter(location_data);
         let mut location_iter = locations.iter_mut();
@@ -518,7 +549,7 @@ impl<'bump> Eu5Session<'bump> {
             let location_idx =
                 eu5save::models::LocationIdx::new(gpu_location.location_id().value());
 
-            let terrain = &self.location_terrain[location_idx];
+            let terrain = self.location_terrain(location_idx);
 
             // Water locations get a specific color and no location borders
             if terrain.is_water() {
@@ -547,7 +578,249 @@ impl<'bump> Eu5Session<'bump> {
         Ok(locations)
     }
 
-    pub fn get_player_capital_coordinates(&self) -> Option<(u16, u16)> {
+    pub fn location_arrays(&self) -> &pdx_map::LocationArrays {
+        &self.location_arrays
+    }
+
+    pub fn set_map_mode(&mut self, mode: MapMode) -> Result<(), Box<dyn std::error::Error>> {
+        self.current_map_mode = mode;
+
+        // Apply colors based on mode
+        match mode {
+            MapMode::Political => self.apply_political_colors(),
+            MapMode::Control => self.apply_control_colors(),
+            MapMode::Development => self.apply_development_colors(),
+            MapMode::Population => self.apply_population_colors(),
+            MapMode::Markets => self.apply_markets_colors(),
+            MapMode::RgoLevel => self.apply_rgo_level_colors(),
+            MapMode::BuildingLevels => self.apply_building_levels_colors(),
+            MapMode::PossibleTax => self.apply_possible_tax_colors(),
+            MapMode::Religion => self.apply_religion_colors(),
+        }
+
+        Ok(())
+    }
+
+    fn apply_political_colors(&mut self) {
+        // Collect terrain and color data first to avoid borrow conflicts
+        let mut color_data = Vec::new();
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let terrain = self.location_terrain(location_idx);
+
+            let (primary, secondary) = if terrain.is_water() || !terrain.is_passable() {
+                let owner_color = self
+                    .gamestate
+                    .locations
+                    .index(location_idx)
+                    .location()
+                    .owner;
+                if let Some(owner_idx) = self.gamestate.countries.get(owner_color) {
+                    let color = self
+                        .gamestate
+                        .countries
+                        .index(owner_idx)
+                        .data()
+                        .map(|d| GpuColor::from(d.color.0))
+                        .unwrap_or(GpuColor::UNOWNED);
+                    (color, color)
+                } else {
+                    (GpuColor::UNOWNED, GpuColor::UNOWNED)
+                }
+            } else {
+                let political = self.location_political_color(location_idx);
+                let control = self.location_control_color(location_idx);
+                (political, control)
+            };
+
+            color_data.push((idx, primary, secondary));
+        }
+
+        // Apply colors
+        for (idx, primary, secondary) in color_data {
+            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            gpu_location.set_primary_color(primary);
+            gpu_location.set_secondary_color(secondary);
+        }
+    }
+
+    fn apply_control_colors(&mut self) {
+        // Collect color data first to avoid borrow conflicts
+        let mut color_data = Vec::new();
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let control_color = self.location_control_value_color(location_idx);
+            color_data.push((idx, control_color));
+        }
+
+        // Apply colors
+        for (idx, color) in color_data {
+            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            gpu_location.set_primary_color(color);
+        }
+
+        // Control mode: copy primary colors to secondary to disable stripes
+        self.location_arrays.copy_primary_to_secondary();
+    }
+
+    fn apply_development_colors(&mut self) {
+        let max_development = self.max_development();
+
+        // Collect color data first to avoid borrow conflicts
+        let mut color_data = Vec::new();
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let development_color = self.location_development_color(location_idx, max_development);
+            color_data.push((idx, development_color));
+        }
+
+        // Apply colors
+        for (idx, color) in color_data {
+            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            gpu_location.set_primary_color(color);
+        }
+
+        // Copy primary colors to secondary to disable stripes
+        self.location_arrays.copy_primary_to_secondary();
+    }
+
+    fn apply_population_colors(&mut self) {
+        let max_population = self.max_population();
+
+        // Collect color data first to avoid borrow conflicts
+        let mut color_data = Vec::new();
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let population_color = self.location_population_color(location_idx, max_population);
+            color_data.push((idx, population_color));
+        }
+
+        // Apply colors
+        for (idx, color) in color_data {
+            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            gpu_location.set_primary_color(color);
+        }
+
+        // Copy primary colors to secondary to disable stripes
+        self.location_arrays.copy_primary_to_secondary();
+    }
+
+    fn apply_markets_colors(&mut self) {
+        // Collect color data first to avoid borrow conflicts
+        let mut color_data = Vec::new();
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let market_color = self.location_market_color(location_idx);
+            color_data.push((idx, market_color));
+        }
+
+        // Apply colors
+        for (idx, color) in color_data {
+            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            gpu_location.set_primary_color(color);
+        }
+
+        // Copy primary colors to secondary to disable stripes
+        self.location_arrays.copy_primary_to_secondary();
+    }
+
+    fn apply_rgo_level_colors(&mut self) {
+        let max_rgo_level = self.max_rgo_level();
+
+        // Collect color data first to avoid borrow conflicts
+        let mut color_data = Vec::new();
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let rgo_level_color = self.location_rgo_level_color(location_idx, max_rgo_level);
+            color_data.push((idx, rgo_level_color));
+        }
+
+        // Apply colors
+        for (idx, color) in color_data {
+            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            gpu_location.set_primary_color(color);
+        }
+
+        // Copy primary colors to secondary to disable stripes
+        self.location_arrays.copy_primary_to_secondary();
+    }
+
+    fn apply_building_levels_colors(&mut self) {
+        let max_building_levels = self.max_building_levels();
+
+        // Collect color data first to avoid borrow conflicts
+        let mut color_data = Vec::new();
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let building_levels_color =
+                self.location_building_levels_color(location_idx, max_building_levels);
+            color_data.push((idx, building_levels_color));
+        }
+
+        // Apply colors
+        for (idx, color) in color_data {
+            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            gpu_location.set_primary_color(color);
+        }
+
+        // Copy primary colors to secondary to disable stripes
+        self.location_arrays.copy_primary_to_secondary();
+    }
+
+    fn apply_possible_tax_colors(&mut self) {
+        let max_possible_tax = self.max_possible_tax();
+
+        // Collect color data first to avoid borrow conflicts
+        let mut color_data = Vec::new();
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let possible_tax_color =
+                self.location_possible_tax_color(location_idx, max_possible_tax);
+            color_data.push((idx, possible_tax_color));
+        }
+
+        // Apply colors
+        for (idx, color) in color_data {
+            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            gpu_location.set_primary_color(color);
+        }
+
+        // Copy primary colors to secondary to disable stripes
+        self.location_arrays.copy_primary_to_secondary();
+    }
+
+    fn apply_religion_colors(&mut self) {
+        // Collect color data first to avoid borrow conflicts
+        let mut color_data = Vec::new();
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let religion_color = self.location_religion_color(location_idx);
+            let owner_religion_color = self.owner_religion_color(location_idx);
+            color_data.push((idx, religion_color, owner_religion_color));
+        }
+
+        // Apply colors
+        for (idx, primary, secondary) in color_data {
+            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            gpu_location.set_primary_color(primary);
+            gpu_location.set_secondary_color(secondary);
+        }
+    }
+
+    pub fn get_map_mode(&self) -> MapMode {
+        self.current_map_mode
+    }
+
+    pub fn player_capital_coordinates(&self) -> Option<(u16, u16)> {
         let player_country = self.gamestate.played_countries.first()?.country;
 
         // Get the player's country data to access the capital field
@@ -564,6 +837,85 @@ impl<'bump> Eu5Session<'bump> {
         let location_coordinates = &self.location_coordinates[idx];
         Some(*location_coordinates)
     }
+
+    /// Check if a location can be highlighted based on its terrain (not water and not impassable)
+    pub fn can_highlight_location(&self, location_idx: eu5save::models::LocationIdx) -> bool {
+        let terrain = self.location_terrain(location_idx);
+
+        // Can highlight if terrain is not water and not impassable
+        !terrain.is_water() && terrain.is_passable()
+    }
+
+    pub fn clear_highlights(&mut self) {
+        let mut iter = self.location_arrays.iter_mut();
+        while let Some(mut location) = iter.next_location() {
+            location.flags_mut().clear(LocationFlags::HIGHLIGHTED);
+        }
+    }
+
+    pub fn handle_location_hover(&mut self, location_idx: eu5save::models::LocationIdx, zoom: f32) {
+        const HIGHLIGHT_ZOOM: f32 = 0.85;
+
+        if zoom >= HIGHLIGHT_ZOOM {
+            if !self.can_highlight_location(location_idx) {
+                return;
+            }
+
+            let gpu_idx = self.gpu_indices[location_idx];
+            let mut state = self.location_arrays.get_mut(gpu_idx);
+            state.flags_mut().set(LocationFlags::HIGHLIGHTED);
+            return;
+        }
+
+        let location = self.gamestate.locations.index(location_idx).location();
+
+        // For Markets map mode, highlight by market instead of owner
+        if self.current_map_mode == MapMode::Markets {
+            let Some(market_id) = location.market else {
+                return;
+            };
+
+            let mut idxs = self.gamestate.locations.create_index(false);
+            for entry in self.gamestate.locations.iter() {
+                idxs[entry.idx()] = entry.location().market == Some(market_id);
+            }
+
+            let mut iter = self.location_arrays.iter_mut();
+            while let Some(mut location) = iter.next_location() {
+                let loc_idx = eu5save::models::LocationIdx::new(location.location_id().value());
+                if !idxs[loc_idx] {
+                    continue;
+                }
+
+                location.flags_mut().set(LocationFlags::HIGHLIGHTED);
+            }
+        } else {
+            let owner = location.owner;
+            let mut idxs = self.gamestate.locations.create_index(false);
+            if !owner.is_dummy() {
+                for entry in self.gamestate.locations.iter() {
+                    idxs[entry.idx()] = entry.location().owner == owner;
+                }
+            }
+
+            let mut iter = self.location_arrays.iter_mut();
+            while let Some(mut location) = iter.next_location() {
+                let loc_idx = eu5save::models::LocationIdx::new(location.location_id().value());
+                if !idxs[loc_idx] {
+                    continue;
+                }
+
+                location.flags_mut().set(LocationFlags::HIGHLIGHTED);
+            }
+        }
+    }
+
+    /// Get screenshot overlay data for the current map mode
+    pub fn get_overlay_data(&self) -> crate::OverlayBodyConfig {
+        self.get_overlay_data_for_map_mode(self.current_map_mode)
+    }
+
+    // ===== Overlay Data Generation Methods =====
 
     pub fn get_overlay_data_for_map_mode(&self, map_mode: MapMode) -> OverlayBodyConfig {
         match map_mode {

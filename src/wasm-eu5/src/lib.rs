@@ -1,12 +1,10 @@
-use bumpalo_serde::ArenaDeserialize;
+use eu5app::Eu5SaveMetadata;
 use eu5app::TableCell as Eu5TableCell;
-use eu5app::{CanvasDimensions, Eu5MapApp, Eu5Session, MapMode as Eu5MapMode, OptimizedGameData};
-use eu5save::models::ZipPrelude;
-use eu5save::{Eu5BinaryDeserialization, Eu5ErrorKind, Eu5File, Eu5Melt, SaveResolver};
-use eu5save::{
-    Eu5Date, FailedResolveStrategy, MeltOptions,
-    models::{GameVersion, Gamestate},
-};
+use eu5app::game_data::OptimizedGameData;
+use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
+use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
+use eu5save::{Eu5ErrorKind, Eu5Melt};
+use eu5save::{FailedResolveStrategy, MeltOptions};
 use schemas::FlatResolver;
 use serde::{Deserialize, Serialize};
 use std::io::Cursor;
@@ -125,14 +123,6 @@ impl From<CanvasDisplay> for CanvasDimensions {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
-#[serde(rename_all = "camelCase")]
-pub struct Eu5SaveMetadata {
-    version: GameVersion,
-    date: Eu5Date,
-    playthrough_name: String,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(transparent)]
 pub struct Eu5SaveMetadataHandle(Rc<Eu5SaveMetadata>);
@@ -212,118 +202,45 @@ impl Eu5MetaParser {
     }
 
     #[wasm_bindgen]
-    pub fn init(self, save: Vec<u8>) -> Result<Eu5SaveParser, JsError> {
+    pub fn init(self, save: Vec<u8>) -> Result<SaveLoader, JsError> {
         let file = eu5save::Eu5File::from_slice(save)
             .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
-        let arena = bumpalo::Bump::with_capacity(100 * 1024 * 1024);
 
-        let resolver = eu5save::SaveResolver::from_file(&file, self.base_resolver)
-            .map_err(|e| JsError::new(&format!("Failed to create save resolver: {e}")))?;
+        let parser = Eu5SaveLoader::open(file, self.base_resolver)
+            .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
 
-        let mut path_buf = Vec::new();
-        let track = bumpalo_serde::tracked::Track::new_with(&mut path_buf);
-        let meta = {
-            let meta = match file
-                .meta()
-                .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?
-            {
-                eu5save::SaveMetadataKind::Text(mut text) => {
-                    let mut deser = text.deserializer();
-                    let tracked_deser =
-                        bumpalo_serde::tracked::Deserializer::new(&mut deser, &track);
-                    ZipPrelude::deserialize_in_arena(tracked_deser, &arena)
-                }
-                eu5save::SaveMetadataKind::Binary(mut bin) => {
-                    let mut deser = bin.deserializer(&resolver);
-                    let tracked_deser =
-                        bumpalo_serde::tracked::Deserializer::new(&mut deser, &track);
-                    ZipPrelude::deserialize_in_arena(tracked_deser, &arena)
-                }
-            }
-            .map_err(|e| {
-                JsError::new(&format!(
-                    "Failed to parse metadata (path: {}): {e}",
-                    track.path()
-                ))
-            })?;
-
-            Eu5SaveMetadata {
-                version: meta.metadata.version,
-                date: meta.metadata.date,
-                playthrough_name: meta.metadata.playthrough_name.to_string(),
-            }
-        };
-
-        Ok(Eu5SaveParser {
-            resolver,
-            meta: Eu5SaveMetadataHandle(Rc::new(meta)),
-            archive: file,
-            arena,
-        })
+        Ok(SaveLoader { parser })
     }
 }
 
 #[wasm_bindgen]
-pub struct Eu5SaveParser {
-    resolver: SaveResolver<&'static FlatResolver<'static>>,
-    meta: Eu5SaveMetadataHandle,
-    archive: Eu5File<Cursor<Vec<u8>>>,
-    arena: bumpalo::Bump,
+pub struct SaveLoader {
+    parser: Eu5SaveLoader<Cursor<Vec<u8>>, &'static FlatResolver<'static>>,
 }
 
 #[wasm_bindgen]
-impl Eu5SaveParser {
+impl SaveLoader {
     #[wasm_bindgen]
     pub fn meta(&self) -> Eu5SaveMetadataHandle {
-        self.meta.clone()
+        Eu5SaveMetadataHandle(self.parser.meta())
     }
 
     #[wasm_bindgen]
     pub fn parse_gamestate(self) -> Result<Eu5WasmGamestate, JsError> {
-        // Deserialize with a dynamic dispatch read implementation. This is not
-        // technically required, but it significantly helps out compile times.
-        let gamestate_body = self
-            .archive
-            .gamestate()
-            .map_err(|e| JsError::new(&format!("unable to retrieve game state data: {e}")))?;
+        let meta = self.meta();
+        let parsed_save = self
+            .parser
+            .parse()
+            .map_err(|e| JsError::new(&format!("Failed to parse game state: {e}")))?;
 
-        let mut path_buf = Vec::new();
-        let track = bumpalo_serde::tracked::Track::new_with(&mut path_buf);
-        let game = match gamestate_body {
-            eu5save::SaveContentKind::Text(mut x) => {
-                let mut deser = x.deserializer();
-                let tracked_deser = bumpalo_serde::tracked::Deserializer::new(&mut deser, &track);
-                Gamestate::deserialize_in_arena(tracked_deser, &self.arena)
-            }
-            eu5save::SaveContentKind::Binary(mut x) => {
-                let mut deser = x.deserializer(&self.resolver);
-                let tracked_deser = bumpalo_serde::tracked::Deserializer::new(&mut deser, &track);
-                Gamestate::deserialize_in_arena(tracked_deser, &self.arena)
-            }
-        }
-        .map_err(|e| {
-            JsError::new(&format!(
-                "Failed to parse game state (path: {}): {e}",
-                track.path()
-            ))
-        })?;
-
-        // Transmute the lifetime to 'static for WASM boundary
-        let game: Gamestate<'static> = unsafe { std::mem::transmute(game) };
-
-        Ok(Eu5WasmGamestate {
-            arena: self.arena,
-            game,
-            meta: self.meta,
-        })
+        Ok(Eu5WasmGamestate { parsed_save, meta })
     }
 }
 
 #[wasm_bindgen]
 pub struct Eu5WasmGamestate {
     meta: Eu5SaveMetadataHandle,
-    game: Gamestate<'static>,
-    arena: bumpalo::Bump,
+    parsed_save: Eu5LoadedSave,
 }
 
 #[wasm_bindgen]
@@ -343,10 +260,8 @@ impl Eu5WasmGameBundle {
 
 #[wasm_bindgen]
 pub struct Eu5App {
-    app: Eu5MapApp<'static>,
+    app: eu5app::Eu5Workspace,
     meta: Eu5SaveMetadataHandle,
-    #[expect(dead_code)]
-    arena: bumpalo::Bump,
 }
 
 #[wasm_bindgen]
@@ -357,22 +272,19 @@ impl Eu5App {
         game_bundle: Eu5WasmGameBundle,
     ) -> Result<Eu5App, JsError> {
         let meta = gamestate.meta;
-        let session = Eu5Session::new(gamestate.game, game_bundle.bundle)
-            .map_err(|e| JsError::new(&format!("Failed to create Eu5Session: {e}")))?;
+        let app = eu5app::Eu5Workspace::new(gamestate.parsed_save, game_bundle.bundle)
+            .map_err(|x| JsError::new(&format!("Failed to create EU5 app: {x}")))?;
 
-        let app = Eu5MapApp::new(session)
-            .map_err(|e| JsError::new(&format!("Failed to create Eu5MapApp: {e}")))?;
+        Ok(Eu5App { app, meta })
+    }
 
-        Ok(Eu5App {
-            app,
-            meta,
-            arena: gamestate.arena,
-        })
+    fn app(&self) -> &eu5app::Eu5Workspace {
+        &self.app
     }
 
     #[wasm_bindgen]
     pub fn get_starting_coordinates(&self) -> Option<CanvasCoordinates> {
-        let (x, y) = self.app.player_capital_coordinates()?;
+        let (x, y) = self.app().player_capital_coordinates()?;
         Some(CanvasCoordinates {
             x: x as f32,
             y: y as f32,
@@ -381,7 +293,7 @@ impl Eu5App {
 
     #[wasm_bindgen]
     pub fn location_arrays(&self) -> BufferParts {
-        let data = self.app.location_arrays().as_data();
+        let data = self.app().location_arrays().as_data();
         BufferParts {
             ptr: data.as_ptr() as *const u8,
             len: data.len(),
@@ -400,14 +312,14 @@ impl Eu5App {
     /// Get the current map mode
     #[wasm_bindgen]
     pub fn get_map_mode(&self) -> MapMode {
-        self.app.get_map_mode().into()
+        self.app().get_map_mode().into()
     }
 
     /// Get the min and max values for a given map mode
     #[wasm_bindgen]
     pub fn get_map_mode_range(&self, mode: MapMode) -> MapModeRange {
         let eu5_mode: Eu5MapMode = mode.into();
-        let session = self.app.session();
+        let session = self.app();
 
         let (min_value, max_value) = match eu5_mode {
             Eu5MapMode::Development => (0.0, session.max_development()),
@@ -437,7 +349,7 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn can_highlight_location(&self, location_idx: u32) -> bool {
         let location_idx = eu5save::models::LocationIdx::new(location_idx);
-        self.app.can_highlight_location(location_idx)
+        self.app().can_highlight_location(location_idx)
     }
 
     #[wasm_bindgen]
@@ -457,14 +369,13 @@ impl Eu5App {
         let location_idx = eu5save::models::LocationIdx::new(location_id);
 
         // Get current map mode from app
-        let current_map_mode = self.app.get_map_mode();
+        let current_map_mode = self.app().get_map_mode();
 
         const DETAIL_THRESHOLD: f32 = 0.85;
         let should_show_location = zoom >= DETAIL_THRESHOLD;
 
         let location = self
-            .app
-            .session()
+            .app()
             .gamestate()
             .locations
             .index(location_idx)
@@ -475,7 +386,7 @@ impl Eu5App {
         }
 
         if should_show_location {
-            let location_name = self.app.session().location_name(location_idx).to_string();
+            let location_name = self.app().location_name(location_idx).to_string();
 
             // Collect mode-specific data based on current map mode
             let (
@@ -497,8 +408,7 @@ impl Eu5App {
                     None,
                 ),
                 eu5app::MapMode::Population => {
-                    let actual_population =
-                        self.app.session().gamestate().location_population(location);
+                    let actual_population = self.app().gamestate().location_population(location);
                     (
                         None,
                         Some(actual_population as u32),
@@ -516,7 +426,7 @@ impl Eu5App {
                     (None, None, None, Some(location.control), None, None, None)
                 }
                 eu5app::MapMode::BuildingLevels => {
-                    let building_levels = self.app.session().get_location_building_levels();
+                    let building_levels = self.app().get_location_building_levels();
                     let level = building_levels[location_idx];
                     (None, None, None, None, Some(level), None, None)
                 }
@@ -546,30 +456,20 @@ impl Eu5App {
                 if matches!(current_map_mode, eu5app::MapMode::Religion) {
                     let loc_religion_name = location
                         .religion
-                        .and_then(|rid| self.app.session().gamestate().religion_manager.lookup(rid))
+                        .and_then(|rid| self.app().gamestate().religion_manager.lookup(rid))
                         .map(|r| r.name.to_str().to_string());
 
                     let owner_rel_name = self
-                        .app
-                        .session()
+                        .app()
                         .gamestate()
                         .countries
                         .get(location.owner)
                         .and_then(|owner_idx| {
-                            self.app
-                                .session()
-                                .gamestate()
-                                .countries
-                                .index(owner_idx)
-                                .data()
+                            self.app().gamestate().countries.index(owner_idx).data()
                         })
                         .and_then(|owner_data| owner_data.primary_religion)
                         .and_then(|owner_rel_id| {
-                            self.app
-                                .session()
-                                .gamestate()
-                                .religion_manager
-                                .lookup(owner_rel_id)
+                            self.app().gamestate().religion_manager.lookup(owner_rel_id)
                         })
                         .map(|r| r.name.to_str().to_string());
 
@@ -598,17 +498,15 @@ impl Eu5App {
                     return HoverDisplayData::Clear;
                 };
 
-                let Some(market) = self.app.session().gamestate().market_manager.get(market_id)
-                else {
+                let Some(market) = self.app().gamestate().market_manager.get(market_id) else {
                     return HoverDisplayData::Clear;
                 };
 
-                let Some(center_idx) = self.app.session().gamestate().locations.get(market.center)
-                else {
+                let Some(center_idx) = self.app().gamestate().locations.get(market.center) else {
                     return HoverDisplayData::Clear;
                 };
 
-                let market_center_name = self.app.session().location_name(center_idx).to_string();
+                let market_center_name = self.app().location_name(center_idx).to_string();
                 let market_value = market.market_value();
 
                 return HoverDisplayData::Country {
@@ -628,17 +526,13 @@ impl Eu5App {
             }
 
             let owner_id = location.owner;
-            let Some(country) = self.app.session().gamestate().countries.get_entry(owner_id) else {
+            let Some(country) = self.app().gamestate().countries.get_entry(owner_id) else {
                 return HoverDisplayData::Clear;
             };
 
             let country_name = country
                 .data()
-                .map(|data| {
-                    self.app
-                        .session()
-                        .localized_country_name(&data.country_name)
-                })
+                .map(|data| self.app.localized_country_name(&data.country_name))
                 .map(|s| s.to_string())
                 .unwrap_or_else(|| format!("C{}", owner_id.value()));
 
@@ -649,13 +543,7 @@ impl Eu5App {
                 country
                     .data()
                     .and_then(|data| data.primary_religion)
-                    .and_then(|rel_id| {
-                        self.app
-                            .session()
-                            .gamestate()
-                            .religion_manager
-                            .lookup(rel_id)
-                    })
+                    .and_then(|rel_id| self.app.gamestate().religion_manager.lookup(rel_id))
                     .map(|r| r.name.to_str().to_string())
             } else {
                 None
@@ -686,18 +574,17 @@ impl Eu5App {
 
                     let building_levels =
                         if matches!(current_map_mode, eu5app::MapMode::BuildingLevels) {
-                            Some(self.app.session().get_location_building_levels())
+                            Some(self.app().get_location_building_levels())
                         } else {
                             None
                         };
 
                     // Iterate through all locations owned by this country
-                    for entry in self.app.session().gamestate().locations.iter() {
+                    for entry in self.app().gamestate().locations.iter() {
                         if entry.location().owner == owner_id {
                             let loc = entry.location();
                             dev_sum += loc.development;
-                            pop_sum +=
-                                self.app.session().gamestate().location_population(loc) as u32;
+                            pop_sum += self.app().gamestate().location_population(loc) as u32;
                             rgo_sum += loc.rgo_level;
                             control_sum += loc.control;
                             tax_sum += loc.possible_tax;
@@ -778,15 +665,12 @@ impl Eu5App {
     /// Get screenshot overlay data for the current map mode
     #[wasm_bindgen]
     pub fn get_overlay_data(&self) -> ScreenshotOverlayData {
-        let map_mode_title = self.app.get_map_mode().name().to_string();
-        let save_date = format!(
-            "{}",
-            self.app.session().gamestate().metadata.date.date_fmt()
-        );
-        let version = &self.app.session().gamestate().metadata.version;
+        let map_mode_title = self.app().get_map_mode().name().to_string();
+        let save_date = format!("{}", self.app().gamestate().metadata.date.date_fmt());
+        let version = &self.app().gamestate().metadata.version;
         let patch_version = format!("{}.{}.{}", version.major, version.minor, version.patch);
 
-        let overlay_data = self.app.get_overlay_data();
+        let overlay_data = self.app().get_overlay_data();
         ScreenshotOverlayData {
             title: map_mode_title,
             save_date,

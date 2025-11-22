@@ -740,6 +740,8 @@ name = "eu5app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bumpalo",
+ "bumpalo-serde",
  "bytemuck",
  "eu5save",
  "image",

@@ -1,7 +1,10 @@
 use crate::asset_compilers::PackageOptions;
 use crate::{FileProvider, ImageProcessor};
 use anyhow::{Context, Result};
-use eu5app::parsing::{parse_default_map, parse_locations_data, parse_named_locations};
+use eu5app::game_data::native::{
+    country_localization, parse_default_map, parse_localization_string, parse_locations_data,
+    parse_named_locations,
+};
 use eu5save::hash::FnvHashMap;
 use rawzip::CompressionMethod;
 use std::collections::HashMap;
@@ -181,8 +184,8 @@ fn extract_country_localizations<P: FileProvider + ?Sized>(
     let country_names_str = String::from_utf8_lossy(&country_names_data);
 
     // Parse and extract country localizations
-    let all_localizations = eu5app::parsing::parse_localization_string(&country_names_str);
-    let country_localizations = eu5app::parsing::country_localization(&all_localizations);
+    let all_localizations = parse_localization_string(&country_names_str);
+    let country_localizations = country_localization(&all_localizations);
 
     log::info!(
         "Extracted {} country localizations",
