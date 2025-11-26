@@ -69,6 +69,14 @@ impl<'bump> ArenaDeserialize<'bump> for BStr<'bump> {
                 let bytes = self.0.alloc_slice_copy(v);
                 Ok(BStr::new(bytes))
             }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                let bytes = self.0.alloc_slice_copy(v.as_bytes());
+                Ok(BStr::new(bytes))
+            }
         }
 
         deserializer.deserialize_bytes(BStrVisitor(allocator))

@@ -61,7 +61,7 @@ highway = "1.3"
 hoi4save = { git = "https://github.com/rakaly/hoi4save.git" }
 image = { version = "0.25.2", default-features = false }
 imperator-save = { git = "https://github.com/rakaly/imperator-save.git" }
-jomini = { version = "0.31", features = ["envelope"] }
+jomini = { version = "0.32", features = ["envelope"] }
 js-sys = "0.3.77"
 log = "0.4"
 mathru = "0.15.3"
