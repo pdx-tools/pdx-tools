@@ -72,6 +72,7 @@ pdx-zstd = { path = "src/pdx-zstd", default-features = false }
 quote = "1.0.34"
 rand = "0.8"
 rawbmp = { path = "src/rawbmp" }
+rkyv = "0.8.12"
 rawzip = "0.4.1"
 rayon = "1.10"
 regex = "1.11"

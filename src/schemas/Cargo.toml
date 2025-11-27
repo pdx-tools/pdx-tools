@@ -17,6 +17,7 @@ jomini = { workspace = true }
 [dev-dependencies]
 criterion = { workspace = true }
 rand = { workspace = true }
+rkyv = { workspace = true }
 
 [[bench]]
 name = "schema_benchmark"
