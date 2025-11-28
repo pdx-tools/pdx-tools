@@ -82,22 +82,76 @@ impl<R: ReaderAt> Eu5Melt for &'_ Eu5File<R> {
         Resolver: TokenResolver,
         Writer: Write,
     {
-        match self.gamestate().map_err(Eu5ErrorKind::from)? {
-            SaveContentKind::Text(mut save_body) => {
-                let mut new_header = self.header().clone();
-                new_header.set_kind(crate::SaveHeaderKind::Text);
-                new_header.write(&mut output)?;
-                std::io::copy(&mut save_body, &mut output)?;
-                Ok(melt::MeltedDocument::new())
-            }
-            SaveContentKind::Binary(mut save_body) => melt::melt(
-                &mut save_body,
+        match self.kind() {
+            JominiFileKind::Uncompressed(SaveDataKind::Text(x)) => (&mut (&*x)).melt(output),
+            JominiFileKind::Uncompressed(SaveDataKind::Binary(x)) => melt::melt(
+                &mut x.body().cursor(),
                 &mut output,
                 resolver,
                 options,
                 self.header().clone(),
             ),
+            JominiFileKind::Zip(x) => Eu5Melt::melt(&mut (&*x), options, resolver, output),
         }
+    }
+}
+
+/// Save resolver that takes the save specific string lookup table and layers it
+/// over the EU5 game tokens.
+#[derive(Debug)]
+pub struct SaveResolver<R> {
+    inner: R,
+    string_lookup: Vec<&'static str>,
+    #[expect(dead_code)]
+    lookup_data: Vec<u8>,
+}
+
+impl<R> SaveResolver<R> {
+    pub fn from_file(file: &Eu5File<impl ReaderAt>, inner: R) -> Result<Self, Eu5Error> {
+        match file.kind() {
+            JominiFileKind::Zip(x) => SaveResolver::create(x, inner),
+            _ => Ok(Self {
+                inner,
+                string_lookup: Vec::new(),
+                lookup_data: Vec::new(),
+            }),
+        }
+    }
+
+    pub fn create(file: &JominiZip<impl ReaderAt>, inner: R) -> Result<Self, Eu5Error> {
+        let mut lookup_data = Vec::new();
+        let string_lookup = if file.header().version() == 2 {
+            file.read_entry("string_lookup")
+                .map_err(Eu5ErrorKind::from)?
+                .read_to_end(&mut lookup_data)?;
+
+            // extend lifetime on lookup data
+            let data = lookup_data.as_slice();
+            let lookup_data: &'static [u8] = unsafe { std::mem::transmute(data) };
+            string_lookup_parse(lookup_data)
+        } else {
+            Vec::new()
+        };
+
+        Ok(Self {
+            inner,
+            string_lookup,
+            lookup_data,
+        })
+    }
+}
+
+impl<R: TokenResolver> TokenResolver for SaveResolver<R> {
+    fn resolve(&self, token_id: u16) -> Option<&str> {
+        self.inner.resolve(token_id)
+    }
+
+    fn lookup(&self, index: u16) -> Option<&str> {
+        self.string_lookup.get(index as usize).copied()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.inner.is_empty()
     }
 }
 
@@ -112,6 +166,7 @@ impl<R: ReaderAt> Eu5Melt for &'_ JominiZip<R> {
         Resolver: TokenResolver,
         Writer: Write,
     {
+        let resolver = SaveResolver::create(self, resolver)?;
         match self.gamestate().map_err(Eu5ErrorKind::from)? {
             SaveContentKind::Text(mut save_body) => {
                 let mut new_header = self.header().clone();
@@ -128,27 +183,6 @@ impl<R: ReaderAt> Eu5Melt for &'_ JominiZip<R> {
                 self.header().clone(),
             ),
         }
-    }
-}
-
-impl<R: ReaderAt> Eu5Melt for &'_ SaveData<BinaryEncoding, R> {
-    fn melt<Resolver, Writer>(
-        &mut self,
-        options: MeltOptions,
-        resolver: Resolver,
-        mut output: Writer,
-    ) -> Result<melt::MeltedDocument, Eu5Error>
-    where
-        Resolver: TokenResolver,
-        Writer: Write,
-    {
-        melt::melt(
-            &mut self.body().cursor(),
-            &mut output,
-            resolver,
-            options,
-            self.header().clone(),
-        )
     }
 }
 
@@ -269,6 +303,26 @@ impl Encoding for Eu5Flavor {
     fn decode<'a>(&self, data: &'a [u8]) -> std::borrow::Cow<'a, str> {
         self.0.decode(data)
     }
+}
+
+fn string_lookup_parse(mut data: &[u8]) -> Vec<&'_ str> {
+    let mut result = Vec::new();
+    data = data.get(5..).unwrap_or_default();
+
+    while !data.is_empty() {
+        let Some((len, rest)) = data.split_first_chunk::<2>() else {
+            break;
+        };
+        let len = u16::from_le_bytes(*len) as usize;
+        let Some((chunk, rest)) = rest.split_at_checked(len) else {
+            break;
+        };
+
+        result.push(std::str::from_utf8(chunk).unwrap_or_default());
+        data = rest;
+    }
+
+    result
 }
 
 #[cfg(test)]

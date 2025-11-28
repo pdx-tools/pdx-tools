@@ -2,7 +2,7 @@ use bumpalo_serde::ArenaDeserialize;
 use eu5app::TableCell as Eu5TableCell;
 use eu5app::{CanvasDimensions, Eu5MapApp, Eu5Session, MapMode as Eu5MapMode, OptimizedGameData};
 use eu5save::models::ZipPrelude;
-use eu5save::{Eu5BinaryDeserialization, Eu5ErrorKind, Eu5File, Eu5Melt};
+use eu5save::{Eu5BinaryDeserialization, Eu5ErrorKind, Eu5File, Eu5Melt, SaveResolver};
 use eu5save::{
     Eu5Date, FailedResolveStrategy, MeltOptions,
     models::{GameVersion, Gamestate},
@@ -199,7 +199,7 @@ impl From<eu5app::OverlayTable> for OverlayTable {
 
 #[wasm_bindgen]
 pub struct Eu5MetaParser {
-    resolver: &'static FlatResolver<'static>,
+    base_resolver: &'static FlatResolver<'static>,
 }
 
 #[wasm_bindgen]
@@ -207,15 +207,18 @@ impl Eu5MetaParser {
     #[wasm_bindgen]
     pub fn create() -> Result<Self, JsError> {
         Ok(Eu5MetaParser {
-            resolver: tokens::get_tokens(),
+            base_resolver: tokens::get_tokens(),
         })
     }
 
     #[wasm_bindgen]
     pub fn init(self, save: Vec<u8>) -> Result<Eu5SaveParser, JsError> {
-        let file = eu5save::Eu5File::from_slice(&save)
+        let file = eu5save::Eu5File::from_slice(save)
             .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
         let arena = bumpalo::Bump::with_capacity(100 * 1024 * 1024);
+
+        let resolver = eu5save::SaveResolver::from_file(&file, self.base_resolver)
+            .map_err(|e| JsError::new(&format!("Failed to create save resolver: {e}")))?;
 
         let mut path_buf = Vec::new();
         let track = bumpalo_serde::tracked::Track::new_with(&mut path_buf);
@@ -231,7 +234,7 @@ impl Eu5MetaParser {
                     ZipPrelude::deserialize_in_arena(tracked_deser, &arena)
                 }
                 eu5save::SaveMetadataKind::Binary(mut bin) => {
-                    let mut deser = bin.deserializer(&self.resolver);
+                    let mut deser = bin.deserializer(&resolver);
                     let tracked_deser =
                         bumpalo_serde::tracked::Deserializer::new(&mut deser, &track);
                     ZipPrelude::deserialize_in_arena(tracked_deser, &arena)
@@ -251,27 +254,21 @@ impl Eu5MetaParser {
             }
         };
 
-        let file = unsafe {
-            std::mem::transmute::<eu5save::Eu5File<&'_ [u8]>, eu5save::Eu5File<&'_ [u8]>>(file)
-        };
-
         Ok(Eu5SaveParser {
-            resolver: self.resolver,
+            resolver,
             meta: Eu5SaveMetadataHandle(Rc::new(meta)),
             archive: file,
             arena,
-            _data: save,
         })
     }
 }
 
 #[wasm_bindgen]
 pub struct Eu5SaveParser {
-    resolver: &'static FlatResolver<'static>,
+    resolver: SaveResolver<&'static FlatResolver<'static>>,
     meta: Eu5SaveMetadataHandle,
-    archive: Eu5File<&'static [u8]>,
+    archive: Eu5File<Cursor<Vec<u8>>>,
     arena: bumpalo::Bump,
-    _data: Vec<u8>,
 }
 
 #[wasm_bindgen]

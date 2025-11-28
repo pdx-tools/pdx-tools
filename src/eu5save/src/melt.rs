@@ -228,6 +228,27 @@ where
             }
             Token::Rgb(rgb) => wtr.write_rgb(&rgb)?,
             Token::I64(value) => wtr.write_i64(value)?,
+            Token::LookupU8(_) | Token::LookupU16(_) => {
+                let x = match token {
+                    Token::LookupU8(v) => v as u16,
+                    Token::LookupU16(v) => v,
+                    _ => unreachable!(),
+                };
+
+                match resolver.lookup(x) {
+                    Some(s) => wtr.write_unquoted(s.as_bytes())?,
+                    None => match options.on_failed_resolve {
+                        FailedResolveStrategy::Error => {
+                            return Err(Eu5ErrorKind::UnknownToken { token_id: x }.into());
+                        }
+                        _ => {
+                            unknown_tokens.insert(x);
+                            let replacement = format!("__id_0x{x:x}");
+                            wtr.write_unquoted(replacement.as_bytes())?;
+                        }
+                    },
+                }
+            }
         }
     }
 
