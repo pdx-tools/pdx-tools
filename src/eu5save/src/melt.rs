@@ -131,6 +131,7 @@ where
     let flavor = Eu5Flavor::new();
     let mut known_number = false;
     let mut known_date = false;
+    let mut known_int = false;
 
     let mut has_read = false;
     while let Some(token) = reader.next()? {
@@ -154,11 +155,13 @@ where
 
                     known_date = id == "date";
                     known_number = id == "seed";
+                    known_int = id == "resistance";
                     wtr.write_unquoted(id.as_bytes())?;
                 }
                 None => {
                     known_date = false;
                     known_number = false;
+                    known_int = false;
                     match options.on_failed_resolve {
                         FailedResolveStrategy::Error => {
                             return Err(Eu5ErrorKind::UnknownToken { token_id: x }.into());
@@ -223,8 +226,13 @@ where
                 wtr.write_f32(converted)?;
             }
             Token::F64(value) => {
-                let converted = flavor.visit_f64(value);
-                wtr.write_f64(converted)?;
+                let mut converted = flavor.visit_f64(value);
+                if known_int {
+                    converted = (converted * 100_000.0).round();
+                    wtr.write_i64(converted as i64)?;
+                } else {
+                    wtr.write_f64(converted)?;
+                }
             }
             Token::Rgb(rgb) => wtr.write_rgb(&rgb)?,
             Token::I64(value) => wtr.write_i64(value)?,
