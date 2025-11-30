@@ -10,6 +10,7 @@ mod transcode;
 
 use clap::{Parser, Subcommand};
 use std::process::ExitCode;
+use tracing_subscriber::filter::LevelFilter;
 
 #[derive(Parser)]
 #[command(author, version, about = "PDX Tools admin commands for maintainers", long_about = None)]
@@ -37,15 +38,18 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
 
     let log_level = match cli.verbose {
-        0 => log::LevelFilter::Warn,
-        1 => log::LevelFilter::Info,
-        2 => log::LevelFilter::Debug,
-        _ => log::LevelFilter::Trace,
+        0 => LevelFilter::WARN,
+        1 => LevelFilter::INFO,
+        2 => LevelFilter::DEBUG,
+        _ => LevelFilter::TRACE,
     };
 
-    env_logger::Builder::from_default_env()
-        .filter_level(log_level)
-        .target(env_logger::Target::Stdout)
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .with_level(true)
+        .with_max_level(log_level)
+        .with_writer(std::io::stdout)
+        .compact()
         .init();
 
     let exit_code = match &cli.command {
@@ -57,7 +61,12 @@ fn main() -> ExitCode {
     match exit_code {
         Ok(e) => e,
         Err(err) => {
-            log::error!("{:?}", err);
+            tracing::error!(
+                name: "cli.execution.error",
+                error_message = %err,
+                error_debug = ?err,
+                "application error"
+            );
             ExitCode::FAILURE
         }
     }

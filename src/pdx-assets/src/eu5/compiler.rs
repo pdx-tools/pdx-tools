@@ -122,10 +122,13 @@ where
     encoder.finish()?;
     let compressed_size = entry.finish(out)?;
 
-    log::info!(
-        "location_lookup.bin: uncompressed={}, compressed={}",
-        uncompressed_size,
-        compressed_size
+    tracing::info!(
+        name: "eu5.write.complete",
+        file_name = "location_lookup.bin",
+        compression_uncompressed_size = uncompressed_size,
+        compression_compressed_size = compressed_size,
+        compression_ratio = ?((compressed_size as f64 / uncompressed_size as f64) * 100.0),
+        "file written"
     );
 
     // Write country_localization.bin
@@ -141,10 +144,13 @@ where
     encoder.finish()?;
     let compressed_size = entry.finish(out)?;
 
-    log::info!(
-        "country_localization.bin: uncompressed={}, compressed={}",
-        uncompressed_size,
-        compressed_size
+    tracing::info!(
+        name: "eu5.write.complete",
+        file_name = "country_localization.bin",
+        compression_uncompressed_size = uncompressed_size,
+        compression_compressed_size = compressed_size,
+        compression_ratio = ?((compressed_size as f64 / uncompressed_size as f64) * 100.0),
+        "file written"
     );
 
     // Write texture files
@@ -167,7 +173,11 @@ where
 
     archive.finish()?;
 
-    log::info!("Created EU5 game bundle at: {}", bundle_path.display());
+    tracing::info!(
+        name: "eu5.bundle.complete",
+        bundle_path = %bundle_path.display(),
+        "EU5 game bundle created"
+    );
     Ok(())
 }
 
@@ -187,9 +197,10 @@ fn extract_country_localizations<P: FileProvider + ?Sized>(
     let all_localizations = parse_localization_string(&country_names_str);
     let country_localizations = country_localization(&all_localizations);
 
-    log::info!(
-        "Extracted {} country localizations",
-        country_localizations.len()
+    tracing::info!(
+        name: "eu5.localization.extracted",
+        localizations_count = country_localizations.len(),
+        "country localizations extracted"
     );
     Ok(country_localizations)
 }

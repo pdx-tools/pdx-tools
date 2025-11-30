@@ -2,6 +2,7 @@ mod tokenize;
 
 use clap::Parser;
 use std::process::ExitCode;
+use tracing_subscriber::filter::LevelFilter;
 
 #[derive(Parser)]
 #[command(author, version, about = "Converts token text files into flatbuffers", long_about = None)]
@@ -18,16 +19,12 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
 
     let log_level = match cli.verbose {
-        0 => log::LevelFilter::Warn,
-        1 => log::LevelFilter::Info,
-        2 => log::LevelFilter::Debug,
-        _ => log::LevelFilter::Trace,
+        0 => LevelFilter::INFO,
+        1 => LevelFilter::DEBUG,
+        _ => LevelFilter::TRACE,
     };
 
-    env_logger::Builder::from_default_env()
-        .filter_level(log_level)
-        .target(env_logger::Target::Stdout)
-        .init();
+    tracing_subscriber::fmt().with_max_level(log_level).init();
 
     let args = tokenize::TokenizeArgs {
         tokens_dir: cli.tokens_dir,
@@ -36,7 +33,12 @@ fn main() -> ExitCode {
     match args.run() {
         Ok(code) => code,
         Err(err) => {
-            log::error!("{:?}", err);
+            tracing::error!(
+                name: "cli.execution.error",
+                error_message = %err,
+                error_debug = ?err,
+                "application error"
+            );
             ExitCode::FAILURE
         }
     }

@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use log::warn;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
@@ -80,7 +79,11 @@ impl AssetBundler {
                 total_uncompressed_size += uncompressed;
                 total_compressed_size += compressed;
             } else {
-                warn!("File not found: {}", file_path);
+                tracing::warn!(
+                    name: "bundle.file.not_found",
+                    file_path = %file_path,
+                    "file not found"
+                );
             }
         }
 

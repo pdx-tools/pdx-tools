@@ -46,7 +46,6 @@ ck3save = { git = "https://github.com/rakaly/ck3save.git" }
 clap = "4.5"
 criterion = "0.5"
 csv = "1.3"
-env_logger = "0.11"
 erased-serde = "0.4.5"
 eu4game = { path = "src/eu4game", default-features = false }
 eu4game-data = { path = "src/eu4game-data", default-features = false }
@@ -63,7 +62,6 @@ image = { version = "0.25.2", default-features = false }
 imperator-save = { git = "https://github.com/rakaly/imperator-save.git" }
 jomini = { version = "0.32", features = ["envelope"] }
 js-sys = "0.3.77"
-log = "0.4"
 mathru = "0.15.3"
 mimalloc = "0.1.43"
 pdx-assets = { path = "src/pdx-assets" }

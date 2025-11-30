@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use pdx_assets::{BundleArgs, CompileArgs};
 use std::process::ExitCode;
+use tracing_subscriber::filter::LevelFilter;
 
 // Avoid musl's default allocator due to lackluster performance
 // https://nickb.dev/blog/default-musl-allocator-considered-harmful-to-performance
@@ -23,8 +24,12 @@ enum Commands {
 }
 
 fn main() -> ExitCode {
-    env_logger::Builder::from_default_env()
-        .target(env_logger::Target::Stdout)
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .with_level(true)
+        .with_max_level(LevelFilter::INFO)
+        .with_writer(std::io::stdout)
+        .compact()
         .init();
 
     let cli = Cli::parse();
@@ -37,7 +42,12 @@ fn main() -> ExitCode {
     match exit_code {
         Ok(e) => e,
         Err(err) => {
-            log::error!("{:?}", &err);
+            tracing::error!(
+                name: "cli.execution.error",
+                error_message = %err,
+                error_debug = ?err,
+                "application error"
+            );
             ExitCode::FAILURE
         }
     }
