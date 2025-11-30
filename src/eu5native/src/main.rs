@@ -1,7 +1,7 @@
 use clap::Parser;
 use eu5app::{
     Eu5SaveLoader, Eu5Workspace, MapMode,
-    game_data::{Eu5GameData, GameDataProvider},
+    game_data::{TextureProvider, game_install::Eu5GameInstall},
 };
 use eu5save::{BasicTokenResolver, Eu5File};
 use std::path::PathBuf;
@@ -54,7 +54,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     println!("Parsed save file in {}ms", start.elapsed().as_millis());
 
     println!("Using game data: {}", args.game_data.display());
-    let game_provider = Eu5GameData::open(&args.game_data)?;
+    let game_bundle = Eu5GameInstall::open(&args.game_data)?;
 
     let start = std::time::Instant::now();
     let pipeline_components = pdx_map::GpuContext::new().await?;
@@ -67,7 +67,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let mut texture_data = vec![0u8; texture_size];
 
     let start = std::time::Instant::now();
-    game_provider.west_texture(&mut texture_data)?;
+    game_bundle.load_west_texture(&mut texture_data)?;
     println!("Read west texture in {}ms", start.elapsed().as_millis());
 
     let (tile_width, tile_height) = eu5app::tile_dimensions();
@@ -80,7 +80,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let start = std::time::Instant::now();
-    game_provider.east_texture(&mut texture_data)?;
+    game_bundle.load_east_texture(&mut texture_data)?;
     println!("Read east texture in {}ms", start.elapsed().as_millis());
 
     let start = std::time::Instant::now();
@@ -99,7 +99,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         tile_height,
     )?;
 
-    let mut map_app = Eu5Workspace::new(save, game_provider)?;
+    let mut map_app = Eu5Workspace::new(save, game_bundle)?;
     map_app.set_map_mode(MapMode::Political)?;
     renderer.set_location_arrays(map_app.location_arrays().clone());
 

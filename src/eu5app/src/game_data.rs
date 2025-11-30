@@ -1,81 +1,92 @@
+pub mod error;
 pub mod optimized;
 
-pub use optimized::OptimizedGameData;
+#[cfg(feature = "game-install")]
+pub mod game_install;
 
-#[cfg(not(target_family = "wasm"))]
-pub mod native;
+pub use error::GameDataError;
+pub use optimized::OptimizedGameBundle;
 
-#[cfg(not(target_family = "wasm"))]
-pub use native::SourceGameData;
+use crate::GameLocationData;
+use eu5save::hash::FxHashMap;
 
-use crate::models::GameLocationData;
-use std::collections::HashMap;
+/// EU5 game data
+pub struct GameData {
+    locations: FxHashMap<String, GameLocationData>,
+    localization: FxHashMap<String, String>,
+}
 
+impl GameData {
+    /// Create from owned HashMaps
+    pub(crate) fn new(
+        locations: FxHashMap<String, GameLocationData>,
+        localization: FxHashMap<String, String>,
+    ) -> Self {
+        Self {
+            locations,
+            localization,
+        }
+    }
+
+    pub fn locations(&self) -> &FxHashMap<String, GameLocationData> {
+        &self.locations
+    }
+
+    pub fn localization(&self) -> &FxHashMap<String, String> {
+        &self.localization
+    }
+}
+
+impl GameDataProvider for GameData {
+    fn lookup_location(&self, name: &str) -> Option<GameLocationData> {
+        self.locations.get(name).copied()
+    }
+
+    fn localized_country_name(&self, tag: &str) -> Option<&str> {
+        self.localization.get(tag).map(|s| s.as_str())
+    }
+}
+
+impl std::fmt::Debug for GameData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OwnedGameData")
+            .field("locations_count", &self.locations.len())
+            .field("localization_count", &self.localization.len())
+            .finish()
+    }
+}
+
+/// Provides access to map textures.
+pub trait TextureProvider {
+    /// Load west hemisphere texture into provided buffer.
+    fn load_west_texture(&self, dst: &mut [u8]) -> Result<(), GameDataError>;
+
+    /// Load east hemisphere texture into provided buffer.
+    fn load_east_texture(&self, dst: &mut [u8]) -> Result<(), GameDataError>;
+
+    /// Get expected size of west texture.
+    fn west_texture_size(&self) -> usize;
+
+    /// Get expected size of east texture.
+    fn east_texture_size(&self) -> usize;
+}
+
+/// Provides query-based access to EU5 game data
 pub trait GameDataProvider {
-    fn locations(&self) -> Result<Vec<GameLocationData>, Box<dyn std::error::Error>>;
-    fn west_texture(&self, dst: &mut [u8]) -> Result<(), Box<dyn std::error::Error>>;
-    fn east_texture(&self, dst: &mut [u8]) -> Result<(), Box<dyn std::error::Error>>;
-    fn country_localizations(&self) -> Result<HashMap<String, String>, Box<dyn std::error::Error>>;
+    /// Look up a location by name
+    fn lookup_location(&self, name: &str) -> Option<GameLocationData>;
+
+    /// Look up country localized name by tag.
+    fn localized_country_name(&self, tag: &str) -> Option<&str>;
 }
 
-// Unified API - enum on native, type alias on WASM
-#[cfg(not(target_family = "wasm"))]
-pub enum Eu5GameData {
-    Optimized(OptimizedGameData),
-    Source(SourceGameData),
-}
-
-#[cfg(target_family = "wasm")]
-pub type Eu5GameData = OptimizedGameData;
-
-#[cfg(not(target_family = "wasm"))]
-impl Eu5GameData {
-    /// Open game data from an arbitrary path (auto-detects type)
-    pub fn open(path: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
-        let path = path.as_ref();
-
-        if path.is_file() {
-            // Attempt optimized data first
-            let data = std::fs::read(path)?;
-            if let Ok(bundle) = OptimizedGameData::open(data.clone()) {
-                return Ok(Self::Optimized(bundle));
-            }
-            // Fall back to treating it as a source bundle zip
-            return Ok(Self::Source(SourceGameData::from_source_bundle(path)?));
-        }
-
-        // Directory - treat as raw game install or extracted bundle
-        Ok(Self::Source(SourceGameData::from_directory(path)?))
-    }
-}
-
-#[cfg(not(target_family = "wasm"))]
-impl GameDataProvider for Eu5GameData {
-    fn locations(&self) -> Result<Vec<GameLocationData>, Box<dyn std::error::Error>> {
-        match self {
-            Self::Optimized(data) => data.locations(),
-            Self::Source(data) => data.locations(),
-        }
+// Blanket implementation for boxed trait objects
+impl GameDataProvider for Box<dyn GameDataProvider> {
+    fn lookup_location(&self, name: &str) -> Option<GameLocationData> {
+        (**self).lookup_location(name)
     }
 
-    fn west_texture(&self, dst: &mut [u8]) -> Result<(), Box<dyn std::error::Error>> {
-        match self {
-            Self::Optimized(data) => data.west_texture(dst),
-            Self::Source(data) => data.west_texture(dst),
-        }
-    }
-
-    fn east_texture(&self, dst: &mut [u8]) -> Result<(), Box<dyn std::error::Error>> {
-        match self {
-            Self::Optimized(data) => data.east_texture(dst),
-            Self::Source(data) => data.east_texture(dst),
-        }
-    }
-
-    fn country_localizations(&self) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
-        match self {
-            Self::Optimized(data) => data.country_localizations(),
-            Self::Source(data) => data.country_localizations(),
-        }
+    fn localized_country_name(&self, tag: &str) -> Option<&str> {
+        (**self).localized_country_name(tag)
     }
 }

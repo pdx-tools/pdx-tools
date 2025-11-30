@@ -1,6 +1,7 @@
 use eu5app::Eu5SaveMetadata;
 use eu5app::TableCell as Eu5TableCell;
-use eu5app::game_data::OptimizedGameData;
+use eu5app::game_data::GameData;
+use eu5app::game_data::OptimizedGameBundle;
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
 use eu5save::{Eu5ErrorKind, Eu5Melt};
@@ -250,16 +251,19 @@ pub struct Eu5WasmGamestate {
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct Eu5WasmGameBundle {
-    bundle: OptimizedGameData,
+    game_data: GameData,
 }
 
 #[wasm_bindgen]
 impl Eu5WasmGameBundle {
     #[wasm_bindgen]
     pub fn open(data: Vec<u8>) -> Result<Self, JsError> {
-        let bundle = OptimizedGameData::open(data)
+        let bundle = OptimizedGameBundle::open(data)
             .map_err(|e| JsError::new(&format!("Failed to open game bundle: {e}")))?;
-        Ok(Eu5WasmGameBundle { bundle })
+        let game_data = bundle
+            .into_game_data()
+            .map_err(|e| JsError::new(&format!("Failed to deserialize game data: {e}")))?;
+        Ok(Eu5WasmGameBundle { game_data })
     }
 }
 
@@ -278,7 +282,7 @@ impl Eu5App {
         game_bundle: Eu5WasmGameBundle,
     ) -> Result<Eu5App, JsError> {
         let meta = gamestate.meta;
-        let app = eu5app::Eu5Workspace::new(gamestate.parsed_save, game_bundle.bundle)
+        let app = eu5app::Eu5Workspace::new(gamestate.parsed_save, game_bundle.game_data)
             .map_err(|x| JsError::new(&format!("Failed to create EU5 app: {x}")))?;
 
         Ok(Eu5App { app, meta })
