@@ -731,6 +731,7 @@ dependencies = [
  "rstest",
  "serde",
  "thiserror 2.0.12",
+ "tracing",
 ]
 
 [[package]]
@@ -3218,6 +3219,7 @@ dependencies = [
  "schemas",
  "serde",
  "serde-wasm-bindgen",
+ "tracing",
  "tsify",
  "wasm-bindgen",
 ]
