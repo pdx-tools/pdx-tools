@@ -3,7 +3,7 @@ mod hashtable;
 mod viewport;
 
 #[cfg(feature = "render")]
-mod app;
+mod controller;
 #[cfg(feature = "render")]
 mod error;
 #[cfg(feature = "render")]
@@ -14,7 +14,7 @@ pub use hashtable::*;
 pub use viewport::*;
 
 #[cfg(feature = "render")]
-pub use app::{MapApp, ScreenshotRenderer};
+pub use controller::{MapViewController, ScreenshotRenderer};
 #[cfg(feature = "render")]
 pub use error::{RenderError, RenderErrorKind};
 #[cfg(feature = "render")]

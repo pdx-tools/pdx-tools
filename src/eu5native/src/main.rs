@@ -1,9 +1,9 @@
-use bumpalo_serde::ArenaDeserialize;
 use clap::Parser;
-use eu5app::{Eu5GameData, Eu5MapApp, Eu5Session, GameDataProvider, MapMode};
-use eu5save::{
-    BasicTokenResolver, Eu5BinaryDeserialization, Eu5File, SaveContentKind, models::Gamestate,
+use eu5app::{
+    Eu5SaveLoader, Eu5Workspace, MapMode,
+    game_data::{Eu5GameData, GameDataProvider},
 };
+use eu5save::{BasicTokenResolver, Eu5File};
 use std::path::PathBuf;
 
 /// EU5 native map renderer - renders EU5 save files to PNG images
@@ -47,17 +47,10 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let file_data = std::fs::read(&args.tokens)?;
     let resolver = BasicTokenResolver::from_text_lines(file_data.as_slice())?;
 
+    let parser = Eu5SaveLoader::open(file, resolver)?;
+
     let start = std::time::Instant::now();
-    let arena = bumpalo::Bump::new();
-    let save = match file.gamestate()? {
-        SaveContentKind::Text(mut x) => {
-            Gamestate::deserialize_in_arena(&mut x.deserializer(), &arena)?
-        }
-        SaveContentKind::Binary(mut x) => {
-            let mut deser = x.deserializer(&resolver);
-            Gamestate::deserialize_in_arena(&mut deser, &arena)?
-        }
-    };
+    let save = parser.parse()?;
     println!("Parsed save file in {}ms", start.elapsed().as_millis());
 
     println!("Using game data: {}", args.game_data.display());
@@ -106,9 +99,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         tile_height,
     )?;
 
-    let session = Eu5Session::new(save, game_provider)?;
-    let mut map_app = Eu5MapApp::new(session)?;
-
+    let mut map_app = Eu5Workspace::new(save, game_provider)?;
     map_app.set_map_mode(MapMode::Political)?;
     renderer.set_location_arrays(map_app.location_arrays().clone());
 

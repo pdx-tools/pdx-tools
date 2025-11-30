@@ -1,6 +1,6 @@
 use pdx_map::{
     CanvasDimensions, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext, LocationArrays,
-    LocationFlags, MapApp, MapRenderer, MapTexture, QueuedWorkFuture, RenderError,
+    LocationFlags, MapRenderer, MapTexture, MapViewController, QueuedWorkFuture, RenderError,
     ScreenshotRenderer, SurfaceMapRenderer,
 };
 use serde::{Deserialize, Serialize};
@@ -59,7 +59,7 @@ impl PdxCanvasSurface {
 
 #[wasm_bindgen]
 pub struct PdxMapRenderer {
-    app: MapApp<SurfaceMapRenderer>,
+    app: MapViewController<SurfaceMapRenderer>,
 }
 
 #[wasm_bindgen]
@@ -89,7 +89,7 @@ impl PdxMapRenderer {
             canvas_dims,
         );
 
-        let app = MapApp::new(renderer, canvas_dims, tile_width, tile_height);
+        let app = MapViewController::new(renderer, canvas_dims, tile_width, tile_height);
 
         Ok(PdxMapRenderer { app })
     }
@@ -389,7 +389,7 @@ impl PdxScreenshotRenderer {
 
 /// Shared helper to create a screenshot renderer for any MapApp<SurfaceMapRenderer>
 pub fn create_screenshot_renderer_for_app(
-    app: &MapApp<SurfaceMapRenderer>,
+    app: &MapViewController<SurfaceMapRenderer>,
     canvas: OffscreenCanvas,
 ) -> Result<PdxScreenshotRenderer, RenderError> {
     let surface_target = get_surface_target(canvas);

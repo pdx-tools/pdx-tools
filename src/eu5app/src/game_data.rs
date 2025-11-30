@@ -1,14 +1,12 @@
-pub mod hexcolor;
-pub mod models;
 pub mod optimized;
 
 pub use optimized::OptimizedGameData;
 
 #[cfg(not(target_family = "wasm"))]
-pub mod source;
+pub mod native;
 
 #[cfg(not(target_family = "wasm"))]
-pub use source::SourceGameData;
+pub use native::SourceGameData;
 
 use crate::models::GameLocationData;
 use std::collections::HashMap;

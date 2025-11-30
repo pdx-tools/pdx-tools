@@ -1,6 +1,6 @@
 use eu5app::{
-    GameDataProvider, OptimizedGameData, should_highlight_individual_locations,
-    texture_buffer_size, tile_dimensions,
+    game_data::{GameDataProvider, OptimizedGameData},
+    should_highlight_individual_locations, texture_buffer_size, tile_dimensions,
 };
 use pdx_map::{
     CanvasDimensions, GpuLocationIdx, GpuSurfaceContext, LocationArrays, LocationFlags,
@@ -73,7 +73,7 @@ impl Eu5CanvasSurface {
 
 #[wasm_bindgen]
 pub struct Eu5WasmMapRenderer {
-    app: pdx_map::MapApp<pdx_map::SurfaceMapRenderer>,
+    app: pdx_map::MapViewController<pdx_map::SurfaceMapRenderer>,
 }
 
 #[wasm_bindgen]
@@ -98,7 +98,7 @@ impl Eu5WasmMapRenderer {
         );
 
         let (tile_width, tile_height) = tile_dimensions();
-        let mut app = pdx_map::MapApp::new(renderer, display, tile_width, tile_height);
+        let mut app = pdx_map::MapViewController::new(renderer, display, tile_width, tile_height);
 
         let show_location_borders = should_highlight_individual_locations(app.get_zoom());
         app.renderer_mut()

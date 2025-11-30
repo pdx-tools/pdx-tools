@@ -5,7 +5,6 @@ use eu5save::hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use std::io::Read;
 
-#[cfg(not(target_family = "wasm"))]
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -84,7 +83,6 @@ pub fn parse_locations_data(
 }
 
 /// Parse a single localization file in the format:
-#[cfg(not(target_family = "wasm"))]
 pub fn parse_localization_string(data: &str) -> HashMap<String, String> {
     let quote_container = regex::Regex::new("\"(.*)\"").unwrap();
     let mut result = HashMap::new();
@@ -112,7 +110,6 @@ pub fn parse_localization_string(data: &str) -> HashMap<String, String> {
 
 /// Extract country localizations from the parsed data.
 /// Filters for uppercase tags and excludes adjectives (_ADJ suffix).
-#[cfg(not(target_family = "wasm"))]
 pub fn country_localization(localizations: &HashMap<String, String>) -> HashMap<String, String> {
     localizations
         .iter()

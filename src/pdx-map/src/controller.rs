@@ -4,13 +4,13 @@ use crate::{
     renderer::{ColorIdReadback, HeadlessMapRenderer, QueuedWorkFuture},
 };
 
-pub struct MapApp<R: MapRenderer> {
+pub struct MapViewController<R: MapRenderer> {
     renderer: R,
     viewport: MapViewport,
     canvas_dimensions: CanvasDimensions,
 }
 
-impl<R: MapRenderer> MapApp<R> {
+impl<R: MapRenderer> MapViewController<R> {
     /// Create a new MapApp with any MapRenderer
     pub fn new(renderer: R, display: CanvasDimensions, tile_width: u32, tile_height: u32) -> Self {
         let viewport = MapViewport::new(
@@ -20,7 +20,7 @@ impl<R: MapRenderer> MapApp<R> {
             tile_height,
         );
 
-        MapApp {
+        MapViewController {
             renderer,
             viewport,
             canvas_dimensions: display,
@@ -66,7 +66,7 @@ impl<R: MapRenderer> MapApp<R> {
     }
 }
 
-impl MapApp<SurfaceMapRenderer> {
+impl MapViewController<SurfaceMapRenderer> {
     pub fn render(&self) {
         let bounds = self.viewport.viewport_bounds();
         self.renderer.render_scene(bounds);

@@ -1,7 +1,7 @@
+use super::parsing::{parse_default_map, parse_locations_data, parse_named_locations};
 use crate::game_data::GameDataProvider;
 use crate::map::{EU5_TILE_HEIGHT, EU5_TILE_WIDTH};
 use crate::models::GameLocationData;
-use crate::parsing::{parse_default_map, parse_locations_data, parse_named_locations};
 use anyhow::{Context, Result, ensure};
 use std::collections::HashMap;
 use std::fs;
@@ -46,8 +46,8 @@ impl SourceGameData {
                 )
             })?;
         let all_localizations =
-            crate::parsing::parse_localization_string(&country_localizations_data);
-        let country_localizations = crate::parsing::country_localization(&all_localizations);
+            super::parsing::parse_localization_string(&country_localizations_data);
+        let country_localizations = super::parsing::country_localization(&all_localizations);
 
         // Split locations.png into west/east RGBA buffers eagerly
         let locations_png_path = base_dir.join("game/in_game/map_data/locations.png");
@@ -128,8 +128,8 @@ impl SourceGameData {
         // Parse country localizations
         let country_localizations_str = String::from_utf8_lossy(&country_localizations_data);
         let all_localizations =
-            crate::parsing::parse_localization_string(&country_localizations_str);
-        let country_localizations = crate::parsing::country_localization(&all_localizations);
+            super::parsing::parse_localization_string(&country_localizations_str);
+        let country_localizations = super::parsing::country_localization(&all_localizations);
 
         // Split locations.png into west/east textures
         let (west_texture, east_texture) = split_locations_png(&locations_png)?;
