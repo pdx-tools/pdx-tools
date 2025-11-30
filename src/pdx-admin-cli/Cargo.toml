@@ -17,12 +17,10 @@ applib = { workspace = true, default-features = false, features = ["zstd_c"] }
 bytemuck = { workspace = true }
 clap = { features = ["derive", "env"], workspace = true }
 csv = { workspace = true }
-env_logger = { workspace = true }
 eu4game = { workspace = true, default-features = false, features = ["zstd_c"] }
 eu4save = { workspace = true, default-features = false, features = ["serialize", "zstd_c"] }
 flate2 = { workspace = true, default-features = false, features = ["zlib-rs"] }
 highway = { workspace = true }
-log = { workspace = true }
 pdx-map = { workspace = true, default-features = false }
 pdx-zstd = { workspace = true, default-features = false, features = ["zstd_c"] }
 rawzip = { workspace = true }
@@ -30,6 +28,8 @@ rayon = { workspace = true }
 schemas = { workspace = true }
 serde = { features = ["derive"], workspace = true }
 serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 walkdir = { workspace = true }
 
 [target.'cfg(target_env = "musl")'.dependencies]

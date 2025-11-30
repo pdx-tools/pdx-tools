@@ -1,6 +1,5 @@
 use anyhow::Context;
 use highway::HighwayHash;
-use log::{debug, info};
 use pdx_zstd::zstd_tee::{ZstdFiles, ZstdTee};
 use std::{
     fs::File,
@@ -25,7 +24,11 @@ impl TokenizeArgs {
                 }
             }
 
-            info!("skipping {}. Empty tokenization file", token_file.display());
+            tracing::info!(
+                name: "tokenize.file.skip",
+                game = %token_file.display(),
+                "skipping empty tokenization file"
+            );
         }
 
         Ok(ExitCode::SUCCESS)
@@ -56,7 +59,11 @@ where
             .context("unable to read existing tokenize file")?;
         let old_out = hasher.finalize256();
         if new_out == old_out {
-            info!("no changes detected for {} token file", zstd_files.name());
+            tracing::info!(
+                name: "tokenize.file.unchanged",
+                game = %zstd_files.name(),
+                "no changes detected for token file"
+            );
             return Ok(());
         }
     }
@@ -89,7 +96,13 @@ where
             .with_context(|| format!("unable to parse {num}"))?;
 
         if z != current {
-            debug!("empty range: [{},{}) {} len", current, z, z - current);
+            tracing::debug!(
+                name: "tokenize.parsing.empty_range",
+                range_start = current,
+                range_end = z,
+                range_length = z - current,
+                "empty range encountered"
+            );
             empty_ranges += 1;
             for _ in current..z {
                 empty_count += 1;
@@ -120,14 +133,15 @@ where
     }
 
     let raw = writer.into_inner();
-    info!(
-        "{}: tokens: {}, breakpoint: {} empty: {}, empty ranges: {}, byte size: {}",
-        name,
-        tokens.len(),
-        breakpoint,
-        empty_count,
-        empty_ranges,
-        raw.len()
+    tracing::info!(
+        name: "tokenize.processing.complete",
+        game = %name,
+        tokens_count = tokens.len(),
+        breakpoint = breakpoint,
+        empty_count = empty_count,
+        empty_ranges_count = empty_ranges,
+        byte_size = raw.len(),
+        "tokenization complete"
     );
     top_writer.write_all(&raw)?;
     Ok(())

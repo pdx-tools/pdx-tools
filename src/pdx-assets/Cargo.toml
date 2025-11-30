@@ -11,14 +11,12 @@ anyhow = { workspace = true }
 attohttpc = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 csv = { workspace = true }
-env_logger = { workspace = true }
 eu4game-data = { default-features = false , workspace = true }
 eu4save = { default-features = false , workspace = true, features = ["zstd_c"] }
 eu5app = { workspace = true, default-features = false, features = ["zstd_c"] }
 eu5save = { workspace = true }
 flate2 = { workspace = true, default-features = false, features = ["zlib-rs"]}
 jomini = { workspace = true }
-log = { workspace = true }
 pdx-zstd = { workspace = true, default-features = false, features = ["zstd_c"] }
 postcard = { version = "1.1.3", default-features = false, features = ["use-std"] }
 rawbmp = { workspace = true }
@@ -28,6 +26,8 @@ schemas = { workspace = true, features = ["inline"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 walkdir = { workspace = true }
 zstd = { workspace = true }
 

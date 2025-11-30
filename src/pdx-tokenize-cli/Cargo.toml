@@ -14,8 +14,8 @@ workspace = true
 [dependencies]
 anyhow = { workspace = true }
 clap = { features = ["derive", "env"], workspace = true }
-env_logger = { workspace = true }
 highway = { workspace = true }
-log = { workspace = true }
 pdx-zstd = { workspace = true, default-features = false, features = ["zstd_c"] }
 schemas = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
