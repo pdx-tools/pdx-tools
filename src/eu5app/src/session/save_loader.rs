@@ -7,6 +7,7 @@ use jomini::binary::TokenResolver;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
+#[derive(Debug)]
 pub struct Eu5SaveLoader<R, RES> {
     resolver: RES,
     meta: Rc<Eu5SaveMetadata>,
@@ -89,6 +90,7 @@ impl<R: ReaderAt, RES: TokenResolver> Eu5SaveLoader<R, RES> {
     }
 }
 
+#[derive(Debug)]
 pub struct Eu5LoadedSave {
     arena: bumpalo::Bump,
     pub game: Gamestate<'static>,

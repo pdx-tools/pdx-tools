@@ -65,6 +65,12 @@ pub struct SaveCheckSummerReader<'a> {
     hasher: &'a mut SaveCheckSummer,
 }
 
+impl<'a> std::fmt::Debug for SaveCheckSummerReader<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SaveCheckSummerReader").finish()
+    }
+}
+
 impl Read for SaveCheckSummerReader<'_> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         match self.reader.read(buf) {
@@ -199,7 +205,7 @@ impl Eu4Parser {
         self.parse_with(data, &resolver)
     }
 
-    fn deserialize<'res, 'de, T, D>(&self, deser: D) -> Result<T, Eu4GameError>
+    fn deserialize<'de, T, D>(&self, deser: D) -> Result<T, Eu4GameError>
     where
         T: DeserializeOwned,
         D: Deserializer<'de, Error = Eu4Error>,

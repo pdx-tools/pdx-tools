@@ -3,6 +3,13 @@
 
 // @generated
 
+#![allow(
+    missing_debug_implementations,
+    unused_lifetimes,
+    unsafe_op_in_unsafe_fn,
+    clippy::all
+)]
+
 use core::mem;
 use core::cmp::Ordering;
 

@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 /// Process assets from directory or zip file
-#[derive(Args)]
+#[derive(Args, Debug)]
 pub struct CompileArgs {
     /// Useful when compiling across multiple game patches and there are a set
     /// of shared assets across all assets. Minimal can signal for the older

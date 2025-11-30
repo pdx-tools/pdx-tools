@@ -15,6 +15,7 @@ use std::collections::HashMap;
 
 /// An EU5 workspace combines the saved game state with patch-specific game data,
 /// and manages rendering state including map modes and GPU data structures.
+#[derive(Debug)]
 pub struct Eu5Workspace {
     // Arena-owned gamestate from Eu5LoadedSave
     #[expect(dead_code)]

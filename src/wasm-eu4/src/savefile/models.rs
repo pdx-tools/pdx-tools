@@ -535,7 +535,7 @@ pub struct IdeaGroup {
     pub completed_ideas: u8,
 }
 
-#[derive(Tsify, Serialize)]
+#[derive(Debug, Tsify, Serialize)]
 pub struct ProvinceIdDevelopment {
     pub name: String,
     pub id: ProvinceId,
@@ -545,7 +545,7 @@ pub struct ProvinceIdDevelopment {
     pub value: f32,
 }
 
-#[derive(Tsify, Default, Serialize)]
+#[derive(Debug, Tsify, Default, Serialize)]
 pub struct AreaDevelopmentValue {
     pub value: f32,
     pub tax: f32,
@@ -554,7 +554,7 @@ pub struct AreaDevelopmentValue {
     pub children: Vec<ProvinceIdDevelopment>,
 }
 
-#[derive(Tsify, Default, Serialize)]
+#[derive(Debug, Tsify, Default, Serialize)]
 pub struct AreaDevelopment {
     pub name: String,
     pub value: f32,
@@ -564,7 +564,7 @@ pub struct AreaDevelopment {
     pub children: Vec<ProvinceIdDevelopment>,
 }
 
-#[derive(Tsify, Default, Serialize)]
+#[derive(Debug, Tsify, Default, Serialize)]
 pub struct RegionDevelopmentValue {
     pub value: f32,
     pub tax: f32,
@@ -573,7 +573,7 @@ pub struct RegionDevelopmentValue {
     pub children: Vec<AreaDevelopment>,
 }
 
-#[derive(Tsify, Default, Serialize)]
+#[derive(Debug, Tsify, Default, Serialize)]
 pub struct RegionDevelopment {
     pub name: String,
     pub value: f32,
@@ -583,7 +583,7 @@ pub struct RegionDevelopment {
     pub children: Vec<AreaDevelopment>,
 }
 
-#[derive(Tsify, Default, Serialize)]
+#[derive(Debug, Tsify, Default, Serialize)]
 pub struct SuperRegionDevelopmentValue {
     pub value: f32,
     pub tax: f32,
@@ -592,7 +592,7 @@ pub struct SuperRegionDevelopmentValue {
     pub children: Vec<RegionDevelopment>,
 }
 
-#[derive(Tsify, Default, Serialize)]
+#[derive(Debug, Tsify, Default, Serialize)]
 pub struct SuperRegionDevelopment {
     pub name: String,
     pub value: f32,
@@ -602,7 +602,7 @@ pub struct SuperRegionDevelopment {
     pub children: Vec<RegionDevelopment>,
 }
 
-#[derive(Tsify, Default, Serialize)]
+#[derive(Debug, Tsify, Default, Serialize)]
 pub struct ContinentDevelopment {
     pub name: String,
     pub value: f32,
@@ -612,7 +612,7 @@ pub struct ContinentDevelopment {
     pub children: Vec<SuperRegionDevelopment>,
 }
 
-#[derive(Tsify, Serialize, Deserialize)]
+#[derive(Debug, Tsify, Serialize, Deserialize)]
 #[tsify(from_wasm_abi)]
 pub enum FileObservationFrequency {
     EverySave,
@@ -621,7 +621,7 @@ pub enum FileObservationFrequency {
     Yearly,
 }
 
-#[derive(Tsify, Serialize)]
+#[derive(Debug, Tsify, Serialize)]
 #[tsify(into_wasm_abi)]
 pub struct RootTree {
     pub name: &'static str,
@@ -637,7 +637,7 @@ pub struct RootTree {
     pub uncolonized_manpower: f32,
 }
 
-#[derive(Tsify, Serialize)]
+#[derive(Debug, Tsify, Serialize)]
 pub struct CountryDevEffiency {
     pub country: LocalizedTag,
     pub mana: CountryManaUsage,
@@ -942,7 +942,7 @@ pub struct ProvinceGc {
     pub gc_if_centralized: f32,
 }
 
-#[derive(Tsify, Serialize)]
+#[derive(Debug, Tsify, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Estate<'a> {
     pub kind: &'a str,
@@ -953,7 +953,7 @@ pub struct Estate<'a> {
     pub influence_modifiers: Vec<InfluenceModifier>,
 }
 
-#[derive(Tsify, Serialize)]
+#[derive(Debug, Tsify, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InfluenceModifier {
     pub value: f32,
@@ -961,7 +961,7 @@ pub struct InfluenceModifier {
     pub date: Eu4Date,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[derive(Debug, Tsify, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 #[tsify(from_wasm_abi)]
 pub enum MapPayloadKind {
@@ -973,7 +973,7 @@ pub enum MapPayloadKind {
     Terrain,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[derive(Debug, Tsify, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 #[tsify(from_wasm_abi)]
 pub struct MapPayload {
@@ -983,7 +983,7 @@ pub struct MapPayload {
     pub date: Option<i32>,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[derive(Debug, Tsify, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum MapCursorPayloadKind {
     Political,
@@ -991,7 +991,7 @@ pub enum MapCursorPayloadKind {
     Battles,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[derive(Debug, Tsify, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum Interval {
     Year,
@@ -1000,7 +1000,7 @@ pub enum Interval {
     Day,
 }
 
-#[derive(Tsify, Serialize, Deserialize)]
+#[derive(Debug, Tsify, Serialize, Deserialize)]
 #[tsify(from_wasm_abi)]
 pub struct MapCursorPayload {
     pub kind: MapCursorPayloadKind,
@@ -1008,7 +1008,7 @@ pub struct MapCursorPayload {
     pub start: Option<i32>,
 }
 
-#[derive(Tsify, Serialize, Deserialize)]
+#[derive(Debug, Tsify, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 #[tsify(into_wasm_abi)]
 pub enum MapQuickTipPayload {

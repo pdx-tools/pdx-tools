@@ -113,7 +113,10 @@ T1: (T1, E)
 
 Into array [E;N] for arbitrary N
 */
+#[derive(Debug)]
 pub struct One;
+
+#[derive(Debug)]
 pub struct Succ<T>(std::marker::PhantomData<T>);
 
 pub trait Value {
@@ -314,7 +317,6 @@ impl Vic3CountryStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stats::Vic3CountryStats;
     use jomini::text::de::from_utf8_slice;
     use serde::Deserialize;
 

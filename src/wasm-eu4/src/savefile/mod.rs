@@ -27,6 +27,7 @@ pub use models::*;
 pub use tag_filter::*;
 
 // Struct created to help compiler debugging as the wasm_bindgen macro can cause opaque errors.
+#[derive(Debug)]
 pub struct SaveFileImpl {
     pub query: Query,
 

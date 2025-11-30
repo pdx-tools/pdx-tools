@@ -1,5 +1,6 @@
 use std::hash::{BuildHasherDefault, Hasher};
 
+#[derive(Debug)]
 pub struct FnvHasher(u64);
 
 impl Default for FnvHasher {
@@ -31,6 +32,7 @@ impl Hasher for FnvHasher {
 /// A builder for default FNV hashers.
 pub type FnvBuildHasher = BuildHasherDefault<FnvHasher>;
 
+#[derive(Debug)]
 pub struct FxHasher {
     hash: u64,
 }

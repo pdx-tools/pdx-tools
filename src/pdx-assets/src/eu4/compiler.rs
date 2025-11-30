@@ -112,8 +112,6 @@ where
 fn english_localization<P: FileProvider + ?Sized>(
     fs: &P,
 ) -> anyhow::Result<HashMap<String, String>> {
-    use std::collections::HashMap;
-
     let mut result = HashMap::new();
 
     // Walk the localisation directory to find all english.yml files

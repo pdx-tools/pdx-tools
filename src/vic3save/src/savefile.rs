@@ -221,7 +221,6 @@ mod tests {
     use super::*;
     use jomini::text::de::from_utf8_slice;
     use serde::Deserialize;
-    use std::collections::HashMap;
 
     #[derive(Debug, Deserialize, PartialEq)]
     pub struct Vic3Country {

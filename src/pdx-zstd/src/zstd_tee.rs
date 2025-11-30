@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[derive(Debug)]
 pub struct ZstdFiles {
     name: String,
     out_path: PathBuf,
@@ -91,6 +92,12 @@ impl ZstdTee {
         }
         self.raw.flush()?;
         Ok(())
+    }
+}
+
+impl std::fmt::Debug for ZstdTee {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ZstdTee").finish()
     }
 }
 

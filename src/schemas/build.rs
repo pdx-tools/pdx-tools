@@ -51,6 +51,7 @@ fn main() {
             writer,
             r#"
 #[cfg(feature = "inline")]
+#[derive(Debug)]
 pub struct {pascal}FlatTokens {{
     resolver: FlatResolver<'static>,
 }}

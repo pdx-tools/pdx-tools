@@ -104,6 +104,15 @@ zstd = { version = "0.13.0", default-features = false }
 
 [workspace.lints]
 
+[workspace.lints.rust] # https://microsoft.github.io/rust-guidelines/guidelines/universal/index.html#compiler-lints
+ambiguous_negative_literals = "warn"
+missing_debug_implementations = "warn"
+redundant_imports = "warn"
+redundant_lifetimes = "warn"
+trivial_numeric_casts = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+unused_lifetimes = "warn"
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

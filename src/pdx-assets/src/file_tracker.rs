@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::io::Read;
 
+#[derive(Debug)]
 pub struct FileAccessTracker<P: FileProvider> {
     provider: P,
     accessed_files: RefCell<HashSet<String>>,

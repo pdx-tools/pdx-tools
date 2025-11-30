@@ -24,6 +24,12 @@ pub struct Eu5CanvasSurface {
     display: CanvasDisplay,
 }
 
+impl std::fmt::Debug for Eu5CanvasSurface {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Eu5CanvasSurface").finish()
+    }
+}
+
 #[wasm_bindgen]
 impl Eu5CanvasSurface {
     #[wasm_bindgen]
@@ -74,6 +80,12 @@ impl Eu5CanvasSurface {
 #[wasm_bindgen]
 pub struct Eu5WasmMapRenderer {
     app: pdx_map::MapViewController<pdx_map::SurfaceMapRenderer>,
+}
+
+impl std::fmt::Debug for Eu5WasmMapRenderer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Eu5WasmMapRenderer").finish()
+    }
 }
 
 #[wasm_bindgen]
@@ -260,6 +272,7 @@ impl Eu5WasmMapRenderer {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct Eu5WasmGameBundle {
     bundle: OptimizedGameData,
 }
@@ -296,11 +309,13 @@ impl Eu5WasmGameBundle {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct Eu5WasmTextureData {
     data: Vec<u8>,
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct Eu5WasmTexture {
     data: MapTexture,
 }

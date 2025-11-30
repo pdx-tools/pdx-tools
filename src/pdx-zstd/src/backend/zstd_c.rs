@@ -1,4 +1,5 @@
 use crate::{Error, Result};
+use std::fmt;
 use std::io::{Read, Write};
 
 pub fn decode_all(data: &[u8]) -> Result<Vec<u8>> {
@@ -28,6 +29,12 @@ pub struct Decoder<'a> {
     inner: zstd::Decoder<'static, std::io::BufReader<&'a [u8]>>,
 }
 
+impl<'a> fmt::Debug for Decoder<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Decoder zstd_c").finish()
+    }
+}
+
 impl<'a> Decoder<'a> {
     pub fn from_slice(data: &'a [u8]) -> Result<Self> {
         let decoder = zstd::Decoder::new(data).map_err(|e| Error::Zstd(Box::new(e)))?;
@@ -43,6 +50,12 @@ impl<'a> Read for Decoder<'a> {
 
 pub struct Encoder<W: Write> {
     inner: zstd::Encoder<'static, W>,
+}
+
+impl<W: Write> fmt::Debug for Encoder<W> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Encoder zstd_c").finish()
+    }
 }
 
 impl<W: Write> Encoder<W> {

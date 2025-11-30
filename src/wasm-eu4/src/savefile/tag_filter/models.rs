@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
-#[derive(Tsify, Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(Debug, Tsify, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum TagsState {
     #[serde(rename = "all")]
     All,
@@ -15,7 +15,7 @@ pub enum TagsState {
     None,
 }
 
-#[derive(Tsify, Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(Debug, Tsify, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum AiTagsState {
     #[serde(rename = "all")]
     All,
@@ -29,7 +29,7 @@ pub enum AiTagsState {
     None,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[derive(Debug, Tsify, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 #[tsify(from_wasm_abi)]
 pub struct TagFilterPayloadRaw {

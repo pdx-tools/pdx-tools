@@ -172,7 +172,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bumpalo_serde::ArenaDeserialize;
     use jomini::TextDeserializer;
 
     #[test]
