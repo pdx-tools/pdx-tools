@@ -188,6 +188,7 @@ impl From<eu5app::OverlayTable> for OverlayTable {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct Eu5MetaParser {
     base_resolver: &'static FlatResolver<'static>,
 }
@@ -214,6 +215,7 @@ impl Eu5MetaParser {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct SaveLoader {
     parser: Eu5SaveLoader<Cursor<Vec<u8>>, &'static FlatResolver<'static>>,
 }
@@ -238,12 +240,14 @@ impl SaveLoader {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct Eu5WasmGamestate {
     meta: Eu5SaveMetadataHandle,
     parsed_save: Eu5LoadedSave,
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct Eu5WasmGameBundle {
     bundle: OptimizedGameData,
 }
@@ -259,6 +263,7 @@ impl Eu5WasmGameBundle {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct Eu5App {
     app: eu5app::Eu5Workspace,
     meta: Eu5SaveMetadataHandle,
@@ -767,6 +772,7 @@ pub fn setup_eu5_wasm() {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct BufferParts {
     pub ptr: *const u8,
     pub len: usize,

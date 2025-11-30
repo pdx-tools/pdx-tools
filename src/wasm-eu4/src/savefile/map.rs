@@ -963,6 +963,16 @@ enum Timelapse {
     Battles(BattleTimelapse),
 }
 
+impl std::fmt::Debug for Timelapse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Timelapse::Political(_) => write!(f, "Timelapse::Political"),
+            Timelapse::Religion(_) => write!(f, "Timelapse::Religion"),
+            Timelapse::Battles(_) => write!(f, "Timelapse::Battles"),
+        }
+    }
+}
+
 impl Timelapse {
     fn advance_to(&mut self, date: Eu4Date) -> Vec<u8> {
         match self {
@@ -1502,6 +1512,7 @@ impl BattleTimelapse {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct TimelapseIter {
     timelapse: Timelapse,
     save_start: Eu4Date,
@@ -1560,9 +1571,19 @@ impl TimelapseIter {
 }
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct TimelapseItem {
     date: MapDate,
     data: Vec<u8>,
+}
+
+impl std::fmt::Debug for TimelapseItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TimelapseItem")
+            .field("date", &self.date)
+            .field("data_len", &self.data.len())
+            .finish()
+    }
 }
 
 #[wasm_bindgen]

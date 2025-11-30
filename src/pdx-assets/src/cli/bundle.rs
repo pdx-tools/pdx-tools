@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 /// Create optimized asset bundle by tracing file access and bundling required files
-#[derive(Args)]
+#[derive(Args, Debug)]
 pub struct BundleArgs {
     /// Game directory containing source files
     #[clap(value_parser)]

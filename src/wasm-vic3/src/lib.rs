@@ -20,12 +20,14 @@ use crate::models::Vic3MarketResponse;
 #[wasm_bindgen(typescript_custom_section)]
 const VIC3_DATE_TYPE: &'static str = r#"export type Vic3Date = string;"#;
 
+#[derive(Debug)]
 pub struct SaveFileImpl {
     save: Vic3Save,
     is_meltable: bool,
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct SaveFile(SaveFileImpl);
 
 pub fn to_json_value<T: serde::ser::Serialize + ?Sized>(value: &T) -> JsValue {

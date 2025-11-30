@@ -536,6 +536,7 @@ impl<'bump> ArenaDeserialize<'bump> for CountryName<'bump> {
     }
 }
 
+#[derive(Debug)]
 pub struct CountriesIter<'a> {
     index: usize,
     countries: &'a Countries<'a>,

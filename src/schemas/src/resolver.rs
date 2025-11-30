@@ -3,6 +3,7 @@
 // to index into, they are instead spliced out
 pub const BREAKPOINT: u16 = 10000;
 
+#[derive(Debug)]
 pub struct FlatResolver<'a> {
     pub values: Vec<&'a str>,
 

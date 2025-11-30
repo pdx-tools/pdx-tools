@@ -5,6 +5,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+#[derive(Debug)]
 pub struct FsFile {
     pub path: PathBuf,
 }
@@ -23,6 +24,7 @@ pub trait FileProvider {
     fn fs_file(&self, path: &str) -> Result<FsFile>;
 }
 
+#[derive(Debug)]
 pub struct DirectoryProvider {
     base_path: PathBuf,
 }
@@ -94,6 +96,7 @@ impl FileProvider for DirectoryProvider {
     }
 }
 
+#[derive(Debug)]
 pub struct ZipProvider {
     zip_path: PathBuf,
     file_index: HashMap<String, (rawzip::ZipArchiveEntryWayfinder, rawzip::CompressionMethod)>,

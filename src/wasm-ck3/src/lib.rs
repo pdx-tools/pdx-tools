@@ -16,6 +16,7 @@ pub struct Ck3Metadata {
     is_meltable: bool,
 }
 
+#[derive(Debug)]
 pub struct SaveFileImpl {
     meta_data: Metadata,
     encoding: SaveHeader,
@@ -27,6 +28,7 @@ pub fn to_json_value<T: serde::ser::Serialize + ?Sized>(value: &T) -> JsValue {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct SaveFile(SaveFileImpl);
 
 #[wasm_bindgen]

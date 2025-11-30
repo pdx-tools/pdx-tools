@@ -18,12 +18,14 @@ pub struct ImperatorMetadata {
     is_meltable: bool,
 }
 
+#[derive(Debug)]
 pub struct SaveFileImpl {
     header: Metadata,
     encoding: SaveHeader,
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct SaveFile(SaveFileImpl);
 
 pub fn to_json_value<T: serde::ser::Serialize + ?Sized>(value: &T) -> JsValue {

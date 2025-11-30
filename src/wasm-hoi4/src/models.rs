@@ -15,7 +15,7 @@ pub struct Hoi4Metadata {
     pub countries: Vec<CountryTag>,
 }
 
-#[derive(Tsify, Serialize)]
+#[derive(Tsify, Debug, Serialize)]
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct CountryDetails {

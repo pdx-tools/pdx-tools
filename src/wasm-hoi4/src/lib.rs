@@ -14,12 +14,14 @@ mod models;
 #[wasm_bindgen(typescript_custom_section)]
 const COUNTRY_TAG_TYPE: &'static str = r#"export type CountryTag = string;"#;
 
+#[derive(Debug)]
 pub struct SaveFileImpl {
     save: Hoi4Save,
     encoding: Encoding,
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct SaveFile(SaveFileImpl);
 
 #[wasm_bindgen]

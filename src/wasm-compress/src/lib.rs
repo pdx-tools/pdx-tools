@@ -3,6 +3,7 @@ use std::io::{Cursor, Read, Write};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
+#[derive(Debug)]
 struct ProgressReader<'a, R> {
     reader: R,
     current_size: usize,
@@ -68,7 +69,17 @@ pub fn init_compression(data: Vec<u8>) -> Compression {
     Compression::new(data)
 }
 
+#[derive(Debug)]
+enum Reader {
+    Zip {
+        zip: rawzip::ZipSliceArchive<Vec<u8>>,
+        prelude: Vec<u8>,
+    },
+    Data(Vec<u8>),
+}
+
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct Compression {
     content: Reader,
 }
@@ -173,15 +184,7 @@ impl Compression {
     }
 }
 
-enum Reader {
-    Zip {
-        zip: rawzip::ZipSliceArchive<Vec<u8>>,
-        prelude: Vec<u8>,
-    },
-    Data(Vec<u8>),
-}
-
-#[derive(Tsify, Serialize)]
+#[derive(Tsify, Debug, Serialize)]
 #[tsify(into_wasm_abi)]
 pub enum ContentType {
     #[serde(rename = "application/zip")]

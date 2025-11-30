@@ -39,6 +39,7 @@ const EU4_DATE_TYPE: &'static str = r#"export type Eu4Date = string;"#;
 const PROVINCE_ID_TYPE: &'static str = r#"export type ProvinceId = number;"#;
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct SaveFile(SaveFileImpl);
 
 #[wasm_bindgen]
@@ -315,6 +316,7 @@ impl SaveFile {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct SaveFileParsed(Eu4Save, Encoding);
 
 #[wasm_bindgen]
