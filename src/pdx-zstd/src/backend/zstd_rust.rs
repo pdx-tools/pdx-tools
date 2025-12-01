@@ -49,26 +49,44 @@ pub fn decode_to(input: &[u8], dst: &mut [u8]) -> Result<()> {
     Ok(())
 }
 
-pub struct Decoder<'a> {
+pub struct Decoder<R: Read> {
     inner: Cursor<Vec<u8>>,
-    phantom: std::marker::PhantomData<&'a ()>,
+    _phantom: std::marker::PhantomData<R>,
 }
 
-impl<'a> Decoder<'a> {
-    pub fn from_slice(data: &'a [u8]) -> Result<Self> {
-        let cursor = Cursor::new(data);
+impl<R: Read> std::fmt::Debug for Decoder<R> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Decoder zstd_rust").finish()
+    }
+}
+
+impl<R: Read> Decoder<R> {
+    pub fn new(mut reader: R) -> Result<Self> {
+        // Read all compressed data from the reader
+        let mut compressed = Vec::new();
+        reader.read_to_end(&mut compressed)?;
+
+        // Decompress the data
+        let cursor = Cursor::new(compressed);
         let mut decoder = ruzstd::decoding::StreamingDecoder::new(cursor)
             .map_err(|e| Error::Zstd(Box::new(e)))?;
         let mut decompressed = Vec::new();
         decoder.read_to_end(&mut decompressed)?;
+
         Ok(Self {
             inner: Cursor::new(decompressed),
-            phantom: std::marker::PhantomData,
+            _phantom: std::marker::PhantomData,
         })
     }
 }
 
-impl<'a> Read for Decoder<'a> {
+impl<'a> Decoder<&'a [u8]> {
+    pub fn from_slice(data: &'a [u8]) -> Result<Self> {
+        Self::new(data)
+    }
+}
+
+impl<R: Read> Read for Decoder<R> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         self.inner.read(buf)
     }
@@ -116,6 +134,12 @@ impl<W: Write> Write for RuzstdEncoder<W> {
 
 pub struct Encoder<W: Write> {
     inner: RuzstdEncoder<W>,
+}
+
+impl<W: Write> std::fmt::Debug for Encoder<W> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Encoder zstd_rust").finish()
+    }
 }
 
 impl<W: Write> Encoder<W> {
