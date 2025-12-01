@@ -25,24 +25,30 @@ pub fn decode_to(input: &[u8], dst: &mut [u8]) -> Result<()> {
     Ok(())
 }
 
-pub struct Decoder<'a> {
-    inner: zstd::Decoder<'static, std::io::BufReader<&'a [u8]>>,
+pub struct Decoder<R> {
+    inner: zstd::Decoder<'static, std::io::BufReader<R>>,
 }
 
-impl<'a> fmt::Debug for Decoder<'a> {
+impl<R: Read> fmt::Debug for Decoder<R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Decoder zstd_c").finish()
     }
 }
 
-impl<'a> Decoder<'a> {
-    pub fn from_slice(data: &'a [u8]) -> Result<Self> {
-        let decoder = zstd::Decoder::new(data).map_err(|e| Error::Zstd(Box::new(e)))?;
+impl<R: Read> Decoder<R> {
+    pub fn new(reader: R) -> Result<Self> {
+        let decoder = zstd::Decoder::new(reader).map_err(|e| Error::Zstd(Box::new(e)))?;
         Ok(Self { inner: decoder })
     }
 }
 
-impl<'a> Read for Decoder<'a> {
+impl<'a> Decoder<&'a [u8]> {
+    pub fn from_slice(data: &'a [u8]) -> Result<Decoder<&'a [u8]>> {
+        Self::new(data)
+    }
+}
+
+impl<R: Read> Read for Decoder<R> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         self.inner.read(buf)
     }

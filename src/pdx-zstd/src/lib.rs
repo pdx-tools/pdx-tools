@@ -79,7 +79,7 @@ mod tests {
     #[test]
     fn test_decoder_streaming() {
         let compressed = encode_all(SAMPLE_DATA, 3).unwrap();
-        let mut decoder = Decoder::from_slice(&compressed).unwrap();
+        let mut decoder = Decoder::from_slice(compressed.as_slice()).unwrap();
         let mut result = Vec::new();
         decoder.read_to_end(&mut result).unwrap();
         assert_eq!(result, SAMPLE_DATA);
@@ -166,5 +166,25 @@ mod tests {
         let mut output = Vec::new();
         copy_decode(&compressed, &mut output).unwrap();
         assert_eq!(output, LARGE_DATA);
+    }
+
+    #[test]
+    fn test_decoder_from_cursor() {
+        let compressed = encode_all(SAMPLE_DATA, 3).unwrap();
+        let cursor = std::io::Cursor::new(compressed);
+        let mut decoder = Decoder::new(cursor).unwrap();
+        let mut result = Vec::new();
+        decoder.read_to_end(&mut result).unwrap();
+        assert_eq!(result, SAMPLE_DATA);
+    }
+
+    #[test]
+    fn test_decoder_with_large_data_cursor() {
+        let compressed = encode_all(LARGE_DATA, 3).unwrap();
+        let cursor = std::io::Cursor::new(compressed);
+        let mut decoder = Decoder::new(cursor).unwrap();
+        let mut result = Vec::new();
+        decoder.read_to_end(&mut result).unwrap();
+        assert_eq!(result, LARGE_DATA);
     }
 }
