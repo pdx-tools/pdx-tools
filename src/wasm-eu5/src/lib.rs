@@ -60,6 +60,7 @@ impl From<Eu5MapMode> for MapMode {
 }
 
 mod console_error_panic_hook;
+mod console_writer;
 mod tokens;
 pub use tokens::set_tokens;
 
@@ -769,6 +770,11 @@ pub enum HoverDisplayData {
 #[wasm_bindgen]
 pub fn setup_eu5_wasm() {
     crate::console_error_panic_hook::set_once();
+
+    tracing::subscriber::set_global_default(console_writer::ConsoleSubscriber::new(
+        tracing::Level::DEBUG,
+    ))
+    .expect("setting tracing default failed");
 }
 
 #[wasm_bindgen]
