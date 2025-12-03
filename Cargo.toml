@@ -64,6 +64,7 @@ jomini = { version = "0.34", features = ["envelope"] }
 js-sys = "0.3.83"
 mathru = "0.15.3"
 mimalloc = "0.1.43"
+nu-ansi-term = "0.50.1"
 pdx-assets = { path = "src/pdx-assets" }
 pdx-map = { path = "src/pdx-map", default-features = false }
 pdx-zstd = { path = "src/pdx-zstd", default-features = false }
@@ -99,6 +100,7 @@ wasm-pdx-map = { path = "src/wasm-pdx-map" }
 web-sys = "0.3.83"
 webp = "0.3"
 wgpu = { version = "27.0" }
+winit = "0.30"
 zstd = { version = "0.13.0", default-features = false }
 
 [workspace.lints]
