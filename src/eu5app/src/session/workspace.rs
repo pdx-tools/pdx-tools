@@ -397,6 +397,13 @@ impl Eu5Workspace {
     where
         F: Fn(&eu5save::models::Location) -> eu5save::models::CountryId,
     {
+        let terrain = self.location_terrain(location_idx);
+        if terrain.is_water() {
+            return GpuColor::WATER;
+        } else if !terrain.is_passable() {
+            return GpuColor::IMPASSABLE;
+        }
+
         let save_location_entry = self.gamestate.locations.index(location_idx);
         let save_location = save_location_entry.location();
         let country_id = get_country(save_location);
@@ -592,46 +599,13 @@ impl Eu5Workspace {
     }
 
     fn apply_political_colors(&mut self) {
-        // Collect terrain and color data first to avoid borrow conflicts
-        let mut color_data = Vec::new();
         for idx in 0..self.gamestate.locations.len() {
             let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let terrain = self.location_terrain(location_idx);
-
-            let (primary, secondary) = if terrain.is_water() || !terrain.is_passable() {
-                let owner_color = self
-                    .gamestate
-                    .locations
-                    .index(location_idx)
-                    .location()
-                    .owner;
-                if let Some(owner_idx) = self.gamestate.countries.get(owner_color) {
-                    let color = self
-                        .gamestate
-                        .countries
-                        .index(owner_idx)
-                        .data()
-                        .map(|d| GpuColor::from(d.color.0))
-                        .unwrap_or(GpuColor::UNOWNED);
-                    (color, color)
-                } else {
-                    (GpuColor::UNOWNED, GpuColor::UNOWNED)
-                }
-            } else {
-                let political = self.location_political_color(location_idx);
-                let control = self.location_control_color(location_idx);
-                (political, control)
-            };
-
-            color_data.push((idx, primary, secondary));
-        }
-
-        // Apply colors
-        for (idx, primary, secondary) in color_data {
-            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            let primary = self.location_political_color(location_idx);
+            let controller = self.location_control_color(location_idx);
+            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[location_idx]);
             gpu_location.set_primary_color(primary);
-            gpu_location.set_secondary_color(secondary);
+            gpu_location.set_secondary_color(controller);
         }
     }
 
