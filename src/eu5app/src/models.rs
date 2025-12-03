@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 pub struct GameLocationData {
-    pub name: String,
     pub color_id: [u8; 3],
     pub terrain: Terrain,
     pub coordinates: (u16, u16),

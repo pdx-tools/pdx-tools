@@ -1,6 +1,6 @@
+use crate::game_data::GameDataError;
 use crate::hexcolor::HexColor;
-use crate::models::{GameLocationData, Terrain};
-use anyhow::{Context, Result};
+use crate::models::Terrain;
 use eu5save::hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use std::io::Read;
@@ -13,7 +13,7 @@ pub struct DefaultMap {
     pub impassable: FxHashSet<String>,
 }
 
-pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap> {
+pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap, GameDataError> {
     let reader = jomini::text::TokenReader::new(reader);
 
     #[derive(Deserialize, Debug)]
@@ -26,7 +26,7 @@ pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap> {
 
     let default_map: DefaultMapRaw = jomini::text::de::TextDeserializer::from_utf8_reader(reader)
         .deserialize()
-        .context("Failed to parse default.map")?;
+        .map_err(|e| GameDataError::Jomini(e, "default.map"))?;
 
     let water_locations = default_map
         .sea_zones
@@ -48,38 +48,43 @@ pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap> {
     })
 }
 
-pub fn parse_named_locations(reader: impl Read) -> Result<FxHashMap<String, HexColor>> {
+pub fn parse_named_locations(
+    reader: impl Read,
+) -> Result<FxHashMap<String, HexColor>, GameDataError> {
     let reader = jomini::text::TokenReader::new(reader);
     let location_hex: FxHashMap<String, HexColor> =
         jomini::text::de::TextDeserializer::from_utf8_reader(reader)
             .deserialize()
-            .context("Failed to parse named_locations")?;
+            .map_err(|e| GameDataError::Jomini(e, "named_locations"))?;
     Ok(location_hex)
+}
+
+#[derive(Debug)]
+pub struct LocationTerrain {
+    pub name: String,
+    pub terrain: Terrain,
+    pub color: HexColor,
 }
 
 pub fn parse_locations_data(
     named_locations: FxHashMap<String, HexColor>,
     default_map: &DefaultMap,
-) -> Vec<GameLocationData> {
-    named_locations
-        .into_iter()
-        .map(|(name, hex)| {
-            let terrain = if default_map.water_locations.contains(&name) {
-                Terrain::Water
-            } else if default_map.impassable.contains(&name) {
-                Terrain::Impassable
-            } else {
-                Terrain::default()
-            };
+) -> impl Iterator<Item = LocationTerrain> {
+    named_locations.into_iter().map(|(name, hex)| {
+        let terrain = if default_map.water_locations.contains(&name) {
+            Terrain::Water
+        } else if default_map.impassable.contains(&name) {
+            Terrain::Impassable
+        } else {
+            Terrain::default()
+        };
 
-            GameLocationData {
-                name,
-                color_id: hex.0,
-                terrain,
-                coordinates: (0, 0), // Will be filled by texture processing
-            }
-        })
-        .collect()
+        LocationTerrain {
+            name,
+            terrain,
+            color: hex,
+        }
+    })
 }
 
 /// Parse a single localization file in the format:
@@ -109,6 +114,7 @@ pub fn parse_localization_string(data: &str) -> HashMap<String, String> {
 }
 
 /// Extract country localizations from the parsed data.
+///
 /// Filters for uppercase tags and excludes adjectives (_ADJ suffix).
 pub fn country_localization(localizations: &HashMap<String, String>) -> HashMap<String, String> {
     localizations
@@ -122,7 +128,7 @@ pub fn country_localization(localizations: &HashMap<String, String>) -> HashMap<
         .collect()
 }
 
-#[cfg(all(test, not(target_family = "wasm")))]
+#[cfg(test)]
 mod tests {
     use super::*;
 

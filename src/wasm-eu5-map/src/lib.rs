@@ -1,5 +1,5 @@
 use eu5app::{
-    game_data::{GameDataProvider, OptimizedGameData},
+    game_data::{TextureProvider, optimized::OptimizedTextureBundle},
     should_highlight_individual_locations, texture_buffer_size, tile_dimensions,
 };
 use pdx_map::{
@@ -274,24 +274,24 @@ impl Eu5WasmMapRenderer {
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct Eu5WasmGameBundle {
-    bundle: OptimizedGameData,
+    textures: OptimizedTextureBundle<Vec<u8>>,
 }
 
 #[wasm_bindgen]
 impl Eu5WasmGameBundle {
     #[wasm_bindgen]
     pub fn open(data: Vec<u8>) -> Result<Self, JsError> {
-        let bundle = OptimizedGameData::open(data)
-            .map_err(|e| JsError::new(&format!("Failed to open game bundle: {e}")))?;
-        Ok(Eu5WasmGameBundle { bundle })
+        OptimizedTextureBundle::open(data)
+            .map(|textures| Eu5WasmGameBundle { textures })
+            .map_err(|e| JsError::new(&format!("Failed to open game bundle: {e}")))
     }
 
     #[wasm_bindgen]
     pub fn west_texture_data(&self) -> Result<Eu5WasmTextureData, JsError> {
         let size = texture_buffer_size();
         let mut data = vec![0u8; size];
-        self.bundle
-            .west_texture(&mut data)
+        self.textures
+            .load_west_texture(&mut data)
             .map_err(|e| JsError::new(&format!("Failed to get west texture data: {e}")))?;
         Ok(Eu5WasmTextureData { data })
     }
@@ -301,8 +301,8 @@ impl Eu5WasmGameBundle {
         &self,
         mut data: Eu5WasmTextureData,
     ) -> Result<Eu5WasmTextureData, JsError> {
-        self.bundle
-            .east_texture(&mut data.data)
+        self.textures
+            .load_east_texture(&mut data.data)
             .map_err(|e| JsError::new(&format!("Failed to get east texture data: {e}")))?;
         Ok(Eu5WasmTextureData { data: data.data })
     }

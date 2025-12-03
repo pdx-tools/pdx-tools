@@ -67,6 +67,7 @@ mimalloc = "0.1.43"
 pdx-assets = { path = "src/pdx-assets" }
 pdx-map = { path = "src/pdx-map", default-features = false }
 pdx-zstd = { path = "src/pdx-zstd", default-features = false }
+postcard = { version = "1.1.3", default-features = false }
 quote = "1.0.34"
 rand = "0.8"
 rawbmp = { path = "src/rawbmp" }

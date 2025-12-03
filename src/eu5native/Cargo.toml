@@ -10,8 +10,9 @@ workspace = true
 bumpalo = { workspace = true, features = ["collections"] }
 bumpalo-serde = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-eu5app = { workspace = true, default-features = false, features = ["zstd_c"] }
+eu5app = { workspace = true, default-features = false, features = ["game-install", "zstd_c"] }
 eu5save = { workspace = true }
 image = { workspace = true, features = ["png"] }
 pdx-map = { workspace = true, features = ["render"] }
 tokio = { workspace = true, features = ["rt"] }
+tracing-subscriber = { workspace = true }

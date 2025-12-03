@@ -2,12 +2,8 @@ use crate::{
     MapMode, OverlayBodyConfig, OverlayTable, TableCell, game_data::GameDataProvider,
     models::Terrain, session::Eu5LoadedSave, subject_color,
 };
-use eu5save::{
-    hash::{FnvHashMap, FxHashMap},
-    models::{
-        CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIndexedVec,
-        RawMaterialsName,
-    },
+use eu5save::models::{
+    CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIndexedVec, RawMaterialsName,
 };
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
 use std::cell::OnceCell;
@@ -15,19 +11,19 @@ use std::collections::HashMap;
 
 /// An EU5 workspace combines the saved game state with patch-specific game data,
 /// and manages rendering state including map modes and GPU data structures.
-#[derive(Debug)]
 pub struct Eu5Workspace {
     // Arena-owned gamestate from Eu5LoadedSave
     #[expect(dead_code)]
     arena: bumpalo::Bump,
     gamestate: Gamestate<'static>,
 
+    game_data: Box<dyn GameDataProvider>,
+
     // Session data (relationships and indices)
     overlord_of: CountryIndexedVecOwned<Option<CountryIdx>>,
     location_terrain: LocationIndexedVec<Terrain>,
     location_coordinates: LocationIndexedVec<(u16, u16)>,
     location_building_levels: OnceCell<LocationIndexedVec<f64>>,
-    country_localizations: HashMap<String, String>,
 
     // Map app state (rendering)
     current_map_mode: MapMode,
@@ -39,17 +35,10 @@ impl Eu5Workspace {
     /// Create a new workspace from loaded save data and game data provider
     pub fn new(
         loaded_save: Eu5LoadedSave,
-        game_data: impl GameDataProvider,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+        game_data: impl GameDataProvider + 'static,
+    ) -> Result<Self, crate::game_data::GameDataError> {
         let (arena, gamestate) = loaded_save.into_parts();
-
-        let game_locations = game_data.locations()?;
-        let country_localizations = game_data.country_localizations()?;
-        let name_lookup = game_locations
-            .iter()
-            .enumerate()
-            .map(|(idx, loc)| (loc.name.as_str(), idx))
-            .collect::<FxHashMap<_, _>>();
+        let game_data = Box::new(game_data);
 
         let mut overlord_of = gamestate.countries.create_index(None);
         for dep in gamestate.diplomacy_manager.dependencies() {
@@ -63,28 +52,31 @@ impl Eu5Workspace {
             overlord_of[second_idx] = Some(first_idx);
         }
 
-        let location_to_game_lookup = gamestate
-            .metadata
-            .compatibility
-            .locations_iter()
-            .filter_map(|(loc_id, name)| {
-                let game_idx = name_lookup.get(name)?;
-                Some((loc_id, *game_idx))
-            })
-            .collect::<FnvHashMap<_, _>>();
-
         let mut location_terrain = gamestate.locations.create_index(Terrain::default());
         let mut location_color_id = gamestate.locations.create_index(GpuColor::EMPTY);
         let mut location_coordinates = gamestate.locations.create_index((0, 0));
 
-        for location in gamestate.locations.iter() {
+        // Build join by looking up each save location in game data
+        let locations_iter = gamestate
+            .locations
+            .iter()
+            .zip(gamestate.metadata().compatibility.locations_iter());
+
+        for (location, (id, name)) in locations_iter {
+            assert_eq!(
+                location.id(),
+                id,
+                "Location ID mismatch: {} vs {}",
+                location.id().value(),
+                id.value()
+            );
+
             let (terrain, color, coordinates) =
-                if let Some(&game_idx) = location_to_game_lookup.get(&location.id()) {
-                    let game_location = &game_locations[game_idx];
+                if let Some(game_loc) = game_data.lookup_location(name) {
                     (
-                        game_location.terrain,
-                        GpuColor::from(game_location.color_id),
-                        game_location.coordinates,
+                        game_loc.terrain,
+                        GpuColor::from(game_loc.color_id),
+                        game_loc.coordinates,
                     )
                 } else {
                     (Terrain::default(), GpuColor::EMPTY, Default::default())
@@ -101,11 +93,11 @@ impl Eu5Workspace {
         let mut workspace = Self {
             arena,
             gamestate,
+            game_data,
             overlord_of,
             location_terrain,
             location_coordinates,
             location_building_levels: OnceCell::new(),
-            country_localizations,
             current_map_mode: MapMode::Political,
             location_arrays,
             gpu_indices,
@@ -125,15 +117,12 @@ impl Eu5Workspace {
 
     /// Get localized country name from a country tag.
     /// Returns the localized name if available, otherwise returns the tag itself.
-    pub fn localized_country_name<'a, 'b: 'a>(
-        &'b self,
+    pub fn localized_country_name<'a>(
+        &'a self,
         country_name: &'a eu5save::models::CountryName,
     ) -> &'a str {
         let tag = country_name.name().to_str();
-        self.country_localizations
-            .get(tag)
-            .map(|s| s.as_str())
-            .unwrap_or(tag)
+        self.game_data.localized_country_name(tag).unwrap_or(tag)
     }
 
     pub fn gamestate(&self) -> &Gamestate<'static> {
@@ -534,7 +523,7 @@ impl Eu5Workspace {
     fn build_location_arrays(
         &mut self,
         location_color_id: &LocationIndexedVec<GpuColor>,
-    ) -> Result<LocationArrays, Box<dyn std::error::Error>> {
+    ) -> Result<LocationArrays, crate::game_data::GameDataError> {
         let location_data = location_color_id
             .iter()
             .copied()
@@ -1576,5 +1565,14 @@ impl Eu5Workspace {
             },
             max_rows: Some(MAX_ROWS as u32),
         }
+    }
+}
+
+impl std::fmt::Debug for Eu5Workspace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Eu5Workspace")
+            .field("gamestate", &self.gamestate)
+            .field("current_map_mode", &self.current_map_mode)
+            .finish_non_exhaustive()
     }
 }

@@ -262,7 +262,6 @@ pub fn create_provider<P: AsRef<Path>>(source_path: P) -> Result<Box<dyn FilePro
     }
 }
 
-/// Implement FileProvider for all Box<dyn FileProvider>
 impl FileProvider for Box<dyn FileProvider> {
     fn read_file(&self, path: &str) -> Result<Vec<u8>> {
         self.as_ref().read_file(path)
@@ -286,5 +285,34 @@ impl FileProvider for Box<dyn FileProvider> {
 
     fn open_file(&self, path: &str) -> Result<Box<dyn Read>> {
         self.as_ref().open_file(path)
+    }
+}
+
+impl<P> FileProvider for &P
+where
+    P: FileProvider,
+{
+    fn read_file(&self, path: &str) -> Result<Vec<u8>> {
+        (*self).read_file(path)
+    }
+
+    fn read_to_string(&self, path: &str) -> Result<String> {
+        (*self).read_to_string(path)
+    }
+
+    fn file_exists(&self, path: &str) -> bool {
+        (*self).file_exists(path)
+    }
+
+    fn walk_directory(&self, path: &str, ends_with: &[&str]) -> Result<Vec<String>> {
+        (*self).walk_directory(path, ends_with)
+    }
+
+    fn fs_file(&self, path: &str) -> Result<FsFile> {
+        (*self).fs_file(path)
+    }
+
+    fn open_file(&self, path: &str) -> Result<Box<dyn Read>> {
+        (*self).open_file(path)
     }
 }

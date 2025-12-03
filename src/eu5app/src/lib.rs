@@ -7,9 +7,6 @@ mod subject_color;
 
 pub use session::{Eu5LoadError, Eu5LoadedSave, Eu5SaveLoader, Eu5SaveMetadata, Eu5Workspace};
 
-#[cfg(not(target_family = "wasm"))]
-pub use game_data::native::SourceGameData;
-
 pub use hexcolor::HexColor;
 pub use map::*;
 pub use models::*;
