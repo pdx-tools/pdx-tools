@@ -58,8 +58,8 @@ function WhatsNewBody({ hasClicked }: { hasClicked?: boolean }) {
         What&apos;s New
         {hasUnread && !hasClicked ? (
           <span className="absolute -top-1 -right-2 inline-flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-blue-500" />
           </span>
         ) : null}
       </span>
