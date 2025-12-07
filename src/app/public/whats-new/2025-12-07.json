@@ -1,0 +1,7 @@
+{
+  "sections": {
+    "fixes": [
+      "Incorrect decoding of EU5 1.0.10 compact numbers"
+    ]
+  }
+}
