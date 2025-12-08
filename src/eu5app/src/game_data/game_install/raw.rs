@@ -77,14 +77,14 @@ impl GameTextureBundle {
 }
 
 impl TextureProvider for GameTextureBundle {
-    fn load_west_texture(&self, dst: &mut [u8]) -> Result<(), GameDataError> {
-        dst.copy_from_slice(&self.west_texture);
-        Ok(())
+    fn load_west_texture(&mut self, mut dst: Vec<u8>) -> Result<Vec<u8>, GameDataError> {
+        std::mem::swap(&mut dst, &mut self.west_texture);
+        Ok(dst)
     }
 
-    fn load_east_texture(&self, dst: &mut [u8]) -> Result<(), GameDataError> {
-        dst.copy_from_slice(&self.east_texture);
-        Ok(())
+    fn load_east_texture(&mut self, mut dst: Vec<u8>) -> Result<Vec<u8>, GameDataError> {
+        std::mem::swap(&mut dst, &mut self.east_texture);
+        Ok(dst)
     }
 
     fn west_texture_size(&self) -> usize {

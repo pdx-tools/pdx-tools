@@ -142,12 +142,22 @@ impl<R> TextureProvider for OptimizedTextureBundle<R>
 where
     R: AsRef<[u8]>,
 {
-    fn load_west_texture(&self, dst: &mut [u8]) -> Result<(), GameDataError> {
-        self.read_entry(self.west_texture.1, dst)
+    fn load_west_texture(&mut self, mut dst: Vec<u8>) -> Result<Vec<u8>, GameDataError> {
+        let size = self.west_texture_size();
+        if dst.len() != size {
+            dst = vec![0u8; size];
+        }
+        self.read_entry(self.west_texture.1, &mut dst)?;
+        Ok(dst)
     }
 
-    fn load_east_texture(&self, dst: &mut [u8]) -> Result<(), GameDataError> {
-        self.read_entry(self.east_texture.1, dst)
+    fn load_east_texture(&mut self, mut dst: Vec<u8>) -> Result<Vec<u8>, GameDataError> {
+        let size = self.east_texture_size();
+        if dst.len() != size {
+            dst = vec![0u8; size];
+        }
+        self.read_entry(self.east_texture.1, &mut dst)?;
+        Ok(dst)
     }
 
     fn west_texture_size(&self) -> usize {

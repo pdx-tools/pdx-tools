@@ -58,11 +58,13 @@ impl std::fmt::Debug for GameData {
 
 /// Provides access to map textures.
 pub trait TextureProvider {
-    /// Load west hemisphere texture into provided buffer.
-    fn load_west_texture(&self, dst: &mut [u8]) -> Result<(), GameDataError>;
+    /// Load west hemisphere texture, returning owned data.
+    /// Pass an empty Vec for new allocation, or pass existing Vec to reuse buffer.
+    fn load_west_texture(&mut self, dst: Vec<u8>) -> Result<Vec<u8>, GameDataError>;
 
-    /// Load east hemisphere texture into provided buffer.
-    fn load_east_texture(&self, dst: &mut [u8]) -> Result<(), GameDataError>;
+    /// Load east hemisphere texture, returning owned data.
+    /// Pass an empty Vec for new allocation, or pass existing Vec to reuse buffer.
+    fn load_east_texture(&mut self, dst: Vec<u8>) -> Result<Vec<u8>, GameDataError>;
 
     /// Get expected size of west texture.
     fn west_texture_size(&self) -> usize;

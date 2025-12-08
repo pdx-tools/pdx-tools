@@ -1,6 +1,6 @@
 use eu5app::{
     game_data::{TextureProvider, optimized::OptimizedTextureBundle},
-    should_highlight_individual_locations, texture_buffer_size, tile_dimensions,
+    should_highlight_individual_locations, tile_dimensions,
 };
 use pdx_map::{
     CanvasDimensions, GpuLocationIdx, GpuSurfaceContext, LocationArrays, LocationFlags,
@@ -287,24 +287,24 @@ impl Eu5WasmGameBundle {
     }
 
     #[wasm_bindgen]
-    pub fn west_texture_data(&self) -> Result<Eu5WasmTextureData, JsError> {
-        let size = texture_buffer_size();
-        let mut data = vec![0u8; size];
-        self.textures
-            .load_west_texture(&mut data)
+    pub fn west_texture_data(&mut self) -> Result<Eu5WasmTextureData, JsError> {
+        let data = self
+            .textures
+            .load_west_texture(Vec::new())
             .map_err(|e| JsError::new(&format!("Failed to get west texture data: {e}")))?;
         Ok(Eu5WasmTextureData { data })
     }
 
     #[wasm_bindgen]
     pub fn east_texture_data(
-        &self,
-        mut data: Eu5WasmTextureData,
+        &mut self,
+        data: Eu5WasmTextureData,
     ) -> Result<Eu5WasmTextureData, JsError> {
-        self.textures
-            .load_east_texture(&mut data.data)
+        let data = self
+            .textures
+            .load_east_texture(data.data)
             .map_err(|e| JsError::new(&format!("Failed to get east texture data: {e}")))?;
-        Ok(Eu5WasmTextureData { data: data.data })
+        Ok(Eu5WasmTextureData { data })
     }
 }
 
