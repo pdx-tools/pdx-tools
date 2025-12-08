@@ -8,6 +8,10 @@ use crate::{CanvasDimensions, GpuColor, LocationArrays, LocationFlags, ViewportB
 /// Maximum texture dimension supported
 const MAX_TEXTURE_DIMENSION: u32 = 8192;
 
+fn device_trace_descriptor() -> wgpu::Trace {
+    wgpu::Trace::default()
+}
+
 /// Combines a texture and its view for map rendering operations
 #[derive(Debug)]
 pub struct MapTexture {
@@ -104,6 +108,7 @@ pub struct GpuContext {
 
 impl GpuContext {
     /// Create a new headless GPU context for map rendering
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "info"))]
     pub async fn new() -> Result<Self, RenderError> {
         let instance = Self::create_instance();
         let adapter = Self::request_adapter(&instance, None).await?;
@@ -111,6 +116,10 @@ impl GpuContext {
     }
 
     /// Create a texture from provided data and dimensions
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip_all, level = "debug", fields(width = width, height = height, label = label))
+    )]
     pub fn create_texture(
         &self,
         texture_data: &[u8],
@@ -174,6 +183,7 @@ impl GpuContext {
     }
 
     /// Request a GPU adapter
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
     async fn request_adapter(
         instance: &wgpu::Instance,
         surface: Option<&wgpu::Surface<'_>>,
@@ -190,6 +200,7 @@ impl GpuContext {
     }
 
     /// Initialize GPU device, adapter, buffers, and pipelines from an adapter
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "info"))]
     async fn from_adapter(adapter: wgpu::Adapter) -> Result<Self, RenderError> {
         let limits = wgpu::Limits {
             max_texture_dimension_2d: MAX_TEXTURE_DIMENSION,
@@ -202,7 +213,7 @@ impl GpuContext {
                 required_limits: limits,
                 label: None,
                 memory_hints: wgpu::MemoryHints::default(),
-                trace: wgpu::Trace::default(),
+                trace: device_trace_descriptor(),
                 experimental_features: wgpu::ExperimentalFeatures::disabled(),
             })
             .await?;
@@ -280,6 +291,7 @@ impl GpuContext {
     }
 
     /// Create compute and render pipelines from shader sources and GPU device
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
     fn compile_compute_pipeline(
         device: &wgpu::Device,
     ) -> (wgpu::ComputePipeline, wgpu::BindGroupLayout) {
@@ -426,6 +438,7 @@ pub struct GpuSurfaceContext {
 
 impl GpuSurfaceContext {
     /// Create a new GPU surface context for rendering to a surface
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "info"))]
     pub async fn new(surface: SurfaceTarget<'static>) -> Result<Self, RenderError> {
         let instance = GpuContext::create_instance();
         let surface = instance.create_surface(surface)?;
@@ -459,6 +472,7 @@ pub struct GpuSurfaceContextRef<'a> {
 }
 
 impl<'a> GpuSurfaceContextRef<'a> {
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
     pub fn display_surface(&self, display: CanvasDimensions) -> SurfacePipeline {
         let surface_caps = self.surface.get_capabilities(&self.core.gpu.adapter);
         let surface_format = surface_caps
@@ -618,6 +632,10 @@ pub struct Renderer {
 }
 
 impl Renderer {
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip_all, level = "info", fields(viewport_width = viewport_width, viewport_height = viewport_height))
+    )]
     pub fn new(
         pipelines: GpuContext,
         west_texture: MapTexture,
@@ -678,6 +696,10 @@ impl Renderer {
     }
 
     /// Create a new Renderer that shares GPU resources with an existing renderer but has different viewport dimensions
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip_all, level = "debug", fields(viewport_width = viewport_width, viewport_height = viewport_height))
+    )]
     pub fn with_shared_gpu(
         source_renderer: &Renderer,
         viewport_width: u32,
@@ -759,6 +781,10 @@ impl Renderer {
         })
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip_all, level = "debug", fields(new_width, new_height))
+    )]
     pub fn resize_viewport(&mut self, new_width: u32, new_height: u32) {
         if self.viewport_width == new_width && self.viewport_height == new_height {
             return;
@@ -829,6 +855,10 @@ impl Renderer {
         self.viewport_bind_group = bind_group;
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip_all, level = "debug", fields(x = bounds.x, y = bounds.y, w = bounds.width, h = bounds.height, zoom = bounds.zoom_level))
+    )]
     pub fn render_scene(&self, bounds: ViewportBounds) {
         let texture = &self.viewport_output_texture;
 
@@ -1069,19 +1099,23 @@ impl SurfaceMapRenderer {
         self.renderer.tile_height
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip_all, level = "info", fields(width = dimensions.canvas_width, height = dimensions.canvas_height))
+    )]
     pub fn new(
         components: GpuSurfaceContext,
         west_texture: MapTexture,
         east_texture: MapTexture,
         display_pipeline: SurfacePipeline,
-        display: CanvasDimensions,
+        dimensions: CanvasDimensions,
     ) -> Self {
         let renderer = Renderer::new(
             components.core,
             west_texture,
             east_texture,
-            display.canvas_width,
-            display.canvas_height,
+            dimensions.canvas_width,
+            dimensions.canvas_height,
         );
 
         let sampler = renderer
@@ -1108,13 +1142,17 @@ impl SurfaceMapRenderer {
             surface: components.surface,
             render_pipeline: display_pipeline.render_pipeline,
             render_bind_group_layout: display_pipeline.render_bind_group_layout,
-            display,
+            display: dimensions,
             sampler,
             render_bind_group,
             surface_config: display_pipeline.surface_config,
         }
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip_all, level = "debug", fields(new_width, new_height))
+    )]
     pub fn resize(&mut self, new_width: u32, new_height: u32) {
         self.display.canvas_height = new_height;
         self.display.canvas_width = new_width;
@@ -1379,6 +1417,10 @@ pub struct HeadlessMapRenderer {
 
 impl HeadlessMapRenderer {
     /// Create a headless map renderer from initialized GPU context and texture data
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip_all, level = "info", fields(viewport_width = viewport_width, viewport_height = viewport_height))
+    )]
     pub fn new(
         gpu: GpuContext,
         west_texture: MapTexture,
@@ -1398,11 +1440,23 @@ impl HeadlessMapRenderer {
     }
 
     // Create viewport-sized output texture and staging buffer
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip_all, level = "debug", fields(new_width = new_width, new_height = new_height))
+    )]
     pub fn resize_viewport(&mut self, new_width: u32, new_height: u32) {
         self.renderer.resize_viewport(new_width, new_height)
     }
 
     // Read back viewport data
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            skip_all,
+            level = "debug",
+            fields(world_width, world_height, x_offset)
+        )
+    )]
     pub async fn readback_viewport_data(
         &mut self,
         world_width: u32,

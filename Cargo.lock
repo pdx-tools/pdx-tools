@@ -745,6 +745,7 @@ dependencies = [
  "image",
  "pdx-map",
  "tokio",
+ "tracing",
  "tracing-subscriber",
 ]
 
@@ -1932,6 +1933,7 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "futures-channel",
+ "tracing",
  "wgpu",
 ]
 

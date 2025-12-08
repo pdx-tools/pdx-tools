@@ -4,7 +4,9 @@ use eu5app::{
     game_data::{TextureProvider, game_install::Eu5GameInstall},
 };
 use eu5save::{BasicTokenResolver, Eu5File};
-use std::path::PathBuf;
+use std::{io::IsTerminal, path::PathBuf};
+use tracing::{info, info_span, level_filters::LevelFilter};
+use tracing_subscriber::{EnvFilter, fmt::format::FmtSpan};
 
 /// EU5 native map renderer - renders EU5 save files to PNG images
 #[derive(Parser, Debug)]
@@ -29,6 +31,16 @@ struct Args {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let env_filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy();
+
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(env_filter)
+        .with_ansi(std::io::stdout().is_terminal())
+        .with_span_events(FmtSpan::CLOSE)
+        .try_init();
+
     let args = Args::parse();
 
     let rt = tokio::runtime::Builder::new_current_thread()
@@ -39,54 +51,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Using save file: {}", args.save_file.display());
+    info!("Using save file: {}", args.save_file.display());
     let file = std::fs::File::open(&args.save_file)?;
     let file = Eu5File::from_file(file)?;
 
-    println!("Using tokens file: {}", args.tokens.display());
+    info!("Using tokens file: {}", args.tokens.display());
     let file_data = std::fs::read(&args.tokens)?;
     let resolver = BasicTokenResolver::from_text_lines(file_data.as_slice())?;
 
     let parser = Eu5SaveLoader::open(file, resolver)?;
 
-    let start = std::time::Instant::now();
     let save = parser.parse()?;
-    println!("Parsed save file in {}ms", start.elapsed().as_millis());
 
-    println!("Using game data: {}", args.game_data.display());
     let mut game_bundle = Eu5GameInstall::open(&args.game_data)?;
 
-    let start = std::time::Instant::now();
     let pipeline_components = pdx_map::GpuContext::new().await?;
-    println!(
-        "Initialized GPU and pipelines in {}ms",
-        start.elapsed().as_millis()
-    );
-
-    let start = std::time::Instant::now();
-    let mut texture_data = game_bundle.load_west_texture(Vec::new())?;
-    println!("Read west texture in {}ms", start.elapsed().as_millis());
+    let texture_data = game_bundle.load_west_texture(Vec::new())?;
 
     let (tile_width, tile_height) = eu5app::tile_dimensions();
-    let start = std::time::Instant::now();
     let west_view =
         pipeline_components.create_texture(&texture_data, tile_width, tile_height, "West Texture");
-    println!(
-        "Uploaded west texture view in {}ms",
-        start.elapsed().as_millis()
-    );
 
-    let start = std::time::Instant::now();
-    texture_data = game_bundle.load_east_texture(texture_data)?;
-    println!("Read east texture in {}ms", start.elapsed().as_millis());
+    let texture_data = game_bundle.load_east_texture(Vec::new())?;
 
-    let start = std::time::Instant::now();
     let east_view =
         pipeline_components.create_texture(&texture_data, tile_width, tile_height, "East Texture");
-    println!(
-        "Uploaded east texture view in {}ms",
-        start.elapsed().as_millis()
-    );
 
     let mut renderer = pdx_map::HeadlessMapRenderer::new(
         pipeline_components,
@@ -106,45 +95,29 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let mut screenshot_renderer = renderer.into_screenshot_renderer();
 
     // Render west tile and copy to left half of buffer
-    let start = std::time::Instant::now();
     screenshot_renderer.render_west();
-    println!("Rendered west tile in {}ms", start.elapsed().as_millis());
 
-    let start = std::time::Instant::now();
     screenshot_renderer
         .readback_west(&mut combined_buffer)
         .await?;
-    println!(
-        "Read back west tile data in {}ms",
-        start.elapsed().as_millis()
-    );
 
     // Render east tile and copy to right half of buffer
-    let start = std::time::Instant::now();
     screenshot_renderer.render_east();
-    println!("Rendered east tile in {}ms", start.elapsed().as_millis());
 
-    let start = std::time::Instant::now();
     screenshot_renderer
         .readback_east(&mut combined_buffer)
         .await?;
-    println!(
-        "Read back east tile data in {}ms",
-        start.elapsed().as_millis()
-    );
 
     // Create image directly from raw buffer and save
-    let start = std::time::Instant::now();
+    let span = info_span!("RgbaImage::from_raw");
+    let enter = span.enter();
     let output_img = image::RgbaImage::from_raw(full_width, full_height, combined_buffer)
         .ok_or("Failed to create image from raw buffer")?;
-    println!("Created output image in {}ms", start.elapsed().as_millis());
+    drop(enter);
 
-    let start = std::time::Instant::now();
+    let span = info_span!("RgbaImage::save", output = %args.output.display());
+    let enter = span.enter();
     output_img.save(&args.output)?;
-    println!(
-        "Saved image to {} in {}ms",
-        args.output.display(),
-        start.elapsed().as_millis()
-    );
+    drop(enter);
     Ok(())
 }
