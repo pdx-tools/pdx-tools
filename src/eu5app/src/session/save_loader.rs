@@ -16,6 +16,7 @@ pub struct Eu5SaveLoader<R, RES> {
 }
 
 impl Eu5SaveLoader<(), ()> {
+    #[tracing::instrument(name = "eu5.meta.parse", skip_all)]
     pub fn open<R: ReaderAt, RES: TokenResolver>(
         file: Eu5File<R>,
         resolver: RES,
@@ -54,6 +55,7 @@ impl<R: ReaderAt, RES: TokenResolver> Eu5SaveLoader<R, RES> {
         self.meta.clone()
     }
 
+    #[tracing::instrument(name = "eu5.gamestate.parse", skip_all)]
     pub fn parse(self) -> Result<Eu5LoadedSave, Eu5LoadError> {
         let game_content = self
             .archive

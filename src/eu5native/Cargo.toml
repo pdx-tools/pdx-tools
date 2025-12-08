@@ -13,6 +13,7 @@ clap = { workspace = true, features = ["derive"] }
 eu5app = { workspace = true, default-features = false, features = ["game-install", "zstd_c"] }
 eu5save = { workspace = true }
 image = { workspace = true, features = ["png"] }
-pdx-map = { workspace = true, features = ["render"] }
+pdx-map = { workspace = true, features = ["render", "tracing"] }
 tokio = { workspace = true, features = ["rt"] }
-tracing-subscriber = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }

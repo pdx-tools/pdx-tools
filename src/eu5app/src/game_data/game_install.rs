@@ -20,6 +20,7 @@ pub struct Eu5GameInstall {
 
 impl Eu5GameInstall {
     /// Open game data from an arbitrary path (auto-detects type)
+    #[tracing::instrument(name = "eu5.game_install.open", skip_all, fields(path = %path.as_ref().display()))]
     pub fn open(path: impl AsRef<std::path::Path>) -> Result<Self, GameDataError> {
         let path = path.as_ref();
         if path.is_file() {

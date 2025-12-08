@@ -81,18 +81,34 @@ impl MapViewController<SurfaceMapRenderer> {
     }
 
     /// Resize with surface reconfiguration
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip_all, level = "debug", fields(logical_width, logical_height))
+    )]
     pub fn resize(&mut self, logical_width: u32, logical_height: u32) {
         self.renderer.resize(logical_width, logical_height);
         self.viewport.resize(logical_width, logical_height);
     }
 
     /// Zoom with automatic re-render and present
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip_all, level = "debug", fields(cursor_x, cursor_y, zoom_delta))
+    )]
     pub fn zoom_at_point(&mut self, cursor_x: f32, cursor_y: f32, zoom_delta: f32) {
         // Delegate zoom logic to map viewport
         self.viewport.zoom_at_point(cursor_x, cursor_y, zoom_delta);
     }
 
     /// Set world point under cursor with automatic re-render and present
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            skip_all,
+            level = "debug",
+            fields(world_x, world_y, canvas_x, canvas_y)
+        )
+    )]
     pub fn set_world_point_under_cursor(
         &mut self,
         world_x: f32,
@@ -163,6 +179,7 @@ impl<R: MapRenderer> ScreenshotRenderer<R> {
     }
 
     /// Render the western tile
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
     pub fn render_west(&self) {
         let west_bounds = ViewportBounds {
             x: 0,
@@ -175,6 +192,7 @@ impl<R: MapRenderer> ScreenshotRenderer<R> {
     }
 
     /// Render the eastern tile
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
     pub fn render_east(&self) {
         let east_bounds = ViewportBounds {
             x: self.tile_width,
