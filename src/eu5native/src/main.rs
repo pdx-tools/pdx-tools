@@ -54,7 +54,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     println!("Parsed save file in {}ms", start.elapsed().as_millis());
 
     println!("Using game data: {}", args.game_data.display());
-    let game_bundle = Eu5GameInstall::open(&args.game_data)?;
+    let mut game_bundle = Eu5GameInstall::open(&args.game_data)?;
 
     let start = std::time::Instant::now();
     let pipeline_components = pdx_map::GpuContext::new().await?;
@@ -63,11 +63,8 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         start.elapsed().as_millis()
     );
 
-    let texture_size = eu5app::texture_buffer_size();
-    let mut texture_data = vec![0u8; texture_size];
-
     let start = std::time::Instant::now();
-    game_bundle.load_west_texture(&mut texture_data)?;
+    let mut texture_data = game_bundle.load_west_texture(Vec::new())?;
     println!("Read west texture in {}ms", start.elapsed().as_millis());
 
     let (tile_width, tile_height) = eu5app::tile_dimensions();
@@ -80,7 +77,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let start = std::time::Instant::now();
-    game_bundle.load_east_texture(&mut texture_data)?;
+    texture_data = game_bundle.load_east_texture(texture_data)?;
     println!("Read east texture in {}ms", start.elapsed().as_millis());
 
     let start = std::time::Instant::now();

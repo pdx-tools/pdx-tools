@@ -28,11 +28,9 @@ impl Eu5GameInstall {
 
             if let Ok(game_data) = OptimizedGameBundle::open(&data) {
                 let game_data = game_data.into_game_data()?;
-                let textures = OptimizedTextureBundle::open(&data)?;
-                let mut west_data = vec![0u8; textures.west_texture_size()];
-                let mut east_data = vec![0u8; textures.east_texture_size()];
-                textures.load_west_texture(&mut west_data)?;
-                textures.load_east_texture(&mut east_data)?;
+                let mut textures = OptimizedTextureBundle::open(&data)?;
+                let west_data = textures.load_west_texture(Vec::new())?;
+                let east_data = textures.load_east_texture(Vec::new())?;
                 let textures = GameTextureBundle::new(west_data, east_data);
                 return Ok(Self {
                     textures,
@@ -80,11 +78,11 @@ impl GameDataProvider for Eu5GameInstall {
 }
 
 impl TextureProvider for Eu5GameInstall {
-    fn load_west_texture(&self, dst: &mut [u8]) -> Result<(), GameDataError> {
+    fn load_west_texture(&mut self, dst: Vec<u8>) -> Result<Vec<u8>, GameDataError> {
         self.textures.load_west_texture(dst)
     }
 
-    fn load_east_texture(&self, dst: &mut [u8]) -> Result<(), GameDataError> {
+    fn load_east_texture(&mut self, dst: Vec<u8>) -> Result<Vec<u8>, GameDataError> {
         self.textures.load_east_texture(dst)
     }
 
