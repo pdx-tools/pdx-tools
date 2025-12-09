@@ -1292,3 +1292,25 @@ pub struct CountryInstitution {
     pub institutions_embraced: i32,
     pub dev_push: Vec<InstitutionCost>,
 }
+
+#[derive(Tsify, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[tsify(into_wasm_abi)]
+pub struct ProvinceDevHistogram {
+    pub buckets: Vec<HistogramBucket>,
+    pub total_provinces: usize,
+    pub average_dev: f32,
+    pub median_dev: f32,
+    pub max_dev: f32,
+    pub min_dev: f32,
+}
+
+#[derive(Tsify, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct HistogramBucket {
+    pub min_dev: f32,
+    pub max_dev: f32,
+    pub count: usize,
+    pub percentage: f32,
+}
+
