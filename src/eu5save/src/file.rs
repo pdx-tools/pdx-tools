@@ -146,7 +146,7 @@ impl<R: TokenResolver> TokenResolver for SaveResolver<R> {
         self.inner.resolve(token_id)
     }
 
-    fn lookup(&self, index: u16) -> Option<&str> {
+    fn lookup(&self, index: u32) -> Option<&str> {
         self.string_lookup.get(index as usize).copied()
     }
 
