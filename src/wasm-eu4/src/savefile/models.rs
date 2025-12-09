@@ -1292,4 +1292,3 @@ pub struct CountryInstitution {
     pub institutions_embraced: i32,
     pub dev_push: Vec<InstitutionCost>,
 }
-

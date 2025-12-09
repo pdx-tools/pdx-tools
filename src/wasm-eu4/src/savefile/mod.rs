@@ -1009,7 +1009,7 @@ impl SaveFileImpl {
             })
             .collect()
     }
-    
+
     pub fn get_health(&self, payload: TagFilterPayloadRaw) -> HealthData {
         struct CountryHealthDatum {
             tag: CountryTag,

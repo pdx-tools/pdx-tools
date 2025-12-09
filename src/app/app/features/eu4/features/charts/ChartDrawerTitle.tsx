@@ -89,9 +89,7 @@ export const ChartDrawerTitle = ({
             <Select.Item value="score">Score</Select.Item>
             <Select.Item value="inflation">Inflation</Select.Item>
             <Select.Item value="dev-efficiency">Dev Efficiency</Select.Item>
-            <Select.Item value="province-dev-density">
-              Province Development Density
-            </Select.Item>
+            <Select.Item value="province-dev-density">Development Distribution</Select.Item>
           </Select.Group>
 
           <Select.Group>
