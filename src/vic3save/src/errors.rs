@@ -36,7 +36,7 @@ pub enum Vic3ErrorKind {
     Writer(#[source] jomini::Error),
 
     #[error("unknown binary token encountered: {token_id:#x}")]
-    UnknownToken { token_id: u16 },
+    UnknownToken { token_id: u32 },
 
     #[error("parsing error: {0}")]
     Jomini(#[from] jomini::Error),
@@ -55,6 +55,9 @@ pub enum Vic3ErrorKind {
 
     #[error("io error: {0}")]
     Io(#[from] io::Error),
+
+    #[error("syntax error: {0}")]
+    InvalidSyntax(String),
 }
 
 impl From<jomini::Error> for Vic3Error {

@@ -14,6 +14,7 @@ use std::{
 #[derive(Debug, Default)]
 pub struct MeltedDocument {
     unknown_tokens: HashSet<u16>,
+    unknown_lookups: HashSet<u32>,
 }
 
 impl MeltedDocument {
@@ -24,6 +25,11 @@ impl MeltedDocument {
     /// The list of unknown tokens that the provided resolver accumulated
     pub fn unknown_tokens(&self) -> &HashSet<u16> {
         &self.unknown_tokens
+    }
+
+    /// The list of unknown lookups that the provided resolver accumulated
+    pub fn unknown_lookups(&self) -> &HashSet<u32> {
+        &self.unknown_lookups
     }
 }
 
@@ -79,16 +85,9 @@ where
         .indent_factor(1)
         .from_writer(Cursor::new(header_sink));
 
-    let mut unknown_tokens = HashSet::new();
+    let mut doc = MeltedDocument::new();
 
-    inner_melt(
-        &mut reader,
-        &mut wtr,
-        &resolver,
-        options,
-        &mut unknown_tokens,
-        true,
-    )?;
+    inner_melt(&mut reader, &mut wtr, &resolver, options, &mut doc, true)?;
 
     let mut data = wtr.into_inner().into_inner();
     data.push(b'\n');
@@ -103,16 +102,9 @@ where
         .indent_factor(1)
         .from_writer(output);
 
-    inner_melt(
-        &mut reader,
-        &mut wtr,
-        &resolver,
-        options,
-        &mut unknown_tokens,
-        false,
-    )?;
+    inner_melt(&mut reader, &mut wtr, &resolver, options, &mut doc, false)?;
 
-    Ok(MeltedDocument { unknown_tokens })
+    Ok(doc)
 }
 
 fn inner_melt<Reader, Writer, Resolver>(
@@ -120,7 +112,7 @@ fn inner_melt<Reader, Writer, Resolver>(
     wtr: &mut jomini::TextWriter<Writer>,
     resolver: Resolver,
     options: MeltOptions,
-    unknown_tokens: &mut HashSet<u16>,
+    doc: &mut MeltedDocument,
     header: bool,
 ) -> Result<(), Eu5Error>
 where
@@ -177,7 +169,7 @@ where
                             }
                         }
                         _ => {
-                            unknown_tokens.insert(x);
+                            doc.unknown_tokens.insert(x);
                             let replacement = format!("__unknown_0x{x:x}");
                             wtr.write_unquoted(replacement.as_bytes())?;
                         }
@@ -236,27 +228,19 @@ where
             }
             Token::Rgb(rgb) => wtr.write_rgb(&rgb)?,
             Token::I64(value) => wtr.write_i64(value)?,
-            Token::LookupU8(_) | Token::LookupU16(_) => {
-                let x = match token {
-                    Token::LookupU8(v) => v as u16,
-                    Token::LookupU16(v) => v,
-                    _ => unreachable!(),
-                };
-
-                match resolver.lookup(x) {
-                    Some(s) => wtr.write_unquoted(s.as_bytes())?,
-                    None => match options.on_failed_resolve {
-                        FailedResolveStrategy::Error => {
-                            return Err(Eu5ErrorKind::UnknownToken { token_id: x }.into());
-                        }
-                        _ => {
-                            unknown_tokens.insert(x);
-                            let replacement = format!("__id_0x{x:x}");
-                            wtr.write_unquoted(replacement.as_bytes())?;
-                        }
-                    },
-                }
-            }
+            Token::Lookup(x) => match resolver.lookup(x) {
+                Some(s) => wtr.write_unquoted(s.as_bytes())?,
+                None => match options.on_failed_resolve {
+                    FailedResolveStrategy::Error => {
+                        return Err(Eu5ErrorKind::UnknownLookup { lookup_id: x }.into());
+                    }
+                    _ => {
+                        doc.unknown_lookups.insert(x);
+                        let replacement = format!("__id_0x{x:x}");
+                        wtr.write_unquoted(replacement.as_bytes())?;
+                    }
+                },
+            },
         }
     }
 

@@ -53,6 +53,9 @@ pub enum Eu5ErrorKind {
 
     #[error("unknown token: 0x{token_id:x}")]
     UnknownToken { token_id: u16 },
+
+    #[error("unknown lookup: 0x{lookup_id:x}")]
+    UnknownLookup { lookup_id: u32 },
 }
 
 impl From<Eu5ErrorKind> for Eu5Error {
