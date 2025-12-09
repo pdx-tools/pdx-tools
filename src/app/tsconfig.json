@@ -1,37 +1,35 @@
 {
+  "extends": "../../dev/tsconfig.base.json",
   "compilerOptions": {
+    "rootDirs": [".", "./.react-router/types"],
     "paths": {
+      "@/images/eu4/*": ["../../assets/game/eu4/common/images/*"],
       "@/*": ["./app/*"]
     },
     "types": [
-      "@remix-run/cloudflare",
       "vite/client",
-      "@types/wicg-file-system-access"
+      "@types/wicg-file-system-access",
+      "./worker-configuration.d.ts"
     ],
-
-    "jsx": "react-jsx",
     "moduleResolution": "bundler",
 
-    /* Base Options: */
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "target": "es2022",
-    "allowJs": true,
-    "resolveJsonModule": true,
-    "moduleDetection": "force",
-    "isolatedModules": true,
-    // "verbatimModuleSyntax": true,
-
-    /* Strictness */
-    "strict": true,
-    "noImplicitOverride": true,
-    "strictNullChecks": true,
-
-    /* If NOT transpiling with TypeScript: */
-    "module": "preserve",
-    "noEmit": true,
+    "jsx": "react-jsx",
 
     /* If your code runs in the DOM: */
     "lib": ["es2022", "dom", "dom.iterable"]
-  }
+  },
+  "include": [
+    ".react-router/types/**/*",
+    "worker-configuration.d.ts",
+    "env.d.ts",
+    "app/**/*",
+    "tests/**/*",
+    "server.ts",
+  ],
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    "**/dist",
+    "**/build"
+  ]
 }

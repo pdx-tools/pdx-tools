@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Minor performance improvements"
+    ],
+    "fixes": [
+      "Fix subsidized by format in country diplomacy screen"
+    ]
+  }
+}

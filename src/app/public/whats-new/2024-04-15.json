@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix dlc showing \"false\" for enabled dlc",
+      "Fix trade company investments not showing up"
+    ]
+  }
+}

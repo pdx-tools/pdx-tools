@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "Add country ID to country details panel"
+    ],
+    "fixes": [
+      "Switch to tag instead of country name filtering on small input",
+      "Fix blank screen when a select is toggled on an uploaded save",
+      "Fix save warnings appearing offscreen"
+    ]
+  }
+}

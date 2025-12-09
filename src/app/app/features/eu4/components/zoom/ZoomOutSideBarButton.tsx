@@ -1,5 +1,6 @@
 import { useEu4Actions } from "../../store";
-import { SideBarButton, SideBarButtonProps } from "../SideBarButton";
+import { SideBarButton } from "../SideBarButton";
+import type { SideBarButtonProps } from "../SideBarButton";
 
 export const ZoomOutSideBarButton = ({
   children,

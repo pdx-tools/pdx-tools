@@ -1,9 +1,9 @@
-import { AppLoadContext } from "@remix-run/cloudflare";
 import { ValidationError } from "./errors";
 import { fetchOk, fetchOkJson } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import { log } from "./logging";
 import { z } from "zod";
+import type { AppLoadContext } from "react-router";
 
 const SteamSchema = z.object({
   response: z.object({
@@ -24,7 +24,10 @@ export const pdxSteam = ({ context }: { context: AppLoadContext }) => {
   return {
     loginVerify: async (data: URLSearchParams) => {
       data.set("openid.mode", "check_authentication");
-      const claimId = check(data.get("openid.claimed_id"));
+      const claimId = check(
+        data.get("openid.claimed_id"),
+        "missing claimed_id",
+      );
       const url = new URL(getSingleInstance(claimId));
       const uid = url.pathname.substring(url.pathname.lastIndexOf("/") + 1);
 

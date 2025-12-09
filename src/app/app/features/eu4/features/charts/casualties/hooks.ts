@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { CountryLosses } from "@/features/eu4/types/models";
+import type { CountryLosses } from "@/features/eu4/types/models";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { useTagFilter } from "@/features/eu4/store";
 

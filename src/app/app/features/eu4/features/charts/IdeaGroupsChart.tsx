@@ -1,6 +1,8 @@
 import { useCallback, useEffect } from "react";
-import { useAnalysisWorker, Eu4Worker } from "@/features/eu4/worker";
-import { Bar, BarConfig, useVisualizationDispatch } from "@/components/viz";
+import { useAnalysisWorker } from "@/features/eu4/worker";
+import type { Eu4Worker } from "@/features/eu4/worker";
+import { Bar, useVisualizationDispatch } from "@/components/viz";
+import type { BarConfig } from "@/components/viz";
 import { createCsv } from "@/lib/csv";
 import { useEu4Meta, useTagFilter } from "../../store";
 import { Alert } from "@/components/Alert";
@@ -51,8 +53,14 @@ export const IdeaGroupsChart = () => {
         seedIdeas.push("indigenous");
       }
 
-      type afaf = { count: number; completed: number };
-      const ideas = new Map<string, afaf>(
+      if (meta.savegame_version.second >= 35) {
+        seedIdeas.push("court");
+        seedIdeas.push("infrastructure");
+        seedIdeas.push("mercenary");
+      }
+
+      type IdeaGroupStats = { count: number; completed: number };
+      const ideas = new Map<string, IdeaGroupStats>(
         seedIdeas.map((x) => [x, { count: 0, completed: 0 }]),
       );
       for (const idea of rawIdeas) {
@@ -60,6 +68,7 @@ export const IdeaGroupsChart = () => {
         const group = ideas.get(name) || { count: 0, completed: 0 };
         group.count += 1;
         group.completed += idea.completedIdeas === 7 ? 1 : 0;
+        ideas.set(name, group);
       }
 
       const data: IdeaGroupDatum[] = [];
@@ -125,7 +134,7 @@ export const IdeaGroupsChart = () => {
   return (
     <div className="h-[calc(100%-1px)]">
       <Alert.Error msg={error} />
-      <Bar {...config} />
+      {ideaGroups.length != 0 ? <Bar {...config} /> : null}
     </div>
   );
 };

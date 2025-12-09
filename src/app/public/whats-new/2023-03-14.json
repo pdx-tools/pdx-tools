@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Allow timelapses without province borders enabled"
+    ]
+  }
+}

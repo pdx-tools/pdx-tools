@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euxo pipefail
+
+#USAGE arg "<environment>" help="The target to build"
+
+. dev/.env.$usage_environment
+cd src/app
+pnpm drizzle-kit generate:pg --schema src/server-lib/db/schema.ts --out migrations
+
+DATABASE_URL=postgresql://postgres:$DATABASE_ADMIN_PASSWORD@localhost:$DATABASE_EXPOSED_LOCAL_PORT
+echo pnpm exec drizzle-kit push:pg --verbose --driver pg --schema src/server-lib/db/schema.ts --connectionString "$DATABASE_URL"
+echo Execute the above to migrate a given database but probably better to just copy and paste the migration sql into the database.

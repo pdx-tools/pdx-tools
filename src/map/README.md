@@ -4,9 +4,11 @@ The map module can also be built and used separately from the website:
 
 Prequisites (already installed if using dev container):
 
-- Install Nodejs and NPM
+- Install Nodejs and PNPM
 
-Instructions:
+To spin up the server on port 8080:
 
-- Install dependencies `npm ci`
-- Run `npm run dev` to spin up the dev server on port 8080
+```bash
+pnpm install --filter map
+pnpm dev
+```

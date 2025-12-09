@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Expose correct inheritance value for heretical countries"
+    ]
+  }
+}

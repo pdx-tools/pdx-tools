@@ -20,30 +20,30 @@ export function SaveCard({
   canDelete: boolean;
 }) {
   return (
-    <Card className="mt-2 flex flex-col gap-2 lg:flex-row">
+    <Card className="mt-2 flex flex-col gap-2 lg:flex-row lg:overflow-hidden">
       <img
-        className="flex-1 rounded-t-md object-cover lg:h-96 lg:rounded-l-md lg:rounded-tr-none lg:object-contain"
+        className="w-full rounded-t-md object-cover lg:h-96 lg:w-0 lg:min-w-0 lg:flex-1 lg:rounded-l-md lg:rounded-tr-none lg:object-contain"
         alt={`preview of save ${save.id}`}
         width={1200}
         height={630}
         src={`/eu4/saves/${save.id}/og`}
         loading="lazy"
       />
-      <div className="flex min-w-56 flex-1 flex-col gap-2 p-4 lg:gap-4">
-        <div className="flex flex-wrap justify-around gap-4">
+      <div className="flex min-w-56 flex-shrink-0 flex-col gap-2 p-4 lg:w-64 lg:gap-4">
+        <div className="flex flex-col flex-wrap justify-around gap-4">
           <div>
             <div className="text-center text-gray-600 dark:text-gray-400">
               <TimeAgo date={save.upload_time} />
             </div>
 
             {save.user_id && save.user_name && (
-              <div className="line-clamp-1 break-all text-center">
+              <div className="line-clamp-1 text-center break-all">
                 <Link href={`/users/${save.user_id}`}>{save.user_name}</Link>
               </div>
             )}
 
             {save.filename !== save.name && (
-              <div className="line-clamp-1 break-all text-center text-gray-600 dark:text-gray-400">
+              <div className="line-clamp-1 text-center break-all text-gray-600 dark:text-gray-400">
                 {save.filename}
               </div>
             )}

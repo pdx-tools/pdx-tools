@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "fixes": [
+      "Fix EU5 webgpu incompatibility by requiring a texture dimension limit of 16384 instead of 8192",
+      "Fix crash on EU5 saves that have a 'none' market"
+    ]
+  }
+}

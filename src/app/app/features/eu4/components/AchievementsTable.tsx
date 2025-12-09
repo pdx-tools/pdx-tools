@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { difficultySort, difficultyText } from "@/lib/difficulty";
-import { Achievement } from "@/services/appApi";
+import type { Achievement } from "@/services/appApi";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
@@ -21,7 +21,7 @@ const columns = [
       <div className="flex items-center space-x-2">
         <AchievementAvatar
           size={64}
-          className="flex-shrink-0"
+          className="shrink-0"
           id={info.row.original.id}
         />
         <div className="flex flex-col space-y-2">

@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix a couple Origins saves not parsing due to a missing `fixed_interest` field"
+    ]
+  }
+}

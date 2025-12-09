@@ -1,4 +1,4 @@
-import { DetectedDataType } from "@/features/engine";
+import type { DetectedDataType } from "@/features/engine";
 import posthog from "posthog-js";
 import { log } from "./log";
 
@@ -41,6 +41,11 @@ export type Event =
   | {
       kind: "Budget interval switched";
       interval: string;
+    }
+  | {
+      kind: "Whats new clicked";
+      source: "button" | "banner";
+      latestRelease?: string;
     };
 
 let isRecording = false;

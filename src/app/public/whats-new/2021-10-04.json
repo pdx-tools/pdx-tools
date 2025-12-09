@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Add country flag for past rulers and heirs"
+    ],
+    "fixes": [
+      "Rearrange layout for one time advisor event grid",
+      "Remove map offscreen render on Chromium browsers"
+    ]
+  }
+}

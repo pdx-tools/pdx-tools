@@ -1,9 +1,9 @@
 import { useCallback } from "react";
-import { Losses } from "../../types/models";
+import type { Losses } from "../../types/models";
 import { formatFloat, formatInt } from "@/lib/format";
 import { Flag } from "@/features/eu4/components/avatars";
 import { useEu4Worker } from "@/features/eu4/worker";
-import { BattleInfo, WarParticipant } from "../../worker/module";
+import type { BattleInfo, WarParticipant } from "../../worker/module";
 import { Tooltip } from "@/components/Tooltip";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";

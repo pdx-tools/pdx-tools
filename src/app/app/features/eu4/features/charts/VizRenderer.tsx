@@ -1,5 +1,5 @@
 import { IdeaGroupsChart } from "./IdeaGroupsChart";
-import { VizModules } from "../../types/visualizations";
+import type { VizModules } from "../../types/visualizations";
 import {
   AnnualIncome,
   AnnualScore,

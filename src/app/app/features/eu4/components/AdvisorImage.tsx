@@ -1,4 +1,5 @@
-import { Sprite, SpriteDimension, spriteDimension } from "./Sprite";
+import { Sprite, spriteDimension } from "./Sprite";
+import type { SpriteDimension } from "./Sprite";
 import spriteData from "@/images/eu4/advisors/advisors.json";
 import advisor48 from "@/images/eu4/advisors/advisors_x48.webp";
 import advisor64 from "@/images/eu4/advisors/advisors_x64.webp";

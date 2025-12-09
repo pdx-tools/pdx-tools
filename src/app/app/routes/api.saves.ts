@@ -1,21 +1,22 @@
+import postgres from "postgres";
+import { DrizzleQueryError } from "drizzle-orm/errors";
 import { ensurePermissions } from "@/lib/auth";
 import { timeit } from "@/lib/timeit";
 import { getAuth } from "@/server-lib/auth/session";
-import { NewSave, table, toDbDifficulty } from "@/server-lib/db";
+import { table, toDbDifficulty } from "@/server-lib/db";
+import type { NewSave } from "@/server-lib/db";
 import { usingDb } from "@/server-lib/db/connection";
 import { ValidationError } from "@/server-lib/errors";
 import { pdxFns } from "@/server-lib/functions";
 import { genId } from "@/server-lib/id";
 import { log } from "@/server-lib/logging";
+import { captureEvent } from "@/server-lib/posthog";
 import { withCore } from "@/server-lib/middleware";
-import {
-  headerMetadata,
-  SavePostResponse,
-  uploadMetadata,
-} from "@/server-lib/models";
+import { headerMetadata, uploadMetadata } from "@/server-lib/models";
+import type { SavePostResponse } from "@/server-lib/models";
 import { pdxOg } from "@/server-lib/og";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import { ActionFunctionArgs } from "@remix-run/cloudflare";
+import type { Route } from "./+types/api.saves";
 
 async function fileUploadData(req: Request) {
   const maxFileSize = 20 * 1024 * 1024;
@@ -50,7 +51,7 @@ async function fileUploadData(req: Request) {
 }
 
 export const action = withCore(
-  async ({ request, context }: ActionFunctionArgs) => {
+  async ({ request, context }: Route.ActionArgs) => {
     if (request.method !== "POST") {
       throw Response.json({ msg: "Method not allowed" }, { status: 405 });
     }
@@ -114,7 +115,7 @@ export const action = withCore(
         close();
       }
 
-      log.event({
+      captureEvent({
         userId: session.id,
         event: "Save created",
         key: saveId,
@@ -145,7 +146,11 @@ export const action = withCore(
       // If we have a unique constraint violation, let's assume it is the
       // idx_save_hash and throw a validation error.
       // https://www.postgresql.org/docs/current/errcodes-appendix.html
-      if (ex && typeof ex === "object" && "code" in ex && ex.code === "23505") {
+      if (
+        ex instanceof DrizzleQueryError &&
+        ex.cause instanceof postgres.PostgresError &&
+        ex.cause.code === "23505"
+      ) {
         throw new ValidationError("save already exists");
       }
 

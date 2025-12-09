@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Dynamic default timelapse speed based on length of save"
+    ],
+    "fixes": []
+  }
+}

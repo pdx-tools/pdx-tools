@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix mods not detected correctly"
+    ]
+  }
+}

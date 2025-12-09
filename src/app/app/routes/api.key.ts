@@ -2,11 +2,11 @@ import { getAuth } from "@/server-lib/auth/session";
 import { apiKeyAtRest, table } from "@/server-lib/db";
 import { withDb } from "@/server-lib/db/middleware";
 import { withCore } from "@/server-lib/middleware";
-import { ActionFunctionArgs } from "@remix-run/cloudflare";
 import { eq } from "drizzle-orm";
+import type { Route } from "./+types/api.key";
 
 export const action = withCore(
-  withDb(async ({ request, context }: ActionFunctionArgs, { db }) => {
+  withDb(async ({ request, context }: Route.ActionArgs, { db }) => {
     const session = await getAuth({ request, context });
 
     // https://news.ycombinator.com/item?id=16009109

@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Add tributary subjects to county diplomacy section",
+      "File uploads should be about 3x faster"
+    ],
+    "fixes": [
+      "Fix mouse movements when panning across multiple monitors"
+    ]
+  }
+}

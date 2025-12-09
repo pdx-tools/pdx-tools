@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
-import { CountryDetails } from "../../types/models";
-import { Eu4Worker, useEu4Worker } from "../../worker";
+import type { CountryDetails } from "../../types/models";
+import { useEu4Worker } from "../../worker";
+import type { Eu4Worker } from "../../worker";
 import { Alert } from "@/components/Alert";
 import { formatFloat, formatInt } from "@/lib/format";
-import { InstitutionCost } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+import type { InstitutionCost } from "@/wasm/wasm_eu4";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
@@ -71,7 +72,8 @@ function InstructionSteps({ row }: { row: InstitutionCost }) {
           case "develop":
             return (
               <div key={`dev-${index}`}>
-                Dev {step.from} → {step.to}
+                Dev {step.from}
+                {step.to !== step.from ? ` → ${step.to}` : ""}
                 {step.followedBy.map((f) =>
                   f.type == "expand" ? (
                     <abbr
@@ -80,7 +82,7 @@ function InstructionSteps({ row }: { row: InstitutionCost }) {
                       className="cursor-help text-purple-600 no-underline dark:text-purple-400"
                     >
                       {" "}
-                      (expand)
+                      (expand){(f.times ?? 1) > 1 ? ` (${f.times}x)` : ""}
                     </abbr>
                   ) : (
                     <abbr
@@ -95,17 +97,6 @@ function InstructionSteps({ row }: { row: InstitutionCost }) {
                 )}
               </div>
             );
-
-          case "expand":
-            return (
-              <div key={`expand-${index}`}>
-                Start by expanding infra{" "}
-                {(step.times ?? 1) > 1 ? ` (${step.times}x)` : ""}
-              </div>
-            );
-
-          case "exploit":
-            return <div key={`exploit-${index}`}>Start by exploiting dev</div>;
         }
       })}
     </div>

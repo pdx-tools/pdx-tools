@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "New simulated EU4 map",
+      "Optimized data payload for individual versions of EU4"
+    ],
+    "fixes": [
+      "Fix only player filter not working on maps"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Remove EU4 achievement A Manchurian Candidate as it couldn't be detected properly",
+      "Update EU4 melted output to be compatible with loading the save from the in game menu by not containing a terminating newline"
+    ]
+  }
+}

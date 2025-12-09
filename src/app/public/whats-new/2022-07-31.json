@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix some upside down building image",
+      "Slight style tweaks",
+      "Dependency updates"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Updated map to show colonizable provinces better",
+      "Add technology map mode",
+      "Show info overlap in new map with map mode details",
+      "Localize religion in province details"
+    ],
+    "fixes": []
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix domination dlc detection",
+      "Fix England's flag showing up as transparent",
+      "Remove \"Select a save\" button that was broken on chrome",
+      "Fixed bug causing save uploads to fail on Chrome due change introduced the day prior"
+    ]
+  }
+}

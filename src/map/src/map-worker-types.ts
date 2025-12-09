@@ -1,1 +1,3 @@
-export type MapWorker = typeof import("./map-worker");
+import type * as MapWorkerModule from "./map-worker";
+
+export type MapWorker = typeof MapWorkerModule;

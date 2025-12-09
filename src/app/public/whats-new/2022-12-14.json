@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Re-enable chrome timelapse recording"
+    ]
+  }
+}

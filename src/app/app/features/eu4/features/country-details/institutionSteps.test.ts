@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   calculateInstitutionSteps,
   consolidateSteps,
-  InstitutionStep,
 } from "./institutionSteps";
-import { InstitutionCost } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+import type { InstitutionStep } from "./institutionSteps";
+import type { InstitutionCost } from "@/wasm/wasm_eu4";
 
 // Helper to create institution cost with default values
 function createInstitutionCost(
@@ -282,7 +282,12 @@ describe("consolidateSteps", () => {
       { type: "develop", from: 15, to: 20 },
     ] satisfies InstitutionStep[];
     const expected = [
-      { type: "expand", at: 15, times: 1, followedBy: [] },
+      {
+        type: "develop",
+        from: 15,
+        to: 15,
+        followedBy: [{ type: "expand", at: 15, times: 1 }],
+      },
       { type: "develop", from: 15, to: 20, followedBy: [] },
     ];
     const result = consolidateSteps(steps);
@@ -298,15 +303,49 @@ describe("consolidateSteps", () => {
     ] satisfies InstitutionStep[];
     const expected = [
       {
-        type: "expand",
-        at: 15,
+        type: "develop",
+        from: 15,
+        to: 15,
         followedBy: [
+          { type: "expand", at: 15 },
           { type: "expand", at: 15 },
           { type: "exploit", at: 15 },
         ],
       },
       { type: "develop", from: 14, to: 20, followedBy: [] },
     ];
+    const result = consolidateSteps(steps);
+    expect(result).toEqual(expected);
+  });
+
+  it("should handle expand, exploit, develop, expand, develop sequence", () => {
+    const steps = [
+      { type: "expand", at: 25, times: 1 },
+      { type: "exploit", at: 25 },
+      { type: "develop", from: 24, to: 30 },
+      { type: "expand", at: 30 },
+      { type: "develop", from: 30, to: 42 },
+    ] satisfies InstitutionStep[];
+
+    const expected = [
+      {
+        type: "develop",
+        from: 25,
+        to: 25,
+        followedBy: [
+          { type: "expand", at: 25, times: 1 },
+          { type: "exploit", at: 25 },
+        ],
+      },
+      {
+        type: "develop",
+        from: 24,
+        to: 30,
+        followedBy: [{ type: "expand", at: 30 }],
+      },
+      { type: "develop", from: 30, to: 42, followedBy: [] },
+    ];
+
     const result = consolidateSteps(steps);
     expect(result).toEqual(expected);
   });

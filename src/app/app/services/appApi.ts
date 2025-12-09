@@ -1,21 +1,22 @@
 import { fetchOk, fetchOkJson, sendJson } from "@/lib/fetch";
+import type { QueryClient } from "@tanstack/react-query";
 import {
-  QueryClient,
   useMutation,
   useQuery,
   useQueryClient,
   useSuspenseInfiniteQuery,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import type { Achievement, Difficulty } from "@/server-lib/wasm/wasm_app";
-import type { Eu4Worker } from "@/features/eu4/worker";
+import type { Achievement, Difficulty } from "@/wasm/wasm_app";
+import { getEu4Worker } from "@/features/eu4/worker/getEu4Worker";
 import type { SavePostResponse, UploadMetadaInput } from "@/server-lib/models";
 import { createCompressionWorker } from "@/features/compress";
-import { PdxSession } from "@/server-lib/auth/session";
-import { NewestSaveResponse } from "@/routes/api.new";
-import { UserSaves } from "@/server-lib/db";
-import { SaveResponse } from "@/routes/api.saves.$saveId";
-import { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
+import type { PdxSession } from "@/server-lib/auth/session";
+import type { NewestSaveResponse } from "@/routes/api.new";
+import type { UserSaves } from "@/server-lib/db";
+import type { SaveResponse } from "@/routes/api.saves.$saveId";
+import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
+import { log } from "@/lib/log";
 export type { GameDifficulty } from "@/server-lib/save-parsing-types";
 export type { Achievement, Difficulty as AchievementDifficulty };
 
@@ -115,12 +116,10 @@ export const pdxApi = {
       return useMutation({
         onSuccess: invalidateSaves(queryClient),
         mutationFn: async ({
-          worker,
           dispatch,
           values,
           signal,
         }: {
-          worker: Eu4Worker;
           dispatch: (arg: { kind: "progress"; progress: number }) => void;
           values: { aar?: string; filename: string };
           signal?: AbortSignal;
@@ -131,6 +130,7 @@ export const pdxApi = {
             const data = new FormData();
             dispatch({ kind: "progress", progress: 5 });
 
+            const worker = getEu4Worker();
             const rawFileData = await worker.getRawData();
             dispatch({ kind: "progress", progress: 10 });
 
@@ -180,7 +180,8 @@ export const pdxApi = {
                   try {
                     const err = JSON.parse(request.response).msg;
                     reject(new Error(err));
-                  } catch (_ex) {
+                  } catch (e) {
+                    log("Failed to parse upload error response", e);
                     reject(new Error(`unknown error: ${request.response}`));
                   }
                 }

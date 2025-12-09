@@ -1,4 +1,4 @@
-import { Vic3SaveInput } from "../store";
+import type { Vic3SaveInput } from "../store";
 import { wasm } from "./common";
 
 export const initializeWasm = wasm.initializeModule;

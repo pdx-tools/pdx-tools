@@ -6,7 +6,7 @@ import {
 } from "@/lib/compatibility";
 import { emitEvent } from "@/lib/events";
 import { PostHogProvider } from "posthog-js/react";
-import { useLocation } from "@remix-run/react";
+import { useLocation } from "react-router";
 
 export function PostHog() {
   const location = useLocation();
@@ -17,7 +17,7 @@ export function PostHog() {
         autocapture: false,
         disable_session_recording: true,
         ui_host: "https://eu.posthog.com",
-        api_host: "/ingest",
+        api_host: "/ph",
         person_profiles: "identified_only",
         persistence: "localStorage",
         capture_pageview: false,

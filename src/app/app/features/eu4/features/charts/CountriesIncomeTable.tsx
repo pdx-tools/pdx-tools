@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { incomeLedgerAliases } from "../country-details/data";
-import { CountryIncome } from "../../types/models";
+import type { CountryIncome } from "../../types/models";
 import { useVisualizationDispatch } from "../../../../components/viz/visualization-context";
 import { formatFloat } from "@/lib/format";
 import { useAnalysisWorker } from "../../worker/useAnalysisWorker";

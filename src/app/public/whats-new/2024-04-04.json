@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix unintended overflow in country budget",
+      "Player info now sorted by presence and alphabetical",
+      "Fix dark mode bugs"
+    ]
+  }
+}

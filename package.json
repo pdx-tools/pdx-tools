@@ -1,0 +1,31 @@
+{
+  "name": "pdx.tools-root",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,css}\"",
+    "lint": "oxlint",
+    "typecheck": "tsc --build"
+  },
+  "dependencies": {
+    "concurrently": "9.2.1",
+    "wrangler": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "oxlint": "1.23.0",
+    "prettier-plugin-tailwindcss": "0.7.0",
+    "prettier": "3.6.2",
+    "typescript": "catalog:"
+  },
+  "prettier": {
+    "plugins": [
+      "prettier-plugin-tailwindcss"
+    ],
+    "tailwindFunctions": [
+      "cx"
+    ]
+  },
+  "packageManager": "pnpm@10.11.0"
+}

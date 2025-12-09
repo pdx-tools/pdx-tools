@@ -5,25 +5,31 @@ authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
 edition = "2021"
 publish = false
 
+[lints]
+workspace = true
+
 [features]
-default = ["embedded"]
+default = ["embedded", "zstd_rust"]
 embedded = ["eu4game-data/embedded"]
+zstd_rust = ["pdx-zstd/zstd_rust", "eu4save/zstd_rust"]
+zstd_c = ["pdx-zstd/zstd_c", "eu4save/zstd_c"]
 
 [dependencies]
 jomini = { workspace = true }
 erased-serde = { workspace = true }
 eu4game-data = { workspace = true }
-eu4save = { default-features = false, features = ["zstd"] , workspace = true }
+eu4save = { default-features = false , workspace = true }
 schemas = { features = ["inline"] , workspace = true }
 serde = { features = ["derive"] , workspace = true }
 serde_path_to_error = { workspace = true }
 highway = { workspace = true }
 base64 = { workspace = true }
 thiserror = { workspace = true }
-zstd = { default-features = false , workspace = true }
+pdx-zstd = { workspace = true }
 
 [dev-dependencies]
 attohttpc = { workspace = true }
+tempfile = { workspace = true }
 walkdir = { workspace = true }
 
 [build-dependencies]

@@ -1,8 +1,9 @@
 import { AwsClient } from "aws4fetch";
 import { log } from "./logging";
-import { uploadContentType, UploadType } from "./models";
+import { uploadContentType } from "./models";
+import type { UploadType } from "./models";
 import { timeit } from "@/lib/timeit";
-import { AppLoadContext } from "@remix-run/cloudflare";
+import type { AppLoadContext } from "react-router";
 
 declare const tag: unique symbol;
 export type S3Key = unknown & {
@@ -32,6 +33,7 @@ export const pdxS3 = ({
   bucket,
   endpoint,
 }: S3Connection) => {
+  console.log("Creating S3 client with endpoint", endpoint);
   const s3client = new AwsClient({
     accessKeyId: accessKey,
     secretAccessKey: secretKey,
@@ -101,7 +103,7 @@ export const pdxS3 = ({
     },
 
     uploadFileToS3: async (
-      body: Buffer | Uint8Array,
+      body: Buffer<ArrayBuffer> | Uint8Array<ArrayBuffer>,
       filename: string,
       upload: UploadType,
     ) => {

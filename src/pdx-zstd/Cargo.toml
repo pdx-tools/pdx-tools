@@ -1,0 +1,19 @@
+[package]
+name = "pdx-zstd"
+version = "0.1.0"
+authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
+edition = "2021"
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+default = ["zstd_rust"]
+zstd_c = ["dep:zstd"]
+zstd_rust = ["dep:ruzstd"]
+zstd_c_fat_lto = ["zstd_c", "zstd/fat-lto"]
+
+[dependencies]
+ruzstd = { optional = true, workspace = true }
+zstd = { default-features = false, optional = true, workspace = true }

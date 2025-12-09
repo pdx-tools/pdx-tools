@@ -1,6 +1,6 @@
-import { AppLoadContext } from "@remix-run/cloudflare";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import type { AppLoadContext } from "react-router";
 
 export type DbConnection = ReturnType<typeof drizzle>;
 export type DbTransaction = Parameters<

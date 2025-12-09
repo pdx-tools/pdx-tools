@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Update to support Vic3 1.9 saves"
+    ],
+    "fixes": [
+      "Dependency updates"
+    ]
+  }
+}

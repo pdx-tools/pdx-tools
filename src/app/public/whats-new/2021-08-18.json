@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix coast edge detection in map",
+      "Fix incorrect mana spend labels for 1.31 saves"
+    ]
+  }
+}

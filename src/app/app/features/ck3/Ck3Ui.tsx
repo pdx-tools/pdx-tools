@@ -1,9 +1,8 @@
 import { useEffect, useReducer } from "react";
-import { logMs } from "@/lib/log";
-import { timeit } from "@/lib/timeit";
+import { timeAsync } from "@/lib/timeit";
 import { getCk3Worker } from "./worker";
 import { MeltButton } from "@/components/MeltButton";
-import { Ck3Metadata } from "./worker/types";
+import type { Ck3Metadata } from "./worker/types";
 import { emitEvent } from "@/lib/events";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
@@ -21,10 +20,7 @@ type Task<T> = {
 async function loadCk3Save(file: File, signal: AbortSignal) {
   const run = async <T,>({ fn, name }: Task<T>) => {
     signal.throwIfAborted();
-    const result = await timeit(fn).then((res) => {
-      logMs(res, name);
-      return res.data;
-    });
+    const result = await timeAsync(name, fn);
     signal.throwIfAborted();
     return result;
   };

@@ -1,0 +1,15 @@
+{
+  "sections": {
+    "improvements": [
+      "Support for EU4 1.34",
+      "Support for CK3 1.7",
+      "Leaderboard adjusted for EU4 1.34 patch",
+      "Add EU4 achievement Brick by Brick",
+      "Add EU4 achievement Holy Horder",
+      "Add EU4 achievement Purify the Temple",
+      "Add EU4 achievement Almost Prussian Blue",
+      "Add EU4 achievement Hanukkah Mutapa"
+    ],
+    "fixes": []
+  }
+}

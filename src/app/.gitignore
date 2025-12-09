@@ -3,8 +3,10 @@ public/blog*
 public/changelog*
 public/docs*
 public/img
+public/whats-new.json
 *_gen.ts
 app/server-lib/save-parsing-types.ts
+app/wasm/
 
 node_modules
 yarn.lock

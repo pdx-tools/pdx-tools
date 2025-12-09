@@ -1,5 +1,5 @@
-import { type UserId } from "@/lib/auth";
-import { InferInsertModel, InferSelectModel } from "drizzle-orm";
+import type { UserId } from "@/lib/auth";
+import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   pgTable,
   text,

@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Avoid flash of login buttons for logged in users"
+    ]
+  }
+}

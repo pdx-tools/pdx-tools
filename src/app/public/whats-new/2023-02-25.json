@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Added \"Owned Development States\" tree visualization"
+    ],
+    "fixes": [
+      "Renamed \"Development Tree\" to \"Geographical Development\""
+    ]
+  }
+}

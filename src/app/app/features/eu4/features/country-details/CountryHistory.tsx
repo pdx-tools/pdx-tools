@@ -1,14 +1,14 @@
 import { memo, useCallback, useMemo, useRef } from "react";
-import { CountryDetails } from "../../types/models";
+import type { CountryDetails } from "../../types/models";
 import { useEu4Worker } from "../../worker";
-import {
+import type {
   CountryHistoryEvent,
   CountryHistoryYear,
   LeaderKind,
   LocalizedTag,
   ProvinceConquer,
   WarBattles,
-} from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+} from "@/wasm/wasm_eu4";
 import { Alert } from "@/components/Alert";
 import { Card } from "@/components/Card";
 import { Flag, PersonalityAvatar } from "../../components/avatars";
@@ -40,7 +40,8 @@ import {
 } from "../../components/icons";
 import { AdvisorImage } from "../../components/AdvisorImage";
 import { LeaderStats } from "../../components/LeaderStats";
-import { Losses, expandLosses } from "../../utils/losses";
+import { expandLosses } from "../../utils/losses";
+import type { Losses } from "../../utils/losses";
 import {
   abbreviateInt,
   formatInt,
@@ -814,7 +815,7 @@ const FilterOverlay = () => {
   }
 
   return (
-    <div className="sticky left-0 top-0 z-10 flex justify-end animate-in slide-in-from-right">
+    <div className="animate-in slide-in-from-right sticky top-0 left-0 z-10 flex justify-end">
       <div className="shadow-md">
         <Button
           shape="none"
@@ -848,7 +849,7 @@ const CountryHistoryVirtualList = ({
   const items = virtualizer.getVirtualItems();
 
   return (
-    <div className="absolute bottom-0 left-4 right-0 top-0">
+    <div className="absolute top-0 right-0 bottom-0 left-4">
       <div
         ref={parentRef}
         className="h-full w-full overflow-y-auto"
@@ -860,7 +861,7 @@ const CountryHistoryVirtualList = ({
         >
           <FilterOverlay />
           <div
-            className="absolute left-0 top-0 w-full"
+            className="absolute top-0 left-0 w-full"
             style={{ transform: `translateY(${items[0]?.start ?? 0}px)` }}
           >
             {items.map((virtualRow) => (

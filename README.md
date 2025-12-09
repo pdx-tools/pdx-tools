@@ -1,82 +1,81 @@
 <h1 align="center">
 <a href="https://pdx.tools">PDX Tools</a>
   <br/>
+  Explore the world you created
+  <br/>
   <a href="https://discord.gg/rCpNWQW"><img alt="Discord" src="https://img.shields.io/discord/712465396590182461?logo=discord&logoColor=white"></a> <a href="https://github.com/pdx-tools/pdx-tools/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/pdx-tools/pdx-tools/actions/workflows/ci.yml/badge.svg"></a> 
 <br/>
 <br/>
   <img src="src/app/app/components/landing/gallery-map.webp?raw=true">
 </h1>
 
-PDX Tools is a modern [EU4](https://en.wikipedia.org/wiki/Europa_Universalis_IV) save file analyzer that allow users to view maps, graphs, and data tables of their save all within the browser. If the user desires, they can upload the save and share it with the world, while also being elibigle to compete in achievement speedrun leaderboards.
+PDX.Tools is the workbench for [EU4](https://en.wikipedia.org/wiki/Europa_Universalis_IV) insights and storytelling. No installs, just drop a save file and watch your world unfold. Everything parses locally until you choose to share.
 
-PDX Tools has a modular structure and can be expanded to handle any game. Currently [CK3](https://en.wikipedia.org/wiki/Crusader_Kings_III), [HOI4](https://en.wikipedia.org/wiki/Hearts_of_Iron_IV), [Victoria 3](https://en.wikipedia.org/wiki/Victoria_3), and [Imperator](https://en.wikipedia.org/wiki/Imperator:_Rome) saves can also be analyzed, though functionality is limited to just melting (conversion of a binary save to plaintext).
+Ready to explore maps, timelapses, and charts?
+
+- See the hidden levers: Analyze institution development pushes, plan religion swaps, line up inheritances, and discover events that haven't fired yet so you can pivot before it's too late.
+- Stay in the flow: Surface the same stats you'd dig for in-game, only faster than launching the client.
+- Keep every era alive: Load saves on old patches alongside the latest version and compare them in one place.
+- Tell richer stories: With interactive maps, time-lapse videos, screenshots, new map-modes, and offline exports, AARs practically write themselves.
+- Share and compete: Upload saves and compete in the global achievement speedrun board that favors recent patches, keeping the leaderboard evergreen and fresh.
+- Extensible: Support already stretches beyond EU4 to [CK3](https://en.wikipedia.org/wiki/Crusader_Kings_III), [HOI4](https://en.wikipedia.org/wiki/Hearts_of_Iron_IV), [Victoria 3](https://en.wikipedia.org/wiki/Victoria_3), and [Imperator](https://en.wikipedia.org/wiki/Imperator:_Rome). Every adapter melts binary saves into human readable files, and are ripe for contributions!
 
 ## Contributor Guide
 
 If you'd like to contribute, you've come to the right place! This README should hopefully get you started on your journey. If you get stuck or have a bug report you can [file it here](issues) or chat about it [on the discord](https://discord.gg/rCpNWQW)
 
-The best way to get started contributing is to use the [Dev Container](https://code.visualstudio.com/docs/devcontainers/containers) setup with [Visual Studio Code](https://code.visualstudio.com/) (vscode), as it will handle juggling all the system dependencies to ensure your environment matches others. Alternatively, there are instructions for a [manual dev environment](#manual-build-environment) that is less well tested.
-
-To get started with Dev Containers, there is an [official vscode installation guide](https://code.visualstudio.com/docs/devcontainers/containers#_installation) that will have you download and install [Docker](https://docs.docker.com/engine/install/ubuntu/#installation-methods), [vscode](https://code.visualstudio.com/Download), and the [vscode remote development extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.vscode-remote-extensionpack).
-
-Couple of important notes for the installation:
-
-- A Linux Docker host is recommended as it has better support and performance, though Windows and Mac hosts can narrow the performance gap if the PDX Tools repo is [cloned in a container volume](https://code.visualstudio.com/remote/advancedcontainers/improve-performance#_use-clone-repository-in-container-volume)
-- On Linux, prefer installing [Docker Engine](https://docs.docker.com/engine/install/ubuntu/) over Docker desktop
-
-After Docker and vscode have been installed with the remote development plugin added to vscode, installation can continue:
-
-```bash
-# clone the repo
-git clone https://github.com/pdx-tools/pdx-tools.git
-
-# open the repo in vscode
-code pdx-tools
-```
-
-Once the repo is open in vscode, either click the tooltip to open in Dev Container or [open manually](https://code.visualstudio.com/docs/devcontainers/tutorial#_check-installation)
-
-**(non-EU4 contributors can skip to [starting the dev server](#start-server))** The next step is deciding on how to communicate EU4 assets during the compilation stage, as Paradox would be unhappy if the game assets were uploaded to the repo. There are a couple ways of doing this:
-
-- If you're comfortable with docker, modify the docker mounts in `.devcontainer/devcontainer.json` to include the directory where EU4 is installed. Below is an example:
-  ```diff
-  -    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-  +    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
-  +    "source=${localEnv:HOME}/.steam/steam/steamapps/common/Europa Universalis IV,target=/tmp/eu4,type=bind,consistency=cached,readonly"
+1. Install [mise](https://mise.jdx.dev/). Mise is a task runner and will download all dependencies.
+2. Within the pdx tools repo, ensure all dependencies are up to date with:
+  ```bash
+  mise install
   ```
-  After saving, reload the project. You know it's successful once `/tmp/eu4` is visible within the container terminal.
-- Alternatively, copy the entire EU4 installation into the cloned directory
+3. To develop against plaintext / debug CK3, Vic3, Imperator, and HOI4 saves on localhost:3001
+  ```bash
+  mise run dev:app
+  ```
 
-Now let's process the EU4 into digestible chunks. In a terminal inside vscode, execute:
+Next steps:
 
-```bash
-just pdx create-bundle "/tmp/eu4" assets/game-bundles
+- **EU4 developers**: Prepare the EU4 assets, like the map and game data, to be consumed within the browser.
+  ```bash
+  mise run assets:compile
+  ```
+- If desired, enable support for [binary and ironman saves](#binary--ironman-saves).
 
-# The above command outputs a versioned eu4 bundle. In this case 1.34
-just pdx compile-assets assets/game-bundles/eu4-1.34.tar.zst
-```
 
-After those commands have finished, one can unlink the EU4 assets if desired.
+PDX Tools repo also contains a [Dev Container](https://code.visualstudio.com/docs/devcontainers/containers) for those looking for a complete development environment in a single package.
 
 ### Start server
 
 To start the PDX Tools:
 
 ```bash
-just dev
+mise run dev:app
 ```
 
 This will start the web server on port 3001.
 
-Congrats! You should now be able to see PDX Tools in your browser and be able to parse non-ironman saves.
-
-### Ironman saves
-
-By default, ironman and binary files will be unparsable. If you are in possession of a binary token file, you can unlock processing binary saves by placing the token file at `./assets/tokens/eu4.txt` and execute:
+To develop against the frontend and backend services:
 
 ```bash
-just tokenize ./assets/tokens
+mise run dev
 ```
+
+Docker will be required to run backend services.
+
+### Binary / Ironman saves
+
+By default, ironman and binary files will be unparsable. If you are in possession of a binary token file, you can unlock processing binary saves by placing the token file under the assets directory:
+
+```plain
+assets/tokens/eu4.txt
+assets/tokens/ck3.txt
+assets/tokens/hoi4.txt
+assets/tokens/vic3.txt
+assets/tokens/imperator.txt
+```
+
+They will be detected up when the dev server is restarted.
 
 ## Contributor Project Guide
 
@@ -162,41 +161,22 @@ Uploaded files are sent to S3 through the backend. This may be surprising, as wh
 
 ## EU4 new dlc instructions
 
- - Generate [province terrain mapping](https://pdx.tools/blog/calculating-eu4-province-terrain):
-   - Start new normal game as France
-   - [Run](https://eu4.paradoxwikis.com/Run_files) [`terrain-script.txt`](assets/game/eu4/common/terrain-script.txt)
-   - Save file as `terrain-<major.minor>.eu4`
-   - Upload file to `terrain` directory in the eu4saves-test-cases S3 bucket
- - Generate game bundle for repo
-   - Can be done from linux or windows (I needed to launch steam from the terminal in linux with `steam -cef-disable-gpu`)
-   - Assuming EU4 is found at `/tmp/eu4`, create a game bundle:
-     ```
-     just pdx create-bundle "/tmp/eu4" assets/game-bundles
-     ```
-   - Upload the new entry in assets/game-bundles to the game-bundles directory in the pdx-tools-build S3 bucket
-   - `just package-all`
+Generate [province terrain mapping](https://pdx.tools/blog/calculating-eu4-province-terrain)
+
+  - Start new normal game as France
+  - [Run](https://eu4.paradoxwikis.com/Run_files) [`terrain-script.txt`](assets/game/eu4/common/terrain-script.txt)
+  - Save file as `terrain-<major.minor>.eu4`
+  - Upload file to `terrain` directory in the eu4saves-test-cases S3 bucket
+
+Generate game bundle for repo:
+
+```bash
+mise run assets:bundle
+```
+
+Upload the new entry in assets/game-bundles to the game-bundles directory in the pdx-tools-build S3 bucket
+
+Finally:
  - Update achievement detection logic with any changes
  - Add new 1444 entry for patch
  - Generate binary tokens
-
-## Manual Build Environment
-
-If not using vscode and the Dev Container, one can setup an environment manually.
-
-A Linux environment assumed (WSL on Windows untested but probably supported). The following applications must be installed in order to instantiate the dev environment.
-
-- docker
-- docker compose plugin v2
-- node js, including npm
-- clang
-- jq
-- psql
-- [rust](https://www.rust-lang.org/tools/install)
-- [imagemagick](https://imagemagick.org/index.php) with the `convert` command in `$PATH`
-- [just](https://github.com/casey/just/releases/latest)
-
-Once the above dependencies are installed, the remaining dependencies can be installed with:
-
-```bash
-just setup
-```

@@ -18,17 +18,16 @@ import type {
   OwnedDevelopmentStates,
   CountryAdvisors,
 } from "../types/models";
-import { MapPayload, QuickTipPayload } from "../types/map";
+import type { MapPayload, QuickTipPayload } from "../types/map";
 import { workLedgerData } from "../utils/ledger";
 import { expandLosses } from "../utils/losses";
 import { wasm } from "./common";
-import {
+import type {
   ActiveWarParticipant,
   TimelapseIter,
   Wars,
-} from "../../../../../wasm-eu4/pkg/wasm_eu4";
+} from "@/wasm/wasm_eu4";
 import { timeSync } from "@/lib/timeit";
-import { logMs } from "@/lib/log";
 import { createBudget } from "../features/country-details/budget";
 export * from "./init";
 
@@ -38,7 +37,7 @@ export const melt = () => wasm.melt();
 let provinceIdToColorIndex = new Uint16Array();
 
 export function eu4SetProvinceIdToColorIndex(
-  _provinceIdToColorIndex: Uint16Array,
+  _provinceIdToColorIndex: Uint16Array<ArrayBuffer>,
 ) {
   provinceIdToColorIndex = _provinceIdToColorIndex;
 }
@@ -48,13 +47,14 @@ export function eu4GetProvinceIdToColorIndex() {
 }
 
 export type MapColors = {
-  primary: Uint8Array;
-  secondary: Uint8Array;
-  country?: Uint8Array;
+  primary: Uint8Array<ArrayBuffer>;
+  secondary: Uint8Array<ArrayBuffer>;
+  country?: Uint8Array<ArrayBuffer>;
 };
 
 export function eu4MapColors(payload: MapPayload): MapColors {
-  const arr = wasm.save.map_colors(payload);
+  // Wasm-bindgen does not return SharedArrayBuffers so this cast is safe
+  const arr = wasm.save.map_colors(payload) as Uint8Array<ArrayBuffer>;
   if (payload.kind == "political") {
     const primary = arr.subarray(0, arr.length / 2);
     const secondary = arr.subarray(arr.length / 2);
@@ -179,9 +179,9 @@ export function eu4GetCountrymana(tag: string) {
 }
 
 export function eu4GetCountryHistory(tag: string) {
-  const timed = timeSync(() => wasm.save.get_country_history(tag));
-  logMs(timed, "country history calculation");
-  return timed.data;
+  return timeSync("country history calculation", () =>
+    wasm.save.get_country_history(tag),
+  );
 }
 
 export function eu4GetCountryInstitutionPush(
@@ -190,7 +190,7 @@ export function eu4GetCountryInstitutionPush(
   expandInfrastructureCost: number,
   overrides: Map<number, number>,
 ) {
-  const timed = timeSync(() =>
+  return timeSync("country institution push calculation", () =>
     wasm.save.get_country_institutions(
       tag,
       countryDevelopmentModifier,
@@ -198,8 +198,6 @@ export function eu4GetCountryInstitutionPush(
       overrides,
     ),
   );
-  logMs(timed, "country institution push calculation");
-  return timed.data;
 }
 
 export function eu4GetCountryProvinceCulture(tag: string): CountryCulture[] {

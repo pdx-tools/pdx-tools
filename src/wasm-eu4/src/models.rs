@@ -17,7 +17,7 @@ use crate::savefile::{
 /// so we create concrete types for all the return types
 macro_rules! wasm_wrapper {
     ($name:ident,$ty:ty) => {
-        #[derive(Tsify, Serialize)]
+        #[derive(Debug, Tsify, Serialize)]
         #[tsify(into_wasm_abi)]
         #[serde(transparent)]
         pub struct $name(pub $ty);

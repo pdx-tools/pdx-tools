@@ -1,9 +1,10 @@
 import React, { useEffect } from "react";
-import { Line, LineConfig, useVisualizationDispatch } from "@/components/viz";
-import { LedgerDatum } from "@/features/eu4/types/models";
+import { Line, useVisualizationDispatch } from "@/components/viz";
+import type { LineConfig } from "@/components/viz";
+import type { LedgerDatum } from "@/features/eu4/types/models";
 import { createCsv } from "@/lib/csv";
 import { useCountryNameLookup } from "@/features/eu4/store";
-import { useLedgerData } from "./hooks";
+import type { useLedgerData } from "./hooks";
 import { Alert } from "@/components/Alert";
 import { isDarkMode } from "@/lib/dark";
 
@@ -70,7 +71,9 @@ export const AnnualLedger = ({
     <>
       <Alert.Error msg={error} />
       <div className="h-[calc(100%-1px)]">
-        <AnnualLedgerPropped ledger={data} lookup={lookup} />
+        {data.length != 0 ? (
+          <AnnualLedgerPropped ledger={data} lookup={lookup} />
+        ) : null}
       </div>
     </>
   );

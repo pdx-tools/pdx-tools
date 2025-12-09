@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "improvements": [
+      "Add achievement prester john",
+      "Add achievement a blessed nation",
+      "Increase timelapse recordings up to 30fps"
+    ],
+    "fixes": [
+      "Fix religious timelapse color calculation",
+      "Make timelapse bitrate a function of fps"
+    ]
+  }
+}

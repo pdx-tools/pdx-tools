@@ -11,7 +11,9 @@ assets/game/eu4/common/images/personalities
 assets/game/eu4/common/images/tc-investments
 assets/game/eu4/common/images/achievements/*
 !assets/game/eu4/common/images/achievements/10000.png
+assets/game/eu5
 assets/tokens
+assets/vendored/
 .env
 dev/.env.*prod
 dev/.env.*staging
@@ -20,3 +22,15 @@ tmp/
 node_modules
 *.swp
 .idea
+.vscode/settings.json
+.pnpm-store/
+.wrangler/
+
+# TypeScript Build Cache
+*.tsbuildinfo
+
+.react-router/
+worker-configuration.d.ts
+
+# Generated docs content
+src/docs/src/pages/changelog.mdx

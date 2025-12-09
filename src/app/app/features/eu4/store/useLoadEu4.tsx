@@ -1,23 +1,25 @@
 import { transfer, wrap } from "comlink";
 import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
 import { fetchOk } from "@/lib/fetch";
-import { log, logMs } from "@/lib/log";
+import { log } from "@/lib/log";
 import { emitEvent } from "@/lib/events";
-import { timeit } from "@/lib/timeit";
-import { type MapWorker, MapController, createMapWorker, InitToken } from "map";
-import { Dispatch, useRef, useEffect, useReducer } from "react";
+import { timeAsync } from "@/lib/timeit";
+import { MapController, createMapWorker } from "@pdx.tools/map";
+import type { MapWorker, InitToken } from "@pdx.tools/map";
+import { useRef, useEffect, useReducer } from "react";
+import type { Dispatch } from "react";
 import {
   shaderUrls,
   fetchProvinceUniqueIndex,
   resourceUrls,
 } from "../features/map/resources";
-import { getEu4Worker } from "../worker";
+import { getEu4Worker } from "../worker/getEu4Worker";
 import {
-  Eu4Store,
   initialEu4CountryFilter,
   createEu4Store,
   loadSettings,
 } from "./eu4Store";
+import type { Eu4Store } from "./eu4Store";
 import { dataUrls, gameVersion } from "@/lib/game_gen";
 import { pdxAbortController } from "@/lib/abortController";
 import { downloadData } from "@/lib/downloadData";
@@ -91,10 +93,9 @@ function runTask<T>(
   dispatch: Dispatch<Eu4LoadActions>,
   { fn, name, progress }: Task<T>,
 ) {
-  return timeit(fn).then((res) => {
-    logMs(res, name);
+  return timeAsync(name, fn).then((result) => {
     dispatch({ kind: "progress", value: progress });
-    return res.data;
+    return result;
   });
 }
 
@@ -292,6 +293,8 @@ async function loadEu4Save(
     progress: 4,
   });
 
+  const initialPoliticalMapColors = new Uint8Array(primary);
+
   const map = await mapControllerTask;
   map.updateProvinceColors(primary, secondary, { country: primary });
 
@@ -307,7 +310,7 @@ async function loadEu4Save(
     meta,
     achievements,
     countries,
-    initialPoliticalMapColors: primary,
+    initialPoliticalMapColors,
     defaultSelectedCountry: defaultSelectedTag,
     saveInfo,
   };

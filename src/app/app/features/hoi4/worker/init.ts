@@ -1,5 +1,5 @@
 import { wasm } from "./common";
-import { Hoi4Metadata } from "./types";
+import type { Hoi4Metadata } from "./types";
 
 export const initializeWasm = wasm.initializeModule;
 export async function fetchData(file: File) {

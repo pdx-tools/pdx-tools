@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+set -exo pipefail
+
+#USAGE flag "--execute" help="Execute deployment"
+#MISE depends=["docs:setup:changelog"]
+
+. .env
+
+export PDX_RELEASE=1
+
+if [[ "$(gcloud config get-value account 2>&1)" = "(unset)" ]]; then
+    gcloud auth login
+fi
+gcloud auth configure-docker us-west1-docker.pkg.dev
+
+if [[ $(git status --porcelain --untracked-files=no) ]]; then
+    echo "Address uncommitted changes before release"
+    exit 1
+fi
+
+today=$(date +%F)
+if ! grep -Fq "\"${today}\"" src/app/public/whats-new.json; then
+    echo "No changelog entry for ${today} found in src/app/public/whats-new/"
+    exit 1
+fi
+
+export VITE_EXTERNAL_ADDRESS=$EXTERNAL_ADDRESS
+export VITE_SENTRY_DSN=$SENTRY_DSN
+export VITE_SENTRY_ORG=$SENTRY_ORG
+export VITE_POSTHOG_KEY=$POSTHOG_KEY
+
+mise run release:build
+cd src/app
+find build/ -iname "*.map" -delete
+pnpm exec wrangler versions upload
+
+docker tag ghcr.io/pdx-tools/api:nightly us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
+if [ "$usage_execute" = "true" ]; then
+  docker push us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
+  gcloud run deploy api --region=us-west2 --project=$GCLOUD_PROJECT --image=us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
+else
+  echo "To deploy backend, execute:"
+  echo "  docker push us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly"
+  echo "  gcloud run deploy api --region=us-west2 --project=$GCLOUD_PROJECT --image=us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly"
+fi

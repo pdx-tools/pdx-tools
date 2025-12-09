@@ -1,0 +1,29 @@
+[package]
+name = "eu5app"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["zstd_rust"]
+game-install = ["dep:image", "dep:regex"]
+zstd_c = ["pdx-zstd/zstd_c"]
+zstd_rust = ["pdx-zstd/zstd_rust"]
+
+[dependencies]
+bumpalo = { workspace = true }
+bumpalo-serde = { workspace = true }
+bytemuck = { workspace = true, features = ["derive"] }
+eu5save = { workspace = true }
+image = { workspace = true, features = ["png"], optional = true }
+jomini =  { workspace = true }
+pdx-map = { workspace = true, default-features = false }
+pdx-zstd = { workspace = true, default-features = false }
+postcard = { workspace = true, features = ["use-std"] }
+rawzip = { workspace = true }
+regex = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+rstest = { workspace = true }

@@ -1,15 +1,15 @@
 import { ensurePermissions } from "@/lib/auth";
 import { getAuth } from "@/server-lib/auth/session";
 import { saveView, table, toApiSave } from "@/server-lib/db";
-import { DbConnection } from "@/server-lib/db/connection";
+import type { DbConnection } from "@/server-lib/db/connection";
 import { withDb } from "@/server-lib/db/middleware";
 import { NotFoundError, ValidationError } from "@/server-lib/errors";
-import { log } from "@/server-lib/logging";
+import { captureEvent } from "@/server-lib/posthog";
 import { withCore } from "@/server-lib/middleware";
 import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
-import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import type { Route } from "./+types/api.saves.$saveId";
 
 const SaveParam = z.object({
   saveId: z.string(),
@@ -47,7 +47,7 @@ async function getSave(db: DbConnection, params: { saveId: string }) {
 }
 
 export const loader = withCore(
-  withDb(async ({ params: rawParams }: LoaderFunctionArgs, { db }) => {
+  withDb(async ({ params: rawParams }: Route.LoaderArgs, { db }) => {
     const params = SaveParam.parse(rawParams);
     return Response.json(await getSave(db, params));
   }),
@@ -56,7 +56,7 @@ export const loader = withCore(
 export const action = withCore(
   withDb(
     async (
-      { request, params: rawParams, context }: ActionFunctionArgs,
+      { request, params: rawParams, context }: Route.ActionArgs,
       { db },
     ) => {
       const params = SaveParam.parse(rawParams);
@@ -79,7 +79,7 @@ export const action = withCore(
             ensurePermissions(session, "savefile:update", rows.at(0));
           });
 
-          log.event({
+          captureEvent({
             userId: session.id,
             event: "Save patched",
             key: params.saveId,
@@ -99,7 +99,7 @@ export const action = withCore(
               s3.deleteFile(s3.keys.preview(params.saveId)),
             ]);
           });
-          log.event({
+          captureEvent({
             userId: session.id,
             event: "Save deleted",
             key: params.saveId,

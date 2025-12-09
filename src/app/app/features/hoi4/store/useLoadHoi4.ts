@@ -1,8 +1,8 @@
-import { Hoi4Store, createHoi4Store } from "./hoi4Store";
+import { createHoi4Store } from "./hoi4Store";
+import type { Hoi4Store } from "./hoi4Store";
 import { useEffect, useReducer } from "react";
 import { pdxAbortController } from "@/lib/abortController";
-import { timeit } from "@/lib/timeit";
-import { logMs } from "@/lib/log";
+import { timeAsync } from "@/lib/timeit";
 import { getHoi4Worker } from "../worker";
 import { emitEvent } from "@/lib/events";
 import { captureException } from "@/lib/captureException";
@@ -88,10 +88,7 @@ export function useLoadHoi4(input: File) {
 async function loadHoi4Save(file: File, signal: AbortSignal) {
   const run = async <T>({ fn, name }: Task<T>) => {
     signal.throwIfAborted();
-    const result = await timeit(fn).then((res) => {
-      logMs(res, name);
-      return res.data;
-    });
+    const result = await timeAsync(name, fn);
     signal.throwIfAborted();
     return result;
   };

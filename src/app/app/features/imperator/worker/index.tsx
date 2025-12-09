@@ -1,6 +1,6 @@
 import { wrap } from "comlink";
-import { type ImperatorWorkerModule } from "./bridge";
-export { type ImperatorWorker } from "./bridge";
+import type { ImperatorWorkerModule } from "./types";
+export { type ImperatorWorker } from "./types";
 
 function createWorker() {
   const rawWorker = new Worker(new URL("./bridge", import.meta.url), {

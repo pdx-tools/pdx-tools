@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix browser compatibility check not closeable",
+      "Avoid iphone error messages on android"
+    ]
+  }
+}

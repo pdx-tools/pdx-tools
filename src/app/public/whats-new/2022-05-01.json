@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix EU4 African Power achievement not detecting colonies"
+    ]
+  }
+}

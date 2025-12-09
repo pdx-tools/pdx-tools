@@ -1,4 +1,4 @@
-import { GLResources } from "./glResources";
+import type { GLResources } from "./glResources";
 import { notNull } from "./nullcheck";
 
 export class XbrShader {

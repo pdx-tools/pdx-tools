@@ -1,4 +1,4 @@
-import { LeaderKind } from "../../../../../wasm-eu4/pkg/wasm_eu4";
+import type { LeaderKind } from "@/wasm/wasm_eu4";
 
 export const LeaderStats = ({
   kind,

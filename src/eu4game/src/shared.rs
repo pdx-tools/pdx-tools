@@ -1,4 +1,5 @@
 use crate::Eu4GameError;
+use base64::Engine;
 use eu4save::{
     file::{Eu4Modeller, Eu4SliceFileKind},
     models::{CountryEvent, Eu4Save, GameState, Meta, Monarch},
@@ -52,7 +53,7 @@ impl SaveCheckSummer {
         if let Some(hasher) = self.hasher {
             let hash = hasher.finalize256();
             let bytes = copy_hash_output_to_byte_array(hash);
-            Some(base64::encode(bytes))
+            Some(base64::engine::general_purpose::STANDARD.encode(bytes))
         } else {
             None
         }
@@ -62,6 +63,12 @@ impl SaveCheckSummer {
 pub struct SaveCheckSummerReader<'a> {
     reader: Box<dyn Read + 'a>,
     hasher: &'a mut SaveCheckSummer,
+}
+
+impl<'a> std::fmt::Debug for SaveCheckSummerReader<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SaveCheckSummerReader").finish()
+    }
 }
 
 impl Read for SaveCheckSummerReader<'_> {
@@ -119,7 +126,7 @@ pub fn playthrough_id(query: &Query) -> String {
 
     let output = hash.finalize256();
     let bytes = copy_hash_output_to_byte_array(output);
-    base64::encode(bytes)
+    base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
 pub fn hash_countries(hash: &mut impl HighwayHash, content_date: Eu4Date, save: &Eu4Save) {
@@ -198,7 +205,7 @@ impl Eu4Parser {
         self.parse_with(data, &resolver)
     }
 
-    fn deserialize<'res, 'de, T, D>(&self, deser: D) -> Result<T, Eu4GameError>
+    fn deserialize<'de, T, D>(&self, deser: D) -> Result<T, Eu4GameError>
     where
         T: DeserializeOwned,
         D: Deserializer<'de, Error = Eu4Error>,
@@ -220,8 +227,8 @@ impl Eu4Parser {
         resolver: &SegmentedResolver,
     ) -> Result<Eu4SaveOutput, Eu4GameError> {
         let mut hasher = SaveCheckSummer::new(self.hash);
-        if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-            let reader = zstd::Decoder::new(data).map_err(Eu4GameError::ZstdInflate)?;
+        if pdx_zstd::is_zstd_compressed(data) {
+            let reader = pdx_zstd::Decoder::from_slice(data)?;
             let (save, encoding) = {
                 let mut reader = SaveCheckSummerReader {
                     reader: Box::new(reader),
@@ -313,11 +320,13 @@ impl Eu4Parser {
 }
 
 pub fn parse_meta(data: &[u8], resolver: &SegmentedResolver) -> Result<Meta, Eu4GameError> {
-    if data.starts_with(&zstd::zstd_safe::MAGICNUMBER.to_le_bytes()) {
-        let mut decoder = zstd::Decoder::new(data).map_err(Eu4GameError::ZstdInflate)?;
+    if pdx_zstd::is_zstd_compressed(data) {
+        let mut decoder = pdx_zstd::Decoder::from_slice(data)?;
         let mut modeller = Eu4Modeller::from_reader(&mut decoder, resolver);
-        Ok(modeller.deserialize()?)
-    } else {
+        return Ok(modeller.deserialize()?);
+    }
+
+    {
         let file = Eu4File::from_slice(data)?;
         match file.kind() {
             Eu4SliceFileKind::Zip(zip) => {
@@ -334,5 +343,18 @@ pub fn parse_meta(data: &[u8], resolver: &SegmentedResolver) -> Result<Meta, Eu4
                 Ok(res)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn save_checksummer() {
+        let mut summer = SaveCheckSummer::new(true);
+        summer.append(b"hello");
+        summer.append(b"world");
+        let hash = summer.finish().unwrap();
+        assert_eq!(hash, "/p54eGIaz1s/t1mJgg7qSZwKd+s+R19l1t1xcdou/Yc=");
     }
 }

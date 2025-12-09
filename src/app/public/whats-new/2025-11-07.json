@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Support for loading EU5 multiplayer saves",
+      "Stop melted EU5 saves from reverting to ironman"
+    ]
+  }
+}

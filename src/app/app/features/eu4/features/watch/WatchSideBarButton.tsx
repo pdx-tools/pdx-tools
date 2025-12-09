@@ -1,7 +1,5 @@
-import {
-  SideBarButtonProps,
-  SideBarButton,
-} from "../../components/SideBarButton";
+import { SideBarButton } from "../../components/SideBarButton";
+import type { SideBarButtonProps } from "../../components/SideBarButton";
 import {
   SideBarContainerProvider,
   useSideBarContainerRef,

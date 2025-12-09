@@ -5,7 +5,7 @@ import {
   useEu4Map,
   useEu4MapMode,
 } from "../../store";
-import { QuickTipPayload } from "../../types/map";
+import type { QuickTipPayload } from "../../types/map";
 import { getEu4Worker } from "../../worker";
 import { MapTipContents } from "./MapTipContents";
 
@@ -156,7 +156,7 @@ function MapTipProvince({
   setMapTip: (arg: QuickTipPayload | null) => void;
   setTimerDisplay: (arg: boolean) => void;
 }) {
-  const tooltipTimer = useRef<ReturnType<typeof setTimeout>>();
+  const tooltipTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const mapMode = useEu4MapMode();
   const store = useEu4Context();
 

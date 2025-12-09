@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Add more details to the country overview page"
+    ],
+    "fixes": [
+      "Fix user profile saves"
+    ]
+  }
+}

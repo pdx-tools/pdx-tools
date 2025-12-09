@@ -1,4 +1,3 @@
-import { captureRemixErrorBoundaryError } from "@sentry/remix";
 import {
   Links,
   Meta,
@@ -7,12 +6,12 @@ import {
   ScrollRestoration,
   useLoaderData,
   useRouteError,
-} from "@remix-run/react";
-import {
+} from "react-router";
+import type {
   LinksFunction,
   LoaderFunctionArgs,
   MetaFunction,
-} from "@remix-run/cloudflare";
+} from "react-router";
 import tailwind from "@/styles/tailwind.css?url";
 import appCss from "@/styles/styles.css?url";
 import { useState } from "react";
@@ -34,9 +33,7 @@ import { pdxSession } from "./server-lib/auth/session";
 import { seo } from "./lib/seo";
 import appleIconUrl from "./components/head/apple-touch-icon.png";
 import social from "./components/landing/social.png";
-import { getErrorMessage } from "./lib/getErrorMessage";
-import { Alert } from "./components/Alert";
-import { Link } from "./components/Link";
+import { ErrorDisplay } from "@/features/errors";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: tailwind },
@@ -44,15 +41,13 @@ export const links: LinksFunction = () => [
   { rel: "apple-touch-icon", sizes: "180x180", href: appleIconUrl },
 ];
 
-export const meta: MetaFunction = () => [
-  { name: "color-scheme", content: "light dark" },
-  ...seo({
+export const meta: MetaFunction = () =>
+  seo({
     title: "PDX Tools - Modern EU4 Save Analyzer",
     description:
       "View maps, graphs, and tables of your save and compete in a casual, evergreen leaderboard of EU4 achievement speed runs. Upload and share your save with the world.",
     image: social,
-  }),
-];
+  });
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -60,6 +55,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="light dark" />
         <Meta />
         <Links />
       </head>
@@ -89,25 +85,23 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 export const ErrorBoundary = () => {
   const error = useRouteError();
-  captureRemixErrorBoundaryError(error);
+  const eventId = captureException(error) ?? null;
   return (
-    <div className="flex h-full justify-center align-middle">
-      <Alert variant="error" className="max-w-xl place-self-center px-6 py-4">
-        <Alert.Title>PDX Tools Crashed!</Alert.Title>
-        <Alert.Description className="pt-2">
-          <p>{getErrorMessage(error)}</p>
-          <p>
-            If you keep getting this error, please report the issue on our{" "}
-            <Link variant="dark" href="https://discord.gg/rCpNWQW">
-              Discord
-            </Link>{" "}
-            or{" "}
-            <Link variant="dark" href="https://github.com/pdx-tools/pdx-tools">
-              Github
-            </Link>
-          </p>
-        </Alert.Description>
-      </Alert>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <ErrorDisplay
+        title="PDX Tools crashed"
+        message={
+          <>
+            <p>We ran into an unexpected error while loading this page.</p>
+            <p className="mt-2">
+              Try refreshing the page. If the problem continues, use the support
+              links below to share what happened.
+            </p>
+          </>
+        }
+        error={error}
+        eventId={eventId}
+      />
     </div>
   );
 };

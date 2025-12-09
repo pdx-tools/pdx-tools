@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "(Vic3): Fix incorrect melted output",
+      "(Eu4): Allow someone to have more than 16k mana"
+    ]
+  }
+}

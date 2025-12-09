@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [
+      "Transition almost all images to sprites",
+      "Add province data table"
+    ],
+    "fixes": []
+  }
+}

@@ -1,14 +1,22 @@
-import React, { type ErrorInfo } from "react";
-import { getErrorMessage } from "@/lib/getErrorMessage";
+import React from "react";
+import type { ErrorInfo } from "react";
 import { captureException } from "@/lib/captureException";
-import { Alert } from "@/components/Alert";
 
 interface ErrorCatcherProps {
   children: React.ReactNode;
+  fallback: (errorData: {
+    error: unknown;
+    componentStack?: string | null;
+    resetError(): void;
+    eventId?: string | null;
+  }) => React.ReactElement;
+  onReset?: () => void;
 }
 
 interface ErrorCatcherState {
-  error: unknown;
+  error: unknown | null;
+  componentStack?: string | null;
+  eventId?: string | null;
 }
 
 export class ErrorCatcher extends React.Component<
@@ -17,7 +25,7 @@ export class ErrorCatcher extends React.Component<
 > {
   constructor(props: ErrorCatcherProps) {
     super(props);
-    this.state = { error: null };
+    this.state = { error: null, componentStack: null, eventId: null };
   }
 
   static getDerivedStateFromError(error: unknown) {
@@ -25,25 +33,32 @@ export class ErrorCatcher extends React.Component<
   }
 
   override componentDidCatch(error: Error, { componentStack }: ErrorInfo) {
-    const errorBoundaryError = new Error(error.message);
-    errorBoundaryError.name = `React ErrorBoundary ${errorBoundaryError.name}`;
-    errorBoundaryError.stack = componentStack || undefined;
-    error.cause = errorBoundaryError;
-    captureException(error, { contexts: { react: { componentStack } } });
-    this.setState({ error });
+    const errorCatcherError = new Error(error.message);
+    errorCatcherError.name = `React ErrorCatcher ${errorCatcherError.name}`;
+    errorCatcherError.stack = componentStack || undefined;
+    error.cause = errorCatcherError;
+    const eventId =
+      captureException(error, { contexts: { react: { componentStack } } }) ??
+      null;
+    this.setState({ error, componentStack, eventId });
   }
 
+  private resetError = () => {
+    this.props.onReset?.();
+    this.setState({ error: null, componentStack: null, eventId: null });
+  };
+
   override render() {
+    const { fallback } = this.props;
+    const { error, componentStack, eventId } = this.state;
+
     if (this.state.error) {
-      return (
-        <Alert className="px-4 py-2" variant="error">
-          <Alert.Description>
-            Error encountered: {getErrorMessage(this.state.error)}. Recommended
-            to refresh. If the error continues, please report the issue via
-            Discord
-          </Alert.Description>
-        </Alert>
-      );
+      return fallback({
+        error,
+        componentStack,
+        eventId,
+        resetError: this.resetError,
+      });
     }
     return this.props.children;
   }

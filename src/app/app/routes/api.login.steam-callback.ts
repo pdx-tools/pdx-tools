@@ -2,16 +2,17 @@ import { table } from "@/server-lib/db";
 import { sql } from "drizzle-orm";
 import { genId } from "@/server-lib/id";
 import { check } from "@/lib/isPresent";
-import { log } from "@/server-lib/logging";
+import { captureEvent } from "@/server-lib/posthog";
 import { withCore } from "@/server-lib/middleware";
-import { AppLoadContext, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import type { AppLoadContext } from "react-router";
 import { withDb } from "@/server-lib/db/middleware";
 import { pdxSession } from "@/server-lib/auth/session";
 import { pdxSteam } from "@/server-lib/steam.server";
 import { userId } from "@/lib/auth";
+import type { Route } from "./+types/api.login.steam-callback";
 
 export const loader = withCore(
-  withDb(async ({ request, context }: LoaderFunctionArgs, { db }) => {
+  withDb(async ({ request, context }: Route.LoaderArgs, { db }) => {
     const searchParams = new URL(request.url).searchParams;
 
     const { steamUid, steamName, genUserId } = import.meta.env.PROD
@@ -37,7 +38,7 @@ export const loader = withCore(
       });
 
     const user = check(users.at(0), "expected user");
-    log.event({
+    captureEvent({
       userId: user.userId,
       event: user.inserted ? "User created" : "User updated",
     });

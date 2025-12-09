@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix exporting map on offscreen canvas (chrome)"
+    ]
+  }
+}

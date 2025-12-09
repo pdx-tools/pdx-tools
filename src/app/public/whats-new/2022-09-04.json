@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Improved performance parsing EU4 zip saves and melting"
+    ],
+    "fixes": []
+  }
+}

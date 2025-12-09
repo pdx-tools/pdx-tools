@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Show error on map crash when gl context lost"
+    ]
+  }
+}

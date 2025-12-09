@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [
+      "Expose multiple timelapse recording codecs if available",
+      "Add support for native MP4 timelapse codec (Safari)"
+    ],
+    "fixes": []
+  }
+}

@@ -1,6 +1,7 @@
 import { useCallback } from "react";
-import { CountryMatcher, LedgerDatum } from "@/features/eu4/types/models";
-import { Eu4Worker, useAnalysisWorker } from "@/features/eu4/worker";
+import type { CountryMatcher, LedgerDatum } from "@/features/eu4/types/models";
+import { useAnalysisWorker } from "@/features/eu4/worker";
+import type { Eu4Worker } from "@/features/eu4/worker";
 import { useTagFilter } from "@/features/eu4/store";
 
 export type LedgerSelection = (

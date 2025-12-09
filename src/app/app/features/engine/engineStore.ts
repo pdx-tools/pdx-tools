@@ -1,10 +1,12 @@
 import { dequal } from "@/lib/dequal";
 import { create } from "zustand";
-import { type Eu4SaveInput } from "@/features/eu4/store";
-import { type Vic3SaveInput } from "@/features/vic3/store";
+import type { Eu4SaveInput } from "@/features/eu4/store";
+import type { Eu5SaveInput } from "@/features/eu5/store/useLoadEu5";
+import type { Vic3SaveInput } from "@/features/vic3/store";
 
 export type SaveGameInput =
   | { kind: "eu4"; data: Eu4SaveInput }
+  | { kind: "eu5"; data: Eu5SaveInput }
   | { kind: "ck3"; file: File }
   | { kind: "hoi4"; file: File }
   | { kind: "imperator"; file: File }
@@ -19,6 +21,7 @@ export function extensionType(filename: string): DetectedDataType {
     case "rome":
       return "imperator";
     case "eu4":
+    case "eu5":
     case "ck3":
     case "hoi4":
       return extension;

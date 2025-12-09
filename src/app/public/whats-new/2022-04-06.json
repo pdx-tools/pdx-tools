@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Add map timelapse recordings"
+    ],
+    "fixes": [
+      "Reset game analysis to fix canvas undefined errors",
+      "Fix map colors for unowned provinces in timelapse"
+    ]
+  }
+}

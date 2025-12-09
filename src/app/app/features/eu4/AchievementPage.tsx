@@ -1,6 +1,7 @@
 import React from "react";
-import { RankedSave, RecordTable } from "./components/RecordTable";
-import { AchievementAvatar } from "./components/avatars";
+import { RecordTable } from "./components/RecordTable";
+import type { RankedSave } from "./components/RecordTable";
+import { AchievementAvatar, Flag } from "./components/avatars";
 import { Card } from "@/components/Card";
 import { formatFloat, formatInt } from "@/lib/format";
 import { cx } from "class-variance-authority";
@@ -9,7 +10,7 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { Link } from "@/components/Link";
 import { difficultyColor, difficultyText } from "@/lib/difficulty";
 import { Tooltip } from "@/components/Tooltip";
-import { type fetchAchievement } from "@/server-lib/fn/achievement";
+import type { fetchAchievement } from "@/server-lib/fn/achievement";
 
 export const AchievementLayout = ({
   achievementId,
@@ -55,13 +56,13 @@ function AchievementPlatform({
   return (
     <Card
       className={cx(
-        "relative min-w-64 max-w-64 shadow-lg transition-transform duration-100 lg:hover:scale-105",
+        "relative max-w-64 min-w-64 shadow-lg transition-transform duration-100 lg:hover:scale-105",
         className,
       )}
     >
       <div
         className={cx(
-          "absolute left-0 right-0 mx-auto text-center text-white",
+          "absolute right-0 left-0 mx-auto text-center text-white",
           save.rank === 1 && "-top-9 h-16 w-16",
           save.rank === 2 && "-top-5 h-11 w-11",
           save.rank === 3 && "top-0.5 h-7 w-7",
@@ -137,6 +138,7 @@ function AchievementPlatform({
             <p className="text-gray-600 dark:text-gray-400">
               <TimeAgo date={save.upload_time} />
             </p>
+            <CountrySummary save={save} />
           </div>
         </div>
 
@@ -171,6 +173,56 @@ export const AchievementPodium = ({
       {gold && <AchievementPlatform save={gold} className="lg:order-2" />}
       {silver && <AchievementPlatform save={silver} className="lg:order-1" />}
       {bronze && <AchievementPlatform save={bronze} className="lg:order-3" />}
+    </div>
+  );
+};
+
+const CountrySummary = ({ save }: { save: RankedSave }) => {
+  if (
+    !save.player_start_tag ||
+    !save.player_start_tag_name ||
+    !save.player_tag ||
+    !save.player_tag_name
+  ) {
+    return null;
+  }
+
+  const current = {
+    tag: save.player_tag,
+    name: save.player_tag_name,
+  };
+
+  const start = {
+    tag: save.player_start_tag,
+    name: save.player_start_tag_name,
+  };
+  const stayedSame = start.tag === current.tag;
+
+  if (stayedSame) {
+    return (
+      <div className="mt-4">
+        <Flag name={save.player_tag_name} tag={save.player_tag}>
+          <Flag.Tooltip showName>
+            <Flag.Image size="xs" />
+          </Flag.Tooltip>
+        </Flag>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 flex items-center justify-center gap-2">
+      <Flag name={save.player_start_tag_name} tag={save.player_start_tag}>
+        <Flag.Tooltip showName>
+          <Flag.Image size="xs" />
+        </Flag.Tooltip>
+      </Flag>
+      <span className="text-gray-500 dark:text-gray-400">→</span>
+      <Flag name={save.player_tag_name} tag={save.player_tag}>
+        <Flag.Tooltip showName>
+          <Flag.Image size="xs" />
+        </Flag.Tooltip>
+      </Flag>
     </div>
   );
 };

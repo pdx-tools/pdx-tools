@@ -12,7 +12,7 @@ fn compress(data: Vec<u8>) -> Vec<u8> {
 fn test_recompression_plaintext() {
     let data = b"hello world";
     let compressed = compress(data.to_vec());
-    let actual = zstd::bulk::decompress(&compressed, 100).unwrap();
+    let actual = pdx_zstd::decode_all(&compressed).unwrap();
     assert_eq!(actual.as_slice(), &data[..]);
 }
 
@@ -23,10 +23,10 @@ fn test_recompression_zip() {
     let archive = rawzip::ZipArchive::from_slice(compressed.as_slice()).unwrap();
     let mut entries = archive.entries();
     let entry = entries.next_entry().unwrap().unwrap();
-    assert_eq!(entry.file_raw_path(), b"test.txt");
+    assert_eq!(entry.file_path().as_ref(), b"test.txt");
     assert_eq!(entry.compression_method(), CompressionMethod::Zstd);
     let file = archive.get_entry(entry.wayfinder()).unwrap();
-    let actual = zstd::decode_all(file.data()).unwrap();
+    let actual = pdx_zstd::decode_all(file.data()).unwrap();
     assert_eq!(actual.as_slice(), b"aaaaaaaaaa\n");
     assert!(entries.next_entry().unwrap().is_none());
 
@@ -34,7 +34,7 @@ fn test_recompression_zip() {
     let archive = rawzip::ZipArchive::from_slice(original.as_slice()).unwrap();
     let mut entries = archive.entries();
     let entry = entries.next_entry().unwrap().unwrap();
-    assert_eq!(entry.file_raw_path(), b"test.txt");
+    assert_eq!(entry.file_path().as_ref(), b"test.txt");
     assert_eq!(entry.compression_method(), CompressionMethod::Deflate);
     let file = archive.get_entry(entry.wayfinder()).unwrap();
     let mut buf = Vec::new();

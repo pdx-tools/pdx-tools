@@ -1,9 +1,9 @@
-import {
+import type {
   CountryIncomeLedger,
   CountryExpenseLedger,
   CountryInfo,
-} from "../../../../../wasm-eu4/pkg/wasm_eu4";
-import { Losses } from "../utils/losses";
+} from "@/wasm/wasm_eu4";
+import type { Losses } from "../utils/losses";
 export type { CountryDetails } from "../worker/module";
 export type {
   CountryAdvisors,
@@ -40,7 +40,7 @@ export type {
   CountryState,
   TagTransition,
   ProvinceDevelopment,
-} from "../../../../../wasm-eu4/pkg";
+} from "@/wasm/wasm_eu4";
 export type { Losses } from "../utils/losses";
 
 export type SaveMode = "Normal" | "Multiplayer" | "IronmanOk" | "IronmanNo";

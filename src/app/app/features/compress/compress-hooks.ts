@@ -1,8 +1,9 @@
 import { wrap, transfer, releaseProxy, proxy } from "comlink";
 import { useEffect, useMemo, useRef } from "react";
 import type { ProgressCb } from "./compress-worker";
+import type * as CompressWorkerModule from "./compress-worker";
 
-type CompressionWorker = typeof import("./compress-worker").obj;
+type CompressionWorker = typeof CompressWorkerModule.obj;
 export function createCompressionWorker() {
   const worker = new Worker(new URL("./compress-worker", import.meta.url), {
     type: "module",
@@ -15,12 +16,12 @@ export function createCompressionWorker() {
       workerApi[releaseProxy]();
       worker.terminate();
     },
-    compress: async (data: Uint8Array, cb: ProgressCb) => {
+    compress: async (data: Uint8Array<ArrayBuffer>, cb: ProgressCb) => {
       await workerApi.loadWasm();
       return workerApi.compress(transfer(data, [data.buffer]), proxy(cb));
     },
 
-    transform: async (data: Uint8Array) => {
+    transform: async (data: Uint8Array<ArrayBuffer>) => {
       await workerApi.loadWasm();
       return workerApi.transform(transfer(data, [data.buffer]));
     },
@@ -28,7 +29,7 @@ export function createCompressionWorker() {
 }
 
 export const useCompression = () => {
-  const worker = useRef<ReturnType<typeof createCompressionWorker>>();
+  const worker = useRef<ReturnType<typeof createCompressionWorker>>(undefined);
 
   useEffect(() => {
     const current = worker.current;
@@ -37,7 +38,7 @@ export const useCompression = () => {
 
   return useMemo(
     () => ({
-      transform: async (data: Uint8Array) =>
+      transform: async (data: Uint8Array<ArrayBuffer>) =>
         (worker.current ??= createCompressionWorker()).transform(data),
     }),
     [],

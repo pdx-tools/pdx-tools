@@ -1,5 +1,5 @@
-import { LocalizedLedger } from "../../../../../wasm-eu4/pkg/wasm_eu4";
-import { LedgerDatum } from "../types/models";
+import type { LocalizedLedger } from "@/wasm/wasm_eu4";
+import type { LedgerDatum } from "../types/models";
 
 export function workLedgerData(data: LocalizedLedger): LedgerDatum[] {
   const localize = new Map(data.localization.map((x) => [x.tag, x.name]));

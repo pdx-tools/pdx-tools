@@ -1,41 +1,35 @@
-import {
-  ComponentProps,
-  ComponentType,
-  lazy,
-  Suspense,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
+import type { ComponentProps, ComponentType } from "react";
 import { WebPage } from "@/components/layout";
 import { PageDropOverlay } from "./components/PageDropOverlay";
-import {
-  SaveGameInput,
-  useEngineActions,
-  useSaveFileInput,
-} from "./engineStore";
+import { useEngineActions, useSaveFileInput } from "./engineStore";
+import type { SaveGameInput } from "./engineStore";
 import classes from "./GameView.module.css";
 import type Eu4Ui from "@/features/eu4/Eu4Ui";
+import type Eu5Ui from "@/features/eu5/Eu5Ui";
 import type Ck3Ui from "@/features/ck3/Ck3Ui";
 import type Hoi4Ui from "@/features/hoi4/Hoi4Ui";
 import type ImperatorUi from "@/features/imperator/ImperatorUi";
 import type Vic3Ui from "@/features/vic3/vic3Ui";
-import { timeit } from "@/lib/timeit";
-import { logMs } from "@/lib/log";
+import { timeAsync } from "@/lib/timeit";
 import { useWindowMessageDrop } from "./hooks/useWindowMessageDrop";
 
 function timeModule<T>(fn: () => Promise<T>, module: string): () => Promise<T> {
-  return () =>
-    timeit(fn).then((x) => {
-      if (typeof window !== "undefined") {
-        logMs(x, `load ${module} module`);
-      }
-      return x.data;
-    });
+  return () => {
+    if (typeof window === "undefined") {
+      return fn();
+    }
+
+    return timeAsync(`load ${module} module`, fn);
+  };
 }
 
 const DynamicEu4: ComponentType<ComponentProps<typeof Eu4Ui>> = lazy(
   timeModule(() => import("@/features/eu4/Eu4Ui"), "eu4"),
+);
+
+const DynamicEu5: ComponentType<ComponentProps<typeof Eu5Ui>> = lazy(
+  timeModule(() => import("@/features/eu5/Eu5Ui"), "eu5"),
 );
 
 const DynamicCk3: ComponentType<ComponentProps<typeof Ck3Ui>> = lazy(
@@ -65,6 +59,15 @@ const gameRenderer = (savegame: SaveGameInput | null) => {
         component: () => (
           <Suspense fallback={null}>
             <DynamicEu4 save={savegame.data} />
+          </Suspense>
+        ),
+      } as const;
+    case "eu5":
+      return {
+        kind: "full-screen",
+        component: () => (
+          <Suspense fallback={null}>
+            <DynamicEu5 save={savegame.data} />
           </Suspense>
         ),
       } as const;
@@ -120,7 +123,7 @@ const FullscreenPage = ({ children }: React.PropsWithChildren) => {
   return (
     <div
       ref={ref}
-      className={`fixed inset-0 z-10 bg-white dark:bg-slate-900 ${classes["slide-in"]}`}
+      className={`fixed inset-0 z-200 bg-white dark:bg-slate-900 ${classes["slide-in"]}`}
     >
       {children}
     </div>

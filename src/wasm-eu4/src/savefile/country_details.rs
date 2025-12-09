@@ -156,7 +156,7 @@ impl SaveFileImpl {
             .game
             .provinces
             .values()
-            .filter(|prov| prov.owner.as_ref().map_or(false, |x| x == &country_tag))
+            .filter(|prov| prov.owner.as_ref() == Some(&country_tag))
             .flat_map(|x| x.buildings.keys());
         for building in prov_buildings {
             *building_count.entry(building).or_default() += 1
@@ -773,7 +773,7 @@ impl SaveFileImpl {
             .game
             .provinces
             .values()
-            .filter(|x| x.owner.as_ref().map_or(false, |owner| owner == &tag))
+            .filter(|x| x.owner.as_ref() == Some(&tag))
             .filter_map(|x| x.religion.as_ref().map(|r| (x, r)));
 
         #[derive(Default)]
@@ -928,7 +928,7 @@ impl SaveFileImpl {
             .game
             .provinces
             .iter()
-            .filter(|(_, prov)| prov.owner.as_ref().map_or(false, |owner| owner == &tag))
+            .filter(|(_, prov)| prov.owner.as_ref() == Some(&tag))
             .filter_map(|(id, prov)| prov.culture.as_ref().map(|r| (id, prov, r)));
 
         #[derive(Default)]
@@ -1110,7 +1110,7 @@ impl SaveFileImpl {
             .game
             .provinces
             .iter()
-            .filter(|(_, prov)| prov.owner.as_ref().map_or(false, |owner| owner == &tag))
+            .filter(|(_, prov)| prov.owner.as_ref() == Some(&tag))
             .filter_map(|(id, prov)| state_lookup.get(id).map(|state| (id, prov, state)));
 
         let mut province_states: HashMap<&str, Vec<(ProvinceId, &Province)>> = HashMap::new();
@@ -1299,7 +1299,7 @@ impl SaveFileImpl {
         result
     }
 
-    pub fn get_country_estates(&self, tag: &str) -> Vec<Estate> {
+    pub fn get_country_estates(&self, tag: &str) -> Vec<Estate<'_>> {
         let tag = tag.parse::<CountryTag>().unwrap();
         let country = self.query.country(&tag).unwrap();
 
@@ -1485,7 +1485,7 @@ impl SaveFileImpl {
             .iter()
             .filter(|(date, event)| *date < game.start_date && event.as_monarch().is_some())
             .filter_map(|(_date, event)| self.country_history_event(game.start_date, event))
-            .last();
+            .next_back();
 
         if let Some(starting_monarch) = starting_monarch {
             events.push(starting_monarch);

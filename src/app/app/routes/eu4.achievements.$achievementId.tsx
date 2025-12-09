@@ -1,5 +1,4 @@
-import { Alert } from "@/components/Alert";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorCatcher, ErrorDisplay } from "@/features/errors";
 import { WebPage } from "@/components/layout";
 import { LoadingState } from "@/components/LoadingState";
 import {
@@ -10,12 +9,12 @@ import { seo } from "@/lib/seo";
 import { usingDb } from "@/server-lib/db/connection";
 import { fetchAchievement, findAchievement } from "@/server-lib/fn/achievement";
 import { withCore } from "@/server-lib/middleware";
-import { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
-import { Await, useLoaderData } from "@remix-run/react";
+import { Await, useLoaderData } from "react-router";
 import { Suspense } from "react";
 import { z } from "zod";
+import type { Route } from "./+types/eu4.achievements.$achievementId";
 
-export const meta: MetaFunction<typeof loader> = ({ data }) =>
+export const meta = ({ data }: Route.MetaArgs) =>
   seo({
     title: `${data?.achievement.name} Leaderboard`,
     description: `Top EU4 saves for ${data?.achievement.name}: ${data?.achievement.description}`,
@@ -23,7 +22,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) =>
 
 const ParamSchema = z.object({ achievementId: z.string() });
 export const loader = withCore(
-  async ({ params: rawParams, context }: LoaderFunctionArgs) => {
+  async ({ params: rawParams, context }: Route.LoaderArgs) => {
     const params = ParamSchema.parse(rawParams);
     const achievement = findAchievement(params);
 
@@ -47,14 +46,13 @@ export default function Eu4Achievement() {
         description={achievement.description}
         title={achievement.name}
       >
-        <ErrorBoundary
-          fallback={({ error }) => (
-            <div className="m-8">
-              <Alert.Error
-                className="px-4 py-2"
-                msg={`Failed to fetch leaderboard: ${error}`}
-              />
-            </div>
+        <ErrorCatcher
+          fallback={(args) => (
+            <ErrorDisplay
+              {...args}
+              title="Failed to fetch achievement leaderboard"
+              className="m-8"
+            />
           )}
         >
           <Suspense fallback={<LoadingState />}>
@@ -62,7 +60,7 @@ export default function Eu4Achievement() {
               {(saves) => <AchievementPage achievement={saves} />}
             </Await>
           </Suspense>
-        </ErrorBoundary>
+        </ErrorCatcher>
       </AchievementLayout>
     </WebPage>
   );

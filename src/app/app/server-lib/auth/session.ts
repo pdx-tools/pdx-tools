@@ -1,14 +1,13 @@
 import { check } from "@/lib/isPresent";
-import {
-  AppLoadContext,
-  createCookieSessionStorage,
-} from "@remix-run/cloudflare";
+import { createCookieSessionStorage } from "react-router";
+import type { AppLoadContext } from "react-router";
 import { z } from "zod";
 import { parseBasicAuth } from "./basic";
 import { oneshotDb } from "../db/connection";
 import { apiKeyAtRest, table } from "../db";
 import { eq } from "drizzle-orm";
-import { LoggedInUser, userId } from "@/lib/auth";
+import { userId } from "@/lib/auth";
+import type { LoggedInUser } from "@/lib/auth";
 
 export type PdxSessionStorage = ReturnType<typeof pdxSession>;
 export const pdxSession = ({
@@ -21,7 +20,9 @@ export const pdxSession = ({
   const storage = createCookieSessionStorage({
     cookie: {
       name: "sid",
-      secrets: [check(context.cloudflare.env.SESSION_SECRET)],
+      secrets: [
+        check(context.cloudflare.env.SESSION_SECRET, "missing session secret"),
+      ],
       sameSite: "strict",
       httpOnly: true,
       secure: true,
@@ -36,7 +37,7 @@ export const pdxSession = ({
         const session = await storage.getSession(request.headers.get("Cookie"));
         const parsed = SessionPayloadSchema.parse(session.data);
         return { kind: "user", ...parsed } as const;
-      } catch (_ex) {
+      } catch {
         return { kind: "guest" } as const;
       }
     },

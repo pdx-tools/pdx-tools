@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Vic3Worker } from "./bridge";
+import type { Vic3Worker } from "./types";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { getVic3Worker } from ".";
 import { useVic3Meta } from "../store";

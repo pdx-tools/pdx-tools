@@ -1,19 +1,21 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { incomeLedgerAliases } from "./data";
 import { formatFloat, formatInt } from "@/lib/format";
-import { CountryDetails } from "../../types/models";
+import type { CountryDetails } from "../../types/models";
 import { axisTop } from "d3-axis";
 import { scaleBand, scaleLinear } from "d3-scale";
 import { select } from "d3-selection";
 import { cx } from "class-variance-authority";
-import { Budget, budgetSelect, createBudget, expenseBudget } from "./budget";
+import { budgetSelect, createBudget, expenseBudget } from "./budget";
+import type { Budget } from "./budget";
 import { Card } from "@/components/Card";
 import { useEu4Meta } from "../../store";
 import { Button } from "@/components/Button";
 import { ToggleGroup } from "@/components/ToggleGroup";
 import { throttle } from "@/lib/throttle";
 import { isDarkMode } from "@/lib/dark";
-import { Treemap, TreemapConfig } from "@/components/viz";
+import { Treemap } from "@/components/viz";
+import type { TreemapConfig } from "@/components/viz";
 import { emitEvent } from "@/lib/events";
 import { classicCyclic } from "@/lib/colors";
 
@@ -608,7 +610,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                 <Mat />
               </th>
               <th className="min-w-28 p-2 text-right">Total Spent</th>
-              <th className="max-w-24 text-balance p-2 text-right text-sm font-normal leading-none">
+              <th className="max-w-24 p-2 text-right text-sm leading-none font-normal text-balance">
                 % of total spent
               </th>
             </tr>

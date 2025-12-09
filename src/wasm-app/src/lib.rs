@@ -3,7 +3,7 @@ use serde::Serialize;
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-#[derive(Tsify, Serialize)]
+#[derive(Debug, Tsify, Serialize)]
 #[tsify(into_wasm_abi)]
 #[serde(transparent)]
 pub struct AchievementList(Vec<eu4game_data::Achievement>);

@@ -1,0 +1,31 @@
+[package]
+name = "wasm-eu5"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[features]
+default = ["zstd_rust"]
+zstd_c = ["eu5app/zstd_c"]
+zstd_rust = ["eu5app/zstd_rust"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+bumpalo = { workspace = true, features = ["collections"] }
+bumpalo-serde = { workspace = true }
+eu5app = { workspace = true, default-features = false }
+eu5save = { workspace = true }
+jomini =  { workspace = true }
+js-sys = { workspace = true }
+pdx-map = { workspace = true, default-features = false }
+pdx-zstd = { workspace = true }
+schemas = { workspace = true }
+serde = { workspace = true, features = ["derive", "rc"] }
+serde-wasm-bindgen = { workspace = true }
+tracing = { workspace = true }
+tsify = { workspace = true, default-features = false, features = ["js"] }
+wasm-bindgen = { workspace = true }

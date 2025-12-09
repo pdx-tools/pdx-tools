@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "improvements": [
+      "Start map centered around player's capital province",
+      "Add changelog page"
+    ],
+    "fixes": [
+      "Consistent level of initial map zooom independent of screen size",
+      "Clear file upload rejection status on each file drop",
+      "Fix account page not highlighting the account menu option"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Backend errors now properly bubble up to the UI"
+    ]
+  }
+}

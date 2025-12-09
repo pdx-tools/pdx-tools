@@ -1,0 +1,22 @@
+{
+  "rules": {
+    // Consistent type imports is critical to avoid accidentally importing code
+    // referencing window in a web worker
+    "typescript/consistent-type-imports": "error",
+    "import/consistent-type-specifier-style": "error",
+    "import/no-cycle": "error"
+  },
+  "categories": {
+    "correctness": "error"
+  },
+  "plugins": [
+    "eslint",
+    "import",
+    "oxc",
+    "promise",
+    "react-perf",
+    "react",
+    "typescript",
+    "unicorn"
+  ]
+}

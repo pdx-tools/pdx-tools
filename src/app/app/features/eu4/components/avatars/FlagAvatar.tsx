@@ -39,7 +39,7 @@ export const Flag = RootFlag as typeof RootFlag & {
 };
 
 const FlagTooltip = React.forwardRef<
-  React.ElementRef<typeof Tooltip.Trigger>,
+  React.ComponentRef<typeof Tooltip.Trigger>,
   React.ComponentPropsWithoutRef<typeof Tooltip.Trigger> & {
     showName?: boolean;
   }
@@ -59,7 +59,7 @@ const FlagTooltip = React.forwardRef<
 Flag.Tooltip = FlagTooltip;
 
 const FlagDrawerTrigger = React.forwardRef<
-  React.ElementRef<typeof Button>,
+  React.ComponentRef<typeof Button>,
   React.ComponentPropsWithoutRef<typeof Tooltip.Trigger>
 >(function FlagDrawerTrigger({ children, className, ...props }, ref) {
   const flag = useFlag();
@@ -73,7 +73,7 @@ const FlagDrawerTrigger = React.forwardRef<
       shape="none"
       className={cx(
         className,
-        `w-max flex-shrink-0 rounded-r-md p-0 hover:bg-gray-200/70 active:bg-gray-300 dark:hover:bg-slate-700/70 dark:active:bg-slate-700`,
+        `w-max shrink-0 rounded-r-md p-0 hover:bg-gray-200/70 active:bg-gray-300 dark:hover:bg-slate-700/70 dark:active:bg-slate-700`,
       )}
       onClick={() => {
         setSelectedTag(flag.tag);
@@ -144,7 +144,7 @@ const dimensions = spriteDimension({
 // in a weird gap in chrome so we have to use outline with a negative
 // offset to account for the avatar's border radius.
 const className =
-  "shrink-0 outline outline-1 -outline-offset-1 outline-gray-500 dark:outline-gray-800";
+  "shrink-0 outline -outline-offset-1 outline-gray-500 dark:outline-gray-800";
 
 function RebFlag({ size }: { size?: AvatarSize }) {
   const factor = sizeFactor(size);
@@ -204,7 +204,7 @@ const ColonialSubjectFlag = ({ tag, size }: FlagAvatarCoreProps) => {
       <div className="relative">
         <FlagSprite index={overlordIndex} size={size} />
         <div
-          className="absolute bottom-0 right-0 top-0 w-1/2"
+          className="absolute top-0 right-0 bottom-0 w-1/2"
           style={{ backgroundColor: `rgb(${r},${g},${b})` }}
         />
       </div>
@@ -224,7 +224,7 @@ const FlagAvatar = (props: FlagAvatarProps) => {
   const interactive = useInEu4Analysis();
   const flag = <FlagImageImpl {...props} />;
   const withName = (
-    <div className="flex flex-shrink-0 items-center gap-x-2 text-left">
+    <div className="flex shrink-0 items-center gap-x-2 text-left">
       {flag}
       {!props.condensed && <Flag.CountryName />}
     </div>

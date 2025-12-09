@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "faster map generation using single pass algorithm"
+    ],
+    "fixes": [
+      "prevent date wrapping in some tables"
+    ]
+  }
+}

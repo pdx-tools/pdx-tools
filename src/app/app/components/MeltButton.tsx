@@ -1,6 +1,6 @@
 import { downloadData } from "@/lib/downloadData";
 import { emitEvent } from "@/lib/events";
-import { DetectedDataType } from "@/features/engine";
+import type { DetectedDataType } from "@/features/engine";
 import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 import { LoadingIcon } from "./icons/LoadingIcon";
@@ -10,7 +10,7 @@ type MeltProps = {
   filename: string;
   game: DetectedDataType;
   worker: {
-    melt(): Promise<Uint8Array>;
+    melt(): Promise<Uint8Array<ArrayBuffer>>;
   };
 };
 
@@ -56,7 +56,7 @@ export const MeltButton = ({ filename, worker, game }: MeltProps) => {
 export async function meltSave(
   game: DetectedDataType,
   filename: string,
-  worker: { melt(): Promise<Uint8Array> },
+  worker: { melt(): Promise<Uint8Array<ArrayBuffer>> },
 ) {
   const ext = gameExtension(game);
   const meltedName = translateToMeltedFilename(filename, ext);

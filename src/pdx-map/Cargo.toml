@@ -1,0 +1,15 @@
+[package]
+name = "pdx-map"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["render"]
+render = ["dep:wgpu", "dep:futures-channel"]
+tracing = ["dep:tracing"]
+
+[dependencies]
+bytemuck = { workspace = true, features = ["derive"] }
+futures-channel = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true }
+wgpu = { workspace = true, optional = true }

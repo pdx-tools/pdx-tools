@@ -58,7 +58,8 @@ function offscreenCompatibility() {
     const canvas = new OffscreenCanvas(100, 100);
     const ctx = canvas.getContext("webgl2");
     return { enabled: ctx !== null };
-  } catch (_ex) {
+  } catch (e) {
+    console.debug("OffscreenCanvas or WebGL2 not supported", e);
     return { enabled: false };
   }
 }
@@ -85,4 +86,10 @@ export function isEnvironmentSupported() {
     report.wasm &&
     report.offscreen.enabled
   );
+}
+
+export function isWebGPUSupported(): boolean {
+  // navigator.gpu is the entry point for WebGPU
+  // https://codelabs.developers.google.com/your-first-webgpu-app#2
+  return "gpu" in navigator;
 }

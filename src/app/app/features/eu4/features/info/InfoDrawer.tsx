@@ -6,7 +6,8 @@ import { AchievementAvatar, Flag } from "@/features/eu4/components/avatars";
 import { Aar } from "./Aar";
 import { ModList } from "./ModList";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
-import { useEu4Worker, Eu4Worker } from "@/features/eu4/worker";
+import { useEu4Worker } from "@/features/eu4/worker";
+import type { Eu4Worker } from "@/features/eu4/worker";
 import {
   emptyEu4CountryFilter,
   initialEu4CountryFilter,
@@ -25,11 +26,11 @@ import { Link } from "@/components/Link";
 import { EyeIcon } from "@heroicons/react/24/outline";
 import { formatInt } from "@/lib/format";
 import { Card } from "@/components/Card";
-import {
+import type {
   CompletedAchievement,
   GreatPower,
   PlayerHistory,
-} from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+} from "@/wasm/wasm_eu4";
 import { findMap } from "@/lib/findMap";
 import { useList } from "@/hooks/useList";
 import { useSession } from "@/features/account";
@@ -129,7 +130,7 @@ export const InfoDrawer = () => {
           <AchievementCard achievements={achievements.achievements} />
         ) : null}
         {mods.length > 0 ? (
-          <Card className="min-w-[320px] max-w-xl p-4">
+          <Card className="max-w-xl min-w-[320px] p-4">
             <div className="space-y-2">
               <div className="text-center text-lg">Mods {mods.length}</div>
               <ModList />
@@ -140,7 +141,9 @@ export const InfoDrawer = () => {
       <Divider>Countries</Divider>
       <Alert.Error msg={playerHistories.error} />
       <div className="grid gap-8 md:grid-cols-2">
-        {players?.map((item, i) => <CountryCard key={i} item={item} />)}
+        {players?.map((item, i) => (
+          <CountryCard key={i} item={item} />
+        ))}
       </div>
 
       <Alert.Error msg={greatPowers.error} />

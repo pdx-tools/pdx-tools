@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix trying to mutate immutable mod list resulting in error on info drawer"
+    ]
+  }
+}

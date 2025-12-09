@@ -1,4 +1,5 @@
-import { VariantProps, cva, cx } from "class-variance-authority";
+import { cva, cx } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
 import React from "react";
 
 const cardVariants = cva(
@@ -6,7 +7,7 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
-        default: "dark:bg-slate-800",
+        default: "bg-slate-50 dark:bg-slate-800",
         ghost: "",
       },
     },

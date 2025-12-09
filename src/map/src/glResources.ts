@@ -1,12 +1,12 @@
 import type { StaticResources, TerrainOverlayResources } from "./types";
-import { MapShader } from "./MapShader";
-import { XbrShader } from "./XbrShader";
+import type { MapShader } from "./MapShader";
+import type { XbrShader } from "./XbrShader";
 import {
   IMG_WIDTH,
   IMG_HEIGHT,
   IMG_PADDED_WIDTH,
   SPLIT_IMG_PADDED_WIDTH,
-} from "./map";
+} from "./mapDimensions";
 import { notNull } from "./nullcheck";
 
 const MAX_TEXTURE_SIZE = 4096;

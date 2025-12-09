@@ -230,7 +230,6 @@ struct Modifier(f64);
 impl ops::Add for Modifier {
     type Output = Self;
 
-    #[must_use]
     fn add(self, rhs: Self) -> Self::Output {
         Self(self.0 + rhs.0)
     }

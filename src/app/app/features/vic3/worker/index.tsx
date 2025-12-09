@@ -1,6 +1,6 @@
 import { wrap } from "comlink";
-import { type Vic3WorkerModule } from "./bridge";
-export { type Vic3Worker } from "./bridge";
+import type { Vic3WorkerModule } from "./types";
+export { type Vic3Worker } from "./types";
 
 function createWorker() {
   const rawWorker = new Worker(new URL("./bridge", import.meta.url), {

@@ -1,0 +1,27 @@
+[package]
+name = "pdx-fun-cli"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "pdx-fun"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { features = ["derive", "env"], workspace = true }
+eu4game = { workspace = true, default-features = false, features = ["zstd_c"] }
+eu4save = { workspace = true, default-features = false, features = ["serialize", "zstd_c"] }
+pdx-assets = { workspace = true }
+rawbmp = { workspace = true }
+schemas = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
+walkdir = { workspace = true }
+
+[target.'cfg(target_env = "musl")'.dependencies]
+mimalloc = { workspace = true }

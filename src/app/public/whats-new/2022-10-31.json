@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Show development in country details screen"
+    ],
+    "fixes": [
+      "Fixed non-ruler leader names finishing in 'null'",
+      "Update CK3 melted output to output births as dates even if negative"
+    ]
+  }
+}

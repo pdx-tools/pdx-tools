@@ -47,7 +47,7 @@ The downside with this layout is that data density decreases as one was previous
 
 As part of the rework, I spent some time updating the libraries that underpin Rakaly. Unfortunately, the charting library's update no longer supports racing bar charts, so I removed them. Feels a bit foolish saying this as I just highlighted nation size racing bar chart in [status report 5](/blog/rakaly-status-report-5)
 
-[![The Nation size racing bar chart has been removed in the rework. Rip.](nation-size.gif)](nation-size.gif)
+[![The Nation size racing bar chart has been removed in the rework. Rip.](../2020-11-08-rakaly-status-report-5/nation-size.gif)](../2020-11-08-rakaly-status-report-5/nation-size.gif)
 *The Nation size racing bar chart has been removed in the rework. Rip.*
 
 They are not gone forever though. Racing bar charts are quite entertaining so if I have to implement them by hand, I will -- it'll just take a little longer.

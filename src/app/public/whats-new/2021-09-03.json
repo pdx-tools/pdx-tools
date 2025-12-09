@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "improvements": [
+      "Despite not targeting Safari this release contains a few Safari fixes:"
+    ],
+    "fixes": [
+      "Fix PDX Tools logo not showing on homepage on Safari devices",
+      "Fix errors in analyzing saves in Safari by catering to their [backwards CSP implementation](https://developer.apple.com/forums/thread/650317)",
+      "Derive loading page for 3rd party apps from home page instead of custom page",
+      "Tweak local save cache to be more resiliant when readonly"
+    ]
+  }
+}

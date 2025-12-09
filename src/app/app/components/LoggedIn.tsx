@@ -1,6 +1,7 @@
-import { PropsWithChildren, createContext, useContext } from "react";
+import { createContext, useContext } from "react";
+import type { PropsWithChildren } from "react";
 import { check } from "@/lib/isPresent";
-import { type PdxUserSession } from "@/server-lib/auth/session";
+import type { PdxUserSession } from "@/server-lib/auth/session";
 
 const LoggedInContext = createContext<undefined | PdxUserSession>(undefined);
 

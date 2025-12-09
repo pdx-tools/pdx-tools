@@ -1,13 +1,10 @@
 import { useCallback, useEffect } from "react";
-import {
-  Treemap,
-  TreemapConfig,
-  useVisualizationDispatch,
-} from "@/components/viz";
+import { Treemap, useVisualizationDispatch } from "@/components/viz";
+import type { TreemapConfig } from "@/components/viz";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { createCsv } from "@/lib/csv";
 import { useTagFilter } from "../../store";
-import {
+import type {
   OwnedDevelopmentStates,
   ProvinceDevelopment,
 } from "../../types/models";

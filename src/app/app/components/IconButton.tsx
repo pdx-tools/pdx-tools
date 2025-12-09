@@ -1,5 +1,6 @@
 import React from "react";
-import { Button, ButtonProps } from "./Button";
+import { Button } from "./Button";
+import type { ButtonProps } from "./Button";
 import { Tooltip } from "./Tooltip";
 
 type IconButtonProps = ButtonProps & {

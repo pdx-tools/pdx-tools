@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Remove broken \"Select a file\" button for chrome",
+      "Add domination dlc detection",
+      "Fix transparent flags by turning off alpha in tga conversion"
+    ]
+  }
+}

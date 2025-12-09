@@ -1,10 +1,12 @@
 import { compatibilityReport } from "@/lib/compatibility";
 import { check } from "@/lib/isPresent";
-import { MapController } from "map";
+import type { MapController } from "@pdx.tools/map";
 import { pdxApi } from "@/services/appApi";
 import { createContext, useContext, useMemo } from "react";
-import { type StoreApi, createStore, useStore } from "zustand";
-import { type MapPayload, mapModes } from "../types/map";
+import { createStore, useStore } from "zustand";
+import type { StoreApi } from "zustand";
+import { mapModes } from "../types/map";
+import type { MapPayload } from "../types/map";
 import type {
   CountryMatcher,
   AchievementsScore,
@@ -12,7 +14,7 @@ import type {
   MapDate,
   CountryTag,
 } from "../types/models";
-import { getEu4Worker } from "../worker";
+import { getEu4Worker } from "../worker/getEu4Worker";
 import type {
   EnhancedMeta,
   FileObservationFrequency,
@@ -174,7 +176,7 @@ export const createEu4Store = async ({
       setMapMode: async (mode: Eu4State["mapMode"]) => {
         const countryColors =
           !dateEnabledMapMode(mode) && dateEnabledMapMode(get().mapMode)
-            ? get().save.initialPoliticalMapColors
+            ? new Uint8Array(get().save.initialPoliticalMapColors)
             : undefined;
         set({ mapMode: mode });
         emitEvent({ kind: "Map mode switch", mode });

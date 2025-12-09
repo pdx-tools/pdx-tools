@@ -113,7 +113,10 @@ T1: (T1, E)
 
 Into array [E;N] for arbitrary N
 */
+#[derive(Debug)]
 pub struct One;
+
+#[derive(Debug)]
 pub struct Succ<T>(std::marker::PhantomData<T>);
 
 pub trait Value {
@@ -289,13 +292,16 @@ impl<A: Iterator, B: Iterator> Vic3CountryStatsAllignedIter<A, B> {
 }
 
 impl Vic3CountryStats {
-    pub fn iter(&self) -> Vic3CountryStatsIter {
+    pub fn iter(&self) -> Vic3CountryStatsIter<'_> {
         Vic3CountryStatsIter {
             stats: self,
             index: 0,
         }
     }
-    pub fn growth_rate(&self, days_back: i32) -> Vic3CountryStatsRateIter<Vic3CountryStatsIter> {
+    pub fn growth_rate(
+        &self,
+        days_back: i32,
+    ) -> Vic3CountryStatsRateIter<Vic3CountryStatsIter<'_>> {
         Vic3CountryStatsRateIter {
             stats: self.iter(),
             days_back,
@@ -303,7 +309,7 @@ impl Vic3CountryStats {
         }
     }
 
-    pub fn gdp_growth(&self) -> Vic3StatsGDPIter<Vic3CountryStatsIter> {
+    pub fn gdp_growth(&self) -> Vic3StatsGDPIter<Vic3CountryStatsIter<'_>> {
         Vic3StatsGDPIter::new(self.iter())
     }
 }
@@ -311,7 +317,6 @@ impl Vic3CountryStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stats::Vic3CountryStats;
     use jomini::text::de::from_utf8_slice;
     use serde::Deserialize;
 

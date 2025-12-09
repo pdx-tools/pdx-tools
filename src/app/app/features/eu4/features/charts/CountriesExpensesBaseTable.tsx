@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useVisualizationDispatch } from "@/components/viz/visualization-context";
-import { CountryExpenses } from "@/features/eu4/types/models";
+import type { CountryExpenses } from "@/features/eu4/types/models";
 import { expenseLedgerAliases } from "../country-details/data";
 import { formatFloat, formatInt } from "@/lib/format";
 import { useAnalysisWorker } from "@/features/eu4/worker";

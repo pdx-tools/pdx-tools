@@ -128,7 +128,7 @@ export const AccountContent = () => {
             <Input
               name="save-id"
               placeholder="Enter save ID"
-              className="flex-grow px-2"
+              className="grow px-2"
               required
               value={saveIdValue}
               onChange={(e) => setSaveIdValue(e.target.value)}

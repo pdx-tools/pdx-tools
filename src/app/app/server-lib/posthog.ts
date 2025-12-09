@@ -31,6 +31,7 @@ export function captureEvent({
   event,
   ...rest
 }: { userId: string; event: string } & Record<string, string>) {
+  log.info({ event, user: userId, ...rest });
   if (enabled) {
     getPostHogClient().capture({ distinctId: userId, event, properties: rest });
   }

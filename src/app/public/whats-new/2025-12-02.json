@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Performance improvement in parsing EU4 and EU5 save files",
+      "Include breadcrumbs in EU5 deserialization errors",
+      "Support EU5 1.0.8 save files"
+    ],
+    "fixes": ["More accurate EU5 melted output"]
+  }
+}

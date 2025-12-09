@@ -1,14 +1,8 @@
-import {
-  PropsWithChildren,
-  useCallback,
-  useState,
-  memo,
-  useRef,
-  useMemo,
-} from "react";
+import { useCallback, useState, memo, useRef, useMemo } from "react";
+import type { PropsWithChildren } from "react";
 import { Popover } from "@/components/Popover";
 import { Command } from "@/components/Command";
-import { EnhancedCountryInfo } from "../types/models";
+import type { EnhancedCountryInfo } from "../types/models";
 import { PlayIcon } from "@heroicons/react/20/solid";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import { useExistedAiCountries, useHumanCountries } from "../store";
@@ -142,7 +136,7 @@ function SelectContent({
               <Command.Item
                 key={row.index}
                 onSelect={() => select(x.tag)}
-                className="absolute left-0 top-0 w-full"
+                className="absolute top-0 left-0 w-full"
                 style={{
                   height: row.size,
                   transform: `translateY(${row.start}px)`,

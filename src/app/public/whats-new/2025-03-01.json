@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [
+      "Performance improvement for parsing and melting saves",
+      "Improve text on EU4 saves that use the Chinese language mods. Community suggestions on how to improve this would be greatly appreciated!"
+    ],
+    "fixes": []
+  }
+}

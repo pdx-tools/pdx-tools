@@ -11,7 +11,8 @@ pub(crate) fn get_tokens() -> &'static SegmentedResolver<'static> {
 
 #[wasm_bindgen]
 pub fn set_tokens(data: Vec<u8>) {
-    let tokens = zstd::bulk::decompress(&data, 1024 * 1024).unwrap_or_default();
+    let tokens = pdx_zstd::decode_all(&data).unwrap_or_default();
+
     let sl: &'static [u8] = unsafe { std::mem::transmute(tokens.as_slice()) };
     let resolver = FlatResolver::from_slice(sl);
     let resolver = SegmentedResolver::from_parts(resolver.values, resolver.breakpoint, 10000);

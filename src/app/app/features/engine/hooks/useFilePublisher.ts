@@ -1,5 +1,6 @@
-import { FileKind } from "@/hooks/useFileDrop";
-import { extensionType, SaveGameInput, useEngineActions } from "../engineStore";
+import type { FileKind } from "@/hooks/useFileDrop";
+import { extensionType, useEngineActions } from "../engineStore";
+import type { SaveGameInput } from "../engineStore";
 
 type AnalyzeInput = FileKind;
 
@@ -24,6 +25,34 @@ async function inputSaveGame(input: AnalyzeInput): Promise<SaveGameInput> {
           data: input,
         };
       }
+    }
+    case "eu5": {
+      if (input.kind === "handle") {
+        const name = (await input.file.getFile()).name;
+        return {
+          kind: "eu5",
+          data: {
+            kind: "handle",
+            file: input.file,
+            name,
+          },
+        };
+      } else {
+        return {
+          kind: "eu5",
+          data: input,
+        };
+      }
+    }
+    case "ck3":
+    case "hoi4":
+    case "imperator": {
+      const file =
+        input.kind === "handle" ? await input.file.getFile() : input.file;
+      return {
+        kind: game,
+        file,
+      };
     }
     default: {
       const file =

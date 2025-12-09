@@ -3,7 +3,7 @@ import { Alert } from "@/components/Alert";
 import { Button } from "@/components/Button";
 import { Tooltip } from "@/components/Tooltip";
 import { UploadFaq } from "./UploadFaq";
-import { FileUploadMutation } from "./hooks";
+import type { FileUploadMutation } from "./hooks";
 import { useSession } from "@/features/account";
 import { hasPermission } from "@/lib/auth";
 

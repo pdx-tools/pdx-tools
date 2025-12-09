@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Improved asset prioritization when viewing uploaded saves"
+    ],
+    "fixes": [
+      "Fix accidental reparsing of save when navigating back to home page"
+    ]
+  }
+}

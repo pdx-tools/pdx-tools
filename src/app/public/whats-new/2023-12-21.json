@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Better performance when parsing saves"
+    ],
+    "fixes": []
+  }
+}

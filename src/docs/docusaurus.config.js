@@ -27,7 +27,7 @@ const config = {
           "posthog-docusaurus",
           {
             apiKey: process.env.POSTHOG_KEY,
-            appUrl: "/ingest",
+            appUrl: "/ph",
             enableInDevelopment: false,
             ui_host: "https://eu.posthog.com",
           },
@@ -72,7 +72,7 @@ const config = {
         style: "dark",
         logo: {
           alt: "PDX Tools Logo",
-          src: "img/logo.svg",
+          src: "img/app.svg",
           href: "/docs",
           width: 48,
           height: 48,

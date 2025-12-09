@@ -1,6 +1,6 @@
 import { wrap } from "comlink";
-import { type Ck3WorkerModule } from "./bridge";
-export { type Ck3Worker } from "./bridge";
+import type { Ck3WorkerModule } from "./types";
+export { type Ck3Worker } from "./types";
 
 function createWorker() {
   const rawWorker = new Worker(new URL("./bridge", import.meta.url), {

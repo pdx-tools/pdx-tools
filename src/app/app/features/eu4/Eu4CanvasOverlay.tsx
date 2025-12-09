@@ -28,7 +28,7 @@ import {
 import { ChartAreaIcon } from "@/components/icons/ChartAreaIcon";
 import { FileSyncIcon } from "@/components/icons/FileSyncIcon";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { Link as UnstyledLink, useLocation } from "@remix-run/react";
+import { Link as UnstyledLink, useLocation } from "react-router";
 
 export const Eu4CanvasOverlay = () => {
   const serverFile = useIsServerSaveFile();
@@ -125,7 +125,7 @@ export const Eu4CanvasOverlay = () => {
       {watcher.status != "idle" ? (
         <Tooltip>
           <Tooltip.Trigger>
-            <div className="fixed left-0 top-0 touch-none select-none border-2 border-solid border-black bg-gray-800 p-1">
+            <div className="fixed top-0 left-0 touch-none border-2 border-solid border-black bg-gray-800 p-1 select-none">
               <div className="h-[56px] w-[56px] rounded-full bg-teal-500"></div>
             </div>
           </Tooltip.Trigger>

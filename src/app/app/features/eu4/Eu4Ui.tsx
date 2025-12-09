@@ -3,7 +3,8 @@ import { Eu4CanvasOverlay } from "./Eu4CanvasOverlay";
 import { AppLoading } from "@/components/AppLoading";
 import { ProgressBar } from "@/components/ProgressBar";
 import { developerLog } from "@/lib/log";
-import { Eu4SaveInput, useLoadEu4, Eu4StoreProvider } from "./store";
+import { useLoadEu4, Eu4StoreProvider } from "./store";
+import type { Eu4SaveInput } from "./store";
 import { BrowserCheck } from "@/components/landing/BrowserCheck";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
@@ -71,7 +72,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
             <Timelapse />
           </div>
 
-          <div className="group absolute bottom-0 right-0 top-0 w-14 bg-slate-900 transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">
+          <div className="group absolute top-0 right-0 bottom-0 w-14 bg-slate-900 transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">
             <Eu4CanvasOverlay />
           </div>
 

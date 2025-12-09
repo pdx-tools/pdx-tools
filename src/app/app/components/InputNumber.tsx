@@ -1,16 +1,12 @@
-import React, {
-  ComponentPropsWithoutRef,
-  ElementRef,
-  forwardRef,
-  useState,
-} from "react";
+import React, { forwardRef, useState } from "react";
+import type { ComponentPropsWithoutRef, ComponentRef } from "react";
 import { Input } from "@/components/Input";
 import { keyboardTrigger } from "@/lib/keyboardTrigger";
 
-type InputEvent = React.SyntheticEvent<ElementRef<typeof Input>>;
+type InputEvent = React.SyntheticEvent<ComponentRef<typeof Input>>;
 type InputNumberEvent = InputEvent & { value: number };
 export const InputNumber = forwardRef<
-  ElementRef<typeof Input>,
+  ComponentRef<typeof Input>,
   Omit<ComponentPropsWithoutRef<typeof Input>, "onChange"> & {
     onChange: (e: InputNumberEvent) => void;
   }

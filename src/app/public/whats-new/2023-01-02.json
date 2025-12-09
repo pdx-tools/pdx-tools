@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix EU4 deserialization errors on revolutionary flags colors and reform stacks",
+      "Unexpected data input should now return a more descriptive error",
+      "Tweak file drop too aggressively trying to load any drag and drop item"
+    ]
+  }
+}

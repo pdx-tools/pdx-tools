@@ -4,15 +4,13 @@ import { useVisualizationDispatch } from "@/components/viz";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { createCsv } from "@/lib/csv";
 import { useTagFilter } from "../../store";
-import { CountryHealth } from "../../types/models";
+import type { CountryHealth } from "../../types/models";
 import { Flag } from "../../components/avatars";
 import { Alert } from "@/components/Alert";
-import { SortingFn, createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
+import type { SortingFn } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
-import {
-  HealthDatum,
-  LeaderDatum,
-} from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+import type { HealthDatum, LeaderDatum } from "@/wasm/wasm_eu4";
 import { GameIconSprite, iconSpriteTitle } from "../../components/icons";
 import { LandForceStrengthTooltip } from "../../components/LandForceStrengthTooltip";
 import { NavalForceStrengthTooltip } from "../../components/NavalForceStrengthTooltip";

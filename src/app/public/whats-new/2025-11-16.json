@@ -1,0 +1,7 @@
+{
+  "sections": {
+    "fixes": [
+      "Fix crash when parsing EU5 saves when markets have no color"
+    ]
+  }
+}

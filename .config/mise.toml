@@ -1,0 +1,312 @@
+[tools]
+"aqua:pnpm" = { version = "10.11.0" }
+"node" = { version = "22.18.0" }
+"rust" = { version = "1.90.0", targets = "wasm32-unknown-unknown,x86_64-unknown-linux-musl" }
+"ubi:cargo-bins/cargo-binstall" = { version = "1.12.5" }
+"ubi:docker/compose" = { version = "2.33.1", rename_exe = "docker-compose" }
+"ubi:google/flatbuffers" = { version = "25.2.10", matching = "clang", exe = "flatc" }
+"ubi:rclone/rclone" = { version = "1.70.3" }
+"ubi:rustwasm/wasm-bindgen" = { version = "0.2.100", extract_all = "true" }
+"ubi:WebAssembly/binaryen" = { version = "version_123", extract_all = "true", bin_path = "bin" }
+"vfox:mise-plugins/vfox-clang" = { version = "14.0.6", os = ["linux", "macos"] }
+
+[tasks."build:cargo-wasm"]
+run = ["cargo build --release --no-default-features --features zstd_c_fat_lto --features zstd_c --target wasm32-unknown-unknown -p wasm-*"]
+run_windows = ["cargo build --release --no-default-features --features zstd_rust --target wasm32-unknown-unknown -p wasm-*"]
+hide = true
+
+[tasks."build:wasm-bindgen"]
+depends = ['build:cargo-wasm']
+run = [
+    'wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/{{arg(name="rust_package")}}.wasm --out-dir ./src/app/app/wasm'
+]
+hide = true
+
+[tasks."build:wasm:app"]
+depends = ["build:wasm-bindgen wasm_app"]
+hide = true
+
+[tasks."build:pdx_map"]
+hide = true
+run = [
+    "cargo build --release -p wasm-pdx-map --target wasm32-unknown-unknown",
+    { task = "build:wasm:pdx_map" }
+]
+
+[tasks."build:wasm:pdx_map"]
+wait_for = ["build:cargo-wasm"]
+run = [
+    'wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_pdx_map.wasm --out-dir ./src/pdx-map-playground/src/workers/wasm'
+]
+hide = true
+
+[tasks."build:wasm"]
+description = "Build wasm"
+depends = [
+    'build:wasm:app',
+    'build:wasm:pdx_map',
+    'build:wasm-bindgen wasm_ck3',
+    'build:wasm-bindgen wasm_compress',
+    'build:wasm-bindgen wasm_eu4',
+    'build:wasm-bindgen wasm_eu5_map',
+    'build:wasm-bindgen wasm_eu5',
+    'build:wasm-bindgen wasm_hoi4',
+    'build:wasm-bindgen wasm_imperator',
+    'build:wasm-bindgen wasm_pdx_map',
+    'build:wasm-bindgen wasm_vic3',
+]
+
+[tasks."build:api"]
+depends = ["tokenize"]
+run = "cargo build -p pdx-tools-api"
+hide = true
+
+[tasks."build:docs:docusaurus"]
+depends = ["pnpm-install", "docs:setup:changelog"]
+dir = "src/docs"
+hide = true
+run = "pnpm run build"
+
+[tasks."build:docs"]
+depends = ["build:docs:docusaurus"]
+dir = "src/docs/build"
+hide = true
+run = [
+    "cp -r assets blog docs blog.html changelog.html docs.html img ../../app/public/."
+]
+run_windows = [
+    "xcopy assets ..\\..\\app\\public\\assets /E /I /Y",
+    "xcopy blog ..\\..\\app\\public\\blog /E /I /Y",
+    "xcopy docs ..\\..\\app\\public\\docs /E /I /Y",
+    "xcopy blog.html ..\\..\\app\\public /I /Y",
+    "xcopy docs.html ..\\..\\app\\public /I /Y",
+    "xcopy img ..\\..\\app\\public\\img /E /I /Y",
+]
+
+[tasks."build:app"]
+description = "Build pdx.tools frontend for deployment"
+depends = ["pnpm-install", "build:docs", "build:wasm", "optimize:wasm:*", "dev:app:setup:**", "tokenize"]
+dir = "src/app"
+run = ["pnpm run build"]
+
+[tasks.wasm-opt]
+run = [
+    'wasm-opt -O2 ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg.wasm -o ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg.wasm',
+]
+hide = true
+
+[tasks."optimize:wasm:app"]
+wait_for = ["build:wasm-bindgen wasm_app"]
+run = ["{{mise_bin}} wasm-opt wasm_app"]
+hide = true
+
+[tasks."optimize:wasm:ck3"]
+wait_for = ["build:wasm-bindgen wasm_ck3"]
+run = ["{{mise_bin}} wasm-opt wasm_ck3"]
+hide = true
+
+[tasks."optimize:wasm:compress"]
+wait_for = ["build:wasm-bindgen wasm_compress"]
+run = ["{{mise_bin}} wasm-opt wasm_compress"]
+hide = true
+
+[tasks."optimize:wasm:eu4"]
+wait_for = ["build:wasm-bindgen wasm_eu4"]
+run = ["{{mise_bin}} wasm-opt wasm_eu4"]
+hide = true
+
+[tasks."optimize:wasm:hoi4"]
+wait_for = ["build:wasm-bindgen wasm_hoi4"]
+run = ["{{mise_bin}} wasm-opt wasm_hoi4"]
+hide = true
+
+[tasks."optimize:wasm:imperator"]
+wait_for = ["build:wasm-bindgen wasm_imperator"]
+run = ["{{mise_bin}} wasm-opt wasm_imperator"]
+hide = true
+
+[tasks."optimize:wasm:vic3"]
+wait_for = ["build:wasm-bindgen wasm_vic3"]
+run = ["{{mise_bin}} wasm-opt wasm_vic3"]
+hide = true
+
+[tasks."dev:app:setup:types:cargo"]
+description = "Generate TypeScript types"
+run = "cargo run -p applib --bin types"
+hide = true
+
+[tasks."dev:app:setup:types:js"]
+depends = ["pnpm-install"]
+description = "Generate TypeScript types"
+dir = "./src/app"
+run = [
+    "pnpm exec wrangler types",
+    "pnpm exec react-router typegen",
+]
+hide = true
+
+[tasks."dev:app:setup:assets"]
+run = "node ./dev/scripts/setup-assets.mts"
+hide = true
+
+[tasks."dev:app:setup:changelog"]
+run = "node ./dev/scripts/generate-changelog-index.mts"
+hide = true
+
+[tasks."docs:setup:changelog"]
+depends = ["dev:app:setup:changelog"]
+run = "node ./dev/scripts/generate-changelog.mts"
+hide = true
+
+[tasks."dev:app"]
+description = "Run pdx.tools frontend development"
+depends = ["pnpm-install", "dev:app:setup:**", "tokenize", "build:wasm"]
+dir = "./src/app"
+run = ["pnpm run dev"]
+
+[tasks."dev:map"]
+description = "Run the sample map demo without compiling Rust"
+depends = ["pnpm-install"]
+dir = "./src/map"
+run = "pnpm run dev"
+
+[tasks."dev:docs"]
+description = "Run the docs"
+depends = ["pnpm-install", "docs:setup:changelog"]
+dir = "./src/docs"
+run = "pnpm run docusaurus start --no-open"
+
+[tasks.dev]
+description = "Run complete development setup (backend and frontend)"
+depends = ["build:wasm", "dev:app", "dev:docs", "start:services:dev", "serve:api:dev"]
+
+[tasks."test:wasm"]
+run = "cargo test -p wasm-*"
+hide = true
+
+[tasks."test:cargo"]
+description = "Run all cargo (Rust) tests"
+depends = ["tokenize", "test:wasm"]
+run = [
+    "cargo test -p pdx-zstd --no-default-features --features zstd_c",
+    "cargo test -p pdx-zstd --no-default-features --features zstd_rust",
+    "cargo test --workspace --exclude wasm-*",
+]
+
+[tasks."test:app:build"]
+depends = ["pnpm-install", "dev:app:setup:**", "build:wasm"]
+dir = "src/app"
+run = "pnpm build --mode test"
+env.NODE_ENV = "test"
+hide = true
+
+[tasks."test:app"]
+description = "Test the application and backend services"
+depends = [
+    "build:api",
+    "test:app:build",
+    "start:services:test -d"
+]
+dir = "src/app"
+run = ['pnpm exec concurrently --kill-others --success command-2 --passthrough-arguments "mise run serve:api:test" "pnpm run preview --mode test" "sleep 2 && pnpm test -- run {@}"']
+
+[tasks."env:dev"]
+description = "Run backend services (eg: postgres, s3) configured for development"
+dir = "dev"
+hide = true
+run = ["docker-compose -f ./docker-compose.dev.yml --env-file ../src/app/.env.development --env-file ../src/app/.dev.vars --env-file .env.dev --project-name pdx_dev"]
+
+[tasks."env:test"]
+description = "Run backend services (eg: postgres, s3) configured for testing"
+dir = "dev"
+hide = true
+run = ["docker-compose -f ./docker-compose.test.yml --env-file ../src/app/.env.test --env-file ../src/app/.dev.vars.test --env-file .env.test --project-name pdx_test"]
+
+[tasks."serve:api:dev"]
+depends = ["tokenize"]
+description = "Run the API backend (eg: save parsing) for development"
+env.PORT = 8082
+run = ["cargo run -p pdx-tools-api"]
+
+[tasks."serve:api:test"]
+depends = ["tokenize"]
+description = "Run the API backend (eg: save parsing) for tests"
+env.PORT = 8081
+run = ["cargo run -p pdx-tools-api"]
+
+[tasks.tokenize]
+description = "Preprocess the ironman tokens for distribution"
+run = "cargo run --package pdx-tokenize-cli -- ./assets/tokens"
+
+[tasks.pnpm-install]
+run = "pnpm install --optimistic-repeat-install"
+sources = ["pnpm-lock.yaml"]
+hide = true
+
+[tasks."assets:bundle"]
+description = "Create a game asset bundle"
+run = "cargo run --release --package pdx-assets -- bundle"
+
+[tasks."assets:compile"]
+description = "Compile a game asset bundle"
+run = "cargo run --release --package pdx-assets -- compile"
+
+[tasks."start:services:dev"]
+description = "Run services for development"
+run = ["node ./dev/scripts/services.mts --dev"]
+
+[tasks."start:services:test"]
+description = "Run services for testing"
+run = ["node ./dev/scripts/services.mts --test"]
+
+[tasks.format]
+description = "Format code"
+depends = ["pnpm-install"]
+run = [
+    "cargo fmt --all",
+    "pnpm run format",
+]
+
+[tasks."format:check"]
+description = "Check that code is formatted"
+depends = ["pnpm-install"]
+run = [
+    "cargo fmt --all --check",
+    "pnpm run format:check",
+]
+
+[tasks.lint]
+depends = ["pnpm-install"]
+run = [
+    "cargo clippy --all-targets --all-features --workspace -- -D warnings",
+    "pnpm run lint --deny-warnings"
+]
+
+[tasks.typecheck]
+wait_for = ["build:wasm", "dev:app:setup:**"]
+depends = ["pnpm-install"]
+run = "pnpm run typecheck"
+
+[tasks."admin:assets:sync"]
+env._.file = { path = ".env", redact = true }
+run = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key="${ASSETS_SECRET_KEY}" --s3-access-key-id="${ASSETS_ACCESS_KEY}" copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.'
+run_windows = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key=%ASSETS_SECRET_KEY% --s3-access-key-id=%ASSETS_ACCESS_KEY% copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.'
+
+[tasks."admin:assets:compile:all"]
+run = [
+    "cargo build --release --package pdx-assets",
+    "node ./dev/scripts/compile-all-assets.mts"
+]
+
+[tasks."admin:build:cli"]
+run = "cargo build --package pdx-admin-cli --release --target x86_64-unknown-linux-musl"
+
+[tasks."release:build:docker"]
+wait_for = ["release:build:api"]
+run = "docker build -t ghcr.io/pdx-tools/api:nightly -f ./dev/api.dockerfile ./target/x86_64-unknown-linux-musl/release/"
+
+[tasks."release:build:api"]
+run = "cargo build --package pdx-tools-api --release --target x86_64-unknown-linux-musl"
+
+[tasks."release:build"]
+depends = ["build:wasm", "optimize:wasm:*", "build:app", "release:build:api", "release:build:docker"]

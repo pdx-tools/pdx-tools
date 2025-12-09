@@ -13,7 +13,7 @@ export const MapModeButtonGroup = () => {
         <Tooltip key={mode}>
           <Tooltip.Trigger asChild>
             <button
-              className="m-0 hidden select-none border-none bg-transparent p-0 group-hover:block"
+              className="m-0 hidden border-none bg-transparent p-0 select-none group-hover:block"
               onClick={() => updateMapMode(mode)}
             >
               <MapModeImage

@@ -4,11 +4,11 @@ import { table } from "@/server-lib/db";
 import { withDb } from "@/server-lib/db/middleware";
 import { latestEu4MinorPatch } from "@/server-lib/game";
 import { withCore } from "@/server-lib/middleware";
-import { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { isNotNull, sql } from "drizzle-orm";
+import type { Route } from "./+types/api.admin.rebalance";
 
 export const action = withCore(
-  withDb(async ({ request, context }: LoaderFunctionArgs, { db }) => {
+  withDb(async ({ request, context }: Route.ActionArgs, { db }) => {
     const session = await getAuth({ request, context });
     ensurePermissions(session, "leaderboard:rebalance");
 

@@ -29,7 +29,7 @@ fn main() {
     let out_path = Path::new(&env::var("OUT_DIR").unwrap()).join("gen_tokens.rs");
     let mut writer = BufWriter::new(File::create(out_path).unwrap());
 
-    for game in &["eu4", "ck3", "hoi4", "imperator", "vic3"] {
+    for game in &["eu4", "eu5", "ck3", "hoi4", "imperator", "vic3"] {
         let mut pascal = String::from(*game);
         pascal.get_mut(0..1).unwrap().make_ascii_uppercase();
         println!("cargo:rerun-if-changed=../../assets/tokens/{game}-raw.bin");
@@ -37,7 +37,12 @@ fn main() {
         let tokens = Path::new(&path);
         let exists = tokens.exists();
         let token_path = if exists {
-            tokens.canonicalize().unwrap().display().to_string()
+            tokens
+                .canonicalize()
+                .unwrap()
+                .display()
+                .to_string()
+                .replace('\\', "/")
         } else {
             String::from("")
         };
@@ -46,6 +51,7 @@ fn main() {
             writer,
             r#"
 #[cfg(feature = "inline")]
+#[derive(Debug)]
 pub struct {pascal}FlatTokens {{
     resolver: FlatResolver<'static>,
 }}

@@ -1,6 +1,7 @@
 import { createContext, useContext } from "react";
-import { StoreApi, createStore, useStore } from "zustand";
-import { Hoi4Metadata } from "../worker/types";
+import { createStore, useStore } from "zustand";
+import type { StoreApi } from "zustand";
+import type { Hoi4Metadata } from "../worker/types";
 import { check } from "@/lib/isPresent";
 
 type Hoi4StateInit = {

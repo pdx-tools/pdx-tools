@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+      "Map updated to render off the main thread for Chromium browsers"
+    ],
+    "fixes": []
+  }
+}

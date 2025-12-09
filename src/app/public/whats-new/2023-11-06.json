@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "improvements": [
+      "EU4 1.36 King of Kings supported!",
+      "Timelapse controls promoted to top level interface",
+      "Revamp country estate tables"
+    ],
+    "fixes": [
+      "Fix incorrect treasury balance for watched saves",
+      "Optimize bandwidth on homepage"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix faulty reinitialization of map on new save load"
+    ]
+  }
+}

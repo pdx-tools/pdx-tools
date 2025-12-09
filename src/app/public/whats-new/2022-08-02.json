@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Enable high DPI map renders"
+    ],
+    "fixes": [
+      "Fix export map view returning a blank image on Chrome"
+    ]
+  }
+}

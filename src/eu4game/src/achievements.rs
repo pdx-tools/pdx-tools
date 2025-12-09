@@ -187,7 +187,7 @@ pub fn weighted_factor(major: u16, minor: u16) -> Option<f64> {
 
 fn owned_and_cored_by(prov: &Province, tag: CountryTag) -> bool {
     let cored = prov.cores.contains(&tag);
-    let owned = prov.owner.map_or(false, |owner| owner == tag);
+    let owned = prov.owner == Some(tag);
     owned && cored
 }
 
@@ -549,7 +549,7 @@ impl<'a> AchievementHunter<'a> {
             .provinces
             .values()
             .map(|prov| prov.owner)
-            .filter(|x| x.map_or(false, |owner| owner == self.tag))
+            .filter(|x| *x == Some(self.tag))
             .count();
 
         let desc = format!("directly own 1000 provinces ({} owned)", owned_provinces);
@@ -659,18 +659,30 @@ impl<'a> AchievementHunter<'a> {
         let mut result = AchievementResult::new(49);
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
-        let is_ryu = self.tag == "RYU";
-        result.and(AchievementCondition::new(is_ryu, "is RYU tag"));
 
-        let self_and_non_tributaries: HashSet<&CountryTag> = self
-            .self_and_subjects
-            .iter()
-            .filter(|x| {
-                self.query
-                    .country(x)
-                    .is_some_and(|x| x.tribute_type.is_none())
-            })
-            .collect();
+        let started_as_ryu = self.starting_country == "RYU";
+        result.and(AchievementCondition::new(started_as_ryu, "started as RYU"));
+
+        // Get Ryukyu and its non-tributary subjects
+        let ryu_tag = CountryTag::new(*b"RYU");
+        let mut allowed_countries: HashSet<CountryTag> = HashSet::new();
+
+        // Always allow the player's current country
+        allowed_countries.insert(self.tag);
+
+        // Get RYU's subjects (non-tributaries) if RYU exists
+        if let Some(ryu_country) = self.query.country(&ryu_tag) {
+            allowed_countries.insert(ryu_tag);
+
+            // Add RYU's non-tributary subjects
+            for subject_tag in &ryu_country.subjects {
+                if let Some(subject_country) = self.query.country(subject_tag) {
+                    if subject_country.tribute_type.is_none() {
+                        allowed_countries.insert(*subject_tag);
+                    }
+                }
+            }
+        }
 
         let owned = self
             .save
@@ -678,9 +690,9 @@ impl<'a> AchievementHunter<'a> {
             .provinces
             .values()
             .filter_map(|x| x.owner)
-            .all(|x| self_and_non_tributaries.contains(&x));
+            .all(|x| allowed_countries.contains(&x));
 
-        let desc = "only existing countries are self and non-tributary subjects";
+        let desc = "only existing countries are the player, RYU, and RYU's non-tributary subjects";
         result.and(AchievementCondition::new(owned, desc));
         result
     }
@@ -862,7 +874,7 @@ impl<'a> AchievementHunter<'a> {
                 .game
                 .provinces
                 .values()
-                .any(|x| x.owner.map_or(false, |o| o == dan))
+                .any(|x| x.owner == Some(dan))
         } else {
             false
         };
@@ -876,7 +888,7 @@ impl<'a> AchievementHunter<'a> {
             .provinces
             .get(&ProvinceId::from(12))
             .and_then(|x| x.owner)
-            .map_or(false, |o| o == dtt);
+            == Some(dtt);
         result.and(AchievementCondition::new(owns_sjaelland, "owns Sjaelland"));
 
         let owns_holland = self
@@ -885,7 +897,7 @@ impl<'a> AchievementHunter<'a> {
             .provinces
             .get(&ProvinceId::from(97))
             .and_then(|x| x.owner)
-            .map_or(false, |o| o == dtt);
+            == Some(dtt);
         result.and(AchievementCondition::new(owns_holland, "owns Holland"));
 
         result
@@ -1184,7 +1196,7 @@ impl<'a> AchievementHunter<'a> {
                     .provinces
                     .get(&ProvinceId::from(*prov_id))
                     .map(|prov| prov.owner)
-                    .map_or(false, |owner| owner == Some(self.tag))
+                    == Some(Some(self.tag))
             })
         } else {
             false
@@ -1374,7 +1386,7 @@ impl<'a> AchievementHunter<'a> {
 
         let has_provs = if result.completed() {
             self.all_provs_in_region("british_isles_region", |province, _| {
-                province.owner.map_or(false, |x| x == self.tag)
+                province.owner == Some(self.tag)
             })
         } else {
             false
@@ -1553,7 +1565,7 @@ impl<'a> AchievementHunter<'a> {
                         .countries()
                         .map(|x| x.country)
                         .filter(|country| country.num_of_cities >= 1)
-                        .filter(|country| country.religion.as_ref().map_or(false, |r2| r == r2))
+                        .filter(|country| country.religion.as_ref() == Some(r))
                         .count()
                 })
                 .unwrap_or(0)
@@ -1575,15 +1587,9 @@ impl<'a> AchievementHunter<'a> {
         let desc = "started as Mulhouse";
         result.and(AchievementCondition::new(starter, desc));
 
-        let is_emperor = &self
-            .save
-            .game
-            .empire
-            .as_ref()
-            .and_then(|x| x.emperor)
-            .map_or(false, |x| x == self.tag);
+        let is_emperor = self.save.game.empire.as_ref().and_then(|x| x.emperor) == Some(self.tag);
 
-        result.and(AchievementCondition::new(*is_emperor, "is emperor"));
+        result.and(AchievementCondition::new(is_emperor, "is emperor"));
 
         let enacted_reichskrieg = self
             .save
@@ -1724,9 +1730,7 @@ impl<'a> AchievementHunter<'a> {
             ]
             .iter()
             .all(|area| {
-                self.all_provs_in_area(area, |prov, _| {
-                    prov.owner.map_or(false, |x| x == self.starting_country)
-                })
+                self.all_provs_in_area(area, |prov, _| prov.owner == Some(self.starting_country))
             })
         } else {
             false
@@ -1799,7 +1803,7 @@ impl<'a> AchievementHunter<'a> {
             .game
             .provinces
             .get(&ProvinceId::from(416))
-            .is_some_and(|prov| prov.owner.map_or(false, |x| x == self.starting_country));
+            .is_some_and(|prov| prov.owner == Some(self.starting_country));
         let desc = "owns Tabriz (416)";
         result.and(AchievementCondition::new(owns_tabriz, desc));
 
@@ -1809,7 +1813,7 @@ impl<'a> AchievementHunter<'a> {
                 .game
                 .provinces
                 .iter()
-                .any(|(_, prov)| prov.owner.map_or(false, |owner| owner == qar))
+                .any(|(_, prov)| prov.owner == Some(qar))
         } else {
             false
         };
@@ -1923,8 +1927,7 @@ impl<'a> AchievementHunter<'a> {
         let has_all_provinces = if result.completed() {
             ["anatolia_region", "egypt_region"].iter().all(|region| {
                 self.all_provs_in_region(region, |province, _| {
-                    province.owner.map_or(false, |x| x == self.tag)
-                        && province.cores.contains(&self.tag)
+                    (province.owner == Some(self.tag)) && province.cores.contains(&self.tag)
                 })
             })
         } else {
@@ -1936,8 +1939,7 @@ impl<'a> AchievementHunter<'a> {
                 .iter()
                 .all(|region| {
                     self.all_provs_in_area(region, |province, _| {
-                        province.owner.map_or(false, |x| x == self.tag)
-                            && province.cores.contains(&self.tag)
+                        (province.owner == Some(self.tag)) && province.cores.contains(&self.tag)
                     })
                 })
         } else {
@@ -2197,7 +2199,7 @@ impl<'a> AchievementHunter<'a> {
             .iter()
             .all(|id| self.owns_core_province_id(ProvinceId::from(*id)))
                 && self.all_provs_in_region("carribeans_region", |prov, _| {
-                    prov.owner.map_or(false, |x| x == self.starting_country)
+                    prov.owner == Some(self.starting_country)
                 })
         } else {
             false
@@ -2380,7 +2382,7 @@ impl<'a> AchievementHunter<'a> {
                 .game
                 .provinces
                 .iter()
-                .filter(|(_, prov)| prov.owner.as_ref().map_or(false, |x| x == &self.tag))
+                .filter(|(_, prov)| prov.owner.as_ref() == Some(&self.tag))
                 .all(|(id, _)| {
                     self.game.get_province(id).is_some_and(|x| {
                         matches!(

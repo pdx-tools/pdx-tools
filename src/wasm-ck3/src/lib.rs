@@ -1,4 +1,7 @@
-use ck3save::{models::Metadata, Ck3Error, Ck3File, Encoding, FailedResolveStrategy, MeltOptions};
+use ck3save::{
+    models::{Gamestate, Metadata},
+    Ck3Error, Ck3File, Ck3Melt, DeserializeCk3, FailedResolveStrategy, MeltOptions, SaveHeader,
+};
 use serde::Serialize;
 use std::io::Cursor;
 use wasm_bindgen::prelude::*;
@@ -13,9 +16,10 @@ pub struct Ck3Metadata {
     is_meltable: bool,
 }
 
+#[derive(Debug)]
 pub struct SaveFileImpl {
     meta_data: Metadata,
-    encoding: Encoding,
+    encoding: SaveHeader,
 }
 
 pub fn to_json_value<T: serde::ser::Serialize + ?Sized>(value: &T) -> JsValue {
@@ -24,6 +28,7 @@ pub fn to_json_value<T: serde::ser::Serialize + ?Sized>(value: &T) -> JsValue {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct SaveFile(SaveFileImpl);
 
 #[wasm_bindgen]
@@ -42,22 +47,22 @@ impl SaveFileImpl {
     }
 
     fn is_meltable(&self) -> bool {
-        matches!(self.encoding, Encoding::Binary | Encoding::BinaryZip)
+        self.encoding.kind().is_binary()
     }
 }
 
 fn _parse_save(data: &[u8]) -> Result<SaveFile, Ck3Error> {
     let file = Ck3File::from_slice(data)?;
-    let save = file.parse_save(tokens::get_tokens())?;
+    let save: Gamestate = (&file).deserialize(tokens::get_tokens())?;
     Ok(SaveFile(SaveFileImpl {
         meta_data: save.meta_data,
-        encoding: file.encoding(),
+        encoding: file.header().clone(),
     }))
 }
 
 #[wasm_bindgen]
-pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
-    let s = _parse_save(data).map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsError> {
+    let s = _parse_save(data)?;
     Ok(s)
 }
 
@@ -65,13 +70,13 @@ fn _melt(data: &[u8]) -> Result<Vec<u8>, Ck3Error> {
     let file = Ck3File::from_slice(data)?;
     let mut out = Cursor::new(Vec::new());
     let options = MeltOptions::new().on_failed_resolve(FailedResolveStrategy::Ignore);
-    file.melt(options, tokens::get_tokens(), &mut out)?;
+    (&file).melt(options, tokens::get_tokens(), &mut out)?;
     Ok(out.into_inner())
 }
 
 #[wasm_bindgen]
-pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
+pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsError> {
     _melt(data)
         .map(|x| js_sys::Uint8Array::from(x.as_slice()))
-        .map_err(|e| JsValue::from_str(e.to_string().as_str()))
+        .map_err(JsError::from)
 }

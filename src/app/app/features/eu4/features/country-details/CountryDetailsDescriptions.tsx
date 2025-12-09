@@ -1,5 +1,5 @@
 import { formatFloat, formatInt } from "@/lib/format";
-import { CountryDetails } from "@/features/eu4/types/models";
+import type { CountryDetails } from "@/features/eu4/types/models";
 import { InheritanceValueBreakdown } from "./InheritanceValueBreakdown";
 import { useIsJuniorPartner } from "./detailHooks";
 import {
@@ -361,7 +361,7 @@ export const CountryDetailsDescriptions = ({
               </span>
             </div>
             <div className="flex text-right">
-              <NavalMoraleIcon alt="Land morale (estimate)" />
+              <NavalMoraleIcon alt="Naval morale (estimate)" />
               <span className="grow">
                 <MoraleText value={details.armed_forces.navalMorale} />
               </span>

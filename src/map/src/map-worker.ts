@@ -1,16 +1,14 @@
 import { overlayDate } from "./canvasOverlays";
 import { GLResources } from "./glResources";
-import {
-  glContextOptions,
-  IMG_HEIGHT,
-  IMG_WIDTH,
-  WebGLMap,
-  type DrawEvent,
-  type MouseEvent,
-  type MoveEvent,
-  type UserRect,
-  type WheelEvent,
+import { glContextOptions, WebGLMap } from "./map";
+import type {
+  DrawEvent,
+  MouseEvent,
+  MoveEvent,
+  UserRect,
+  WheelEvent,
 } from "./map";
+import { IMG_HEIGHT, IMG_WIDTH } from "./mapDimensions";
 import { MapShader } from "./MapShader";
 import { ProvinceFinder } from "./ProvinceFinder";
 import {
@@ -21,12 +19,12 @@ import {
   provinceIdToColorIndexInvert,
 } from "./resources";
 import { compileShaders } from "./shaderCompiler";
-import {
-  type BaseImageResourceUrls,
-  type ShaderSourceUrls,
-  type StaticResources,
-  type TerrainOverlayResources,
-  type TerrainOverlayResourcesUrls,
+import type {
+  BaseImageResourceUrls,
+  ShaderSourceUrls,
+  StaticResources,
+  TerrainOverlayResources,
+  TerrainOverlayResourcesUrls,
 } from "./types";
 import { XbrShader } from "./XbrShader";
 

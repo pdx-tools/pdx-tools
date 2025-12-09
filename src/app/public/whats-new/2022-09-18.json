@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix incorrect CK3 1.7 melted format for floats"
+    ]
+  }
+}

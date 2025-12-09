@@ -7,15 +7,19 @@
   },
   "runArgs": ["--network", "host"],
   "mounts": [
-    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+    "source=/etc/localtime,target=/etc/localtime,type=bind,readonly"
   ],
-  "containerEnv": {
-    "CROSS_CONTAINER_IN_CONTAINER": "true"
-  },
 
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-      "dockerDashComposeVersion": "v2.33.1"
+      "moby": true,
+      "installDockerBuildx": true,
+      "version": "28.3.2",
+      "mobyBuildxVersion": "0.25.0"
+    },
+    "ghcr.io/dhoeric/features/google-cloud-cli:1.0.1": {
+      "version": "518.0.0"
     }
   },
 
@@ -34,16 +38,20 @@
     
       "extensions": [
         "bradlc.vscode-tailwindcss",
-        "dbaeumer.vscode-eslint",
+        "oxc.oxc-vscode",
         "esbenp.prettier-vscode",
         "rust-lang.rust-analyzer",
         "slevesque.shader",
-        "styled-components.vscode-styled-components"
+        "vadimcn.vscode-lldb"
       ]
     }
   },
-
-  "postStartCommand": "just npm-ci",
+  "postCreateCommand": "sudo cp src/pdx-assets/policy.xml /etc/ImageMagick-6/policy.xml && mise trust && mise install --verbose --jobs 1",
+  "postStartCommand": "mise install --verbose --jobs 1",
   "forwardPorts": [3001, 3003, 9000],
-  "remoteUser": "node"
+  "remoteUser": "vscode",
+  "remoteEnv": {
+    // Workaround for github's rate limiting when installing mise tools
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
+  }
 }

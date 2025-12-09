@@ -13,7 +13,8 @@ static DATA: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 /// repository of saves.
 pub fn request_file<S: AsRef<str>>(input: S) -> File {
     let reffed = input.as_ref();
-    let cache = Path::new("assets").join("vic3-saves").join(reffed);
+    let cache_dir = Path::new("assets").join("vic3-saves");
+    let cache = cache_dir.join(reffed);
     if cache.exists() {
         println!("cache hit: {}", reffed);
     } else {
@@ -33,9 +34,14 @@ pub fn request_file<S: AsRef<str>>(input: S) -> File {
                         if !resp.is_success() {
                             panic!("expected a 200 code from s3");
                         } else {
-                            std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
-                            let mut f = std::fs::File::create(&cache).unwrap();
-                            std::io::copy(&mut resp, &mut f).unwrap();
+                            // Atomic rename to avoid reading partial writes.
+                            // Use temporary in same directory to avoid cross
+                            // device rename issues.
+                            std::fs::create_dir_all(&cache_dir).unwrap();
+                            let mut tmp = tempfile::NamedTempFile::new_in(&cache_dir)
+                                .expect("to create tempfile");
+                            std::io::copy(&mut resp, &mut tmp).expect("to copy to tempfile");
+                            tmp.persist(&cache).unwrap();
                             break;
                         }
                     }

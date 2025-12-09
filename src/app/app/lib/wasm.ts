@@ -1,15 +1,14 @@
 import { fetchOk } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import { transfer } from "comlink";
-import { timeit } from "./timeit";
-import { logMs } from "./log";
+import { timeAsync } from "./timeit";
 
 type Allocated = {
   free(): void;
 };
 
 type Wasm<P> = {
-  default(path: P): Promise<unknown>;
+  default(path: { module_or_path: P }): Promise<unknown>;
   melt(data: Uint8Array): Uint8Array;
   set_tokens(tokens: Uint8Array): void;
 };
@@ -40,7 +39,7 @@ export function createWasmGame<
   const loadModule = async () => {
     const [tokenData] = await Promise.all([
       fetchOk(tokenPath).then((x) => x.arrayBuffer()),
-      mod.default(wasmPath),
+      mod.default({ module_or_path: wasmPath }),
     ]);
     mod.set_tokens(new Uint8Array(tokenData));
     initialized = true;
@@ -83,13 +82,15 @@ export function createWasmGame<
       }
     }
 
-    async melt() {
+    async melt(): Promise<Uint8Array<ArrayBuffer>> {
       const data = await this.viewData();
-      const melt = this.module.melt(data);
+
+      // we know that wasm-bindgen does not return shared array buffers.
+      const melt = this.module.melt(data) as Uint8Array<ArrayBuffer>;
       return transfer(melt, [melt.buffer]);
     }
 
-    stash(data: Uint8Array, stashOp: StashOp) {
+    stash(data: Uint8Array<ArrayBuffer>, stashOp: StashOp) {
       bytes = data;
       stashed = stashOp;
     }
@@ -113,17 +114,17 @@ export function createWasmGame<
       }
 
       async function poll() {
-        const file = await timeit(() => handle.getFile());
-        logMs(file, "poll file");
-        if (file.data.lastModified <= lastModified) {
+        const file = await timeAsync("poll file", () => handle.getFile());
+        if (file.lastModified <= lastModified) {
           return;
         }
 
-        lastModified = file.data.lastModified;
+        lastModified = file.lastModified;
         stashed = { kind: "handle", file: handle, lastModified };
-        const bytes = await timeit(() => file.data.arrayBuffer());
-        logMs(bytes, "read polled file");
-        await callback(new Uint8Array(bytes.data));
+        const bytes = await timeAsync("read polled file", () =>
+          file.arrayBuffer(),
+        );
+        await callback(new Uint8Array(bytes));
       }
 
       intervalCheck();

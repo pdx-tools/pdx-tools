@@ -14,12 +14,14 @@ mod models;
 #[wasm_bindgen(typescript_custom_section)]
 const COUNTRY_TAG_TYPE: &'static str = r#"export type CountryTag = string;"#;
 
+#[derive(Debug)]
 pub struct SaveFileImpl {
     save: Hoi4Save,
     encoding: Encoding,
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct SaveFile(SaveFileImpl);
 
 #[wasm_bindgen]
@@ -97,8 +99,8 @@ fn _parse_save(data: &[u8]) -> Result<SaveFile, Hoi4Error> {
 }
 
 #[wasm_bindgen]
-pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
-    let s = _parse_save(data).map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsError> {
+    let s = _parse_save(data)?;
     Ok(s)
 }
 
@@ -111,8 +113,8 @@ fn _melt(data: &[u8]) -> Result<Vec<u8>, Hoi4Error> {
 }
 
 #[wasm_bindgen]
-pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
+pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsError> {
     _melt(data)
         .map(|x| js_sys::Uint8Array::from(x.as_slice()))
-        .map_err(|e| JsValue::from_str(e.to_string().as_str()))
+        .map_err(JsError::from)
 }

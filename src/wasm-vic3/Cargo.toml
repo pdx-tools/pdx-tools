@@ -4,11 +4,17 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[lints]
+workspace = true
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["zstd/fat-lto"]
+default = ["zstd_rust"]
+zstd_c = ["pdx-zstd/zstd_c"]
+zstd_c_fat_lto = ["pdx-zstd/zstd_c_fat_lto"]
+zstd_rust = ["pdx-zstd/zstd_rust"]
 
 [dependencies]
 jomini = { workspace = true }
@@ -18,11 +24,5 @@ serde-wasm-bindgen = { workspace = true }
 serde = { features = ["derive"] , workspace = true }
 vic3save = { workspace = true }
 js-sys = { workspace = true }
+pdx-zstd = { workspace = true }
 tsify = { default-features = false, features = ["js"] , workspace = true }
-zstd = { default-features = false , workspace = true }
-
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = false
-
-[package.metadata.wasm-pack.profile.dev.wasm-bindgen]
-dwarf-debug-info = true

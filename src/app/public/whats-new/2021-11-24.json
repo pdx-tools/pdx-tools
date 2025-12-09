@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix map crashes for map-changing mods",
+      "Update Knights of the Caribbean achievement to 1.32.2 compatibility (own all of Sardinia)",
+      "Update One nation to rule them all to 1.32.2 compatibility (subjects must be vassals)"
+    ]
+  }
+}

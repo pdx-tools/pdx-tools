@@ -4,11 +4,17 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[lints]
+workspace = true
+
 [features]
+default = ["zstd_rust"]
+zstd_c = ["eu4save/zstd_c", "eu4game/zstd_c"]
+zstd_rust = ["eu4save/zstd_rust", "eu4game/zstd_rust"]
 
 [dependencies]
 serde = { features = ["derive"], workspace = true }
-eu4save = { default-features = false, features = ["serialize", "zstd", "specta"] , workspace = true }
+eu4save = { default-features = false, features = ["serialize", "specta"] , workspace = true }
 eu4game = { default-features = false, features = ["embedded"] , workspace = true }
 thiserror = { workspace = true }
 specta = { features = ["typescript", "export"] , workspace = true }

@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Incorporate underaged heir id when calculating junior partner inheritance value"
+    ]
+  }
+}

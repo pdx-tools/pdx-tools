@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "optimized images to be 10-15% smaller"
+    ],
+    "fixes": [
+      "hairline border gap on flags in Chrome"
+    ]
+  }
+}

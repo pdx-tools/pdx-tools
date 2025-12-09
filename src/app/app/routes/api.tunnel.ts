@@ -1,6 +1,6 @@
-import { type ActionFunctionArgs } from "@remix-run/cloudflare";
+import type { Route } from "./+types/api.tunnel";
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function action({ request, context }: Route.ActionArgs) {
   const body = await request.text();
   const [piece] = body.split("\n");
   const header = JSON.parse(piece) as { dsn: string };
@@ -18,12 +18,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
     throw new Error(`Invalid sentry project id: ${project_id}`);
   }
 
-  // https://github.com/getsentry/sentry-javascript/discussions/5798#discussioncomment-3711950
   // https://community.cloudflare.com/t/ip-address-of-the-remote-origin-of-the-request/13080
-  const headers = new Headers();
-  const forwardedIp = request.headers.get("CF-Connecting-IP");
-  if (forwardedIp) {
-    headers.set("X-Forwarded-For", forwardedIp);
+  const headers = new Headers(request.headers);
+  const clientIp = request.headers.get("CF-Connecting-IP");
+  if (clientIp) {
+    headers.set("X-Forwarded-For", clientIp);
   }
 
   return fetch(

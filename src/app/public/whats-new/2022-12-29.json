@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix parsing negative casualties from wars"
+    ]
+  }
+}

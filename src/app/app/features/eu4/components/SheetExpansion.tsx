@@ -1,4 +1,5 @@
-import { ReactNode, useState } from "react";
+import { useState } from "react";
+import type { ReactNode } from "react";
 import { Sheet } from "@/components/Sheet";
 import { Button } from "@/components/Button";
 import { cx } from "class-variance-authority";
@@ -29,7 +30,7 @@ export const SheetExpansion = ({
           expanded ? "w-full" : "w-[800px] max-w-full",
         )}
       >
-        <Sheet.Header className="z-[1] flex items-center gap-2 px-4 pb-4 shadow-md">
+        <Sheet.Header className="z-1 flex items-center gap-2 px-4 pb-4 shadow-md">
           <Sheet.Close />
           <Button
             shape="square"

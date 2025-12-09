@@ -5,6 +5,9 @@ authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
 edition = "2021"
 publish = false
 
+[lints]
+workspace = true
+
 [features]
 
 [dependencies]
@@ -14,8 +17,10 @@ thiserror = { workspace = true }
 serde_path_to_error = { workspace = true }
 getrandom = { features = ["js"], workspace = true }
 mathru = { workspace = true }
-flate2 = { default-features = false, features = ["zlib-rs"] , workspace = true }
-rawzip = { workspace = true }
 
 [dev-dependencies]
 attohttpc = { workspace = true }
+flate2 = { default-features = false, features = ["zlib-rs"] , workspace = true }
+highway = { workspace = true }
+rawzip = { workspace = true }
+tempfile = { workspace = true }

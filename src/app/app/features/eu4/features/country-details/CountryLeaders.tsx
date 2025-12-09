@@ -1,6 +1,6 @@
 import { useEu4Worker } from "@/features/eu4/worker";
 import { useCallback, useState } from "react";
-import { CountryDetails, CountryLeader } from "../../types/models";
+import type { CountryDetails, CountryLeader } from "../../types/models";
 import { Badge } from "@/components/Badge";
 import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -35,7 +35,7 @@ const TagsSelect = ({
       value={value}
       onValueChange={(e) => valueUpdate(e)}
     >
-      <Select.Trigger className="data-[placeholder]:font-semibold" asChild>
+      <Select.Trigger className="data-placeholder:font-semibold" asChild>
         <Button>
           <Select.Value placeholder="Tags" />
           <Select.Icon asChild>
@@ -52,7 +52,7 @@ const TagsSelect = ({
         <Select.Item value="ruler">Ruler</Select.Item>
 
         <Button
-          className="ml-1 mt-2 w-full justify-center"
+          className="mx-1 mt-2 justify-center"
           onClick={() => valueUpdate(undefined)}
         >
           Clear

@@ -1,5 +1,6 @@
 import React from "react";
-import { cva, type VariantProps, cx } from "class-variance-authority";
+import { cva, cx } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 
 const alert = cva("relative w-full border-2 border-solid flex", {
@@ -28,7 +29,7 @@ const AlertRoot = React.forwardRef<
       className={cx(alert({ variant }), className)}
       {...props}
     >
-      <div className="flex-grow">{children}</div>
+      <div className="grow">{children}</div>
       <button
         type="button"
         className="flex cursor-pointer border-none bg-transparent"
@@ -55,7 +56,7 @@ const AlertTitle = React.forwardRef<
     <h5
       ref={ref}
       className={cx(
-        "mb-1 text-base font-medium leading-none tracking-tight",
+        "mb-1 text-base leading-none font-medium tracking-tight",
         className,
       )}
       {...props}

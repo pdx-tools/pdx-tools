@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Clear sort column sort state after descending click",
+      "Fix active war duration calculation",
+      "Fix nested `<button>` in icon column headers"
+    ]
+  }
+}

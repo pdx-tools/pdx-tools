@@ -2,7 +2,7 @@ import {
   filterToRecurringExpenses,
   filterToRecurringIncome,
 } from "../features/country-details/data";
-import {
+import type {
   CountryExpenses,
   CountryIncome,
   LocalizedCountryExpense,

@@ -6,7 +6,7 @@ import { cx } from "class-variance-authority";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
 import { Link } from "../Link";
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
-import { ErrorBoundary } from "../ErrorBoundary";
+import { ErrorCatcher } from "@/features/errors";
 
 let globalShow = false;
 
@@ -54,9 +54,9 @@ export const HomeLeaderboard = () => {
             </div>
           }
         >
-          <ErrorBoundary fallback={() => <></>}>
+          <ErrorCatcher fallback={() => <></>}>
             <HomeLeaderboardImpl />
-          </ErrorBoundary>
+          </ErrorCatcher>
         </Suspense>
       ) : null}
     </div>

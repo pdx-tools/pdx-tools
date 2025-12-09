@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fix long save file names from overflowing the info title bar."
+    ]
+  }
+}

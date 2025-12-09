@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [],
+    "fixes": [
+      "Fine tune zooming to work better across mouse sensitivities"
+    ]
+  }
+}

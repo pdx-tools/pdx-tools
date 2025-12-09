@@ -6,8 +6,8 @@ use std::io::Cursor;
 use vic3save::markets::{goods_price_based_on_buildings, Vic3GoodEstimationError};
 use vic3save::savefile::Vic3Country;
 use vic3save::stats::{Vic3CountryStatsRateIter, Vic3StatsGDPIter};
-use vic3save::MeltOptions;
 use vic3save::{savefile::Vic3Save, FailedResolveStrategy, Vic3Error, Vic3File};
+use vic3save::{DeserializeVic3, MeltOptions, Vic3Melt};
 use wasm_bindgen::prelude::*;
 
 mod models;
@@ -20,12 +20,14 @@ use crate::models::Vic3MarketResponse;
 #[wasm_bindgen(typescript_custom_section)]
 const VIC3_DATE_TYPE: &'static str = r#"export type Vic3Date = string;"#;
 
+#[derive(Debug)]
 pub struct SaveFileImpl {
     save: Vic3Save,
     is_meltable: bool,
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct SaveFile(SaveFileImpl);
 
 pub fn to_json_value<T: serde::ser::Serialize + ?Sized>(value: &T) -> JsValue {
@@ -49,11 +51,8 @@ impl SaveFile {
             data: self.0.get_country_stats(tag),
         }
     }
-    pub fn get_country_goods_prices(&self, tag: &str) -> Result<Vic3MarketResponse, JsValue> {
-        let prices = self
-            .0
-            .get_country_goods_prices(tag)
-            .map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+    pub fn get_country_goods_prices(&self, tag: &str) -> Result<Vic3MarketResponse, JsError> {
+        let prices = self.0.get_country_goods_prices(tag)?;
         Ok(Vic3MarketResponse { prices })
     }
 }
@@ -164,20 +163,17 @@ impl SaveFileImpl {
 
 fn _parse_save(data: &[u8]) -> Result<SaveFile, Vic3Error> {
     let file = Vic3File::from_slice(data)?;
-    let save = file.parse_save(tokens::get_tokens())?;
+    let save: Vic3Save = (&file).deserialize(tokens::get_tokens())?;
 
     Ok(SaveFile(SaveFileImpl {
         save,
-        is_meltable: matches!(
-            file.encoding(),
-            vic3save::Encoding::Binary | vic3save::Encoding::BinaryZip
-        ),
+        is_meltable: file.header().kind().is_binary(),
     }))
 }
 
 #[wasm_bindgen]
-pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsValue> {
-    let s = _parse_save(data).map_err(|e| JsValue::from_str(e.to_string().as_str()))?;
+pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsError> {
+    let s = _parse_save(data)?;
     Ok(s)
 }
 
@@ -185,13 +181,13 @@ fn _melt(data: &[u8]) -> Result<Vec<u8>, Vic3Error> {
     let file = Vic3File::from_slice(data)?;
     let mut out = Cursor::new(Vec::new());
     let options = MeltOptions::new().on_failed_resolve(FailedResolveStrategy::Ignore);
-    file.melt(options, tokens::get_tokens(), &mut out)?;
+    (&file).melt(options, tokens::get_tokens(), &mut out)?;
     Ok(out.into_inner())
 }
 
 #[wasm_bindgen]
-pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsValue> {
+pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsError> {
     _melt(data)
         .map(|x| js_sys::Uint8Array::from(x.as_slice()))
-        .map_err(|e| JsValue::from_str(e.to_string().as_str()))
+        .map_err(JsError::from)
 }

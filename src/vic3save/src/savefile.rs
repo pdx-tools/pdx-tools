@@ -1,6 +1,4 @@
-use crate::markets::Vic3Building;
-use crate::stats::Vic3CountryStats;
-use crate::Vic3Date;
+use crate::{markets::Vic3Building, stats::Vic3CountryStats, Vic3Date};
 use serde::{
     de::{self, DeserializeOwned, Unexpected},
     Deserialize, Deserializer,
@@ -223,7 +221,6 @@ mod tests {
     use super::*;
     use jomini::text::de::from_utf8_slice;
     use serde::Deserialize;
-    use std::collections::HashMap;
 
     #[derive(Debug, Deserialize, PartialEq)]
     pub struct Vic3Country {

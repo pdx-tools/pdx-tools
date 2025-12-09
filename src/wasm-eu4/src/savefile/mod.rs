@@ -27,6 +27,7 @@ pub use models::*;
 pub use tag_filter::*;
 
 // Struct created to help compiler debugging as the wasm_bindgen macro can cause opaque errors.
+#[derive(Debug)]
 pub struct SaveFileImpl {
     pub query: Query,
 
@@ -1072,7 +1073,7 @@ impl SaveFileImpl {
                     .game
                     .provinces
                     .values()
-                    .filter(|x| x.owner.as_ref().map_or(false, |o| o == tag))
+                    .filter(|x| x.owner.as_ref() == Some(tag))
                     .map(|x| x.buildings.len())
                     .sum::<usize>();
 
@@ -1248,7 +1249,7 @@ impl SaveFileImpl {
                         color: country
                             .armed_forces
                             .land_morale
-                            .map(|x| (x * blue_max / max_land_morale))
+                            .map(|x| x * blue_max / max_land_morale)
                             .unwrap_or(blue_min) as u8,
                     },
 
@@ -1308,7 +1309,7 @@ impl SaveFileImpl {
                         color: country
                             .armed_forces
                             .naval_morale
-                            .map(|x| (x * blue_max / max_naval_morale))
+                            .map(|x| x * blue_max / max_naval_morale)
                             .unwrap_or(blue_min) as u8,
                     },
 

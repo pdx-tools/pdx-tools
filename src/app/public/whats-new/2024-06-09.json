@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Active war breakdown"
+    ],
+    "fixes": [
+      "Include mercenary leaders when determining best leaders"
+    ]
+  }
+}

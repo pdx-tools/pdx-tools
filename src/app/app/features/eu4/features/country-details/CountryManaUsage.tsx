@@ -1,10 +1,11 @@
 import React, { useCallback, useMemo } from "react";
 import { manaSpendAliases, manaSpendColorPalette } from "./data";
-import { Bar, BarConfig, DataPoint, PieTable } from "@/components/viz";
-import { CountryDetails } from "../../types/models";
+import { Bar, PieTable } from "@/components/viz";
+import type { BarConfig, DataPoint } from "@/components/viz";
+import type { CountryDetails } from "../../types/models";
 import { isDarkMode } from "@/lib/dark";
 import { useEu4Worker } from "../../worker";
-import { CountryMana } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+import type { CountryMana } from "@/wasm/wasm_eu4";
 import { Alert } from "@/components/Alert";
 import { formatFloat, formatInt } from "@/lib/format";
 import {

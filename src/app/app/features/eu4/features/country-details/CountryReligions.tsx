@@ -1,7 +1,8 @@
 import React, { useCallback, useMemo } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
-import { CountryDetails, CountryReligion } from "../../types/models";
-import { Pie, LegendColor, PieConfig } from "@/components/viz";
+import type { CountryDetails, CountryReligion } from "../../types/models";
+import { Pie, LegendColor } from "@/components/viz";
+import type { PieConfig } from "@/components/viz";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { Tooltip } from "@/components/Tooltip";
@@ -9,7 +10,7 @@ import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
-import { RebelReligion } from "../../../../../../wasm-eu4/pkg/wasm_eu4";
+import type { RebelReligion } from "@/wasm/wasm_eu4";
 import { Link } from "@/components/Link";
 import { isDarkMode } from "@/lib/dark";
 

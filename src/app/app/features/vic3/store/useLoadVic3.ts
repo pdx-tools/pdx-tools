@@ -1,10 +1,10 @@
-import { logMs } from "@/lib/log";
 import { emitEvent } from "@/lib/events";
-import { timeit } from "@/lib/timeit";
+import { timeAsync } from "@/lib/timeit";
 import { getVic3Worker } from "../worker";
 import { useEffect, useReducer } from "react";
 import { pdxAbortController } from "@/lib/abortController";
-import { Vic3Store, createVic3Store } from "./vic3Store";
+import { createVic3Store } from "./vic3Store";
+import type { Vic3Store } from "./vic3Store";
 import { captureException } from "@/lib/captureException";
 
 export type Vic3SaveInput =
@@ -19,10 +19,7 @@ type Task<T> = {
 async function loadVic3Save(save: Vic3SaveInput, signal: AbortSignal) {
   const run = async <T>({ fn, name }: Task<T>) => {
     signal.throwIfAborted();
-    const result = await timeit(fn).then((res) => {
-      logMs(res, name);
-      return res.data;
-    });
+    const result = await timeAsync(name, fn);
     signal.throwIfAborted();
     return result;
   };
