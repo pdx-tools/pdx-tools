@@ -303,7 +303,7 @@ where
                 }
                 None => match options.on_failed_resolve {
                     FailedResolveStrategy::Error => {
-                        return Err(Vic3ErrorKind::UnknownToken { token_id: x }.into());
+                        return Err(Vic3ErrorKind::UnknownToken { token_id: x as u32 }.into());
                     }
                     FailedResolveStrategy::Ignore if wtr.expecting_key() => {
                         let mut next = reader.read()?;
@@ -333,26 +333,12 @@ where
             Token::Bool(x) => wtr.write_bool(x)?,
             Token::Rgb(x) => wtr.write_rgb(&x)?,
             Token::I64(x) => wtr.write_i64(x)?,
-            Token::LookupU8(_) | Token::LookupU16(_) => {
-                let x = match token {
-                    Token::LookupU8(v) => v as u16,
-                    Token::LookupU16(v) => v,
-                    _ => unreachable!(),
-                };
-
-                match resolver.lookup(x) {
-                    Some(s) => wtr.write_unquoted(s.as_bytes())?,
-                    None => match options.on_failed_resolve {
-                        FailedResolveStrategy::Error => {
-                            return Err(Vic3ErrorKind::UnknownToken { token_id: x }.into());
-                        }
-                        _ => {
-                            unknown_tokens.insert(x);
-                            let replacement = format!("__id_0x{x:x}");
-                            wtr.write_unquoted(replacement.as_bytes())?;
-                        }
-                    },
-                }
+            Token::Lookup(x) => {
+                return Err(Vic3ErrorKind::InvalidSyntax(format!(
+                    "unsupported lookup token: {:x}",
+                    x
+                ))
+                .into())
             }
         }
     }
