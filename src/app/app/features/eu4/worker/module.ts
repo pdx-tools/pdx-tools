@@ -274,6 +274,10 @@ export function eu4GetDevEfficiencies(filter: CountryMatcher) {
   return wasm.save.get_dev_efficiency(filter);
 }
 
+export function eu4GetProvinceDevDensity(filter: CountryMatcher) {
+  return wasm.save.get_province_development_density(filter);
+}
+
 export function eu4GetProvinces() {
   return wasm.save.get_provinces();
 }

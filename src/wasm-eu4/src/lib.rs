@@ -17,8 +17,8 @@ use models::CountryDevEfficiencies;
 use savefile::{
     AchievementsScore, CountryAdvisors, CountryDetails, CountryReligions, Estate,
     FileObservationFrequency, HealthData, LocalizedLedger, MapCursorPayload, MapPayload,
-    MapPayloadKind, MapQuickTipPayload, Monitor, ProvinceDetails, Reparse, RootTree, SaveFileImpl,
-    TagFilterPayloadRaw, WarInfo,
+    MapPayloadKind, MapQuickTipPayload, Monitor, ProvinceDetails, ProvinceDevDensity, Reparse,
+    RootTree, SaveFileImpl, TagFilterPayloadRaw, WarInfo,
 };
 use std::{collections::HashMap, io::Cursor};
 use wasm_bindgen::prelude::*;
@@ -164,6 +164,13 @@ impl SaveFile {
 
     pub fn get_dev_efficiency(&self, payload: TagFilterPayloadRaw) -> CountryDevEfficiencies {
         self.0.get_dev_efficiency(payload).into()
+    }
+
+    pub fn get_province_development_density(
+        &self,
+        payload: TagFilterPayloadRaw,
+    ) -> ProvinceDevDensity {
+        self.0.get_province_development_density(payload)
     }
 
     pub fn geographical_development(&self, payload: TagFilterPayloadRaw) -> RootTree {

@@ -119,6 +119,16 @@ export const Help = ({ module }: HelpProps) => {
     case "geographical-development": {
       return <p>No help is available</p>;
     }
+    case "province-dev-density": {
+      return (
+        <p>
+          Shows a kernel density estimate of province development for countries
+          matching the current filter. The curve is computed from province
+          totals (tax + production + manpower) and smoothed with a Gaussian
+          kernel.
+        </p>
+      );
+    }
     case "navy-casualties":
     case "army-casualties": {
       return (
