@@ -13,11 +13,6 @@ on:
 jobs:
   devcontainer:
     runs-on: ${{ matrix.os }}
-    if: |
-      github.event_name == 'pull_request' ||
-      github.event_name == 'push' ||
-      github.event_name == 'schedule' ||
-      (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'safe to test'))
     strategy:
       matrix:
         include:
@@ -25,6 +20,10 @@ jobs:
             with_tokens: false
           - os: ubuntu-latest
             with_tokens: true
+    if: ${{ (github.event_name == 'pull_request' && (!matrix.with_tokens || github.event.pull_request.head.repo.full_name == github.repository))
+      || github.event_name == 'push'
+      || github.event_name == 'schedule'
+      || (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'safe to test')) }}
     name: devcontainer / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
     env:
       CARGO_TERM_VERBOSE: true
@@ -99,11 +98,6 @@ jobs:
 
   build:
     runs-on: ${{ matrix.os }}
-    if: |
-      github.event_name == 'pull_request' ||
-      github.event_name == 'push' ||
-      github.event_name == 'schedule' ||
-      (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'safe to test'))
     strategy:
       fail-fast: false
       matrix:
@@ -118,6 +112,10 @@ jobs:
             with_tokens: true
           - os: macos-15
             with_tokens: false # docker not supported on macos gh actions
+    if: ${{ (github.event_name == 'pull_request' && (!matrix.with_tokens || github.event.pull_request.head.repo.full_name == github.repository))
+      || github.event_name == 'push'
+      || github.event_name == 'schedule'
+      || (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'safe to test')) }}
     name: build / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
     env:
       CARGO_INCREMENTAL: 0
