@@ -2,32 +2,33 @@ use super::parsing::{parse_default_map, parse_locations_data, parse_named_locati
 use crate::game_data::game_install::parsing::LocationTerrain;
 use crate::game_data::{GameData, GameDataError, TextureProvider};
 use crate::map::{EU5_TILE_HEIGHT, EU5_TILE_WIDTH};
-use crate::models::GameLocationData;
-use crate::tile_dimensions;
+use crate::{ColorIdx, GameLocation, GameSpatialLocation, tile_dimensions};
 use eu5save::hash::{FnvHashMap, FxHashMap};
+use pdx_map::{R16, R16Palette, R16SecondaryMap, Rgb};
 use rawzip::{CompressionMethod, ReaderAt, ZipArchive, ZipArchiveEntryWayfinder};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
+use tracing::instrument;
 
 /// Texture bundle for source game data (parsed from game files).
-/// Stores textures as in-memory Vec<u8> (already decoded from PNG).
+///
+/// Stores textures in memory as R16 format.
 pub struct GameTextureBundle {
     west_texture: Vec<u8>,
     east_texture: Vec<u8>,
+    palette: R16Palette,
 }
 
 impl GameTextureBundle {
-    /// Create from owned texture data.
-    pub fn new(west_texture: Vec<u8>, east_texture: Vec<u8>) -> Self {
+    pub fn new(west_texture: Vec<u8>, east_texture: Vec<u8>, palette: R16Palette) -> Self {
         Self {
             west_texture,
             east_texture,
+            palette,
         }
     }
-}
 
-impl GameTextureBundle {
     pub fn west_data(&self) -> &[u8] {
         self.west_texture.as_slice()
     }
@@ -36,43 +37,107 @@ impl GameTextureBundle {
         self.east_texture.as_slice()
     }
 
-    fn location_aware(
+    #[instrument(skip_all, name = "eu5.location_png.transcode")]
+    pub fn create_from_location_png(png_bytes: &[u8]) -> Result<Self, GameDataError> {
+        let image = image::load_from_memory_with_format(png_bytes, image::ImageFormat::Png)
+            .map_err(|e| GameDataError::LocationsError(format!("image decoding: {}", e)))?;
+        let image = image.as_rgb8().ok_or_else(|| {
+            GameDataError::LocationsError(String::from("locations.png is not in RGB8 format"))
+        })?;
+        let (width, height) = image.dimensions();
+
+        if !(width == EU5_TILE_WIDTH * 2 && height == EU5_TILE_HEIGHT) {
+            return Err(GameDataError::LocationsError(format!(
+                "Unexpected locations.png dimensions: {}x{}",
+                width, height
+            )));
+        }
+
+        let (west, east, palette) = pdx_map::split_rgb8_to_indexed_r16(image.as_raw(), width);
+
+        tracing::info!(
+            unique_colors = palette.len(),
+            "Processed locations.png texture"
+        );
+
+        Ok(Self {
+            west_texture: west,
+            east_texture: east,
+            palette,
+        })
+    }
+
+    #[instrument(
+        skip_all,
+        name = "eu5.location_png",
+        fields(game_locations, texture_locations, joined_locations)
+    )]
+    pub fn location_aware(
         &self,
-        locations: impl Iterator<Item = LocationTerrain>,
-    ) -> FxHashMap<String, GameLocationData> {
-        let mut location_coordinates = FnvHashMap::default();
+        locations: Vec<LocationTerrain>,
+    ) -> (Vec<GameLocation>, R16SecondaryMap<GameSpatialLocation>) {
+        assert!(
+            !self.palette.is_empty(),
+            "Texture must be processed to build color index before"
+        );
+
+        let mut location_pixels_count = self.palette.map(|_, _| 0u32);
+        let mut location_x = self.palette.map(|_, _| 0u32);
+        let mut location_y = self.palette.map(|_, _| 0u32);
+
         let (_height, width) = tile_dimensions();
 
         for (idx, data) in [self.west_data(), self.east_data()].iter().enumerate() {
             let offset_x = width * (idx as u32);
-            let chunks = data.chunks_exact(4);
-            for (idx, chunk) in chunks.enumerate() {
-                let rgba = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-                location_coordinates.entry(rgba).or_insert_with(|| {
-                    (
-                        (offset_x as u16) + ((idx as u32) % width) as u16,
-                        ((idx as u32) / width) as u16,
-                    )
-                });
+            let (chunks, _) = data.as_chunks::<2>();
+            for (idx, chunk) in chunks.iter().enumerate() {
+                let color_idx = R16::from(*chunk);
+                location_pixels_count[color_idx] += 1;
+                location_x[color_idx] += offset_x + ((idx as u32) % width);
+                location_y[color_idx] += (idx as u32) / width;
             }
         }
 
-        locations
-            .map(|x| {
-                let color_id = u32::from_le_bytes([x.color.0[0], x.color.0[1], x.color.0[2], 255]);
-                (
-                    x.name,
-                    GameLocationData {
-                        color_id: x.color.0,
-                        terrain: x.terrain,
-                        coordinates: location_coordinates
-                            .get(&color_id)
-                            .copied()
-                            .unwrap_or((0, 0)),
-                    },
-                )
+        // Compute the average coordinates for each color index
+        for (((count, _r16), x), y) in location_pixels_count
+            .iter()
+            .zip(location_x.iter_mut())
+            .zip(location_y.iter_mut())
+        {
+            *x /= *count;
+            *y /= *count;
+        }
+
+        let locations_by_color = locations
+            .iter()
+            .enumerate()
+            .map(|(idx, loc)| (Rgb::from(loc.color.0), idx))
+            .collect::<FnvHashMap<_, _>>();
+
+        let palette_map = self.palette.map(|_, r16| GameSpatialLocation {
+            avg_x: location_x[r16] as u16,
+            avg_y: location_y[r16] as u16,
+        });
+
+        let mut location_r16 = vec![None; locations.len()];
+        for (rgb, r16) in self.palette.iter() {
+            let Some(idx) = locations_by_color.get(rgb) else {
+                continue;
+            };
+            location_r16[*idx] = Some(ColorIdx::from(r16));
+        }
+
+        let locations = locations
+            .into_iter()
+            .enumerate()
+            .map(|(idx, x)| GameLocation {
+                name: x.name,
+                terrain: x.terrain,
+                color_id: location_r16[idx],
             })
-            .collect()
+            .collect();
+
+        (locations, palette_map)
     }
 }
 
@@ -203,8 +268,8 @@ impl From<rawzip::ZipFileHeaderRecord<'_>> for ZipEntryMetadata {
 
 /// Source game data parsed from raw game files (EU5 installation or source bundle).
 pub struct RawGameData {
-    pub(crate) locations: Vec<LocationTerrain>,
-    pub(crate) country_localizations: FxHashMap<String, String>,
+    pub locations: Vec<LocationTerrain>,
+    pub country_localizations: FxHashMap<String, String>,
 }
 
 impl RawGameData {
@@ -250,8 +315,8 @@ impl RawGameData {
     }
 
     pub fn into_game_data(self, textures: &GameTextureBundle) -> GameData {
-        let locations = textures.location_aware(self.locations.into_iter());
-        GameData::new(locations, self.country_localizations)
+        let (locations, spatial_locations) = textures.location_aware(self.locations);
+        GameData::new(locations, spatial_locations, self.country_localizations)
     }
 }
 
@@ -267,43 +332,13 @@ impl<R> RawTextureBuilder<R>
 where
     R: Read,
 {
+    #[instrument(skip_all, name = "eu5.raw_texture.build")]
     pub fn build(mut self) -> Result<GameTextureBundle, GameDataError> {
         let mut png_bytes = Vec::new();
         self.reader
             .read_to_end(&mut png_bytes)
             .map_err(|e| GameDataError::Io(e, String::from("locations_png")))?;
 
-        let (west_texture, east_texture) = split_locations_png(&png_bytes)?;
-
-        Ok(GameTextureBundle::new(west_texture, east_texture))
+        GameTextureBundle::create_from_location_png(&png_bytes)
     }
-}
-
-fn split_locations_png(png_bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>), GameDataError> {
-    let image = image::load_from_memory_with_format(png_bytes, image::ImageFormat::Png)
-        .map_err(|e| GameDataError::LocationsError(format!("image decoding: {}", e)))?
-        .to_rgba8();
-    let (width, height) = image.dimensions();
-
-    if !(width == EU5_TILE_WIDTH * 2 && height == EU5_TILE_HEIGHT) {
-        return Err(GameDataError::LocationsError(format!(
-            "Unexpected locations.png dimensions: {}x{}",
-            width, height
-        )));
-    }
-
-    let half_width = EU5_TILE_WIDTH;
-    let mut west_texture = Vec::with_capacity((half_width * height * 4) as usize);
-    let mut east_texture = Vec::with_capacity((half_width * height * 4) as usize);
-
-    for y in 0..height {
-        let row_start = (y * width * 4) as usize;
-        let row_end = row_start + (width * 4) as usize;
-        let row = &image.as_raw()[row_start..row_end];
-
-        west_texture.extend_from_slice(&row[..(half_width * 4) as usize]);
-        east_texture.extend_from_slice(&row[(half_width * 4) as usize..]);
-    }
-
-    Ok((west_texture, east_texture))
 }

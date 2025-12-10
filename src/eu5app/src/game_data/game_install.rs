@@ -1,16 +1,14 @@
 mod parsing;
 mod raw;
 
+use pdx_map::R16Palette;
 pub use raw::{
     GameFileSource, GameInstallationDirectory, GameTextureBundle, RawGameData, ZipArchiveData,
 };
 
-use crate::{
-    GameLocationData,
-    game_data::{
-        GameData, GameDataError, GameDataProvider, OptimizedGameBundle, TextureProvider,
-        optimized::OptimizedTextureBundle,
-    },
+use crate::game_data::{
+    GameData, GameDataError, OptimizedGameBundle, TextureProvider,
+    optimized::OptimizedTextureBundle,
 };
 
 pub struct Eu5GameInstall {
@@ -32,7 +30,8 @@ impl Eu5GameInstall {
                 let mut textures = OptimizedTextureBundle::open(&data)?;
                 let west_data = textures.load_west_texture(Vec::new())?;
                 let east_data = textures.load_east_texture(Vec::new())?;
-                let textures = GameTextureBundle::new(west_data, east_data);
+                let textures =
+                    GameTextureBundle::new(west_data, east_data, R16Palette::new(vec![]));
                 return Ok(Self {
                     textures,
                     game_data,
@@ -66,15 +65,9 @@ impl Eu5GameInstall {
             game_data,
         })
     }
-}
 
-impl GameDataProvider for Eu5GameInstall {
-    fn lookup_location(&self, name: &str) -> Option<GameLocationData> {
-        self.game_data.lookup_location(name)
-    }
-
-    fn localized_country_name(&self, tag: &str) -> Option<&str> {
-        self.game_data.localized_country_name(tag)
+    pub fn into_game_data(self) -> GameData {
+        self.game_data
     }
 }
 

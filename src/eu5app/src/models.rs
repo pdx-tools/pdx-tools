@@ -1,8 +1,68 @@
+use pdx_map::{R16, Rgb};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
-pub struct GameLocationData {
-    pub color_id: [u8; 3],
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ColorIdx(R16);
+
+impl ColorIdx {
+    pub const fn new(idx: u16) -> Self {
+        Self(R16::new(idx))
+    }
+
+    pub const fn value(self) -> u16 {
+        self.0.value()
+    }
+}
+
+impl From<R16> for ColorIdx {
+    fn from(value: R16) -> Self {
+        ColorIdx(value)
+    }
+}
+
+impl From<ColorIdx> for R16 {
+    fn from(value: ColorIdx) -> Self {
+        value.0
+    }
+}
+
+impl<'de> Deserialize<'de> for ColorIdx {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let raw = u16::deserialize(deserializer)?;
+        Ok(ColorIdx(R16::new(raw)))
+    }
+}
+
+impl Serialize for ColorIdx {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_u16(self.0.value())
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GameLocation {
+    pub name: String,
+    pub terrain: Terrain,
+    pub color_id: Option<ColorIdx>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GameSpatialLocation {
+    pub avg_x: u16,
+    pub avg_y: u16,
+}
+
+#[derive(Debug, Clone)]
+pub struct RawGameLocationData {
+    pub name: String,
+    pub color_id: Rgb,
+    pub color_idx: ColorIdx,
     pub terrain: Terrain,
     pub coordinates: (u16, u16),
 }

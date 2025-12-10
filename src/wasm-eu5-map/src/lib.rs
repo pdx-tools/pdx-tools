@@ -13,9 +13,9 @@ mod console_error_panic_hook;
 
 // Re-export common types from wasm-pdxmap
 pub use wasm_pdx_map::{
-    CanvasDisplay, PdxScreenshotRenderer as WasmScreenshotRenderer, WasmColorIdReadback,
-    WasmGpuColor, WasmLocationIdx, WasmQueuedWorkFuture, create_screenshot_renderer_for_app,
-    get_surface_target,
+    CanvasDisplay, PdxScreenshotRenderer as WasmScreenshotRenderer, WasmGpuColor,
+    WasmGpuLocationIdx, WasmGpuLocationIdxReadback, WasmQueuedWorkFuture,
+    create_screenshot_renderer_for_app, get_surface_target,
 };
 
 #[wasm_bindgen]
@@ -201,22 +201,16 @@ impl Eu5WasmMapRenderer {
         &self,
         x: f32,
         y: f32,
-    ) -> Result<WasmColorIdReadback, JsError> {
+    ) -> Result<WasmGpuLocationIdxReadback, JsError> {
         let readback = self
             .app
             .create_color_id_readback_at(x, y)
             .map_err(|e| JsError::new(&format!("unable to create readback: {e:?}")))?;
-        Ok(WasmColorIdReadback::from_color_id_readback(readback))
+        Ok(WasmGpuLocationIdxReadback::from_color_id_readback(readback))
     }
 
     #[wasm_bindgen]
-    pub fn lookup_color_idx(&self, color: &WasmGpuColor) -> Option<WasmLocationIdx> {
-        let val = self.app.lookup_color_idx(color.inner())?;
-        Some(WasmLocationIdx::from_gpu_location_idx(val))
-    }
-
-    #[wasm_bindgen]
-    pub fn lookup_location_id(&self, idx: &WasmLocationIdx) -> u32 {
+    pub fn lookup_location_id(&self, idx: &WasmGpuLocationIdx) -> u32 {
         let val = self
             .app
             .renderer()
@@ -226,7 +220,7 @@ impl Eu5WasmMapRenderer {
     }
 
     #[wasm_bindgen]
-    pub fn highlight_location(&mut self, idx: u32) {
+    pub fn highlight_location(&mut self, idx: u16) {
         let location_arrays = self.app.renderer_mut().location_arrays_mut();
         location_arrays
             .get_mut(GpuLocationIdx::new(idx))
@@ -246,7 +240,7 @@ impl Eu5WasmMapRenderer {
     }
 
     #[wasm_bindgen]
-    pub fn unhighlight_location(&mut self, idx: u32) {
+    pub fn unhighlight_location(&mut self, idx: u16) {
         let location_arrays = self.app.renderer_mut().location_arrays_mut();
         location_arrays
             .get_mut(GpuLocationIdx::new(idx))

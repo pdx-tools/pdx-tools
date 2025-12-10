@@ -35,11 +35,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_default_directive(LevelFilter::INFO.into())
         .from_env_lossy();
 
-    let _ = tracing_subscriber::fmt()
+    tracing_subscriber::fmt()
         .with_env_filter(env_filter)
         .with_ansi(std::io::stdout().is_terminal())
         .with_span_events(FmtSpan::CLOSE)
-        .try_init();
+        .init();
 
     let args = Args::parse();
 
@@ -85,7 +85,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         tile_height,
     )?;
 
-    let mut map_app = Eu5Workspace::new(save, game_bundle)?;
+    let mut map_app = Eu5Workspace::new(save, game_bundle.into_game_data())?;
     map_app.set_map_mode(MapMode::Political)?;
     renderer.set_location_arrays(map_app.location_arrays().clone());
 

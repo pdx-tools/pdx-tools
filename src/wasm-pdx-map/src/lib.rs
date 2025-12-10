@@ -1,11 +1,35 @@
 use pdx_map::{
     CanvasDimensions, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext, LocationArrays,
-    LocationFlags, MapRenderer, MapTexture, MapViewController, QueuedWorkFuture, RenderError,
-    ScreenshotRenderer, SurfaceMapRenderer,
+    LocationFlags, MapRenderer, MapTexture, MapViewController, QueuedWorkFuture, R16Palette,
+    RenderError, ScreenshotRenderer, SurfaceMapRenderer,
 };
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
+
+#[wasm_bindgen]
+pub struct PdxMapImage {
+    west: Vec<u8>,
+    east: Vec<u8>,
+    palette: R16Palette,
+    tile_width: u32,
+    tile_height: u32,
+}
+
+#[wasm_bindgen]
+impl PdxMapImage {
+    #[wasm_bindgen]
+    pub fn from_rgba(data: &[u8], width: u32, height: u32) -> Result<PdxMapImage, JsError> {
+        let (west, east, palette) = pdx_map::split_rgba8_to_indexed_r16(data, width);
+        Ok(PdxMapImage {
+            west,
+            east,
+            palette,
+            tile_width: width / 2,
+            tile_height: height,
+        })
+    }
+}
 
 #[wasm_bindgen]
 pub struct PdxCanvasSurface {
@@ -31,28 +55,24 @@ impl PdxCanvasSurface {
     }
 
     #[wasm_bindgen]
-    pub fn upload_west_texture(
-        &self,
-        data: &[u8],
-        width: u32,
-        height: u32,
-    ) -> Result<PdxTexture, JsError> {
-        let texture =
-            self.pipeline_components
-                .create_texture(data, width, height, "West Texture Input");
+    pub fn upload_west_texture(&self, image: &PdxMapImage) -> Result<PdxTexture, JsError> {
+        let texture = self.pipeline_components.create_texture(
+            &image.west,
+            image.tile_width,
+            image.tile_height,
+            "West Texture Input",
+        );
         Ok(PdxTexture { data: texture })
     }
 
     #[wasm_bindgen]
-    pub fn upload_east_texture(
-        &self,
-        data: &[u8],
-        width: u32,
-        height: u32,
-    ) -> Result<PdxTexture, JsError> {
-        let texture =
-            self.pipeline_components
-                .create_texture(data, width, height, "East Texture Input");
+    pub fn upload_east_texture(&self, image: &PdxMapImage) -> Result<PdxTexture, JsError> {
+        let texture = self.pipeline_components.create_texture(
+            &image.east,
+            image.tile_width,
+            image.tile_height,
+            "East Texture Input",
+        );
         Ok(PdxTexture { data: texture })
     }
 }
@@ -67,6 +87,7 @@ impl PdxMapRenderer {
     #[wasm_bindgen]
     pub fn create(
         surface: PdxCanvasSurface,
+        image: PdxMapImage,
         west_texture: PdxTexture,
         east_texture: PdxTexture,
         display: CanvasDisplay,
@@ -81,13 +102,20 @@ impl PdxMapRenderer {
         let tile_width = west_texture.data.width();
         let tile_height = west_texture.data.height();
 
-        let renderer = SurfaceMapRenderer::new(
+        let mut renderer = SurfaceMapRenderer::new(
             surface.pipeline_components,
             west_texture.data,
             east_texture.data,
             display_surface,
             canvas_dims,
         );
+
+        let mut location_arrays = LocationArrays::allocate(image.palette.len());
+        let init_colors = image.palette.map(|_, x| GpuColor::from(x.as_rgb()));
+        location_arrays.set_primary_colors(init_colors.as_slice());
+        location_arrays.set_secondary_colors(init_colors.as_slice());
+        location_arrays.set_owner_colors(init_colors.as_slice());
+        renderer.set_location_arrays(location_arrays);
 
         let app = MapViewController::new(renderer, canvas_dims, tile_width, tile_height);
 
@@ -161,22 +189,16 @@ impl PdxMapRenderer {
         &self,
         x: f32,
         y: f32,
-    ) -> Result<WasmColorIdReadback, JsError> {
+    ) -> Result<WasmGpuLocationIdxReadback, JsError> {
         let readback = self
             .app
             .create_color_id_readback_at(x, y)
             .map_err(|e| JsError::new(&format!("unable to create readback: {e:?}")))?;
-        Ok(WasmColorIdReadback { readback })
+        Ok(WasmGpuLocationIdxReadback { readback })
     }
 
     #[wasm_bindgen]
-    pub fn lookup_color_idx(&self, color: &WasmGpuColor) -> Option<WasmLocationIdx> {
-        let val = self.app.lookup_color_idx(color.color)?;
-        Some(WasmLocationIdx { idx: val })
-    }
-
-    #[wasm_bindgen]
-    pub fn lookup_location_id(&self, idx: &WasmLocationIdx) -> u32 {
+    pub fn lookup_location_id(&self, idx: &WasmGpuLocationIdx) -> u32 {
         let val = self
             .app
             .renderer()
@@ -186,7 +208,7 @@ impl PdxMapRenderer {
     }
 
     #[wasm_bindgen]
-    pub fn highlight_location(&mut self, idx: u32) {
+    pub fn highlight_location(&mut self, idx: u16) {
         let location_arrays = self.app.renderer_mut().location_arrays_mut();
         location_arrays
             .get_mut(GpuLocationIdx::new(idx))
@@ -206,7 +228,7 @@ impl PdxMapRenderer {
     }
 
     #[wasm_bindgen]
-    pub fn unhighlight_location(&mut self, idx: u32) {
+    pub fn unhighlight_location(&mut self, idx: u16) {
         let location_arrays = self.app.renderer_mut().location_arrays_mut();
         location_arrays
             .get_mut(GpuLocationIdx::new(idx))
@@ -244,19 +266,19 @@ impl PdxMapRenderer {
 }
 
 #[wasm_bindgen]
-pub struct WasmLocationIdx {
+pub struct WasmGpuLocationIdx {
     idx: GpuLocationIdx,
 }
 
 #[wasm_bindgen]
-impl WasmLocationIdx {
+impl WasmGpuLocationIdx {
     #[wasm_bindgen]
-    pub fn value(&self) -> u32 {
+    pub fn value(&self) -> u16 {
         self.idx.value()
     }
 }
 
-impl WasmLocationIdx {
+impl WasmGpuLocationIdx {
     /// Create a new WasmLocationIdx from a GpuLocationIdx (for library use)
     pub fn from_gpu_location_idx(idx: GpuLocationIdx) -> Self {
         Self { idx }
@@ -286,20 +308,20 @@ impl WasmGpuColor {
 }
 
 #[wasm_bindgen]
-pub struct WasmColorIdReadback {
+pub struct WasmGpuLocationIdxReadback {
     pub(crate) readback: ColorIdReadback,
 }
 
 #[wasm_bindgen]
-impl WasmColorIdReadback {
+impl WasmGpuLocationIdxReadback {
     #[wasm_bindgen]
-    pub async fn read_id(self) -> WasmGpuColor {
-        let color = self.readback.read_id().await;
-        WasmGpuColor { color }
+    pub async fn read_id(self) -> WasmGpuLocationIdx {
+        let idx = self.readback.read_id().await;
+        WasmGpuLocationIdx::from_gpu_location_idx(idx)
     }
 }
 
-impl WasmColorIdReadback {
+impl WasmGpuLocationIdxReadback {
     /// Create a new WasmColorIdReadback from a ColorIdReadback
     pub fn from_color_id_readback(readback: ColorIdReadback) -> Self {
         Self { readback }

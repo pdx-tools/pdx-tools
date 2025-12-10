@@ -1895,6 +1895,7 @@ dependencies = [
  "flate2",
  "jomini",
  "mimalloc",
+ "pdx-map",
  "pdx-zstd",
  "postcard",
  "rawbmp",

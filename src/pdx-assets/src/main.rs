@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use pdx_assets::{BundleArgs, CompileArgs};
-use std::process::ExitCode;
-use tracing_subscriber::filter::LevelFilter;
+use std::{io::IsTerminal, process::ExitCode};
+use tracing_subscriber::{EnvFilter, filter::LevelFilter, fmt::format::FmtSpan};
 
 // Avoid musl's default allocator due to lackluster performance
 // https://nickb.dev/blog/default-musl-allocator-considered-harmful-to-performance
@@ -24,12 +24,14 @@ enum Commands {
 }
 
 fn main() -> ExitCode {
+    let env_filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy();
+
     tracing_subscriber::fmt()
-        .with_target(false)
-        .with_level(true)
-        .with_max_level(LevelFilter::INFO)
-        .with_writer(std::io::stdout)
-        .compact()
+        .with_env_filter(env_filter)
+        .with_ansi(std::io::stdout().is_terminal())
+        .with_span_events(FmtSpan::CLOSE)
         .init();
 
     let cli = Cli::parse();

@@ -1,5 +1,6 @@
 mod color;
-mod hashtable;
+mod image;
+mod loc_arrays;
 mod viewport;
 
 #[cfg(feature = "render")]
@@ -10,7 +11,8 @@ mod error;
 mod renderer;
 
 pub use color::GpuColor;
-pub use hashtable::*;
+pub use image::*;
+pub use loc_arrays::*;
 pub use viewport::*;
 
 #[cfg(feature = "render")]
