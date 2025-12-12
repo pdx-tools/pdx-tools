@@ -419,7 +419,12 @@ pub struct GpuSurfaceContext {
 impl GpuSurfaceContext {
     /// Create a new GPU surface context for rendering to a surface
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "info"))]
-    pub async fn new(surface: SurfaceTarget<'static>) -> Result<Self, RenderError> {
+    pub async fn new(surface: impl Into<SurfaceTarget<'static>>) -> Result<Self, RenderError> {
+        let surface = surface.into();
+        Self::new_surface(surface).await
+    }
+
+    async fn new_surface(surface: SurfaceTarget<'static>) -> Result<Self, RenderError> {
         let instance = GpuContext::create_instance();
         let surface = instance.create_surface(surface)?;
         let adapter = GpuContext::request_adapter(&instance, Some(&surface)).await?;
@@ -452,21 +457,15 @@ pub struct GpuSurfaceContextRef<'a> {
 }
 
 impl<'a> GpuSurfaceContextRef<'a> {
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
-    pub fn display_surface(&self, display: CanvasDimensions) -> SurfacePipeline {
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "info", fields(dimensions = %dimensions)))]
+    pub fn display_surface(&self, dimensions: CanvasDimensions) -> SurfacePipeline {
         let surface_caps = self.surface.get_capabilities(&self.core.gpu.adapter);
-        let surface_format = surface_caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| f.is_srgb())
-            .unwrap_or(surface_caps.formats[0]);
 
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface_format,
-            width: display.physical_width(),
-            height: display.physical_height(),
+            format: choose_texture_format(&surface_caps.formats),
+            width: dimensions.physical_width(),
+            height: dimensions.physical_height(),
             present_mode: choose_present_mode(&surface_caps.present_modes),
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
@@ -1264,16 +1263,10 @@ impl SurfaceMapRenderer {
     ) -> Result<SurfaceMapRenderer, RenderError> {
         let surface_caps: wgpu::SurfaceCapabilities =
             screenshot_surface.get_capabilities(&self.renderer.gpu.adapter);
-        let surface_format = surface_caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| f.is_srgb())
-            .unwrap_or(surface_caps.formats[0]);
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface_format,
+            format: choose_texture_format(&surface_caps.formats),
             width: self.renderer.tile_width,
             height: self.renderer.tile_height,
             present_mode: choose_present_mode(&surface_caps.present_modes),
@@ -1631,5 +1624,20 @@ fn choose_present_mode(available_modes: &[wgpu::PresentMode]) -> wgpu::PresentMo
 
     #[cfg(feature = "tracing")]
     tracing::debug!(name: "renderer.present_mode.selected", present_mode = ?result, available_options = ?available_modes);
+    result
+}
+
+fn choose_texture_format(available_textures: &[wgpu::TextureFormat]) -> wgpu::TextureFormat {
+    // Our input colors are already gamma-corrected, so prefer non-sRGB formats.
+    // (eg. if we england's map color is #FF0000, we want it to appear as pure
+    // red on the screen too).
+    let result = available_textures
+        .iter()
+        .find(|x| !x.is_srgb())
+        .copied()
+        .unwrap_or(available_textures[0]);
+
+    #[cfg(feature = "tracing")]
+    tracing::debug!(name: "renderer.texture_format.selected", present_mode = ?result, available_options = ?available_textures);
     result
 }
