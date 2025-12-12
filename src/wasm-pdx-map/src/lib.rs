@@ -1,7 +1,7 @@
 use pdx_map::{
     CanvasDimensions, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext, LocationArrays,
-    LocationFlags, MapRenderer, MapTexture, MapViewController, QueuedWorkFuture, R16Palette,
-    RenderError, ScreenshotRenderer, SurfaceMapRenderer,
+    LocationFlags, MapTexture, MapViewController, QueuedWorkFuture, R16Palette, RenderError,
+    ScreenshotRenderer, SurfaceMapRenderer,
 };
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -79,7 +79,8 @@ impl PdxCanvasSurface {
 
 #[wasm_bindgen]
 pub struct PdxMapRenderer {
-    app: MapViewController<SurfaceMapRenderer>,
+    app: MapViewController,
+    location_arrays: LocationArrays,
 }
 
 #[wasm_bindgen]
@@ -93,20 +94,15 @@ impl PdxMapRenderer {
         display: CanvasDisplay,
     ) -> Result<Self, JsError> {
         let canvas_dims: CanvasDimensions = display.into();
-        let display_surface = surface
-            .pipeline_components
-            .as_ref()
-            .display_surface(canvas_dims);
 
         // Get tile dimensions from west texture
         let tile_width = west_texture.data.width();
         let tile_height = west_texture.data.height();
 
-        let mut renderer = SurfaceMapRenderer::new(
+        let renderer = SurfaceMapRenderer::new(
             surface.pipeline_components,
             west_texture.data,
             east_texture.data,
-            display_surface,
             canvas_dims,
         );
 
@@ -115,11 +111,15 @@ impl PdxMapRenderer {
         location_arrays.set_primary_colors(init_colors.as_slice());
         location_arrays.set_secondary_colors(init_colors.as_slice());
         location_arrays.set_owner_colors(init_colors.as_slice());
-        renderer.set_location_arrays(location_arrays);
-
         let app = MapViewController::new(renderer, canvas_dims, tile_width, tile_height);
 
-        Ok(PdxMapRenderer { app })
+        let mut map_renderer = PdxMapRenderer {
+            app,
+            location_arrays,
+        };
+        map_renderer.upload_location_arrays();
+
+        Ok(map_renderer)
     }
 
     #[wasm_bindgen]
@@ -161,27 +161,21 @@ impl PdxMapRenderer {
     /// Synchronize a location array from JS to Rust
     #[wasm_bindgen]
     pub fn sync_location_array(&mut self, location_array: js_sys::Uint32Array) {
-        if self.app.renderer().location_arrays().is_empty() {
-            let local = location_array.to_vec();
-            let location_array = LocationArrays::from_data(local);
-            self.app.renderer_mut().set_location_arrays(location_array);
+        if self.location_arrays.is_empty() {
+            self.location_arrays = LocationArrays::from_data(location_array.to_vec());
         } else {
-            let dst = self.app.renderer_mut().location_arrays_mut().as_mut_data();
+            let dst = self.location_arrays.as_mut_data();
             location_array.copy_to(dst);
         }
+
+        self.upload_location_arrays();
     }
 
     #[wasm_bindgen]
-    pub fn render(&mut self) {
-        self.app.render();
-    }
-
-    #[wasm_bindgen]
-    pub fn present(&mut self) -> Result<(), JsError> {
+    pub fn render(&mut self) -> Result<(), JsError> {
         self.app
-            .present()
-            .map_err(|e| JsError::new(&format!("Failed to present: {e}")))?;
-        Ok(())
+            .render()
+            .map_err(|e| JsError::new(&format!("Failed to render: {e}")))
     }
 
     #[wasm_bindgen]
@@ -199,41 +193,41 @@ impl PdxMapRenderer {
 
     #[wasm_bindgen]
     pub fn lookup_location_id(&self, idx: &WasmGpuLocationIdx) -> u32 {
-        let val = self
-            .app
-            .renderer()
-            .location_arrays()
-            .get_location_id(idx.idx);
-        val.value()
+        self.location_arrays.get_location_id(idx.idx).value()
     }
 
     #[wasm_bindgen]
     pub fn highlight_location(&mut self, idx: u16) {
-        let location_arrays = self.app.renderer_mut().location_arrays_mut();
-        location_arrays
+        self.location_arrays
             .get_mut(GpuLocationIdx::new(idx))
             .flags_mut()
             .set(LocationFlags::HIGHLIGHTED);
+        self.upload_location_arrays();
     }
 
     #[wasm_bindgen]
     pub fn highlight_app_location(&mut self, idx: u32) {
-        let location_arrays = self.app.renderer_mut().location_arrays_mut();
-        let mut iter = location_arrays.iter_mut();
+        let mut updated = false;
+        let mut iter = self.location_arrays.iter_mut();
         while let Some(mut location) = iter.next_location() {
             if location.location_id().value() == idx {
                 location.flags_mut().set(LocationFlags::HIGHLIGHTED);
+                updated = true;
             }
+        }
+
+        if updated {
+            self.upload_location_arrays();
         }
     }
 
     #[wasm_bindgen]
     pub fn unhighlight_location(&mut self, idx: u16) {
-        let location_arrays = self.app.renderer_mut().location_arrays_mut();
-        location_arrays
+        self.location_arrays
             .get_mut(GpuLocationIdx::new(idx))
             .flags_mut()
             .clear(LocationFlags::HIGHLIGHTED);
+        self.upload_location_arrays();
     }
 
     #[wasm_bindgen]
@@ -262,6 +256,13 @@ impl PdxMapRenderer {
     ) -> Result<PdxScreenshotRenderer, JsError> {
         create_screenshot_renderer_for_app(&self.app, canvas)
             .map_err(|e| JsError::new(&format!("Failed to create screenshot renderer: {e}")))
+    }
+}
+
+impl PdxMapRenderer {
+    fn upload_location_arrays(&mut self) {
+        let renderer = self.app.renderer_mut();
+        renderer.update_locations(&self.location_arrays);
     }
 }
 
@@ -393,31 +394,34 @@ impl PdxScreenshotRenderer {
     /// Render the western tile to the screenshot surface
     #[wasm_bindgen]
     pub fn render_west_tile(&mut self) -> Result<(), JsError> {
-        self.renderer.render_west();
         self.renderer
-            .present()
-            .map_err(|e| JsError::new(&format!("Failed to present west tile: {e}")))
+            .render_west()
+            .map_err(|e| JsError::new(&format!("Failed to render west tile: {e}")))
     }
 
     /// Render the eastern tile to the screenshot surface
     #[wasm_bindgen]
     pub fn render_east_tile(&mut self) -> Result<(), JsError> {
-        self.renderer.render_east();
         self.renderer
-            .present()
-            .map_err(|e| JsError::new(&format!("Failed to present east tile: {e}")))
+            .render_east()
+            .map_err(|e| JsError::new(&format!("Failed to render east tile: {e}")))
     }
 }
 
 /// Shared helper to create a screenshot renderer for any MapApp<SurfaceMapRenderer>
 pub fn create_screenshot_renderer_for_app(
-    app: &MapViewController<SurfaceMapRenderer>,
+    app: &MapViewController,
     canvas: OffscreenCanvas,
 ) -> Result<PdxScreenshotRenderer, RenderError> {
+    let canvas_width = canvas.width();
+    let canvas_height = canvas.height();
     let surface_target = get_surface_target(canvas);
-    let instance = pdx_map::GpuContext::create_instance();
-    let surface = instance.create_surface(surface_target)?;
-    let screenshot_renderer = app.create_screenshot_renderer(surface)?;
+    let dimensions = CanvasDimensions {
+        canvas_width,
+        canvas_height,
+        scale_factor: 1.0,
+    };
+    let screenshot_renderer = app.create_screenshot_renderer(surface_target, dimensions)?;
     Ok(PdxScreenshotRenderer {
         renderer: screenshot_renderer,
     })

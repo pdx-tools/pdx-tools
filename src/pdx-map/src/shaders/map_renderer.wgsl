@@ -1,12 +1,32 @@
+struct VertexOutput {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+@vertex
+fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
+    var out: VertexOutput;
+
+    // Full-screen triangle covering NDC range [-1, 1]
+    // Generates vertices: (0,0), (2,0), (0,2) in UV space
+    let x = f32(i32(in_vertex_index) & 1);
+    let y = f32(i32(in_vertex_index) & 2);
+
+    // UV coordinates: (0,0) to (2,2)
+    out.uv = vec2<f32>(x * 2.0, y * 2.0);
+
+    // Clip position: (-1,-1) to (3,3) - triangle covers entire screen
+    out.position = vec4<f32>(out.uv * 2.0 - 1.0, 0.0, 1.0);
+
+    return out;
+}
+
 struct ComputeUniforms {
     tile_width: u32,
     tile_height: u32,
     enable_location_borders: u32,
     enable_owner_borders: u32,
 
-    background_color: vec4<u32>,
-
-    table_size: u32,
     zoom_level: f32,
     viewport_x_offset: u32,
     viewport_y_offset: u32,
@@ -20,12 +40,11 @@ struct ComputeUniforms {
 
 @group(0) @binding(0) var west_input_texture: texture_2d<u32>;
 @group(0) @binding(1) var east_input_texture: texture_2d<u32>;
-@group(0) @binding(2) var output_texture: texture_storage_2d<rgba8unorm, write>;
-@group(0) @binding(3) var<uniform> uniforms: ComputeUniforms;
-@group(0) @binding(4) var<storage, read> location_primary_colors: array<u32>;
-@group(0) @binding(5) var<storage, read> location_states: array<u32>;
-@group(0) @binding(6) var<storage, read> location_owner_colors: array<u32>;
-@group(0) @binding(7) var<storage, read> location_secondary_colors: array<u32>;
+@group(0) @binding(2) var<uniform> uniforms: ComputeUniforms;
+@group(0) @binding(3) var<storage, read> location_primary_colors: array<u32>;
+@group(0) @binding(4) var<storage, read> location_states: array<u32>;
+@group(0) @binding(5) var<storage, read> location_owner_colors: array<u32>;
+@group(0) @binding(6) var<storage, read> location_secondary_colors: array<u32>;
 
 const STATE_NO_LOCATION_BORDERS = 1u; // Bit 0: opt out of location border drawing
 const STATE_HIGHLIGHTED = 2u; // Bit 1: location is highlighted (hover effect)
@@ -190,32 +209,34 @@ fn create_stripe_pattern(global_x: i32, global_y: i32, primary_color: u32, secon
     return vec4<f32>(mixed_rgb, 1.0);
 }
 
-@compute @workgroup_size(8, 8)
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    let canvas_x = global_id.x;
-    let canvas_y = global_id.y;
-    
-    // Check canvas bounds (process full canvas)
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    // Calculate canvas coordinates from fragment position
+    let canvas_x = u32(in.position.x);
+    let canvas_y = u32(in.position.y);
+
+    // Bounds check - discard fragments outside canvas
+    // Full-screen triangle extends beyond viewport, so we need to clip
     if (canvas_x >= uniforms.canvas_width || canvas_y >= uniforms.canvas_height) {
-        return;
+        discard;
     }
-    
+
     // Map canvas coordinates to world coordinates with zoom scaling
     // Scale canvas position to world position within the viewed area
     let world_x_float = (f32(canvas_x) / f32(uniforms.canvas_width)) * f32(uniforms.world_width);
     let world_y_float = (f32(canvas_y) / f32(uniforms.canvas_height)) * f32(uniforms.world_height);
-    
+
     // Calculate global coordinates by adding viewport offset
     let global_x = i32(world_x_float) + i32(uniforms.viewport_x_offset);
     let global_y = i32(world_y_float) + i32(uniforms.viewport_y_offset);
-    
+
     // Get location index directly from R16 texture
     let location_idx = get_location_index_at(global_x, global_y);
-    
+
     // Check if this location is highlighted
     let state_flags = get_state_flags_by_index(location_idx);
     let is_highlighted = (state_flags & STATE_HIGHLIGHTED) != 0u;
-    
+
     // Check for different types of borders (owner borders take precedence)
     let center_owner_color = get_owner_color_by_index(location_idx);
     let is_owner_border = is_owner_border_pixel(global_x, global_y, location_idx, center_owner_color);
@@ -263,8 +284,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             );
         }
     }
-    
-    // Write output pixel using canvas coordinates
-    let output_coord = vec2<i32>(i32(canvas_x), i32(canvas_y));
-    textureStore(output_texture, output_coord, output_color);
+
+    // Return color directly to render target
+    return output_color;
 }

@@ -97,7 +97,6 @@ export const createMapEngine = async ({
 
   const app = await appTask;
   app.render();
-  app.present();
   let inProgressReadback = false;
 
   console.log("Returning proxied map engine functions");
@@ -108,7 +107,6 @@ export const createMapEngine = async ({
       gl.canvas.width = width;
       app.resize(width, height);
       app.render();
-      app.present();
     },
 
     get_zoom: () => {
@@ -122,7 +120,6 @@ export const createMapEngine = async ({
     ) => {
       app.zoom_at_point(cursorX, cursorY, zoomDelta);
       app.render();
-      app.present();
     },
 
     canvasToWorld: (canvasX: number, canvasY: number) => {
@@ -137,13 +134,11 @@ export const createMapEngine = async ({
     ) => {
       app.set_world_point_under_cursor(worldX, worldY, canvasX, canvasY);
       app.render();
-      app.present();
     },
 
     setOwnerBorders: (enabled: boolean) => {
       app.set_owner_borders(enabled);
       app.render();
-      app.present();
     },
 
     highlightLocation: (locationIdx: number) => {
@@ -156,7 +151,6 @@ export const createMapEngine = async ({
 
       app.render();
       await app.queued_work().wait();
-      app.present();
     },
 
     unhighlightLocation: (locationIdx: number) => {
@@ -200,7 +194,6 @@ export const createMapEngine = async ({
       app.sync_location_array(locationArray);
       console.log("Location data synced");
       app.render();
-      app.present();
     },
 
     generateWorldScreenshot: async (): Promise<Blob> => {

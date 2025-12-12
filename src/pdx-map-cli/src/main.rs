@@ -281,7 +281,7 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
         image_data.tile_width,
         image_data.tile_height,
     )?;
-    renderer.set_location_arrays(location_arrays);
+    renderer.update_locations(&location_arrays);
     renderer.set_location_borders(!args.no_location_borders);
     renderer.set_owner_borders(!args.no_owner_borders);
     println!("Created renderer ({:.2}s)", start.elapsed().as_secs_f64());
@@ -289,21 +289,21 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
     let mut combined_buffer =
         vec![0u8; (image_data.full_width() * image_data.full_height() * 4) as usize];
     let start = Instant::now();
-    screenshot_renderer.render_west();
-    println!("Rendered west half ({:.2}s)", start.elapsed().as_secs_f64());
-    let start = Instant::now();
     screenshot_renderer
         .readback_west(&mut combined_buffer)
         .await?;
-    println!("Readback west half ({:.2}s)", start.elapsed().as_secs_f64());
-    let start = Instant::now();
-    screenshot_renderer.render_east();
-    println!("Rendered east half ({:.2}s)", start.elapsed().as_secs_f64());
+    println!(
+        "Rendered and read back west half ({:.2}s)",
+        start.elapsed().as_secs_f64()
+    );
     let start = Instant::now();
     screenshot_renderer
         .readback_east(&mut combined_buffer)
         .await?;
-    println!("Readback east half ({:.2}s)", start.elapsed().as_secs_f64());
+    println!(
+        "Rendered and read back east half ({:.2}s)",
+        start.elapsed().as_secs_f64()
+    );
     let start = Instant::now();
     let output_img = image::RgbaImage::from_raw(
         image_data.full_width(),

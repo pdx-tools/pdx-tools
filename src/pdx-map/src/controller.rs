@@ -1,18 +1,22 @@
 use crate::{
-    CanvasDimensions, MapRenderer, MapViewport, RenderError, SurfaceMapRenderer, SurfaceRenderer,
-    ViewportBounds,
+    CanvasDimensions, MapViewport, RenderError, SurfaceMapRenderer, ViewportBounds,
     renderer::{ColorIdReadback, HeadlessMapRenderer, QueuedWorkFuture},
+    wgpu::SurfaceTarget,
 };
 
-pub struct MapViewController<R: MapRenderer> {
-    renderer: R,
+pub struct MapViewController {
+    renderer: SurfaceMapRenderer,
     viewport: MapViewport,
     canvas_dimensions: CanvasDimensions,
 }
 
-impl<R: MapRenderer> MapViewController<R> {
-    /// Create a new MapApp with any MapRenderer
-    pub fn new(renderer: R, display: CanvasDimensions, tile_width: u32, tile_height: u32) -> Self {
+impl MapViewController {
+    pub fn new(
+        renderer: SurfaceMapRenderer,
+        display: CanvasDimensions,
+        tile_width: u32,
+        tile_height: u32,
+    ) -> Self {
         let viewport = MapViewport::new(
             display.canvas_width,
             display.canvas_height,
@@ -36,12 +40,12 @@ impl<R: MapRenderer> MapViewController<R> {
     }
 
     /// Get access to the underlying renderer
-    pub fn renderer(&self) -> &R {
+    pub fn renderer(&self) -> &SurfaceMapRenderer {
         &self.renderer
     }
 
     /// Get mutable access to the underlying renderer
-    pub fn renderer_mut(&mut self) -> &mut R {
+    pub fn renderer_mut(&mut self) -> &mut SurfaceMapRenderer {
         &mut self.renderer
     }
 
@@ -61,18 +65,17 @@ impl<R: MapRenderer> MapViewController<R> {
     }
 }
 
-impl MapViewController<SurfaceMapRenderer> {
-    pub fn render(&self) {
+impl MapViewController {
+    pub fn render(&mut self) -> Result<(), RenderError> {
         let bounds = self.viewport.viewport_bounds();
-        self.renderer.render_scene(bounds);
+        let mut frame = self.renderer.begin_frame()?;
+        frame.draw(self.renderer.queue(), self.renderer.resources(), bounds);
+        frame.present(self.renderer.queue());
+        Ok(())
     }
 
     pub fn queued_work(&self) -> QueuedWorkFuture {
         self.renderer.queued_work()
-    }
-
-    pub fn present(&self) -> Result<(), RenderError> {
-        self.renderer().present()
     }
 
     /// Resize with surface reconfiguration
@@ -85,17 +88,16 @@ impl MapViewController<SurfaceMapRenderer> {
         self.viewport.resize(logical_width, logical_height);
     }
 
-    /// Zoom with automatic re-render and present
+    /// See [`MapViewport::zoom_at_point`]
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(skip_all, level = "debug", fields(cursor_x, cursor_y, zoom_delta))
     )]
     pub fn zoom_at_point(&mut self, cursor_x: f32, cursor_y: f32, zoom_delta: f32) {
-        // Delegate zoom logic to map viewport
         self.viewport.zoom_at_point(cursor_x, cursor_y, zoom_delta);
     }
 
-    /// Set world point under cursor with automatic re-render and present
+    /// Set world point under cursor
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(
@@ -140,14 +142,16 @@ impl MapViewController<SurfaceMapRenderer> {
     ///
     /// Creates a new SurfaceMapRenderer with an independent surface (e.g., offscreen canvas)
     /// that shares GPU resources but operates independently for screenshot generation.
-    #[cfg(feature = "render")]
     pub fn create_screenshot_renderer(
         &self,
-        surface: wgpu::Surface<'static>,
+        target: SurfaceTarget<'static>,
+        dimensions: CanvasDimensions,
     ) -> Result<ScreenshotRenderer<SurfaceMapRenderer>, RenderError> {
-        let screenshot_surface_renderer = self.renderer().create_screenshot_renderer(surface)?;
+        let screenshot_surface_renderer = self
+            .renderer()
+            .create_screenshot_renderer(target, dimensions)?;
 
-        Ok(ScreenshotRenderer::new(
+        Ok(ScreenshotRenderer::new_surface(
             screenshot_surface_renderer,
             self.tile_width(),
             self.tile_height(),
@@ -162,9 +166,13 @@ pub struct ScreenshotRenderer<R> {
     tile_height: u32,
 }
 
-impl<R: MapRenderer> ScreenshotRenderer<R> {
-    /// Create a new ScreenshotRenderer
-    pub fn new(mut renderer: R, tile_width: u32, tile_height: u32) -> Self {
+impl ScreenshotRenderer<SurfaceMapRenderer> {
+    /// Create a new surface-backed ScreenshotRenderer
+    pub fn new_surface(
+        mut renderer: SurfaceMapRenderer,
+        tile_width: u32,
+        tile_height: u32,
+    ) -> Self {
         renderer.set_location_borders(true);
         Self {
             renderer,
@@ -173,9 +181,16 @@ impl<R: MapRenderer> ScreenshotRenderer<R> {
         }
     }
 
+    fn render_bounds(&mut self, bounds: ViewportBounds) -> Result<(), RenderError> {
+        let mut frame = self.renderer.begin_frame()?;
+        frame.draw(self.renderer.queue(), self.renderer.resources(), bounds);
+        frame.present(self.renderer.queue());
+        Ok(())
+    }
+
     /// Render the western tile
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
-    pub fn render_west(&self) {
+    pub fn render_west(&mut self) -> Result<(), RenderError> {
         let west_bounds = ViewportBounds {
             x: 0,
             y: 0,
@@ -183,12 +198,12 @@ impl<R: MapRenderer> ScreenshotRenderer<R> {
             height: self.tile_height,
             zoom_level: 1.0,
         };
-        self.renderer.render_scene(west_bounds);
+        self.render_bounds(west_bounds)
     }
 
     /// Render the eastern tile
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
-    pub fn render_east(&self) {
+    pub fn render_east(&mut self) -> Result<(), RenderError> {
         let east_bounds = ViewportBounds {
             x: self.tile_width,
             y: 0,
@@ -196,23 +211,25 @@ impl<R: MapRenderer> ScreenshotRenderer<R> {
             height: self.tile_height,
             zoom_level: 1.0,
         };
-        self.renderer.render_scene(east_bounds);
-    }
-}
-
-/// Surface-specific screenshot methods
-impl<R: SurfaceRenderer> ScreenshotRenderer<R> {
-    /// Present the rendered content to the surface
-    ///
-    /// Call this after `render_west()` or `render_east()` to display
-    /// the rendered tile on the surface.
-    pub fn present(&self) -> Result<(), RenderError> {
-        self.renderer.present()
+        self.render_bounds(east_bounds)
     }
 }
 
 /// Headless-specific screenshot methods
 impl ScreenshotRenderer<HeadlessMapRenderer> {
+    pub fn new_headless(
+        mut renderer: HeadlessMapRenderer,
+        tile_width: u32,
+        tile_height: u32,
+    ) -> Self {
+        renderer.set_location_borders(true);
+        Self {
+            renderer,
+            tile_width,
+            tile_height,
+        }
+    }
+
     /// Render and read back the western tile
     pub async fn readback_west(&mut self, buffer: &mut [u8]) -> Result<(), RenderError> {
         self.renderer
