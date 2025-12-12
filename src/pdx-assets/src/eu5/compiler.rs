@@ -35,7 +35,7 @@ where
     I: ImageProcessor,
 {
     let provider = FileProviderAdapter(fs);
-    let (game_data, texture_builder) = RawGameData::from_source(&provider)?;
+    let (raw_game_data, texture_builder) = RawGameData::from_source(&provider)?;
 
     // If we are bundle tracing no need to do expensive image processing or create bundle
     if options.dry_run {
@@ -43,7 +43,9 @@ where
     }
 
     let textures = texture_builder.build()?;
-    let game_data = game_data.into_game_data(&textures);
+
+    // Create location data with color awareness
+    let (locations, spatial_locations) = textures.location_aware(raw_game_data.locations);
 
     // Create output directory
     let eu5_out_dir = out_dir.join("eu5");
@@ -55,17 +57,22 @@ where
     let writer = std::io::BufWriter::new(output);
     let mut archive = rawzip::ZipArchiveWriter::new(writer);
 
-    write_entry(&mut archive, "location_lookup.bin", game_data.locations())?;
+    write_entry(&mut archive, "location_lookup.bin", &locations)?;
+    write_entry(
+        &mut archive,
+        "spatial_location_lookup.bin",
+        spatial_locations.as_slice(),
+    )?;
     write_entry(
         &mut archive,
         "country_localization.bin",
-        game_data.localization(),
+        raw_game_data.country_localizations,
     )?;
 
-    // Write texture files
+    // Write R16 texture files
     for (filename, data) in [
-        ("locations-0.rgba", textures.west_data()),
-        ("locations-1.rgba", textures.east_data()),
+        ("locations-0.r16", textures.west_data()),
+        ("locations-1.r16", textures.east_data()),
     ] {
         let (mut entry, config) = archive
             .new_file(filename)

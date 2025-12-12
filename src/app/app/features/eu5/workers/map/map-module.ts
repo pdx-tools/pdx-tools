@@ -165,8 +165,7 @@ export const createMapEngine = async (
             currentCanvasCoordinates.x,
             currentCanvasCoordinates.y,
           );
-          const colorId = await readback.read_id();
-          const locationIdx = app.lookup_color_idx(colorId);
+          const locationIdx = await readback.read_id();
 
           let newLocationId: number | null = null;
           if (locationIdx !== undefined) {
@@ -336,10 +335,12 @@ export const createMapEngine = async (
           canvasX,
           canvasY,
         );
-        const colorId = await readback.read_id();
-        const locationIdx = app.lookup_color_idx(colorId);
+
+        const locationIdx = await readback.read_id();
         if (locationIdx === undefined) {
-          throw new Error(`No location found for color ID ${colorId}`);
+          throw new Error(
+            `No location found at canvas position (${canvasX}, ${canvasY})`,
+          );
         }
 
         const locationId = app.lookup_location_id(locationIdx);

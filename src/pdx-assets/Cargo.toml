@@ -17,6 +17,7 @@ eu5app = { workspace = true, default-features = false, features = ["game-install
 eu5save = { workspace = true }
 flate2 = { workspace = true, default-features = false, features = ["zlib-rs"]}
 jomini = { workspace = true }
+pdx-map = { workspace = true }
 pdx-zstd = { workspace = true, default-features = false, features = ["zstd_c"] }
 postcard = { workspace = true }
 rawbmp = { workspace = true }

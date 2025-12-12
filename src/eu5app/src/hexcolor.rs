@@ -1,7 +1,20 @@
+use pdx_map::Rgb;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy)]
 pub struct HexColor(pub [u8; 3]);
+
+impl std::fmt::Display for HexColor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "#{:02x}{:02x}{:02x}", self.0[0], self.0[1], self.0[2])
+    }
+}
+
+impl From<HexColor> for Rgb {
+    fn from(hex: HexColor) -> Rgb {
+        Rgb::new(hex.0[0], hex.0[1], hex.0[2])
+    }
+}
 
 struct HexVisitor;
 

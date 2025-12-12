@@ -1,8 +1,10 @@
 use bytemuck::{Pod, Zeroable};
 
+use crate::Rgb;
+
 /// A GPU-optimized color structure that stores RGB values in a packed u32 format.
 ///
-/// The color is stored as: `0x00RRGGBB` where each component is 0-255.
+/// The color is stored as: `0xFFRRGGBB` where each component is 0-255.
 /// This matches the packing format used in the GPU shaders and provides efficient
 /// storage and transfer to GPU buffers.
 #[repr(transparent)]
@@ -12,7 +14,7 @@ pub struct GpuColor(u32);
 impl GpuColor {
     /// Create a new GpuColor from RGB components (0-255 each)
     pub const fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self(((r as u32) << 16) | ((g as u32) << 8) | (b as u32))
+        Self((255 << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32))
     }
 
     /// Create a new GpuColor from a packed u32 value
@@ -104,6 +106,12 @@ impl From<[u8; 3]> for GpuColor {
     }
 }
 
+impl From<Rgb> for GpuColor {
+    fn from(rgb: Rgb) -> Self {
+        Self::from_rgb(rgb.r(), rgb.g(), rgb.b())
+    }
+}
+
 impl From<GpuColor> for [u8; 3] {
     fn from(gpu_color: GpuColor) -> Self {
         let (r, g, b) = gpu_color.rgb();
@@ -131,6 +139,12 @@ impl std::fmt::Display for GpuColor {
     }
 }
 
+impl std::fmt::LowerHex for GpuColor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:06x}", self.packed() & 0x00FFFFFF)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -138,7 +152,7 @@ mod tests {
     #[test]
     fn test_rgb_packing() {
         let color = GpuColor::from_rgb(255, 128, 64);
-        assert_eq!(color.packed(), 0x00FF8040);
+        assert_eq!(color.packed(), 0xFFFF8040);
         assert_eq!(color.rgb(), (255, 128, 64));
     }
 
