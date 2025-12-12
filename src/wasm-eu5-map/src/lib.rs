@@ -97,15 +97,10 @@ impl Eu5WasmMapRenderer {
         east_texture: Eu5WasmTexture,
     ) -> Result<Self, JsError> {
         let display: CanvasDimensions = surface.display.into();
-        let display_surface = surface
-            .pipeline_components
-            .as_ref()
-            .display_surface(display);
         let renderer = SurfaceMapRenderer::new(
             surface.pipeline_components,
             west_texture.data,
             east_texture.data,
-            display_surface,
             display,
         );
 

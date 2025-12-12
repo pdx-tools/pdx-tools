@@ -93,10 +93,6 @@ impl PdxMapRenderer {
         display: CanvasDisplay,
     ) -> Result<Self, JsError> {
         let canvas_dims: CanvasDimensions = display.into();
-        let display_surface = surface
-            .pipeline_components
-            .as_ref()
-            .display_surface(canvas_dims);
 
         // Get tile dimensions from west texture
         let tile_width = west_texture.data.width();
@@ -106,7 +102,6 @@ impl PdxMapRenderer {
             surface.pipeline_components,
             west_texture.data,
             east_texture.data,
-            display_surface,
             canvas_dims,
         );
 
