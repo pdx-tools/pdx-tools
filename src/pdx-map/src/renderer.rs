@@ -467,7 +467,7 @@ impl<'a> GpuSurfaceContextRef<'a> {
             format: surface_format,
             width: display.physical_width(),
             height: display.physical_height(),
-            present_mode: surface_caps.present_modes[0],
+            present_mode: choose_present_mode(&surface_caps.present_modes),
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -1276,7 +1276,7 @@ impl SurfaceMapRenderer {
             format: surface_format,
             width: self.renderer.tile_width,
             height: self.renderer.tile_height,
-            present_mode: surface_caps.present_modes[0],
+            present_mode: choose_present_mode(&surface_caps.present_modes),
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -1615,4 +1615,21 @@ pub trait MapRenderer {
 pub trait SurfaceRenderer: MapRenderer {
     /// Present the rendered content to the surface
     fn present(&self) -> Result<(), RenderError>;
+}
+
+fn choose_present_mode(available_modes: &[wgpu::PresentMode]) -> wgpu::PresentMode {
+    // Mailbox is preferred for an input-based application as we only care about
+    // the latest frame.
+    let preferred = wgpu::PresentMode::Mailbox;
+    let result = if available_modes.contains(&preferred) {
+        preferred
+    } else {
+        // Fallback to FIFO as it's supported everywhere and similar to mailbox,
+        // won't have tearing.
+        wgpu::PresentMode::Fifo
+    };
+
+    #[cfg(feature = "tracing")]
+    tracing::debug!(name: "renderer.present_mode.selected", present_mode = ?result, available_options = ?available_modes);
+    result
 }
