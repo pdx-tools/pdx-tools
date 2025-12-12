@@ -419,7 +419,8 @@ pub struct GpuSurfaceContext {
 impl GpuSurfaceContext {
     /// Create a new GPU surface context for rendering to a surface
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "info"))]
-    pub async fn new(surface: SurfaceTarget<'static>) -> Result<Self, RenderError> {
+    pub async fn new(surface: impl Into<SurfaceTarget<'static>>) -> Result<Self, RenderError> {
+        let surface = surface.into();
         let instance = GpuContext::create_instance();
         let surface = instance.create_surface(surface)?;
         let adapter = GpuContext::request_adapter(&instance, Some(&surface)).await?;
@@ -452,22 +453,22 @@ pub struct GpuSurfaceContextRef<'a> {
 }
 
 impl<'a> GpuSurfaceContextRef<'a> {
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
-    pub fn display_surface(&self, display: CanvasDimensions) -> SurfacePipeline {
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "info", fields(dimensions = %dimensions)))]
+    pub fn display_surface(&self, dimensions: CanvasDimensions) -> SurfacePipeline {
         let surface_caps = self.surface.get_capabilities(&self.core.gpu.adapter);
         let surface_format = surface_caps
             .formats
             .iter()
             .copied()
-            .find(|f| f.is_srgb())
+            .find(|f| !f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
 
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
-            width: display.physical_width(),
-            height: display.physical_height(),
-            present_mode: surface_caps.present_modes[0],
+            width: dimensions.physical_width(),
+            height: dimensions.physical_height(),
+            present_mode: choose_present_mode(&surface_caps.present_modes),
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -1268,7 +1269,7 @@ impl SurfaceMapRenderer {
             .formats
             .iter()
             .copied()
-            .find(|f| f.is_srgb())
+            .find(|f| !f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
 
         let config = wgpu::SurfaceConfiguration {
@@ -1276,7 +1277,7 @@ impl SurfaceMapRenderer {
             format: surface_format,
             width: self.renderer.tile_width,
             height: self.renderer.tile_height,
-            present_mode: surface_caps.present_modes[0],
+            present_mode: choose_present_mode(&surface_caps.present_modes),
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -1615,4 +1616,19 @@ pub trait MapRenderer {
 pub trait SurfaceRenderer: MapRenderer {
     /// Present the rendered content to the surface
     fn present(&self) -> Result<(), RenderError>;
+}
+
+fn choose_present_mode(available_modes: &[wgpu::PresentMode]) -> wgpu::PresentMode {
+    // Mailbox is preferred for an input-based application as we only care about
+    // the latest frame. AutoNoVsync is only used as a fallback as it prefers
+    // Immediate mode which can cause tearing.
+    let preferred = wgpu::PresentMode::Mailbox;
+    let result = if available_modes.contains(&preferred) {
+        preferred
+    } else {
+        wgpu::PresentMode::AutoNoVsync
+    };
+
+    tracing::debug!(name: "renderer.present_mode.selected", present_mode = ?result, available_options = ?available_modes);
+    result
 }

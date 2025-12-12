@@ -49,3 +49,17 @@ impl CanvasDimensions {
         (self.canvas_height as f32 * self.scale_factor) as u32
     }
 }
+
+impl std::fmt::Display for CanvasDimensions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}x{} @ {:.2}x = {}x{}",
+            self.canvas_width,
+            self.canvas_height,
+            self.scale_factor,
+            self.physical_width(),
+            self.physical_height()
+        )
+    }
+}
