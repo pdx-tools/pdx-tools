@@ -366,6 +366,99 @@ impl SaveFileImpl {
         self.dev_efficiencies(countries)
     }
 
+    pub fn get_province_development_density(
+        &self,
+        payload: TagFilterPayloadRaw,
+    ) -> ProvinceDevDensity {
+        let filter = TagFilterPayload::from(payload);
+        let matching_tags = self.matching_tags(&filter);
+
+        let mut values = Vec::new();
+        let mut min_dev = f32::MAX;
+        let mut max_dev = 0.0_f32;
+
+        for province in self.query.save().game.provinces.values() {
+            let Some(owner_tag) = province.owner else {
+                continue;
+            };
+
+            if !matching_tags.contains(&owner_tag) {
+                continue;
+            }
+
+            let development = province.base_tax + province.base_production + province.base_manpower;
+
+            values.push(development);
+            min_dev = min_dev.min(development);
+            max_dev = max_dev.max(development);
+        }
+
+        let total_provinces = values.len();
+        if total_provinces == 0 {
+            return ProvinceDevDensity {
+                bandwidth: 0.0,
+                min: 0.0,
+                max: 0.0,
+                total_provinces: 0,
+                points: Vec::new(),
+            };
+        }
+
+        let n = total_provinces as f32;
+        let mean = values.iter().sum::<f32>() / n;
+        let variance = values
+            .iter()
+            .map(|x| {
+                let diff = x - mean;
+                diff * diff
+            })
+            .sum::<f32>()
+            / n;
+        let std_dev = variance.sqrt();
+
+        // Silverman's rule of thumb for Gaussian KDE
+        let mut bandwidth = if std_dev == 0.0 {
+            1.0
+        } else {
+            1.06 * std_dev * n.powf(-0.2)
+        };
+        bandwidth = bandwidth.max(0.5);
+
+        let padding = bandwidth * 3.0;
+        let start = (min_dev - padding).max(0.0);
+        let end = max_dev + padding;
+        const STEPS: usize = 80;
+        let step = if STEPS > 1 {
+            (end - start) / (STEPS as f32 - 1.0)
+        } else {
+            0.0
+        };
+
+        let norm_const = 1.0 / ((2.0 * std::f32::consts::PI).sqrt() * bandwidth * n);
+
+        let mut points = Vec::with_capacity(STEPS);
+        for i in 0..STEPS {
+            let x = start + step * i as f32;
+            let density_sum = values
+                .iter()
+                .map(|v| {
+                    let z = (x - v) / bandwidth;
+                    (-0.5 * z * z).exp()
+                })
+                .sum::<f32>();
+            let y = norm_const * density_sum;
+            points.push(ProvinceDevDensityPoint { x, y });
+        }
+
+        ProvinceDevDensity {
+            bandwidth,
+            min: min_dev,
+            max: max_dev,
+            total_provinces,
+            points,
+        }
+    }
+
     pub fn get_achievements(&self) -> AchievementsScore {
         let achieves = AchievementHunter::create(
             self.encoding,

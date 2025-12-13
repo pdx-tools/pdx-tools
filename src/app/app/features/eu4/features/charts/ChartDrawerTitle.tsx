@@ -17,21 +17,6 @@ import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
 import { PlayIcon } from "@heroicons/react/20/solid";
 import { emitEvent } from "@/lib/events";
 
-const vizModuleDisplayLimit = (module: VizModules) => {
-  switch (module) {
-    case "owned-development-states":
-      return 12;
-    case "monthly-income":
-    case "score":
-    case "nation-size":
-    case "inflation":
-    case "health":
-      return 30;
-    default:
-      return null;
-  }
-};
-
 interface ChartDrawerTitleProps {
   selectedViz: VizModules;
   setSelectedViz: (arg: VizModules) => void;
@@ -47,8 +32,6 @@ export const ChartDrawerTitle = ({
 }: ChartDrawerTitleProps) => {
   const viz = useVisualization();
   const filename = useSaveFilenameWith(`-${selectedViz}.csv`);
-  // TODO: why is this unused?
-  const _displayLimit = vizModuleDisplayLimit(selectedViz);
 
   return (
     <div className="flex items-center gap-2">
@@ -89,6 +72,9 @@ export const ChartDrawerTitle = ({
             <Select.Item value="score">Score</Select.Item>
             <Select.Item value="inflation">Inflation</Select.Item>
             <Select.Item value="dev-efficiency">Dev Efficiency</Select.Item>
+            <Select.Item value="province-dev-density">
+              Development Distribution
+            </Select.Item>
           </Select.Group>
 
           <Select.Group>

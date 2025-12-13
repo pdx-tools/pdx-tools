@@ -87,6 +87,24 @@ pub struct ProvinceItem {
     pub in_hre: bool,
 }
 
+#[derive(Tsify, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ProvinceDevDensityPoint {
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Tsify, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+#[tsify(into_wasm_abi)]
+pub struct ProvinceDevDensity {
+    pub bandwidth: f32,
+    pub min: f32,
+    pub max: f32,
+    pub total_provinces: usize,
+    pub points: Vec<ProvinceDevDensityPoint>,
+}
+
 #[derive(Tsify, Serialize, Deserialize, Debug)]
 pub struct MapAreaDetails {
     pub area_id: String,

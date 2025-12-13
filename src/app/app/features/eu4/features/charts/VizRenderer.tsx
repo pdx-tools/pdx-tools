@@ -17,6 +17,7 @@ import { GeographicalDevelopmentTree } from "./GeographicalDevelopmentTree";
 import { OwnedDevelopmentStatesTree } from "./OwnedDevelopmentStatesTree";
 import { ProvinceDataTable } from "./ProvinceDataTable";
 import { DevEfficiency } from "./DevEfficiency";
+import { ProvinceDevelopmentDensity } from "./ProvinceDevelopmentDensity";
 
 interface VizRendererProps {
   module: VizModules;
@@ -56,5 +57,7 @@ export const VizRenderer = ({ module }: VizRendererProps) => {
       return <ProvinceDataTable />;
     case "dev-efficiency":
       return <DevEfficiency />;
+    case "province-dev-density":
+      return <ProvinceDevelopmentDensity />;
   }
 };
