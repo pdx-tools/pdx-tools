@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "improvements": [
+      "Add EU4 province development histogram to world charts",
+      "Reduce EU5 texture memory usage in half",
+      "Support for VIC3 1.12 save files"
+    ],
+    "fixes": [
+      "Fix EU4 dev efficiency tooltip not rendering",
+      "Fix failed parsing of some EU5 1.0.8+ save files"
+    ]
+  }
+}
