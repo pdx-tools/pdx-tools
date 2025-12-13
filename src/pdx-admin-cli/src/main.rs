@@ -4,7 +4,6 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-mod color_mapper;
 mod reprocess;
 mod transcode;
 
@@ -30,8 +29,6 @@ enum Commands {
     Reprocess(reprocess::ReprocessArgs),
     /// Re-encode save container format
     Transcode(transcode::TranscodeArgs),
-    /// Re-encode from eu4 color format to the pdx-map format
-    ColorMapper(color_mapper::ColorMapperArgs),
 }
 
 fn main() -> ExitCode {
@@ -55,7 +52,6 @@ fn main() -> ExitCode {
     let exit_code = match &cli.command {
         Commands::Reprocess(x) => x.run(),
         Commands::Transcode(x) => x.run(),
-        Commands::ColorMapper(x) => x.run(),
     };
 
     match exit_code {

@@ -6,8 +6,8 @@
 "ubi:docker/compose" = { version = "2.33.1", rename_exe = "docker-compose" }
 "ubi:google/flatbuffers" = { version = "25.2.10", matching = "clang", exe = "flatc" }
 "ubi:rclone/rclone" = { version = "1.70.3" }
-"ubi:rustwasm/wasm-bindgen" = { version = "0.2.100", extract_all = "true" }
-"ubi:WebAssembly/binaryen" = { version = "version_123", extract_all = "true", bin_path = "bin" }
+"ubi:rustwasm/wasm-bindgen" = { version = "0.2.106", extract_all = "true" }
+"ubi:WebAssembly/binaryen" = { version = "version_125", extract_all = "true", bin_path = "bin" }
 "vfox:mise-plugins/vfox-clang" = { version = "14.0.6", os = ["linux", "macos"] }
 
 [tasks."build:cargo-wasm"]

@@ -71,7 +71,7 @@ impl LocationFlags {
     }
 }
 
-const ARRAYS_IN_LOCATION_DATA: usize = 6; // Number of arrays in LocationData
+const ARRAYS_IN_LOCATION_DATA: usize = 5; // Number of arrays in LocationData
 
 /// Structure-of-arrays container that stores all location attributes in a
 /// single contiguous allocation to ease serialization if the renderer and
@@ -96,35 +96,59 @@ impl LocationData {
         unsafe { self.data.get_unchecked(N * chunk..(N + 1) * chunk) }
     }
 
+    fn sub_array_mut<const N: usize>(&mut self) -> &mut [u32] {
+        assert!(N < ARRAYS_IN_LOCATION_DATA);
+        let chunk = self.chunk();
+
+        // SAFETY: Bounds are guaranteed by assert and chunk calculation
+        unsafe { self.data.get_unchecked_mut(N * chunk..(N + 1) * chunk) }
+    }
+
     fn chunk(&self) -> usize {
         self.data.len() / ARRAYS_IN_LOCATION_DATA
     }
 
-    pub fn color_ids(&self) -> &[GpuColor] {
+    pub fn primary_colors(&self) -> &[GpuColor] {
         bytemuck::cast_slice(self.sub_array::<0>())
     }
 
-    pub fn primary_colors(&self) -> &[GpuColor] {
-        bytemuck::cast_slice(self.sub_array::<1>())
+    pub fn primary_colors_mut(&mut self) -> &mut [GpuColor] {
+        bytemuck::cast_slice_mut(self.sub_array_mut::<0>())
     }
 
     pub fn owner_colors(&self) -> &[GpuColor] {
-        bytemuck::cast_slice(self.sub_array::<2>())
+        bytemuck::cast_slice(self.sub_array::<1>())
+    }
+
+    pub fn owner_colors_mut(&mut self) -> &mut [GpuColor] {
+        bytemuck::cast_slice_mut(self.sub_array_mut::<1>())
     }
 
     pub fn secondary_colors(&self) -> &[GpuColor] {
-        bytemuck::cast_slice(self.sub_array::<3>())
+        bytemuck::cast_slice(self.sub_array::<2>())
+    }
+
+    pub fn secondary_colors_mut(&mut self) -> &mut [GpuColor] {
+        bytemuck::cast_slice_mut(self.sub_array_mut::<2>())
     }
 
     pub fn state_flags(&self) -> &[LocationFlags] {
-        bytemuck::cast_slice(self.sub_array::<4>())
+        bytemuck::cast_slice(self.sub_array::<3>())
+    }
+
+    pub fn state_flags_mut(&mut self) -> &mut [LocationFlags] {
+        bytemuck::cast_slice_mut(self.sub_array_mut::<3>())
     }
 
     pub fn location_ids(&self) -> &[LocationId] {
-        bytemuck::cast_slice(self.sub_array::<5>())
+        bytemuck::cast_slice(self.sub_array::<4>())
     }
 
-    pub fn primary_colors_mut(&mut self, index: GpuLocationIdx) -> &mut GpuColor {
+    fn location_ids_mut(&mut self) -> &mut [LocationId] {
+        bytemuck::cast_slice_mut(self.sub_array_mut::<4>())
+    }
+
+    pub fn primary_color_mut(&mut self, index: GpuLocationIdx) -> &mut GpuColor {
         unsafe {
             self.as_mut()
                 .primary_colors
@@ -162,14 +186,12 @@ impl LocationData {
 
     fn as_mut(&mut self) -> LocationMutData<'_> {
         let chunk = self.chunk();
-        let (color_ids, rest) = unsafe { self.data.split_at_mut_unchecked(chunk) };
-        let (primary_colors, rest) = unsafe { rest.split_at_mut_unchecked(chunk) };
+        let (primary_colors, rest) = unsafe { self.data.split_at_mut_unchecked(chunk) };
         let (owner_colors, rest) = unsafe { rest.split_at_mut_unchecked(chunk) };
         let (secondary_colors, rest) = unsafe { rest.split_at_mut_unchecked(chunk) };
         let (state_flags, location_ids) = unsafe { rest.split_at_mut_unchecked(chunk) };
 
         LocationMutData {
-            color_ids: bytemuck::cast_slice_mut(color_ids),
             primary_colors: bytemuck::cast_slice_mut(primary_colors),
             owner_colors: bytemuck::cast_slice_mut(owner_colors),
             secondary_colors: bytemuck::cast_slice_mut(secondary_colors),
@@ -180,7 +202,6 @@ impl LocationData {
 }
 
 struct LocationMutData<'a> {
-    color_ids: &'a mut [GpuColor],
     primary_colors: &'a mut [GpuColor],
     owner_colors: &'a mut [GpuColor],
     secondary_colors: &'a mut [GpuColor],
@@ -188,17 +209,16 @@ struct LocationMutData<'a> {
     location_ids: &'a mut [LocationId],
 }
 
-/// An index into the location arrays for a specific location. Allows one to
-/// skip the hashing and linear probing, and instead use direct indexing.
+/// An index into the location arrays for a specific location
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct GpuLocationIdx(u32);
+pub struct GpuLocationIdx(u16);
 
 impl GpuLocationIdx {
-    pub fn new(idx: u32) -> Self {
+    pub fn new(idx: u16) -> Self {
         GpuLocationIdx(idx)
     }
 
-    pub fn value(&self) -> u32 {
+    pub fn value(&self) -> u16 {
         self.0
     }
 }
@@ -215,6 +235,13 @@ impl LocationArrays {
         Self::default()
     }
 
+    /// Allocate location arrays with a specific size
+    pub fn allocate(size: usize) -> Self {
+        Self {
+            data: LocationData::allocate(size),
+        }
+    }
+
     pub fn from_data(data: Vec<u32>) -> Self {
         assert!(
             data.len().is_multiple_of(ARRAYS_IN_LOCATION_DATA),
@@ -225,31 +252,51 @@ impl LocationArrays {
         }
     }
 
-    /// Create location arrays from iterators (all must yield the same number of items)
-    #[expect(clippy::should_implement_trait)]
-    pub fn from_iter(color_data: impl ExactSizeIterator<Item = (LocationId, GpuColor)>) -> Self {
-        let location_count = color_data.len();
+    /// Create location arrays
+    pub fn from_locations(locations: &[LocationId]) -> Self {
+        let mut result = Self::allocate(locations.len());
+        result.set_locations(locations);
+        result
+    }
 
-        // 2x size for good hash performance
-        let table_size = (location_count * 2).next_power_of_two().max(16);
+    pub fn set_locations(&mut self, locations: &[LocationId]) {
+        assert!(
+            locations.len() == self.len(),
+            "Locations length must match existing array length"
+        );
+        self.data.location_ids_mut().copy_from_slice(locations);
+    }
 
-        let mut data = LocationData::allocate(table_size);
-        let d = data.as_mut();
-        let color_ids = d.color_ids;
-        let location_ids = d.location_ids;
-        for (location_id, color) in color_data {
-            let mut index = (color.fnv() as usize) % table_size;
+    pub fn set_primary_colors(&mut self, colors: &[GpuColor]) {
+        assert!(
+            colors.len() == self.len(),
+            "Colors length must match existing array length"
+        );
+        self.data.primary_colors_mut().copy_from_slice(colors);
+    }
 
-            // Linear probing to find an empty slot
-            while color_ids[index] != GpuColor::EMPTY {
-                index = (index + 1) % table_size;
-            }
+    pub fn set_secondary_colors(&mut self, colors: &[GpuColor]) {
+        assert!(
+            colors.len() == self.len(),
+            "Colors length must match existing array length"
+        );
+        self.data.secondary_colors_mut().copy_from_slice(colors);
+    }
 
-            color_ids[index] = color;
-            location_ids[index] = location_id;
-        }
+    pub fn set_owner_colors(&mut self, colors: &[GpuColor]) {
+        assert!(
+            colors.len() == self.len(),
+            "Colors length must match existing array length"
+        );
+        self.data.owner_colors_mut().copy_from_slice(colors);
+    }
 
-        Self { data }
+    pub fn set_flags(&mut self, flags: &[LocationFlags]) {
+        assert!(
+            flags.len() == self.len(),
+            "Flags length must match existing array length"
+        );
+        self.data.state_flags_mut().copy_from_slice(flags);
     }
 
     /// Get the number of locations
@@ -291,39 +338,6 @@ impl LocationArrays {
         &self.data.data
     }
 
-    /// Find location entry by color id. This is an O(1) operation on average as
-    /// the target color is hashed. The returned entry can be used to directly
-    /// lookup values related to the target color.
-    pub fn find(&self, target_color: GpuColor) -> Option<GpuLocationIdx> {
-        let table_size = self.data.chunk();
-        if table_size == 0 {
-            return None;
-        }
-
-        let mut index = (target_color.fnv() as usize) % table_size;
-        let color_ids = self.data.color_ids();
-
-        // Linear probing to find the matching color ID (same as GPU shader)
-        for _ in 0..table_size {
-            let stored_color = color_ids[index];
-
-            if stored_color == target_color {
-                // Found the location at this index
-                return Some(GpuLocationIdx(index as u32));
-            }
-
-            if stored_color == GpuColor::EMPTY {
-                // Hit empty slot, color not found
-                return None;
-            }
-
-            index = (index + 1) % table_size;
-        }
-
-        // Color ID not found after checking entire table
-        None
-    }
-
     pub fn get_location_id(&self, idx: GpuLocationIdx) -> LocationId {
         self.buffers().location_ids()[idx.0 as usize]
     }
@@ -350,22 +364,13 @@ impl<'a> LocationArraysIterMut<'a> {
     }
 
     pub fn next_location(&mut self) -> Option<LocationState<'_>> {
-        loop {
-            let id = self.data.color_ids().get(self.index.0 as usize)?;
-
-            if *id == GpuColor::EMPTY {
-                // Empty slot, skip
-                self.index.0 += 1;
-                continue;
-            }
-
-            let state = LocationState {
-                data: self.data,
-                index: self.index,
-            };
-            self.index.0 += 1;
-            return Some(state);
-        }
+        let _ = self.data.location_ids().get(self.index.0 as usize)?;
+        let state = LocationState {
+            data: self.data,
+            index: self.index,
+        };
+        self.index.0 += 1;
+        Some(state)
     }
 }
 
@@ -386,6 +391,12 @@ impl<'a> LocationState<'a> {
                 .location_ids()
                 .get_unchecked(self.index.0 as usize)
         }
+    }
+
+    /// Set location ID
+    pub fn set_location_id(&mut self, location_id: LocationId) {
+        let d = self.data.as_mut();
+        d.location_ids[self.index.0 as usize] = location_id;
     }
 
     /// Get primary color
@@ -431,7 +442,7 @@ impl<'a> LocationState<'a> {
 
     /// Set primary color
     pub fn set_primary_color(&mut self, color: GpuColor) {
-        *self.data.primary_colors_mut(self.index) = color;
+        *self.data.primary_color_mut(self.index) = color;
     }
 
     pub fn set_owner_color(&mut self, color: GpuColor) {
@@ -452,11 +463,11 @@ impl<'a> LocationState<'a> {
 mod tests {
     use super::*;
 
-    fn create_test_colors() -> Vec<(LocationId, GpuColor)> {
+    fn create_test_colors() -> Vec<LocationId> {
         vec![
-            (LocationId::new(1), GpuColor::from_rgb(255, 0, 0)),
-            (LocationId::new(2), GpuColor::from_rgb(0, 255, 0)),
-            (LocationId::new(3), GpuColor::from_rgb(0, 0, 255)),
+            (LocationId::new(1)),
+            (LocationId::new(2)),
+            (LocationId::new(3)),
         ]
     }
 
@@ -468,52 +479,13 @@ mod tests {
     }
 
     #[test]
-    fn test_from_data_creates_proper_hash_table() {
-        let colors = create_test_colors();
-        let arrays = LocationArrays::from_iter(colors.into_iter());
-
-        // Should be power of 2 and at least 16
-        assert!(arrays.len().is_power_of_two());
-        assert!(arrays.len() >= 16);
-
-        // Should be next_power_of_two(3 * 2).max(16) = max(8, 16) = 16
-        assert_eq!(arrays.len(), 16);
-    }
-
-    #[test]
-    fn test_from_data_hash_table_minimum_size() {
-        let single_color = vec![(LocationId::new(1), GpuColor::from_rgb(255, 0, 0))];
-        let arrays = LocationArrays::from_iter(single_color.into_iter());
-
-        // Minimum size should be 16
-        assert_eq!(arrays.len(), 16);
-    }
-
-    #[test]
-    fn test_from_data_large_input() {
-        let many_colors: Vec<_> = (1..=100)
-            .map(|i| {
-                (
-                    LocationId::new(i),
-                    GpuColor::from_rgb(i as u8, (i * 2) as u8, (i * 3) as u8),
-                )
-            })
-            .collect();
-
-        let arrays = LocationArrays::from_iter(many_colors.into_iter());
-
-        // Should be next_power_of_two(100 * 2) = 256
-        assert_eq!(arrays.len(), 256);
-    }
-
-    #[test]
     fn test_len_and_is_empty() {
         let empty = LocationArrays::new();
         assert!(empty.is_empty());
         assert_eq!(empty.len(), 0);
 
         let colors = create_test_colors();
-        let filled = LocationArrays::from_iter(colors.into_iter());
+        let filled = LocationArrays::from_locations(&colors);
         assert!(!filled.is_empty());
         assert_ne!(filled.len(), 0);
     }
@@ -521,10 +493,9 @@ mod tests {
     #[test]
     fn test_buffers_access() {
         let colors = create_test_colors();
-        let arrays = LocationArrays::from_iter(colors.into_iter());
+        let arrays = LocationArrays::from_locations(&colors);
         let buffers = arrays.buffers();
 
-        assert_eq!(buffers.color_ids().len(), arrays.len());
         assert_eq!(buffers.primary_colors().len(), arrays.len());
         assert_eq!(buffers.owner_colors().len(), arrays.len());
         assert_eq!(buffers.secondary_colors().len(), arrays.len());
@@ -535,7 +506,7 @@ mod tests {
     fn test_iter_mut_finds_all_locations() {
         let colors = create_test_colors();
         let expected_count = colors.len();
-        let mut arrays = LocationArrays::from_iter(colors.into_iter());
+        let mut arrays = LocationArrays::from_locations(&colors);
 
         let mut count = 0;
         let mut iter = arrays.iter_mut();
@@ -547,23 +518,9 @@ mod tests {
     }
 
     #[test]
-    fn test_iter_mut_skips_empty_slots() {
-        let colors = vec![(LocationId::new(1), GpuColor::from_rgb(255, 0, 0))];
-        let mut arrays = LocationArrays::from_iter(colors.into_iter());
-
-        let mut iter = arrays.iter_mut();
-        let first = iter.next_location();
-        assert!(first.is_some());
-
-        // Should be no more valid locations
-        let second = iter.next_location();
-        assert!(second.is_none());
-    }
-
-    #[test]
     fn test_location_state_getters() {
-        let colors = vec![(LocationId::new(42), GpuColor::from_rgb(128, 64, 32))];
-        let mut arrays = LocationArrays::from_iter(colors.into_iter());
+        let colors = vec![LocationId::new(42)];
+        let mut arrays = LocationArrays::from_locations(&colors);
 
         let mut iter = arrays.iter_mut();
         let location = iter.next_location().unwrap();
@@ -577,8 +534,8 @@ mod tests {
 
     #[test]
     fn test_location_state_color_setters() {
-        let colors = vec![(LocationId::new(1), GpuColor::from_rgb(255, 0, 0))];
-        let mut arrays = LocationArrays::from_iter(colors.into_iter());
+        let colors = vec![LocationId::new(1)];
+        let mut arrays = LocationArrays::from_locations(&colors);
 
         let mut iter = arrays.iter_mut();
         let mut location = iter.next_location().unwrap();
@@ -598,8 +555,8 @@ mod tests {
 
     #[test]
     fn test_location_state_flag_operations() {
-        let colors = vec![(LocationId::new(1), GpuColor::from_rgb(255, 0, 0))];
-        let mut arrays = LocationArrays::from_iter(colors.into_iter());
+        let colors = vec![LocationId::new(1)];
+        let mut arrays = LocationArrays::from_locations(&colors);
 
         let mut iter = arrays.iter_mut();
         let mut location = iter.next_location().unwrap();
@@ -640,7 +597,7 @@ mod tests {
     #[test]
     fn test_copy_primary_to_secondary() {
         let colors = create_test_colors();
-        let mut arrays = LocationArrays::from_iter(colors.into_iter());
+        let mut arrays = LocationArrays::from_locations(&colors);
 
         // Set some primary colors
         {
@@ -661,15 +618,15 @@ mod tests {
     fn test_hash_collision_handling() {
         // Use colors with enough diversity to minimize hash collisions
         let test_colors = vec![
-            (LocationId::new(100), GpuColor::from_rgb(255, 100, 50)),
-            (LocationId::new(200), GpuColor::from_rgb(100, 255, 75)),
-            (LocationId::new(300), GpuColor::from_rgb(75, 50, 255)),
-            (LocationId::new(400), GpuColor::from_rgb(200, 150, 100)),
-            (LocationId::new(500), GpuColor::from_rgb(50, 200, 150)),
+            LocationId::new(100),
+            LocationId::new(200),
+            LocationId::new(300),
+            LocationId::new(400),
+            LocationId::new(500),
         ];
         let expected_count = test_colors.len();
 
-        let mut arrays = LocationArrays::from_iter(test_colors.into_iter());
+        let mut arrays = LocationArrays::from_locations(&test_colors);
 
         // All locations should be accessible despite potential collisions
         let mut found_locations = 0;
@@ -679,55 +636,5 @@ mod tests {
         }
 
         assert_eq!(found_locations, expected_count);
-    }
-
-    #[test]
-    fn test_empty_input_creates_minimum_size() {
-        let empty_colors: Vec<(LocationId, GpuColor)> = Vec::new();
-        let arrays = LocationArrays::from_iter(empty_colors.into_iter());
-
-        // Even with empty input, should have minimum size
-        assert_eq!(arrays.len(), 16);
-    }
-
-    #[test]
-    fn test_find_location_by_color_id() {
-        let test_colors = vec![
-            (LocationId::new(100), GpuColor::from_rgb(255, 0, 0)), // Red
-            (LocationId::new(200), GpuColor::from_rgb(0, 255, 0)), // Green
-            (LocationId::new(300), GpuColor::from_rgb(0, 0, 255)), // Blue
-        ];
-        let arrays = LocationArrays::from_iter(test_colors.into_iter());
-
-        // Test finding each color
-        let red_key = GpuColor::from_rgb(255, 0, 0);
-        let green_key = GpuColor::from_rgb(0, 255, 0);
-        let blue_key = GpuColor::from_rgb(0, 0, 255);
-
-        assert_eq!(
-            arrays.find(red_key).map(|idx| arrays.get_location_id(idx)),
-            Some(LocationId::new(100))
-        );
-        assert_eq!(
-            arrays
-                .find(green_key)
-                .map(|idx| arrays.get_location_id(idx)),
-            Some(LocationId::new(200))
-        );
-        assert_eq!(
-            arrays.find(blue_key).map(|idx| arrays.get_location_id(idx)),
-            Some(LocationId::new(300))
-        );
-
-        // Test color not in table
-        let white_key = GpuColor::from_rgb(255, 255, 255);
-        assert_eq!(arrays.find(white_key), None);
-    }
-
-    #[test]
-    fn test_find_location_by_color_id_empty_table() {
-        let arrays = LocationArrays::new();
-        let red_key = GpuColor::from_rgb(255, 0, 0);
-        assert_eq!(arrays.find(red_key), None);
     }
 }

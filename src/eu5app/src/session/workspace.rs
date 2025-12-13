@@ -1,11 +1,13 @@
+use crate::game_data::GameData;
 use crate::{
-    MapMode, OverlayBodyConfig, OverlayTable, TableCell, game_data::GameDataProvider,
-    models::Terrain, session::Eu5LoadedSave, subject_color,
+    MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, session::Eu5LoadedSave,
+    subject_color,
 };
+use eu5save::hash::FxHashMap;
 use eu5save::models::{
     CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIndexedVec, RawMaterialsName,
 };
-use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
+use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags, R16};
 use std::cell::OnceCell;
 use std::collections::HashMap;
 
@@ -17,7 +19,7 @@ pub struct Eu5Workspace {
     arena: bumpalo::Bump,
     gamestate: Gamestate<'static>,
 
-    game_data: Box<dyn GameDataProvider>,
+    game_data: Box<GameData>,
 
     // Session data (relationships and indices)
     overlord_of: CountryIndexedVecOwned<Option<CountryIdx>>,
@@ -28,14 +30,14 @@ pub struct Eu5Workspace {
     // Map app state (rendering)
     current_map_mode: MapMode,
     location_arrays: pdx_map::LocationArrays,
-    gpu_indices: LocationIndexedVec<GpuLocationIdx>,
+    gpu_indices: LocationIndexedVec<Option<GpuLocationIdx>>,
 }
 
 impl Eu5Workspace {
     /// Create a new workspace from loaded save data and game data provider
     pub fn new(
         loaded_save: Eu5LoadedSave,
-        game_data: impl GameDataProvider + 'static,
+        game_data: GameData,
     ) -> Result<Self, crate::game_data::GameDataError> {
         let (arena, gamestate) = loaded_save.into_parts();
         let game_data = Box::new(game_data);
@@ -52,9 +54,15 @@ impl Eu5Workspace {
             overlord_of[second_idx] = Some(first_idx);
         }
 
+        let game_location_map: FxHashMap<_, _> = game_data
+            .locations()
+            .iter()
+            .map(|loc| (loc.name.as_str(), loc))
+            .collect();
+
         let mut location_terrain = gamestate.locations.create_index(Terrain::default());
-        let mut location_color_id = gamestate.locations.create_index(GpuColor::EMPTY);
         let mut location_coordinates = gamestate.locations.create_index((0, 0));
+        let mut gpu_indices = gamestate.locations.create_index(None);
 
         // Build join by looking up each save location in game data
         let locations_iter = gamestate
@@ -71,24 +79,22 @@ impl Eu5Workspace {
                 id.value()
             );
 
-            let (terrain, color, coordinates) =
-                if let Some(game_loc) = game_data.lookup_location(name) {
-                    (
-                        game_loc.terrain,
-                        GpuColor::from(game_loc.color_id),
-                        game_loc.coordinates,
-                    )
-                } else {
-                    (Terrain::default(), GpuColor::EMPTY, Default::default())
-                };
+            let Some(game_loc) = game_location_map.get(name) else {
+                continue;
+            };
 
-            location_terrain[location.idx()] = terrain;
-            location_color_id[location.idx()] = color;
-            location_coordinates[location.idx()] = coordinates;
+            location_terrain[location.idx()] = game_loc.terrain;
+
+            let Some(spatial_loc) = game_loc.color_id else {
+                continue;
+            };
+
+            let spatial_data = &game_data.texture_locations()[R16::from(spatial_loc)];
+            location_coordinates[location.idx()] = (spatial_data.avg_x, spatial_data.avg_y);
+            gpu_indices[location.idx()] = Some(GpuLocationIdx::new(spatial_loc.value()));
         }
 
-        let location_arrays = LocationArrays::new();
-        let gpu_indices = gamestate.locations.create_index(GpuLocationIdx::new(0));
+        let location_arrays = LocationArrays::allocate(game_data.texture_locations().len());
 
         let mut workspace = Self {
             arena,
@@ -103,14 +109,7 @@ impl Eu5Workspace {
             gpu_indices,
         };
 
-        workspace.location_arrays = workspace.build_location_arrays(&location_color_id)?;
-
-        let mut location_iter = workspace.location_arrays.iter_mut();
-        while let Some(gpu_location) = location_iter.next_location() {
-            let loc_idx = eu5save::models::LocationIdx::new(gpu_location.location_id().value());
-            let gpu_idx = GpuLocationIdx::new(gpu_location.index().value());
-            workspace.gpu_indices[loc_idx] = gpu_idx;
-        }
+        workspace.build_location_arrays();
 
         Ok(workspace)
     }
@@ -527,26 +526,15 @@ impl Eu5Workspace {
         }
     }
 
-    fn build_location_arrays(
-        &mut self,
-        location_color_id: &LocationIndexedVec<GpuColor>,
-    ) -> Result<LocationArrays, crate::game_data::GameDataError> {
-        let location_data = location_color_id
-            .iter()
-            .copied()
-            .enumerate()
-            .map(|(idx, color)| {
-                let loc_id = pdx_map::LocationId::new(idx as u32);
-                (loc_id, color)
-            });
+    fn build_location_arrays(&mut self) {
+        for location in self.gamestate.locations.iter() {
+            // Skip locations not found in locations texture
+            let Some(gpu_index) = self.gpu_indices[location.idx()] else {
+                continue;
+            };
 
-        let mut locations = LocationArrays::from_iter(location_data);
-        let mut location_iter = locations.iter_mut();
-        while let Some(mut gpu_location) = location_iter.next_location() {
-            let location_idx =
-                eu5save::models::LocationIdx::new(gpu_location.location_id().value());
-
-            let terrain = self.location_terrain(location_idx);
+            let terrain = self.location_terrain(location.idx());
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
 
             // Water locations get a specific color and no location borders
             if terrain.is_water() {
@@ -566,13 +554,14 @@ impl Eu5Workspace {
                 continue;
             }
 
-            let owner_color = self.location_political_color(location_idx);
+            let owner_color = self.location_political_color(location.idx());
+            let control_color = self.location_control_color(location.idx());
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(owner_color);
-            gpu_location.set_secondary_color(self.location_control_color(location_idx));
+            gpu_location.set_secondary_color(control_color);
             gpu_location.set_owner_color(owner_color);
+            gpu_location.set_location_id(pdx_map::LocationId::new(location.idx().value()));
         }
-
-        Ok(locations)
     }
 
     pub fn location_arrays(&self) -> &pdx_map::LocationArrays {
@@ -601,9 +590,13 @@ impl Eu5Workspace {
     fn apply_political_colors(&mut self) {
         for idx in 0..self.gamestate.locations.len() {
             let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let Some(gpu_index) = self.gpu_indices[location_idx] else {
+                continue;
+            };
+
             let primary = self.location_political_color(location_idx);
             let controller = self.location_control_color(location_idx);
-            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[location_idx]);
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(primary);
             gpu_location.set_secondary_color(controller);
         }
@@ -621,7 +614,10 @@ impl Eu5Workspace {
         // Apply colors
         for (idx, color) in color_data {
             let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
+                continue;
+            };
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(color);
         }
 
@@ -643,7 +639,10 @@ impl Eu5Workspace {
         // Apply colors
         for (idx, color) in color_data {
             let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
+                continue;
+            };
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(color);
         }
 
@@ -665,7 +664,10 @@ impl Eu5Workspace {
         // Apply colors
         for (idx, color) in color_data {
             let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
+                continue;
+            };
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(color);
         }
 
@@ -685,7 +687,10 @@ impl Eu5Workspace {
         // Apply colors
         for (idx, color) in color_data {
             let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
+                continue;
+            };
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(color);
         }
 
@@ -707,7 +712,10 @@ impl Eu5Workspace {
         // Apply colors
         for (idx, color) in color_data {
             let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
+                continue;
+            };
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(color);
         }
 
@@ -730,7 +738,10 @@ impl Eu5Workspace {
         // Apply colors
         for (idx, color) in color_data {
             let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
+                continue;
+            };
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(color);
         }
 
@@ -753,7 +764,10 @@ impl Eu5Workspace {
         // Apply colors
         for (idx, color) in color_data {
             let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
+                continue;
+            };
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(color);
         }
 
@@ -774,7 +788,10 @@ impl Eu5Workspace {
         // Apply colors
         for (idx, primary, secondary) in color_data {
             let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let mut gpu_location = self.location_arrays.get_mut(self.gpu_indices[gpu_idx]);
+            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
+                continue;
+            };
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(primary);
             gpu_location.set_secondary_color(secondary);
         }
@@ -826,7 +843,10 @@ impl Eu5Workspace {
             }
 
             let gpu_idx = self.gpu_indices[location_idx];
-            let mut state = self.location_arrays.get_mut(gpu_idx);
+            let Some(gpu_index) = gpu_idx else {
+                return;
+            };
+            let mut state = self.location_arrays.get_mut(gpu_index);
             state.flags_mut().set(LocationFlags::HIGHLIGHTED);
             return;
         }

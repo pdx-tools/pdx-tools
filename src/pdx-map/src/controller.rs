@@ -1,6 +1,6 @@
 use crate::{
-    CanvasDimensions, GpuColor, GpuLocationIdx, MapRenderer, MapViewport, RenderError,
-    SurfaceMapRenderer, SurfaceRenderer, ViewportBounds,
+    CanvasDimensions, MapRenderer, MapViewport, RenderError, SurfaceMapRenderer, SurfaceRenderer,
+    ViewportBounds,
     renderer::{ColorIdReadback, HeadlessMapRenderer, QueuedWorkFuture},
 };
 
@@ -43,11 +43,6 @@ impl<R: MapRenderer> MapViewController<R> {
     /// Get mutable access to the underlying renderer
     pub fn renderer_mut(&mut self) -> &mut R {
         &mut self.renderer
-    }
-
-    pub fn lookup_color_idx(&self, color: GpuColor) -> Option<GpuLocationIdx> {
-        let location_arrays = self.renderer.location_arrays();
-        location_arrays.find(color)
     }
 
     /// Get the canvas dimensions

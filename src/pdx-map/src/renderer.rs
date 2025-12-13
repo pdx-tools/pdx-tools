@@ -3,7 +3,7 @@ use std::cell::Cell;
 use wgpu::SurfaceTarget;
 
 use crate::error::RenderError;
-use crate::{CanvasDimensions, GpuColor, LocationArrays, LocationFlags, ViewportBounds};
+use crate::{CanvasDimensions, GpuLocationIdx, LocationArrays, LocationFlags, ViewportBounds};
 
 /// Maximum texture dimension supported
 const MAX_TEXTURE_DIMENSION: u32 = 8192;
@@ -90,7 +90,6 @@ struct GpuResources {
 /// Collection of GPU buffers for location-based rendering data
 #[derive(Debug, Clone)]
 struct LocationBuffers {
-    color_ids: wgpu::Buffer,
     primary_colors: wgpu::Buffer,
     owner_colors: wgpu::Buffer,
     secondary_colors: wgpu::Buffer,
@@ -115,7 +114,7 @@ impl GpuContext {
         Self::from_adapter(adapter).await
     }
 
-    /// Create a texture from provided data and dimensions
+    /// Create an R16Uint storage texture for location index data
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(skip_all, level = "debug", fields(width = width, height = height, label = label))
@@ -143,7 +142,7 @@ impl GpuContext {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
+            format: wgpu::TextureFormat::R16Uint,
             usage: wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_DST
                 | wgpu::TextureUsages::COPY_SRC,
@@ -160,7 +159,7 @@ impl GpuContext {
             texture_data,
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * width), // RGBA8 = 4 bytes per pixel
+                bytes_per_row: Some(2 * width), // R16 = 2 bytes per pixel
                 rows_per_image: Some(height),
             },
             wgpu::Extent3d {
@@ -221,13 +220,6 @@ impl GpuContext {
         // Create location array buffers (sized for reasonable number of locations)
         let max_locations = 65536u64; // Maximum expected locations
 
-        let location_color_ids_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Location Color IDs Buffer"),
-            size: std::mem::size_of::<u32>() as u64 * max_locations,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
         let location_primary_colors_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Location Primary Colors Buffer"),
             size: std::mem::size_of::<u32>() as u64 * max_locations,
@@ -271,7 +263,6 @@ impl GpuContext {
         };
 
         let location_buffers = LocationBuffers {
-            color_ids: location_color_ids_buffer.clone(),
             primary_colors: location_primary_colors_buffer.clone(),
             owner_colors: location_owner_colors_buffer.clone(),
             secondary_colors: location_secondary_colors_buffer.clone(),
@@ -308,23 +299,23 @@ impl GpuContext {
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Compute Bind Group Layout"),
                 entries: &[
-                    // West input texture
+                    // West input texture (R16Uint regular texture)
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
                         visibility: wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            sample_type: wgpu::TextureSampleType::Uint,
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
                         count: None,
                     },
-                    // East input texture
+                    // East input texture (R16Uint regular texture)
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
                         visibility: wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            sample_type: wgpu::TextureSampleType::Uint,
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
@@ -341,20 +332,9 @@ impl GpuContext {
                         },
                         count: None,
                     },
-                    // Location color IDs buffer
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
                     // Uniform buffer
                     wgpu::BindGroupLayoutEntry {
-                        binding: 4,
+                        binding: 3,
                         visibility: wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
@@ -365,7 +345,7 @@ impl GpuContext {
                     },
                     // Location primary colors buffer
                     wgpu::BindGroupLayoutEntry {
-                        binding: 5,
+                        binding: 4,
                         visibility: wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Storage { read_only: true },
@@ -376,7 +356,7 @@ impl GpuContext {
                     },
                     // Location states buffer
                     wgpu::BindGroupLayoutEntry {
-                        binding: 6,
+                        binding: 5,
                         visibility: wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Storage { read_only: true },
@@ -387,7 +367,7 @@ impl GpuContext {
                     },
                     // Location owner colors buffer
                     wgpu::BindGroupLayoutEntry {
-                        binding: 7,
+                        binding: 6,
                         visibility: wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Storage { read_only: true },
@@ -398,7 +378,7 @@ impl GpuContext {
                     },
                     // Location secondary colors buffer
                     wgpu::BindGroupLayoutEntry {
-                        binding: 8,
+                        binding: 7,
                         visibility: wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Storage { read_only: true },
@@ -447,7 +427,7 @@ impl GpuSurfaceContext {
         Ok(GpuSurfaceContext { core, surface })
     }
 
-    /// Create a texture from provided data and dimensions
+    /// Create an R16Uint storage texture for location index data
     pub fn create_texture(
         &self,
         texture_data: &[u8],
@@ -487,7 +467,7 @@ impl<'a> GpuSurfaceContextRef<'a> {
             format: surface_format,
             width: display.physical_width(),
             height: display.physical_height(),
-            present_mode: surface_caps.present_modes[0],
+            present_mode: choose_present_mode(&surface_caps.present_modes),
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -827,26 +807,22 @@ impl Renderer {
                     },
                     wgpu::BindGroupEntry {
                         binding: 3,
-                        resource: self.location_buffers.color_ids.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
                         resource: self.uniform_buffer.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
-                        binding: 5,
+                        binding: 4,
                         resource: self.location_buffers.primary_colors.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
-                        binding: 6,
+                        binding: 5,
                         resource: self.location_buffers.states.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
-                        binding: 7,
+                        binding: 6,
                         resource: self.location_buffers.owner_colors.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
-                        binding: 8,
+                        binding: 7,
                         resource: self.location_buffers.secondary_colors.as_entire_binding(),
                     },
                 ],
@@ -927,21 +903,15 @@ impl Renderer {
         // Check buffer sizes
         let required_size = std::mem::size_of::<u32>() as u64 * self.location_arrays.len() as u64;
         assert!(
-            required_size <= self.location_buffers.color_ids.size(),
-            "Location color IDs buffer too small! Need {} bytes, have {} bytes",
+            required_size <= self.location_buffers.primary_colors.size(),
+            "Location buffers too small! Need {} bytes, have {} bytes",
             required_size,
-            self.location_buffers.color_ids.size()
+            self.location_buffers.primary_colors.size()
         );
 
         let location_buffers = self.location_arrays.buffers();
 
         // Upload location arrays data to GPU buffers
-        self.gpu.queue.write_buffer(
-            &self.location_buffers.color_ids,
-            0,
-            bytemuck::cast_slice(location_buffers.color_ids()),
-        );
-
         self.gpu.queue.write_buffer(
             &self.location_buffers.primary_colors,
             0,
@@ -1065,17 +1035,18 @@ pub struct ColorIdReadback {
 }
 
 impl ColorIdReadback {
-    pub async fn read_id(self) -> GpuColor {
+    pub async fn read_id(self) -> GpuLocationIdx {
         let _ = self.receiver.await;
 
         let pixel_data = self.pixel_staging_buffer.slice(0..8).get_mapped_range();
-        let mut result = [0u8; 4];
-        result.copy_from_slice(&pixel_data[0..4]);
+        let mut result = [0u8; 2];
+        result.copy_from_slice(&pixel_data[0..2]);
 
         drop(pixel_data);
         self.pixel_staging_buffer.unmap();
 
-        GpuColor::from_rgb(result[0], result[1], result[2])
+        let idx = u16::from_le_bytes(result);
+        GpuLocationIdx::new(idx)
     }
 }
 
@@ -1305,7 +1276,7 @@ impl SurfaceMapRenderer {
             format: surface_format,
             width: self.renderer.tile_width,
             height: self.renderer.tile_height,
-            present_mode: surface_caps.present_modes[0],
+            present_mode: choose_present_mode(&surface_caps.present_modes),
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -1644,4 +1615,21 @@ pub trait MapRenderer {
 pub trait SurfaceRenderer: MapRenderer {
     /// Present the rendered content to the surface
     fn present(&self) -> Result<(), RenderError>;
+}
+
+fn choose_present_mode(available_modes: &[wgpu::PresentMode]) -> wgpu::PresentMode {
+    // Mailbox is preferred for an input-based application as we only care about
+    // the latest frame.
+    let preferred = wgpu::PresentMode::Mailbox;
+    let result = if available_modes.contains(&preferred) {
+        preferred
+    } else {
+        // Fallback to FIFO as it's supported everywhere and similar to mailbox,
+        // won't have tearing.
+        wgpu::PresentMode::Fifo
+    };
+
+    #[cfg(feature = "tracing")]
+    tracing::debug!(name: "renderer.present_mode.selected", present_mode = ?result, available_options = ?available_modes);
+    result
 }

@@ -1,5 +1,7 @@
 use anyhow::{Context, Result, anyhow, bail};
 use clap::Parser;
+use pdx_map::GpuColor;
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -47,10 +49,10 @@ struct Args {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 struct LocationRecord {
-    rgb_key: pdx_map::GpuColor,
-    primary_color: pdx_map::GpuColor,
-    secondary_color: pdx_map::GpuColor,
-    owner_color: pdx_map::GpuColor,
+    rgb_key: pdx_map::Rgb,
+    primary_color: pdx_map::Rgb,
+    secondary_color: pdx_map::Rgb,
+    owner_color: pdx_map::Rgb,
     flags: u32,
 }
 
@@ -59,6 +61,7 @@ struct SplitImageData {
     east_data: Vec<u8>,
     tile_width: u32,
     tile_height: u32,
+    palette: pdx_map::R16Palette,
 }
 
 impl SplitImageData {
@@ -72,10 +75,10 @@ impl SplitImageData {
 }
 
 /// Parse a hex color string (e.g., "FF0000") to GpuColor
-fn parse_hex_color(hex: &str) -> Result<pdx_map::GpuColor> {
+fn parse_hex_color(hex: &str) -> Result<pdx_map::Rgb> {
     let hex = hex.trim();
     if hex.is_empty() {
-        return Ok(pdx_map::GpuColor::EMPTY);
+        return Ok(pdx_map::Rgb::default());
     }
 
     if hex.len() != 6 {
@@ -89,7 +92,7 @@ fn parse_hex_color(hex: &str) -> Result<pdx_map::GpuColor> {
     let b = u8::from_str_radix(&hex[4..6], 16)
         .with_context(|| format!("Invalid hex color blue component: {}", hex))?;
 
-    Ok(pdx_map::GpuColor::from_rgb(r, g, b))
+    Ok(pdx_map::Rgb::new(r, g, b))
 }
 
 /// Parse a CSV line into a LocationRecord
@@ -160,83 +163,52 @@ fn parse_location_data(reader: impl Read) -> Result<Vec<LocationRecord>> {
     Ok(records)
 }
 
-/// Build LocationArrays from parsed records
-fn build_location_arrays(records: Vec<LocationRecord>) -> Result<pdx_map::LocationArrays> {
-    // Create iterator of (LocationId, GpuColor) for the hash table
-    // Use 1-based row index as location ID
-    let color_data = records
+/// Build LocationArrays from parsed records using color indexing
+fn build_location_arrays(
+    records: Vec<LocationRecord>,
+    palette: &pdx_map::R16Palette,
+) -> Result<pdx_map::LocationArrays> {
+    let record_colors = records
         .iter()
-        .enumerate()
-        .map(|(idx, r)| (pdx_map::LocationId::new((idx + 1) as u32), r.rgb_key));
+        .map(|r| (r.rgb_key, r))
+        .collect::<HashMap<_, _>>();
 
-    let mut location_arrays = pdx_map::LocationArrays::from_iter(color_data);
+    let record_palette = palette.map(|rgb, _| record_colors.get(rgb));
+    let primary_colors = record_palette
+        .map(|x, r16| GpuColor::from(x.map(|r| r.primary_color).unwrap_or_else(|| r16.as_rgb())));
+    let secondary_colors = record_palette
+        .map(|x, r16| GpuColor::from(x.map(|r| r.secondary_color).unwrap_or_else(|| r16.as_rgb())));
+    let owner_colors = record_palette
+        .map(|x, r16| GpuColor::from(x.map(|r| r.owner_color).unwrap_or_else(|| r16.as_rgb())));
+    let flags = record_palette.map(|x, _| {
+        x.map(|r| pdx_map::LocationFlags::from_bits(r.flags))
+            .unwrap_or_default()
+    });
 
-    // Now set the colors and flags for each location
-    for record in records {
-        let idx = location_arrays
-            .find(record.rgb_key)
-            .context("missing rgb key")?;
-        let mut state = location_arrays.get_mut(idx);
-        state.set_primary_color(record.primary_color);
-        state.set_secondary_color(record.secondary_color);
-        state.set_owner_color(record.owner_color);
-        *state.flags_mut() = pdx_map::LocationFlags::from_bits(record.flags);
-    }
+    let mut location = pdx_map::LocationArrays::allocate(palette.len());
+    location.set_primary_colors(primary_colors.as_slice());
+    location.set_secondary_colors(secondary_colors.as_slice());
+    location.set_owner_colors(owner_colors.as_slice());
+    location.set_flags(flags.as_slice());
 
-    Ok(location_arrays)
+    Ok(location)
 }
 
-/// Load an image and split it into west and east halves
+/// Load an image and convert to R16 format with color indexing
 fn load_and_split_image(path: &PathBuf) -> Result<SplitImageData> {
-    let start = Instant::now();
-
     let img = image::open(path).with_context(|| format!("Failed to open map image: {:?}", path))?;
+    let img = img.as_rgb8().context("image not in rgb8 format")?;
+    let (west, east, palette) = pdx_map::split_rgb8_to_indexed_r16(img.as_raw(), img.width());
 
-    let img = img.to_rgba8();
-    let full_width = img.width();
-    let full_height = img.height();
-
-    println!(
-        "Loaded map image: {}x{} ({:.2}s)",
-        full_width,
-        full_height,
-        start.elapsed().as_secs_f64()
-    );
-
-    // Split the image vertically in half
-    let tile_width = full_width / 2;
-    let tile_height = full_height;
-
-    let start = Instant::now();
-
-    // Extract west half (left side)
-    let mut west_data = Vec::with_capacity((tile_width * tile_height * 4) as usize);
-    for y in 0..tile_height {
-        for x in 0..tile_width {
-            let pixel = img.get_pixel(x, y);
-            west_data.extend_from_slice(&pixel.0);
-        }
-    }
-
-    // Extract east half (right side)
-    let mut east_data = Vec::with_capacity((tile_width * tile_height * 4) as usize);
-    for y in 0..tile_height {
-        for x in tile_width..full_width {
-            let pixel = img.get_pixel(x, y);
-            east_data.extend_from_slice(&pixel.0);
-        }
-    }
-
-    println!(
-        "Split image into west/east textures ({:.2}s)",
-        start.elapsed().as_secs_f64()
-    );
+    let tile_width = img.width() / 2;
+    let tile_height = img.height();
 
     Ok(SplitImageData {
-        west_data,
-        east_data,
+        west_data: west,
+        east_data: east,
         tile_width,
         tile_height,
+        palette,
     })
 }
 
@@ -267,8 +239,9 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
         records.len(),
         start.elapsed().as_secs_f64()
     );
+    let image_data = load_and_split_image(&args.map)?;
     let start = Instant::now();
-    let location_arrays = build_location_arrays(records)?;
+    let location_arrays = build_location_arrays(records, &image_data.palette)?;
     println!(
         "Built location arrays with {} slots ({:.2}s)",
         location_arrays.len(),
@@ -283,7 +256,6 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
         "Initialized GPU context ({:.2}s)",
         start.elapsed().as_secs_f64()
     );
-    let image_data = load_and_split_image(&args.map)?;
     let start = Instant::now();
     let west_view = gpu.create_texture(
         &image_data.west_data,
@@ -372,13 +344,13 @@ mod tests {
         #[case] b: u8,
     ) {
         let color = parse_hex_color(input).unwrap();
-        assert_eq!(color, pdx_map::GpuColor::from_rgb(r, g, b));
+        assert_eq!(color, pdx_map::Rgb::new(r, g, b));
     }
 
     #[test]
     fn test_parse_hex_color_empty() {
         let color = parse_hex_color("").unwrap();
-        assert_eq!(color, pdx_map::GpuColor::EMPTY);
+        assert_eq!(color, pdx_map::Rgb::new(0, 0, 0));
     }
 
     // Tests for parse_hex_color - invalid cases
@@ -398,60 +370,60 @@ mod tests {
     #[case(
         "FF0000,00FF00,0000FF,FFFF00,0",
         LocationRecord {
-            rgb_key: pdx_map::GpuColor::from_rgb(255, 0, 0),
-            primary_color: pdx_map::GpuColor::from_rgb(0, 255, 0),
-            secondary_color: pdx_map::GpuColor::from_rgb(0, 0, 255),
-            owner_color: pdx_map::GpuColor::from_rgb(255, 255, 0),
+            rgb_key: pdx_map::Rgb::new(255, 0, 0),
+            primary_color: pdx_map::Rgb::new(0, 255, 0),
+            secondary_color: pdx_map::Rgb::new(0, 0, 255),
+            owner_color: pdx_map::Rgb::new(255, 255, 0),
             flags: 0,
         }
     )]
     #[case(
         "FF0000,00FF00,,FFFF00,0",
         LocationRecord {
-            rgb_key: pdx_map::GpuColor::from_rgb(255, 0, 0),
-            primary_color: pdx_map::GpuColor::from_rgb(0, 255, 0),
-            secondary_color: pdx_map::GpuColor::from_rgb(0, 255, 0),
-            owner_color: pdx_map::GpuColor::from_rgb(255, 255, 0),
+            rgb_key: pdx_map::Rgb::new(255, 0, 0),
+            primary_color: pdx_map::Rgb::new(0, 255, 0),
+            secondary_color: pdx_map::Rgb::new(0, 255, 0),
+            owner_color: pdx_map::Rgb::new(255, 255, 0),
             flags: 0,
         }
     )]
     #[case(
         "FF0000,00FF00,0000FF,,0",
         LocationRecord {
-            rgb_key: pdx_map::GpuColor::from_rgb(255, 0, 0),
-            primary_color: pdx_map::GpuColor::from_rgb(0, 255, 0),
-            secondary_color: pdx_map::GpuColor::from_rgb(0, 0, 255),
-            owner_color: pdx_map::GpuColor::from_rgb(0, 255, 0),
+            rgb_key: pdx_map::Rgb::new(255, 0, 0),
+            primary_color: pdx_map::Rgb::new(0, 255, 0),
+            secondary_color: pdx_map::Rgb::new(0, 0, 255),
+            owner_color: pdx_map::Rgb::new(0, 255, 0),
             flags: 0,
         }
     )]
     #[case(
         "FF0000,00FF00,,,0",
         LocationRecord {
-            rgb_key: pdx_map::GpuColor::from_rgb(255, 0, 0),
-            primary_color: pdx_map::GpuColor::from_rgb(0, 255, 0),
-            secondary_color: pdx_map::GpuColor::from_rgb(0, 255, 0),
-            owner_color: pdx_map::GpuColor::from_rgb(0, 255, 0),
+            rgb_key: pdx_map::Rgb::new(255, 0, 0),
+            primary_color: pdx_map::Rgb::new(0, 255, 0),
+            secondary_color: pdx_map::Rgb::new(0, 255, 0),
+            owner_color: pdx_map::Rgb::new(0, 255, 0),
             flags: 0,
         }
     )]
     #[case(
         "FF0000,00FF00,0000FF,FFFF00,3",
         LocationRecord {
-            rgb_key: pdx_map::GpuColor::from_rgb(255, 0, 0),
-            primary_color: pdx_map::GpuColor::from_rgb(0, 255, 0),
-            secondary_color: pdx_map::GpuColor::from_rgb(0, 0, 255),
-            owner_color: pdx_map::GpuColor::from_rgb(255, 255, 0),
+            rgb_key: pdx_map::Rgb::new(255, 0, 0),
+            primary_color: pdx_map::Rgb::new(0, 255, 0),
+            secondary_color: pdx_map::Rgb::new(0, 0, 255),
+            owner_color: pdx_map::Rgb::new(255, 255, 0),
             flags: 3,
         }
     )]
     #[case(
         "FF0000, 00FF00 , 0000FF , FFFF00 , 1 ",
         LocationRecord {
-            rgb_key: pdx_map::GpuColor::from_rgb(255, 0, 0),
-            primary_color: pdx_map::GpuColor::from_rgb(0, 255, 0),
-            secondary_color: pdx_map::GpuColor::from_rgb(0, 0, 255),
-            owner_color: pdx_map::GpuColor::from_rgb(255, 255, 0),
+            rgb_key: pdx_map::Rgb::new(255, 0, 0),
+            primary_color: pdx_map::Rgb::new(0, 255, 0),
+            secondary_color: pdx_map::Rgb::new(0, 0, 255),
+            owner_color: pdx_map::Rgb::new(255, 255, 0),
             flags: 1,
         }
     )]
@@ -485,8 +457,8 @@ mod tests {
         let input = b"FF0000,00FF00,0000FF,FFFF00,0\n0000FF,FF0000,00FF00,FFFFFF,1";
         let records = parse_location_data(&input[..]).unwrap();
         assert_eq!(records.len(), 2);
-        assert_eq!(records[0].rgb_key, pdx_map::GpuColor::from_rgb(255, 0, 0));
-        assert_eq!(records[1].rgb_key, pdx_map::GpuColor::from_rgb(0, 0, 255));
+        assert_eq!(records[0].rgb_key, pdx_map::Rgb::new(255, 0, 0));
+        assert_eq!(records[1].rgb_key, pdx_map::Rgb::new(0, 0, 255));
     }
 
     #[rstest]

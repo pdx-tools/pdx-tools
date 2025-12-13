@@ -1,4 +1,8 @@
-import init, { PdxCanvasSurface, PdxMapRenderer } from "../wasm/wasm_pdx_map";
+import init, {
+  PdxCanvasSurface,
+  PdxMapImage,
+  PdxMapRenderer,
+} from "../wasm/wasm_pdx_map";
 import type { CanvasDisplay } from "../wasm/wasm_pdx_map";
 import wasmPath from "../wasm/wasm_pdx_map_bg.wasm?url";
 import { proxy } from "comlink";
@@ -15,51 +19,24 @@ let appTask = new Promise<PdxMapRenderer>((res, rej) => {
 });
 
 // Process uploaded map image into textures
-async function processMapImage(imageFile: File): Promise<{
-  westHalf: Uint8Array;
-  eastHalf: Uint8Array;
-  tileWidth: number;
-  tileHeight: number;
-}> {
+async function processMapImage(
+  imageFile: File,
+): Promise<{ image: PdxMapImage; tileWidth: number; tileHeight: number }> {
   // Create image bitmap
   const imageBitmap = await createImageBitmap(imageFile);
-
-  // Validate that width is even (can be split into two equal halves)
-  const fullWidth = imageBitmap.width;
-  const fullHeight = imageBitmap.height;
-
-  if (fullWidth % 2 !== 0) {
-    throw new Error(
-      `Map image width must be even (divisible by 2) to split into west/east tiles. ` +
-        `Got ${fullWidth}x${fullHeight}`,
-    );
-  }
-
-  const tileWidth = fullWidth / 2;
-  const tileHeight = fullHeight;
-
-  // Create offscreen canvases for each half
-  const westCanvas = new OffscreenCanvas(tileWidth, tileHeight);
-  const eastCanvas = new OffscreenCanvas(tileWidth, tileHeight);
-
-  const westCtx = westCanvas.getContext("2d")!;
-  const eastCtx = eastCanvas.getContext("2d")!;
-
-  // Draw west half (left side)
-  westCtx.drawImage(imageBitmap, 0, 0);
-
-  // Draw east half (right side)
-  eastCtx.drawImage(imageBitmap, -tileWidth, 0);
-
-  // Get RGBA data
-  const westImageData = westCtx.getImageData(0, 0, tileWidth, tileHeight);
-  const eastImageData = eastCtx.getImageData(0, 0, tileWidth, tileHeight);
+  const canvas = new OffscreenCanvas(imageBitmap.width, imageBitmap.height);
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(imageBitmap, 0, 0);
+  const pixels = ctx.getImageData(0, 0, imageBitmap.width, imageBitmap.height);
 
   return {
-    westHalf: new Uint8Array(westImageData.data.buffer),
-    eastHalf: new Uint8Array(eastImageData.data.buffer),
-    tileWidth,
-    tileHeight,
+    image: PdxMapImage.from_rgba(
+      Uint8Array.from(pixels.data),
+      imageBitmap.width,
+      imageBitmap.height,
+    ),
+    tileWidth: imageBitmap.width / 2,
+    tileHeight: imageBitmap.height,
   };
 }
 
@@ -87,31 +64,28 @@ export const createMapEngine = async ({
 
   // Process the uploaded map image and upload textures
   console.log("Processing map image...");
-  const { westHalf, eastHalf, tileWidth, tileHeight } =
-    await processMapImage(mapImageFile);
-  console.log(`Map image processed: ${tileWidth}x${tileHeight} per tile`);
-  console.log(
-    `First 4 bytes of texture data: ${westHalf[0]}, ${westHalf[1]}, ${westHalf[2]}, ${westHalf[3]}`,
-  );
+  const {
+    tileWidth,
+    tileHeight,
+    image: indexedImage,
+  } = await processMapImage(mapImageFile);
 
   // Upload textures with their dimensions
-  const westView = canvasInit.upload_west_texture(
-    westHalf,
-    tileWidth,
-    tileHeight,
-  );
+  const westView = canvasInit.upload_west_texture(indexedImage);
   console.log("West texture uploaded");
 
-  const eastView = canvasInit.upload_east_texture(
-    eastHalf,
-    tileWidth,
-    tileHeight,
-  );
+  const eastView = canvasInit.upload_east_texture(indexedImage);
   console.log("East texture uploaded");
 
   try {
     console.log("Creating map renderer...");
-    const app = PdxMapRenderer.create(canvasInit, westView, eastView, display);
+    const app = PdxMapRenderer.create(
+      canvasInit,
+      indexedImage,
+      westView,
+      eastView,
+      display,
+    );
     console.log("Map renderer created");
 
     appResolve(app);
@@ -206,10 +180,9 @@ export const createMapEngine = async ({
           canvasX,
           canvasY,
         );
-        const colorId = await readback.read_id();
-        const locationIdx = app.lookup_color_idx(colorId);
+        const locationIdx = await readback.read_id();
         if (locationIdx === undefined) {
-          throw new Error(`No location found for color ID ${colorId}`);
+          throw new Error(`No location found for color ID`);
         }
 
         const locationId = app.lookup_location_id(locationIdx);
