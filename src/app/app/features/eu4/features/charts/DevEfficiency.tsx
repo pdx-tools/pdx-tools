@@ -122,33 +122,36 @@ export const DevEfficiency = () => {
     yField: "dev_mana",
     size: 4,
     tooltip: {
-      customContent: (_title, items) => {
-        if (items[0] === undefined) {
-          return;
+      showTitle: true,
+      title: (_, x) => (x as CountryDevEffiency).country.name,
+      customItems: (items) => {
+        const item = items?.[0];
+        const datum = item?.data as CountryDevEffiency | undefined;
+        if (!datum) {
+          return [];
         }
 
-        const data = items[0].data as CountryDevEffiency;
-        return `
-            <div class="px-3 py-2">
-                <div class="text-base">${data.country.name}</div>
-                <table>
-                    <tbody>
-                        <tr>
-                            <td>Mana spent:</td>
-                            <td class="pl-2 text-right">${formatInt(data.dev_mana)}</td>
-                        </tr>
-                        <tr>
-                            <td>Dev clicks:</td>
-                            <td class="pl-2 text-right">${formatInt(data.dev_clicks)}</td>
-                        </tr>
-                        <tr>
-                            <td>Average:</td>
-                            <td class="pl-2 text-right">${formatFloat(data.dev_mana / data.dev_clicks, 2)}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        `;
+        const color = "#ffffff";
+        return [
+          {
+            ...item,
+            color,
+            name: "Mana spent",
+            value: formatInt(datum.dev_mana),
+          },
+          {
+            ...item,
+            color,
+            name: "Dev clicks",
+            value: formatInt(datum.dev_clicks),
+          },
+          {
+            ...item,
+            color,
+            name: "Average",
+            value: formatFloat(datum.dev_mana / datum.dev_clicks, 2),
+          },
+        ];
       },
     },
 
