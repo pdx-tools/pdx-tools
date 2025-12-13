@@ -118,7 +118,12 @@ export const ProvinceDevelopmentDensity = () => {
         })),
       customContent: (_title, items = []) => {
         if (!items[0]) return "";
-        const datum = items[0].data as { x: number; y: number; xLabel?: string; xValue?: string };
+        const datum = items[0].data as {
+          x: number;
+          y: number;
+          xLabel?: string;
+          xValue?: string;
+        };
         return `
           <div class="px-3 py-2">
             <div class="text-sm">${datum.xLabel ?? "Development"}: ${datum.xValue ?? formatFloat(datum.x, 2)}</div>
