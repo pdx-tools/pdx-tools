@@ -107,7 +107,8 @@ const NavigationMenuContent = React.forwardRef<
 NavigationMenu.Content = NavigationMenuContent;
 
 interface NavigationMenuLinkProps
-  extends React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Link>,
+  extends
+    React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Link>,
     VariantProps<typeof navigationMenuTriggerStyle> {}
 
 const NavigationMenuLink = React.forwardRef<
