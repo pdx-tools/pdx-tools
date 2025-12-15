@@ -3,8 +3,8 @@ use eu5app::{
     should_highlight_individual_locations, tile_dimensions,
 };
 use pdx_map::{
-    CanvasDimensions, GpuLocationIdx, GpuSurfaceContext, LocationArrays, LocationFlags,
-    MapRenderer, MapTexture, SurfaceMapRenderer,
+    CanvasDimensions, GpuLocationIdx, GpuSurfaceContext, LocationArrays, LocationFlags, MapTexture,
+    SurfaceMapRenderer,
 };
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
@@ -79,7 +79,8 @@ impl Eu5CanvasSurface {
 
 #[wasm_bindgen]
 pub struct Eu5WasmMapRenderer {
-    app: pdx_map::MapViewController<pdx_map::SurfaceMapRenderer>,
+    app: pdx_map::MapViewController,
+    location_arrays: LocationArrays,
 }
 
 impl std::fmt::Debug for Eu5WasmMapRenderer {
@@ -97,15 +98,10 @@ impl Eu5WasmMapRenderer {
         east_texture: Eu5WasmTexture,
     ) -> Result<Self, JsError> {
         let display: CanvasDimensions = surface.display.into();
-        let display_surface = surface
-            .pipeline_components
-            .as_ref()
-            .display_surface(display);
         let renderer = SurfaceMapRenderer::new(
             surface.pipeline_components,
             west_texture.data,
             east_texture.data,
-            display_surface,
             display,
         );
 
@@ -116,7 +112,10 @@ impl Eu5WasmMapRenderer {
         app.renderer_mut()
             .set_location_borders(show_location_borders);
 
-        Ok(Eu5WasmMapRenderer { app })
+        Ok(Eu5WasmMapRenderer {
+            app,
+            location_arrays: LocationArrays::new(),
+        })
     }
 
     /// Get current raw zoom value
@@ -173,27 +172,21 @@ impl Eu5WasmMapRenderer {
     /// Synchronize a location array from JS to Rust
     #[wasm_bindgen]
     pub fn sync_location_array(&mut self, location_array: js_sys::Uint32Array) {
-        if self.app.renderer().location_arrays().is_empty() {
-            let local = location_array.to_vec();
-            let location_array = LocationArrays::from_data(local);
-            self.app.renderer_mut().set_location_arrays(location_array);
+        if self.location_arrays.is_empty() {
+            self.location_arrays = LocationArrays::from_data(location_array.to_vec());
         } else {
-            let dst = self.app.renderer_mut().location_arrays_mut().as_mut_data();
+            let dst = self.location_arrays.as_mut_data();
             location_array.copy_to(dst);
         }
+
+        self.upload_location_arrays();
     }
 
     #[wasm_bindgen]
-    pub fn render(&mut self) {
-        self.app.render();
-    }
-
-    #[wasm_bindgen]
-    pub fn present(&mut self) -> Result<(), JsError> {
+    pub fn render(&mut self) -> Result<(), JsError> {
         self.app
-            .present()
-            .map_err(|e| JsError::new(&format!("Failed to present: {e}")))?;
-        Ok(())
+            .render()
+            .map_err(|e| JsError::new(&format!("Failed to render: {e}")))
     }
 
     #[wasm_bindgen]
@@ -211,41 +204,41 @@ impl Eu5WasmMapRenderer {
 
     #[wasm_bindgen]
     pub fn lookup_location_id(&self, idx: &WasmGpuLocationIdx) -> u32 {
-        let val = self
-            .app
-            .renderer()
-            .location_arrays()
-            .get_location_id(idx.inner());
-        val.value()
+        self.location_arrays.get_location_id(idx.inner()).value()
     }
 
     #[wasm_bindgen]
     pub fn highlight_location(&mut self, idx: u16) {
-        let location_arrays = self.app.renderer_mut().location_arrays_mut();
-        location_arrays
+        self.location_arrays
             .get_mut(GpuLocationIdx::new(idx))
             .flags_mut()
             .set(LocationFlags::HIGHLIGHTED);
+        self.upload_location_arrays();
     }
 
     #[wasm_bindgen]
     pub fn highlight_app_location(&mut self, idx: u32) {
-        let location_arrays = self.app.renderer_mut().location_arrays_mut();
-        let mut iter = location_arrays.iter_mut();
+        let mut updated = false;
+        let mut iter = self.location_arrays.iter_mut();
         while let Some(mut location) = iter.next_location() {
             if location.location_id().value() == idx {
                 location.flags_mut().set(LocationFlags::HIGHLIGHTED);
+                updated = true;
             }
+        }
+
+        if updated {
+            self.upload_location_arrays();
         }
     }
 
     #[wasm_bindgen]
     pub fn unhighlight_location(&mut self, idx: u16) {
-        let location_arrays = self.app.renderer_mut().location_arrays_mut();
-        location_arrays
+        self.location_arrays
             .get_mut(GpuLocationIdx::new(idx))
             .flags_mut()
             .clear(LocationFlags::HIGHLIGHTED);
+        self.upload_location_arrays();
     }
 
     #[wasm_bindgen]
@@ -262,6 +255,13 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn queued_work(&self) -> WasmQueuedWorkFuture {
         WasmQueuedWorkFuture::from_queued_work_future(self.app.queued_work())
+    }
+}
+
+impl Eu5WasmMapRenderer {
+    fn upload_location_arrays(&mut self) {
+        let renderer = self.app.renderer_mut();
+        renderer.update_locations(&self.location_arrays);
     }
 }
 

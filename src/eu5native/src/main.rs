@@ -87,7 +87,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
 
     let mut map_app = Eu5Workspace::new(save, game_bundle.into_game_data())?;
     map_app.set_map_mode(MapMode::Political)?;
-    renderer.set_location_arrays(map_app.location_arrays().clone());
+    renderer.update_locations(map_app.location_arrays());
 
     let (full_width, full_height) = eu5app::world_dimensions();
     let mut combined_buffer = vec![0u8; (full_width * full_height * 4) as usize];
@@ -95,15 +95,11 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let mut screenshot_renderer = renderer.into_screenshot_renderer();
 
     // Render west tile and copy to left half of buffer
-    screenshot_renderer.render_west();
-
     screenshot_renderer
         .readback_west(&mut combined_buffer)
         .await?;
 
     // Render east tile and copy to right half of buffer
-    screenshot_renderer.render_east();
-
     screenshot_renderer
         .readback_east(&mut combined_buffer)
         .await?;

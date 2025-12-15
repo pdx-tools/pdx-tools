@@ -36,8 +36,6 @@ const mapGameEndpoint = () => {
       const app = await appTask;
       app.sync_location_array(locationArray);
       app.render();
-      await app.queued_work().wait();
-      app.present();
     },
 
     async center_at(x: number, y: number) {
@@ -238,7 +236,6 @@ export const createMapEngine = async (
       canvas.width = width;
       app.resize(width, height);
       app.render();
-      app.present();
     },
     get_zoom: () => {
       return app.get_zoom();
@@ -246,7 +243,6 @@ export const createMapEngine = async (
     zoomAtPoint: (cursorX: number, cursorY: number, zoomDelta: number) => {
       app.zoom_at_point(cursorX, cursorY, zoomDelta);
       app.render();
-      app.present();
 
       // Notify about zoom level change
       const newZoom = app.get_zoom();
@@ -263,7 +259,6 @@ export const createMapEngine = async (
     ) => {
       app.set_world_point_under_cursor(worldX, worldY, canvasX, canvasY);
       app.render();
-      app.present();
     },
     generateWorldScreenshot: async (
       fullResolution: boolean,
@@ -363,8 +358,6 @@ export const createMapEngine = async (
           }
           case "render": {
             app.render();
-            await app.queued_work().wait();
-            app.present();
             break;
           }
           case "setOwnerBorders": {
