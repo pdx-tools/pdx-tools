@@ -6,6 +6,23 @@ use wgpu::SurfaceTarget;
 use crate::error::RenderError;
 use crate::{CanvasDimensions, GpuLocationIdx, LocationArrays, ViewportBounds};
 
+/// A drawable layer that can be composed into the main map render pass
+pub trait RenderLayer {
+    /// Called when the render target is resized so layers can recreate GPU state
+    fn resize(&mut self, _config: &wgpu::SurfaceConfiguration, _device: &wgpu::Device) {}
+
+    /// Called before rendering to upload any per-frame data to the GPU
+    fn update(&mut self, _queue: &wgpu::Queue) {}
+
+    /// Record draw commands for this layer
+    fn draw<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        viewport: &ViewportBounds,
+        canvas_size: CanvasDimensions,
+    );
+}
+
 /// Maximum texture dimension supported
 const MAX_TEXTURE_DIMENSION: u32 = 8192;
 
@@ -721,70 +738,62 @@ impl MapRenderer {
         self.config.tile_height()
     }
 
-    /// Begin a new surface frame
-    pub fn begin_frame(&self, surface: &wgpu::Surface) -> Result<MapFrame<'_>, wgpu::SurfaceError> {
-        let output = surface.get_current_texture()?;
-        let width = output.texture.width();
-        let height = output.texture.height();
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let format = output.texture.format();
-
-        let encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Map Render Encoder"),
-            });
-
-        Ok(MapFrame {
-            renderer: self,
-            view,
-            encoder,
-            output: Some(output),
-            format,
-            width,
-            height,
-        })
-    }
-
-    /// Begin an offscreen frame for headless rendering
-    pub fn begin_offscreen_frame(&self, target_texture: &wgpu::Texture) -> MapFrame<'_> {
-        let width = target_texture.width();
-        let height = target_texture.height();
-        let view = target_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let format = target_texture.format();
-
-        let encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Offscreen Render Encoder"),
-            });
-
-        MapFrame {
-            renderer: self,
-            view,
-            encoder,
-            output: None,
-            format,
-            width,
-            height,
-        }
-    }
-
-    /// Get or create pipeline for format (lazy cache)
-    fn get_pipeline(
+    /// Update viewport uniforms and prepare a bind group for the current frame
+    pub fn prepare_bind_group(
         &self,
-        format: wgpu::TextureFormat,
-    ) -> std::cell::Ref<'_, wgpu::RenderPipeline> {
-        let mut cache = self.pipelines.borrow_mut();
+        queue: &wgpu::Queue,
+        resources: &MapResources,
+        bounds: ViewportBounds,
+        target_size: (u32, u32),
+    ) -> wgpu::BindGroup {
+        let uniforms = ComputeUniforms {
+            tile_width: self.config.tile_width(),
+            tile_height: self.config.tile_height(),
+            enable_location_borders: if self.config.enable_location_borders {
+                1
+            } else {
+                0
+            },
+            enable_owner_borders: if self.config.enable_owner_borders {
+                1
+            } else {
+                0
+            },
+            zoom_level: bounds.zoom_level,
+            viewport_x_offset: bounds.x,
+            viewport_y_offset: bounds.y,
+            canvas_width: target_size.0,
+            canvas_height: target_size.1,
+            world_width: bounds.width,
+            world_height: bounds.height,
+            _padding: 0,
+        };
 
+        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+
+        resources.ensure_bind_group(&self.device, &self.bind_group_layout, &self.uniform_buffer)
+    }
+
+    /// Record map draw commands into an existing render pass
+    pub fn draw<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        format: wgpu::TextureFormat,
+        bind_group: &'a wgpu::BindGroup,
+    ) {
+        let pipeline = self.pipeline_for_format(format);
+        pass.set_pipeline(&pipeline);
+        pass.set_bind_group(0, bind_group, &[]);
+        pass.draw(0..3, 0..1); // Full-screen triangle
+    }
+
+    /// Get or create a render pipeline for the given format
+    fn pipeline_for_format(&self, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {
+        let mut cache = self.pipelines.borrow_mut();
         cache
             .entry(format)
-            .or_insert_with(|| self.create_pipeline(format));
-
-        drop(cache); // Release mut borrow
-        std::cell::Ref::map(self.pipelines.borrow(), |map| &map[&format])
+            .or_insert_with(|| self.create_pipeline(format))
+            .clone()
     }
 
     fn create_pipeline(&self, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {
@@ -837,84 +846,85 @@ impl MapRenderer {
     }
 }
 
-/// RAII guard representing an active rendering frame
-pub struct MapFrame<'a> {
-    renderer: &'a MapRenderer,
-    view: wgpu::TextureView,
-    encoder: wgpu::CommandEncoder,
-    output: Option<wgpu::SurfaceTexture>,
-    format: wgpu::TextureFormat,
-    width: u32,
-    height: u32,
+/// Shared scene state for both onscreen and headless rendering
+pub struct MapScene {
+    base_renderer: MapRenderer,
+    resources: MapResources,
+    layers: Vec<Box<dyn RenderLayer>>,
 }
 
-impl<'a> MapFrame<'a> {
-    /// Draw the map
-    pub fn draw(&mut self, queue: &wgpu::Queue, resources: &MapResources, bounds: ViewportBounds) {
-        // Get configuration from renderer
-        let config = &self.renderer.config;
-
-        // 1. Update uniforms
-        let uniforms = ComputeUniforms {
-            tile_width: config.tile_width(),
-            tile_height: config.tile_height(),
-            enable_location_borders: if config.enable_location_borders { 1 } else { 0 },
-            enable_owner_borders: if config.enable_owner_borders { 1 } else { 0 },
-            zoom_level: bounds.zoom_level,
-            viewport_x_offset: bounds.x,
-            viewport_y_offset: bounds.y,
-            canvas_width: self.width,
-            canvas_height: self.height,
-            world_width: bounds.width,
-            world_height: bounds.height,
-            _padding: 0,
-        };
-
-        queue.write_buffer(
-            &self.renderer.uniform_buffer,
-            0,
-            bytemuck::cast_slice(&[uniforms]),
-        );
-
-        // 2. Ensure cached bind group
-        let bind_group = resources.ensure_bind_group(
-            &self.renderer.device,
-            &self.renderer.bind_group_layout,
-            &self.renderer.uniform_buffer,
-        );
-
-        // 3. Get cached pipeline
-        let pipeline = self.renderer.get_pipeline(self.format);
-
-        // 4. Encode render pass
-        {
-            let mut rpass = self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Map Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &self.view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
-                    },
-                    depth_slice: None,
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-
-            rpass.set_pipeline(&pipeline);
-            rpass.set_bind_group(0, &bind_group, &[]);
-            rpass.draw(0..3, 0..1); // Full-screen triangle
+impl MapScene {
+    pub fn new(base_renderer: MapRenderer, resources: MapResources) -> Self {
+        Self {
+            base_renderer,
+            resources,
+            layers: Vec::new(),
         }
     }
 
-    pub fn present(mut self, queue: &wgpu::Queue) {
-        queue.submit(Some(self.encoder.finish()));
-        if let Some(output) = self.output.take() {
-            output.present();
+    pub fn add_layer(
+        &mut self,
+        mut layer: impl RenderLayer + 'static,
+        config: &wgpu::SurfaceConfiguration,
+    ) {
+        layer.resize(config, &self.base_renderer.device);
+        self.layers.push(Box::new(layer));
+    }
+
+    pub fn draw<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        bind_group: &'a wgpu::BindGroup,
+        format: wgpu::TextureFormat,
+        viewport: &ViewportBounds,
+        canvas_size: CanvasDimensions,
+    ) {
+        self.base_renderer.draw(pass, format, bind_group);
+
+        for layer in &self.layers {
+            layer.draw(pass, viewport, canvas_size);
         }
+    }
+
+    pub fn update_locations(&mut self, queue: &wgpu::Queue, arrays: &LocationArrays) {
+        let device = &self.base_renderer.device;
+        self.resources.update(device, queue, arrays);
+    }
+
+    pub fn update_layers(&mut self, queue: &wgpu::Queue) {
+        for layer in &mut self.layers {
+            layer.update(queue);
+        }
+    }
+
+    pub fn resize_layers(&mut self, config: &wgpu::SurfaceConfiguration) {
+        for layer in &mut self.layers {
+            layer.resize(config, &self.base_renderer.device);
+        }
+    }
+
+    pub fn tile_width(&self) -> u32 {
+        self.base_renderer.tile_width()
+    }
+
+    pub fn tile_height(&self) -> u32 {
+        self.base_renderer.tile_height()
+    }
+
+    pub fn resources(&self) -> &MapResources {
+        &self.resources
+    }
+
+    pub fn resources_mut(&mut self) -> &mut MapResources {
+        &mut self.resources
+    }
+
+    pub fn renderer(&self) -> &MapRenderer {
+        &self.base_renderer
+    }
+
+    pub fn renderer_mut(&mut self) -> &mut MapRenderer {
+        &mut self.base_renderer
     }
 }
 
@@ -951,40 +961,14 @@ impl ColorIdReadback {
 }
 
 pub struct SurfaceMapRenderer {
-    renderer: MapRenderer,
-    resources: MapResources,
+    scene: MapScene,
     surface: wgpu::Surface<'static>,
     surface_config: wgpu::SurfaceConfiguration,
+    canvas_dimensions: CanvasDimensions,
     gpu: GpuContext,
 }
 
 impl SurfaceMapRenderer {
-    pub fn tile_width(&self) -> u32 {
-        self.renderer.tile_width()
-    }
-
-    pub fn tile_height(&self) -> u32 {
-        self.renderer.tile_height()
-    }
-
-    pub fn update_locations(&mut self, arrays: &LocationArrays) {
-        let device = &self.gpu.gpu.device;
-        let queue = &self.gpu.gpu.queue;
-        self.resources.update(device, queue, arrays);
-    }
-
-    pub fn resources(&self) -> &MapResources {
-        &self.resources
-    }
-
-    pub fn queue(&self) -> &wgpu::Queue {
-        &self.gpu.gpu.queue
-    }
-
-    pub fn begin_frame(&self) -> Result<MapFrame<'_>, wgpu::SurfaceError> {
-        self.renderer.begin_frame(&self.surface)
-    }
-
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(skip_all, level = "info", fields(width = dimensions.canvas_width, height = dimensions.canvas_height))
@@ -995,9 +979,6 @@ impl SurfaceMapRenderer {
         east_texture: MapTexture,
         dimensions: CanvasDimensions,
     ) -> Self {
-        let tile_width = west_texture.width();
-        let tile_height = west_texture.height();
-
         // Get surface configuration before consuming components
         let surface_ctx_ref = components.as_ref();
         let surface_config = surface_ctx_ref.surface_config(dimensions);
@@ -1005,35 +986,121 @@ impl SurfaceMapRenderer {
             .surface
             .configure(&surface_ctx_ref.core.gpu.device, &surface_config);
 
-        let renderer = MapRenderer::new(&components.core, tile_width, tile_height);
+        let renderer = MapRenderer::new(
+            &components.core,
+            west_texture.width(),
+            west_texture.height(),
+        );
         let resources = MapResources::new(&components.core, west_texture, east_texture);
+        let scene = MapScene::new(renderer, resources);
 
         Self {
-            renderer,
-            resources,
+            scene,
             surface: components.surface,
             surface_config,
+            canvas_dimensions: dimensions,
             gpu: components.core,
         }
+    }
+
+    pub fn render(&mut self, bounds: ViewportBounds) -> Result<(), RenderError> {
+        let output = self.surface.get_current_texture()?;
+        let format = output.texture.format();
+        let target_size = (output.texture.width(), output.texture.height());
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        let device = &self.scene.renderer().device;
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Map Render Encoder"),
+        });
+
+        let queue = &self.gpu.gpu.queue;
+        self.scene.update_layers(queue);
+
+        let bind_group = {
+            let renderer = self.scene.renderer();
+            let resources = self.scene.resources();
+            renderer.prepare_bind_group(queue, resources, bounds, target_size)
+        };
+
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Map Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            self.scene.draw(
+                &mut pass,
+                &bind_group,
+                format,
+                &bounds,
+                self.canvas_dimensions,
+            );
+        }
+
+        self.queue().submit(Some(encoder.finish()));
+        output.present();
+
+        Ok(())
+    }
+
+    pub fn add_layer(&mut self, layer: impl RenderLayer + 'static) {
+        self.scene.add_layer(layer, &self.surface_config);
+    }
+
+    pub fn tile_width(&self) -> u32 {
+        self.scene.tile_width()
+    }
+
+    pub fn tile_height(&self) -> u32 {
+        self.scene.tile_height()
+    }
+
+    pub fn update_locations(&mut self, arrays: &LocationArrays) {
+        let queue = &self.gpu.gpu.queue;
+        self.scene.update_locations(queue, arrays);
+    }
+
+    pub fn resources(&self) -> &MapResources {
+        self.scene.resources()
+    }
+
+    pub fn queue(&self) -> &wgpu::Queue {
+        &self.gpu.gpu.queue
     }
 
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(skip_all, level = "debug", fields(new_width, new_height))
     )]
-    pub fn resize(&mut self, new_width: u32, new_height: u32) {
-        self.surface_config.width = new_width;
-        self.surface_config.height = new_height;
+    pub fn resize(&mut self, new_dimensions: CanvasDimensions) {
+        self.canvas_dimensions = new_dimensions;
+        self.surface_config.width = new_dimensions.physical_width();
+        self.surface_config.height = new_dimensions.physical_height();
         self.surface
-            .configure(&self.renderer.device, &self.surface_config);
+            .configure(&self.scene.renderer().device, &self.surface_config);
+        self.scene.resize_layers(&self.surface_config);
     }
 
     pub fn set_location_borders(&mut self, enabled: bool) {
-        self.renderer.config.enable_location_borders = enabled;
+        self.scene.renderer_mut().config.enable_location_borders = enabled;
     }
 
     pub fn set_owner_borders(&mut self, enabled: bool) {
-        self.renderer.config.enable_owner_borders = enabled;
+        self.scene.renderer_mut().config.enable_owner_borders = enabled;
     }
 
     /// Get location ID at world coordinates using direct input texture sampling
@@ -1053,26 +1120,34 @@ impl SurfaceMapRenderer {
         // Determine which texture and local coordinates
         let (texture, local_x) = if wrapped_x < self.tile_width() as i32 {
             // West texture
-            (self.resources.west_texture().texture(), wrapped_x as u32)
+            (
+                self.scene.resources().west_texture().texture(),
+                wrapped_x as u32,
+            )
         } else {
             // East texture
             (
-                self.resources.east_texture().texture(),
+                self.scene.resources().east_texture().texture(),
                 (wrapped_x - self.tile_width() as i32) as u32,
             )
         };
 
         // Read single pixel from input texture (contains raw color ID)
         let buffer_size = 256u32;
-        let pixel_staging_buffer = self.renderer.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Single Pixel Staging Buffer"),
-            size: buffer_size as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let pixel_staging_buffer =
+            self.scene
+                .renderer()
+                .device
+                .create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("Single Pixel Staging Buffer"),
+                    size: buffer_size as u64,
+                    usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
 
         let mut encoder =
-            self.renderer
+            self.scene
+                .renderer()
                 .device
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("Single Pixel Readback Encoder"),
@@ -1136,32 +1211,51 @@ impl SurfaceMapRenderer {
         &self,
         screenshot_target: SurfaceTarget<'static>,
         dimensions: CanvasDimensions,
-    ) -> Result<SurfaceMapRenderer, RenderError> {
+    ) -> Result<Self, RenderError> {
         let surface = self.gpu.create_surface(screenshot_target)?;
         let surface_config = self.gpu.surface_config_for_surface(&surface, dimensions);
-        surface.configure(&self.renderer.device, &surface_config);
+        surface.configure(&self.scene.renderer().device, &surface_config);
 
-        let renderer = MapRenderer::from_existing(&self.renderer);
-        let resources = self.resources.clone();
+        let renderer = MapRenderer::from_existing(self.scene.renderer());
+        let resources = self.scene.resources().clone();
+        let scene = MapScene::new(renderer, resources);
 
-        Ok(SurfaceMapRenderer {
-            renderer,
-            resources,
+        Ok(Self {
+            scene,
             surface,
             surface_config,
+            canvas_dimensions: dimensions,
             gpu: self.gpu.clone(),
         })
     }
 }
 
+fn offscreen_surface_config(
+    width: u32,
+    height: u32,
+    format: wgpu::TextureFormat,
+) -> wgpu::SurfaceConfiguration {
+    wgpu::SurfaceConfiguration {
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        format,
+        width,
+        height,
+        present_mode: wgpu::PresentMode::Fifo,
+        alpha_mode: wgpu::CompositeAlphaMode::Opaque,
+        view_formats: vec![],
+        desired_maximum_frame_latency: 2,
+    }
+}
+
 pub struct HeadlessMapRenderer {
     gpu: GpuContext,
-    renderer: MapRenderer,
-    resources: MapResources,
+    scene: MapScene,
 
     // Offscreen rendering target
     viewport_texture: wgpu::Texture,
     viewport_staging_buffer: Option<wgpu::Buffer>,
+    target_config: wgpu::SurfaceConfiguration,
+    canvas_dimensions: CanvasDimensions,
 }
 
 impl HeadlessMapRenderer {
@@ -1177,10 +1271,6 @@ impl HeadlessMapRenderer {
         viewport_width: u32,
         viewport_height: u32,
     ) -> Result<HeadlessMapRenderer, RenderError> {
-        // Extract dimensions BEFORE moving textures
-        let tile_width = west_texture.width();
-        let tile_height = west_texture.height();
-
         let device = &gpu.gpu.device;
 
         // Create offscreen rendering target
@@ -1200,45 +1290,25 @@ impl HeadlessMapRenderer {
             view_formats: &[],
         });
 
-        let renderer = MapRenderer::new(&gpu, tile_width, tile_height);
+        let renderer = MapRenderer::new(&gpu, west_texture.width(), west_texture.height());
         let resources = MapResources::new(&gpu, west_texture, east_texture);
+        let scene = MapScene::new(renderer, resources);
+        let target_config =
+            offscreen_surface_config(viewport_width, viewport_height, viewport_texture.format());
+        let canvas_dimensions = CanvasDimensions {
+            canvas_width: viewport_width,
+            canvas_height: viewport_height,
+            scale_factor: 1.0,
+        };
 
         Ok(HeadlessMapRenderer {
             gpu,
-            renderer,
-            resources,
+            scene,
             viewport_texture,
             viewport_staging_buffer: None,
+            target_config,
+            canvas_dimensions,
         })
-    }
-
-    /// Resize the viewport and recreate the offscreen texture
-    #[cfg_attr(
-        feature = "tracing",
-        tracing::instrument(skip_all, level = "debug", fields(new_width = new_width, new_height = new_height))
-    )]
-    pub fn resize_viewport(&mut self, new_width: u32, new_height: u32) {
-        // Recreate viewport texture with new dimensions
-        self.viewport_texture = self
-            .renderer
-            .device
-            .create_texture(&wgpu::TextureDescriptor {
-                label: Some("Viewport Offscreen Texture"),
-                size: wgpu::Extent3d {
-                    width: new_width,
-                    height: new_height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-                view_formats: &[],
-            });
-
-        // Clear staging buffer so it gets recreated with new size
-        self.viewport_staging_buffer = None;
     }
 
     /// Render to offscreen texture and read back viewport data
@@ -1257,12 +1327,8 @@ impl HeadlessMapRenderer {
         output_buffer: &mut [u8],
         x_offset: u32,
     ) -> Result<(), RenderError> {
-        // Ensure the offscreen target matches the requested viewport size
-        if self.viewport_texture.width() != world_width
-            || self.viewport_texture.height() != world_height
-        {
-            self.resize_viewport(world_width, world_height);
-        }
+        assert_eq!(self.viewport_texture.width(), world_width);
+        assert_eq!(self.viewport_texture.height(), world_height);
 
         // Create staging buffer if it doesn't exist or has wrong size
         let buffer_size = (world_width * world_height * 4) as u64;
@@ -1272,39 +1338,76 @@ impl HeadlessMapRenderer {
                 .as_ref()
                 .is_some_and(|b| b.size() != buffer_size)
         {
-            self.viewport_staging_buffer =
-                Some(self.renderer.device.create_buffer(&wgpu::BufferDescriptor {
+            self.viewport_staging_buffer = Some(self.scene.renderer().device.create_buffer(
+                &wgpu::BufferDescriptor {
                     label: Some("Viewport Staging Buffer"),
                     size: buffer_size,
                     usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
-                }));
+                },
+            ));
         }
 
         let viewport_staging_buffer = self.viewport_staging_buffer.as_ref().unwrap();
 
-        // Render to offscreen texture using shared MapFrame logic
+        let device = &self.scene.renderer().device;
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Offscreen Render Encoder"),
+        });
+
+        let render_view = self
+            .viewport_texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let render_bounds = ViewportBounds {
+            x: x_offset,
+            y: 0,
+            width: world_width,
+            height: world_height,
+            zoom_level: 1.0,
+        };
+
+        let queue = &self.gpu.gpu.queue;
+        self.scene.update_layers(queue);
+
+        let bind_group = {
+            let renderer = self.scene.renderer();
+            let resources = self.scene.resources();
+            renderer.prepare_bind_group(
+                queue,
+                resources,
+                render_bounds,
+                (
+                    self.viewport_texture.width(),
+                    self.viewport_texture.height(),
+                ),
+            )
+        };
+
         {
-            let mut frame = self.renderer.begin_offscreen_frame(&self.viewport_texture);
-            let bounds = ViewportBounds {
-                x: x_offset,
-                y: 0,
-                width: world_width,
-                height: world_height,
-                zoom_level: 1.0,
-            };
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Offscreen Map Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &render_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
 
-            frame.draw(self.queue(), &self.resources, bounds);
-            frame.present(self.queue());
+            self.scene.draw(
+                &mut pass,
+                &bind_group,
+                self.viewport_texture.format(),
+                &render_bounds,
+                self.canvas_dimensions,
+            );
         }
-
-        // Copy rendered texture to staging buffer
-        let mut encoder =
-            self.renderer
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Offscreen Copy Encoder"),
-                });
 
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
@@ -1337,7 +1440,7 @@ impl HeadlessMapRenderer {
             let _ = sender.send(result);
         });
 
-        self.renderer.device.poll(wgpu::PollType::Wait {
+        self.scene.renderer().device.poll(wgpu::PollType::Wait {
             submission_index: None,
             timeout: None,
         })?;
@@ -1371,21 +1474,24 @@ impl HeadlessMapRenderer {
     }
 
     pub fn set_location_borders(&mut self, enabled: bool) {
-        self.renderer.config.enable_location_borders = enabled;
+        self.scene.renderer_mut().config.enable_location_borders = enabled;
     }
 
     pub fn set_owner_borders(&mut self, enabled: bool) {
-        self.renderer.config.enable_owner_borders = enabled;
+        self.scene.renderer_mut().config.enable_owner_borders = enabled;
+    }
+
+    pub fn add_layer(&mut self, layer: impl RenderLayer + 'static) {
+        self.scene.add_layer(layer, &self.target_config);
     }
 
     pub fn update_locations(&mut self, arrays: &LocationArrays) {
-        let device = &self.gpu.gpu.device;
         let queue = &self.gpu.gpu.queue;
-        self.resources.update(device, queue, arrays);
+        self.scene.update_locations(queue, arrays);
     }
 
     pub fn resources(&self) -> &MapResources {
-        &self.resources
+        self.scene.resources()
     }
 
     pub fn queue(&self) -> &wgpu::Queue {
@@ -1398,8 +1504,8 @@ impl HeadlessMapRenderer {
     /// encapsulates screenshot-specific operations (render_west/east, readback_west/east).
     /// Tile dimensions are automatically extracted from the renderer.
     pub fn into_screenshot_renderer(self) -> crate::ScreenshotRenderer<Self> {
-        let tile_width = self.renderer.tile_width();
-        let tile_height = self.renderer.tile_height();
+        let tile_width = self.scene.tile_width();
+        let tile_height = self.scene.tile_height();
         crate::ScreenshotRenderer::new_headless(self, tile_width, tile_height)
     }
 }
