@@ -163,8 +163,10 @@ const TableCaption = React.forwardRef<
 });
 Table.Caption = TableCaption;
 
-interface ColumnHeaderProps<TData, TValue>
-  extends Omit<React.HTMLAttributes<HTMLButtonElement>, "title"> {
+interface ColumnHeaderProps<TData, TValue> extends Omit<
+  React.HTMLAttributes<HTMLButtonElement>,
+  "title"
+> {
   column: Column<TData, TValue>;
   icon?: React.ReactNode;
   title: string;
