@@ -121,7 +121,9 @@ where
     Resolver: TokenResolver,
 {
     let flavor = Eu5Flavor::new();
+    let mut known_quote = false;
     let mut known_number = false;
+    let mut known_unquote = false;
     let mut known_date = false;
     let mut known_int = false;
 
@@ -145,15 +147,45 @@ where
                         continue;
                     }
 
-                    known_date = id == "date";
-                    known_number = id == "seed";
-                    known_int = id == "resistance";
+                    known_date =
+                        matches!(id, "creation_date" | "date" | "leader_date" | "end_date");
+                    known_number = matches!(id, "seed" | "random_count" | "random" | "name_index");
+                    known_int = matches!(id, "resistance" | "percent" | "utility");
+                    known_unquote = matches!(id, "locations");
+                    known_quote = matches!(
+                        id,
+                        "adjective"
+                            | "base"
+                            | "country_name"
+                            | "custom_name"
+                            | "dna"
+                            | "female_names"
+                            | "first_name"
+                            | "flags"
+                            | "historical"
+                            | "icon"
+                            | "key"
+                            | "last_name"
+                            | "male_names"
+                            | "name_key"
+                            | "name"
+                            | "nickname"
+                            | "override_adj"
+                            | "override_name"
+                            | "province_definition"
+                            | "regnal_name"
+                            | "script"
+                            | "title"
+                            | "value"
+                    );
                     wtr.write_unquoted(id.as_bytes())?;
                 }
                 None => {
                     known_date = false;
                     known_number = false;
                     known_int = false;
+                    known_quote = false;
+                    known_unquote = false;
                     match options.on_failed_resolve {
                         FailedResolveStrategy::Error => {
                             return Err(Eu5ErrorKind::UnknownToken { token_id: x }.into());
@@ -178,6 +210,12 @@ where
             },
             Token::Open => wtr.write_start()?,
             Token::Close => {
+                known_date = false;
+                known_number = false;
+                known_int = false;
+                known_quote = false;
+                known_unquote = false;
+
                 wtr.write_end()?;
                 if header && wtr.depth() == 0 {
                     wtr.inner().write_all(b"\n")?;
@@ -206,7 +244,7 @@ where
             }
             Token::Bool(value) => wtr.write_bool(value)?,
             Token::Quoted(scalar) => {
-                if wtr.expecting_key() {
+                if wtr.expecting_key() || known_unquote {
                     wtr.write_unquoted(scalar.as_bytes())?;
                 } else {
                     wtr.write_quoted(scalar.as_bytes())?;
@@ -229,7 +267,13 @@ where
             Token::Rgb(rgb) => wtr.write_rgb(&rgb)?,
             Token::I64(value) => wtr.write_i64(value)?,
             Token::Lookup(x) => match resolver.lookup(x) {
-                Some(s) => wtr.write_unquoted(s.as_bytes())?,
+                Some(s) => {
+                    if known_quote {
+                        wtr.write_quoted(s.as_bytes())?
+                    } else {
+                        wtr.write_unquoted(s.as_bytes())?
+                    }
+                }
                 None => match options.on_failed_resolve {
                     FailedResolveStrategy::Error => {
                         return Err(Eu5ErrorKind::UnknownLookup { lookup_id: x }.into());
