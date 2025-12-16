@@ -272,14 +272,9 @@ impl RenderLayer for DateLayer {
     fn draw<'a>(
         &'a self,
         pass: &mut wgpu::RenderPass<'a>,
-        viewport: &ViewportBounds,
+        _viewport: &ViewportBounds,
         _canvas_size: CanvasDimensions,
     ) {
-        // Only draw on the western hemisphere
-        if viewport.x != 0 {
-            return;
-        }
-
         if self.pending_upload.is_some() {
             return;
         }

@@ -94,7 +94,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     map_app.set_map_mode(MapMode::Political)?;
     renderer.update_locations(map_app.location_arrays());
 
-    renderer.add_layer(DateLayer::new(save_date, 20));
+    let date_layer = renderer.add_layer(DateLayer::new(save_date, 20));
 
     let (full_width, full_height) = eu5app::world_dimensions();
     let mut combined_buffer = vec![0u8; (full_width * full_height * 4) as usize];
@@ -105,6 +105,11 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     screenshot_renderer
         .readback_west(&mut combined_buffer)
         .await?;
+
+    // No need to render date on east tile
+    screenshot_renderer
+        .renderer_mut()
+        .set_layer_visible(date_layer, false);
 
     // Render east tile and copy to right half of buffer
     screenshot_renderer

@@ -23,6 +23,26 @@ pub trait RenderLayer {
     );
 }
 
+/// Opaque handle to identify a layer
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LayerId(u32);
+
+struct LayerEntry {
+    id: LayerId,
+    layer: Box<dyn RenderLayer>,
+    visible: bool,
+}
+
+impl LayerEntry {
+    fn new(id: LayerId, layer: impl RenderLayer + 'static) -> Self {
+        Self {
+            id,
+            layer: Box::new(layer),
+            visible: true, // Default to visible
+        }
+    }
+}
+
 /// Maximum texture dimension supported
 const MAX_TEXTURE_DIMENSION: u32 = 8192;
 
@@ -850,7 +870,8 @@ impl MapRenderer {
 pub struct MapScene {
     base_renderer: MapRenderer,
     resources: MapResources,
-    layers: Vec<Box<dyn RenderLayer>>,
+    layers: Vec<LayerEntry>,
+    next_layer_id: u32,
 }
 
 impl MapScene {
@@ -859,16 +880,28 @@ impl MapScene {
             base_renderer,
             resources,
             layers: Vec::new(),
+            next_layer_id: 0,
         }
     }
 
+    /// Add a layer and return a stable Handle to control it later
     pub fn add_layer(
         &mut self,
         mut layer: impl RenderLayer + 'static,
         config: &wgpu::SurfaceConfiguration,
-    ) {
+    ) -> LayerId {
         layer.resize(config, &self.base_renderer.device);
-        self.layers.push(Box::new(layer));
+        let id = LayerId(self.next_layer_id);
+        self.next_layer_id += 1;
+        self.layers.push(LayerEntry::new(id, layer));
+        id
+    }
+
+    /// Toggle visibility (Zero cost compared to adding/removing)
+    pub fn set_layer_visible(&mut self, id: LayerId, visible: bool) {
+        if let Some(entry) = self.layers.iter_mut().find(|e| e.id == id) {
+            entry.visible = visible;
+        }
     }
 
     pub fn draw<'a>(
@@ -881,8 +914,10 @@ impl MapScene {
     ) {
         self.base_renderer.draw(pass, format, bind_group);
 
-        for layer in &self.layers {
-            layer.draw(pass, viewport, canvas_size);
+        for entry in &self.layers {
+            if entry.visible {
+                entry.layer.draw(pass, viewport, canvas_size);
+            }
         }
     }
 
@@ -892,14 +927,14 @@ impl MapScene {
     }
 
     pub fn update_layers(&mut self, queue: &wgpu::Queue) {
-        for layer in &mut self.layers {
-            layer.update(queue);
+        for entry in &mut self.layers {
+            entry.layer.update(queue);
         }
     }
 
     pub fn resize_layers(&mut self, config: &wgpu::SurfaceConfiguration) {
-        for layer in &mut self.layers {
-            layer.resize(config, &self.base_renderer.device);
+        for entry in &mut self.layers {
+            entry.layer.resize(config, &self.base_renderer.device);
         }
     }
 
@@ -1481,8 +1516,12 @@ impl HeadlessMapRenderer {
         self.scene.renderer_mut().config.enable_owner_borders = enabled;
     }
 
-    pub fn add_layer(&mut self, layer: impl RenderLayer + 'static) {
-        self.scene.add_layer(layer, &self.target_config);
+    pub fn add_layer(&mut self, layer: impl RenderLayer + 'static) -> LayerId {
+        self.scene.add_layer(layer, &self.target_config)
+    }
+
+    pub fn set_layer_visible(&mut self, id: LayerId, visible: bool) {
+        self.scene.set_layer_visible(id, visible);
     }
 
     pub fn update_locations(&mut self, arrays: &LocationArrays) {
@@ -1538,6 +1577,6 @@ fn choose_texture_format(available_textures: &[wgpu::TextureFormat]) -> wgpu::Te
         .unwrap_or(available_textures[0]);
 
     #[cfg(feature = "tracing")]
-    tracing::debug!(name: "renderer.texture_format.selected", present_mode = ?result, available_options = ?available_textures);
+    tracing::debug!(name: "renderer.texture_format.selected", texture_format = ?result, available_options = ?available_textures);
     result
 }
