@@ -1,4 +1,5 @@
 use clap::Parser;
+use date_layer::DateLayer;
 use eu5app::{
     Eu5SaveLoader, Eu5Workspace, MapMode,
     game_data::{TextureProvider, game_install::Eu5GameInstall},
@@ -7,6 +8,8 @@ use eu5save::{BasicTokenResolver, Eu5File};
 use std::{io::IsTerminal, path::PathBuf};
 use tracing::{info, info_span, level_filters::LevelFilter};
 use tracing_subscriber::{EnvFilter, fmt::format::FmtSpan};
+
+mod date_layer;
 
 /// EU5 native map renderer - renders EU5 save files to PNG images
 #[derive(Parser, Debug)]
@@ -26,7 +29,7 @@ struct Args {
     tokens: PathBuf,
 
     /// Output PNG file path
-    #[arg(short = 'o', long, default_value = "locations-development-mode.png")]
+    #[arg(short = 'o', long, default_value = "locations.png")]
     output: PathBuf,
 }
 
@@ -85,9 +88,13 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         tile_height,
     )?;
 
+    let save_date = save.game.metadata().date.date_fmt().to_string();
+
     let mut map_app = Eu5Workspace::new(save, game_bundle.into_game_data())?;
     map_app.set_map_mode(MapMode::Political)?;
     renderer.update_locations(map_app.location_arrays());
+
+    renderer.add_layer(DateLayer::new(save_date, 20));
 
     let (full_width, full_height) = eu5app::world_dimensions();
     let mut combined_buffer = vec![0u8; (full_width * full_height * 4) as usize];

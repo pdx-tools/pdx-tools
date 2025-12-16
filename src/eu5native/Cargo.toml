@@ -7,6 +7,7 @@ edition = "2024"
 workspace = true
 
 [dependencies]
+bytemuck = { workspace = true, features = ["derive"] }
 bumpalo = { workspace = true, features = ["collections"] }
 bumpalo-serde = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
