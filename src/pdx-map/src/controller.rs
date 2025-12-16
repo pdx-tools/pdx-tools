@@ -68,10 +68,7 @@ impl MapViewController {
 impl MapViewController {
     pub fn render(&mut self) -> Result<(), RenderError> {
         let bounds = self.viewport.viewport_bounds();
-        let mut frame = self.renderer.begin_frame()?;
-        frame.draw(self.renderer.queue(), self.renderer.resources(), bounds);
-        frame.present(self.renderer.queue());
-        Ok(())
+        self.renderer.render(bounds)
     }
 
     pub fn queued_work(&self) -> QueuedWorkFuture {
@@ -84,7 +81,13 @@ impl MapViewController {
         tracing::instrument(skip_all, level = "debug", fields(logical_width, logical_height))
     )]
     pub fn resize(&mut self, logical_width: u32, logical_height: u32) {
-        self.renderer.resize(logical_width, logical_height);
+        let new_dimensions = CanvasDimensions {
+            canvas_width: logical_width,
+            canvas_height: logical_height,
+            scale_factor: self.canvas_dimensions.scale_factor,
+        };
+        self.canvas_dimensions = new_dimensions;
+        self.renderer.resize(new_dimensions);
         self.viewport.resize(logical_width, logical_height);
     }
 
@@ -182,10 +185,7 @@ impl ScreenshotRenderer<SurfaceMapRenderer> {
     }
 
     fn render_bounds(&mut self, bounds: ViewportBounds) -> Result<(), RenderError> {
-        let mut frame = self.renderer.begin_frame()?;
-        frame.draw(self.renderer.queue(), self.renderer.resources(), bounds);
-        frame.present(self.renderer.queue());
-        Ok(())
+        self.renderer.render(bounds)
     }
 
     /// Render the western tile

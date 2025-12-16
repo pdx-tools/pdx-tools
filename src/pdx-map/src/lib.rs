@@ -21,8 +21,8 @@ pub use controller::{MapViewController, ScreenshotRenderer};
 pub use error::{RenderError, RenderErrorKind};
 #[cfg(feature = "render")]
 pub use renderer::{
-    ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, MapFrame, MapRenderer,
-    MapResources, MapTexture, QueuedWorkFuture, RenderConfig, SurfaceMapRenderer,
+    ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, MapRenderer, MapResources,
+    MapScene, MapTexture, QueuedWorkFuture, RenderConfig, RenderLayer, SurfaceMapRenderer,
 };
 #[cfg(feature = "render")]
 pub use wgpu;
