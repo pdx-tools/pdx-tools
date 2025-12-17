@@ -32,6 +32,7 @@ export function saveView<S, U>(opts?: { save?: S; user?: U }) {
     patch: sql<string>`CONCAT(${table.saves.saveVersionFirst}, '.', ${table.saves.saveVersionSecond}, '.', ${table.saves.saveVersionThird}, '.', ${table.saves.saveVersionFourth})`,
     difficulty: table.saves.gameDifficulty,
     achievements: table.saves.achieveIds,
+    leaderboard_qualified: table.saves.leaderboardQualified,
     ...opts?.save,
   } as const;
 
@@ -183,6 +184,7 @@ export async function getAchievementDb(
       and(
         sql`${table.saves.achieveIds} @> Array[${[achievement.id]}]::int[]`,
         isNotNull(table.saves.scoreDays),
+        eq(table.saves.leaderboardQualified, true),
       ),
     )
     .as("ranked");

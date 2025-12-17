@@ -449,3 +449,56 @@ test("api post new save", async () => {
 
   expect(upload.save_id).toBeDefined();
 });
+
+test("leaderboard disqualification", async () => {
+  const client = await HttpClient.create();
+  const ita1Path = "ita1.eu4";
+
+  // Upload a save with achievement 18
+  const upload = await client.uploadSave(ita1Path);
+  expect(upload.save_id).toBeDefined();
+
+  // Verify save appears on achievement leaderboard
+  let achievementLeaderboard = await client.get<AchievementApiResponse>(
+    "/api/achievements/18",
+  );
+  expect(achievementLeaderboard.saves).toHaveLength(1);
+  expect(achievementLeaderboard.saves[0].id).toEqual(upload.save_id);
+
+  // Verify save detail includes leaderboard_qualified field (defaults to true)
+  let saveDetail = await client.get<SaveResponse>(
+    `/api/saves/${upload.save_id}`,
+  );
+  expect(saveDetail.leaderboard_qualified).toBe(true);
+
+  // Disqualify the save from leaderboards
+  await client.patch(`/api/saves/${upload.save_id}`, {
+    leaderboard_qualified: false,
+  });
+
+  // Verify save no longer appears on achievement leaderboard
+  achievementLeaderboard = await client.get<AchievementApiResponse>(
+    "/api/achievements/18",
+  );
+  expect(achievementLeaderboard.saves).toHaveLength(0);
+
+  // Verify save detail reflects disqualification
+  saveDetail = await client.get<SaveResponse>(`/api/saves/${upload.save_id}`);
+  expect(saveDetail.leaderboard_qualified).toBe(false);
+
+  // Re-qualify the save for leaderboards
+  await client.patch(`/api/saves/${upload.save_id}`, {
+    leaderboard_qualified: true,
+  });
+
+  // Verify save reappears on achievement leaderboard
+  achievementLeaderboard = await client.get<AchievementApiResponse>(
+    "/api/achievements/18",
+  );
+  expect(achievementLeaderboard.saves).toHaveLength(1);
+  expect(achievementLeaderboard.saves[0].id).toEqual(upload.save_id);
+
+  // Verify save detail reflects re-qualification
+  saveDetail = await client.get<SaveResponse>(`/api/saves/${upload.save_id}`);
+  expect(saveDetail.leaderboard_qualified).toBe(true);
+});

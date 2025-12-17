@@ -23,9 +23,18 @@ import { Tooltip } from "@/components/Tooltip";
 import { IconButton } from "@/components/IconButton";
 import { Alert } from "@/components/Alert";
 import { Link } from "@/components/Link";
-import { EyeIcon } from "@heroicons/react/24/outline";
+import {
+  EyeIcon,
+  ShieldExclamationIcon,
+  ShieldCheckIcon,
+} from "@heroicons/react/24/outline";
 import { formatInt } from "@/lib/format";
 import { Card } from "@/components/Card";
+import { Button } from "@/components/Button";
+import { Dialog } from "@/components/Dialog";
+import { LoadingIcon } from "@/components/icons/LoadingIcon";
+import { toast } from "sonner";
+import { pdxApi } from "@/services/appApi";
 import type {
   CompletedAchievement,
   GreatPower,
@@ -53,6 +62,10 @@ export const InfoDrawer = () => {
   const canUpdateSave = hasPermission(session, "savefile:update", {
     userId: serverFile?.user_id,
   });
+  const canManageLeaderboard = hasPermission(
+    session,
+    "savefile:leaderboard-qualification",
+  );
 
   const players = playerHistories.data
     ?.map((x) => ({
@@ -118,6 +131,22 @@ export const InfoDrawer = () => {
               )}
             </tbody>
           </table>
+          {serverFile?.leaderboard_qualified === false && (
+            <Alert
+              variant="warning"
+              className="mt-4 items-start gap-3 rounded-lg p-4 shadow-sm"
+            >
+              <div className="flex items-start">
+                <div className="space-y-1">
+                  <Alert.Title>Disqualified from Leaderboards</Alert.Title>
+                  <Alert.Description>
+                    This save has been excluded from achievement rankings by an
+                    administrator.
+                  </Alert.Description>
+                </div>
+              </div>
+            </Alert>
+          )}
         </Card>
         <Card className="w-80 p-4">
           <div className="space-y-3">
@@ -208,6 +237,16 @@ export const InfoDrawer = () => {
           <Aar
             defaultValue={serverFile?.aar || ""}
             editMode={canUpdateSave ? "privileged" : "never"}
+          />
+        </>
+      )}
+
+      {serverFile?.id && canManageLeaderboard && (
+        <>
+          <Divider>Leaderboard Management</Divider>
+          <LeaderboardQualificationToggle
+            saveId={serverFile.id}
+            currentStatus={serverFile.leaderboard_qualified ?? true}
           />
         </>
       )}
@@ -358,5 +397,102 @@ function CountryCard({
         </div>
       ) : null}
     </Card>
+  );
+}
+
+interface LeaderboardQualificationToggleProps {
+  saveId: string;
+  currentStatus: boolean; // true = qualified, false = unqualified
+}
+
+function LeaderboardQualificationToggle({
+  saveId,
+  currentStatus,
+}: LeaderboardQualificationToggleProps) {
+  const [open, setOpen] = useState(false);
+  const patchSave = pdxApi.save.useUpdate();
+  const newStatus = !currentStatus;
+
+  const handleConfirm = () => {
+    patchSave.mutate(
+      { id: saveId, leaderboard_qualified: newStatus },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          toast.success(
+            newStatus
+              ? "Save qualified for leaderboards"
+              : "Save removed from leaderboards",
+          );
+        },
+        onError: (e) => {
+          toast.error("Failed to update leaderboard status", {
+            description: e.message,
+          });
+        },
+      },
+    );
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-5">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog.Trigger asChild>
+          <Button
+            variant={currentStatus ? "danger" : "primary"}
+            className="gap-2"
+          >
+            {currentStatus ? (
+              <>
+                <ShieldExclamationIcon className="h-5 w-5" />
+                Remove from Leaderboards
+              </>
+            ) : (
+              <>
+                <ShieldCheckIcon className="h-5 w-5" />
+                Qualify for Leaderboards
+              </>
+            )}
+          </Button>
+        </Dialog.Trigger>
+
+        <Dialog.Content>
+          <Dialog.Header>
+            <Dialog.Title>
+              {newStatus ? "Qualify Save?" : "Remove Save from Leaderboards?"}
+            </Dialog.Title>
+            <Dialog.Description className="py-4">
+              {newStatus ? (
+                <>
+                  This save will be re-included in achievement leaderboards and
+                  may affect current rankings.
+                </>
+              ) : (
+                <>
+                  This save will be removed from all achievement leaderboards.
+                  The save will remain accessible, but will not appear in any
+                  rankings. Other players' rankings may shift as a result.
+                </>
+              )}
+            </Dialog.Description>
+          </Dialog.Header>
+
+          <Dialog.Footer>
+            <Dialog.Close asChild>
+              <Button>Cancel</Button>
+            </Dialog.Close>
+            <Button
+              variant={newStatus ? "primary" : "danger"}
+              className="gap-2"
+              onClick={handleConfirm}
+              disabled={patchSave.isPending}
+            >
+              {patchSave.isPending && <LoadingIcon className="h-4 w-4" />}
+              {newStatus ? "Yes, Qualify" : "Yes, Remove"}
+            </Button>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog>
+    </div>
   );
 }

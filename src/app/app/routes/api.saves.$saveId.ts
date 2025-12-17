@@ -24,6 +24,7 @@ const PatchBody = z.object({
     .string()
     .nullish()
     .transform((x) => x ?? undefined),
+  leaderboard_qualified: z.boolean().optional(),
 });
 
 export type SaveResponse = Awaited<ReturnType<typeof getSave>>;
@@ -69,20 +70,39 @@ export const action = withCore(
             throw new ValidationError("unable to parse patch props");
           }
 
+          const updates = {
+            ...data.data,
+            leaderboardQualified: data.data.leaderboard_qualified,
+          };
+
+          // Leaderboard changes should be restricted to very privileged users.
+          const wantsLeaderboardChange =
+            data.data.leaderboard_qualified !== undefined;
+
+          if (wantsLeaderboardChange) {
+            ensurePermissions(session, "savefile:leaderboard-qualification");
+          }
+
           await db.transaction(async (tx) => {
             const rows = await tx
               .update(table.saves)
-              .set(data.data)
+              .set(updates)
               .where(eq(table.saves.id, params.saveId))
               .returning({ userId: table.saves.userId });
 
             ensurePermissions(session, "savefile:update", rows.at(0));
           });
 
+          const eventProps: Record<string, string> = { key: params.saveId };
+          if (data.data.leaderboard_qualified !== undefined) {
+            eventProps.leaderboard_qualified = String(
+              data.data.leaderboard_qualified,
+            );
+          }
           captureEvent({
             userId: session.id,
             event: "Save patched",
-            key: params.saveId,
+            ...eventProps,
           });
           return new Response(null, { status: 204 });
         }

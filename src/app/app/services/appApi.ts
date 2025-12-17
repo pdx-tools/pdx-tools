@@ -34,6 +34,7 @@ export type SavePatchProps = {
   id: string;
   aar?: string;
   filename?: string;
+  leaderboard_qualified?: boolean;
 };
 
 export const pdxKeys = {
@@ -238,8 +239,13 @@ export const pdxApi = {
       return useMutation({
         mutationFn: ({ id, ...rest }: SavePatchProps) =>
           sendJson(`/api/saves/${id}`, { body: rest, method: "PATCH" }),
-        onSuccess: (_, { id }) => {
+        onSuccess: (_, { id, leaderboard_qualified }) => {
           queryClient.invalidateQueries({ queryKey: pdxKeys.save(id) });
+
+          // Refresh leaderboards if qualification status changed
+          if (leaderboard_qualified !== undefined) {
+            queryClient.invalidateQueries({ queryKey: pdxKeys.achievements() });
+          }
         },
       });
     },

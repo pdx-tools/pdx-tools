@@ -1,0 +1,1 @@
+ALTER TABLE "saves" ADD COLUMN "leaderboard_qualified" boolean DEFAULT true NOT NULL;
