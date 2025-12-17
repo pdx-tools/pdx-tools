@@ -34,6 +34,9 @@ type PdxPermissions =
     }
   | {
       kind: "leaderboard:rebalance";
+    }
+  | {
+      kind: "savefile:leaderboard-qualification";
     };
 
 type PermissionFunction<K> = K extends { data: infer D }
@@ -57,6 +60,7 @@ const ROLES: RolePermissionsMapping = {
     "savefile:reprocess": true,
     "leaderboard:rebalance": true,
     "savefile:og-request": true,
+    "savefile:leaderboard-qualification": true,
   },
   user: {
     "savefile:create": true,

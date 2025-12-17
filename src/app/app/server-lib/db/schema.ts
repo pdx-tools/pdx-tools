@@ -71,6 +71,9 @@ export const saves = pgTable(
     gameDifficulty: gameDifficulty("game_difficulty").notNull(),
     aar: text("aar"),
     playthroughId: text("playthrough_id").notNull(),
+    leaderboardQualified: boolean("leaderboard_qualified")
+      .notNull()
+      .default(true),
   },
   (saves) => [
     index("idx_save_achieve_ids").on(saves.achieveIds),
