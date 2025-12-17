@@ -53,7 +53,7 @@ pub struct Metadata<'bump> {
 
 #[derive(Debug, ArenaDeserialize)]
 pub struct Compatibility<'bump> {
-    pub locations: bumpalo::collections::Vec<'bump, BStr<'bump>>,
+    pub locations: &'bump [BStr<'bump>],
 }
 
 impl<'bump> Compatibility<'bump> {
@@ -100,7 +100,7 @@ pub struct PlayedCountry<'bump> {
 
 #[derive(Debug)]
 pub struct Eu5Database<'bump, Of: ArenaDeserialize<'bump>> {
-    pub database: bumpalo::collections::Vec<'bump, (u32, Option<Of>)>,
+    pub database: &'bump [(u32, Option<Of>)],
 }
 
 impl<'bump, Of: ArenaDeserialize<'bump> + 'bump> ArenaDeserialize<'bump>
@@ -173,7 +173,9 @@ impl<'bump, Of: ArenaDeserialize<'bump> + 'bump> ArenaDeserialize<'bump>
                     }
                 }
                 let database = database.ok_or_else(|| de::Error::missing_field("database"))?;
-                Ok(Eu5Database { database })
+                Ok(Eu5Database {
+                    database: database.into_bump_slice(),
+                })
             }
         }
 
@@ -275,4 +277,15 @@ impl<'bump> Gamestate<'bump> {
     // pub fn provinces(&self) -> &Eu5Database<'bump, Province<'bump>> {
     //     &self.provinces
     // }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gamestate_is_send_sync() {
+        fn assert_send<T: Send + Sync>() {}
+        assert_send::<Gamestate>();
+    }
 }
