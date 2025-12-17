@@ -230,6 +230,10 @@ impl ScreenshotRenderer<HeadlessMapRenderer> {
         }
     }
 
+    pub fn renderer_mut(&mut self) -> &mut HeadlessMapRenderer {
+        &mut self.renderer
+    }
+
     /// Render and read back the western tile
     pub async fn readback_west(&mut self, buffer: &mut [u8]) -> Result<(), RenderError> {
         self.renderer
