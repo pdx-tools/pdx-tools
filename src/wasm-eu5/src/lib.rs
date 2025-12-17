@@ -4,6 +4,7 @@ use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
+use eu5save::models::Gamestate;
 use eu5save::{Eu5ErrorKind, Eu5Melt};
 use eu5save::{FailedResolveStrategy, MeltOptions};
 use schemas::FlatResolver;
@@ -270,7 +271,9 @@ impl Eu5WasmGameBundle {
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct Eu5App {
-    app: eu5app::Eu5Workspace,
+    _loaded_save: Eu5LoadedSave,
+    app: eu5app::Eu5Workspace<'static>, // depends on _loaded_save
+
     meta: Eu5SaveMetadataHandle,
 }
 
@@ -278,17 +281,24 @@ pub struct Eu5App {
 impl Eu5App {
     #[wasm_bindgen]
     pub fn init(
-        gamestate: Eu5WasmGamestate,
+        mut gamestate: Eu5WasmGamestate,
         game_bundle: Eu5WasmGameBundle,
     ) -> Result<Eu5App, JsError> {
         let meta = gamestate.meta;
-        let app = eu5app::Eu5Workspace::new(gamestate.parsed_save, game_bundle.game_data)
+        let eu5_gamestate = gamestate.parsed_save.take_gamestate();
+        let eu5_gamestate =
+            unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(eu5_gamestate) };
+        let app = eu5app::Eu5Workspace::new(eu5_gamestate, game_bundle.game_data)
             .map_err(|x| JsError::new(&format!("Failed to create EU5 app: {x}")))?;
 
-        Ok(Eu5App { app, meta })
+        Ok(Eu5App {
+            _loaded_save: gamestate.parsed_save,
+            app,
+            meta,
+        })
     }
 
-    fn app(&self) -> &eu5app::Eu5Workspace {
+    fn app(&self) -> &eu5app::Eu5Workspace<'_> {
         &self.app
     }
 
@@ -312,11 +322,8 @@ impl Eu5App {
 
     /// Switch map mode to the specified mode
     #[wasm_bindgen]
-    pub fn set_map_mode(&mut self, mode: MapMode) -> Result<(), JsValue> {
-        self.app
-            .set_map_mode(mode.into())
-            .map_err(|e| JsValue::from_str(&format!("Failed to set map mode: {e}")))?;
-        Ok(())
+    pub fn set_map_mode(&mut self, mode: MapMode) {
+        self.app.set_map_mode(mode.into());
     }
 
     /// Get the current map mode
