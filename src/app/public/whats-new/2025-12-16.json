@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [
+      "EU5 map rendering performance and compatibility improvements",
+      "Admin ability to disqualify saves from leaderboards"
+    ],
+    "fixes": ["Fix melted EU5 loading a blank map due to custom names"]
+  }
+}
