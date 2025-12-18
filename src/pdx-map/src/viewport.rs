@@ -22,6 +22,16 @@ impl ViewportBounds {
     }
 }
 
+impl std::fmt::Display for ViewportBounds {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "({}x{}) @ ({},{}) z:{:.2}",
+            self.width, self.height, self.x, self.y, self.zoom_level
+        )
+    }
+}
+
 /// Platform-agnostic map navigation and viewport controller
 ///
 /// Handles viewport positioning, zoom levels, coordinate transformations,
