@@ -243,6 +243,77 @@ fn split_rgb_to_indexed_r16<const SRC_DEPTH: usize>(
     (west_data, east_data, R16Palette::new(palette))
 }
 
+/// A compositor for combining two vertically-split image halves.
+///
+/// This structure is designed to reconstruct a complete image from separate
+/// western (left) and eastern (right) halves. This is useful to workaround max
+/// texture output size, as EU5 map is 16K wide.
+pub struct StitchedImage {
+    width: u32,
+    data: Vec<u8>,
+}
+
+impl StitchedImage {
+    /// Creates a new image compositor with the specified dimensions.
+    ///
+    /// The buffer is pre-allocated to hold RGBA data (4 bytes per pixel).
+    pub fn new(width: u32, height: u32) -> Self {
+        Self {
+            width,
+            data: vec![0u8; (width * height * 4) as usize],
+        }
+    }
+
+    /// Internal helper to write half-width image data at a specified horizontal offset.
+    fn write_half<'a, I>(&mut self, rows: I, x_offset: u32)
+    where
+        I: IntoIterator<Item = &'a [u8]>,
+    {
+        let half_width = self.width / 2;
+        let row_bytes = (half_width * 4) as usize;
+        let full_row_bytes = (self.width * 4) as usize;
+        let offset = (x_offset * 4) as usize;
+
+        let dest_rows = self.data.chunks_exact_mut(full_row_bytes);
+
+        for (src_row, dest_row) in rows.into_iter().zip(dest_rows) {
+            debug_assert_eq!(
+                src_row.len(),
+                row_bytes,
+                "Source row has wrong size: expected {}, got {}",
+                row_bytes,
+                src_row.len()
+            );
+            dest_row[offset..offset + row_bytes].copy_from_slice(src_row);
+        }
+    }
+
+    /// Writes the western (left) half of the image.
+    ///
+    /// The source data should be an iterator of row slices, each containing `(width/2 * 4)` bytes.
+    pub fn write_west<'a, I>(&mut self, rows: I)
+    where
+        I: IntoIterator<Item = &'a [u8]>,
+    {
+        self.write_half(rows, 0);
+    }
+
+    /// Writes the eastern (right) half of the image.
+    ///
+    /// The source data should be an iterator of row slices, each containing `(width/2 * 4)` bytes.
+    pub fn write_east<'a, I>(&mut self, rows: I)
+    where
+        I: IntoIterator<Item = &'a [u8]>,
+    {
+        self.write_half(rows, self.width / 2);
+    }
+
+    /// Consumes the compositor and returns the complete image buffer.
+    pub fn into_inner(self) -> Vec<u8> {
+        self.data
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -444,5 +515,49 @@ mod tests {
         }
 
         split_rgb_to_indexed_r16::<3>(&img, width);
+    }
+
+    fn get_pixel_rgba(data: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
+        let idx = ((y * width + x) * 4) as usize;
+        [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]]
+    }
+
+    #[test]
+    fn test_stitched_image_multiple_rows() {
+        // Create a 4x3 image (2 pixels per half, 3 rows)
+        let mut img = StitchedImage::new(4, 3);
+
+        // West half: different color per row
+        // Row 0: Red, Row 1: Green, Row 2: Blue
+        let west_data = [
+            255, 0, 0, 255, 255, 0, 0, 255, // Row 0: Red
+            0, 255, 0, 255, 0, 255, 0, 255, // Row 1: Green
+            0, 0, 255, 255, 0, 0, 255, 255, // Row 2: Blue
+        ];
+
+        // East half: different color per row
+        // Row 0: Yellow, Row 1: Cyan, Row 2: Magenta
+        let east_data = [
+            255, 255, 0, 255, 255, 255, 0, 255, // Row 0: Yellow
+            0, 255, 255, 255, 0, 255, 255, 255, // Row 1: Cyan
+            255, 0, 255, 255, 255, 0, 255, 255, // Row 2: Magenta
+        ];
+
+        img.write_west(west_data.chunks_exact(8));
+        img.write_east(east_data.chunks_exact(8));
+
+        let result = img.into_inner();
+
+        // Verify row 0: Red west, Yellow east
+        assert_eq!(get_pixel_rgba(&result, 4, 0, 0), [255, 0, 0, 255]);
+        assert_eq!(get_pixel_rgba(&result, 4, 2, 0), [255, 255, 0, 255]);
+
+        // Verify row 1: Green west, Cyan east
+        assert_eq!(get_pixel_rgba(&result, 4, 0, 1), [0, 255, 0, 255]);
+        assert_eq!(get_pixel_rgba(&result, 4, 2, 1), [0, 255, 255, 255]);
+
+        // Verify row 2: Blue west, Magenta east
+        assert_eq!(get_pixel_rgba(&result, 4, 0, 2), [0, 0, 255, 255]);
+        assert_eq!(get_pixel_rgba(&result, 4, 2, 2), [255, 0, 255, 255]);
     }
 }

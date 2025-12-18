@@ -172,7 +172,7 @@ impl GpuContext {
     /// Create an R16Uint storage texture for location index data
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, level = "debug", fields(width = width, height = height, label = label))
+        tracing::instrument(skip(self, texture_data), level = "debug", fields(texture_len = texture_data.len()))
     )]
     pub fn create_texture(
         &self,
@@ -1117,10 +1117,11 @@ impl SurfaceMapRenderer {
         &self.gpu.gpu.queue
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        tracing::instrument(skip_all, level = "debug", fields(new_width, new_height))
-    )]
+    pub fn dimensions(&self) -> CanvasDimensions {
+        self.canvas_dimensions
+    }
+
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
     pub fn resize(&mut self, new_dimensions: CanvasDimensions) {
         self.canvas_dimensions = new_dimensions;
         self.surface_config.width = new_dimensions.physical_width();
@@ -1242,7 +1243,7 @@ impl SurfaceMapRenderer {
     /// Create an independent screenshot renderer that shares GPU resources but
     /// operates with a separate surface
     #[cfg(feature = "render")]
-    pub(crate) fn create_screenshot_renderer(
+    pub fn create_screenshot_renderer(
         &self,
         screenshot_target: SurfaceTarget<'static>,
         dimensions: CanvasDimensions,
@@ -1297,7 +1298,7 @@ impl HeadlessMapRenderer {
     /// Create a headless map renderer from initialized GPU context and texture data
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, level = "info", fields(viewport_width = viewport_width, viewport_height = viewport_height))
+        tracing::instrument(skip(gpu, west_texture, east_texture), level = "info")
     )]
     pub fn new(
         gpu: GpuContext,
@@ -1349,11 +1350,7 @@ impl HeadlessMapRenderer {
     /// Render to offscreen texture and read back viewport data
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(
-            skip_all,
-            level = "debug",
-            fields(world_width, world_height, x_offset)
-        )
+        tracing::instrument(skip(self, output_buffer), level = "info",)
     )]
     pub async fn readback_viewport_data(
         &mut self,
@@ -1361,12 +1358,20 @@ impl HeadlessMapRenderer {
         world_height: u32,
         output_buffer: &mut [u8],
         x_offset: u32,
+        y_offset: u32,
     ) -> Result<(), RenderError> {
         assert_eq!(self.viewport_texture.width(), world_width);
         assert_eq!(self.viewport_texture.height(), world_height);
 
+        // Calculate aligned bytes per row for GPU copy
+        const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
+        let unpadded_bytes_per_row = world_width * 4;
+
+        let alignment = COPY_BYTES_PER_ROW_ALIGNMENT;
+        let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(alignment) * alignment;
+
         // Create staging buffer if it doesn't exist or has wrong size
-        let buffer_size = (world_width * world_height * 4) as u64;
+        let buffer_size = (padded_bytes_per_row * world_height) as u64;
         if self.viewport_staging_buffer.is_none()
             || self
                 .viewport_staging_buffer
@@ -1395,7 +1400,7 @@ impl HeadlessMapRenderer {
             .create_view(&wgpu::TextureViewDescriptor::default());
         let render_bounds = ViewportBounds {
             x: x_offset,
-            y: 0,
+            y: y_offset,
             width: world_width,
             height: world_height,
             zoom_level: 1.0,
@@ -1455,7 +1460,7 @@ impl HeadlessMapRenderer {
                 buffer: viewport_staging_buffer,
                 layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
-                    bytes_per_row: Some(world_width * 4),
+                    bytes_per_row: Some(padded_bytes_per_row),
                     rows_per_image: Some(world_height),
                 },
             },
@@ -1484,28 +1489,222 @@ impl HeadlessMapRenderer {
         let data = buffer_slice.get_mapped_range();
 
         // Calculate parameters for copying
-        let tile_width_bytes = world_width * 4; // RGBA bytes per row in source
-        let output_width_bytes = (output_buffer.len() / (world_height as usize * 4)) as u32 * 4; // Total output width in bytes
-        let x_offset_bytes = x_offset * 4; // X offset in bytes
+        // Note: source buffer has padding to align to 256 bytes per row
+        let output_width_bytes = world_width * 4;
 
-        // Copy row by row from buffer to output buffer at the specified x_offset
+        // Copy row by row from padded buffer to output buffer
+        // Note: x_offset is used by the shader to determine what world coordinates to render,
+        // not for placing data in the output buffer. The output buffer is always exactly the
+        // size of the rendered viewport, so we copy the entire rendered data starting at position 0.
         for y in 0..world_height {
-            let src_row_start = (y * tile_width_bytes) as usize;
-            let src_row_end = src_row_start + tile_width_bytes as usize;
+            // Source has padding, so rows are padded_bytes_per_row apart
+            let src_row_start = (y * padded_bytes_per_row) as usize;
+            let src_row_end = src_row_start + unpadded_bytes_per_row as usize; // Only copy actual data, not padding
 
-            let dst_row_start = (y * output_width_bytes + x_offset_bytes) as usize;
-            let dst_row_end = dst_row_start + tile_width_bytes as usize;
+            let dst_row_start = (y * output_width_bytes) as usize;
+            let dst_row_end = dst_row_start + unpadded_bytes_per_row as usize;
 
-            if src_row_end <= data.len() && dst_row_end <= output_buffer.len() {
-                output_buffer[dst_row_start..dst_row_end]
-                    .copy_from_slice(&data[src_row_start..src_row_end]);
-            }
+            output_buffer[dst_row_start..dst_row_end]
+                .copy_from_slice(&data[src_row_start..src_row_end]);
         }
 
         drop(data);
         viewport_staging_buffer.unmap();
 
         Ok(())
+    }
+
+    /// Render an arbitrary viewport to the offscreen texture and read back the bytes.
+    pub async fn capture_viewport(
+        &mut self,
+        bounds: ViewportBounds,
+    ) -> Result<PdxBufferView<'_>, RenderError> {
+        // Note: we trust the caller has resized() this renderer to match the buffer size
+        let texture_width = self.viewport_texture.width();
+        let texture_height = self.viewport_texture.height();
+
+        // Calculate the zoom level required to fit the requested world bounds
+        // into the current texture dimensions.
+        // zoom = pixels / world_units
+        let zoom_x = texture_width as f32 / bounds.width as f32;
+        let zoom_y = texture_height as f32 / bounds.height as f32;
+
+        // Create the actual bounds passed to the shader
+        // We use the calculated zoom, but keep the requested x/y/width/height
+        let render_bounds = ViewportBounds {
+            x: bounds.x,
+            y: bounds.y,
+            width: bounds.width,
+            height: bounds.height,
+            zoom_level: zoom_x.max(zoom_y),
+        };
+
+        // Calculate aligned bytes per row for GPU copy
+        const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
+        let unpadded_bytes_per_row = bounds.width * 4;
+
+        // Align a value to the given alignment (power of 2)
+        let alignment = COPY_BYTES_PER_ROW_ALIGNMENT;
+        let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(alignment) * alignment;
+
+        // Create staging buffer if it doesn't exist or has wrong size
+        let buffer_size = (padded_bytes_per_row * bounds.height) as u64;
+        if self.viewport_staging_buffer.is_none()
+            || self
+                .viewport_staging_buffer
+                .as_ref()
+                .is_some_and(|b| b.size() != buffer_size)
+        {
+            self.viewport_staging_buffer = Some(self.scene.renderer().device.create_buffer(
+                &wgpu::BufferDescriptor {
+                    label: Some("Viewport Staging Buffer"),
+                    size: buffer_size,
+                    usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            ));
+        }
+
+        let viewport_staging_buffer = self.viewport_staging_buffer.as_ref().unwrap();
+
+        let device = &self.scene.renderer().device;
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Offscreen Render Encoder"),
+        });
+
+        let render_view = self
+            .viewport_texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        let queue = &self.gpu.gpu.queue;
+        self.scene.update_layers(queue);
+
+        let bind_group = {
+            let renderer = self.scene.renderer();
+            let resources = self.scene.resources();
+            renderer.prepare_bind_group(
+                queue,
+                resources,
+                render_bounds,
+                (
+                    self.viewport_texture.width(),
+                    self.viewport_texture.height(),
+                ),
+            )
+        };
+
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Offscreen Map Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &render_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            self.scene.draw(
+                &mut pass,
+                &bind_group,
+                self.viewport_texture.format(),
+                &render_bounds,
+                self.canvas_dimensions,
+            );
+        }
+
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &self.viewport_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: viewport_staging_buffer,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(padded_bytes_per_row),
+                    rows_per_image: Some(bounds.height),
+                },
+            },
+            wgpu::Extent3d {
+                width: bounds.width,
+                height: bounds.height,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        self.queue().submit(Some(encoder.finish()));
+
+        // Read back results
+        let buffer_slice = viewport_staging_buffer.slice(..buffer_size);
+        let (sender, receiver) = futures_channel::oneshot::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            let _ = sender.send(result);
+        });
+
+        self.scene.renderer().device.poll(wgpu::PollType::Wait {
+            submission_index: None,
+            timeout: None,
+        })?;
+        receiver.await??;
+
+        let data = buffer_slice.get_mapped_range();
+
+        Ok(PdxBufferView::new(
+            viewport_staging_buffer,
+            data,
+            bounds.width,
+            padded_bytes_per_row,
+        ))
+    }
+
+    /// Resize the internal offscreen texture.
+    pub fn resize(&mut self, width: u32, height: u32) {
+        if self.canvas_dimensions.canvas_width == width
+            && self.canvas_dimensions.canvas_height == height
+        {
+            return;
+        }
+
+        // Recreate texture with new dimensions
+        self.viewport_texture = self
+            .gpu
+            .gpu
+            .device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("Viewport Offscreen Texture"),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
+            });
+
+        // Update config and dimensions
+        self.target_config.width = width;
+        self.target_config.height = height;
+        self.canvas_dimensions = CanvasDimensions {
+            canvas_width: width,
+            canvas_height: height,
+            scale_factor: self.canvas_dimensions.scale_factor,
+        };
+
+        // Invalidate staging buffer so it gets recreated with correct size on next readback
+        self.viewport_staging_buffer = None;
     }
 
     pub fn set_location_borders(&mut self, enabled: bool) {
@@ -1536,16 +1735,50 @@ impl HeadlessMapRenderer {
     pub fn queue(&self) -> &wgpu::Queue {
         &self.gpu.gpu.queue
     }
+}
 
-    /// Create a screenshot renderer from this headless renderer
-    ///
-    /// Consumes the headless renderer and returns a ScreenshotRenderer that
-    /// encapsulates screenshot-specific operations (render_west/east, readback_west/east).
-    /// Tile dimensions are automatically extracted from the renderer.
-    pub fn into_screenshot_renderer(self) -> crate::ScreenshotRenderer<Self> {
-        let tile_width = self.scene.tile_width();
-        let tile_height = self.scene.tile_height();
-        crate::ScreenshotRenderer::new_headless(self, tile_width, tile_height)
+#[derive(Debug)]
+pub struct PdxBufferView<'a> {
+    buffer: &'a wgpu::Buffer,
+    view: Option<wgpu::BufferView>,
+    width: u32,
+    stride: u32,
+}
+
+impl<'a> PdxBufferView<'a> {
+    pub fn new(buffer: &'a wgpu::Buffer, view: wgpu::BufferView, width: u32, stride: u32) -> Self {
+        Self {
+            buffer,
+            view: Some(view),
+            width,
+            stride,
+        }
+    }
+
+    pub fn rows(&self) -> impl ExactSizeIterator<Item = &[u8]> + '_ {
+        let unpadded_bytes = (self.width * 4) as usize;
+        self.view
+            .as_ref()
+            .expect("buffer is not finished")
+            .chunks_exact(self.stride as usize)
+            .map(move |row| &row[..unpadded_bytes])
+    }
+
+    pub fn finish(mut self) {
+        self.finish_internal();
+    }
+
+    fn finish_internal(&mut self) {
+        if let Some(view) = self.view.take() {
+            drop(view);
+            self.buffer.unmap();
+        }
+    }
+}
+
+impl Drop for PdxBufferView<'_> {
+    fn drop(&mut self) {
+        self.finish_internal();
     }
 }
 

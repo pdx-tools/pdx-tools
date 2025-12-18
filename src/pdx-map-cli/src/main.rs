@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, anyhow, bail};
 use clap::Parser;
-use pdx_map::GpuColor;
+use pdx_map::{GpuColor, StitchedImage, ViewportBounds};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
@@ -285,21 +285,26 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
     renderer.set_location_borders(!args.no_location_borders);
     renderer.set_owner_borders(!args.no_owner_borders);
     println!("Created renderer ({:.2}s)", start.elapsed().as_secs_f64());
-    let mut screenshot_renderer = renderer.into_screenshot_renderer();
-    let mut combined_buffer =
-        vec![0u8; (image_data.full_width() * image_data.full_height() * 4) as usize];
+    let mut dst_image = StitchedImage::new(image_data.full_width(), image_data.full_height());
     let start = Instant::now();
-    screenshot_renderer
-        .readback_west(&mut combined_buffer)
-        .await?;
+    let bounds = ViewportBounds::new(image_data.tile_width, image_data.tile_height);
+    {
+        let west_buffer = renderer.capture_viewport(bounds).await?;
+        dst_image.write_west(west_buffer.rows());
+        west_buffer.finish();
+    }
     println!(
         "Rendered and read back west half ({:.2}s)",
         start.elapsed().as_secs_f64()
     );
+
     let start = Instant::now();
-    screenshot_renderer
-        .readback_east(&mut combined_buffer)
-        .await?;
+    {
+        let east_buffer = renderer.capture_viewport(bounds).await?;
+        dst_image.write_east(east_buffer.rows());
+        east_buffer.finish();
+    }
+
     println!(
         "Rendered and read back east half ({:.2}s)",
         start.elapsed().as_secs_f64()
@@ -308,7 +313,7 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
     let output_img = image::RgbaImage::from_raw(
         image_data.full_width(),
         image_data.full_height(),
-        combined_buffer,
+        dst_image.into_inner(),
     )
     .ok_or_else(|| anyhow!("Failed to create image from buffer"))?;
     output_img

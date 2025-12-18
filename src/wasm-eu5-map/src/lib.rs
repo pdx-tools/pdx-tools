@@ -106,7 +106,7 @@ impl Eu5WasmMapRenderer {
         );
 
         let (tile_width, tile_height) = tile_dimensions();
-        let mut app = pdx_map::MapViewController::new(renderer, display, tile_width, tile_height);
+        let mut app = pdx_map::MapViewController::new(renderer, tile_width, tile_height);
 
         let show_location_borders = should_highlight_individual_locations(app.get_zoom());
         app.renderer_mut()
