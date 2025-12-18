@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use bytemuck::{Pod, Zeroable};
 use pdx_map::wgpu::util::DeviceExt;
 use pdx_map::{CanvasDimensions, RenderLayer, ViewportBounds, wgpu};
+use tracing::instrument;
 
 const GLYPH_PATTERN_WIDTH: usize = 5;
 const GLYPH_PATTERN_HEIGHT: usize = 7;
@@ -13,7 +14,6 @@ const CORNER_OFFSET_X: f32 = 0.0;
 const CORNER_OFFSET_Y: f32 = 0.0;
 const BG_COLOR: [u8; 4] = [0, 0, 0, 220];
 const TEXT_COLOR: [u8; 4] = [255, 255, 255, 255];
-const BOLD_STROKE_DIVISOR: u32 = 3;
 
 const TEXTURE_SHADER: &str = include_str!("./shaders/texture.wgsl");
 
@@ -164,7 +164,7 @@ impl DateLayer {
 
     fn rebuild_resources(&mut self, device: &wgpu::Device, target_width: u32, target_height: u32) {
         let (pixels, overlay_width, overlay_height) =
-            build_overlay_image(&self.text, self.glyph_scale);
+            rasterize_text_overlay(&self.text, self.glyph_scale);
 
         self.target_size = Some((target_width, target_height));
         self.pending_upload = Some(PendingUpload {
@@ -299,7 +299,8 @@ struct OverlayVertex {
     uv: [f32; 2],
 }
 
-fn build_overlay_image(text: &str, glyph_scale: u32) -> (Vec<u8>, u32, u32) {
+#[instrument]
+fn rasterize_text_overlay(text: &str, glyph_scale: u32) -> (Vec<u8>, u32, u32) {
     let glyphs: Vec<char> = text.chars().collect();
     let glyph_count = glyphs.len() as u32;
     let glyph_width = GLYPH_PATTERN_WIDTH as u32 * glyph_scale;
@@ -307,7 +308,6 @@ fn build_overlay_image(text: &str, glyph_scale: u32) -> (Vec<u8>, u32, u32) {
     let letter_spacing = LETTER_SPACING * glyph_scale;
     let padding_x = PADDING_X * glyph_scale;
     let padding_y = PADDING_Y * glyph_scale;
-    let stroke_extra = (glyph_scale / BOLD_STROKE_DIVISOR).max(1);
 
     let text_width = if glyph_count == 0 {
         0
@@ -315,8 +315,8 @@ fn build_overlay_image(text: &str, glyph_scale: u32) -> (Vec<u8>, u32, u32) {
         glyph_count * (glyph_width + letter_spacing) - letter_spacing
     };
 
-    let overlay_width = text_width + padding_x * 2 + stroke_extra;
-    let overlay_height = glyph_height + padding_y * 2 + stroke_extra;
+    let overlay_width = text_width + padding_x * 2;
+    let overlay_height = glyph_height + padding_y * 2;
 
     let mut pixels = vec![0u8; (overlay_width * overlay_height * 4) as usize];
     for chunk in pixels.chunks_mut(4) {
@@ -326,7 +326,6 @@ fn build_overlay_image(text: &str, glyph_scale: u32) -> (Vec<u8>, u32, u32) {
     let mut cursor_x = padding_x;
     for ch in glyphs {
         let glyph = glyph_pattern(ch);
-        let bold_extra = stroke_extra;
         for (row, bits) in glyph.iter().enumerate() {
             for col in 0..GLYPH_PATTERN_WIDTH {
                 if bits & (1 << (GLYPH_PATTERN_WIDTH - 1 - col)) != 0 {
@@ -339,7 +338,6 @@ fn build_overlay_image(text: &str, glyph_scale: u32) -> (Vec<u8>, u32, u32) {
                         base_x,
                         base_y,
                         glyph_scale,
-                        bold_extra,
                     );
                 }
             }
@@ -357,10 +355,9 @@ fn fill_glyph_block(
     base_x: u32,
     base_y: u32,
     glyph_scale: u32,
-    bold_extra: u32,
 ) {
-    let stroke_x = bold_extra;
-    let stroke_y = bold_extra;
+    let stroke_x = 0;
+    let stroke_y = 0;
 
     for dy in 0..glyph_scale {
         for dx in 0..glyph_scale {
