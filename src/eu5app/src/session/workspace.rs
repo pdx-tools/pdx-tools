@@ -1,31 +1,24 @@
 use crate::game_data::GameData;
-use crate::{
-    MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, session::Eu5LoadedSave,
-    subject_color,
-};
+use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::FxHashMap;
 use eu5save::models::{
     CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIndexedVec, RawMaterialsName,
 };
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags, R16};
-use std::cell::OnceCell;
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 /// An EU5 workspace combines the saved game state with patch-specific game data,
 /// and manages rendering state including map modes and GPU data structures.
-pub struct Eu5Workspace {
-    // Arena-owned gamestate from Eu5LoadedSave
-    #[expect(dead_code)]
-    arena: bumpalo::Bump,
-    gamestate: Gamestate<'static>,
-
+pub struct Eu5Workspace<'bump> {
+    gamestate: Gamestate<'bump>,
     game_data: Box<GameData>,
 
     // Session data (relationships and indices)
     overlord_of: CountryIndexedVecOwned<Option<CountryIdx>>,
     location_terrain: LocationIndexedVec<Terrain>,
     location_coordinates: LocationIndexedVec<(u16, u16)>,
-    location_building_levels: OnceCell<LocationIndexedVec<f64>>,
+    location_building_levels: OnceLock<LocationIndexedVec<f64>>,
 
     // Map app state (rendering)
     current_map_mode: MapMode,
@@ -33,13 +26,12 @@ pub struct Eu5Workspace {
     gpu_indices: LocationIndexedVec<Option<GpuLocationIdx>>,
 }
 
-impl Eu5Workspace {
+impl<'bump> Eu5Workspace<'bump> {
     /// Create a new workspace from loaded save data and game data provider
     pub fn new(
-        loaded_save: Eu5LoadedSave,
+        gamestate: Gamestate<'bump>,
         game_data: GameData,
     ) -> Result<Self, crate::game_data::GameDataError> {
-        let (arena, gamestate) = loaded_save.into_parts();
         let game_data = Box::new(game_data);
 
         let mut overlord_of = gamestate.countries.create_index(None);
@@ -97,13 +89,12 @@ impl Eu5Workspace {
         let location_arrays = LocationArrays::allocate(game_data.texture_locations().len());
 
         let mut workspace = Self {
-            arena,
             gamestate,
             game_data,
             overlord_of,
             location_terrain,
             location_coordinates,
-            location_building_levels: OnceCell::new(),
+            location_building_levels: OnceLock::new(),
             current_map_mode: MapMode::Political,
             location_arrays,
             gpu_indices,
@@ -124,7 +115,7 @@ impl Eu5Workspace {
         self.game_data.localized_country_name(tag).unwrap_or(tag)
     }
 
-    pub fn gamestate(&self) -> &Gamestate<'static> {
+    pub fn gamestate(&self) -> &Gamestate<'bump> {
         &self.gamestate
     }
 
@@ -568,7 +559,7 @@ impl Eu5Workspace {
         &self.location_arrays
     }
 
-    pub fn set_map_mode(&mut self, mode: MapMode) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn set_map_mode(&mut self, mode: MapMode) {
         self.current_map_mode = mode;
 
         // Apply colors based on mode
@@ -583,8 +574,6 @@ impl Eu5Workspace {
             MapMode::PossibleTax => self.apply_possible_tax_colors(),
             MapMode::Religion => self.apply_religion_colors(),
         }
-
-        Ok(())
     }
 
     fn apply_political_colors(&mut self) {
@@ -1562,11 +1551,21 @@ impl Eu5Workspace {
     }
 }
 
-impl std::fmt::Debug for Eu5Workspace {
+impl std::fmt::Debug for Eu5Workspace<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Eu5Workspace")
             .field("gamestate", &self.gamestate)
             .field("current_map_mode", &self.current_map_mode)
             .finish_non_exhaustive()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    pub fn test_workspace_is_send() {
+        fn assert_send<T: Send + Sync>() {}
+        assert_send::<Eu5Workspace>();
     }
 }

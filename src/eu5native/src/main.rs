@@ -64,7 +64,7 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
 
     let parser = Eu5SaveLoader::open(file, resolver)?;
 
-    let save = parser.parse()?;
+    let mut save = parser.parse()?;
 
     let mut game_bundle = Eu5GameInstall::open(&args.game_data)?;
 
@@ -88,10 +88,9 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         tile_height,
     )?;
 
-    let save_date = save.game.metadata().date.date_fmt().to_string();
-
-    let mut map_app = Eu5Workspace::new(save, game_bundle.into_game_data())?;
-    map_app.set_map_mode(MapMode::Political)?;
+    let mut map_app = Eu5Workspace::new(save.take_gamestate(), game_bundle.into_game_data())?;
+    let save_date = map_app.gamestate().metadata().date.date_fmt().to_string();
+    map_app.set_map_mode(MapMode::Political);
     renderer.update_locations(map_app.location_arrays());
 
     let date_layer = renderer.add_layer(DateLayer::new(save_date, 20));

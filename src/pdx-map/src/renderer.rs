@@ -7,7 +7,7 @@ use crate::error::RenderError;
 use crate::{CanvasDimensions, GpuLocationIdx, LocationArrays, ViewportBounds};
 
 /// A drawable layer that can be composed into the main map render pass
-pub trait RenderLayer {
+pub trait RenderLayer: Send + Sync {
     /// Called when the render target is resized so layers can recreate GPU state
     fn resize(&mut self, _config: &wgpu::SurfaceConfiguration, _device: &wgpu::Device) {}
 

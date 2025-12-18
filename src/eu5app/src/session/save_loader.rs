@@ -85,22 +85,33 @@ impl<R: ReaderAt, RES: TokenResolver> Eu5SaveLoader<R, RES> {
         // gamestate won't live longer than the arena.
         let game = unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(game) };
 
-        Ok(Eu5LoadedSave {
-            arena: self.arena,
-            game,
-        })
+        Ok(Eu5LoadedSave::new(self.arena, game))
     }
 }
 
 #[derive(Debug)]
 pub struct Eu5LoadedSave {
     arena: bumpalo::Bump,
-    pub game: Gamestate<'static>,
+    game: Option<Gamestate<'static>>,
 }
 
 impl Eu5LoadedSave {
-    pub fn into_parts(self) -> (bumpalo::Bump, Gamestate<'static>) {
-        (self.arena, self.game)
+    fn new(arena: bumpalo::Bump, game: Gamestate<'static>) -> Self {
+        Self {
+            arena,
+            game: Some(game),
+        }
+    }
+
+    pub fn arena(&self) -> &bumpalo::Bump {
+        &self.arena
+    }
+
+    /// Take ownership of the gamestate out of the loaded save.
+    ///
+    /// But tie it to the lifetime of the loaded save's arena.
+    pub fn take_gamestate(&mut self) -> Gamestate<'_> {
+        self.game.take().expect("Gamestate already taken")
     }
 }
 
@@ -117,9 +128,6 @@ pub enum Eu5LoadError {
 
     #[error("Unable to deserialize gamestate: {0}")]
     GamestateDeserialization(#[source] jomini::Error),
-
-    #[error("Session creation: {0}")]
-    SessionCreation(#[source] Box<dyn std::error::Error>),
 
     #[error("Unable to parse string lookup: {0}")]
     StringLookup(#[source] eu5save::Eu5Error),
