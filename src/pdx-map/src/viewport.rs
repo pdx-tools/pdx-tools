@@ -10,6 +10,18 @@ pub struct ViewportBounds {
     pub zoom_level: f32,
 }
 
+impl ViewportBounds {
+    pub fn new(width: u32, height: u32) -> Self {
+        Self {
+            x: 0,
+            y: 0,
+            width,
+            height,
+            zoom_level: 1.0,
+        }
+    }
+}
+
 /// Platform-agnostic map navigation and viewport controller
 ///
 /// Handles viewport positioning, zoom levels, coordinate transformations,

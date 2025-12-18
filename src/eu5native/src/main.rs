@@ -5,6 +5,7 @@ use eu5app::{
     game_data::{TextureProvider, game_install::Eu5GameInstall},
 };
 use eu5save::{BasicTokenResolver, Eu5File};
+use pdx_map::{StitchedImage, ViewportBounds};
 use std::{io::IsTerminal, path::PathBuf};
 use tracing::{info, info_span, level_filters::LevelFilter};
 use tracing_subscriber::{EnvFilter, fmt::format::FmtSpan};
@@ -97,28 +98,33 @@ async fn main_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let date_layer = renderer.add_layer(DateLayer::new(save_date, 20));
 
     let (full_width, full_height) = eu5app::world_dimensions();
-    let mut combined_buffer = vec![0u8; (full_width * full_height * 4) as usize];
 
-    let mut screenshot_renderer = renderer.into_screenshot_renderer();
+    let mut image_data = StitchedImage::new(full_width, full_height);
 
     // Render west tile and copy to left half of buffer
-    screenshot_renderer
-        .readback_west(&mut combined_buffer)
-        .await?;
+    let mut bounds = ViewportBounds::new(tile_width, tile_height);
+
+    {
+        let west_buffer = renderer.capture_viewport(bounds).await?;
+        image_data.write_west(west_buffer.rows());
+        west_buffer.finish();
+    }
 
     // No need to render date on east tile
-    screenshot_renderer
-        .renderer_mut()
-        .set_layer_visible(date_layer, false);
+    renderer.set_layer_visible(date_layer, false);
 
     // Render east tile and copy to right half of buffer
-    screenshot_renderer
-        .readback_east(&mut combined_buffer)
-        .await?;
+    bounds.x = tile_width;
+    {
+        let east_buffer = renderer.capture_viewport(bounds).await?;
+        image_data.write_east(east_buffer.rows());
+        east_buffer.finish();
+    }
 
     // Create image directly from raw buffer and save
     let span = info_span!("RgbaImage::from_raw");
     let enter = span.enter();
+    let combined_buffer = image_data.into_inner();
     let output_img = image::RgbaImage::from_raw(full_width, full_height, combined_buffer)
         .ok_or("Failed to create image from raw buffer")?;
     drop(enter);

@@ -1,7 +1,7 @@
 use pdx_map::{
     CanvasDimensions, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext, LocationArrays,
     LocationFlags, MapTexture, MapViewController, QueuedWorkFuture, R16Palette, RenderError,
-    ScreenshotRenderer, SurfaceMapRenderer,
+    SurfaceMapRenderer,
 };
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -111,7 +111,7 @@ impl PdxMapRenderer {
         location_arrays.set_primary_colors(init_colors.as_slice());
         location_arrays.set_secondary_colors(init_colors.as_slice());
         location_arrays.set_owner_colors(init_colors.as_slice());
-        let app = MapViewController::new(renderer, canvas_dims, tile_width, tile_height);
+        let app = MapViewController::new(renderer, tile_width, tile_height);
 
         let mut map_renderer = PdxMapRenderer {
             app,
@@ -386,7 +386,7 @@ pub struct PdxTexture {
 
 #[wasm_bindgen]
 pub struct PdxScreenshotRenderer {
-    renderer: ScreenshotRenderer<SurfaceMapRenderer>,
+    map: MapViewController,
 }
 
 #[wasm_bindgen]
@@ -394,16 +394,20 @@ impl PdxScreenshotRenderer {
     /// Render the western tile to the screenshot surface
     #[wasm_bindgen]
     pub fn render_west_tile(&mut self) -> Result<(), JsError> {
-        self.renderer
-            .render_west()
+        self.map.set_world_point_under_cursor(0.0, 0.0, 0.0, 0.0);
+        self.map
+            .render()
             .map_err(|e| JsError::new(&format!("Failed to render west tile: {e}")))
     }
 
     /// Render the eastern tile to the screenshot surface
     #[wasm_bindgen]
     pub fn render_east_tile(&mut self) -> Result<(), JsError> {
-        self.renderer
-            .render_east()
+        let x_offset = self.map.tile_width() as f32;
+        self.map
+            .set_world_point_under_cursor(x_offset, 0.0, 0.0, 0.0);
+        self.map
+            .render()
             .map_err(|e| JsError::new(&format!("Failed to render east tile: {e}")))
     }
 }
@@ -421,9 +425,11 @@ pub fn create_screenshot_renderer_for_app(
         canvas_height,
         scale_factor: 1.0,
     };
-    let screenshot_renderer = app.create_screenshot_renderer(surface_target, dimensions)?;
+    let screenshot_renderer = app
+        .renderer()
+        .create_screenshot_renderer(surface_target, dimensions)?;
     Ok(PdxScreenshotRenderer {
-        renderer: screenshot_renderer,
+        map: app.with_renderer(screenshot_renderer),
     })
 }
 

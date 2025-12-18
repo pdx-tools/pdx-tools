@@ -16,7 +16,7 @@ pub use loc_arrays::*;
 pub use viewport::*;
 
 #[cfg(feature = "render")]
-pub use controller::{MapViewController, ScreenshotRenderer};
+pub use controller::MapViewController;
 #[cfg(feature = "render")]
 pub use error::{RenderError, RenderErrorKind};
 #[cfg(feature = "render")]
