@@ -323,7 +323,7 @@ mod tests {
     #[test]
     fn simple_2_by_2_system() {
         // 1 costs 20, 2 costs 40
-        let buildings = vec![
+        let buildings = [
             test_building(
                 HashMap::from([(Vic3Good(1), 1.0), (Vic3Good(2), 2.0)]),
                 100.0,
@@ -347,7 +347,7 @@ mod tests {
     #[test]
     fn simple_overdefined_1_by_1_system() {
         // 1 costs bout 20
-        let buildings = vec![
+        let buildings = [
             test_building(HashMap::from([(Vic3Good(1), 1.0)]), 19.75),
             test_building(HashMap::from([(Vic3Good(1), 6.0)]), 120.2),
         ];
