@@ -402,7 +402,7 @@ impl GpuContext {
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Map Render Pipeline Layout"),
                     bind_group_layouts: &[&self.bind_group_layout],
-                    push_constant_ranges: &[],
+                    immediate_size: 0,
                 });
 
         self.gpu
@@ -441,7 +441,7 @@ impl GpuContext {
                     mask: !0,
                     alpha_to_coverage_enabled: false,
                 },
-                multiview: None,
+                multiview_mask: None,
                 cache: None,
             })
     }
@@ -822,7 +822,7 @@ impl MapRenderer {
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Map Render Pipeline Layout"),
                 bind_group_layouts: &[&self.bind_group_layout],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             });
 
         self.device
@@ -860,7 +860,7 @@ impl MapRenderer {
                     mask: !0,
                     alpha_to_coverage_enabled: false,
                 },
-                multiview: None,
+                multiview_mask: None,
                 cache: None,
             })
     }
@@ -1075,6 +1075,7 @@ impl SurfaceMapRenderer {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             self.scene.draw(
@@ -1438,6 +1439,7 @@ impl HeadlessMapRenderer {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             self.scene.draw(
@@ -1608,6 +1610,7 @@ impl HeadlessMapRenderer {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             self.scene.draw(
