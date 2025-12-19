@@ -3,22 +3,13 @@ struct VertexOutput {
     @location(0) uv: vec2<f32>,
 }
 
+// Fullscreen vertex shader. See:
+// https://github.com/bevyengine/bevy/blob/ffc66f1b6485b8c7bef0436415df61aa81f9ff28/crates/bevy_core_pipeline/src/fullscreen_vertex_shader/fullscreen.wgsl
 @vertex
-fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
-    var out: VertexOutput;
-
-    // Full-screen triangle covering NDC range [-1, 1]
-    // Generates vertices: (0,0), (2,0), (0,2) in UV space
-    let x = f32(i32(in_vertex_index) & 1);
-    let y = f32(i32(in_vertex_index) & 2);
-
-    // UV coordinates: (0,0) to (2,2)
-    out.uv = vec2<f32>(x * 2.0, y * 2.0);
-
-    // Clip position: (-1,-1) to (3,3) - triangle covers entire screen
-    out.position = vec4<f32>(out.uv * 2.0 - 1.0, 0.0, 1.0);
-
-    return out;
+fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
+    let uv = vec2<f32>(f32(vertex_index >> 1u), f32(vertex_index & 1u)) * 2.0;
+    let clip_position = vec4<f32>(uv * vec2<f32>(2.0, -2.0) + vec2<f32>(-1.0, 1.0), 0.0, 1.0);
+    return VertexOutput(clip_position, uv);
 }
 
 struct ComputeUniforms {
@@ -159,28 +150,26 @@ fn is_owner_border_pixel(global_x: i32, global_y: i32, center_location_idx: u32,
         return false;
     }
 
-    let center_value = center_owner_color;
+    // Define a 12-point diamond pattern (skipping corners of the 5x5)
+    let offsets = array<vec2<i32>, 12>(
+        vec2<i32>( 0, -1), vec2<i32>( 0,  1), vec2<i32>(-1,  0), vec2<i32>( 1,  0), // Cross 1
+        vec2<i32>( 0, -2), vec2<i32>( 0,  2), vec2<i32>(-2,  0), vec2<i32>( 2,  0), // Cross 2
+        vec2<i32>(-1, -1), vec2<i32>( 1, -1), vec2<i32>(-1,  1), vec2<i32>( 1,  1)  // Inner Diagonals
+    );
 
-    for (var dy = -2; dy <= 2; dy++) {
-        for (var dx = -2; dx <= 2; dx++) {
-            // Skip the center pixel
-            if (dx == 0 && dy == 0) {
-                continue;
-            }
+    for (var i = 0; i < 12; i++) {
+        let neighbor_x = global_x + offsets[i].x;
+        let neighbor_y = global_y + offsets[i].y;
+        
+        let neighbor_location_idx = get_location_index_at(neighbor_x, neighbor_y);
+        let neighbor_value = get_owner_color_by_index(neighbor_location_idx);
 
-            let neighbor_x = global_x + dx;
-            let neighbor_y = global_y + dy;
-            let neighbor_location_idx = get_location_index_at(neighbor_x, neighbor_y);
-            let neighbor_value = get_owner_color_by_index(neighbor_location_idx);
-
-            // If neighbor has different owner (different owner color), this is an owner border
-            if (neighbor_value != center_value) {
-                return true;
-            }
+        if (neighbor_value != center_owner_color) {
+            return true;
         }
     }
 
-    return false; // All neighbors have same owner or no mapping
+    return false;
 }
 
 // Create a crisp, anti-aliased stripe pattern
@@ -215,20 +204,15 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let canvas_x = u32(in.position.x);
     let canvas_y = u32(in.position.y);
 
-    // Bounds check - discard fragments outside canvas
-    // Full-screen triangle extends beyond viewport, so we need to clip
-    if (canvas_x >= uniforms.canvas_width || canvas_y >= uniforms.canvas_height) {
-        discard;
-    }
+    let safe_x = min(u32(in.position.x), uniforms.canvas_width - 1u);
+    let safe_y = min(u32(in.position.y), uniforms.canvas_height - 1u);
 
-    // Map canvas coordinates to world coordinates with zoom scaling
-    // Scale canvas position to world position within the viewed area
-    let world_x_float = (f32(canvas_x) / f32(uniforms.canvas_width)) * f32(uniforms.world_width);
-    let world_y_float = (f32(canvas_y) / f32(uniforms.canvas_height)) * f32(uniforms.world_height);
+    let world_x_float = (f32(safe_x) / f32(uniforms.canvas_width)) * f32(uniforms.world_width);
+    let world_y_float = (f32(safe_y) / f32(uniforms.canvas_height)) * f32(uniforms.world_height);
 
     // Calculate global coordinates by adding viewport offset
-    let global_x = i32(world_x_float) + i32(uniforms.viewport_x_offset);
-    let global_y = i32(world_y_float) + i32(uniforms.viewport_y_offset);
+    let global_x = i32(floor(world_x_float + f32(uniforms.viewport_x_offset)));
+    let global_y = i32(floor(world_y_float + f32(uniforms.viewport_y_offset)));
 
     // Get location index directly from R16 texture
     let location_idx = get_location_index_at(global_x, global_y);

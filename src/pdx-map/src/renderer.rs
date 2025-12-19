@@ -581,7 +581,7 @@ impl MapResources {
 
     /// Update storage buffers from location arrays
     pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, arrays: &LocationArrays) {
-        if arrays.len() >= (self.owner_colors.size() as usize / std::mem::size_of::<u32>()) {
+        if arrays.len() > (self.owner_colors.size() as usize / std::mem::size_of::<u32>()) {
             let [primary_colors, owner_colors, secondary_colors, states] =
                 Self::location_buffers(device, arrays.len() as u64);
             self.primary_colors = primary_colors;

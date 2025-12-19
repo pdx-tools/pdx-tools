@@ -29,13 +29,14 @@ let appTask = new Promise<Eu5WasmMapRenderer>((res, rej) => {
 let hoverEventCallback: ((event: LocationHoverChangeEvent) => void) | null =
   null;
 let zoomChangeCallback: ((zoom: number) => void) | null = null;
+let renderOrQueue: () => void = () => {};
+let newLocations: Uint32Array | null = null;
 
 const mapGameEndpoint = () => {
   return {
     async syncLocationData(locationArray: Uint32Array) {
-      const app = await appTask;
-      app.sync_location_array(locationArray);
-      app.render();
+      newLocations = locationArray;
+      renderOrQueue();
     },
 
     async center_at(x: number, y: number) {
@@ -84,27 +85,33 @@ export const createMapEngine = async (
   const bundle = await bundleFetch();
 
   const gameBundle = Eu5WasmGameBundle.open(bundle);
-  const textureWest = timeSync("Create Texture Data (West)", () =>
+  const textureWestData = timeSync("Create Texture Data (West)", () =>
     gameBundle.west_texture_data(),
   );
 
   const westView = timeSync("Upload Texture Data (West)", () =>
-    canvasInit.upload_west_texture(textureWest),
+    canvasInit.upload_west_texture(textureWestData),
   );
   onProgress?.(12); // West texture data
 
-  const textureEast = timeSync("Create Texture Data (East)", () =>
-    gameBundle.east_texture_data(textureWest),
+  const textureEastData = timeSync("Create Texture Data (East)", () =>
+    gameBundle.east_texture_data(),
   );
 
   const eastView = timeSync("Upload Texture Data (East)", () =>
-    canvasInit.upload_east_texture(textureEast),
+    canvasInit.upload_east_texture(textureEastData),
   );
   onProgress?.(12); // East texture data
 
   try {
     const app = timeSync("Create Renderer", () =>
-      Eu5WasmMapRenderer.create(canvasInit, westView, eastView),
+      Eu5WasmMapRenderer.create(
+        canvasInit,
+        westView,
+        eastView,
+        textureWestData,
+        textureEastData,
+      ),
     );
     onProgress?.(6); // Create renderer
     appResolve(app);
@@ -119,115 +126,92 @@ export const createMapEngine = async (
   const initialZoom = app.get_zoom();
   zoomChangeCallback?.(initialZoom);
 
-  let inProgressReadback = false;
-
-  // RAF-based hover tracking state
-  let currentWorldCoordinates: { x: number; y: number } | null = null;
+  let hoverTrackingActive = false;
   let lastKnownLocationId: number | null = null;
-  let rafLoopActive = false;
-  let rafId: number | null = null;
-  // let hoverEventCallback: ((event: HoverEvent) => void) | null = null;
-  let lastProcessedCoordinates: { x: number; y: number } | null = null;
-  let currentCanvasCoordinates: { x: number; y: number } | null = null;
+  let lastProcessedWorldCoordinates: { x: number; y: number } | null = null;
 
-  // RAF loop for hover tracking
-  const checkHoverChanges = async () => {
-    if (!rafLoopActive) {
-      return;
-    }
-
-    try {
-      // Check if coordinates have been cleared (mouse left canvas)
-      if (!currentWorldCoordinates && lastKnownLocationId !== null) {
-        hoverEventCallback?.({ kind: "clear" });
-        lastKnownLocationId = null;
-        lastProcessedCoordinates = null;
-      }
-
-      // Check if world coordinates have changed since last processing
-      const threshold = 1.0;
-      const hasChanged =
-        currentWorldCoordinates &&
-        (!lastProcessedCoordinates ||
-          Math.abs(currentWorldCoordinates.x - lastProcessedCoordinates.x) >=
-            threshold ||
-          Math.abs(currentWorldCoordinates.y - lastProcessedCoordinates.y) >=
-            threshold);
-
-      if (hasChanged && currentCanvasCoordinates && !inProgressReadback) {
-        lastProcessedCoordinates = { ...currentWorldCoordinates! };
-
-        try {
-          inProgressReadback = true;
-          const readback = app.create_location_color_id_readback(
-            currentCanvasCoordinates.x,
-            currentCanvasCoordinates.y,
-          );
-          const locationIdx = await readback.read_id();
-
-          let newLocationId: number | null = null;
-          if (locationIdx !== undefined) {
-            newLocationId = app.lookup_location_id(locationIdx);
-          }
-
-          // Emit event when location changes
-          if (newLocationId !== lastKnownLocationId && newLocationId) {
-            hoverEventCallback?.({
-              kind: "update",
-              locationIdx: newLocationId,
-            });
-          }
-
-          lastKnownLocationId = newLocationId;
-        } catch (error) {
-          console.error("Error in GPU readback:", error);
-        } finally {
-          inProgressReadback = false;
-        }
-      }
-    } catch (error) {
-      console.error("Error in hover tracking RAF loop:", error);
-    }
-
-    if (rafLoopActive) {
-      rafId = requestAnimationFrame(checkHoverChanges);
-    }
+  let _dirtyRender: boolean = false;
+  renderOrQueue = () => {
+    _dirtyRender = true;
   };
 
-  const startHoverTracking = () => {
-    if (!rafLoopActive) {
-      rafLoopActive = true;
-      rafId = requestAnimationFrame(checkHoverChanges);
+  // You would think that we should only render when dirty, but for some reason
+  // firefox trips over itself and the clear color bleeds through. So for now we
+  // just render every frame.
+  let hasLocationInformation = false;
+  const rafRender = () => {
+    if (newLocations) {
+      hasLocationInformation = true;
+      app.sync_location_array(newLocations);
+      newLocations = null;
     }
+
+    if (hasLocationInformation) {
+      app.render();
+    }
+    requestAnimationFrame(rafRender);
+  };
+  rafRender();
+
+  const startHoverTracking = () => {
+    hoverTrackingActive = true;
   };
 
   const stopHoverTracking = () => {
-    rafLoopActive = false;
-    if (rafId !== null) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
+    hoverTrackingActive = false;
+    lastProcessedWorldCoordinates = null;
+    if (lastKnownLocationId !== null) {
+      hoverEventCallback?.({ kind: "clear" });
     }
-    currentWorldCoordinates = null;
     lastKnownLocationId = null;
-    lastProcessedCoordinates = null;
-    currentCanvasCoordinates = null;
   };
 
-  const updateCursorWorldPosition = async (
-    canvasX: number,
-    canvasY: number,
-  ) => {
-    // Handle clearing cursor position (when mouse leaves canvas)
-    if (canvasX < 0 || canvasY < 0) {
-      currentWorldCoordinates = null;
-      currentCanvasCoordinates = null;
+  const updateCursorWorldPosition = (canvasX: number, canvasY: number) => {
+    if (!hoverTrackingActive) {
       return;
     }
 
-    // Convert canvas to world coordinates
+    // Handle clearing cursor position (when mouse leaves canvas)
+    if (canvasX < 0 || canvasY < 0) {
+      if (lastKnownLocationId !== null) {
+        hoverEventCallback?.({ kind: "clear" });
+      }
+      lastKnownLocationId = null;
+      lastProcessedWorldCoordinates = null;
+      return;
+    }
+
     const worldPos = app.canvas_to_world(canvasX, canvasY);
-    currentWorldCoordinates = { x: worldPos[0], y: worldPos[1] };
-    currentCanvasCoordinates = { x: canvasX, y: canvasY };
+    const worldCoordinates = { x: worldPos[0], y: worldPos[1] };
+
+    const threshold = 1.0;
+    const hasChanged =
+      !lastProcessedWorldCoordinates ||
+      Math.abs(worldCoordinates.x - lastProcessedWorldCoordinates.x) >=
+        threshold ||
+      Math.abs(worldCoordinates.y - lastProcessedWorldCoordinates.y) >=
+        threshold;
+
+    if (!hasChanged) {
+      return;
+    }
+
+    lastProcessedWorldCoordinates = worldCoordinates;
+
+    try {
+      const gpuLoc = app.pick_location(canvasX, canvasY);
+      let locationId = app.gpu_loc_to_app(gpuLoc);
+      if (locationId !== lastKnownLocationId) {
+        if (locationId) {
+          hoverEventCallback?.({ kind: "update", locationIdx: locationId });
+        } else {
+          hoverEventCallback?.({ kind: "clear" });
+        }
+        lastKnownLocationId = locationId || null;
+      }
+    } catch (error) {
+      console.error("Error in CPU hover lookup:", error);
+    }
   };
 
   return proxy({
@@ -235,14 +219,14 @@ export const createMapEngine = async (
       canvas.height = height;
       canvas.width = width;
       app.resize(width, height);
-      app.render();
+      renderOrQueue();
     },
     get_zoom: () => {
       return app.get_zoom();
     },
     zoomAtPoint: (cursorX: number, cursorY: number, zoomDelta: number) => {
       app.zoom_at_point(cursorX, cursorY, zoomDelta);
-      app.render();
+      renderOrQueue();
 
       // Notify about zoom level change
       const newZoom = app.get_zoom();
@@ -258,7 +242,7 @@ export const createMapEngine = async (
       canvasY: number,
     ) => {
       app.set_world_point_under_cursor(worldX, worldY, canvasX, canvasY);
-      app.render();
+      renderOrQueue();
     },
     generateWorldScreenshot: async (
       fullResolution: boolean,
@@ -320,29 +304,9 @@ export const createMapEngine = async (
     ): Promise<
       { kind: "throttled" } | ({ kind: "result" } & LocationLookupResult)
     > => {
-      if (inProgressReadback) {
-        return { kind: "throttled" };
-      }
-
-      try {
-        inProgressReadback = true;
-        const readback = app.create_location_color_id_readback(
-          canvasX,
-          canvasY,
-        );
-
-        const locationIdx = await readback.read_id();
-        if (locationIdx === undefined) {
-          throw new Error(
-            `No location found at canvas position (${canvasX}, ${canvasY})`,
-          );
-        }
-
-        const locationId = app.lookup_location_id(locationIdx);
-        return { kind: "result", locationIdx: locationIdx.value(), locationId };
-      } finally {
-        inProgressReadback = false;
-      }
+      const gpuLoc = app.pick_location(canvasX, canvasY);
+      let locationId = app.gpu_loc_to_app(gpuLoc);
+      return { kind: "result", locationIdx: gpuLoc, locationId };
     },
 
     async execCommands(commands: MapCommand[]) {
@@ -357,7 +321,7 @@ export const createMapEngine = async (
             break;
           }
           case "render": {
-            app.render();
+            renderOrQueue();
             break;
           }
           case "setOwnerBorders": {

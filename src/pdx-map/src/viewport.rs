@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::WorldCoordinates;
+
 /// Represents the bounds of the current viewport in world coordinates
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ViewportBounds {
@@ -200,7 +202,7 @@ impl MapViewport {
     ///
     /// # Returns
     /// World coordinates (x, y) as a tuple
-    pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> (f32, f32) {
+    pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> WorldCoordinates {
         let world_width = self.canvas_width as f32 / self.zoom_level;
         let world_height = self.canvas_height as f32 / self.zoom_level;
 
@@ -210,7 +212,7 @@ impl MapViewport {
         let world_x = self.viewport_x as f32 + canvas_ratio_x * world_width;
         let world_y = self.viewport_y as f32 + canvas_ratio_y * world_height;
 
-        (world_x, world_y)
+        WorldCoordinates::new(world_x, world_y)
     }
 
     /// Position a world point under a specific canvas cursor position
@@ -309,16 +311,16 @@ mod tests {
         let mut controller = MapViewport::new(1024, 768, 8192, 8192);
 
         // Get world coordinates of center of canvas
-        let (world_x, world_y) = controller.canvas_to_world(512.0, 384.0);
+        let world_coords = controller.canvas_to_world(512.0, 384.0);
 
         // Move that world point to upper-left corner of canvas
-        controller.set_world_point_under_cursor(world_x, world_y, 100.0, 100.0);
+        controller.set_world_point_under_cursor(world_coords.x, world_coords.y, 100.0, 100.0);
 
         // Now that world point should appear at (100, 100) on canvas
-        let (new_world_x, new_world_y) = controller.canvas_to_world(100.0, 100.0);
+        let new_world_coords = controller.canvas_to_world(100.0, 100.0);
 
         // Should be approximately the same world coordinates (within floating point precision)
-        assert!((new_world_x - world_x).abs() < 1.0);
-        assert!((new_world_y - world_y).abs() < 1.0);
+        assert!((new_world_coords.x - world_coords.x).abs() < 1.0);
+        assert!((new_world_coords.y - world_coords.y).abs() < 1.0);
     }
 }
