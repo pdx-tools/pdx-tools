@@ -129,8 +129,8 @@ impl PdxMapRenderer {
 
     #[wasm_bindgen]
     pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> Vec<f32> {
-        let (world_x, world_y) = self.app.canvas_to_world(canvas_x, canvas_y);
-        vec![world_x, world_y]
+        let world_coords = self.app.canvas_to_world(canvas_x, canvas_y);
+        vec![world_coords.x, world_coords.y]
     }
 
     /// Position a world point under a specific canvas cursor position

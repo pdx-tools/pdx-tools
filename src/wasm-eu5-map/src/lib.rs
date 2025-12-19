@@ -63,9 +63,11 @@ impl Eu5CanvasSurface {
         Ok(Eu5WasmTexture { data: view })
     }
 
-    /// Consumes the data as we don't need to hold the texture info anymore.
     #[wasm_bindgen]
-    pub fn upload_east_texture(&self, data: Eu5WasmTextureData) -> Result<Eu5WasmTexture, JsError> {
+    pub fn upload_east_texture(
+        &self,
+        data: &Eu5WasmTextureData,
+    ) -> Result<Eu5WasmTexture, JsError> {
         let (tile_width, tile_height) = tile_dimensions();
         let view = self.pipeline_components.create_texture(
             &data.data,
@@ -80,6 +82,7 @@ impl Eu5CanvasSurface {
 #[wasm_bindgen]
 pub struct Eu5WasmMapRenderer {
     app: pdx_map::MapViewController,
+    picker: pdx_map::MapPickerSingle,
     location_arrays: LocationArrays,
 }
 
@@ -96,6 +99,8 @@ impl Eu5WasmMapRenderer {
         surface: Eu5CanvasSurface,
         west_texture: Eu5WasmTexture,
         east_texture: Eu5WasmTexture,
+        west_data: Eu5WasmTextureData,
+        east_data: Eu5WasmTextureData,
     ) -> Result<Self, JsError> {
         let display: CanvasDimensions = surface.display.into();
         let renderer = SurfaceMapRenderer::new(
@@ -106,6 +111,7 @@ impl Eu5WasmMapRenderer {
         );
 
         let (tile_width, tile_height) = tile_dimensions();
+        let picker = pdx_map::MapPickerSingle::new(west_data.data, east_data.data, tile_width * 2);
         let mut app = pdx_map::MapViewController::new(renderer, tile_width, tile_height);
 
         let show_location_borders = should_highlight_individual_locations(app.get_zoom());
@@ -114,6 +120,7 @@ impl Eu5WasmMapRenderer {
 
         Ok(Eu5WasmMapRenderer {
             app,
+            picker,
             location_arrays: LocationArrays::new(),
         })
     }
@@ -126,8 +133,21 @@ impl Eu5WasmMapRenderer {
 
     #[wasm_bindgen]
     pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> Vec<f32> {
-        let (world_x, world_y) = self.app.canvas_to_world(canvas_x, canvas_y);
-        vec![world_x, world_y]
+        let world_coords = self.app.canvas_to_world(canvas_x, canvas_y);
+        vec![world_coords.x, world_coords.y]
+    }
+
+    #[wasm_bindgen]
+    pub fn pick_location(&mut self, canvas_x: f32, canvas_y: f32) -> u16 {
+        let world_coords = self.app.canvas_to_world(canvas_x, canvas_y);
+        let location = self.picker.pick(world_coords);
+        location.value()
+    }
+
+    #[wasm_bindgen]
+    pub fn gpu_loc_to_app(&mut self, gpu_loc: u16) -> u32 {
+        let idx = GpuLocationIdx::new(gpu_loc);
+        self.location_arrays.get_location_id(idx).value()
     }
 
     /// Position a world point under a specific canvas cursor position
@@ -187,24 +207,6 @@ impl Eu5WasmMapRenderer {
         self.app
             .render()
             .map_err(|e| JsError::new(&format!("Failed to render: {e}")))
-    }
-
-    #[wasm_bindgen]
-    pub fn create_location_color_id_readback(
-        &self,
-        x: f32,
-        y: f32,
-    ) -> Result<WasmGpuLocationIdxReadback, JsError> {
-        let readback = self
-            .app
-            .create_color_id_readback_at(x, y)
-            .map_err(|e| JsError::new(&format!("unable to create readback: {e:?}")))?;
-        Ok(WasmGpuLocationIdxReadback::from_color_id_readback(readback))
-    }
-
-    #[wasm_bindgen]
-    pub fn lookup_location_id(&self, idx: &WasmGpuLocationIdx) -> u32 {
-        self.location_arrays.get_location_id(idx.inner()).value()
     }
 
     #[wasm_bindgen]
@@ -290,13 +292,10 @@ impl Eu5WasmGameBundle {
     }
 
     #[wasm_bindgen]
-    pub fn east_texture_data(
-        &mut self,
-        data: Eu5WasmTextureData,
-    ) -> Result<Eu5WasmTextureData, JsError> {
+    pub fn east_texture_data(&mut self) -> Result<Eu5WasmTextureData, JsError> {
         let data = self
             .textures
-            .load_east_texture(data.data)
+            .load_east_texture(Vec::new())
             .map_err(|e| JsError::new(&format!("Failed to get east texture data: {e}")))?;
         Ok(Eu5WasmTextureData { data })
     }

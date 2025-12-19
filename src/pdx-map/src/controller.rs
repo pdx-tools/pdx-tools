@@ -1,5 +1,5 @@
 use crate::{
-    CanvasDimensions, MapViewport, RenderError, SurfaceMapRenderer,
+    CanvasDimensions, MapViewport, RenderError, SurfaceMapRenderer, WorldCoordinates,
     renderer::{ColorIdReadback, QueuedWorkFuture},
 };
 
@@ -24,7 +24,7 @@ impl MapViewController {
         self.viewport.zoom_level()
     }
 
-    pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> (f32, f32) {
+    pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> WorldCoordinates {
         self.viewport.canvas_to_world(canvas_x, canvas_y)
     }
 
@@ -113,10 +113,10 @@ impl MapViewController {
         canvas_y: f32,
     ) -> Result<ColorIdReadback, RenderError> {
         // Convert canvas coordinates to world coordinates
-        let (world_x, world_y) = self.canvas_to_world(canvas_x, canvas_y);
+        let world_coords = self.canvas_to_world(canvas_x, canvas_y);
         let readback = self
             .renderer
-            .create_color_id_readback_at(world_x as i32, world_y as i32)?;
+            .create_color_id_readback_at(world_coords.x as i32, world_coords.y as i32)?;
 
         Ok(readback)
     }

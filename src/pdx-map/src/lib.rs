@@ -1,6 +1,7 @@
 mod color;
 mod image;
 mod loc_arrays;
+mod picker;
 mod viewport;
 
 #[cfg(feature = "render")]
@@ -13,6 +14,7 @@ mod renderer;
 pub use color::GpuColor;
 pub use image::*;
 pub use loc_arrays::*;
+pub use picker::*;
 pub use viewport::*;
 
 #[cfg(feature = "render")]
