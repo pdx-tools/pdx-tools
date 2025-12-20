@@ -1,0 +1,6 @@
+{
+  "sections": {
+    "improvements": ["Fix performance issues and EU5 map jank on firefox"],
+    "fixes": ["Fix highlighting Sweden highlighting the world in EU5"]
+  }
+}
