@@ -31,6 +31,7 @@ let hoverEventCallback: ((event: LocationHoverChangeEvent) => void) | null =
 let zoomChangeCallback: ((zoom: number) => void) | null = null;
 let renderOrQueue: () => void = () => {};
 let newLocations: Uint32Array | null = null;
+let newDimensions: { width: number; height: number } | null = null;
 
 const mapGameEndpoint = () => {
   return {
@@ -74,6 +75,7 @@ export const createMapEngine = async (
     onProgress?: (increment: number) => void;
   },
 ) => {
+  let prevDimensions = { width: display.width, height: display.height };
   await initialized;
   onProgress?.(5); // Initialize map wasm
 
@@ -139,11 +141,27 @@ export const createMapEngine = async (
   // firefox trips over itself and the clear color bleeds through. So for now we
   // just render every frame.
   let hasLocationInformation = false;
-  const rafRender = () => {
+  const rafRender = async () => {
     if (newLocations) {
       hasLocationInformation = true;
       app.sync_location_array(newLocations);
       newLocations = null;
+    }
+
+    if (newDimensions) {
+      let diff =
+        Math.abs(newDimensions.width - prevDimensions.width) +
+        Math.abs(newDimensions.height - prevDimensions.height);
+
+      if (diff >= 4) {
+        prevDimensions = { ...newDimensions };
+        // Firefox also needs to wait for queued work before resizing
+        // otherwise it will freeze up
+        await app.queued_work().wait();
+        app.resize(newDimensions.width, newDimensions.height);
+      }
+
+      newDimensions = null;
     }
 
     if (hasLocationInformation) {
@@ -216,9 +234,7 @@ export const createMapEngine = async (
 
   return proxy({
     resize: (width: number, height: number) => {
-      canvas.height = height;
-      canvas.width = width;
-      app.resize(width, height);
+      newDimensions = { width, height };
       renderOrQueue();
     },
     get_zoom: () => {
