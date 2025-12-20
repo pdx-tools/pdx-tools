@@ -7,6 +7,7 @@ edition = "2024"
 workspace = true
 
 [dependencies]
+anyhow = { workspace = true }
 bytemuck = { workspace = true, features = ["derive"] }
 bumpalo = { workspace = true, features = ["collections"] }
 bumpalo-serde = { workspace = true }
@@ -16,8 +17,7 @@ eu5save = { workspace = true }
 image = { workspace = true, features = ["png"] }
 nu-ansi-term = { workspace = true }
 pdx-map = { workspace = true, features = ["render", "tracing"] }
-pollster = { workspace = true }
-tokio = { workspace = true, features = ["rt"] }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 wgpu = { workspace = true }

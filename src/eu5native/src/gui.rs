@@ -1,59 +1,102 @@
 use crate::{Args, date_layer::DateLayer};
+use anyhow::{Context, Result};
 use eu5app::{
     Eu5LoadedSave, Eu5SaveLoader, Eu5Workspace, MapMode,
-    game_data::{TextureProvider, game_install::Eu5GameInstall},
+    game_data::{GameData, TextureProvider, game_install::Eu5GameInstall},
     should_highlight_individual_locations,
 };
 use eu5save::{BasicTokenResolver, Eu5File, models::Gamestate};
-use pdx_map::{CanvasDimensions, MapViewController, SurfaceMapRenderer, WorldCoordinates};
-use std::sync::Arc;
+use pdx_map::{
+    CanvasDimensions, GpuSurfaceContext, MapViewController, SurfaceMapRenderer, WorldCoordinates,
+};
+use std::{path::PathBuf, sync::Arc};
+use tokio::runtime::Runtime;
 use tracing::{error, info, instrument};
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent},
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy},
     window::{Window, WindowAttributes, WindowId},
 };
 
+enum GuiUserEvent {
+    TextureReady(TextureData),
+    SaveReady(Box<Eu5LoadedSave>),
+    GameDataReady(GameData),
+    WorkspaceReady(Box<WorkspaceBundle>),
+    LoadFailed(anyhow::Error),
+}
+
+struct WorkspaceBundle {
+    save: Eu5LoadedSave,
+    workspace: Eu5Workspace<'static>,
+}
+
 pub fn run_gui(args: Args) -> Result<(), Box<dyn std::error::Error>> {
-    info!("Using save file: {}", args.save_file.display());
-    let file = std::fs::File::open(&args.save_file)?;
-    let file = Eu5File::from_file(file)?;
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to build multi-threaded Tokio runtime");
 
-    info!("Using tokens file: {}", args.tokens.display());
-    let file_data = std::fs::read(&args.tokens)?;
-    let resolver = BasicTokenResolver::from_text_lines(file_data.as_slice())?;
-
-    let parser = Eu5SaveLoader::open(file, resolver)?;
-
-    let mut save = parser.parse()?;
-
-    let mut game_bundle = Eu5GameInstall::open(&args.game_data)?;
-
-    // Extract textures before workspace consumes the bundle
-    let west_texture = game_bundle.load_west_texture(Vec::new())?;
-    let east_texture = game_bundle.load_east_texture(Vec::new())?;
-
-    let texture_data = TextureData {
-        west: west_texture,
-        east: east_texture,
-    };
-
-    // Now create workspace (game_bundle is moved, textures already extracted)
-    let gamestate = save.take_gamestate();
-    let gamestate = unsafe { std::mem::transmute::<_, Gamestate<'static>>(gamestate) };
-    let mut map_app = Eu5Workspace::new(gamestate, game_bundle.into_game_data())?;
-    map_app.set_map_mode(MapMode::Political);
-
-    let event_loop = EventLoop::new()?;
+    let event_loop = EventLoop::<GuiUserEvent>::with_user_event().build()?;
     event_loop.set_control_flow(ControlFlow::Poll);
 
+    let proxy = event_loop.create_proxy();
+    let save_file = args.save_file.clone();
+    let tokens_file = args.tokens.clone();
+    let game_data = args.game_data.clone();
+
+    let save_proxy = proxy.clone();
+    rt.spawn_blocking(move || {
+        let event = match load_save(save_file, tokens_file) {
+            Ok(save) => GuiUserEvent::SaveReady(Box::new(save)),
+            Err(err) => GuiUserEvent::LoadFailed(err),
+        };
+
+        if save_proxy.send_event(event).is_err() {
+            error!("Failed to send save event to GUI thread");
+        }
+    });
+
+    let game_proxy = proxy.clone();
+    rt.spawn_blocking(move || match load_game_bundle(game_data) {
+        Ok((texture_data, game_data)) => {
+            if game_proxy
+                .send_event(GuiUserEvent::TextureReady(texture_data))
+                .is_err()
+            {
+                error!("Failed to send texture event to GUI thread");
+                return;
+            }
+
+            if game_proxy
+                .send_event(GuiUserEvent::GameDataReady(game_data))
+                .is_err()
+            {
+                error!("Failed to send game data event to GUI thread");
+            }
+        }
+        Err(err) => {
+            if game_proxy
+                .send_event(GuiUserEvent::LoadFailed(err))
+                .is_err()
+            {
+                error!("Failed to send game data failure to GUI thread");
+            }
+        }
+    });
+
     let mut app = App {
-        args,
-        save,
-        workspace: map_app,
-        texture_data,
+        rt,
+        proxy,
+        save: None,
+        game_data: None,
+        workspace: None,
+        texture_data: None,
+        pending_workspace: None,
+        workspace_building: false,
         window: None,
+        gpu: None,
         controller: None,
         last_cursor_pos: None,
         last_world_under_cursor: None,
@@ -66,6 +109,48 @@ pub fn run_gui(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn load_save(save_file: PathBuf, tokens_file: PathBuf) -> Result<Eu5LoadedSave> {
+    info!("Using save file: {}", save_file.display());
+    let file = std::fs::File::open(&save_file)
+        .with_context(|| format!("Failed to open save file {}", save_file.display()))?;
+    let file = Eu5File::from_file(file)
+        .with_context(|| format!("Failed to read save file {}", save_file.display()))?;
+
+    info!("Using tokens file: {}", tokens_file.display());
+    let file_data = std::fs::read(&tokens_file)
+        .with_context(|| format!("Failed to read tokens file {}", tokens_file.display()))?;
+    let resolver = BasicTokenResolver::from_text_lines(file_data.as_slice())
+        .with_context(|| format!("Failed to parse tokens file {}", tokens_file.display()))?;
+
+    let parser = Eu5SaveLoader::open(file, resolver)
+        .with_context(|| format!("Failed to open save file {}", save_file.display()))?;
+
+    let save = parser
+        .parse()
+        .with_context(|| format!("Failed to parse save file {}", save_file.display()))?;
+
+    Ok(save)
+}
+
+fn load_game_bundle(game_data: PathBuf) -> Result<(TextureData, GameData)> {
+    let mut game_bundle = Eu5GameInstall::open(&game_data)
+        .with_context(|| format!("Failed to load game data {}", game_data.display()))?;
+    // Extract textures before workspace consumes the bundle
+    let west_texture = game_bundle
+        .load_west_texture(Vec::new())
+        .context("Failed to load west texture")?;
+    let east_texture = game_bundle
+        .load_east_texture(Vec::new())
+        .context("Failed to load east texture")?;
+
+    let texture_data = TextureData {
+        west: west_texture,
+        east: east_texture,
+    };
+
+    Ok((texture_data, game_bundle.into_game_data()))
+}
+
 /// Pre-extracted texture data to avoid re-opening game bundle
 struct TextureData {
     west: Vec<u8>,
@@ -73,11 +158,16 @@ struct TextureData {
 }
 
 struct App {
-    args: Args,
-    save: Eu5LoadedSave,
-    workspace: Eu5Workspace<'static>,
-    texture_data: TextureData,
+    rt: Runtime,
+    proxy: EventLoopProxy<GuiUserEvent>,
+    save: Option<Box<Eu5LoadedSave>>,
+    game_data: Option<GameData>,
+    workspace: Option<Eu5Workspace<'static>>,
+    texture_data: Option<TextureData>,
+    pending_workspace: Option<Box<WorkspaceBundle>>,
+    workspace_building: bool,
     window: Option<Arc<Window>>,
+    gpu: Option<GpuSurfaceContext>,
     controller: Option<MapViewController>,
     last_cursor_pos: Option<(f32, f32)>,
     last_world_under_cursor: Option<WorldCoordinates>,
@@ -85,7 +175,79 @@ struct App {
     scale_factor: f64,
 }
 
-impl ApplicationHandler for App {
+impl App {
+    fn try_initialize_renderer(&mut self) {
+        if self.controller.is_some() {
+            return;
+        }
+
+        let Some(window) = self.window.as_ref().cloned() else {
+            return;
+        };
+
+        let Some(gpu) = self.gpu.take() else {
+            return;
+        };
+
+        let Some(texture_data) = self.texture_data.take() else {
+            self.gpu = Some(gpu);
+            return;
+        };
+
+        let controller = init_renderer(&window, gpu, &texture_data);
+        self.controller = Some(controller);
+        window.request_redraw();
+        self.try_apply_workspace();
+    }
+
+    fn try_start_workspace_build(&mut self) {
+        if self.workspace.is_some() || self.workspace_building {
+            return;
+        }
+
+        let Some(save) = self.save.take() else {
+            return;
+        };
+
+        let Some(game_data) = self.game_data.take() else {
+            self.save = Some(save);
+            return;
+        };
+
+        self.workspace_building = true;
+        let proxy = self.proxy.clone();
+        self.rt.spawn_blocking(move || {
+            let event = match build_workspace(*save, game_data) {
+                Ok(bundle) => GuiUserEvent::WorkspaceReady(Box::new(bundle)),
+                Err(err) => GuiUserEvent::LoadFailed(err),
+            };
+
+            if proxy.send_event(event).is_err() {
+                error!("Failed to send workspace event to GUI thread");
+            }
+        });
+    }
+
+    fn try_apply_workspace(&mut self) {
+        let Some(controller) = &mut self.controller else {
+            return;
+        };
+
+        let Some(bundle) = self.pending_workspace.take() else {
+            return;
+        };
+
+        apply_workspace(controller, &bundle.workspace);
+        self.save = Some(Box::new(bundle.save));
+        self.workspace = Some(bundle.workspace);
+
+        if let Some(window) = &self.window {
+            window.request_redraw();
+        }
+    }
+}
+
+impl ApplicationHandler<GuiUserEvent> for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.is_some() {
             return;
@@ -103,17 +265,44 @@ impl ApplicationHandler for App {
         );
         self.scale_factor = window.scale_factor();
 
-        // Initialize GPU and renderer
-        let controller = pollster::block_on(async {
-            init_renderer(&window, &self.workspace, &self.texture_data).await
-        })
-        .expect("Failed to initialize GPU");
-
-        // Request initial render
-        window.request_redraw();
+        // Initialize the GPU context, blocking while until ready it may seem
+        // weird to block here, but I guess this is considered idiomatic for
+        // winit + wgpu apps, as the window must be referenced on the main
+        // thread.
+        let gpu = self
+            .rt
+            .block_on(pdx_map::GpuSurfaceContext::new(window.clone()))
+            .expect("Failed to create GPU context");
 
         self.window = Some(window);
-        self.controller = Some(controller);
+        self.gpu = Some(gpu);
+        self.try_initialize_renderer();
+    }
+
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: GuiUserEvent) {
+        match event {
+            GuiUserEvent::TextureReady(texture_data) => {
+                self.texture_data = Some(texture_data);
+                self.try_initialize_renderer();
+            }
+            GuiUserEvent::SaveReady(save) => {
+                self.save = Some(save);
+                self.try_start_workspace_build();
+            }
+            GuiUserEvent::GameDataReady(game_data) => {
+                self.game_data = Some(game_data);
+                self.try_start_workspace_build();
+            }
+            GuiUserEvent::WorkspaceReady(bundle) => {
+                self.workspace_building = false;
+                self.pending_workspace = Some(bundle);
+                self.try_apply_workspace();
+            }
+            GuiUserEvent::LoadFailed(err) => {
+                error!("Failed to load data: {err}");
+                event_loop.exit();
+            }
+        }
     }
 
     fn window_event(
@@ -122,11 +311,7 @@ impl ApplicationHandler for App {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
-        let Some(window) = &self.window else {
-            return;
-        };
-
-        let Some(controller) = &mut self.controller else {
+        let Some(window) = self.window.as_ref().cloned() else {
             return;
         };
 
@@ -134,9 +319,20 @@ impl ApplicationHandler for App {
             WindowEvent::CloseRequested => {
                 self.controller = None;
                 event_loop.exit();
+                return;
             }
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 self.scale_factor = scale_factor;
+            }
+            _ => {}
+        }
+
+        let Some(controller) = &mut self.controller else {
+            return;
+        };
+
+        match event {
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 let size = window.inner_size();
                 let logical = size.to_logical::<f64>(scale_factor);
                 controller.resize(logical.width.round() as u32, logical.height.round() as u32);
@@ -235,13 +431,11 @@ impl ApplicationHandler for App {
 }
 
 #[instrument(skip_all)]
-async fn init_renderer(
-    window: &Arc<Window>,
-    workspace: &Eu5Workspace<'_>,
+fn init_renderer(
+    window: &Window,
+    gpu_ctx: GpuSurfaceContext,
     texture_data: &TextureData,
-) -> Result<MapViewController, Box<dyn std::error::Error>> {
-    let gpu_ctx = pdx_map::GpuSurfaceContext::new(window.clone()).await?;
-
+) -> MapViewController {
     let (tile_width, tile_height) = eu5app::tile_dimensions();
     let west_texture = gpu_ctx.create_texture(&texture_data.west, tile_width, tile_height, "West");
     let east_texture = gpu_ctx.create_texture(&texture_data.east, tile_width, tile_height, "East");
@@ -256,22 +450,30 @@ async fn init_renderer(
         scale_factor: scale_factor as f32,
     };
 
-    // Create renderer
-    let mut renderer = SurfaceMapRenderer::new(gpu_ctx, west_texture, east_texture, display);
+    let renderer = SurfaceMapRenderer::new(gpu_ctx, west_texture, east_texture, display);
+    MapViewController::new(renderer, tile_width, tile_height)
+}
 
+fn build_workspace(mut save: Eu5LoadedSave, game_data: GameData) -> Result<WorkspaceBundle> {
+    let gamestate = save.take_gamestate();
+    let gamestate = unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(gamestate) };
+    let mut workspace =
+        Eu5Workspace::new(gamestate, game_data).context("Failed to initialize workspace")?;
+    workspace.set_map_mode(MapMode::Political);
+
+    Ok(WorkspaceBundle { save, workspace })
+}
+
+fn apply_workspace(controller: &mut MapViewController, workspace: &Eu5Workspace<'_>) {
     let save_date = workspace.gamestate().metadata().date.date_fmt().to_string();
-    renderer.add_layer(DateLayer::new(save_date, 4));
-
-    let mut controller = MapViewController::new(renderer, tile_width, tile_height);
-
-    if let Some((x, y)) = workspace.player_capital_coordinates() {
-        controller.center_at_world(x as f32, y as f32);
-    }
-
-    // Upload location arrays
+    controller
+        .renderer_mut()
+        .add_layer(DateLayer::new(save_date, 4));
     controller
         .renderer_mut()
         .update_locations(workspace.location_arrays());
 
-    Ok(controller)
+    if let Some((x, y)) = workspace.player_capital_coordinates() {
+        controller.center_at_world(x as f32, y as f32);
+    }
 }
