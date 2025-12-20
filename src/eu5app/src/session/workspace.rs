@@ -182,11 +182,11 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     pub fn location_political_color(&self, key: eu5save::models::LocationIdx) -> GpuColor {
-        self.get_country_color_for_location(key, |loc| loc.owner)
+        self.get_country_color_for_location(key, |loc| loc.owner.real_id())
     }
 
     pub fn location_control_color(&self, key: eu5save::models::LocationIdx) -> GpuColor {
-        self.get_country_color_for_location(key, |loc| loc.controller)
+        self.get_country_color_for_location(key, |loc| loc.controller.real_id())
     }
 
     pub fn location_development_color(
@@ -385,7 +385,7 @@ impl<'bump> Eu5Workspace<'bump> {
         get_country: F,
     ) -> GpuColor
     where
-        F: Fn(&eu5save::models::Location) -> eu5save::models::CountryId,
+        F: Fn(&eu5save::models::Location) -> Option<eu5save::models::RealCountryId>,
     {
         let terrain = self.location_terrain(location_idx);
         if terrain.is_water() {
@@ -396,7 +396,10 @@ impl<'bump> Eu5Workspace<'bump> {
 
         let save_location_entry = self.gamestate.locations.index(location_idx);
         let save_location = save_location_entry.location();
-        let country_id = get_country(save_location);
+        let Some(country_id) = get_country(save_location) else {
+            return GpuColor::UNOWNED;
+        };
+
         let Some(country_idx) = self.gamestate.countries.get(country_id) else {
             return GpuColor::UNOWNED;
         };
@@ -519,13 +522,14 @@ impl<'bump> Eu5Workspace<'bump> {
 
     fn build_location_arrays(&mut self) {
         for location in self.gamestate.locations.iter() {
-            // Skip locations not found in locations texture
             let Some(gpu_index) = self.gpu_indices[location.idx()] else {
+                tracing::debug!(id = ?location.id(), location_idx = ?location.idx(), "Skipping location not in texture");
                 continue;
             };
 
             let terrain = self.location_terrain(location.idx());
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
+            gpu_location.set_location_id(pdx_map::LocationId::new(location.idx().value()));
 
             // Water locations get a specific color and no location borders
             if terrain.is_water() {
@@ -551,7 +555,6 @@ impl<'bump> Eu5Workspace<'bump> {
             gpu_location.set_primary_color(owner_color);
             gpu_location.set_secondary_color(control_color);
             gpu_location.set_owner_color(owner_color);
-            gpu_location.set_location_id(pdx_map::LocationId::new(location.idx().value()));
         }
     }
 
@@ -863,11 +866,13 @@ impl<'bump> Eu5Workspace<'bump> {
                 location.flags_mut().set(LocationFlags::HIGHLIGHTED);
             }
         } else {
-            let owner = location.owner;
+            let owner = location.owner.real_id();
             let mut idxs = self.gamestate.locations.create_index(false);
-            if !owner.is_dummy() {
+
+            if let Some(owner) = owner {
                 for entry in self.gamestate.locations.iter() {
-                    idxs[entry.idx()] = entry.location().owner == owner;
+                    idxs[entry.idx()] =
+                        entry.location().owner.real_id().is_some_and(|x| x == owner);
                 }
             }
 

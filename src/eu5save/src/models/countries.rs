@@ -9,6 +9,9 @@ use serde::{
 use std::ops::IndexMut;
 use std::{collections::HashMap, fmt, num::NonZeroU32, ops::Index};
 
+/// A country ID as stored in the save file; may be [CountryId::DUMMY]
+///
+/// Consider [CountryId::real_id]
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ArenaDeserialize, Deserialize,
 )]
@@ -31,11 +34,34 @@ impl CountryId {
     pub fn is_dummy(&self) -> bool {
         *self == CountryId::DUMMY
     }
+
+    #[inline]
+    pub fn real_id(&self) -> Option<RealCountryId> {
+        NonZeroU32::new(self.0).map(RealCountryId)
+    }
 }
 
 impl Default for CountryId {
     fn default() -> Self {
         CountryId::DUMMY
+    }
+}
+
+/// A country ID that is not [CountryId::DUMMY]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct RealCountryId(NonZeroU32);
+
+impl RealCountryId {
+    #[inline]
+    pub fn country_id(self) -> CountryId {
+        CountryId(self.0.get())
+    }
+}
+
+impl From<RealCountryId> for CountryId {
+    #[inline]
+    fn from(real: RealCountryId) -> Self {
+        real.country_id()
     }
 }
 
@@ -71,7 +97,11 @@ pub struct Countries<'bump> {
 }
 
 impl<'bump> Countries<'bump> {
-    pub fn get(&self, id: CountryId) -> Option<CountryIdx> {
+    pub fn get(&self, id: impl Into<CountryId>) -> Option<CountryIdx> {
+        self.get_idx(id.into())
+    }
+
+    fn get_idx(&self, id: CountryId) -> Option<CountryIdx> {
         // Fast path: check if the country is at the same index as its tag
         let index = id.value() as usize;
         if self.ids.data.get(index).is_some_and(|cid| *cid == id) {
