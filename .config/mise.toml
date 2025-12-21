@@ -97,37 +97,37 @@ hide = true
 
 [tasks."optimize:wasm:app"]
 wait_for = ["build:wasm-bindgen wasm_app"]
-run = ["{{mise_bin}} wasm-opt wasm_app"]
+run = [{ task = "wasm-opt wasm_app" }]
 hide = true
 
 [tasks."optimize:wasm:ck3"]
 wait_for = ["build:wasm-bindgen wasm_ck3"]
-run = ["{{mise_bin}} wasm-opt wasm_ck3"]
+run = [{ task = "wasm-opt wasm_ck3" }]
 hide = true
 
 [tasks."optimize:wasm:compress"]
 wait_for = ["build:wasm-bindgen wasm_compress"]
-run = ["{{mise_bin}} wasm-opt wasm_compress"]
+run = [{ task = "wasm-opt wasm_compress" }]
 hide = true
 
 [tasks."optimize:wasm:eu4"]
 wait_for = ["build:wasm-bindgen wasm_eu4"]
-run = ["{{mise_bin}} wasm-opt wasm_eu4"]
+run = [{ task = "wasm-opt wasm_eu4" }]
 hide = true
 
 [tasks."optimize:wasm:hoi4"]
 wait_for = ["build:wasm-bindgen wasm_hoi4"]
-run = ["{{mise_bin}} wasm-opt wasm_hoi4"]
+run = [{ task = "wasm-opt wasm_hoi4" }]
 hide = true
 
 [tasks."optimize:wasm:imperator"]
 wait_for = ["build:wasm-bindgen wasm_imperator"]
-run = ["{{mise_bin}} wasm-opt wasm_imperator"]
+run = [{ task = "wasm-opt wasm_imperator" }]
 hide = true
 
 [tasks."optimize:wasm:vic3"]
 wait_for = ["build:wasm-bindgen wasm_vic3"]
-run = ["{{mise_bin}} wasm-opt wasm_vic3"]
+run = [{ task = "wasm-opt wasm_vic3" }]
 hide = true
 
 [tasks."dev:app:setup:types:cargo"]
