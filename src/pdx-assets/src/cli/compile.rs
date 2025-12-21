@@ -2,7 +2,7 @@ use crate::asset_compilers::{
     Eu4AssetCompliler, Eu5AssetCompiler, GameAssetCompiler, PackageOptions,
 };
 use crate::images::imagemagick::ImageMagickProcessor;
-use crate::{Game, create_provider, steam};
+use crate::{Game, ImageProcessor, NullImageProcessor, create_provider, steam};
 use anyhow::{Context, Result};
 use clap::Args;
 use std::path::PathBuf;
@@ -69,7 +69,11 @@ impl CompileArgs {
             }
         };
 
-        let imaging = ImageMagickProcessor::create()?;
+        let imaging = ImageMagickProcessor::create()
+            .inspect_err(|e| tracing::warn!(error = %e, "Failed to initialize ImageMagick processor, falling back to no image processing"))
+            .map(|x| Box::new(x) as Box<dyn ImageProcessor>)
+            .unwrap_or_else(|_| Box::new(NullImageProcessor));
+
         let options = PackageOptions {
             dry_run: false,
             minimal: self.minimal,

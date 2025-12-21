@@ -11,6 +11,29 @@ pub trait ImageProcessor {
     fn montage(&self, request: MontageRequest<'_>) -> Result<()>;
 }
 
+impl ImageProcessor for Box<dyn ImageProcessor> {
+    fn convert(&self, request: ConvertRequest) -> Result<()> {
+        (**self).convert(request)
+    }
+
+    fn montage(&self, request: MontageRequest<'_>) -> Result<()> {
+        (**self).montage(request)
+    }
+}
+
+#[derive(Debug)]
+pub struct NullImageProcessor;
+
+impl ImageProcessor for NullImageProcessor {
+    fn convert(&self, _request: ConvertRequest) -> Result<()> {
+        anyhow::bail!("Image processing not supported");
+    }
+
+    fn montage(&self, _request: MontageRequest<'_>) -> Result<()> {
+        anyhow::bail!("Image processing not supported");
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ConvertRequest {
     pub input_path: PathBuf,
