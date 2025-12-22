@@ -132,8 +132,7 @@ impl ImageMagickProcessor {
         // Use persistent vendored directory
         let vendored_dir = PathBuf::from("assets/vendored/imagemagick");
         let magick_exe = vendored_dir.join("magick.exe");
-        let url =
-            "https://imagemagick.org/archive/binaries/ImageMagick-7.1.2-2-portable-Q8-x64.zip";
+        let url = "https://cdn-dev.pdx.tools/vendor/ImageMagick-7.1.2-11-portable-Q8-x64.zip";
 
         // Create vendored directory
         fs::create_dir_all(&vendored_dir).context("Failed to create vendored directory")?;
