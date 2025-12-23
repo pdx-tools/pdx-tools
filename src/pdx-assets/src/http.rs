@@ -10,15 +10,12 @@ use std::path::Path;
 /// repository of saves.
 pub fn request<S: AsRef<str>>(input: S) -> Vec<u8> {
     let reffed = input.as_ref();
-    let cache = Path::new("assets").join("eu4-saves").join(reffed);
+    let cache = Path::new("assets").join(reffed);
     if cache.exists() {
         println!("cache hit: {}", reffed);
         fs::read(cache).unwrap()
     } else {
-        let url = format!(
-            "https://eu4saves-test-cases.s3.us-west-002.backblazeb2.com/{}",
-            reffed
-        );
+        let url = format!("https://cdn-dev.pdx.tools/{}", reffed);
 
         let mut attempts = 0;
         loop {

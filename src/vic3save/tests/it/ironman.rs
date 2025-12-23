@@ -38,7 +38,13 @@ fn test_melt_snapshot() -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
-    let zip_data = utils::inflate(utils::request_file("egalitarian_melted4.zip"));
+    let zip_file = utils::request_file("egalitarian_melted4.v3");
+    let zip_data = {
+        let mut buf = Vec::new();
+        let mut reader = zip_file;
+        reader.read_to_end(&mut buf)?;
+        buf
+    };
 
     let file = utils::request_file("egalitarian2.v3");
     let file = Vic3File::from_file(file)?;
