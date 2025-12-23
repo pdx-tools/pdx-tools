@@ -182,9 +182,7 @@ async function fetchEu4Save(save: string) {
   try {
     return await fs.readFile(fp);
   } catch {
-    const resp = await fetch(
-      `https://eu4saves-test-cases.s3.us-west-002.backblazeb2.com/${save}`,
-    );
+    const resp = await fetch(`https://cdn-dev.pdx.tools/eu4-saves/${save}`);
     if (!resp.ok) {
       throw new Error(`unable to retrieve: ${save}`);
     }

@@ -401,7 +401,7 @@ fn generate_provinces<P: FileProvider + ?Sized>(
         .chain(default_map.sea_starts.iter())
         .collect();
 
-    let data = http::request(format!("terrain/terrain-{}.eu4", game_version));
+    let data = http::request(format!("eu4-saves/terrain/terrain-{}.eu4", game_version));
     let save_file = Eu4File::from_slice(&data)?;
     let tokens = schemas::resolver::Eu4FlatTokens::new();
     let breakpoint = tokens.breakpoint();

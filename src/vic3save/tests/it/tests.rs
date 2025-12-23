@@ -16,9 +16,8 @@ fn can_parse_debug() -> Result<(), Box<dyn Error>> {
         meta_data: MetaData,
     }
 
-    let data = utils::inflate(utils::request_file("chile-debug.zip"));
-
-    let file = Vic3File::from_slice(&data)?;
+    let file = utils::request_file("chile-debug.v3");
+    let file = Vic3File::from_file(file)?;
     let JominiFileKind::Uncompressed(SaveDataKind::Text(text)) = file.kind() else {
         panic!("Expected text file");
     };

@@ -10,19 +10,13 @@ use std::path::Path;
 /// repository of saves.
 pub fn request<S: AsRef<str>>(input: S) -> Vec<u8> {
     let reffed = input.as_ref();
-    let cache = Path::new("..")
-        .join("..")
-        .join("assets")
-        .join("eu4-saves")
-        .join(reffed);
+    let cache_dir = Path::new("..").join("..").join("assets").join("eu4-saves");
+    let cache = cache_dir.join(reffed);
     if cache.exists() {
         println!("cache hit: {}", reffed);
         fs::read(cache).unwrap()
     } else {
-        let url = format!(
-            "https://eu4saves-test-cases.s3.us-west-002.backblazeb2.com/{}",
-            reffed
-        );
+        let url = format!("https://cdn-dev.pdx.tools/eu4-saves/{}", reffed);
 
         let mut attempts = 0;
         loop {
@@ -31,11 +25,14 @@ pub fn request<S: AsRef<str>>(input: S) -> Vec<u8> {
                     if !resp.is_success() {
                         panic!("expected a 200 code from s3");
                     } else {
-                        // Atomic rename to avoid reading partial writes
-                        let mut tmp = tempfile::NamedTempFile::new().expect("to create tempfile");
+                        // Atomic rename to avoid reading partial writes.
+                        // Use temporary in same directory to avoid cross
+                        // device rename issues.
+                        std::fs::create_dir_all(&cache_dir).unwrap();
+                        let mut tmp = tempfile::NamedTempFile::new_in(&cache_dir)
+                            .expect("to create tempfile");
                         std::io::copy(&mut resp, &mut tmp).expect("to copy to tempfile");
-                        std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
-                        std::fs::rename(tmp.path(), &cache).unwrap();
+                        tmp.persist(&cache).unwrap();
                         return fs::read(&cache).unwrap();
                     }
                 }

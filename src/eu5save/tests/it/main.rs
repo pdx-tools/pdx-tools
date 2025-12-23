@@ -9,7 +9,7 @@ use jomini::binary::TokenResolver;
 use rstest::rstest;
 use serde::Deserialize;
 use std::{
-    io::{BufWriter, Read, Seek, Write},
+    io::{BufWriter, Read, Seek},
     sync::LazyLock,
 };
 
@@ -250,18 +250,13 @@ fn binary_api_assertions<R: ReaderAt>(mut save: Eu5File<R>, resolver: &BasicToke
 
 #[test]
 fn test_txt_api() {
-    let file = utils::request_file("debug-1.0.zip");
-    let data = utils::inflate(file);
+    let mut file = utils::request_file("debug-1.0.eu5");
+    let mut data = Vec::new();
+    file.read_to_end(&mut data).unwrap();
     let save = Eu5File::from_slice(data.as_slice()).unwrap();
     text_api_assertions(data.as_slice(), save);
 
-    // Write inflated data to a temporary file
-    let mut temp_file = tempfile::NamedTempFile::new().expect("failed to create temp file");
-    temp_file
-        .write_all(&data)
-        .expect("failed to write temp file");
-
-    let file = temp_file.reopen().expect("failed to reopen temp file");
+    file.seek(std::io::SeekFrom::Start(0)).unwrap();
     let save = Eu5File::from_file(file).expect("failed to parse save from file");
     text_api_assertions(data.as_slice(), save);
 }
@@ -332,19 +327,12 @@ fn can_deserialize_gamestate(file: &Eu5File<impl ReaderAt>) {
 
 #[rstest]
 #[case("ironman-1.0.eu5")]
-#[case("debug-1.0.zip")]
+#[case("debug-1.0.eu5")]
 #[case("Clandeboye.eu5")]
 #[case("mp_cas_1374_03_06.eu5")]
 fn deserialization_regression_test(#[case] filename: &str) {
     let file = utils::request_file(filename);
-    if filename.ends_with(".zip") {
-        let data = utils::inflate(file);
-        let save = Eu5File::from_slice(data.as_slice()).unwrap();
-        can_deserialize_meta(&save);
-        can_deserialize_gamestate(&save);
-    } else {
-        let save = Eu5File::from_file(file).unwrap();
-        can_deserialize_meta(&save);
-        can_deserialize_gamestate(&save);
-    }
+    let save = Eu5File::from_file(file).unwrap();
+    can_deserialize_meta(&save);
+    can_deserialize_gamestate(&save);
 }
