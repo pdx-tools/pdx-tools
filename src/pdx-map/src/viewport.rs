@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::WorldCoordinates;
+use crate::units::WorldPoint;
 
 /// Represents the bounds of the current viewport in world coordinates
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -202,7 +202,7 @@ impl MapViewport {
     ///
     /// # Returns
     /// World coordinates (x, y) as a tuple
-    pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> WorldCoordinates {
+    pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> WorldPoint<f32> {
         let world_width = self.canvas_width as f32 / self.zoom_level;
         let world_height = self.canvas_height as f32 / self.zoom_level;
 
@@ -212,7 +212,7 @@ impl MapViewport {
         let world_x = self.viewport_x as f32 + canvas_ratio_x * world_width;
         let world_y = self.viewport_y as f32 + canvas_ratio_y * world_height;
 
-        WorldCoordinates::new(world_x, world_y)
+        WorldPoint::new(world_x, world_y)
     }
 
     /// Position a world point under a specific canvas cursor position

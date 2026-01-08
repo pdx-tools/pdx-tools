@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use wgpu::SurfaceTarget;
 
 use crate::error::RenderError;
-use crate::{CanvasDimensions, GpuLocationIdx, LocationArrays, ViewportBounds};
+use crate::{GpuLocationIdx, LocationArrays, PhysicalSize, ViewportBounds};
 
 /// A drawable layer that can be composed into the main map render pass
 pub trait RenderLayer: Send + Sync {
@@ -19,7 +19,7 @@ pub trait RenderLayer: Send + Sync {
         &'a self,
         pass: &mut wgpu::RenderPass<'a>,
         viewport: &ViewportBounds,
-        canvas_size: CanvasDimensions,
+        size: PhysicalSize<u32>,
     );
 }
 
@@ -454,19 +454,19 @@ impl GpuContext {
         Ok(self.instance.create_surface(target)?)
     }
 
-    /// Build a surface configuration for a target surface and canvas dimensions
+    /// Build a surface configuration for a target surface and physical size
     pub fn surface_config_for_surface(
         &self,
         surface: &wgpu::Surface<'static>,
-        dimensions: CanvasDimensions,
+        size: PhysicalSize<u32>,
     ) -> wgpu::SurfaceConfiguration {
         let surface_caps = surface.get_capabilities(&self.gpu.adapter);
 
         wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: choose_texture_format(&surface_caps.formats),
-            width: dimensions.physical_width(),
-            height: dimensions.physical_height(),
+            width: size.width,
+            height: size.height,
             present_mode: choose_present_mode(&surface_caps.present_modes),
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
@@ -521,10 +521,9 @@ pub struct GpuSurfaceContextRef<'a> {
 }
 
 impl<'a> GpuSurfaceContextRef<'a> {
-    /// Get surface configuration for the given dimensions
-    pub fn surface_config(&self, dimensions: CanvasDimensions) -> wgpu::SurfaceConfiguration {
-        self.core
-            .surface_config_for_surface(self.surface, dimensions)
+    /// Get surface configuration for the given physical size
+    pub fn surface_config(&self, size: PhysicalSize<u32>) -> wgpu::SurfaceConfiguration {
+        self.core.surface_config_for_surface(self.surface, size)
     }
 }
 
@@ -764,7 +763,7 @@ impl MapRenderer {
         queue: &wgpu::Queue,
         resources: &MapResources,
         bounds: ViewportBounds,
-        target_size: (u32, u32),
+        size: PhysicalSize<u32>,
     ) -> wgpu::BindGroup {
         let uniforms = ComputeUniforms {
             tile_width: self.config.tile_width(),
@@ -782,8 +781,8 @@ impl MapRenderer {
             zoom_level: bounds.zoom_level,
             viewport_x_offset: bounds.x,
             viewport_y_offset: bounds.y,
-            canvas_width: target_size.0,
-            canvas_height: target_size.1,
+            canvas_width: size.width,
+            canvas_height: size.height,
             world_width: bounds.width,
             world_height: bounds.height,
             _padding: 0,
@@ -910,13 +909,13 @@ impl MapScene {
         bind_group: &'a wgpu::BindGroup,
         format: wgpu::TextureFormat,
         viewport: &ViewportBounds,
-        canvas_size: CanvasDimensions,
+        size: PhysicalSize<u32>,
     ) {
         self.base_renderer.draw(pass, format, bind_group);
 
         for entry in &self.layers {
             if entry.visible {
-                entry.layer.draw(pass, viewport, canvas_size);
+                entry.layer.draw(pass, viewport, size);
             }
         }
     }
@@ -999,24 +998,23 @@ pub struct SurfaceMapRenderer {
     scene: MapScene,
     surface: wgpu::Surface<'static>,
     surface_config: wgpu::SurfaceConfiguration,
-    canvas_dimensions: CanvasDimensions,
     gpu: GpuContext,
 }
 
 impl SurfaceMapRenderer {
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, level = "info", fields(width = dimensions.canvas_width, height = dimensions.canvas_height))
+        tracing::instrument(skip_all, level = "info", fields(width = size.width, height = size.height))
     )]
     pub fn new(
         components: GpuSurfaceContext,
         west_texture: MapTexture,
         east_texture: MapTexture,
-        dimensions: CanvasDimensions,
+        size: PhysicalSize<u32>,
     ) -> Self {
         // Get surface configuration before consuming components
         let surface_ctx_ref = components.as_ref();
-        let surface_config = surface_ctx_ref.surface_config(dimensions);
+        let surface_config = surface_ctx_ref.surface_config(size);
         surface_ctx_ref
             .surface
             .configure(&surface_ctx_ref.core.gpu.device, &surface_config);
@@ -1033,7 +1031,6 @@ impl SurfaceMapRenderer {
             scene,
             surface: components.surface,
             surface_config,
-            canvas_dimensions: dimensions,
             gpu: components.core,
         }
     }
@@ -1041,7 +1038,7 @@ impl SurfaceMapRenderer {
     pub fn render(&mut self, bounds: ViewportBounds) -> Result<(), RenderError> {
         let output = self.surface.get_current_texture()?;
         let format = output.texture.format();
-        let target_size = (output.texture.width(), output.texture.height());
+        let size = PhysicalSize::new(output.texture.width(), output.texture.height());
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -1057,7 +1054,7 @@ impl SurfaceMapRenderer {
         let bind_group = {
             let renderer = self.scene.renderer();
             let resources = self.scene.resources();
-            renderer.prepare_bind_group(queue, resources, bounds, target_size)
+            renderer.prepare_bind_group(queue, resources, bounds, size)
         };
 
         {
@@ -1077,13 +1074,8 @@ impl SurfaceMapRenderer {
                 occlusion_query_set: None,
             });
 
-            self.scene.draw(
-                &mut pass,
-                &bind_group,
-                format,
-                &bounds,
-                self.canvas_dimensions,
-            );
+            self.scene
+                .draw(&mut pass, &bind_group, format, &bounds, size);
         }
 
         self.queue().submit(Some(encoder.finish()));
@@ -1117,15 +1109,10 @@ impl SurfaceMapRenderer {
         &self.gpu.gpu.queue
     }
 
-    pub fn dimensions(&self) -> CanvasDimensions {
-        self.canvas_dimensions
-    }
-
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
-    pub fn resize(&mut self, new_dimensions: CanvasDimensions) {
-        self.canvas_dimensions = new_dimensions;
-        self.surface_config.width = new_dimensions.physical_width();
-        self.surface_config.height = new_dimensions.physical_height();
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "debug"))]
+    pub fn resize(&mut self, size: PhysicalSize<u32>) {
+        self.surface_config.width = size.width;
+        self.surface_config.height = size.height;
         self.surface
             .configure(&self.scene.renderer().device, &self.surface_config);
         self.scene.resize_layers(&self.surface_config);
@@ -1246,10 +1233,10 @@ impl SurfaceMapRenderer {
     pub fn create_screenshot_renderer(
         &self,
         screenshot_target: SurfaceTarget<'static>,
-        dimensions: CanvasDimensions,
+        size: PhysicalSize<u32>,
     ) -> Result<Self, RenderError> {
         let surface = self.gpu.create_surface(screenshot_target)?;
-        let surface_config = self.gpu.surface_config_for_surface(&surface, dimensions);
+        let surface_config = self.gpu.surface_config_for_surface(&surface, size);
         surface.configure(&self.scene.renderer().device, &surface_config);
 
         let renderer = MapRenderer::from_existing(self.scene.renderer());
@@ -1260,7 +1247,6 @@ impl SurfaceMapRenderer {
             scene,
             surface,
             surface_config,
-            canvas_dimensions: dimensions,
             gpu: self.gpu.clone(),
         })
     }
@@ -1291,7 +1277,6 @@ pub struct HeadlessMapRenderer {
     viewport_texture: wgpu::Texture,
     viewport_staging_buffer: Option<wgpu::Buffer>,
     target_config: wgpu::SurfaceConfiguration,
-    canvas_dimensions: CanvasDimensions,
 }
 
 impl HeadlessMapRenderer {
@@ -1331,19 +1316,12 @@ impl HeadlessMapRenderer {
         let scene = MapScene::new(renderer, resources);
         let target_config =
             offscreen_surface_config(viewport_width, viewport_height, viewport_texture.format());
-        let canvas_dimensions = CanvasDimensions {
-            canvas_width: viewport_width,
-            canvas_height: viewport_height,
-            scale_factor: 1.0,
-        };
-
         Ok(HeadlessMapRenderer {
             gpu,
             scene,
             viewport_texture,
             viewport_staging_buffer: None,
             target_config,
-            canvas_dimensions,
         })
     }
 
@@ -1416,15 +1394,11 @@ impl HeadlessMapRenderer {
         let bind_group = {
             let renderer = self.scene.renderer();
             let resources = self.scene.resources();
-            renderer.prepare_bind_group(
-                queue,
-                resources,
-                render_bounds,
-                (
-                    self.viewport_texture.width(),
-                    self.viewport_texture.height(),
-                ),
-            )
+            let size = PhysicalSize::new(
+                self.viewport_texture.width(),
+                self.viewport_texture.height(),
+            );
+            renderer.prepare_bind_group(queue, resources, render_bounds, size)
         };
 
         {
@@ -1444,12 +1418,16 @@ impl HeadlessMapRenderer {
                 occlusion_query_set: None,
             });
 
+            let size = PhysicalSize::new(
+                self.viewport_texture.width(),
+                self.viewport_texture.height(),
+            );
             self.scene.draw(
                 &mut pass,
                 &bind_group,
                 self.viewport_texture.format(),
                 &render_bounds,
-                self.canvas_dimensions,
+                size,
             );
         }
 
@@ -1501,10 +1479,8 @@ impl HeadlessMapRenderer {
     }
 
     /// Resize the internal offscreen texture.
-    pub fn resize(&mut self, width: u32, height: u32) {
-        if self.canvas_dimensions.canvas_width == width
-            && self.canvas_dimensions.canvas_height == height
-        {
+    pub fn resize(&mut self, size: PhysicalSize<u32>) {
+        if self.target_config.width == size.width && self.target_config.height == size.height {
             return;
         }
 
@@ -1516,8 +1492,8 @@ impl HeadlessMapRenderer {
             .create_texture(&wgpu::TextureDescriptor {
                 label: Some("Viewport Offscreen Texture"),
                 size: wgpu::Extent3d {
-                    width,
-                    height,
+                    width: size.width,
+                    height: size.height,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
@@ -1528,14 +1504,9 @@ impl HeadlessMapRenderer {
                 view_formats: &[],
             });
 
-        // Update config and dimensions
-        self.target_config.width = width;
-        self.target_config.height = height;
-        self.canvas_dimensions = CanvasDimensions {
-            canvas_width: width,
-            canvas_height: height,
-            scale_factor: self.canvas_dimensions.scale_factor,
-        };
+        // Update config
+        self.target_config.width = size.width;
+        self.target_config.height = size.height;
 
         // Invalidate staging buffer so it gets recreated with correct size on next readback
         self.viewport_staging_buffer = None;

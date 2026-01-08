@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use bytemuck::{Pod, Zeroable};
 use pdx_map::wgpu::util::DeviceExt;
-use pdx_map::{CanvasDimensions, RenderLayer, ViewportBounds, wgpu};
+use pdx_map::{RenderLayer, ViewportBounds, wgpu};
 use tracing::instrument;
 
 const GLYPH_PATTERN_WIDTH: usize = 5;
@@ -273,7 +273,7 @@ impl RenderLayer for DateLayer {
         &'a self,
         pass: &mut wgpu::RenderPass<'a>,
         _viewport: &ViewportBounds,
-        _canvas_size: CanvasDimensions,
+        _canvas_size: pdx_map::PhysicalSize<u32>,
     ) {
         if self.pending_upload.is_some() {
             return;

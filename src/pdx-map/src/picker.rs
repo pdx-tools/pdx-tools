@@ -1,16 +1,4 @@
-use crate::GpuLocationIdx;
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct WorldCoordinates {
-    pub x: f32,
-    pub y: f32,
-}
-
-impl WorldCoordinates {
-    pub fn new(x: f32, y: f32) -> Self {
-        WorldCoordinates { x, y }
-    }
-}
+use crate::{GpuLocationIdx, units::WorldPoint};
 
 #[derive(Debug)]
 pub struct MapPickerSingle {
@@ -45,15 +33,15 @@ impl MapPickerSingle {
         }
     }
 
-    pub fn pick(&self, world_coords: WorldCoordinates) -> GpuLocationIdx {
+    pub fn pick(&self, point: WorldPoint<f32>) -> GpuLocationIdx {
         let half_width = self.world_width / 2;
         assert_ne!(half_width, 0);
 
         let bytes_per_row = (half_width as usize).saturating_mul(2);
 
         let height = self.west.len() / bytes_per_row;
-        let x = world_coords.x.floor() as i32;
-        let y = world_coords.y.floor() as i32;
+        let x = point.x.floor() as i32;
+        let y = point.y.floor() as i32;
         let y = y.clamp(0, height as i32 - 1);
         let world_width = self.world_width as i32;
 
@@ -102,7 +90,7 @@ mod tests {
         ];
 
         for (x, y, expected) in cases {
-            let world_coords = WorldCoordinates { x, y };
+            let world_coords = WorldPoint::new(x, y);
             let location_idx = map_picker.pick(world_coords);
             assert_eq!(location_idx, GpuLocationIdx::new(expected));
         }
@@ -114,8 +102,8 @@ mod tests {
         let east = pack_r16(&[3, 4]);
         let map_picker = MapPickerSingle::new(west, east, 4);
 
-        let left_wrap = WorldCoordinates { x: -1.0, y: 0.0 };
-        let right_wrap = WorldCoordinates { x: 4.0, y: 0.0 };
+        let left_wrap = WorldPoint::new(-1.0, 0.0);
+        let right_wrap = WorldPoint::new(4.0, 0.0);
 
         assert_eq!(map_picker.pick(left_wrap), GpuLocationIdx::new(4));
         assert_eq!(map_picker.pick(right_wrap), GpuLocationIdx::new(1));
@@ -127,7 +115,7 @@ mod tests {
         let east = pack_r16(&[3, 4]);
         let map_picker = MapPickerSingle::new(west, east, 4);
 
-        let world_coords = WorldCoordinates { x: 0.0, y: 1.0 };
+        let world_coords = WorldPoint::new(0.0, 1.0);
         assert_eq!(map_picker.pick(world_coords), GpuLocationIdx::new(1));
     }
 }

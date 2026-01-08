@@ -1,30 +1,39 @@
 use crate::{
-    CanvasDimensions, MapViewport, RenderError, SurfaceMapRenderer, WorldCoordinates,
+    LogicalSize, MapViewport, RenderError, SurfaceMapRenderer,
     renderer::{ColorIdReadback, QueuedWorkFuture},
+    units::WorldPoint,
 };
 
 pub struct MapViewController {
     renderer: SurfaceMapRenderer,
     viewport: MapViewport,
+    size: LogicalSize<u32>,
+    scale_factor: f32,
 }
 
 impl MapViewController {
-    pub fn new(renderer: SurfaceMapRenderer, tile_width: u32, tile_height: u32) -> Self {
-        let viewport = MapViewport::new(
-            renderer.dimensions().canvas_width,
-            renderer.dimensions().canvas_height,
-            tile_width,
-            tile_height,
-        );
+    pub fn new(
+        renderer: SurfaceMapRenderer,
+        tile_width: u32,
+        tile_height: u32,
+        size: LogicalSize<u32>,
+        scale_factor: f32,
+    ) -> Self {
+        let viewport = MapViewport::new(size.width, size.height, tile_width, tile_height);
 
-        MapViewController { renderer, viewport }
+        MapViewController {
+            renderer,
+            viewport,
+            size,
+            scale_factor,
+        }
     }
 
     pub fn get_zoom(&self) -> f32 {
         self.viewport.zoom_level()
     }
 
-    pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> WorldCoordinates {
+    pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> WorldPoint<f32> {
         self.viewport.canvas_to_world(canvas_x, canvas_y)
     }
 
@@ -38,9 +47,14 @@ impl MapViewController {
         &mut self.renderer
     }
 
-    /// Get the canvas dimensions
-    pub fn canvas_dimensions(&self) -> CanvasDimensions {
-        self.renderer.dimensions()
+    /// Get the logical size of the canvas
+    pub fn logical_size(&self) -> LogicalSize<u32> {
+        self.size
+    }
+
+    /// Get the scale factor
+    pub fn scale_factor(&self) -> f32 {
+        self.scale_factor
     }
 
     /// Get the tile width (half of map width)
@@ -67,14 +81,10 @@ impl MapViewController {
         feature = "tracing",
         tracing::instrument(skip_all, level = "debug", fields(logical_width, logical_height))
     )]
-    pub fn resize(&mut self, logical_width: u32, logical_height: u32) {
-        let new_dimensions = CanvasDimensions {
-            canvas_width: logical_width,
-            canvas_height: logical_height,
-            scale_factor: self.renderer.dimensions().scale_factor,
-        };
-        self.renderer.resize(new_dimensions);
-        self.viewport.resize(logical_width, logical_height);
+    pub fn resize(&mut self, size: LogicalSize<u32>) {
+        self.size = size;
+        self.renderer.resize(size.to_physical(self.scale_factor));
+        self.viewport.resize(size.width, size.height);
     }
 
     /// See [`MapViewport::zoom_at_point`]
@@ -122,19 +132,20 @@ impl MapViewController {
     }
 
     pub fn center_at_world(&mut self, world_x: f32, world_y: f32) {
-        let canvas_x = self.renderer.dimensions().canvas_width as f32 / 2.0;
-        let canvas_y = self.renderer.dimensions().canvas_height as f32 / 2.0;
+        let canvas_x = self.size.width as f32 / 2.0;
+        let canvas_y = self.size.height as f32 / 2.0;
         self.set_world_point_under_cursor(world_x, world_y, canvas_x, canvas_y);
     }
 
     pub fn with_renderer(&self, renderer: SurfaceMapRenderer) -> Self {
-        let dimensions = renderer.dimensions();
         let mut controller = MapViewController {
             renderer,
             viewport: self.viewport.clone(),
+            size: self.size,
+            scale_factor: self.scale_factor,
         };
 
-        controller.resize(dimensions.canvas_width, dimensions.canvas_height);
+        controller.resize(self.size);
         controller
     }
 }
