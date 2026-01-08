@@ -3,8 +3,8 @@ use eu5app::{
     should_highlight_individual_locations, tile_dimensions,
 };
 use pdx_map::{
-    CanvasDimensions, GpuLocationIdx, GpuSurfaceContext, LocationArrays, LocationFlags, MapTexture,
-    SurfaceMapRenderer,
+    CanvasDimensions, GpuLocationIdx, GpuSurfaceContext, LocationArrays, LocationFlags,
+    LogicalSize, MapTexture, SurfaceMapRenderer,
 };
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
@@ -107,12 +107,18 @@ impl Eu5WasmMapRenderer {
             surface.pipeline_components,
             west_texture.data,
             east_texture.data,
-            display,
+            display.physical_size(),
         );
 
         let (tile_width, tile_height) = tile_dimensions();
         let picker = pdx_map::MapPickerSingle::new(west_data.data, east_data.data, tile_width * 2);
-        let mut app = pdx_map::MapViewController::new(renderer, tile_width, tile_height);
+        let mut app = pdx_map::MapViewController::new(
+            renderer,
+            tile_width,
+            tile_height,
+            display.logical_size(),
+            display.scale_factor(),
+        );
 
         let show_location_borders = should_highlight_individual_locations(app.get_zoom());
         app.renderer_mut()
@@ -166,7 +172,8 @@ impl Eu5WasmMapRenderer {
     /// Resize the canvas and reconfigure the surface
     #[wasm_bindgen]
     pub fn resize(&mut self, logical_width: u32, logical_height: u32) {
-        self.app.resize(logical_width, logical_height);
+        let size = LogicalSize::new(logical_width, logical_height);
+        self.app.resize(size);
     }
 
     /// Zoom at a specific point (Google Maps style cursor-centric zoom)

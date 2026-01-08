@@ -1,7 +1,7 @@
 use pdx_map::{
     CanvasDimensions, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext, LocationArrays,
-    LocationFlags, MapTexture, MapViewController, QueuedWorkFuture, R16Palette, RenderError,
-    SurfaceMapRenderer,
+    LocationFlags, LogicalSize, MapTexture, MapViewController, PhysicalSize, QueuedWorkFuture,
+    R16Palette, RenderError, SurfaceMapRenderer,
 };
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -103,7 +103,7 @@ impl PdxMapRenderer {
             surface.pipeline_components,
             west_texture.data,
             east_texture.data,
-            canvas_dims,
+            canvas_dims.physical_size(),
         );
 
         let mut location_arrays = LocationArrays::allocate(image.palette.len());
@@ -111,7 +111,13 @@ impl PdxMapRenderer {
         location_arrays.set_primary_colors(init_colors.as_slice());
         location_arrays.set_secondary_colors(init_colors.as_slice());
         location_arrays.set_owner_colors(init_colors.as_slice());
-        let app = MapViewController::new(renderer, tile_width, tile_height);
+        let app = MapViewController::new(
+            renderer,
+            tile_width,
+            tile_height,
+            canvas_dims.logical_size(),
+            canvas_dims.scale_factor(),
+        );
 
         let mut map_renderer = PdxMapRenderer {
             app,
@@ -149,7 +155,8 @@ impl PdxMapRenderer {
     /// Resize the canvas and reconfigure the surface
     #[wasm_bindgen]
     pub fn resize(&mut self, logical_width: u32, logical_height: u32) {
-        self.app.resize(logical_width, logical_height);
+        let size = LogicalSize::new(logical_width, logical_height);
+        self.app.resize(size);
     }
 
     /// Zoom at a specific point (Google Maps style cursor-centric zoom)
@@ -371,11 +378,11 @@ impl CanvasDisplay {
 
 impl From<CanvasDisplay> for CanvasDimensions {
     fn from(display: CanvasDisplay) -> Self {
-        CanvasDimensions {
-            canvas_width: display.width as u32,
-            canvas_height: display.height as u32,
-            scale_factor: display.scale_factor,
-        }
+        CanvasDimensions::new(
+            display.width as u32,
+            display.height as u32,
+            display.scale_factor,
+        )
     }
 }
 
@@ -417,17 +424,11 @@ pub fn create_screenshot_renderer_for_app(
     app: &MapViewController,
     canvas: OffscreenCanvas,
 ) -> Result<PdxScreenshotRenderer, RenderError> {
-    let canvas_width = canvas.width();
-    let canvas_height = canvas.height();
+    let size = PhysicalSize::new(canvas.width(), canvas.height());
     let surface_target = get_surface_target(canvas);
-    let dimensions = CanvasDimensions {
-        canvas_width,
-        canvas_height,
-        scale_factor: 1.0,
-    };
     let screenshot_renderer = app
         .renderer()
-        .create_screenshot_renderer(surface_target, dimensions)?;
+        .create_screenshot_renderer(surface_target, size)?;
     Ok(PdxScreenshotRenderer {
         map: app.with_renderer(screenshot_renderer),
     })
