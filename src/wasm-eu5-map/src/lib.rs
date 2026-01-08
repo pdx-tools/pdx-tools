@@ -4,7 +4,7 @@ use eu5app::{
 };
 use pdx_map::{
     CanvasDimensions, GpuLocationIdx, GpuSurfaceContext, LocationArrays, LocationFlags,
-    LogicalSize, MapTexture, SurfaceMapRenderer,
+    LogicalPoint, LogicalSize, MapTexture, SurfaceMapRenderer, WorldPoint,
 };
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
@@ -110,12 +110,10 @@ impl Eu5WasmMapRenderer {
             display.physical_size(),
         );
 
-        let (tile_width, tile_height) = tile_dimensions();
+        let tile_width = renderer.tile_width();
         let picker = pdx_map::MapPickerSingle::new(west_data.data, east_data.data, tile_width * 2);
         let mut app = pdx_map::MapViewController::new(
             renderer,
-            tile_width,
-            tile_height,
             display.logical_size(),
             display.scale_factor(),
         );
@@ -165,8 +163,9 @@ impl Eu5WasmMapRenderer {
         canvas_x: f32,
         canvas_y: f32,
     ) {
-        self.app
-            .set_world_point_under_cursor(world_x, world_y, canvas_x, canvas_y);
+        let world = WorldPoint::new(world_x, world_y);
+        let canvas = LogicalPoint::new(canvas_x, canvas_y);
+        self.app.set_world_point_under_cursor(world, canvas);
     }
 
     /// Resize the canvas and reconfigure the surface
@@ -252,7 +251,7 @@ impl Eu5WasmMapRenderer {
 
     #[wasm_bindgen]
     pub fn center_at_world(&mut self, x: f32, y: f32) {
-        self.app.center_at_world(x, y)
+        self.app.center_at_world(WorldPoint::new(x, y))
     }
 
     /// Enable or disable owner border rendering

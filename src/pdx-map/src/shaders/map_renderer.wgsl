@@ -18,14 +18,14 @@ struct ComputeUniforms {
     enable_location_borders: u32,
     enable_owner_borders: u32,
 
-    zoom_level: f32,
-    viewport_x_offset: u32,
-    viewport_y_offset: u32,
+    view_x: u32,
+    view_y: u32,
+    view_width: u32,
+    view_height: u32,
 
-    canvas_width: u32,
-    canvas_height: u32,
-    world_width: u32,
-    world_height: u32,
+    zoom_level: f32,
+    surface_width: u32,
+    surface_height: u32,
 }
 
 
@@ -204,15 +204,15 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let canvas_x = u32(in.position.x);
     let canvas_y = u32(in.position.y);
 
-    let safe_x = min(u32(in.position.x), uniforms.canvas_width - 1u);
-    let safe_y = min(u32(in.position.y), uniforms.canvas_height - 1u);
+    let safe_x = min(u32(in.position.x), uniforms.surface_width - 1u);
+    let safe_y = min(u32(in.position.y), uniforms.surface_height - 1u);
 
-    let world_x_float = (f32(safe_x) / f32(uniforms.canvas_width)) * f32(uniforms.world_width);
-    let world_y_float = (f32(safe_y) / f32(uniforms.canvas_height)) * f32(uniforms.world_height);
+    let world_x_float = (f32(safe_x) / f32(uniforms.surface_width)) * f32(uniforms.view_width);
+    let world_y_float = (f32(safe_y) / f32(uniforms.surface_height)) * f32(uniforms.view_height);
 
     // Calculate global coordinates by adding viewport offset
-    let global_x = i32(floor(world_x_float + f32(uniforms.viewport_x_offset)));
-    let global_y = i32(floor(world_y_float + f32(uniforms.viewport_y_offset)));
+    let global_x = i32(floor(world_x_float + f32(uniforms.view_x)));
+    let global_y = i32(floor(world_y_float + f32(uniforms.view_y)));
 
     // Get location index directly from R16 texture
     let location_idx = get_location_index_at(global_x, global_y);

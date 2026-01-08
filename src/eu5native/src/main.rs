@@ -191,15 +191,15 @@ async fn render_viewport(
 
     let viewport_width = if width > tile_width { width / 2 } else { width };
 
-    let mut viewport = ViewportBounds::new(viewport_width, height);
-    viewport.x = x_offset;
-    viewport.y = y_offset;
+    let mut viewport = ViewportBounds::new(pdx_map::WorldSize::new(viewport_width, height));
+    viewport.rect.origin.x = x_offset;
+    viewport.rect.origin.y = y_offset;
 
     let mut renderer = pdx_map::HeadlessMapRenderer::new(
         pipeline_components.clone(),
         west_view,
         east_view,
-        viewport.width,
+        viewport.rect.size.width,
         height,
     )?;
 
@@ -232,7 +232,7 @@ async fn render_viewport(
         // Render east half
         let span = info_span!("readback_east");
         let _enter = span.enter();
-        viewport.x += viewport.width;
+        viewport.rect.origin.x += viewport.rect.size.width;
         let viewport_data = renderer.capture_viewport(viewport).await?;
         stitched_data.write_east(viewport_data.rows());
         viewport_data.finish();

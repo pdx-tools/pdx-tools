@@ -1,7 +1,7 @@
 use pdx_map::{
     CanvasDimensions, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext, LocationArrays,
-    LocationFlags, LogicalSize, MapTexture, MapViewController, PhysicalSize, QueuedWorkFuture,
-    R16Palette, RenderError, SurfaceMapRenderer,
+    LocationFlags, LogicalPoint, LogicalSize, MapTexture, MapViewController, PhysicalSize,
+    QueuedWorkFuture, R16Palette, RenderError, SurfaceMapRenderer, WorldPoint,
 };
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -95,10 +95,6 @@ impl PdxMapRenderer {
     ) -> Result<Self, JsError> {
         let canvas_dims: CanvasDimensions = display.into();
 
-        // Get tile dimensions from west texture
-        let tile_width = west_texture.data.width();
-        let tile_height = west_texture.data.height();
-
         let renderer = SurfaceMapRenderer::new(
             surface.pipeline_components,
             west_texture.data,
@@ -113,8 +109,6 @@ impl PdxMapRenderer {
         location_arrays.set_owner_colors(init_colors.as_slice());
         let app = MapViewController::new(
             renderer,
-            tile_width,
-            tile_height,
             canvas_dims.logical_size(),
             canvas_dims.scale_factor(),
         );
@@ -148,8 +142,9 @@ impl PdxMapRenderer {
         canvas_x: f32,
         canvas_y: f32,
     ) {
-        self.app
-            .set_world_point_under_cursor(world_x, world_y, canvas_x, canvas_y);
+        let world = WorldPoint::new(world_x, world_y);
+        let canvas = LogicalPoint::new(canvas_x, canvas_y);
+        self.app.set_world_point_under_cursor(world, canvas);
     }
 
     /// Resize the canvas and reconfigure the surface
@@ -239,7 +234,7 @@ impl PdxMapRenderer {
 
     #[wasm_bindgen]
     pub fn center_at_world(&mut self, x: f32, y: f32) {
-        self.app.center_at_world(x, y)
+        self.app.center_at_world(WorldPoint::new(x, y))
     }
 
     /// Enable or disable owner border rendering
@@ -401,7 +396,8 @@ impl PdxScreenshotRenderer {
     /// Render the western tile to the screenshot surface
     #[wasm_bindgen]
     pub fn render_west_tile(&mut self) -> Result<(), JsError> {
-        self.map.set_world_point_under_cursor(0.0, 0.0, 0.0, 0.0);
+        self.map
+            .set_world_point_under_cursor(WorldPoint::new(0.0, 0.0), LogicalPoint::new(0.0, 0.0));
         self.map
             .render()
             .map_err(|e| JsError::new(&format!("Failed to render west tile: {e}")))
@@ -411,8 +407,9 @@ impl PdxScreenshotRenderer {
     #[wasm_bindgen]
     pub fn render_east_tile(&mut self) -> Result<(), JsError> {
         let x_offset = self.map.tile_width() as f32;
+        let world_point = WorldPoint::new(x_offset, 0.0);
         self.map
-            .set_world_point_under_cursor(x_offset, 0.0, 0.0, 0.0);
+            .set_world_point_under_cursor(world_point, LogicalPoint::new(0.0, 0.0));
         self.map
             .render()
             .map_err(|e| JsError::new(&format!("Failed to render east tile: {e}")))
@@ -425,13 +422,13 @@ pub fn create_screenshot_renderer_for_app(
     canvas: OffscreenCanvas,
 ) -> Result<PdxScreenshotRenderer, RenderError> {
     let size = PhysicalSize::new(canvas.width(), canvas.height());
+    let logical_size = LogicalSize::new(canvas.width(), canvas.height());
     let surface_target = get_surface_target(canvas);
     let screenshot_renderer = app
         .renderer()
         .create_screenshot_renderer(surface_target, size)?;
-    Ok(PdxScreenshotRenderer {
-        map: app.with_renderer(screenshot_renderer),
-    })
+    let map = MapViewController::new(screenshot_renderer, logical_size, 1.0);
+    Ok(PdxScreenshotRenderer { map })
 }
 
 #[cfg(target_family = "wasm")]

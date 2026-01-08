@@ -1,5 +1,5 @@
 use crate::{
-    LogicalSize, MapViewport, RenderError, SurfaceMapRenderer,
+    LogicalPoint, LogicalSize, MapViewport, RenderError, SurfaceMapRenderer, WorldSize,
     renderer::{ColorIdReadback, QueuedWorkFuture},
     units::WorldPoint,
 };
@@ -12,14 +12,10 @@ pub struct MapViewController {
 }
 
 impl MapViewController {
-    pub fn new(
-        renderer: SurfaceMapRenderer,
-        tile_width: u32,
-        tile_height: u32,
-        size: LogicalSize<u32>,
-        scale_factor: f32,
-    ) -> Self {
-        let viewport = MapViewport::new(size.width, size.height, tile_width, tile_height);
+    pub fn new(renderer: SurfaceMapRenderer, size: LogicalSize<u32>, scale_factor: f32) -> Self {
+        let tile_width = renderer.tile_width();
+        let tile_height = renderer.tile_height();
+        let viewport = MapViewport::new(size, WorldSize::new(tile_width, tile_height));
 
         MapViewController {
             renderer,
@@ -34,7 +30,8 @@ impl MapViewController {
     }
 
     pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> WorldPoint<f32> {
-        self.viewport.canvas_to_world(canvas_x, canvas_y)
+        self.viewport
+            .canvas_to_world(LogicalPoint::new(canvas_x, canvas_y))
     }
 
     /// Get access to the underlying renderer
@@ -59,12 +56,12 @@ impl MapViewController {
 
     /// Get the tile width (half of map width)
     pub fn tile_width(&self) -> u32 {
-        self.viewport.map_width() / 2
+        self.renderer().tile_width()
     }
 
     /// Get the tile height (same as map height)
     pub fn tile_height(&self) -> u32 {
-        self.viewport.map_height()
+        self.renderer().tile_height()
     }
 
     pub fn render(&mut self) -> Result<(), RenderError> {
@@ -84,7 +81,7 @@ impl MapViewController {
     pub fn resize(&mut self, size: LogicalSize<u32>) {
         self.size = size;
         self.renderer.resize(size.to_physical(self.scale_factor));
-        self.viewport.resize(size.width, size.height);
+        self.viewport.resize(size);
     }
 
     /// See [`MapViewport::zoom_at_point`]
@@ -93,7 +90,8 @@ impl MapViewController {
         tracing::instrument(skip_all, level = "debug", fields(cursor_x, cursor_y, zoom_delta))
     )]
     pub fn zoom_at_point(&mut self, cursor_x: f32, cursor_y: f32, zoom_delta: f32) {
-        self.viewport.zoom_at_point(cursor_x, cursor_y, zoom_delta);
+        self.viewport
+            .zoom_at_point(LogicalPoint::new(cursor_x, cursor_y), zoom_delta);
     }
 
     /// Set world point under cursor
@@ -107,13 +105,10 @@ impl MapViewController {
     )]
     pub fn set_world_point_under_cursor(
         &mut self,
-        world_x: f32,
-        world_y: f32,
-        canvas_x: f32,
-        canvas_y: f32,
+        world: WorldPoint<f32>,
+        canvas: LogicalPoint<f32>,
     ) {
-        self.viewport
-            .set_world_point_under_cursor(world_x, world_y, canvas_x, canvas_y);
+        self.viewport.set_world_point_under_cursor(world, canvas);
     }
 
     /// Get location information under cursor coordinates
@@ -131,21 +126,10 @@ impl MapViewController {
         Ok(readback)
     }
 
-    pub fn center_at_world(&mut self, world_x: f32, world_y: f32) {
+    pub fn center_at_world(&mut self, world: WorldPoint<f32>) {
         let canvas_x = self.size.width as f32 / 2.0;
         let canvas_y = self.size.height as f32 / 2.0;
-        self.set_world_point_under_cursor(world_x, world_y, canvas_x, canvas_y);
-    }
-
-    pub fn with_renderer(&self, renderer: SurfaceMapRenderer) -> Self {
-        let mut controller = MapViewController {
-            renderer,
-            viewport: self.viewport.clone(),
-            size: self.size,
-            scale_factor: self.scale_factor,
-        };
-
-        controller.resize(self.size);
-        controller
+        let canvas = LogicalPoint::new(canvas_x, canvas_y);
+        self.set_world_point_under_cursor(world, canvas);
     }
 }
