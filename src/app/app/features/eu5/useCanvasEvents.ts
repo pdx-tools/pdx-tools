@@ -36,15 +36,18 @@ export function useCanvasEvents(
       switch (e.type) {
         case "pointerdown":
           engine.trigger.pointerStart(pos, e.pointerId);
+          canvasRef.current?.setPointerCapture(e.pointerId);
           break;
         case "pointermove":
           engine.trigger.pointerMove(pos, e.pointerId);
           break;
         case "pointerup":
           engine.trigger.pointerEnd(e.pointerId);
+          canvasRef.current?.releasePointerCapture(e.pointerId);
           break;
         case "pointercancel":
           engine.trigger.pointerCancel(e.pointerId);
+          canvasRef.current?.releasePointerCapture(e.pointerId);
           break;
       }
     },
@@ -139,37 +142,6 @@ export function useCanvasEvents(
 
     canvas.style.cursor = isDragging ? "grabbing" : "grab";
   }, [isDragging, canvasRef, engine]);
-
-  // Add global pointer event listeners for smooth dragging
-  useEffect(() => {
-    if (!engine) return;
-
-    const handleGlobalPointerMove = (event: PointerEvent) => {
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
-
-      const pos = {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
-      };
-
-      engine.trigger.pointerMove(pos, event.pointerId);
-    };
-
-    const handleGlobalPointerUp = (event: PointerEvent) => {
-      engine.trigger.pointerEnd(event.pointerId);
-    };
-
-    if (isDragging) {
-      document.addEventListener("pointermove", handleGlobalPointerMove);
-      document.addEventListener("pointerup", handleGlobalPointerUp);
-    }
-
-    return () => {
-      document.removeEventListener("pointermove", handleGlobalPointerMove);
-      document.removeEventListener("pointerup", handleGlobalPointerUp);
-    };
-  }, [isDragging, engine, canvasRef]);
 
   // Handle container resize
   useEffect(() => {
