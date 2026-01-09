@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use bytemuck::{Pod, Zeroable};
 use pdx_map::wgpu::util::DeviceExt;
-use pdx_map::{RenderLayer, ViewportBounds, wgpu};
+use pdx_map::{RenderLayer, ViewportBounds};
 use tracing::instrument;
 
 const GLYPH_PATTERN_WIDTH: usize = 5;
