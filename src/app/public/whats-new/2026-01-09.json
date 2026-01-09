@@ -1,0 +1,5 @@
+{
+  "sections": {
+    "fixes": ["EU5 map panning no longer interrupted by overlays"]
+  }
+}
