@@ -18,7 +18,7 @@ pub use loc_arrays::*;
 pub use picker::*;
 pub use units::{
     Logical, LogicalPoint, LogicalRect, LogicalSize, Physical, PhysicalPoint, PhysicalRect,
-    PhysicalSize,
+    PhysicalSize, Point, Rect, Size, World, WorldPoint, WorldRect, WorldSize,
 };
 pub use viewport::*;
 

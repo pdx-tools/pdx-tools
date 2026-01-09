@@ -51,24 +51,12 @@ const MAX_TEXTURE_DIMENSION: u32 = 8192;
 pub struct MapTexture {
     texture: wgpu::Texture,
     view: wgpu::TextureView,
-    width: u32,
-    height: u32,
 }
 
 impl MapTexture {
     /// Create a new MapTexture
-    pub(crate) fn new(
-        texture: wgpu::Texture,
-        view: wgpu::TextureView,
-        width: u32,
-        height: u32,
-    ) -> Self {
-        Self {
-            texture,
-            view,
-            width,
-            height,
-        }
+    pub(crate) fn new(texture: wgpu::Texture, view: wgpu::TextureView) -> Self {
+        Self { texture, view }
     }
 
     /// Get a reference to the underlying texture
@@ -83,12 +71,12 @@ impl MapTexture {
 
     /// Get the texture width
     pub fn width(&self) -> u32 {
-        self.width
+        self.texture.size().width
     }
 
     /// Get the texture height
     pub fn height(&self) -> u32 {
-        self.height
+        self.texture.size().height
     }
 }
 
@@ -132,14 +120,14 @@ struct ComputeUniforms {
     enable_location_borders: u32,
     enable_owner_borders: u32,
 
-    zoom_level: f32,
-    viewport_x_offset: u32,
-    viewport_y_offset: u32,
+    view_x: u32,
+    view_y: u32,
+    view_width: u32,
+    view_height: u32,
 
-    canvas_width: u32,
-    canvas_height: u32,
-    world_width: u32,
-    world_height: u32,
+    zoom_level: f32,
+    surface_width: u32,
+    surface_height: u32,
     _padding: u32,
 }
 
@@ -225,7 +213,7 @@ impl GpuContext {
         );
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        MapTexture::new(texture, view, width, height)
+        MapTexture::new(texture, view)
     }
 
     /// Create a new GPU instance
@@ -778,13 +766,13 @@ impl MapRenderer {
             } else {
                 0
             },
+            view_x: bounds.rect.origin.x,
+            view_y: bounds.rect.origin.y,
+            view_width: bounds.rect.size.width,
+            view_height: bounds.rect.size.height,
             zoom_level: bounds.zoom_level,
-            viewport_x_offset: bounds.x,
-            viewport_y_offset: bounds.y,
-            canvas_width: size.width,
-            canvas_height: size.height,
-            world_width: bounds.width,
-            world_height: bounds.height,
+            surface_width: size.width,
+            surface_height: size.height,
             _padding: 0,
         };
 
@@ -1338,29 +1326,26 @@ impl HeadlessMapRenderer {
         // Calculate the zoom level required to fit the requested world bounds
         // into the current texture dimensions.
         // zoom = pixels / world_units
-        let zoom_x = texture_width as f32 / bounds.width as f32;
-        let zoom_y = texture_height as f32 / bounds.height as f32;
+        let zoom_x = texture_width as f32 / bounds.rect.size.width as f32;
+        let zoom_y = texture_height as f32 / bounds.rect.size.height as f32;
 
         // Create the actual bounds passed to the shader
         // We use the calculated zoom, but keep the requested x/y/width/height
         let render_bounds = ViewportBounds {
-            x: bounds.x,
-            y: bounds.y,
-            width: bounds.width,
-            height: bounds.height,
+            rect: bounds.rect,
             zoom_level: zoom_x.max(zoom_y),
         };
 
         // Calculate aligned bytes per row for GPU copy
         const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
-        let unpadded_bytes_per_row = bounds.width * 4;
+        let unpadded_bytes_per_row = bounds.rect.size.width * 4;
 
         // Align a value to the given alignment (power of 2)
         let alignment = COPY_BYTES_PER_ROW_ALIGNMENT;
         let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(alignment) * alignment;
 
         // Create staging buffer if it doesn't exist or has wrong size
-        let buffer_size = (padded_bytes_per_row * bounds.height) as u64;
+        let buffer_size = (padded_bytes_per_row * bounds.rect.size.height) as u64;
         if self.viewport_staging_buffer.is_none()
             || self
                 .viewport_staging_buffer
@@ -1443,12 +1428,12 @@ impl HeadlessMapRenderer {
                 layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(padded_bytes_per_row),
-                    rows_per_image: Some(bounds.height),
+                    rows_per_image: Some(bounds.rect.size.height),
                 },
             },
             wgpu::Extent3d {
-                width: bounds.width,
-                height: bounds.height,
+                width: bounds.rect.size.width,
+                height: bounds.rect.size.height,
                 depth_or_array_layers: 1,
             },
         );
@@ -1473,7 +1458,7 @@ impl HeadlessMapRenderer {
         Ok(PdxBufferView::new(
             viewport_staging_buffer,
             data,
-            bounds.width,
+            bounds.rect.size.width,
             padded_bytes_per_row,
         ))
     }

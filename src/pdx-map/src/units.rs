@@ -36,7 +36,7 @@ impl<Unit, T> Size<Unit, T> {
 }
 
 /// A 2D point tagged with its unit space (Physical or Logical)
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Point<Unit, T> {
     pub x: T,
     pub y: T,
@@ -69,11 +69,13 @@ impl<Unit, T> Rect<Unit, T> {
 // Type aliases for ergonomics
 pub type PhysicalSize<T> = Size<Physical, T>;
 pub type LogicalSize<T> = Size<Logical, T>;
+pub type WorldSize<T> = Size<World, T>;
 pub type PhysicalPoint<T> = Point<Physical, T>;
 pub type LogicalPoint<T> = Point<Logical, T>;
 pub type WorldPoint<T> = Point<World, T>;
 pub type PhysicalRect<T> = Rect<Physical, T>;
 pub type LogicalRect<T> = Rect<Logical, T>;
+pub type WorldRect<T> = Rect<World, T>;
 
 // Conversion implementations (require explicit scale_factor)
 impl LogicalSize<u32> {

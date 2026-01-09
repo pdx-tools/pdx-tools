@@ -287,7 +287,10 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
     println!("Created renderer ({:.2}s)", start.elapsed().as_secs_f64());
     let mut dst_image = StitchedImage::new(image_data.full_width(), image_data.full_height());
     let start = Instant::now();
-    let bounds = ViewportBounds::new(image_data.tile_width, image_data.tile_height);
+    let bounds = ViewportBounds::new(pdx_map::WorldSize::new(
+        image_data.tile_width,
+        image_data.tile_height,
+    ));
     {
         let west_buffer = renderer.capture_viewport(bounds).await?;
         dst_image.write_west(west_buffer.rows());
