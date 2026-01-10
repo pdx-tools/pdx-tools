@@ -1,4 +1,7 @@
-use crate::{LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldSize, units::WorldPoint};
+use crate::{
+    LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldSize, units::WorldPoint,
+    SelectionBox, SharedSelectionState,
+};
 
 /// Mouse button identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -6,6 +9,15 @@ pub enum MouseButton {
     Left,
     Right,
     Middle,
+}
+
+/// Interaction mode for input handling
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InteractionMode {
+    /// Pan the map by dragging
+    Pan,
+    /// Create a selection box by dragging
+    Select,
 }
 
 /// Input controller for map navigation.
@@ -23,6 +35,15 @@ pub struct InteractionController {
 
     /// Whether currently dragging
     is_dragging: bool,
+
+    /// Current interaction mode
+    mode: InteractionMode,
+
+    /// Canvas position where selection started
+    selection_start: Option<LogicalPoint<f32>>,
+
+    /// Shared selection state (shared with SelectionLayer)
+    selection_state: Option<SharedSelectionState>,
 }
 
 impl InteractionController {
@@ -36,6 +57,9 @@ impl InteractionController {
             cursor_pos: None,
             drag_anchor_world: None,
             is_dragging: false,
+            mode: InteractionMode::Pan,
+            selection_start: None,
+            selection_state: None,
         }
     }
 
@@ -43,11 +67,23 @@ impl InteractionController {
     pub fn on_cursor_move(&mut self, canvas_pos: LogicalPoint<f32>) {
         self.cursor_pos = Some(canvas_pos);
 
-        if self.is_dragging {
-            // During drag: pan the map to keep drag anchor under cursor
-            if let Some(anchor) = self.drag_anchor_world {
-                self.viewport
-                    .set_world_point_under_cursor(anchor, canvas_pos);
+        match self.mode {
+            InteractionMode::Pan => {
+                if self.is_dragging {
+                    // During drag: pan the map to keep drag anchor under cursor
+                    if let Some(anchor) = self.drag_anchor_world {
+                        self.viewport
+                            .set_world_point_under_cursor(anchor, canvas_pos);
+                    }
+                }
+            }
+            InteractionMode::Select => {
+                // Update selection box if dragging
+                if let Some(start) = self.selection_start {
+                    if let Some(state) = &self.selection_state {
+                        let _ = state.lock().map(|mut s| s.set(Some(SelectionBox::new(start, canvas_pos))));
+                    }
+                }
             }
         }
     }
@@ -58,15 +94,30 @@ impl InteractionController {
             return;
         }
 
-        if pressed {
-            // Start drag: capture world coordinates under cursor
-            let canvas_pos = self.cursor_position();
-            self.drag_anchor_world = Some(self.viewport.canvas_to_world(canvas_pos));
-            self.is_dragging = true;
-        } else {
-            // End drag: clear anchor
-            self.is_dragging = false;
-            self.drag_anchor_world = None;
+        match self.mode {
+            InteractionMode::Pan => {
+                if pressed {
+                    // Start drag: capture world coordinates under cursor
+                    let canvas_pos = self.cursor_position();
+                    self.drag_anchor_world = Some(self.viewport.canvas_to_world(canvas_pos));
+                    self.is_dragging = true;
+                } else {
+                    // End drag: clear anchor
+                    self.is_dragging = false;
+                    self.drag_anchor_world = None;
+                }
+            }
+            InteractionMode::Select => {
+                if pressed {
+                    // Start selection: capture canvas position
+                    let canvas_pos = self.cursor_position();
+                    self.selection_start = Some(canvas_pos);
+                    if let Some(state) = &self.selection_state {
+                        let _ = state.lock().map(|mut s| s.set(Some(SelectionBox::new(canvas_pos, canvas_pos))));
+                    }
+                }
+                // On release, selection persists for display
+            }
         }
     }
 
@@ -137,6 +188,36 @@ impl InteractionController {
         );
         self.viewport
             .set_world_point_under_cursor(world, canvas_center);
+    }
+
+    /// Set the interaction mode (Pan or Select).
+    ///
+    /// When switching modes, the selection is cleared.
+    pub fn set_mode(&mut self, mode: InteractionMode) {
+        if self.mode != mode {
+            self.mode = mode;
+            // Clear selection when switching modes
+            self.selection_start = None;
+            if let Some(state) = &self.selection_state {
+                let _ = state.lock().map(|mut s| s.clear());
+            }
+        }
+    }
+
+    /// Set the shared selection state.
+    ///
+    /// This must be called to enable selection rendering. The same
+    /// state should be passed to the SelectionLayer.
+    pub fn set_selection_state(&mut self, state: SharedSelectionState) {
+        self.selection_state = Some(state);
+    }
+
+    /// Clear the current selection.
+    pub fn clear_selection(&mut self) {
+        self.selection_start = None;
+        if let Some(state) = &self.selection_state {
+            let _ = state.lock().map(|mut s| s.clear());
+        }
     }
 }
 

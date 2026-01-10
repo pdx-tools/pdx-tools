@@ -4,6 +4,7 @@ use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, fmt::format::FmtSpan};
 
 mod date_layer;
+mod selection_layer;
 
 /// EU5 native map renderer - renders EU5 save files to PNG images
 #[derive(Parser, Debug)]

@@ -13,6 +13,8 @@ mod error;
 mod interaction;
 #[cfg(feature = "render")]
 mod renderer;
+#[cfg(feature = "render")]
+mod selection;
 
 pub use color::GpuColor;
 pub use image::*;
@@ -29,12 +31,14 @@ pub use controller::MapViewController;
 #[cfg(feature = "render")]
 pub use error::{RenderError, RenderErrorKind};
 #[cfg(feature = "render")]
-pub use interaction::{InteractionController, MouseButton};
+pub use interaction::{InteractionController, InteractionMode, MouseButton};
 #[cfg(feature = "render")]
 pub use renderer::{
     ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, MapRenderer, MapResources,
     MapScene, MapTexture, QueuedWorkFuture, RenderConfig, RenderLayer, SurfaceMapRenderer,
 };
+#[cfg(feature = "render")]
+pub use selection::{SelectionBox, SelectionState, SharedSelectionState};
 #[cfg(feature = "render")]
 pub use wgpu;
 

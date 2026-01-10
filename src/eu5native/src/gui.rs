@@ -1,4 +1,4 @@
-use crate::{Args, date_layer::DateLayer};
+use crate::{Args, date_layer::DateLayer, selection_layer::SelectionLayer};
 use anyhow::{Context, Result};
 use eu5app::{
     Eu5LoadedSave, Eu5SaveLoader, Eu5Workspace, MapMode,
@@ -7,10 +7,11 @@ use eu5app::{
 };
 use eu5save::{BasicTokenResolver, Eu5File, models::Gamestate};
 use pdx_map::{
-    GpuSurfaceContext, InteractionController, LogicalPoint, LogicalSize, MapViewController,
-    SurfaceMapRenderer, WorldPoint, WorldSize,
+    GpuSurfaceContext, InteractionController, InteractionMode, LogicalPoint, LogicalSize,
+    MapViewController, SelectionState, SharedSelectionState, SurfaceMapRenderer, WorldPoint,
+    WorldSize,
 };
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::{Arc, Mutex}};
 use tokio::runtime::Runtime;
 use tracing::{error, info, instrument};
 use winit::{
@@ -101,6 +102,7 @@ pub fn run_gui(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         controller: None,
         input_controller: None,
         scale_factor: 1.0,
+        selection_state: None,
     };
 
     event_loop.run_app(&mut app)?;
@@ -170,6 +172,7 @@ struct App {
     controller: Option<MapViewController>,
     input_controller: Option<InteractionController>,
     scale_factor: f64,
+    selection_state: Option<SharedSelectionState>,
 }
 
 impl App {
@@ -191,9 +194,10 @@ impl App {
             return;
         };
 
-        let (controller, input_controller) = init_renderer(&window, gpu, &texture_data);
+        let (controller, input_controller, selection_state) = init_renderer(&window, gpu, &texture_data);
         self.controller = Some(controller);
         self.input_controller = Some(input_controller);
+        self.selection_state = Some(selection_state);
         window.request_redraw();
         self.try_apply_workspace();
     }
@@ -235,11 +239,15 @@ impl App {
             return;
         };
 
+        let Some(selection_state) = &self.selection_state else {
+            return;
+        };
+
         let Some(bundle) = self.pending_workspace.take() else {
             return;
         };
 
-        apply_workspace(controller, input_controller, &bundle.workspace);
+        apply_workspace(controller, input_controller, &bundle.workspace, selection_state.clone());
         self.save = Some(Box::new(bundle.save));
         self.workspace = Some(bundle.workspace);
 
@@ -441,7 +449,7 @@ fn init_renderer(
     window: &Window,
     gpu_ctx: GpuSurfaceContext,
     texture_data: &TextureData,
-) -> (MapViewController, InteractionController) {
+) -> (MapViewController, InteractionController, SharedSelectionState) {
     let (tile_width, tile_height) = eu5app::tile_dimensions();
     let west_texture = gpu_ctx.create_texture(&texture_data.west, tile_width, tile_height, "West");
     let east_texture = gpu_ctx.create_texture(&texture_data.east, tile_width, tile_height, "East");
@@ -459,11 +467,20 @@ fn init_renderer(
     let renderer = SurfaceMapRenderer::new(gpu_ctx, west_texture, east_texture, physical);
     let controller = MapViewController::new(renderer, logical, scale_factor as f32);
 
+    // TEMPORARY TESTING: Create shared selection state
+    // TODO: Remove before PR - replace with modifier key detection
+    let selection_state: SharedSelectionState = Arc::new(Mutex::new(SelectionState::new()));
+
     // Create input controller with map dimensions
     let map_size = WorldSize::new(tile_width * 2, tile_height);
-    let input_controller = InteractionController::new(logical, map_size);
+    let mut input_controller = InteractionController::new(logical, map_size);
 
-    (controller, input_controller)
+    // TEMPORARY TESTING: Set selection mode
+    // TODO: Remove before PR - replace with modifier key detection
+    input_controller.set_mode(InteractionMode::Select);
+    input_controller.set_selection_state(selection_state.clone());
+
+    (controller, input_controller, selection_state)
 }
 
 fn build_workspace(mut save: Eu5LoadedSave, game_data: GameData) -> Result<WorkspaceBundle> {
@@ -480,11 +497,19 @@ fn apply_workspace(
     controller: &mut MapViewController,
     input_controller: &mut InteractionController,
     workspace: &Eu5Workspace<'_>,
+    selection_state: SharedSelectionState,
 ) {
     let save_date = workspace.gamestate().metadata().date.date_fmt().to_string();
     controller
         .renderer_mut()
         .add_layer(DateLayer::new(save_date, 4));
+
+    // TEMPORARY TESTING: Add SelectionLayer with shared state
+    // TODO: Remove before PR
+    controller
+        .renderer_mut()
+        .add_layer(SelectionLayer::new(selection_state));
+
     controller
         .renderer_mut()
         .update_locations(workspace.location_arrays());
