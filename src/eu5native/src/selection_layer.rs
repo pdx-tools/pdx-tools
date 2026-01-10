@@ -12,8 +12,8 @@ const VERTEX_COUNT: u32 = 6;
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct SelectionVertex {
-    position: [f32; 2],  // NDC coordinates
-    color: [f32; 4],     // RGBA
+    position: [f32; 2], // NDC coordinates
+    color: [f32; 4],    // RGBA
 }
 
 /// Pipeline resources (created once, reused)
@@ -31,6 +31,7 @@ struct SelectionGeometry {
 pub struct SelectionLayer {
     /// Shared selection state (shared with InteractionController)
     selection_state: SharedSelectionState,
+    last_selection: Option<SelectionBox>,
 
     has_selection: bool,
 
@@ -40,8 +41,8 @@ pub struct SelectionLayer {
     /// Persistent geometry buffer (updated via write_buffer)
     geometry: Option<SelectionGeometry>,
 
-    /// Target surface dimensions (width, height)
-    target_size: Option<(u32, u32)>,
+    /// Target surface dimensions
+    target_size: Option<PhysicalSize<u32>>,
 }
 
 impl SelectionLayer {
@@ -53,6 +54,7 @@ impl SelectionLayer {
             geometry: None,
             target_size: None,
             has_selection: false,
+            last_selection: None,
         }
     }
 
@@ -189,7 +191,7 @@ impl RenderLayer for SelectionLayer {
     fn resize(&mut self, config: &wgpu::SurfaceConfiguration, device: &wgpu::Device) {
         self.ensure_pipeline(device, config.format);
         self.ensure_geometry(device);
-        self.target_size = Some((config.width, config.height));
+        self.target_size = Some(PhysicalSize::new(config.width, config.height));
     }
 
     fn update(&mut self, queue: &wgpu::Queue) {
@@ -198,12 +200,11 @@ impl RenderLayer for SelectionLayer {
             return;
         };
 
-        let Some((width, height)) = self.target_size else {
+        let Some(size) = self.target_size else {
             return;
         };
 
-        // Read current selection from shared state
-        // Use try_lock to avoid stalling - panic if lock is held by another thread
+        // Read current selection from shared state - panic if lock is held by another thread
         let selection = self
             .selection_state
             .try_lock()
@@ -211,15 +212,13 @@ impl RenderLayer for SelectionLayer {
             .get();
 
         self.has_selection = selection.is_some();
-
-        if let Some(sel) = selection {
-            let vertices = self.generate_vertices(sel, width as f32, height as f32);
-
-            // Use queue.write_buffer to efficiently update the buffer contents
-            // This is much faster than recreating the buffer each frame
+        if selection != self.last_selection
+            && let Some(sel) = selection
+        {
+            let vertices = self.generate_vertices(sel, size.width as f32, size.height as f32);
             queue.write_buffer(&geometry.buffer, 0, bytemuck::cast_slice(&vertices));
+            self.last_selection = Some(sel);
         }
-        // Note: If there's no selection, we still have the buffer but won't draw it
     }
 
     fn draw<'a>(
