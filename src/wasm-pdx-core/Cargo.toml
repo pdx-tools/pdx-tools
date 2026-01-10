@@ -1,0 +1,14 @@
+[package]
+name = "wasm-pdx-core"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[features]
+
+[dependencies]
+js-sys = { workspace = true }
+tracing = { workspace = true }
+wasm-bindgen = { workspace = true }

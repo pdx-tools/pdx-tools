@@ -10,8 +10,6 @@ use pdx_map::{
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
 
-mod console_error_panic_hook;
-
 // Re-export common types from wasm-pdxmap
 pub use wasm_pdx_map::{
     CanvasDisplay, PdxScreenshotRenderer as WasmScreenshotRenderer, WasmGpuColor,
@@ -368,5 +366,6 @@ pub struct Eu5WasmTexture {
 
 #[wasm_bindgen]
 pub fn setup_eu5_map_wasm() {
-    crate::console_error_panic_hook::set_once();
+    wasm_pdx_core::console_error_panic_hook::set_once();
+    wasm_pdx_core::console_writer::init_with_level(tracing::Level::DEBUG);
 }

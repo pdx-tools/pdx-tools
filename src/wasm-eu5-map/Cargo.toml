@@ -17,11 +17,13 @@ zstd_rust = ["eu5app/zstd_rust"]
 [dependencies]
 eu5app = { workspace = true, default-features = false }
 js-sys = { workspace = true }
-pdx-map = { workspace = true }
-wasm-pdx-map = { workspace = true }
+pdx-map = { workspace = true, features = ["tracing"] }
 serde = { workspace = true, features = ["derive"] }
 serde-wasm-bindgen = { workspace = true }
+tracing = { workspace = true }
 tsify = { workspace = true, default-features = false, features = ["js"] }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
+wasm-pdx-core = { workspace = true }
+wasm-pdx-map = { workspace = true }
 web-sys = { workspace = true, features = ["OffscreenCanvas"] }

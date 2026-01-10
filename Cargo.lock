@@ -3876,7 +3876,6 @@ dependencies = [
  "eu4save",
  "jomini",
  "js-sys",
- "pdx-map",
  "pdx-zstd",
  "schemas",
  "serde",
@@ -3884,6 +3883,7 @@ dependencies = [
  "tsify",
  "wasm-bindgen",
  "wasm-bindgen-test",
+ "wasm-pdx-core",
 ]
 
 [[package]]
@@ -3904,6 +3904,7 @@ dependencies = [
  "tracing",
  "tsify",
  "wasm-bindgen",
+ "wasm-pdx-core",
 ]
 
 [[package]]
@@ -3915,9 +3916,11 @@ dependencies = [
  "pdx-map",
  "serde",
  "serde-wasm-bindgen",
+ "tracing",
  "tsify",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-pdx-core",
  "wasm-pdx-map",
  "web-sys",
 ]
@@ -3948,6 +3951,15 @@ dependencies = [
  "schemas",
  "serde",
  "serde-wasm-bindgen",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "wasm-pdx-core"
+version = "0.1.0"
+dependencies = [
+ "js-sys",
+ "tracing",
  "wasm-bindgen",
 ]
 
