@@ -1,4 +1,4 @@
-use crate::{Args, date_layer::DateLayer, selection_layer::SelectionLayer};
+use crate::{Args, date_layer::DateLayer};
 use anyhow::{Context, Result};
 use eu5app::{
     Eu5LoadedSave, Eu5SaveLoader, Eu5Workspace, MapMode,
@@ -8,8 +8,8 @@ use eu5app::{
 use eu5save::{BasicTokenResolver, Eu5File, models::Gamestate};
 use pdx_map::{
     GpuSurfaceContext, InteractionController, InteractionMode, LogicalPoint, LogicalSize,
-    MapViewController, SelectionState, SharedSelectionState, SurfaceMapRenderer, WorldPoint,
-    WorldSize,
+    MapViewController, SelectionLayer, SelectionState, SharedSelectionState, SurfaceMapRenderer,
+    WorldPoint, WorldSize,
 };
 use std::{
     path::PathBuf,

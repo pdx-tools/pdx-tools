@@ -15,6 +15,8 @@ mod interaction;
 mod renderer;
 #[cfg(feature = "render")]
 mod selection;
+#[cfg(feature = "render")]
+mod selection_layer;
 
 pub use color::GpuColor;
 pub use image::*;
@@ -39,6 +41,8 @@ pub use renderer::{
 };
 #[cfg(feature = "render")]
 pub use selection::{SelectionBox, SelectionState, SharedSelectionState};
+#[cfg(feature = "render")]
+pub use selection_layer::SelectionLayer;
 #[cfg(feature = "render")]
 pub use wgpu;
 

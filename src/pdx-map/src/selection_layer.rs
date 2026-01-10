@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
 use bytemuck::{Pod, Zeroable};
-use pdx_map::wgpu::util::DeviceExt;
-use pdx_map::{
+use wgpu::util::DeviceExt;
+
+use crate::{
     PhysicalPoint, PhysicalSize, RenderLayer, SelectionBox, SharedSelectionState, ViewportBounds,
 };
 

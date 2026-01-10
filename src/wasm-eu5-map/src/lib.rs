@@ -3,10 +3,12 @@ use eu5app::{
     should_highlight_individual_locations, tile_dimensions,
 };
 use pdx_map::{
-    CanvasDimensions, GpuLocationIdx, GpuSurfaceContext, InteractionController, LocationArrays,
-    LocationFlags, LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton,
-    SurfaceMapRenderer, WorldPoint, WorldSize,
+    CanvasDimensions, GpuLocationIdx, GpuSurfaceContext, InteractionController, InteractionMode,
+    LocationArrays, LocationFlags, LogicalPoint, LogicalSize, MapTexture, MapViewController,
+    MouseButton, SelectionLayer, SelectionState, SharedSelectionState, SurfaceMapRenderer,
+    WorldPoint, WorldSize,
 };
+use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
 
@@ -118,12 +120,18 @@ impl Eu5WasmMapRenderer {
 
         // Initialize input controller with map size
         let map_size = WorldSize::new(tile_width * 2, tile_height);
-        let input = InteractionController::new(display.logical_size(), map_size);
+        let mut input = InteractionController::new(display.logical_size(), map_size);
+        let selection_state: SharedSelectionState = Arc::new(Mutex::new(SelectionState::new()));
+        input.set_mode(InteractionMode::Select);
+        input.set_selection_state(selection_state.clone());
 
         let show_location_borders = should_highlight_individual_locations(controller.get_zoom());
         controller
             .renderer_mut()
             .set_location_borders(show_location_borders);
+        controller
+            .renderer_mut()
+            .add_layer(SelectionLayer::new(selection_state, display.scale_factor()));
 
         Ok(Eu5WasmMapRenderer {
             controller,
