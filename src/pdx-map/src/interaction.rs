@@ -1,6 +1,6 @@
 use crate::{
-    LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldSize, units::WorldPoint,
-    SelectionBox, SharedSelectionState,
+    LogicalPoint, LogicalSize, MapViewport, SelectionBox, SharedSelectionState, ViewportBounds,
+    WorldSize, units::WorldPoint,
 };
 
 /// Mouse button identifier
@@ -207,7 +207,9 @@ impl InteractionController {
             if let Some(state) = &self.selection_state {
                 state
                     .try_lock()
-                    .expect("InteractionController::set_mode() - selection_state lock is already held!")
+                    .expect(
+                        "InteractionController::set_mode() - selection_state lock is already held!",
+                    )
                     .clear();
             }
         }

@@ -11,7 +11,10 @@ use pdx_map::{
     MapViewController, SelectionState, SharedSelectionState, SurfaceMapRenderer, WorldPoint,
     WorldSize,
 };
-use std::{path::PathBuf, sync::{Arc, Mutex}};
+use std::{
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 use tokio::runtime::Runtime;
 use tracing::{error, info, instrument};
 use winit::{
@@ -194,7 +197,8 @@ impl App {
             return;
         };
 
-        let (controller, input_controller, selection_state) = init_renderer(&window, gpu, &texture_data);
+        let (controller, input_controller, selection_state) =
+            init_renderer(&window, gpu, &texture_data);
         self.controller = Some(controller);
         self.input_controller = Some(input_controller);
         self.selection_state = Some(selection_state);
@@ -247,7 +251,12 @@ impl App {
             return;
         };
 
-        apply_workspace(controller, input_controller, &bundle.workspace, selection_state.clone());
+        apply_workspace(
+            controller,
+            input_controller,
+            &bundle.workspace,
+            selection_state.clone(),
+        );
         self.save = Some(Box::new(bundle.save));
         self.workspace = Some(bundle.workspace);
 
@@ -449,7 +458,11 @@ fn init_renderer(
     window: &Window,
     gpu_ctx: GpuSurfaceContext,
     texture_data: &TextureData,
-) -> (MapViewController, InteractionController, SharedSelectionState) {
+) -> (
+    MapViewController,
+    InteractionController,
+    SharedSelectionState,
+) {
     let (tile_width, tile_height) = eu5app::tile_dimensions();
     let west_texture = gpu_ctx.create_texture(&texture_data.west, tile_width, tile_height, "West");
     let east_texture = gpu_ctx.create_texture(&texture_data.east, tile_width, tile_height, "East");
@@ -499,6 +512,7 @@ fn apply_workspace(
     workspace: &Eu5Workspace<'_>,
     selection_state: SharedSelectionState,
 ) {
+    let scale_factor = controller.scale_factor();
     let save_date = workspace.gamestate().metadata().date.date_fmt().to_string();
     controller
         .renderer_mut()
@@ -508,7 +522,7 @@ fn apply_workspace(
     // TODO: Remove before PR
     controller
         .renderer_mut()
-        .add_layer(SelectionLayer::new(selection_state));
+        .add_layer(SelectionLayer::new(selection_state, scale_factor));
 
     controller
         .renderer_mut()
