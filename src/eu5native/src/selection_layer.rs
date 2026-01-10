@@ -1,10 +1,12 @@
 use std::borrow::Cow;
 
 use bytemuck::{Pod, Zeroable};
-use pdx_map::wgpu::util::DeviceExt;
 use pdx_map::{PhysicalSize, RenderLayer, SelectionBox, SharedSelectionState, ViewportBounds};
 
 const SELECTION_SHADER: &str = include_str!("./shaders/selection.wgsl");
+
+/// Number of vertices for a selection box (2 triangles = 6 vertices)
+const VERTEX_COUNT: u32 = 6;
 
 /// Vertex data for the selection box
 #[repr(C)]
@@ -20,10 +22,9 @@ struct SelectionPipeline {
     format: wgpu::TextureFormat,
 }
 
-/// Vertex geometry for the selection quad
+/// Persistent vertex buffer for the selection quad
 struct SelectionGeometry {
     buffer: wgpu::Buffer,
-    vertex_count: u32,
 }
 
 /// A render layer that draws a translucent selection box
@@ -31,17 +32,16 @@ pub struct SelectionLayer {
     /// Shared selection state (shared with InteractionController)
     selection_state: SharedSelectionState,
 
+    has_selection: bool,
+
     /// Pipeline resources
     pipeline: Option<SelectionPipeline>,
 
-    /// Current geometry (regenerated when selection changes)
+    /// Persistent geometry buffer (updated via write_buffer)
     geometry: Option<SelectionGeometry>,
 
     /// Target surface dimensions (width, height)
     target_size: Option<(u32, u32)>,
-
-    /// Cached device reference for creating buffers
-    device: Option<wgpu::Device>,
 }
 
 impl SelectionLayer {
@@ -52,7 +52,7 @@ impl SelectionLayer {
             pipeline: None,
             geometry: None,
             target_size: None,
-            device: None,
+            has_selection: false,
         }
     }
 
@@ -166,49 +166,60 @@ impl SelectionLayer {
         ]
     }
 
-    /// Rebuild geometry from current selection
-    fn rebuild_geometry(&mut self, device: &wgpu::Device) {
-        let Some((width, height)) = self.target_size else {
+    /// Create the persistent vertex buffer (called once during resize)
+    fn ensure_geometry(&mut self, device: &wgpu::Device) {
+        if self.geometry.is_some() {
             return;
-        };
-
-        // Read current selection from shared state
-        let selection = self.selection_state.lock().ok().and_then(|s| s.get());
-
-        if let Some(sel) = selection {
-            let vertices = self.generate_vertices(sel, width as f32, height as f32);
-
-            let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Selection Layer Vertex Buffer"),
-                contents: bytemuck::cast_slice(&vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-
-            self.geometry = Some(SelectionGeometry {
-                buffer,
-                vertex_count: vertices.len() as u32,
-            });
-        } else {
-            // No selection, clear geometry
-            self.geometry = None;
         }
+
+        // Create a persistent buffer large enough for VERTEX_COUNT vertices
+        // We'll update the contents each frame with queue.write_buffer()
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Selection Layer Vertex Buffer"),
+            size: (std::mem::size_of::<SelectionVertex>() * VERTEX_COUNT as usize) as u64,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        self.geometry = Some(SelectionGeometry { buffer });
     }
 }
 
 impl RenderLayer for SelectionLayer {
     fn resize(&mut self, config: &wgpu::SurfaceConfiguration, device: &wgpu::Device) {
         self.ensure_pipeline(device, config.format);
+        self.ensure_geometry(device);
         self.target_size = Some((config.width, config.height));
-        self.device = Some(device.clone());
     }
 
-    fn update(&mut self, _queue: &wgpu::Queue) {
-        // Rebuild geometry from current selection state
-        let Some(device) = self.device.clone() else {
+    fn update(&mut self, queue: &wgpu::Queue) {
+        // Update the persistent buffer with current selection data
+        let Some(geometry) = &self.geometry else {
             return;
         };
 
-        self.rebuild_geometry(&device);
+        let Some((width, height)) = self.target_size else {
+            return;
+        };
+
+        // Read current selection from shared state
+        // Use try_lock to avoid stalling - panic if lock is held by another thread
+        let selection = self
+            .selection_state
+            .try_lock()
+            .expect("SelectionLayer::update() - selection_state lock is already held! This should never happen as rendering is single-threaded.")
+            .get();
+
+        self.has_selection = selection.is_some();
+
+        if let Some(sel) = selection {
+            let vertices = self.generate_vertices(sel, width as f32, height as f32);
+
+            // Use queue.write_buffer to efficiently update the buffer contents
+            // This is much faster than recreating the buffer each frame
+            queue.write_buffer(&geometry.buffer, 0, bytemuck::cast_slice(&vertices));
+        }
+        // Note: If there's no selection, we still have the buffer but won't draw it
     }
 
     fn draw<'a>(
@@ -225,8 +236,12 @@ impl RenderLayer for SelectionLayer {
             return;
         };
 
+        if !self.has_selection {
+            return;
+        }
+
         pass.set_pipeline(&pipeline.pipeline);
         pass.set_vertex_buffer(0, geometry.buffer.slice(..));
-        pass.draw(0..geometry.vertex_count, 0..1);
+        pass.draw(0..VERTEX_COUNT, 0..1);
     }
 }

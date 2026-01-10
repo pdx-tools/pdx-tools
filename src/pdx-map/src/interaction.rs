@@ -81,7 +81,10 @@ impl InteractionController {
                 // Update selection box if dragging
                 if let Some(start) = self.selection_start {
                     if let Some(state) = &self.selection_state {
-                        let _ = state.lock().map(|mut s| s.set(Some(SelectionBox::new(start, canvas_pos))));
+                        state
+                            .try_lock()
+                            .expect("InteractionController::on_cursor_move() - selection_state lock is already held!")
+                            .set(Some(SelectionBox::new(start, canvas_pos)));
                     }
                 }
             }
@@ -113,7 +116,10 @@ impl InteractionController {
                     let canvas_pos = self.cursor_position();
                     self.selection_start = Some(canvas_pos);
                     if let Some(state) = &self.selection_state {
-                        let _ = state.lock().map(|mut s| s.set(Some(SelectionBox::new(canvas_pos, canvas_pos))));
+                        state
+                            .try_lock()
+                            .expect("InteractionController::on_mouse_button() - selection_state lock is already held!")
+                            .set(Some(SelectionBox::new(canvas_pos, canvas_pos)));
                     }
                 }
                 // On release, selection persists for display
@@ -199,7 +205,10 @@ impl InteractionController {
             // Clear selection when switching modes
             self.selection_start = None;
             if let Some(state) = &self.selection_state {
-                let _ = state.lock().map(|mut s| s.clear());
+                state
+                    .try_lock()
+                    .expect("InteractionController::set_mode() - selection_state lock is already held!")
+                    .clear();
             }
         }
     }
@@ -216,7 +225,10 @@ impl InteractionController {
     pub fn clear_selection(&mut self) {
         self.selection_start = None;
         if let Some(state) = &self.selection_state {
-            let _ = state.lock().map(|mut s| s.clear());
+            state
+                .try_lock()
+                .expect("InteractionController::clear_selection() - selection_state lock is already held!")
+                .clear();
         }
     }
 }
