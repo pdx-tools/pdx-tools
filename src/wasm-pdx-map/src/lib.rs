@@ -1,7 +1,8 @@
 use pdx_map::{
-    CanvasDimensions, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext, LocationArrays,
-    LocationFlags, LogicalPoint, LogicalSize, MapTexture, MapViewController, PhysicalSize,
-    QueuedWorkFuture, R16Palette, RenderError, SurfaceMapRenderer, WorldPoint,
+    CanvasDimensions, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
+    InteractionController, LocationArrays, LocationFlags, LogicalPoint, LogicalSize, MapTexture,
+    MapViewController, MouseButton, PhysicalSize, QueuedWorkFuture, R16Palette, RenderError,
+    SurfaceMapRenderer, WorldPoint, WorldSize,
 };
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -79,7 +80,8 @@ impl PdxCanvasSurface {
 
 #[wasm_bindgen]
 pub struct PdxMapRenderer {
-    app: MapViewController,
+    controller: MapViewController,
+    interaction: InteractionController,
     location_arrays: LocationArrays,
 }
 
@@ -107,14 +109,20 @@ impl PdxMapRenderer {
         location_arrays.set_primary_colors(init_colors.as_slice());
         location_arrays.set_secondary_colors(init_colors.as_slice());
         location_arrays.set_owner_colors(init_colors.as_slice());
-        let app = MapViewController::new(
+
+        let controller = MapViewController::new(
             renderer,
             canvas_dims.logical_size(),
             canvas_dims.scale_factor(),
         );
 
+        // Create input controller with map dimensions
+        let map_size = WorldSize::new(image.tile_width * 2, image.tile_height);
+        let interaction = InteractionController::new(canvas_dims.logical_size(), map_size);
+
         let mut map_renderer = PdxMapRenderer {
-            app,
+            controller,
+            interaction,
             location_arrays,
         };
         map_renderer.upload_location_arrays();
@@ -124,40 +132,73 @@ impl PdxMapRenderer {
 
     #[wasm_bindgen]
     pub fn get_zoom(&self) -> f32 {
-        self.app.get_zoom()
+        self.controller.get_zoom()
     }
 
+    /// Handle cursor movement - delegates to input controller (handles drag internally)
     #[wasm_bindgen]
-    pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> Vec<f32> {
-        let world_coords = self.app.canvas_to_world(canvas_x, canvas_y);
-        vec![world_coords.x, world_coords.y]
+    pub fn on_cursor_move(&mut self, x: f32, y: f32) {
+        self.interaction.on_cursor_move(LogicalPoint::new(x, y));
+
+        // Transfer viewport bounds to render controller
+        let bounds = self.interaction.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
     }
 
-    /// Position a world point under a specific canvas cursor position
+    /// Handle mouse button press/release
     #[wasm_bindgen]
-    pub fn set_world_point_under_cursor(
-        &mut self,
-        world_x: f32,
-        world_y: f32,
-        canvas_x: f32,
-        canvas_y: f32,
-    ) {
-        let world = WorldPoint::new(world_x, world_y);
-        let canvas = LogicalPoint::new(canvas_x, canvas_y);
-        self.app.set_world_point_under_cursor(world, canvas);
+    pub fn on_mouse_button(&mut self, button: u8, pressed: bool) {
+        // Convert u8 to MouseButton enum (0 = Left, 1 = Right, 2 = Middle)
+        let mouse_button = match button {
+            0 => MouseButton::Left,
+            1 => MouseButton::Right,
+            2 => MouseButton::Middle,
+            _ => return,
+        };
+
+        self.interaction.on_mouse_button(mouse_button, pressed);
+
+        // Transfer viewport bounds
+        let bounds = self.interaction.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
+    }
+
+    /// Handle scroll/zoom
+    #[wasm_bindgen]
+    pub fn on_scroll(&mut self, delta: f32) {
+        self.interaction.on_scroll(delta);
+
+        // Transfer viewport bounds
+        let bounds = self.interaction.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
+    }
+
+    /// Check if currently dragging
+    #[wasm_bindgen]
+    pub fn is_dragging(&self) -> bool {
+        self.interaction.is_dragging()
     }
 
     /// Resize the canvas and reconfigure the surface
     #[wasm_bindgen]
     pub fn resize(&mut self, logical_width: u32, logical_height: u32) {
         let size = LogicalSize::new(logical_width, logical_height);
-        self.app.resize(size);
+
+        // Update both controllers
+        self.interaction.on_resize(size);
+
+        // Transfer updated viewport bounds to render controller
+        let bounds = self.interaction.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
+
+        self.controller.resize(size);
     }
 
-    /// Zoom at a specific point (Google Maps style cursor-centric zoom)
+    /// Convert canvas coordinates to world coordinates
     #[wasm_bindgen]
-    pub fn zoom_at_point(&mut self, cursor_x: f32, cursor_y: f32, zoom_delta: f32) {
-        self.app.zoom_at_point(cursor_x, cursor_y, zoom_delta);
+    pub fn canvas_to_world(&self) -> Vec<f32> {
+        let world_pos = self.interaction.world_position();
+        vec![world_pos.x, world_pos.y]
     }
 
     /// Synchronize a location array from JS to Rust
@@ -175,7 +216,7 @@ impl PdxMapRenderer {
 
     #[wasm_bindgen]
     pub fn render(&mut self) -> Result<(), JsError> {
-        self.app
+        self.controller
             .render()
             .map_err(|e| JsError::new(&format!("Failed to render: {e}")))
     }
@@ -183,12 +224,12 @@ impl PdxMapRenderer {
     #[wasm_bindgen]
     pub fn create_location_color_id_readback(
         &self,
-        x: f32,
-        y: f32,
+        x: i32,
+        y: i32,
     ) -> Result<WasmGpuLocationIdxReadback, JsError> {
         let readback = self
-            .app
-            .create_color_id_readback_at(x, y)
+            .controller
+            .create_color_id_readback_at(WorldPoint::new(x, y))
             .map_err(|e| JsError::new(&format!("unable to create readback: {e:?}")))?;
         Ok(WasmGpuLocationIdxReadback { readback })
     }
@@ -234,19 +275,24 @@ impl PdxMapRenderer {
 
     #[wasm_bindgen]
     pub fn center_at_world(&mut self, x: f32, y: f32) {
-        self.app.center_at_world(WorldPoint::new(x, y))
+        let world = WorldPoint::new(x, y);
+        self.interaction.center_on(world);
+
+        // Transfer viewport to render controller
+        let bounds = self.interaction.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
     }
 
     /// Enable or disable owner border rendering
     #[wasm_bindgen]
     pub fn set_owner_borders(&mut self, enabled: bool) {
-        self.app.renderer_mut().set_owner_borders(enabled);
+        self.controller.renderer_mut().set_owner_borders(enabled);
     }
 
     #[wasm_bindgen]
     pub fn queued_work(&self) -> WasmQueuedWorkFuture {
         WasmQueuedWorkFuture {
-            future: self.app.queued_work(),
+            future: self.controller.queued_work(),
         }
     }
 
@@ -256,14 +302,14 @@ impl PdxMapRenderer {
         &self,
         canvas: OffscreenCanvas,
     ) -> Result<PdxScreenshotRenderer, JsError> {
-        create_screenshot_renderer_for_app(&self.app, canvas)
+        create_screenshot_renderer_for_app(&self.controller, canvas)
             .map_err(|e| JsError::new(&format!("Failed to create screenshot renderer: {e}")))
     }
 }
 
 impl PdxMapRenderer {
     fn upload_location_arrays(&mut self) {
-        let renderer = self.app.renderer_mut();
+        let renderer = self.controller.renderer_mut();
         renderer.update_locations(&self.location_arrays);
     }
 }
@@ -396,8 +442,11 @@ impl PdxScreenshotRenderer {
     /// Render the western tile to the screenshot surface
     #[wasm_bindgen]
     pub fn render_west_tile(&mut self) -> Result<(), JsError> {
-        self.map
-            .set_world_point_under_cursor(WorldPoint::new(0.0, 0.0), LogicalPoint::new(0.0, 0.0));
+        let mut bounds = self.map.viewport_bounds();
+        bounds.rect.origin = WorldPoint::new(0, 0);
+        bounds.rect.size = self.map.tile_size();
+        bounds.zoom_level = 1.0;
+        self.map.set_viewport_bounds(bounds);
         self.map
             .render()
             .map_err(|e| JsError::new(&format!("Failed to render west tile: {e}")))
@@ -406,10 +455,11 @@ impl PdxScreenshotRenderer {
     /// Render the eastern tile to the screenshot surface
     #[wasm_bindgen]
     pub fn render_east_tile(&mut self) -> Result<(), JsError> {
-        let x_offset = self.map.tile_width() as f32;
-        let world_point = WorldPoint::new(x_offset, 0.0);
-        self.map
-            .set_world_point_under_cursor(world_point, LogicalPoint::new(0.0, 0.0));
+        let mut bounds = self.map.viewport_bounds();
+        bounds.rect.size = self.map.tile_size();
+        bounds.rect.origin = WorldPoint::new(self.map.tile_size().width, 0);
+        bounds.zoom_level = 1.0;
+        self.map.set_viewport_bounds(bounds);
         self.map
             .render()
             .map_err(|e| JsError::new(&format!("Failed to render east tile: {e}")))

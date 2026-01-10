@@ -97,7 +97,6 @@ export const createMapEngine = async ({
 
   const app = await appTask;
   app.render();
-  let inProgressReadback = false;
 
   console.log("Returning proxied map engine functions");
   return proxy({
@@ -113,27 +112,23 @@ export const createMapEngine = async ({
       return app.get_zoom();
     },
 
-    zoomAtPoint: async (
-      cursorX: number,
-      cursorY: number,
-      zoomDelta: number,
-    ) => {
-      app.zoom_at_point(cursorX, cursorY, zoomDelta);
+    onCursorMove: async (x: number, y: number) => {
+      app.on_cursor_move(x, y);
       app.render();
     },
 
-    canvasToWorld: (canvasX: number, canvasY: number) => {
-      return app.canvas_to_world(canvasX, canvasY);
+    onMouseButton: async (button: number, pressed: boolean) => {
+      app.on_mouse_button(button, pressed);
+      app.render();
     },
 
-    setWorldPointUnderCursor: async (
-      worldX: number,
-      worldY: number,
-      canvasX: number,
-      canvasY: number,
-    ) => {
-      app.set_world_point_under_cursor(worldX, worldY, canvasX, canvasY);
+    onScroll: async (scrollLines: number) => {
+      app.on_scroll(scrollLines);
       app.render();
+    },
+
+    isDragging: () => {
+      return app.is_dragging();
     },
 
     setOwnerBorders: (enabled: boolean) => {
@@ -156,34 +151,6 @@ export const createMapEngine = async ({
     unhighlightLocation: (locationIdx: number) => {
       app.unhighlight_location(locationIdx);
       app.render();
-    },
-
-    getLocationUnderCursor: async (
-      canvasX: number,
-      canvasY: number,
-    ): Promise<
-      { kind: "throttled" } | ({ kind: "result" } & LocationLookupResult)
-    > => {
-      if (inProgressReadback) {
-        return { kind: "throttled" };
-      }
-
-      try {
-        inProgressReadback = true;
-        const readback = app.create_location_color_id_readback(
-          canvasX,
-          canvasY,
-        );
-        const locationIdx = await readback.read_id();
-        if (locationIdx === undefined) {
-          throw new Error(`No location found for color ID`);
-        }
-
-        const locationId = app.lookup_location_id(locationIdx);
-        return { kind: "result", locationIdx: locationIdx.value(), locationId };
-      } finally {
-        inProgressReadback = false;
-      }
     },
 
     loadLocationData: async (locationDataFile: File) => {

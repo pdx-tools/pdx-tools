@@ -1,12 +1,11 @@
 use crate::{
-    LogicalPoint, LogicalSize, MapViewport, RenderError, SurfaceMapRenderer, WorldSize,
+    LogicalSize, RenderError, SurfaceMapRenderer, ViewportBounds, WorldPoint, WorldSize,
     renderer::{ColorIdReadback, QueuedWorkFuture},
-    units::WorldPoint,
 };
 
 pub struct MapViewController {
     renderer: SurfaceMapRenderer,
-    viewport: MapViewport,
+    viewport_bounds: ViewportBounds,
     size: LogicalSize<u32>,
     scale_factor: f32,
 }
@@ -15,23 +14,30 @@ impl MapViewController {
     pub fn new(renderer: SurfaceMapRenderer, size: LogicalSize<u32>, scale_factor: f32) -> Self {
         let tile_width = renderer.tile_width();
         let tile_height = renderer.tile_height();
-        let viewport = MapViewport::new(size, WorldSize::new(tile_width, tile_height));
+        let map_size = WorldSize::new(tile_width * 2, tile_height);
+
+        // Initialize with default viewport bounds
+        let viewport_bounds = ViewportBounds::new(map_size);
 
         MapViewController {
             renderer,
-            viewport,
+            viewport_bounds,
             size,
             scale_factor,
         }
     }
 
-    pub fn get_zoom(&self) -> f32 {
-        self.viewport.zoom_level()
+    /// Set viewport bounds from input controller.
+    ///
+    /// This method should be called after input events to update the viewport
+    /// used for rendering.
+    pub fn set_viewport_bounds(&mut self, bounds: ViewportBounds) {
+        self.viewport_bounds = bounds;
     }
 
-    pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> WorldPoint<f32> {
-        self.viewport
-            .canvas_to_world(LogicalPoint::new(canvas_x, canvas_y))
+    /// Get current zoom level from viewport bounds.
+    pub fn get_zoom(&self) -> f32 {
+        self.viewport_bounds.zoom_level
     }
 
     /// Get access to the underlying renderer
@@ -54,26 +60,25 @@ impl MapViewController {
         self.scale_factor
     }
 
-    /// Get the tile width (half of map width)
-    pub fn tile_width(&self) -> u32 {
-        self.renderer().tile_width()
+    /// Get the tile size
+    pub fn tile_size(&self) -> WorldSize<u32> {
+        WorldSize::new(self.renderer.tile_width(), self.renderer.tile_height())
     }
 
-    /// Get the tile height (same as map height)
-    pub fn tile_height(&self) -> u32 {
-        self.renderer().tile_height()
+    /// Get current viewport bounds.
+    pub fn viewport_bounds(&self) -> ViewportBounds {
+        self.viewport_bounds
     }
 
     pub fn render(&mut self) -> Result<(), RenderError> {
-        let bounds = self.viewport.viewport_bounds();
-        self.renderer.render(bounds)
+        self.renderer.render(self.viewport_bounds)
     }
 
     pub fn queued_work(&self) -> QueuedWorkFuture {
         self.renderer.queued_work()
     }
 
-    /// Resize with surface reconfiguration
+    /// Resize with surface reconfiguration.
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(skip_all, level = "debug", fields(logical_width, logical_height))
@@ -81,55 +86,13 @@ impl MapViewController {
     pub fn resize(&mut self, size: LogicalSize<u32>) {
         self.size = size;
         self.renderer.resize(size.to_physical(self.scale_factor));
-        self.viewport.resize(size);
     }
 
-    /// See [`MapViewport::zoom_at_point`]
-    #[cfg_attr(
-        feature = "tracing",
-        tracing::instrument(skip_all, level = "debug", fields(cursor_x, cursor_y, zoom_delta))
-    )]
-    pub fn zoom_at_point(&mut self, cursor_x: f32, cursor_y: f32, zoom_delta: f32) {
-        self.viewport
-            .zoom_at_point(LogicalPoint::new(cursor_x, cursor_y), zoom_delta);
-    }
-
-    /// Set world point under cursor
-    #[cfg_attr(
-        feature = "tracing",
-        tracing::instrument(
-            skip_all,
-            level = "debug",
-            fields(world_x, world_y, canvas_x, canvas_y)
-        )
-    )]
-    pub fn set_world_point_under_cursor(
-        &mut self,
-        world: WorldPoint<f32>,
-        canvas: LogicalPoint<f32>,
-    ) {
-        self.viewport.set_world_point_under_cursor(world, canvas);
-    }
-
-    /// Get location information under cursor coordinates
+    /// Get location information at world coordinates.
     pub fn create_color_id_readback_at(
         &self,
-        canvas_x: f32,
-        canvas_y: f32,
+        world_pos: WorldPoint<i32>,
     ) -> Result<ColorIdReadback, RenderError> {
-        // Convert canvas coordinates to world coordinates
-        let world_coords = self.canvas_to_world(canvas_x, canvas_y);
-        let readback = self
-            .renderer
-            .create_color_id_readback_at(world_coords.x as i32, world_coords.y as i32)?;
-
-        Ok(readback)
-    }
-
-    pub fn center_at_world(&mut self, world: WorldPoint<f32>) {
-        let canvas_x = self.size.width as f32 / 2.0;
-        let canvas_y = self.size.height as f32 / 2.0;
-        let canvas = LogicalPoint::new(canvas_x, canvas_y);
-        self.set_world_point_under_cursor(world, canvas);
+        self.renderer.create_color_id_readback_at(world_pos)
     }
 }

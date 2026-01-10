@@ -10,6 +10,8 @@ mod controller;
 #[cfg(feature = "render")]
 mod error;
 #[cfg(feature = "render")]
+mod interaction;
+#[cfg(feature = "render")]
 mod renderer;
 
 pub use color::GpuColor;
@@ -26,6 +28,8 @@ pub use viewport::*;
 pub use controller::MapViewController;
 #[cfg(feature = "render")]
 pub use error::{RenderError, RenderErrorKind};
+#[cfg(feature = "render")]
+pub use interaction::{InteractionController, MouseButton};
 #[cfg(feature = "render")]
 pub use renderer::{
     ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, MapRenderer, MapResources,

@@ -1,9 +1,5 @@
 import { wrap, transfer, proxy } from "comlink";
 import type { Remote } from "comlink";
-import type {
-  LocationLookupResult,
-  MapCommand,
-} from "./workers/map/map-module";
 import type { HoverDisplayData, MapMode } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/useLoadEu5";
 import bundleUrl from "../../../../../assets/game/eu5/eu5-1.0.zip?url";
@@ -137,7 +133,6 @@ export function saveWorker(
   saveEngine: Awaited<ReturnType<Eu5Worker["createGame"]>>,
   mapEngine: Awaited<ReturnType<Eu5MapWorker["createMapEngine"]>>,
 ) {
-  let currentHighlightedLocation: LocationLookupResult | null = null;
   let hoverDisplayCallback: ((data: HoverDisplayData) => void) | null = null;
 
   // Set up hover display callback from game worker
@@ -150,16 +145,11 @@ export function saveWorker(
   return {
     resize: (width: number, height: number) => mapEngine.resize(width, height),
     getZoom: () => mapEngine.get_zoom(),
-    zoomAtPoint: (cursorX: number, cursorY: number, zoomDelta: number) =>
-      mapEngine.zoomAtPoint(cursorX, cursorY, zoomDelta),
-    canvasToWorld: (canvasX: number, canvasY: number) =>
-      mapEngine.canvasToWorld(canvasX, canvasY),
-    setWorldPointUnderCursor: (
-      worldX: number,
-      worldY: number,
-      canvasX: number,
-      canvasY: number,
-    ) => mapEngine.setWorldPointUnderCursor(worldX, worldY, canvasX, canvasY),
+    onCursorMove: (x: number, y: number) => mapEngine.onCursorMove(x, y),
+    onMouseButton: (button: number, pressed: boolean) =>
+      mapEngine.onMouseButton(button, pressed),
+    onScroll: (scrollLines: number) => mapEngine.onScroll(scrollLines),
+    isDragging: () => mapEngine.isDragging(),
     setMapMode: async (mode: MapMode) => {
       await saveEngine.setMapMode(mode);
       return mode;
@@ -170,34 +160,6 @@ export function saveWorker(
         fullResolution,
         overlayData,
       );
-    },
-    getLocationUnderCursor: async (canvasX: number, canvasY: number) => {
-      const result = await mapEngine.getLocationUnderCursor(canvasX, canvasY);
-      if (result.kind === "throttled") {
-        return result;
-      }
-
-      if (currentHighlightedLocation?.locationId !== result.locationId) {
-        const commands: MapCommand[] = [];
-        if (currentHighlightedLocation !== null) {
-          commands.push({
-            kind: "unhighlight",
-            locationIdx: currentHighlightedLocation.locationIdx,
-          });
-        }
-
-        // Only highlight if the location can be highlighted (not water/impassable)
-        if (await saveEngine.canHighlightLocation(result.locationId)) {
-          commands.push({ kind: "highlight", locationIdx: result.locationIdx });
-          currentHighlightedLocation = result;
-        } else {
-          currentHighlightedLocation = null;
-        }
-
-        commands.push({ kind: "render" });
-        await mapEngine.execCommands(commands);
-      }
-      return result;
     },
     setOwnerBorders: (enabled: boolean) => {
       mapEngine.execCommands([

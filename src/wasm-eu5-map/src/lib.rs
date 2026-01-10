@@ -3,8 +3,9 @@ use eu5app::{
     should_highlight_individual_locations, tile_dimensions,
 };
 use pdx_map::{
-    CanvasDimensions, GpuLocationIdx, GpuSurfaceContext, LocationArrays, LocationFlags,
-    LogicalPoint, LogicalSize, MapTexture, SurfaceMapRenderer, WorldPoint,
+    CanvasDimensions, GpuLocationIdx, GpuSurfaceContext, InteractionController, LocationArrays,
+    LocationFlags, LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton,
+    SurfaceMapRenderer, WorldPoint, WorldSize,
 };
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
@@ -81,7 +82,8 @@ impl Eu5CanvasSurface {
 
 #[wasm_bindgen]
 pub struct Eu5WasmMapRenderer {
-    app: pdx_map::MapViewController,
+    controller: MapViewController,
+    input: InteractionController,
     picker: pdx_map::MapPickerSingle,
     location_arrays: LocationArrays,
 }
@@ -111,19 +113,23 @@ impl Eu5WasmMapRenderer {
         );
 
         let tile_width = renderer.tile_width();
+        let tile_height = renderer.tile_height();
         let picker = pdx_map::MapPickerSingle::new(west_data.data, east_data.data, tile_width * 2);
-        let mut app = pdx_map::MapViewController::new(
-            renderer,
-            display.logical_size(),
-            display.scale_factor(),
-        );
+        let mut controller =
+            MapViewController::new(renderer, display.logical_size(), display.scale_factor());
 
-        let show_location_borders = should_highlight_individual_locations(app.get_zoom());
-        app.renderer_mut()
+        // Initialize input controller with map size
+        let map_size = WorldSize::new(tile_width * 2, tile_height);
+        let input = InteractionController::new(display.logical_size(), map_size);
+
+        let show_location_borders = should_highlight_individual_locations(controller.get_zoom());
+        controller
+            .renderer_mut()
             .set_location_borders(show_location_borders);
 
         Ok(Eu5WasmMapRenderer {
-            app,
+            controller,
+            input,
             picker,
             location_arrays: LocationArrays::new(),
         })
@@ -132,18 +138,19 @@ impl Eu5WasmMapRenderer {
     /// Get current raw zoom value
     #[wasm_bindgen]
     pub fn get_zoom(&self) -> f32 {
-        self.app.get_zoom()
+        self.input.zoom_level()
+    }
+
+    /// Report current world coordinates under current cursor
+    #[wasm_bindgen]
+    pub fn canvas_to_world(&self) -> Vec<f32> {
+        let world_pos = self.input.world_position();
+        vec![world_pos.x, world_pos.y]
     }
 
     #[wasm_bindgen]
-    pub fn canvas_to_world(&self, canvas_x: f32, canvas_y: f32) -> Vec<f32> {
-        let world_coords = self.app.canvas_to_world(canvas_x, canvas_y);
-        vec![world_coords.x, world_coords.y]
-    }
-
-    #[wasm_bindgen]
-    pub fn pick_location(&mut self, canvas_x: f32, canvas_y: f32) -> u16 {
-        let world_coords = self.app.canvas_to_world(canvas_x, canvas_y);
+    pub fn pick_location(&mut self) -> u16 {
+        let world_coords = self.input.world_position();
         let location = self.picker.pick(world_coords);
         location.value()
     }
@@ -154,35 +161,70 @@ impl Eu5WasmMapRenderer {
         self.location_arrays.get_location_id(idx).value()
     }
 
-    /// Position a world point under a specific canvas cursor position
+    /// Handle cursor movement
     #[wasm_bindgen]
-    pub fn set_world_point_under_cursor(
-        &mut self,
-        world_x: f32,
-        world_y: f32,
-        canvas_x: f32,
-        canvas_y: f32,
-    ) {
-        let world = WorldPoint::new(world_x, world_y);
-        let canvas = LogicalPoint::new(canvas_x, canvas_y);
-        self.app.set_world_point_under_cursor(world, canvas);
+    pub fn on_cursor_move(&mut self, x: f32, y: f32) {
+        self.input.on_cursor_move(LogicalPoint::new(x, y));
+
+        let bounds = self.input.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
+    }
+
+    /// Handle mouse button press/release
+    ///
+    /// # Arguments
+    /// * `button` - Mouse button (0 = Left, 1 = Right, 2 = Middle)
+    /// * `pressed` - true if pressed, false if released
+    #[wasm_bindgen]
+    pub fn on_mouse_button(&mut self, button: u8, pressed: bool) {
+        let mouse_button = match button {
+            0 => MouseButton::Left,
+            1 => MouseButton::Right,
+            2 => MouseButton::Middle,
+            _ => return,
+        };
+
+        self.input.on_mouse_button(mouse_button, pressed);
+
+        let bounds = self.input.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
+    }
+
+    /// Handle scroll/zoom input
+    ///
+    /// # Arguments
+    /// * `scroll_lines` - Scroll amount in lines (positive = zoom in, negative = zoom out)
+    #[wasm_bindgen]
+    pub fn on_scroll(&mut self, scroll_lines: f32) {
+        self.input.on_scroll(scroll_lines);
+
+        let bounds = self.input.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
+
+        // Update location borders based on zoom level
+        let show_borders = should_highlight_individual_locations(bounds.zoom_level);
+        self.controller
+            .renderer_mut()
+            .set_location_borders(show_borders);
+    }
+
+    /// Check if currently dragging
+    #[wasm_bindgen]
+    pub fn is_dragging(&self) -> bool {
+        self.input.is_dragging()
     }
 
     /// Resize the canvas and reconfigure the surface
     #[wasm_bindgen]
     pub fn resize(&mut self, logical_width: u32, logical_height: u32) {
         let size = LogicalSize::new(logical_width, logical_height);
-        self.app.resize(size);
-    }
+        self.input.on_resize(size);
 
-    /// Zoom at a specific point (Google Maps style cursor-centric zoom)
-    #[wasm_bindgen]
-    pub fn zoom_at_point(&mut self, cursor_x: f32, cursor_y: f32, zoom_delta: f32) {
-        self.app.zoom_at_point(cursor_x, cursor_y, zoom_delta);
-        let show_location_borders = should_highlight_individual_locations(self.app.get_zoom());
-        self.app
-            .renderer_mut()
-            .set_location_borders(show_location_borders);
+        // Transfer updated viewport bounds to render controller
+        let bounds = self.input.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
+
+        self.controller.resize(size);
     }
 
     /// Create a separate screenshot renderer that shares GPU resources but operates independently
@@ -191,7 +233,7 @@ impl Eu5WasmMapRenderer {
         &self,
         canvas: OffscreenCanvas,
     ) -> Result<WasmScreenshotRenderer, JsError> {
-        create_screenshot_renderer_for_app(&self.app, canvas)
+        create_screenshot_renderer_for_app(&self.controller, canvas)
             .map_err(|e| JsError::new(&format!("Failed to create screenshot renderer: {e}")))
     }
 
@@ -210,7 +252,7 @@ impl Eu5WasmMapRenderer {
 
     #[wasm_bindgen]
     pub fn render(&mut self) -> Result<(), JsError> {
-        self.app
+        self.controller
             .render()
             .map_err(|e| JsError::new(&format!("Failed to render: {e}")))
     }
@@ -249,26 +291,31 @@ impl Eu5WasmMapRenderer {
         self.upload_location_arrays();
     }
 
+    /// Center the viewport at a world point
     #[wasm_bindgen]
     pub fn center_at_world(&mut self, x: f32, y: f32) {
-        self.app.center_at_world(WorldPoint::new(x, y))
+        let world = WorldPoint::new(x, y);
+        self.input.center_on(world);
+
+        let bounds = self.input.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
     }
 
     /// Enable or disable owner border rendering
     #[wasm_bindgen]
     pub fn set_owner_borders(&mut self, enabled: bool) {
-        self.app.renderer_mut().set_owner_borders(enabled);
+        self.controller.renderer_mut().set_owner_borders(enabled);
     }
 
     #[wasm_bindgen]
     pub fn queued_work(&self) -> WasmQueuedWorkFuture {
-        WasmQueuedWorkFuture::from_queued_work_future(self.app.queued_work())
+        WasmQueuedWorkFuture::from_queued_work_future(self.controller.queued_work())
     }
 }
 
 impl Eu5WasmMapRenderer {
     fn upload_location_arrays(&mut self) {
-        let renderer = self.app.renderer_mut();
+        let renderer = self.controller.renderer_mut();
         renderer.update_locations(&self.location_arrays);
     }
 }

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use wgpu::SurfaceTarget;
 
 use crate::error::RenderError;
-use crate::{GpuLocationIdx, LocationArrays, PhysicalSize, ViewportBounds};
+use crate::{GpuLocationIdx, LocationArrays, PhysicalSize, ViewportBounds, WorldPoint};
 
 /// A drawable layer that can be composed into the main map render pass
 pub trait RenderLayer: Send + Sync {
@@ -1118,11 +1118,10 @@ impl SurfaceMapRenderer {
     /// This avoids viewport manipulation and provides fast cursor-to-location mapping
     pub fn create_color_id_readback_at(
         &self,
-        world_x: i32,
-        world_y: i32,
+        world_pos: WorldPoint<i32>,
     ) -> Result<ColorIdReadback, RenderError> {
-        let global_x = world_x;
-        let global_y = world_y.clamp(0, (self.tile_height() - 1) as i32);
+        let global_x = world_pos.x;
+        let global_y = world_pos.y.clamp(0, (self.tile_height() - 1) as i32);
 
         // Handle world wraparound (same logic as shader)
         let world_width = (self.tile_width() * 2) as i32;
