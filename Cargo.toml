@@ -26,6 +26,7 @@ members = [
     "src/wasm-eu4",
     "src/wasm-hoi4",
     "src/wasm-imperator",
+    "src/wasm-pdx-core",
     "src/wasm-pdx-map",
     "src/wasm-vic3",
     "src/wasm-eu5",
@@ -96,6 +97,7 @@ walkdir = "2.5.0"
 wasm-bindgen = { version = "0.2.106", default-features = false }
 wasm-bindgen-futures = "0.4.56"
 wasm-bindgen-test = "0.3.56"
+wasm-pdx-core = { path = "src/wasm-pdx-core" }
 wasm-pdx-map = { path = "src/wasm-pdx-map" }
 web-sys = "0.3.83"
 webp = "0.3"

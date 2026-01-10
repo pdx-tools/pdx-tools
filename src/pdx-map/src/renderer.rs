@@ -150,7 +150,10 @@ pub struct GpuContext {
 
 impl GpuContext {
     /// Create a new headless GPU context for map rendering
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "info"))]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(name = "pdx-map.gpu.acquire", skip_all, level = "info")
+    )]
     pub async fn new() -> Result<Self, RenderError> {
         let instance = Self::create_instance();
         let adapter = Self::request_adapter(&instance, None).await?;
@@ -160,7 +163,7 @@ impl GpuContext {
     /// Create an R16Uint storage texture for location index data
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip(self, texture_data), level = "debug", fields(texture_len = texture_data.len()))
+        tracing::instrument(name = "pdx-map.gpu.create-texture", skip(self, texture_data), level = "debug", fields(texture_len = texture_data.len()))
     )]
     pub fn create_texture(
         &self,
@@ -225,7 +228,10 @@ impl GpuContext {
     }
 
     /// Request a GPU adapter
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(name = "pdx-map.gpu.request-adapter", skip_all, level = "debug")
+    )]
     async fn request_adapter(
         instance: &wgpu::Instance,
         surface: Option<&wgpu::Surface<'_>>,
@@ -242,7 +248,10 @@ impl GpuContext {
     }
 
     /// Initialize GPU device, adapter, buffers, and pipelines from an adapter
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "info"))]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(name = "pdx-map.gpu.construct", skip_all, level = "info")
+    )]
     async fn from_instance_and_adapter(
         instance: wgpu::Instance,
         adapter: wgpu::Adapter,
@@ -282,7 +291,10 @@ impl GpuContext {
     }
 
     /// Create compute and render pipelines from shader sources and GPU device
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "debug"))]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(name = "pdx-map.map-shader.compile", skip_all, level = "debug")
+    )]
     fn compile_map_resources(device: &wgpu::Device) -> (wgpu::ShaderModule, wgpu::BindGroupLayout) {
         let shader_source = include_str!("./shaders/map_renderer.wgsl");
 
@@ -470,7 +482,10 @@ pub struct GpuSurfaceContext {
 
 impl GpuSurfaceContext {
     /// Create a new GPU surface context for rendering to a surface
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "info"))]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(name = "pdx-map.gpu.new-surface", skip_all, level = "info")
+    )]
     pub async fn new(surface: impl Into<SurfaceTarget<'static>>) -> Result<Self, RenderError> {
         let surface = surface.into();
         Self::new_surface(surface).await
@@ -992,7 +1007,7 @@ pub struct SurfaceMapRenderer {
 impl SurfaceMapRenderer {
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, level = "info", fields(width = size.width, height = size.height))
+        tracing::instrument(name = "pdx-map.surface.new", skip_all, level = "info", fields(width = size.width, height = size.height))
     )]
     pub fn new(
         components: GpuSurfaceContext,
@@ -1023,6 +1038,10 @@ impl SurfaceMapRenderer {
         }
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(name = "pdx-map.render", skip(self), level = "trace", fields(%bounds))
+    )]
     pub fn render(&mut self, bounds: ViewportBounds) -> Result<(), RenderError> {
         let output = self.surface.get_current_texture()?;
         let format = output.texture.format();
@@ -1097,7 +1116,10 @@ impl SurfaceMapRenderer {
         &self.gpu.gpu.queue
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "debug"))]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(name = "pdx-map.surface.resize", skip(self), level = "debug")
+    )]
     pub fn resize(&mut self, size: PhysicalSize<u32>) {
         self.surface_config.width = size.width;
         self.surface_config.height = size.height;
@@ -1270,7 +1292,11 @@ impl HeadlessMapRenderer {
     /// Create a headless map renderer from initialized GPU context and texture data
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip(gpu, west_texture, east_texture), level = "info")
+        tracing::instrument(
+            name = "pdx-map.headless.new",
+            skip(gpu, west_texture, east_texture),
+            level = "info"
+        )
     )]
     pub fn new(
         gpu: GpuContext,
@@ -1313,7 +1339,7 @@ impl HeadlessMapRenderer {
     }
 
     /// Render an arbitrary viewport to the offscreen texture and read back the bytes.
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), fields(bounds = %bounds)))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(name = "pdx-map.headless.capture-viewport", skip(self), fields(bounds = %bounds)))]
     pub async fn capture_viewport(
         &mut self,
         bounds: ViewportBounds,
