@@ -6,7 +6,7 @@ edition = "2024"
 [features]
 default = ["render", "interaction"]
 interaction = []
-render = ["dep:wgpu", "dep:futures-channel"]
+render = ["dep:wgpu", "dep:futures-channel", "interaction"]
 tracing = ["dep:tracing"]
 
 [dependencies]

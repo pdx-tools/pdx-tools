@@ -3,11 +3,15 @@ use eu5app::{
     should_highlight_individual_locations, tile_dimensions,
 };
 use pdx_map::{
-    CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, InteractionController, KeyboardKey,
-    LocationArrays, LocationFlags, LogicalPoint, LogicalSize, MapTexture, MapViewController,
-    MouseButton, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
+    AABB, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, InteractionController,
+    InteractionMode, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
+    MapTexture, MapViewController, MouseButton, SelectionLayer, SelectionState,
+    SharedSelectionState, SurfaceMapRenderer, ViewportBounds, WorldPoint, WorldSize, default_clock,
 };
-use std::time::Duration;
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
 
@@ -83,10 +87,11 @@ impl Eu5CanvasSurface {
 pub struct Eu5WasmMapRenderer {
     controller: MapViewController,
     input: InteractionController,
-    picker: pdx_map::MapPickerSingle,
+    picker: pdx_map::MapPicker,
     location_arrays: LocationArrays,
     clock: Box<dyn Clock>,
     last_tick: Option<Duration>,
+    selection_state: SharedSelectionState,
 }
 
 impl std::fmt::Debug for Eu5WasmMapRenderer {
@@ -115,18 +120,26 @@ impl Eu5WasmMapRenderer {
 
         let tile_width = renderer.tile_width();
         let tile_height = renderer.tile_height();
-        let picker = pdx_map::MapPickerSingle::new(west_data.data, east_data.data, tile_width * 2);
+        let picker = pdx_map::MapPickerSingle::new(west_data.data, east_data.data, tile_width * 2)
+            .with_aabbs();
         let mut controller =
             MapViewController::new(renderer, display.logical_size(), display.scale_factor());
 
         // Initialize input controller with map size
         let map_size = WorldSize::new(tile_width * 2, tile_height);
-        let input = InteractionController::new(display.logical_size(), map_size);
+        let mut input = InteractionController::new(display.logical_size(), map_size);
+        let selection_state: SharedSelectionState = Arc::new(Mutex::new(SelectionState::new()));
+        input.set_mode(InteractionMode::Select);
+        input.set_selection_state(selection_state.clone());
 
         let show_location_borders = should_highlight_individual_locations(controller.get_zoom());
         controller
             .renderer_mut()
             .set_location_borders(show_location_borders);
+        controller.renderer_mut().add_layer(SelectionLayer::new(
+            selection_state.clone(),
+            display.scale_factor(),
+        ));
 
         Ok(Eu5WasmMapRenderer {
             controller,
@@ -135,6 +148,7 @@ impl Eu5WasmMapRenderer {
             location_arrays: LocationArrays::new(),
             clock: default_clock(),
             last_tick: None,
+            selection_state,
         })
     }
 
@@ -171,6 +185,7 @@ impl Eu5WasmMapRenderer {
 
         let bounds = self.input.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
+        self.log_selection_entities(bounds);
     }
 
     /// Handle mouse button press/release
@@ -188,7 +203,6 @@ impl Eu5WasmMapRenderer {
         };
 
         self.input.on_mouse_button(mouse_button, pressed);
-
         let bounds = self.input.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
     }
@@ -347,6 +361,65 @@ impl Eu5WasmMapRenderer {
     fn upload_location_arrays(&mut self) {
         let renderer = self.controller.renderer_mut();
         renderer.update_locations(&self.location_arrays);
+    }
+
+    fn log_selection_entities(&self, bounds: ViewportBounds) {
+        let selection = match self.selection_state.try_lock() {
+            Ok(state) => state.get(),
+            Err(_) => return,
+        };
+
+        let selection = match selection {
+            Some(selection) => selection,
+            None => return,
+        };
+
+        if bounds.zoom_level <= f32::EPSILON {
+            return;
+        }
+
+        let (min, max) = selection.normalized_rect();
+        let origin = bounds.rect.origin;
+        let world_min_x = origin.x as f32 + min.x / bounds.zoom_level;
+        let world_min_y = origin.y as f32 + min.y / bounds.zoom_level;
+        let world_max_x = origin.x as f32 + max.x / bounds.zoom_level;
+        let world_max_y = origin.y as f32 + max.y / bounds.zoom_level;
+
+        let min_x = Self::clamp_to_u16(world_min_x);
+        let min_y = Self::clamp_to_u16(world_min_y);
+        let max_x = Self::clamp_to_u16(world_max_x);
+        let max_y = Self::clamp_to_u16(world_max_y);
+
+        let query_aabb = AABB::new(WorldPoint::new(min_x, min_y), WorldPoint::new(max_x, max_y));
+
+        let max_locations = self.location_arrays.len();
+        let mut results = Vec::new();
+        for idx in self.picker.query(query_aabb) {
+            let idx_usize = idx.value() as usize;
+            if idx_usize < max_locations {
+                results.push(self.location_arrays.get_location_id(idx).value());
+            } else {
+                results.push(idx.value() as u32);
+            }
+        }
+
+        let message = format!(
+            "Selection AABB [{},{}]-[{},{}] -> {} entities: {:?}",
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+            results.len(),
+            results
+        );
+        tracing::info!(message);
+    }
+
+    fn clamp_to_u16(value: f32) -> u16 {
+        if !value.is_finite() {
+            return 0;
+        }
+        value.floor().clamp(0.0, u16::MAX as f32) as u16
     }
 }
 

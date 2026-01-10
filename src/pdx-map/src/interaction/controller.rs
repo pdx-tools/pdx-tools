@@ -1,8 +1,20 @@
-use crate::{LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldSize, units::WorldPoint};
+use crate::{
+    LogicalPoint, LogicalSize, MapViewport, SelectionBox, SharedSelectionState, ViewportBounds,
+    WorldSize, units::WorldPoint,
+};
 use std::time::Duration;
 
 use super::keyboard::{KeyboardKey, KeyboardState};
 use super::mouse::MouseButton;
+
+/// Interaction mode for input handling
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InteractionMode {
+    /// Pan the map by dragging
+    Pan,
+    /// Create a selection box by dragging
+    Select,
+}
 
 /// Input controller for map navigation.
 ///
@@ -20,6 +32,15 @@ pub struct InteractionController {
     /// Whether currently dragging
     is_dragging: bool,
 
+    /// Current interaction mode
+    mode: InteractionMode,
+
+    /// Canvas position where selection started
+    selection_start: Option<LogicalPoint<f32>>,
+
+    /// Shared selection state (shared with SelectionLayer)
+    selection_state: Option<SharedSelectionState>,
+
     keyboard_state: KeyboardState,
     was_keyboard_active: bool,
 }
@@ -35,6 +56,9 @@ impl InteractionController {
             cursor_pos: None,
             drag_anchor_world: None,
             is_dragging: false,
+            mode: InteractionMode::Pan,
+            selection_start: None,
+            selection_state: None,
             keyboard_state: KeyboardState {
                 up: false,
                 down: false,
@@ -53,10 +77,27 @@ impl InteractionController {
     pub fn on_cursor_move(&mut self, cursor: LogicalPoint<f32>) {
         self.cursor_pos = Some(cursor);
 
-        if self.is_dragging {
-            // During drag: pan the map to keep drag anchor under cursor
-            if let Some(anchor) = self.drag_anchor_world {
-                self.viewport.set_world_point_under_cursor(anchor, cursor);
+        match self.mode {
+            InteractionMode::Pan => {
+                if self.is_dragging {
+                    // During drag: pan the map to keep drag anchor under cursor
+                    if let Some(anchor) = self.drag_anchor_world {
+                        self.viewport.set_world_point_under_cursor(anchor, cursor);
+                    }
+                }
+            }
+            InteractionMode::Select => {
+                // Update selection box if dragging
+                if let Some(start) = self.selection_start {
+                    if let Some(state) = &self.selection_state {
+                        state
+                            .try_lock()
+                            .expect(
+                                "InteractionController::on_cursor_move() - selection_state lock is already held!",
+                            )
+                            .set(Some(SelectionBox::new(start, cursor)));
+                    }
+                }
             }
         }
     }
@@ -71,15 +112,35 @@ impl InteractionController {
             return;
         }
 
-        if pressed {
-            // Start drag: capture world coordinates under cursor
-            let canvas_pos = self.cursor_position();
-            self.drag_anchor_world = Some(self.viewport.canvas_to_world(canvas_pos));
-            self.is_dragging = true;
-        } else {
-            // End drag: clear anchor
-            self.is_dragging = false;
-            self.drag_anchor_world = None;
+        match self.mode {
+            InteractionMode::Pan => {
+                if pressed {
+                    // Start drag: capture world coordinates under cursor
+                    let canvas_pos = self.cursor_position();
+                    self.drag_anchor_world = Some(self.viewport.canvas_to_world(canvas_pos));
+                    self.is_dragging = true;
+                } else {
+                    // End drag: clear anchor
+                    self.is_dragging = false;
+                    self.drag_anchor_world = None;
+                }
+            }
+            InteractionMode::Select => {
+                if pressed {
+                    // Start selection: capture canvas position
+                    let canvas_pos = self.cursor_position();
+                    self.selection_start = Some(canvas_pos);
+                    if let Some(state) = &self.selection_state {
+                        state
+                            .try_lock()
+                            .expect(
+                                "InteractionController::on_mouse_button() - selection_state lock is already held!",
+                            )
+                            .set(Some(SelectionBox::new(canvas_pos, canvas_pos)));
+                    }
+                }
+                // On release, selection persists for display
+            }
         }
     }
 
@@ -233,6 +294,45 @@ impl InteractionController {
         );
         self.viewport
             .set_world_point_under_cursor(world, canvas_center);
+    }
+
+    /// Set the interaction mode (Pan or Select).
+    ///
+    /// When switching modes, the selection is cleared.
+    pub fn set_mode(&mut self, mode: InteractionMode) {
+        if self.mode != mode {
+            self.mode = mode;
+            self.selection_start = None;
+            if let Some(state) = &self.selection_state {
+                state
+                    .try_lock()
+                    .expect(
+                        "InteractionController::set_mode() - selection_state lock is already held!",
+                    )
+                    .clear();
+            }
+        }
+    }
+
+    /// Set the shared selection state.
+    ///
+    /// This must be called to enable selection rendering. The same
+    /// state should be passed to the SelectionLayer.
+    pub fn set_selection_state(&mut self, state: SharedSelectionState) {
+        self.selection_state = Some(state);
+    }
+
+    /// Clear the current selection.
+    pub fn clear_selection(&mut self) {
+        self.selection_start = None;
+        if let Some(state) = &self.selection_state {
+            state
+                .try_lock()
+                .expect(
+                    "InteractionController::clear_selection() - selection_state lock is already held!",
+                )
+                .clear();
+        }
     }
 }
 

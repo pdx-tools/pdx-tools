@@ -1,11 +1,15 @@
 use pdx_map::{
     CanvasDimensions, Clock, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
-    InteractionController, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
-    MapTexture, MapViewController, MouseButton, PhysicalSize, QueuedWorkFuture, R16Palette,
-    RenderError, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
+    InteractionController, InteractionMode, KeyboardKey, LocationArrays, LocationFlags,
+    LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton, PhysicalSize,
+    QueuedWorkFuture, R16Palette, RenderError, SelectionLayer, SelectionState,
+    SharedSelectionState, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
 };
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
 
@@ -113,7 +117,7 @@ impl PdxMapRenderer {
         location_arrays.set_secondary_colors(init_colors.as_slice());
         location_arrays.set_owner_colors(init_colors.as_slice());
 
-        let controller = MapViewController::new(
+        let mut controller = MapViewController::new(
             renderer,
             canvas_dims.logical_size(),
             canvas_dims.scale_factor(),
@@ -121,7 +125,14 @@ impl PdxMapRenderer {
 
         // Create input controller with map dimensions
         let map_size = WorldSize::new(image.tile_width * 2, image.tile_height);
-        let interaction = InteractionController::new(canvas_dims.logical_size(), map_size);
+        let mut interaction = InteractionController::new(canvas_dims.logical_size(), map_size);
+        let selection_state: SharedSelectionState = Arc::new(Mutex::new(SelectionState::new()));
+        interaction.set_mode(InteractionMode::Select);
+        interaction.set_selection_state(selection_state.clone());
+        controller.renderer_mut().add_layer(SelectionLayer::new(
+            selection_state,
+            canvas_dims.scale_factor(),
+        ));
 
         let mut map_renderer = PdxMapRenderer {
             controller,

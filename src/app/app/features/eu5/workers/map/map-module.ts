@@ -251,7 +251,7 @@ export const createMapEngine = async (
       return app.get_zoom();
     },
     onCursorMove: (x: number, y: number) => {
-      app.on_cursor_move(x, y);
+      app.on_cursor_move(x, y)
       renderOrQueue();
     },
     onMouseButton: (button: number, pressed: boolean) => {
