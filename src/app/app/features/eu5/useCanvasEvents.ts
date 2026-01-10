@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import type { RefObject } from "react";
 import type { AppEngine } from "./ui-engine";
 
@@ -6,19 +6,6 @@ export function useCanvasEvents(
   canvasRef: RefObject<HTMLCanvasElement | null>,
   engine: AppEngine | null,
 ) {
-  const [isDragging, setIsDragging] = useState(false);
-
-  // Subscribe to engine state changes for isDragging
-  useEffect(() => {
-    if (!engine) return;
-
-    const unsubscribe = engine.subscribe((state) => {
-      setIsDragging(state.isDragging);
-    });
-
-    return unsubscribe;
-  }, [engine]);
-
   // Event handlers
   const handlePointerEvent = useCallback(
     (e: PointerEvent) => {
@@ -135,13 +122,13 @@ export function useCanvasEvents(
     };
   }, [handlePointerEvent, handleMouseEvent, handleWheel, engine, canvasRef]);
 
-  // Update canvas cursor based on drag state
+  // Set canvas cursor style
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !engine) return;
 
-    canvas.style.cursor = isDragging ? "grabbing" : "grab";
-  }, [isDragging, canvasRef, engine]);
+    canvas.style.cursor = "grab";
+  }, [canvasRef, engine]);
 
   // Handle container resize
   useEffect(() => {

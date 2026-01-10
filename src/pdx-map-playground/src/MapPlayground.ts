@@ -43,8 +43,6 @@ export class MapPlayground {
   private controlsPanel: HTMLDivElement | null = null;
 
   // Form state
-  private isDragging: boolean = false;
-  private dragStartWorldPos: { x: number; y: number } | null = null;
   private highlightInput: string = "";
   private mapImageFile: File | null = null;
   private locationDataFile: File | null = null;
@@ -348,13 +346,15 @@ export class MapPlayground {
     const canvasX = e.clientX - rect.left;
     const canvasY = e.clientY - rect.top;
 
-    const worldPos = await this.mapEngine.canvasToWorld(canvasX, canvasY);
-    const worldX = worldPos[0];
-    const worldY = worldPos[1];
-    this.dragStartWorldPos = { x: worldX, y: worldY };
-    this.isDragging = true;
+    // Update cursor position and start drag with left button (button 0)
+    await this.mapEngine.onCursorMove(canvasX, canvasY);
+    await this.mapEngine.onMouseButton(0, true);
 
-    this.canvas.classList.add("dragging");
+    // Update CSS class based on drag state
+    const isDragging = await this.mapEngine.isDragging();
+    if (isDragging) {
+      this.canvas.classList.add("dragging");
+    }
     this.canvas.setPointerCapture(e.pointerId);
   }
 
@@ -365,22 +365,21 @@ export class MapPlayground {
     const canvasX = e.clientX - rect.left;
     const canvasY = e.clientY - rect.top;
 
-    if (this.isDragging && this.dragStartWorldPos) {
-      await this.mapEngine.setWorldPointUnderCursor(
-        this.dragStartWorldPos.x,
-        this.dragStartWorldPos.y,
-        canvasX,
-        canvasY,
-      );
-    }
+    // Input controller handles drag internally based on state
+    await this.mapEngine.onCursorMove(canvasX, canvasY);
   }
 
-  private handlePointerUp(e: PointerEvent): void {
-    if (!this.canvas) return;
+  private async handlePointerUp(e: PointerEvent): Promise<void> {
+    if (!this.mapEngine || !this.canvas) return;
 
-    this.isDragging = false;
-    this.dragStartWorldPos = null;
-    this.canvas.classList.remove("dragging");
+    // End drag with left button (button 0)
+    await this.mapEngine.onMouseButton(0, false);
+
+    // Update CSS class based on drag state
+    const isDragging = await this.mapEngine.isDragging();
+    if (!isDragging) {
+      this.canvas.classList.remove("dragging");
+    }
     this.canvas.releasePointerCapture(e.pointerId);
   }
 
@@ -392,9 +391,13 @@ export class MapPlayground {
     const rect = this.canvas.getBoundingClientRect();
     const cursorX = e.clientX - rect.left;
     const cursorY = e.clientY - rect.top;
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
 
-    await this.mapEngine.zoomAtPoint(cursorX, cursorY, delta);
+    // Convert wheel delta to scroll lines (positive = zoom in, negative = zoom out)
+    const scrollLines = e.deltaY > 0 ? -1.0 : 1.0;
+
+    // Update cursor position first, then scroll
+    await this.mapEngine.onCursorMove(cursorX, cursorY);
+    await this.mapEngine.onScroll(scrollLines);
   }
 
   private async toggleOwnerBorders(): Promise<void> {

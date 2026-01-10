@@ -199,7 +199,7 @@ export const createMapEngine = async (
       return;
     }
 
-    const worldPos = app.canvas_to_world(canvasX, canvasY);
+    const worldPos = app.canvas_to_world();
     const worldCoordinates = { x: worldPos[0], y: worldPos[1] };
 
     const threshold = 1.0;
@@ -217,7 +217,7 @@ export const createMapEngine = async (
     lastProcessedWorldCoordinates = worldCoordinates;
 
     try {
-      const gpuLoc = app.pick_location(canvasX, canvasY);
+      const gpuLoc = app.pick_location();
       let locationId = app.gpu_loc_to_app(gpuLoc);
       if (locationId !== lastKnownLocationId) {
         if (locationId) {
@@ -240,25 +240,24 @@ export const createMapEngine = async (
     get_zoom: () => {
       return app.get_zoom();
     },
-    zoomAtPoint: (cursorX: number, cursorY: number, zoomDelta: number) => {
-      app.zoom_at_point(cursorX, cursorY, zoomDelta);
+    onCursorMove: (x: number, y: number) => {
+      app.on_cursor_move(x, y);
+      renderOrQueue();
+    },
+    onMouseButton: (button: number, pressed: boolean) => {
+      app.on_mouse_button(button, pressed);
+      renderOrQueue();
+    },
+    onScroll: (scrollLines: number) => {
+      app.on_scroll(scrollLines);
       renderOrQueue();
 
       // Notify about zoom level change
       const newZoom = app.get_zoom();
       zoomChangeCallback?.(newZoom);
     },
-    canvasToWorld: (canvasX: number, canvasY: number) => {
-      return app.canvas_to_world(canvasX, canvasY);
-    },
-    setWorldPointUnderCursor: (
-      worldX: number,
-      worldY: number,
-      canvasX: number,
-      canvasY: number,
-    ) => {
-      app.set_world_point_under_cursor(worldX, worldY, canvasX, canvasY);
-      renderOrQueue();
+    isDragging: () => {
+      return app.is_dragging();
     },
     generateWorldScreenshot: async (
       fullResolution: boolean,
@@ -312,17 +311,6 @@ export const createMapEngine = async (
 
       // Convert composite canvas to PNG blob and return
       return compositeCanvas.convertToBlob({ type: "image/png" });
-    },
-
-    getLocationUnderCursor: async (
-      canvasX: number,
-      canvasY: number,
-    ): Promise<
-      { kind: "throttled" } | ({ kind: "result" } & LocationLookupResult)
-    > => {
-      const gpuLoc = app.pick_location(canvasX, canvasY);
-      let locationId = app.gpu_loc_to_app(gpuLoc);
-      return { kind: "result", locationIdx: gpuLoc, locationId };
     },
 
     async execCommands(commands: MapCommand[]) {

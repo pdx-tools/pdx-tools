@@ -27,8 +27,6 @@ export interface DragHandle {
 }
 
 export interface AppState {
-  isDragging: boolean;
-  dragStartWorldPos: { x: number; y: number } | null;
   currentMapMode: MapMode;
   hoverDisplayData: HoverDisplayData | null;
   isGeneratingScreenshot: boolean;
@@ -99,8 +97,6 @@ export class Eu5UIEngine implements AppEngine {
     initialState?: Partial<AppState>,
   ) {
     this._state = {
-      isDragging: false,
-      dragStartWorldPos: null,
       currentMapMode: "political",
       hoverDisplayData: null,
       isGeneratingScreenshot: false,
@@ -186,43 +182,32 @@ export class Eu5UIEngine implements AppEngine {
     this.rafId = requestAnimationFrame(async () => {
       this.rafId = null;
 
-      if (
-        this._state.isDragging &&
-        this._state.dragStartWorldPos &&
-        this.currentDragHandle
-      ) {
-        await this.currentDragHandle.update(pos);
-      } else {
-        await this.gameInstance.updateCursorWorldPosition(pos.x, pos.y);
-      }
+      // Input controller handles drag internally based on state
+      await this.gameInstance.onCursorMove(pos.x, pos.y);
+      // Also update cursor world position for hover tracking
+      await this.gameInstance.updateCursorWorldPosition(pos.x, pos.y);
     });
   }
 
   private async handleMouseDown(pos: PointerPosition): Promise<DragHandle> {
-    const worldPosArray = await this.gameInstance.canvasToWorld(pos.x, pos.y);
-    const dragStartWorldPos = { x: worldPosArray[0], y: worldPosArray[1] };
+    // Update cursor position and start drag with left button (button 0)
+    await this.gameInstance.onCursorMove(pos.x, pos.y);
+    await this.gameInstance.onMouseButton(0, true);
 
-    this.updateState(() => ({
-      isDragging: true,
-      dragStartWorldPos,
-    }));
-
-    const dragHandle = this.createDragHandle(dragStartWorldPos);
+    const dragHandle = this.createDragHandle();
     this.currentDragHandle = dragHandle;
     return dragHandle;
   }
 
   private async handleMouseUp(): Promise<void> {
-    this.updateState(() => ({
-      isDragging: false,
-    }));
+    // End drag with left button (button 0)
+    await this.gameInstance.onMouseButton(0, false);
     this.currentDragHandle = null;
   }
 
   private async handleMouseLeave(): Promise<void> {
-    this.updateState(() => ({
-      isDragging: false,
-    }));
+    // End drag if active
+    await this.gameInstance.onMouseButton(0, false);
     this.currentDragHandle = null;
     // Clear cursor position in worker when mouse leaves
     await this.gameInstance.updateCursorWorldPosition(-1, -1);
@@ -278,11 +263,17 @@ export class Eu5UIEngine implements AppEngine {
   }
 
   private async handleZoom(params: ZoomParams): Promise<void> {
-    await this.gameInstance.zoomAtPoint(
-      params.center.x,
-      params.center.y,
-      params.delta,
-    );
+    // Convert zoom delta to scroll lines
+    // delta > 1.0 means zoom in (positive scroll lines)
+    // delta < 1.0 means zoom out (negative scroll lines)
+    const scrollLines =
+      params.delta > 1.0
+        ? Math.log(params.delta) / Math.log(1.1)
+        : -Math.log(1.0 / params.delta) / Math.log(1.1);
+
+    // Update cursor position first, then scroll
+    await this.gameInstance.onCursorMove(params.center.x, params.center.y);
+    await this.gameInstance.onScroll(scrollLines);
   }
 
   private async handlePan(_params: PanParams): Promise<void> {
@@ -378,21 +369,14 @@ export class Eu5UIEngine implements AppEngine {
     this.lastGesture = { distance: currentDistance, center: currentCenter };
   }
 
-  private createDragHandle(dragStartWorldPos: {
-    x: number;
-    y: number;
-  }): DragHandle {
+  private createDragHandle(): DragHandle {
     return {
       update: async (pos: PointerPosition) => {
-        await this.gameInstance.setWorldPointUnderCursor(
-          dragStartWorldPos.x,
-          dragStartWorldPos.y,
-          pos.x,
-          pos.y,
-        );
+        // Input controller handles drag internally
+        await this.gameInstance.onCursorMove(pos.x, pos.y);
       },
       end: async () => {
-        this.updateState(() => ({ isDragging: false }));
+        await this.gameInstance.onMouseButton(0, false);
         this.currentDragHandle = null;
       },
     };

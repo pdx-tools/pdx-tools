@@ -7,14 +7,15 @@ use eu5app::{
 };
 use eu5save::{BasicTokenResolver, Eu5File, models::Gamestate};
 use pdx_map::{
-    GpuSurfaceContext, LogicalPoint, LogicalSize, MapViewController, SurfaceMapRenderer, WorldPoint,
+    GpuSurfaceContext, InteractionController, LogicalPoint, LogicalSize, MapViewController,
+    SurfaceMapRenderer, WorldPoint, WorldSize,
 };
 use std::{path::PathBuf, sync::Arc};
 use tokio::runtime::Runtime;
 use tracing::{error, info, instrument};
 use winit::{
     application::ApplicationHandler,
-    event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent},
+    event::{ElementState, MouseScrollDelta, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy},
     window::{Window, WindowAttributes, WindowId},
 };
@@ -98,9 +99,7 @@ pub fn run_gui(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         window: None,
         gpu: None,
         controller: None,
-        last_cursor_pos: None,
-        last_world_under_cursor: None,
-        is_dragging: false,
+        input_controller: None,
         scale_factor: 1.0,
     };
 
@@ -169,9 +168,7 @@ struct App {
     window: Option<Arc<Window>>,
     gpu: Option<GpuSurfaceContext>,
     controller: Option<MapViewController>,
-    last_cursor_pos: Option<(f32, f32)>,
-    last_world_under_cursor: Option<WorldPoint<f32>>,
-    is_dragging: bool,
+    input_controller: Option<InteractionController>,
     scale_factor: f64,
 }
 
@@ -194,8 +191,9 @@ impl App {
             return;
         };
 
-        let controller = init_renderer(&window, gpu, &texture_data);
+        let (controller, input_controller) = init_renderer(&window, gpu, &texture_data);
         self.controller = Some(controller);
+        self.input_controller = Some(input_controller);
         window.request_redraw();
         self.try_apply_workspace();
     }
@@ -233,11 +231,15 @@ impl App {
             return;
         };
 
+        let Some(input_controller) = &mut self.input_controller else {
+            return;
+        };
+
         let Some(bundle) = self.pending_workspace.take() else {
             return;
         };
 
-        apply_workspace(controller, &bundle.workspace);
+        apply_workspace(controller, input_controller, &bundle.workspace);
         self.save = Some(Box::new(bundle.save));
         self.workspace = Some(bundle.workspace);
 
@@ -335,20 +337,34 @@ impl ApplicationHandler<GuiUserEvent> for App {
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 let size = window.inner_size();
                 let logical = size.to_logical::<f64>(scale_factor);
-                controller.resize(LogicalSize::new(
-                    logical.width.round() as u32,
-                    logical.height.round() as u32,
-                ));
+                let logical_size =
+                    LogicalSize::new(logical.width.round() as u32, logical.height.round() as u32);
+
+                // Update both controllers
+                if let Some(input) = &mut self.input_controller {
+                    input.on_resize(logical_size);
+                    let bounds = input.viewport_bounds();
+                    controller.set_viewport_bounds(bounds);
+                }
+                controller.resize(logical_size);
                 window.request_redraw();
             }
             WindowEvent::Resized(new_size) => {
                 if new_size.width > 0 && new_size.height > 0 {
                     let scale = self.scale_factor;
                     let logical = new_size.to_logical::<f64>(scale);
-                    controller.resize(LogicalSize::new(
+                    let logical_size = LogicalSize::new(
                         logical.width.round() as u32,
                         logical.height.round() as u32,
-                    ));
+                    );
+
+                    // Update both controllers
+                    if let Some(input) = &mut self.input_controller {
+                        input.on_resize(logical_size);
+                        let bounds = input.viewport_bounds();
+                        controller.set_viewport_bounds(bounds);
+                    }
+                    controller.resize(logical_size);
                     window.request_redraw();
                 }
             }
@@ -359,71 +375,57 @@ impl ApplicationHandler<GuiUserEvent> for App {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 let scale = self.scale_factor as f32;
-                let cursor_x = (position.x as f32) / scale;
-                let cursor_y = (position.y as f32) / scale;
-                let previous_world = self.last_world_under_cursor;
+                let x = (position.x as f32) / scale;
+                let y = (position.y as f32) / scale;
 
-                if self.is_dragging
-                    && let Some(world_coords) = previous_world
-                {
-                    controller.set_world_point_under_cursor(
-                        world_coords,
-                        LogicalPoint::new(cursor_x, cursor_y),
-                    );
+                // UI thread: Update input controller (handles drag internally)
+                if let Some(input) = &mut self.input_controller {
+                    input.on_cursor_move(LogicalPoint::new(x, y));
+
+                    // Transfer viewport to render controller
+                    let bounds = input.viewport_bounds();
+                    controller.set_viewport_bounds(bounds);
                     window.request_redraw();
                 }
-
-                // Only update world-under-cursor when not dragging
-                if !self.is_dragging {
-                    self.last_world_under_cursor =
-                        Some(controller.canvas_to_world(cursor_x, cursor_y));
-                }
-                self.last_cursor_pos = Some((cursor_x, cursor_y));
             }
             WindowEvent::MouseInput { state, button, .. } => {
-                if button == MouseButton::Left {
-                    self.is_dragging = state == ElementState::Pressed;
-                    if self.is_dragging {
-                        let (cursor_x, cursor_y) = self.last_cursor_pos.unwrap_or_else(|| {
-                            let size = window.inner_size();
-                            let logical = size.to_logical::<f64>(self.scale_factor);
-                            let center = (logical.width as f32 / 2.0, logical.height as f32 / 2.0);
-                            self.last_cursor_pos = Some(center);
-                            center
-                        });
+                if let Some(input) = &mut self.input_controller {
+                    // Convert winit::MouseButton to pdx_map::MouseButton
+                    let mouse_button = match button {
+                        winit::event::MouseButton::Left => pdx_map::MouseButton::Left,
+                        winit::event::MouseButton::Right => pdx_map::MouseButton::Right,
+                        winit::event::MouseButton::Middle => pdx_map::MouseButton::Middle,
+                        _ => return, // Ignore other buttons
+                    };
 
-                        self.last_world_under_cursor =
-                            Some(controller.canvas_to_world(cursor_x, cursor_y));
-                    } else {
-                        self.last_world_under_cursor = None;
-                    }
+                    let pressed = state == ElementState::Pressed;
+                    input.on_mouse_button(mouse_button, pressed);
+
+                    // Transfer viewport if it changed
+                    let bounds = input.viewport_bounds();
+                    controller.set_viewport_bounds(bounds);
                 }
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                let scroll_lines = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => y,
-                    MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 120.0,
-                };
+                if let Some(input) = &mut self.input_controller {
+                    let scroll_lines = match delta {
+                        MouseScrollDelta::LineDelta(_, y) => y,
+                        MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 120.0,
+                    };
 
-                if scroll_lines.abs() > f32::EPSILON {
-                    let clamped = scroll_lines.clamp(-6.0, 6.0);
-                    let zoom_delta = 1.1_f32.powf(clamped);
+                    input.on_scroll(scroll_lines); // Clamps, converts to zoom, and applies internally
 
-                    let (cursor_x, cursor_y) = self.last_cursor_pos.unwrap_or_else(|| {
-                        let size = window.inner_size();
-                        let logical = size.to_logical::<f64>(self.scale_factor);
-                        (logical.width as f32 / 2.0, logical.height as f32 / 2.0)
-                    });
+                    // Transfer viewport and update render state
+                    let bounds = input.viewport_bounds();
+                    controller.set_viewport_bounds(bounds);
 
-                    controller.zoom_at_point(cursor_x, cursor_y, zoom_delta);
+                    // Render-specific: Update location borders based on zoom
                     let show_location_borders =
-                        should_highlight_individual_locations(controller.get_zoom());
+                        should_highlight_individual_locations(bounds.zoom_level);
                     controller
                         .renderer_mut()
                         .set_location_borders(show_location_borders);
 
-                    self.last_world_under_cursor =
-                        Some(controller.canvas_to_world(cursor_x, cursor_y));
                     window.request_redraw();
                 }
             }
@@ -439,7 +441,7 @@ fn init_renderer(
     window: &Window,
     gpu_ctx: GpuSurfaceContext,
     texture_data: &TextureData,
-) -> MapViewController {
+) -> (MapViewController, InteractionController) {
     let (tile_width, tile_height) = eu5app::tile_dimensions();
     let west_texture = gpu_ctx.create_texture(&texture_data.west, tile_width, tile_height, "West");
     let east_texture = gpu_ctx.create_texture(&texture_data.east, tile_width, tile_height, "East");
@@ -455,7 +457,13 @@ fn init_renderer(
     let physical = logical.to_physical(scale_factor as f32);
 
     let renderer = SurfaceMapRenderer::new(gpu_ctx, west_texture, east_texture, physical);
-    MapViewController::new(renderer, logical, scale_factor as f32)
+    let controller = MapViewController::new(renderer, logical, scale_factor as f32);
+
+    // Create input controller with map dimensions
+    let map_size = WorldSize::new(tile_width * 2, tile_height);
+    let input_controller = InteractionController::new(logical, map_size);
+
+    (controller, input_controller)
 }
 
 fn build_workspace(mut save: Eu5LoadedSave, game_data: GameData) -> Result<WorkspaceBundle> {
@@ -468,7 +476,11 @@ fn build_workspace(mut save: Eu5LoadedSave, game_data: GameData) -> Result<Works
     Ok(WorkspaceBundle { save, workspace })
 }
 
-fn apply_workspace(controller: &mut MapViewController, workspace: &Eu5Workspace<'_>) {
+fn apply_workspace(
+    controller: &mut MapViewController,
+    input_controller: &mut InteractionController,
+    workspace: &Eu5Workspace<'_>,
+) {
     let save_date = workspace.gamestate().metadata().date.date_fmt().to_string();
     controller
         .renderer_mut()
@@ -478,6 +490,11 @@ fn apply_workspace(controller: &mut MapViewController, workspace: &Eu5Workspace<
         .update_locations(workspace.location_arrays());
 
     if let Some((x, y)) = workspace.player_capital_coordinates() {
-        controller.center_at_world(WorldPoint::new(x as f32, y as f32));
+        let world = WorldPoint::new(x as f32, y as f32);
+        input_controller.center_on(world);
+
+        // Transfer viewport to render controller
+        let bounds = input_controller.viewport_bounds();
+        controller.set_viewport_bounds(bounds);
     }
 }
