@@ -1,4 +1,5 @@
 use crate::{GpuLocationIdx, units::WorldPoint};
+use std::fmt::{self, Display};
 
 /// Axis-aligned bounding box using u16 world coordinates
 ///
@@ -51,6 +52,12 @@ impl AABB {
             & (self.max.x >= other.min.x)
             & (self.min.y <= other.max.y)
             & (self.max.y >= other.min.y)
+    }
+}
+
+impl Display for AABB {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[{}-{}]", self.min, self.max)
     }
 }
 
@@ -394,5 +401,11 @@ mod tests {
         let aabb = map_picker.get_aabb(GpuLocationIdx::new(1));
         assert_eq!(aabb.min(), WorldPoint::new(2, 0));
         assert_eq!(aabb.max(), WorldPoint::new(3, 1));
+    }
+
+    #[test]
+    fn test_aabb_display() {
+        let aabb = AABB::new(WorldPoint::new(10, 20), WorldPoint::new(100, 80));
+        assert_eq!(format!("{}", aabb), "[(10,20)-(100,80)]");
     }
 }
