@@ -3,10 +3,11 @@ use eu5app::{
     should_highlight_individual_locations, tile_dimensions,
 };
 use pdx_map::{
-    CanvasDimensions, GpuLocationIdx, GpuSurfaceContext, InteractionController, LocationArrays,
-    LocationFlags, LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton,
-    SurfaceMapRenderer, WorldPoint, WorldSize,
+    CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, InteractionController, KeyboardKey,
+    LocationArrays, LocationFlags, LogicalPoint, LogicalSize, MapTexture, MapViewController,
+    MouseButton, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
 };
+use std::time::Duration;
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
 
@@ -84,6 +85,8 @@ pub struct Eu5WasmMapRenderer {
     input: InteractionController,
     picker: pdx_map::MapPickerSingle,
     location_arrays: LocationArrays,
+    clock: Box<dyn Clock>,
+    last_tick: Option<Duration>,
 }
 
 impl std::fmt::Debug for Eu5WasmMapRenderer {
@@ -130,6 +133,8 @@ impl Eu5WasmMapRenderer {
             input,
             picker,
             location_arrays: LocationArrays::new(),
+            clock: default_clock(),
+            last_tick: None,
         })
     }
 
@@ -204,6 +209,33 @@ impl Eu5WasmMapRenderer {
         self.controller
             .renderer_mut()
             .set_location_borders(show_borders);
+    }
+
+    /// Handle keyboard input for movement.
+    #[wasm_bindgen]
+    pub fn on_key_down(&mut self, code: String) {
+        let key = KeyboardKey::from_web_code(&code);
+        self.input.on_key_down(key);
+    }
+
+    /// Handle keyboard input for movement.
+    #[wasm_bindgen]
+    pub fn on_key_up(&mut self, code: String) {
+        let key = KeyboardKey::from_web_code(&code);
+        self.input.on_key_up(key);
+    }
+
+    /// Apply per-frame updates.
+    #[wasm_bindgen]
+    pub fn tick(&mut self) {
+        let now = self.clock.now();
+        let last_tick = self.last_tick.unwrap_or(now);
+        let delta = now.saturating_sub(last_tick);
+        self.last_tick = Some(now);
+
+        self.input.tick(delta);
+        let bounds = self.input.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
     }
 
     /// Check if currently dragging

@@ -18,6 +18,8 @@ let appTask = new Promise<PdxMapRenderer>((res, rej) => {
   appReject = rej;
 });
 
+const pressedKeys = new Set<string>();
+
 // Process uploaded map image into textures
 async function processMapImage(
   imageFile: File,
@@ -98,6 +100,13 @@ export const createMapEngine = async ({
   const app = await appTask;
   app.render();
 
+  const rafTick = () => {
+    app.tick();
+    app.render();
+    requestAnimationFrame(rafTick);
+  };
+  rafTick();
+
   console.log("Returning proxied map engine functions");
   return proxy({
     resize: async (width: number, height: number) => {
@@ -125,6 +134,16 @@ export const createMapEngine = async ({
     onScroll: async (scrollLines: number) => {
       app.on_scroll(scrollLines);
       app.render();
+    },
+
+    onKeyDown: async (code: string) => {
+      pressedKeys.add(code);
+      app.on_key_down(code);
+    },
+
+    onKeyUp: async (code: string) => {
+      pressedKeys.delete(code);
+      app.on_key_up(code);
     },
 
     isDragging: () => {

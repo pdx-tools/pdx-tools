@@ -17,7 +17,7 @@ zstd_rust = ["eu5app/zstd_rust"]
 [dependencies]
 eu5app = { workspace = true, default-features = false }
 js-sys = { workspace = true }
-pdx-map = { workspace = true, features = ["tracing"] }
+pdx-map = { workspace = true, features = ["tracing", "interaction"] }
 serde = { workspace = true, features = ["derive"] }
 serde-wasm-bindgen = { workspace = true }
 tracing = { workspace = true }

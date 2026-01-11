@@ -30,7 +30,7 @@ impl std::fmt::Display for ViewportBounds {
 #[derive(Debug, Clone)]
 pub struct MapViewport {
     /// Current viewport position in world coordinates
-    viewport_position: WorldPoint<u32>,
+    viewport_position: WorldPoint<f32>,
 
     /// Canvas dimensions in logical pixels (display surface size)
     canvas_size: LogicalSize<u32>,
@@ -56,7 +56,7 @@ impl MapViewport {
         let min_zoom = Self::min_zoom_for_canvas(canvas_size, map_size).max(1.0);
 
         let mut result = Self {
-            viewport_position: WorldPoint::new(0, 0),
+            viewport_position: WorldPoint::new(0.0, 0.0),
             canvas_size,
             zoom_level: min_zoom,
             map_size,
@@ -104,9 +104,12 @@ impl MapViewport {
         // Ensure viewport position is still valid with new dimensions
         // Remove horizontal bounds checking (wraparound), keep vertical bounds
         let world_height = (size.height as f32 / self.zoom_level) as u32;
-        let max_y = self.map_size.height.saturating_sub(world_height);
-        self.viewport_position.x %= self.map_size.width; // Normalize with wraparound
-        self.viewport_position.y = self.viewport_position.y.min(max_y);
+        let max_y = self.map_size.height.saturating_sub(world_height) as f32;
+        self.viewport_position.x = self
+            .viewport_position
+            .x
+            .rem_euclid(self.map_size.width as f32);
+        self.viewport_position.y = self.viewport_position.y.clamp(0.0, max_y);
     }
 
     /// Get current zoom level
@@ -124,10 +127,32 @@ impl MapViewport {
     /// Get viewport bounds in world coordinates
     pub fn viewport_bounds(&self) -> ViewportBounds {
         let size = self.world_area();
+        let max_y = self.map_size.height.saturating_sub(size.height) as f32;
+        let origin_x = self
+            .viewport_position
+            .x
+            .round()
+            .rem_euclid(self.map_size.width as f32);
+        let origin_y = self.viewport_position.y.round().clamp(0.0, max_y);
         ViewportBounds {
-            rect: Rect::new(self.viewport_position, size),
+            rect: Rect::new(WorldPoint::new(origin_x as u32, origin_y as u32), size),
             zoom_level: self.zoom_level,
         }
+    }
+
+    /// Pan the viewport by a world-space delta.
+    pub fn pan_by(&mut self, delta: WorldPoint<f32>) {
+        if delta.x.abs() < f32::EPSILON && delta.y.abs() < f32::EPSILON {
+            return;
+        }
+
+        let world_area = self.world_area();
+        let max_y = self.map_size.height.saturating_sub(world_area.height) as f32;
+        let new_viewport_x = self.viewport_position.x + delta.x;
+        let new_viewport_y = self.viewport_position.y + delta.y;
+
+        self.viewport_position.x = new_viewport_x.rem_euclid(self.map_size.width as f32);
+        self.viewport_position.y = new_viewport_y.clamp(0.0, max_y);
     }
 
     /// Convert canvas coordinates to world coordinates
@@ -138,8 +163,8 @@ impl MapViewport {
     /// # Returns
     /// World coordinates
     pub fn canvas_to_world(&self, canvas: LogicalPoint<f32>) -> WorldPoint<f32> {
-        let world_x = self.viewport_position.x as f32 + canvas.x / self.zoom_level;
-        let world_y = self.viewport_position.y as f32 + canvas.y / self.zoom_level;
+        let world_x = self.viewport_position.x + canvas.x / self.zoom_level;
+        let world_y = self.viewport_position.y + canvas.y / self.zoom_level;
 
         WorldPoint::new(world_x, world_y)
     }
@@ -161,12 +186,8 @@ impl MapViewport {
         // Apply bounds checking - horizontal wraparound, vertical clamping
         let max_y = self.map_size.height - (world_height as u32);
 
-        // Handle wraparound for x coordinate
-        let new_viewport_x_i32 = new_viewport_x as i32;
-        self.viewport_position.x = ((new_viewport_x_i32 % self.map_size.width as i32)
-            + self.map_size.width as i32) as u32
-            % self.map_size.width;
-        self.viewport_position.y = (new_viewport_y as i32).max(0).min(max_y as i32) as u32;
+        self.viewport_position.x = new_viewport_x.rem_euclid(self.map_size.width as f32);
+        self.viewport_position.y = new_viewport_y.clamp(0.0, max_y as f32);
     }
 
     fn min_zoom(&self) -> f32 {
@@ -185,14 +206,8 @@ impl fmt::Display for MapViewport {
         let world_area = self.world_area();
         write!(
             f,
-            "MapController(viewport=({}, {}), canvas={}x{}, zoom={:.2}, world_area={}x{})",
-            self.viewport_position.x,
-            self.viewport_position.y,
-            self.canvas_size.width,
-            self.canvas_size.height,
-            self.zoom_level,
-            world_area.width,
-            world_area.height
+            "MapController(viewport={}, canvas={}, zoom={:.2}, world={})",
+            self.viewport_position, self.canvas_size, self.zoom_level, world_area,
         )
     }
 }
@@ -279,5 +294,21 @@ mod tests {
             zoom_level: 2.0,
         };
         assert_eq!(format!("{}", bounds), "800x600@(0,0) z:2.00");
+    }
+
+    #[test]
+    fn test_pan_accumulates_subpixel_deltas() {
+        let canvas_size = LogicalSize::new(200, 100);
+        let tile_size = WorldSize::new(200, 100);
+        let mut viewport = MapViewport::new(canvas_size, tile_size);
+
+        let initial = viewport.viewport_bounds();
+
+        for _ in 0..10 {
+            viewport.pan_by(WorldPoint::new(0.1, 0.0));
+        }
+
+        let moved = viewport.viewport_bounds();
+        assert_eq!(moved.rect.origin.x - initial.rect.origin.x, 1);
     }
 }

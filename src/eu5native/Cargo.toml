@@ -16,7 +16,7 @@ eu5app = { workspace = true, default-features = false, features = ["game-install
 eu5save = { workspace = true }
 image = { workspace = true, features = ["png"] }
 nu-ansi-term = { workspace = true }
-pdx-map = { workspace = true, features = ["render", "tracing"] }
+pdx-map = { workspace = true, features = ["render", "tracing", "interaction"] }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }

@@ -8,7 +8,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 js-sys = { workspace = true }
-pdx-map = { workspace = true, features = ["render"] }
+pdx-map = { workspace = true, features = ["render", "interaction"] }
 serde = { workspace = true, features = ["derive"] }
 serde-wasm-bindgen = { workspace = true }
 tsify = { workspace = true, default-features = false, features = ["js"] }

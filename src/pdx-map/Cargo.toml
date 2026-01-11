@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["render"]
+default = ["render", "interaction"]
+interaction = []
 render = ["dep:wgpu", "dep:futures-channel"]
 tracing = ["dep:tracing"]
 
@@ -13,3 +14,6 @@ bytemuck = { workspace = true, features = ["derive"] }
 futures-channel = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }
 wgpu = { workspace = true, optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = { workspace = true, default-features = false }
