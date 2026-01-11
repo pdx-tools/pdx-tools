@@ -32,6 +32,8 @@ let zoomChangeCallback: ((zoom: number) => void) | null = null;
 let renderOrQueue: () => void = () => {};
 let newLocations: Uint32Array | null = null;
 let newDimensions: { width: number; height: number } | null = null;
+let lastCursorPosition: { x: number; y: number } | null = null;
+const pressedKeys = new Set<string>();
 
 const mapGameEndpoint = () => {
   return {
@@ -164,6 +166,11 @@ export const createMapEngine = async (
       newDimensions = null;
     }
 
+    app.tick();
+    if (pressedKeys.size > 0 && lastCursorPosition) {
+      updateCursorWorldPosition(lastCursorPosition.x, lastCursorPosition.y);
+    }
+
     if (hasLocationInformation) {
       app.render();
     }
@@ -191,6 +198,7 @@ export const createMapEngine = async (
 
     // Handle clearing cursor position (when mouse leaves canvas)
     if (canvasX < 0 || canvasY < 0) {
+      lastCursorPosition = null;
       if (lastKnownLocationId !== null) {
         hoverEventCallback?.({ kind: "clear" });
       }
@@ -198,6 +206,8 @@ export const createMapEngine = async (
       lastProcessedWorldCoordinates = null;
       return;
     }
+
+    lastCursorPosition = { x: canvasX, y: canvasY };
 
     const worldPos = app.canvas_to_world();
     const worldCoordinates = { x: worldPos[0], y: worldPos[1] };
@@ -255,6 +265,14 @@ export const createMapEngine = async (
       // Notify about zoom level change
       const newZoom = app.get_zoom();
       zoomChangeCallback?.(newZoom);
+    },
+    onKeyDown: (code: string) => {
+      pressedKeys.add(code);
+      app.on_key_down(code);
+    },
+    onKeyUp: (code: string) => {
+      pressedKeys.delete(code);
+      app.on_key_up(code);
     },
     isDragging: () => {
       return app.is_dragging();

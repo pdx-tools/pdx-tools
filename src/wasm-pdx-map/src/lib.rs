@@ -1,10 +1,11 @@
 use pdx_map::{
-    CanvasDimensions, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
-    InteractionController, LocationArrays, LocationFlags, LogicalPoint, LogicalSize, MapTexture,
-    MapViewController, MouseButton, PhysicalSize, QueuedWorkFuture, R16Palette, RenderError,
-    SurfaceMapRenderer, WorldPoint, WorldSize,
+    CanvasDimensions, Clock, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
+    InteractionController, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
+    MapTexture, MapViewController, MouseButton, PhysicalSize, QueuedWorkFuture, R16Palette,
+    RenderError, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
 };
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
 
@@ -83,6 +84,8 @@ pub struct PdxMapRenderer {
     controller: MapViewController,
     interaction: InteractionController,
     location_arrays: LocationArrays,
+    clock: Box<dyn Clock>,
+    last_tick: Option<Duration>,
 }
 
 #[wasm_bindgen]
@@ -124,6 +127,8 @@ impl PdxMapRenderer {
             controller,
             interaction,
             location_arrays,
+            clock: default_clock(),
+            last_tick: None,
         };
         map_renderer.upload_location_arrays();
 
@@ -169,6 +174,33 @@ impl PdxMapRenderer {
         self.interaction.on_scroll(delta);
 
         // Transfer viewport bounds
+        let bounds = self.interaction.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
+    }
+
+    /// Handle keyboard input for movement.
+    #[wasm_bindgen]
+    pub fn on_key_down(&mut self, code: String) {
+        let key = KeyboardKey::from_web_code(&code);
+        self.interaction.on_key_down(key);
+    }
+
+    /// Handle keyboard input for movement.
+    #[wasm_bindgen]
+    pub fn on_key_up(&mut self, code: String) {
+        let key = KeyboardKey::from_web_code(&code);
+        self.interaction.on_key_up(key);
+    }
+
+    /// Apply per-frame updates.
+    #[wasm_bindgen]
+    pub fn tick(&mut self) {
+        let now = self.clock.now();
+        let last_tick = self.last_tick.unwrap_or(now);
+        let delta = now.saturating_sub(last_tick);
+        self.last_tick = Some(now);
+
+        self.interaction.tick(delta);
         let bounds = self.interaction.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
     }

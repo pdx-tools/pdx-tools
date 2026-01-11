@@ -7,16 +7,17 @@ use eu5app::{
 };
 use eu5save::{BasicTokenResolver, Eu5File, models::Gamestate};
 use pdx_map::{
-    GpuSurfaceContext, InteractionController, LogicalPoint, LogicalSize, MapViewController,
-    SurfaceMapRenderer, WorldPoint, WorldSize,
+    Clock, GpuSurfaceContext, InteractionController, KeyboardKey, LogicalPoint, LogicalSize,
+    MapViewController, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
 };
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 use tokio::runtime::Runtime;
 use tracing::{error, info, instrument};
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, MouseScrollDelta, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy},
+    keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowAttributes, WindowId},
 };
 
@@ -31,6 +32,206 @@ enum GuiUserEvent {
 struct WorkspaceBundle {
     save: Eu5LoadedSave,
     workspace: Eu5Workspace<'static>,
+}
+
+fn map_keycode(code: KeyCode) -> KeyboardKey {
+    match code {
+        KeyCode::Backquote => KeyboardKey::Backquote,
+        KeyCode::Backslash => KeyboardKey::Backslash,
+        KeyCode::BracketLeft => KeyboardKey::BracketLeft,
+        KeyCode::BracketRight => KeyboardKey::BracketRight,
+        KeyCode::Comma => KeyboardKey::Comma,
+        KeyCode::Digit0 => KeyboardKey::Digit0,
+        KeyCode::Digit1 => KeyboardKey::Digit1,
+        KeyCode::Digit2 => KeyboardKey::Digit2,
+        KeyCode::Digit3 => KeyboardKey::Digit3,
+        KeyCode::Digit4 => KeyboardKey::Digit4,
+        KeyCode::Digit5 => KeyboardKey::Digit5,
+        KeyCode::Digit6 => KeyboardKey::Digit6,
+        KeyCode::Digit7 => KeyboardKey::Digit7,
+        KeyCode::Digit8 => KeyboardKey::Digit8,
+        KeyCode::Digit9 => KeyboardKey::Digit9,
+        KeyCode::Equal => KeyboardKey::Equal,
+        KeyCode::IntlBackslash => KeyboardKey::IntlBackslash,
+        KeyCode::IntlRo => KeyboardKey::IntlRo,
+        KeyCode::IntlYen => KeyboardKey::IntlYen,
+        KeyCode::KeyA => KeyboardKey::KeyA,
+        KeyCode::KeyB => KeyboardKey::KeyB,
+        KeyCode::KeyC => KeyboardKey::KeyC,
+        KeyCode::KeyD => KeyboardKey::KeyD,
+        KeyCode::KeyE => KeyboardKey::KeyE,
+        KeyCode::KeyF => KeyboardKey::KeyF,
+        KeyCode::KeyG => KeyboardKey::KeyG,
+        KeyCode::KeyH => KeyboardKey::KeyH,
+        KeyCode::KeyI => KeyboardKey::KeyI,
+        KeyCode::KeyJ => KeyboardKey::KeyJ,
+        KeyCode::KeyK => KeyboardKey::KeyK,
+        KeyCode::KeyL => KeyboardKey::KeyL,
+        KeyCode::KeyM => KeyboardKey::KeyM,
+        KeyCode::KeyN => KeyboardKey::KeyN,
+        KeyCode::KeyO => KeyboardKey::KeyO,
+        KeyCode::KeyP => KeyboardKey::KeyP,
+        KeyCode::KeyQ => KeyboardKey::KeyQ,
+        KeyCode::KeyR => KeyboardKey::KeyR,
+        KeyCode::KeyS => KeyboardKey::KeyS,
+        KeyCode::KeyT => KeyboardKey::KeyT,
+        KeyCode::KeyU => KeyboardKey::KeyU,
+        KeyCode::KeyV => KeyboardKey::KeyV,
+        KeyCode::KeyW => KeyboardKey::KeyW,
+        KeyCode::KeyX => KeyboardKey::KeyX,
+        KeyCode::KeyY => KeyboardKey::KeyY,
+        KeyCode::KeyZ => KeyboardKey::KeyZ,
+        KeyCode::Minus => KeyboardKey::Minus,
+        KeyCode::Period => KeyboardKey::Period,
+        KeyCode::Quote => KeyboardKey::Quote,
+        KeyCode::Semicolon => KeyboardKey::Semicolon,
+        KeyCode::Slash => KeyboardKey::Slash,
+        KeyCode::AltLeft => KeyboardKey::AltLeft,
+        KeyCode::AltRight => KeyboardKey::AltRight,
+        KeyCode::Backspace => KeyboardKey::Backspace,
+        KeyCode::CapsLock => KeyboardKey::CapsLock,
+        KeyCode::ContextMenu => KeyboardKey::ContextMenu,
+        KeyCode::ControlLeft => KeyboardKey::ControlLeft,
+        KeyCode::ControlRight => KeyboardKey::ControlRight,
+        KeyCode::Enter => KeyboardKey::Enter,
+        KeyCode::SuperLeft => KeyboardKey::SuperLeft,
+        KeyCode::SuperRight => KeyboardKey::SuperRight,
+        KeyCode::ShiftLeft => KeyboardKey::ShiftLeft,
+        KeyCode::ShiftRight => KeyboardKey::ShiftRight,
+        KeyCode::Space => KeyboardKey::Space,
+        KeyCode::Tab => KeyboardKey::Tab,
+        KeyCode::Convert => KeyboardKey::Convert,
+        KeyCode::KanaMode => KeyboardKey::KanaMode,
+        KeyCode::Lang1 => KeyboardKey::Lang1,
+        KeyCode::Lang2 => KeyboardKey::Lang2,
+        KeyCode::Lang3 => KeyboardKey::Lang3,
+        KeyCode::Lang4 => KeyboardKey::Lang4,
+        KeyCode::Lang5 => KeyboardKey::Lang5,
+        KeyCode::NonConvert => KeyboardKey::NonConvert,
+        KeyCode::Delete => KeyboardKey::Delete,
+        KeyCode::End => KeyboardKey::End,
+        KeyCode::Help => KeyboardKey::Help,
+        KeyCode::Home => KeyboardKey::Home,
+        KeyCode::Insert => KeyboardKey::Insert,
+        KeyCode::PageDown => KeyboardKey::PageDown,
+        KeyCode::PageUp => KeyboardKey::PageUp,
+        KeyCode::ArrowDown => KeyboardKey::ArrowDown,
+        KeyCode::ArrowLeft => KeyboardKey::ArrowLeft,
+        KeyCode::ArrowRight => KeyboardKey::ArrowRight,
+        KeyCode::ArrowUp => KeyboardKey::ArrowUp,
+        KeyCode::NumLock => KeyboardKey::NumLock,
+        KeyCode::Numpad0 => KeyboardKey::Numpad0,
+        KeyCode::Numpad1 => KeyboardKey::Numpad1,
+        KeyCode::Numpad2 => KeyboardKey::Numpad2,
+        KeyCode::Numpad3 => KeyboardKey::Numpad3,
+        KeyCode::Numpad4 => KeyboardKey::Numpad4,
+        KeyCode::Numpad5 => KeyboardKey::Numpad5,
+        KeyCode::Numpad6 => KeyboardKey::Numpad6,
+        KeyCode::Numpad7 => KeyboardKey::Numpad7,
+        KeyCode::Numpad8 => KeyboardKey::Numpad8,
+        KeyCode::Numpad9 => KeyboardKey::Numpad9,
+        KeyCode::NumpadAdd => KeyboardKey::NumpadAdd,
+        KeyCode::NumpadBackspace => KeyboardKey::NumpadBackspace,
+        KeyCode::NumpadClear => KeyboardKey::NumpadClear,
+        KeyCode::NumpadClearEntry => KeyboardKey::NumpadClearEntry,
+        KeyCode::NumpadComma => KeyboardKey::NumpadComma,
+        KeyCode::NumpadDecimal => KeyboardKey::NumpadDecimal,
+        KeyCode::NumpadDivide => KeyboardKey::NumpadDivide,
+        KeyCode::NumpadEnter => KeyboardKey::NumpadEnter,
+        KeyCode::NumpadEqual => KeyboardKey::NumpadEqual,
+        KeyCode::NumpadHash => KeyboardKey::NumpadHash,
+        KeyCode::NumpadMemoryAdd => KeyboardKey::NumpadMemoryAdd,
+        KeyCode::NumpadMemoryClear => KeyboardKey::NumpadMemoryClear,
+        KeyCode::NumpadMemoryRecall => KeyboardKey::NumpadMemoryRecall,
+        KeyCode::NumpadMemoryStore => KeyboardKey::NumpadMemoryStore,
+        KeyCode::NumpadMemorySubtract => KeyboardKey::NumpadMemorySubtract,
+        KeyCode::NumpadMultiply => KeyboardKey::NumpadMultiply,
+        KeyCode::NumpadParenLeft => KeyboardKey::NumpadParenLeft,
+        KeyCode::NumpadParenRight => KeyboardKey::NumpadParenRight,
+        KeyCode::NumpadStar => KeyboardKey::NumpadStar,
+        KeyCode::NumpadSubtract => KeyboardKey::NumpadSubtract,
+        KeyCode::Escape => KeyboardKey::Escape,
+        KeyCode::Fn => KeyboardKey::Fn,
+        KeyCode::FnLock => KeyboardKey::FnLock,
+        KeyCode::PrintScreen => KeyboardKey::PrintScreen,
+        KeyCode::ScrollLock => KeyboardKey::ScrollLock,
+        KeyCode::Pause => KeyboardKey::Pause,
+        KeyCode::BrowserBack => KeyboardKey::BrowserBack,
+        KeyCode::BrowserFavorites => KeyboardKey::BrowserFavorites,
+        KeyCode::BrowserForward => KeyboardKey::BrowserForward,
+        KeyCode::BrowserHome => KeyboardKey::BrowserHome,
+        KeyCode::BrowserRefresh => KeyboardKey::BrowserRefresh,
+        KeyCode::BrowserSearch => KeyboardKey::BrowserSearch,
+        KeyCode::BrowserStop => KeyboardKey::BrowserStop,
+        KeyCode::Eject => KeyboardKey::Eject,
+        KeyCode::LaunchApp1 => KeyboardKey::LaunchApp1,
+        KeyCode::LaunchApp2 => KeyboardKey::LaunchApp2,
+        KeyCode::LaunchMail => KeyboardKey::LaunchMail,
+        KeyCode::MediaPlayPause => KeyboardKey::MediaPlayPause,
+        KeyCode::MediaSelect => KeyboardKey::MediaSelect,
+        KeyCode::MediaStop => KeyboardKey::MediaStop,
+        KeyCode::MediaTrackNext => KeyboardKey::MediaTrackNext,
+        KeyCode::MediaTrackPrevious => KeyboardKey::MediaTrackPrevious,
+        KeyCode::Power => KeyboardKey::Power,
+        KeyCode::Sleep => KeyboardKey::Sleep,
+        KeyCode::AudioVolumeDown => KeyboardKey::AudioVolumeDown,
+        KeyCode::AudioVolumeMute => KeyboardKey::AudioVolumeMute,
+        KeyCode::AudioVolumeUp => KeyboardKey::AudioVolumeUp,
+        KeyCode::WakeUp => KeyboardKey::WakeUp,
+        KeyCode::Meta => KeyboardKey::Meta,
+        KeyCode::Hyper => KeyboardKey::Hyper,
+        KeyCode::Turbo => KeyboardKey::Turbo,
+        KeyCode::Abort => KeyboardKey::Abort,
+        KeyCode::Resume => KeyboardKey::Resume,
+        KeyCode::Suspend => KeyboardKey::Suspend,
+        KeyCode::Again => KeyboardKey::Again,
+        KeyCode::Copy => KeyboardKey::Copy,
+        KeyCode::Cut => KeyboardKey::Cut,
+        KeyCode::Find => KeyboardKey::Find,
+        KeyCode::Open => KeyboardKey::Open,
+        KeyCode::Paste => KeyboardKey::Paste,
+        KeyCode::Props => KeyboardKey::Props,
+        KeyCode::Select => KeyboardKey::Select,
+        KeyCode::Undo => KeyboardKey::Undo,
+        KeyCode::Hiragana => KeyboardKey::Hiragana,
+        KeyCode::Katakana => KeyboardKey::Katakana,
+        KeyCode::F1 => KeyboardKey::F1,
+        KeyCode::F2 => KeyboardKey::F2,
+        KeyCode::F3 => KeyboardKey::F3,
+        KeyCode::F4 => KeyboardKey::F4,
+        KeyCode::F5 => KeyboardKey::F5,
+        KeyCode::F6 => KeyboardKey::F6,
+        KeyCode::F7 => KeyboardKey::F7,
+        KeyCode::F8 => KeyboardKey::F8,
+        KeyCode::F9 => KeyboardKey::F9,
+        KeyCode::F10 => KeyboardKey::F10,
+        KeyCode::F11 => KeyboardKey::F11,
+        KeyCode::F12 => KeyboardKey::F12,
+        KeyCode::F13 => KeyboardKey::F13,
+        KeyCode::F14 => KeyboardKey::F14,
+        KeyCode::F15 => KeyboardKey::F15,
+        KeyCode::F16 => KeyboardKey::F16,
+        KeyCode::F17 => KeyboardKey::F17,
+        KeyCode::F18 => KeyboardKey::F18,
+        KeyCode::F19 => KeyboardKey::F19,
+        KeyCode::F20 => KeyboardKey::F20,
+        KeyCode::F21 => KeyboardKey::F21,
+        KeyCode::F22 => KeyboardKey::F22,
+        KeyCode::F23 => KeyboardKey::F23,
+        KeyCode::F24 => KeyboardKey::F24,
+        KeyCode::F25 => KeyboardKey::F25,
+        KeyCode::F26 => KeyboardKey::F26,
+        KeyCode::F27 => KeyboardKey::F27,
+        KeyCode::F28 => KeyboardKey::F28,
+        KeyCode::F29 => KeyboardKey::F29,
+        KeyCode::F30 => KeyboardKey::F30,
+        KeyCode::F31 => KeyboardKey::F31,
+        KeyCode::F32 => KeyboardKey::F32,
+        KeyCode::F33 => KeyboardKey::F33,
+        KeyCode::F34 => KeyboardKey::F34,
+        KeyCode::F35 => KeyboardKey::F35,
+        _ => KeyboardKey::Unidentified,
+    }
 }
 
 pub fn run_gui(args: Args) -> Result<(), Box<dyn std::error::Error>> {
@@ -101,6 +302,8 @@ pub fn run_gui(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         controller: None,
         input_controller: None,
         scale_factor: 1.0,
+        clock: default_clock(),
+        last_tick: None,
     };
 
     event_loop.run_app(&mut app)?;
@@ -170,6 +373,8 @@ struct App {
     controller: Option<MapViewController>,
     input_controller: Option<InteractionController>,
     scale_factor: f64,
+    clock: Box<dyn Clock>,
+    last_tick: Option<Duration>,
 }
 
 impl App {
@@ -369,6 +574,17 @@ impl ApplicationHandler<GuiUserEvent> for App {
                 }
             }
             WindowEvent::RedrawRequested => {
+                if let Some(input) = &mut self.input_controller {
+                    let now = self.clock.now();
+                    let last_tick = self.last_tick.unwrap_or(now);
+                    let delta = now.saturating_sub(last_tick);
+                    self.last_tick = Some(now);
+
+                    input.tick(delta);
+                    let bounds = input.viewport_bounds();
+                    controller.set_viewport_bounds(bounds);
+                }
+
                 if let Err(e) = controller.render() {
                     error!("Render error: {e}");
                 }
@@ -406,6 +622,23 @@ impl ApplicationHandler<GuiUserEvent> for App {
                     controller.set_viewport_bounds(bounds);
                 }
             }
+            WindowEvent::KeyboardInput { event, .. } => {
+                if let Some(input) = &mut self.input_controller
+                    && let PhysicalKey::Code(code) = event.physical_key
+                {
+                    let key = map_keycode(code);
+                    let pressed = event.state == ElementState::Pressed;
+                    if pressed {
+                        input.on_key_down(key);
+                    } else {
+                        input.on_key_up(key);
+                    }
+
+                    if input.keyboard_active() {
+                        window.request_redraw();
+                    }
+                }
+            }
             WindowEvent::MouseWheel { delta, .. } => {
                 if let Some(input) = &mut self.input_controller {
                     let scroll_lines = match delta {
@@ -433,7 +666,13 @@ impl ApplicationHandler<GuiUserEvent> for App {
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {}
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        if let (Some(window), Some(input)) = (self.window.as_ref(), self.input_controller.as_ref())
+            && input.keyboard_active()
+        {
+            window.request_redraw();
+        }
+    }
 }
 
 #[instrument(skip_all)]

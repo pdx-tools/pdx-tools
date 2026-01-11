@@ -2458,6 +2458,7 @@ dependencies = [
  "bytemuck",
  "futures-channel",
  "tracing",
+ "wasm-bindgen",
  "wgpu",
 ]
 

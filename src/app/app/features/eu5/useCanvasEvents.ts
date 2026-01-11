@@ -90,6 +90,27 @@ export function useCanvasEvents(
     [engine, canvasRef],
   );
 
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!engine) return;
+      if (e.repeat) return;
+
+      e.preventDefault();
+      engine.trigger.keyDown(e.code);
+    },
+    [engine],
+  );
+
+  const handleKeyUp = useCallback(
+    (e: KeyboardEvent) => {
+      if (!engine) return;
+
+      e.preventDefault();
+      engine.trigger.keyUp(e.code);
+    },
+    [engine],
+  );
+
   // Set up event listeners on canvas
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -106,6 +127,8 @@ export function useCanvasEvents(
     canvas.addEventListener("mouseleave", handleMouseEvent);
     canvas.addEventListener("click", handleMouseEvent);
     canvas.addEventListener("wheel", handleWheel);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
 
     return () => {
       // Clean up event listeners
@@ -119,8 +142,18 @@ export function useCanvasEvents(
       canvas.removeEventListener("mouseleave", handleMouseEvent);
       canvas.removeEventListener("click", handleMouseEvent);
       canvas.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [handlePointerEvent, handleMouseEvent, handleWheel, engine, canvasRef]);
+  }, [
+    handlePointerEvent,
+    handleMouseEvent,
+    handleWheel,
+    handleKeyDown,
+    handleKeyUp,
+    engine,
+    canvasRef,
+  ]);
 
   // Set canvas cursor style
   useEffect(() => {

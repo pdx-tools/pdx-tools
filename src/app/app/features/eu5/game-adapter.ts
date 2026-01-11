@@ -149,6 +149,8 @@ export function saveWorker(
     onMouseButton: (button: number, pressed: boolean) =>
       mapEngine.onMouseButton(button, pressed),
     onScroll: (scrollLines: number) => mapEngine.onScroll(scrollLines),
+    onKeyDown: (code: string) => mapEngine.onKeyDown(code),
+    onKeyUp: (code: string) => mapEngine.onKeyUp(code),
     isDragging: () => mapEngine.isDragging(),
     setMapMode: async (mode: MapMode) => {
       await saveEngine.setMapMode(mode);

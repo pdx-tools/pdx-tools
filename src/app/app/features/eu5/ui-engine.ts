@@ -66,6 +66,8 @@ export interface AppTriggers {
 
   zoom(params: ZoomParams): Promise<void>;
   pan(params: PanParams): Promise<void>;
+  keyDown(code: string): Promise<void>;
+  keyUp(code: string): Promise<void>;
 
   selectMapMode(mode: MapMode): Promise<void>;
   generateScreenshot(fullResolution: boolean): Promise<Blob>;
@@ -131,6 +133,8 @@ export class Eu5UIEngine implements AppEngine {
 
     zoom: (params) => this.handleZoom(params),
     pan: (params) => this.handlePan(params),
+    keyDown: (code) => this.handleKeyDown(code),
+    keyUp: (code) => this.handleKeyUp(code),
 
     selectMapMode: (mode) => this.handleSelectMapMode(mode),
     generateScreenshot: (fullResolution) =>
@@ -278,6 +282,14 @@ export class Eu5UIEngine implements AppEngine {
 
   private async handlePan(_params: PanParams): Promise<void> {
     // Pan is handled through drag mechanism in the current implementation
+  }
+
+  private async handleKeyDown(code: string): Promise<void> {
+    await this.gameInstance.onKeyDown(code);
+  }
+
+  private async handleKeyUp(code: string): Promise<void> {
+    await this.gameInstance.onKeyUp(code);
   }
 
   private async handleSelectMapMode(mode: MapMode): Promise<void> {

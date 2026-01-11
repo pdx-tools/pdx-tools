@@ -9,7 +9,7 @@ mod viewport;
 mod controller;
 #[cfg(feature = "render")]
 mod error;
-#[cfg(feature = "render")]
+#[cfg(feature = "interaction")]
 mod interaction;
 #[cfg(feature = "render")]
 mod renderer;
@@ -28,8 +28,8 @@ pub use viewport::*;
 pub use controller::MapViewController;
 #[cfg(feature = "render")]
 pub use error::{RenderError, RenderErrorKind};
-#[cfg(feature = "render")]
-pub use interaction::{InteractionController, MouseButton};
+#[cfg(feature = "interaction")]
+pub use interaction::{Clock, InteractionController, KeyboardKey, MouseButton, default_clock};
 #[cfg(feature = "render")]
 pub use renderer::{
     ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, MapRenderer, MapResources,
