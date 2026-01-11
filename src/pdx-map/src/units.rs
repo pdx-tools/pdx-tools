@@ -3,6 +3,7 @@
 //! The module also provides `Point` and `Rect` types for working with
 //! coordinates.
 
+use std::fmt::{self, Display};
 use std::marker::PhantomData;
 
 /// Marker type for physical pixel units (device pixels)
@@ -35,6 +36,12 @@ impl<Unit, T> Size<Unit, T> {
     }
 }
 
+impl<Unit, T: Display> Display for Size<Unit, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}x{}", self.width, self.height)
+    }
+}
+
 /// A 2D point tagged with its unit space (Physical or Logical)
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Point<Unit, T> {
@@ -53,6 +60,12 @@ impl<Unit, T> Point<Unit, T> {
     }
 }
 
+impl<Unit, T: Display> Display for Point<Unit, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({},{})", self.x, self.y)
+    }
+}
+
 /// A rectangle with an origin point and size, both tagged with the same unit space
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rect<Unit, T> {
@@ -63,6 +76,12 @@ pub struct Rect<Unit, T> {
 impl<Unit, T> Rect<Unit, T> {
     pub fn new(origin: Point<Unit, T>, size: Size<Unit, T>) -> Self {
         Self { origin, size }
+    }
+}
+
+impl<Unit, T: Display> Display for Rect<Unit, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}@{}", self.size, self.origin)
     }
 }
 
@@ -124,5 +143,53 @@ mod tests {
         let physical = PhysicalSize::new(200, 100);
         let logical = physical.to_logical(2.0);
         assert_eq!(logical, LogicalSize::new(100, 50));
+    }
+
+    #[test]
+    fn test_point_display_u32() {
+        let point = PhysicalPoint::new(100u32, 200u32);
+        assert_eq!(format!("{}", point), "(100,200)");
+    }
+
+    #[test]
+    fn test_point_display_f32() {
+        let point = LogicalPoint::new(15.5f32, 32.8f32);
+        assert_eq!(format!("{}", point), "(15.5,32.8)");
+    }
+
+    #[test]
+    fn test_point_display_u16() {
+        let point = WorldPoint::new(872u16, 494u16);
+        assert_eq!(format!("{}", point), "(872,494)");
+    }
+
+    #[test]
+    fn test_size_display_u32() {
+        let size = PhysicalSize::new(1920u32, 1080u32);
+        assert_eq!(format!("{}", size), "1920x1080");
+    }
+
+    #[test]
+    fn test_size_display_f32() {
+        let size = LogicalSize::new(800.5f32, 600.3f32);
+        assert_eq!(format!("{}", size), "800.5x600.3");
+    }
+
+    #[test]
+    fn test_rect_display() {
+        let rect = WorldRect::new(
+            WorldPoint::new(100u32, 200u32),
+            WorldSize::new(800u32, 600u32),
+        );
+        assert_eq!(format!("{}", rect), "800x600@(100,200)");
+    }
+
+    #[test]
+    fn test_rect_display_origin_zero() {
+        let rect = LogicalRect::new(
+            LogicalPoint::new(0u32, 0u32),
+            LogicalSize::new(1920u32, 1080u32),
+        );
+        assert_eq!(format!("{}", rect), "1920x1080@(0,0)");
     }
 }

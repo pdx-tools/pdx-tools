@@ -19,15 +19,7 @@ impl ViewportBounds {
 
 impl std::fmt::Display for ViewportBounds {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "({}x{}) @ ({},{}) z:{:.2}",
-            self.rect.size.width,
-            self.rect.size.height,
-            self.rect.origin.x,
-            self.rect.origin.y,
-            self.zoom_level
-        )
+        write!(f, "{} z:{:.2}", self.rect, self.zoom_level)
     }
 }
 
@@ -263,5 +255,29 @@ mod tests {
         // Should be approximately the same world coordinates (within floating point precision)
         assert!((new_world_coords.x - world_coords.x).abs() < 1.0);
         assert!((new_world_coords.y - world_coords.y).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_viewport_bounds_display() {
+        let bounds = ViewportBounds {
+            rect: crate::units::WorldRect::new(
+                crate::units::WorldPoint::new(100u32, 200u32),
+                crate::units::WorldSize::new(1920u32, 1080u32),
+            ),
+            zoom_level: 1.5,
+        };
+        assert_eq!(format!("{}", bounds), "1920x1080@(100,200) z:1.50");
+    }
+
+    #[test]
+    fn test_viewport_bounds_display_origin_zero() {
+        let bounds = ViewportBounds {
+            rect: crate::units::WorldRect::new(
+                crate::units::WorldPoint::new(0u32, 0u32),
+                crate::units::WorldSize::new(800u32, 600u32),
+            ),
+            zoom_level: 2.0,
+        };
+        assert_eq!(format!("{}", bounds), "800x600@(0,0) z:2.00");
     }
 }
