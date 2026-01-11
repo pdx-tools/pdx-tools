@@ -141,7 +141,7 @@ impl MapPicker {
         let bytes_per_row = (half_width as usize) * 2;
         let height = picker.west.len() / bytes_per_row;
 
-        let mut aabbs: Vec<AABB> = vec![AABB::empty(); u16::MAX as usize];
+        let mut aabbs: Vec<AABB> = vec![AABB::empty(); u16::MAX as usize + 1];
         let mut max_location_idx = 0u16;
 
         for (x_offset, data) in [(0, &picker.west), (half_width, &picker.east)] {
@@ -158,7 +158,7 @@ impl MapPicker {
             }
         }
 
-        // Truncate to actual size and convert to dense Vec<AABB>
+        // Truncate to actual size
         aabbs.truncate(max_location_idx as usize + 1);
 
         Self { picker, aabbs }
@@ -168,7 +168,7 @@ impl MapPicker {
     ///
     /// Returns an iterator over `GpuLocationIdx` values for locations whose
     /// bounding boxes intersect with the query AABB.
-    pub fn query<'a>(&'a self, query_aabb: AABB) -> impl Iterator<Item = GpuLocationIdx> + 'a {
+    pub fn query(&self, query_aabb: AABB) -> impl Iterator<Item = GpuLocationIdx> + '_ {
         self.aabbs
             .iter()
             .enumerate()
