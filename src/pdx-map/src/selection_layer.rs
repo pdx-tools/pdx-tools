@@ -45,6 +45,9 @@ struct SelectionUniform {
     rect_min: [f32; 2],
     rect_max: [f32; 2],
     color: [f32; 4],
+    physical_dimensions: [f32; 2],  // width, height in physical pixels
+    border_width_px: f32,            // border width in physical pixels
+    _padding: f32,                   // 16-byte alignment
 }
 
 /// Pipeline resources (created once, reused)
@@ -99,7 +102,7 @@ impl SelectionLayer {
             label: Some("Selection Layer Bind Group Layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
@@ -180,6 +183,9 @@ impl SelectionLayer {
                 rect_min: [0.0, 0.0],
                 rect_max: [0.0, 0.0],
                 color: [0.0, 0.0, 0.0, 0.0],
+                physical_dimensions: [1.0, 1.0],  // Avoid division by zero
+                border_width_px: 2.5,
+                _padding: 0.0,
             };
             let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Selection Layer Uniform Buffer"),
@@ -226,6 +232,10 @@ impl SelectionLayer {
         let phys_min = min.to_physical(self.scale_factor);
         let phys_max = max.to_physical(self.scale_factor);
 
+        // Calculate physical dimensions
+        let phys_width = phys_max.x - phys_min.x;
+        let phys_height = phys_max.y - phys_min.y;
+
         // 2. Physical -> NDC (-1.0 to 1.0)
         let to_ndc = |p: PhysicalPoint<f32>| {
             [
@@ -234,10 +244,17 @@ impl SelectionLayer {
             ]
         };
 
+        // Border width: 2.5px base, scaled with DPI
+        const BASE_BORDER_WIDTH_PX: f32 = 2.5;
+        let border_width_px = BASE_BORDER_WIDTH_PX * self.scale_factor;
+
         let uniform = SelectionUniform {
             rect_min: to_ndc(phys_min),
             rect_max: to_ndc(phys_max),
             color: [0.2, 0.5, 0.8, 0.3],
+            physical_dimensions: [phys_width, phys_height],
+            border_width_px,
+            _padding: 0.0,
         };
 
         queue.write_buffer(uniform_buffer, 0, bytemuck::bytes_of(&uniform));

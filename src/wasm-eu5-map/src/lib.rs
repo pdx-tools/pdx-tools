@@ -5,7 +5,7 @@ use eu5app::{
 use pdx_map::{
     AABB, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, InteractionController,
     InteractionMode, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
-    MapTexture, MapViewController, MouseButton, SelectionLayer, SelectionState,
+    MapTexture, MapViewController, MouseButton, SelectionBox, SelectionLayer, SelectionState,
     SharedSelectionState, SurfaceMapRenderer, ViewportBounds, WorldPoint, WorldSize, default_clock,
 };
 use std::{
@@ -92,6 +92,7 @@ pub struct Eu5WasmMapRenderer {
     clock: Box<dyn Clock>,
     last_tick: Option<Duration>,
     selection_state: SharedSelectionState,
+    last_selection: Option<SelectionBox>,
 }
 
 impl std::fmt::Debug for Eu5WasmMapRenderer {
@@ -149,6 +150,7 @@ impl Eu5WasmMapRenderer {
             clock: default_clock(),
             last_tick: None,
             selection_state,
+            last_selection: None,
         })
     }
 
@@ -185,7 +187,6 @@ impl Eu5WasmMapRenderer {
 
         let bounds = self.input.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
-        self.log_selection_entities(bounds);
     }
 
     /// Handle mouse button press/release
@@ -250,6 +251,7 @@ impl Eu5WasmMapRenderer {
         self.input.tick(delta);
         let bounds = self.input.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
+        self.update_selection_highlights(bounds);
     }
 
     /// Check if currently dragging
@@ -363,18 +365,34 @@ impl Eu5WasmMapRenderer {
         renderer.update_locations(&self.location_arrays);
     }
 
-    fn log_selection_entities(&self, bounds: ViewportBounds) {
+    fn update_selection_highlights(&mut self, bounds: ViewportBounds) {
         let selection = match self.selection_state.try_lock() {
             Ok(state) => state.get(),
             Err(_) => return,
         };
 
-        let selection = match selection {
-            Some(selection) => selection,
-            None => return,
+        if selection == self.last_selection {
+            return;
+        }
+
+        self.last_selection = selection;
+
+        if self.location_arrays.is_empty() {
+            return;
+        }
+
+        let mut iter = self.location_arrays.iter_mut();
+        while let Some(mut location) = iter.next_location() {
+            location.flags_mut().clear(LocationFlags::HIGHLIGHTED);
+        }
+
+        let Some(selection) = selection else {
+            self.upload_location_arrays();
+            return;
         };
 
         if bounds.zoom_level <= f32::EPSILON {
+            self.upload_location_arrays();
             return;
         }
 
@@ -391,28 +409,19 @@ impl Eu5WasmMapRenderer {
         let max_y = Self::clamp_to_u16(world_max_y);
 
         let query_aabb = AABB::new(WorldPoint::new(min_x, min_y), WorldPoint::new(max_x, max_y));
-
         let max_locations = self.location_arrays.len();
-        let mut results = Vec::new();
+
         for idx in self.picker.query(query_aabb) {
             let idx_usize = idx.value() as usize;
             if idx_usize < max_locations {
-                results.push(self.location_arrays.get_location_id(idx).value());
-            } else {
-                results.push(idx.value() as u32);
+                self.location_arrays
+                    .get_mut(idx)
+                    .flags_mut()
+                    .set(LocationFlags::HIGHLIGHTED);
             }
         }
 
-        let message = format!(
-            "Selection AABB [{},{}]-[{},{}] -> {} entities: {:?}",
-            min_x,
-            min_y,
-            max_x,
-            max_y,
-            results.len(),
-            results
-        );
-        tracing::info!(message);
+        self.upload_location_arrays();
     }
 
     fn clamp_to_u16(value: f32) -> u16 {
