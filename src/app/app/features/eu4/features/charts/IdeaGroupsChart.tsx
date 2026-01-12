@@ -1,8 +1,8 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import type { Eu4Worker } from "@/features/eu4/worker";
-import { Bar, useVisualizationDispatch } from "@/components/viz";
-import type { BarConfig } from "@/components/viz";
+import { EChart, useVisualizationDispatch } from "@/components/viz";
+import type { EChartsOption } from "@/components/viz";
 import { createCsv } from "@/lib/csv";
 import { useEu4Meta, useTagFilter } from "../../store";
 import { Alert } from "@/components/Alert";
@@ -115,26 +115,121 @@ export const IdeaGroupsChart = () => {
     });
   }, [ideaGroups, visualizationDispatch]);
 
-  const config: BarConfig = {
-    data: ideaGroups,
-    autoFit: true,
-    xField: "count",
-    yField: "name",
-    seriesField: "type",
-    isGroup: true,
-    legend: {
-      itemName: {
-        style: {
-          fill: isDarkMode() ? "#fff" : "#000",
+  const isDark = isDarkMode();
+
+  const option = useMemo((): EChartsOption => {
+    // Get unique idea group names
+    const ideaGroupNames = Array.from(
+      new Set(ideaGroups.map((d) => d.name)),
+    ).sort();
+
+    // Organize data by type
+    const completedData = ideaGroupNames.map((name) => {
+      const datum = ideaGroups.find(
+        (d) => d.name === name && d.type === "completed",
+      );
+      return datum?.count ?? 0;
+    });
+
+    const selectedData = ideaGroupNames.map((name) => {
+      const datum = ideaGroups.find(
+        (d) => d.name === name && d.type === "selected",
+      );
+      return datum?.count ?? 0;
+    });
+
+    return {
+      grid: {
+        left: 120,
+        right: 40,
+        top: 60,
+        bottom: 60,
+      },
+      legend: {
+        data: ["Completed", "Selected"],
+        top: 10,
+        textStyle: {
+          color: isDark ? "#fff" : "#000",
         },
       },
-    },
-  };
+      tooltip: {
+        trigger: "axis",
+        axisPointer: {
+          type: "shadow",
+        },
+      },
+      xAxis: {
+        type: "value",
+        name: "Countries",
+        nameLocation: "middle",
+        nameGap: 30,
+        nameTextStyle: {
+          color: isDark ? "#ddd" : "#333",
+          fontSize: 12,
+        },
+        axisLabel: {
+          color: isDark ? "#bbb" : "#666",
+        },
+        axisLine: {
+          lineStyle: {
+            color: isDark ? "#666" : "#999",
+          },
+        },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            type: "dashed",
+            color: isDark ? "#ddd" : "#333",
+            opacity: 0.3,
+            width: 1,
+          },
+        },
+      },
+      yAxis: {
+        type: "category",
+        name: "Idea Group",
+        nameLocation: "end",
+        nameTextStyle: {
+          color: isDark ? "#ddd" : "#333",
+          fontSize: 12,
+        },
+        axisLabel: {
+          color: isDark ? "#bbb" : "#666",
+        },
+        axisLine: {
+          lineStyle: {
+            color: isDark ? "#666" : "#999",
+          },
+        },
+        data: ideaGroupNames,
+      },
+      series: [
+        {
+          name: "Completed",
+          type: "bar",
+          data: completedData,
+          itemStyle: {
+            color: isDark ? "#10b981" : "#059669",
+          },
+        },
+        {
+          name: "Selected",
+          type: "bar",
+          data: selectedData,
+          itemStyle: {
+            color: isDark ? "#93c5fd" : "#5B8FF9",
+          },
+        },
+      ],
+    };
+  }, [ideaGroups, isDark]);
 
   return (
     <div className="h-[calc(100%-1px)]">
       <Alert.Error msg={error} />
-      {ideaGroups.length != 0 ? <Bar {...config} /> : null}
+      {ideaGroups.length !== 0 ? (
+        <EChart option={option} style={{ height: "100%", width: "100%" }} />
+      ) : null}
     </div>
   );
 };

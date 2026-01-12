@@ -14,8 +14,8 @@ import { Button } from "@/components/Button";
 import { ToggleGroup } from "@/components/ToggleGroup";
 import { throttle } from "@/lib/throttle";
 import { isDarkMode } from "@/lib/dark";
-import { Treemap } from "@/components/viz";
-import type { TreemapConfig } from "@/components/viz";
+import { EChart } from "@/components/viz";
+import type { EChartsOption } from "@/components/viz";
 import { emitEvent } from "@/lib/events";
 import { classicCyclic } from "@/lib/colors";
 
@@ -345,53 +345,88 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
     };
   }, []);
 
-  const treeMapConfig: TreemapConfig = {
-    data: {
-      name: "root",
-      children: Object.entries(totalExpenses).map(([kind, obj]) => ({
-        name: kind,
-        kind,
-        value: sumValues(obj),
-        children: Object.entries(obj).map(([key, value]) => ({
-          name: key,
-          value,
+  const getExpenseColor = (kind: keyof typeof totalExpenses) => {
+    switch (kind) {
+      case "Maintenance":
+        return classicCyclic[9];
+      case "Interest Payments":
+        return classicCyclic[5];
+      case "Diplomatic Expenses":
+        return classicCyclic[12];
+      case "One-time Expenses":
+        return classicCyclic[13];
+      case "Capital Expenditure":
+        return classicCyclic[0];
+      default:
+        return "#000";
+    }
+  };
+
+  const treeMapOption: EChartsOption = {
+    tooltip: {
+      trigger: "item",
+      formatter: (params) => {
+        if (Array.isArray(params)) {
+          return "";
+        }
+        return `
+          <strong>${params.name}</strong><br/>
+          ${formatInt(params.value as number)}
+        `;
+      },
+    },
+    series: [
+      {
+        name: "Expenses",
+        type: "treemap",
+        roam: false,
+        nodeClick: false,
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        data: Object.entries(totalExpenses).map(([kind, obj]) => ({
+          name: kind,
+          value: sumValues(obj),
+          itemStyle: {
+            color: getExpenseColor(kind as keyof typeof totalExpenses),
+          },
+          children: Object.entries(obj).map(([key, value]) => ({
+            name: key,
+            value,
+          })),
         })),
-      })),
-    },
-    colorField: "kind",
-    color(datum, _defaultColor) {
-      const x = datum as { kind: keyof typeof totalExpenses };
-      switch (x.kind) {
-        case "Maintenance":
-          return classicCyclic[9];
-        case "Interest Payments":
-          return classicCyclic[5];
-        case "Diplomatic Expenses":
-          return classicCyclic[12];
-        case "One-time Expenses":
-          return classicCyclic[13];
-        case "Capital Expenditure":
-          return classicCyclic[0];
-      }
-    },
-    legend: {
-      position: "top-left",
-      itemName: {
-        style: {
-          fill: isDarkMode() ? "#fff" : "#000",
+        breadcrumb: {
+          show: false,
+        },
+        label: {
+          show: true,
+          formatter: "{b}",
+          color: isDarkMode() ? "#fff" : "#000",
+          fontSize: 10,
+          overflow: "truncate",
+        },
+        upperLabel: {
+          show: true,
+          height: 20,
+          color: isDarkMode() ? "#fff" : "#000",
+          fontSize: 12,
+          fontWeight: "bold",
+        },
+        itemStyle: {
+          borderColor: isDarkMode() ? "#333" : "#fff",
+          borderWidth: 1,
+          gapWidth: 1,
+        },
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: "rgba(0, 0, 0, 0.5)",
+          },
         },
       },
-    },
-    tooltip: {
-      formatter: (v) => {
-        // const root = v.path[v.path.length - 1];
-        // const datum = v.path[0].data;
-        return {
-          name: v.name,
-          value: formatInt(v.value),
-        };
-      },
-    },
+    ],
   };
 
   return (
@@ -850,7 +885,10 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
         <h3 className="text-bold text-center text-lg font-semibold">
           Total Expenses Tree
         </h3>
-        <Treemap {...treeMapConfig} />
+        <EChart
+          option={treeMapOption}
+          style={{ height: "100%", width: "100%" }}
+        />
       </div>
     </div>
   );

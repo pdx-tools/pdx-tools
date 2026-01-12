@@ -1,10 +1,13 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTagFilter } from "../../store";
 import { useAnalysisWorker } from "../../worker";
-import { Scatter, useVisualizationDispatch } from "@/components/viz";
-import type { ScatterConfig } from "@/components/viz";
+import { EChart, useVisualizationDispatch } from "@/components/viz";
+import type { EChartsOption } from "@/components/viz";
 import { Alert } from "@/components/Alert";
-import type { CountryDevEffiency } from "@/wasm/wasm_eu4";
+import type {
+  CountryDevEfficiencies,
+  CountryDevEffiency,
+} from "@/wasm/wasm_eu4";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
@@ -113,97 +116,138 @@ export const DevEfficiency = () => {
     return null;
   }
 
-  const topCountries = new Set(data.slice(0, 15).map((x) => x.country.tag));
-
-  const config = {
-    appendPadding: 10,
-    data,
-    xField: "dev_clicks",
-    yField: "dev_mana",
-    size: 4,
-    tooltip: {
-      showTitle: true,
-      title: (_, x) => (x as CountryDevEffiency).country.name,
-      customItems: (items) => {
-        const item = items?.[0];
-        const datum = item?.data as CountryDevEffiency | undefined;
-        if (!datum) {
-          return [];
-        }
-
-        const color = "#ffffff";
-        return [
-          {
-            ...item,
-            color,
-            name: "Mana spent",
-            value: formatInt(datum.dev_mana),
-          },
-          {
-            ...item,
-            color,
-            name: "Dev clicks",
-            value: formatInt(datum.dev_clicks),
-          },
-          {
-            ...item,
-            color,
-            name: "Average",
-            value: formatFloat(datum.dev_mana / datum.dev_clicks, 2),
-          },
-        ];
-      },
-    },
-
-    yAxis: {
-      title: {
-        text: "Mana spent",
-        style: {
-          fill: isDarkMode() ? "#fff" : "#000",
-        },
-      },
-      nice: true,
-      line: {
-        style: {
-          stroke: "#aaa",
-        },
-      },
-    },
-    xAxis: {
-      title: {
-        text: "Dev clicks",
-        style: {
-          fill: isDarkMode() ? "#fff" : "#000",
-        },
-      },
-      grid: {
-        line: {
-          style: {
-            stroke: "#eee",
-          },
-        },
-      },
-      line: {
-        style: {
-          stroke: "#aaa",
-        },
-      },
-    },
-    label: {
-      formatter(text) {
-        const tag = (text as CountryDevEffiency).country.tag;
-        return topCountries.has(tag) ? tag : "";
-      },
-      style: {
-        fill: isDarkMode() ? "#fff" : "#000",
-      },
-    },
-  } satisfies ScatterConfig;
-
   return (
     <div className="flex flex-col gap-8 pb-10">
-      <Scatter {...config} />
+      <DevEfficiencyChart data={data} />
       <DataTable columns={columns} data={data} pagination={true} />
     </div>
   );
 };
+
+function DevEfficiencyChart({ data }: { data: CountryDevEfficiencies }) {
+  const topCountries = useMemo(
+    () => new Set(data.slice(0, 15).map((x) => x.country.tag)),
+    [data],
+  );
+  const isDark = isDarkMode();
+
+  const option = useMemo((): EChartsOption => {
+    const scatterData = data.map((d) => ({
+      value: [d.dev_clicks, d.dev_mana],
+      country: d.country,
+      dev_clicks: d.dev_clicks,
+      dev_mana: d.dev_mana,
+    }));
+
+    return {
+      grid: {
+        left: 60,
+        right: 40,
+        top: 40,
+        bottom: 40,
+      },
+      xAxis: {
+        type: "value",
+        name: "Dev clicks",
+        nameLocation: "middle",
+        nameGap: 30,
+        nameTextStyle: {
+          color: isDark ? "#fff" : "#000",
+          fontSize: 12,
+        },
+        axisLabel: {
+          color: isDark ? "#bbb" : "#666",
+        },
+        axisLine: {
+          lineStyle: {
+            color: isDark ? "#666" : "#999",
+          },
+        },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            type: "dashed",
+            color: isDark ? "#ddd" : "#333",
+            opacity: 0.3,
+            width: 1,
+          },
+        },
+        min: 0,
+      },
+      yAxis: {
+        type: "value",
+        name: "Mana spent",
+        nameLocation: "middle",
+        nameGap: 50,
+        nameTextStyle: {
+          color: isDark ? "#ddd" : "#333",
+          fontSize: 12,
+        },
+        axisLabel: {
+          color: isDark ? "#bbb" : "#666",
+        },
+        axisLine: {
+          lineStyle: {
+            color: isDark ? "#666" : "#999",
+          },
+        },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            type: "dashed",
+            color: isDark ? "#ddd" : "#333",
+            opacity: 0.3,
+            width: 1,
+          },
+        },
+        min: 0,
+      },
+      tooltip: {
+        trigger: "item",
+        formatter: (params) => {
+          if (Array.isArray(params)) {
+            return "";
+          }
+
+          const d = params.data as (typeof scatterData)[number];
+          const avg = d.dev_mana / d.dev_clicks;
+          return `
+            <strong>${d.country.name}</strong><br/>
+            Mana spent: ${formatInt(d.dev_mana)}<br/>
+            Dev clicks: ${formatInt(d.dev_clicks)}<br/>
+            Average: ${formatFloat(avg, 2)}
+          `;
+        },
+      },
+      series: [
+        {
+          type: "scatter",
+          data: scatterData,
+          symbolSize: 4,
+          itemStyle: {
+            color: isDark ? "#93c5fd" : "#5B8FF9",
+            opacity: 0.85,
+          },
+          label: {
+            show: true,
+            formatter: (params) => {
+              if (Array.isArray(params)) {
+                return "";
+              }
+
+              const d = params.data as (typeof scatterData)[number];
+              return topCountries.has(d.country.tag) ? d.country.tag : "";
+            },
+            position: "top",
+            color: isDark ? "#fff" : "#000",
+            fontSize: 11,
+            fontWeight: 500,
+            distance: 8,
+          },
+        },
+      ],
+    };
+  }, [data, topCountries, isDark]);
+
+  return <EChart option={option} style={{ height: "400px", width: "100%" }} />;
+}

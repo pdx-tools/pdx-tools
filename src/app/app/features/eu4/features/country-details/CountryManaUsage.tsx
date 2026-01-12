@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import { manaSpendAliases, manaSpendColorPalette } from "./data";
-import { Bar, PieTable } from "@/components/viz";
-import type { BarConfig, DataPoint } from "@/components/viz";
+import { EChart, PieTable } from "@/components/viz";
+import type { DataPoint, EChartsOption } from "@/components/viz";
 import type { CountryDetails } from "../../types/models";
 import { isDarkMode } from "@/lib/dark";
 import { useEu4Worker } from "../../worker";
@@ -40,127 +40,247 @@ interface TotalManaBarProps {
 }
 
 const TotalManaBarImpl = ({ adm, dip, mil }: TotalManaBarProps) => {
-  const overviewConfig: BarConfig = {
-    data: [
+  const isDark = isDarkMode();
+
+  const data = useMemo(
+    () => [
       {
-        key: "ADM",
-        value: adm,
+        key: "MIL",
+        value: mil,
       },
       {
         key: "DIP",
         value: dip,
       },
       {
-        key: "MIL",
-        value: mil,
+        key: "ADM",
+        value: adm,
       },
     ],
-    autoFit: true,
-    xField: "value",
-    yField: "key",
-    seriesField: "key",
-    xAxis: false,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    color: (data: Record<string, any>) =>
-      manaColors.get(data["key"] as string) || "#000",
-    legend: {
-      itemName: {
-        style: {
-          fill: isDarkMode() ? "#fff" : "#000",
+    [adm, dip, mil],
+  );
+
+  const option = useMemo((): EChartsOption => {
+    return {
+      grid: {
+        left: 60,
+        right: 40,
+        top: 20,
+        bottom: 40,
+      },
+      legend: {
+        show: false,
+      },
+      xAxis: {
+        type: "value",
+        name: "Mana",
+        nameLocation: "middle",
+        nameGap: 30,
+        nameTextStyle: {
+          color: isDark ? "#ddd" : "#333",
+          fontSize: 12,
+        },
+        axisLabel: {
+          color: isDark ? "#bbb" : "#666",
+        },
+        axisLine: {
+          lineStyle: {
+            color: isDark ? "#666" : "#999",
+          },
+        },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            type: "dashed",
+            color: isDark ? "#ddd" : "#333",
+            opacity: 0.3,
+            width: 1,
+          },
         },
       },
-    },
-    label: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      formatter: (_text: any, item: any) => item._origin.value.toFixed(0),
-      style: {
-        fill: "#fff",
+      yAxis: {
+        type: "category",
+        axisLabel: {
+          color: isDark ? "#bbb" : "#666",
+        },
+        axisLine: {
+          lineStyle: {
+            color: isDark ? "#666" : "#999",
+          },
+        },
+        data: data.map((d) => d.key),
       },
-    },
-  };
+      tooltip: {
+        trigger: "axis",
+        axisPointer: {
+          type: "shadow",
+        },
+        formatter: (params) => {
+          if (!Array.isArray(params) || params.length === 0) {
+            return "";
+          }
+          const param = params[0];
+          return `
+            <strong>${param.name}</strong><br/>
+            Mana: ${formatInt(param.value as number)}
+          `;
+        },
+      },
+      series: [
+        {
+          type: "bar",
+          data: data.map((d) => ({
+            value: d.value,
+            itemStyle: {
+              color: manaColors.get(d.key) || "#000",
+            },
+          })),
+          label: {
+            show: true,
+            position: "inside",
+            formatter: (params) => formatInt(+(params.value ?? 0)),
+            color: "#fff",
+          },
+        },
+      ],
+    };
+  }, [data, isDark]);
 
-  return <Bar {...overviewConfig} />;
+  return <EChart option={option} />;
 };
 
 const TotalManaBar = React.memo(TotalManaBarImpl);
 
 const ManaCategoryBarsImpl = ({ mana }: { mana: CountryMana }) => {
-  const data = [
-    {
-      label: "Ideas",
-      type: "ADM",
-      value: mana.mana_usage.adm.buy_idea,
-    },
-    {
-      label: "Ideas",
-      type: "DIP",
-      value: mana.mana_usage.dip.buy_idea,
-    },
-    {
-      label: "Ideas",
-      type: "MIL",
-      value: mana.mana_usage.mil.buy_idea,
-    },
-    {
-      label: "Advance Tech",
-      type: "ADM",
-      value: mana.mana_usage.adm.advance_tech,
-    },
-    {
-      label: "Advance Tech",
-      type: "DIP",
-      value: mana.mana_usage.dip.advance_tech,
-    },
-    {
-      label: "Advance Tech",
-      type: "MIL",
-      value: mana.mana_usage.mil.advance_tech,
-    },
-    {
-      label: "Develop Prov",
-      type: "ADM",
-      value: mana.mana_usage.adm.develop_prov,
-    },
-    {
-      label: "Develop Prov",
-      type: "DIP",
-      value: mana.mana_usage.dip.develop_prov,
-    },
-    {
-      label: "Develop Prov",
-      type: "MIL",
-      value: mana.mana_usage.mil.develop_prov,
-    },
-  ];
+  const categories = useMemo(
+    () => ["Ideas", "Advance Tech", "Develop Prov"],
+    [],
+  );
 
-  const manaCompConfig: BarConfig = {
-    data,
-    xField: "value",
-    yField: "label",
-    seriesField: "type",
-    isGroup: true,
-    label: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      formatter: (_text: any, item: any) => item._origin.value.toFixed(0),
-      style: {
-        fill: "#fff",
+  const data = useMemo(
+    () => ({
+      ADM: [
+        mana.mana_usage.adm.buy_idea,
+        mana.mana_usage.adm.advance_tech,
+        mana.mana_usage.adm.develop_prov,
+      ],
+      DIP: [
+        mana.mana_usage.dip.buy_idea,
+        mana.mana_usage.dip.advance_tech,
+        mana.mana_usage.dip.develop_prov,
+      ],
+      MIL: [
+        mana.mana_usage.mil.buy_idea,
+        mana.mana_usage.mil.advance_tech,
+        mana.mana_usage.mil.develop_prov,
+      ],
+    }),
+    [mana],
+  );
+
+  const isDark = isDarkMode();
+
+  const option = useMemo((): EChartsOption => {
+    return {
+      grid: {
+        left: 100,
+        right: 40,
+        top: 0,
+        bottom: 40,
       },
-    },
-    legend: {
-      itemName: {
-        style: {
-          fill: isDarkMode() ? "#fff" : "#000",
+      xAxis: {
+        type: "value",
+        name: "Mana",
+        nameLocation: "middle",
+        nameGap: 30,
+        nameTextStyle: {
+          color: isDark ? "#ddd" : "#333",
+          fontSize: 12,
+        },
+        axisLabel: {
+          color: isDark ? "#bbb" : "#666",
+        },
+        axisLine: {
+          lineStyle: {
+            color: isDark ? "#666" : "#999",
+          },
+        },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            type: "dashed",
+            color: isDark ? "#ddd" : "#333",
+            opacity: 0.3,
+            width: 1,
+          },
         },
       },
-    },
-    autoFit: true,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    color: (data: Record<string, any>) =>
-      manaColors.get(data["type"] as string) || "#000",
-    xAxis: false,
-  };
+      yAxis: {
+        type: "category",
+        axisLabel: {
+          color: isDark ? "#bbb" : "#666",
+        },
+        axisLine: {
+          lineStyle: {
+            color: isDark ? "#666" : "#999",
+          },
+        },
+        data: categories,
+      },
+      tooltip: {
+        trigger: "axis",
+        axisPointer: {
+          type: "shadow",
+        },
+      },
+      series: [
+        {
+          name: "ADM",
+          type: "bar",
+          data: data.ADM,
+          itemStyle: {
+            color: manaColors.get("ADM") || "#000",
+          },
+          label: {
+            show: true,
+            position: "inside",
+            formatter: (params) => formatInt(+(params.value ?? 0)),
+            color: "#fff",
+          },
+        },
+        {
+          name: "DIP",
+          type: "bar",
+          data: data.DIP,
+          itemStyle: {
+            color: manaColors.get("DIP") || "#000",
+          },
+          label: {
+            show: true,
+            position: "inside",
+            formatter: (params) => formatInt(+(params.value ?? 0)),
+            color: "#fff",
+          },
+        },
+        {
+          name: "MIL",
+          type: "bar",
+          data: data.MIL,
+          itemStyle: {
+            color: manaColors.get("MIL") || "#000",
+          },
+          label: {
+            show: true,
+            position: "inside",
+            formatter: (params) => formatInt(+(params.value ?? 0)),
+            color: "#fff",
+          },
+        },
+      ],
+    };
+  }, [data, categories, isDark]);
 
-  return <Bar {...manaCompConfig} />;
+  return <EChart option={option} />;
 };
 
 const ManaCategoryBars = React.memo(ManaCategoryBarsImpl);
@@ -327,12 +447,16 @@ const CountryManaUsageImpl = ({ mana }: { mana: CountryMana }) => {
 
       <h3>Mana Expenditure</h3>
       <div className="flex space-x-2">
-        <TotalManaBar
-          adm={adm_mana.reduce((acc, x) => acc + x.value, 0)}
-          dip={dip_mana.reduce((acc, x) => acc + x.value, 0)}
-          mil={mil_mana.reduce((acc, x) => acc + x.value, 0)}
-        />
-        <ManaCategoryBars mana={mana} />
+        <div className="min-w-0 flex-1">
+          <TotalManaBar
+            adm={adm_mana.reduce((acc, x) => acc + x.value, 0)}
+            dip={dip_mana.reduce((acc, x) => acc + x.value, 0)}
+            mil={mil_mana.reduce((acc, x) => acc + x.value, 0)}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <ManaCategoryBars mana={mana} />
+        </div>
       </div>
       <div className="flex flex-wrap gap-6">
         <PieTable

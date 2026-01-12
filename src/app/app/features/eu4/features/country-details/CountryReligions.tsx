@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
 import type { CountryDetails, CountryReligion } from "../../types/models";
-import { Pie, LegendColor } from "@/components/viz";
-import type { PieConfig } from "@/components/viz";
+import { EChart, LegendColor } from "@/components/viz";
+import type { EChartsOption } from "@/components/viz";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { Tooltip } from "@/components/Tooltip";
@@ -91,47 +91,92 @@ const CountryReligionVizImpl = ({
   data,
   largeLayout,
 }: CountryReligionVizProps) => {
-  const palette = useMemo(
-    () => new Map(data.map((x) => [x.name, x.color])),
-    [data],
-  );
+  const isDark = isDarkMode();
 
-  const chartConfig: PieConfig = {
-    data,
-    angleField: "development",
-    colorField: "name",
-    autoFit: true,
-    innerRadius: 0.5,
-    color: (data) => palette.get(data.name) || "#000",
-    label: {
-      type: "inner",
-      offset: "-30%",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      formatter: (_text: any, item: any) =>
-        `${item._origin.development.toFixed(0)}`,
-    },
-    legend: {
-      itemName: {
-        style: {
-          fill: isDarkMode() ? "#fff" : "#000",
+  const option = useMemo((): EChartsOption => {
+    return {
+      legend: {
+        orient: "vertical",
+        left: "left",
+        textStyle: {
+          color: isDark ? "#fff" : "#000",
         },
       },
-    },
-    interactions: [{ type: "element-active" }],
-    statistic: {
-      title: false,
-      content: {
-        style: {
-          whiteSpace: "pre-wrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          fontSize: "24px",
-          color: isDarkMode() ? "#fff" : "#000",
+      tooltip: {
+        trigger: "item",
+        formatter: (params) => {
+          if (Array.isArray(params)) {
+            return "";
+          }
+          const religion = data.find((r) => r.name === params.name);
+          if (!religion) return "";
+          return `
+            <strong>${religion.name}</strong><br/>
+            Development: ${formatInt(religion.development)}<br/>
+            Provinces: ${formatInt(religion.provinces)}
+          `;
         },
-        formatter: () => "Religion\nDev",
       },
-    },
-  };
+      graphic: [
+        {
+          type: "text",
+          left: "center",
+          top: "center",
+          style: {
+            text: "Religion\nDevelopment",
+            //@ts-expect-error this option exists
+            textAlign: "center",
+            fill: isDark ? "#fff" : "#000",
+            fontSize: 14,
+            fontWeight: "bold",
+          },
+        },
+      ],
+      series: [
+        {
+          type: "pie",
+          radius: ["50%", "70%"],
+          avoidLabelOverlap: true,
+          itemStyle: {
+            borderColor: "#fff",
+            borderWidth: 1,
+          },
+          label: {
+            show: true,
+            position: "inside",
+            formatter: (params) => {
+              const religion = data.find((r) => r.name === params.name);
+              return religion
+                ? `${religion.development.toFixed(0)}`
+                : (params.value as number).toFixed(0);
+            },
+            fontSize: 12,
+            color: "#fff",
+            fontWeight: "bold",
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 14,
+              fontWeight: "bold",
+            },
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: "rgba(0, 0, 0, 0.5)",
+            },
+          },
+          data: data.map((religion) => ({
+            name: religion.name,
+            value: religion.development,
+            itemStyle: {
+              color: religion.color,
+            },
+          })),
+        },
+      ],
+    };
+  }, [data, isDark]);
 
   return (
     <div
@@ -143,7 +188,9 @@ const CountryReligionVizImpl = ({
         columns={columns}
         initialSorting={[{ id: "development_percent", desc: true }]}
       />
-      <Pie {...chartConfig} />
+      <div className="grow">
+        <EChart option={option} style={{ height: "400px", width: "100%" }} />
+      </div>
     </div>
   );
 };

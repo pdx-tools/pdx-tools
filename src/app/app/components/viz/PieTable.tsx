@@ -1,12 +1,11 @@
 import React, { useMemo } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
 import { LegendColor } from "./LegendColor";
-import { Pie } from "./Pie";
-import type { PieConfig } from "./Pie";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
-import { isDarkMode } from "@/lib/dark";
+import { EChart } from "./EChart";
+import type { EChartsOption } from "./EChart";
 
 export interface DataPoint {
   key: string;
@@ -28,40 +27,76 @@ interface PieTablePieProps {
 }
 
 const PieTablePieImpl = ({ rows, palette }: PieTablePieProps) => {
-  const chartConfig: PieConfig = {
-    data: rows,
-    angleField: "value",
-    colorField: "key",
-    autoFit: true,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    color: (data: Record<string, any>) =>
-      palette.get(data["key"] as string) || "#000",
-    tooltip: {
-      formatter: (datum) => {
-        if (Number.isInteger(datum.value)) {
-          return { name: datum.key, value: formatInt(datum.value) };
-        } else {
-          return { name: datum.key, value: formatFloat(datum.value) };
-        }
+  const option = useMemo((): EChartsOption => {
+    return {
+      legend: {
+        show: false,
       },
-    },
-    label: {
-      type: "inner",
-      offset: "-30%",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      formatter: (_text: any, item: any) => `${item._origin.value.toFixed(0)}`,
-    },
-    interactions: [{ type: "element-active" }],
-    legend: {
-      itemName: {
-        style: {
-          fill: isDarkMode() ? "#fff" : "#000",
+      tooltip: {
+        trigger: "item",
+        formatter: (params) => {
+          if (Array.isArray(params)) {
+            return "";
+          }
+          const dataPoint = rows.find((r) => r.key === params.name);
+          if (!dataPoint) return "";
+          const formattedValue = Number.isInteger(dataPoint.value)
+            ? formatInt(dataPoint.value)
+            : formatFloat(dataPoint.value);
+          return `
+            <strong>${dataPoint.key}</strong><br/>
+            ${formattedValue}
+          `;
         },
       },
-    },
-  };
+      series: [
+        {
+          type: "pie",
+          radius: "70%",
+          avoidLabelOverlap: true,
+          itemStyle: {
+            borderColor: "#fff",
+            borderWidth: 1,
+          },
+          label: {
+            show: true,
+            position: "inside",
+            formatter: (params) => {
+              const dataPoint = rows.find((r) => r.key === params.name);
+              return dataPoint
+                ? `${dataPoint.value.toFixed(0)}`
+                : (params.value as number).toFixed(0);
+            },
+            fontSize: 12,
+            color: "#fff",
+            fontWeight: "bold",
+            overflow: "truncate",
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 14,
+              fontWeight: "bold",
+            },
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: "rgba(0, 0, 0, 0.5)",
+            },
+          },
+          data: rows.map((row) => ({
+            name: row.key,
+            value: row.value,
+            itemStyle: {
+              color: palette.get(row.key) || "#000",
+            },
+          })),
+        },
+      ],
+    };
+  }, [rows, palette]);
 
-  return <Pie {...chartConfig} />;
+  return <EChart className="h-96 min-w-0 basis-1/2" option={option} />;
 };
 
 const PieTablePie = React.memo(PieTablePieImpl);
@@ -134,8 +169,8 @@ export const PieTable = ({
   );
 
   return (
-    <div className="flex gap-6">
-      <div>
+    <div className="flex w-full gap-6">
+      <div className="max-w-sm min-w-sm basis-sm">
         <h3>{title}</h3>
         <DataTable
           columns={columns}

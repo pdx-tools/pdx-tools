@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useTagFilter } from "../../store";
 import { useAnalysisWorker } from "../../worker";
-import { Line, useVisualizationDispatch } from "@/components/viz";
-import type { LineConfig } from "@/components/viz";
+import { EChart, useVisualizationDispatch } from "@/components/viz";
+import type { EChartsOption } from "@/components/viz";
 import { Alert } from "@/components/Alert";
 import { createCsv } from "@/lib/csv";
 import { formatFloat, formatInt } from "@/lib/format";
@@ -62,76 +62,104 @@ export const ProvinceDevelopmentDensity = () => {
     return null;
   }
 
-  const axisColor = isDarkMode() ? "#fff" : "#000";
-  const config: LineConfig = {
-    data: chartPoints,
-    xField: "x",
-    yField: "y",
-    smooth: true,
-    appendPadding: [8, 16, 8, 8],
-    meta: {
-      x: { min: data.min, max: data.max, nice: false, type: "linear" },
+  const isDark = isDarkMode();
+
+  const option: EChartsOption = {
+    grid: {
+      left: 60,
+      right: 40,
+      top: 40,
+      bottom: 60,
     },
     xAxis: {
-      title: {
-        text: "Development",
-        style: { fill: axisColor },
+      type: "value",
+      name: "Development",
+      nameLocation: "middle",
+      nameGap: 30,
+      nameTextStyle: {
+        color: isDark ? "#ddd" : "#333",
+        fontSize: 12,
       },
       min: xMin,
       max: xMax,
-      minLimit: xMin,
-      maxLimit: xMax,
-      nice: false,
-      label: {
-        formatter: (text: string) => {
-          const val = Number(text);
-          return Number.isFinite(val) ? Math.round(val).toString() : text;
+      axisLabel: {
+        color: isDark ? "#bbb" : "#666",
+        formatter: (value: number) => Math.round(value).toString(),
+      },
+      axisLine: {
+        lineStyle: {
+          color: isDark ? "#666" : "#999",
         },
-        style: { fill: axisColor },
+      },
+      splitLine: {
+        show: true,
+        lineStyle: {
+          type: "dashed",
+          color: isDark ? "#ddd" : "#333",
+          opacity: 0.3,
+          width: 1,
+        },
       },
     },
     yAxis: {
-      title: {
-        text: "Density",
-        style: { fill: axisColor },
+      type: "value",
+      name: "Density",
+      nameLocation: "middle",
+      nameGap: 50,
+      nameTextStyle: {
+        color: isDark ? "#ddd" : "#333",
+        fontSize: 12,
       },
-      label: {
-        formatter: (text: string) => {
-          const val = Number(text);
-          return Number.isFinite(val) ? formatFloat(val, 4) : text;
+      axisLabel: {
+        color: isDark ? "#bbb" : "#666",
+        formatter: (value: number) => formatFloat(value, 4),
+      },
+      axisLine: {
+        lineStyle: {
+          color: isDark ? "#666" : "#999",
         },
-        style: { fill: axisColor },
+      },
+      splitLine: {
+        show: true,
+        lineStyle: {
+          type: "dashed",
+          color: isDark ? "#ddd" : "#333",
+          opacity: 0.3,
+          width: 1,
+        },
       },
     },
     tooltip: {
-      shared: false,
-      customItems: (items) =>
-        items.map((item) => ({
-          ...item,
-          name: "Density",
-          value: formatFloat(item.data.y as number, 4),
-          data: {
-            ...item.data,
-            xLabel: `Development`,
-            xValue: formatFloat(item.data.x as number, 2),
-          },
-        })),
-      customContent: (_title, items = []) => {
-        if (!items[0]) return "";
-        const datum = items[0].data as {
-          x: number;
-          y: number;
-          xLabel?: string;
-          xValue?: string;
-        };
+      trigger: "axis",
+      formatter: (params) => {
+        if (!Array.isArray(params) || params.length === 0) {
+          return "";
+        }
+        const param = params[0];
+        const data = param.data as [number, number];
         return `
-          <div class="px-3 py-2">
-            <div class="text-sm">${datum.xLabel ?? "Development"}: ${datum.xValue ?? formatFloat(datum.x, 2)}</div>
-            <div class="text-sm">Density: ${formatFloat(datum.y, 4)}</div>
+          <div style="padding: 8px;">
+            <div>Development: ${formatFloat(data[0], 2)}</div>
+            <div>Density: ${formatFloat(data[1], 4)}</div>
           </div>
         `;
       },
     },
+    series: [
+      {
+        type: "line",
+        data: chartPoints.map((point) => [point.x, point.y]),
+        smooth: true,
+        showSymbol: false,
+        lineStyle: {
+          color: isDark ? "#93c5fd" : "#5B8FF9",
+          width: 2,
+        },
+        itemStyle: {
+          color: isDark ? "#93c5fd" : "#5B8FF9",
+        },
+      },
+    ],
   };
 
   return (
@@ -148,7 +176,9 @@ export const ProvinceDevelopmentDensity = () => {
         {formatFloat(data.min, 2)} – {formatFloat(data.max, 2)} | Provinces
         counted: {formatInt(data.totalProvinces)}
       </div>
-      {data.points.length !== 0 ? <Line {...config} /> : null}
+      {data.points.length !== 0 ? (
+        <EChart option={option} style={{ height: "400px", width: "100%" }} />
+      ) : null}
     </div>
   );
 };
