@@ -2,13 +2,12 @@
 "aqua:pnpm" = { version = "10.11.0" }
 "node" = { version = "22.18.0" }
 "rust" = { version = "1.90.0", targets = "wasm32-unknown-unknown,x86_64-unknown-linux-musl" }
-"ubi:cargo-bins/cargo-binstall" = { version = "1.12.5" }
-"ubi:docker/compose" = { version = "2.33.1", rename_exe = "docker-compose" }
-"ubi:google/flatbuffers" = { version = "25.2.10", matching = "clang", exe = "flatc" }
-"ubi:rclone/rclone" = { version = "1.70.3" }
-"ubi:rustwasm/wasm-bindgen" = { version = "0.2.106", extract_all = "true" }
-"ubi:WebAssembly/binaryen" = { version = "version_125", extract_all = "true", bin_path = "bin" }
-"vfox:mise-plugins/vfox-clang" = { version = "14.0.6", os = ["linux", "macos"] }
+"github:cargo-bins/cargo-binstall" = { version = "1.12.5" }
+"github:docker/compose" = { version = "2.33.1", rename_exe = "docker-compose" }
+"github:google/flatbuffers" = { version = "25.2.10", matching = "clang", exe = "flatc" }
+"github:rclone/rclone" = { version = "1.70.3" }
+"github:rustwasm/wasm-bindgen" = { version = "0.2.106", extract_all = "true" }
+"github:WebAssembly/binaryen" = { version = "version_125", extract_all = "true", bin_path = "bin" }
 
 [tasks."build:cargo-wasm"]
 run = ["cargo build --release --no-default-features --features zstd_c_fat_lto --features zstd_c --target wasm32-unknown-unknown -p wasm-*"]
