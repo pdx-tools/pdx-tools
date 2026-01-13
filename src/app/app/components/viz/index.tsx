@@ -1,61 +1,28 @@
 import React, { lazy, Suspense } from "react";
 import type { ComponentType } from "react";
-import type {
-  LineConfig as LineConfigImpl,
-  BarConfig,
-  Treemap as TreemapImpl,
-  ScatterConfig,
-} from "@ant-design/plots";
 
-type LineConfig = LineConfigImpl & {
-  tooltip: {
-    shared: boolean;
-  };
-};
-
-// The imports from @ant-design/plots are to fix next.js css-npm error
-// - https://github.com/ant-design/ant-design-charts/issues/1275
-// - https://github.com/ant-design/ant-design-charts/issues/1028
-// - https://github.com/ant-design/ant-design-charts/issues/1022
-
-const LazyLine = lazy(() =>
-  import("@ant-design/plots").then((mod) => ({ default: mod.Line })),
+const LazyEChart = lazy(() =>
+  import("./EChart").then((mod) => ({ default: mod.EChart })),
 );
 
-export const Line = React.memo(({ ...props }: LineConfig) => (
+export const EChart: ComponentType<
+  React.ComponentPropsWithoutRef<typeof LazyEChart>
+> = React.memo((props) => (
   <Suspense fallback={null}>
-    <LazyLine {...props} />
+    <LazyEChart {...props} />
   </Suspense>
 ));
+export type { EChartsOption } from "./EChart";
 
-export { Pie, type PieConfig } from "./Pie";
-
-const LazyBar = lazy(() =>
-  import("@ant-design/plots").then((mod) => ({ default: mod.Bar })),
-);
-export const Bar: ComponentType<BarConfig> = React.memo((props) => (
-  <Suspense fallback={null}>
-    <LazyBar {...props} />
-  </Suspense>
-));
-
-export type TreemapConfig = React.ComponentPropsWithoutRef<typeof TreemapImpl>;
-const LazyTreemap = lazy(() =>
-  import("@ant-design/plots").then((mod) => ({ default: mod.Treemap })),
+const LazyPieTable = lazy(() =>
+  import("./PieTable").then((mod) => ({ default: mod.PieTable })),
 );
 
-export const Treemap: ComponentType<TreemapConfig> = React.memo((props) => (
+export const PieTable: ComponentType<
+  React.ComponentPropsWithoutRef<typeof LazyPieTable>
+> = React.memo((props) => (
   <Suspense fallback={null}>
-    <LazyTreemap {...props} />
-  </Suspense>
-));
-
-const LazyScatter = lazy(() =>
-  import("@ant-design/plots").then((mod) => ({ default: mod.Scatter })),
-);
-export const Scatter: ComponentType<ScatterConfig> = React.memo((props) => (
-  <Suspense fallback={null}>
-    <LazyScatter {...props} />
+    <LazyPieTable {...props} />
   </Suspense>
 ));
 
@@ -67,6 +34,4 @@ export {
 } from "./visualization-context";
 
 export * from "./LegendColor";
-export * from "./PieTable";
-
-export type { LineConfig, BarConfig, ScatterConfig };
+export type { DataPoint } from "./PieTable";

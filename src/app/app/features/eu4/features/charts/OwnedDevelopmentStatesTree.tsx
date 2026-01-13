@@ -1,6 +1,6 @@
-import { useCallback, useEffect } from "react";
-import { Treemap, useVisualizationDispatch } from "@/components/viz";
-import type { TreemapConfig } from "@/components/viz";
+import { useCallback, useEffect, useMemo } from "react";
+import { EChart, useVisualizationDispatch } from "@/components/viz";
+import type { EChartsOption } from "@/components/viz";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { createCsv } from "@/lib/csv";
 import { useTagFilter } from "../../store";
@@ -90,75 +90,115 @@ type CountryDevelopmentTreeProps = {
   max: number;
 };
 
+function getColor(name: string) {
+  switch (name) {
+    case "Full Cores":
+      return classicCyclic[0];
+    case "Half States":
+      return classicCyclic[12];
+    case "No Core":
+      return classicCyclic[5];
+    case "TCs":
+      return classicCyclic[13];
+    case "Territories":
+      return classicCyclic[9];
+    default:
+      return "#000";
+  }
+}
+
 function CountryStateDevelopmentTree({
   dev,
   max,
 }: CountryDevelopmentTreeProps) {
-  const devs = [
-    {
-      name: "Full Cores",
-      value: provinceDevelopmentTotal(dev.fullCores),
-    },
-    {
-      name: "Half States",
-      value: provinceDevelopmentTotal(dev.halfStates),
-    },
-    {
-      name: "No Core",
-      value: provinceDevelopmentTotal(dev.noCore),
-    },
-    {
-      name: "TCs",
-      value: provinceDevelopmentTotal(dev.tc),
-    },
-    {
-      name: "Territories",
-      value: provinceDevelopmentTotal(dev.territories),
-    },
-  ] as const;
+  const isDark = isDarkMode();
 
-  const data = {
-    name: "root",
-    children: devs,
-  };
+  const devs = useMemo(
+    () =>
+      [
+        {
+          name: "Full Cores",
+          value: provinceDevelopmentTotal(dev.fullCores),
+        },
+        {
+          name: "Half States",
+          value: provinceDevelopmentTotal(dev.halfStates),
+        },
+        {
+          name: "No Core",
+          value: provinceDevelopmentTotal(dev.noCore),
+        },
+        {
+          name: "TCs",
+          value: provinceDevelopmentTotal(dev.tc),
+        },
+        {
+          name: "Territories",
+          value: provinceDevelopmentTotal(dev.territories),
+        },
+      ] as const,
+    [dev],
+  );
 
   const total = countryDevelopmentTotal(dev);
   const dimension = Math.max(500 / (max / total), 150);
-  const config: TreemapConfig = {
-    data,
-    colorField: "name",
-    color(datum, defaultColor) {
-      const x = datum as (typeof devs)[number];
-      switch (x.name) {
-        case "Full Cores":
-          return classicCyclic[0];
-        case "Half States":
-          return classicCyclic[12];
-        case "No Core":
-          return classicCyclic[5];
-        case "TCs":
-          return classicCyclic[13];
-        case "Territories":
-          return classicCyclic[9];
-        default:
-          return defaultColor ?? "#000";
-      }
-    },
-    legend:
-      total === max
-        ? {
-            position: "bottom",
-            itemName: {
-              style: {
-                fill: isDarkMode() ? "#fff" : "#000",
-              },
-            },
-          }
-        : false,
 
-    tooltip: {},
-    animation: {},
-  };
+  const option = useMemo((): EChartsOption => {
+    return {
+      tooltip: {
+        trigger: "item",
+        formatter: (params) => {
+          if (Array.isArray(params)) {
+            return "";
+          }
+          return `
+            <strong>${params.name}</strong><br/>
+            ${formatInt(params.value as number)}
+          `;
+        },
+      },
+      series: [
+        {
+          type: "treemap",
+          name: "Development",
+          roam: false,
+          nodeClick: false,
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          data: devs.map((d) => ({
+            name: d.name,
+            value: d.value,
+            itemStyle: {
+              color: getColor(d.name),
+            },
+          })),
+          breadcrumb: {
+            show: false,
+          },
+          label: {
+            show: true,
+            formatter: "{b}",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: "bold",
+          },
+          itemStyle: {
+            borderColor: isDark ? "#333" : "#fff",
+            borderWidth: 2,
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: "rgba(0, 0, 0, 0.5)",
+            },
+          },
+        },
+      ],
+    };
+  }, [devs, isDark]);
 
   return (
     <div>
@@ -176,7 +216,7 @@ function CountryStateDevelopmentTree({
         </Flag.Tooltip>
       </Flag>
       <div style={{ height: `${dimension}px`, width: `${dimension}px` }}>
-        <Treemap {...config} />
+        <EChart option={option} style={{ height: "100%", width: "100%" }} />
       </div>
     </div>
   );
