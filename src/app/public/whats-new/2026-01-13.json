@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "improvements": [
+        "EU5 map movement via WASD and arrow keys",
+        "Replace visualization library with echarts"
+    ]
+  }
+}
