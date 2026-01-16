@@ -15,7 +15,7 @@ jomini =  { features = ["json"] , workspace = true }
 serde = { features = ["derive"] , workspace = true }
 thiserror = { workspace = true }
 serde_path_to_error = { workspace = true }
-getrandom = { features = ["js"], workspace = true }
+getrandom = { features = ["wasm_js"], workspace = true }
 mathru = { workspace = true }
 
 [dev-dependencies]
