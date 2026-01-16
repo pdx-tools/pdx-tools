@@ -1,13 +1,13 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use jomini::binary::TokenResolver;
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 use schemas::FlatResolver;
 
 fn token_benchmark(c: &mut Criterion) {
     let data = std::fs::read("assets/tokens/eu4-raw.bin").expect("Failed to read token file");
 
     let mut arr = [0u16; 1024];
-    thread_rng().fill(&mut arr);
+    rng().fill(&mut arr);
     for x in &mut arr {
         *x %= 10000_u16;
     }
