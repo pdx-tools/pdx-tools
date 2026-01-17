@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 
 use bytemuck::{Pod, Zeroable};
-use pdx_map::wgpu::util::DeviceExt;
-use pdx_map::{RenderLayer, ViewportBounds};
-use tracing::instrument;
+use wgpu::util::DeviceExt;
+
+use crate::{RenderLayer, ViewportBounds};
 
 const GLYPH_PATTERN_WIDTH: usize = 5;
 const GLYPH_PATTERN_HEIGHT: usize = 7;
@@ -15,7 +15,7 @@ const CORNER_OFFSET_Y: f32 = 0.0;
 const BG_COLOR: [u8; 4] = [0, 0, 0, 220];
 const TEXT_COLOR: [u8; 4] = [255, 255, 255, 255];
 
-const TEXTURE_SHADER: &str = include_str!("./shaders/texture.wgsl");
+const OVERLAY_QUAD_SHADER: &str = include_str!("./shaders/overlay_quad.wgsl");
 
 /// Pipeline resources (created once, reused)
 struct DatePipeline {
@@ -51,7 +51,6 @@ pub struct DateLayer {
     texture: Option<OverlayTexture>,
     geometry: Option<OverlayGeometry>,
     pending_upload: Option<PendingUpload>,
-    target_size: Option<(u32, u32)>,
 }
 
 impl DateLayer {
@@ -64,7 +63,6 @@ impl DateLayer {
             texture: None,
             geometry: None,
             pending_upload: None,
-            target_size: None,
         }
     }
 
@@ -110,7 +108,7 @@ impl DateLayer {
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Date Layer Shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(TEXTURE_SHADER)),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(OVERLAY_QUAD_SHADER)),
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -166,7 +164,6 @@ impl DateLayer {
         let (pixels, overlay_width, overlay_height) =
             rasterize_text_overlay(&self.text, self.glyph_scale);
 
-        self.target_size = Some((target_width, target_height));
         self.pending_upload = Some(PendingUpload {
             pixels,
             width: overlay_width,
@@ -273,7 +270,7 @@ impl RenderLayer for DateLayer {
         &'a self,
         pass: &mut wgpu::RenderPass<'a>,
         _viewport: &ViewportBounds,
-        _canvas_size: pdx_map::PhysicalSize<u32>,
+        _canvas_size: crate::PhysicalSize<u32>,
     ) {
         if self.pending_upload.is_some() {
             return;
@@ -299,7 +296,6 @@ struct OverlayVertex {
     uv: [f32; 2],
 }
 
-#[instrument]
 fn rasterize_text_overlay(text: &str, glyph_scale: u32) -> (Vec<u8>, u32, u32) {
     let glyphs: Vec<char> = text.chars().collect();
     let glyph_count = glyphs.len() as u32;
@@ -356,20 +352,13 @@ fn fill_glyph_block(
     base_y: u32,
     glyph_scale: u32,
 ) {
-    let stroke_x = 0;
-    let stroke_y = 0;
-
     for dy in 0..glyph_scale {
         for dx in 0..glyph_scale {
-            for extra_y in 0..=stroke_y {
-                for extra_x in 0..=stroke_x {
-                    let x = base_x + dx + extra_x;
-                    let y = base_y + dy + extra_y;
-                    if x < overlay_width && y < overlay_height {
-                        let idx = ((y * overlay_width + x) * 4) as usize;
-                        pixels[idx..idx + 4].copy_from_slice(&TEXT_COLOR);
-                    }
-                }
+            let x = base_x + dx;
+            let y = base_y + dy;
+            if x < overlay_width && y < overlay_height {
+                let idx = ((y * overlay_width + x) * 4) as usize;
+                pixels[idx..idx + 4].copy_from_slice(&TEXT_COLOR);
             }
         }
     }
@@ -431,7 +420,7 @@ fn quad_vertices(
 
 /// Returns the 5×7 bitmap for `ch`, encoded as one byte per row where the
 /// high-order bits describe pixels from left to right. `1` bits become text
-/// pixels, `0` bits stay background. The shapes match the classic “Tom Thumb”
+/// pixels, `0` bits stay background. The shapes match the classic "Tom Thumb"
 /// 5×7 pixel font used in early LCD/LED displays.
 fn glyph_pattern(ch: char) -> [u8; GLYPH_PATTERN_HEIGHT] {
     match ch {

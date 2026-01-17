@@ -11,6 +11,9 @@ use std::net::SocketAddr;
 use tokio::{net::TcpListener, signal};
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
+use tracing_subscriber::fmt::format::FmtSpan;
+
+mod screenshot;
 
 // Avoid musl's default allocator due to lackluster performance
 // https://nickb.dev/blog/default-musl-allocator-considered-harmful-to-performance
@@ -52,9 +55,10 @@ async fn convert_png(data: Bytes) -> impl IntoResponse {
 }
 
 #[tokio::main(flavor = "multi_thread")]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_target(false)
+        .with_span_events(FmtSpan::CLOSE)
         .compact()
         .init();
 
@@ -66,7 +70,8 @@ async fn main() {
     let app = Router::new()
         .route("/", post(upload))
         .route("/webp", post(convert_png))
-        .layer(DefaultBodyLimit::max(15 * 1024 * 1024))
+        .route("/screenshot", post(screenshot::endpoint))
+        .layer(DefaultBodyLimit::max(50 * 1024 * 1024))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
@@ -80,6 +85,8 @@ async fn main() {
         .with_graceful_shutdown(shutdown_signal())
         .await
         .expect("to create axum server");
+
+    Ok(())
 }
 
 async fn shutdown_signal() {

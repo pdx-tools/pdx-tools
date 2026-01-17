@@ -4,6 +4,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+mod og;
 mod reprocess;
 mod transcode;
 
@@ -25,6 +26,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Regenerate EU4 OG preview images from local save files
+    Og(og::OgArgs),
     /// Produces a delta to apply to database from reparsed saves
     Reprocess(reprocess::ReprocessArgs),
     /// Re-encode save container format
@@ -50,6 +53,7 @@ fn main() -> ExitCode {
         .init();
 
     let exit_code = match &cli.command {
+        Commands::Og(x) => x.run(),
         Commands::Reprocess(x) => x.run(),
         Commands::Transcode(x) => x.run(),
     };

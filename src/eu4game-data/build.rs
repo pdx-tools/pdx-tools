@@ -47,6 +47,23 @@ fn main() {
         std::fs::create_dir_all(&versioned).unwrap();
         let out_path = versioned.join("data.bin");
         std::fs::copy(p, out_path).unwrap();
+
+        for filename in [
+            "color-index.bin",
+            "provinces-1.r16.zst",
+            "provinces-2.r16.zst",
+        ] {
+            let p = Path::new("../../assets/game/eu4")
+                .join(&version)
+                .join("map")
+                .join(filename);
+            println!("cargo:rerun-if-changed={}", p.display());
+            if p.exists() {
+                std::fs::copy(p, versioned.join(filename)).unwrap();
+            } else {
+                File::create(versioned.join(filename)).unwrap();
+            }
+        }
     }
 
     let _ = writeln!(embedded_file, r#"#[cfg(feature = "embedded")]"#);
@@ -58,28 +75,82 @@ fn main() {
     if versions.is_empty() {
         let _ = writeln!(embedded_file, "let _ = minor_version; todo!()");
         let _ = writeln!(embedded_file, "}}");
-        return;
-    }
+    } else {
+        let _ = writeln!(embedded_file, "match minor_version {{");
 
-    let _ = writeln!(embedded_file, "match minor_version {{");
+        for (i, (major, minor)) in versions.iter().enumerate() {
+            let version = format!("{}.{}", major, minor);
+            let rust_friendly_version = version.replace('.', "");
 
-    for (i, (major, minor)) in versions.iter().enumerate() {
-        let version = format!("{}.{}", major, minor);
-        let rust_friendly_version = version.replace('.', "");
+            if i == versions.len() - 1 {
+                let _ = write!(embedded_file, "_");
+            } else {
+                let _ = write!(embedded_file, "{}", minor);
+            }
 
-        if i == versions.len() - 1 {
-            let _ = write!(embedded_file, "_");
-        } else {
-            let _ = write!(embedded_file, "{}", minor);
+            let _ = writeln!(
+                embedded_file,
+                r#" => &include_bytes!(concat!(env!("OUT_DIR"), "/{}/data.bin"))[..],"#,
+                rust_friendly_version
+            );
         }
 
-        let _ = writeln!(
-            embedded_file,
-            r#" => &include_bytes!(concat!(env!("OUT_DIR"), "/{}/data.bin"))[..],"#,
-            rust_friendly_version
-        );
+        let _ = writeln!(embedded_file, "}}");
+        let _ = writeln!(embedded_file, "}}");
     }
 
+    let _ = writeln!(embedded_file, r#"#[cfg(feature = "embedded-screenshot")]"#);
+    let _ = writeln!(
+        embedded_file,
+        "#[derive(Debug)]\npub struct ScreenshotAssets {{"
+    );
+    let _ = writeln!(embedded_file, "    pub color_index: &'static [u8],");
+    let _ = writeln!(embedded_file, "    pub west_r16_zst: &'static [u8],");
+    let _ = writeln!(embedded_file, "    pub east_r16_zst: &'static [u8],");
     let _ = writeln!(embedded_file, "}}");
+    let _ = writeln!(embedded_file, r#"#[cfg(feature = "embedded-screenshot")]"#);
+    let _ = writeln!(
+        embedded_file,
+        "pub fn screenshot_assets(minor_version: u16) -> ScreenshotAssets {{"
+    );
+    if versions.is_empty() {
+        let _ = writeln!(
+            embedded_file,
+            "let _ = minor_version;\nScreenshotAssets {{\n    color_index: &[],\n    west_r16_zst: &[],\n    east_r16_zst: &[],\n}}"
+        );
+    } else {
+        let _ = writeln!(embedded_file, "match minor_version {{");
+
+        for (i, (major, minor)) in versions.iter().enumerate() {
+            let version = format!("{}.{}", major, minor);
+            let rust_friendly_version = version.replace('.', "");
+
+            if i == versions.len() - 1 {
+                let _ = write!(embedded_file, "_");
+            } else {
+                let _ = write!(embedded_file, "{}", minor);
+            }
+
+            let _ = writeln!(embedded_file, " => ScreenshotAssets {{");
+            let _ = writeln!(
+                embedded_file,
+                r#"    color_index: &include_bytes!(concat!(env!("OUT_DIR"), "/{}/color-index.bin"))[..],"#,
+                rust_friendly_version
+            );
+            let _ = writeln!(
+                embedded_file,
+                r#"    west_r16_zst: &include_bytes!(concat!(env!("OUT_DIR"), "/{}/provinces-1.r16.zst"))[..],"#,
+                rust_friendly_version
+            );
+            let _ = writeln!(
+                embedded_file,
+                r#"    east_r16_zst: &include_bytes!(concat!(env!("OUT_DIR"), "/{}/provinces-2.r16.zst"))[..],"#,
+                rust_friendly_version
+            );
+            let _ = writeln!(embedded_file, "}},");
+        }
+
+        let _ = writeln!(embedded_file, "}}");
+    }
     let _ = writeln!(embedded_file, "}}");
 }

@@ -9,6 +9,8 @@ use crate::eu4::data::{
 use crate::http;
 use anyhow::Context;
 use eu4save::{CountryTag, Eu4File, ProvinceId};
+use eu5save::hash::FnvBuildHasher;
+use pdx_map::R16;
 use pdx_zstd::zstd_tee::ZstdTee;
 use rawbmp::{Pixels, Rgb};
 use regex::Regex;
@@ -81,7 +83,7 @@ where
         let mut definitions = map::parse_definition(&definitions);
         definitions.insert(0, Rgb::from((0, 0, 0)));
 
-        generate_province_definition_binaries(definitions.iter(), out_dir)?;
+        generate_province_definition_binaries(fs, definitions.iter(), out_dir)?;
 
         let game_data = GameData {
             countries: &countries,
@@ -1059,10 +1061,14 @@ fn process_province_definitions<P: FileProvider + ?Sized>(
     Ok(center_locations)
 }
 
-fn generate_province_definition_binaries<'a>(
+fn generate_province_definition_binaries<'a, P>(
+    fs: &P,
     definitions: impl Iterator<Item = (&'a u16, &'a Rgb)>,
     out_game_dir: &Path,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<()>
+where
+    P: FileProvider + ?Sized,
+{
     let mut definitions: Vec<(_, _)> = definitions.map(|(id, rgb)| (rgb, id)).collect();
     definitions.sort_unstable();
     let mut provs: Vec<_> = definitions
@@ -1092,7 +1098,88 @@ fn generate_province_definition_binaries<'a>(
     }
     color_index_writer.flush()?;
 
+    generate_r16_province_textures(fs, &definitions, &map_dir)?;
+
     Ok(())
+}
+
+#[tracing::instrument(name = "eu4.generate_r16_province_textures", level = "info", skip_all)]
+fn generate_r16_province_textures<P>(
+    fs: &P,
+    definitions: &[(&Rgb, &u16)],
+    map_dir: &Path,
+) -> anyhow::Result<()>
+where
+    P: FileProvider + ?Sized,
+{
+    let color_indices: HashMap<u32, R16, FnvBuildHasher> = definitions
+        .iter()
+        .enumerate()
+        .map(|(idx, (rgb, _id))| {
+            let key = rgb_key(rgb.r, rgb.g, rgb.b);
+            (key, R16::new(idx as u16))
+        })
+        .collect();
+
+    let provinces_file_data = fs.read_file("map/provinces.bmp")?;
+    let provinces_bmp =
+        rawbmp::Bmp::parse(&provinces_file_data).context("Unable to parse provinces.bmp")?;
+    assert_eq!(
+        provinces_bmp.dib_header.bpp, 24,
+        "provinces.bmp must be 24-bit RGB"
+    );
+
+    let width = provinces_bmp.dib_header.width as usize;
+    let height = provinces_bmp.dib_header.height as usize;
+    assert!(width.is_multiple_of(2), "provinces.bmp width must be even");
+    let split_width = width / 2;
+
+    let mut west = vec![R16::new(0); split_width * height];
+    let mut east = vec![R16::new(0); split_width * height];
+
+    let mut last_key = u32::MAX;
+    let mut last_idx = R16::new(0);
+
+    let dst_rows = west
+        .chunks_exact_mut(split_width)
+        .zip(east.chunks_exact_mut(split_width))
+        .rev();
+
+    for (src_row, (west_dst, east_dst)) in provinces_bmp.data().zip(dst_rows) {
+        let (west_src, east_src) = src_row.split_at(split_width * 3);
+        for (src, dst) in [(west_src, west_dst), (east_src, east_dst)] {
+            let (pixels, remainder) = src.as_chunks::<3>();
+            debug_assert!(remainder.is_empty());
+
+            for (&[b, g, r], dst_r16) in pixels.iter().zip(dst.iter_mut()) {
+                let key = rgb_key(r, g, b);
+                if key != last_key {
+                    last_idx = *color_indices.get(&key).unwrap_or(&R16::new(0));
+                    last_key = key;
+                }
+
+                *dst_r16 = last_idx;
+            }
+        }
+    }
+
+    for (filename, data) in [
+        ("provinces-1.r16.zst", west.as_slice()),
+        ("provinces-2.r16.zst", east.as_slice()),
+    ] {
+        let mut file = BufWriter::new(std::fs::File::create(map_dir.join(filename))?);
+        let mut encoder = pdx_zstd::Encoder::new(&mut file, 7)?;
+        encoder.write_all(bytemuck::cast_slice(data))?;
+        encoder.finish()?;
+        file.flush()?;
+    }
+
+    Ok(())
+}
+
+#[inline]
+fn rgb_key(r: u8, g: u8, b: u8) -> u32 {
+    (u32::from(r) << 16) | (u32::from(g) << 8) | u32::from(b)
 }
 
 fn generate_output_files(out_game_dir: &Path, game_data: &GameData) -> anyhow::Result<()> {

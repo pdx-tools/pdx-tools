@@ -15,8 +15,10 @@ csv = { workspace = true }
 eu4game-data = { default-features = false , workspace = true }
 eu4save = { default-features = false , workspace = true, features = ["zstd_c"] }
 eu5app = { workspace = true, default-features = false, features = ["game-install", "zstd_c"] }
+eu5save = { workspace = true, default-features = false }
 flate2 = { workspace = true, default-features = false, features = ["zlib-rs"]}
 jomini = { workspace = true }
+pdx-map = { workspace = true, default-features = false }
 pdx-zstd = { workspace = true, default-features = false, features = ["zstd_c"] }
 postcard = { workspace = true }
 rawbmp = { workspace = true }

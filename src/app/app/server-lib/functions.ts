@@ -22,5 +22,16 @@ export const pdxFns = ({ endpoint }: { endpoint: string }) => {
         },
       }).then((x) => x.arrayBuffer());
     },
+
+    renderScreenshot: (save: BodyInit) => {
+      return fetchOk(`${endpoint}/screenshot`, {
+        method: "POST",
+        body: save,
+        headers: {
+          "Content-Type": "application/octet-stream",
+          Accept: "image/webp",
+        },
+      }).then((x) => x.arrayBuffer());
+    },
   };
 };
