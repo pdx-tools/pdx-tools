@@ -160,6 +160,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
 
 [[package]]
+name = "api-screenshot"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "bytemuck",
+ "eu4game",
+ "eu4save",
+ "image",
+ "mimalloc",
+ "pdx-map",
+ "pdx-zstd",
+ "schemas",
+ "thiserror 2.0.12",
+ "tokio",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "webp",
+]
+
+[[package]]
 name = "applib"
 version = "0.1.0"
 dependencies = [

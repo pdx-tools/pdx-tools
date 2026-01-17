@@ -1,0 +1,39 @@
+[package]
+name = "api-screenshot"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+# Web server
+axum = { workspace = true }
+tokio = { features = ["rt", "macros", "rt-multi-thread", "signal"], workspace = true }
+tower-http = { features = ["trace", "cors"], workspace = true }
+
+# Save parsing
+eu4save = { workspace = true }
+eu4game = { workspace = true, default-features = false, features = ["embedded", "zstd_c"] }
+schemas = { workspace = true }
+
+# Rendering
+pdx-map = { workspace = true, features = ["render"] }
+pdx-zstd = { workspace = true }
+bytemuck = { workspace = true, features = ["derive"] }
+
+# Image encoding
+image = { default-features = false, features = ["png"], workspace = true }
+webp = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { features = ["env-filter"], workspace = true }
+
+[target.'cfg(target_env = "musl")'.dependencies]
+mimalloc = { workspace = true }
