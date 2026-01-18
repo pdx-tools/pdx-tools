@@ -36,7 +36,7 @@ members = [
 [workspace.dependencies]
 anyhow = "1.0"
 applib = { path = "src/applib", default-features = false }
-attohttpc = "0.29.0"
+attohttpc = "0.30.1"
 axum = "0.8.4"
 base64 = "0.22"
 bumpalo = "3.19"
