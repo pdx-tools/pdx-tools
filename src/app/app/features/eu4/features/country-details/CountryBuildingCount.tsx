@@ -4,6 +4,7 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { isDarkMode } from "@/lib/dark";
 import { formatInt } from "@/lib/format";
+import { escapeEChartsHtml } from "@/components/viz/EChart";
 
 interface CountryBuildingCountProps {
   details: CountryDetails;
@@ -85,7 +86,7 @@ const CountryBuildingCountImpl = ({ details }: CountryBuildingCountProps) => {
           }
           const param = params[0];
           return `
-            <strong>${param.name}</strong><br/>
+            <strong>${escapeEChartsHtml(param.name)}</strong><br/>
             Provinces: ${formatInt(+(param.value ?? 0))}
           `;
         },

@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
+import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { LegendColor } from "./LegendColor";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
@@ -44,7 +45,7 @@ const PieTablePieImpl = ({ rows, palette }: PieTablePieProps) => {
             ? formatInt(dataPoint.value)
             : formatFloat(dataPoint.value);
           return `
-            <strong>${dataPoint.key}</strong><br/>
+            <strong>${escapeEChartsHtml(dataPoint.key)}</strong><br/>
             ${formattedValue}
           `;
         },
