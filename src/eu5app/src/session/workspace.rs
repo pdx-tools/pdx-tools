@@ -2,7 +2,7 @@ use crate::game_data::GameData;
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::FxHashMap;
 use eu5save::models::{
-    CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIndexedVec, RawMaterialsName,
+    CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIndexedVec, MarketId, RawMaterialsName,
 };
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags, R16};
 use std::collections::HashMap;
@@ -1632,6 +1632,204 @@ impl<'bump> Eu5Workspace<'bump> {
 
         results
     }
+
+    /// Calculate trade goods production aggregated by good type, market, and country
+    ///
+    /// Returns production data for all trade goods in the economy, organized three ways:
+    /// - By Type: Shows each good with country-level breakdown (for stacked bar charts)
+    /// - By Market: Shows production per market and good combination
+    /// - By Country: Shows production per country and good combination
+    pub fn calculate_trade_goods_production(&self) -> TradeGoodsData {
+        use eu5save::hash::FxHashMap;
+
+        // Aggregators for the three views
+        #[derive(Default)]
+        struct GoodAggregator {
+            total_production: f64,
+            location_count: u32,
+            country_breakdown: FxHashMap<CountryId, CountryProductionAgg>,
+        }
+
+        #[derive(Default)]
+        struct CountryProductionAgg {
+            production: f64,
+            location_count: u32,
+        }
+
+        let mut by_type: FxHashMap<String, GoodAggregator> = FxHashMap::default();
+        let mut by_market: FxHashMap<(u32, String), (f64, u32)> = FxHashMap::default();
+        let mut by_country: FxHashMap<(CountryId, String), (f64, u32)> = FxHashMap::default();
+
+        // Single pass through all locations
+        for location_entry in self.gamestate.locations.iter() {
+            let location = location_entry.location();
+
+            // Skip locations without production
+            if location.owner.is_dummy() {
+                continue;
+            }
+
+            let Some(raw_material) = location.raw_material else {
+                continue;
+            };
+
+            let production = location.rgo_level;
+            if production <= 0.0 {
+                continue;
+            }
+
+            let good_name = raw_material.to_str().to_string();
+
+            // Aggregate by type (with country breakdown)
+            let type_agg = by_type.entry(good_name.clone()).or_default();
+            type_agg.total_production += production;
+            type_agg.location_count += 1;
+
+            let country_agg = type_agg
+                .country_breakdown
+                .entry(location.owner)
+                .or_default();
+            country_agg.production += production;
+            country_agg.location_count += 1;
+
+            // Aggregate by market
+            if let Some(market_id) = location.market {
+                let market_key = (market_id.value(), good_name.clone());
+                let (market_prod, market_count) = by_market.entry(market_key).or_default();
+                *market_prod += production;
+                *market_count += 1;
+            }
+
+            // Aggregate by country
+            let country_key = (location.owner, good_name.clone());
+            let (country_prod, country_count) = by_country.entry(country_key).or_default();
+            *country_prod += production;
+            *country_count += 1;
+        }
+
+        // Convert by_type aggregates to results
+        let mut by_type_results: Vec<TradeGoodByType> = by_type
+            .into_iter()
+            .map(|(good_name, agg)| {
+                let mut country_breakdown: Vec<CountryProduction> = agg
+                    .country_breakdown
+                    .into_iter()
+                    .filter_map(|(country_id, country_agg)| {
+                        let country_idx = self.gamestate.countries.get(country_id)?;
+                        let country_entry = self.gamestate.countries.index(country_idx);
+                        let country_data = country_entry.data()?;
+
+                        let tag = country_entry.tag().to_str().to_string();
+                        let country_name = self
+                            .localized_country_name(&country_data.country_name)
+                            .to_string();
+
+                        Some(CountryProduction {
+                            tag,
+                            country_name,
+                            production: country_agg.production,
+                            location_count: country_agg.location_count,
+                        })
+                    })
+                    .collect();
+
+                // Sort country breakdown by production descending
+                country_breakdown.sort_by(|a, b| {
+                    b.production
+                        .total_cmp(&a.production)
+                        .then_with(|| a.tag.cmp(&b.tag))
+                });
+
+                TradeGoodByType {
+                    good_name,
+                    total_production: agg.total_production,
+                    location_count: agg.location_count,
+                    country_breakdown,
+                }
+            })
+            .collect();
+
+        // Sort by total production descending
+        by_type_results.sort_by(|a, b| {
+            b.total_production
+                .total_cmp(&a.total_production)
+                .then_with(|| a.good_name.cmp(&b.good_name))
+        });
+
+        // Convert by_market aggregates to results with market metadata
+        let mut by_market_results: Vec<MarketTradeGood> = by_market
+            .into_iter()
+            .filter_map(|((market_id_val, good_name), (production, _location_count))| {
+                let market_id = MarketId::new(market_id_val);
+                let market = self.gamestate.market_manager.get(market_id)?;
+
+                // Get market name from center location
+                let center_idx = self.gamestate.locations.get(market.center)?;
+                let market_name = self.location_name(center_idx).to_string();
+
+                // Find market good data for this specific good
+                let market_good = market
+                    .goods
+                    .iter()
+                    .find(|g| g.good.to_str() == good_name)?;
+
+                Some(MarketTradeGood {
+                    market_id: market_id_val,
+                    market_name,
+                    good_name,
+                    production,
+                    supply: market_good.supply,
+                    demand: market_good.demand,
+                    price: market_good.price,
+                })
+            })
+            .collect();
+
+        // Sort by production descending
+        by_market_results.sort_by(|a, b| {
+            b.production
+                .total_cmp(&a.production)
+                .then_with(|| a.market_name.cmp(&b.market_name))
+                .then_with(|| a.good_name.cmp(&b.good_name))
+        });
+
+        // Convert by_country aggregates to results
+        let mut by_country_results: Vec<CountryTradeGood> = by_country
+            .into_iter()
+            .filter_map(|((country_id, good_name), (production, location_count))| {
+                let country_idx = self.gamestate.countries.get(country_id)?;
+                let country_entry = self.gamestate.countries.index(country_idx);
+                let country_data = country_entry.data()?;
+
+                let tag = country_entry.tag().to_str().to_string();
+                let country_name = self
+                    .localized_country_name(&country_data.country_name)
+                    .to_string();
+
+                Some(CountryTradeGood {
+                    tag,
+                    country_name,
+                    good_name,
+                    production,
+                    location_count,
+                })
+            })
+            .collect();
+
+        // Sort by production descending
+        by_country_results.sort_by(|a, b| {
+            b.production
+                .total_cmp(&a.production)
+                .then_with(|| a.tag.cmp(&b.tag))
+                .then_with(|| a.good_name.cmp(&b.good_name))
+        });
+
+        TradeGoodsData {
+            by_type: by_type_results,
+            by_market: by_market_results,
+            by_country: by_country_results,
+        }
+    }
 }
 
 /// State efficacy data for a single country
@@ -1643,6 +1841,54 @@ pub struct CountryStateEfficacy {
     pub location_count: u32,
     pub avg_efficacy: f64,
     pub total_population: u32,
+}
+
+/// Trade goods production data aggregated by good type, market, and country
+#[derive(Debug, Clone)]
+pub struct TradeGoodsData {
+    pub by_type: Vec<TradeGoodByType>,
+    pub by_market: Vec<MarketTradeGood>,
+    pub by_country: Vec<CountryTradeGood>,
+}
+
+/// Trade good production aggregated by type with country breakdown
+#[derive(Debug, Clone)]
+pub struct TradeGoodByType {
+    pub good_name: String,
+    pub total_production: f64,
+    pub location_count: u32,
+    pub country_breakdown: Vec<CountryProduction>,
+}
+
+/// Country-level production contribution for a specific good
+#[derive(Debug, Clone)]
+pub struct CountryProduction {
+    pub tag: String,
+    pub country_name: String,
+    pub production: f64,
+    pub location_count: u32,
+}
+
+/// Market-level trade good data
+#[derive(Debug, Clone)]
+pub struct MarketTradeGood {
+    pub market_id: u32,
+    pub market_name: String,
+    pub good_name: String,
+    pub production: f64,
+    pub supply: f64,
+    pub demand: f64,
+    pub price: f64,
+}
+
+/// Country-level trade good production
+#[derive(Debug, Clone)]
+pub struct CountryTradeGood {
+    pub tag: String,
+    pub country_name: String,
+    pub good_name: String,
+    pub production: f64,
+    pub location_count: u32,
 }
 
 impl std::fmt::Debug for Eu5Workspace<'_> {

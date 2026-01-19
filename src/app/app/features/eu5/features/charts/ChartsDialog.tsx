@@ -2,15 +2,17 @@ import { useState, useEffect } from "react";
 import { Dialog } from "@/components/Dialog";
 import { useEu5Engine } from "../../store";
 import { StateEfficacy } from "./StateEfficacy";
+import { TradeGoodsProduction } from "./TradeGoodsProduction";
 import { Alert } from "@/components/Alert";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { cx } from "class-variance-authority";
-import type { StateEfficacyData } from "@/wasm/wasm_eu5";
+import type { StateEfficacyData, TradeGoodsData } from "@/wasm/wasm_eu5";
 
-type ChartId = "state-efficacy";
+type ChartId = "state-efficacy" | "trade-goods-production";
 
 interface ChartData {
   stateEfficacy: StateEfficacyData | null;
+  tradeGoodsProduction: TradeGoodsData | null;
 }
 
 interface ChartsDialogProps {
@@ -20,19 +22,31 @@ interface ChartsDialogProps {
 export const ChartsDialog = ({ children }: ChartsDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeChart, setActiveChart] = useState<ChartId>("state-efficacy");
-  const [data, setData] = useState<ChartData>({ stateEfficacy: null });
+  const [data, setData] = useState<ChartData>({
+    stateEfficacy: null,
+    tradeGoodsProduction: null,
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const engine = useEu5Engine();
 
   useEffect(() => {
-    if (isOpen && !data.stateEfficacy && !isLoading) {
+    if (isOpen && !isLoading) {
       const fetchData = async () => {
         setIsLoading(true);
         setError(null);
         try {
-          const efficacyData = await engine.trigger.getStateEfficacy();
-          setData((prev) => ({ ...prev, stateEfficacy: efficacyData }));
+          // Fetch state efficacy if not loaded
+          if (!data.stateEfficacy) {
+            const efficacyData = await engine.trigger.getStateEfficacy();
+            setData((prev) => ({ ...prev, stateEfficacy: efficacyData }));
+          }
+
+          // Fetch trade goods if active and not loaded
+          if (activeChart === "trade-goods-production" && !data.tradeGoodsProduction) {
+            const tradeGoodsData = await engine.trigger.getTradeGoodsProduction();
+            setData((prev) => ({ ...prev, tradeGoodsProduction: tradeGoodsData }));
+          }
         } catch (err) {
           setError(
             err instanceof Error ? err.message : "Failed to load chart data",
@@ -43,7 +57,7 @@ export const ChartsDialog = ({ children }: ChartsDialogProps) => {
       };
       void fetchData();
     }
-  }, [isOpen, data.stateEfficacy, isLoading, engine]);
+  }, [isOpen, activeChart, data.stateEfficacy, data.tradeGoodsProduction, isLoading, engine]);
 
   const charts = [
     {
@@ -51,7 +65,11 @@ export const ChartsDialog = ({ children }: ChartsDialogProps) => {
       name: "State Efficacy",
       description: "Control × Development",
     },
-    // Future charts can be added here
+    {
+      id: "trade-goods-production" as const,
+      name: "Trade Goods Production",
+      description: "RGO production by good, market, and country",
+    },
   ];
 
   return (
@@ -106,6 +124,9 @@ export const ChartsDialog = ({ children }: ChartsDialogProps) => {
               {activeChart === "state-efficacy" && data.stateEfficacy && (
                 <StateEfficacy data={data.stateEfficacy} />
               )}
+              {activeChart === "trade-goods-production" && data.tradeGoodsProduction && (
+                <TradeGoodsProduction data={data.tradeGoodsProduction} />
+              )}
             </>
           )}
         </div>
@@ -117,6 +138,12 @@ export const ChartsDialog = ({ children }: ChartsDialogProps) => {
               <span className="font-semibold text-slate-300">Formula:</span>{" "}
               Location Efficacy = Control × Development | Total Efficacy = Σ(all
               owned locations) | Filtered to nations with ≥10 locations
+            </div>
+          )}
+          {activeChart === "trade-goods-production" && (
+            <div className="text-xs text-slate-400">
+              <span className="font-semibold text-slate-300">Data Source:</span>{" "}
+              Production = Σ(RGO Level) across all locations | Three views: by Good Type (with country breakdown), by Market, and by Country
             </div>
           )}
         </div>

@@ -5,7 +5,7 @@ import type {
   MapModeRange,
 } from "./game-adapter";
 import type { Eu5SaveInput } from "./store/useLoadEu5";
-import type { MapMode, StateEfficacyData } from "@/wasm/wasm_eu5";
+import type { MapMode, StateEfficacyData, TradeGoodsData } from "@/wasm/wasm_eu5";
 
 export interface PointerPosition {
   x: number;
@@ -76,6 +76,7 @@ export interface AppTriggers {
   getLocationArrays(): Promise<Blob>;
   melt(): Promise<Uint8Array<ArrayBuffer>>;
   getStateEfficacy(): Promise<StateEfficacyData>;
+  getTradeGoodsProduction(): Promise<TradeGoodsData>;
 }
 
 export interface AppEngine {
@@ -145,6 +146,7 @@ export class Eu5UIEngine implements AppEngine {
     getLocationArrays: () => this.handleGetLocationArrays(),
     melt: () => this.handleMelt(),
     getStateEfficacy: () => this.handleGetStateEfficacy(),
+    getTradeGoodsProduction: () => this.handleGetTradeGoodsProduction(),
   };
 
   get state(): AppState {
@@ -342,6 +344,10 @@ export class Eu5UIEngine implements AppEngine {
 
   private async handleGetStateEfficacy(): Promise<StateEfficacyData> {
     return await this.gameInstance.getStateEfficacy();
+  }
+
+  private async handleGetTradeGoodsProduction(): Promise<TradeGoodsData> {
+    return await this.gameInstance.getTradeGoodsProduction();
   }
 
   private async handleResize(width: number, height: number): Promise<void> {

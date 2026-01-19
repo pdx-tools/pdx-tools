@@ -199,5 +199,9 @@ export function saveWorker(
     getStateEfficacy: async () => {
       return await saveEngine.getStateEfficacy();
     },
+
+    getTradeGoodsProduction: async () => {
+      return await saveEngine.getTradeGoodsProduction();
+    },
   };
 }

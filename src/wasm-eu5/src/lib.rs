@@ -48,6 +48,59 @@ pub struct StateEfficacyData {
     pub countries: Vec<CountryStateEfficacy>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct TradeGoodsData {
+    pub by_type: Vec<TradeGoodByType>,
+    pub by_market: Vec<MarketTradeGood>,
+    pub by_country: Vec<CountryTradeGood>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct TradeGoodByType {
+    pub good_name: String,
+    pub total_production: f64,
+    pub location_count: u32,
+    pub country_breakdown: Vec<CountryProduction>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct CountryProduction {
+    pub tag: String,
+    pub country_name: String,
+    pub production: f64,
+    pub location_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct MarketTradeGood {
+    pub market_id: u32,
+    pub market_name: String,
+    pub good_name: String,
+    pub production: f64,
+    pub supply: f64,
+    pub demand: f64,
+    pub price: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct CountryTradeGood {
+    pub tag: String,
+    pub country_name: String,
+    pub good_name: String,
+    pub production: f64,
+    pub location_count: u32,
+}
+
 impl From<MapMode> for Eu5MapMode {
     fn from(mode: MapMode) -> Self {
         match mode {
@@ -730,6 +783,63 @@ impl Eu5App {
             .collect();
 
         StateEfficacyData { countries }
+    }
+
+    #[wasm_bindgen]
+    pub fn get_trade_goods_production(&self) -> TradeGoodsData {
+        let data = self.app().calculate_trade_goods_production();
+
+        let by_type = data
+            .by_type
+            .into_iter()
+            .map(|good| TradeGoodByType {
+                good_name: good.good_name,
+                total_production: good.total_production,
+                location_count: good.location_count,
+                country_breakdown: good
+                    .country_breakdown
+                    .into_iter()
+                    .map(|c| CountryProduction {
+                        tag: c.tag,
+                        country_name: c.country_name,
+                        production: c.production,
+                        location_count: c.location_count,
+                    })
+                    .collect(),
+            })
+            .collect();
+
+        let by_market = data
+            .by_market
+            .into_iter()
+            .map(|m| MarketTradeGood {
+                market_id: m.market_id,
+                market_name: m.market_name,
+                good_name: m.good_name,
+                production: m.production,
+                supply: m.supply,
+                demand: m.demand,
+                price: m.price,
+            })
+            .collect();
+
+        let by_country = data
+            .by_country
+            .into_iter()
+            .map(|c| CountryTradeGood {
+                tag: c.tag,
+                country_name: c.country_name,
+                good_name: c.good_name,
+                production: c.production,
+                location_count: c.location_count,
+            })
+            .collect();
+
+        TradeGoodsData {
+            by_type,
+            by_market,
+            by_country,
+        }
     }
 }
 

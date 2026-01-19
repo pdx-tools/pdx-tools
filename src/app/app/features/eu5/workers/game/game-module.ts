@@ -8,6 +8,7 @@ import type {
   HoverDisplayData,
   MapModeRange,
   StateEfficacyData,
+  TradeGoodsData,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
@@ -171,6 +172,9 @@ export const createGame = async (
     },
     getStateEfficacy: (): StateEfficacyData => {
       return app.get_state_efficacy();
+    },
+    getTradeGoodsProduction: (): TradeGoodsData => {
+      return app.get_trade_goods_production();
     },
   });
 };
