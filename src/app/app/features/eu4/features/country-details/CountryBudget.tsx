@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { incomeLedgerAliases } from "./data";
 import { formatFloat, formatInt } from "@/lib/format";
+import { escapeEChartsHtml } from "@/components/viz/EChart";
 import type { CountryDetails } from "../../types/models";
 import { axisTop } from "d3-axis";
 import { scaleBand, scaleLinear } from "d3-scale";
@@ -370,7 +371,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
           return "";
         }
         return `
-          <strong>${params.name}</strong><br/>
+          <strong>${escapeEChartsHtml(params.name)}</strong><br/>
           ${formatInt(params.value as number)}
         `;
       },

@@ -3,6 +3,7 @@ import type { Vic3GraphData } from "./worker/types";
 import { formatFloat } from "@/lib/format";
 import { isDarkMode } from "@/lib/dark";
 import type { EChartsOption } from "@/components/viz/EChart";
+import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { EChart } from "@/components/viz/EChart";
 
 export interface CountryChartProps {
@@ -58,10 +59,9 @@ export const CountryGDPChart = ({ stats, type }: CountryChartProps) => {
                 param.seriesName === typeMap.gdpcGrowth ||
                 param.seriesName === typeMap.gdpGrowth;
               const suffix = isGrowth ? "%" : "";
-              return `${param.marker}${param.seriesName}: ${formatFloat(
-                +(rawValue ?? 0),
-                2,
-              )}${suffix}`;
+              return `${param.marker}${escapeEChartsHtml(
+                param.seriesName,
+              )}: ${formatFloat(+(rawValue ?? 0), 2)}${suffix}`;
             })
             .join("<br />");
         },

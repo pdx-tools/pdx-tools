@@ -6,6 +6,7 @@ import type { EChartsOption } from "@/components/viz";
 import { Alert } from "@/components/Alert";
 import { createCsv } from "@/lib/csv";
 import { formatFloat, formatInt } from "@/lib/format";
+import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 
 export const ProvinceDevelopmentDensity = () => {
@@ -138,11 +139,11 @@ export const ProvinceDevelopmentDensity = () => {
         const param = params[0];
         const data = param.data as [number, number];
         return `
-          <div style="padding: 8px;">
-            <div>Development: ${formatFloat(data[0], 2)}</div>
-            <div>Density: ${formatFloat(data[1], 4)}</div>
-          </div>
-        `;
+            <div style="padding: 8px;">
+              <div>Development: ${escapeEChartsHtml(formatFloat(data[0], 2))}</div>
+              <div>Density: ${escapeEChartsHtml(formatFloat(data[1], 4))}</div>
+            </div>
+          `;
       },
     },
     series: [

@@ -3,6 +3,7 @@ import { EChart, useVisualizationDispatch } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { formatInt } from "@/lib/format";
+import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { createCsv } from "@/lib/csv";
 import { useTagFilter } from "../../store";
 import { Alert } from "@/components/Alert";
@@ -226,7 +227,7 @@ function GeographicalDevelopmentTreeData({ data }: { data: RootTree }) {
             : "100";
 
           return `
-            <strong>${name}</strong><br/>
+            <strong>${escapeEChartsHtml(name)}</strong><br/>
             Development: ${formatInt(value)} (${percentage}%)<br/>
             Tax: ${formatInt(tax ?? 0)}<br/>
             Production: ${formatInt(production ?? 0)}<br/>

@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
+import { escapeEChartsHtml } from "@/components/viz/EChart";
 import type { CountryDetails, CountryReligion } from "../../types/models";
 import { EChart, LegendColor } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
@@ -111,7 +112,7 @@ const CountryReligionVizImpl = ({
           const religion = data.find((r) => r.name === params.name);
           if (!religion) return "";
           return `
-            <strong>${religion.name}</strong><br/>
+            <strong>${escapeEChartsHtml(religion.name)}</strong><br/>
             Development: ${formatInt(religion.development)}<br/>
             Provinces: ${formatInt(religion.provinces)}
           `;

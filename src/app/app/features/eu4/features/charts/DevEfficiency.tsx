@@ -9,6 +9,7 @@ import type {
   CountryDevEffiency,
 } from "@/wasm/wasm_eu4";
 import { formatFloat, formatInt } from "@/lib/format";
+import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { Flag } from "../../components/avatars";
@@ -212,7 +213,7 @@ function DevEfficiencyChart({ data }: { data: CountryDevEfficiencies }) {
           const d = params.data as (typeof scatterData)[number];
           const avg = d.dev_mana / d.dev_clicks;
           return `
-            <strong>${d.country.name}</strong><br/>
+            <strong>${escapeEChartsHtml(d.country.name)}</strong><br/>
             Mana spent: ${formatInt(d.dev_mana)}<br/>
             Dev clicks: ${formatInt(d.dev_clicks)}<br/>
             Average: ${formatFloat(avg, 2)}
