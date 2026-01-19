@@ -30,6 +30,7 @@ import { Tooltip } from "@/components/Tooltip";
 import { AppSvg } from "@/components/icons/AppIcon";
 import { Link } from "react-router";
 import { useEngineActions } from "../engine";
+import { ChartsDialog } from "./features/charts/ChartsDialog";
 
 const MAP_MODE_CONFIG = [
   {
@@ -81,10 +82,6 @@ const COMING_SOON_FEATURES: ComingSoonFeature[] = [
   {
     tooltip: "Uploads",
     icon: ArrowUpTrayIcon,
-  },
-  {
-    tooltip: "Charts",
-    icon: ChartAreaIcon,
   },
   {
     tooltip: "Guides",
@@ -192,6 +189,30 @@ export const Eu5CanvasOverlay = () => {
           </label>
         </div>
 
+        <ChartsDialog>
+          <button
+            type="button"
+            className={cx(
+              "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:outline-none",
+              "border-white/5 bg-white/[0.03] hover:border-sky-400/40 hover:bg-white/10",
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <ChartAreaIcon className="h-5 w-5 text-purple-300" />
+              <div className="flex flex-col leading-tight">
+                <span className="text-sm font-semibold text-slate-100">
+                  Charts
+                </span>
+                <span className="text-xs text-slate-300/80">
+                  View analytics and insights
+                </span>
+              </div>
+            </div>
+            <span className="text-[11px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
+              NEW
+            </span>
+          </button>
+        </ChartsDialog>
         <Screenshot />
         <Melt />
       </div>

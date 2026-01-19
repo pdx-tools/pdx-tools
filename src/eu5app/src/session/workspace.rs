@@ -1554,6 +1554,95 @@ impl<'bump> Eu5Workspace<'bump> {
             max_rows: Some(MAX_ROWS as u32),
         }
     }
+
+    /// Calculate state efficacy scores for all nations
+    ///
+    /// State efficacy measures territorial quality by combining location control and development.
+    /// Formula: Location Efficacy = Control × Development
+    /// National metrics: Total Efficacy (sum), Average Efficacy (mean), Location Count, Total Population
+    pub fn calculate_state_efficacy(&self) -> Vec<CountryStateEfficacy> {
+        #[derive(Default)]
+        struct EfficacyAggregator {
+            total_efficacy: f64,
+            location_count: u32,
+            total_population: u32,
+        }
+
+        let mut aggregates: FxHashMap<CountryId, EfficacyAggregator> = FxHashMap::default();
+
+        // Single pass through all locations
+        for location_entry in self.gamestate.locations.iter() {
+            let location = location_entry.location();
+
+            // Skip unowned locations
+            if location.owner.is_dummy() {
+                continue;
+            }
+
+            // Calculate location efficacy: control × development
+            let location_efficacy = location.control * location.development;
+
+            // Get population for this location
+            let population = self.gamestate.location_population(location);
+
+            // Aggregate by country
+            let aggregate = aggregates.entry(location.owner).or_default();
+            aggregate.total_efficacy += location_efficacy;
+            aggregate.location_count += 1;
+            aggregate.total_population += population as u32;
+        }
+
+        // Convert to result vector
+        let mut results: Vec<CountryStateEfficacy> = aggregates
+            .into_iter()
+            .filter_map(|(country_id, aggregate)| {
+                // Get country info
+                let country_idx = self.gamestate.countries.get(country_id)?;
+                let country_entry = self.gamestate.countries.index(country_idx);
+                let country_data = country_entry.data()?;
+
+                let tag = country_entry.tag().to_str().to_string();
+                let name = self
+                    .localized_country_name(&country_data.country_name)
+                    .to_string();
+
+                let avg_efficacy = if aggregate.location_count > 0 {
+                    aggregate.total_efficacy / (aggregate.location_count as f64)
+                } else {
+                    0.0
+                };
+
+                Some(CountryStateEfficacy {
+                    tag,
+                    name,
+                    total_efficacy: aggregate.total_efficacy,
+                    location_count: aggregate.location_count,
+                    avg_efficacy,
+                    total_population: aggregate.total_population,
+                })
+            })
+            .collect();
+
+        // Sort by total efficacy descending
+        results.sort_by(|a, b| {
+            b.total_efficacy
+                .total_cmp(&a.total_efficacy)
+                .then_with(|| a.tag.cmp(&b.tag))
+        });
+
+        results
+    }
+}
+
+/// State efficacy data for a single country
+#[derive(Debug, Clone)]
+pub struct CountryStateEfficacy {
+    pub tag: String,
+    pub name: String,
+    pub total_efficacy: f64,
+    pub location_count: u32,
+    pub avg_efficacy: f64,
+    pub total_population: u32,
 }
 
 impl std::fmt::Debug for Eu5Workspace<'_> {

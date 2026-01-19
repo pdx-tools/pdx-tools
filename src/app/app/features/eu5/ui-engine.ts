@@ -5,7 +5,7 @@ import type {
   MapModeRange,
 } from "./game-adapter";
 import type { Eu5SaveInput } from "./store/useLoadEu5";
-import type { MapMode } from "@/wasm/wasm_eu5";
+import type { MapMode, StateEfficacyData } from "@/wasm/wasm_eu5";
 
 export interface PointerPosition {
   x: number;
@@ -75,6 +75,7 @@ export interface AppTriggers {
   toggleOwnerBorders(): Promise<void>;
   getLocationArrays(): Promise<Blob>;
   melt(): Promise<Uint8Array<ArrayBuffer>>;
+  getStateEfficacy(): Promise<StateEfficacyData>;
 }
 
 export interface AppEngine {
@@ -143,6 +144,7 @@ export class Eu5UIEngine implements AppEngine {
     toggleOwnerBorders: () => this.handleToggleOwnerBorders(),
     getLocationArrays: () => this.handleGetLocationArrays(),
     melt: () => this.handleMelt(),
+    getStateEfficacy: () => this.handleGetStateEfficacy(),
   };
 
   get state(): AppState {
@@ -336,6 +338,10 @@ export class Eu5UIEngine implements AppEngine {
 
   private async handleMelt(): Promise<Uint8Array<ArrayBuffer>> {
     return await this.gameInstance.melt();
+  }
+
+  private async handleGetStateEfficacy(): Promise<StateEfficacyData> {
+    return await this.gameInstance.getStateEfficacy();
   }
 
   private async handleResize(width: number, height: number): Promise<void> {

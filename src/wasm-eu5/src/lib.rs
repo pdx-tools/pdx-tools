@@ -29,6 +29,25 @@ pub enum MapMode {
     Religion,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct CountryStateEfficacy {
+    pub tag: String,
+    pub name: String,
+    pub total_efficacy: f64,
+    pub location_count: u32,
+    pub avg_efficacy: f64,
+    pub total_population: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct StateEfficacyData {
+    pub countries: Vec<CountryStateEfficacy>,
+}
+
 impl From<MapMode> for Eu5MapMode {
     fn from(mode: MapMode) -> Self {
         match mode {
@@ -692,6 +711,25 @@ impl Eu5App {
             patch_version,
             body: OverlayBodyConfig::from(overlay_data),
         }
+    }
+
+    /// Calculate state efficacy scores for all nations
+    #[wasm_bindgen]
+    pub fn get_state_efficacy(&self) -> StateEfficacyData {
+        let results = self.app().calculate_state_efficacy();
+        let countries = results
+            .into_iter()
+            .map(|efficacy| CountryStateEfficacy {
+                tag: efficacy.tag,
+                name: efficacy.name,
+                total_efficacy: efficacy.total_efficacy,
+                location_count: efficacy.location_count,
+                avg_efficacy: efficacy.avg_efficacy,
+                total_population: efficacy.total_population,
+            })
+            .collect();
+
+        StateEfficacyData { countries }
     }
 }
 
