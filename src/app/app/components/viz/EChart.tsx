@@ -71,6 +71,9 @@ export interface EChartProps {
   className?: string;
 }
 
+export const escapeEChartsHtml = (value: unknown) =>
+  echarts.format.encodeHTML(value == null ? "" : String(value));
+
 export const EChart = memo(function EChart({
   option,
   style,

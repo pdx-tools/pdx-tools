@@ -8,6 +8,7 @@ import { useEu4Worker } from "../../worker";
 import type { CountryMana } from "@/wasm/wasm_eu4";
 import { Alert } from "@/components/Alert";
 import { formatFloat, formatInt } from "@/lib/format";
+import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   AdminManaIcon,
   AdmiralIcon,
@@ -121,7 +122,7 @@ const TotalManaBarImpl = ({ adm, dip, mil }: TotalManaBarProps) => {
           }
           const param = params[0];
           return `
-            <strong>${param.name}</strong><br/>
+            <strong>${escapeEChartsHtml(param.name)}</strong><br/>
             Mana: ${formatInt(param.value as number)}
           `;
         },

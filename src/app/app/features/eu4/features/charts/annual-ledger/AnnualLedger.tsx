@@ -8,6 +8,7 @@ import type { useLedgerData } from "./hooks";
 import { Alert } from "@/components/Alert";
 import { isDarkMode } from "@/lib/dark";
 import { formatInt } from "@/lib/format";
+import { escapeEChartsHtml } from "@/components/viz/EChart";
 
 interface LedgerProps {
   ledger: LedgerDatum[];
@@ -86,7 +87,7 @@ const AnnualLedgerPropped = React.memo(function AnnualLedgerPropped({
           }
           const data = params.data as [number, number];
           return `
-            <strong>${params.seriesName}</strong><br/>
+            <strong>${escapeEChartsHtml(params.seriesName)}</strong><br/>
             Year: ${data[0]}<br/>
             Value: ${formatInt(data[1])}
           `;

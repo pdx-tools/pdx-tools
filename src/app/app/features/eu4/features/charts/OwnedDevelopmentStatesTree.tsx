@@ -10,6 +10,7 @@ import type {
 } from "../../types/models";
 import { Flag } from "../../components/avatars";
 import { formatInt } from "@/lib/format";
+import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { Alert } from "@/components/Alert";
 import { isDarkMode } from "@/lib/dark";
 import { classicCyclic } from "@/lib/colors";
@@ -152,7 +153,7 @@ function CountryStateDevelopmentTree({
             return "";
           }
           return `
-            <strong>${params.name}</strong><br/>
+            <strong>${escapeEChartsHtml(params.name)}</strong><br/>
             ${formatInt(params.value as number)}
           `;
         },
