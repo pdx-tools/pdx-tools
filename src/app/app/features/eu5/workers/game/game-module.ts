@@ -7,6 +7,7 @@ import type {
   MapMode,
   HoverDisplayData,
   MapModeRange,
+  StateEfficacyData,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
@@ -167,6 +168,9 @@ export const createGame = async (
     },
     getMapModeRange: (mode: MapMode): MapModeRange => {
       return app.get_map_mode_range(mode);
+    },
+    getStateEfficacy: (): StateEfficacyData => {
+      return app.get_state_efficacy();
     },
   });
 };

@@ -195,5 +195,9 @@ export function saveWorker(
     getSaveMetadata: async () => {
       return await saveEngine.getSaveMetadata();
     },
+
+    getStateEfficacy: async () => {
+      return await saveEngine.getStateEfficacy();
+    },
   };
 }
