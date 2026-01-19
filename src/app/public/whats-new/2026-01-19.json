@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": ["New EU5 state efficacy visualization"],
+    "fixes": [
+      "EU4 save user generated content corrupting the page",
+      "Update dependencies in an attempt to fix EU5 flickering for some users"
+    ]
+  }
+}
