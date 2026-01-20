@@ -35,6 +35,7 @@ pub enum MapMode {
 pub struct CountryStateEfficacy {
     pub tag: String,
     pub name: String,
+    pub color: String,
     pub total_efficacy: f64,
     pub location_count: u32,
     pub avg_efficacy: f64,
@@ -722,6 +723,7 @@ impl Eu5App {
             .map(|efficacy| CountryStateEfficacy {
                 tag: efficacy.tag,
                 name: efficacy.name,
+                color: efficacy.color,
                 total_efficacy: efficacy.total_efficacy,
                 location_count: efficacy.location_count,
                 avg_efficacy: efficacy.avg_efficacy,

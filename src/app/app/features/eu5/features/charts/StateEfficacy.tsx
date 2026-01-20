@@ -112,6 +112,7 @@ function StateEfficacyChart({ data }: { data: CountryStateEfficacy[] }) {
         totalEfficacy: d.totalEfficacy,
         avgEfficacy: d.avgEfficacy,
         totalPopulation: d.totalPopulation,
+        color: d.color,
         symbolSize,
       };
     });
@@ -208,7 +209,14 @@ function StateEfficacyChart({ data }: { data: CountryStateEfficacy[] }) {
             return d.symbolSize;
           },
           itemStyle: {
-            color: isDark ? "#93c5fd" : "#3b82f6",
+            color: (params) => {
+              if (Array.isArray(params)) {
+                return isDark ? "#93c5fd" : "#3b82f6";
+              }
+
+              const d = params.data as (typeof scatterData)[number];
+              return d.color || (isDark ? "#93c5fd" : "#3b82f6");
+            },
             opacity: 0.75,
           },
           label: {
