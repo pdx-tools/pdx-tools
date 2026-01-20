@@ -1615,6 +1615,10 @@ impl<'bump> Eu5Workspace<'bump> {
                 Some(CountryStateEfficacy {
                     tag,
                     name,
+                    color: format!(
+                        "#{:02x}{:02x}{:02x}",
+                        country_data.color.0[0], country_data.color.0[1], country_data.color.0[2]
+                    ),
                     total_efficacy: aggregate.total_efficacy,
                     location_count: aggregate.location_count,
                     avg_efficacy,
@@ -1639,6 +1643,7 @@ impl<'bump> Eu5Workspace<'bump> {
 pub struct CountryStateEfficacy {
     pub tag: String,
     pub name: String,
+    pub color: String,
     pub total_efficacy: f64,
     pub location_count: u32,
     pub avg_efficacy: f64,
