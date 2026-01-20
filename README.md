@@ -18,7 +18,7 @@ Ready to explore maps, timelapses, and charts?
 - Keep every era alive: Load saves on old patches alongside the latest version and compare them in one place.
 - Tell richer stories: With interactive maps, time-lapse videos, screenshots, new map-modes, and offline exports, AARs practically write themselves.
 - Share and compete: Upload saves and compete in the global achievement speedrun board that favors recent patches, keeping the leaderboard evergreen and fresh.
-- Extensible: Support already stretches beyond EU4 to [CK3](https://en.wikipedia.org/wiki/Crusader_Kings_III), [HOI4](https://en.wikipedia.org/wiki/Hearts_of_Iron_IV), [Victoria 3](https://en.wikipedia.org/wiki/Victoria_3), and [Imperator](https://en.wikipedia.org/wiki/Imperator:_Rome). Every adapter melts binary saves into human readable files, and are ripe for contributions!
+- Extensible: Support already stretches beyond EU4 to [EU5](https://en.wikipedia.org/wiki/Europa_Universalis_V), [CK3](https://en.wikipedia.org/wiki/Crusader_Kings_III), [HOI4](https://en.wikipedia.org/wiki/Hearts_of_Iron_IV), [Victoria 3](https://en.wikipedia.org/wiki/Victoria_3), and [Imperator](https://en.wikipedia.org/wiki/Imperator:_Rome). Every adapter melts binary saves into human readable files, and are ripe for contributions!
 
 ## Contributor Guide
 
@@ -36,7 +36,7 @@ If you'd like to contribute, you've come to the right place! This README should 
 
 Next steps:
 
-- **EU4 developers**: Prepare the EU4 assets, like the map and game data, to be consumed within the browser.
+- **EU4 & EU5 developers**: Prepare the EU4 and EU5 assets, like the map and game data, to be consumed within the browser.
   ```bash
   mise run assets:compile
   ```
@@ -75,7 +75,7 @@ assets/tokens/vic3.txt
 assets/tokens/imperator.txt
 ```
 
-They will be detected up when the dev server is restarted.
+They will be detected and integrated when the dev server is restarted.
 
 ## Contributor Project Guide
 
