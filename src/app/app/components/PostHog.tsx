@@ -13,6 +13,11 @@ export function PostHog() {
 
   useEffect(() => {
     if (import.meta.env.PROD && import.meta.env.VITE_POSTHOG_KEY) {
+      // Test to see if PostHog is causing EU5 flicker issues
+      if (localStorage.getItem("ph_disabled")) {
+        return;
+      }
+
       posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
         autocapture: false,
         disable_session_recording: true,
