@@ -29,14 +29,25 @@ fn main() {
     let out_path = Path::new(&env::var("OUT_DIR").unwrap()).join("gen_tokens.rs");
     let mut writer = BufWriter::new(File::create(out_path).unwrap());
 
+    if !Path::new("../../assets/tokens").exists() {
+        std::fs::create_dir_all("../../assets/tokens").expect("to create assets/tokens directory");
+    }
+
     for game in &["eu4", "eu5", "ck3", "hoi4", "imperator", "vic3"] {
         let mut pascal = String::from(*game);
         pascal.get_mut(0..1).unwrap().make_ascii_uppercase();
-        println!("cargo:rerun-if-changed=../../assets/tokens/{game}-raw.bin");
         let path = format!("../../assets/tokens/{game}-raw.bin");
         let tokens = Path::new(&path);
-        let exists = tokens.exists();
-        let token_path = if exists {
+        if !tokens.exists() {
+            // Create an empty file so that cargo has something to watch
+            std::fs::File::create(&path).expect("to create empty token file");
+        }
+        let has_data = std::fs::metadata(tokens)
+            .map(|m| m.len() > 0)
+            .unwrap_or(false);
+
+        println!("cargo:rerun-if-changed=../../assets/tokens/{game}-raw.bin");
+        let token_path = if has_data {
             tokens
                 .canonicalize()
                 .unwrap()
@@ -103,7 +114,7 @@ impl jomini::binary::TokenResolver for {pascal}FlatTokens {{
         .unwrap();
 
         println!("cargo::rustc-check-cfg=cfg({game}_tokens)");
-        if tokens.exists() {
+        if has_data {
             println!("cargo:rustc-cfg={game}_tokens");
         }
     }
