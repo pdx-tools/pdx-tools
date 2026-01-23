@@ -109,16 +109,16 @@ where
             formatter.write_str("A maybe map")
         }
 
-        fn visit_map<A>(self, mut access: A) -> Result<Self::Value, A::Error>
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
         where
             A: de::MapAccess<'de>,
         {
-            let mut map = HashMap::with_capacity(access.size_hint().unwrap_or(0));
-            while let Some((key, value)) = access.next_entry::<K1, Maybe<V1>>()? {
-                map.insert(key, value.0);
+            let mut result = HashMap::with_capacity(map.size_hint().unwrap_or(0));
+            while let Some((key, value)) = map.next_entry::<K1, Maybe<V1>>()? {
+                result.insert(key, value.0);
             }
 
-            Ok(map)
+            Ok(result)
         }
     }
 
@@ -294,6 +294,6 @@ budget={
         assert_eq!(country.definition, "GER");
         let out1: TestCountry = from_utf8_slice(b"country={101=none}").unwrap();
         assert_eq!(out1.country[&101], None);
-        assert!(from_utf8_slice::<TestCountry>(b"country={101=None}").is_err());
+        from_utf8_slice::<TestCountry>(b"country={101=None}").unwrap_err();
     }
 }

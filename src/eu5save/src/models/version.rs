@@ -17,30 +17,30 @@ impl<'de> serde::de::Visitor<'de> for GameVersionVisitor {
         formatter.write_str("a game version in the format 'major.minor.patch'")
     }
 
-    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        let mut parts = value.split('.');
+        let mut parts = v.split('.');
 
         let major = parts.next();
         let minor = parts.next();
         let patch = parts.next();
 
         let major = major
-            .ok_or_else(|| E::custom(format!("Missing major version in: {value}")))?
+            .ok_or_else(|| E::custom(format!("Missing major version in: {v}")))?
             .parse()
-            .map_err(|_| E::custom(format!("Invalid major version: {value}")))?;
+            .map_err(|_| E::custom(format!("Invalid major version: {v}")))?;
 
         let minor = minor
-            .ok_or_else(|| E::custom(format!("Missing minor version in: {value}")))?
+            .ok_or_else(|| E::custom(format!("Missing minor version in: {v}")))?
             .parse()
-            .map_err(|_| E::custom(format!("Invalid minor version: {value}")))?;
+            .map_err(|_| E::custom(format!("Invalid minor version: {v}")))?;
 
         let patch = patch
-            .ok_or_else(|| E::custom(format!("Missing patch version in: {value}")))?
+            .ok_or_else(|| E::custom(format!("Missing patch version in: {v}")))?
             .parse()
-            .map_err(|_| E::custom(format!("Invalid patch version: {value}")))?;
+            .map_err(|_| E::custom(format!("Invalid patch version: {v}")))?;
 
         Ok(GameVersion {
             major,

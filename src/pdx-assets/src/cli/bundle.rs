@@ -102,7 +102,7 @@ impl BundleArgs {
                 serde_json::to_writer_pretty(out, &manifest)
                     .with_context(|| "Failed to serialize manifest to JSON")?;
                 println!();
-            }
+            };
 
             let out_file = self
                 .out_directory

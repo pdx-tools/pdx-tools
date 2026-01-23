@@ -142,8 +142,8 @@ impl<R> SaveResolver<R> {
 }
 
 impl<R: TokenResolver> TokenResolver for SaveResolver<R> {
-    fn resolve(&self, token_id: u16) -> Option<&str> {
-        self.inner.resolve(token_id)
+    fn resolve(&self, token: u16) -> Option<&str> {
+        self.inner.resolve(token)
     }
 
     fn lookup(&self, index: u32) -> Option<&str> {

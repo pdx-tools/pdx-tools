@@ -79,36 +79,36 @@ where
             formatter.write_str("a string or a value")
         }
 
-        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
         where
             E: de::Error,
         {
-            if S::is_special(value) {
+            if S::is_special(v) {
                 Ok(S::create_special())
             } else {
-                T::deserialize(StrDeserializer::new(value)).map(S::create_visible)
+                T::deserialize(StrDeserializer::new(v)).map(S::create_visible)
             }
         }
 
-        fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
         where
             E: de::Error,
         {
-            if S::is_special(&value) {
+            if S::is_special(&v) {
                 Ok(S::create_special())
             } else {
-                T::deserialize(StringDeserializer::new(value)).map(S::create_visible)
+                T::deserialize(StringDeserializer::new(v)).map(S::create_visible)
             }
         }
 
-        fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E>
+        fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
         where
             E: de::Error,
         {
-            if S::is_special(value) {
+            if S::is_special(v) {
                 Ok(S::create_special())
             } else {
-                T::deserialize(BorrowedStrDeserializer::new(value)).map(S::create_visible)
+                T::deserialize(BorrowedStrDeserializer::new(v)).map(S::create_visible)
             }
         }
 
@@ -285,38 +285,38 @@ where
                     formatter.write_str("a string or a value")
                 }
 
-                fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
                 where
                     E: de::Error,
                 {
-                    if S::is_special(value) {
+                    if S::is_special(v) {
                         Ok(S::create_special())
                     } else {
-                        T::deserialize_in_arena(StrDeserializer::new(value), self.allocator)
+                        T::deserialize_in_arena(StrDeserializer::new(v), self.allocator)
                             .map(S::create_visible)
                     }
                 }
 
-                fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+                fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
                 where
                     E: de::Error,
                 {
-                    if S::is_special(&value) {
+                    if S::is_special(&v) {
                         Ok(S::create_special())
                     } else {
-                        T::deserialize_in_arena(StringDeserializer::new(value), self.allocator)
+                        T::deserialize_in_arena(StringDeserializer::new(v), self.allocator)
                             .map(S::create_visible)
                     }
                 }
 
-                fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E>
+                fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
                 where
                     E: de::Error,
                 {
-                    if S::is_special(value) {
+                    if S::is_special(v) {
                         Ok(S::create_special())
                     } else {
-                        T::deserialize_in_arena(BorrowedStrDeserializer::new(value), self.allocator)
+                        T::deserialize_in_arena(BorrowedStrDeserializer::new(v), self.allocator)
                             .map(S::create_visible)
                     }
                 }
