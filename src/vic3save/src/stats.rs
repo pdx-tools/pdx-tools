@@ -30,7 +30,7 @@ pub struct Vic3CountryStatsIter<'a> {
 impl Iterator for Vic3CountryStatsIter<'_> {
     type Item = (Vic3Date, f64);
     fn next(&mut self) -> Option<Self::Item> {
-        let game_start_date: Vic3Date = Vic3Date::from_ymdh(1836, 1, 1, 0);
+        let game_start_date = Vic3Date::from_ymdh(1836, 1, 1, 0);
         let channel = self.stats.channels.get(&0)?;
         let days_between_start_and_end = game_start_date.days_until(&channel.date);
         let days_per_index = self.stats.sample_rate / 4;

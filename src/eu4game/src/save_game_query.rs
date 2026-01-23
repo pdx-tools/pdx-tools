@@ -19,7 +19,7 @@ impl<'a> SaveGameQuery<'a> {
                 self.query
                     .country(tag)
                     .and_then(|x| x.name.as_ref())
-                    .map(|x| x.to_string())
+                    .cloned()
             })
             .unwrap_or_else(|| tag.to_string())
     }

@@ -166,7 +166,7 @@ fn generate_countries<P: FileProvider + ?Sized>(
 
     let tag_data = fs.read_file("common/country_tags/00_countries.txt")?;
     let tags: HashMap<CountryTag, PathBuf> =
-        jomini::text::de::from_windows1252_slice(&tag_data[..])?;
+        jomini::text::de::from_windows1252_slice(tag_data.as_slice())?;
 
     let mut countries = Vec::new();
     for (tag, _path) in tags {
@@ -201,10 +201,10 @@ where
 
     let file_data = fs.read_file("common/tradecompany_investments/00_Investments.txt")?;
     let data: HashMap<String, InvestmentData> =
-        jomini::text::de::from_windows1252_slice(&file_data[..])?;
+        jomini::text::de::from_windows1252_slice(file_data.as_slice())?;
 
     let gfx_data = fs.read_file("interface/trade_company_investments_view.gfx")?;
-    let gfx = sprites::parse_sprites(&gfx_data[..]);
+    let gfx = sprites::parse_sprites(gfx_data.as_slice());
     let sprites: HashMap<String, PathBuf> =
         gfx.into_iter().map(|x| (x.name, x.texturefile)).collect();
     let sprite_images = data
@@ -266,7 +266,7 @@ where
     let mut personalities_map: HashMap<String, PathBuf> = HashMap::new();
     for person_file in personality_files {
         let data = fs.read_file(&person_file)?;
-        let parsed_persons = personalities::personalities(&data[..]);
+        let parsed_persons = personalities::personalities(data.as_slice());
 
         for (personality, possible_traits) in parsed_persons.into_iter() {
             let actual_trait = possible_traits
@@ -394,7 +394,7 @@ fn generate_provinces<P: FileProvider + ?Sized>(
     game_version: &str,
 ) -> anyhow::Result<(usize, Vec<GameProvince>)> {
     let map_data = fs.read_file("map/default.map")?;
-    let default_map = map::parse_default_map(&map_data[..]);
+    let default_map = map::parse_default_map(map_data.as_slice());
     let ocean_provs: HashSet<_> = default_map
         .lakes
         .iter()
@@ -713,7 +713,7 @@ where
     I: crate::images::ImageProcessor,
 {
     let achievements_gfx_data = fs.read_file("interface/achievements.gfx")?;
-    let achievement_paths = achievements::achievement_images(&achievements_gfx_data[..]);
+    let achievement_paths = achievements::achievement_images(achievements_gfx_data.as_slice());
     let achievement_data = eu4game_data::achievements();
 
     let mut achieves = achievement_data
@@ -774,7 +774,7 @@ where
     }
 
     let data = fs.read_file("interface/building_icons.gfx")?;
-    let sprites = sprites::parse_sprites(&data[..]);
+    let sprites = sprites::parse_sprites(data.as_slice());
 
     let mut western_buildings = Vec::new();
     let mut global_buildings = Vec::new();
@@ -810,7 +810,7 @@ where
         } else if fs.file_exists(&dds_path) {
             dds_path
         } else {
-            image_path.to_string()
+            image_path.clone()
         };
 
         let file_handle = fs.fs_file(&final_image_path)?;
@@ -1034,7 +1034,7 @@ fn process_province_definitions<P: FileProvider + ?Sized>(
     let mut pixel_locations: HashMap<u16, Vec<(u16, u16)>> = HashMap::new();
 
     let provinces_bmp =
-        rawbmp::Bmp::parse(&provinces_file_data[..]).context("unable to parse bmp")?;
+        rawbmp::Bmp::parse(provinces_file_data.as_slice()).context("unable to parse bmp")?;
     let Pixels::Rgb(pixs) = provinces_bmp.pixels();
     let width = provinces_bmp.dib_header.width.unsigned_abs() as usize;
     let height = provinces_bmp.dib_header.height.unsigned_abs() as u16;

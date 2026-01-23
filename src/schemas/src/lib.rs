@@ -1,4 +1,4 @@
-#[allow(non_snake_case, unused_imports, clippy::all, mismatched_lifetime_syntaxes, missing_debug_implementations, unused_lifetimes, unsafe_op_in_unsafe_fn)]
+#[allow(non_snake_case, unused_imports, clippy::all, clippy::as_pointer_underscore, mismatched_lifetime_syntaxes, missing_debug_implementations, unused_lifetimes, unsafe_op_in_unsafe_fn)]
 #[rustfmt::skip]
 mod eu4_generated;
 

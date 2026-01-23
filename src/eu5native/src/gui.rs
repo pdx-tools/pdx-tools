@@ -478,7 +478,7 @@ impl ApplicationHandler<GuiUserEvent> for App {
         // thread.
         let gpu = self
             .rt
-            .block_on(pdx_map::GpuSurfaceContext::new(window.clone()))
+            .block_on(pdx_map::GpuSurfaceContext::new(Arc::clone(&window)))
             .expect("Failed to create GPU context");
 
         self.window = Some(window);

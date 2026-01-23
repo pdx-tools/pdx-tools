@@ -295,7 +295,7 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
         let west_buffer = renderer.capture_viewport(bounds).await?;
         dst_image.write_west(west_buffer.rows());
         west_buffer.finish();
-    }
+    };
     println!(
         "Rendered and read back west half ({:.2}s)",
         start.elapsed().as_secs_f64()
@@ -306,7 +306,7 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
         let east_buffer = renderer.capture_viewport(bounds).await?;
         dst_image.write_east(east_buffer.rows());
         east_buffer.finish();
-    }
+    };
 
     println!(
         "Rendered and read back east half ({:.2}s)",
@@ -370,7 +370,7 @@ mod tests {
     #[case("00GG00")] // invalid green
     #[case("0000GG")] // invalid blue
     fn test_parse_hex_color_invalid(#[case] input: &str) {
-        assert!(parse_hex_color(input).is_err());
+        parse_hex_color(input).unwrap_err();
     }
 
     // Tests for parse_csv_line - valid cases
@@ -449,7 +449,7 @@ mod tests {
     #[case("FF0000,00FF00,0000FF,INVALID,0")]
     #[case("FF0000,00FF00,0000FF,FFFF00,not_a_number")]
     fn test_parse_csv_line_invalid(#[case] input: &str) {
-        assert!(parse_csv_line(input, 1).is_err());
+        parse_csv_line(input, 1).unwrap_err();
     }
 
     // Tests for parse_location_data
@@ -492,6 +492,6 @@ mod tests {
     #[test]
     fn test_parse_location_data_invalid_record() {
         let input = b"FF0000,00FF00,0000FF,FFFF00,0\nINVALID_LINE\n0000FF,FF0000,00FF00,FFFFFF,1";
-        assert!(parse_location_data(&input[..]).is_err());
+        parse_location_data(&input[..]).unwrap_err();
     }
 }

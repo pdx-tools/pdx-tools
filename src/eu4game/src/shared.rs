@@ -302,7 +302,7 @@ impl Eu4Parser {
                             hasher: &mut hasher,
                         };
                         std::io::copy(&mut reader, &mut std::io::sink())?;
-                    }
+                    };
 
                     let save = Eu4Save {
                         meta,
