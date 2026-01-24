@@ -24,26 +24,46 @@ Ready to explore maps, timelapses, and charts?
 
 If you'd like to contribute, you've come to the right place! This README should hopefully get you started on your journey. If you get stuck or have a bug report you can [file it here](issues) or chat about it [on the discord](https://discord.gg/rCpNWQW)
 
+### Setup Instructions
+
 1. Install [mise](https://mise.jdx.dev/). Mise is a task runner and will download all dependencies.
 2. Within the pdx tools repo, ensure all dependencies are up to date with:
   ```bash
   mise install
   ```
-3. To develop against plaintext / debug CK3, Vic3, Imperator, and HOI4 saves on localhost:3001
+3. It's also a good idea to install Rust via [Rustup](https://rustup.rs/).
+4. To develop against plaintext / debug CK3, Vic3, Imperator, and HOI4 saves on localhost:3001
   ```bash
   mise run dev:app
   ```
 
-Next steps:
+### EU4 and EU5 next steps
 
-- **EU4 & EU5 developers**: Prepare the EU4 and EU5 assets, like the map and game data, to be consumed within the browser.
-  ```bash
-  mise run assets:compile
-  ```
-- If desired, enable support for [binary and ironman saves](#binary--ironman-saves).
+For those contributing to EU4 or EU5, pdx.tools must access the game data to prepare those assets to be consumed within the browser.
 
+```bash
+mise run assets:compile
+```
 
-PDX Tools repo also contains a [Dev Container](https://code.visualstudio.com/docs/devcontainers/containers) for those looking for a complete development environment in a single package.
+### Dev Container
+
+Those comfortable with Docker: PDX Tools repo contains a [Dev Container](https://code.visualstudio.com/docs/devcontainers/containers), which will automate setting up a complete development environment. EU4 and EU5 contributors may need to mount the respective games as read-only docker volumes so pdx.tools can read game files.
+
+### Windows Dev Drive
+
+For Windows contributors, it is recommended to develop pdx.tools on a [Dev Drive](https://learn.microsoft.com/en-us/windows/dev-drive/) to optimize access to the many small files for Rust and JS dependencies used during development.
+
+Cargo (the Rust package manager) will need to be configured to store dependencies on the dev drive (assumed to be `D:\` in the code example)
+
+```cmd
+setx /M CARGO_HOME D:\packages\cargo
+```
+
+The JS package manager, pnpm, does not need to be configured as `pnpm store path` will automatically default to the dev drive, but for completeness, can configured for consistency:
+
+```cmd
+pnpm config set store-dir D:\packages\pnpm
+```
 
 ### Start server
 
