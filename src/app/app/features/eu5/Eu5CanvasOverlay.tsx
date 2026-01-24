@@ -16,6 +16,7 @@ import {
   BookOpenIcon,
   FlagIcon,
   SparklesIcon,
+  HomeIcon,
 } from "@heroicons/react/24/outline";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { downloadData } from "@/lib/downloadData";
@@ -27,7 +28,6 @@ import { cx } from "class-variance-authority";
 import { ToggleGroup } from "@/components/ToggleGroup";
 import { ChartAreaIcon } from "@/components/icons/ChartAreaIcon";
 import { Tooltip } from "@/components/Tooltip";
-import { AppSvg } from "@/components/icons/AppIcon";
 import { Link } from "react-router";
 import { useEngineActions } from "../engine";
 import { ChartsDialog } from "./features/charts/ChartsDialog";
@@ -123,11 +123,7 @@ export const Eu5CanvasOverlay = () => {
         className="absolute top-5 right-5 inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:outline-none"
       >
         <span className="sr-only">Return to home</span>
-        <AppSvg
-          width={30}
-          height={30}
-          className="transition-transform duration-150 hover:scale-110"
-        />
+        <HomeIcon className="h-[30px] w-[30px] text-slate-300 transition-transform duration-150 hover:scale-110" />
       </Link>
 
       <EarlyAccessRoadmap />
