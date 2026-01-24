@@ -1,4 +1,6 @@
+use sha1_smol::Sha1;
 use std::fs;
+use std::io::Seek;
 use std::path::Path;
 
 /// Fetch an eu4 save file. Save files can be quite large, so the save files are not stored in the
@@ -32,8 +34,40 @@ pub fn request<S: AsRef<str>>(input: S) -> Vec<u8> {
                         let mut tmp = tempfile::NamedTempFile::new_in(&cache_dir)
                             .expect("to create tempfile");
                         std::io::copy(&mut resp, &mut tmp).expect("to copy to tempfile");
+
+                        let file_data = std::fs::read(tmp.path()).expect("to read tempfile data");
+
+                        let sha1_header = resp
+                            .headers()
+                            .get("x-bz-content-sha1")
+                            .map(|b2| b2.to_str().expect("b2 sha1 header to string"))
+                            .map(|b2| decode_hex(b2).expect("failed to decode hex SHA1 header"));
+
+                        if let Some(expected_sha1) = sha1_header {
+                            // Calculate the SHA1 of the downloaded file
+                            tmp.seek(std::io::SeekFrom::Start(0))
+                                .expect("failed to seek to start of tempfile for SHA1 validation");
+                            let mut hasher = Sha1::new();
+                            hasher.update(&file_data);
+
+                            if expected_sha1 != hasher.digest().bytes() {
+                                if attempts > 4 {
+                                    panic!("SHA1 mismatch for {}, exceeded retry limit", reffed);
+                                } else {
+                                    attempts += 1;
+                                    eprintln!(
+                                        "SHA1 mismatch for {}, retrying download (attempt {})",
+                                        reffed, attempts
+                                    );
+                                    continue;
+                                }
+                            }
+                        }
+
                         tmp.persist(&cache).unwrap();
-                        return fs::read(&cache).unwrap();
+
+                        println!("fetched from s3: {}", reffed);
+                        return file_data;
                     }
                 }
                 Err(e) => {
@@ -46,4 +80,11 @@ pub fn request<S: AsRef<str>>(input: S) -> Vec<u8> {
             }
         }
     }
+}
+
+fn decode_hex(s: &str) -> Result<Vec<u8>, std::num::ParseIntError> {
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
+        .collect()
 }
