@@ -2,7 +2,11 @@ import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 import type { ComponentProps, ComponentType } from "react";
 import { WebPage } from "@/components/layout";
 import { PageDropOverlay } from "./components/PageDropOverlay";
-import { useEngineActions, useSaveFileInput } from "./engineStore";
+import {
+  useEngineActions,
+  useSaveFileInput,
+  useSaveInputId,
+} from "./engineStore";
 import type { SaveGameInput } from "./engineStore";
 import classes from "./GameView.module.css";
 import type Eu4Ui from "@/features/eu4/Eu4Ui";
@@ -49,7 +53,7 @@ const DynamicVic3: ComponentType<ComponentProps<typeof Vic3Ui>> = lazy(
   timeModule(() => import("@/features/vic3/vic3Ui"), "vic3"),
 );
 
-const gameRenderer = (savegame: SaveGameInput | null) => {
+const gameRenderer = (savegame: SaveGameInput | null, inputId: number) => {
   switch (savegame?.kind) {
     case undefined:
       return null;
@@ -67,7 +71,7 @@ const gameRenderer = (savegame: SaveGameInput | null) => {
         kind: "full-screen",
         component: () => (
           <Suspense fallback={null}>
-            <DynamicEu5 save={savegame.data} />
+            <DynamicEu5 key={inputId} save={savegame.data} />
           </Suspense>
         ),
       } as const;
@@ -136,8 +140,12 @@ type GameViewProps = {
 
 export const GameView = ({ children }: GameViewProps) => {
   const savegame = useSaveFileInput();
+  const inputId = useSaveInputId();
   const { resetSaveAnalysis } = useEngineActions();
-  const game = useMemo(() => gameRenderer(savegame), [savegame]);
+  const game = useMemo(
+    () => gameRenderer(savegame, inputId),
+    [savegame, inputId],
+  );
   useEffect(() => resetSaveAnalysis, [resetSaveAnalysis]);
   useWindowMessageDrop();
 
