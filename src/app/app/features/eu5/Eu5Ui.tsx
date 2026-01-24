@@ -8,7 +8,6 @@ import type { Eu5SaveInput } from "./store/useLoadEu5";
 import { CanvasEventHandler } from "./CanvasEventHandler";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Eu5HoverDisplay } from "./Eu5HoverDisplay";
-import { Eu5BrowserWarning } from "./Eu5BrowserWarning";
 import { Eu5ErrorDisplay } from "./Eu5ErrorDisplay";
 
 type Eu5UiProps = {
@@ -73,7 +72,6 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
         <Eu5StoreProvider store={data}>
           <CanvasEventHandler canvasRef={mapCanvas} />
           <Eu5HoverDisplay />
-          <Eu5BrowserWarning />
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-stretch justify-end p-6">
             <div className="pointer-events-auto h-full w-[22rem] max-w-full">
               <Eu5CanvasOverlay />
