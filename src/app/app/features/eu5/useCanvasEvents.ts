@@ -22,6 +22,8 @@ export function useCanvasEvents(
 
       switch (e.type) {
         case "pointerdown":
+          // Manually focus canvas since preventDefault blocks default focus behavior
+          canvasRef.current?.focus();
           engine.trigger.pointerStart(pos, e.pointerId);
           canvasRef.current?.setPointerCapture(e.pointerId);
           break;
@@ -94,8 +96,6 @@ export function useCanvasEvents(
     (e: KeyboardEvent) => {
       if (!engine) return;
       if (e.repeat) return;
-
-      e.preventDefault();
       engine.trigger.keyDown(e.code);
     },
     [engine],
@@ -104,8 +104,6 @@ export function useCanvasEvents(
   const handleKeyUp = useCallback(
     (e: KeyboardEvent) => {
       if (!engine) return;
-
-      e.preventDefault();
       engine.trigger.keyUp(e.code);
     },
     [engine],
@@ -116,34 +114,23 @@ export function useCanvasEvents(
     const canvas = canvasRef.current;
     if (!canvas || !engine) return;
 
-    // Add event listeners
-    canvas.addEventListener("pointerdown", handlePointerEvent);
-    canvas.addEventListener("pointermove", handlePointerEvent);
-    canvas.addEventListener("pointerup", handlePointerEvent);
-    canvas.addEventListener("pointercancel", handlePointerEvent);
-    canvas.addEventListener("mousedown", handleMouseEvent);
-    canvas.addEventListener("mousemove", handleMouseEvent);
-    canvas.addEventListener("mouseup", handleMouseEvent);
-    canvas.addEventListener("mouseleave", handleMouseEvent);
-    canvas.addEventListener("click", handleMouseEvent);
-    canvas.addEventListener("wheel", handleWheel);
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
+    const controller = new AbortController();
+    const options = { signal: controller.signal };
+    canvas.addEventListener("pointerdown", handlePointerEvent, options);
+    canvas.addEventListener("pointermove", handlePointerEvent, options);
+    canvas.addEventListener("pointerup", handlePointerEvent, options);
+    canvas.addEventListener("pointercancel", handlePointerEvent, options);
+    canvas.addEventListener("mousedown", handleMouseEvent, options);
+    canvas.addEventListener("mousemove", handleMouseEvent, options);
+    canvas.addEventListener("mouseup", handleMouseEvent, options);
+    canvas.addEventListener("mouseleave", handleMouseEvent, options);
+    canvas.addEventListener("click", handleMouseEvent, options);
+    canvas.addEventListener("wheel", handleWheel, options);
+    canvas.addEventListener("keydown", handleKeyDown, options);
+    canvas.addEventListener("keyup", handleKeyUp, options);
 
     return () => {
-      // Clean up event listeners
-      canvas.removeEventListener("pointerdown", handlePointerEvent);
-      canvas.removeEventListener("pointermove", handlePointerEvent);
-      canvas.removeEventListener("pointerup", handlePointerEvent);
-      canvas.removeEventListener("pointercancel", handlePointerEvent);
-      canvas.removeEventListener("mousedown", handleMouseEvent);
-      canvas.removeEventListener("mousemove", handleMouseEvent);
-      canvas.removeEventListener("mouseup", handleMouseEvent);
-      canvas.removeEventListener("mouseleave", handleMouseEvent);
-      canvas.removeEventListener("click", handleMouseEvent);
-      canvas.removeEventListener("wheel", handleWheel);
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
+      controller.abort();
     };
   }, [
     handlePointerEvent,

@@ -26,14 +26,22 @@ const TrackingCanvas = memo(
       };
     }, []);
 
+    // Auto-focus canvas on mount so keyboard events work immediately
+    useEffect(() => {
+      if (typeof ref === "object") {
+        ref?.current?.focus();
+      }
+    }, [ref]);
+
     // Need touch-none for pointermove events to work
     // ref: https://stackoverflow.com/a/48254578/433785
     return (
       <canvas
-        className="h-full w-full touch-none"
+        className="h-full w-full touch-none outline-none"
         ref={ref}
         width={600}
         height={400}
+        tabIndex={0}
       />
     );
   }),
