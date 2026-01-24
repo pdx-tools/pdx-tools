@@ -825,8 +825,8 @@ pub fn setup_eu5_wasm() {
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct BufferParts {
-    pub ptr: *const u8,
-    pub len: usize,
+    ptr: *const u8,
+    len: usize,
 }
 
 #[wasm_bindgen]
