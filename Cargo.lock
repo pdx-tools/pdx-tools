@@ -882,6 +882,7 @@ dependencies = [
  "schemas",
  "serde",
  "serde_path_to_error",
+ "sha1_smol",
  "tempfile",
  "thiserror 2.0.12",
  "walkdir",
@@ -3098,6 +3099,12 @@ dependencies = [
  "ryu",
  "serde",
 ]
+
+[[package]]
+name = "sha1_smol"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbfa15b3dddfee50a0fff136974b3e1bde555604ba463834a7eb7deb6417705d"
 
 [[package]]
 name = "sharded-slab"
