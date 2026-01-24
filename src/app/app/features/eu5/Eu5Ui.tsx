@@ -65,10 +65,7 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
         <div className="absolute inset-0 bg-slate-900"></div>
       ) : null}
 
-      <div
-        className="absolute inset-0 overflow-hidden rounded-tr-3xl"
-        ref={mapContainer}
-      >
+      <div className="absolute inset-0 overflow-hidden" ref={mapContainer}>
         <TrackingCanvas ref={mapCanvas} />
       </div>
 
