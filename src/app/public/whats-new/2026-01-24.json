@@ -3,6 +3,7 @@
     "improvements": ["Allow loading new EU5 saves by dropping new file"],
     "fixes": [
       "Avoid swallowing all keyboard events on EU5 saves",
+      "Removed EU5 warning for firefox users",
       "Replace pdx.tools icon with home on eu5 ui",
       "Fix accidental rounded borders on EU5 map canvas"
     ]
