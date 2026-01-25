@@ -44,7 +44,9 @@ pub enum Vic3ErrorKind {
     #[error("file envelope error: {0}")]
     Envelope(#[from] jomini::envelope::EnvelopeError),
 
-    #[error("binary file encountered but token resolver is empty. This may mean a programmatic error where an application was compiled without ironman tokens")]
+    #[error(
+        "binary file encountered but token resolver is empty. This may mean a programmatic error where an application was compiled without ironman tokens"
+    )]
     NoTokens,
 
     #[error("expected the binary integer: {0} to be parsed as a date")]

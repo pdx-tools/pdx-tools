@@ -3,11 +3,11 @@ use models::{
     Vic3CountryGraphData, Vic3CountryGraphDataResponse, Vic3GoodPrice, Vic3GraphData, Vic3Metadata,
 };
 use std::io::Cursor;
-use vic3save::markets::{goods_price_based_on_buildings, Vic3GoodEstimationError};
+use vic3save::markets::{Vic3GoodEstimationError, goods_price_based_on_buildings};
 use vic3save::savefile::Vic3Country;
 use vic3save::stats::{Vic3CountryStatsRateIter, Vic3StatsGDPIter};
-use vic3save::{savefile::Vic3Save, FailedResolveStrategy, Vic3Error, Vic3File};
 use vic3save::{DeserializeVic3, MeltOptions, Vic3Melt};
+use vic3save::{FailedResolveStrategy, Vic3Error, Vic3File, savefile::Vic3Save};
 use wasm_bindgen::prelude::*;
 
 mod models;

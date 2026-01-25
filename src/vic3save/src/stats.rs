@@ -174,7 +174,10 @@ where
 {
     // This should be encoded into the type system, but it's not for some
     // reason.
-    assert!(Idx::N == N, "flattened_iter called with wrong types. Are you destructuring the right amount of elements?");
+    assert!(
+        Idx::N == N,
+        "flattened_iter called with wrong types. Are you destructuring the right amount of elements?"
+    );
     iter.map(|(date, s)| (date, s.flattened()))
 }
 /* ======= */

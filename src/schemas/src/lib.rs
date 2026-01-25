@@ -6,4 +6,4 @@ pub mod resolver;
 
 pub use eu4_generated::rakaly::eu_4 as eu4;
 pub use flatbuffers;
-pub use resolver::{FlatResolver, BREAKPOINT};
+pub use resolver::{BREAKPOINT, FlatResolver};

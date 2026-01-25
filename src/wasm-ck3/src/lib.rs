@@ -1,6 +1,6 @@
 use ck3save::{
-    models::{Gamestate, Metadata},
     Ck3Error, Ck3File, Ck3Melt, DeserializeCk3, FailedResolveStrategy, MeltOptions, SaveHeader,
+    models::{Gamestate, Metadata},
 };
 use serde::Serialize;
 use std::io::Cursor;

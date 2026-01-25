@@ -1,6 +1,6 @@
 use crate::utils;
 use eu4game::shared::{Eu4Parser, Eu4SaveOutput};
-use eu4game::{achievements::AchievementHunter, game::Game, SaveGameQuery};
+use eu4game::{SaveGameQuery, achievements::AchievementHunter, game::Game};
 use eu4save::query::Query;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;

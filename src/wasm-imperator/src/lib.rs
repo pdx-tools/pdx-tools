@@ -1,7 +1,7 @@
 use imperator_save::{
-    models::{Metadata, Save},
     DeserializeImperator, FailedResolveStrategy, ImperatorDate, ImperatorError, ImperatorFile,
     ImperatorMelt, MeltOptions, SaveHeader,
+    models::{Metadata, Save},
 };
 use serde::Serialize;
 use std::io::Cursor;

@@ -2,8 +2,8 @@ use anyhow::Context;
 use clap::Args;
 use eu4game::shared::Eu4Parser;
 use eu4save::{
-    query::{NationEventKind, Query},
     CountryTag, PdsDate,
+    query::{NationEventKind, Query},
 };
 use std::{collections::HashSet, path::PathBuf, process::ExitCode};
 use walkdir::WalkDir;
