@@ -2,7 +2,7 @@ use eu4game::{
     achievements::{AchievementHunter, WeightedScore},
     shared::Eu4Parser,
 };
-use eu4save::{eu4_start_date, models::GameDifficulty, Encoding, PdsDate};
+use eu4save::{Encoding, PdsDate, eu4_start_date, models::GameDifficulty};
 use serde::Serialize;
 use specta::Type;
 use std::io;

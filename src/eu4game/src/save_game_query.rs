@@ -1,5 +1,5 @@
 use crate::game::Game;
-use eu4save::{query::Query, CountryTag};
+use eu4save::{CountryTag, query::Query};
 
 #[derive(Debug)]
 pub struct SaveGameQuery<'a> {

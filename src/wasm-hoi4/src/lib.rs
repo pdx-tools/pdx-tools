@@ -1,5 +1,5 @@
 use hoi4save::{
-    models::Hoi4Save, CountryTag, Encoding, FailedResolveStrategy, Hoi4Error, Hoi4File, MeltOptions,
+    CountryTag, Encoding, FailedResolveStrategy, Hoi4Error, Hoi4File, MeltOptions, models::Hoi4Save,
 };
 use std::{collections::HashMap, io::Cursor};
 use wasm_bindgen::prelude::*;

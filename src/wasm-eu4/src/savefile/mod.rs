@@ -1,18 +1,17 @@
 use crate::tokens;
 use eu4game::{
+    Eu4GameError, SaveGameQuery,
     achievements::AchievementHunter,
     game::Game,
-    shared::{playthrough_id, Eu4Parser},
-    Eu4GameError, SaveGameQuery,
+    shared::{Eu4Parser, playthrough_id},
 };
 use eu4save::{
-    eu4_start_date,
+    CountryTag, Encoding, Eu4Date, PdsDate, ProvinceId, TagResolver, eu4_start_date,
     models::{
         Country, CountryEvent, CountryTechnology, Province, ProvinceEvent, ProvinceEventValue,
         WarEvent, WarHistory,
     },
     query::{LedgerPoint, NationEventKind, NationEvents, Query},
-    CountryTag, Encoding, Eu4Date, PdsDate, ProvinceId, TagResolver,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -64,7 +63,7 @@ impl SaveFileImpl {
                 if meta.date.year() == prev_date.year()
                     && meta.date.month() == prev_date.month() =>
             {
-                return too_soon
+                return too_soon;
             }
             FOF::Yearly if meta.date.year() == prev_date.year() => return too_soon,
             _ => {}
@@ -934,11 +933,7 @@ impl SaveFileImpl {
     pub fn date_to_days(&self, date: &str) -> Option<i32> {
         let date = Eu4Date::parse(date.replace('-', ".")).ok()?;
         let days = self.query.save().game.start_date.days_until(&date);
-        if days < 0 {
-            None
-        } else {
-            Some(days)
-        }
+        if days < 0 { None } else { Some(days) }
     }
 
     pub fn save_info(&self) -> SaveInfo {
@@ -1461,7 +1456,7 @@ impl SaveFileImpl {
         let buildings = province
             .buildings
             .iter()
-            .filter(|(_, &built)| built)
+            .filter(|&(_, &built)| built)
             .map(|(building, _)| building)
             .map(|building| GfxObj {
                 id: building.clone(),
@@ -1759,12 +1754,11 @@ impl SaveFileImpl {
             let offset = usize::from(id.as_u16() * 3);
             if let Some(owner) = prov.owner.as_ref() {
                 let mut color = [106, 108, 128];
-                if desired_countries.contains(owner) {
-                    if let Some(x) = f(prov) {
-                        if let Some(data) = country_colors.get(x) {
-                            color.copy_from_slice(data);
-                        }
-                    }
+                if desired_countries.contains(owner)
+                    && let Some(x) = f(prov)
+                    && let Some(data) = country_colors.get(x)
+                {
+                    color.copy_from_slice(data);
                 }
                 result[offset..offset + 3].copy_from_slice(&color[..]);
             } else {

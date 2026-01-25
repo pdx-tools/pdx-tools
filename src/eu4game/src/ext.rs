@@ -1,4 +1,4 @@
-use eu4save::{models::Province, Eu4Date};
+use eu4save::{Eu4Date, models::Province};
 
 pub trait ProvinceExt {
     fn recently_exploited(&self, at: Eu4Date) -> bool;

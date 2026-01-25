@@ -1,6 +1,6 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use jomini::binary::TokenResolver;
-use rand::{rng, Rng};
+use rand::{Rng, rng};
 use schemas::FlatResolver;
 
 fn token_benchmark(c: &mut Criterion) {

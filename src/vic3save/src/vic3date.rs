@@ -1,6 +1,6 @@
 pub use jomini::common::PdsDate;
 use jomini::common::{Date, DateError, DateFormat, PdsDateFormatter, RawDate};
-use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de, de::Visitor};
 use std::fmt;
 use std::str::FromStr;
 

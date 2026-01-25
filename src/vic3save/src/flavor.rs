@@ -1,4 +1,4 @@
-use jomini::{binary::BinaryFlavor, Encoding, Utf8Encoding};
+use jomini::{Encoding, Utf8Encoding, binary::BinaryFlavor};
 
 /// The Vic3 binary flavor
 #[derive(Debug, Default)]

@@ -9,9 +9,9 @@ use crate::{
 };
 use eu4game::{game::Game, shared::Eu4Parser};
 use eu4save::{
+    Encoding, Eu4File, FailedResolveStrategy, MeltOptions,
     models::{Eu4Save, Meta},
     query::Query,
-    Encoding, Eu4File, FailedResolveStrategy, MeltOptions,
 };
 use models::CountryDevEfficiencies;
 use savefile::{

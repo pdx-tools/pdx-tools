@@ -2,7 +2,7 @@ use mathru::algebra::linear::{
     matrix::{General, Solve, Transpose},
     vector::Vector,
 };
-use serde::{de::Visitor, Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, de::Visitor};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -234,7 +234,9 @@ fn sparse_matrix_to_matrix(sparse: Vec<SparseRow>, max_rank: usize) -> General<f
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum Vic3GoodEstimationError {
-    #[error("The passed in buildings do not have enough variety to compute goods prices. For example you passed in 2 buildings, that use 6 goods between them.")]
+    #[error(
+        "The passed in buildings do not have enough variety to compute goods prices. For example you passed in 2 buildings, that use 6 goods between them."
+    )]
     UnderdefinedGoods,
 
     #[error("Cannot solve equations")]

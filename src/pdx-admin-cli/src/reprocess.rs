@@ -1,10 +1,10 @@
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use applib::parser::{ParseResult, ParsedFile, SavePatch};
 use clap::Args;
 use csv::{Reader, StringRecord};
 use eu4save::models::GameDifficulty;
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
 use std::{
     collections::HashMap,
     fmt,

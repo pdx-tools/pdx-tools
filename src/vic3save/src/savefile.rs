@@ -1,7 +1,7 @@
-use crate::{markets::Vic3Building, stats::Vic3CountryStats, Vic3Date};
+use crate::{Vic3Date, markets::Vic3Building, stats::Vic3CountryStats};
 use serde::{
-    de::{self, DeserializeOwned, Unexpected},
     Deserialize, Deserializer,
+    de::{self, DeserializeOwned, Unexpected},
 };
 use std::{collections::HashMap, fmt, hash::Hash, marker::PhantomData};
 

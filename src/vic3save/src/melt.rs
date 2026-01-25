@@ -1,8 +1,8 @@
-use crate::{flavor::Vic3Flavor, SaveHeader, SaveHeaderKind, Vic3Error, Vic3ErrorKind};
+use crate::{SaveHeader, SaveHeaderKind, Vic3Error, Vic3ErrorKind, flavor::Vic3Flavor};
 use jomini::{
+    TextWriterBuilder,
     binary::{BinaryFlavor, FailedResolveStrategy, Token, TokenReader, TokenResolver},
     common::PdsDate,
-    TextWriterBuilder,
 };
 use std::{
     collections::HashSet,
@@ -338,7 +338,7 @@ where
                     "unsupported lookup token: {:x}",
                     x
                 ))
-                .into())
+                .into());
             }
         }
     }

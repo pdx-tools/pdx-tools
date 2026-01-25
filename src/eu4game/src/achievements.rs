@@ -66,12 +66,11 @@
     - Sonora is an acceptable nation switch to
 */
 use crate::game::Game;
-pub use eu4game_data::{achievements, Achievement, Difficulty};
+pub use eu4game_data::{Achievement, Difficulty, achievements};
 use eu4save::{
-    eu4_start_date,
+    CountryTag, Encoding, Eu4Date, PdsDate, ProvinceId, eu4_start_date,
     models::{Country, Eu4Save, Province, TaxManpowerModifier},
     query::{PlayerHistory, Query},
-    CountryTag, Encoding, Eu4Date, PdsDate, ProvinceId,
 };
 use serde::Serialize;
 use std::collections::HashSet;
@@ -676,10 +675,10 @@ impl<'a> AchievementHunter<'a> {
 
             // Add RYU's non-tributary subjects
             for subject_tag in &ryu_country.subjects {
-                if let Some(subject_country) = self.query.country(subject_tag) {
-                    if subject_country.tribute_type.is_none() {
-                        allowed_countries.insert(*subject_tag);
-                    }
+                if let Some(subject_country) = self.query.country(subject_tag)
+                    && subject_country.tribute_type.is_none()
+                {
+                    allowed_countries.insert(*subject_tag);
                 }
             }
         }

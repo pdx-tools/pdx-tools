@@ -1,13 +1,13 @@
 use crate::Eu4GameError;
 use base64::Engine;
 use eu4save::{
+    CountryTag, Encoding, Eu4Date, Eu4Error, Eu4File, SegmentedResolver,
     file::{Eu4Modeller, Eu4SliceFileKind},
     models::{CountryEvent, Eu4Save, GameState, Meta, Monarch},
     query::Query,
-    CountryTag, Encoding, Eu4Date, Eu4Error, Eu4File, SegmentedResolver,
 };
 use highway::{HighwayHash, HighwayHasher, Key};
-use serde::{de::DeserializeOwned, Deserializer};
+use serde::{Deserializer, de::DeserializeOwned};
 use std::io::Read;
 
 // This file contains code that is shared between the server and wasm, but not strictly relevant to

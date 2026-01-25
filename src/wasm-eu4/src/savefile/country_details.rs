@@ -8,14 +8,14 @@ use super::{
     WarBattles, WarOverview, WarParticipant,
 };
 use crate::savefile::{
-    hex_color, BattleGroundProvince, CountryHistoryYear, CountryMana, CountryReligion,
-    CultureTolerance, MonarchStats, RebelReligion, WarEnd, WarStart,
+    BattleGroundProvince, CountryHistoryYear, CountryMana, CountryReligion, CultureTolerance,
+    MonarchStats, RebelReligion, WarEnd, WarStart, hex_color,
 };
 use eu4game::{ProvinceExt, SaveGameQuery};
 use eu4save::{
+    CountryTag, Eu4Date, PdsDate, ProvinceId,
     models::{Country, CountryEvent, Leader, LeaderKind, Monarch, Province},
     query::{NationEvents, ProvinceOwnerChange, SaveCountry},
-    CountryTag, Eu4Date, PdsDate, ProvinceId,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -917,7 +917,7 @@ impl SaveFileImpl {
                     .iter()
                     .map(move |x| (area.as_str(), &x.country))
             })
-            .filter(|(_area, &owner)| owner == tag)
+            .filter(|&(_area, &owner)| owner == tag)
             .filter_map(|(area, _)| self.game.area_provinces(area))
             .flatten()
             .collect::<HashSet<_>>();
@@ -1031,31 +1031,31 @@ impl SaveFileImpl {
         let mut leaders: HashMap<u32, CountryLeaderRaw> = HashMap::new();
         for (_date, event) in &country.history.events {
             if let Some(monarch) = event.as_monarch() {
-                if let Some(leader) = monarch.leader.as_ref() {
-                    if let Some(id) = leader.id.as_ref() {
-                        leaders.insert(
-                            id.id,
-                            CountryLeaderRaw {
-                                leader,
-                                monarch: Some(MonarchStats {
-                                    adm: monarch.adm as u16,
-                                    dip: monarch.dip as u16,
-                                    mil: monarch.mil as u16,
-                                }),
-                            },
-                        );
-                    }
-                }
-            } else if let CountryEvent::Leader(leader) = event {
-                if let Some(id) = leader.id.as_ref() {
+                if let Some(leader) = monarch.leader.as_ref()
+                    && let Some(id) = leader.id.as_ref()
+                {
                     leaders.insert(
                         id.id,
                         CountryLeaderRaw {
                             leader,
-                            monarch: None,
+                            monarch: Some(MonarchStats {
+                                adm: monarch.adm as u16,
+                                dip: monarch.dip as u16,
+                                mil: monarch.mil as u16,
+                            }),
                         },
                     );
                 }
+            } else if let CountryEvent::Leader(leader) = event
+                && let Some(id) = leader.id.as_ref()
+            {
+                leaders.insert(
+                    id.id,
+                    CountryLeaderRaw {
+                        leader,
+                        monarch: None,
+                    },
+                );
             }
         }
 
