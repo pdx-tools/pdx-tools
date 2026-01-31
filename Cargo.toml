@@ -31,7 +31,7 @@ members = [
     "src/wasm-vic3",
     "src/wasm-eu5",
     "src/wasm-eu5-map"
-]
+, "src/api-screenshot"]
 
 [workspace.dependencies]
 anyhow = "1.0"
