@@ -1,8 +1,8 @@
-use crate::{flavor::Vic3Flavor, melt, MeltOptions, Vic3Error, Vic3ErrorKind};
+use crate::{MeltOptions, Vic3Error, Vic3ErrorKind, flavor::Vic3Flavor, melt};
 use jomini::{
-    binary::{de::BinaryReaderDeserializer, BinaryDeserializerBuilder, TokenResolver},
-    text::de::TextReaderDeserializer,
     Utf8Encoding,
+    binary::{BinaryDeserializerBuilder, TokenResolver, de::BinaryReaderDeserializer},
+    text::de::TextReaderDeserializer,
 };
 use serde::de::DeserializeOwned;
 use std::io::{Read, Write};

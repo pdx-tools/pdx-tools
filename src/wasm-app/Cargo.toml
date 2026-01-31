@@ -2,7 +2,7 @@
 name = "wasm-app"
 version = "0.1.0"
 authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
-edition = "2021"
+edition = "2024"
 publish = false
 
 [lints]

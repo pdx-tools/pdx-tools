@@ -7,8 +7,8 @@ use std::{
     sync::LazyLock,
 };
 use vic3save::{
-    savefile::Vic3Save, BasicTokenResolver, DeserializeVic3, JominiFileKind, MeltOptions, Vic3File,
-    Vic3Melt,
+    BasicTokenResolver, DeserializeVic3, JominiFileKind, MeltOptions, Vic3File, Vic3Melt,
+    savefile::Vic3Save,
 };
 
 static TOKENS: LazyLock<BasicTokenResolver> = LazyLock::new(|| {

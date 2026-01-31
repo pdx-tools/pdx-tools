@@ -4,9 +4,9 @@ use super::{
 };
 use crate::savefile::Interval;
 use eu4save::{
+    CountryTag, Eu4Date, PdsDate, ProvinceId,
     models::{CountryEvent, Province},
     query::ReligionIndex,
-    CountryTag, Eu4Date, PdsDate, ProvinceId,
 };
 use std::{collections::HashMap, str::FromStr};
 use wasm_bindgen::prelude::*;
@@ -382,11 +382,11 @@ impl SaveFileImpl {
                                 secondary_color.copy_from_slice(known_color);
                             }
                         }
-                    } else if let Some(prov) = self.game.get_province(&id) {
-                        if prov.is_habitable() {
-                            primary_color.copy_from_slice(&[94, 94, 94, 128]);
-                            secondary_color.copy_from_slice(&[94, 94, 94, 128]);
-                        }
+                    } else if let Some(prov) = self.game.get_province(&id)
+                        && prov.is_habitable()
+                    {
+                        primary_color.copy_from_slice(&[94, 94, 94, 128]);
+                        secondary_color.copy_from_slice(&[94, 94, 94, 128]);
                     }
                 }
             }
@@ -428,11 +428,11 @@ impl SaveFileImpl {
                                 primary_color[3] = 255;
                             }
                         }
-                    } else if let Some(prov) = self.game.get_province(&id) {
-                        if prov.is_habitable() {
-                            primary_color.copy_from_slice(&[94, 94, 94, 128]);
-                            secondary_color.copy_from_slice(&[94, 94, 94, 128]);
-                        }
+                    } else if let Some(prov) = self.game.get_province(&id)
+                        && prov.is_habitable()
+                    {
+                        primary_color.copy_from_slice(&[94, 94, 94, 128]);
+                        secondary_color.copy_from_slice(&[94, 94, 94, 128]);
                     }
                 }
             }
@@ -475,11 +475,11 @@ impl SaveFileImpl {
 
                         primary_color[..3].copy_from_slice(&color);
                         secondary_color[..3].copy_from_slice(&color);
-                    } else if let Some(prov) = self.game.get_province(&id) {
-                        if prov.is_habitable() {
-                            primary_color.copy_from_slice(&[94, 94, 94, 128]);
-                            secondary_color.copy_from_slice(&[94, 94, 94, 128]);
-                        }
+                    } else if let Some(prov) = self.game.get_province(&id)
+                        && prov.is_habitable()
+                    {
+                        primary_color.copy_from_slice(&[94, 94, 94, 128]);
+                        secondary_color.copy_from_slice(&[94, 94, 94, 128]);
                     }
                 }
             }
@@ -548,11 +548,11 @@ impl SaveFileImpl {
 
                         primary_color[..3].copy_from_slice(&color);
                         secondary_color[..3].copy_from_slice(&color);
-                    } else if let Some(prov) = self.game.get_province(&id) {
-                        if prov.is_habitable() {
-                            primary_color.copy_from_slice(&[94, 94, 94, 128]);
-                            secondary_color.copy_from_slice(&[94, 94, 94, 128]);
-                        }
+                    } else if let Some(prov) = self.game.get_province(&id)
+                        && prov.is_habitable()
+                    {
+                        primary_color.copy_from_slice(&[94, 94, 94, 128]);
+                        secondary_color.copy_from_slice(&[94, 94, 94, 128]);
                     }
                 }
             }

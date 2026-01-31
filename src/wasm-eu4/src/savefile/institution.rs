@@ -1,6 +1,6 @@
 use super::{CountryInstitution, InstitutionCost, SaveFileImpl};
 use eu4game::ProvinceExt;
-use eu4save::{models::Province, CountryTag, ProvinceId};
+use eu4save::{CountryTag, ProvinceId, models::Province};
 use std::{collections::HashMap, ops};
 use wasm_bindgen::JsValue;
 

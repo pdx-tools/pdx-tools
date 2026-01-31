@@ -1,7 +1,7 @@
 use jomini::{TextTape, TextWriterBuilder};
 use std::{
     error::Error,
-    io::{stdout, BufWriter, Write},
+    io::{BufWriter, Write, stdout},
 };
 
 pub fn run(file_data: &[u8]) -> Result<(), Box<dyn Error>> {

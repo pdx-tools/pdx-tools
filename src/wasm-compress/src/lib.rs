@@ -47,13 +47,13 @@ where
         let read = self.reader.read(buf)?;
         self.read_cycle += 1;
         self.current_size += read;
-        if self.read_cycle.is_multiple_of(100) {
-            if let Some(cb) = self.progress {
-                let progress = (self.current_size as f64) / (self.total_size as f64);
-                let this = JsValue::null();
-                let arg = JsValue::from_f64(progress.min(1.0));
-                let _ = cb.call1(&this, &arg);
-            }
+        if self.read_cycle.is_multiple_of(100)
+            && let Some(cb) = self.progress
+        {
+            let progress = (self.current_size as f64) / (self.total_size as f64);
+            let this = JsValue::null();
+            let arg = JsValue::from_f64(progress.min(1.0));
+            let _ = cb.call1(&this, &arg);
         }
 
         Ok(read)
