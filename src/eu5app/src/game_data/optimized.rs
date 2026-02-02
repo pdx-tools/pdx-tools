@@ -3,7 +3,7 @@ use crate::{
     game_data::{GameData, GameDataError, TextureProvider},
 };
 use eu5save::hash::FxHashMap;
-use pdx_map::R16SecondaryMap;
+use pdx_map::{R16, R16SecondaryMap};
 use rawzip::{ZipArchive, ZipSliceArchive};
 
 /// Optimized game data is the pre-built format for distributing EU5 game data.
@@ -175,29 +175,31 @@ impl<R> TextureProvider for OptimizedTextureBundle<R>
 where
     R: AsRef<[u8]>,
 {
-    fn load_west_texture(&mut self, mut dst: Vec<u8>) -> Result<Vec<u8>, GameDataError> {
+    fn load_west_texture(&mut self, mut dst: Vec<R16>) -> Result<Vec<R16>, GameDataError> {
         let size = self.west_texture_size();
         if dst.len() != size {
-            dst = vec![0u8; size];
+            dst = vec![R16::new(0); size];
         }
-        self.read_entry(self.west_texture.1, &mut dst)?;
+        self.read_entry(self.west_texture.1, bytemuck::cast_slice_mut(&mut dst))?;
         Ok(dst)
     }
 
-    fn load_east_texture(&mut self, mut dst: Vec<u8>) -> Result<Vec<u8>, GameDataError> {
+    fn load_east_texture(&mut self, mut dst: Vec<R16>) -> Result<Vec<R16>, GameDataError> {
         let size = self.east_texture_size();
         if dst.len() != size {
-            dst = vec![0u8; size];
+            dst = vec![R16::new(0); size];
         }
-        self.read_entry(self.east_texture.1, &mut dst)?;
+        self.read_entry(self.east_texture.1, bytemuck::cast_slice_mut(&mut dst))?;
         Ok(dst)
     }
 
     fn west_texture_size(&self) -> usize {
-        self.west_texture.0 as usize
+        // Divide by 2 since each R16 is 2 bytes
+        (self.west_texture.0 as usize) / 2
     }
 
     fn east_texture_size(&self) -> usize {
-        self.east_texture.0 as usize
+        // Divide by 2 since each R16 is 2 bytes
+        (self.east_texture.0 as usize) / 2
     }
 }

@@ -80,7 +80,7 @@ where
             .start()?;
         let encoder = pdx_zstd::Encoder::new(&mut entry, 7)?;
         let mut writer = config.wrap(encoder);
-        writer.write_all(data)?;
+        writer.write_all(bytemuck::cast_slice(data))?;
         let (encoder, out) = writer.finish()?;
         encoder.finish()?;
         entry.finish(out)?;

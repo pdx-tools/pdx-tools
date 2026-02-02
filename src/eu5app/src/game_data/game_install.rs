@@ -1,7 +1,7 @@
 mod parsing;
 mod raw;
 
-use pdx_map::R16Palette;
+use pdx_map::{R16, R16Palette};
 pub use raw::{
     GameFileSource, GameInstallationDirectory, GameTextureBundle, RawGameData, ZipArchiveData,
 };
@@ -72,11 +72,11 @@ impl Eu5GameInstall {
 }
 
 impl TextureProvider for Eu5GameInstall {
-    fn load_west_texture(&mut self, dst: Vec<u8>) -> Result<Vec<u8>, GameDataError> {
+    fn load_west_texture(&mut self, dst: Vec<R16>) -> Result<Vec<R16>, GameDataError> {
         self.textures.load_west_texture(dst)
     }
 
-    fn load_east_texture(&mut self, dst: Vec<u8>) -> Result<Vec<u8>, GameDataError> {
+    fn load_east_texture(&mut self, dst: Vec<R16>) -> Result<Vec<R16>, GameDataError> {
         self.textures.load_east_texture(dst)
     }
 

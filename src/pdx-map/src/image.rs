@@ -3,6 +3,8 @@ use std::{
     ops::{Index, IndexMut},
 };
 
+use bytemuck::{Pod, Zeroable};
+
 /// 24-bit RGB color
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Rgb([u8; 3]);
@@ -36,7 +38,8 @@ impl From<[u8; 3]> for Rgb {
 }
 
 /// 16-bit Red channel, used as an location index in Paradox map textures
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Pod, Zeroable)]
+#[repr(transparent)]
 pub struct R16(u16);
 
 impl R16 {
@@ -138,23 +141,21 @@ impl<T> IndexMut<R16> for R16SecondaryMap<T> {
 ///
 /// Will panic if there are more than 65536 unique color coded locations /
 /// provinces in the image.
-pub fn split_rgb8_to_indexed_r16(img: &[u8], width: u32) -> (Vec<u8>, Vec<u8>, R16Palette) {
+pub fn split_rgb8_to_indexed_r16(img: &[u8], width: u32) -> (Vec<R16>, Vec<R16>, R16Palette) {
     split_rgb_to_indexed_r16::<3>(img, width)
 }
 
 /// See [`split_rgb_to_indexed_r16`] for details.
 ///
 /// Alpha channel is ignored.
-pub fn split_rgba8_to_indexed_r16(img: &[u8], width: u32) -> (Vec<u8>, Vec<u8>, R16Palette) {
+pub fn split_rgba8_to_indexed_r16(img: &[u8], width: u32) -> (Vec<R16>, Vec<R16>, R16Palette) {
     split_rgb_to_indexed_r16::<4>(img, width)
 }
 
 fn split_rgb_to_indexed_r16<const SRC_DEPTH: usize>(
     img: &[u8],
     width: u32,
-) -> (Vec<u8>, Vec<u8>, R16Palette) {
-    const DST_DEPTH: usize = 2; // R16
-
+) -> (Vec<R16>, Vec<R16>, R16Palette) {
     assert_eq!(width % 2, 0, "Image width must be even to split West/East");
 
     let width = width as usize;
@@ -169,8 +170,8 @@ fn split_rgb_to_indexed_r16<const SRC_DEPTH: usize>(
     let half_width = width / 2;
 
     // Pre-allocate destination buffers
-    let mut west_data = vec![0u8; half_width * height * DST_DEPTH];
-    let mut east_data = vec![0u8; half_width * height * DST_DEPTH];
+    let mut west_data = vec![R16::new(0); half_width * height];
+    let mut east_data = vec![R16::new(0); half_width * height];
 
     // Use direct indexing LUT for fast color to index mapping
     // 2^24 = 16,777,216. At 2 bytes per entry, this is ~32MB of RAM.
@@ -192,10 +193,9 @@ fn split_rgb_to_indexed_r16<const SRC_DEPTH: usize>(
         // Split row into West and East source pixels
         let (west_row, east_row) = row.split_at(half_width * SRC_DEPTH);
 
-        // Calculate destination slices for this specific row using chunks
-        // This avoids the manual index math inside the pixel loop
-        let row_offset = y * half_width * DST_DEPTH;
-        let row_len = half_width * DST_DEPTH;
+        // Calculate destination slices for this specific row
+        let row_offset = y * half_width;
+        let row_len = half_width;
 
         let west_dst = &mut west_data[row_offset..row_offset + row_len];
         let east_dst = &mut east_data[row_offset..row_offset + row_len];
@@ -203,8 +203,7 @@ fn split_rgb_to_indexed_r16<const SRC_DEPTH: usize>(
         // Process both sides
         for (src_row, dst_row) in [(west_row, west_dst), (east_row, east_dst)] {
             let (rgb, _) = src_row.as_chunks::<SRC_DEPTH>();
-            let (r16_dst, _) = dst_row.as_chunks_mut::<DST_DEPTH>();
-            for (pixel, dst_chunk) in rgb.iter().zip(r16_dst.iter_mut()) {
+            for (pixel, dst_r16) in rgb.iter().zip(dst_row.iter_mut()) {
                 // Pack RGB bytes without endianness dependencies
                 let key = (pixel[0] as u32) << 16 | (pixel[1] as u32) << 8 | pixel[2] as u32;
                 let key_rgb = Rgb([pixel[0], pixel[1], pixel[2]]);
@@ -213,7 +212,7 @@ fn split_rgb_to_indexed_r16<const SRC_DEPTH: usize>(
                 if let Some((last_key, last_idx)) = last_color_cache
                     && last_key == key_rgb
                 {
-                    dst_chunk.copy_from_slice(&last_idx.to_le_bytes());
+                    *dst_r16 = R16::new(last_idx);
                     continue;
                 }
 
@@ -235,7 +234,7 @@ fn split_rgb_to_indexed_r16<const SRC_DEPTH: usize>(
 
                 // Update cache and write to destination
                 last_color_cache = Some((key_rgb, idx));
-                dst_chunk.copy_from_slice(&idx.to_le_bytes());
+                *dst_r16 = R16::new(idx);
             }
         }
     }
@@ -333,12 +332,9 @@ mod tests {
         create_rgb8_image(width, height, &[(r, g, b)])
     }
 
-    /// Parse R16 byte array into Vec<u16> indices (little-endian)
-    fn parse_r16_indices(r16_data: &[u8]) -> Vec<u16> {
-        r16_data
-            .chunks(2)
-            .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
-            .collect()
+    /// Parse R16 array into Vec<u16> indices
+    fn parse_r16_indices(r16_data: &[R16]) -> Vec<u16> {
+        r16_data.iter().map(|r| r.value()).collect()
     }
 
     /// Extract RGB color from RGB8 image at (x, y)
@@ -363,8 +359,8 @@ mod tests {
         let (west_data, east_data, palette) = split_rgb_to_indexed_r16::<3>(&img, width);
 
         // Verify output sizes
-        assert_eq!(west_data.len(), 2 * 2 * 2); // 2 pixels wide, 2 high, 2 bytes per
-        assert_eq!(east_data.len(), 2 * 2 * 2);
+        assert_eq!(west_data.len(), 2 * 2); // 2 pixels wide, 2 high
+        assert_eq!(east_data.len(), 2 * 2);
 
         // Verify palette size
         assert_eq!(palette.iter().count(), 2);
@@ -391,8 +387,8 @@ mod tests {
 
         let (west_data, east_data, palette) = split_rgb_to_indexed_r16::<4>(&data, width);
 
-        assert_eq!(west_data, vec![0u8, 0u8]); // Red is index 0
-        assert_eq!(east_data, vec![1u8, 0u8]); // Blue is index 1
+        assert_eq!(west_data, vec![R16::new(0)]); // Red is index 0
+        assert_eq!(east_data, vec![R16::new(1)]); // Blue is index 1
 
         let expected_palette_colors = vec![Rgb::new(255, 0, 0), Rgb::new(0, 0, 255)];
         let expected_palette = R16Palette::new(expected_palette_colors);
@@ -407,8 +403,8 @@ mod tests {
 
         let (west_data, east_data, palette) = split_rgb_to_indexed_r16::<3>(&img, width);
 
-        assert_eq!(west_data.len(), 2);
-        assert_eq!(east_data.len(), 2);
+        assert_eq!(west_data.len(), 1);
+        assert_eq!(east_data.len(), 1);
         assert_eq!(palette.iter().count(), 2);
 
         let west_indices = parse_r16_indices(&west_data);
@@ -424,8 +420,8 @@ mod tests {
 
         let (west_data, east_data, palette) = split_rgb_to_indexed_r16::<3>(&img, width);
 
-        assert_eq!(west_data.len(), 4 * 8 * 2);
-        assert_eq!(east_data.len(), 4 * 8 * 2);
+        assert_eq!(west_data.len(), 4 * 8);
+        assert_eq!(east_data.len(), 4 * 8);
 
         let palette_vec: Vec<_> = palette.iter().collect();
         assert_eq!(palette_vec.len(), 1);

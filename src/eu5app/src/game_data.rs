@@ -8,7 +8,7 @@ pub use error::GameDataError;
 pub use optimized::OptimizedGameBundle;
 
 use eu5save::hash::FxHashMap;
-use pdx_map::R16SecondaryMap;
+use pdx_map::{R16, R16SecondaryMap};
 
 use crate::{GameLocation, GameSpatialLocation};
 
@@ -62,11 +62,11 @@ impl std::fmt::Debug for GameData {
 pub trait TextureProvider {
     /// Load west hemisphere texture, returning owned data.
     /// Pass an empty Vec for new allocation, or pass existing Vec to reuse buffer.
-    fn load_west_texture(&mut self, dst: Vec<u8>) -> Result<Vec<u8>, GameDataError>;
+    fn load_west_texture(&mut self, dst: Vec<R16>) -> Result<Vec<R16>, GameDataError>;
 
     /// Load east hemisphere texture, returning owned data.
     /// Pass an empty Vec for new allocation, or pass existing Vec to reuse buffer.
-    fn load_east_texture(&mut self, dst: Vec<u8>) -> Result<Vec<u8>, GameDataError>;
+    fn load_east_texture(&mut self, dst: Vec<R16>) -> Result<Vec<R16>, GameDataError>;
 
     /// Get expected size of west texture.
     fn west_texture_size(&self) -> usize;

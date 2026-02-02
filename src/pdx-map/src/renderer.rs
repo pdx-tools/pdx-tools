@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use wgpu::SurfaceTarget;
 
 use crate::error::RenderError;
+use crate::image::R16;
 use crate::{GpuLocationIdx, LocationArrays, PhysicalSize, ViewportBounds, WorldPoint};
 
 /// A drawable layer that can be composed into the main map render pass
@@ -167,22 +168,23 @@ impl GpuContext {
     )]
     pub fn create_texture(
         &self,
-        texture_data: &[u8],
-        width: u32,
-        height: u32,
+        texture_data: &[R16],
+        size: PhysicalSize<u32>,
         label: &'static str,
     ) -> MapTexture {
         // Validate dimensions
         assert!(
-            width <= MAX_TEXTURE_DIMENSION && height <= MAX_TEXTURE_DIMENSION,
-            "Texture dimensions ({width}x{height}) exceed maximum supported dimension ({MAX_TEXTURE_DIMENSION})"
+            size.width <= MAX_TEXTURE_DIMENSION && size.height <= MAX_TEXTURE_DIMENSION,
+            "Texture dimensions ({}x{}) exceed maximum supported dimension ({MAX_TEXTURE_DIMENSION})",
+            size.width,
+            size.height
         );
 
         let texture = self.gpu.device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
             size: wgpu::Extent3d {
-                width,
-                height,
+                width: size.width,
+                height: size.height,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -202,15 +204,15 @@ impl GpuContext {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            texture_data,
+            bytemuck::cast_slice(texture_data),
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(2 * width), // R16 = 2 bytes per pixel
-                rows_per_image: Some(height),
+                bytes_per_row: Some(2 * size.width), // R16 = 2 bytes per pixel
+                rows_per_image: Some(size.height),
             },
             wgpu::Extent3d {
-                width,
-                height,
+                width: size.width,
+                height: size.height,
                 depth_or_array_layers: 1,
             },
         );
@@ -502,12 +504,11 @@ impl GpuSurfaceContext {
     /// Create an R16Uint storage texture for location index data
     pub fn create_texture(
         &self,
-        texture_data: &[u8],
-        width: u32,
-        height: u32,
+        texture_data: &[R16],
+        size: PhysicalSize<u32>,
         label: &'static str,
     ) -> MapTexture {
-        self.core.create_texture(texture_data, width, height, label)
+        self.core.create_texture(texture_data, size, label)
     }
 
     pub fn as_ref(&self) -> GpuSurfaceContextRef<'_> {

@@ -15,13 +15,13 @@ use tracing::instrument;
 ///
 /// Stores textures in memory as R16 format.
 pub struct GameTextureBundle {
-    west_texture: Vec<u8>,
-    east_texture: Vec<u8>,
+    west_texture: Vec<R16>,
+    east_texture: Vec<R16>,
     palette: R16Palette,
 }
 
 impl GameTextureBundle {
-    pub fn new(west_texture: Vec<u8>, east_texture: Vec<u8>, palette: R16Palette) -> Self {
+    pub fn new(west_texture: Vec<R16>, east_texture: Vec<R16>, palette: R16Palette) -> Self {
         Self {
             west_texture,
             east_texture,
@@ -29,11 +29,11 @@ impl GameTextureBundle {
         }
     }
 
-    pub fn west_data(&self) -> &[u8] {
+    pub fn west_data(&self) -> &[R16] {
         self.west_texture.as_slice()
     }
 
-    pub fn east_data(&self) -> &[u8] {
+    pub fn east_data(&self) -> &[R16] {
         self.east_texture.as_slice()
     }
 
@@ -89,12 +89,10 @@ impl GameTextureBundle {
 
         for (idx, data) in [self.west_data(), self.east_data()].iter().enumerate() {
             let offset_x = width * (idx as u32);
-            let (chunks, _) = data.as_chunks::<2>();
-            for (idx, chunk) in chunks.iter().enumerate() {
-                let color_idx = R16::from(*chunk);
-                location_pixels_count[color_idx] += 1;
-                location_x[color_idx] += offset_x + ((idx as u32) % width);
-                location_y[color_idx] += (idx as u32) / width;
+            for (idx, r16) in data.iter().enumerate() {
+                location_pixels_count[*r16] += 1;
+                location_x[*r16] += offset_x + ((idx as u32) % width);
+                location_y[*r16] += (idx as u32) / width;
             }
         }
 
@@ -142,12 +140,12 @@ impl GameTextureBundle {
 }
 
 impl TextureProvider for GameTextureBundle {
-    fn load_west_texture(&mut self, mut dst: Vec<u8>) -> Result<Vec<u8>, GameDataError> {
+    fn load_west_texture(&mut self, mut dst: Vec<R16>) -> Result<Vec<R16>, GameDataError> {
         std::mem::swap(&mut dst, &mut self.west_texture);
         Ok(dst)
     }
 
-    fn load_east_texture(&mut self, mut dst: Vec<u8>) -> Result<Vec<u8>, GameDataError> {
+    fn load_east_texture(&mut self, mut dst: Vec<R16>) -> Result<Vec<R16>, GameDataError> {
         std::mem::swap(&mut dst, &mut self.east_texture);
         Ok(dst)
     }

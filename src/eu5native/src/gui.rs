@@ -8,7 +8,7 @@ use eu5app::{
 use eu5save::{BasicTokenResolver, Eu5File, models::Gamestate};
 use pdx_map::{
     Clock, GpuSurfaceContext, InteractionController, KeyboardKey, LogicalPoint, LogicalSize,
-    MapViewController, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
+    MapViewController, PhysicalSize, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 use tokio::runtime::Runtime;
@@ -355,8 +355,8 @@ fn load_game_bundle(game_data: PathBuf) -> Result<(TextureData, GameData)> {
 
 /// Pre-extracted texture data to avoid re-opening game bundle
 struct TextureData {
-    west: Vec<u8>,
-    east: Vec<u8>,
+    west: Vec<pdx_map::R16>,
+    east: Vec<pdx_map::R16>,
 }
 
 struct App {
@@ -682,8 +682,9 @@ fn init_renderer(
     texture_data: &TextureData,
 ) -> (MapViewController, InteractionController) {
     let (tile_width, tile_height) = eu5app::tile_dimensions();
-    let west_texture = gpu_ctx.create_texture(&texture_data.west, tile_width, tile_height, "West");
-    let east_texture = gpu_ctx.create_texture(&texture_data.east, tile_width, tile_height, "East");
+    let size = PhysicalSize::new(tile_width, tile_height);
+    let west_texture = gpu_ctx.create_texture(&texture_data.west, size, "West");
+    let east_texture = gpu_ctx.create_texture(&texture_data.east, size, "East");
 
     // Create surface pipeline
     let size = window.inner_size();

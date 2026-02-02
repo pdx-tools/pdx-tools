@@ -5,7 +5,7 @@ use eu5app::{
 use pdx_map::{
     CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, InteractionController, KeyboardKey,
     LocationArrays, LocationFlags, LogicalPoint, LogicalSize, MapTexture, MapViewController,
-    MouseButton, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
+    MouseButton, PhysicalSize, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
 };
 use std::time::Duration;
 use wasm_bindgen::prelude::*;
@@ -54,12 +54,10 @@ impl Eu5CanvasSurface {
         data: &Eu5WasmTextureData,
     ) -> Result<Eu5WasmTexture, JsError> {
         let (tile_width, tile_height) = tile_dimensions();
-        let view = self.pipeline_components.create_texture(
-            &data.data,
-            tile_width,
-            tile_height,
-            "West Texture Input",
-        );
+        let size = PhysicalSize::new(tile_width, tile_height);
+        let view = self
+            .pipeline_components
+            .create_texture(&data.data, size, "West Texture Input");
         Ok(Eu5WasmTexture { data: view })
     }
 
@@ -69,12 +67,10 @@ impl Eu5CanvasSurface {
         data: &Eu5WasmTextureData,
     ) -> Result<Eu5WasmTexture, JsError> {
         let (tile_width, tile_height) = tile_dimensions();
-        let view = self.pipeline_components.create_texture(
-            &data.data,
-            tile_width,
-            tile_height,
-            "East Texture Input",
-        );
+        let size = PhysicalSize::new(tile_width, tile_height);
+        let view = self
+            .pipeline_components
+            .create_texture(&data.data, size, "East Texture Input");
         Ok(Eu5WasmTexture { data: view })
     }
 }
@@ -83,7 +79,7 @@ impl Eu5CanvasSurface {
 pub struct Eu5WasmMapRenderer {
     controller: MapViewController,
     input: InteractionController,
-    picker: pdx_map::MapPickerSingle,
+    picker: pdx_map::MapPicker,
     location_arrays: LocationArrays,
     clock: Box<dyn Clock>,
     last_tick: Option<Duration>,
@@ -115,7 +111,7 @@ impl Eu5WasmMapRenderer {
 
         let tile_width = renderer.tile_width();
         let tile_height = renderer.tile_height();
-        let picker = pdx_map::MapPickerSingle::new(west_data.data, east_data.data, tile_width * 2);
+        let picker = pdx_map::MapPicker::new(west_data.data, east_data.data, tile_width * 2);
         let mut controller =
             MapViewController::new(renderer, display.logical_size(), display.scale_factor());
 
@@ -387,7 +383,7 @@ impl Eu5WasmGameBundle {
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct Eu5WasmTextureData {
-    data: Vec<u8>,
+    data: Vec<pdx_map::R16>,
 }
 
 #[wasm_bindgen]

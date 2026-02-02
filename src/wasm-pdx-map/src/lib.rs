@@ -1,7 +1,7 @@
 use pdx_map::{
     CanvasDimensions, Clock, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
     InteractionController, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
-    MapTexture, MapViewController, MouseButton, PhysicalSize, QueuedWorkFuture, R16Palette,
+    MapTexture, MapViewController, MouseButton, PhysicalSize, QueuedWorkFuture, R16, R16Palette,
     RenderError, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
 };
 use serde::{Deserialize, Serialize};
@@ -11,8 +11,8 @@ use web_sys::OffscreenCanvas;
 
 #[wasm_bindgen]
 pub struct PdxMapImage {
-    west: Vec<u8>,
-    east: Vec<u8>,
+    west: Vec<R16>,
+    east: Vec<R16>,
     palette: R16Palette,
     tile_width: u32,
     tile_height: u32,
@@ -58,23 +58,19 @@ impl PdxCanvasSurface {
 
     #[wasm_bindgen]
     pub fn upload_west_texture(&self, image: &PdxMapImage) -> Result<PdxTexture, JsError> {
-        let texture = self.pipeline_components.create_texture(
-            &image.west,
-            image.tile_width,
-            image.tile_height,
-            "West Texture Input",
-        );
+        let size = PhysicalSize::new(image.tile_width, image.tile_height);
+        let texture =
+            self.pipeline_components
+                .create_texture(&image.west, size, "West Texture Input");
         Ok(PdxTexture { data: texture })
     }
 
     #[wasm_bindgen]
     pub fn upload_east_texture(&self, image: &PdxMapImage) -> Result<PdxTexture, JsError> {
-        let texture = self.pipeline_components.create_texture(
-            &image.east,
-            image.tile_width,
-            image.tile_height,
-            "East Texture Input",
-        );
+        let size = PhysicalSize::new(image.tile_width, image.tile_height);
+        let texture =
+            self.pipeline_components
+                .create_texture(&image.east, size, "East Texture Input");
         Ok(PdxTexture { data: texture })
     }
 }
