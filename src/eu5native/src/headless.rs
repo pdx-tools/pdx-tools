@@ -6,7 +6,7 @@ use eu5app::{
     game_data::{TextureProvider, game_install::Eu5GameInstall},
 };
 use eu5save::{BasicTokenResolver, Eu5File};
-use pdx_map::{StitchedImage, ViewportBounds, WorldSize};
+use pdx_map::{PhysicalSize, StitchedImage, ViewportBounds, WorldSize};
 use tracing::{info, info_span};
 
 /// Validate that width and height are both provided or both absent
@@ -85,13 +85,12 @@ async fn run_headless_async(args: Args) -> Result<(), Box<dyn std::error::Error>
     let texture_data = game_bundle.load_west_texture(Vec::new())?;
 
     let (tile_width, tile_height) = eu5app::tile_dimensions();
-    let west_view =
-        pipeline_components.create_texture(&texture_data, tile_width, tile_height, "West Texture");
+    let size = PhysicalSize::new(tile_width, tile_height);
+    let west_view = pipeline_components.create_texture(&texture_data, size, "West Texture");
 
     let texture_data = game_bundle.load_east_texture(Vec::new())?;
 
-    let east_view =
-        pipeline_components.create_texture(&texture_data, tile_width, tile_height, "East Texture");
+    let east_view = pipeline_components.create_texture(&texture_data, size, "East Texture");
 
     let map_app = Eu5Workspace::new(save.take_gamestate(), game_bundle.into_game_data())?;
     let save_date = map_app.gamestate().metadata().date.date_fmt().to_string();

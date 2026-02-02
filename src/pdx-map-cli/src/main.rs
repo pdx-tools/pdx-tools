@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, anyhow, bail};
 use clap::Parser;
-use pdx_map::{GpuColor, StitchedImage, ViewportBounds};
+use pdx_map::{GpuColor, PhysicalSize, StitchedImage, ViewportBounds};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
@@ -57,8 +57,8 @@ struct LocationRecord {
 }
 
 struct SplitImageData {
-    west_data: Vec<u8>,
-    east_data: Vec<u8>,
+    west_data: Vec<pdx_map::R16>,
+    east_data: Vec<pdx_map::R16>,
     tile_width: u32,
     tile_height: u32,
     palette: pdx_map::R16Palette,
@@ -257,18 +257,9 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
         start.elapsed().as_secs_f64()
     );
     let start = Instant::now();
-    let west_view = gpu.create_texture(
-        &image_data.west_data,
-        image_data.tile_width,
-        image_data.tile_height,
-        "West Texture",
-    );
-    let east_view = gpu.create_texture(
-        &image_data.east_data,
-        image_data.tile_width,
-        image_data.tile_height,
-        "East Texture",
-    );
+    let size = PhysicalSize::new(image_data.tile_width, image_data.tile_height);
+    let west_view = gpu.create_texture(&image_data.west_data, size, "West Texture");
+    let east_view = gpu.create_texture(&image_data.east_data, size, "East Texture");
     println!(
         "Created GPU textures ({:.2}s)",
         start.elapsed().as_secs_f64()

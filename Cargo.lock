@@ -2390,6 +2390,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "attohttpc",
+ "bytemuck",
  "clap",
  "csv",
  "eu4game-data",
