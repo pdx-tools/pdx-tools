@@ -1,0 +1,23 @@
+[package]
+name = "bench"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[lib]
+bench = false
+
+[dependencies]
+criterion = { workspace = true }
+jomini = { workspace = true }
+pdx-map = { workspace = true }
+rand = { workspace = true }
+schemas = { workspace = true }
+zstd = { workspace = true }
+
+[[bench]]
+name = "pdx-bench"
+harness = false
+path = "src/bench.rs"

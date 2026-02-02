@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "src/api",
     "src/applib",
+    "src/bench",
     "src/bumpalo-serde-derive",
     "src/bumpalo-serde",
     "src/eu4game-data",
@@ -24,13 +25,13 @@ members = [
     "src/wasm-ck3",
     "src/wasm-compress",
     "src/wasm-eu4",
+    "src/wasm-eu5-map",
+    "src/wasm-eu5",
     "src/wasm-hoi4",
     "src/wasm-imperator",
     "src/wasm-pdx-core",
     "src/wasm-pdx-map",
     "src/wasm-vic3",
-    "src/wasm-eu5",
-    "src/wasm-eu5-map"
 ]
 
 [workspace.dependencies]
@@ -45,7 +46,7 @@ bumpalo-serde-derive = { path = "src/bumpalo-serde-derive" }
 bytemuck = { version = "1.24" }
 ck3save = { git = "https://github.com/rakaly/ck3save.git" }
 clap = "4.5"
-criterion = "0.5"
+criterion = "0.8"
 csv = "1.3"
 erased-serde = "0.4.5"
 eu4game = { path = "src/eu4game", default-features = false }
