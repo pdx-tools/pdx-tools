@@ -319,28 +319,80 @@ pub struct AabbIndex {
 
 impl AabbIndex {
     fn from_map_data(map: &MapData) -> Self {
-        let half_width = map.half_width();
-        let height = map.height();
+        let half_width = map.half_width() as usize;
 
-        let mut aabbs: Vec<AABB> = vec![AABB::empty(); u16::MAX as usize + 1];
-        let mut max_location_idx = 0u16;
+        let mut min_x = vec![u16::MAX; u16::MAX as usize + 1];
+        let mut min_y = vec![u16::MAX; u16::MAX as usize + 1];
+        let mut max_x = vec![0u16; u16::MAX as usize + 1];
+        let mut max_y = vec![0u16; u16::MAX as usize + 1];
+        let mut max_location = R16::new(0);
 
-        for (x_offset, data) in [(0, map.west_data()), (half_width, map.east_data())] {
-            for row in 0..height {
-                let y = row as u16;
-                for col in 0..half_width {
-                    let x = (col + x_offset) as u16;
-                    let idx = (row * half_width + col) as usize;
-                    let loc_idx = data[idx].value();
+        // This function is optimized via a Run-length scan per row. Instead of
+        // going to memory for every pixel, we just keep track of the most
+        // recent value for each row. This resulted in a 5x speedup going from
+        // 20ms to create the index for the EU4 map to 4ms.
+        let mut update_run = |loc: R16, start_x: u16, end_x: u16, y: u16| {
+            let idx = loc.value() as usize;
+            min_x[idx] = min_x[idx].min(start_x);
+            max_x[idx] = max_x[idx].max(end_x);
+            min_y[idx] = min_y[idx].min(y);
+            max_y[idx] = max_y[idx].max(y);
+            max_location = max_location.max(loc);
+        };
 
-                    max_location_idx = max_location_idx.max(loc_idx);
-                    aabbs[loc_idx as usize].expand_to(WorldPoint::new(x, y));
+        // Process west hemisphere - chunks_exact splits data into rows
+        for (row, chunk) in map.west_data().chunks_exact(half_width).enumerate() {
+            let y = row as u16;
+            if chunk.is_empty() {
+                continue;
+            }
+
+            let mut run_id = chunk[0];
+            let mut run_start = 0u16;
+            for (col, r16) in chunk.iter().enumerate().skip(1) {
+                if *r16 != run_id {
+                    let end_x = (col - 1) as u16;
+                    update_run(run_id, run_start, end_x, y);
+                    run_id = *r16;
+                    run_start = col as u16;
                 }
             }
+
+            let end_x = (half_width - 1) as u16;
+            update_run(run_id, run_start, end_x, y);
         }
 
-        // Truncate to actual size
-        aabbs.truncate(max_location_idx as usize + 1);
+        // Process east hemisphere - add x_offset to column
+        for (row, chunk) in map.east_data().chunks_exact(half_width).enumerate() {
+            let y = row as u16;
+            if chunk.is_empty() {
+                continue;
+            }
+
+            let x_offset = half_width as u16;
+            let mut run_id = chunk[0];
+            let mut run_start = x_offset;
+            for (col, r16) in chunk.iter().enumerate().skip(1) {
+                if *r16 != run_id {
+                    let end_x = x_offset + (col as u16) - 1;
+                    update_run(run_id, run_start, end_x, y);
+                    run_id = *r16;
+                    run_start = x_offset + col as u16;
+                }
+            }
+
+            let end_x = x_offset + (half_width as u16) - 1;
+            update_run(run_id, run_start, end_x, y);
+        }
+
+        let aabbs = (0..=max_location.value() as usize)
+            .map(|idx| {
+                AABB::new(
+                    WorldPoint::new(min_x[idx], min_y[idx]),
+                    WorldPoint::new(max_x[idx], max_y[idx]),
+                )
+            })
+            .collect();
 
         Self { aabbs }
     }
