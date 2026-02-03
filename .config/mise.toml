@@ -10,6 +10,9 @@
 "ubi:WebAssembly/binaryen" = { version = "version_125", extract_all = "true", bin_path = "bin" }
 "vfox:mise-plugins/vfox-clang" = { version = "14.0.6", os = ["linux", "macos"] }
 
+[env]
+_.path = ['{{config_root}}/.config/bin']
+
 [tasks."build:cargo-wasm"]
 run = ["cargo build --release --no-default-features --features zstd_c_fat_lto --features zstd_c --target wasm32-unknown-unknown -p wasm-*"]
 run_windows = ["cargo build --release --no-default-features --features zstd_rust --target wasm32-unknown-unknown -p wasm-*"]
@@ -312,3 +315,11 @@ run = "cargo build --package pdx-tools-api --release --target x86_64-unknown-lin
 
 [tasks."release:build"]
 depends = ["build:wasm", "optimize:wasm:*", "build:app", "release:build:api", "release:build:docker"]
+
+[tasks."bench:wasm"]
+description = "Run benchmarks in wasm"
+run = [
+    "rustup target add wasm32-wasip1",
+    "cargo build --bench pdx-bench --profile bench -p bench --target wasm32-wasip1",
+    "mise tool-stub ./.config/bin/wasmer run --volume /workspaces/pdx-tools/ ./target/wasm32-wasip1/release/deps/pdx_bench-*.wasm -- --bench",
+]

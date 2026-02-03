@@ -1,0 +1,4 @@
+#!/usr/bin/env -S mise tool-stub
+
+tool = "ubi:wasmerio/wasmer"
+version = "7.0.1"

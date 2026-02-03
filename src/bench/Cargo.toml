@@ -17,6 +17,9 @@ rand = { workspace = true }
 schemas = { workspace = true }
 zstd = { workspace = true }
 
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+criterion = { workspace = true, default-features = true }
+
 [[bench]]
 name = "pdx-bench"
 harness = false
