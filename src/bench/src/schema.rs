@@ -1,10 +1,15 @@
-use criterion::{Criterion, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group};
 use jomini::binary::TokenResolver;
 use rand::{Rng, rng};
 use schemas::FlatResolver;
+use std::path::PathBuf;
 
-fn token_benchmark(c: &mut Criterion) {
-    let data = std::fs::read("assets/tokens/eu4-raw.bin").expect("Failed to read token file");
+fn token_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/tokens/eu4-raw.bin")
+}
+
+pub fn token_benchmark(c: &mut Criterion) {
+    let data = std::fs::read(token_path()).expect("Failed to read token file");
 
     let mut arr = [0u16; 1024];
     rng().fill(&mut arr);
@@ -27,11 +32,10 @@ fn token_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
-fn token_creation_benchmark(c: &mut Criterion) {
-    let data = std::fs::read("assets/tokens/eu4-raw.bin").expect("Failed to read token file");
+pub fn token_creation_benchmark(c: &mut Criterion) {
+    let data = std::fs::read(token_path()).expect("Failed to read token file");
 
     c.bench_function("creation", |b| b.iter(|| FlatResolver::from_slice(&data)));
 }
 
-criterion_group!(benches, token_benchmark, token_creation_benchmark);
-criterion_main!(benches);
+criterion_group!(schema_benches, token_benchmark, token_creation_benchmark);

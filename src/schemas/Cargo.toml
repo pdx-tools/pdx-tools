@@ -13,11 +13,3 @@ inline = []
 [dependencies]
 flatbuffers = { workspace = true }
 jomini = { workspace = true }
-
-[dev-dependencies]
-criterion = { workspace = true }
-rand = { workspace = true }
-
-[[bench]]
-name = "schema_benchmark"
-harness = false
