@@ -1,5 +1,5 @@
-use crate::{GpuLocationIdx, R16, units::WorldPoint};
-use std::fmt::{self, Display};
+use crate::{units::WorldPoint, GpuLocationIdx, R16};
+use std::{cell::Cell, fmt::{self, Display}, num::NonZeroU16};
 
 /// Axis-aligned bounding box using u16 world coordinates
 ///
@@ -66,6 +66,7 @@ pub struct MapData {
     west: Box<[R16]>,
     east: Box<[R16]>,
     world_width: u32, // Width of the world in elements
+    max_ind: Cell<Option<NonZeroU16>>,
 }
 
 impl MapData {
@@ -89,6 +90,7 @@ impl MapData {
             west,
             east,
             world_width: half_width,
+            max_ind: Cell::new(None),
         }
     }
 
@@ -110,6 +112,20 @@ impl MapData {
     /// Get east hemisphere data
     pub fn east_data(&self) -> &[R16] {
         &self.east
+    }
+
+    /// Returns the maximum R16 index value across both hemispheres
+    pub fn max_index(&self) -> R16 {
+        // Check cached value first
+        if let Some(max_ind) = self.max_ind.get() {
+            return R16::new(max_ind.get())
+        }
+
+        let west_max = self.west.iter().max().copied().unwrap_or(R16::new(0));
+        let east_max = self.east.iter().max().copied().unwrap_or(R16::new(0));
+        let result = west_max.max(east_max);
+        self.max_ind.set(NonZeroU16::new(result.value()));
+        result
     }
 
     /// Build pre-computed AABBs for all locations
@@ -195,47 +211,43 @@ impl LocationAdjacencyList {
 /// width (`half_width * 2`) and height. Horizontal wraparound is enabled;
 /// vertical wrap is not.
 pub fn build_location_adjacencies(map: &MapData) -> LocationAdjacencyList {
-    let tile_width = map.half_width();
-    let tile_height = map.height();
-    let world_width = tile_width * 2;
-    let mut adjacency: Vec<Vec<u16>> = Vec::new();
-    let mut max_index = 0u16;
+    let tile_width = map.half_width() as usize;
+    let tile_height = map.height() as usize;
+    let max_index = map.max_index().value();
+    let mut adjacency: Vec<Vec<u16>> = vec![Vec::new(); max_index as usize + 1];
+    let west = map.west_data();
+    let east = map.east_data();
 
-    for y in 0..tile_height {
-        for x in 0..world_width {
-            let current = r16_at_map(map, x, y);
-            if current > max_index {
-                max_index = current;
-            }
-            let right_x = if x + 1 == world_width { 0 } else { x + 1 };
-            let right = r16_at_map(map, right_x, y);
-            if right > max_index {
-                max_index = right;
-            }
-            if current != right {
-                add_neighbor(&mut adjacency, current, right);
-                add_neighbor(&mut adjacency, right, current);
-            }
+    debug_assert_eq!(west.len(), east.len());
+    debug_assert_eq!(west.len(), tile_width * tile_height);
 
-            if y + 1 < tile_height {
-                let down = r16_at_map(map, x, y + 1);
-                if down > max_index {
-                    max_index = down;
-                }
-                if current != down {
-                    add_neighbor(&mut adjacency, current, down);
-                    add_neighbor(&mut adjacency, down, current);
-                }
-            }
+    // Single fused pass: horizontal + vertical adjacency per row.
+    // Processing both scans together keeps each row cache-hot, avoiding a
+    // second full pass over ~31MB of pixel data.
+    for row_idx in 0..tile_height {
+        let row_start = row_idx * tile_width;
+        let row_end = row_start + tile_width;
+        let west_row = &west[row_start..row_end];
+        let east_row = &east[row_start..row_end];
+
+        // Horizontal adjacency: treat west|east as a circular row
+        process_horizontal_row(west_row, east_row, &mut adjacency);
+
+        // Vertical adjacency with previous row (data still cache-hot)
+        if row_idx > 0 {
+            let prev_start = (row_idx - 1) * tile_width;
+            let prev_end = prev_start + tile_width;
+            process_vertical_pairs(&west[prev_start..prev_end], west_row, &mut adjacency);
+            process_vertical_pairs(&east[prev_start..prev_end], east_row, &mut adjacency);
         }
     }
 
-    if adjacency.len() <= max_index as usize {
-        adjacency.resize_with(max_index as usize + 1, Vec::new);
-    }
-
+    // Finalize: sort and deduplicate neighbor lists
     for neighbors in adjacency.iter_mut() {
-        neighbors.sort_unstable();
+        if neighbors.len() > 1 {
+            neighbors.sort_unstable();
+            neighbors.dedup();
+        }
     }
 
     let mut offsets = Vec::with_capacity(adjacency.len());
@@ -257,28 +269,66 @@ pub fn build_location_adjacencies(map: &MapData) -> LocationAdjacencyList {
     LocationAdjacencyList::new(flat_neighbors, offsets, lengths)
 }
 
-fn r16_at_map(map: &MapData, x: u32, y: u32) -> u16 {
-    let half_width = map.half_width();
-    let (texture, local_x) = if x < half_width {
-        (map.west_data(), x)
-    } else {
-        (map.east_data(), x - half_width)
-    };
+/// Process horizontal adjacency across a full circular world row (west|east|wrap).
+/// Carries a single `prev` value across hemisphere boundaries, eliminating
+/// separate boundary-pair calls and reducing inlined code size.
+#[inline]
+fn process_horizontal_row(west_row: &[R16], east_row: &[R16], adjacency: &mut [Vec<u16>]) {
+    let mut last_pair: Option<(u16, u16)> = None;
+    let mut prev = west_row[0].value();
 
-    let idx = (y * half_width + local_x) as usize;
-    texture[idx].value()
+    for &pixel in &west_row[1..] {
+        let curr = pixel.value();
+        try_add_edge(prev, curr, adjacency, &mut last_pair);
+        prev = curr;
+    }
+
+    for &pixel in east_row {
+        let curr = pixel.value();
+        try_add_edge(prev, curr, adjacency, &mut last_pair);
+        prev = curr;
+    }
+
+    // Wraparound: last east pixel → first west pixel
+    try_add_edge(prev, west_row[0].value(), adjacency, &mut last_pair);
 }
 
-fn add_neighbor(adjacency: &mut Vec<Vec<u16>>, from: u16, to: u16) {
-    let idx = from as usize;
-    if idx >= adjacency.len() {
-        adjacency.resize_with(idx + 1, Vec::new);
+/// Process vertical adjacent pairs between two consecutive rows.
+#[inline]
+fn process_vertical_pairs(upper: &[R16], lower: &[R16], adjacency: &mut [Vec<u16>]) {
+    debug_assert_eq!(upper.len(), lower.len());
+    let mut last_pair: Option<(u16, u16)> = None;
+    for (u, d) in upper.iter().zip(lower.iter()) {
+        try_add_edge(u.value(), d.value(), adjacency, &mut last_pair);
     }
+}
 
-    let neighbors = &mut adjacency[idx];
-    if !neighbors.contains(&to) {
-        neighbors.push(to);
+/// If `a != b` and the canonical pair differs from `last_pair`, push both
+/// directions into the adjacency lists.
+#[inline]
+fn try_add_edge(
+    a: u16,
+    b: u16,
+    adjacency: &mut [Vec<u16>],
+    last_pair: &mut Option<(u16, u16)>,
+) {
+    if a != b {
+        let pair = if a < b { (a, b) } else { (b, a) };
+        if *last_pair != Some(pair) {
+            add_neighbor(adjacency, a, b);
+            add_neighbor(adjacency, b, a);
+            *last_pair = Some(pair);
+        }
     }
+}
+
+#[inline]
+fn add_neighbor(adjacency: &mut [Vec<u16>], from: u16, to: u16) {
+    // SAFETY: `adjacency` is pre-allocated to `max_index + 1` entries where
+    // `max_index` is the maximum R16 value across both hemispheres. Every
+    // `from` value originates from an R16 pixel in the map data, so
+    // `from as usize <= max_index < adjacency.len()`.
+    unsafe { adjacency.get_unchecked_mut(from as usize) }.push(to);
 }
 
 #[derive(Debug)]
