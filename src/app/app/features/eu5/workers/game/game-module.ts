@@ -13,15 +13,12 @@ import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
 import { proxy, transfer, wrap } from "comlink";
 
+const tokensTask = fetchOk(tokenPath).then((x) => x.arrayBuffer());
 const initialized = (async () => {
-  const [result, tokenData] = await Promise.all([
-    timeAsync("Load EU5 Wasm module", () => init({ module_or_path: wasmPath })),
-    fetchOk(tokenPath).then((x) => x.arrayBuffer()),
-  ]);
-  timeSync("Setup EU5 Wasm", () => wasm_eu5.setup_eu5_wasm());
-  timeSync("Set EU5 Tokens", () =>
-    wasm_eu5.set_tokens(new Uint8Array(tokenData)),
+  const result = await timeAsync("Load EU5 Wasm module", () =>
+    init({ module_or_path: wasmPath }),
   );
+
   return { memory: result.memory };
 })();
 
@@ -179,7 +176,7 @@ let mapEndpoint: Eu5MapEndpoint | null = null;
 let currentZoom: number | null = null; // Will be set by initial callback from map worker
 let hoverDisplayCallback: ((data: HoverDisplayData) => void) | null = null;
 
-export function initialize(port: MessagePort) {
+export async function initialize(port: MessagePort, level: wasm_eu5.LogLevel) {
   mapEndpoint = wrap<Eu5MapEndpoint>(port);
 
   // Set up zoom change callback
@@ -188,4 +185,9 @@ export function initialize(port: MessagePort) {
       currentZoom = rawZoom;
     }),
   );
+
+  await initialized;
+  timeSync("Setup EU5 Wasm", () => wasm_eu5.setup_eu5_wasm(level));
+  const tokens = await tokensTask;
+  timeSync("Set EU5 Tokens", () => wasm_eu5.set_tokens(new Uint8Array(tokens)));
 }

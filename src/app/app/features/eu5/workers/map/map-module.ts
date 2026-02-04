@@ -5,7 +5,7 @@ import init, {
   Eu5WasmGameBundle,
   setup_eu5_map_wasm,
 } from "../../../../wasm/wasm_eu5_map";
-import type { CanvasDisplay } from "../../../../wasm/wasm_eu5_map";
+import type { CanvasDisplay, LogLevel } from "../../../../wasm/wasm_eu5_map";
 import wasmPath from "../../../../wasm/wasm_eu5_map_bg.wasm?url";
 import { proxy, expose } from "comlink";
 import { formatInt } from "@/lib/format";
@@ -15,7 +15,6 @@ const initialized = (async () => {
   await timeAsync("Load EU5 Map Wasm module", () =>
     init({ module_or_path: wasmPath }),
   );
-  setup_eu5_map_wasm();
 })();
 
 let appResolve: (
@@ -587,7 +586,10 @@ function createOverlayCanvas(
   };
 }
 
-export function initialize(port: MessagePort) {
+export async function initialize(port: MessagePort, level: LogLevel) {
   const endpoint = mapGameEndpoint();
   expose(endpoint, port);
+
+  await initialized;
+  timeSync("Setup EU5 Map Wasm", () => setup_eu5_map_wasm(level));
 }

@@ -3973,7 +3973,9 @@ name = "wasm-pdx-core"
 version = "0.1.0"
 dependencies = [
  "js-sys",
+ "serde",
  "tracing",
+ "tsify",
  "wasm-bindgen",
 ]
 
