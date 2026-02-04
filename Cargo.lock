@@ -960,6 +960,8 @@ dependencies = [
  "serde",
  "thiserror 2.0.12",
  "tracing",
+ "tsify",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -998,6 +1000,8 @@ dependencies = [
  "serde",
  "tempfile",
  "thiserror 2.0.12",
+ "tsify",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -3613,9 +3617,9 @@ dependencies = [
 
 [[package]]
 name = "tsify"
-version = "0.5.5"
+version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2ec91b85e6c6592ed28636cb1dd1fac377ecbbeb170ff1d79f97aac5e38926d"
+checksum = "8ec5505497c87f1c050b4392d3f11b49a04537fcb9dc0da57bc0af168a6331f2"
 dependencies = [
  "serde",
  "serde-wasm-bindgen",

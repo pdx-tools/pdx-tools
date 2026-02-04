@@ -2,6 +2,7 @@ use bumpalo_serde::ArenaDeserialize;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Eq, PartialOrd, Ord)]
+#[cfg_attr(target_family = "wasm", derive(tsify::Tsify))]
 pub struct GameVersion {
     pub major: u32,
     pub minor: u32,
@@ -69,5 +70,11 @@ impl<'bump> ArenaDeserialize<'bump> for GameVersion {
     {
         // GameVersion doesn't need arena allocation, so we can just use the standard deserializer
         Self::deserialize(deserializer)
+    }
+}
+
+impl std::fmt::Display for GameVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
     }
 }

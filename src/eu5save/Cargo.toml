@@ -13,6 +13,10 @@ jomini =  { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 
+[target.'cfg(target_family = "wasm")'.dependencies]
+tsify = { workspace = true }
+wasm-bindgen = { workspace = true }
+
 [dev-dependencies]
 attohttpc = { workspace = true }
 flate2 = { workspace = true, default-features = false, features = ["zlib-rs"] }

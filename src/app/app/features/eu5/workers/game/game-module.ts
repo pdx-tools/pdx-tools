@@ -29,10 +29,13 @@ export const createGame = async (
     save: Eu5SaveInput;
   },
   {
-    bundleFetch,
+    bundle,
     onProgress,
   }: {
-    bundleFetch: () => Promise<Uint8Array>;
+    bundle: {
+      setVersion: (version: string) => void;
+      fetch: () => Promise<Uint8Array>;
+    };
     onProgress?: (increment: number) => void;
   },
 ) => {
@@ -58,7 +61,9 @@ export const createGame = async (
   );
 
   const metadata = saveParser.meta();
-  const gameDataTask = bundleFetch();
+  const version = `${metadata.version.major}.${metadata.version.minor}`;
+  bundle.setVersion(version);
+  const gameDataTask = bundle.fetch();
 
   const gamestate = timeSync("Parse Gamestate", () =>
     saveParser.parse_gamestate(),
