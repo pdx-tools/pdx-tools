@@ -134,6 +134,7 @@ pub enum Eu5LoadError {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg_attr(target_family = "wasm", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct Eu5SaveMetadata {
     pub version: GameVersion,

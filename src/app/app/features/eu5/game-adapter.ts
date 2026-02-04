@@ -2,11 +2,35 @@ import { wrap, transfer, proxy } from "comlink";
 import type { Remote } from "comlink";
 import type { HoverDisplayData, MapMode } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/useLoadEu5";
-import bundleUrl from "../../../../../assets/game/eu5/eu5-1.0.zip?url";
 import { fetchOk } from "@/lib/fetch";
 import { getLogLevel } from "@/lib/isDeveloper";
 import type * as Eu5WorkerModuleDefinition from "./workers/game/game-module";
 import type * as Eu5MapWorkerModuleDefinition from "./workers/map/map-module";
+
+const bundleUrls = import.meta.glob<true, string, string>(
+  "../../../../../assets/game/eu5/eu5-*.zip",
+  { query: "?url", eager: true, import: "default" },
+);
+
+function getBundleUrl(version: string): string {
+  const path = `../../../../../assets/game/eu5/eu5-${version}.zip`;
+  const url = bundleUrls[path];
+  if (url) {
+    return url;
+  }
+
+  // Fallback to last bundle in sorted order
+  const bundlePaths = Object.keys(bundleUrls).sort();
+  if (bundlePaths.length === 0) {
+    throw new Error("No game bundles found");
+  }
+
+  const lastBundle = bundlePaths[bundlePaths.length - 1];
+  console.warn(
+    `Bundle for version ${version} not found, falling back to ${lastBundle}`,
+  );
+  return bundleUrls[lastBundle];
+}
 
 // Worker types
 export type Eu5WorkerModule = typeof Eu5WorkerModuleDefinition;
@@ -84,25 +108,43 @@ export class Eu5GameAdapter {
     // - Fetch in both workers (bad: as inter-web worker fetches don't *appear*
     //   to be consolidated, though under some circumstances they might).
     // So since we can do the de-duplication ourselves, might as well.
-    let gameBundleRes: (value: Uint8Array) => void;
-    let gameBundleRej: (reason?: any) => void;
-    const bundleTask = new Promise<Uint8Array>((res, rej) => {
-      gameBundleRes = res;
-      gameBundleRej = rej;
+    //
+    // Create bundle coordination: the game worker will call setVersion after
+    // parsing metadata, and both workers will call fetch (which waits for the
+    // version to be set, then fetches the appropriate bundle once).
+    let bundleVersionResolver: ((version: string) => void) | null = null;
+    const bundleVersionPromise = new Promise<string>((resolve) => {
+      bundleVersionResolver = resolve;
     });
+
+    let bundleFetchPromise: Promise<Uint8Array> | null = null;
+
+    const bundleApi = {
+      setVersion: (version: string) => {
+        if (bundleVersionResolver) {
+          bundleVersionResolver(version);
+        }
+      },
+      fetch: async () => {
+        // Only fetch once, even if called by multiple workers
+        if (!bundleFetchPromise) {
+          bundleFetchPromise = (async () => {
+            const version = await bundleVersionPromise;
+            const url = getBundleUrl(version);
+            const response = await fetchOk(url);
+            const arrayBuffer = await response.arrayBuffer();
+            return new Uint8Array(arrayBuffer);
+          })();
+        }
+        return await bundleFetchPromise;
+      },
+    };
 
     const [saveEngine, mapEngine] = await Promise.all([
       this.eu5Worker.createGame(
         { save: config.save },
         proxy({
-          bundleFetch: async () => {
-            const bundle = fetchOk(bundleUrl)
-              .then((x) => x.arrayBuffer())
-              .then((x) => new Uint8Array(x));
-
-            bundle.then(gameBundleRes, gameBundleRej);
-            return await bundle;
-          },
+          bundle: bundleApi,
           onProgress: (increment: number) => onProgress?.(increment),
         }),
       ),
@@ -115,10 +157,7 @@ export class Eu5GameAdapter {
           [config.canvas],
         ),
         proxy({
-          bundleFetch: async () => {
-            const bundle = await bundleTask;
-            return bundle;
-          },
+          bundleFetch: bundleApi.fetch,
           onProgress: (increment: number) => onProgress?.(increment),
         }),
       ),

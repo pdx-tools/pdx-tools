@@ -25,5 +25,9 @@ serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
+[target.'cfg(target_family = "wasm")'.dependencies]
+tsify = { workspace = true }
+wasm-bindgen = { workspace = true }
+
 [dev-dependencies]
 rstest = { workspace = true }
