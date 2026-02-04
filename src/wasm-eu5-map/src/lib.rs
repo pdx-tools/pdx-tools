@@ -393,7 +393,7 @@ pub struct Eu5WasmTexture {
 }
 
 #[wasm_bindgen]
-pub fn setup_eu5_map_wasm() {
+pub fn setup_eu5_map_wasm(level: wasm_pdx_core::log_level::LogLevel) {
     wasm_pdx_core::console_error_panic_hook::set_once();
-    wasm_pdx_core::console_writer::init_with_level(tracing::Level::DEBUG);
+    wasm_pdx_core::console_writer::init_with_level(level.into());
 }

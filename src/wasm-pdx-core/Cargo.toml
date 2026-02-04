@@ -12,3 +12,5 @@ workspace = true
 js-sys = { workspace = true }
 tracing = { workspace = true }
 wasm-bindgen = { workspace = true }
+tsify = { workspace = true, default-features = false, features = ["js"] }
+serde = { workspace = true, features = ["derive"] }

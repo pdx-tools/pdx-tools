@@ -4,6 +4,7 @@ import type { HoverDisplayData, MapMode } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/useLoadEu5";
 import bundleUrl from "../../../../../assets/game/eu5/eu5-1.0.zip?url";
 import { fetchOk } from "@/lib/fetch";
+import { getLogLevel } from "@/lib/isDeveloper";
 import type * as Eu5WorkerModuleDefinition from "./workers/game/game-module";
 import type * as Eu5MapWorkerModuleDefinition from "./workers/map/map-module";
 
@@ -49,9 +50,12 @@ export class Eu5GameAdapter {
       { type: "module" },
     );
     const eu5MapWorker = wrap<Eu5MapWorker>(mapRawWorker);
+
+    const logLevel = getLogLevel();
+
     const channel = new MessageChannel();
-    eu5MapWorker.initialize(transfer(channel.port1, [channel.port1]));
-    eu5Worker.initialize(transfer(channel.port2, [channel.port2]));
+    eu5MapWorker.initialize(transfer(channel.port1, [channel.port1]), logLevel);
+    eu5Worker.initialize(transfer(channel.port2, [channel.port2]), logLevel);
 
     return new Eu5GameAdapter(
       eu5RawWorker,
