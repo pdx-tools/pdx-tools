@@ -66,8 +66,8 @@ impl GameAssetCompiler for Eu5AssetCompiler {
         out_dir: &Path,
         options: &PackageOptions,
     ) -> Result<CompilationOutput> {
-        // Extract game version (placeholder - implement version extraction)
-        let game_version = "1.0".to_string();
+        let game_version = crate::eu5::game_version::extract_game_version(provider)
+            .context("Unable to extract eu5 game version")?;
 
         crate::eu5::compiler::compile_game_bundle(
             provider,
