@@ -52,12 +52,6 @@ pub struct GameLocation {
     pub color_id: Option<ColorIdx>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GameSpatialLocation {
-    pub avg_x: u16,
-    pub avg_y: u16,
-}
-
 #[derive(Debug, Clone)]
 pub struct RawGameLocationData {
     pub name: String,

@@ -41,9 +41,11 @@ const mapGameEndpoint = () => {
       renderOrQueue();
     },
 
-    async center_at(x: number, y: number) {
+    async center_at_color_id(color_id: number) {
       const app = await appTask;
-      app.center_at_world(x, y);
+      timeSync("Centering map over capital", () =>
+        app.center_at_color_id(color_id),
+      );
     },
 
     onLocationHoverUpdate: (

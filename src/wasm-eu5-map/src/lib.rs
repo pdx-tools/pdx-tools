@@ -5,7 +5,7 @@ use eu5app::{
 use pdx_map::{
     CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, InteractionController, KeyboardKey,
     LocationArrays, LocationFlags, LogicalPoint, LogicalSize, MapTexture, MapViewController,
-    MouseButton, PhysicalSize, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
+    MouseButton, PhysicalSize, R16, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
 };
 use std::time::Duration;
 use wasm_bindgen::prelude::*;
@@ -321,6 +321,20 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn center_at_world(&mut self, x: f32, y: f32) {
         let world = WorldPoint::new(x, y);
+        self.input.center_on(world);
+
+        let bounds = self.input.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
+    }
+
+    /// Center the viewport at a location by its color ID (R16 texture index).
+    #[wasm_bindgen]
+    pub fn center_at_color_id(&mut self, color_id: u16) {
+        let r16 = R16::new(color_id);
+        let center = self.picker.center_of(r16);
+
+        // Convert u32 world coordinates to f32 for viewport
+        let world = WorldPoint::new(center.x as f32, center.y as f32);
         self.input.center_on(world);
 
         let bounds = self.input.viewport_bounds();

@@ -32,12 +32,21 @@ fn validate_dimensions(
 
 /// Calculate viewport bounds centered on player's capital (or world center as fallback)
 /// Returns (x_offset, y_offset)
-fn calculate_viewport_bounds(map_app: &Eu5Workspace, width: u32, height: u32) -> (u32, u32) {
+fn calculate_viewport_bounds(
+    map_app: &Eu5Workspace,
+    picker: &pdx_map::MapPicker,
+    width: u32,
+    height: u32,
+) -> (u32, u32) {
     let (world_width, world_height) = eu5app::world_dimensions();
 
     // Get player capital or fallback to world center
     let (capital_x, capital_y) = map_app
-        .player_capital_coordinates()
+        .player_capital_color_id()
+        .map(|color_id| {
+            let center = picker.center_of(pdx_map::R16::new(color_id.value()));
+            (center.x as u16, center.y as u16)
+        })
         .unwrap_or((world_width as u16 / 2, world_height as u16 / 2));
 
     // Center horizontally with proper wraparound handling
@@ -82,15 +91,17 @@ async fn run_headless_async(args: Args) -> Result<(), Box<dyn std::error::Error>
     let mut game_bundle = Eu5GameInstall::open(&args.game_data)?;
 
     let pipeline_components = pdx_map::GpuContext::new().await?;
-    let texture_data = game_bundle.load_west_texture(Vec::new())?;
+    let west_texture = game_bundle.load_west_texture(Vec::new())?;
 
     let (tile_width, tile_height) = eu5app::tile_dimensions();
     let size = PhysicalSize::new(tile_width, tile_height);
-    let west_view = pipeline_components.create_texture(&texture_data, size, "West Texture");
+    let west_view = pipeline_components.create_texture(&west_texture, size, "West Texture");
 
-    let texture_data = game_bundle.load_east_texture(Vec::new())?;
+    let east_texture = game_bundle.load_east_texture(Vec::new())?;
 
-    let east_view = pipeline_components.create_texture(&texture_data, size, "East Texture");
+    let east_view = pipeline_components.create_texture(&east_texture, size, "East Texture");
+
+    let picker = pdx_map::MapPicker::new(west_texture, east_texture, tile_width * 2);
 
     let map_app = Eu5Workspace::new(save.take_gamestate(), game_bundle.into_game_data())?;
     let save_date = map_app.gamestate().metadata().date.date_fmt().to_string();
@@ -110,6 +121,7 @@ async fn run_headless_async(args: Args) -> Result<(), Box<dyn std::error::Error>
 
     render_viewport(
         map_app,
+        &picker,
         &pipeline_components,
         west_view,
         east_view,
@@ -125,6 +137,7 @@ async fn run_headless_async(args: Args) -> Result<(), Box<dyn std::error::Error>
 #[expect(clippy::too_many_arguments)]
 async fn render_viewport(
     mut map_app: Eu5Workspace<'_>,
+    picker: &pdx_map::MapPicker,
     pipeline_components: &'_ pdx_map::GpuContext,
     west_view: pdx_map::MapTexture,
     east_view: pdx_map::MapTexture,
@@ -136,7 +149,7 @@ async fn render_viewport(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Calculate viewport position
     let (x_offset, y_offset) = if center_on_capital {
-        calculate_viewport_bounds(&map_app, width, height)
+        calculate_viewport_bounds(&map_app, picker, width, height)
     } else {
         (0, 0) // Full world starts at origin
     };

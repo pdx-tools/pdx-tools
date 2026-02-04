@@ -8,26 +8,20 @@ pub use error::GameDataError;
 pub use optimized::OptimizedGameBundle;
 
 use eu5save::hash::FxHashMap;
-use pdx_map::{R16, R16SecondaryMap};
+use pdx_map::R16;
 
-use crate::{GameLocation, GameSpatialLocation};
+use crate::GameLocation;
 
 /// EU5 game data
 pub struct GameData {
     locations: Vec<GameLocation>,
-    texture_locations: R16SecondaryMap<GameSpatialLocation>,
     localization: FxHashMap<String, String>,
 }
 
 impl GameData {
-    pub fn new(
-        locations: Vec<GameLocation>,
-        texture_locations: R16SecondaryMap<GameSpatialLocation>,
-        localization: FxHashMap<String, String>,
-    ) -> Self {
+    pub fn new(locations: Vec<GameLocation>, localization: FxHashMap<String, String>) -> Self {
         Self {
             locations,
-            texture_locations,
             localization,
         }
     }
@@ -38,10 +32,6 @@ impl GameData {
 
     pub fn locations(&self) -> &[GameLocation] {
         &self.locations
-    }
-
-    pub fn texture_locations(&self) -> &R16SecondaryMap<GameSpatialLocation> {
-        &self.texture_locations
     }
 
     pub fn localization(&self) -> &FxHashMap<String, String> {

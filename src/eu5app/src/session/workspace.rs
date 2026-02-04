@@ -4,7 +4,7 @@ use eu5save::hash::FxHashMap;
 use eu5save::models::{
     CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIndexedVec, RawMaterialsName,
 };
-use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags, R16};
+use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -17,7 +17,6 @@ pub struct Eu5Workspace<'bump> {
     // Session data (relationships and indices)
     overlord_of: CountryIndexedVecOwned<Option<CountryIdx>>,
     location_terrain: LocationIndexedVec<Terrain>,
-    location_coordinates: LocationIndexedVec<(u16, u16)>,
     location_building_levels: OnceLock<LocationIndexedVec<f64>>,
 
     // Map app state (rendering)
@@ -53,8 +52,8 @@ impl<'bump> Eu5Workspace<'bump> {
             .collect();
 
         let mut location_terrain = gamestate.locations.create_index(Terrain::default());
-        let mut location_coordinates = gamestate.locations.create_index((0, 0));
         let mut gpu_indices = gamestate.locations.create_index(None);
+        let mut max_color_id = 0u16;
 
         // Build join by looking up each save location in game data
         let locations_iter = gamestate
@@ -81,19 +80,17 @@ impl<'bump> Eu5Workspace<'bump> {
                 continue;
             };
 
-            let spatial_data = &game_data.texture_locations()[R16::from(spatial_loc)];
-            location_coordinates[location.idx()] = (spatial_data.avg_x, spatial_data.avg_y);
+            max_color_id = max_color_id.max(spatial_loc.value());
             gpu_indices[location.idx()] = Some(GpuLocationIdx::new(spatial_loc.value()));
         }
 
-        let location_arrays = LocationArrays::allocate(game_data.texture_locations().len());
+        let location_arrays = LocationArrays::allocate((max_color_id as usize) + 1);
 
         let mut workspace = Self {
             gamestate,
             game_data,
             overlord_of,
             location_terrain,
-            location_coordinates,
             location_building_levels: OnceLock::new(),
             current_map_mode: MapMode::Political,
             location_arrays,
@@ -793,10 +790,10 @@ impl<'bump> Eu5Workspace<'bump> {
         self.current_map_mode
     }
 
-    pub fn player_capital_coordinates(&self) -> Option<(u16, u16)> {
+    /// Get the color ID of the player's capital location for map centering.
+    /// Returns None if no player country, no capital, or capital has no map presence.
+    pub fn player_capital_color_id(&self) -> Option<crate::ColorIdx> {
         let player_country = self.gamestate.played_countries.first()?.country;
-
-        // Get the player's country data to access the capital field
         let country_idx = self.gamestate.countries.get(player_country)?;
         let capital_id = self
             .gamestate
@@ -805,10 +802,11 @@ impl<'bump> Eu5Workspace<'bump> {
             .data()?
             .capital?;
 
-        // Get the game data for the capital location to access coordinates
-        let idx = self.gamestate.locations.get(capital_id)?;
-        let location_coordinates = &self.location_coordinates[idx];
-        Some(*location_coordinates)
+        // Look up capital in gpu_indices (already mapped during initialization)
+        let capital_idx = self.gamestate.locations.get(capital_id)?;
+        let gpu_idx = self.gpu_indices[capital_idx]?;
+
+        Some(crate::ColorIdx::new(gpu_idx.value()))
     }
 
     /// Check if a location can be highlighted based on its terrain (not water and not impassable)

@@ -146,6 +146,84 @@ impl MapData {
         let offset = (y as usize) * (half_width as usize) + col;
         data[offset]
     }
+
+    /// Return the first pixel for the location in row-major order as an
+    /// approximation for a location's center.
+    ///
+    /// The algorithm is a dumb scan that is written to be auto-vectorized (but
+    /// fails to accomplish this goal). Since there may be 30k locations, each
+    /// location is a small fraction of the total map. Based on location
+    /// density, it will most likely be in the northern hemisphere so we weave
+    /// the east and west hemisphere rows.
+    ///
+    /// In earlier architectures this function would rely on preprocessed
+    /// location's center as part of the game data payload but philosophically
+    /// it is nice to have the map textures be the single source of truth.
+    ///
+    /// We could do a linear scan over the entire image, but that's 134 million
+    /// pixels to scan on Wasm for EU5, which takes upwards of 100ms. It does
+    /// have the nice property of being input independent
+    ///
+    /// Alternatively, once we find one pixel of the location we could do a
+    /// scan-fill to find all connected pixels for this location (faster than a
+    /// DFS), and then exit. This will speed-up the algorithm to complete in
+    /// 25ms on Wasm. I don't love the allocation and complication necessary to
+    /// manage the bitset. It's still makes "center_of" a heuristic as
+    /// disjointed regions won't be accounted for.
+    ///
+    /// In the end, this function takes around 15ms on wasm for EU5.
+    pub fn center_of(&self, loc: R16) -> WorldPoint<u32> {
+        let half_width = self.half_width() as usize;
+
+        fn process_row(row_data: &[R16], loc: R16) -> Option<usize> {
+            const LANES: usize = 16;
+
+            let (chunks, remainder) = row_data.as_chunks::<LANES>();
+
+            for (chunk_idx, chunk) in chunks.iter().enumerate() {
+                // eagerly check if the chunk has any matches before picking out
+                // the exact index.
+                let has_match = chunk
+                    .iter()
+                    .map(|&tile| (tile == loc) as u16)
+                    .fold(0, |acc, x| acc | x);
+
+                if has_match == 0 {
+                    continue;
+                }
+
+                let base_col = chunk_idx * LANES;
+                if let Some(idx) = chunk.iter().position(|&tile| tile == loc) {
+                    return Some(base_col + idx);
+                }
+            }
+
+            let base_col = chunks.len() * LANES;
+            if let Some(i) = remainder.iter().position(|&r16| r16 == loc) {
+                return Some(base_col + i);
+            }
+
+            None
+        }
+
+        let data = self
+            .west_data()
+            .chunks_exact(half_width)
+            .enumerate()
+            .zip(self.east_data().chunks_exact(half_width));
+
+        for ((y, west_row), east_row) in data {
+            if let Some(x) = process_row(west_row, loc) {
+                return WorldPoint::new(x as u32, y as u32);
+            }
+
+            if let Some(x) = process_row(east_row, loc) {
+                return WorldPoint::new((half_width + x) as u32, y as u32);
+            }
+        }
+
+        WorldPoint::new(0, 0)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -304,6 +382,11 @@ impl MapPicker {
     /// Build pre-computed AABBs for spatial queries
     pub fn build_aabb_index(&self) -> AabbIndex {
         self.data.build_aabb_index()
+    }
+
+    /// Get the center coordinates of a location by its R16 color index.
+    pub fn center_of(&self, loc: R16) -> WorldPoint<u32> {
+        self.data.center_of(loc)
     }
 }
 
@@ -727,5 +810,129 @@ mod tests {
 
         assert_eq!(adjacency.len(), 6);
         assert!(adjacency.neighbors_of_index(5).is_empty());
+    }
+
+    #[test]
+    fn test_center_of_single_pixel() {
+        // 4x2 world with single-pixel locations
+        // Row 0: [0, 1, 2, 3]
+        // Row 1: [4, 5, 6, 7]
+        let west = vec![R16::new(0), R16::new(1), R16::new(4), R16::new(5)];
+        let east = vec![R16::new(2), R16::new(3), R16::new(6), R16::new(7)];
+        let map_data = MapData::new(west, east, 2);
+
+        // Location 0 is at (0,0)
+        assert_eq!(map_data.center_of(R16::new(0)), WorldPoint::new(0, 0));
+
+        // Location 1 is at (1,0)
+        assert_eq!(map_data.center_of(R16::new(1)), WorldPoint::new(1, 0));
+
+        // Location 2 is at (2,0) - in east hemisphere
+        assert_eq!(map_data.center_of(R16::new(2)), WorldPoint::new(2, 0));
+
+        // Location 5 is at (1,1)
+        assert_eq!(map_data.center_of(R16::new(5)), WorldPoint::new(1, 1));
+
+        // Location 7 is at (3,1) - in east hemisphere
+        assert_eq!(map_data.center_of(R16::new(7)), WorldPoint::new(3, 1));
+    }
+
+    #[test]
+    fn test_center_of_multi_pixel_horizontal() {
+        // 4x1 world where location 0 occupies two horizontal pixels
+        // Row 0: [0, 0, 1, 1]
+        let west = vec![R16::new(0), R16::new(0)];
+        let east = vec![R16::new(1), R16::new(1)];
+        let map_data = MapData::new(west, east, 2);
+
+        // Location 0 at (0,0) and (1,0), first pixel should be (0,0)
+        assert_eq!(map_data.center_of(R16::new(0)), WorldPoint::new(0, 0));
+
+        // Location 1 at (2,0) and (3,0), first pixel should be (2,0)
+        assert_eq!(map_data.center_of(R16::new(1)), WorldPoint::new(2, 0));
+    }
+
+    #[test]
+    fn test_center_of_multi_pixel_vertical() {
+        // 2x2 world where location 0 occupies two vertical pixels
+        // Row 0: [0, 1]
+        // Row 1: [0, 1]
+        let west = vec![R16::new(0), R16::new(0)];
+        let east = vec![R16::new(1), R16::new(1)];
+        let map_data = MapData::new(west, east, 1);
+
+        // Location 0 at (0,0) and (0,1), first pixel should be (0,0)
+        assert_eq!(map_data.center_of(R16::new(0)), WorldPoint::new(0, 0));
+
+        // Location 1 at (1,0) and (1,1), first pixel should be (1,0)
+        assert_eq!(map_data.center_of(R16::new(1)), WorldPoint::new(1, 0));
+    }
+
+    #[test]
+    fn test_center_of_region() {
+        // 4x4 world where location 5 occupies a 2x2 region in the center
+        // Row 0: [0, 0, 1, 1]
+        // Row 1: [0, 5, 5, 1]
+        // Row 2: [0, 5, 5, 1]
+        // Row 3: [0, 0, 1, 1]
+        let west = vec![
+            R16::new(0),
+            R16::new(0),
+            R16::new(0),
+            R16::new(5),
+            R16::new(0),
+            R16::new(5),
+            R16::new(0),
+            R16::new(0),
+        ];
+        let east = vec![
+            R16::new(1),
+            R16::new(1),
+            R16::new(5),
+            R16::new(1),
+            R16::new(5),
+            R16::new(1),
+            R16::new(1),
+            R16::new(1),
+        ];
+        let map_data = MapData::new(west, east, 2);
+
+        // Location 5 is at (1,1), (2,1), (1,2), (2,2); first pixel is (1,1)
+        assert_eq!(map_data.center_of(R16::new(5)), WorldPoint::new(1, 1));
+    }
+
+    #[test]
+    fn test_center_of_spanning_hemispheres() {
+        // 4x1 world where location 0 spans both hemispheres
+        // Row 0: [0, 1, 1, 0]
+        let west = vec![R16::new(0), R16::new(1)];
+        let east = vec![R16::new(1), R16::new(0)];
+        let map_data = MapData::new(west, east, 2);
+
+        // Location 0 at (0,0) and (3,0), first pixel should be (0,0)
+        assert_eq!(map_data.center_of(R16::new(0)), WorldPoint::new(0, 0));
+
+        // Location 1 at (1,0) and (2,0), first pixel should be (1,0)
+        assert_eq!(map_data.center_of(R16::new(1)), WorldPoint::new(1, 0));
+    }
+
+    #[test]
+    fn test_center_of_large_region() {
+        // 4x4 world where location 9 occupies all west pixels
+        let west = vec![R16::new(9); 8];
+        let east = vec![
+            R16::new(0),
+            R16::new(1),
+            R16::new(2),
+            R16::new(3),
+            R16::new(4),
+            R16::new(5),
+            R16::new(6),
+            R16::new(7),
+        ];
+        let map_data = MapData::new(west, east, 2);
+
+        // Location 9 occupies all of west hemisphere; first pixel is (0,0)
+        assert_eq!(map_data.center_of(R16::new(9)), WorldPoint::new(0, 0));
     }
 }

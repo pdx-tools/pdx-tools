@@ -321,11 +321,10 @@ impl Eu5App {
     }
 
     #[wasm_bindgen]
-    pub fn get_starting_coordinates(&self) -> Option<CanvasCoordinates> {
-        let (x, y) = self.app().player_capital_coordinates()?;
-        Some(CanvasCoordinates {
-            x: x as f32,
-            y: y as f32,
+    pub fn get_starting_coordinates(&self) -> Option<CapitalColorId> {
+        let color_id = self.app().player_capital_color_id()?;
+        Some(CapitalColorId {
+            color_id: color_id.value(),
         })
     }
 
@@ -737,9 +736,8 @@ impl Eu5App {
 
 #[derive(Debug, Clone, Copy, tsify::Tsify, Serialize)]
 #[tsify(into_wasm_abi)]
-pub struct CanvasCoordinates {
-    x: f32,
-    y: f32,
+pub struct CapitalColorId {
+    color_id: u16,
 }
 
 #[derive(Debug, Clone, tsify::Tsify, Serialize)]

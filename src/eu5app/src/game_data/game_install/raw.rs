@@ -2,9 +2,9 @@ use super::parsing::{parse_default_map, parse_locations_data, parse_named_locati
 use crate::game_data::game_install::parsing::LocationTerrain;
 use crate::game_data::{GameData, GameDataError, TextureProvider};
 use crate::map::{EU5_TILE_HEIGHT, EU5_TILE_WIDTH};
-use crate::{ColorIdx, GameLocation, GameSpatialLocation, tile_dimensions};
+use crate::{ColorIdx, GameLocation};
 use eu5save::hash::{FnvHashMap, FxHashMap};
-use pdx_map::{R16, R16Palette, R16SecondaryMap, Rgb};
+use pdx_map::{R16, R16Palette, Rgb};
 use rawzip::{CompressionMethod, ReaderAt, ZipArchive, ZipArchiveEntryWayfinder};
 use std::collections::HashMap;
 use std::fs::File;
@@ -70,52 +70,19 @@ impl GameTextureBundle {
     #[instrument(
         skip_all,
         name = "eu5.location_png",
-        fields(game_locations, texture_locations, joined_locations)
+        fields(game_locations, joined_locations)
     )]
-    pub fn location_aware(
-        &self,
-        locations: Vec<LocationTerrain>,
-    ) -> (Vec<GameLocation>, R16SecondaryMap<GameSpatialLocation>) {
+    pub fn location_aware(&self, locations: Vec<LocationTerrain>) -> Vec<GameLocation> {
         assert!(
             !self.palette.is_empty(),
             "Texture must be processed to build color index before"
         );
-
-        let mut location_pixels_count = self.palette.map(|_, _| 0u32);
-        let mut location_x = self.palette.map(|_, _| 0u32);
-        let mut location_y = self.palette.map(|_, _| 0u32);
-
-        let (_height, width) = tile_dimensions();
-
-        for (idx, data) in [self.west_data(), self.east_data()].iter().enumerate() {
-            let offset_x = width * (idx as u32);
-            for (idx, r16) in data.iter().enumerate() {
-                location_pixels_count[*r16] += 1;
-                location_x[*r16] += offset_x + ((idx as u32) % width);
-                location_y[*r16] += (idx as u32) / width;
-            }
-        }
-
-        // Compute the average coordinates for each color index
-        for (((count, _r16), x), y) in location_pixels_count
-            .iter()
-            .zip(location_x.iter_mut())
-            .zip(location_y.iter_mut())
-        {
-            *x /= *count;
-            *y /= *count;
-        }
 
         let locations_by_color = locations
             .iter()
             .enumerate()
             .map(|(idx, loc)| (Rgb::from(loc.color.0), idx))
             .collect::<FnvHashMap<_, _>>();
-
-        let palette_map = self.palette.map(|_, r16| GameSpatialLocation {
-            avg_x: location_x[r16] as u16,
-            avg_y: location_y[r16] as u16,
-        });
 
         let mut location_r16 = vec![None; locations.len()];
         for (rgb, r16) in self.palette.iter() {
@@ -125,7 +92,7 @@ impl GameTextureBundle {
             location_r16[*idx] = Some(ColorIdx::from(r16));
         }
 
-        let locations = locations
+        locations
             .into_iter()
             .enumerate()
             .map(|(idx, x)| GameLocation {
@@ -133,9 +100,7 @@ impl GameTextureBundle {
                 terrain: x.terrain,
                 color_id: location_r16[idx],
             })
-            .collect();
-
-        (locations, palette_map)
+            .collect()
     }
 }
 
@@ -313,8 +278,8 @@ impl RawGameData {
     }
 
     pub fn into_game_data(self, textures: &GameTextureBundle) -> GameData {
-        let (locations, spatial_locations) = textures.location_aware(self.locations);
-        GameData::new(locations, spatial_locations, self.country_localizations)
+        let locations = textures.location_aware(self.locations);
+        GameData::new(locations, self.country_localizations)
     }
 }
 
