@@ -46,7 +46,8 @@ export const createGame = async (
 
   const saveDataTask = timeAsync("Read Save File", () => readFile());
 
-  const wasm = await initialized;
+  const [wasm, tokens] = await Promise.all([initialized, tokensTask]);
+  timeSync("Set EU5 Tokens", () => wasm_eu5.set_tokens(new Uint8Array(tokens)));
   onProgress?.(5); // Initialize wasm/tokens
 
   const metaParser = timeSync("Create Meta Parser", () =>
@@ -193,6 +194,4 @@ export async function initialize(port: MessagePort, level: wasm_eu5.LogLevel) {
 
   await initialized;
   timeSync("Setup EU5 Wasm", () => wasm_eu5.setup_eu5_wasm(level));
-  const tokens = await tokensTask;
-  timeSync("Set EU5 Tokens", () => wasm_eu5.set_tokens(new Uint8Array(tokens)));
 }
