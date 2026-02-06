@@ -2,7 +2,7 @@ use pdx_map::{
     CanvasDimensions, Clock, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
     InteractionController, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
     MapTexture, MapViewController, MouseButton, PhysicalSize, QueuedWorkFuture, R16, R16Palette,
-    RenderError, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
+    RenderError, SurfaceMapRenderer, World, WorldLength, WorldPoint, WorldSize, default_clock,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -11,25 +11,21 @@ use web_sys::OffscreenCanvas;
 
 #[wasm_bindgen]
 pub struct PdxMapImage {
-    west: Vec<R16>,
-    east: Vec<R16>,
+    world: World<R16>,
     palette: R16Palette,
-    tile_width: u32,
-    tile_height: u32,
 }
 
 #[wasm_bindgen]
 impl PdxMapImage {
     #[wasm_bindgen]
     pub fn from_rgba(data: &[u8], width: u32, height: u32) -> Result<PdxMapImage, JsError> {
-        let (west, east, palette) = pdx_map::split_rgba8_to_indexed_r16(data, width);
-        Ok(PdxMapImage {
-            west,
-            east,
-            palette,
-            tile_width: width / 2,
-            tile_height: height,
-        })
+        let (world, palette) = World::from_rgba8(data, WorldLength::new(width));
+        assert_eq!(
+            world.size().height,
+            height,
+            "image height does not match data length"
+        );
+        Ok(PdxMapImage { world, palette })
     }
 }
 
@@ -58,19 +54,21 @@ impl PdxCanvasSurface {
 
     #[wasm_bindgen]
     pub fn upload_west_texture(&self, image: &PdxMapImage) -> Result<PdxTexture, JsError> {
-        let size = PhysicalSize::new(image.tile_width, image.tile_height);
-        let texture =
-            self.pipeline_components
-                .create_texture(&image.west, size, "West Texture Input");
+        let texture = self.pipeline_components.create_texture(
+            image.world.west().as_slice(),
+            image.world.west().size().physical(),
+            "West Texture Input",
+        );
         Ok(PdxTexture { data: texture })
     }
 
     #[wasm_bindgen]
     pub fn upload_east_texture(&self, image: &PdxMapImage) -> Result<PdxTexture, JsError> {
-        let size = PhysicalSize::new(image.tile_width, image.tile_height);
-        let texture =
-            self.pipeline_components
-                .create_texture(&image.east, size, "East Texture Input");
+        let texture = self.pipeline_components.create_texture(
+            image.world.east().as_slice(),
+            image.world.east().size().physical(),
+            "East Texture Input",
+        );
         Ok(PdxTexture { data: texture })
     }
 }
@@ -116,7 +114,7 @@ impl PdxMapRenderer {
         );
 
         // Create input controller with map dimensions
-        let map_size = WorldSize::new(image.tile_width * 2, image.tile_height);
+        let map_size = image.world.size();
         let interaction = InteractionController::new(canvas_dims.logical_size(), map_size);
 
         let mut map_renderer = PdxMapRenderer {
@@ -472,7 +470,10 @@ impl PdxScreenshotRenderer {
     pub fn render_west_tile(&mut self) -> Result<(), JsError> {
         let mut bounds = self.map.viewport_bounds();
         bounds.rect.origin = WorldPoint::new(0, 0);
-        bounds.rect.size = self.map.tile_size();
+        bounds.rect.size = WorldSize::new(
+            self.map.hemisphere_size().width,
+            self.map.hemisphere_size().height,
+        );
         bounds.zoom_level = 1.0;
         self.map.set_viewport_bounds(bounds);
         self.map
@@ -484,8 +485,11 @@ impl PdxScreenshotRenderer {
     #[wasm_bindgen]
     pub fn render_east_tile(&mut self) -> Result<(), JsError> {
         let mut bounds = self.map.viewport_bounds();
-        bounds.rect.size = self.map.tile_size();
-        bounds.rect.origin = WorldPoint::new(self.map.tile_size().width, 0);
+        bounds.rect.size = WorldSize::new(
+            self.map.hemisphere_size().width,
+            self.map.hemisphere_size().height,
+        );
+        bounds.rect.origin = WorldPoint::new(self.map.hemisphere_size().width, 0);
         bounds.zoom_level = 1.0;
         self.map.set_viewport_bounds(bounds);
         self.map

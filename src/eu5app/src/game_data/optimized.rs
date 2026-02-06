@@ -1,6 +1,6 @@
 use crate::{
     GameLocation,
-    game_data::{GameData, GameDataError, TextureProvider},
+    game_data::{GameData, GameDataError},
 };
 use eu5save::hash::FxHashMap;
 use pdx_map::R16;
@@ -144,35 +144,20 @@ where
     }
 }
 
-impl<R> TextureProvider for OptimizedTextureBundle<R>
+impl<R> OptimizedTextureBundle<R>
 where
     R: AsRef<[u8]>,
 {
-    fn load_west_texture(&mut self, mut dst: Vec<R16>) -> Result<Vec<R16>, GameDataError> {
-        let size = self.west_texture_size();
-        if dst.len() != size {
-            dst = vec![R16::new(0); size];
-        }
-        self.read_entry(self.west_texture.1, bytemuck::cast_slice_mut(&mut dst))?;
-        Ok(dst)
-    }
+    /// Load both hemisphere textures from the bundle.
+    pub fn load_hemispheres(&mut self) -> Result<(Vec<R16>, Vec<R16>), GameDataError> {
+        let (west_bytes, west_wayfinder) = &self.west_texture;
+        let (east_bytes, east_wayfinder) = &self.east_texture;
 
-    fn load_east_texture(&mut self, mut dst: Vec<R16>) -> Result<Vec<R16>, GameDataError> {
-        let size = self.east_texture_size();
-        if dst.len() != size {
-            dst = vec![R16::new(0); size];
-        }
-        self.read_entry(self.east_texture.1, bytemuck::cast_slice_mut(&mut dst))?;
-        Ok(dst)
-    }
+        let mut west_data = vec![R16::new(0); *west_bytes as usize / std::mem::size_of::<R16>()];
+        self.read_entry(*west_wayfinder, bytemuck::cast_slice_mut(&mut west_data))?;
 
-    fn west_texture_size(&self) -> usize {
-        // Divide by 2 since each R16 is 2 bytes
-        (self.west_texture.0 as usize) / 2
-    }
-
-    fn east_texture_size(&self) -> usize {
-        // Divide by 2 since each R16 is 2 bytes
-        (self.east_texture.0 as usize) / 2
+        let mut east_data = vec![R16::new(0); *east_bytes as usize / std::mem::size_of::<R16>()];
+        self.read_entry(*east_wayfinder, bytemuck::cast_slice_mut(&mut east_data))?;
+        Ok((west_data, east_data))
     }
 }

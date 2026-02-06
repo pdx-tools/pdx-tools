@@ -1,9 +1,10 @@
 mod color;
 mod image;
 mod loc_arrays;
-mod picker;
+mod pixel;
 mod units;
 mod viewport;
+mod world;
 
 #[cfg(feature = "render")]
 mod controller;
@@ -15,14 +16,12 @@ mod interaction;
 mod renderer;
 
 pub use color::GpuColor;
-pub use image::*;
+pub use image::StitchedImage;
 pub use loc_arrays::*;
-pub use picker::*;
-pub use units::{
-    Logical, LogicalPoint, LogicalRect, LogicalSize, Physical, PhysicalPoint, PhysicalRect,
-    PhysicalSize, Point, Rect, Size, World, WorldPoint, WorldRect, WorldSize,
-};
+pub use pixel::{R16, R16Palette, R16SecondaryMap, Rgb};
+pub use units::*;
 pub use viewport::*;
+pub use world::{Aabb, Hemisphere, SpatialIndex, TopologyIndex, World};
 
 #[cfg(feature = "render")]
 pub use controller::MapViewController;

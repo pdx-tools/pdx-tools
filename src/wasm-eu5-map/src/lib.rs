@@ -1,11 +1,8 @@
-use eu5app::{
-    game_data::{TextureProvider, optimized::OptimizedTextureBundle},
-    should_highlight_individual_locations, tile_dimensions,
-};
+use eu5app::{game_data::optimized::OptimizedTextureBundle, should_highlight_individual_locations};
 use pdx_map::{
-    CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, InteractionController, KeyboardKey,
-    LocationArrays, LocationFlags, LogicalPoint, LogicalSize, MapTexture, MapViewController,
-    MouseButton, PhysicalSize, R16, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
+    CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, InteractionController,
+    KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize, MapTexture,
+    MapViewController, MouseButton, R16, SurfaceMapRenderer, World, WorldPoint, default_clock,
 };
 use std::time::Duration;
 use wasm_bindgen::prelude::*;
@@ -51,26 +48,26 @@ impl Eu5CanvasSurface {
     #[wasm_bindgen]
     pub fn upload_west_texture(
         &self,
-        data: &Eu5WasmTextureData,
+        data: &Eu5WasmTextureHemispheres,
     ) -> Result<Eu5WasmTexture, JsError> {
-        let (tile_width, tile_height) = tile_dimensions();
-        let size = PhysicalSize::new(tile_width, tile_height);
-        let view = self
-            .pipeline_components
-            .create_texture(&data.data, size, "West Texture Input");
+        let view = self.pipeline_components.create_texture(
+            &data.west,
+            eu5app::hemisphere_size().physical(),
+            "West Texture Input",
+        );
         Ok(Eu5WasmTexture { data: view })
     }
 
     #[wasm_bindgen]
     pub fn upload_east_texture(
         &self,
-        data: &Eu5WasmTextureData,
+        data: &Eu5WasmTextureHemispheres,
     ) -> Result<Eu5WasmTexture, JsError> {
-        let (tile_width, tile_height) = tile_dimensions();
-        let size = PhysicalSize::new(tile_width, tile_height);
-        let view = self
-            .pipeline_components
-            .create_texture(&data.data, size, "East Texture Input");
+        let view = self.pipeline_components.create_texture(
+            &data.east,
+            eu5app::hemisphere_size().physical(),
+            "East Texture Input",
+        );
         Ok(Eu5WasmTexture { data: view })
     }
 }
@@ -79,7 +76,7 @@ impl Eu5CanvasSurface {
 pub struct Eu5WasmMapRenderer {
     controller: MapViewController,
     input: InteractionController,
-    picker: pdx_map::MapPicker,
+    world: World<R16>,
     location_arrays: LocationArrays,
     clock: Box<dyn Clock>,
     last_tick: Option<Duration>,
@@ -98,8 +95,7 @@ impl Eu5WasmMapRenderer {
         surface: Eu5CanvasSurface,
         west_texture: Eu5WasmTexture,
         east_texture: Eu5WasmTexture,
-        west_data: Eu5WasmTextureData,
-        east_data: Eu5WasmTextureData,
+        texture_data: Eu5WasmTextureHemispheres,
     ) -> Result<Self, JsError> {
         let display: CanvasDimensions = surface.display.into();
         let renderer = SurfaceMapRenderer::new(
@@ -109,14 +105,14 @@ impl Eu5WasmMapRenderer {
             display.physical_size(),
         );
 
-        let tile_width = renderer.tile_width();
-        let tile_height = renderer.tile_height();
-        let picker = pdx_map::MapPicker::new(west_data.data, east_data.data, tile_width * 2);
+        let map_size = renderer.hemisphere_size().world();
+        let west = Hemisphere::new(texture_data.west, renderer.hemisphere_size().width_length());
+        let east = Hemisphere::new(texture_data.east, renderer.hemisphere_size().width_length());
+        let world = World::new(west, east);
         let mut controller =
             MapViewController::new(renderer, display.logical_size(), display.scale_factor());
 
         // Initialize input controller with map size
-        let map_size = WorldSize::new(tile_width * 2, tile_height);
         let input = InteractionController::new(display.logical_size(), map_size);
 
         let show_location_borders = should_highlight_individual_locations(controller.get_zoom());
@@ -127,7 +123,7 @@ impl Eu5WasmMapRenderer {
         Ok(Eu5WasmMapRenderer {
             controller,
             input,
-            picker,
+            world,
             location_arrays: LocationArrays::new(),
             clock: default_clock(),
             last_tick: None,
@@ -150,8 +146,7 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn pick_location(&mut self) -> u16 {
         let world_coords = self.input.world_position();
-        let location = self.picker.pick(world_coords);
-        location.value()
+        self.world.at(world_coords).value()
     }
 
     #[wasm_bindgen]
@@ -331,7 +326,7 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn center_at_color_id(&mut self, color_id: u16) {
         let r16 = R16::new(color_id);
-        let center = self.picker.center_of(r16);
+        let center = self.world.center_of(r16);
 
         // Convert u32 world coordinates to f32 for viewport
         let world = WorldPoint::new(center.x as f32, center.y as f32);
@@ -376,28 +371,26 @@ impl Eu5WasmGameBundle {
     }
 
     #[wasm_bindgen]
-    pub fn west_texture_data(&mut self) -> Result<Eu5WasmTextureData, JsError> {
-        let data = self
+    pub fn load_texture_data(mut self) -> Result<Eu5WasmTextureHemispheres, JsError> {
+        let (west_data, east_data) = self
             .textures
-            .load_west_texture(Vec::new())
-            .map_err(|e| JsError::new(&format!("Failed to get west texture data: {e}")))?;
-        Ok(Eu5WasmTextureData { data })
-    }
+            .load_hemispheres()
+            .map_err(|e| JsError::new(&format!("Failed to load textures: {e}")))?;
 
-    #[wasm_bindgen]
-    pub fn east_texture_data(&mut self) -> Result<Eu5WasmTextureData, JsError> {
-        let data = self
-            .textures
-            .load_east_texture(Vec::new())
-            .map_err(|e| JsError::new(&format!("Failed to get east texture data: {e}")))?;
-        Ok(Eu5WasmTextureData { data })
+        Ok(Eu5WasmTextureHemispheres {
+            west: west_data,
+            east: east_data,
+        })
     }
 }
 
+/// West and east hemisphere texture data.
+/// Passed directly to renderer construction.
 #[wasm_bindgen]
 #[derive(Debug)]
-pub struct Eu5WasmTextureData {
-    data: Vec<pdx_map::R16>,
+pub struct Eu5WasmTextureHemispheres {
+    west: Vec<pdx_map::R16>,
+    east: Vec<pdx_map::R16>,
 }
 
 #[wasm_bindgen]

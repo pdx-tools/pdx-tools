@@ -1,3 +1,4 @@
+use pdx_map::HemisphereSize;
 use serde::{Deserialize, Serialize};
 
 /// Information about a location returned by cursor lookup
@@ -7,20 +8,14 @@ pub struct PickedLocation {
     pub location_id: eu5save::models::LocationId,
 }
 
-pub(crate) const EU5_TILE_WIDTH: u32 = 8192;
-pub(crate) const EU5_TILE_HEIGHT: u32 = 8192;
-
 /// Get EU5 texture buffer size (width × height × 4 bytes RGBA)
-pub const fn texture_buffer_size() -> usize {
-    (EU5_TILE_WIDTH * EU5_TILE_HEIGHT * 4) as usize
+pub fn texture_buffer_size() -> usize {
+    (hemisphere_size().area() * 4) as usize
 }
 
-pub const fn world_dimensions() -> (u32, u32) {
-    (EU5_TILE_WIDTH * 2, EU5_TILE_HEIGHT)
-}
-
-pub const fn tile_dimensions() -> (u32, u32) {
-    (EU5_TILE_WIDTH, EU5_TILE_HEIGHT)
+/// Get EU5 hemisphere size in pixels
+pub const fn hemisphere_size() -> HemisphereSize<u32> {
+    HemisphereSize::new(8192, 8192)
 }
 
 /// Determine if the user is zoomed in close enough to show individual locations

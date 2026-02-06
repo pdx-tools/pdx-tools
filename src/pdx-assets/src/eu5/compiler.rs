@@ -66,8 +66,8 @@ where
 
     // Write R16 texture files
     for (filename, data) in [
-        ("locations-0.r16", textures.west_data()),
-        ("locations-1.r16", textures.east_data()),
+        ("locations-0.r16", textures.textures().west_data()),
+        ("locations-1.r16", textures.textures().east_data()),
     ] {
         let (mut entry, config) = archive
             .new_file(filename)

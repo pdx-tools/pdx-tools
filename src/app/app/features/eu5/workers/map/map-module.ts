@@ -90,33 +90,23 @@ export const createMapEngine = async (
   const bundle = await bundleFetch();
 
   const gameBundle = Eu5WasmGameBundle.open(bundle);
-  const textureWestData = timeSync("Create Texture Data (West)", () =>
-    gameBundle.west_texture_data(),
+  const textureData = timeSync("Create Texture Data", () =>
+    gameBundle.load_texture_data(),
   );
 
   const westView = timeSync("Upload Texture Data (West)", () =>
-    canvasInit.upload_west_texture(textureWestData),
+    canvasInit.upload_west_texture(textureData),
   );
   onProgress?.(12); // West texture data
 
-  const textureEastData = timeSync("Create Texture Data (East)", () =>
-    gameBundle.east_texture_data(),
-  );
-
   const eastView = timeSync("Upload Texture Data (East)", () =>
-    canvasInit.upload_east_texture(textureEastData),
+    canvasInit.upload_east_texture(textureData),
   );
   onProgress?.(12); // East texture data
 
   try {
     const app = timeSync("Create Renderer", () =>
-      Eu5WasmMapRenderer.create(
-        canvasInit,
-        westView,
-        eastView,
-        textureWestData,
-        textureEastData,
-      ),
+      Eu5WasmMapRenderer.create(canvasInit, westView, eastView, textureData),
     );
     onProgress?.(6); // Create renderer
     appResolve(app);

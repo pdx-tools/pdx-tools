@@ -1,42 +1,85 @@
 use super::parsing::{parse_default_map, parse_locations_data, parse_named_locations};
 use crate::game_data::game_install::parsing::LocationTerrain;
 use crate::game_data::{GameData, GameDataError, TextureProvider};
-use crate::map::{EU5_TILE_HEIGHT, EU5_TILE_WIDTH};
-use crate::{ColorIdx, GameLocation};
+use crate::{ColorIdx, GameLocation, hemisphere_size};
 use eu5save::hash::{FnvHashMap, FxHashMap};
-use pdx_map::{R16, R16Palette, Rgb};
+use pdx_map::{Hemisphere, HemisphereLength, R16, R16Palette, Rgb, World, WorldLength, WorldSize};
 use rawzip::{CompressionMethod, ReaderAt, ZipArchive, ZipArchiveEntryWayfinder};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
+use std::sync::Arc;
 use tracing::instrument;
 
-/// Texture bundle for source game data (parsed from game files).
+/// Basic texture storage for game map data.
 ///
-/// Stores textures in memory as R16 format.
-pub struct GameTextureBundle {
-    west_texture: Vec<R16>,
-    east_texture: Vec<R16>,
-    palette: R16Palette,
+/// Wraps a [`World`] containing west and east hemisphere textures.
+pub struct GameTextures {
+    world: Arc<World<R16>>,
 }
 
-impl GameTextureBundle {
-    pub fn new(west_texture: Vec<R16>, east_texture: Vec<R16>, palette: R16Palette) -> Self {
+impl GameTextures {
+    /// Create from pre-split hemisphere data (for optimized bundles)
+    pub fn new(west_data: Vec<R16>, east_data: Vec<R16>) -> Self {
+        let hemisphere_width = hemisphere_size().width;
+        let west = Hemisphere::new(west_data, HemisphereLength::new(hemisphere_width));
+        let east = Hemisphere::new(east_data, HemisphereLength::new(hemisphere_width));
         Self {
-            west_texture,
-            east_texture,
-            palette,
+            world: Arc::new(World::new(west, east)),
         }
     }
 
+    /// Create directly from a World (for raw data processing)
+    pub fn from_world(world: World<R16>) -> Self {
+        Self {
+            world: Arc::new(world),
+        }
+    }
+
+    /// Returns a cheap clone of the world
+    pub fn world(&self) -> Arc<World<R16>> {
+        Arc::clone(&self.world)
+    }
+
     pub fn west_data(&self) -> &[R16] {
-        self.west_texture.as_slice()
+        self.world.west().as_slice()
     }
 
     pub fn east_data(&self) -> &[R16] {
-        self.east_texture.as_slice()
+        self.world.east().as_slice()
+    }
+}
+
+impl TextureProvider for GameTextures {
+    fn west_texture(&self) -> &[R16] {
+        self.world.west().as_slice()
     }
 
+    fn east_texture(&self) -> &[R16] {
+        self.world.east().as_slice()
+    }
+
+    fn west_texture_size(&self) -> usize {
+        self.world.west().as_slice().len()
+    }
+
+    fn east_texture_size(&self) -> usize {
+        self.world.east().as_slice().len()
+    }
+}
+
+/// Palette-aware textures for raw game data processing.
+///
+/// Contains both textures and the RGB-to-R16 color mapping palette.
+/// This type is used during game data compilation to map location
+/// colors to texture indices.
+pub struct PalettedTextures {
+    textures: GameTextures,
+    palette: R16Palette,
+}
+
+impl PalettedTextures {
+    /// Create from locations.png data
     #[instrument(skip_all, name = "eu5.location_png.transcode")]
     pub fn create_from_location_png(png_bytes: &[u8]) -> Result<Self, GameDataError> {
         let image = image::load_from_memory_with_format(png_bytes, image::ImageFormat::Png)
@@ -45,15 +88,16 @@ impl GameTextureBundle {
             GameDataError::LocationsError(String::from("locations.png is not in RGB8 format"))
         })?;
         let (width, height) = image.dimensions();
+        let world_size = WorldSize::new(width, height);
 
-        if !(width == EU5_TILE_WIDTH * 2 && height == EU5_TILE_HEIGHT) {
+        if world_size != hemisphere_size().world() {
             return Err(GameDataError::LocationsError(format!(
                 "Unexpected locations.png dimensions: {}x{}",
                 width, height
             )));
         }
 
-        let (west, east, palette) = pdx_map::split_rgb8_to_indexed_r16(image.as_raw(), width);
+        let (world, palette) = World::from_rgb8(image.as_raw(), WorldLength::new(width));
 
         tracing::info!(
             unique_colors = palette.len(),
@@ -61,23 +105,18 @@ impl GameTextureBundle {
         );
 
         Ok(Self {
-            west_texture: west,
-            east_texture: east,
+            textures: GameTextures::from_world(world),
             palette,
         })
     }
 
+    /// Process location data with palette awareness
     #[instrument(
         skip_all,
         name = "eu5.location_png",
         fields(game_locations, joined_locations)
     )]
     pub fn location_aware(&self, locations: Vec<LocationTerrain>) -> Vec<GameLocation> {
-        assert!(
-            !self.palette.is_empty(),
-            "Texture must be processed to build color index before"
-        );
-
         let locations_by_color = locations
             .iter()
             .enumerate()
@@ -102,25 +141,15 @@ impl GameTextureBundle {
             })
             .collect()
     }
-}
 
-impl TextureProvider for GameTextureBundle {
-    fn load_west_texture(&mut self, mut dst: Vec<R16>) -> Result<Vec<R16>, GameDataError> {
-        std::mem::swap(&mut dst, &mut self.west_texture);
-        Ok(dst)
+    /// Access underlying textures (for bundle writing)
+    pub fn textures(&self) -> &GameTextures {
+        &self.textures
     }
 
-    fn load_east_texture(&mut self, mut dst: Vec<R16>) -> Result<Vec<R16>, GameDataError> {
-        std::mem::swap(&mut dst, &mut self.east_texture);
-        Ok(dst)
-    }
-
-    fn west_texture_size(&self) -> usize {
-        self.west_texture.len()
-    }
-
-    fn east_texture_size(&self) -> usize {
-        self.east_texture.len()
+    /// Consume and extract the underlying textures (for runtime use after compilation)
+    pub fn into_textures(self) -> GameTextures {
+        self.textures
     }
 }
 
@@ -277,7 +306,7 @@ impl RawGameData {
         Ok((me, builder))
     }
 
-    pub fn into_game_data(self, textures: &GameTextureBundle) -> GameData {
+    pub fn into_game_data(self, textures: &PalettedTextures) -> GameData {
         let locations = textures.location_aware(self.locations);
         GameData::new(locations, self.country_localizations)
     }
@@ -296,12 +325,12 @@ where
     R: Read,
 {
     #[instrument(skip_all, name = "eu5.raw_texture.build")]
-    pub fn build(mut self) -> Result<GameTextureBundle, GameDataError> {
+    pub fn build(mut self) -> Result<PalettedTextures, GameDataError> {
         let mut png_bytes = Vec::new();
         self.reader
             .read_to_end(&mut png_bytes)
             .map_err(|e| GameDataError::Io(e, String::from("locations_png")))?;
 
-        GameTextureBundle::create_from_location_png(&png_bytes)
+        PalettedTextures::create_from_location_png(&png_bytes)
     }
 }
