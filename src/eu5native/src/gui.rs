@@ -345,9 +345,14 @@ fn load_game_bundle(game_data: PathBuf) -> Result<(TextureData, GameData)> {
         .load_east_texture(Vec::new())
         .context("Failed to load east texture")?;
 
+    let (tile_width, _tile_height) = eu5app::tile_dimensions();
+    let picker =
+        pdx_map::MapPicker::new(west_texture.clone(), east_texture.clone(), tile_width * 2);
+
     let texture_data = TextureData {
         west: west_texture,
         east: east_texture,
+        picker,
     };
 
     Ok((texture_data, game_bundle.into_game_data()))
@@ -357,6 +362,7 @@ fn load_game_bundle(game_data: PathBuf) -> Result<(TextureData, GameData)> {
 struct TextureData {
     west: Vec<pdx_map::R16>,
     east: Vec<pdx_map::R16>,
+    picker: pdx_map::MapPicker,
 }
 
 struct App {
@@ -444,7 +450,16 @@ impl App {
             return;
         };
 
-        apply_workspace(controller, input_controller, &bundle.workspace);
+        let Some(texture_data) = &self.texture_data else {
+            return;
+        };
+
+        apply_workspace(
+            controller,
+            input_controller,
+            &bundle.workspace,
+            &texture_data.picker,
+        );
         self.save = Some(Box::new(bundle.save));
         self.workspace = Some(bundle.workspace);
 
@@ -720,6 +735,7 @@ fn apply_workspace(
     controller: &mut MapViewController,
     input_controller: &mut InteractionController,
     workspace: &Eu5Workspace<'_>,
+    picker: &pdx_map::MapPicker,
 ) {
     let save_date = workspace.gamestate().metadata().date.date_fmt().to_string();
     controller
@@ -729,8 +745,9 @@ fn apply_workspace(
         .renderer_mut()
         .update_locations(workspace.location_arrays());
 
-    if let Some((x, y)) = workspace.player_capital_coordinates() {
-        let world = WorldPoint::new(x as f32, y as f32);
+    if let Some(color_id) = workspace.player_capital_color_id() {
+        let center = picker.center_of(pdx_map::R16::new(color_id.value()));
+        let world = WorldPoint::new(center.x as f32, center.y as f32);
         input_controller.center_on(world);
 
         // Transfer viewport to render controller

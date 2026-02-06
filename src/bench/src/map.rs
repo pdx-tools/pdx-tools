@@ -89,4 +89,25 @@ pub fn adjacency_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(map_benches, aabb_index_benchmark, adjacency_benchmark);
+pub fn center_of_benchmark(c: &mut Criterion) {
+    let west = load_r16_zst(&bench_asset_path("provinces-0.r16.zst"));
+    let east = load_r16_zst(&bench_asset_path("provinces-1.r16.zst"));
+    let half_width = PROVINCES_WIDTH / 2;
+    let map_data = MapData::new(west, east, half_width);
+
+    let mut group = c.benchmark_group("map/center_of");
+
+    // Benchmark a single center_of call for a specific province
+    group.bench_function("single", |b| {
+        b.iter(|| black_box(map_data.center_of(R16::new(1000))))
+    });
+
+    group.finish();
+}
+
+criterion_group!(
+    map_benches,
+    aabb_index_benchmark,
+    adjacency_benchmark,
+    center_of_benchmark
+);

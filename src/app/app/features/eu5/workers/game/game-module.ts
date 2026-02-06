@@ -86,9 +86,9 @@ export const createGame = async (
     throw new Error("Map endpoint not initialized");
   }
 
-  const startingCoordinates = app.get_starting_coordinates();
-  if (startingCoordinates) {
-    mapEndpoint.center_at(startingCoordinates.x, startingCoordinates.y);
+  const startingLocation = app.get_starting_coordinates();
+  if (startingLocation) {
+    mapEndpoint.center_at_color_id(startingLocation.color_id);
   }
 
   const syncLocationData = () => {

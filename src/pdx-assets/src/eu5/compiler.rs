@@ -45,7 +45,7 @@ where
     let textures = texture_builder.build()?;
 
     // Create location data with color awareness
-    let (locations, spatial_locations) = textures.location_aware(raw_game_data.locations);
+    let locations = textures.location_aware(raw_game_data.locations);
 
     // Create output directory
     let eu5_out_dir = out_dir.join("eu5");
@@ -58,11 +58,6 @@ where
     let mut archive = rawzip::ZipArchiveWriter::new(writer);
 
     write_entry(&mut archive, "location_lookup.bin", &locations)?;
-    write_entry(
-        &mut archive,
-        "spatial_location_lookup.bin",
-        spatial_locations.as_slice(),
-    )?;
     write_entry(
         &mut archive,
         "country_localization.bin",
