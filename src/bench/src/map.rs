@@ -1,8 +1,9 @@
 use criterion::{Criterion, criterion_group};
-use pdx_map::{Aabb, Hemisphere, HemisphereLength, R16, World, WorldPoint};
+use pdx_map::{Aabb, R16, World, WorldLength, WorldPoint};
 use std::{
     hint::black_box,
     path::{Path, PathBuf},
+    sync::LazyLock,
 };
 
 const PROVINCES_WIDTH: u32 = 5632;
@@ -13,27 +14,39 @@ fn bench_asset_path(name: &str) -> PathBuf {
         .join(name)
 }
 
-fn load_r16_zst(path: &Path) -> Vec<R16> {
+fn load_rgb_zst(path: &Path) -> Vec<u8> {
     let compressed = std::fs::read(path)
         .unwrap_or_else(|err| panic!("Failed to read {}: {err}", path.display()));
-    let decompressed = zstd::stream::decode_all(compressed.as_slice())
-        .unwrap_or_else(|err| panic!("Failed to decompress {}: {err}", path.display()));
-    assert_eq!(decompressed.len() % 2, 0, "r16 data must be even length");
+    zstd::stream::decode_all(compressed.as_slice())
+        .unwrap_or_else(|err| panic!("Failed to decompress {}: {err}", path.display()))
+}
 
-    decompressed
-        .chunks_exact(2)
-        .map(|chunk| R16::new(u16::from_le_bytes([chunk[0], chunk[1]])))
-        .collect()
+static RGB_DATA: LazyLock<Vec<u8>> =
+    LazyLock::new(|| load_rgb_zst(&bench_asset_path("provinces.rgb.zst")));
+
+static WORLD: LazyLock<World<R16>> = LazyLock::new(|| {
+    let (world, _palette) = World::from_rgb8(&RGB_DATA, WorldLength::new(PROVINCES_WIDTH));
+    world
+});
+
+pub fn from_rgb8_benchmark(c: &mut Criterion) {
+    let rgb_data: &[u8] = &RGB_DATA;
+
+    let mut group = c.benchmark_group("map/parse");
+    group.bench_function("from_rgb8", |b| {
+        b.iter(|| {
+            black_box(World::from_rgb8(
+                rgb_data,
+                WorldLength::new(PROVINCES_WIDTH),
+            ))
+        })
+    });
+
+    group.finish();
 }
 
 pub fn aabb_index_benchmark(c: &mut Criterion) {
-    let west = load_r16_zst(&bench_asset_path("provinces-0.r16.zst"));
-    let east = load_r16_zst(&bench_asset_path("provinces-1.r16.zst"));
-    let hemisphere_width = PROVINCES_WIDTH / 2;
-    let world = World::new(
-        Hemisphere::new(west, HemisphereLength::new(hemisphere_width)),
-        Hemisphere::new(east, HemisphereLength::new(hemisphere_width)),
-    );
+    let world: &World<R16> = &WORLD;
     let height = world.size().height;
     assert!(height > 0, "map height must be greater than 0");
 
@@ -68,13 +81,7 @@ pub fn aabb_index_benchmark(c: &mut Criterion) {
 }
 
 pub fn adjacency_benchmark(c: &mut Criterion) {
-    let west = load_r16_zst(&bench_asset_path("provinces-0.r16.zst"));
-    let east = load_r16_zst(&bench_asset_path("provinces-1.r16.zst"));
-    let hemisphere_width = PROVINCES_WIDTH / 2;
-    let world = World::new(
-        Hemisphere::new(west, HemisphereLength::new(hemisphere_width)),
-        Hemisphere::new(east, HemisphereLength::new(hemisphere_width)),
-    );
+    let world: &World<R16> = &WORLD;
 
     let mut group = c.benchmark_group("map/adjacency");
     group.bench_function("build", |b| {
@@ -96,13 +103,7 @@ pub fn adjacency_benchmark(c: &mut Criterion) {
 }
 
 pub fn center_of_benchmark(c: &mut Criterion) {
-    let west = load_r16_zst(&bench_asset_path("provinces-0.r16.zst"));
-    let east = load_r16_zst(&bench_asset_path("provinces-1.r16.zst"));
-    let hemisphere_width = PROVINCES_WIDTH / 2;
-    let world = World::new(
-        Hemisphere::new(west, HemisphereLength::new(hemisphere_width)),
-        Hemisphere::new(east, HemisphereLength::new(hemisphere_width)),
-    );
+    let world: &World<R16> = &WORLD;
 
     let mut group = c.benchmark_group("map/center_of");
 
@@ -116,6 +117,7 @@ pub fn center_of_benchmark(c: &mut Criterion) {
 
 criterion_group!(
     map_benches,
+    from_rgb8_benchmark,
     aabb_index_benchmark,
     adjacency_benchmark,
     center_of_benchmark
