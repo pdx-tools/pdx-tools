@@ -40,6 +40,8 @@ struct ComputeUniforms {
 const STATE_NO_LOCATION_BORDERS = 1u; // Bit 0: opt out of location border drawing
 const STATE_HIGHLIGHTED = 2u; // Bit 1: location is highlighted (hover effect)
 
+const TAU = acos(-1.0) * 2.0;
+
 // Wrap x coordinate to handle world wraparound
 fn wrap_x_coordinate(x: i32) -> i32 {
     let world_width = i32(uniforms.tile_width * 2u);
@@ -90,7 +92,7 @@ fn get_location_index_at(global_x: i32, global_y: i32) -> u32 {
 }
 
 // Check if this pixel should be a location border (4-neighbor color difference)
-fn is_location_border_pixel(global_x: i32, global_y: i32, center_location_idx: u32) -> bool {
+fn is_location_border_pixel(global_x: i32, global_y: i32, center_location_idx: u32, in_secondary_zone: bool, secondary_color: u32) -> bool {
     if (uniforms.enable_location_borders == 0u) {
         return false;
     }
@@ -99,21 +101,6 @@ fn is_location_border_pixel(global_x: i32, global_y: i32, center_location_idx: u
     let state_flags = get_state_flags_by_index(center_location_idx);
     if ((state_flags & STATE_NO_LOCATION_BORDERS) != 0u) {
         return false;
-    }
-
-    // Get stripe info for current location
-    let primary_color = get_primary_color_by_index(center_location_idx);
-    let secondary_color = get_secondary_color_by_index(center_location_idx);
-    let has_stripes = primary_color != secondary_color && secondary_color != 0u;
-
-    // Check if we're in secondary color zone
-    var in_secondary_zone = false;
-    if (has_stripes) {
-        let base_frequency = 8.0;
-        let stripe_frequency = max(2.0, base_frequency / uniforms.zoom_level);
-        let pattern_val = (f32(global_x) + f32(global_y)) / stripe_frequency;
-        let f = fract(pattern_val);
-        in_secondary_zone = f > 0.5;
     }
 
     // Check 4 neighbors: up, down, left, right
@@ -172,25 +159,24 @@ fn is_owner_border_pixel(global_x: i32, global_y: i32, center_location_idx: u32,
     return false;
 }
 
+// Screen-space stripe blend factor (consistent thickness across zoom)
+fn stripe_blend_factor(world_x: f32, world_y: f32) -> f32 {
+    let px_scale_x = f32(uniforms.surface_width) / f32(uniforms.view_width);
+    let px_scale_y = f32(uniforms.surface_height) / f32(uniforms.view_height);
+    let stripe_px = 8.0;
+
+    let screen_x = world_x * px_scale_x;
+    let screen_y = world_y * px_scale_y;
+    let pattern_val = (screen_x + screen_y) / stripe_px;
+
+    let wave = 0.5 + 0.5 * cos(pattern_val * TAU);
+    let edge = fwidth(wave);
+
+    return smoothstep(0.5 - edge, 0.5 + edge, wave);
+}
+
 // Create a crisp, anti-aliased stripe pattern
-fn create_stripe_pattern(global_x: i32, global_y: i32, primary_color: u32, secondary_color: u32) -> vec4<f32> {
-    // 1. Calculate a continuous, floating-point value for the pattern
-    let base_frequency = 8.0;
-    let stripe_frequency = max(2.0, base_frequency / uniforms.zoom_level);
-    let pattern_val = (f32(global_x) + f32(global_y)) / stripe_frequency;
-
-    // 2. Calculate the pattern's change across one pixel (our analytical fwidth)
-    let width = 2.0 / stripe_frequency;
-    let half_width = width / 2.0;
-
-    // 3. Get the fractional part to create repeating bands.
-    let f = fract(pattern_val);
-
-    // 4. Use smoothstep with a more precise range for a sharper transition.
-    // The blend now happens exactly centered around the 0.5 mark.
-    let blend_factor = smoothstep(0.5 - half_width, 0.5 + half_width, f);
-
-    // 5. Unpack and mix the colors
+fn create_stripe_pattern(primary_color: u32, secondary_color: u32, blend_factor: f32) -> vec4<f32> {
     let primary_rgb = unpack_color(primary_color);
     let secondary_rgb = unpack_color(secondary_color);
     let mixed_rgb = mix(primary_rgb, secondary_rgb, blend_factor);
@@ -211,8 +197,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let world_y_float = (f32(safe_y) / f32(uniforms.surface_height)) * f32(uniforms.view_height);
 
     // Calculate global coordinates by adding viewport offset
-    let global_x = i32(floor(world_x_float + f32(uniforms.view_x)));
-    let global_y = i32(floor(world_y_float + f32(uniforms.view_y)));
+    let world_x = world_x_float + f32(uniforms.view_x);
+    let world_y = world_y_float + f32(uniforms.view_y);
+    let global_x = i32(floor(world_x));
+    let global_y = i32(floor(world_y));
 
     // Get location index directly from R16 texture
     let location_idx = get_location_index_at(global_x, global_y);
@@ -221,10 +209,17 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let state_flags = get_state_flags_by_index(location_idx);
     let is_highlighted = (state_flags & STATE_HIGHLIGHTED) != 0u;
 
+    let primary_color = get_primary_color_by_index(location_idx);
+    let secondary_color = get_secondary_color_by_index(location_idx);
+    let has_stripes = primary_color != secondary_color && secondary_color != 0u;
+
+    let stripe_blend = stripe_blend_factor(world_x, world_y);
+    let in_secondary_zone = has_stripes && stripe_blend > 0.5;
+
     // Check for different types of borders (owner borders take precedence)
     let center_owner_color = get_owner_color_by_index(location_idx);
     let is_owner_border = is_owner_border_pixel(global_x, global_y, location_idx, center_owner_color);
-    let is_location_border = is_location_border_pixel(global_x, global_y, location_idx);
+    let is_location_border = is_location_border_pixel(global_x, global_y, location_idx, in_secondary_zone, secondary_color);
 
     var output_color: vec4<f32>;
     if (is_owner_border) {
@@ -245,12 +240,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         );
     } else {
         // Normal pixel: check for stripes or use primary color
-        let primary_color = get_primary_color_by_index(location_idx);
-        let secondary_color = get_secondary_color_by_index(location_idx);
-
-        if (primary_color != secondary_color && secondary_color != 0u) {
+        if (has_stripes) {
             // Primary and secondary colors differ - create stripe pattern
-            output_color = create_stripe_pattern(global_x, global_y, primary_color, secondary_color);
+            output_color = create_stripe_pattern(primary_color, secondary_color, stripe_blend);
         } else {
             // Use primary color only
             let mapped_rgb = unpack_color(primary_color);
