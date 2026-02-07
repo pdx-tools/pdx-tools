@@ -4,8 +4,9 @@ use std::collections::HashMap;
 use wgpu::SurfaceTarget;
 
 use crate::error::RenderError;
-use crate::image::R16;
-use crate::{GpuLocationIdx, LocationArrays, PhysicalSize, ViewportBounds, WorldPoint};
+use crate::{
+    GpuLocationIdx, HemisphereSize, LocationArrays, PhysicalSize, R16, ViewportBounds, WorldPoint,
+};
 
 /// A drawable layer that can be composed into the main map render pass
 pub trait RenderLayer: Send + Sync {
@@ -84,8 +85,7 @@ impl MapTexture {
 /// Rendering configuration - constants and user-configurable options
 #[derive(Debug, Clone)]
 pub struct RenderConfig {
-    tile_width: u32,
-    tile_height: u32,
+    hemisphere: HemisphereSize<u32>,
 
     pub enable_location_borders: bool,
     pub enable_owner_borders: bool,
@@ -93,23 +93,17 @@ pub struct RenderConfig {
 
 impl RenderConfig {
     /// Create a new render configuration
-    pub(crate) fn new(tile_width: u32, tile_height: u32) -> Self {
+    pub(crate) fn new(hemisphere: HemisphereSize<u32>) -> Self {
         Self {
-            tile_width,
-            tile_height,
+            hemisphere,
             enable_location_borders: true,
             enable_owner_borders: true,
         }
     }
 
-    /// Get the tile width (read-only)
-    pub fn tile_width(&self) -> u32 {
-        self.tile_width
-    }
-
-    /// Get the tile height (read-only)
-    pub fn tile_height(&self) -> u32 {
-        self.tile_height
+    /// Get the hemisphere size
+    pub fn hemisphere_size(&self) -> HemisphereSize<u32> {
+        self.hemisphere
     }
 }
 
@@ -707,13 +701,13 @@ pub struct MapRenderer {
     // Pipeline cache: TextureFormat -> RenderPipeline
     pipelines: RefCell<HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>>,
 
-    // Rendering configuration - tile dimensions and border flags
+    // Rendering configuration
     config: RenderConfig,
 }
 
 impl MapRenderer {
     /// Create a new stateless renderer with the given tile dimensions
-    pub fn new(ctx: &GpuContext, tile_width: u32, tile_height: u32) -> Self {
+    pub fn new(ctx: &GpuContext, hemisphere: HemisphereSize<u32>) -> Self {
         let (shader, bind_group_layout) = GpuContext::compile_map_resources(&ctx.gpu.device);
 
         let uniform_buffer = Self::create_uniform_buffer(&ctx.gpu.device);
@@ -724,7 +718,7 @@ impl MapRenderer {
             bind_group_layout,
             uniform_buffer,
             pipelines: RefCell::new(HashMap::new()),
-            config: RenderConfig::new(tile_width, tile_height),
+            config: RenderConfig::new(hemisphere),
         }
     }
 
@@ -751,14 +745,9 @@ impl MapRenderer {
         })
     }
 
-    /// Get the tile width
-    pub fn tile_width(&self) -> u32 {
-        self.config.tile_width()
-    }
-
-    /// Get the tile height
-    pub fn tile_height(&self) -> u32 {
-        self.config.tile_height()
+    /// Get the size of the hemisphere
+    pub fn hemisphere_size(&self) -> HemisphereSize<u32> {
+        self.config.hemisphere_size()
     }
 
     /// Update viewport uniforms and prepare a bind group for the current frame
@@ -770,8 +759,8 @@ impl MapRenderer {
         size: PhysicalSize<u32>,
     ) -> wgpu::BindGroup {
         let uniforms = ComputeUniforms {
-            tile_width: self.config.tile_width(),
-            tile_height: self.config.tile_height(),
+            tile_width: self.config.hemisphere_size().width,
+            tile_height: self.config.hemisphere_size().height,
             enable_location_borders: if self.config.enable_location_borders {
                 1
             } else {
@@ -941,12 +930,8 @@ impl MapScene {
         }
     }
 
-    pub fn tile_width(&self) -> u32 {
-        self.base_renderer.tile_width()
-    }
-
-    pub fn tile_height(&self) -> u32 {
-        self.base_renderer.tile_height()
+    pub fn hemisphere_size(&self) -> HemisphereSize<u32> {
+        self.base_renderer.hemisphere_size()
     }
 
     pub fn resources(&self) -> &MapResources {
@@ -1025,8 +1010,7 @@ impl SurfaceMapRenderer {
 
         let renderer = MapRenderer::new(
             &components.core,
-            west_texture.width(),
-            west_texture.height(),
+            HemisphereSize::new(west_texture.width(), west_texture.height()),
         );
         let resources = MapResources::new(&components.core, west_texture, east_texture);
         let scene = MapScene::new(renderer, resources);
@@ -1097,12 +1081,8 @@ impl SurfaceMapRenderer {
         self.scene.add_layer(layer, &self.surface_config);
     }
 
-    pub fn tile_width(&self) -> u32 {
-        self.scene.tile_width()
-    }
-
-    pub fn tile_height(&self) -> u32 {
-        self.scene.tile_height()
+    pub fn hemisphere_size(&self) -> HemisphereSize<u32> {
+        self.scene.hemisphere_size()
     }
 
     pub fn update_locations(&mut self, arrays: &LocationArrays) {
@@ -1145,14 +1125,16 @@ impl SurfaceMapRenderer {
         world_pos: WorldPoint<i32>,
     ) -> Result<ColorIdReadback, RenderError> {
         let global_x = world_pos.x;
-        let global_y = world_pos.y.clamp(0, (self.tile_height() - 1) as i32);
+        let global_y = world_pos
+            .y
+            .clamp(0, (self.hemisphere_size().height - 1) as i32);
 
         // Handle world wraparound (same logic as shader)
-        let world_width = (self.tile_width() * 2) as i32;
+        let world_width = self.hemisphere_size().world().width as i32;
         let wrapped_x = ((global_x % world_width) + world_width) % world_width;
 
         // Determine which texture and local coordinates
-        let (texture, local_x) = if wrapped_x < self.tile_width() as i32 {
+        let (texture, local_x) = if wrapped_x < self.hemisphere_size().width as i32 {
             // West texture
             (
                 self.scene.resources().west_texture().texture(),
@@ -1162,7 +1144,7 @@ impl SurfaceMapRenderer {
             // East texture
             (
                 self.scene.resources().east_texture().texture(),
-                (wrapped_x - self.tile_width() as i32) as u32,
+                (wrapped_x - self.hemisphere_size().width as i32) as u32,
             )
         };
 
@@ -1326,7 +1308,10 @@ impl HeadlessMapRenderer {
             view_formats: &[],
         });
 
-        let renderer = MapRenderer::new(&gpu, west_texture.width(), west_texture.height());
+        let renderer = MapRenderer::new(
+            &gpu,
+            HemisphereSize::new(west_texture.width(), west_texture.height()),
+        );
         let resources = MapResources::new(&gpu, west_texture, east_texture);
         let scene = MapScene::new(renderer, resources);
         let target_config =

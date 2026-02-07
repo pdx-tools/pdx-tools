@@ -1,5 +1,5 @@
 use crate::{
-    LogicalSize, RenderError, SurfaceMapRenderer, ViewportBounds, WorldPoint, WorldSize,
+    HemisphereSize, LogicalSize, RenderError, SurfaceMapRenderer, ViewportBounds, WorldPoint,
     renderer::{ColorIdReadback, QueuedWorkFuture},
 };
 
@@ -12,12 +12,8 @@ pub struct MapViewController {
 
 impl MapViewController {
     pub fn new(renderer: SurfaceMapRenderer, size: LogicalSize<u32>, scale_factor: f32) -> Self {
-        let tile_width = renderer.tile_width();
-        let tile_height = renderer.tile_height();
-        let map_size = WorldSize::new(tile_width * 2, tile_height);
-
         // Initialize with default viewport bounds
-        let viewport_bounds = ViewportBounds::new(map_size);
+        let viewport_bounds = ViewportBounds::new(renderer.hemisphere_size().world());
 
         MapViewController {
             renderer,
@@ -61,8 +57,8 @@ impl MapViewController {
     }
 
     /// Get the tile size
-    pub fn tile_size(&self) -> WorldSize<u32> {
-        WorldSize::new(self.renderer.tile_width(), self.renderer.tile_height())
+    pub fn hemisphere_size(&self) -> HemisphereSize<u32> {
+        self.renderer.hemisphere_size()
     }
 
     /// Get current viewport bounds.

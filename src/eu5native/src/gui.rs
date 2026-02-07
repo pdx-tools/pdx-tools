@@ -2,13 +2,13 @@ use crate::{Args, date_layer::DateLayer};
 use anyhow::{Context, Result};
 use eu5app::{
     Eu5LoadedSave, Eu5SaveLoader, Eu5Workspace, MapMode,
-    game_data::{GameData, TextureProvider, game_install::Eu5GameInstall},
+    game_data::{GameData, game_install::Eu5GameInstall},
     should_highlight_individual_locations,
 };
 use eu5save::{BasicTokenResolver, Eu5File, models::Gamestate};
 use pdx_map::{
     Clock, GpuSurfaceContext, InteractionController, KeyboardKey, LogicalPoint, LogicalSize,
-    MapViewController, PhysicalSize, SurfaceMapRenderer, WorldPoint, WorldSize, default_clock,
+    MapViewController, SurfaceMapRenderer, WorldPoint, default_clock,
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 use tokio::runtime::Runtime;
@@ -335,34 +335,16 @@ fn load_save(save_file: PathBuf, tokens_file: PathBuf) -> Result<Eu5LoadedSave> 
 }
 
 fn load_game_bundle(game_data: PathBuf) -> Result<(TextureData, GameData)> {
-    let mut game_bundle = Eu5GameInstall::open(&game_data)
+    let game_bundle = Eu5GameInstall::open(&game_data)
         .with_context(|| format!("Failed to load game data {}", game_data.display()))?;
-    // Extract textures before workspace consumes the bundle
-    let west_texture = game_bundle
-        .load_west_texture(Vec::new())
-        .context("Failed to load west texture")?;
-    let east_texture = game_bundle
-        .load_east_texture(Vec::new())
-        .context("Failed to load east texture")?;
 
-    let (tile_width, _tile_height) = eu5app::tile_dimensions();
-    let picker =
-        pdx_map::MapPicker::new(west_texture.clone(), east_texture.clone(), tile_width * 2);
-
-    let texture_data = TextureData {
-        west: west_texture,
-        east: east_texture,
-        picker,
-    };
-
+    let world = game_bundle.world();
+    let texture_data = TextureData { world };
     Ok((texture_data, game_bundle.into_game_data()))
 }
 
-/// Pre-extracted texture data to avoid re-opening game bundle
 struct TextureData {
-    west: Vec<pdx_map::R16>,
-    east: Vec<pdx_map::R16>,
-    picker: pdx_map::MapPicker,
+    world: Arc<pdx_map::World<pdx_map::R16>>,
 }
 
 struct App {
@@ -458,7 +440,7 @@ impl App {
             controller,
             input_controller,
             &bundle.workspace,
-            &texture_data.picker,
+            &texture_data.world,
         );
         self.save = Some(Box::new(bundle.save));
         self.workspace = Some(bundle.workspace);
@@ -696,10 +678,13 @@ fn init_renderer(
     gpu_ctx: GpuSurfaceContext,
     texture_data: &TextureData,
 ) -> (MapViewController, InteractionController) {
-    let (tile_width, tile_height) = eu5app::tile_dimensions();
-    let size = PhysicalSize::new(tile_width, tile_height);
-    let west_texture = gpu_ctx.create_texture(&texture_data.west, size, "West");
-    let east_texture = gpu_ctx.create_texture(&texture_data.east, size, "East");
+    let hemisphere = eu5app::hemisphere_size();
+    let texture_size = hemisphere.physical();
+
+    let west_texture =
+        gpu_ctx.create_texture(texture_data.world.west().as_slice(), texture_size, "West");
+    let east_texture =
+        gpu_ctx.create_texture(texture_data.world.east().as_slice(), texture_size, "East");
 
     // Create surface pipeline
     let size = window.inner_size();
@@ -715,8 +700,7 @@ fn init_renderer(
     let controller = MapViewController::new(renderer, logical, scale_factor as f32);
 
     // Create input controller with map dimensions
-    let map_size = WorldSize::new(tile_width * 2, tile_height);
-    let input_controller = InteractionController::new(logical, map_size);
+    let input_controller = InteractionController::new(logical, hemisphere.world());
 
     (controller, input_controller)
 }
@@ -735,7 +719,7 @@ fn apply_workspace(
     controller: &mut MapViewController,
     input_controller: &mut InteractionController,
     workspace: &Eu5Workspace<'_>,
-    picker: &pdx_map::MapPicker,
+    world: &pdx_map::World<pdx_map::R16>,
 ) {
     let save_date = workspace.gamestate().metadata().date.date_fmt().to_string();
     controller
@@ -746,9 +730,9 @@ fn apply_workspace(
         .update_locations(workspace.location_arrays());
 
     if let Some(color_id) = workspace.player_capital_color_id() {
-        let center = picker.center_of(pdx_map::R16::new(color_id.value()));
-        let world = WorldPoint::new(center.x as f32, center.y as f32);
-        input_controller.center_on(world);
+        let center = world.center_of(pdx_map::R16::new(color_id.value()));
+        let center_world = WorldPoint::new(center.x as f32, center.y as f32);
+        input_controller.center_on(center_world);
 
         // Transfer viewport to render controller
         let bounds = input_controller.viewport_bounds();

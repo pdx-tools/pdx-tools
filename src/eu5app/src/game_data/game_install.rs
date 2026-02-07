@@ -1,9 +1,10 @@
 mod parsing;
 mod raw;
 
-use pdx_map::{R16, R16Palette};
+use pdx_map::R16;
 pub use raw::{
-    GameFileSource, GameInstallationDirectory, GameTextureBundle, RawGameData, ZipArchiveData,
+    GameFileSource, GameInstallationDirectory, GameTextures, PalettedTextures, RawGameData,
+    ZipArchiveData,
 };
 
 use crate::game_data::{
@@ -12,7 +13,7 @@ use crate::game_data::{
 };
 
 pub struct Eu5GameInstall {
-    textures: GameTextureBundle,
+    textures: GameTextures,
     game_data: GameData,
 }
 
@@ -27,11 +28,9 @@ impl Eu5GameInstall {
 
             if let Ok(game_data) = OptimizedGameBundle::open(&data) {
                 let game_data = game_data.into_game_data()?;
-                let mut textures = OptimizedTextureBundle::open(&data)?;
-                let west_data = textures.load_west_texture(Vec::new())?;
-                let east_data = textures.load_east_texture(Vec::new())?;
-                let textures =
-                    GameTextureBundle::new(west_data, east_data, R16Palette::new(vec![]));
+                let mut bundle = OptimizedTextureBundle::open(&data)?;
+                let (west_data, east_data) = bundle.load_hemispheres()?;
+                let textures = GameTextures::new(west_data, east_data);
                 return Ok(Self {
                     textures,
                     game_data,
@@ -47,8 +46,9 @@ impl Eu5GameInstall {
 
             // Fall back to treating it as a game_install bundle zip
             let (game_data, texture_builder) = RawGameData::from_source(&zip)?;
-            let textures = texture_builder.build()?;
-            let game_data = game_data.into_game_data(&textures);
+            let paletted = texture_builder.build()?;
+            let game_data = game_data.into_game_data(&paletted);
+            let textures = paletted.into_textures();
             return Ok(Self {
                 textures,
                 game_data,
@@ -57,9 +57,10 @@ impl Eu5GameInstall {
 
         // Directory - treat as raw game install or extracted bundle
         let game_installation = GameInstallationDirectory::open(path);
-        let (game_data, textures) = RawGameData::from_source(&game_installation)?;
-        let textures = textures.build()?;
-        let game_data = game_data.into_game_data(&textures);
+        let (game_data, texture_builder) = RawGameData::from_source(&game_installation)?;
+        let paletted = texture_builder.build()?;
+        let game_data = game_data.into_game_data(&paletted);
+        let textures = paletted.into_textures();
         Ok(Self {
             textures,
             game_data,
@@ -69,15 +70,20 @@ impl Eu5GameInstall {
     pub fn into_game_data(self) -> GameData {
         self.game_data
     }
+
+    /// Returns a cheap clone of the world
+    pub fn world(&self) -> std::sync::Arc<pdx_map::World<R16>> {
+        self.textures.world()
+    }
 }
 
 impl TextureProvider for Eu5GameInstall {
-    fn load_west_texture(&mut self, dst: Vec<R16>) -> Result<Vec<R16>, GameDataError> {
-        self.textures.load_west_texture(dst)
+    fn west_texture(&self) -> &[R16] {
+        self.textures.west_texture()
     }
 
-    fn load_east_texture(&mut self, dst: Vec<R16>) -> Result<Vec<R16>, GameDataError> {
-        self.textures.load_east_texture(dst)
+    fn east_texture(&self) -> &[R16] {
+        self.textures.east_texture()
     }
 
     fn west_texture_size(&self) -> usize {

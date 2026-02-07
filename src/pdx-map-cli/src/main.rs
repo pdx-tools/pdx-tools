@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, anyhow, bail};
 use clap::Parser;
-use pdx_map::{GpuColor, PhysicalSize, StitchedImage, ViewportBounds};
+use pdx_map::{GpuColor, PhysicalSize, StitchedImage, ViewportBounds, World, WorldLength};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
@@ -57,21 +57,8 @@ struct LocationRecord {
 }
 
 struct SplitImageData {
-    west_data: Vec<pdx_map::R16>,
-    east_data: Vec<pdx_map::R16>,
-    tile_width: u32,
-    tile_height: u32,
+    world: World<pdx_map::R16>,
     palette: pdx_map::R16Palette,
-}
-
-impl SplitImageData {
-    fn full_width(&self) -> u32 {
-        self.tile_width * 2
-    }
-
-    fn full_height(&self) -> u32 {
-        self.tile_height
-    }
 }
 
 /// Parse a hex color string (e.g., "FF0000") to GpuColor
@@ -198,18 +185,9 @@ fn build_location_arrays(
 fn load_and_split_image(path: &PathBuf) -> Result<SplitImageData> {
     let img = image::open(path).with_context(|| format!("Failed to open map image: {:?}", path))?;
     let img = img.as_rgb8().context("image not in rgb8 format")?;
-    let (west, east, palette) = pdx_map::split_rgb8_to_indexed_r16(img.as_raw(), img.width());
+    let (world, palette) = World::from_rgb8(img.as_raw(), WorldLength::new(img.width()));
 
-    let tile_width = img.width() / 2;
-    let tile_height = img.height();
-
-    Ok(SplitImageData {
-        west_data: west,
-        east_data: east,
-        tile_width,
-        tile_height,
-        palette,
-    })
+    Ok(SplitImageData { world, palette })
 }
 
 fn main() -> Result<()> {
@@ -257,9 +235,11 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
         start.elapsed().as_secs_f64()
     );
     let start = Instant::now();
-    let size = PhysicalSize::new(image_data.tile_width, image_data.tile_height);
-    let west_view = gpu.create_texture(&image_data.west_data, size, "West Texture");
-    let east_view = gpu.create_texture(&image_data.east_data, size, "East Texture");
+    let hemisphere_size = image_data.world.west().size();
+    let world_size = hemisphere_size.world();
+    let size = PhysicalSize::new(hemisphere_size.width, hemisphere_size.height);
+    let west_view = gpu.create_texture(image_data.world.west().as_slice(), size, "West Texture");
+    let east_view = gpu.create_texture(image_data.world.east().as_slice(), size, "East Texture");
     println!(
         "Created GPU textures ({:.2}s)",
         start.elapsed().as_secs_f64()
@@ -269,18 +249,18 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
         gpu,
         west_view,
         east_view,
-        image_data.tile_width,
-        image_data.tile_height,
+        hemisphere_size.width,
+        hemisphere_size.height,
     )?;
     renderer.update_locations(&location_arrays);
     renderer.set_location_borders(!args.no_location_borders);
     renderer.set_owner_borders(!args.no_owner_borders);
     println!("Created renderer ({:.2}s)", start.elapsed().as_secs_f64());
-    let mut dst_image = StitchedImage::new(image_data.full_width(), image_data.full_height());
+    let mut dst_image = StitchedImage::new(PhysicalSize::new(world_size.width, world_size.height));
     let start = Instant::now();
     let bounds = ViewportBounds::new(pdx_map::WorldSize::new(
-        image_data.tile_width,
-        image_data.tile_height,
+        hemisphere_size.width,
+        hemisphere_size.height,
     ));
     {
         let west_buffer = renderer.capture_viewport(bounds).await?;
@@ -305,8 +285,8 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
     );
     let start = Instant::now();
     let output_img = image::RgbaImage::from_raw(
-        image_data.full_width(),
-        image_data.full_height(),
+        image_data.world.size().width,
+        image_data.world.size().height,
         dst_image.into_inner(),
     )
     .ok_or_else(|| anyhow!("Failed to create image from buffer"))?;

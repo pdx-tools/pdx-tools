@@ -16,7 +16,37 @@ pub struct Logical;
 
 /// Marker type for World units (game world coordinates)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct World;
+pub struct WorldSpace;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct HemisphereSpace;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Length<Unit, T> {
+    pub value: T,
+    _unit: PhantomData<Unit>,
+}
+
+impl<Unit, T> Length<Unit, T> {
+    pub const fn new(value: T) -> Self {
+        Self {
+            value,
+            _unit: PhantomData,
+        }
+    }
+}
+
+impl Length<HemisphereSpace, u32> {
+    pub fn world(&self) -> Length<WorldSpace, u32> {
+        Length::<WorldSpace, u32>::new(self.value * 2)
+    }
+}
+
+impl Length<WorldSpace, u32> {
+    pub fn hemisphere(&self) -> Length<HemisphereSpace, u32> {
+        Length::<HemisphereSpace, u32>::new(self.value / 2)
+    }
+}
 
 /// A 2D size tagged with its unit space (Physical or Logical)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -27,18 +57,49 @@ pub struct Size<Unit, T> {
 }
 
 impl<Unit, T> Size<Unit, T> {
-    pub fn new(width: T, height: T) -> Self {
+    pub const fn new(width: T, height: T) -> Self {
         Self {
             width,
             height,
             _unit: PhantomData,
         }
     }
+
+    pub fn area(&self) -> T
+    where
+        T: std::ops::Mul<Output = T> + Copy,
+    {
+        self.width * self.height
+    }
+
+    pub fn width_length(&self) -> Length<Unit, T>
+    where
+        T: Copy,
+    {
+        Length::new(self.width)
+    }
+
+    pub fn height_length(&self) -> Length<Unit, T>
+    where
+        T: Copy,
+    {
+        Length::new(self.height)
+    }
 }
 
 impl<Unit, T: Display> Display for Size<Unit, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}x{}", self.width, self.height)
+    }
+}
+
+impl Size<HemisphereSpace, u32> {
+    pub fn world(&self) -> Size<WorldSpace, u32> {
+        Size::<WorldSpace, u32>::new(self.width * 2, self.height)
+    }
+
+    pub fn physical(&self) -> Size<Physical, u32> {
+        Size::<Physical, u32>::new(self.width, self.height)
     }
 }
 
@@ -86,15 +147,18 @@ impl<Unit, T: Display> Display for Rect<Unit, T> {
 }
 
 // Type aliases for ergonomics
+pub type WorldLength<T> = Length<WorldSpace, T>;
+pub type HemisphereLength<T> = Length<HemisphereSpace, T>;
 pub type PhysicalSize<T> = Size<Physical, T>;
 pub type LogicalSize<T> = Size<Logical, T>;
-pub type WorldSize<T> = Size<World, T>;
+pub type WorldSize<T> = Size<WorldSpace, T>;
+pub type HemisphereSize<T> = Size<HemisphereSpace, T>;
 pub type PhysicalPoint<T> = Point<Physical, T>;
 pub type LogicalPoint<T> = Point<Logical, T>;
-pub type WorldPoint<T> = Point<World, T>;
+pub type WorldPoint<T> = Point<WorldSpace, T>;
 pub type PhysicalRect<T> = Rect<Physical, T>;
 pub type LogicalRect<T> = Rect<Logical, T>;
-pub type WorldRect<T> = Rect<World, T>;
+pub type WorldRect<T> = Rect<WorldSpace, T>;
 
 // Conversion implementations (require explicit scale_factor)
 impl LogicalSize<u32> {
