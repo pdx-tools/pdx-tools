@@ -136,11 +136,7 @@ jobs:
           sudo cp src/pdx-assets/policy.xml /etc/ImageMagick-6/policy.xml
       - name: Install dependencies (macos)
         if: matrix.os == 'macos-15'
-        run: |
-          brew install imagemagick
-
-          # Use brew installed llvm for zstd compilation
-          echo "/opt/homebrew/opt/llvm@18/bin" >> $GITHUB_PATH
+        run: brew install imagemagick
 
       - name: Cache assets
         uses: actions/cache@v4
@@ -167,8 +163,6 @@ jobs:
       - uses: jdx/mise-action@v2
         with:
           cache: false
-
-      - run: rustup target add wasm32-unknown-unknown
 
       # Trial out rust caching with the slowest run:
       - name: Cache Rust dependencies
