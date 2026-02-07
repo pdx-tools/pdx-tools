@@ -12,7 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
-      - run: rustup target add wasm32-unknown-unknown
       - run: rustup component add rustfmt
       - name: Check formatting
         run: mise run format:check
@@ -25,7 +24,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
-      - run: rustup target add wasm32-unknown-unknown
       - run: rustup component add clippy
       - run: mise run lint
 
@@ -34,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@miri
-      - run: cargo miri setup
-      - run: cargo miri test -p bumpalo-serde
+      - run: cargo +nightly miri setup
+      - run: cargo +nightly miri test -p bumpalo-serde
         env:
           MIRIFLAGS: -Zmiri-strict-provenance

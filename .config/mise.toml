@@ -1,19 +1,23 @@
 [tools]
 "aqua:pnpm" = { version = "10.11.0" }
 "node" = { version = "22.18.0" }
-"rust" = { version = "1.92.0", targets = "wasm32-unknown-unknown,x86_64-unknown-linux-musl" }
+"rust" = { version = "1.92" } # update in rust-toolchain.toml too!
 "ubi:cargo-bins/cargo-binstall" = { version = "1.12.5" }
 "ubi:docker/compose" = { version = "2.33.1", rename_exe = "docker-compose" }
 "ubi:google/flatbuffers" = { version = "25.2.10", matching = "clang", exe = "flatc" }
+"ubi:llvm/llvm-project" = { version = "llvmorg-19.1.7", matching = "LLVM-", extract_all = "true", bin_path = "bin", os = ["macos"] }
 "ubi:rclone/rclone" = { version = "1.70.3" }
 "ubi:rustwasm/wasm-bindgen" = { version = "0.2.106", extract_all = "true" }
 "ubi:WebAssembly/binaryen" = { version = "version_125", extract_all = "true", bin_path = "bin" }
-"vfox:mise-plugins/vfox-clang" = { version = "14.0.6", os = ["linux", "macos"] }
+
+[settings]
+idiomatic_version_file_enable_tools = ["rust"]
 
 [env]
 _.path = ['{{config_root}}/.config/bin']
 
 [tasks."build:cargo-wasm"]
+depends = ["setup:wasm"]
 run = ["cargo build --release --no-default-features --features zstd_c_fat_lto --features zstd_c --target wasm32-unknown-unknown -p wasm-*"]
 run_windows = ["cargo build --release --no-default-features --features zstd_rust --target wasm32-unknown-unknown -p wasm-*"]
 hide = true
@@ -30,6 +34,7 @@ depends = ["build:wasm-bindgen wasm_app"]
 hide = true
 
 [tasks."build:pdx_map"]
+depends = ["setup:wasm"]
 hide = true
 run = [
     "cargo build --release -p wasm-pdx-map --target wasm32-unknown-unknown",
@@ -304,6 +309,7 @@ run = [
 ]
 
 [tasks."admin:build:cli"]
+depends = ["setup:musl"]
 run = "cargo build --package pdx-admin-cli --release --target x86_64-unknown-linux-musl"
 
 [tasks."release:build:docker"]
@@ -311,6 +317,7 @@ wait_for = ["release:build:api"]
 run = "docker build -t ghcr.io/pdx-tools/api:nightly -f ./dev/api.dockerfile ./target/x86_64-unknown-linux-musl/release/"
 
 [tasks."release:build:api"]
+depends = ["setup:musl"]
 run = "cargo build --package pdx-tools-api --release --target x86_64-unknown-linux-musl"
 
 [tasks."release:build"]
@@ -323,3 +330,11 @@ run = [
     "rustup target add wasm32-wasip1",
     "cargo bench -p bench --target wasm32-wasip1",
 ]
+
+[tasks."setup:musl"]
+hide = true
+run = "rustup target add x86_64-unknown-linux-musl"
+
+[tasks."setup:wasm"]
+hide = true
+run = "rustup target add wasm32-unknown-unknown"
