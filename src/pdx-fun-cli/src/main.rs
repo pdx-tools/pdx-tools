@@ -5,6 +5,7 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 mod ai_development;
+mod index_image;
 mod province_borders;
 mod province_names;
 mod smallest_province;
@@ -30,6 +31,8 @@ struct Cli {
 enum Commands {
     /// Produces a csv of how much the AI has devved provinces
     AiDevelopment(ai_development::AiDevelopmentArgs),
+    /// Converts images into split R16 hemisphere textures
+    IndexImage(index_image::IndexImageArgs),
     /// Shows which provinces borders which
     ProvinceBorders(province_borders::ProvinceBordersArgs),
     /// Produces a tsv of most common habitable province letter
@@ -60,6 +63,7 @@ fn main() -> ExitCode {
 
     let exit_code = match &cli.command {
         Commands::AiDevelopment(x) => x.run(),
+        Commands::IndexImage(x) => x.run(),
         Commands::ProvinceBorders(x) => x.run(),
         Commands::ProvinceNames(x) => x.run(),
         Commands::SmallestProvince(x) => x.run(),
