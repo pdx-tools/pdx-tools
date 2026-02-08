@@ -9,10 +9,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-switch": "^1.2.6",
+    "@radix-ui/react-tooltip": "^1.2.8",
     "@tailwindcss/vite": "4.1.14",
+    "@tanstack/react-virtual": "^3.0.0",
+    "@tauri-apps/api": "^2.10.0",
+    "class-variance-authority": "^0.7.1",
+    "dayjs": "^1.11.13",
     "react-dom": "catalog:",
     "react": "catalog:",
-    "tailwindcss": "4.1.14"
+    "tailwindcss": "4.1.14",
+    "zustand": "^5.0.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.0",
