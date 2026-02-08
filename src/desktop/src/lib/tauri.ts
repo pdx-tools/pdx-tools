@@ -43,3 +43,28 @@ export async function loadSaveForRenderer(
     gamePath,
   });
 }
+
+export async function sendInteractionCursorMoved(
+  x: number,
+  y: number,
+): Promise<void> {
+  return await invoke<void>("interaction_cursor_moved", { x, y });
+}
+
+export async function sendInteractionMouseButton(
+  button: number,
+  pressed: boolean,
+): Promise<void> {
+  return await invoke<void>("interaction_mouse_button", { button, pressed });
+}
+
+export async function sendInteractionMouseWheel(lines: number): Promise<void> {
+  return await invoke<void>("interaction_mouse_wheel", { lines });
+}
+
+export async function sendInteractionKey(
+  code: string,
+  pressed: boolean,
+): Promise<void> {
+  return await invoke<void>("interaction_key", { code, pressed });
+}

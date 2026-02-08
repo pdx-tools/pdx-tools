@@ -1,10 +1,10 @@
 mod commands;
 
-use commands::{AppState, RenderPayload};
+use commands::{AppState, InputEvent, RenderPayload};
 use eu5save::BasicTokenResolver;
 use pdx_map::{
-    GpuSurfaceContext, LocationArrays, LogicalSize, MapViewController,
-    PhysicalSize as MapPhysicalSize, SurfaceMapRenderer,
+    GpuSurfaceContext, InteractionController, KeyboardKey, LocationArrays, LogicalPoint, LogicalSize,
+    MapViewController, MouseButton, PhysicalSize as MapPhysicalSize, SurfaceMapRenderer, WorldPoint,
 };
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -13,6 +13,8 @@ use tauri::{Manager, RunEvent};
 #[derive(Default)]
 struct RendererRuntimeState {
     controller: Option<MapViewController>,
+    interaction_controller: Option<InteractionController>,
+    last_interaction_tick: Option<Instant>,
 }
 
 impl RendererRuntimeState {
@@ -45,7 +47,17 @@ impl RendererRuntimeState {
         let mut controller = MapViewController::new(renderer, logical_size, scale_factor as f32);
         let location_arrays = LocationArrays::from_data(payload.location_arrays);
         controller.renderer_mut().update_locations(&location_arrays);
+        let mut interaction_controller =
+            InteractionController::new(logical_size, eu5app::hemisphere_size().world());
 
+        if let Some((x, y)) = payload.player_capital_world {
+            interaction_controller.center_on(WorldPoint::new(x, y));
+        }
+
+        controller.set_viewport_bounds(interaction_controller.viewport_bounds());
+
+        self.interaction_controller = Some(interaction_controller);
+        self.last_interaction_tick = Some(Instant::now());
         self.controller = Some(controller);
         Ok(())
     }
@@ -56,7 +68,67 @@ impl RendererRuntimeState {
         };
 
         let logical_size = logical_size_from_physical(size, scale_factor);
+        if let Some(interaction_controller) = &mut self.interaction_controller {
+            interaction_controller.on_resize(logical_size);
+            controller.set_viewport_bounds(interaction_controller.viewport_bounds());
+        }
         controller.resize(logical_size);
+    }
+
+    fn apply_input_events(&mut self, events: Vec<InputEvent>) {
+        if events.is_empty() {
+            return;
+        }
+
+        let Some(controller) = &mut self.controller else {
+            return;
+        };
+        let Some(interaction_controller) = &mut self.interaction_controller else {
+            return;
+        };
+
+        for event in events {
+            match event {
+                InputEvent::CursorMoved { x, y } => {
+                    interaction_controller.on_cursor_move(LogicalPoint::new(x, y));
+                }
+                InputEvent::MouseButton { button, pressed } => {
+                    if let Some(button) = map_mouse_button(button) {
+                        interaction_controller.on_mouse_button(button, pressed);
+                    }
+                }
+                InputEvent::MouseWheel { lines } => {
+                    interaction_controller.on_scroll(lines);
+                }
+                InputEvent::Key { code, pressed } => {
+                    let key = KeyboardKey::from_web_code(&code);
+                    if pressed {
+                        interaction_controller.on_key_down(key);
+                    } else {
+                        interaction_controller.on_key_up(key);
+                    }
+                }
+            }
+        }
+
+        controller.set_viewport_bounds(interaction_controller.viewport_bounds());
+    }
+
+    fn tick_interaction(&mut self) {
+        let Some(controller) = &mut self.controller else {
+            return;
+        };
+        let Some(interaction_controller) = &mut self.interaction_controller else {
+            return;
+        };
+
+        let now = Instant::now();
+        let last_tick = self.last_interaction_tick.unwrap_or(now);
+        let delta = now.saturating_duration_since(last_tick);
+        self.last_interaction_tick = Some(now);
+
+        interaction_controller.tick(delta);
+        controller.set_viewport_bounds(interaction_controller.viewport_bounds());
     }
 
     fn render(&mut self) {
@@ -67,6 +139,15 @@ impl RendererRuntimeState {
         if let Err(err) = controller.render() {
             log::error!("Render failed: {err}");
         }
+    }
+}
+
+fn map_mouse_button(button: u8) -> Option<MouseButton> {
+    match button {
+        0 => Some(MouseButton::Left),
+        1 => Some(MouseButton::Middle),
+        2 => Some(MouseButton::Right),
+        _ => None,
     }
 }
 
@@ -92,15 +173,20 @@ pub fn run() {
     let app_state = AppState {
         token_resolver: Arc::new(token_resolver),
         pending_render: Arc::new(Mutex::new(None)),
+        pending_input_events: Arc::new(Mutex::new(Vec::new())),
     };
 
-    let mut tauri_app = tauri::Builder::default()
+    let tauri_app = tauri::Builder::default()
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             commands::get_default_save_directory,
             commands::detect_eu5_game_path,
             commands::scan_save_directory,
             commands::load_save_for_renderer,
+            commands::interaction_cursor_moved,
+            commands::interaction_mouse_button,
+            commands::interaction_mouse_wheel,
+            commands::interaction_key,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -156,6 +242,8 @@ pub fn run() {
         } => {
             if label == "main" {
                 renderer_state.controller = None;
+                renderer_state.interaction_controller = None;
+                renderer_state.last_interaction_tick = None;
             }
         }
         RunEvent::MainEventsCleared => {
@@ -172,6 +260,9 @@ pub fn run() {
                 {
                     log::error!("Failed to apply render payload: {err}");
                 }
+                let input_events = state.take_input_events();
+                renderer_state.apply_input_events(input_events);
+                renderer_state.tick_interaction();
             }
 
             renderer_state.render();

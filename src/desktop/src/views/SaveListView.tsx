@@ -93,7 +93,7 @@ export default function SaveListView({ onOpenSave }: SaveListViewProps) {
   }, [gamePath, setGamePath]);
 
   return (
-    <div className="min-h-screen bg-transparent text-white">
+    <div className="min-h-screen bg-slate-950 text-white">
       <SaveListHeader />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <SaveListToolbar onRescan={handleScan} />
