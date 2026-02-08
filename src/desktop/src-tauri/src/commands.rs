@@ -143,10 +143,10 @@ fn process_save_file(
         .as_secs() as i64;
 
     // Load save file to extract metadata
-    let save_file = fs::read(path)
+    let save_file = fs::File::open(path)
         .map_err(|e| format!("Failed to read save file: {}", e))?;
 
-    let file = Eu5File::from_slice(&save_file)
+    let file = Eu5File::from_file(save_file)
         .map_err(|e| format!("Failed to parse save file envelope: {}", e))?;
 
     let loader = Eu5SaveLoader::open(file, token_resolver.as_ref())
