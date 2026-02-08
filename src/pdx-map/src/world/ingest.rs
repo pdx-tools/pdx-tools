@@ -1,4 +1,5 @@
-use crate::{Hemisphere, R16, R16Palette, Rgb, World, units::WorldLength};
+use crate::{Hemisphere, R16, R16Palette, Rgb, World, hash::FnvBuildHasher, units::WorldLength};
+use std::collections::{HashMap, hash_map::Entry};
 
 /// Takes in an Paradox color coded image in RGB format of a given width and
 /// performs the following operations:
@@ -43,52 +44,53 @@ fn index_rgb<const SRC_DEPTH: usize>(
     let mut west_data = vec![R16::new(0); hemisphere_width * height];
     let mut east_data = vec![R16::new(0); hemisphere_width * height];
 
-    let mut color_lut = vec![u16::MAX; 1 << 24];
+    // Previously this hashmap was was a linear look up table that held all
+    // possible RGB combinations (16.7 million entries) for O(1) to read/write,
+    // but it was too big to be jumping around in memory for.
+    let mut color_lut = HashMap::with_capacity_and_hasher(30_000, FnvBuildHasher::new());
     let mut palette: Vec<Rgb> = Vec::with_capacity(30_000);
-    let mut last_color_cache: Option<(Rgb, u16)> = None;
 
-    for y in 0..height {
-        let row_start = y * width_value * SRC_DEPTH;
-        let row_end = row_start + width_value * SRC_DEPTH;
-        let row = &img[row_start..row_end];
+    let mut last_key = u32::MAX;
+    let mut last_idx = 0u16;
 
-        let (west_row, east_row) = row.split_at(hemisphere_width * SRC_DEPTH);
+    fn chunkify<const SRC_DEPTH: usize>(row: &[u8]) -> impl Iterator<Item = [u8; 3]> {
+        let (output, _) = row.as_chunks::<SRC_DEPTH>();
+        output.iter().map(|pixel| [pixel[0], pixel[1], pixel[2]])
+    }
 
-        let row_offset = y * hemisphere_width;
-        let row_len = hemisphere_width;
+    let src_rows = img
+        .chunks_exact(width.value as usize * SRC_DEPTH)
+        .map(|row| row.split_at(row.len() / 2))
+        .map(|(west, east)| (chunkify::<SRC_DEPTH>(west), chunkify::<SRC_DEPTH>(east)));
 
-        let west_dst = &mut west_data[row_offset..row_offset + row_len];
-        let east_dst = &mut east_data[row_offset..row_offset + row_len];
+    let dst_rows = west_data
+        .chunks_exact_mut(hemisphere_width)
+        .zip(east_data.chunks_exact_mut(hemisphere_width));
 
-        for (src_row, dst_row) in [(west_row, west_dst), (east_row, east_dst)] {
-            let (rgb, _) = src_row.as_chunks::<SRC_DEPTH>();
-            for (pixel, dst_r16) in rgb.iter().zip(dst_row.iter_mut()) {
-                let key = (pixel[0] as u32) << 16 | (pixel[1] as u32) << 8 | pixel[2] as u32;
-                let key_rgb = Rgb::new(pixel[0], pixel[1], pixel[2]);
+    for ((west_src, east_src), (west_dst, east_dst)) in src_rows.zip(dst_rows) {
+        for (src, dst) in [(west_src, west_dst), (east_src, east_dst)] {
+            for ([r, g, b], dst_r16) in src.zip(dst.iter_mut()) {
+                let key = (r as u32) << 16 | (g as u32) << 8 | b as u32;
+                let key_rgb = Rgb::new(r, g, b);
 
-                if let Some((last_key, last_idx)) = last_color_cache
-                    && last_key == key_rgb
-                {
+                if key == last_key {
                     *dst_r16 = R16::new(last_idx);
                     continue;
                 }
 
-                let mut idx = color_lut[key as usize];
+                last_idx = match color_lut.entry(key) {
+                    Entry::Occupied(entry) => *entry.get(),
+                    Entry::Vacant(entry) => {
+                        assert!(palette.len() < 65535, "palette exceeded 65535 colors");
+                        let len = palette.len();
+                        entry.insert(len as u16);
+                        palette.push(key_rgb);
+                        len as u16
+                    }
+                };
 
-                if idx == u16::MAX {
-                    let len = palette.len();
-                    assert!(
-                        len < u16::MAX as usize,
-                        "palette exceeded 65534 colors (u16::MAX-1 reserved for sentinel)"
-                    );
-
-                    idx = len as u16;
-                    palette.push(key_rgb);
-                    color_lut[key as usize] = idx;
-                }
-
-                last_color_cache = Some((key_rgb, idx));
-                *dst_r16 = R16::new(idx);
+                last_key = key;
+                *dst_r16 = R16::new(last_idx);
             }
         }
     }
@@ -262,14 +264,14 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "palette exceeded 65534 colors")]
-    fn test_exceeds_65534_colors_panics() {
+    #[should_panic(expected = "palette exceeded 65535 colors")]
+    fn test_exceeds_65535_colors_panics() {
         let width = 256u32;
         let height = 256u32;
 
         let mut img = Vec::new();
         for i in 0..(width * height) {
-            let color_idx = i % 65536;
+            let color_idx = i % 65537;
             let r = ((color_idx >> 8) & 0xFF) as u8;
             let g = (color_idx & 0xFF) as u8;
             let b = 0;
