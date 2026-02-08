@@ -1,50 +1,63 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use tauri::State;
 
-use eu5app::{
-    Eu5LoadedSave, Eu5SaveLoader, Eu5Workspace, game_data::TextureProvider,
-    game_data::game_install::Eu5GameInstall,
-};
-use eu5save::{BasicTokenResolver, Eu5File};
+use eu5app::{Eu5LoadedSave, Eu5SaveLoader, Eu5Workspace, game_data::game_install::Eu5GameInstall};
+use eu5save::{BasicTokenResolver, Eu5File, models::Gamestate};
 use jomini::common::PdsDate;
 use pdx_assets::{Game, steam::detect_steam_game_path};
-use pdx_map::R16;
+use pdx_map::{R16, World};
 
 #[derive(Clone)]
 pub struct AppState {
     pub token_resolver: Arc<BasicTokenResolver>,
     pub pending_render: Arc<Mutex<Option<RenderPayload>>>,
-    pub pending_input_events: Arc<Mutex<Vec<InputEvent>>>,
+    interaction_state: Arc<Mutex<InteractionState>>,
 }
 
-#[derive(Debug)]
 pub struct RenderPayload {
-    pub west_texture: Vec<R16>,
-    pub east_texture: Vec<R16>,
-    pub location_arrays: Vec<u32>,
+    pub world: Arc<World<R16>>,
+    pub workspace: Eu5Workspace<'static>,
     pub player_capital_world: Option<(f32, f32)>,
+    _loaded_save: Eu5LoadedSave,
 }
 
-#[derive(Debug, Clone)]
-pub enum InputEvent {
-    CursorMoved { x: f32, y: f32 },
-    MouseButton { button: u8, pressed: bool },
-    MouseWheel { lines: f32 },
-    Key { code: String, pressed: bool },
+#[derive(Debug, Clone, Default)]
+pub struct InteractionSnapshot {
+    pub cursor: Option<(f32, f32)>,
+    pub mouse_buttons: [bool; 3],
+    pub wheel_lines: f32,
+    pub pressed_keys: HashSet<String>,
+}
+
+#[derive(Debug, Default)]
+struct InteractionState {
+    cursor: Option<(f32, f32)>,
+    mouse_buttons: [bool; 3],
+    wheel_lines: f32,
+    pressed_keys: HashSet<String>,
 }
 
 impl AppState {
+    pub fn new(token_resolver: BasicTokenResolver) -> Self {
+        Self {
+            token_resolver: Arc::new(token_resolver),
+            pending_render: Arc::new(Mutex::new(None)),
+            interaction_state: Arc::new(Mutex::new(InteractionState::default())),
+        }
+    }
+
     pub fn set_pending_render(&self, payload: RenderPayload) -> Result<(), String> {
         let mut guard = self
             .pending_render
             .lock()
             .map_err(|_| "Failed to lock pending render state".to_string())?;
         *guard = Some(payload);
-        self.clear_pending_input_events()?;
+        self.reset_interaction_state()?;
         Ok(())
     }
 
@@ -55,34 +68,68 @@ impl AppState {
             .and_then(|mut guard| guard.take())
     }
 
-    pub fn push_input_event(&self, event: InputEvent) -> Result<(), String> {
+    pub fn set_cursor(&self, x: f32, y: f32) -> Result<(), String> {
         let mut guard = self
-            .pending_input_events
+            .interaction_state
             .lock()
-            .map_err(|_| "Failed to lock pending input state".to_string())?;
-        guard.push(event);
-        const MAX_QUEUED_EVENTS: usize = 2_048;
-        const KEEP_EVENTS: usize = 1_024;
-        if guard.len() > MAX_QUEUED_EVENTS {
-            let remove = guard.len().saturating_sub(KEEP_EVENTS);
-            guard.drain(0..remove);
+            .map_err(|_| "Failed to lock interaction state".to_string())?;
+        guard.cursor = Some((x, y));
+        Ok(())
+    }
+
+    pub fn set_mouse_button(&self, button: u8, pressed: bool) -> Result<(), String> {
+        let mut guard = self
+            .interaction_state
+            .lock()
+            .map_err(|_| "Failed to lock interaction state".to_string())?;
+        guard.mouse_buttons[button as usize] = pressed;
+        Ok(())
+    }
+
+    pub fn add_mouse_wheel(&self, lines: f32) -> Result<(), String> {
+        let mut guard = self
+            .interaction_state
+            .lock()
+            .map_err(|_| "Failed to lock interaction state".to_string())?;
+        guard.wheel_lines += lines;
+        Ok(())
+    }
+
+    pub fn set_key(&self, code: String, pressed: bool) -> Result<(), String> {
+        let mut guard = self
+            .interaction_state
+            .lock()
+            .map_err(|_| "Failed to lock interaction state".to_string())?;
+        if pressed {
+            guard.pressed_keys.insert(code);
+        } else {
+            guard.pressed_keys.remove(&code);
         }
         Ok(())
     }
 
-    pub fn take_input_events(&self) -> Vec<InputEvent> {
-        self.pending_input_events
+    pub fn take_interaction_snapshot(&self) -> InteractionSnapshot {
+        self.interaction_state
             .lock()
-            .map(|mut guard| std::mem::take(&mut *guard))
+            .map(|mut guard| {
+                let wheel_lines = guard.wheel_lines;
+                guard.wheel_lines = 0.0;
+                InteractionSnapshot {
+                    cursor: guard.cursor,
+                    mouse_buttons: guard.mouse_buttons,
+                    wheel_lines,
+                    pressed_keys: guard.pressed_keys.clone(),
+                }
+            })
             .unwrap_or_default()
     }
 
-    pub fn clear_pending_input_events(&self) -> Result<(), String> {
+    pub fn reset_interaction_state(&self) -> Result<(), String> {
         let mut guard = self
-            .pending_input_events
+            .interaction_state
             .lock()
-            .map_err(|_| "Failed to lock pending input state".to_string())?;
-        guard.clear();
+            .map_err(|_| "Failed to lock interaction state".to_string())?;
+        *guard = InteractionState::default();
         Ok(())
     }
 }
@@ -141,7 +188,7 @@ pub fn detect_eu5_game_path() -> Result<Option<String>, String> {
 
 #[tauri::command]
 pub fn interaction_cursor_moved(x: f32, y: f32, state: State<AppState>) -> Result<(), String> {
-    state.push_input_event(InputEvent::CursorMoved { x, y })
+    state.set_cursor(x, y)
 }
 
 #[tauri::command]
@@ -153,17 +200,17 @@ pub fn interaction_mouse_button(
     if button > 2 {
         return Ok(());
     }
-    state.push_input_event(InputEvent::MouseButton { button, pressed })
+    state.set_mouse_button(button, pressed)
 }
 
 #[tauri::command]
 pub fn interaction_mouse_wheel(lines: f32, state: State<AppState>) -> Result<(), String> {
-    state.push_input_event(InputEvent::MouseWheel { lines })
+    state.add_mouse_wheel(lines)
 }
 
 #[tauri::command]
 pub fn interaction_key(code: String, pressed: bool, state: State<AppState>) -> Result<(), String> {
-    state.push_input_event(InputEvent::Key { code, pressed })
+    state.set_key(code, pressed)
 }
 
 #[tauri::command]
@@ -255,13 +302,14 @@ pub fn load_save_for_renderer(
     let mut loaded_save = save_result?;
     let game_install = install_result?;
 
-    let west_texture = game_install.west_texture().to_vec();
-    let east_texture = game_install.east_texture().to_vec();
     let world = game_install.world();
     let game_data = game_install.into_game_data();
 
-    let (location_arrays, player_capital_world) = {
+    let (workspace, player_capital_world) = {
         let gamestate = loaded_save.take_gamestate();
+        // Workspace borrows parsed save data; keep save alive in RenderPayload.
+        let gamestate =
+            unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(gamestate) };
         let workspace = Eu5Workspace::new(gamestate, game_data)
             .map_err(|e| format!("Failed to join save and game data: {e}"))?;
 
@@ -270,14 +318,14 @@ pub fn load_save_for_renderer(
             (center.x as f32, center.y as f32)
         });
 
-        (workspace.location_arrays().as_data().to_vec(), player_capital_world)
+        (workspace, player_capital_world)
     };
 
     state.set_pending_render(RenderPayload {
-        west_texture,
-        east_texture,
-        location_arrays,
+        world,
+        workspace,
         player_capital_world,
+        _loaded_save: loaded_save,
     })?;
 
     Ok(resolved_game_path)

@@ -7,12 +7,9 @@ import { Button } from "@/components/Button";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import {
   loadSaveForRenderer,
-  sendInteractionCursorMoved,
-  sendInteractionKey,
-  sendInteractionMouseButton,
-  sendInteractionMouseWheel,
 } from "../lib/tauri";
 import type { SaveFileInfo } from "../lib/tauri";
+import { useMapInteractions } from "./useMapInteractions";
 
 interface SaveMapViewProps {
   save: SaveFileInfo;
@@ -28,6 +25,7 @@ export default function SaveMapView({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMapReady = !isLoading && !error;
+  useMapInteractions(isMapReady);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,121 +53,6 @@ export default function SaveMapView({
       cancelled = true;
     };
   }, [gamePath, save.filePath]);
-
-  useEffect(() => {
-    if (isLoading || error) {
-      return;
-    }
-
-    let queuedCursor: { x: number; y: number } | null = null;
-    let cursorRaf = 0;
-
-    const flushCursor = () => {
-      cursorRaf = 0;
-      if (!queuedCursor) {
-        return;
-      }
-
-      const { x, y } = queuedCursor;
-      queuedCursor = null;
-      void sendInteractionCursorMoved(x, y);
-    };
-
-    const onMouseMove = (event: MouseEvent) => {
-      queuedCursor = { x: event.clientX, y: event.clientY };
-      if (cursorRaf === 0) {
-        cursorRaf = requestAnimationFrame(flushCursor);
-      }
-    };
-
-    const onMouseDown = (event: MouseEvent) => {
-      if (isInteractiveTarget(event.target)) {
-        return;
-      }
-      const button = normalizeMouseButton(event.button);
-      if (button === null) {
-        return;
-      }
-      void sendInteractionMouseButton(button, true);
-    };
-
-    const onMouseUp = (event: MouseEvent) => {
-      const button = normalizeMouseButton(event.button);
-      if (button === null) {
-        return;
-      }
-      void sendInteractionMouseButton(button, false);
-    };
-
-    const onWheel = (event: WheelEvent) => {
-      if (isInteractiveTarget(event.target)) {
-        return;
-      }
-      const lines = wheelEventToLines(event);
-      if (Math.abs(lines) < Number.EPSILON) {
-        return;
-      }
-      void sendInteractionMouseWheel(lines);
-      event.preventDefault();
-    };
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat) {
-        return;
-      }
-      void sendInteractionKey(event.code, true);
-    };
-
-    const onKeyUp = (event: KeyboardEvent) => {
-      void sendInteractionKey(event.code, false);
-    };
-
-    const onContextMenu = (event: MouseEvent) => {
-      event.preventDefault();
-    };
-
-    const onWindowBlur = () => {
-      void sendInteractionMouseButton(0, false);
-      void sendInteractionMouseButton(1, false);
-      void sendInteractionMouseButton(2, false);
-
-      for (const code of [
-        "KeyW",
-        "KeyA",
-        "KeyS",
-        "KeyD",
-        "ArrowUp",
-        "ArrowLeft",
-        "ArrowDown",
-        "ArrowRight",
-      ]) {
-        void sendInteractionKey(code, false);
-      }
-    };
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("mouseup", onMouseUp);
-    window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("contextmenu", onContextMenu);
-    window.addEventListener("blur", onWindowBlur);
-
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("mouseup", onMouseUp);
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("contextmenu", onContextMenu);
-      window.removeEventListener("blur", onWindowBlur);
-      if (cursorRaf !== 0) {
-        cancelAnimationFrame(cursorRaf);
-      }
-    };
-  }, [error, isLoading]);
 
   return (
     <div
@@ -221,31 +104,4 @@ export default function SaveMapView({
       </div>
     </div>
   );
-}
-
-function normalizeMouseButton(button: number): number | null {
-  if (button === 0 || button === 1 || button === 2) {
-    return button;
-  }
-  return null;
-}
-
-function wheelEventToLines(event: WheelEvent): number {
-  const raw = event.deltaY;
-  switch (event.deltaMode) {
-    case WheelEvent.DOM_DELTA_LINE:
-      return -raw;
-    case WheelEvent.DOM_DELTA_PAGE:
-      return -(raw * 3);
-    default:
-      return -(raw / 120);
-  }
-}
-
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof Element)) {
-    return false;
-  }
-
-  return target.closest("[data-map-input-stop='true']") !== null;
 }

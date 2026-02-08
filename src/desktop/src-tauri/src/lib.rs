@@ -1,14 +1,22 @@
 mod commands;
 
-use commands::{AppState, InputEvent, RenderPayload};
+use commands::{AppState, InteractionSnapshot, RenderPayload};
 use eu5save::BasicTokenResolver;
 use pdx_map::{
-    GpuSurfaceContext, InteractionController, KeyboardKey, LocationArrays, LogicalPoint, LogicalSize,
-    MapViewController, MouseButton, PhysicalSize as MapPhysicalSize, SurfaceMapRenderer, WorldPoint,
+    GpuSurfaceContext, InteractionController, KeyboardKey, LogicalPoint, LogicalSize,
+    MapViewController, MouseButton, PhysicalSize as MapPhysicalSize, SurfaceMapRenderer,
+    WorldPoint,
 };
-use std::sync::{Arc, Mutex};
+use std::collections::HashSet;
 use std::time::{Duration, Instant};
 use tauri::{Manager, RunEvent};
+
+#[derive(Default)]
+struct AppliedInputState {
+    last_cursor: Option<(f32, f32)>,
+    mouse_buttons: [bool; 3],
+    pressed_keys: HashSet<String>,
+}
 
 #[derive(Default)]
 struct RendererRuntimeState {
@@ -17,6 +25,7 @@ struct RendererRuntimeState {
     last_interaction_tick: Option<Instant>,
     last_physical_size: Option<tauri::PhysicalSize<u32>>,
     last_scale_factor: Option<f64>,
+    applied_input_state: AppliedInputState,
 }
 
 impl RendererRuntimeState {
@@ -41,11 +50,17 @@ impl RendererRuntimeState {
         let gpu = tauri::async_runtime::block_on(GpuSurfaceContext::new(window.clone()))
             .map_err(|err| format!("Failed to create GPU surface context: {err}"))?;
 
-        let hemisphere_size = eu5app::hemisphere_size().physical();
-        let west_texture =
-            gpu.create_texture(&payload.west_texture, hemisphere_size, "West Texture Input");
-        let east_texture =
-            gpu.create_texture(&payload.east_texture, hemisphere_size, "East Texture Input");
+        let hemisphere_size = payload.world.west().size().physical();
+        let west_texture = gpu.create_texture(
+            payload.world.west().as_slice(),
+            hemisphere_size,
+            "West Texture Input",
+        );
+        let east_texture = gpu.create_texture(
+            payload.world.east().as_slice(),
+            hemisphere_size,
+            "East Texture Input",
+        );
 
         let inner_size = window
             .inner_size()
@@ -60,8 +75,9 @@ impl RendererRuntimeState {
 
         let renderer = SurfaceMapRenderer::new(gpu, west_texture, east_texture, physical_size);
         let mut controller = MapViewController::new(renderer, logical_size, scale_factor as f32);
-        let location_arrays = LocationArrays::from_data(payload.location_arrays);
-        controller.renderer_mut().update_locations(&location_arrays);
+        controller
+            .renderer_mut()
+            .update_locations(payload.workspace.location_arrays());
         let mut interaction_controller =
             InteractionController::new(logical_size, eu5app::hemisphere_size().world());
 
@@ -75,6 +91,7 @@ impl RendererRuntimeState {
         self.last_interaction_tick = Some(Instant::now());
         self.last_physical_size = Some(inner_size);
         self.last_scale_factor = Some(scale_factor);
+        self.applied_input_state = AppliedInputState::default();
         self.controller = Some(controller);
         Ok(())
     }
@@ -99,11 +116,7 @@ impl RendererRuntimeState {
         controller.resize_with_scale_factor(logical_size, scale_factor as f32);
     }
 
-    fn apply_input_events(&mut self, events: Vec<InputEvent>) {
-        if events.is_empty() {
-            return;
-        }
-
+    fn apply_input_snapshot(&mut self, snapshot: InteractionSnapshot) {
         let Some(controller) = &mut self.controller else {
             return;
         };
@@ -111,30 +124,49 @@ impl RendererRuntimeState {
             return;
         };
 
-        for event in events {
-            match event {
-                InputEvent::CursorMoved { x, y } => {
-                    interaction_controller.on_cursor_move(LogicalPoint::new(x, y));
-                }
-                InputEvent::MouseButton { button, pressed } => {
-                    if let Some(button) = map_mouse_button(button) {
-                        interaction_controller.on_mouse_button(button, pressed);
-                    }
-                }
-                InputEvent::MouseWheel { lines } => {
-                    interaction_controller.on_scroll(lines);
-                }
-                InputEvent::Key { code, pressed } => {
-                    let key = KeyboardKey::from_web_code(&code);
-                    if pressed {
-                        interaction_controller.on_key_down(key);
-                    } else {
-                        interaction_controller.on_key_up(key);
-                    }
-                }
-            }
+        if let Some((x, y)) = snapshot.cursor
+            && self.applied_input_state.last_cursor != Some((x, y))
+        {
+            interaction_controller.on_cursor_move(LogicalPoint::new(x, y));
+            self.applied_input_state.last_cursor = Some((x, y));
         }
 
+        for (index, &pressed) in snapshot.mouse_buttons.iter().enumerate() {
+            if self.applied_input_state.mouse_buttons[index] == pressed {
+                continue;
+            }
+
+            if let Some(button) = map_mouse_button(index as u8) {
+                interaction_controller.on_mouse_button(button, pressed);
+            }
+
+            self.applied_input_state.mouse_buttons[index] = pressed;
+        }
+
+        if snapshot.wheel_lines.abs() > f32::EPSILON {
+            interaction_controller.on_scroll(snapshot.wheel_lines);
+        }
+
+        let keys_to_release: Vec<_> = self
+            .applied_input_state
+            .pressed_keys
+            .difference(&snapshot.pressed_keys)
+            .cloned()
+            .collect();
+        for code in keys_to_release {
+            interaction_controller.on_key_up(KeyboardKey::from_web_code(&code));
+        }
+
+        let keys_to_press: Vec<_> = snapshot
+            .pressed_keys
+            .difference(&self.applied_input_state.pressed_keys)
+            .cloned()
+            .collect();
+        for code in keys_to_press {
+            interaction_controller.on_key_down(KeyboardKey::from_web_code(&code));
+        }
+
+        self.applied_input_state.pressed_keys = snapshot.pressed_keys;
         controller.set_viewport_bounds(interaction_controller.viewport_bounds());
     }
 
@@ -211,11 +243,7 @@ pub fn run() {
     let token_resolver = BasicTokenResolver::from_text_lines(token_data.as_slice())
         .expect("Failed to load EU5 token resolver");
 
-    let app_state = AppState {
-        token_resolver: Arc::new(token_resolver),
-        pending_render: Arc::new(Mutex::new(None)),
-        pending_input_events: Arc::new(Mutex::new(Vec::new())),
-    };
+    let app_state = AppState::new(token_resolver);
 
     let tauri_app = tauri::Builder::default()
         .manage(app_state)
@@ -320,8 +348,7 @@ pub fn run() {
                 {
                     log::error!("Failed to apply render payload: {err}");
                 }
-                let input_events = state.take_input_events();
-                renderer_state.apply_input_events(input_events);
+                renderer_state.apply_input_snapshot(state.take_interaction_snapshot());
                 renderer_state.tick_interaction();
             }
 
