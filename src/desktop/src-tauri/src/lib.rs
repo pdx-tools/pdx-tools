@@ -20,6 +20,19 @@ struct RendererRuntimeState {
 }
 
 impl RendererRuntimeState {
+    fn sync_window_metrics(&mut self, window: &tauri::WebviewWindow) {
+        let Ok(size) = window.inner_size() else {
+            return;
+        };
+        let Ok(scale_factor) = window.scale_factor() else {
+            return;
+        };
+
+        if self.last_physical_size != Some(size) || self.last_scale_factor != Some(scale_factor) {
+            self.resize(size, scale_factor);
+        }
+    }
+
     fn apply_render_payload(
         &mut self,
         window: tauri::WebviewWindow,
@@ -300,6 +313,7 @@ pub fn run() {
             last_frame = Instant::now();
 
             if let Some(window) = app_handle.get_webview_window("main") {
+                renderer_state.sync_window_metrics(&window);
                 let state = app_handle.state::<AppState>();
                 if let Some(payload) = state.take_pending_render()
                     && let Err(err) = renderer_state.apply_render_payload(window, payload)
