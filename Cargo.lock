@@ -3937,6 +3937,8 @@ dependencies = [
  "eu5save",
  "jomini",
  "log",
+ "pdx-assets",
+ "pdx-map",
  "rayon",
  "serde",
  "serde_json",

@@ -19,18 +19,18 @@ export default function ScanErrorDialog({ errors }: ScanErrorDialogProps) {
   return (
     <>
       {/* Toast-style slide-in alert */}
-      <div className="fixed bottom-6 right-6 z-50 animate-slideIn">
+      <div className="animate-slideIn fixed right-6 bottom-6 z-50">
         <div className="relative">
           {/* Pulsing border animation */}
-          <div className="absolute inset-0 bg-gradient-to-r from-rose-900/90 to-rose-800/90 rounded-xl blur-sm animate-pulse" />
+          <div className="absolute inset-0 animate-pulse rounded-xl bg-gradient-to-r from-rose-900/90 to-rose-800/90 blur-sm" />
           <Alert
             variant="error"
-            className="relative cursor-pointer bg-gradient-to-r from-rose-900/90 to-rose-800/90 backdrop-blur-lg border-2 border-rose-500/50 shadow-2xl shadow-rose-500/30 hover:shadow-rose-500/50 hover:scale-105 transition-all duration-300 p-4"
+            className="relative cursor-pointer border-2 border-rose-500/50 bg-gradient-to-r from-rose-900/90 to-rose-800/90 p-4 shadow-2xl shadow-rose-500/30 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-rose-500/50"
             onClick={() => setIsOpen(true)}
           >
             <div className="flex items-center gap-3">
               <svg
-                className="w-6 h-6"
+                className="h-6 w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -52,18 +52,21 @@ export default function ScanErrorDialog({ errors }: ScanErrorDialogProps) {
 
       {/* Modal with backdrop blur */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <Dialog.Content title="Scan Errors" className="max-w-2xl backdrop-blur-md bg-slate-900/95">
+        <Dialog.Content
+          title="Scan Errors"
+          className="max-w-2xl bg-slate-900/70 backdrop-blur-md"
+        >
           <div className="space-y-4">
             <p className="text-base text-slate-300">
               The following errors occurred while scanning save files:
             </p>
 
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+            <div className="max-h-[400px] space-y-3 overflow-y-auto pr-2">
               {errors.map((error, index) => (
                 <Collapsible key={index}>
-                  <Collapsible.Trigger className="flex items-start gap-3 p-4 bg-slate-800/50 backdrop-blur rounded-lg border-2 border-slate-700/50 hover:border-rose-500/50 hover:bg-slate-800/70 transition-all duration-200 cursor-pointer w-full group">
+                  <Collapsible.Trigger className="group flex w-full cursor-pointer items-start gap-3 rounded-lg border-2 border-slate-700/50 bg-slate-800/50 p-4 backdrop-blur transition-all duration-200 hover:border-rose-500/50 hover:bg-slate-800/70">
                     <svg
-                      className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform"
+                      className="mt-0.5 h-5 w-5 flex-shrink-0 text-rose-400 transition-transform group-hover:scale-110"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -75,15 +78,15 @@ export default function ScanErrorDialog({ errors }: ScanErrorDialogProps) {
                         d="M6 18L18 6M6 6l12 12"
                       />
                     </svg>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-mono text-sm text-slate-200 truncate group-hover:text-white transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-mono text-sm text-slate-200 transition-colors group-hover:text-white">
                         {error.filePath || "Unknown file"}
                       </p>
                     </div>
                   </Collapsible.Trigger>
                   <Collapsible.Content>
-                    <div className="p-4 bg-slate-900/70 border-2 border-rose-500/20 rounded-lg mt-2 ml-8">
-                      <p className="text-sm text-rose-200 font-mono whitespace-pre-wrap">
+                    <div className="mt-2 ml-8 rounded-lg border-2 border-rose-500/20 bg-slate-900/70 p-4">
+                      <p className="font-mono text-sm whitespace-pre-wrap text-rose-200">
                         {error.error}
                       </p>
                     </div>
@@ -92,10 +95,10 @@ export default function ScanErrorDialog({ errors }: ScanErrorDialogProps) {
               ))}
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-slate-700/50">
+            <div className="flex justify-end border-t border-slate-700/50 pt-4">
               <Button
                 onClick={() => setIsOpen(false)}
-                className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 border border-amber-500/50"
+                className="border border-amber-500/50 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400"
               >
                 Close
               </Button>

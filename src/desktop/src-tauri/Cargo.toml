@@ -18,7 +18,9 @@ log = "0.4"
 tauri = { version = "2.10.0", features = [] }
 tauri-plugin-log = "2"
 eu5save = { workspace = true }
-eu5app = { workspace = true, features = ["zstd_rust"] }
+eu5app = { workspace = true, features = ["zstd_rust", "game-install"] }
 jomini = { workspace = true }
 dirs = "5.0"
 rayon = { workspace = true }
+pdx-assets = { workspace = true }
+pdx-map = { workspace = true, features = ["render"] }

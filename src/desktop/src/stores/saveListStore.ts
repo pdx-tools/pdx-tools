@@ -4,6 +4,30 @@ import type { SaveFileInfo, ScanError } from "../lib/tauri";
 type SortBy = "date" | "name" | "modified";
 type SortOrder = "asc" | "desc";
 
+const GAME_PATH_STORAGE_KEY = "eu5GamePath";
+
+function loadPersistedGamePath(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.localStorage.getItem(GAME_PATH_STORAGE_KEY) ?? "";
+}
+
+function persistGamePath(path: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const trimmed = path.trim();
+  if (!trimmed) {
+    window.localStorage.removeItem(GAME_PATH_STORAGE_KEY);
+    return;
+  }
+
+  window.localStorage.setItem(GAME_PATH_STORAGE_KEY, trimmed);
+}
+
 interface SaveListState {
   saves: SaveFileInfo[];
   errors: ScanError[];
@@ -12,6 +36,8 @@ interface SaveListState {
   sortBy: SortBy;
   sortOrder: SortOrder;
   selectedSave: SaveFileInfo | null;
+  gamePath: string;
+  gamePathError: string | null;
 
   setSaves: (saves: SaveFileInfo[], errors: ScanError[]) => void;
   setIsScanning: (isScanning: boolean) => void;
@@ -19,6 +45,8 @@ interface SaveListState {
   setSortBy: (sortBy: SortBy) => void;
   toggleSortOrder: () => void;
   setSelectedSave: (save: SaveFileInfo | null) => void;
+  setGamePath: (gamePath: string) => void;
+  setGamePathError: (message: string | null) => void;
   getFilteredSaves: () => SaveFileInfo[];
 }
 
@@ -30,6 +58,8 @@ export const useSaveListStore = create<SaveListState>((set, get) => ({
   sortBy: "modified",
   sortOrder: "desc",
   selectedSave: null,
+  gamePath: loadPersistedGamePath(),
+  gamePathError: null,
 
   setSaves: (saves, errors) => set({ saves, errors }),
   setIsScanning: (isScanning) => set({ isScanning }),
@@ -40,6 +70,11 @@ export const useSaveListStore = create<SaveListState>((set, get) => ({
       sortOrder: state.sortOrder === "asc" ? "desc" : "asc",
     })),
   setSelectedSave: (selectedSave) => set({ selectedSave }),
+  setGamePath: (gamePath) => {
+    persistGamePath(gamePath);
+    set({ gamePath, gamePathError: null });
+  },
+  setGamePathError: (gamePathError) => set({ gamePathError }),
 
   getFilteredSaves: () => {
     const { saves, searchQuery, sortBy, sortOrder } = get();
@@ -52,7 +87,7 @@ export const useSaveListStore = create<SaveListState>((set, get) => ({
         (save) =>
           save.playthroughName.toLowerCase().includes(query) ||
           save.date.includes(query) ||
-          save.version.includes(query)
+          save.version.includes(query),
       );
     }
 
