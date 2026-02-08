@@ -15,6 +15,8 @@ struct RendererRuntimeState {
     controller: Option<MapViewController>,
     interaction_controller: Option<InteractionController>,
     last_interaction_tick: Option<Instant>,
+    last_physical_size: Option<tauri::PhysicalSize<u32>>,
+    last_scale_factor: Option<f64>,
 }
 
 impl RendererRuntimeState {
@@ -58,11 +60,20 @@ impl RendererRuntimeState {
 
         self.interaction_controller = Some(interaction_controller);
         self.last_interaction_tick = Some(Instant::now());
+        self.last_physical_size = Some(inner_size);
+        self.last_scale_factor = Some(scale_factor);
         self.controller = Some(controller);
         Ok(())
     }
 
     fn resize(&mut self, size: tauri::PhysicalSize<u32>, scale_factor: f64) {
+        self.last_physical_size = Some(size);
+        self.last_scale_factor = Some(scale_factor);
+
+        if size.width == 0 || size.height == 0 {
+            return;
+        }
+
         let Some(controller) = &mut self.controller else {
             return;
         };
@@ -72,7 +83,7 @@ impl RendererRuntimeState {
             interaction_controller.on_resize(logical_size);
             controller.set_viewport_bounds(interaction_controller.viewport_bounds());
         }
-        controller.resize(logical_size);
+        controller.resize_with_scale_factor(logical_size, scale_factor as f32);
     }
 
     fn apply_input_events(&mut self, events: Vec<InputEvent>) {
@@ -132,11 +143,28 @@ impl RendererRuntimeState {
     }
 
     fn render(&mut self) {
-        let Some(controller) = &mut self.controller else {
-            return;
+        let render_result = match self.controller.as_mut() {
+            Some(controller) => controller.render(),
+            None => return,
         };
 
-        if let Err(err) = controller.render() {
+        if let Err(err) = render_result {
+            if err.is_surface_reconfigurable() {
+                match (self.last_physical_size, self.last_scale_factor) {
+                    (Some(size), Some(scale_factor)) if size.width > 0 && size.height > 0 => {
+                        log::warn!(
+                            "Recoverable surface error during render ({err}); reconfiguring surface"
+                        );
+                        self.resize(size, scale_factor);
+                    }
+                    _ => {
+                        log::warn!(
+                            "Recoverable surface error during render ({err}), but no valid size is available for reconfigure"
+                        );
+                    }
+                }
+                return;
+            }
             log::error!("Render failed: {err}");
         }
     }
@@ -237,6 +265,22 @@ pub fn run() {
         }
         RunEvent::WindowEvent {
             label,
+            event:
+                tauri::WindowEvent::ScaleFactorChanged {
+                    scale_factor,
+                    new_inner_size,
+                    ..
+                },
+            ..
+        } => {
+            if label != "main" {
+                return;
+            }
+
+            renderer_state.resize(new_inner_size, scale_factor);
+        }
+        RunEvent::WindowEvent {
+            label,
             event: tauri::WindowEvent::CloseRequested { .. },
             ..
         } => {
@@ -244,6 +288,8 @@ pub fn run() {
                 renderer_state.controller = None;
                 renderer_state.interaction_controller = None;
                 renderer_state.last_interaction_tick = None;
+                renderer_state.last_physical_size = None;
+                renderer_state.last_scale_factor = None;
             }
         }
         RunEvent::MainEventsCleared => {
