@@ -25,7 +25,7 @@ export default function ScanErrorDialog({ errors }: ScanErrorDialogProps) {
           <div className="absolute inset-0 bg-gradient-to-r from-rose-900/90 to-rose-800/90 rounded-xl blur-sm animate-pulse" />
           <Alert
             variant="error"
-            className="relative cursor-pointer bg-gradient-to-r from-rose-900/90 to-rose-800/90 backdrop-blur-lg border-2 border-rose-500/50 shadow-2xl shadow-rose-500/30 hover:shadow-rose-500/50 hover:scale-105 transition-all duration-300"
+            className="relative cursor-pointer bg-gradient-to-r from-rose-900/90 to-rose-800/90 backdrop-blur-lg border-2 border-rose-500/50 shadow-2xl shadow-rose-500/30 hover:shadow-rose-500/50 hover:scale-105 transition-all duration-300 p-4"
             onClick={() => setIsOpen(true)}
           >
             <div className="flex items-center gap-3">

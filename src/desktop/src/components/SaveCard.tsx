@@ -35,7 +35,7 @@ export default function SaveCard({ save, onClick }: SaveCardProps) {
             {save.playthroughName}
           </h3>
           <div className="flex items-center gap-2">
-            <Badge variant="blue" className="text-xs bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-900/80 dark:to-amber-800/60 border border-amber-500/30 text-amber-900 dark:text-amber-100 font-semibold">
+            <Badge variant="blue" className="text-xs px-3 py-1 bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-900/80 dark:to-amber-800/60 border border-amber-500/30 text-amber-900 dark:text-amber-100 font-semibold">
               v{save.version}
             </Badge>
           </div>
@@ -69,15 +69,17 @@ export default function SaveCard({ save, onClick }: SaveCardProps) {
       <div className="absolute bottom-4 right-4">
         <div className="relative">
           <div className="absolute inset-0 bg-rose-600/20 rounded-full blur-sm" />
-          <div className="relative px-3 py-1 rounded-full bg-gradient-to-br from-rose-900/80 to-rose-800/60 border border-rose-600/40 text-xs font-bold text-rose-200">
+          <div className="relative px-3 py-1.5 rounded-full bg-gradient-to-br from-rose-900/80 to-rose-800/60 border border-rose-600/40 text-xs font-bold text-rose-200">
             {fileSizeMB} MB
           </div>
         </div>
       </div>
 
-      {/* Hover indicator */}
-      <div className="absolute bottom-4 left-5 text-xs text-amber-400 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-        Open →
+      {/* Hover indicator - positioned to avoid clipping */}
+      <div className="mt-4 pt-3 border-t border-slate-700/30">
+        <div className="text-xs text-amber-400 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+          Open →
+        </div>
       </div>
     </Card>
   );
