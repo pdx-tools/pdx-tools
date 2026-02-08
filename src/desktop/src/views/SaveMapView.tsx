@@ -1,19 +1,17 @@
 import {
   useEffect,
   useState,
-  type ComponentProps,
-  type ComponentType,
 } from "react";
-import {
-  ArrowLeftIcon,
-  CalendarIcon,
-  ClockIcon,
-  DocumentTextIcon,
-  ShieldCheckIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/Button";
 import { getErrorMessage } from "@/lib/getErrorMessage";
-import { loadSaveForRenderer } from "../lib/tauri";
+import {
+  loadSaveForRenderer,
+  sendInteractionCursorMoved,
+  sendInteractionKey,
+  sendInteractionMouseButton,
+  sendInteractionMouseWheel,
+} from "../lib/tauri";
 import type { SaveFileInfo } from "../lib/tauri";
 
 interface SaveMapViewProps {
@@ -29,7 +27,7 @@ export default function SaveMapView({
 }: SaveMapViewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [resolvedGamePath, setResolvedGamePath] = useState<string>(gamePath);
+  const isMapReady = !isLoading && !error;
 
   useEffect(() => {
     let cancelled = false;
@@ -39,10 +37,7 @@ export default function SaveMapView({
       setError(null);
 
       try {
-        const resolved = await loadSaveForRenderer(save.filePath, gamePath);
-        if (!cancelled) {
-          setResolvedGamePath(resolved);
-        }
+        await loadSaveForRenderer(save.filePath, gamePath);
       } catch (err) {
         if (!cancelled) {
           setError(getErrorMessage(err));
@@ -61,13 +56,130 @@ export default function SaveMapView({
     };
   }, [gamePath, save.filePath]);
 
-  const fileSizeMb = (save.fileSize / (1024 * 1024)).toFixed(2);
-  const lastModified = new Date(save.modifiedTime * 1000);
+  useEffect(() => {
+    if (isLoading || error) {
+      return;
+    }
+
+    let queuedCursor: { x: number; y: number } | null = null;
+    let cursorRaf = 0;
+
+    const flushCursor = () => {
+      cursorRaf = 0;
+      if (!queuedCursor) {
+        return;
+      }
+
+      const { x, y } = queuedCursor;
+      queuedCursor = null;
+      void sendInteractionCursorMoved(x, y);
+    };
+
+    const onMouseMove = (event: MouseEvent) => {
+      queuedCursor = { x: event.clientX, y: event.clientY };
+      if (cursorRaf === 0) {
+        cursorRaf = requestAnimationFrame(flushCursor);
+      }
+    };
+
+    const onMouseDown = (event: MouseEvent) => {
+      if (isInteractiveTarget(event.target)) {
+        return;
+      }
+      const button = normalizeMouseButton(event.button);
+      if (button === null) {
+        return;
+      }
+      void sendInteractionMouseButton(button, true);
+    };
+
+    const onMouseUp = (event: MouseEvent) => {
+      const button = normalizeMouseButton(event.button);
+      if (button === null) {
+        return;
+      }
+      void sendInteractionMouseButton(button, false);
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      if (isInteractiveTarget(event.target)) {
+        return;
+      }
+      const lines = wheelEventToLines(event);
+      if (Math.abs(lines) < Number.EPSILON) {
+        return;
+      }
+      void sendInteractionMouseWheel(lines);
+      event.preventDefault();
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat) {
+        return;
+      }
+      void sendInteractionKey(event.code, true);
+    };
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      void sendInteractionKey(event.code, false);
+    };
+
+    const onContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+    };
+
+    const onWindowBlur = () => {
+      void sendInteractionMouseButton(0, false);
+      void sendInteractionMouseButton(1, false);
+      void sendInteractionMouseButton(2, false);
+
+      for (const code of [
+        "KeyW",
+        "KeyA",
+        "KeyS",
+        "KeyD",
+        "ArrowUp",
+        "ArrowLeft",
+        "ArrowDown",
+        "ArrowRight",
+      ]) {
+        void sendInteractionKey(code, false);
+      }
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("contextmenu", onContextMenu);
+    window.addEventListener("blur", onWindowBlur);
+
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("contextmenu", onContextMenu);
+      window.removeEventListener("blur", onWindowBlur);
+      if (cursorRaf !== 0) {
+        cancelAnimationFrame(cursorRaf);
+      }
+    };
+  }, [error, isLoading]);
 
   return (
-    <div className="relative min-h-screen bg-transparent text-white">
-      <div className="absolute top-6 left-6 z-50">
+    <div
+      className={`pointer-events-none relative min-h-screen text-white ${
+        isMapReady ? "bg-transparent" : "bg-slate-950"
+      }`}
+    >
+      <div className="pointer-events-auto absolute top-6 left-6 z-50">
         <Button
+          data-map-input-stop="true"
           onClick={onBack}
           variant="default"
           className="gap-2 border border-slate-600/70 bg-slate-900/55 backdrop-blur-xl hover:bg-slate-800/65"
@@ -96,7 +208,7 @@ export default function SaveMapView({
         )}
 
         {error && (
-          <div className="w-full max-w-2xl rounded-2xl border border-rose-500/50 bg-slate-900/65 p-8 backdrop-blur-xl">
+          <div className="pointer-events-auto w-full max-w-2xl rounded-2xl border border-rose-500/50 bg-slate-900/65 p-8 backdrop-blur-xl">
             <h2 className="mb-3 text-2xl font-bold text-rose-200">
               Failed to load save
             </h2>
@@ -105,94 +217,35 @@ export default function SaveMapView({
           </div>
         )}
 
-        {!isLoading && !error && (
-          <div className="w-full space-y-6 rounded-2xl border border-slate-700/70 bg-slate-900/45 p-8 backdrop-blur-xl">
-            <div>
-              <h1 className="text-3xl font-bold text-amber-100">
-                {save.playthroughName}
-              </h1>
-              <p className="mt-1 text-sm text-amber-200/80">
-                Native renderer is active behind this transparent UI.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <InfoCard
-                icon={CalendarIcon}
-                label="Game Date"
-                value={save.date}
-              />
-              <InfoCard
-                icon={ShieldCheckIcon}
-                label="Version"
-                value={`v${save.version}`}
-              />
-              <InfoCard
-                icon={DocumentTextIcon}
-                label="File Size"
-                value={`${fileSizeMb} MB`}
-              />
-              <InfoCard
-                icon={ClockIcon}
-                label="Modified"
-                value={lastModified.toLocaleDateString()}
-              />
-            </div>
-
-            <div className="space-y-3 rounded-xl border border-slate-700/70 bg-slate-950/45 p-4">
-              <Row label="Save File" value={save.filePath} mono />
-              <Row label="Game Path" value={resolvedGamePath} mono />
-              <Row
-                label="Render Status"
-                value="Ready (joined save + game data in Rust)"
-              />
-            </div>
-          </div>
-        )}
+        {!isLoading && !error && null}
       </div>
     </div>
   );
 }
 
-function InfoCard({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: ComponentType<ComponentProps<"svg">>;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-xl border border-slate-700/70 bg-slate-900/55 p-4">
-      <div className="mb-2 flex items-center gap-2 text-slate-300">
-        <Icon className="h-4 w-4" />
-        <span className="text-xs tracking-wide uppercase">{label}</span>
-      </div>
-      <p className="font-semibold text-white">{value}</p>
-    </div>
-  );
+function normalizeMouseButton(button: number): number | null {
+  if (button === 0 || button === 1 || button === 2) {
+    return button;
+  }
+  return null;
 }
 
-function Row({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <p className="flex flex-col gap-1 text-sm sm:flex-row sm:items-start sm:gap-3">
-      <span className="w-28 shrink-0 text-slate-400">{label}</span>
-      <span
-        className={
-          mono ? "font-mono break-all text-slate-200" : "text-slate-200"
-        }
-      >
-        {value}
-      </span>
-    </p>
-  );
+function wheelEventToLines(event: WheelEvent): number {
+  const raw = event.deltaY;
+  switch (event.deltaMode) {
+    case WheelEvent.DOM_DELTA_LINE:
+      return -raw;
+    case WheelEvent.DOM_DELTA_PAGE:
+      return -(raw * 3);
+    default:
+      return -(raw / 120);
+  }
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  return target.closest("[data-map-input-stop='true']") !== null;
 }

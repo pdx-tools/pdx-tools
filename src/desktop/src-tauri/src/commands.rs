@@ -18,6 +18,7 @@ use pdx_map::R16;
 pub struct AppState {
     pub token_resolver: Arc<BasicTokenResolver>,
     pub pending_render: Arc<Mutex<Option<RenderPayload>>>,
+    pub pending_input_events: Arc<Mutex<Vec<InputEvent>>>,
 }
 
 #[derive(Debug)]
@@ -25,6 +26,15 @@ pub struct RenderPayload {
     pub west_texture: Vec<R16>,
     pub east_texture: Vec<R16>,
     pub location_arrays: Vec<u32>,
+    pub player_capital_world: Option<(f32, f32)>,
+}
+
+#[derive(Debug, Clone)]
+pub enum InputEvent {
+    CursorMoved { x: f32, y: f32 },
+    MouseButton { button: u8, pressed: bool },
+    MouseWheel { lines: f32 },
+    Key { code: String, pressed: bool },
 }
 
 impl AppState {
@@ -34,6 +44,7 @@ impl AppState {
             .lock()
             .map_err(|_| "Failed to lock pending render state".to_string())?;
         *guard = Some(payload);
+        self.clear_pending_input_events()?;
         Ok(())
     }
 
@@ -42,6 +53,37 @@ impl AppState {
             .lock()
             .ok()
             .and_then(|mut guard| guard.take())
+    }
+
+    pub fn push_input_event(&self, event: InputEvent) -> Result<(), String> {
+        let mut guard = self
+            .pending_input_events
+            .lock()
+            .map_err(|_| "Failed to lock pending input state".to_string())?;
+        guard.push(event);
+        const MAX_QUEUED_EVENTS: usize = 2_048;
+        const KEEP_EVENTS: usize = 1_024;
+        if guard.len() > MAX_QUEUED_EVENTS {
+            let remove = guard.len().saturating_sub(KEEP_EVENTS);
+            guard.drain(0..remove);
+        }
+        Ok(())
+    }
+
+    pub fn take_input_events(&self) -> Vec<InputEvent> {
+        self.pending_input_events
+            .lock()
+            .map(|mut guard| std::mem::take(&mut *guard))
+            .unwrap_or_default()
+    }
+
+    pub fn clear_pending_input_events(&self) -> Result<(), String> {
+        let mut guard = self
+            .pending_input_events
+            .lock()
+            .map_err(|_| "Failed to lock pending input state".to_string())?;
+        guard.clear();
+        Ok(())
     }
 }
 
@@ -95,6 +137,33 @@ pub fn detect_eu5_game_path() -> Result<Option<String>, String> {
     Ok(detect_steam_game_path(Game::Eu5)
         .ok()
         .map(|path| path.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+pub fn interaction_cursor_moved(x: f32, y: f32, state: State<AppState>) -> Result<(), String> {
+    state.push_input_event(InputEvent::CursorMoved { x, y })
+}
+
+#[tauri::command]
+pub fn interaction_mouse_button(
+    button: u8,
+    pressed: bool,
+    state: State<AppState>,
+) -> Result<(), String> {
+    if button > 2 {
+        return Ok(());
+    }
+    state.push_input_event(InputEvent::MouseButton { button, pressed })
+}
+
+#[tauri::command]
+pub fn interaction_mouse_wheel(lines: f32, state: State<AppState>) -> Result<(), String> {
+    state.push_input_event(InputEvent::MouseWheel { lines })
+}
+
+#[tauri::command]
+pub fn interaction_key(code: String, pressed: bool, state: State<AppState>) -> Result<(), String> {
+    state.push_input_event(InputEvent::Key { code, pressed })
 }
 
 #[tauri::command]
@@ -188,20 +257,27 @@ pub fn load_save_for_renderer(
 
     let west_texture = game_install.west_texture().to_vec();
     let east_texture = game_install.east_texture().to_vec();
+    let world = game_install.world();
     let game_data = game_install.into_game_data();
 
-    let location_arrays = {
+    let (location_arrays, player_capital_world) = {
         let gamestate = loaded_save.take_gamestate();
         let workspace = Eu5Workspace::new(gamestate, game_data)
             .map_err(|e| format!("Failed to join save and game data: {e}"))?;
 
-        workspace.location_arrays().as_data().to_vec()
+        let player_capital_world = workspace.player_capital_color_id().map(|color_id| {
+            let center = world.center_of(R16::new(color_id.value()));
+            (center.x as f32, center.y as f32)
+        });
+
+        (workspace.location_arrays().as_data().to_vec(), player_capital_world)
     };
 
     state.set_pending_render(RenderPayload {
         west_texture,
         east_texture,
         location_arrays,
+        player_capital_world,
     })?;
 
     Ok(resolved_game_path)
