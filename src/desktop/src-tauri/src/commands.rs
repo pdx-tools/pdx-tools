@@ -1,17 +1,48 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use tauri::State;
 
-use eu5app::Eu5SaveLoader;
-use eu5save::{Eu5File, BasicTokenResolver};
+use eu5app::{
+    Eu5LoadedSave, Eu5SaveLoader, Eu5Workspace, game_data::TextureProvider,
+    game_data::game_install::Eu5GameInstall,
+};
+use eu5save::{BasicTokenResolver, Eu5File};
 use jomini::common::PdsDate;
+use pdx_assets::{Game, steam::detect_steam_game_path};
+use pdx_map::R16;
 
 #[derive(Clone)]
 pub struct AppState {
     pub token_resolver: Arc<BasicTokenResolver>,
+    pub pending_render: Arc<Mutex<Option<RenderPayload>>>,
+}
+
+#[derive(Debug)]
+pub struct RenderPayload {
+    pub west_texture: Vec<R16>,
+    pub east_texture: Vec<R16>,
+    pub location_arrays: Vec<u32>,
+}
+
+impl AppState {
+    pub fn set_pending_render(&self, payload: RenderPayload) -> Result<(), String> {
+        let mut guard = self
+            .pending_render
+            .lock()
+            .map_err(|_| "Failed to lock pending render state".to_string())?;
+        *guard = Some(payload);
+        Ok(())
+    }
+
+    pub fn take_pending_render(&self) -> Option<RenderPayload> {
+        self.pending_render
+            .lock()
+            .ok()
+            .and_then(|mut guard| guard.take())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -60,6 +91,13 @@ pub fn get_default_save_directory() -> Result<String, String> {
 }
 
 #[tauri::command]
+pub fn detect_eu5_game_path() -> Result<Option<String>, String> {
+    Ok(detect_steam_game_path(Game::Eu5)
+        .ok()
+        .map(|path| path.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
 pub fn scan_save_directory(
     directory: String,
     state: State<AppState>,
@@ -74,8 +112,7 @@ pub fn scan_save_directory(
         return Err(format!("Path is not a directory: {}", directory));
     }
 
-    let entries = fs::read_dir(dir_path)
-        .map_err(|e| format!("Failed to read directory: {}", e))?;
+    let entries = fs::read_dir(dir_path).map_err(|e| format!("Failed to read directory: {}", e))?;
 
     let mut saves = Vec::new();
     let mut errors = Vec::new();
@@ -126,13 +163,57 @@ pub fn scan_save_directory(
     Ok(ScanResult { saves, errors })
 }
 
+#[tauri::command]
+pub fn load_save_for_renderer(
+    save_path: String,
+    game_path: Option<String>,
+    state: State<AppState>,
+) -> Result<String, String> {
+    let save_path = PathBuf::from(&save_path);
+    if !save_path.exists() {
+        return Err(format!("Save file does not exist: {}", save_path.display()));
+    }
+
+    let resolved_game_path = resolve_game_path(game_path)?;
+    let game_path = PathBuf::from(&resolved_game_path);
+    let token_resolver = state.token_resolver.clone();
+
+    let (save_result, install_result) = rayon::join(
+        || load_save_for_workspace(&save_path, &token_resolver),
+        || load_game_install(&game_path),
+    );
+
+    let mut loaded_save = save_result?;
+    let game_install = install_result?;
+
+    let west_texture = game_install.west_texture().to_vec();
+    let east_texture = game_install.east_texture().to_vec();
+    let game_data = game_install.into_game_data();
+
+    let location_arrays = {
+        let gamestate = loaded_save.take_gamestate();
+        let workspace = Eu5Workspace::new(gamestate, game_data)
+            .map_err(|e| format!("Failed to join save and game data: {e}"))?;
+
+        workspace.location_arrays().as_data().to_vec()
+    };
+
+    state.set_pending_render(RenderPayload {
+        west_texture,
+        east_texture,
+        location_arrays,
+    })?;
+
+    Ok(resolved_game_path)
+}
+
 fn process_save_file(
     path: &Path,
     token_resolver: &Arc<BasicTokenResolver>,
 ) -> Result<SaveFileInfo, String> {
     // Get file metadata
-    let metadata = fs::metadata(path)
-        .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+    let metadata =
+        fs::metadata(path).map_err(|e| format!("Failed to read file metadata: {}", e))?;
 
     let file_size = metadata.len();
     let modified_time = metadata
@@ -143,8 +224,7 @@ fn process_save_file(
         .as_secs() as i64;
 
     // Load save file to extract metadata
-    let save_file = fs::File::open(path)
-        .map_err(|e| format!("Failed to read save file: {}", e))?;
+    let save_file = fs::File::open(path).map_err(|e| format!("Failed to read save file: {}", e))?;
 
     let file = Eu5File::from_file(save_file)
         .map_err(|e| format!("Failed to parse save file envelope: {}", e))?;
@@ -156,12 +236,15 @@ fn process_save_file(
     let meta = loader.meta();
     let version = format!(
         "{}.{}.{}",
-        meta.version.major,
-        meta.version.minor,
-        meta.version.patch
+        meta.version.major, meta.version.minor, meta.version.patch
     );
 
-    let date = format!("{}.{}.{}", meta.date.year(), meta.date.month(), meta.date.day());
+    let date = format!(
+        "{}.{}.{}",
+        meta.date.year(),
+        meta.date.month(),
+        meta.date.day()
+    );
     let playthrough_name = meta.playthrough_name.clone();
     // Generate a playthrough ID from the name and date for uniqueness
     let playthrough_id = format!("{}_{}", playthrough_name, date);
@@ -177,8 +260,47 @@ fn process_save_file(
     })
 }
 
-#[tauri::command]
-pub fn read_save_file(file_path: String) -> Result<Vec<u8>, String> {
-    fs::read(&file_path)
-        .map_err(|e| format!("Failed to read file {}: {}", file_path, e))
+fn resolve_game_path(game_path: Option<String>) -> Result<String, String> {
+    if let Some(path) = game_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|path| !path.is_empty())
+    {
+        return Ok(path.to_string());
+    }
+
+    detect_steam_game_path(Game::Eu5)
+        .map(|path| path.to_string_lossy().to_string())
+        .map_err(|e| {
+            format!(
+                "Failed to auto-detect EU5 install path: {e}. Please provide a path to an optimized bundle or raw game install."
+            )
+        })
+}
+
+fn load_save_for_workspace(
+    save_path: &Path,
+    token_resolver: &Arc<BasicTokenResolver>,
+) -> Result<Eu5LoadedSave, String> {
+    let save_file = fs::File::open(save_path)
+        .map_err(|e| format!("Failed to read save file {}: {e}", save_path.display()))?;
+
+    let file = Eu5File::from_file(save_file)
+        .map_err(|e| format!("Failed to parse save file envelope: {e}"))?;
+
+    let parser = Eu5SaveLoader::open(file, token_resolver.as_ref())
+        .map_err(|e| format!("Failed to load save metadata: {e}"))?;
+
+    parser
+        .parse()
+        .map_err(|e| format!("Failed to parse save gamestate: {e}"))
+}
+
+fn load_game_install(game_path: &Path) -> Result<Eu5GameInstall, String> {
+    Eu5GameInstall::open(game_path).map_err(|e| {
+        format!(
+            "Failed to process EU5 game installation {}: {e}",
+            game_path.display()
+        )
+    })
 }

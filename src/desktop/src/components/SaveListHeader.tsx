@@ -1,17 +1,17 @@
 export default function SaveListHeader() {
   return (
-    <header className="relative border-b border-slate-700/50 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800/50 backdrop-blur overflow-hidden">
+    <header className="relative overflow-hidden border-b border-slate-700/60 bg-slate-900/45 backdrop-blur-xl">
       {/* Radial gradient overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(251,191,36,0.05),transparent_50%)] pointer-events-none" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(251,191,36,0.05),transparent_50%)]" />
 
-      <div className="relative max-w-7xl mx-auto px-6 py-8">
+      <div className="relative mx-auto max-w-7xl px-6 py-8">
         <div className="flex items-center gap-4">
           {/* Multi-layer icon with glow - PDX Tools app icon */}
           <div className="relative">
-            <div className="absolute inset-0 bg-amber-500/20 rounded-xl blur-xl" />
-            <div className="relative w-14 h-14 bg-gradient-to-br from-amber-600 to-amber-400 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/30 border border-amber-400/30 p-2">
+            <div className="absolute inset-0 rounded-xl bg-amber-500/20 blur-xl" />
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-xl border border-amber-400/30 bg-gradient-to-br from-amber-600 to-amber-400 p-2 shadow-lg shadow-amber-500/30">
               <svg
-                className="w-full h-full text-white drop-shadow-lg"
+                className="h-full w-full text-white drop-shadow-lg"
                 fill="currentColor"
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 100 100"
@@ -42,10 +42,10 @@ export default function SaveListHeader() {
 
           {/* Enhanced typography */}
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight mb-1">
+            <h1 className="mb-1 text-3xl font-bold tracking-tight text-white">
               PDX Tools
             </h1>
-            <p className="text-sm text-amber-200/60 font-medium">
+            <p className="text-sm font-medium text-amber-200/60">
               Explore your Paradox game saves
             </p>
           </div>

@@ -25,11 +25,21 @@ export async function getDefaultSaveDirectory(): Promise<string> {
 }
 
 export async function scanSaveDirectory(
-  directory: string
+  directory: string,
 ): Promise<ScanResult> {
   return await invoke<ScanResult>("scan_save_directory", { directory });
 }
 
-export async function readSaveFile(filePath: string): Promise<Uint8Array> {
-  return await invoke<Uint8Array>("read_save_file", { filePath });
+export async function detectEu5GamePath(): Promise<string | null> {
+  return await invoke<string | null>("detect_eu5_game_path");
+}
+
+export async function loadSaveForRenderer(
+  savePath: string,
+  gamePath: string,
+): Promise<string> {
+  return await invoke<string>("load_save_for_renderer", {
+    savePath,
+    gamePath,
+  });
 }
