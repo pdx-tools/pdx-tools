@@ -6,6 +6,7 @@ members = [
     "src/bench",
     "src/bumpalo-serde-derive",
     "src/bumpalo-serde",
+    "src/desktop/src-tauri",
     "src/eu4game-data",
     "src/eu4game",
     "src/eu5app",
