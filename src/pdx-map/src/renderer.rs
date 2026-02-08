@@ -1109,8 +1109,14 @@ impl SurfaceMapRenderer {
         tracing::instrument(name = "pdx-map.surface.resize", skip(self), level = "debug")
     )]
     pub fn resize(&mut self, size: PhysicalSize<u32>) {
-        self.surface_config.width = size.width;
-        self.surface_config.height = size.height;
+        if size.width == 0 || size.height == 0 {
+            return;
+        }
+
+        // Recompute the full surface configuration from current capabilities.
+        // On Windows, relying on stale format/present mode can leave the
+        // surface stuck in an outdated swapchain state after resize/DPI changes.
+        self.surface_config = self.gpu.surface_config_for_surface(&self.surface, size);
         self.surface
             .configure(&self.scene.renderer().device, &self.surface_config);
         self.scene.resize_layers(&self.surface_config);
