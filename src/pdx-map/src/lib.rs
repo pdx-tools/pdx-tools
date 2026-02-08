@@ -1,4 +1,5 @@
 mod color;
+mod hash;
 mod image;
 mod loc_arrays;
 mod pixel;
