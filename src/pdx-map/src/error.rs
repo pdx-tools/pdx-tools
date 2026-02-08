@@ -9,6 +9,20 @@ impl RenderError {
     pub(crate) fn new(kind: RenderErrorKind) -> Self {
         Self { kind }
     }
+
+    pub fn surface_error(&self) -> Option<&wgpu::SurfaceError> {
+        match &self.kind {
+            RenderErrorKind::Surface(err) => Some(err),
+            _ => None,
+        }
+    }
+
+    pub fn is_surface_reconfigurable(&self) -> bool {
+        matches!(
+            self.surface_error(),
+            Some(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated)
+        )
+    }
 }
 
 /// Enumeration of possible error sources in pdx-map

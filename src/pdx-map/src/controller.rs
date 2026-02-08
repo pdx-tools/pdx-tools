@@ -80,7 +80,20 @@ impl MapViewController {
         tracing::instrument(skip_all, level = "debug", fields(logical_width, logical_height))
     )]
     pub fn resize(&mut self, size: LogicalSize<u32>) {
+        self.resize_with_scale_factor(size, self.scale_factor);
+    }
+
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            skip_all,
+            level = "debug",
+            fields(logical_width, logical_height, scale_factor)
+        )
+    )]
+    pub fn resize_with_scale_factor(&mut self, size: LogicalSize<u32>, scale_factor: f32) {
         self.size = size;
+        self.scale_factor = scale_factor;
         self.renderer.resize(size.to_physical(self.scale_factor));
     }
 
