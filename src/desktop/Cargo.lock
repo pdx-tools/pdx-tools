@@ -3067,6 +3067,8 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-log",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

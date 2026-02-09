@@ -186,8 +186,9 @@ run = "pnpm run docusaurus start --no-open"
 
 [tasks."dev:desktop"]
 description = "Run desktop application in development mode"
-run = "cargo run"
+depends = ["pnpm-install"]
 dir = "src/desktop"
+run = "pnpm tauri dev"
 
 [tasks.dev]
 description = "Run complete development setup (backend and frontend)"

@@ -214,6 +214,7 @@ pub fn interaction_key(code: String, pressed: bool, state: State<AppState>) -> R
 }
 
 #[tauri::command]
+#[tracing::instrument(name = "desktop.saves.scan", skip(state), fields(directory = %directory))]
 pub fn scan_save_directory(
     directory: String,
     state: State<AppState>,
@@ -280,6 +281,11 @@ pub fn scan_save_directory(
 }
 
 #[tauri::command]
+#[tracing::instrument(
+    name = "desktop.renderer.load-save",
+    skip(state),
+    fields(save_path = %save_path, game_path = ?game_path.as_deref())
+)]
 pub fn load_save_for_renderer(
     save_path: String,
     game_path: Option<String>,
@@ -402,6 +408,7 @@ fn resolve_game_path(game_path: Option<String>) -> Result<String, String> {
         })
 }
 
+#[tracing::instrument(name = "desktop.eu5-save.load", skip_all, fields(save_path = %save_path.display()))]
 fn load_save_for_workspace(
     save_path: &Path,
     token_resolver: &Arc<BasicTokenResolver>,
@@ -420,6 +427,7 @@ fn load_save_for_workspace(
         .map_err(|e| format!("Failed to parse save gamestate: {e}"))
 }
 
+#[tracing::instrument(name = "desktop.eu5-game.load", skip_all, fields(game_path = %game_path.display()))]
 fn load_game_install(game_path: &Path) -> Result<Eu5GameInstall, String> {
     Eu5GameInstall::open(game_path).map_err(|e| {
         format!(

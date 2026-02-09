@@ -8,8 +8,11 @@ use pdx_map::{
     WorldPoint,
 };
 use std::collections::HashSet;
+use std::sync::Once;
 use std::time::{Duration, Instant};
 use tauri::{Manager, RunEvent};
+use tracing::level_filters::LevelFilter;
+use tracing_subscriber::{EnvFilter, fmt, fmt::format::FmtSpan, prelude::*};
 
 #[derive(Default)]
 struct AppliedInputState {
@@ -237,8 +240,30 @@ fn map_physical_size(size: tauri::PhysicalSize<u32>) -> MapPhysicalSize<u32> {
     MapPhysicalSize::new(size.width, size.height)
 }
 
+fn init_tracing() {
+    static INIT: Once = Once::new();
+
+    INIT.call_once(|| {
+        let env_filter = EnvFilter::builder()
+            .with_default_directive(LevelFilter::INFO.into())
+            .from_env_lossy();
+
+        let subscriber = tracing_subscriber::registry().with(env_filter).with(
+            fmt::layer()
+                .with_target(true)
+                .with_span_events(FmtSpan::CLOSE),
+        );
+
+        if let Err(err) = tracing::subscriber::set_global_default(subscriber) {
+            eprintln!("failed to initialize tracing subscriber: {err}");
+        }
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    init_tracing();
+
     let token_data = include_bytes!("../../../../assets/tokens/eu5.txt");
     let token_resolver = BasicTokenResolver::from_text_lines(token_data.as_slice())
         .expect("Failed to load EU5 token resolver");
