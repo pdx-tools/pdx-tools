@@ -184,6 +184,11 @@ depends = ["pnpm-install", "docs:setup:changelog"]
 dir = "./src/docs"
 run = "pnpm run docusaurus start --no-open"
 
+[tasks."dev:desktop"]
+description = "Run desktop application in development mode"
+run = "cargo run"
+dir = "src/desktop"
+
 [tasks.dev]
 description = "Run complete development setup (backend and frontend)"
 depends = ["build:wasm", "dev:app", "dev:docs", "start:services:dev", "serve:api:dev"]

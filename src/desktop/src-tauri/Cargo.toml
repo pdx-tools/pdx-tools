@@ -9,18 +9,18 @@ name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.5.4", features = [] }
+tauri-build = { workspace = true, features = [] }
 
 [dependencies]
-serde_json = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-log = "0.4"
-tauri = { version = "2.10.0", features = ["macos-private-api"] }
-tauri-plugin-log = "2"
+serde_json = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+log = { workspace = true }
+tauri = { workspace = true, features = ["macos-private-api"] }
+tauri-plugin-log = { workspace = true }
 eu5save = { workspace = true }
 eu5app = { workspace = true, features = ["zstd_c", "game-install"] }
 jomini = { workspace = true }
-dirs = "5.0"
+dirs = { workspace = true }
 rayon = { workspace = true }
 pdx-assets = { workspace = true }
 pdx-map = { workspace = true, features = ["render", "interaction"] }

@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = ["src-tauri"]
+
+[workspace.dependencies]
+# Core workspace crates (via path dependencies)
+eu5save = { path = "../../src/eu5save", default-features = false }
+eu5app = { path = "../../src/eu5app", default-features = false }
+pdx-assets = { path = "../../src/pdx-assets" }
+pdx-map = { path = "../../src/pdx-map", default-features = false }
+
+# External dependencies
+anyhow = "1.0"
+jomini = { version = "0.34", features = ["envelope"] }
+rayon = "1.10"
+serde = "1.0.195"
+serde_json = "1.0.114"
+dirs = "5.0"
+log = "0.4"
+tauri = { version = "2.10.0" }
+tauri-plugin-log = "2"
+tauri-build = { version = "2.5.4" }
