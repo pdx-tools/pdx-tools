@@ -215,69 +215,76 @@ pub fn interaction_key(code: String, pressed: bool, state: State<AppState>) -> R
 
 #[tauri::command]
 #[tracing::instrument(name = "desktop.saves.scan", skip(state), fields(directory = %directory))]
-pub fn scan_save_directory(
+pub async fn scan_save_directory(
     directory: String,
-    state: State<AppState>,
+    state: State<'_, AppState>,
 ) -> Result<ScanResult, String> {
-    let dir_path = Path::new(&directory);
+    let token_resolver = state.token_resolver.clone();
 
-    if !dir_path.exists() {
-        return Err(format!("Directory does not exist: {}", directory));
-    }
+    tauri::async_runtime::spawn_blocking(move || -> Result<ScanResult, String> {
+        let dir_path = Path::new(&directory);
 
-    if !dir_path.is_dir() {
-        return Err(format!("Path is not a directory: {}", directory));
-    }
-
-    let entries = fs::read_dir(dir_path).map_err(|e| format!("Failed to read directory: {}", e))?;
-
-    let mut saves = Vec::new();
-    let mut errors = Vec::new();
-
-    // Collect all .eu5 files
-    let eu5_files: Vec<_> = entries
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| {
-            entry
-                .path()
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .map(|ext| ext.eq_ignore_ascii_case("eu5"))
-                .unwrap_or(false)
-        })
-        .collect();
-
-    // Process files in parallel using rayon
-    use rayon::prelude::*;
-
-    let results: Vec<_> = eu5_files
-        .par_iter()
-        .map(|entry| {
-            let path = entry.path();
-            let file_path = path.to_string_lossy().to_string();
-
-            match process_save_file(&path, &state.token_resolver) {
-                Ok(save_info) => Ok(save_info),
-                Err(e) => Err(ScanError {
-                    file_path,
-                    error: e,
-                }),
-            }
-        })
-        .collect();
-
-    // Separate successes and errors
-    for result in results {
-        match result {
-            Ok(save_info) => saves.push(save_info),
-            Err(error) => errors.push(error),
+        if !dir_path.exists() {
+            return Err(format!("Directory does not exist: {}", directory));
         }
-    }
 
-    // Sort by modified time (newest first)
-    saves.sort_by(|a, b| b.modified_time.cmp(&a.modified_time));
+        if !dir_path.is_dir() {
+            return Err(format!("Path is not a directory: {}", directory));
+        }
 
-    Ok(ScanResult { saves, errors })
+        let entries =
+            fs::read_dir(dir_path).map_err(|e| format!("Failed to read directory: {}", e))?;
+
+        let mut saves = Vec::new();
+        let mut errors = Vec::new();
+
+        // Collect all .eu5 files
+        let eu5_files: Vec<_> = entries
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| ext.eq_ignore_ascii_case("eu5"))
+                    .unwrap_or(false)
+            })
+            .collect();
+
+        // Process files in parallel using rayon
+        use rayon::prelude::*;
+
+        let results: Vec<_> = eu5_files
+            .par_iter()
+            .map(|entry| {
+                let path = entry.path();
+                let file_path = path.to_string_lossy().to_string();
+
+                match process_save_file(&path, &token_resolver) {
+                    Ok(save_info) => Ok(save_info),
+                    Err(e) => Err(ScanError {
+                        file_path,
+                        error: e,
+                    }),
+                }
+            })
+            .collect();
+
+        // Separate successes and errors
+        for result in results {
+            match result {
+                Ok(save_info) => saves.push(save_info),
+                Err(error) => errors.push(error),
+            }
+        }
+
+        // Sort by modified time (newest first)
+        saves.sort_by(|a, b| b.modified_time.cmp(&a.modified_time));
+
+        Ok(ScanResult { saves, errors })
+    })
+    .await
+    .map_err(|e| format!("Failed to join scan task: {e}"))?
 }
 
 #[tauri::command]
@@ -286,10 +293,10 @@ pub fn scan_save_directory(
     skip(state),
     fields(save_path = %save_path, game_path = ?game_path.as_deref())
 )]
-pub fn load_save_for_renderer(
+pub async fn load_save_for_renderer(
     save_path: String,
     game_path: Option<String>,
-    state: State<AppState>,
+    state: State<'_, AppState>,
 ) -> Result<String, String> {
     let save_path = PathBuf::from(&save_path);
     if !save_path.exists() {
@@ -299,14 +306,25 @@ pub fn load_save_for_renderer(
     let resolved_game_path = resolve_game_path(game_path)?;
     let game_path = PathBuf::from(&resolved_game_path);
     let token_resolver = state.token_resolver.clone();
+    let app_state = state.inner().clone();
 
-    let (save_result, install_result) = rayon::join(
-        || load_save_for_workspace(&save_path, &token_resolver),
-        || load_game_install(&game_path),
-    );
+    let save_path_for_task = save_path.clone();
+    let token_resolver_for_task = token_resolver.clone();
+    let save_task = tauri::async_runtime::spawn_blocking(move || {
+        load_save_for_workspace(&save_path_for_task, &token_resolver_for_task)
+    });
 
-    let mut loaded_save = save_result?;
-    let game_install = install_result?;
+    let game_path_for_task = game_path.clone();
+    let install_task =
+        tauri::async_runtime::spawn_blocking(move || load_game_install(&game_path_for_task));
+
+    let save_join = save_task.await;
+    let install_join = install_task.await;
+
+    let mut loaded_save =
+        save_join.map_err(|e| format!("Failed to join save loading task: {e}"))??;
+    let game_install =
+        install_join.map_err(|e| format!("Failed to join game loading task: {e}"))??;
 
     let world = game_install.world();
     let game_data = game_install.into_game_data();
@@ -327,7 +345,7 @@ pub fn load_save_for_renderer(
         (workspace, player_capital_world)
     };
 
-    state.set_pending_render(RenderPayload {
+    app_state.set_pending_render(RenderPayload {
         world,
         workspace,
         player_capital_world,
