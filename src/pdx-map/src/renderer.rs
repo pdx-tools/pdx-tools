@@ -218,6 +218,12 @@ impl GpuContext {
     /// Create a new GPU instance
     pub fn create_instance() -> wgpu::Instance {
         wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            // Use DX12 backend on Windows as it seems less susceptible to
+            // swap-chain issues. and DX12 will become the default on windows
+            // someday: https://github.com/gfx-rs/wgpu/issues/2719
+            #[cfg(target_os = "windows")]
+            backends: wgpu::Backends::DX12,
+            #[cfg(not(target_os = "windows"))]
             backends: wgpu::Backends::all(),
             ..Default::default()
         })
