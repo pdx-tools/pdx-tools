@@ -63,6 +63,13 @@ impl World {
         &self.east
     }
 
+    pub fn rows(&self) -> impl Iterator<Item = impl Iterator<Item = &R16> + '_> + '_ {
+        self.west
+            .rows()
+            .zip(self.east.rows())
+            .map(|(west_row, east_row)| west_row.iter().chain(east_row.iter()))
+    }
+
     pub fn into_hemispheres(self) -> (Hemisphere<R16>, Hemisphere<R16>) {
         (self.west, self.east)
     }
@@ -236,17 +243,6 @@ impl World {
 
     pub fn build_topology_index(&self) -> TopologyIndex {
         TopologyIndex::from_world(self)
-    }
-
-    pub(crate) fn at_grid(&self, x: u32, y: u32) -> R16 {
-        let hemisphere_width = self.west().size().width;
-        let idx = (y * hemisphere_width + (x % hemisphere_width)) as usize;
-
-        if x < hemisphere_width {
-            self.west.as_slice()[idx]
-        } else {
-            self.east.as_slice()[idx]
-        }
     }
 }
 
