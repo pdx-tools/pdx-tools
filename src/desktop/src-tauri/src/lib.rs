@@ -50,6 +50,10 @@ impl RendererRuntimeState {
         window: tauri::WebviewWindow,
         payload: RenderPayload,
     ) -> Result<(), String> {
+        // Drop old controller first to release the GPU surface
+        // This prevents "Native window is in use" errors when reloading
+        self.controller = None;
+
         let gpu = tauri::async_runtime::block_on(GpuSurfaceContext::new(window.clone()))
             .map_err(|err| format!("Failed to create GPU surface context: {err}"))?;
 
@@ -328,6 +332,12 @@ pub fn run() {
             };
 
             renderer_state.resize(size, scale_factor);
+
+            // Render immediately during resize to avoid flicker on Windows.
+            // Windows enters a modal resize loop during drag that blocks
+            // MainEventsCleared from firing, so we must render here.
+            renderer_state.render();
+            last_frame = Instant::now();
         }
         RunEvent::WindowEvent {
             label,
@@ -344,6 +354,8 @@ pub fn run() {
             }
 
             renderer_state.resize(new_inner_size, scale_factor);
+            renderer_state.render();
+            last_frame = Instant::now();
         }
         RunEvent::WindowEvent {
             label,

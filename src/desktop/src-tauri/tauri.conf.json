@@ -2,9 +2,9 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "pdx.tools",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "tools.pdx.app",
   "build": {
-    "frontendDist": "../build",
+    "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build"
@@ -14,8 +14,8 @@
     "windows": [
       {
         "title": "PDX Tools",
-        "width": 800,
-        "height": 600,
+        "width": 1920,
+        "height": 1080,
         "resizable": true,
         "fullscreen": false,
         "transparent": true

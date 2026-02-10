@@ -52,10 +52,10 @@ export default function ScanErrorDialog({ errors }: ScanErrorDialogProps) {
 
       {/* Modal with backdrop blur */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <Dialog.Content
-          title="Scan Errors"
-          className="max-w-2xl bg-slate-900/70 backdrop-blur-md"
-        >
+        <Dialog.Content className="max-w-2xl bg-slate-900 border-2 border-red-500">
+          <Dialog.Header>
+            <Dialog.Title className="text-white text-2xl">Scan Errors</Dialog.Title>
+          </Dialog.Header>
           <div className="space-y-4">
             <p className="text-base text-slate-300">
               The following errors occurred while scanning save files:
