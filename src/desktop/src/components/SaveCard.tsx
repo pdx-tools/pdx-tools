@@ -2,7 +2,6 @@ import { DocumentTextIcon, CalendarIcon } from "@heroicons/react/24/outline";
 import { Card } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { TimeAgo } from "@/components/TimeAgo";
-import { formatInt } from "@/lib/format";
 import type { SaveFileInfo } from "../lib/tauri";
 
 interface SaveCardProps {

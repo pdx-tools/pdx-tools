@@ -27,6 +27,23 @@ jobs:
       - run: rustup component add clippy
       - run: mise run lint
 
+  desktop:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - name: Install Tauri dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev
+      - run: rustup component add clippy
+      - name: Clippy desktop workspace
+        working-directory: src/desktop
+        run: cargo clippy --all-targets --workspace -- -D warnings
+
   miri:
     runs-on: ubuntu-latest
     steps:

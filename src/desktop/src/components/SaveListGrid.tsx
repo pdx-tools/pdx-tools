@@ -43,17 +43,14 @@ export default function SaveListGrid({
   // For smaller lists, use regular grid with stagger animation
   if (saves.length < 100) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {saves.map((save, index) => (
           <div
             key={save.playthroughId + save.modifiedTime}
             className="animate-fadeInUp"
             style={{ animationDelay: `${index * 50}ms` }}
           >
-            <SaveCard
-              save={save}
-              onClick={() => onOpenSave(save)}
-            />
+            <SaveCard save={save} onClick={() => onOpenSave(save)} />
           </div>
         ))}
       </div>
@@ -86,7 +83,7 @@ export default function SaveListGrid({
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-1">
+              <div className="grid grid-cols-1 gap-6 px-1 md:grid-cols-2 lg:grid-cols-3">
                 {rowSaves.map((save) => (
                   <SaveCard
                     key={save.playthroughId + save.modifiedTime}

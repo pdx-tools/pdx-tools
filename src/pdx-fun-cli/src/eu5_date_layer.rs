@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use bytemuck::{Pod, Zeroable};
+use pdx_map::wgpu;
 use pdx_map::wgpu::util::DeviceExt;
 use pdx_map::{RenderLayer, ViewportBounds};
 use tracing::instrument;
@@ -429,10 +430,10 @@ fn quad_vertices(
     ]
 }
 
-/// Returns the 5×7 bitmap for `ch`, encoded as one byte per row where the
+/// Returns the 5x7 bitmap for `ch`, encoded as one byte per row where the
 /// high-order bits describe pixels from left to right. `1` bits become text
-/// pixels, `0` bits stay background. The shapes match the classic “Tom Thumb”
-/// 5×7 pixel font used in early LCD/LED displays.
+/// pixels, `0` bits stay background. The shapes match the classic "Tom Thumb"
+/// 5x7 pixel font used in early LCD/LED displays.
 fn glyph_pattern(ch: char) -> [u8; GLYPH_PATTERN_HEIGHT] {
     match ch {
         '0' => [

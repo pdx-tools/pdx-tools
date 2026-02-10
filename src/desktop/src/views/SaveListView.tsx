@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useSaveListStore } from "../stores/saveListStore";
 import {
   detectEu5GamePath,
@@ -30,7 +30,7 @@ export default function SaveListView({ onOpenSave }: SaveListViewProps) {
 
   const filteredSaves = getFilteredSaves();
 
-  const handleScan = async () => {
+  const handleScan = useCallback(async () => {
     setIsScanning(true);
     try {
       const directory = await getDefaultSaveDirectory();
@@ -50,7 +50,7 @@ export default function SaveListView({ onOpenSave }: SaveListViewProps) {
     } finally {
       setIsScanning(false);
     }
-  };
+  }, [setIsScanning, setSaves]);
 
   const handleOpenSave = (save: SaveFileInfo) => {
     const resolvedGamePath = gamePath.trim();
@@ -68,7 +68,7 @@ export default function SaveListView({ onOpenSave }: SaveListViewProps) {
   // Auto-scan on mount.
   useEffect(() => {
     void handleScan();
-  }, []);
+  }, [handleScan]);
 
   // Auto-detect Steam EU5 install if no persisted path exists.
   useEffect(() => {

@@ -1,13 +1,8 @@
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/Button";
 import { getErrorMessage } from "@/lib/getErrorMessage";
-import {
-  loadSaveForRenderer,
-} from "../lib/tauri";
+import { loadSaveForRenderer } from "../lib/tauri";
 import type { SaveFileInfo } from "../lib/tauri";
 import { useMapInteractions } from "./useMapInteractions";
 

@@ -52,9 +52,11 @@ export default function ScanErrorDialog({ errors }: ScanErrorDialogProps) {
 
       {/* Modal with backdrop blur */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <Dialog.Content className="max-w-2xl bg-slate-900 border-2 border-red-500">
+        <Dialog.Content className="max-w-2xl border-2 border-red-500 bg-slate-900">
           <Dialog.Header>
-            <Dialog.Title className="text-white text-2xl">Scan Errors</Dialog.Title>
+            <Dialog.Title className="text-2xl text-white">
+              Scan Errors
+            </Dialog.Title>
           </Dialog.Header>
           <div className="space-y-4">
             <p className="text-base text-slate-300">
