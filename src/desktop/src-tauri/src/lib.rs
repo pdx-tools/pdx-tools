@@ -81,7 +81,7 @@ impl RendererRuntimeState {
         let logical_size = logical_size_from_physical(inner_size, scale_factor);
 
         let renderer = SurfaceMapRenderer::new(gpu, west_texture, east_texture, physical_size);
-        let mut controller = MapViewController::new(renderer, logical_size, scale_factor as f32);
+        let mut controller = MapViewController::new(renderer);
         controller
             .renderer_mut()
             .update_locations(payload.workspace.location_arrays());
@@ -120,7 +120,7 @@ impl RendererRuntimeState {
             interaction_controller.on_resize(logical_size);
             controller.set_viewport_bounds(interaction_controller.viewport_bounds());
         }
-        controller.resize_with_scale_factor(logical_size, scale_factor as f32);
+        controller.resize(map_physical_size(size));
     }
 
     fn apply_input_snapshot(&mut self, snapshot: InteractionSnapshot) {
