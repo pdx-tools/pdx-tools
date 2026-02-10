@@ -41,7 +41,7 @@ pub use wgpu;
 /// Canvas dimensions in logical pixels (eg: browser window size)
 ///
 /// Helper type bundling logical size and scale factor.
-/// Used by controller and WASM bindings for convenience.
+/// Used by WASM bindings and platform integration layers for convenience.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CanvasDimensions {
     size: LogicalSize<u32>,

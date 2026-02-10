@@ -30,7 +30,11 @@ let hoverEventCallback: ((event: LocationHoverChangeEvent) => void) | null =
 let zoomChangeCallback: ((zoom: number) => void) | null = null;
 let renderOrQueue: () => void = () => {};
 let newLocations: Uint32Array | null = null;
-let newDimensions: { width: number; height: number } | null = null;
+let newDimensions: {
+  width: number;
+  height: number;
+  scaleFactor: number;
+} | null = null;
 let lastCursorPosition: { x: number; y: number } | null = null;
 const pressedKeys = new Set<string>();
 
@@ -78,7 +82,11 @@ export const createMapEngine = async (
     onProgress?: (increment: number) => void;
   },
 ) => {
-  let prevDimensions = { width: display.width, height: display.height };
+  let prevDimensions = {
+    width: display.width,
+    height: display.height,
+    scaleFactor: display.scaleFactor,
+  };
   await initialized;
   onProgress?.(5); // Initialize map wasm
 
@@ -144,14 +152,19 @@ export const createMapEngine = async (
     if (newDimensions) {
       let diff =
         Math.abs(newDimensions.width - prevDimensions.width) +
-        Math.abs(newDimensions.height - prevDimensions.height);
+        Math.abs(newDimensions.height - prevDimensions.height) +
+        Math.abs(newDimensions.scaleFactor - prevDimensions.scaleFactor);
 
       if (diff >= 4) {
         prevDimensions = { ...newDimensions };
         // Firefox also needs to wait for queued work before resizing
         // otherwise it will freeze up
         await app.queued_work().wait();
-        app.resize(newDimensions.width, newDimensions.height);
+        app.resize(
+          newDimensions.width,
+          newDimensions.height,
+          newDimensions.scaleFactor,
+        );
       }
 
       newDimensions = null;
@@ -234,8 +247,8 @@ export const createMapEngine = async (
   };
 
   return proxy({
-    resize: (width: number, height: number) => {
-      newDimensions = { width, height };
+    resize: (width: number, height: number, scaleFactor: number) => {
+      newDimensions = { width, height, scaleFactor };
       renderOrQueue();
     },
     get_zoom: () => {

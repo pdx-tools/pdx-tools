@@ -354,7 +354,11 @@ export class Eu5UIEngine implements AppEngine {
     const snappedWidth = snapToDevicePixel(width, window.devicePixelRatio);
     const snappedHeight = snapToDevicePixel(height, window.devicePixelRatio);
 
-    await this.gameInstance.resize(snappedWidth.logical, snappedHeight.logical);
+    await this.gameInstance.resize(
+      snappedWidth.logical,
+      snappedHeight.logical,
+      window.devicePixelRatio,
+    );
 
     this.updateState(() => ({
       canvasSize: {

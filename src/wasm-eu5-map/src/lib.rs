@@ -109,8 +109,7 @@ impl Eu5WasmMapRenderer {
         let west = Hemisphere::new(texture_data.west, renderer.hemisphere_size().width_length());
         let east = Hemisphere::new(texture_data.east, renderer.hemisphere_size().width_length());
         let world = World::new(west, east);
-        let mut controller =
-            MapViewController::new(renderer, display.logical_size(), display.scale_factor());
+        let mut controller = MapViewController::new(renderer);
 
         // Initialize input controller with map size
         let input = InteractionController::new(display.logical_size(), map_size);
@@ -237,7 +236,7 @@ impl Eu5WasmMapRenderer {
 
     /// Resize the canvas and reconfigure the surface
     #[wasm_bindgen]
-    pub fn resize(&mut self, logical_width: u32, logical_height: u32) {
+    pub fn resize(&mut self, logical_width: u32, logical_height: u32, scale_factor: f32) {
         let size = LogicalSize::new(logical_width, logical_height);
         self.input.on_resize(size);
 
@@ -245,7 +244,7 @@ impl Eu5WasmMapRenderer {
         let bounds = self.input.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
 
-        self.controller.resize(size);
+        self.controller.resize(size.to_physical(scale_factor));
     }
 
     /// Create a separate screenshot renderer that shares GPU resources but operates independently
