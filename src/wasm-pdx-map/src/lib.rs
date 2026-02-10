@@ -107,11 +107,7 @@ impl PdxMapRenderer {
         location_arrays.set_secondary_colors(init_colors.as_slice());
         location_arrays.set_owner_colors(init_colors.as_slice());
 
-        let controller = MapViewController::new(
-            renderer,
-            canvas_dims.logical_size(),
-            canvas_dims.scale_factor(),
-        );
+        let controller = MapViewController::new(renderer);
 
         // Create input controller with map dimensions
         let map_size = image.world.size();
@@ -207,7 +203,7 @@ impl PdxMapRenderer {
 
     /// Resize the canvas and reconfigure the surface
     #[wasm_bindgen]
-    pub fn resize(&mut self, logical_width: u32, logical_height: u32) {
+    pub fn resize(&mut self, logical_width: u32, logical_height: u32, scale_factor: f32) {
         let size = LogicalSize::new(logical_width, logical_height);
 
         // Update both controllers
@@ -217,7 +213,7 @@ impl PdxMapRenderer {
         let bounds = self.interaction.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
 
-        self.controller.resize(size);
+        self.controller.resize(size.to_physical(scale_factor));
     }
 
     /// Convert canvas coordinates to world coordinates
@@ -504,12 +500,11 @@ pub fn create_screenshot_renderer_for_app(
     canvas: OffscreenCanvas,
 ) -> Result<PdxScreenshotRenderer, RenderError> {
     let size = PhysicalSize::new(canvas.width(), canvas.height());
-    let logical_size = LogicalSize::new(canvas.width(), canvas.height());
     let surface_target = get_surface_target(canvas);
     let screenshot_renderer = app
         .renderer()
         .create_screenshot_renderer(surface_target, size)?;
-    let map = MapViewController::new(screenshot_renderer, logical_size, 1.0);
+    let map = MapViewController::new(screenshot_renderer);
     Ok(PdxScreenshotRenderer { map })
 }
 

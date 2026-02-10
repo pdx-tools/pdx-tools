@@ -109,11 +109,11 @@ export const createMapEngine = async ({
 
   console.log("Returning proxied map engine functions");
   return proxy({
-    resize: async (width: number, height: number) => {
+    resize: async (width: number, height: number, scaleFactor: number) => {
       const gl = canvas.getContext("webgpu")!;
       gl.canvas.height = height;
       gl.canvas.width = width;
-      app.resize(width, height);
+      app.resize(width, height, scaleFactor);
       app.render();
     },
 

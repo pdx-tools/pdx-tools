@@ -1,25 +1,21 @@
 use crate::{
-    HemisphereSize, LogicalSize, RenderError, SurfaceMapRenderer, ViewportBounds, WorldPoint,
+    HemisphereSize, PhysicalSize, RenderError, SurfaceMapRenderer, ViewportBounds, WorldPoint,
     renderer::{ColorIdReadback, QueuedWorkFuture},
 };
 
 pub struct MapViewController {
     renderer: SurfaceMapRenderer,
     viewport_bounds: ViewportBounds,
-    size: LogicalSize<u32>,
-    scale_factor: f32,
 }
 
 impl MapViewController {
-    pub fn new(renderer: SurfaceMapRenderer, size: LogicalSize<u32>, scale_factor: f32) -> Self {
+    pub fn new(renderer: SurfaceMapRenderer) -> Self {
         // Initialize with default viewport bounds
         let viewport_bounds = ViewportBounds::new(renderer.hemisphere_size().world());
 
         MapViewController {
             renderer,
             viewport_bounds,
-            size,
-            scale_factor,
         }
     }
 
@@ -46,16 +42,6 @@ impl MapViewController {
         &mut self.renderer
     }
 
-    /// Get the logical size of the canvas
-    pub fn logical_size(&self) -> LogicalSize<u32> {
-        self.size
-    }
-
-    /// Get the scale factor
-    pub fn scale_factor(&self) -> f32 {
-        self.scale_factor
-    }
-
     /// Get the tile size
     pub fn hemisphere_size(&self) -> HemisphereSize<u32> {
         self.renderer.hemisphere_size()
@@ -77,11 +63,10 @@ impl MapViewController {
     /// Resize with surface reconfiguration.
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, level = "debug", fields(logical_width, logical_height))
+        tracing::instrument(skip_all, level = "debug", fields(physical_width, physical_height))
     )]
-    pub fn resize(&mut self, size: LogicalSize<u32>) {
-        self.size = size;
-        self.renderer.resize(size.to_physical(self.scale_factor));
+    pub fn resize(&mut self, size: PhysicalSize<u32>) {
+        self.renderer.resize(size);
     }
 
     /// Get location information at world coordinates.

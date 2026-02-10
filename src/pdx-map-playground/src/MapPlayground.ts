@@ -330,6 +330,7 @@ export class MapPlayground {
         await this.mapEngine.resize(
           Math.floor(rect.width),
           Math.floor(rect.height),
+          window.devicePixelRatio,
         );
       } catch (error) {
         console.error("Resize failed:", error);

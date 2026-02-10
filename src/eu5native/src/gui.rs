@@ -548,7 +548,7 @@ impl ApplicationHandler<GuiUserEvent> for App {
                     let bounds = input.viewport_bounds();
                     controller.set_viewport_bounds(bounds);
                 }
-                controller.resize(logical_size);
+                controller.resize(logical_size.to_physical(scale_factor as f32));
                 window.request_redraw();
             }
             WindowEvent::Resized(new_size) => {
@@ -566,7 +566,7 @@ impl ApplicationHandler<GuiUserEvent> for App {
                         let bounds = input.viewport_bounds();
                         controller.set_viewport_bounds(bounds);
                     }
-                    controller.resize(logical_size);
+                    controller.resize(logical_size.to_physical(scale as f32));
                     window.request_redraw();
                 }
             }
@@ -697,7 +697,7 @@ fn init_renderer(
     let physical = logical.to_physical(scale_factor as f32);
 
     let renderer = SurfaceMapRenderer::new(gpu_ctx, west_texture, east_texture, physical);
-    let controller = MapViewController::new(renderer, logical, scale_factor as f32);
+    let controller = MapViewController::new(renderer);
 
     // Create input controller with map dimensions
     let input_controller = InteractionController::new(logical, hemisphere.world());

@@ -186,7 +186,8 @@ export function saveWorker(
   );
 
   return {
-    resize: (width: number, height: number) => mapEngine.resize(width, height),
+    resize: (width: number, height: number, scaleFactor: number) =>
+      mapEngine.resize(width, height, scaleFactor),
     getZoom: () => mapEngine.get_zoom(),
     onCursorMove: (x: number, y: number) => mapEngine.onCursorMove(x, y),
     onMouseButton: (button: number, pressed: boolean) =>
