@@ -1,5 +1,6 @@
 packages:
   - src/app
+  - src/desktop
   - src/docs
   - src/map
   - src/pdx-map-playground

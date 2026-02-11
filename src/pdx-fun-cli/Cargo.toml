@@ -13,14 +13,18 @@ workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
+bytemuck = { workspace = true, features = ["derive"] }
 clap = { features = ["derive", "env"], workspace = true }
 eu4game = { workspace = true, default-features = false, features = ["zstd_c", "embedded"] }
 eu4save = { workspace = true, default-features = false, features = ["serialize", "zstd_c"] }
+eu5app = { workspace = true, default-features = false, features = ["game-install", "zstd_c"] }
+eu5save = { workspace = true }
 image = { workspace = true, features = ["png", "bmp"] }
 pdx-assets = { workspace = true }
-pdx-map = { workspace = true }
+pdx-map = { workspace = true, features = ["render", "tracing"] }
 rawbmp = { workspace = true }
 schemas = { workspace = true }
+tokio = { workspace = true, features = ["rt"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 walkdir = { workspace = true }

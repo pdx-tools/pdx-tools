@@ -1,0 +1,25 @@
+{
+  "extends": "../../dev/tsconfig.base.json",
+  "compilerOptions": {
+    "types": [
+      "vite/client",
+    ],
+
+    "jsx": "react-jsx",
+
+    /* If your code runs in the DOM: */
+    "lib": ["es2022", "dom", "dom.iterable"],
+
+    "baseUrl": ".",
+    "paths": {
+      "@/components/*": ["../app/app/components/*"],
+      "@/lib/*": ["../app/app/lib/*"]
+    }
+  },
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    "**/dist",
+    "**/build"
+  ]
+}

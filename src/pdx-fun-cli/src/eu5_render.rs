@@ -1,32 +1,139 @@
-use std::path::PathBuf;
-
-use crate::{Args, date_layer::DateLayer};
+use crate::eu5_date_layer::DateLayer;
+use anyhow::{Result, anyhow};
+use clap::Args;
 use eu5app::{
     Eu5SaveLoader, Eu5Workspace, MapMode,
     game_data::{TextureProvider, game_install::Eu5GameInstall},
 };
 use eu5save::{BasicTokenResolver, Eu5File};
 use pdx_map::{PhysicalSize, StitchedImage, ViewportBounds, World, WorldSize};
+use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 use tracing::{info, info_span};
 
-/// Validate that width and height are both provided or both absent
-fn validate_dimensions(
+/// Render an EU5 save file into a PNG image.
+#[derive(Args)]
+pub struct Eu5RenderArgs {
+    /// Path to the EU5 save file
+    #[arg(value_name = "SAVE_FILE")]
+    save_file: PathBuf,
+
+    /// Path to game data (directory, source bundle, or compiled bundle)
+    #[arg(short = 'g', long, default_value = "assets")]
+    game_data: PathBuf,
+
+    /// Path to EU5 tokens file
+    #[arg(short = 't', long, default_value = "assets/eu5.txt")]
+    tokens: PathBuf,
+
+    /// Optional width for custom viewport screenshot
+    #[arg(short = 'w', long)]
     width: Option<u32>,
+
+    /// Optional height for custom viewport screenshot
+    #[arg(short = 'h', long)]
     height: Option<u32>,
-) -> Result<(), Box<dyn std::error::Error>> {
+
+    /// Output PNG file path
+    #[arg(short = 'o', long, value_name = "OUTPUT")]
+    output: PathBuf,
+}
+
+impl Eu5RenderArgs {
+    pub fn run(&self) -> Result<ExitCode> {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("Failed to build single-threaded Tokio runtime");
+
+        rt.block_on(async { self.run_async().await })?;
+        Ok(ExitCode::SUCCESS)
+    }
+
+    async fn run_async(&self) -> Result<()> {
+        info!("Using save file: {}", self.save_file.display());
+        let file = std::fs::File::open(&self.save_file)?;
+        let file = Eu5File::from_file(file)?;
+
+        info!("Using tokens file: {}", self.tokens.display());
+        let file_data = std::fs::read(&self.tokens)?;
+        let resolver = BasicTokenResolver::from_text_lines(file_data.as_slice())?;
+
+        let parser = Eu5SaveLoader::open(file, resolver)?;
+        let mut save = parser.parse()?;
+
+        let game_bundle = Eu5GameInstall::open(&self.game_data)?;
+        let pipeline_components = pdx_map::GpuContext::new().await?;
+
+        let hemisphere = eu5app::hemisphere_size();
+        let size = hemisphere.physical();
+
+        // Access textures as slices directly from the bundle
+        let west_view =
+            pipeline_components.create_texture(game_bundle.west_texture(), size, "West Texture");
+        let east_view =
+            pipeline_components.create_texture(game_bundle.east_texture(), size, "East Texture");
+
+        // Zero-copy: Arc::clone just increments ref count (no data duplication)
+        let world = game_bundle.world();
+        let map_app = Eu5Workspace::new(save.take_gamestate(), game_bundle.into_game_data())?;
+        let save_date = map_app.gamestate().metadata().date.date_fmt().to_string();
+
+        // Validate dimensions
+        validate_dimensions(self.width, self.height)?;
+
+        // Determine dimensions and centering
+        let (width, height, center_on_capital) =
+            if let (Some(w), Some(h)) = (self.width, self.height) {
+                info!("Rendering custom viewport: {}x{}", w, h);
+                (w, h, true)
+            } else {
+                let world_size = eu5app::hemisphere_size().world();
+                info!(
+                    "Rendering full world: {}x{}",
+                    world_size.width, world_size.height
+                );
+                (world_size.width, world_size.height, false)
+            };
+
+        render_viewport(
+            map_app,
+            &world,
+            &pipeline_components,
+            west_view,
+            east_view,
+            save_date,
+            width,
+            height,
+            center_on_capital,
+            &self.output,
+        )
+        .await
+    }
+}
+
+/// Validate that width and height are both provided or both absent
+fn validate_dimensions(width: Option<u32>, height: Option<u32>) -> Result<()> {
     match (width, height) {
         (Some(w), Some(h)) => {
             if w == 0 || h == 0 {
-                return Err("Width and height must be greater than 0".into());
+                return Err(anyhow!("Width and height must be greater than 0"));
             }
+
             let world_height = eu5app::hemisphere_size().world().height;
             if h > world_height {
-                return Err(format!("Height {} exceeds world height {}", h, world_height).into());
+                return Err(anyhow!(
+                    "Height {} exceeds world height {}",
+                    h,
+                    world_height
+                ));
             }
+
             Ok(())
         }
         (None, None) => Ok(()),
-        _ => Err("Both --width and --height must be specified together".into()),
+        _ => Err(anyhow!(
+            "Both --width and --height must be specified together"
+        )),
     }
 }
 
@@ -40,7 +147,6 @@ fn calculate_viewport_bounds(
 ) -> (u32, u32) {
     let hemisphere = eu5app::hemisphere_size();
 
-    // Get player capital or fallback to world center
     let (capital_x, capital_y) = map_app
         .player_capital_color_id()
         .map(|color_id| {
@@ -49,7 +155,6 @@ fn calculate_viewport_bounds(
         })
         .unwrap_or((hemisphere.width as u16, hemisphere.height as u16 / 2));
 
-    // Center horizontally with proper wraparound handling
     let x_centered = capital_x as i32 - (width / 2) as i32;
     let x = x_centered.rem_euclid(hemisphere.world().width as i32) as u32;
 
@@ -63,79 +168,8 @@ fn calculate_viewport_bounds(
 /// Calculate proportional text scale based on viewport height
 fn calculate_text_scale(viewport_height: u32) -> u32 {
     // Scale formula: height / 400 gives good proportions
-    // Examples: 8192→20, 4096→10, 2048→5, 1024→2
+    // Examples: 8192->20, 4096->10, 2048->5, 1024->2
     (viewport_height / 400).max(2)
-}
-
-pub fn run_headless(args: Args) -> Result<(), Box<dyn std::error::Error>> {
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .build()
-        .expect("Failed to build single-threaded Tokio runtime");
-
-    rt.block_on(async { run_headless_async(args).await })
-}
-
-async fn run_headless_async(args: Args) -> Result<(), Box<dyn std::error::Error>> {
-    info!("Using save file: {}", args.save_file.display());
-    let file = std::fs::File::open(&args.save_file)?;
-    let file = Eu5File::from_file(file)?;
-
-    info!("Using tokens file: {}", args.tokens.display());
-    let file_data = std::fs::read(&args.tokens)?;
-    let resolver = BasicTokenResolver::from_text_lines(file_data.as_slice())?;
-
-    let parser = Eu5SaveLoader::open(file, resolver)?;
-
-    let mut save = parser.parse()?;
-
-    let game_bundle = Eu5GameInstall::open(&args.game_data)?;
-
-    let pipeline_components = pdx_map::GpuContext::new().await?;
-
-    let hemisphere = eu5app::hemisphere_size();
-    let size = hemisphere.physical();
-
-    // Access textures as slices directly from the bundle
-    let west_view =
-        pipeline_components.create_texture(game_bundle.west_texture(), size, "West Texture");
-    let east_view =
-        pipeline_components.create_texture(game_bundle.east_texture(), size, "East Texture");
-
-    // Zero-copy: Arc::clone just increments ref count (no data duplication)
-    let world = game_bundle.world();
-
-    let map_app = Eu5Workspace::new(save.take_gamestate(), game_bundle.into_game_data())?;
-    let save_date = map_app.gamestate().metadata().date.date_fmt().to_string();
-
-    // Validate dimensions
-    validate_dimensions(args.width, args.height)?;
-
-    // Determine dimensions and centering
-    let (width, height, center_on_capital) = if let (Some(w), Some(h)) = (args.width, args.height) {
-        info!("Rendering custom viewport: {}×{}", w, h);
-        (w, h, true)
-    } else {
-        let world_size = eu5app::hemisphere_size().world();
-        info!(
-            "Rendering full world: {}×{}",
-            world_size.width, world_size.height
-        );
-        (world_size.width, world_size.height, false)
-    };
-
-    render_viewport(
-        map_app,
-        &world,
-        &pipeline_components,
-        west_view,
-        east_view,
-        save_date,
-        width,
-        height,
-        center_on_capital,
-        &args.output.expect("output buf to be defined"),
-    )
-    .await
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -149,13 +183,14 @@ async fn render_viewport(
     width: u32,
     height: u32,
     center_on_capital: bool,
-    output: &'_ PathBuf,
-) -> Result<(), Box<dyn std::error::Error>> {
+    output: &'_ Path,
+) -> Result<()> {
     // Calculate viewport position
     let (x_offset, y_offset) = if center_on_capital {
         calculate_viewport_bounds(&map_app, world, width, height)
     } else {
-        (0, 0) // Full world starts at origin
+        // Full world starts at origin
+        (0, 0)
     };
 
     let hemisphere = eu5app::hemisphere_size();
@@ -183,7 +218,7 @@ async fn render_viewport(
     let text_scale = calculate_text_scale(height);
     let date_layer = renderer.add_layer(DateLayer::new(save_date, text_scale));
 
-    // For viewports wider than tile_width (8192), we need to stitch two renders together
+    // For viewports wider than tile_width (8192), stitch two renders together
     let image_data = if width > hemisphere.width {
         assert!(
             width <= hemisphere.width * 2,
@@ -232,7 +267,7 @@ async fn render_viewport(
     let span = info_span!("RgbaImage::from_raw");
     let _enter = span.enter();
     let output_img = image::RgbaImage::from_raw(width, height, image_data)
-        .ok_or("Failed to create image from raw buffer")?;
+        .ok_or_else(|| anyhow!("Failed to create image from raw buffer"))?;
     drop(_enter);
 
     let span = info_span!("RgbaImage::save", output = %output.display());

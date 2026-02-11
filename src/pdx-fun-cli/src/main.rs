@@ -5,6 +5,8 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 mod ai_development;
+mod eu5_date_layer;
+mod eu5_render;
 mod index_image;
 mod province_borders;
 mod province_names;
@@ -31,6 +33,8 @@ struct Cli {
 enum Commands {
     /// Produces a csv of how much the AI has devved provinces
     AiDevelopment(ai_development::AiDevelopmentArgs),
+    /// Render EU5 save files to PNG images
+    Eu5Render(eu5_render::Eu5RenderArgs),
     /// Converts images into split R16 hemisphere textures
     IndexImage(index_image::IndexImageArgs),
     /// Shows which provinces borders which
@@ -63,6 +67,7 @@ fn main() -> ExitCode {
 
     let exit_code = match &cli.command {
         Commands::AiDevelopment(x) => x.run(),
+        Commands::Eu5Render(x) => x.run(),
         Commands::IndexImage(x) => x.run(),
         Commands::ProvinceBorders(x) => x.run(),
         Commands::ProvinceNames(x) => x.run(),

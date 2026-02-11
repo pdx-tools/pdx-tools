@@ -1,0 +1,28 @@
+[package]
+name = "pdx-desktop"
+version = "0.1.0"
+description = ""
+edition = "2024"
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { workspace = true, features = [] }
+
+[dependencies]
+dirs = { workspace = true }
+eu5app = { workspace = true, features = ["zstd_c", "game-install"] }
+eu5save = { workspace = true }
+jomini = { workspace = true }
+log = { workspace = true }
+pdx-assets = { workspace = true }
+pdx-map = { workspace = true, features = ["render", "interaction"] }
+rayon = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tauri = { workspace = true, features = ["macos-private-api"] }
+tauri-plugin-log = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
