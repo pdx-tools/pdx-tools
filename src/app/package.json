@@ -61,7 +61,7 @@
     "zustand": "5.0.2"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.22.1",
+    "@cloudflare/vite-plugin": "1.25.0",
     "@react-router/dev": "7.12.0",
     "@react-router/fs-routes": "7.12.0",
     "@tailwindcss/vite": "4.1.14",
