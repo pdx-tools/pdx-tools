@@ -1,0 +1,7 @@
+#!/usr/bin/env -S mise tool-stub
+
+tool = "ubi:WebAssembly/wasi-sdk"
+version = "wasi-sdk-29"
+extract_all = "true"
+bin_path = "bin"
+bin = "wasm32-wasip1-clang++"

@@ -19,8 +19,14 @@ zstd = { workspace = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 criterion = { workspace = true, default-features = true }
+gungraun = { workspace = true }
 
 [[bench]]
-name = "pdx-bench"
+name = "pdx-bench-criterion"
 harness = false
-path = "src/bench.rs"
+path = "src/criterion_main.rs"
+
+[[bench]]
+name = "pdx-bench-gungraun"
+harness = false
+path = "src/gungraun_main.rs"

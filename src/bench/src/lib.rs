@@ -1,1 +1,2 @@
-// intentionally empty
+pub mod benchmarks;
+pub mod criterion_benches;
