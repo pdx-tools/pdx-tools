@@ -1,0 +1,4 @@
+#!/usr/bin/env -S mise tool-stub
+
+tool = "ubi:gungraun/gungraun"
+version = "0.17.2"

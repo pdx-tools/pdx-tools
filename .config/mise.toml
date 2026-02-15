@@ -326,9 +326,11 @@ depends = ["build:wasm", "optimize:wasm:*", "build:app", "release:build:api", "r
 [tasks."bench:wasm"]
 description = "Run benchmarks in wasm"
 env.CARGO_TARGET_WASM32_WASIP1_RUNNER = "wasmer run --volume {{config_root}} --"
+env.CC_wasm32_wasip1 = "wasiclang"
+env.CXX_wasm32_wasip1 = "wasiclang++"
 run = [
     "rustup target add wasm32-wasip1",
-    "cargo bench -p bench --target wasm32-wasip1",
+    "cargo bench -p bench --bench pdx-bench-criterion --target wasm32-wasip1",
 ]
 
 [tasks."setup:musl"]
