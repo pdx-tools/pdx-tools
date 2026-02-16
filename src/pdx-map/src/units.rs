@@ -112,7 +112,7 @@ pub struct Point<Unit, T> {
 }
 
 impl<Unit, T> Point<Unit, T> {
-    pub fn new(x: T, y: T) -> Self {
+    pub const fn new(x: T, y: T) -> Self {
         Self {
             x,
             y,
