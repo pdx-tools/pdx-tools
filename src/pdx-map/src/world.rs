@@ -8,6 +8,7 @@ pub use spatial::{Aabb, SpatialIndex};
 pub use topology::TopologyIndex;
 
 use crate::{R16, R16Palette, WorldLength, WorldPoint, WorldSize};
+use std::sync::OnceLock;
 
 /// A world made up of two hemispheres: west and east.
 ///
@@ -18,20 +19,35 @@ use crate::{R16, R16Palette, WorldLength, WorldPoint, WorldSize};
 /// And for the sake of not needing to transform 134 million pixels into a
 /// different data layout, we can leverage the same data on the CPU side for
 /// queries.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct World<T> {
-    west: Hemisphere<T>,
-    east: Hemisphere<T>,
+#[derive(Debug)]
+pub struct World {
+    west: Hemisphere<R16>,
+    east: Hemisphere<R16>,
+    max_location_index: OnceLock<R16>,
 }
 
-impl<T> World<T> {
-    pub fn new(west: Hemisphere<T>, east: Hemisphere<T>) -> Self {
-        assert_eq!(
-            west.size(),
-            east.size(),
-            "west and east hemispheres must have the same size"
-        );
-        Self { west, east }
+impl PartialEq for World {
+    fn eq(&self, other: &Self) -> bool {
+        self.west == other.west && self.east == other.east
+    }
+}
+
+impl Eq for World {}
+
+#[derive(Debug)]
+pub struct WorldBuilder {
+    west: Hemisphere<R16>,
+    east: Hemisphere<R16>,
+    supplied_max_location_index: Option<R16>,
+}
+
+impl World {
+    pub fn builder(west: Hemisphere<R16>, east: Hemisphere<R16>) -> WorldBuilder {
+        WorldBuilder {
+            west,
+            east,
+            supplied_max_location_index: None,
+        }
     }
 
     pub fn size(&self) -> WorldSize<u32> {
@@ -39,28 +55,73 @@ impl<T> World<T> {
         WorldSize::new(size.width * 2, size.height)
     }
 
-    pub fn west(&self) -> &Hemisphere<T> {
+    pub fn west(&self) -> &Hemisphere<R16> {
         &self.west
     }
 
-    pub fn east(&self) -> &Hemisphere<T> {
+    pub fn east(&self) -> &Hemisphere<R16> {
         &self.east
     }
 
-    pub fn west_mut(&mut self) -> &mut Hemisphere<T> {
-        &mut self.west
-    }
-
-    pub fn east_mut(&mut self) -> &mut Hemisphere<T> {
-        &mut self.east
-    }
-
-    pub fn into_hemispheres(self) -> (Hemisphere<T>, Hemisphere<T>) {
+    pub fn into_hemispheres(self) -> (Hemisphere<R16>, Hemisphere<R16>) {
         (self.west, self.east)
+    }
+
+    pub fn max_location_index(&self) -> R16 {
+        *self
+            .max_location_index
+            .get_or_init(|| self.compute_max_location_index())
+    }
+
+    pub fn location_capacity(&self) -> usize {
+        self.max_location_index().value() as usize + 1
+    }
+
+    fn compute_max_location_index(&self) -> R16 {
+        self.west
+            .as_slice()
+            .iter()
+            .chain(self.east.as_slice().iter())
+            .copied()
+            .max()
+            .unwrap_or_else(|| R16::new(0))
     }
 }
 
-impl World<R16> {
+impl WorldBuilder {
+    /// # Safety
+    ///
+    /// The caller must ensure `max` is exactly the highest location index
+    /// present in either hemisphere. Supplying an incorrect value can result
+    /// in undefined behavior in downstream code that relies on this invariant
+    /// for indexing.
+    pub unsafe fn with_max_location_index_unchecked(mut self, max: R16) -> Self {
+        self.supplied_max_location_index = Some(max);
+        self
+    }
+
+    pub fn build(self) -> World {
+        assert_eq!(
+            self.west.size(),
+            self.east.size(),
+            "west and east hemispheres must have the same size"
+        );
+
+        let world = World {
+            west: self.west,
+            east: self.east,
+            max_location_index: OnceLock::new(),
+        };
+
+        if let Some(max) = self.supplied_max_location_index {
+            let _ = world.max_location_index.set(max);
+        }
+
+        world
+    }
+}
+
+impl World {
     pub fn from_rgb8(data: &[u8], width: WorldLength<u32>) -> (Self, R16Palette) {
         ingest::index_rgb8(data, width)
     }
@@ -194,14 +255,33 @@ mod tests {
     use super::*;
     use crate::units::HemisphereLength;
 
-    fn world_from_halves(west: Vec<u16>, east: Vec<u16>, hemisphere_width: u32) -> World<R16> {
+    fn world_from_halves(west: Vec<u16>, east: Vec<u16>, hemisphere_width: u32) -> World {
         let west = west.into_iter().map(R16::new).collect::<Vec<_>>();
         let east = east.into_iter().map(R16::new).collect::<Vec<_>>();
 
-        World::new(
+        World::builder(
             Hemisphere::new(west, HemisphereLength::new(hemisphere_width)),
             Hemisphere::new(east, HemisphereLength::new(hemisphere_width)),
         )
+        .build()
+    }
+
+    #[test]
+    fn world_max_location_index_is_computed_lazily() {
+        let world = world_from_halves(vec![10, 11], vec![1, 9], 2);
+        assert_eq!(world.max_location_index(), R16::new(11));
+        assert_eq!(world.location_capacity(), 12);
+    }
+
+    #[test]
+    fn world_builder_can_seed_max_location_index() {
+        let world = World::builder(
+            Hemisphere::new(vec![R16::new(2), R16::new(4)], HemisphereLength::new(2)),
+            Hemisphere::new(vec![R16::new(1), R16::new(3)], HemisphereLength::new(2)),
+        );
+
+        let world = unsafe { world.with_max_location_index_unchecked(R16::new(4)) }.build();
+        assert_eq!(world.max_location_index(), R16::new(4));
     }
 
     #[test]
