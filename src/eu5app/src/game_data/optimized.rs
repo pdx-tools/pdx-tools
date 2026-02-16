@@ -5,6 +5,22 @@ use crate::{
 use eu5save::hash::FxHashMap;
 use pdx_map::R16;
 use rawzip::{ZipArchive, ZipSliceArchive};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorldMetadata {
+    max_location_index: u16,
+}
+
+impl WorldMetadata {
+    pub fn new(max_location_index: u16) -> Self {
+        Self { max_location_index }
+    }
+
+    pub fn max_location(self) -> R16 {
+        R16::new(self.max_location_index)
+    }
+}
 
 /// Optimized game data is the pre-built format for distributing EU5 game data.
 pub struct OptimizedGameBundle<R: AsRef<[u8]>> {
@@ -92,6 +108,7 @@ pub struct OptimizedTextureBundle<R: AsRef<[u8]>> {
     zip: ZipSliceArchive<R>,
     west_texture: (u64, rawzip::ZipArchiveEntryWayfinder),
     east_texture: (u64, rawzip::ZipArchiveEntryWayfinder),
+    world_meta: Option<(u64, rawzip::ZipArchiveEntryWayfinder)>,
 }
 
 impl<R> OptimizedTextureBundle<R>
@@ -102,6 +119,7 @@ where
         let zip = ZipArchive::from_slice(data).map_err(GameDataError::ZipAccess)?;
         let mut west_texture_entry = None;
         let mut east_texture_entry = None;
+        let mut world_meta_entry = None;
 
         for entry in zip.entries() {
             let entry = entry.map_err(GameDataError::ZipAccess)?;
@@ -111,6 +129,9 @@ where
                 }
                 b"locations-1.r16" => {
                     east_texture_entry = Some((entry.uncompressed_size_hint(), entry.wayfinder()));
+                }
+                b"world_meta.bin" => {
+                    world_meta_entry = Some((entry.uncompressed_size_hint(), entry.wayfinder()));
                 }
                 _ => {}
             }
@@ -127,6 +148,7 @@ where
             zip,
             west_texture,
             east_texture,
+            world_meta: world_meta_entry,
         })
     }
 
@@ -148,6 +170,18 @@ impl<R> OptimizedTextureBundle<R>
 where
     R: AsRef<[u8]>,
 {
+    /// Load the precomputed max location index, when present.
+    pub fn load_max_location_index(&self) -> Result<Option<R16>, GameDataError> {
+        let Some((meta_bytes, wayfinder)) = self.world_meta else {
+            return Ok(None);
+        };
+
+        let mut buf = vec![0; meta_bytes as usize];
+        self.read_entry(wayfinder, &mut buf)?;
+        let metadata: WorldMetadata = postcard::from_bytes(&buf)?;
+        Ok(Some(metadata.max_location()))
+    }
+
     /// Load both hemisphere textures from the bundle.
     pub fn load_hemispheres(&mut self) -> Result<(Vec<R16>, Vec<R16>), GameDataError> {
         let (west_bytes, west_wayfinder) = &self.west_texture;

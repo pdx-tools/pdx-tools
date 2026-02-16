@@ -15,26 +15,19 @@ impl TopologyIndex {
     /// Adjacency is computed using a 4-neighbor grid scan over the full world
     /// width (`half_width * 2`) and height. Horizontal wraparound is enabled;
     /// vertical wrap is not.
-    pub fn from_world(world: &World<R16>) -> Self {
+    pub fn from_world(world: &World) -> Self {
         let hemisphere_size = world.west().size();
         let world_size = world.size();
         let map_height = hemisphere_size.height;
         let map_width = world_size.width;
-        let mut adjacency: Vec<Vec<u16>> = Vec::new();
-        let mut max_index = 0u16;
+        let mut adjacency: Vec<Vec<u16>> = vec![Vec::new(); world.location_capacity()];
 
         for y in 0..map_height {
             for x in 0..map_width {
                 let current = world.at_grid(x, y).value();
-                if current > max_index {
-                    max_index = current;
-                }
 
                 let right_x = if x + 1 == map_width { 0 } else { x + 1 };
                 let right = world.at_grid(right_x, y).value();
-                if right > max_index {
-                    max_index = right;
-                }
                 if current != right {
                     add_neighbor(&mut adjacency, current, right);
                     add_neighbor(&mut adjacency, right, current);
@@ -42,19 +35,12 @@ impl TopologyIndex {
 
                 if y + 1 < map_height {
                     let down = world.at_grid(x, y + 1).value();
-                    if down > max_index {
-                        max_index = down;
-                    }
                     if current != down {
                         add_neighbor(&mut adjacency, current, down);
                         add_neighbor(&mut adjacency, down, current);
                     }
                 }
             }
-        }
-
-        if adjacency.len() <= max_index as usize {
-            adjacency.resize_with(max_index as usize + 1, Vec::new);
         }
 
         for neighbors in &mut adjacency {
@@ -108,13 +94,13 @@ impl TopologyIndex {
     }
 }
 
-fn add_neighbor(adjacency: &mut Vec<Vec<u16>>, from: u16, to: u16) {
+fn add_neighbor(adjacency: &mut [Vec<u16>], from: u16, to: u16) {
     let idx = from as usize;
-    if idx >= adjacency.len() {
-        adjacency.resize_with(idx + 1, Vec::new);
-    }
 
-    let neighbors = &mut adjacency[idx];
+    // SAFETY: TopologyIndex::from_world pre-allocates adjacency using
+    // World::location_capacity(), which guarantees every location index is
+    // in bounds.
+    let neighbors = unsafe { adjacency.get_unchecked_mut(idx) };
     if !neighbors.contains(&to) {
         neighbors.push(to);
     }
@@ -125,7 +111,7 @@ mod tests {
     use super::*;
     use crate::{Hemisphere, units::HemisphereLength};
 
-    fn world_from_grid(grid: &[u16], world_width: u32, height: u32) -> World<R16> {
+    fn world_from_grid(grid: &[u16], world_width: u32, height: u32) -> World {
         assert_eq!(world_width % 2, 0, "world width must be even");
         assert_eq!(grid.len(), (world_width * height) as usize);
 
@@ -142,10 +128,11 @@ mod tests {
             }
         }
 
-        World::new(
+        World::builder(
             Hemisphere::new(west, HemisphereLength::new(hemisphere_width)),
             Hemisphere::new(east, HemisphereLength::new(hemisphere_width)),
         )
+        .build()
     }
 
     fn to_values(neighbors: &[R16]) -> Vec<u16> {
