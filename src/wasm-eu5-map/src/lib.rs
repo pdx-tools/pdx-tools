@@ -1,8 +1,9 @@
 use eu5app::{game_data::optimized::OptimizedTextureBundle, should_highlight_individual_locations};
 use pdx_map::{
-    CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, InteractionController,
-    KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize, MapTexture,
-    MapViewController, MouseButton, R16, SurfaceMapRenderer, World, WorldPoint, default_clock,
+    CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
+    InteractionController, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
+    MapTexture, MapViewController, MouseButton, R16, SurfaceMapRenderer, World, WorldPoint,
+    default_clock,
 };
 use std::time::Duration;
 use wasm_bindgen::prelude::*;
@@ -76,7 +77,7 @@ impl Eu5CanvasSurface {
 pub struct Eu5WasmMapRenderer {
     controller: MapViewController,
     input: InteractionController,
-    world: World<R16>,
+    world: World,
     location_arrays: LocationArrays,
     clock: Box<dyn Clock>,
     last_tick: Option<Duration>,
@@ -106,9 +107,7 @@ impl Eu5WasmMapRenderer {
         );
 
         let map_size = renderer.hemisphere_size().world();
-        let west = Hemisphere::new(texture_data.west, renderer.hemisphere_size().width_length());
-        let east = Hemisphere::new(texture_data.east, renderer.hemisphere_size().width_length());
-        let world = World::new(west, east);
+        let world = texture_data.into_world(renderer.hemisphere_size().width_length());
         let mut controller = MapViewController::new(renderer);
 
         // Initialize input controller with map size
@@ -375,10 +374,16 @@ impl Eu5WasmGameBundle {
             .textures
             .load_hemispheres()
             .map_err(|e| JsError::new(&format!("Failed to load textures: {e}")))?;
+        let max_location_index = self
+            .textures
+            .load_max_location_index()
+            .map_err(|e| JsError::new(&format!("Failed to load world metadata: {e}")))?
+            .map(|idx| idx.value());
 
         Ok(Eu5WasmTextureHemispheres {
             west: west_data,
             east: east_data,
+            max_location_index,
         })
     }
 }
@@ -390,6 +395,22 @@ impl Eu5WasmGameBundle {
 pub struct Eu5WasmTextureHemispheres {
     west: Vec<pdx_map::R16>,
     east: Vec<pdx_map::R16>,
+    max_location_index: Option<u16>,
+}
+
+impl Eu5WasmTextureHemispheres {
+    fn into_world(self, hemisphere_width: HemisphereLength<u32>) -> World {
+        let west = Hemisphere::new(self.west, hemisphere_width);
+        let east = Hemisphere::new(self.east, hemisphere_width);
+        let mut world_builder = World::builder(west, east);
+
+        if let Some(max) = self.max_location_index.map(R16::new) {
+            // SAFETY: Metadata is produced by the trusted bundle compiler.
+            world_builder = unsafe { world_builder.with_max_location_index_unchecked(max) };
+        }
+
+        world_builder.build()
+    }
 }
 
 #[wasm_bindgen]

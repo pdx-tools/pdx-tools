@@ -21,11 +21,11 @@ pub fn setup_rgb_data(asset_name: &str) -> Vec<u8> {
     load_rgb_zst(&bench_asset_path(asset_name))
 }
 
-fn build_world_from_rgb(rgb_data: &[u8]) -> (World<R16>, R16Palette) {
+fn build_world_from_rgb(rgb_data: &[u8]) -> (World, R16Palette) {
     World::from_rgb8(rgb_data, WorldLength::new(PROVINCES_WIDTH))
 }
 
-pub fn setup_world(asset_name: &str) -> World<R16> {
+pub fn setup_world(asset_name: &str) -> World {
     let rgb_data = setup_rgb_data(asset_name);
     build_world_from_rgb(&rgb_data).0
 }
@@ -82,11 +82,11 @@ fn setup_query(asset_name: &str, small: bool) -> SpatialQueryInput {
     SpatialQueryInput { index, query }
 }
 
-fn from_rgb8(rgb_data: &[u8]) -> (World<R16>, pdx_map::R16Palette) {
+fn from_rgb8(rgb_data: &[u8]) -> (World, pdx_map::R16Palette) {
     build_world_from_rgb(rgb_data)
 }
 
-fn aabb_index_build(world: &World<R16>) -> SpatialIndex {
+fn aabb_index_build(world: &World) -> SpatialIndex {
     world.build_spatial_index()
 }
 
@@ -94,7 +94,7 @@ fn aabb_index_query(input: &SpatialQueryInput) -> usize {
     input.index.query(input.query).count()
 }
 
-fn adjacency_build(world: &World<R16>) -> TopologyIndex {
+fn adjacency_build(world: &World) -> TopologyIndex {
     world.build_topology_index()
 }
 
@@ -102,7 +102,7 @@ fn adjacency_query(adjacency: &TopologyIndex) -> usize {
     sampled_neighbor_count(adjacency)
 }
 
-fn center_of(world: &World<R16>) -> WorldPoint<u32> {
+fn center_of(world: &World) -> WorldPoint<u32> {
     world.center_of(R16::new(1000))
 }
 
@@ -164,17 +164,17 @@ pub mod criterion {
 #[cfg(not(target_family = "wasm"))]
 pub mod gungraun {
     use gungraun::{library_benchmark, library_benchmark_group};
-    use pdx_map::{R16, SpatialIndex, TopologyIndex, World, WorldPoint};
+    use pdx_map::{SpatialIndex, TopologyIndex, World, WorldPoint};
 
     #[library_benchmark(setup = crate::benchmarks::map::setup_rgb_data)]
     #[bench::from_rgb8(crate::benchmarks::map::PROVINCES_ASSET)]
-    fn from_rgb8_benchmark(rgb_data: Vec<u8>) -> (World<R16>, pdx_map::R16Palette) {
+    fn from_rgb8_benchmark(rgb_data: Vec<u8>) -> (World, pdx_map::R16Palette) {
         crate::benchmarks::map::from_rgb8(&rgb_data)
     }
 
     #[library_benchmark(setup = crate::benchmarks::map::setup_world)]
     #[bench::build(crate::benchmarks::map::PROVINCES_ASSET)]
-    fn aabb_index_build_benchmark(world: World<R16>) -> SpatialIndex {
+    fn aabb_index_build_benchmark(world: World) -> SpatialIndex {
         crate::benchmarks::map::aabb_index_build(&world)
     }
 
@@ -187,7 +187,7 @@ pub mod gungraun {
 
     #[library_benchmark(setup = crate::benchmarks::map::setup_world)]
     #[bench::build(crate::benchmarks::map::PROVINCES_ASSET)]
-    fn adjacency_build_benchmark(world: World<R16>) -> TopologyIndex {
+    fn adjacency_build_benchmark(world: World) -> TopologyIndex {
         crate::benchmarks::map::adjacency_build(&world)
     }
 
@@ -199,7 +199,7 @@ pub mod gungraun {
 
     #[library_benchmark(setup = crate::benchmarks::map::setup_world)]
     #[bench::single(crate::benchmarks::map::PROVINCES_ASSET)]
-    fn center_of_benchmark(world: World<R16>) -> WorldPoint<u32> {
+    fn center_of_benchmark(world: World) -> WorldPoint<u32> {
         crate::benchmarks::map::center_of(&world)
     }
 

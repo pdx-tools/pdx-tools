@@ -57,7 +57,7 @@ struct LocationRecord {
 }
 
 struct SplitImageData {
-    world: World<pdx_map::R16>,
+    world: World,
     palette: pdx_map::R16Palette,
 }
 

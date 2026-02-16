@@ -344,7 +344,7 @@ fn load_game_bundle(game_data: PathBuf) -> Result<(TextureData, GameData)> {
 }
 
 struct TextureData {
-    world: Arc<pdx_map::World<pdx_map::R16>>,
+    world: Arc<pdx_map::World>,
 }
 
 struct App {
@@ -719,7 +719,7 @@ fn apply_workspace(
     controller: &mut MapViewController,
     input_controller: &mut InteractionController,
     workspace: &Eu5Workspace<'_>,
-    world: &pdx_map::World<pdx_map::R16>,
+    world: &pdx_map::World,
 ) {
     let save_date = workspace.gamestate().metadata().date.date_fmt().to_string();
     controller

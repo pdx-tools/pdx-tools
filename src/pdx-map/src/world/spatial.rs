@@ -57,22 +57,33 @@ pub struct SpatialIndex {
 }
 
 impl SpatialIndex {
-    pub fn from_world(world: &World<R16>) -> Self {
+    pub fn from_world(world: &World) -> Self {
         let hemisphere_width = world.west().size().width as usize;
+        let location_capacity = world.location_capacity();
 
-        let mut min_x = vec![u16::MAX; u16::MAX as usize + 1];
-        let mut min_y = vec![u16::MAX; u16::MAX as usize + 1];
-        let mut max_x = vec![0u16; u16::MAX as usize + 1];
-        let mut max_y = vec![0u16; u16::MAX as usize + 1];
-        let mut max_location = R16::new(0);
+        let mut min_x = vec![u16::MAX; location_capacity];
+        let mut min_y = vec![u16::MAX; location_capacity];
+        let mut max_x = vec![0u16; location_capacity];
+        let mut max_y = vec![0u16; location_capacity];
 
         let mut update_run = |loc: R16, start_x: u16, end_x: u16, y: u16| {
             let idx = loc.value() as usize;
-            min_x[idx] = min_x[idx].min(start_x);
-            max_x[idx] = max_x[idx].max(end_x);
-            min_y[idx] = min_y[idx].min(y);
-            max_y[idx] = max_y[idx].max(y);
-            max_location = max_location.max(loc);
+
+            // SAFETY: World::location_capacity() is derived from the world
+            // data, so every location value in the map is within bounds.
+            unsafe {
+                let min_x_val = min_x.get_unchecked_mut(idx);
+                *min_x_val = (*min_x_val).min(start_x);
+
+                let max_x_val = max_x.get_unchecked_mut(idx);
+                *max_x_val = (*max_x_val).max(end_x);
+
+                let min_y_val = min_y.get_unchecked_mut(idx);
+                *min_y_val = (*min_y_val).min(y);
+
+                let max_y_val = max_y.get_unchecked_mut(idx);
+                *max_y_val = (*max_y_val).max(y);
+            }
         };
 
         for (row, chunk) in world.west().rows().enumerate() {
@@ -118,7 +129,7 @@ impl SpatialIndex {
             update_run(run_id, run_start, end_x, y);
         }
 
-        let aabbs = (0..=max_location.value() as usize)
+        let aabbs = (0..location_capacity)
             .map(|idx| {
                 Aabb::new(
                     WorldPoint::new(min_x[idx], min_y[idx]),
@@ -161,14 +172,15 @@ mod tests {
     use super::*;
     use crate::{Hemisphere, units::HemisphereLength};
 
-    fn world_from_halves(west: Vec<u16>, east: Vec<u16>, hemisphere_width: u32) -> World<R16> {
+    fn world_from_halves(west: Vec<u16>, east: Vec<u16>, hemisphere_width: u32) -> World {
         let west = west.into_iter().map(R16::new).collect::<Vec<_>>();
         let east = east.into_iter().map(R16::new).collect::<Vec<_>>();
 
-        World::new(
+        World::builder(
             Hemisphere::new(west, HemisphereLength::new(hemisphere_width)),
             Hemisphere::new(east, HemisphereLength::new(hemisphere_width)),
         )
+        .build()
     }
 
     #[test]

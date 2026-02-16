@@ -1,7 +1,7 @@
 use pdx_map::{
     CanvasDimensions, Clock, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
     InteractionController, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
-    MapTexture, MapViewController, MouseButton, PhysicalSize, QueuedWorkFuture, R16, R16Palette,
+    MapTexture, MapViewController, MouseButton, PhysicalSize, QueuedWorkFuture, R16Palette,
     RenderError, SurfaceMapRenderer, World, WorldLength, WorldPoint, WorldSize, default_clock,
 };
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use web_sys::OffscreenCanvas;
 
 #[wasm_bindgen]
 pub struct PdxMapImage {
-    world: World<R16>,
+    world: World,
     palette: R16Palette,
 }
 

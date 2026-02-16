@@ -14,21 +14,18 @@ use std::collections::{HashMap, hash_map::Entry};
 ///
 /// Will panic if there are more than 65536 unique color coded locations /
 /// provinces in the image.
-pub(crate) fn index_rgb8(img: &[u8], width: WorldLength<u32>) -> (World<R16>, R16Palette) {
+pub(crate) fn index_rgb8(img: &[u8], width: WorldLength<u32>) -> (World, R16Palette) {
     index_rgb::<3>(img, width)
 }
 
 /// See [`index_rgb8`] for details.
 ///
 /// Alpha channel is ignored.
-pub(crate) fn index_rgba8(img: &[u8], width: WorldLength<u32>) -> (World<R16>, R16Palette) {
+pub(crate) fn index_rgba8(img: &[u8], width: WorldLength<u32>) -> (World, R16Palette) {
     index_rgb::<4>(img, width)
 }
 
-fn index_rgb<const SRC_DEPTH: usize>(
-    img: &[u8],
-    width: WorldLength<u32>,
-) -> (World<R16>, R16Palette) {
+fn index_rgb<const SRC_DEPTH: usize>(img: &[u8], width: WorldLength<u32>) -> (World, R16Palette) {
     let width_value = width.value as usize;
     assert!(width_value.is_multiple_of(2), "world width must be even");
     let height = img.len() / (width_value * SRC_DEPTH);
@@ -96,10 +93,23 @@ fn index_rgb<const SRC_DEPTH: usize>(
     }
 
     let hemisphere_width = width.hemisphere();
-    let world = World::new(
+    let mut world_builder = World::builder(
         Hemisphere::new(west_data, hemisphere_width),
         Hemisphere::new(east_data, hemisphere_width),
     );
+
+    if let Some(max) = palette
+        .len()
+        .checked_sub(1)
+        .and_then(|idx| u16::try_from(idx).ok())
+        .map(R16::new)
+    {
+        // SAFETY: The indexing logic writes contiguous palette indices in the
+        // closed range 0..=palette.len() - 1 into the world data.
+        world_builder = unsafe { world_builder.with_max_location_index_unchecked(max) };
+    }
+
+    let world = world_builder.build();
 
     (world, R16Palette::new(palette))
 }

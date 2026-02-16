@@ -30,7 +30,8 @@ impl Eu5GameInstall {
                 let game_data = game_data.into_game_data()?;
                 let mut bundle = OptimizedTextureBundle::open(&data)?;
                 let (west_data, east_data) = bundle.load_hemispheres()?;
-                let textures = GameTextures::new(west_data, east_data);
+                let max_location_index = bundle.load_max_location_index()?;
+                let textures = GameTextures::new(west_data, east_data, max_location_index);
                 return Ok(Self {
                     textures,
                     game_data,
@@ -72,7 +73,7 @@ impl Eu5GameInstall {
     }
 
     /// Returns a cheap clone of the world
-    pub fn world(&self) -> std::sync::Arc<pdx_map::World<R16>> {
+    pub fn world(&self) -> std::sync::Arc<pdx_map::World> {
         self.textures.world()
     }
 }

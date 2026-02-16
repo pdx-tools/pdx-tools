@@ -1,7 +1,10 @@
 use crate::asset_compilers::PackageOptions;
 use crate::{FileProvider, ImageProcessor};
 use anyhow::Result;
-use eu5app::game_data::game_install::{GameFileSource, RawGameData};
+use eu5app::game_data::{
+    game_install::{GameFileSource, RawGameData},
+    optimized::WorldMetadata,
+};
 use rawzip::CompressionMethod;
 use serde::Serialize;
 use std::io::Write;
@@ -62,6 +65,12 @@ where
         &mut archive,
         "country_localization.bin",
         raw_game_data.country_localizations,
+    )?;
+    let max_location_index = textures.textures().world().max_location_index().value();
+    write_entry(
+        &mut archive,
+        "world_meta.bin",
+        WorldMetadata::new(max_location_index),
     )?;
 
     // Write R16 texture files

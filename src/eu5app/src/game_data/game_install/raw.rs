@@ -15,29 +15,37 @@ use tracing::instrument;
 ///
 /// Wraps a [`World`] containing west and east hemisphere textures.
 pub struct GameTextures {
-    world: Arc<World<R16>>,
+    world: Arc<World>,
 }
 
 impl GameTextures {
     /// Create from pre-split hemisphere data (for optimized bundles)
-    pub fn new(west_data: Vec<R16>, east_data: Vec<R16>) -> Self {
+    pub fn new(west_data: Vec<R16>, east_data: Vec<R16>, max_location_index: Option<R16>) -> Self {
         let hemisphere_width = hemisphere_size().width;
         let west = Hemisphere::new(west_data, HemisphereLength::new(hemisphere_width));
         let east = Hemisphere::new(east_data, HemisphereLength::new(hemisphere_width));
+
+        let mut builder = World::builder(west, east);
+        if let Some(max) = max_location_index {
+            // SAFETY: Max location index is sourced from trusted internal
+            // bundle metadata produced by the asset compiler.
+            builder = unsafe { builder.with_max_location_index_unchecked(max) };
+        }
+
         Self {
-            world: Arc::new(World::new(west, east)),
+            world: Arc::new(builder.build()),
         }
     }
 
     /// Create directly from a World (for raw data processing)
-    pub fn from_world(world: World<R16>) -> Self {
+    pub fn from_world(world: World) -> Self {
         Self {
             world: Arc::new(world),
         }
     }
 
     /// Returns a cheap clone of the world
-    pub fn world(&self) -> Arc<World<R16>> {
+    pub fn world(&self) -> Arc<World> {
         Arc::clone(&self.world)
     }
 

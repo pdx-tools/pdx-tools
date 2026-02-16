@@ -34,7 +34,7 @@ fn validate_dimensions(
 /// Returns (x_offset, y_offset)
 fn calculate_viewport_bounds(
     map_app: &Eu5Workspace,
-    world: &World<pdx_map::R16>,
+    world: &World,
     width: u32,
     height: u32,
 ) -> (u32, u32) {
@@ -141,7 +141,7 @@ async fn run_headless_async(args: Args) -> Result<(), Box<dyn std::error::Error>
 #[expect(clippy::too_many_arguments)]
 async fn render_viewport(
     mut map_app: Eu5Workspace<'_>,
-    world: &World<pdx_map::R16>,
+    world: &World,
     pipeline_components: &'_ pdx_map::GpuContext,
     west_view: pdx_map::MapTexture,
     east_view: pdx_map::MapTexture,
