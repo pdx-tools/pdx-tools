@@ -8,22 +8,22 @@ pub struct Aabb {
 }
 
 impl Aabb {
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self {
             min: WorldPoint::new(u16::MAX, u16::MAX),
             max: WorldPoint::new(0, 0),
         }
     }
 
-    pub fn new(min: WorldPoint<u16>, max: WorldPoint<u16>) -> Self {
+    pub const fn new(min: WorldPoint<u16>, max: WorldPoint<u16>) -> Self {
         Self { min, max }
     }
 
-    pub fn expand_to(&mut self, point: WorldPoint<u16>) {
-        self.min.x = self.min.x.min(point.x);
-        self.min.y = self.min.y.min(point.y);
-        self.max.x = self.max.x.max(point.x);
-        self.max.y = self.max.y.max(point.y);
+    fn expand_to(&mut self, start_x: u16, end_x: u16, y: u16) {
+        self.min.x = self.min.x.min(start_x);
+        self.min.y = self.min.y.min(y);
+        self.max.x = self.max.x.max(end_x);
+        self.max.y = self.max.y.max(y);
     }
 
     #[inline]
@@ -61,84 +61,51 @@ impl SpatialIndex {
         let hemisphere_width = world.west().size().width as usize;
         let location_capacity = world.location_capacity();
 
-        let mut min_x = vec![u16::MAX; location_capacity];
-        let mut min_y = vec![u16::MAX; location_capacity];
-        let mut max_x = vec![0u16; location_capacity];
-        let mut max_y = vec![0u16; location_capacity];
-
-        let mut update_run = |loc: R16, start_x: u16, end_x: u16, y: u16| {
-            let idx = loc.value() as usize;
-
-            // SAFETY: World::location_capacity() is derived from the world
-            // data, so every location value in the map is within bounds.
-            unsafe {
-                let min_x_val = min_x.get_unchecked_mut(idx);
-                *min_x_val = (*min_x_val).min(start_x);
-
-                let max_x_val = max_x.get_unchecked_mut(idx);
-                *max_x_val = (*max_x_val).max(end_x);
-
-                let min_y_val = min_y.get_unchecked_mut(idx);
-                *min_y_val = (*min_y_val).min(y);
-
-                let max_y_val = max_y.get_unchecked_mut(idx);
-                *max_y_val = (*max_y_val).max(y);
-            }
-        };
-
+        let mut bounds = vec![Aabb::empty(); location_capacity];
         for (row, chunk) in world.west().rows().enumerate() {
             let y = row as u16;
-            if chunk.is_empty() {
+            let Some((run_id, rest)) = chunk.split_first() else {
                 continue;
-            }
+            };
 
-            let mut run_id = chunk[0];
+            let mut run_id = *run_id;
             let mut run_start = 0u16;
-            for (col, r16) in chunk.iter().enumerate().skip(1) {
-                if *r16 != run_id {
-                    let end_x = (col - 1) as u16;
-                    update_run(run_id, run_start, end_x, y);
-                    run_id = *r16;
-                    run_start = col as u16;
+            for (col, &r16) in rest.iter().enumerate() {
+                if r16 != run_id {
+                    let end_x = col as u16;
+                    bounds[run_id.value() as usize].expand_to(run_start, end_x, y);
+                    run_id = r16;
+                    run_start = (col + 1) as u16;
                 }
             }
 
             let end_x = (hemisphere_width - 1) as u16;
-            update_run(run_id, run_start, end_x, y);
+            bounds[run_id.value() as usize].expand_to(run_start, end_x, y);
         }
 
         for (row, chunk) in world.east().rows().enumerate() {
             let y = row as u16;
-            if chunk.is_empty() {
+            let Some((run_id, rest)) = chunk.split_first() else {
                 continue;
-            }
+            };
 
             let x_offset = hemisphere_width as u16;
-            let mut run_id = chunk[0];
+            let mut run_id = *run_id;
             let mut run_start = x_offset;
-            for (col, r16) in chunk.iter().enumerate().skip(1) {
-                if *r16 != run_id {
-                    let end_x = x_offset + (col as u16) - 1;
-                    update_run(run_id, run_start, end_x, y);
-                    run_id = *r16;
-                    run_start = x_offset + col as u16;
+            for (col, &r16) in rest.iter().enumerate() {
+                if r16 != run_id {
+                    let end_x = x_offset + (col as u16);
+                    bounds[run_id.value() as usize].expand_to(run_start, end_x, y);
+                    run_id = r16;
+                    run_start = x_offset + (col + 1) as u16;
                 }
             }
 
             let end_x = x_offset + (hemisphere_width as u16) - 1;
-            update_run(run_id, run_start, end_x, y);
+            bounds[run_id.value() as usize].expand_to(run_start, end_x, y);
         }
 
-        let aabbs = (0..location_capacity)
-            .map(|idx| {
-                Aabb::new(
-                    WorldPoint::new(min_x[idx], min_y[idx]),
-                    WorldPoint::new(max_x[idx], max_y[idx]),
-                )
-            })
-            .collect();
-
-        Self { aabbs }
+        Self { aabbs: bounds }
     }
 
     pub fn query(&self, query_aabb: Aabb) -> impl Iterator<Item = R16> + '_ {
@@ -196,19 +163,6 @@ mod tests {
         let aabb = Aabb::new(WorldPoint::new(10, 20), WorldPoint::new(30, 40));
         assert_eq!(aabb.min(), WorldPoint::new(10, 20));
         assert_eq!(aabb.max(), WorldPoint::new(30, 40));
-    }
-
-    #[test]
-    fn test_aabb_expand() {
-        let mut aabb = Aabb::new(WorldPoint::new(10, 10), WorldPoint::new(11, 11));
-
-        aabb.expand_to(WorldPoint::new(30, 15));
-        assert_eq!(aabb.min(), WorldPoint::new(10, 10));
-        assert_eq!(aabb.max(), WorldPoint::new(30, 15));
-
-        aabb.expand_to(WorldPoint::new(5, 5));
-        assert_eq!(aabb.min(), WorldPoint::new(5, 5));
-        assert_eq!(aabb.max(), WorldPoint::new(30, 15));
     }
 
     #[test]
