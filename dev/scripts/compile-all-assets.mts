@@ -83,25 +83,46 @@ async function packageAll() {
 
   console.log(`📦 Found ${zipBundles.length} bundles to process`);
 
-  // Process all bundles except the last one with --minimal flag
-  // Last bundle gets no --minimal flag
-  const lastBundle = zipBundles.pop();
-  if (lastBundle === undefined) {
-    return;
+  // Group bundles by game (e.g. "eu4", "eu5") based on filename prefix
+  const gameGroups = new Map<string, string[]>();
+  for (const bundle of zipBundles) {
+    const match = bundle.match(/^([a-z0-9]+)-/);
+    const game = match?.[1] ?? "unknown";
+    const group = gameGroups.get(game) ?? [];
+    group.push(bundle);
+    gameGroups.set(game, group);
   }
 
-  const lastBundlePath = join(gameBundlesDir, lastBundle);
+  // EU4 supports --minimal to skip shared assets for older patches.
+  // The latest EU4 bundle gets a full compile, earlier ones get --minimal.
+  // Other games (e.g. EU5) don't use --minimal, so all bundles compile fully.
+  const eu4Bundles = gameGroups.get("eu4") ?? [];
+  const latestEu4 = eu4Bundles.pop();
 
-  // Process the last bundle without --minimal flag
-  console.log(`Processing ${lastBundle} (final bundle)`);
-  await execCommand(pdxAssetsBinary, ['compile', ...opts, lastBundlePath]);
+  // Process the latest EU4 bundle first (full compile with shared assets)
+  if (latestEu4 !== undefined) {
+    const bundlePath = join(gameBundlesDir, latestEu4);
+    console.log(`Processing ${latestEu4} (latest eu4 bundle)`);
+    await execCommand(pdxAssetsBinary, ['compile', ...opts, bundlePath]);
+  }
 
-  const tasks = zipBundles.map((bundle) => {
+  // Process older EU4 bundles with --minimal and all non-EU4 bundles in parallel
+  const remainingTasks: Promise<unknown>[] = [];
+
+  for (const bundle of eu4Bundles) {
     const bundlePath = join(gameBundlesDir, bundle);
-    return execCommand(pdxAssetsBinary, ['compile', '--minimal', ...opts, bundlePath]);
-  });
+    remainingTasks.push(execCommand(pdxAssetsBinary, ['compile', '--minimal', ...opts, bundlePath]));
+  }
 
-  await Promise.all(tasks);
+  for (const [game, bundles] of gameGroups) {
+    if (game === "eu4") continue;
+    for (const bundle of bundles) {
+      const bundlePath = join(gameBundlesDir, bundle);
+      remainingTasks.push(execCommand(pdxAssetsBinary, ['compile', ...opts, bundlePath]));
+    }
+  }
+
+  await Promise.all(remainingTasks);
 }
 
 await packageAll();
