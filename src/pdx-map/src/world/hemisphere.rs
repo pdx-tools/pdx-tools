@@ -22,7 +22,7 @@ impl<T> Hemisphere<T> {
         HemisphereSize::new(self.width.value, self.data.len() as u32 / self.width.value)
     }
 
-    pub fn rows(&self) -> impl Iterator<Item = &[T]> + '_ {
+    pub fn rows(&self) -> std::slice::ChunksExact<'_, T> {
         self.data.chunks_exact(self.width.value as usize)
     }
 
