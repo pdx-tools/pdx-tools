@@ -75,10 +75,18 @@ where
     struct FirstNameVisitor<'bump>(&'bump bumpalo::Bump);
 
     #[derive(Debug, ArenaDeserialize)]
-    struct FirstNameObject<'bump> {
-        #[expect(dead_code)] // unused
-        name: BStr<'bump>,
+    struct FirstNameKey<'bump> {
+        #[arena(alias = "Custom_Name")]
         custom_name: BStr<'bump>,
+    }
+
+    #[derive(Debug, ArenaDeserialize)]
+    struct FirstNameObject<'bump> {
+        name: BStr<'bump>,
+        #[arena(default)]
+        custom_name: Option<BStr<'bump>>,
+        #[arena(default)]
+        key: Option<FirstNameKey<'bump>>,
     }
 
     impl<'de, 'bump> de::Visitor<'de> for FirstNameVisitor<'bump> {
@@ -122,7 +130,13 @@ where
         {
             let deser = MapAccessDeserializer::new(map);
             let first_name = FirstNameObject::deserialize_in_arena(deser, self.0)?;
-            Ok(first_name.custom_name)
+            if let Some(custom_name) = first_name.custom_name {
+                Ok(custom_name)
+            } else if let Some(key) = first_name.key {
+                Ok(key.custom_name)
+            } else {
+                Ok(first_name.name)
+            }
         }
     }
 
@@ -201,5 +215,23 @@ birth_date=1925.1.1"#;
             .expect("Failed to deserialize character with object first_name with custom_name");
 
         assert_eq!(character.first_name.to_str(), "Margret Thatcher");
+    }
+
+    #[test]
+    fn test_first_name_object_with_key_custom_name() {
+        // https://discord.com/channels/712465396590182461/712632868274438195/1477326537811296428
+        let data = r#"first_name={
+name="name_bohuslav"
+key={
+Custom_Name="Ronny"
+}
+}
+birth_date=1925.1.1"#;
+        let allocator = bumpalo::Bump::new();
+        let d = TextDeserializer::from_utf8_slice(data.as_bytes())
+            .expect("Failed to create deserializer");
+        let character: Character = Character::deserialize_in_arena(&d, &allocator)
+            .expect("Failed to deserialize character with key-based custom name");
+        assert_eq!(character.first_name.to_str(), "Ronny");
     }
 }
