@@ -1,0 +1,7 @@
+{
+  "sections": {
+    "fixes": [
+      "Support for loading EU5 saves 1.1 saves with custom first names"
+    ]
+  }
+}
