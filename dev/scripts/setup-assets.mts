@@ -81,6 +81,23 @@ const hasCommand = async (command: string) => {
   }
 };
 
+const getImageMagickEnv = () => ({
+  ...process.env,
+  MAGICK_CONFIGURE_PATH: join(projectRoot, 'src/pdx-assets'),
+});
+
+const getMontageCommand = async () => {
+  if (await hasCommand('magick')) {
+    return 'magick montage';
+  }
+
+  if (await hasCommand('montage')) {
+    return 'montage';
+  }
+
+  return null;
+};
+
 const findLatestBundle = async () => {
   const eu4AssetsDir = join(projectRoot, 'assets/game/eu4');
   
@@ -204,11 +221,13 @@ async function setupAssets() {
     const numImages = dlcImages.length;
     const cols = Math.ceil(Math.sqrt(numImages - 0.5));
 
-    if (await hasCommand('montage')) {
+    const montageCommand = await getMontageCommand();
+
+    if (montageCommand) {
       console.log('  ✅ Using ImageMagick for DLC spritesheet');
       await execCommand(
-        `montage -tile ${cols}x -background transparent -define webp:lossless=true -mode concatenate "dlc-images/*" dlc-sprites.webp`,
-        { cwd: dlcDir }
+        `${montageCommand} +label -tile ${cols}x -background transparent -define webp:lossless=true -mode concatenate "dlc-images/*" dlc-sprites.webp`,
+        { cwd: dlcDir, env: getImageMagickEnv() }
       );
     } else {
       console.log('  ⚠️  ImageMagick not found, creating empty DLC spritesheet placeholder');
@@ -232,12 +251,14 @@ async function setupAssets() {
     const numIcons = iconFiles.length;
     const cols = Math.ceil(Math.sqrt(numIcons - 0.5));
 
-    if (await hasCommand('montage')) {
+    const montageCommand = await getMontageCommand();
+
+    if (montageCommand) {
       console.log('  ✅ Using ImageMagick for icons spritesheet');
       const iconArgs = iconFiles.join(' ');
       await execCommand(
-        `montage -tile ${cols}x -mode concatenate -geometry '32x32>' -background transparent ${iconArgs} icons.webp`,
-        { cwd: iconsDir }
+        `${montageCommand} +label -tile ${cols}x -mode concatenate -geometry '32x32>' -background transparent ${iconArgs} icons.webp`,
+        { cwd: iconsDir, env: getImageMagickEnv() }
       );
     } else {
       console.log('  ⚠️  ImageMagick not found, creating empty icons spritesheet placeholder');
