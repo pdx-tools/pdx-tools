@@ -81,6 +81,25 @@ const hasCommand = async (command: string) => {
   }
 };
 
+const getMontageCommand = async () => {
+  if (await hasCommand('magick')) {
+    return 'magick montage';
+  }
+
+  if (await hasCommand('montage')) {
+    return 'montage';
+  }
+
+  return null;
+};
+
+const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
+
+const getMontageFontArg = () => {
+  const font = process.env.IMAGEMAGICK_FONT?.trim();
+  return font ? ` -font ${shellQuote(font)}` : '';
+};
+
 const findLatestBundle = async () => {
   const eu4AssetsDir = join(projectRoot, 'assets/game/eu4');
   
@@ -204,10 +223,13 @@ async function setupAssets() {
     const numImages = dlcImages.length;
     const cols = Math.ceil(Math.sqrt(numImages - 0.5));
 
-    if (await hasCommand('montage')) {
+    const montageCommand = await getMontageCommand();
+
+    if (montageCommand) {
       console.log('  ✅ Using ImageMagick for DLC spritesheet');
+      const fontArg = getMontageFontArg();
       await execCommand(
-        `montage -tile ${cols}x -background transparent -define webp:lossless=true -mode concatenate "dlc-images/*" dlc-sprites.webp`,
+        `${montageCommand}${fontArg} -tile ${cols}x -background transparent -define webp:lossless=true -mode concatenate "dlc-images/*" dlc-sprites.webp`,
         { cwd: dlcDir }
       );
     } else {
@@ -232,11 +254,14 @@ async function setupAssets() {
     const numIcons = iconFiles.length;
     const cols = Math.ceil(Math.sqrt(numIcons - 0.5));
 
-    if (await hasCommand('montage')) {
+    const montageCommand = await getMontageCommand();
+
+    if (montageCommand) {
       console.log('  ✅ Using ImageMagick for icons spritesheet');
       const iconArgs = iconFiles.join(' ');
+      const fontArg = getMontageFontArg();
       await execCommand(
-        `montage -tile ${cols}x -mode concatenate -geometry '32x32>' -background transparent ${iconArgs} icons.webp`,
+        `${montageCommand}${fontArg} -tile ${cols}x -mode concatenate -geometry "32x32>" -background transparent ${iconArgs} icons.webp`,
         { cwd: iconsDir }
       );
     } else {
