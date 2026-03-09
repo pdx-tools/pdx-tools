@@ -136,7 +136,13 @@ jobs:
           sudo cp src/pdx-assets/policy.xml /etc/ImageMagick-6/policy.xml
       - name: Install dependencies (macos)
         if: matrix.os == 'macos-15'
-        run: brew install imagemagick
+        run: |
+          brew install imagemagick
+
+          # For some reason macos github runner stopped including a font and imagemagick montage needs it
+          brew install --cask font-dejavu
+          FONT_PATH="$(find "$HOME/Library/Fonts" -type f -name 'DejaVuSans.ttf' -print -quit)"
+          echo "IMAGEMAGICK_FONT=$FONT_PATH" >> "$GITHUB_ENV"
 
       - name: Cache assets
         uses: actions/cache@v4
