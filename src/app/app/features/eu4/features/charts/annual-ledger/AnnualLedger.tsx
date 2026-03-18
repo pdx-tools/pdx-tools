@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo } from "react";
-import { EChart, useVisualizationDispatch } from "@/components/viz";
+import {
+  EChart,
+  useVisualizationDispatch,
+  useNearestSeriesItem,
+} from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { LedgerDatum } from "@/features/eu4/types/models";
 import { createCsv } from "@/lib/csv";
@@ -23,6 +27,7 @@ const AnnualLedgerPropped = React.memo(function AnnualLedgerPropped({
   lookup,
 }: MemoProps) {
   const isDark = isDarkMode();
+  const { onInit, getClosestItem } = useNearestSeriesItem();
 
   const option = useMemo((): EChartsOption => {
     // Group data by country name
@@ -80,17 +85,19 @@ const AnnualLedgerPropped = React.memo(function AnnualLedgerPropped({
         },
       },
       tooltip: {
-        trigger: "item",
+        trigger: "axis",
+        axisPointer: { type: "cross", snap: true },
         formatter: (params) => {
-          if (Array.isArray(params)) {
-            return "";
-          }
-          const data = params.data as [number, number];
-          return `
-            <strong>${escapeEChartsHtml(params.seriesName)}</strong><br/>
-            Year: ${data[0]}<br/>
-            Value: ${formatInt(data[1])}
-          `;
+          const items = Array.isArray(params) ? params : [params];
+          if (items.length === 0) return "";
+
+          const closest = getClosestItem(items);
+          const year = (closest.data as [number, number])[0];
+          const value = (closest.data as [number, number])[1];
+          const color = escapeEChartsHtml(closest.color as string);
+          const name = escapeEChartsHtml(closest.seriesName ?? "");
+          const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:4px;"></span>`;
+          return `${dot}<strong>${name}</strong><br/>Year: ${year}<br/>Value: <strong>${formatInt(value)}</strong>`;
         },
       },
       xAxis: {
@@ -118,6 +125,11 @@ const AnnualLedgerPropped = React.memo(function AnnualLedgerPropped({
             color: isDark ? "#ddd" : "#333",
             opacity: 0.3,
             width: 1,
+          },
+        },
+        axisPointer: {
+          label: {
+            formatter: ({ value }) => Math.round(value as number).toString(),
           },
         },
         min: sortedYears[0],
@@ -168,9 +180,15 @@ const AnnualLedgerPropped = React.memo(function AnnualLedgerPropped({
       ],
       series,
     };
-  }, [ledger, lookup, isDark]);
+  }, [ledger, lookup, isDark, getClosestItem]);
 
-  return <EChart option={option} style={{ height: "100%", width: "100%" }} />;
+  return (
+    <EChart
+      option={option}
+      style={{ height: "100%", width: "100%" }}
+      onInit={onInit}
+    />
+  );
 });
 
 export const AnnualLedger = ({
