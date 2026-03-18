@@ -35,3 +35,4 @@ export {
 
 export * from "./LegendColor";
 export type { DataPoint } from "./PieTable";
+export { useNearestSeriesItem } from "./useNearestSeriesItem";
