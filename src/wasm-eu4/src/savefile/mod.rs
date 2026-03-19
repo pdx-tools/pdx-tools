@@ -533,6 +533,29 @@ impl SaveFileImpl {
         results
     }
 
+    pub fn get_countries_mana(&self, payload: TagFilterPayloadRaw) -> Vec<CountryManaExpenditure> {
+        let filter = TagFilterPayload::from(payload);
+        let tags = self.matching_tags(&filter);
+        let save_game_query = SaveGameQuery::new(&self.query, &self.game);
+
+        self.query
+            .countries()
+            .filter(|x| tags.contains(&x.tag))
+            .map(|x| {
+                let mana = self.query.country_mana_breakdown(x.country);
+                let color = country_hex_color(x.country);
+                CountryManaExpenditure {
+                    country: LocalizedTag {
+                        tag: x.tag,
+                        name: save_game_query.localize_country(&x.tag),
+                    },
+                    color,
+                    mana,
+                }
+            })
+            .collect()
+    }
+
     pub fn get_countries_income(
         &self,
         payload: TagFilterPayloadRaw,
