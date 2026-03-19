@@ -27,7 +27,7 @@ pub use world::{Aabb, Hemisphere, SpatialIndex, TopologyIndex, World};
 #[cfg(feature = "render")]
 pub use controller::MapViewController;
 #[cfg(feature = "render")]
-pub use error::{RenderError, RenderErrorKind};
+pub use error::{RenderError, RenderErrorKind, SurfaceError};
 #[cfg(feature = "interaction")]
 pub use interaction::{Clock, InteractionController, KeyboardKey, MouseButton, default_clock};
 #[cfg(feature = "render")]
