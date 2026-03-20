@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use wgpu::SurfaceTarget;
 
-use crate::error::RenderError;
+use crate::error::{RenderError, RenderErrorKind, SurfaceError};
 use crate::{
     GpuLocationIdx, HemisphereSize, LocationArrays, PhysicalSize, R16, ViewportBounds, WorldPoint,
 };
@@ -217,7 +217,7 @@ impl GpuContext {
 
     /// Create a new GPU instance
     pub fn create_instance() -> wgpu::Instance {
-        wgpu::Instance::new(&wgpu::InstanceDescriptor {
+        wgpu::Instance::new(wgpu::InstanceDescriptor {
             // Use DX12 backend on Windows as it seems less susceptible to
             // swap-chain issues. and DX12 will become the default on windows
             // someday: https://github.com/gfx-rs/wgpu/issues/2719
@@ -225,7 +225,7 @@ impl GpuContext {
             backends: wgpu::Backends::DX12,
             #[cfg(not(target_os = "windows"))]
             backends: wgpu::Backends::all(),
-            ..Default::default()
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
         })
     }
 
@@ -403,7 +403,7 @@ impl GpuContext {
                 .device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Map Render Pipeline Layout"),
-                    bind_group_layouts: &[&self.bind_group_layout],
+                    bind_group_layouts: &[Some(&self.bind_group_layout)],
                     immediate_size: 0,
                 });
 
@@ -819,7 +819,7 @@ impl MapRenderer {
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Map Render Pipeline Layout"),
-                bind_group_layouts: &[&self.bind_group_layout],
+                bind_group_layouts: &[Some(&self.bind_group_layout)],
                 immediate_size: 0,
             });
 
@@ -1034,7 +1034,35 @@ impl SurfaceMapRenderer {
         tracing::instrument(name = "pdx-map.render", skip(self), level = "trace", fields(%bounds))
     )]
     pub fn render(&mut self, bounds: ViewportBounds) -> Result<(), RenderError> {
-        let output = self.surface.get_current_texture()?;
+        let output = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(t)
+            | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
+            wgpu::CurrentSurfaceTexture::Timeout => {
+                return Err(RenderError::new(RenderErrorKind::Surface(
+                    SurfaceError::Timeout,
+                )));
+            }
+            wgpu::CurrentSurfaceTexture::Occluded => {
+                return Err(RenderError::new(RenderErrorKind::Surface(
+                    SurfaceError::Occluded,
+                )));
+            }
+            wgpu::CurrentSurfaceTexture::Outdated => {
+                return Err(RenderError::new(RenderErrorKind::Surface(
+                    SurfaceError::Outdated,
+                )));
+            }
+            wgpu::CurrentSurfaceTexture::Lost => {
+                return Err(RenderError::new(RenderErrorKind::Surface(
+                    SurfaceError::Lost,
+                )));
+            }
+            wgpu::CurrentSurfaceTexture::Validation => {
+                return Err(RenderError::new(RenderErrorKind::Surface(
+                    SurfaceError::Validation,
+                )));
+            }
+        };
         let format = output.texture.format();
         let size = PhysicalSize::new(output.texture.width(), output.texture.height());
         let view = output

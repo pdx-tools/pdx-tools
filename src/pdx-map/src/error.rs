@@ -11,11 +11,35 @@ impl RenderError {
     }
 }
 
+/// Surface texture acquisition errors
+#[derive(Debug)]
+pub enum SurfaceError {
+    Timeout,
+    Occluded,
+    Outdated,
+    Lost,
+    Validation,
+}
+
+impl fmt::Display for SurfaceError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SurfaceError::Timeout => write!(f, "timeout acquiring surface texture"),
+            SurfaceError::Occluded => write!(f, "surface is occluded"),
+            SurfaceError::Outdated => write!(f, "surface configuration is outdated"),
+            SurfaceError::Lost => write!(f, "surface has been lost"),
+            SurfaceError::Validation => write!(f, "surface validation error"),
+        }
+    }
+}
+
+impl std::error::Error for SurfaceError {}
+
 /// Enumeration of possible error sources in pdx-map
 #[derive(Debug)]
 pub enum RenderErrorKind {
     /// Surface texture acquisition failed
-    Surface(wgpu::SurfaceError),
+    Surface(SurfaceError),
     /// Surface creation failed
     CreateSurface(wgpu::CreateSurfaceError),
     /// Device request failed
@@ -61,12 +85,6 @@ impl std::error::Error for RenderError {
             RenderErrorKind::OperationCanceled => None,
             RenderErrorKind::DevicePoll(e) => Some(e),
         }
-    }
-}
-
-impl From<wgpu::SurfaceError> for RenderError {
-    fn from(err: wgpu::SurfaceError) -> Self {
-        Self::new(RenderErrorKind::Surface(err))
     }
 }
 
