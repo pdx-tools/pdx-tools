@@ -133,6 +133,22 @@ export const Help = ({ module }: HelpProps) => {
       return (
         <>
           <p>
+            A stacked bar chart comparing each country's total ADM, DIP, and MIL
+            expenditure. Countries are sorted by their total mana spent across
+            all recorded categories.
+          </p>
+          <p>
+            High totals are not always a sign of strength. Heavy mana spending
+            can also reflect inefficiency, recovery costs, or poor decision
+            quality.
+          </p>
+        </>
+      );
+    }
+    case "mana-by-category": {
+      return (
+        <>
+          <p>
             A strip plot comparing mana expenditure across countries. Each row
             is a mana category (e.g., Ideas, Advance Tech, Core Province) and
             each dot represents a country's total spending in that category (ADM

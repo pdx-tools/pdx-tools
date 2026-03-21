@@ -73,6 +73,7 @@ export const ChartDrawerTitle = ({
             <Select.Item value="inflation">Inflation</Select.Item>
             <Select.Item value="dev-efficiency">Dev Efficiency</Select.Item>
             <Select.Item value="mana-expenditure">Mana Expenditure</Select.Item>
+            <Select.Item value="mana-by-category">Mana by Category</Select.Item>
             <Select.Item value="province-dev-density">
               Development Distribution
             </Select.Item>
