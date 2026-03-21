@@ -13,7 +13,7 @@ use eu4save::{
     models::{Eu4Save, Meta},
     query::Query,
 };
-use models::CountryDevEfficiencies;
+use models::{CountriesManaExpenditure, CountryDevEfficiencies};
 use savefile::{
     AchievementsScore, CountryAdvisors, CountryDetails, CountryReligions, Estate,
     FileObservationFrequency, HealthData, LocalizedLedger, MapCursorPayload, MapPayload,
@@ -163,6 +163,10 @@ impl SaveFile {
 
     pub fn get_dev_efficiency(&self, payload: TagFilterPayloadRaw) -> CountryDevEfficiencies {
         self.0.get_dev_efficiency(payload).into()
+    }
+
+    pub fn get_countries_mana(&self, payload: TagFilterPayloadRaw) -> CountriesManaExpenditure {
+        self.0.get_countries_mana(payload).into()
     }
 
     pub fn get_province_development_density(

@@ -129,6 +129,22 @@ export const Help = ({ module }: HelpProps) => {
         </p>
       );
     }
+    case "mana-expenditure": {
+      return (
+        <>
+          <p>
+            A strip plot comparing mana expenditure across countries. Each row
+            is a mana category (e.g., Ideas, Advance Tech, Core Province) and
+            each dot represents a country's total spending in that category (ADM
+            + DIP + MIL combined).
+          </p>
+          <p>
+            The x-axis uses a log scale to handle the large range of values.
+            Categories with zero spending across all countries are hidden.
+          </p>
+        </>
+      );
+    }
     case "navy-casualties":
     case "army-casualties": {
       return (

@@ -665,6 +665,13 @@ pub struct CountryDevEffiency {
     pub dev_mana: i32,
 }
 
+#[derive(Debug, Tsify, Serialize)]
+pub struct CountryManaExpenditure {
+    pub country: LocalizedTag,
+    pub color: String,
+    pub mana: CountryManaUsage,
+}
+
 // start of country details model
 
 #[derive(Tsify, Serialize, Debug)]
