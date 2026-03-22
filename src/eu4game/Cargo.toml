@@ -33,5 +33,3 @@ sha1_smol = { workspace = true }
 tempfile = { workspace = true }
 walkdir = { workspace = true }
 
-[build-dependencies]
-regex = { workspace = true }

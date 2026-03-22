@@ -20,7 +20,6 @@ zstd_rust = ["pdx-zstd/zstd_rust", "eu4save/zstd_rust", "eu4game/zstd_rust"]
 [dependencies]
 eu4game = { default-features = false , workspace = true }
 eu4save = { default-features = false, features = ["tsify"] , workspace = true }
-jomini = { workspace = true }
 js-sys = { workspace = true }
 pdx-zstd = { workspace = true }
 schemas = { workspace = true }
@@ -30,6 +29,5 @@ tsify = { default-features = false, features = ["js"] , workspace = true }
 wasm-bindgen = { workspace = true }
 wasm-pdx-core = { workspace = true }
 
-[dev-dependencies]
-wasm-bindgen-test = { workspace = true }
+
 

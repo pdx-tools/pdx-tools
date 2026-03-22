@@ -213,17 +213,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-trait"
-version = "0.1.89"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9035ad2d096bed7955a320ee7e2230574d28fd3c3a0f186cbea1ff3c7eed5dbb"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.101",
-]
-
-[[package]]
 name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -927,7 +916,6 @@ dependencies = [
  "highway",
  "jomini",
  "pdx-zstd",
- "regex",
  "schemas",
  "serde",
  "serde_path_to_error",
@@ -992,8 +980,6 @@ name = "eu5native"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bumpalo",
- "bumpalo-serde",
  "bytemuck",
  "clap",
  "eu5app",
@@ -1015,10 +1001,8 @@ dependencies = [
  "attohttpc",
  "bumpalo",
  "bumpalo-serde",
- "flate2",
  "highway",
  "jomini",
- "rawzip",
  "rstest",
  "serde",
  "tempfile",
@@ -1920,16 +1904,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
 
 [[package]]
-name = "minicov"
-version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4869b6a491569605d66d3952bcdf03df789e5b536e5f0cf7758a7f08a55ae24d"
-dependencies = [
- "cc",
- "walkdir",
-]
-
-[[package]]
 name = "miniz_oxide"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2479,19 +2453,14 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "applib",
- "bytemuck",
  "clap",
  "csv",
- "eu4game",
  "eu4save",
  "flate2",
- "highway",
  "mimalloc",
- "pdx-map",
  "pdx-zstd",
  "rawzip",
  "rayon",
- "schemas",
  "serde",
  "serde_json",
  "tracing",
@@ -2511,11 +2480,9 @@ dependencies = [
  "eu4game-data",
  "eu4save",
  "eu5app",
- "eu5save",
  "flate2",
  "jomini",
  "mimalloc",
- "pdx-map",
  "pdx-zstd",
  "postcard",
  "rawbmp",
@@ -2592,7 +2559,6 @@ version = "0.1.0"
 dependencies = [
  "applib",
  "axum",
- "eu4game",
  "image",
  "mimalloc",
  "tokio",
@@ -3840,14 +3806,11 @@ name = "vic3save"
 version = "0.1.0"
 dependencies = [
  "attohttpc",
- "flate2",
  "getrandom",
  "highway",
  "jomini",
  "mathru",
- "rawzip",
  "serde",
- "serde_path_to_error",
  "tempfile",
  "thiserror 2.0.12",
 ]
@@ -3948,50 +3911,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-bindgen-test"
-version = "0.3.64"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6311c867385cc7d5602463b31825d454d0837a3aba7cdb5e56d5201792a3f7fe"
-dependencies = [
- "async-trait",
- "cast",
- "js-sys",
- "libm",
- "minicov",
- "nu-ansi-term",
- "num-traits",
- "oorandom",
- "serde",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-bindgen-test-macro",
- "wasm-bindgen-test-shared",
-]
-
-[[package]]
-name = "wasm-bindgen-test-macro"
-version = "0.3.64"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67008cdde4769831958536b0f11b3bdd0380bde882be17fff9c2f34bb4549abd"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.101",
-]
-
-[[package]]
-name = "wasm-bindgen-test-shared"
-version = "0.2.114"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfe29135b180b72b04c74aa97b2b4a2ef275161eff9a6c7955ea9eaedc7e1d4e"
-
-[[package]]
 name = "wasm-ck3"
 version = "0.1.0"
 dependencies = [
  "ck3save",
- "jomini",
  "js-sys",
  "pdx-zstd",
  "schemas",
@@ -4019,7 +3942,6 @@ version = "0.1.0"
 dependencies = [
  "eu4game",
  "eu4save",
- "jomini",
  "js-sys",
  "pdx-zstd",
  "schemas",
@@ -4027,7 +3949,6 @@ dependencies = [
  "serde-wasm-bindgen",
  "tsify",
  "wasm-bindgen",
- "wasm-bindgen-test",
  "wasm-pdx-core",
 ]
 
@@ -4035,18 +3956,12 @@ dependencies = [
 name = "wasm-eu5"
 version = "0.1.0"
 dependencies = [
- "bumpalo",
- "bumpalo-serde",
  "eu5app",
  "eu5save",
- "jomini",
  "js-sys",
- "pdx-map",
  "pdx-zstd",
  "schemas",
  "serde",
- "serde-wasm-bindgen",
- "tracing",
  "tsify",
  "wasm-bindgen",
  "wasm-pdx-core",
@@ -4059,10 +3974,6 @@ dependencies = [
  "eu5app",
  "js-sys",
  "pdx-map",
- "serde",
- "serde-wasm-bindgen",
- "tracing",
- "tsify",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-pdx-core",
@@ -4075,12 +3986,10 @@ name = "wasm-hoi4"
 version = "0.1.0"
 dependencies = [
  "hoi4save",
- "jomini",
  "js-sys",
  "pdx-zstd",
  "schemas",
  "serde",
- "serde-wasm-bindgen",
  "tsify",
  "wasm-bindgen",
 ]
@@ -4090,7 +3999,6 @@ name = "wasm-imperator"
 version = "0.1.0"
 dependencies = [
  "imperator-save",
- "jomini",
  "js-sys",
  "pdx-zstd",
  "schemas",
@@ -4103,7 +4011,6 @@ dependencies = [
 name = "wasm-pdx-core"
 version = "0.1.0"
 dependencies = [
- "js-sys",
  "serde",
  "tracing",
  "tsify",
@@ -4117,7 +4024,6 @@ dependencies = [
  "js-sys",
  "pdx-map",
  "serde",
- "serde-wasm-bindgen",
  "tsify",
  "wasm-bindgen",
  "wasm-bindgen-futures",

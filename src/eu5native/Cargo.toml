@@ -9,8 +9,6 @@ workspace = true
 [dependencies]
 anyhow = { workspace = true }
 bytemuck = { workspace = true, features = ["derive"] }
-bumpalo = { workspace = true, features = ["collections"] }
-bumpalo-serde = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 eu5app = { workspace = true, default-features = false, features = ["game-install", "zstd_c"] }
 eu5save = { workspace = true }

@@ -17,7 +17,6 @@ zstd_c_fat_lto = ["pdx-zstd/zstd_c_fat_lto"]
 zstd_rust = ["pdx-zstd/zstd_rust"]
 
 [dependencies]
-jomini = { workspace = true }
 schemas = { workspace = true }
 wasm-bindgen = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
