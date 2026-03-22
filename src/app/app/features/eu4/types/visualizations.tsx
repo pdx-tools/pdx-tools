@@ -16,4 +16,5 @@ export type VizModules =
   | "provinces"
   | "dev-efficiency"
   | "province-dev-density"
-  | "mana-expenditure";
+  | "mana-expenditure"
+  | "mana-by-category";

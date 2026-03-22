@@ -18,6 +18,7 @@ import { OwnedDevelopmentStatesTree } from "./OwnedDevelopmentStatesTree";
 import { ProvinceDataTable } from "./ProvinceDataTable";
 import { DevEfficiency } from "./DevEfficiency";
 import { ManaExpenditure } from "./ManaExpenditure";
+import { ManaTotals } from "./ManaTotals";
 import { ProvinceDevelopmentDensity } from "./ProvinceDevelopmentDensity";
 
 interface VizRendererProps {
@@ -61,6 +62,8 @@ export const VizRenderer = ({ module }: VizRendererProps) => {
     case "province-dev-density":
       return <ProvinceDevelopmentDensity />;
     case "mana-expenditure":
+      return <ManaTotals />;
+    case "mana-by-category":
       return <ManaExpenditure />;
   }
 };
