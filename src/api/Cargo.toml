@@ -11,7 +11,6 @@ workspace = true
 axum = { workspace = true }
 tokio = { features = ["rt", "macros", "rt-multi-thread", "signal"] , workspace = true }
 applib = { workspace = true, default-features = false, features = ["zstd_c"] }
-eu4game = { workspace = true, default-features = false, features = ["embedded", "zstd_c"] }
 tower-http = { features = ["trace"] , workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { features = ["env-filter"] , workspace = true }

@@ -99,7 +99,6 @@ vic3save = { path = "src/vic3save" }
 walkdir = "2.5.0"
 wasm-bindgen = { version = "0.2.114", default-features = false }
 wasm-bindgen-futures = "0.4.64"
-wasm-bindgen-test = "0.3.64"
 wasm-pdx-core = { path = "src/wasm-pdx-core" }
 wasm-pdx-map = { path = "src/wasm-pdx-map" }
 web-sys = "0.3.91"
