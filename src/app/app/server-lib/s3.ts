@@ -26,13 +26,7 @@ export const pdxCloudflareS3 = ({ context }: { context: AppLoadContext }) => ({
   endpoint: context.cloudflare.env.S3_ENDPOINT,
 });
 
-export const pdxS3 = ({
-  accessKey,
-  secretKey,
-  region,
-  bucket,
-  endpoint,
-}: S3Connection) => {
+export const pdxS3 = ({ accessKey, secretKey, region, bucket, endpoint }: S3Connection) => {
   console.log("Creating S3 client with endpoint", endpoint);
   const s3client = new AwsClient({
     accessKeyId: accessKey,
@@ -45,8 +39,7 @@ export const pdxS3 = ({
     region,
   };
 
-  const s3Url = (arg: { toString: () => string }) =>
-    new URL(arg.toString(), endpoint);
+  const s3Url = (arg: { toString: () => string }) => new URL(arg.toString(), endpoint);
 
   const s3Fetch = (...args: Parameters<(typeof s3client)["fetch"]>) => {
     return args[0] instanceof Request
@@ -69,8 +62,7 @@ export const pdxS3 = ({
 
   const s3Keys = {
     save: (saveId: string) => `${bucket}/${saveId}` as unknown as S3Key,
-    preview: (saveId: string) =>
-      `${bucket}/previews/${saveId}.webp` as unknown as S3Key,
+    preview: (saveId: string) => `${bucket}/previews/${saveId}.webp` as unknown as S3Key,
   } as const;
 
   return {

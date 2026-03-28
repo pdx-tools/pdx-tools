@@ -11,10 +11,7 @@ export const NewSchema = z.object({
   cursor: z.string().nullish(),
 });
 
-export async function getSaves(
-  db: DbConnection,
-  params: z.infer<typeof NewSchema>,
-) {
+export async function getSaves(db: DbConnection, params: z.infer<typeof NewSchema>) {
   const query = db
     .select(
       saveView({
@@ -38,15 +35,12 @@ export async function getSaves(
       )
     : query;
 
-  const saves = await cursorQuery
-    .orderBy(desc(table.saves.createdOn))
-    .limit(params.pageSize);
+  const saves = await cursorQuery.orderBy(desc(table.saves.createdOn)).limit(params.pageSize);
   const result = saves.map(({ user, save }) => ({
     ...user,
     ...toApiSave(save),
   }));
-  const cursorRes =
-    result.length < params.pageSize ? undefined : result.at(-1)?.id;
+  const cursorRes = result.length < params.pageSize ? undefined : result.at(-1)?.id;
 
   return { saves: result, cursor: cursorRes };
 }

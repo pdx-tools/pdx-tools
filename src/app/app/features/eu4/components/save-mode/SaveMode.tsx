@@ -49,12 +49,7 @@ export const SaveMode = ({ mode }: SaveModeProps) => {
       return (
         <Tooltip>
           <Tooltip.Trigger>
-            <img
-              alt="Ironman, achievements enabled"
-              src={ironmanOk}
-              width="30"
-              height="36"
-            />
+            <img alt="Ironman, achievements enabled" src={ironmanOk} width="30" height="36" />
           </Tooltip.Trigger>
           <Tooltip.Content>Ironman, achievements enabled</Tooltip.Content>
         </Tooltip>

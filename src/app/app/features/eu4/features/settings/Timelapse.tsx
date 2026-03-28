@@ -25,12 +25,7 @@ import type { Eu4Store } from "../../store";
 import { IconButton } from "@/components/IconButton";
 import { Button } from "@/components/Button";
 import { Slider } from "@/components/Slider";
-import {
-  CameraIcon,
-  PauseIcon,
-  PlayIcon,
-  VideoCameraIcon,
-} from "@heroicons/react/24/solid";
+import { CameraIcon, PauseIcon, PlayIcon, VideoCameraIcon } from "@heroicons/react/24/solid";
 import { StopIcon } from "@heroicons/react/24/outline";
 import { MixerHorizontalIcon } from "@/components/icons/MixerHorizontalIcon";
 import { Popover } from "@/components/Popover";
@@ -51,20 +46,10 @@ import { captureException } from "@/lib/captureException";
 
 type Interval = "year" | "month" | "day";
 
-function createTimelapsePayload({
-  store,
-  interval,
-}: {
-  store: Eu4Store;
-  interval: Interval;
-}) {
+function createTimelapsePayload({ store, interval }: { store: Eu4Store; interval: Interval }) {
   const state = store.getState();
   const mapMode = state.mapMode;
-  const currentMapDate = selectDate(
-    mapMode,
-    state.save.meta,
-    state.selectedDate,
-  );
+  const currentMapDate = selectDate(mapMode, state.save.meta, state.selectedDate);
 
   return {
     kind: mapMode == "battles" || mapMode == "religion" ? mapMode : "political",
@@ -87,10 +72,7 @@ function calculateTimelapseParams(timeSpanDays: number) {
     const fps = Math.min(8, Math.floor(timeSpanYears / MIN_TIMELAPSE_DURATION));
     return { interval: "year" as Interval, fps: Math.max(fps, 1) };
   } else if (timeSpanMonths >= MIN_TIMELAPSE_DURATION) {
-    const fps = Math.min(
-      28,
-      Math.floor(timeSpanMonths / MIN_TIMELAPSE_DURATION),
-    );
+    const fps = Math.min(28, Math.floor(timeSpanMonths / MIN_TIMELAPSE_DURATION));
     return { interval: "month" as Interval, fps: Math.max(fps, 1) };
   } else {
     const fps = Math.min(30, Math.floor(timeSpanDays / MIN_TIMELAPSE_DURATION));
@@ -228,13 +210,7 @@ export const Timelapse = () => {
             className="opacity-75 transition-opacity enabled:hover:opacity-90"
             disabled={!timelapseEnabled || isRecording}
             onClick={!isPlaying ? startTimelapse : stopTimelapse}
-            icon={
-              !isPlaying ? (
-                <PlayIcon className="h-6 w-6" />
-              ) : (
-                <PauseIcon className="h-6 w-6" />
-              )
-            }
+            icon={!isPlaying ? <PlayIcon className="h-6 w-6" /> : <PauseIcon className="h-6 w-6" />}
           />
 
           <DropdownMenu>
@@ -265,14 +241,8 @@ export const Timelapse = () => {
             </DropdownMenu.Trigger>
             <DropdownMenu.Content className="w-40" sideOffset={7}>
               <DropdownMenu.Item asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => startRecording("None")}
-                >
-                  <span className="w-full py-2 text-xl tracking-tight">
-                    Current view
-                  </span>
+                <Button variant="ghost" className="w-full" onClick={() => startRecording("None")}>
+                  <span className="w-full py-2 text-xl tracking-tight">Current view</span>
                 </Button>
               </DropdownMenu.Item>
               <DropdownMenu.Item asChild>
@@ -282,9 +252,7 @@ export const Timelapse = () => {
                   className="w-full"
                   onClick={() => startRecording("4x")}
                 >
-                  <span className="w-full py-2 text-xl tracking-tight">
-                    World (1:4)
-                  </span>
+                  <span className="w-full py-2 text-xl tracking-tight">World (1:4)</span>
                 </Button>
               </DropdownMenu.Item>
               <DropdownMenu.Item asChild>
@@ -294,9 +262,7 @@ export const Timelapse = () => {
                   className="w-full"
                   onClick={() => startRecording("2x")}
                 >
-                  <span className="w-full py-2 text-xl tracking-tight">
-                    World (1:2)
-                  </span>
+                  <span className="w-full py-2 text-xl tracking-tight">World (1:2)</span>
                 </Button>
               </DropdownMenu.Item>
               <DropdownMenu.Arrow className="fill-white dark:fill-slate-800" />
@@ -335,17 +301,11 @@ export const Timelapse = () => {
                 <div>
                   <label>
                     <div>
-                      Timelapse speed:{" "}
-                      {`${timelapseSpeed.fps} ${timelapseSpeed.interval}`}s/s
+                      Timelapse speed: {`${timelapseSpeed.fps} ${timelapseSpeed.interval}`}s/s
                     </div>
                     <Slider
                       className="mt-1"
-                      value={[
-                        intervalFpsToSlider(
-                          timelapseSpeed.interval,
-                          timelapseSpeed.fps,
-                        ),
-                      ]}
+                      value={[intervalFpsToSlider(timelapseSpeed.interval, timelapseSpeed.fps)]}
                       min={1}
                       max={83}
                       onValueChange={(v) => {
@@ -418,10 +378,7 @@ function TimelapseSlider() {
   const meta = useEu4Meta();
   const currentMapDate = useSelectedDate();
   const { setSelectedDateDay } = useEu4Actions();
-  const dayChange = useMemo(
-    () => throttle(setSelectedDateDay, 100),
-    [setSelectedDateDay],
-  );
+  const dayChange = useMemo(() => throttle(setSelectedDateDay, 100), [setSelectedDateDay]);
 
   return (
     <Slider
@@ -458,25 +415,13 @@ function intervalOffset(i: Interval) {
 const TerrainToggleRow = () => {
   const data = useTerrainOverlay();
   const { setTerrainOverlay } = useEu4Actions();
-  return (
-    <ToggleRow
-      value={data}
-      onChange={setTerrainOverlay}
-      text="Overlay terrain textures"
-    />
-  );
+  return <ToggleRow value={data} onChange={setTerrainOverlay} text="Overlay terrain textures" />;
 };
 
 const MapStripesToggleRow = () => {
   const data = useMapShowStripes();
   const { setMapShowStripes } = useEu4Actions();
-  return (
-    <ToggleRow
-      value={data}
-      onChange={setMapShowStripes}
-      text="Paint map mode stripes"
-    />
-  );
+  return <ToggleRow value={data} onChange={setMapShowStripes} text="Paint map mode stripes" />;
 };
 
 const PaintSubjectInOverlordHueToggleRow = () => {
@@ -498,39 +443,21 @@ const PaintSubjectInOverlordHueToggleRow = () => {
 const ProvinceBordersToggleRow = () => {
   const data = useShowProvinceBorders();
   const { setShowProvinceBorders } = useEu4Actions();
-  return (
-    <ToggleRow
-      value={data}
-      onChange={setShowProvinceBorders}
-      text="Paint province borders"
-    />
-  );
+  return <ToggleRow value={data} onChange={setShowProvinceBorders} text="Paint province borders" />;
 };
 
 const CountryBordersToggleRow = () => {
   const data = useShowCountryBorders();
   const { setShowCountryBorders } = useEu4Actions();
 
-  return (
-    <ToggleRow
-      value={data}
-      onChange={setShowCountryBorders}
-      text="Paint country borders"
-    />
-  );
+  return <ToggleRow value={data} onChange={setShowCountryBorders} text="Paint country borders" />;
 };
 
 const MapModeBordersToggleRow = () => {
   const data = useShowMapModeBorders();
   const { setShowMapModeBorders } = useEu4Actions();
 
-  return (
-    <ToggleRow
-      value={data}
-      onChange={setShowMapModeBorders}
-      text="Paint map mode borders"
-    />
-  );
+  return <ToggleRow value={data} onChange={setShowMapModeBorders} text="Paint map mode borders" />;
 };
 
 function Screenshot() {
@@ -608,11 +535,7 @@ function Screenshot() {
           className="opacity-60 transition-opacity enabled:hover:opacity-90"
           aria-label="take screenshot"
           icon={
-            isExporting ? (
-              <LoadingIcon className="h-6 w-6" />
-            ) : (
-              <CameraIcon className="h-6 w-6" />
-            )
+            isExporting ? <LoadingIcon className="h-6 w-6" /> : <CameraIcon className="h-6 w-6" />
           }
         />
       </DropdownMenu.Trigger>
@@ -624,36 +547,17 @@ function Screenshot() {
             className="w-full"
             onClick={() => run("view")}
           >
-            <span className="w-full py-2 text-xl tracking-tight">
-              Current view
-            </span>
+            <span className="w-full py-2 text-xl tracking-tight">Current view</span>
           </Button>
         </DropdownMenu.Item>
         <DropdownMenu.Item asChild disabled={supportedTextureSize < IMG_WIDTH}>
-          <Button
-            variant="ghost"
-            shape="none"
-            className="w-full"
-            onClick={() => run(1)}
-          >
-            <span className="w-full py-2 text-xl tracking-tight">
-              World (1:1)
-            </span>
+          <Button variant="ghost" shape="none" className="w-full" onClick={() => run(1)}>
+            <span className="w-full py-2 text-xl tracking-tight">World (1:1)</span>
           </Button>
         </DropdownMenu.Item>
-        <DropdownMenu.Item
-          asChild
-          disabled={supportedTextureSize < IMG_WIDTH * 2}
-        >
-          <Button
-            variant="ghost"
-            shape="none"
-            className="w-full"
-            onClick={() => run(2)}
-          >
-            <span className="w-full py-2 text-xl tracking-tight">
-              World (2:1)
-            </span>
+        <DropdownMenu.Item asChild disabled={supportedTextureSize < IMG_WIDTH * 2}>
+          <Button variant="ghost" shape="none" className="w-full" onClick={() => run(2)}>
+            <span className="w-full py-2 text-xl tracking-tight">World (2:1)</span>
           </Button>
         </DropdownMenu.Item>
         <DropdownMenu.Arrow className="fill-white dark:fill-slate-800" />

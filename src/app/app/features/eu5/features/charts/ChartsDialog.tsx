@@ -34,9 +34,7 @@ export const ChartsDialog = ({ children }: ChartsDialogProps) => {
           const efficacyData = await engine.trigger.getStateEfficacy();
           setData((prev) => ({ ...prev, stateEfficacy: efficacyData }));
         } catch (err) {
-          setError(
-            err instanceof Error ? err.message : "Failed to load chart data",
-          );
+          setError(err instanceof Error ? err.message : "Failed to load chart data");
         } finally {
           setIsLoading(false);
         }
@@ -114,9 +112,9 @@ export const ChartsDialog = ({ children }: ChartsDialogProps) => {
         <div className="flex-shrink-0 border-t border-white/10 px-8 py-2">
           {activeChart === "state-efficacy" && (
             <div className="text-xs text-slate-400">
-              <span className="font-semibold text-slate-300">Formula:</span>{" "}
-              Location Efficacy = Control × Development | Total Efficacy = Σ(all
-              owned locations) | Filtered to nations with ≥10 locations
+              <span className="font-semibold text-slate-300">Formula:</span> Location Efficacy =
+              Control × Development | Total Efficacy = Σ(all owned locations) | Filtered to nations
+              with ≥10 locations
             </div>
           )}
         </div>

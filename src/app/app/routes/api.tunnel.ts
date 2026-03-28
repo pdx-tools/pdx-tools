@@ -25,12 +25,9 @@ export async function action({ request, context }: Route.ActionArgs) {
     headers.set("X-Forwarded-For", clientIp);
   }
 
-  return fetch(
-    `https://${context.cloudflare.env.SENTRY_HOST}/api/${project_id}/envelope/`,
-    {
-      method: "POST",
-      body,
-      headers,
-    },
-  );
+  return fetch(`https://${context.cloudflare.env.SENTRY_HOST}/api/${project_id}/envelope/`, {
+    method: "POST",
+    body,
+    headers,
+  });
 }

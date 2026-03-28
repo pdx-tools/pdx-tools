@@ -165,59 +165,33 @@ export class MapPlayground {
     if (!this.canvas || !this.controlsPanel || !this.uploadModal) return;
 
     // Canvas events
-    this.canvas.addEventListener(
-      "pointerdown",
-      this.handlePointerDown.bind(this),
-    );
-    this.canvas.addEventListener(
-      "pointermove",
-      this.handlePointerMove.bind(this),
-    );
+    this.canvas.addEventListener("pointerdown", this.handlePointerDown.bind(this));
+    this.canvas.addEventListener("pointermove", this.handlePointerMove.bind(this));
     this.canvas.addEventListener("pointerup", this.handlePointerUp.bind(this));
     this.canvas.addEventListener("wheel", this.handleWheel.bind(this));
 
     // Upload modal events
-    const mapImageInput = this.uploadModal.querySelector(
-      "#mapImageInput",
-    ) as HTMLInputElement;
-    mapImageInput?.addEventListener(
-      "change",
-      this.handleMapImageChange.bind(this),
-    );
+    const mapImageInput = this.uploadModal.querySelector("#mapImageInput") as HTMLInputElement;
+    mapImageInput?.addEventListener("change", this.handleMapImageChange.bind(this));
 
     // Controls panel events
     const ownerBordersCheckbox = this.controlsPanel.querySelector(
       "#ownerBordersCheckbox",
     ) as HTMLInputElement;
-    ownerBordersCheckbox?.addEventListener(
-      "change",
-      this.toggleOwnerBorders.bind(this),
-    );
+    ownerBordersCheckbox?.addEventListener("change", this.toggleOwnerBorders.bind(this));
 
-    const screenshotBtn = this.controlsPanel.querySelector(
-      "#screenshotBtn",
-    ) as HTMLButtonElement;
+    const screenshotBtn = this.controlsPanel.querySelector("#screenshotBtn") as HTMLButtonElement;
     screenshotBtn?.addEventListener("click", this.takeScreenshot.bind(this));
 
     const locationDataInput = this.controlsPanel.querySelector(
       "#locationDataInput",
     ) as HTMLInputElement;
-    locationDataInput?.addEventListener(
-      "change",
-      this.handleLocationDataChange.bind(this),
-    );
+    locationDataInput?.addEventListener("change", this.handleLocationDataChange.bind(this));
 
-    const highlightForm = this.controlsPanel.querySelector(
-      "#highlightForm",
-    ) as HTMLFormElement;
-    highlightForm?.addEventListener(
-      "submit",
-      this.handleHighlightSubmit.bind(this),
-    );
+    const highlightForm = this.controlsPanel.querySelector("#highlightForm") as HTMLFormElement;
+    highlightForm?.addEventListener("submit", this.handleHighlightSubmit.bind(this));
 
-    const highlightInput = this.controlsPanel.querySelector(
-      "#highlightInput",
-    ) as HTMLInputElement;
+    const highlightInput = this.controlsPanel.querySelector("#highlightInput") as HTMLInputElement;
     highlightInput?.addEventListener("input", (e) => {
       this.highlightInput = (e.target as HTMLInputElement).value;
       this.updateUI();
@@ -264,10 +238,9 @@ export class MapPlayground {
       console.log("Starting map initialization...");
 
       // Create worker
-      const worker = new Worker(
-        new URL("./workers/map/worker.ts", import.meta.url),
-        { type: "module" },
-      );
+      const worker = new Worker(new URL("./workers/map/worker.ts", import.meta.url), {
+        type: "module",
+      });
       this.worker = worker;
       console.log("Worker created");
 
@@ -426,10 +399,7 @@ export class MapPlayground {
     } catch (error) {
       console.error("Error loading location data:", error);
       this.setState({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to load location data",
+        error: error instanceof Error ? error.message : "Failed to load location data",
       });
     }
   }
@@ -474,8 +444,7 @@ export class MapPlayground {
     } catch (error) {
       console.error("Error taking screenshot:", error);
       this.setState({
-        error:
-          error instanceof Error ? error.message : "Failed to take screenshot",
+        error: error instanceof Error ? error.message : "Failed to take screenshot",
       });
     } finally {
       this.setState({ isGeneratingScreenshot: false });
@@ -538,21 +507,16 @@ export class MapPlayground {
       }
 
       // Screenshot button
-      const screenshotBtn = this.controlsPanel.querySelector(
-        "#screenshotBtn",
-      ) as HTMLButtonElement;
+      const screenshotBtn = this.controlsPanel.querySelector("#screenshotBtn") as HTMLButtonElement;
       if (screenshotBtn) {
-        screenshotBtn.disabled =
-          !this.isEngineReady || this.state.isGeneratingScreenshot;
+        screenshotBtn.disabled = !this.isEngineReady || this.state.isGeneratingScreenshot;
         screenshotBtn.textContent = this.state.isGeneratingScreenshot
           ? "Generating Screenshot..."
           : "Take Screenshot";
       }
 
       // Location data loaded display
-      const locationDataLoaded = this.controlsPanel.querySelector(
-        "#locationDataLoaded",
-      );
+      const locationDataLoaded = this.controlsPanel.querySelector("#locationDataLoaded");
       if (locationDataLoaded && this.locationDataFile) {
         locationDataLoaded.textContent = `Loaded: ${this.locationDataFile.name}`;
         locationDataLoaded.classList.remove("hidden");

@@ -5,11 +5,7 @@ import type {
   ProvinceHistoryEvent,
   TradeCompanyInvestments,
 } from "../../types/models";
-import {
-  TcInvestmentAvatar,
-  BuildingAvatar,
-  Flag,
-} from "@/features/eu4/components/avatars";
+import { TcInvestmentAvatar, BuildingAvatar, Flag } from "@/features/eu4/components/avatars";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { formatFloat, formatInt } from "@/lib/format";
 import { Tooltip } from "@/components/Tooltip";
@@ -94,9 +90,7 @@ const historyColumns = [
   }),
 ];
 
-export const ProvinceDetailsDescriptions = ({
-  province,
-}: ProvinceDetailsProps) => {
+export const ProvinceDetailsDescriptions = ({ province }: ProvinceDetailsProps) => {
   const sideBarContainerRef = useSideBarContainerRef();
   return (
     <div className="flex max-h-full flex-col gap-12" ref={sideBarContainerRef}>
@@ -107,8 +101,7 @@ export const ProvinceDetailsDescriptions = ({
             <td className="py-2">
               <Tooltip>
                 <Tooltip.Trigger>
-                  {province.base_tax} / {province.base_production} /{" "}
-                  {province.base_manpower}
+                  {province.base_tax} / {province.base_production} / {province.base_manpower}
                 </Tooltip.Trigger>
                 <Tooltip.Content>tax / production / manpower</Tooltip.Content>
               </Tooltip>
@@ -128,10 +121,7 @@ export const ProvinceDetailsDescriptions = ({
             <th className="py-2 text-left">Controller:</th>
             <td className="py-2">
               {province.controller ? (
-                <Flag
-                  tag={province.controller.tag}
-                  name={province.controller.name}
-                />
+                <Flag tag={province.controller.tag} name={province.controller.name} />
               ) : (
                 "---"
               )}
@@ -183,9 +173,7 @@ export const ProvinceDetailsDescriptions = ({
           </tr>
           <tr>
             <th className="py-2 text-left">In Trade Company:</th>
-            <td className="py-2">
-              {province.is_in_trade_company ? "yes" : "no"}
-            </td>
+            <td className="py-2">{province.is_in_trade_company ? "yes" : "no"}</td>
           </tr>
           <tr>
             <th className="py-2 text-left">Buildings:</th>
@@ -213,13 +201,8 @@ export const ProvinceDetailsDescriptions = ({
           <DataTable columns={stateColumns} data={province.map_area.states} />
           {province.map_area.investments.length == 0 ? null : (
             <>
-              <div>
-                {province.map_area?.area_name} Trade Company Investments
-              </div>
-              <DataTable
-                columns={investmentColumns}
-                data={province.map_area.investments}
-              />
+              <div>{province.map_area?.area_name} Trade Company Investments</div>
+              <DataTable columns={investmentColumns} data={province.map_area.investments} />
             </>
           )}
         </div>

@@ -7,9 +7,7 @@ export function seo({
   description?: string;
   image?: string;
 }) {
-  const titles = title
-    ? [{ title }, { property: "og:title", content: title }]
-    : [];
+  const titles = title ? [{ title }, { property: "og:title", content: title }] : [];
 
   const descriptions = description
     ? [

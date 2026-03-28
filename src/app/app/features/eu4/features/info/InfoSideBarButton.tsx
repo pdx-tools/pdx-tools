@@ -25,10 +25,7 @@ const InfoSideBarTitle = () => {
   );
 };
 
-export const InfoSideBarButton = ({
-  children,
-  ...props
-}: SideBarButtonProps) => {
+export const InfoSideBarButton = ({ children, ...props }: SideBarButtonProps) => {
   return (
     <Sheet modal={false}>
       <Sheet.Trigger asChild>

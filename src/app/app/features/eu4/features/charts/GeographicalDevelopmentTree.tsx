@@ -17,19 +17,12 @@ type DevelopmentStatisticProps = {
   manpower: number;
 };
 
-const DevelopmentStatistic = ({
-  tax,
-  production,
-  manpower,
-  title,
-}: DevelopmentStatisticProps) => {
+const DevelopmentStatistic = ({ tax, production, manpower, title }: DevelopmentStatisticProps) => {
   return (
     <div className="flex flex-col items-center">
       <span className="text-lg">{title}</span>
       <span className="flex flex-col items-center gap-1">
-        <span className="text-2xl font-bold">
-          {formatInt(tax + production + manpower)}
-        </span>
+        <span className="text-2xl font-bold">{formatInt(tax + production + manpower)}</span>
         <div className="flex gap-4 text-gray-500 dark:text-gray-300">
           <div className="flex flex-col items-center leading-none">
             <div className="all-small-caps text-sm">tax</div>
@@ -91,9 +84,7 @@ const normalizeTree = (node: DevelopmentTreeInput): DevelopmentTreeNode => {
       name: node.name,
       value: Number((node.value ?? totals.value) || 0),
       tax: Number.isFinite(node.tax) ? tax : totals.tax,
-      production: Number.isFinite(node.production)
-        ? production
-        : totals.production,
+      production: Number.isFinite(node.production) ? production : totals.production,
       manpower: Number.isFinite(node.manpower) ? manpower : totals.manpower,
       children,
     };
@@ -113,10 +104,7 @@ const normalizeTree = (node: DevelopmentTreeInput): DevelopmentTreeNode => {
 export const GeographicalDevelopmentTree = () => {
   const countryFilter = useTagFilter();
   const { data, error } = useAnalysisWorker(
-    useCallback(
-      (worker) => worker.eu4GeographicalDevelopment(countryFilter),
-      [countryFilter],
-    ),
+    useCallback((worker) => worker.eu4GeographicalDevelopment(countryFilter), [countryFilter]),
   );
   const visualizationDispatch = useVisualizationDispatch();
 
@@ -248,9 +236,7 @@ function GeographicalDevelopmentTreeData({ data }: { data: RootTree }) {
             height: 30,
             bottom: 0,
             itemStyle: {
-              color: isDark
-                ? "rgba(255, 255, 255, 0.25)"
-                : "rgba(0, 0, 0, 0.25)",
+              color: isDark ? "rgba(255, 255, 255, 0.25)" : "rgba(0, 0, 0, 0.25)",
               borderColor: isDark ? "#666" : "#999",
               borderWidth: 1,
               shadowColor: "rgba(0, 0, 0, 0.15)",
@@ -261,9 +247,7 @@ function GeographicalDevelopmentTreeData({ data }: { data: RootTree }) {
             },
             emphasis: {
               itemStyle: {
-                color: isDark
-                  ? "rgba(255, 255, 255, 0.5)"
-                  : "rgba(0, 0, 0, 0.5)",
+                color: isDark ? "rgba(255, 255, 255, 0.5)" : "rgba(0, 0, 0, 0.5)",
                 textStyle: {
                   color: isDark ? "#fff" : "#000",
                 },

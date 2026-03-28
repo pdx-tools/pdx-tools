@@ -25,16 +25,11 @@ type CountryBudgetCountProps = {
 };
 
 function sumValues(...obj: { [key: string]: number }[]): number {
-  return obj.reduce(
-    (acc, x) => acc + Object.values(x).reduce((sum, value) => sum + value, 0),
-    0,
-  );
+  return obj.reduce((acc, x) => acc + Object.values(x).reduce((sum, value) => sum + value, 0), 0);
 }
 
 function negate<T extends Record<string, number>>(obj: T): T {
-  return Object.fromEntries(
-    Object.entries(obj).map(([key, val]) => [key, -val]),
-  ) as T;
+  return Object.fromEntries(Object.entries(obj).map(([key, val]) => [key, -val])) as T;
 }
 
 type BudgetBar = { key: string; value: number; start: number; end: number };
@@ -68,9 +63,9 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
     12,
   );
 
-  const [budgetInterval, setBudgetInterval] = useState<
-    "last-month" | "ytd" | "last-year"
-  >("last-year");
+  const [budgetInterval, setBudgetInterval] = useState<"last-month" | "ytd" | "last-year">(
+    "last-year",
+  );
 
   let budget: Budget;
   if (budgetInterval === "last-month") {
@@ -171,9 +166,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
   }
 
   if (sumValues(budget["Interest Payments"])) {
-    bars["Interest Payments"] = Object.entries(
-      negate(budget["Interest Payments"]),
-    )
+    bars["Interest Payments"] = Object.entries(negate(budget["Interest Payments"]))
       .map(([key, value]) => [incomeAliases.get(key) ?? key, value] as const)
       .filter(([, value]) => value !== 0.0)
       .reduce((acc: BudgetBar[], [key, value]) => {
@@ -186,9 +179,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
   }
 
   if (sumValues(budget["Diplomatic Expenses"])) {
-    bars["Diplomatic Expenses"] = Object.entries(
-      negate(budget["Diplomatic Expenses"]),
-    )
+    bars["Diplomatic Expenses"] = Object.entries(negate(budget["Diplomatic Expenses"]))
       .map(([key, value]) => [incomeAliases.get(key) ?? key, value] as const)
       .filter(([, value]) => value !== 0.0)
       .reduce((acc: BudgetBar[], [key, value]) => {
@@ -221,9 +212,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
   }
 
   if (sumValues(budget["One-time Expenses"])) {
-    bars["One-time Expenses"] = Object.entries(
-      negate(budget["One-time Expenses"]),
-    )
+    bars["One-time Expenses"] = Object.entries(negate(budget["One-time Expenses"]))
       .map(([key, value]) => [incomeAliases.get(key) ?? key, value] as const)
       .filter(([, value]) => value !== 0.0)
       .reduce((acc: BudgetBar[], [key, value]) => {
@@ -236,9 +225,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
   }
 
   if (sumValues(budget["Capital Expenditure"])) {
-    bars["Capital Expenditure"] = Object.entries(
-      negate(budget["Capital Expenditure"]),
-    )
+    bars["Capital Expenditure"] = Object.entries(negate(budget["Capital Expenditure"]))
       .map(([key, value]) => [incomeAliases.get(key) ?? key, value] as const)
       .filter(([, value]) => value !== 0.0)
       .reduce((acc: BudgetBar[], [key, value]) => {
@@ -260,10 +247,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
   const barLabels = Object.keys(bars);
   const height = 66 * barLabels.length + marginTop + axisPadding + marginBottom;
 
-  const y = scaleBand(barLabels, [
-    0,
-    height - marginBottom - marginTop - axisPadding,
-  ]).padding(0.1);
+  const y = scaleBand(barLabels, [0, height - marginBottom - marginTop - axisPadding]).padding(0.1);
 
   const gxCb = useCallback(
     (gx: SVGGElement | null) => {
@@ -286,10 +270,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
     sumValues(lastYearBudget[kind]) ||
     (isExpense(kind) && sumValues(totalExpenses[kind]));
 
-  const hasRow = <KIND extends keyof typeof budget>(
-    kind: KIND,
-    key: keyof (typeof budget)[KIND],
-  ) =>
+  const hasRow = <KIND extends keyof typeof budget>(kind: KIND, key: keyof (typeof budget)[KIND]) =>
     budget[kind][key] || ytdDateBudget[kind][key] || lastYearBudget[kind][key];
 
   const hasExpenseRow = <KIND extends keyof typeof totalExpenses>(
@@ -298,20 +279,9 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
   ) => hasRow(kind, key) || totalExpenses[kind][key];
 
   const allIncomes = [lastMonthBudget, ytdDateBudget, lastYearBudget];
-  const allExpenses = [
-    lastMonthBudget,
-    ytdDateBudget,
-    lastYearBudget,
-    totalExpenses,
-  ];
+  const allExpenses = [lastMonthBudget, ytdDateBudget, lastYearBudget, totalExpenses];
 
-  const PercentTotal = ({
-    value,
-    className,
-  }: {
-    value: number;
-    className?: string;
-  }) => (
+  const PercentTotal = ({ value, className }: { value: number; className?: string }) => (
     <td className={cx("pl-4 text-right", className)}>
       {formatFloat((value / totalDucatsSpent) * 100, 2)}%
     </td>
@@ -466,9 +436,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
             <div className="text-2xl font-bold">
               {formatInt(budgetSelect.operatingProfit(lastMonthBudget))}
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-300">
-              Operating profit
-            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-300">Operating profit</div>
           </div>
         </Card>
 
@@ -490,12 +458,8 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
             </svg>
           </div>
           <div>
-            <div className="text-2xl font-bold">
-              {formatInt(totalDucatsSpent)}
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-300">
-              Total ducats spent
-            </div>
+            <div className="text-2xl font-bold">{formatInt(totalDucatsSpent)}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-300">Total ducats spent</div>
           </div>
         </Card>
 
@@ -520,17 +484,13 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
             <div className="text-2xl font-bold">
               {formatFloat(budgetSelect.capexRatio(totalExpenses) * 100, 2)}%
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-300">
-              Capital Expenditure
-            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-300">Capital Expenditure</div>
           </div>
         </Card>
       </div>
 
       <div className="text-center">
-        <h3 className="text-bold mb-2 text-lg font-semibold">
-          Budget Waterfall
-        </h3>
+        <h3 className="text-bold mb-2 text-lg font-semibold">Budget Waterfall</h3>
         <ToggleGroup
           type="single"
           className="inline-flex"
@@ -657,9 +617,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
               .map((kind) => (
                 <React.Fragment key={kind}>
                   <tr className="border-b">
-                    <td className="pt-4 text-center font-semibold italic">
-                      {kind}
-                    </td>
+                    <td className="pt-4 text-center font-semibold italic">{kind}</td>
                   </tr>
 
                   {budgetSelect
@@ -677,9 +635,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                       </tr>
                     ))}
                   <tr className="border-b border-gray-300 dark:border-gray-600">
-                    <td className="text-center font-semibold italic">
-                      Subtotal
-                    </td>
+                    <td className="text-center font-semibold italic">Subtotal</td>
                     {allIncomes.map((x, i) => (
                       <td key={i} className="text-right font-semibold italic">
                         {formatFloat(sumValues(x[kind]), 2)}
@@ -695,9 +651,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
             </tr>
 
             <tr className="bg-gray-200/50 dark:bg-gray-600/50">
-              <td className="px-2 text-center text-lg font-semibold italic">
-                Recurring Revenue
-              </td>
+              <td className="px-2 text-center text-lg font-semibold italic">Recurring Revenue</td>
               {allIncomes.map((x, i) => (
                 <td key={i} className="text-right text-lg font-semibold italic">
                   {formatFloat(budgetSelect.recurringRevenue(x), 2)}
@@ -711,40 +665,36 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
               <td className="pt-4" />
             </tr>
 
-            {(["Maintenance", "Diplomatic Expenses"] as const)
-              .filter(hasSection)
-              .map((kind) => (
-                <React.Fragment key={kind}>
-                  <tr className="border-b">
-                    <td className="pt-4 text-center font-semibold italic">
-                      {kind}
+            {(["Maintenance", "Diplomatic Expenses"] as const).filter(hasSection).map((kind) => (
+              <React.Fragment key={kind}>
+                <tr className="border-b">
+                  <td className="pt-4 text-center font-semibold italic">{kind}</td>
+                </tr>
+                {budgetSelect
+                  .keys(budget[kind])
+                  .filter((key) => hasExpenseRow(kind, key))
+                  .map((key) => (
+                    <tr key={key}>
+                      <td>{key}</td>
+                      {allExpenses.map((x, i) => (
+                        <td key={i} className="text-right">
+                          {formatFloat(x[kind][key], 2)}
+                        </td>
+                      ))}
+                      <PercentTotal value={totalExpenses[kind][key]} />
+                    </tr>
+                  ))}
+                <tr className="border-b border-gray-300 font-semibold italic dark:border-gray-600">
+                  <td className="text-center">Subtotal</td>
+                  {allExpenses.map((x, i) => (
+                    <td key={i} className="text-right">
+                      {formatFloat(sumValues(x[kind]), 2)}
                     </td>
-                  </tr>
-                  {budgetSelect
-                    .keys(budget[kind])
-                    .filter((key) => hasExpenseRow(kind, key))
-                    .map((key) => (
-                      <tr key={key}>
-                        <td>{key}</td>
-                        {allExpenses.map((x, i) => (
-                          <td key={i} className="text-right">
-                            {formatFloat(x[kind][key], 2)}
-                          </td>
-                        ))}
-                        <PercentTotal value={totalExpenses[kind][key]} />
-                      </tr>
-                    ))}
-                  <tr className="border-b border-gray-300 font-semibold italic dark:border-gray-600">
-                    <td className="text-center">Subtotal</td>
-                    {allExpenses.map((x, i) => (
-                      <td key={i} className="text-right">
-                        {formatFloat(sumValues(x[kind]), 2)}
-                      </td>
-                    ))}
-                    <PercentTotal value={sumValues(totalExpenses[kind])} />
-                  </tr>
-                </React.Fragment>
-              ))}
+                  ))}
+                  <PercentTotal value={sumValues(totalExpenses[kind])} />
+                </tr>
+              </React.Fragment>
+            ))}
             {!!hasSection("Interest Payments") && (
               <tr>
                 <td className="pt-3">Interest Payments</td>
@@ -753,9 +703,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                     {formatFloat(x["Interest Payments"].Interest, 2)}
                   </td>
                 ))}
-                <PercentTotal
-                  value={totalExpenses["Interest Payments"].Interest}
-                />
+                <PercentTotal value={totalExpenses["Interest Payments"].Interest} />
               </tr>
             )}
 
@@ -770,9 +718,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                   {formatFloat(budgetSelect.operatingExpenses(x), 2)}
                 </td>
               ))}
-              <PercentTotal
-                value={budgetSelect.operatingExpenses(totalExpenses)}
-              />
+              <PercentTotal value={budgetSelect.operatingExpenses(totalExpenses)} />
             </tr>
 
             <tr className="bg-gray-200/50 text-xl font-semibold italic dark:bg-gray-600/50">
@@ -793,9 +739,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
             {!!hasSection("One-time Income") && (
               <>
                 <tr className="border-b pt-3">
-                  <td className="text-center font-semibold italic">
-                    One-time Income
-                  </td>
+                  <td className="text-center font-semibold italic">One-time Income</td>
                 </tr>
                 {budgetSelect
                   .keys(budget["One-time Income"])
@@ -830,9 +774,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
               .map((kind) => (
                 <React.Fragment key={kind}>
                   <tr className="border-b">
-                    <td className="pt-4 text-center font-semibold italic">
-                      {kind}
-                    </td>
+                    <td className="pt-4 text-center font-semibold italic">{kind}</td>
                   </tr>
 
                   {budgetSelect
@@ -867,9 +809,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
             </tr>
 
             <tr className="bg-gray-200/50 dark:bg-gray-600/50">
-              <td className="text-center text-xl font-semibold italic">
-                Net Profit
-              </td>
+              <td className="text-center text-xl font-semibold italic">Net Profit</td>
               {allIncomes.map((x, i) => (
                 <td key={i} className="text-right text-xl font-semibold italic">
                   {formatFloat(budgetSelect.netProfit(x), 2)}
@@ -883,13 +823,8 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
       </Card>
 
       <div className="h-[750px] w-full">
-        <h3 className="text-bold text-center text-lg font-semibold">
-          Total Expenses Tree
-        </h3>
-        <EChart
-          option={treeMapOption}
-          style={{ height: "100%", width: "100%" }}
-        />
+        <h3 className="text-bold text-center text-lg font-semibold">Total Expenses Tree</h3>
+        <EChart option={treeMapOption} style={{ height: "100%", width: "100%" }} />
       </div>
     </div>
   );
@@ -979,13 +914,7 @@ function BudgetRect({
 
   return (
     <g
-      className={cx(
-        single
-          ? "fill-gray-600"
-          : value > 0
-            ? "fill-emerald-600"
-            : "fill-rose-800",
-      )}
+      className={cx(single ? "fill-gray-600" : value > 0 ? "fill-emerald-600" : "fill-rose-800")}
       transform={`translate(${single || value > 0 ? 0 : barPadding}, 0)`}
     >
       <rect x={start} height={height} width={width}>

@@ -8,10 +8,7 @@ import { Sheet } from "@/components/Sheet";
 import { useSaveFilename } from "../../store";
 import { WatchContent } from "./WatchContent";
 
-export const WatchSideBarButton = ({
-  children,
-  ...props
-}: SideBarButtonProps) => {
+export const WatchSideBarButton = ({ children, ...props }: SideBarButtonProps) => {
   return (
     <Sheet modal={false}>
       <Sheet.Trigger asChild>

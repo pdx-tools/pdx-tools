@@ -29,9 +29,7 @@ const columnHelper = createColumnHelper<CountryReligion>();
 const columns = [
   columnHelper.accessor("name", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Religion" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Religion" />,
     cell: ({ row }) => (
       <Tooltip>
         <Tooltip.Trigger className="flex items-center gap-2">
@@ -49,18 +47,12 @@ const columns = [
       columnHelper.accessor("provinces", {
         sortingFn: "basic",
         header: "Value",
-        cell: (info) => (
-          <div className="text-right">{formatInt(info.getValue())}</div>
-        ),
+        cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
       }),
       columnHelper.accessor("provinces_percent", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="%" />
-        ),
-        cell: (info) => (
-          <div className="text-right">{formatFloat(info.getValue(), 2)}%</div>
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="%" />,
+        cell: (info) => <div className="text-right">{formatFloat(info.getValue(), 2)}%</div>,
       }),
     ],
   }),
@@ -71,27 +63,18 @@ const columns = [
       columnHelper.accessor("development", {
         sortingFn: "basic",
         header: "Value",
-        cell: (info) => (
-          <div className="text-right">{formatInt(info.getValue())}</div>
-        ),
+        cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
       }),
       columnHelper.accessor("development_percent", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="%" />
-        ),
-        cell: (info) => (
-          <div className="text-right">{formatFloat(info.getValue(), 2)}%</div>
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="%" />,
+        cell: (info) => <div className="text-right">{formatFloat(info.getValue(), 2)}%</div>,
       }),
     ],
   }),
 ];
 
-const CountryReligionVizImpl = ({
-  data,
-  largeLayout,
-}: CountryReligionVizProps) => {
+const CountryReligionVizImpl = ({ data, largeLayout }: CountryReligionVizProps) => {
   const isDark = isDarkMode();
 
   const option = useMemo((): EChartsOption => {
@@ -227,21 +210,20 @@ const RebelConvert = ({ rebel }: { rebel: RebelReligion }) => {
 
   return (
     <div className="max-w-prose">
-      How to change the state religion to{" "}
-      <span className="font-semibold">{religion.name}</span> via rebels:
+      How to change the state religion to <span className="font-semibold">{religion.name}</span> via
+      rebels:
       <ul className="pl-3">
         <li>
           <EmojiKey value={rebel.until_plurality <= 0} />{" "}
           {rebel.until_plurality <= 0 ? (
             <>
-              <span className="font-semibold">{rebel.religion.name}</span> has
-              reached a plurality of development
+              <span className="font-semibold">{rebel.religion.name}</span> has reached a plurality
+              of development
             </>
           ) : (
             <>
               <span className="font-semibold">{rebel.religion.name}</span> needs{" "}
-              <span className="font-semibold">{dev}</span> additional
-              development to reach{" "}
+              <span className="font-semibold">{dev}</span> additional development to reach{" "}
               <span className="font-semibold">plurality</span>
             </>
           )}
@@ -250,16 +232,12 @@ const RebelConvert = ({ rebel }: { rebel: RebelReligion }) => {
           Afterwards, the following actions will change the state religion:
           <ul className="pl-3">
             <li>
-              <EmojiKey
-                value={religion.negotiate_convert_on_dominant_religion}
-              />{" "}
-              Accept <span className="font-semibold">{religion.name}</span>{" "}
-              rebel demands
+              <EmojiKey value={religion.negotiate_convert_on_dominant_religion} /> Accept{" "}
+              <span className="font-semibold">{religion.name}</span> rebel demands
             </li>
             <li>
               <EmojiKey value={religion.force_convert_on_break} /> Wait for{" "}
-              <span className="font-semibold">{religion.name}</span> rebels to
-              enforce demands
+              <span className="font-semibold">{religion.name}</span> rebels to enforce demands
             </li>
           </ul>
         </li>
@@ -273,10 +251,7 @@ const CountryReligionViz = React.memo(CountryReligionVizImpl);
 export const CountryReligions = ({ details }: CountryReligionsProps) => {
   const isMd = useBreakpoint("md");
   const { data, error } = useEu4Worker(
-    useCallback(
-      (worker) => worker.eu4GetCountryProvinceReligion(details.tag),
-      [details.tag],
-    ),
+    useCallback((worker) => worker.eu4GetCountryProvinceReligion(details.tag), [details.tag]),
   );
 
   return (
@@ -294,11 +269,7 @@ export const CountryReligions = ({ details }: CountryReligionsProps) => {
                   can directly convert to{" "}
                   {data.allowedConversions.map((x, i) => (
                     <React.Fragment key={x.id}>
-                      {i != 0
-                        ? i == data.allowedConversions.length - 1
-                          ? " and "
-                          : ", "
-                        : ""}
+                      {i != 0 ? (i == data.allowedConversions.length - 1 ? " and " : ", ") : ""}
                       <span key={x.id} className="font-semibold">
                         {x.name}
                       </span>
@@ -313,8 +284,7 @@ export const CountryReligions = ({ details }: CountryReligionsProps) => {
               <>
                 <RebelConvert rebel={data.rebel} />
                 {data.rebel.religion.force_convert_on_break !== false ||
-                data.rebel.religion.negotiate_convert_on_dominant_religion !==
-                  false ? (
+                data.rebel.religion.negotiate_convert_on_dominant_religion !== false ? (
                   <div>
                     <p className="max-w-prose">
                       Techniques to influence amount needed to reach plurality:
@@ -323,8 +293,7 @@ export const CountryReligions = ({ details }: CountryReligionsProps) => {
                       {data.rebel.more_popular.map((x) => (
                         <li key={x.id}>
                           <span className="font-semibold">
-                            ({formatInt(x.exploitable)} /{" "}
-                            {formatInt(x.provinces)})
+                            ({formatInt(x.exploitable)} / {formatInt(x.provinces)})
                           </span>{" "}
                           {x.name} provinces with exploitable development
                         </li>
@@ -338,10 +307,7 @@ export const CountryReligions = ({ details }: CountryReligionsProps) => {
                       </li>
                       {data.rebel.until_plurality > 0 ? (
                         <li>
-                          Conquer{" "}
-                          <span className="font-semibold">
-                            {data.rebel.religion.name}
-                          </span>{" "}
+                          Conquer <span className="font-semibold">{data.rebel.religion.name}</span>{" "}
                           provinces worth{" "}
                           <span className="font-semibold">
                             {Number.isInteger(data.rebel.until_plurality)
@@ -355,10 +321,8 @@ export const CountryReligions = ({ details }: CountryReligionsProps) => {
                         <span className="font-semibold">
                           {formatInt(data.rebel.religion.provinces)}
                         </span>{" "}
-                        <span className="font-semibold">
-                          {data.rebel.religion.name}
-                        </span>{" "}
-                        provinces can be developed with{" "}
+                        <span className="font-semibold">{data.rebel.religion.name}</span> provinces
+                        can be developed with{" "}
                         <span className="font-semibold">
                           {formatInt(
                             Math.max(details.adm_mana, 0) +

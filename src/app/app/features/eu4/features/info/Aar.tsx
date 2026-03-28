@@ -13,9 +13,7 @@ interface AarProps {
 }
 
 export const Aar = ({ defaultValue, editMode }: AarProps) => {
-  const [isEditing, setIsEditing] = useState(
-    editMode == "always" || !defaultValue,
-  );
+  const [isEditing, setIsEditing] = useState(editMode == "always" || !defaultValue);
   const serverFile = useServerSaveFile();
   const patchSave = pdxApi.save.useUpdate();
 
@@ -54,10 +52,7 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
           rows={8}
           maxLength={5000}
           readOnly={!isEditing}
-          className={cx(
-            "grow px-2 py-1",
-            isEditing ? "border dark:border-gray-600" : "",
-          )}
+          className={cx("grow px-2 py-1", isEditing ? "border dark:border-gray-600" : "")}
         />
 
         {editMode == "privileged" && (
@@ -69,11 +64,7 @@ export const Aar = ({ defaultValue, editMode }: AarProps) => {
       </div>
 
       {isEditing && (
-        <Button
-          type="submit"
-          variant="primary"
-          className="w-48 justify-center self-center"
-        >
+        <Button type="submit" variant="primary" className="w-48 justify-center self-center">
           Update
         </Button>
       )}

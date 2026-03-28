@@ -24,8 +24,7 @@ export const DownloadButton = () => {
     <Tooltip>
       <Tooltip.Trigger asChild>
         <Button className="flex gap-2" onClick={download}>
-          {loading ? <LoadingIcon className="h-4 w-4 text-gray-800" /> : null}{" "}
-          <span>Download</span>
+          {loading ? <LoadingIcon className="h-4 w-4 text-gray-800" /> : null} <span>Download</span>
         </Button>
       </Tooltip.Trigger>
       <Tooltip.Content>Download the EU4 save</Tooltip.Content>

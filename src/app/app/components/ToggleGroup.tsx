@@ -7,9 +7,7 @@ const ToggleGroupRoot = React.forwardRef<
   React.ComponentRef<typeof ToggleGroupPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Root>
 >(function ToggleGroupRoot({ className, ...props }, ref) {
-  return (
-    <ToggleGroupPrimitive.Root ref={ref} className={className} {...props} />
-  );
+  return <ToggleGroupPrimitive.Root ref={ref} className={className} {...props} />;
 });
 
 const toggleGroupItemVariants = cva("focus-visible:z-10", {
@@ -24,9 +22,7 @@ const toggleGroupItemVariants = cva("focus-visible:z-10", {
   },
 });
 
-type ToggleGroupItemProps = React.ComponentPropsWithoutRef<
-  typeof ToggleGroupPrimitive.Item
-> &
+type ToggleGroupItemProps = React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Item> &
   VariantProps<typeof toggleGroupItemVariants>;
 
 const ToggleGroupItem = React.forwardRef<

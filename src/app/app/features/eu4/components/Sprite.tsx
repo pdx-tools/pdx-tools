@@ -86,10 +86,7 @@ export const Sprite = ({
     <div
       role={alt ? "img" : "presentation"}
       aria-label={alt || undefined}
-      className={cx(
-        className,
-        srcSet ? classes["sprite"] : classes["static-sprite"],
-      )}
+      className={cx(className, srcSet ? classes["sprite"] : classes["static-sprite"])}
       style={
         {
           ...forcedDimensions,

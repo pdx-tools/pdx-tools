@@ -2,12 +2,7 @@ import { proxy, transfer } from "comlink";
 import type { wrap } from "comlink";
 import type { MapWorker } from "./map-worker-types";
 import type { MapToken, ScreenshotOptions, UpdateOptions } from "./map-worker";
-import type {
-  UserRect,
-  WheelEvent as WorkerWheelEvent,
-  MoveEvent,
-  DrawEvent,
-} from "./map";
+import type { UserRect, WheelEvent as WorkerWheelEvent, MoveEvent, DrawEvent } from "./map";
 
 export class MapController {
   private lastScrollTime = 0;
@@ -24,10 +19,7 @@ export class MapController {
 
   public register(options?: {
     onProvinceHover?: (provinceId: number) => void;
-    onProvinceSelect?: (arg: {
-      provinceId: number;
-      colorIndex: number;
-    }) => void;
+    onProvinceSelect?: (arg: { provinceId: number; colorIndex: number }) => void;
     onDraw?: (event: DrawEvent) => void;
   }) {
     if (options?.onProvinceHover) {
@@ -37,10 +29,7 @@ export class MapController {
       this.canvas.addEventListener("pointermove", ({ clientX, clientY }) => {
         window.clearTimeout(hoverTimeout);
         hoverTimeout = window.setTimeout(async () => {
-          const province = await this.worker.findProvince(
-            { clientX, clientY },
-            this.mapToken,
-          );
+          const province = await this.worker.findProvince({ clientX, clientY }, this.mapToken);
           if (province && province.provinceId !== currentHoverProvince) {
             currentHoverProvince = province.provinceId;
             hover(province.provinceId);
@@ -51,25 +40,19 @@ export class MapController {
 
     if (options?.onProvinceSelect) {
       const select = options?.onProvinceSelect;
-      this.canvas.addEventListener(
-        "pointerup",
-        async ({ clientX, clientY }) => {
-          const diffX = Math.abs(clientX - this.initialMousePos[0]);
-          const diffY = Math.abs(clientY - this.initialMousePos[1]);
+      this.canvas.addEventListener("pointerup", async ({ clientX, clientY }) => {
+        const diffX = Math.abs(clientX - this.initialMousePos[0]);
+        const diffY = Math.abs(clientY - this.initialMousePos[1]);
 
-          if (diffX + diffY > 15) {
-            return;
-          }
+        if (diffX + diffY > 15) {
+          return;
+        }
 
-          const province = await this.worker.findProvince(
-            { clientX, clientY },
-            this.mapToken,
-          );
-          if (province) {
-            select(province);
-          }
-        },
-      );
+        const province = await this.worker.findProvince({ clientX, clientY }, this.mapToken);
+        if (province) {
+          select(province);
+        }
+      });
     }
 
     if (options?.onDraw) {
@@ -141,9 +124,7 @@ export class MapController {
       const a = primaryPointer;
       const b = secondaryPointer;
 
-      const dist = Math.sqrt(
-        (b.clientX - a.clientX) ** 2 + (b.clientY - a.clientY) ** 2,
-      );
+      const dist = Math.sqrt((b.clientX - a.clientX) ** 2 + (b.clientY - a.clientY) ** 2);
 
       if (pointerDiff != 0) {
         const midpoint = {
@@ -160,17 +141,12 @@ export class MapController {
       pointerDiff = dist;
     }
 
-    function handleMouseDown(
-      e: PointerEvent & { preventDefault: () => void; button: number },
-    ) {
+    function handleMouseDown(e: PointerEvent & { preventDefault: () => void; button: number }) {
       e.preventDefault();
       if (e.button === 0) {
         if (e.isPrimary) {
           primaryPointer = e;
-          controller.mousePos = controller.initialMousePos = [
-            e.clientX,
-            e.clientY,
-          ];
+          controller.mousePos = controller.initialMousePos = [e.clientX, e.clientY];
           canvas.addEventListener("pointermove", moveCamera);
           canvas.addEventListener("pointerup", handleMouseUp);
         } else {
@@ -272,17 +248,11 @@ export class MapController {
   }
 
   public zoomIn() {
-    this.worker.withCommands(
-      [{ kind: "zoom-in" }, { kind: "draw-viewport" }],
-      this.mapToken,
-    );
+    this.worker.withCommands([{ kind: "zoom-in" }, { kind: "draw-viewport" }], this.mapToken);
   }
 
   public zoomOut() {
-    this.worker.withCommands(
-      [{ kind: "zoom-out" }, { kind: "draw-viewport" }],
-      this.mapToken,
-    );
+    this.worker.withCommands([{ kind: "zoom-out" }, { kind: "draw-viewport" }], this.mapToken);
   }
 
   private resize(width: number, height: number) {
@@ -299,18 +269,13 @@ export class MapController {
     );
   }
 
-  public screenshot(
-    screenshot: ScreenshotOptions,
-    options?: ImageEncodeOptions,
-  ) {
+  public screenshot(screenshot: ScreenshotOptions, options?: ImageEncodeOptions) {
     return this.worker.screenshot(this.mapToken, screenshot, options);
   }
 
   public update(settings: UpdateOptions, options?: { draw?: boolean }) {
     const redrawMap =
-      settings.showProvinceBorders ??
-      settings.showCountryBorders ??
-      settings.showMapModeBorders;
+      settings.showProvinceBorders ?? settings.showCountryBorders ?? settings.showMapModeBorders;
     const redrawEl = options?.draw
       ? [
           {
@@ -319,17 +284,11 @@ export class MapController {
         ]
       : [];
 
-    return this.worker.withCommands(
-      [{ kind: "update", ...settings }, ...redrawEl],
-      this.mapToken,
-    );
+    return this.worker.withCommands([{ kind: "update", ...settings }, ...redrawEl], this.mapToken);
   }
 
   public moveCameraTo(arg: { x: number; y: number; offsetX?: number }) {
-    return this.worker.withCommands(
-      [{ kind: "move-camera-to", event: arg }],
-      this.mapToken,
-    );
+    return this.worker.withCommands([{ kind: "move-camera-to", event: arg }], this.mapToken);
   }
 
   public highlightProvince({ colorIndex }: { colorIndex: number }) {

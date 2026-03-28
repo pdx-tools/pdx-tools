@@ -6,9 +6,7 @@ const ASSET_HOST = "eu-assets.i.posthog.com";
 // https://posthog.com/docs/advanced/proxy/remix
 const posthogProxy = async (request: Request) => {
   const url = new URL(request.url);
-  const hostname = url.pathname.startsWith("/ph/static/")
-    ? ASSET_HOST
-    : API_HOST;
+  const hostname = url.pathname.startsWith("/ph/static/") ? ASSET_HOST : API_HOST;
 
   const newUrl = new URL(url);
   newUrl.protocol = "https";
@@ -31,8 +29,6 @@ const posthogProxy = async (request: Request) => {
   return fetch(newUrl, init);
 };
 
-export const loader = async ({ request }: Route.LoaderArgs) =>
-  posthogProxy(request);
+export const loader = async ({ request }: Route.LoaderArgs) => posthogProxy(request);
 
-export const action = async ({ request }: Route.ActionArgs) =>
-  posthogProxy(request);
+export const action = async ({ request }: Route.ActionArgs) => posthogProxy(request);

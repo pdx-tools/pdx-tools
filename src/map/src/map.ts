@@ -2,12 +2,7 @@ import type { GLResources } from "./glResources";
 import { setupFramebufferTexture } from "./glResources";
 import type { ProvinceFinder } from "./ProvinceFinder";
 import type { TerrainOverlayResources } from "./types";
-import {
-  IMG_HEIGHT,
-  IMG_WIDTH,
-  IMG_PADDED_WIDTH,
-  SPLIT_IMG_PADDED_WIDTH,
-} from "./mapDimensions";
+import { IMG_HEIGHT, IMG_WIDTH, IMG_PADDED_WIDTH, SPLIT_IMG_PADDED_WIDTH } from "./mapDimensions";
 
 const IMG_ASPECT = IMG_WIDTH / IMG_HEIGHT;
 
@@ -110,12 +105,7 @@ export class WebGLMap {
     provinceFinder: ProvinceFinder,
     pixelRatio: number,
   ): WebGLMap {
-    return new WebGLMap(
-      glResources.gl,
-      glResources,
-      provinceFinder,
-      pixelRatio,
-    );
+    return new WebGLMap(glResources.gl, glResources, provinceFinder, pixelRatio);
   }
 
   /** Returns a promise for when the canvas has been updated with latest viewport */
@@ -168,22 +158,11 @@ export class WebGLMap {
 
   private applyMapShaderParameters() {
     this.glResources.mapShaderProgram.setTextures(this.glResources);
-    this.glResources.mapShaderProgram.setRenderProvinceBorders(
-      this.showProvinceBorders,
-    );
-    this.glResources.mapShaderProgram.setRenderMapmodeBorders(
-      this.showMapModeBorders,
-    );
-    this.glResources.mapShaderProgram.setRenderCountryBorders(
-      this.showCountryBorders,
-    );
-    this.glResources.mapShaderProgram.setProvinceCount(
-      this.glResources.provinceCount,
-    );
-    this.glResources.mapShaderProgram.setTextureSize(
-      IMG_PADDED_WIDTH,
-      IMG_HEIGHT,
-    );
+    this.glResources.mapShaderProgram.setRenderProvinceBorders(this.showProvinceBorders);
+    this.glResources.mapShaderProgram.setRenderMapmodeBorders(this.showMapModeBorders);
+    this.glResources.mapShaderProgram.setRenderCountryBorders(this.showCountryBorders);
+    this.glResources.mapShaderProgram.setProvinceCount(this.glResources.provinceCount);
+    this.glResources.mapShaderProgram.setTextureSize(IMG_PADDED_WIDTH, IMG_HEIGHT);
   }
 
   private redrawRawMapLeft() {
@@ -264,14 +243,8 @@ export class WebGLMap {
     this.glResources.xbrShaderProgram.setMaxScale(this.maxScale);
     this.glResources.xbrShaderProgram.setFlipY(false);
     this.glResources.xbrShaderProgram.setRenderTerrain(this.renderTerrain);
-    this.glResources.xbrShaderProgram.setResolution(
-      gl.canvas.width,
-      gl.canvas.height,
-    );
-    this.glResources.xbrShaderProgram.setTextureSize(
-      IMG_PADDED_WIDTH,
-      IMG_HEIGHT,
-    );
+    this.glResources.xbrShaderProgram.setResolution(gl.canvas.width, gl.canvas.height);
+    this.glResources.xbrShaderProgram.setTextureSize(IMG_PADDED_WIDTH, IMG_HEIGHT);
     this.glResources.xbrShaderProgram.setUsedTextureSize(IMG_WIDTH, IMG_HEIGHT);
     this.glResources.xbrShaderProgram.setTextures(this.glResources);
 
@@ -302,13 +275,7 @@ export class WebGLMap {
     let fbTexture = <WebGLTexture>gl.createTexture();
     setupFramebufferTexture(gl, fbTexture, width, height);
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT0,
-      gl.TEXTURE_2D,
-      fbTexture,
-      0,
-    );
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbTexture, 0);
     gl.bindTexture(gl.TEXTURE_2D, fbTexture);
 
     gl.viewport(0, 0, width, height);
@@ -319,16 +286,11 @@ export class WebGLMap {
     this.glResources.xbrShaderProgram.use();
     this.glResources.xbrShaderProgram.setFocusPoint([0, 0]);
     this.glResources.xbrShaderProgram.setScale(1.0);
-    this.glResources.xbrShaderProgram.setMaxScale(
-      this.maxViewWidth / IMG_WIDTH,
-    );
+    this.glResources.xbrShaderProgram.setMaxScale(this.maxViewWidth / IMG_WIDTH);
     this.glResources.xbrShaderProgram.setResolution(width, height);
     this.glResources.xbrShaderProgram.setFlipY(true);
     this.glResources.xbrShaderProgram.setRenderTerrain(this.renderTerrain);
-    this.glResources.xbrShaderProgram.setTextureSize(
-      IMG_PADDED_WIDTH,
-      IMG_HEIGHT,
-    );
+    this.glResources.xbrShaderProgram.setTextureSize(IMG_PADDED_WIDTH, IMG_HEIGHT);
     this.glResources.xbrShaderProgram.setUsedTextureSize(IMG_WIDTH, IMG_HEIGHT);
     this.glResources.xbrShaderProgram.setTextures(this.glResources);
 
@@ -400,12 +362,8 @@ export class WebGLMap {
 
       this.glResources.fillSecondaryProvinceColorsTexture(newSecondary);
     } else {
-      this.glResources.fillPrimaryProvinceColorsTexture(
-        this.originalPrimaryColor,
-      );
-      this.glResources.fillSecondaryProvinceColorsTexture(
-        this.originalSecondaryColor,
-      );
+      this.glResources.fillPrimaryProvinceColorsTexture(this.originalPrimaryColor);
+      this.glResources.fillSecondaryProvinceColorsTexture(this.originalSecondaryColor);
     }
   }
 
@@ -432,23 +390,14 @@ export class WebGLMap {
     this.clampFocusPoint();
   }
 
-  public moveCameraTo({
-    x,
-    y,
-    offsetX,
-  }: {
-    x: number;
-    y: number;
-    offsetX?: number;
-  }) {
+  public moveCameraTo({ x, y, offsetX }: { x: number; y: number; offsetX?: number }) {
     const width = this.gl.canvas.width;
     const height = this.gl.canvas.height;
 
     const IMG_ASPECT = IMG_WIDTH / IMG_HEIGHT;
     const initX = ((x - IMG_WIDTH / 2) / (IMG_WIDTH / 2)) * (width / 2);
     const initY =
-      (((y - IMG_HEIGHT / 2) / (IMG_HEIGHT / 2)) * (height / 2)) /
-      (IMG_ASPECT / (width / height));
+      (((y - IMG_HEIGHT / 2) / (IMG_HEIGHT / 2)) * (height / 2)) / (IMG_ASPECT / (width / height));
 
     this.focusPoint = [initX, initY];
     if (offsetX) {
@@ -484,10 +433,7 @@ export class WebGLMap {
   public onWheel(e: WheelEvent, rect?: UserRect) {
     const oldScale = this.scale;
     const clampedY = Math.max(-30, Math.min(30, e.deltaY));
-    this.scale *= Math.pow(
-      2,
-      clampedY * -0.01 * (Math.min(e.eventDiff, 64) / 64),
-    );
+    this.scale *= Math.pow(2, clampedY * -0.01 * (Math.min(e.eventDiff, 64) / 64));
 
     this.scale = Math.max(this.minScale, this.scale);
     this.scale = Math.min(this.maxScale, this.scale);
@@ -505,10 +451,8 @@ export class WebGLMap {
     const clipY = ((newY - height / 2) / height) * 2;
 
     if (this.scale !== oldScale) {
-      this.focusPoint[0] +=
-        clipX * -((focusXLen - focusXOldLen) / 2) * this.pixelRatio;
-      this.focusPoint[1] +=
-        clipY * -((focusYLen - focusYOldLen) / 2) * this.pixelRatio;
+      this.focusPoint[0] += clipX * -((focusXLen - focusXOldLen) / 2) * this.pixelRatio;
+      this.focusPoint[1] += clipY * -((focusYLen - focusYOldLen) / 2) * this.pixelRatio;
     }
 
     this.clampFocusPoint();
@@ -519,8 +463,7 @@ export class WebGLMap {
     const trueScale = this.scale / this.minScale;
     const canvasAspect = width / height;
     const focusYLen = height / trueScale;
-    const focusYAdj =
-      (this.focusPoint[1] * (IMG_ASPECT / canvasAspect)) / this.pixelRatio;
+    const focusYAdj = (this.focusPoint[1] * (IMG_ASPECT / canvasAspect)) / this.pixelRatio;
 
     const focusXLen = width / this.scale;
     const focusXAdj = this.focusPoint[0] / this.pixelRatio;

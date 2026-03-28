@@ -134,9 +134,7 @@ export const PieTable = ({
     () => [
       columnHelper.accessor("key", {
         sortingFn: "text",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Class" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Class" />,
         cell: (info) => (
           <div className="flex items-center space-x-2">
             <LegendColor color={palette.get(info.getValue())} />
@@ -147,23 +145,13 @@ export const PieTable = ({
 
       columnHelper.accessor("value", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Value" />
-        ),
-        cell: (info) => (
-          <div className="text-right">{numFormatter(info.getValue())}</div>
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Value" />,
+        cell: (info) => <div className="text-right">{numFormatter(info.getValue())}</div>,
       }),
       columnHelper.accessor("percent", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Percent" />
-        ),
-        cell: (info) => (
-          <div className="text-right">
-            {formatFloat(info.getValue() * 100, 2)}%
-          </div>
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Percent" />,
+        cell: (info) => <div className="text-right">{formatFloat(info.getValue() * 100, 2)}%</div>,
       }),
     ],
     [palette, numFormatter],
@@ -180,9 +168,7 @@ export const PieTable = ({
           summary={
             <Table.Row>
               <Table.Cell>Total</Table.Cell>
-              <Table.Cell className="text-right">
-                {numFormatter(total)}
-              </Table.Cell>
+              <Table.Cell className="text-right">{numFormatter(total)}</Table.Cell>
             </Table.Row>
           }
         />

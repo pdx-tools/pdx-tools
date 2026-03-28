@@ -15,10 +15,7 @@ export const SteamLogin = () => {
           Login
         </Button>
       </Sheet.Trigger>
-      <Sheet.Content
-        side="right"
-        className="w-80 bg-white p-4 dark:bg-slate-900"
-      >
+      <Sheet.Content side="right" className="w-80 bg-white p-4 dark:bg-slate-900">
         <Sheet.Header>
           <Sheet.Close />
           <Sheet.Title>Welcome back!</Sheet.Title>

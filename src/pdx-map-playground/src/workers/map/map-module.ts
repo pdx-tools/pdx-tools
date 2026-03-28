@@ -1,8 +1,4 @@
-import init, {
-  PdxCanvasSurface,
-  PdxMapImage,
-  PdxMapRenderer,
-} from "../wasm/wasm_pdx_map";
+import init, { PdxCanvasSurface, PdxMapImage, PdxMapRenderer } from "../wasm/wasm_pdx_map";
 import type { CanvasDisplay } from "../wasm/wasm_pdx_map";
 import wasmPath from "../wasm/wasm_pdx_map_bg.wasm?url";
 import { proxy } from "comlink";
@@ -66,11 +62,7 @@ export const createMapEngine = async ({
 
   // Process the uploaded map image and upload textures
   console.log("Processing map image...");
-  const {
-    tileWidth,
-    tileHeight,
-    image: indexedImage,
-  } = await processMapImage(mapImageFile);
+  const { tileWidth, tileHeight, image: indexedImage } = await processMapImage(mapImageFile);
 
   // Upload textures with their dimensions
   const westView = canvasInit.upload_west_texture(indexedImage);
@@ -81,13 +73,7 @@ export const createMapEngine = async ({
 
   try {
     console.log("Creating map renderer...");
-    const app = PdxMapRenderer.create(
-      canvasInit,
-      indexedImage,
-      westView,
-      eastView,
-      display,
-    );
+    const app = PdxMapRenderer.create(canvasInit, indexedImage, westView, eastView, display);
     console.log("Map renderer created");
 
     appResolve(app);
@@ -196,8 +182,7 @@ export const createMapEngine = async ({
       const screenshotCanvas = new OffscreenCanvas(tileWidth, tileHeight);
 
       // Create independent screenshot renderer
-      const screenshotRenderer =
-        app.create_screenshot_renderer(screenshotCanvas);
+      const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
 
       // Render west tile
       screenshotRenderer.render_west_tile();

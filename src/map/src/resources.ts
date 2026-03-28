@@ -1,8 +1,4 @@
-import type {
-  BaseImageResourceUrls,
-  ShaderSourceUrls,
-  TerrainOverlayResourcesUrls,
-} from "./types";
+import type { BaseImageResourceUrls, ShaderSourceUrls, TerrainOverlayResourcesUrls } from "./types";
 
 export async function fetchOk(...args: Parameters<typeof fetch>) {
   const resp = await fetch(...args);
@@ -14,10 +10,7 @@ export async function fetchOk(...args: Parameters<typeof fetch>) {
   return resp;
 }
 
-export async function loadShaders(sourceUrls: {
-  map: ShaderSourceUrls;
-  xbr: ShaderSourceUrls;
-}) {
+export async function loadShaders(sourceUrls: { map: ShaderSourceUrls; xbr: ShaderSourceUrls }) {
   return mapAsync(sourceUrls, (shader: ShaderSourceUrls) =>
     mapAsync(shader, (url: string) => fetchOk(url).then((x) => x.text())),
   );
@@ -46,9 +39,7 @@ export async function loadTerrainImages(urls: TerrainOverlayResourcesUrls) {
   return loadImages(urls);
 }
 
-export function provinceIdToColorIndexInvert(
-  provinceIdToColorIndex: Uint16Array,
-) {
+export function provinceIdToColorIndexInvert(provinceIdToColorIndex: Uint16Array) {
   const colorIndexToProvinceId = new Uint16Array(provinceIdToColorIndex.length);
   for (let i = 0; i < provinceIdToColorIndex.length; i++) {
     colorIndexToProvinceId[provinceIdToColorIndex[i]] = i;

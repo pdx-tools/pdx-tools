@@ -9,10 +9,7 @@ export function useSideBarPanTag() {
   return useCallback(
     (tag: string) => {
       setSelectedTag(tag);
-      panToTag(
-        tag,
-        sidebarContainer.containerRef.current?.getBoundingClientRect().width,
-      );
+      panToTag(tag, sidebarContainer.containerRef.current?.getBoundingClientRect().width);
     },
     [panToTag, sidebarContainer, setSelectedTag],
   );

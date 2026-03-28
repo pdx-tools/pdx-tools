@@ -9,23 +9,24 @@ type IconButtonProps = ButtonProps & {
   icon: React.ReactNode;
 };
 
-export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-  function IconButton({ tooltip, icon, side = "top", ...rest }, ref) {
-    const children = (
-      <Button ref={ref} {...rest}>
-        {icon}
-      </Button>
-    );
+export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
+  { tooltip, icon, side = "top", ...rest },
+  ref,
+) {
+  const children = (
+    <Button ref={ref} {...rest}>
+      {icon}
+    </Button>
+  );
 
-    return !tooltip ? (
-      children
-    ) : (
-      <Tooltip>
-        <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
-        <Tooltip.Content side={side} className="max-w-xs">
-          {tooltip}
-        </Tooltip.Content>
-      </Tooltip>
-    );
-  },
-);
+  return !tooltip ? (
+    children
+  ) : (
+    <Tooltip>
+      <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
+      <Tooltip.Content side={side} className="max-w-xs">
+        {tooltip}
+      </Tooltip.Content>
+    </Tooltip>
+  );
+});

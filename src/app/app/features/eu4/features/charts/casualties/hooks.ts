@@ -8,10 +8,7 @@ export type TableLosses = CountryLosses;
 export function useCountryCasualtyData() {
   const countryFilter = useTagFilter();
   const { data = [], error } = useAnalysisWorker(
-    useCallback(
-      (worker) => worker.eu4GetCountriesWarLosses(countryFilter),
-      [countryFilter],
-    ),
+    useCallback((worker) => worker.eu4GetCountriesWarLosses(countryFilter), [countryFilter]),
   );
   return { data, error };
 }

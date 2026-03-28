@@ -26,8 +26,8 @@ import surfaceNormalGreen from "./assets/game/eu4/images/surface_normal_green.we
 import heightMap from "./assets/game/eu4/images/heightmap.webp?url";
 
 async function fetchColorData(kind: string) {
-  const raw = await fetch(`assets/game/eu4/data/color-${kind}-data.bin`).then(
-    (x) => x.arrayBuffer(),
+  const raw = await fetch(`assets/game/eu4/data/color-${kind}-data.bin`).then((x) =>
+    x.arrayBuffer(),
   );
   const primary = new Uint8Array(raw, 0, raw.byteLength / 2);
   const secondary = new Uint8Array(raw, raw.byteLength / 2);
@@ -86,15 +86,9 @@ async function main() {
     showProvinceBorders: storedShowProvinceBorders
       ? JSON.parse(storedShowProvinceBorders)
       : undefined,
-    showCountryBorders: storedShowCountryBorders
-      ? JSON.parse(storedShowCountryBorders)
-      : undefined,
-    showMapModeBorders: storedmapModeBorders
-      ? JSON.parse(storedmapModeBorders)
-      : undefined,
-    renderTerrain: storedRenderTerrain
-      ? JSON.parse(storedRenderTerrain)
-      : undefined,
+    showCountryBorders: storedShowCountryBorders ? JSON.parse(storedShowCountryBorders) : undefined,
+    showMapModeBorders: storedmapModeBorders ? JSON.parse(storedmapModeBorders) : undefined,
+    renderTerrain: storedRenderTerrain ? JSON.parse(storedRenderTerrain) : undefined,
   } as const;
 
   const canvas = document!.querySelector("#canvas") as HTMLCanvasElement;
@@ -109,11 +103,7 @@ async function main() {
 
   const mapTask = Promise.all([
     worker.init(transfer(offscreen, [offscreen]), shaderUrls),
-    worker.withResources(
-      baseImageUrls,
-      provincesUniqueColorUrl,
-      provincesUniqueIndexUrl,
-    ),
+    worker.withResources(baseImageUrls, provincesUniqueColorUrl, provincesUniqueIndexUrl),
     worker.withTerrainImages(terrainUrls, {
       eager: initial.renderTerrain ?? false,
     }),
@@ -123,8 +113,10 @@ async function main() {
     )
     .then((map) => new MapController(worker, map, canvas, container));
 
-  const [map, [primaryPoliticalColors, secondaryPoliticalColors]] =
-    await Promise.all([mapTask, fetchColorData("political")]);
+  const [map, [primaryPoliticalColors, secondaryPoliticalColors]] = await Promise.all([
+    mapTask,
+    fetchColorData("political"),
+  ]);
 
   map.attachDOMHandlers();
   map.register({
@@ -138,9 +130,7 @@ async function main() {
       if (e.mapDrawsQueued != 0 || e.viewportDrawsQueued != 0) {
         cancellations += `(queued: viewport ${e.viewportDrawsQueued} / redraw ${e.mapDrawsQueued}) `;
       }
-      console.log(
-        `Canvas content redrawn ${cancellations}in: ${e.elapsedMs.toFixed(2)}ms`,
-      );
+      console.log(`Canvas content redrawn ${cancellations}in: ${e.elapsedMs.toFixed(2)}ms`);
       renderEl.textContent = `${e.elapsedMs.toFixed(2)}ms`;
     },
   });
@@ -156,41 +146,28 @@ async function main() {
       case "political": {
         const [primaryPoliticalColors, secondaryPoliticalColors] =
           await fetchColorData("political");
-        map.updateProvinceColors(
-          primaryPoliticalColors,
-          secondaryPoliticalColors,
-          { draw: true },
-        );
+        map.updateProvinceColors(primaryPoliticalColors, secondaryPoliticalColors, { draw: true });
         break;
       }
       case "political-player": {
         const [primaryPoliticalPlayerColors, secondaryPoliticalPlayerColors] =
           await fetchColorData("political-player");
-        map.updateProvinceColors(
-          primaryPoliticalPlayerColors,
-          secondaryPoliticalPlayerColors,
-          { draw: true },
-        );
+        map.updateProvinceColors(primaryPoliticalPlayerColors, secondaryPoliticalPlayerColors, {
+          draw: true,
+        });
         break;
       }
       case "religion": {
-        const [primaryReligionColors, secondaryReligionColors] =
-          await fetchColorData("religion");
-        map.updateProvinceColors(
-          primaryReligionColors,
-          secondaryReligionColors,
-          { draw: true },
-        );
+        const [primaryReligionColors, secondaryReligionColors] = await fetchColorData("religion");
+        map.updateProvinceColors(primaryReligionColors, secondaryReligionColors, { draw: true });
         break;
       }
       case "religion-player": {
         const [primaryReligionPlayerColors, secondaryReligionPlayerColors] =
           await fetchColorData("religion-player");
-        map.updateProvinceColors(
-          primaryReligionPlayerColors,
-          secondaryReligionPlayerColors,
-          { draw: true },
-        );
+        map.updateProvinceColors(primaryReligionPlayerColors, secondaryReligionPlayerColors, {
+          draw: true,
+        });
         break;
       }
     }
@@ -240,41 +217,31 @@ async function main() {
     downloadImage(data, "png");
   }
 
-  const politicalMapModeEl =
-    document.querySelector<HTMLInputElement>("#political")!;
+  const politicalMapModeEl = document.querySelector<HTMLInputElement>("#political")!;
   politicalMapModeEl.addEventListener("change", mapModeHandler);
 
-  const politicalPlayerMapModeEl =
-    document.querySelector<HTMLInputElement>("#political-player")!;
+  const politicalPlayerMapModeEl = document.querySelector<HTMLInputElement>("#political-player")!;
   politicalPlayerMapModeEl.addEventListener("change", mapModeHandler);
 
-  const religionMapModeEl =
-    document.querySelector<HTMLInputElement>("#religion")!;
+  const religionMapModeEl = document.querySelector<HTMLInputElement>("#religion")!;
   religionMapModeEl.addEventListener("change", mapModeHandler);
 
-  const religionPlayerMapModeEl =
-    document.querySelector<HTMLInputElement>("#religion-player")!;
+  const religionPlayerMapModeEl = document.querySelector<HTMLInputElement>("#religion-player")!;
   religionPlayerMapModeEl.addEventListener("change", mapModeHandler);
 
-  const provinceBordersEl =
-    document.querySelector<HTMLInputElement>("#province-borders")!;
+  const provinceBordersEl = document.querySelector<HTMLInputElement>("#province-borders")!;
   provinceBordersEl.addEventListener("change", provinceBordersHandler);
 
-  const countryBordersEl =
-    document.querySelector<HTMLInputElement>("#country-borders")!;
+  const countryBordersEl = document.querySelector<HTMLInputElement>("#country-borders")!;
   countryBordersEl.addEventListener("change", countryBordersHandler);
 
-  const mapModeBordersEl =
-    document.querySelector<HTMLInputElement>("#map-mode-borders")!;
+  const mapModeBordersEl = document.querySelector<HTMLInputElement>("#map-mode-borders")!;
   mapModeBordersEl.addEventListener("change", mapBordersHandler);
 
-  const renderTerrainEl =
-    document.querySelector<HTMLInputElement>("#render-terrain")!;
+  const renderTerrainEl = document.querySelector<HTMLInputElement>("#render-terrain")!;
   renderTerrainEl.addEventListener("change", renderTerrainHandler);
 
-  document
-    .querySelector("#btn-export")!
-    .addEventListener("click", exportImageHandler);
+  document.querySelector("#btn-export")!.addEventListener("click", exportImageHandler);
 
   const zoomInEl = document.querySelector<HTMLButtonElement>("#btn-zoom-in")!;
   zoomInEl.addEventListener("click", () => {
@@ -293,17 +260,11 @@ async function main() {
     };
   }
 
-  document
-    .querySelector("#btn-full-export-1x")!
-    .addEventListener("click", exporter(1));
+  document.querySelector("#btn-full-export-1x")!.addEventListener("click", exporter(1));
 
-  document
-    .querySelector("#btn-full-export-2x")!
-    .addEventListener("click", exporter(2));
+  document.querySelector("#btn-full-export-2x")!.addEventListener("click", exporter(2));
 
-  document
-    .querySelector("#btn-full-export-3x")!
-    .addEventListener("click", exporter(3));
+  document.querySelector("#btn-full-export-3x")!.addEventListener("click", exporter(3));
 
   switch (storedMapMode) {
     case "political": {

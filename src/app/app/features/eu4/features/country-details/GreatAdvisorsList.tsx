@@ -6,9 +6,7 @@ interface GreatAdvisorsListProps {
   greatAdvisors: GreatAdvisor[];
 }
 
-export const GreatAdvisorsList = ({
-  greatAdvisors,
-}: GreatAdvisorsListProps) => {
+export const GreatAdvisorsList = ({ greatAdvisors }: GreatAdvisorsListProps) => {
   return (
     <div className={`grid gap-x-4 gap-y-1 ${classes.table}`}>
       {greatAdvisors.map((x) => {

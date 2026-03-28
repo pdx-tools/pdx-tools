@@ -1,9 +1,5 @@
 import { Eu5GameAdapter } from "./game-adapter";
-import type {
-  GameInstance,
-  HoverDisplayData,
-  MapModeRange,
-} from "./game-adapter";
+import type { GameInstance, HoverDisplayData, MapModeRange } from "./game-adapter";
 import type { Eu5SaveInput } from "./store/useLoadEu5";
 import type { MapMode, StateEfficacyData } from "@/wasm/wasm_eu5";
 
@@ -56,10 +52,7 @@ export interface AppTriggers {
   mouseLeave(): Promise<void>;
   click(pos: PointerPosition): Promise<void>;
 
-  pointerStart(
-    pos: PointerPosition,
-    pointerId: number,
-  ): Promise<DragHandle | void>;
+  pointerStart(pos: PointerPosition, pointerId: number): Promise<DragHandle | void>;
   pointerMove(pos: PointerPosition, pointerId: number): Promise<void>;
   pointerEnd(pointerId: number): Promise<void>;
   pointerCancel(pointerId: number): Promise<void>;
@@ -138,8 +131,7 @@ export class Eu5UIEngine implements AppEngine {
     keyUp: (code) => this.handleKeyUp(code),
 
     selectMapMode: (mode) => this.handleSelectMapMode(mode),
-    generateScreenshot: (fullResolution) =>
-      this.handleGenerateScreenshot(fullResolution),
+    generateScreenshot: (fullResolution) => this.handleGenerateScreenshot(fullResolution),
     resize: (width, height) => this.handleResize(width, height),
     toggleOwnerBorders: () => this.handleToggleOwnerBorders(),
     getLocationArrays: () => this.handleGetLocationArrays(),
@@ -237,10 +229,7 @@ export class Eu5UIEngine implements AppEngine {
     }
   }
 
-  private async handlePointerMove(
-    pos: PointerPosition,
-    pointerId: number,
-  ): Promise<void> {
+  private async handlePointerMove(pos: PointerPosition, pointerId: number): Promise<void> {
     const pointer = this.pointers.get(pointerId);
     if (!pointer) return;
 
@@ -318,9 +307,7 @@ export class Eu5UIEngine implements AppEngine {
     return await this.gameInstance.getLocationArrays();
   }
 
-  private async handleGenerateScreenshot(
-    fullResolution: boolean,
-  ): Promise<Blob> {
+  private async handleGenerateScreenshot(fullResolution: boolean): Promise<Blob> {
     if (this._state.isGeneratingScreenshot) {
       throw new Error("Screenshot generation already in progress");
     }
@@ -328,8 +315,7 @@ export class Eu5UIEngine implements AppEngine {
     this.updateState(() => ({ isGeneratingScreenshot: true }));
 
     try {
-      const blob =
-        await this.gameInstance.generateWorldScreenshot(fullResolution);
+      const blob = await this.gameInstance.generateWorldScreenshot(fullResolution);
       return blob;
     } finally {
       this.updateState(() => ({ isGeneratingScreenshot: false }));
@@ -424,10 +410,7 @@ export async function createLoadedEngine(
   };
 
   const snappedWidth = snapToDevicePixel(bounds.width, window.devicePixelRatio);
-  const snappedHeight = snapToDevicePixel(
-    bounds.height,
-    window.devicePixelRatio,
-  );
+  const snappedHeight = snapToDevicePixel(bounds.height, window.devicePixelRatio);
 
   offscreen.width = snappedWidth.logical;
   offscreen.height = snappedHeight.logical;

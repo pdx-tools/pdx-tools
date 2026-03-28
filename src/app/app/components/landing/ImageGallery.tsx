@@ -18,8 +18,7 @@ const images = [
     thumbnail: mapThumbnail,
     alt: "PDX Tools map of a save file",
     title: "Interactive Map",
-    description:
-      "Pan, zoom, and select provinces, as if EU4 was played within Google Maps",
+    description: "Pan, zoom, and select provinces, as if EU4 was played within Google Maps",
   },
   {
     src: graphs,
@@ -27,8 +26,7 @@ const images = [
     mobile: mana,
     alt: "Visualizations of a save that PDX Tools provides",
     title: "Graphs",
-    description:
-      "Breakdown a country's mana expense and budget or view the historical ledger",
+    description: "Breakdown a country's mana expense and budget or view the historical ledger",
   },
   {
     src: insights,
@@ -43,8 +41,7 @@ const images = [
     alt: "Religion mode timelapse",
     thumbnail: videoThumbnail,
     title: "Timelapses",
-    description:
-      "Relive your campaign by creating and watching detailed timelapses",
+    description: "Relive your campaign by creating and watching detailed timelapses",
   },
 ];
 

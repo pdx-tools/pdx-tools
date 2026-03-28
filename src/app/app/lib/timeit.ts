@@ -18,10 +18,7 @@ export function timeSync<T>(label: TimeLabel<T>, fn: () => T) {
   return result;
 }
 
-export async function timeAsync<T>(
-  label: TimeLabel<T>,
-  fn: () => T | Promise<T>,
-) {
+export async function timeAsync<T>(label: TimeLabel<T>, fn: () => T | Promise<T>) {
   const start = performance.now();
   const result = await Promise.resolve(fn());
   const end = performance.now();

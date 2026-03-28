@@ -10,10 +10,7 @@ export interface TagSelectProps {
 }
 export const TagSelect = ({ value, onChange }: TagSelectProps) => {
   const { availableTags } = useVic3Meta();
-  const uniqueTags = useMemo(
-    () => [...new Set(availableTags)].sort(),
-    [availableTags],
-  );
+  const uniqueTags = useMemo(() => [...new Set(availableTags)].sort(), [availableTags]);
 
   return (
     <Select key={value} value={value} onValueChange={onChange}>

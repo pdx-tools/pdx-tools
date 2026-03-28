@@ -5,17 +5,13 @@ interface SideBarContainerContext {
   containerRef: RefObject<HTMLDivElement | null>;
 }
 
-const SideBarContainerContext = React.createContext<
-  SideBarContainerContext | undefined
->(undefined);
+const SideBarContainerContext = React.createContext<SideBarContainerContext | undefined>(undefined);
 
 interface SideBarContainerProviderProps {
   children: React.ReactNode;
 }
 
-export const SideBarContainerProvider = ({
-  children,
-}: SideBarContainerProviderProps) => {
+export const SideBarContainerProvider = ({ children }: SideBarContainerProviderProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   return (
     <SideBarContainerContext.Provider value={{ containerRef }}>
@@ -46,9 +42,7 @@ export function closeDrawerPropagation(fn: () => void, visible: boolean) {
   };
 }
 
-export function getSideBarContainerWidth(
-  x: ReturnType<typeof useSideBarContainer>,
-) {
+export function getSideBarContainerWidth(x: ReturnType<typeof useSideBarContainer>) {
   if (!x.containerRef.current) {
     throw new Error("side bar container element is undefined");
   }

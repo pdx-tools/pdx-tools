@@ -54,8 +54,7 @@ export const pdxApi = {
     useGet: (id: string) =>
       useSuspenseQuery({
         queryKey: pdxKeys.achievement(id),
-        queryFn: () =>
-          fetchOkJson<AchievementApiResponse>(`/api/achievements/${id}`),
+        queryFn: () => fetchOkJson<AchievementApiResponse>(`/api/achievements/${id}`),
         select: (data) => ({
           ...data,
           saves: data.saves.map((x, i) => ({ ...x, rank: i + 1 })),
@@ -66,8 +65,7 @@ export const pdxApi = {
   apiKey: {
     useGenerateKey: () =>
       useMutation({
-        mutationFn: () =>
-          fetchOkJson<NewKeyResponse>(`/api/key`, { method: "POST" }),
+        mutationFn: () => fetchOkJson<NewKeyResponse>(`/api/key`, { method: "POST" }),
       }),
   },
 
@@ -107,8 +105,7 @@ export const pdxApi = {
     useReprocess: () => {
       const queryClient = useQueryClient();
       return useMutation({
-        mutationFn: (body: unknown) =>
-          sendJson("/api/admin/reprocess", { body }),
+        mutationFn: (body: unknown) => sendJson("/api/admin/reprocess", { body }),
         onSuccess: invalidateSaves(queryClient),
       });
     },
@@ -173,9 +170,7 @@ export const pdxApi = {
 
               request.addEventListener("load", function () {
                 if (request.status >= 200 && request.status < 300) {
-                  const response: SavePostResponse = JSON.parse(
-                    request.response,
-                  );
+                  const response: SavePostResponse = JSON.parse(request.response);
                   resolve(response);
                 } else {
                   try {
@@ -228,8 +223,7 @@ export const pdxApi = {
     useDelete: () => {
       const queryClient = useQueryClient();
       return useMutation({
-        mutationFn: (id: string) =>
-          fetchOk(`/api/saves/${id}`, { method: "DELETE" }),
+        mutationFn: (id: string) => fetchOk(`/api/saves/${id}`, { method: "DELETE" }),
         onSuccess: invalidateSaves(queryClient),
       });
     },
@@ -252,8 +246,7 @@ export const pdxApi = {
 
     useOgMutation: () =>
       useMutation({
-        mutationFn: ({ id }: { id: string }) =>
-          sendJson(`/api/admin/og`, { body: { saveId: id } }),
+        mutationFn: ({ id }: { id: string }) => sendJson(`/api/admin/og`, { body: { saveId: id } }),
       }),
   },
 

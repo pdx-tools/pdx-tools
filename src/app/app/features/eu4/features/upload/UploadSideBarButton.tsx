@@ -12,10 +12,7 @@ import { Sheet } from "@/components/Sheet";
 import { Link } from "@/components/Link";
 import type { SavePostResponse } from "@/server-lib/models";
 
-export const UploadSideBarButton = ({
-  children,
-  ...props
-}: SideBarButtonProps) => {
+export const UploadSideBarButton = ({ children, ...props }: SideBarButtonProps) => {
   const fileUpload = useFileUpload();
   return (
     <Sheet modal={false}>
@@ -30,10 +27,7 @@ export const UploadSideBarButton = ({
         <SideBarContainerProvider>
           <Sheet.Header className="z-10 items-center px-4 pb-4 shadow-md">
             <Sheet.Close />
-            <UploadDrawerTitle
-              progress={fileUpload.progress}
-              response={fileUpload.data}
-            />
+            <UploadDrawerTitle progress={fileUpload.progress} response={fileUpload.data} />
           </Sheet.Header>
           <Sheet.Body className="px-4 py-6">
             <UploadDrawerContent fileUpload={fileUpload} />
@@ -64,10 +58,7 @@ export const UploadDrawerTitle = ({
           <Alert key={response.save_id} className="px-2 py-1" variant="success">
             <Alert.Description>
               {`Save successfully uploaded! `}
-              <Link
-                className="font-bold"
-                href={`/eu4/saves/${response.save_id}`}
-              >
+              <Link className="font-bold" href={`/eu4/saves/${response.save_id}`}>
                 Permalink
               </Link>
             </Alert.Description>

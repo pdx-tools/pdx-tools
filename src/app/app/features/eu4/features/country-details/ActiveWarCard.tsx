@@ -20,15 +20,9 @@ const columnHelper = createColumnHelper<Participant>();
 const activeColumns = [
   columnHelper.accessor("country.name", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Country" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
     cell: ({ row }) => (
-      <Flag
-        size="xs"
-        tag={row.original.country.tag}
-        name={row.original.country.name}
-      />
+      <Flag size="xs" tag={row.original.country.tag} name={row.original.country.name} />
     ),
   }),
 
@@ -137,25 +131,19 @@ const activeColumns = [
               <tr>
                 <td>Recurring revenue</td>
                 <td className="pl-4 text-right">
-                  {formatInt(
-                    budgetSelect.recurringRevenue(info.row.original.budget),
-                  )}
+                  {formatInt(budgetSelect.recurringRevenue(info.row.original.budget))}
                 </td>
               </tr>
               <tr>
                 <td>Operating expenses</td>
                 <td className="pl-4 text-right">
-                  {formatInt(
-                    budgetSelect.operatingExpenses(info.row.original.budget),
-                  )}
+                  {formatInt(budgetSelect.operatingExpenses(info.row.original.budget))}
                 </td>
               </tr>
               <tr>
                 <td>Operating profit</td>
                 <td className="pl-4 text-right">
-                  {formatInt(
-                    budgetSelect.operatingProfit(info.row.original.budget),
-                  )}
+                  {formatInt(budgetSelect.operatingProfit(info.row.original.budget))}
                 </td>
               </tr>
               <tr>
@@ -230,10 +218,7 @@ const activeColumns = [
         info.row.original.bestGeneral ? (
           <Tooltip>
             <Tooltip.Trigger className="text-xs">
-              <LeaderStats
-                showParentheses={false}
-                {...info.row.original.bestGeneral}
-              />
+              <LeaderStats showParentheses={false} {...info.row.original.bestGeneral} />
             </Tooltip.Trigger>
             <Tooltip.Content className="flex gap-1">
               <span>{info.row.original.bestGeneral.name}</span>{" "}
@@ -262,8 +247,7 @@ const activeColumns = [
   }),
 
   columnHelper.accessor(
-    (x) =>
-      x.heavyShipUnits + x.lightShipUnits + x.galleyUnits + x.transportUnits,
+    (x) => x.heavyShipUnits + x.lightShipUnits + x.galleyUnits + x.transportUnits,
     {
       id: "ships",
       sortingFn: "basic",
@@ -309,9 +293,7 @@ function ParticipantHealth({ participants }: { participants: Participant[] }) {
   );
   const totalReserves = data.map((x) => x.netManpower);
   const totalNetCash = data.map((x) => x.treasury - x.debt);
-  const totalMonthlyProfit = data.map((x) =>
-    budgetSelect.operatingProfit(x.budget),
-  );
+  const totalMonthlyProfit = data.map((x) => budgetSelect.operatingProfit(x.budget));
   return (
     <DataTable
       size="compact"
@@ -342,27 +324,20 @@ function ParticipantHealth({ participants }: { participants: Participant[] }) {
 const totalColumns = [
   columnHelper.accessor("country.name", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Country" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
     cell: ({ row }) => (
       <Flag tag={row.original.country.tag} name={row.original.country.name}>
         <Tooltip>
           <Tooltip.Trigger asChild>
             <Flag.DrawerTrigger
-              className={cx(
-                "gap-x-2 pr-1",
-                row.original.exited && "contrast-50",
-              )}
+              className={cx("gap-x-2 pr-1", row.original.exited && "contrast-50")}
             >
               <Flag.Image size="xs" />
               <Flag.CountryName />
             </Flag.DrawerTrigger>
           </Tooltip.Trigger>
           <Tooltip.Content side="right">
-            {row.original.exited
-              ? `Peaced out: ${row.original.exited}`
-              : row.original.country.tag}
+            {row.original.exited ? `Peaced out: ${row.original.exited}` : row.original.country.tag}
           </Tooltip.Content>
         </Tooltip>
       </Flag>
@@ -414,20 +389,13 @@ const totalColumns = [
   columnHelper.accessor("participationPercent", {
     sortingFn: "basic",
     header: ({ column }) => (
-      <Table.ColumnHeader
-        column={column}
-        className="justify-end"
-        icon="🏅"
-        title="Participation"
-      />
+      <Table.ColumnHeader column={column} className="justify-end" icon="🏅" title="Participation" />
     ),
     meta: { className: "text-right" },
     cell: (info) => (
       <Tooltip>
         <Tooltip.Trigger>{formatInt(info.getValue() * 100)}%</Tooltip.Trigger>
-        <Tooltip.Content>
-          {formatInt(info.row.original.participation)}
-        </Tooltip.Content>
+        <Tooltip.Content>{formatInt(info.row.original.participation)}</Tooltip.Content>
       </Tooltip>
     ),
   }),
@@ -462,11 +430,7 @@ function SideLosses({ participants }: { participants: Participant[] }) {
   );
 }
 
-export const ActiveWarCard = ({
-  war,
-}: {
-  war: CountryDetails["active_wars"][number];
-}) => {
+export const ActiveWarCard = ({ war }: { war: CountryDetails["active_wars"][number] }) => {
   const years = war.days / 365;
   const leftDays = war.days % 365;
   return (
@@ -474,8 +438,8 @@ export const ActiveWarCard = ({
       <div className="flex flex-col items-center">
         <p className="text-xl">{war.name}</p>
         <p>
-          Started {years > 1 ? `${formatInt(years)} years and` : ``}{" "}
-          {formatInt(leftDays)} days ago on {war.startDate}
+          Started {years > 1 ? `${formatInt(years)} years and` : ``} {formatInt(leftDays)} days ago
+          on {war.startDate}
         </p>
       </div>
       <div className="flex flex-col gap-2">

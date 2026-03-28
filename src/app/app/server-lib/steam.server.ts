@@ -24,10 +24,7 @@ export const pdxSteam = ({ context }: { context: AppLoadContext }) => {
   return {
     loginVerify: async (data: URLSearchParams) => {
       data.set("openid.mode", "check_authentication");
-      const claimId = check(
-        data.get("openid.claimed_id"),
-        "missing claimed_id",
-      );
+      const claimId = check(data.get("openid.claimed_id"), "missing claimed_id");
       const url = new URL(getSingleInstance(claimId));
       const uid = url.pathname.substring(url.pathname.lastIndexOf("/") + 1);
 

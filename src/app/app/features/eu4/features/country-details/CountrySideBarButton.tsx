@@ -43,10 +43,7 @@ import { CountryHistory } from "./CountryHistory";
 import { CountryInstitution } from "./CountryInstitution";
 import { ActiveWarCard } from "./ActiveWarCard";
 
-export const CountrySideBarButton = ({
-  children,
-  ...props
-}: SideBarButtonProps) => {
+export const CountrySideBarButton = ({ children, ...props }: SideBarButtonProps) => {
   const visible = useCountryDrawerVisible();
   const { setCountryDrawer } = useEu4Actions();
   return (
@@ -69,10 +66,7 @@ const CountryDetailsContent = () => {
   const selectedTag = useSelectedTag();
   const sideBarContainerRef = useSideBarContainerRef();
 
-  const {
-    data: [country, rulers, advisors] = [undefined, [], undefined],
-    error,
-  } = useEu4Worker(
+  const { data: [country, rulers, advisors] = [undefined, [], undefined], error } = useEu4Worker(
     useCallback(
       (worker) =>
         Promise.all([
@@ -97,11 +91,7 @@ const CountryDetailsContent = () => {
       <Sheet.Header className="px-4">
         <div className="flex items-center gap-2">
           <Sheet.Close />
-          <Button
-            shape="square"
-            onClick={() => setExpanded(!expanded)}
-            className="hidden md:flex"
-          >
+          <Button shape="square" onClick={() => setExpanded(!expanded)} className="hidden md:flex">
             {expanded ? (
               <MenuUnfoldIcon className="h-4 w-4" />
             ) : (
@@ -117,10 +107,7 @@ const CountryDetailsContent = () => {
                 <span className="sr-only">Help</span>
               </Button>
             </Sheet.Trigger>
-            <Sheet.Content
-              side="right"
-              className="w-96 bg-white dark:bg-slate-900"
-            >
+            <Sheet.Content side="right" className="w-96 bg-white dark:bg-slate-900">
               <Sheet.Header className="z-10 items-center p-4 shadow-md">
                 <Sheet.Close />
                 <Sheet.Title>Help</Sheet.Title>
@@ -129,25 +116,21 @@ const CountryDetailsContent = () => {
                 <p>Some mana actions are not recorded in the save:</p>
                 <ul className="space-y-2">
                   <li>
-                    Diplo mana gained from cancelling culture conversion. The
-                    game only records the expenditure and not the refund. If one
-                    takes this to the extreme, it can look like a country had
-                    infinite diplo mana, where in reality it was a players
-                    repeatedly cancelling culture conversions as a form of diplo
-                    banking.
+                    Diplo mana gained from cancelling culture conversion. The game only records the
+                    expenditure and not the refund. If one takes this to the extreme, it can look
+                    like a country had infinite diplo mana, where in reality it was a players
+                    repeatedly cancelling culture conversions as a form of diplo banking.
                   </li>
                   <li>Diplo mana spent on diplo annexing</li>
                   <li>Diplo mana lost due to too many relations</li>
                 </ul>
                 <p>
-                  The reason why countries who have re-elected rulers contain
-                  inaccurate calculations is that the election event is not
-                  stored in the save, so when PDX Tools sees a ruler is 6 / 6 /
-                  6, it is unsure how many elections have occurred and when they
-                  might have occurred, as some government reforms change the
-                  frequency of elections. Thus for calculation purposes,
-                  elections are ignored and it is assumed that the ruler was
-                  always 6 / 6 / 6. This phenomenon is also observable due to
+                  The reason why countries who have re-elected rulers contain inaccurate
+                  calculations is that the election event is not stored in the save, so when PDX
+                  Tools sees a ruler is 6 / 6 / 6, it is unsure how many elections have occurred and
+                  when they might have occurred, as some government reforms change the frequency of
+                  elections. Thus for calculation purposes, elections are ignored and it is assumed
+                  that the ruler was always 6 / 6 / 6. This phenomenon is also observable due to
                   events or missions that increase ruler stats.
                 </p>
                 <FinancialHelp />
@@ -210,22 +193,15 @@ const CountryDetailsContent = () => {
           {country && <CountryInstitution details={country} />}
         </Tabs.Content>
         <Tabs.Content value="Advisors" className="flex-1 basis-0 px-4 py-6">
-          <div>
-            Radical reforms completed: {advisors?.radicalReforms || "no"}
-          </div>
+          <div>Radical reforms completed: {advisors?.radicalReforms || "no"}</div>
           <Divider>
             One Time Advisor Events (
-            <Link
-              target="_blank"
-              href="/docs/eu4-guides/one-time-advisor-events/"
-            >
+            <Link target="_blank" href="/docs/eu4-guides/one-time-advisor-events/">
               guide
             </Link>
             )
           </Divider>
-          {advisors?.greatAdvisors && (
-            <GreatAdvisorsList greatAdvisors={advisors.greatAdvisors} />
-          )}
+          {advisors?.greatAdvisors && <GreatAdvisorsList greatAdvisors={advisors.greatAdvisors} />}
         </Tabs.Content>
         <Tabs.Content value="Rulers" className="flex-1 basis-0 px-4 py-6">
           <CountryRulersTable rulers={rulers} />
@@ -275,16 +251,11 @@ const CountryViewSelect = () => {
     [setSelectedTag, panTag],
   );
 
-  const isSelected = useCallback(
-    (tag: string): boolean => tag == selectedTag,
-    [selectedTag],
-  );
+  const isSelected = useCallback((tag: string): boolean => tag == selectedTag, [selectedTag]);
 
   return (
     <CountrySelect isSelected={isSelected} onSelect={onSelect}>
-      {selectedCountry
-        ? `${selectedCountry.name} (${selectedCountry.tag})`
-        : "unknown selection"}
+      {selectedCountry ? `${selectedCountry.name} (${selectedCountry.tag})` : "unknown selection"}
     </CountrySelect>
   );
 };

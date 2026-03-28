@@ -15,21 +15,15 @@ const columns = [
   columnHelper.accessor((x) => `${x.name} (${x.id})`, {
     id: "name",
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Province" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Province" />,
     enableColumnFilter: true,
   }),
 
   columnHelper.accessor("owner.tag", {
     enableColumnFilter: false,
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Owner" />
-    ),
-    cell: ({ row }) => (
-      <Flag tag={row.original.owner.tag} name={row.original.owner.name} />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
+    cell: ({ row }) => <Flag tag={row.original.owner.tag} name={row.original.owner.name} />,
   }),
 
   columnHelper.accessor("tax", {
@@ -43,9 +37,7 @@ const columns = [
   columnHelper.accessor("production", {
     sortingFn: "basic",
     enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Production" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Production" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -53,9 +45,7 @@ const columns = [
   columnHelper.accessor("manpower", {
     sortingFn: "basic",
     enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Manpower" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Manpower" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -63,9 +53,7 @@ const columns = [
   columnHelper.accessor("development", {
     sortingFn: "basic",
     enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Development" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Development" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -73,36 +61,28 @@ const columns = [
   columnHelper.accessor("religion", {
     sortingFn: "basic",
     enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Religion" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Religion" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("culture", {
     sortingFn: "basic",
     enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Culture" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Culture" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("tradeGoods", {
     sortingFn: "basic",
     enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="TradeGoods" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="TradeGoods" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("devastation", {
     sortingFn: "basic",
     enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Devastation" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Devastation" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -110,27 +90,21 @@ const columns = [
   columnHelper.accessor("inHre", {
     sortingFn: "basic",
     enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="In HRE" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="In HRE" />,
     cell: (info) => `${info.getValue()}`,
   }),
 
   columnHelper.accessor("exploitDate", {
     sortingFn: "basic",
     enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Exploit Date" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Exploit Date" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("expandInfrastructure", {
     sortingFn: "basic",
     enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Expand Infra." />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Expand Infra." />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -138,9 +112,7 @@ const columns = [
   columnHelper.accessor("numCentralizedState", {
     sortingFn: "basic",
     enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Centralized State" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Centralized State" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),

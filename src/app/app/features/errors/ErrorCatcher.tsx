@@ -19,10 +19,7 @@ interface ErrorCatcherState {
   eventId?: string | null;
 }
 
-export class ErrorCatcher extends React.Component<
-  ErrorCatcherProps,
-  ErrorCatcherState
-> {
+export class ErrorCatcher extends React.Component<ErrorCatcherProps, ErrorCatcherState> {
   constructor(props: ErrorCatcherProps) {
     super(props);
     this.state = { error: null, componentStack: null, eventId: null };
@@ -37,9 +34,7 @@ export class ErrorCatcher extends React.Component<
     errorCatcherError.name = `React ErrorCatcher ${errorCatcherError.name}`;
     errorCatcherError.stack = componentStack || undefined;
     error.cause = errorCatcherError;
-    const eventId =
-      captureException(error, { contexts: { react: { componentStack } } }) ??
-      null;
+    const eventId = captureException(error, { contexts: { react: { componentStack } } }) ?? null;
     this.setState({ error, componentStack, eventId });
   }
 

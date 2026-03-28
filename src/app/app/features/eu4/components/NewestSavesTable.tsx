@@ -6,8 +6,7 @@ import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
 import { SaveCard } from "@/features/account/SaveCard";
 
 export const NewestSavesTable = () => {
-  const { data, isFetching, hasNextPage, fetchNextPage, error } =
-    pdxApi.saves.useNewest();
+  const { data, isFetching, hasNextPage, fetchNextPage, error } = pdxApi.saves.useNewest();
 
   useToastOnError(error, "Failed to fetch latest saves");
   const saves = useMemo(() => data?.pages.flatMap((x) => x.saves), [data]);

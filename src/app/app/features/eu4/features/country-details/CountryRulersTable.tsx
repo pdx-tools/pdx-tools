@@ -16,9 +16,7 @@ const columns = [
     id: "actions",
     cell: ({ row }) =>
       row.original.failed_heirs.length == 0 ? null : (
-        <SheetExpansion
-          title={`Abdicated or deceased heirs before ${row.original.name}`}
-        >
+        <SheetExpansion title={`Abdicated or deceased heirs before ${row.original.name}`}>
           <DataTable columns={heirColumns} data={row.original.failed_heirs} />
         </SheetExpansion>
       ),
@@ -48,13 +46,7 @@ const columns = [
 
   columnHelper.accessor("country", {
     header: "Tag",
-    cell: (info) => (
-      <Flag
-        name={info.getValue().name}
-        tag={info.getValue().tag}
-        condensed={true}
-      />
-    ),
+    cell: (info) => <Flag name={info.getValue().name} tag={info.getValue().tag} condensed={true} />,
   }),
 
   columnHelper.accessor("personalities", {
@@ -101,10 +93,7 @@ const columns = [
     header: () => (
       <div>
         Running Average Stats
-        <HelpTooltip
-          className="ml-1"
-          help="Not accurate for election governments"
-        />
+        <HelpTooltip className="ml-1" help="Not accurate for election governments" />
       </div>
     ),
     columns: [
@@ -137,10 +126,7 @@ const columns = [
     header: () => (
       <div>
         Reign Weighted Running Average Stats
-        <HelpTooltip
-          className="ml-1"
-          help="Not accurate for election governments"
-        />
+        <HelpTooltip className="ml-1" help="Not accurate for election governments" />
       </div>
     ),
     columns: [
@@ -159,15 +145,12 @@ const columns = [
         meta: { className: "text-right" },
         cell: (info) => formatFloat(info.getValue(), 2),
       }),
-      columnHelper.accessor(
-        (x) => x.avg_dur_adm + x.avg_dur_dip + x.avg_dur_mil,
-        {
-          id: "avg_dur_total",
-          header: "Total",
-          meta: { className: "text-right" },
-          cell: (info) => formatFloat(info.getValue(), 2),
-        },
-      ),
+      columnHelper.accessor((x) => x.avg_dur_adm + x.avg_dur_dip + x.avg_dur_mil, {
+        id: "avg_dur_total",
+        header: "Total",
+        meta: { className: "text-right" },
+        cell: (info) => formatFloat(info.getValue(), 2),
+      }),
     ],
   }),
 ];
@@ -186,13 +169,7 @@ const heirColumns = [
 
   heirColumnsHelper.accessor("country", {
     header: "Tag",
-    cell: (info) => (
-      <Flag
-        name={info.getValue().name}
-        tag={info.getValue().tag}
-        condensed={true}
-      />
-    ),
+    cell: (info) => <Flag name={info.getValue().name} tag={info.getValue().tag} condensed={true} />,
   }),
 
   heirColumnsHelper.accessor("personalities", {

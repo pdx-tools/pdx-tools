@@ -23,10 +23,7 @@ type Hoi4LoadActions =
   | { kind: "data"; data: Hoi4Store }
   | { kind: "error"; error: unknown };
 
-const loadStateReducer = (
-  state: Hoi4LoadState,
-  action: Hoi4LoadActions,
-): Hoi4LoadState => {
+const loadStateReducer = (state: Hoi4LoadState, action: Hoi4LoadActions): Hoi4LoadState => {
   switch (action.kind) {
     case "start": {
       return {

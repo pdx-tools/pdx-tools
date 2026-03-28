@@ -41,9 +41,7 @@ const MAP_MODE_TITLES: Record<MapMode, string> = {
 
 export function MapLegend({ data }: MapLegendProps) {
   const isRgoMode = data.mode === "rgoLevel";
-  const gradientColors = isRgoMode
-    ? RGO_GRADIENT_COLORS
-    : STANDARD_GRADIENT_COLORS;
+  const gradientColors = isRgoMode ? RGO_GRADIENT_COLORS : STANDARD_GRADIENT_COLORS;
   const hasThreeStops = !isRgoMode && data.midValue !== undefined;
 
   // Create gradient background - reversed so max (green) is at top, min (red) is at bottom
@@ -67,9 +65,7 @@ export function MapLegend({ data }: MapLegendProps) {
   return (
     <div className="relative inline-block rounded-lg bg-slate-800/90 p-3 text-xs text-white shadow-lg backdrop-blur-sm">
       {/* Mode Title */}
-      <div className="mb-2 font-semibold text-blue-300">
-        {MAP_MODE_TITLES[data.mode]}
-      </div>
+      <div className="mb-2 font-semibold text-blue-300">{MAP_MODE_TITLES[data.mode]}</div>
 
       {/* Gradient Container */}
       <div className="flex items-end gap-2">
@@ -84,10 +80,7 @@ export function MapLegend({ data }: MapLegendProps) {
         />
 
         {/* Labels */}
-        <div
-          className="flex flex-col justify-between text-slate-300"
-          style={{ height: "150px" }}
-        >
+        <div className="flex flex-col justify-between text-slate-300" style={{ height: "150px" }}>
           {/* Max Label (top) */}
           <div className="font-mono">
             <div className="text-xs">{data.maxLabel}</div>

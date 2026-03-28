@@ -27,14 +27,8 @@ const columns = [
   }),
   columnHelper.accessor("user_name", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Player" />
-    ),
-    cell: (info) => (
-      <Link href={`/users/${info.row.original.user_id}`}>
-        {info.getValue()}
-      </Link>
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Player" />,
+    cell: (info) => <Link href={`/users/${info.row.original.user_id}`}>{info.getValue()}</Link>,
   }),
   columnHelper.accessor("weighted_score.days", {
     sortingFn: "basic",
@@ -49,14 +43,11 @@ const columns = [
     cell: (info) => (
       <Tooltip>
         <Tooltip.Trigger>
-          {info.row.original.weighted_score?.days
-            ? formatInt(info.getValue())
-            : "---"}
+          {info.row.original.weighted_score?.days ? formatInt(info.getValue()) : "---"}
         </Tooltip.Trigger>
         <Tooltip.Content>
-          {formatInt(info.getValue())} @{" "}
-          {info.row.original.patch.split(".").slice(0, 2).join(".")} ={" "}
-          {info.row.original.weighted_score?.date}
+          {formatInt(info.getValue())} @ {info.row.original.patch.split(".").slice(0, 2).join(".")}{" "}
+          = {info.row.original.weighted_score?.date}
         </Tooltip.Content>
       </Tooltip>
     ),
@@ -67,9 +58,7 @@ const columns = [
     header: ({ column }) => <Table.ColumnHeader column={column} title="Date" />,
     cell: (info) => (
       <Tooltip>
-        <Tooltip.Trigger className="no-break">
-          {info.row.original.date}
-        </Tooltip.Trigger>
+        <Tooltip.Trigger className="no-break">{info.row.original.date}</Tooltip.Trigger>
         <Tooltip.Content>{formatInt(info.getValue())}</Tooltip.Content>
       </Tooltip>
     ),
@@ -77,32 +66,23 @@ const columns = [
 
   columnHelper.accessor("game_difficulty", {
     sortingFn: difficultySort,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Difficulty" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Difficulty" />,
     cell: (info) => difficultyText(info.getValue()),
   }),
 
   columnHelper.accessor("player_start_tag", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Starting" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Starting" />,
     cell: ({ row }) =>
       row.original.player_start_tag && row.original.player_start_tag_name ? (
-        <Flag
-          tag={row.original.player_start_tag}
-          name={row.original.player_start_tag_name}
-        />
+        <Flag tag={row.original.player_start_tag} name={row.original.player_start_tag_name} />
       ) : (
         "Multiplayer"
       ),
   }),
   columnHelper.accessor("player_tag", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Current" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Current" />,
     cell: ({ row }) => (
       <Flag
         tag={row.original.player_tag}
@@ -112,24 +92,18 @@ const columns = [
   }),
   columnHelper.accessor("patch", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Patch" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Patch" />,
   }),
 
   columnHelper.accessor("upload_time", {
     sortingFn: "datetime",
     cell: (info) => <TimeAgo date={info.getValue()} />,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Uploaded" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Uploaded" />,
   }),
 
   columnHelper.display({
     id: "actions",
-    cell: (info) => (
-      <Link href={`/eu4/saves/${info.row.original.id}`}>View</Link>
-    ),
+    cell: (info) => <Link href={`/eu4/saves/${info.row.original.id}`}>View</Link>,
   }),
 ];
 

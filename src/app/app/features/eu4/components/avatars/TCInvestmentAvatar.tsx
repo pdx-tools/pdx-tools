@@ -21,12 +21,7 @@ export const TcInvestmentAvatar = ({ id, name }: LocalizedObj) => {
   return (
     <Tooltip>
       <Tooltip.Trigger className="h-12 w-12">
-        <Sprite
-          src={investmentImage}
-          dimensions={dimensions}
-          index={index}
-          alt={name}
-        />
+        <Sprite src={investmentImage} dimensions={dimensions} index={index} alt={name} />
       </Tooltip.Trigger>
       <Tooltip.Content>{name}</Tooltip.Content>
     </Tooltip>

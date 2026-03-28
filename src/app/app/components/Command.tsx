@@ -51,10 +51,7 @@ const CommandInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(function CommandInput({ className, ...props }, ref) {
   return (
-    <div
-      className="flex items-center border-b px-3 dark:border-gray-600"
-      cmdk-input-wrapper=""
-    >
+    <div className="flex items-center border-b px-3 dark:border-gray-600" cmdk-input-wrapper="">
       <MagnifyingGlassIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
       <CommandPrimitive.Input
         ref={ref}
@@ -76,10 +73,7 @@ const CommandList = React.forwardRef<
   return (
     <CommandPrimitive.List
       ref={ref}
-      className={cx(
-        "max-h-[300px] overflow-x-hidden overflow-y-auto",
-        className,
-      )}
+      className={cx("max-h-[300px] overflow-x-hidden overflow-y-auto", className)}
       {...props}
     />
   );
@@ -90,13 +84,7 @@ const CommandEmpty = React.forwardRef<
   React.ComponentRef<typeof CommandPrimitive.Empty>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
 >(function CommandEmpty(props, ref) {
-  return (
-    <CommandPrimitive.Empty
-      ref={ref}
-      className="py-6 text-center text-sm"
-      {...props}
-    />
-  );
+  return <CommandPrimitive.Empty ref={ref} className="py-6 text-center text-sm" {...props} />;
 });
 Command.Empty = CommandEmpty;
 
@@ -119,11 +107,7 @@ const CommandSeparator = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
 >(function CommandSeparator({ className, ...props }, ref) {
   return (
-    <CommandPrimitive.Separator
-      ref={ref}
-      className={cx("-mx-1 h-px", className)}
-      {...props}
-    />
+    <CommandPrimitive.Separator ref={ref} className={cx("-mx-1 h-px", className)} {...props} />
   );
 });
 Command.Separator = CommandSeparator;
@@ -145,15 +129,9 @@ const CommandItem = React.forwardRef<
 });
 Command.Item = CommandItem;
 
-const CommandShortcut = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLSpanElement>) => {
+const CommandShortcut = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => {
   return (
-    <span
-      className={cx("ml-auto text-xs tracking-widest text-gray-400", className)}
-      {...props}
-    />
+    <span className={cx("ml-auto text-xs tracking-widest text-gray-400", className)} {...props} />
   );
 };
 Command.Shortcut = CommandShortcut;

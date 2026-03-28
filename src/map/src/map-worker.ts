@@ -1,13 +1,7 @@
 import { overlayDate } from "./canvasOverlays";
 import { GLResources } from "./glResources";
 import { glContextOptions, WebGLMap } from "./map";
-import type {
-  DrawEvent,
-  MouseEvent,
-  MoveEvent,
-  UserRect,
-  WheelEvent,
-} from "./map";
+import type { DrawEvent, MouseEvent, MoveEvent, UserRect, WheelEvent } from "./map";
 import { IMG_HEIGHT, IMG_WIDTH } from "./mapDimensions";
 import { MapShader } from "./MapShader";
 import { ProvinceFinder } from "./ProvinceFinder";
@@ -175,10 +169,7 @@ export async function screenshot(
   const offscreen =
     screenshot.kind === "viewport"
       ? new OffscreenCanvas(canvas.width, canvas.height)
-      : new OffscreenCanvas(
-          IMG_WIDTH * screenshot.scale,
-          IMG_HEIGHT * screenshot.scale,
-        );
+      : new OffscreenCanvas(IMG_WIDTH * screenshot.scale, IMG_HEIGHT * screenshot.scale);
 
   const ctx2d = offscreen.getContext("2d", { alpha: false })!;
   if (screenshot.kind === "viewport") {
@@ -191,8 +182,7 @@ export async function screenshot(
   }
 
   if (screenshot.date && screenshot.fontFamily) {
-    const scale =
-      screenshot.kind === "viewport" ? map.pixelRatio : screenshot.scale * 4;
+    const scale = screenshot.kind === "viewport" ? map.pixelRatio : screenshot.scale * 4;
     ctx2d.font = `700 ${20 * scale}px ${screenshot.fontFamily}`;
     overlayDate({
       ctx2d,
@@ -205,10 +195,7 @@ export async function screenshot(
   return offscreen.convertToBlob(options);
 }
 
-export async function highlightProvince(
-  _map: MapToken,
-  provinceColorIndex: number,
-) {
+export async function highlightProvince(_map: MapToken, provinceColorIndex: number) {
   const map = state.map!;
   map.highlightProvince(provinceColorIndex);
   map.redrawMap();
@@ -220,10 +207,7 @@ export async function unhighlightProvince(_map: MapToken) {
   map.redrawMap();
 }
 
-export async function onDraw(
-  _map: MapToken,
-  onDraw: (event: DrawEvent) => void,
-) {
+export async function onDraw(_map: MapToken, onDraw: (event: DrawEvent) => void) {
   const map = state.map!;
   map.onDraw = onDraw;
 }
@@ -322,19 +306,12 @@ export async function withCommands(
         break;
       }
       case "update": {
-        map.showProvinceBorders =
-          command.showProvinceBorders ?? map.showProvinceBorders;
-        map.showCountryBorders =
-          command.showCountryBorders ?? map.showCountryBorders;
-        map.showMapModeBorders =
-          command.showMapModeBorders ?? map.showMapModeBorders;
+        map.showProvinceBorders = command.showProvinceBorders ?? map.showProvinceBorders;
+        map.showCountryBorders = command.showCountryBorders ?? map.showCountryBorders;
+        map.showMapModeBorders = command.showMapModeBorders ?? map.showMapModeBorders;
         map.renderTerrain = command.renderTerrain ?? map.renderTerrain;
 
-        if (
-          map.renderTerrain &&
-          !state.terrainImages &&
-          state.terrainImageUrls
-        ) {
+        if (map.renderTerrain && !state.terrainImages && state.terrainImageUrls) {
           state.terrainImages = await loadTerrainImages(state.terrainImageUrls);
           map.updateTerrainTextures(state.terrainImages);
         }

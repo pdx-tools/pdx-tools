@@ -3,9 +3,7 @@ import postgres from "postgres";
 import type { AppLoadContext } from "react-router";
 
 export type DbConnection = ReturnType<typeof drizzle>;
-export type DbTransaction = Parameters<
-  Parameters<DbConnection["transaction"]>[0]
->[0];
+export type DbTransaction = Parameters<Parameters<DbConnection["transaction"]>[0]>[0];
 export type DbRoute = { dbConn: Promise<DbConnection> };
 
 function dbConnect(connection: string) {
@@ -25,10 +23,7 @@ export function getDb(connection: string) {
   return getDbOrm(connection).orm;
 }
 
-export async function oneshotDb<R>(
-  connection: string,
-  fn: (db: DbConnection) => Promise<R>,
-) {
+export async function oneshotDb<R>(connection: string, fn: (db: DbConnection) => Promise<R>) {
   const { orm, sql } = getDbOrm(connection);
   try {
     return await fn(orm);

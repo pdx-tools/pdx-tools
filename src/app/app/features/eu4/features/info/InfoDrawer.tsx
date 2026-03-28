@@ -23,11 +23,7 @@ import { Tooltip } from "@/components/Tooltip";
 import { IconButton } from "@/components/IconButton";
 import { Alert } from "@/components/Alert";
 import { Link } from "@/components/Link";
-import {
-  EyeIcon,
-  ShieldExclamationIcon,
-  ShieldCheckIcon,
-} from "@heroicons/react/24/outline";
+import { EyeIcon, ShieldExclamationIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatInt } from "@/lib/format";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
@@ -35,11 +31,7 @@ import { Dialog } from "@/components/Dialog";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { toast } from "sonner";
 import { pdxApi } from "@/services/appApi";
-import type {
-  CompletedAchievement,
-  GreatPower,
-  PlayerHistory,
-} from "@/wasm/wasm_eu4";
+import type { CompletedAchievement, GreatPower, PlayerHistory } from "@/wasm/wasm_eu4";
 import { findMap } from "@/lib/findMap";
 import { useList } from "@/hooks/useList";
 import { useSession } from "@/features/account";
@@ -62,10 +54,7 @@ export const InfoDrawer = () => {
   const canUpdateSave = hasPermission(session, "savefile:update", {
     userId: serverFile?.user_id,
   });
-  const canManageLeaderboard = hasPermission(
-    session,
-    "savefile:leaderboard-qualification",
-  );
+  const canManageLeaderboard = hasPermission(session, "savefile:leaderboard-qualification");
 
   const players = playerHistories.data
     ?.map((x) => ({
@@ -74,10 +63,7 @@ export const InfoDrawer = () => {
         p.country.tag === x.latest ? ([p, i] as const) : undefined,
       ),
     }))
-    .sort(
-      (a, b) =>
-        (a.greatPower?.[1] ?? Infinity) - (b.greatPower?.[1] ?? Infinity),
-    );
+    .sort((a, b) => (a.greatPower?.[1] ?? Infinity) - (b.greatPower?.[1] ?? Infinity));
 
   const version = meta.savegame_version;
   const patch = `${version.first}.${version.second}.${version.third}.${version.fourth}`;
@@ -116,9 +102,7 @@ export const InfoDrawer = () => {
                   <tr>
                     <td>Author:</td>
                     <td>
-                      <Link href={`/users/${serverFile.user_id}`}>
-                        {serverFile.user_name}
-                      </Link>
+                      <Link href={`/users/${serverFile.user_id}`}>{serverFile.user_name}</Link>
                     </td>
                   </tr>
                   <tr>
@@ -132,16 +116,12 @@ export const InfoDrawer = () => {
             </tbody>
           </table>
           {serverFile?.leaderboard_qualified === false && (
-            <Alert
-              variant="warning"
-              className="mt-4 items-start gap-3 rounded-lg p-4 shadow-sm"
-            >
+            <Alert variant="warning" className="mt-4 items-start gap-3 rounded-lg p-4 shadow-sm">
               <div className="flex items-start">
                 <div className="space-y-1">
                   <Alert.Title>Disqualified from Leaderboards</Alert.Title>
                   <Alert.Description>
-                    This save has been excluded from achievement rankings by an
-                    administrator.
+                    This save has been excluded from achievement rankings by an administrator.
                   </Alert.Description>
                 </div>
               </div>
@@ -154,8 +134,7 @@ export const InfoDrawer = () => {
             <DlcList dlc_enabled={meta.dlc} />
           </div>
         </Card>
-        {achievements.kind === "Compatible" &&
-        achievements.achievements.length > 0 ? (
+        {achievements.kind === "Compatible" && achievements.achievements.length > 0 ? (
           <AchievementCard achievements={achievements.achievements} />
         ) : null}
         {mods.length > 0 ? (
@@ -189,9 +168,7 @@ export const InfoDrawer = () => {
                     <th>
                       <span className="sr-only">Country</span>
                     </th>
-                    <th className="text-right font-normal">
-                      Great power score
-                    </th>
+                    <th className="text-right font-normal">Great power score</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -254,11 +231,7 @@ export const InfoDrawer = () => {
   );
 };
 
-function AchievementCard({
-  achievements,
-}: {
-  achievements: CompletedAchievement[];
-}) {
+function AchievementCard({ achievements }: { achievements: CompletedAchievement[] }) {
   const { items } = useList({
     data: achievements,
     variant: "balance",
@@ -315,9 +288,7 @@ function CountryCard({
       className={cx(
         "space-y-5 p-4",
         item.annexed && "bg-rose-100 saturate-50 dark:bg-rose-900",
-        !item.is_human &&
-          !item.annexed &&
-          "bg-gray-100 saturate-50 dark:bg-slate-800",
+        !item.is_human && !item.annexed && "bg-gray-100 saturate-50 dark:bg-slate-800",
       )}
     >
       <div className="flex">
@@ -326,9 +297,7 @@ function CountryCard({
             <Flag.Image size="large" />
             <div className="flex flex-col items-start">
               <Flag.CountryName />
-              <span className="text-xs font-semibold text-gray-400/75">
-                {item.player_names[0]}
-              </span>
+              <span className="text-xs font-semibold text-gray-400/75">{item.player_names[0]}</span>
             </div>
           </Flag.DrawerTrigger>
         </Flag>
@@ -354,9 +323,7 @@ function CountryCard({
         </div>
       </div>
 
-      {item.transitions.length > 1 ||
-      item.annexed ||
-      item.player_names.length > 1 ? (
+      {item.transitions.length > 1 || item.annexed || item.player_names.length > 1 ? (
         <div className="border border-solid border-gray-200 dark:border-gray-600"></div>
       ) : null}
 
@@ -420,9 +387,7 @@ function LeaderboardQualificationToggle({
         onSuccess: () => {
           setOpen(false);
           toast.success(
-            newStatus
-              ? "Save qualified for leaderboards"
-              : "Save removed from leaderboards",
+            newStatus ? "Save qualified for leaderboards" : "Save removed from leaderboards",
           );
         },
         onError: (e) => {
@@ -438,10 +403,7 @@ function LeaderboardQualificationToggle({
     <div className="flex flex-col items-center gap-5">
       <Dialog open={open} onOpenChange={setOpen}>
         <Dialog.Trigger asChild>
-          <Button
-            variant={currentStatus ? "danger" : "primary"}
-            className="gap-2"
-          >
+          <Button variant={currentStatus ? "danger" : "primary"} className="gap-2">
             {currentStatus ? (
               <>
                 <ShieldExclamationIcon className="h-5 w-5" />
@@ -464,14 +426,14 @@ function LeaderboardQualificationToggle({
             <Dialog.Description className="py-4">
               {newStatus ? (
                 <>
-                  This save will be re-included in achievement leaderboards and
-                  may affect current rankings.
+                  This save will be re-included in achievement leaderboards and may affect current
+                  rankings.
                 </>
               ) : (
                 <>
-                  This save will be removed from all achievement leaderboards.
-                  The save will remain accessible, but will not appear in any
-                  rankings. Other players' rankings may shift as a result.
+                  This save will be removed from all achievement leaderboards. The save will remain
+                  accessible, but will not appear in any rankings. Other players' rankings may shift
+                  as a result.
                 </>
               )}
             </Dialog.Description>

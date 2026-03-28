@@ -13,11 +13,7 @@ type AchievementAvatarProps = {
 
 let dimensions: SpriteDimension | undefined;
 
-export const AchievementAvatar = ({
-  id,
-  className,
-  size,
-}: AchievementAvatarProps) => {
+export const AchievementAvatar = ({ id, className, size }: AchievementAvatarProps) => {
   if (id === 10000) {
     return (
       <Link className={className} key={id} href={`/eu4/achievements/${id}`}>

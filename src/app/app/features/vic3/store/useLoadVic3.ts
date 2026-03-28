@@ -58,10 +58,7 @@ type Vic3LoadActions =
   | { kind: "data"; data: Vic3Store }
   | { kind: "error"; error: unknown };
 
-const loadStateReducer = (
-  state: Vic3LoadState,
-  action: Vic3LoadActions,
-): Vic3LoadState => {
+const loadStateReducer = (state: Vic3LoadState, action: Vic3LoadActions): Vic3LoadState => {
   switch (action.kind) {
     case "start": {
       return {

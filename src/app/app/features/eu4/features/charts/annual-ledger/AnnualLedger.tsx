@@ -1,9 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import {
-  EChart,
-  useVisualizationDispatch,
-  useNearestSeriesItem,
-} from "@/components/viz";
+import { EChart, useVisualizationDispatch, useNearestSeriesItem } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { LedgerDatum } from "@/features/eu4/types/models";
 import { createCsv } from "@/lib/csv";
@@ -22,10 +18,7 @@ type MemoProps = LedgerProps & {
   lookup: ReturnType<typeof useCountryNameLookup>;
 };
 
-const AnnualLedgerPropped = React.memo(function AnnualLedgerPropped({
-  ledger,
-  lookup,
-}: MemoProps) {
+const AnnualLedgerPropped = React.memo(function AnnualLedgerPropped({ ledger, lookup }: MemoProps) {
   const isDark = isDarkMode();
   const { onInit, getClosestItem } = useNearestSeriesItem();
 
@@ -167,9 +160,7 @@ const AnnualLedgerPropped = React.memo(function AnnualLedgerPropped({
             color: isDark ? "#fff" : "#000",
           },
           borderColor: isDark ? "#666" : "#999",
-          fillerColor: isDark
-            ? "rgba(147, 197, 253, 0.2)"
-            : "rgba(91, 143, 249, 0.2)",
+          fillerColor: isDark ? "rgba(147, 197, 253, 0.2)" : "rgba(91, 143, 249, 0.2)",
           handleStyle: {
             color: isDark ? "#93c5fd" : "#5B8FF9",
           },
@@ -182,13 +173,7 @@ const AnnualLedgerPropped = React.memo(function AnnualLedgerPropped({
     };
   }, [ledger, lookup, isDark, getClosestItem]);
 
-  return (
-    <EChart
-      option={option}
-      style={{ height: "100%", width: "100%" }}
-      onInit={onInit}
-    />
-  );
+  return <EChart option={option} style={{ height: "100%", width: "100%" }} onInit={onInit} />;
 });
 
 export const AnnualLedger = ({
@@ -213,9 +198,7 @@ export const AnnualLedger = ({
     <>
       <Alert.Error msg={error} />
       <div className="h-[calc(100%-1px)]">
-        {data.length != 0 ? (
-          <AnnualLedgerPropped ledger={data} lookup={lookup} />
-        ) : null}
+        {data.length != 0 ? <AnnualLedgerPropped ledger={data} lookup={lookup} /> : null}
       </div>
     </>
   );

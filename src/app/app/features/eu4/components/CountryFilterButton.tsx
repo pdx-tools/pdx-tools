@@ -106,9 +106,7 @@ const CountryFilterSelect = ({ action }: { action: "include" | "exclude" }) => {
       isSelected={isSelected}
       onSelect={(tag) => {
         const selected = tags.includes(tag);
-        const newTags = selected
-          ? tags.filter((x) => x != tag)
-          : [...tags, tag];
+        const newTags = selected ? tags.filter((x) => x != tag) : [...tags, tag];
         actions.updateTagFilter({
           [action]: newTags,
         });

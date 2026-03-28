@@ -24,19 +24,14 @@ export function expandLosses(data: number[]) {
     transportShipCapture,
   ] = data;
   const landTotalBattle = infantryBattle + cavalryBattle + artilleryBattle;
-  const landTotalAttrition =
-    infantryAttrition + cavalryAttrition + artilleryAttrition;
+  const landTotalAttrition = infantryAttrition + cavalryAttrition + artilleryAttrition;
   const landTotal = landTotalBattle + landTotalAttrition;
 
-  const navyTotalBattle =
-    heavyShipBattle + lightShipBattle + galleyShipBattle + lightShipBattle;
+  const navyTotalBattle = heavyShipBattle + lightShipBattle + galleyShipBattle + lightShipBattle;
   const navyTotalCapture =
     heavyShipCapture + lightShipCapture + galleyShipCapture + lightShipCapture;
   const navyTotalAttrition =
-    heavyShipAttrition +
-    lightShipAttrition +
-    galleyShipAttrition +
-    lightShipAttrition;
+    heavyShipAttrition + lightShipAttrition + galleyShipAttrition + lightShipAttrition;
   const navyTotal = navyTotalBattle + navyTotalCapture + navyTotalAttrition;
   const total = navyTotal + landTotal;
   const totalBattle = landTotalBattle + navyTotalBattle;

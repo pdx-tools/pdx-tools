@@ -1,12 +1,6 @@
 import { useEffect, useRef, memo } from "react";
 import * as echarts from "echarts/core";
-import {
-  PieChart,
-  BarChart,
-  LineChart,
-  ScatterChart,
-  TreemapChart,
-} from "echarts/charts";
+import { PieChart, BarChart, LineChart, ScatterChart, TreemapChart } from "echarts/charts";
 import {
   TooltipComponent,
   GridComponent,
@@ -74,12 +68,7 @@ export interface EChartProps {
 export const escapeEChartsHtml = (value: unknown) =>
   echarts.format.encodeHTML(value == null ? "" : String(value));
 
-export const EChart = memo(function EChart({
-  option,
-  style,
-  onInit,
-  className,
-}: EChartProps) {
+export const EChart = memo(function EChart({ option, style, onInit, className }: EChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
 

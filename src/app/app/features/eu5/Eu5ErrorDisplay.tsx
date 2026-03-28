@@ -21,17 +21,13 @@ export const Eu5ErrorDisplay = ({ error }: Eu5ErrorDisplayProps) => {
           isWebGPU ? (
             <div>
               <p className="mb-3">
-                WebGPU could not be initialized. This may be due to your browser
-                or operating system.
+                WebGPU could not be initialized. This may be due to your browser or operating
+                system.
               </p>
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
-                <h3 className="font-semibold text-blue-900 dark:text-blue-100">
-                  Try These Steps:
-                </h3>
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100">Try These Steps:</h3>
                 <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-blue-800 dark:text-blue-200">
-                  <li>
-                    Ensure hardware acceleration is enabled in browser settings
-                  </li>
+                  <li>Ensure hardware acceleration is enabled in browser settings</li>
                   <li>Try a Chromium-based browser (Chrome, Edge, Brave)</li>
                 </ul>
               </div>

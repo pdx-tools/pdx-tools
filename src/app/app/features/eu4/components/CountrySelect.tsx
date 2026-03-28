@@ -30,11 +30,7 @@ export const CountrySelect = memo(function CountrySelect({
         </Button>
       </Popover.Trigger>
       <Popover.Content className="max-h-96 w-80 overflow-auto">
-        <SelectContent
-          onSelect={onSelect}
-          isSelected={isSelected}
-          setOpen={setOpen}
-        />
+        <SelectContent onSelect={onSelect} isSelected={isSelected} setOpen={setOpen} />
       </Popover.Content>
     </Popover>
   );
@@ -57,10 +53,7 @@ function SelectContent({
   const filteredCountries = useMemo(() => {
     type Fab = EnhancedCountryInfo & { badge?: string };
 
-    function scorer<T extends EnhancedCountryInfo>(
-      countries: T[],
-      search: string,
-    ) {
+    function scorer<T extends EnhancedCountryInfo>(countries: T[], search: string) {
       let needsSorting = true;
       const scores: [number, number][] = [];
 
@@ -117,19 +110,10 @@ function SelectContent({
 
   return (
     <Command shouldFilter={false}>
-      <Command.Input
-        value={input}
-        onValueChange={setInput}
-        placeholder="Search countries"
-      />
+      <Command.Input value={input} onValueChange={setInput} placeholder="Search countries" />
       <Command.List ref={parentRef}>
-        {filteredCountries.length == 0 && (
-          <Command.Empty>No countries found.</Command.Empty>
-        )}
-        <div
-          className="relative w-full"
-          style={{ height: virtualizer.getTotalSize() }}
-        >
+        {filteredCountries.length == 0 && <Command.Empty>No countries found.</Command.Empty>}
+        <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           {virtualizer.getVirtualItems().map((row) => {
             const x = filteredCountries[row.index];
             return (
@@ -142,9 +126,7 @@ function SelectContent({
                   transform: `translateY(${row.start}px)`,
                 }}
               >
-                {isSelected(x.tag) && (
-                  <CheckIcon className="absolute mr-2 h-4 w-4" />
-                )}
+                {isSelected(x.tag) && <CheckIcon className="absolute mr-2 h-4 w-4" />}
                 <span className="grow pl-6">
                   {x.name} ({x.tag})
                 </span>

@@ -1,12 +1,6 @@
-import type {
-  CountryExpenseLedger,
-  CountryIncomeLedger,
-} from "../../types/models";
+import type { CountryExpenseLedger, CountryIncomeLedger } from "../../types/models";
 
-function pick<T extends object, K extends keyof T>(
-  obj: T,
-  keys: K[],
-): Pick<T, K> {
+function pick<T extends object, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
   const result = {} as Pick<T, K>;
   keys.forEach((key) => {
     if (key in obj) {
@@ -17,22 +11,14 @@ function pick<T extends object, K extends keyof T>(
 }
 
 function sumValues(...obj: { [key: string]: number }[]): number {
-  return obj.reduce(
-    (acc, x) => acc + Object.values(x).reduce((sum, value) => sum + value, 0),
-    0,
-  );
+  return obj.reduce((acc, x) => acc + Object.values(x).reduce((sum, value) => sum + value, 0), 0);
 }
 
 type Income = ReturnType<typeof incomeBudget>;
 export function incomeBudget(income: CountryIncomeLedger) {
   return {
     "Core Income": pick(income, ["taxation", "production", "trade", "gold"]),
-    "Subject Income": pick(income, [
-      "siphoning_income",
-      "tariffs",
-      "treasure_fleet",
-      "vassals",
-    ]),
+    "Subject Income": pick(income, ["siphoning_income", "tariffs", "treasure_fleet", "vassals"]),
     "Diplomatic Income": pick(income, [
       "condottieri",
       "harbor_fees",
@@ -131,41 +117,28 @@ export function createBudget({
 
 export const budgetSelect = {
   recurringRevenue: (budget: Income) =>
-    sumValues(
-      budget["Core Income"],
-      budget["Subject Income"],
-      budget["Diplomatic Income"],
-    ),
+    sumValues(budget["Core Income"], budget["Subject Income"], budget["Diplomatic Income"]),
   operatingExpenses: (budget: Expenses) =>
-    sumValues(
-      budget.Maintenance,
-      budget["Interest Payments"],
-      budget["Diplomatic Expenses"],
-    ),
+    sumValues(budget.Maintenance, budget["Interest Payments"], budget["Diplomatic Expenses"]),
   operatingProfit: (budget: Budget) =>
-    budgetSelect.recurringRevenue(budget) -
-    budgetSelect.operatingExpenses(budget),
+    budgetSelect.recurringRevenue(budget) - budgetSelect.operatingExpenses(budget),
 
   nonOperatingExpenses: (budget: Expenses) =>
     sumValues(budget["One-time Expenses"], budget["Capital Expenditure"]),
 
   totalRevenue: (budget: Income) =>
-    budgetSelect.recurringRevenue(budget) +
-    sumValues(budget["One-time Income"]),
+    budgetSelect.recurringRevenue(budget) + sumValues(budget["One-time Income"]),
 
   totalExpenses: (budget: Expenses) =>
-    budgetSelect.operatingExpenses(budget) +
-    budgetSelect.nonOperatingExpenses(budget),
+    budgetSelect.operatingExpenses(budget) + budgetSelect.nonOperatingExpenses(budget),
 
   netProfit: (budget: Budget) =>
     budgetSelect.totalRevenue(budget) - budgetSelect.totalExpenses(budget),
 
   capexRatio: (budget: Expenses) =>
-    sumValues(budget["Capital Expenditure"]) /
-    budgetSelect.totalExpenses(budget),
+    sumValues(budget["Capital Expenditure"]) / budgetSelect.totalExpenses(budget),
 
-  keys: <T extends object>(obj: T): (keyof T)[] =>
-    Object.keys(obj) as (keyof T)[],
+  keys: <T extends object>(obj: T): (keyof T)[] => Object.keys(obj) as (keyof T)[],
 
   divide: (budget: Budget, divisor: number): Budget => {
     return Object.fromEntries(
@@ -174,9 +147,7 @@ export const budgetSelect = {
         .map((kind) => [
           kind,
           Object.fromEntries(
-            budgetSelect
-              .keys(budget[kind])
-              .map((key) => [key, budget[kind][key] / divisor]),
+            budgetSelect.keys(budget[kind]).map((key) => [key, budget[kind][key] / divisor]),
           ),
         ]),
     ) as Budget;

@@ -1,9 +1,5 @@
 import React, { createContext, useContext } from "react";
-import {
-  useColonialOverlord,
-  useEu4Actions,
-  useInEu4Analysis,
-} from "../../store";
+import { useColonialOverlord, useEu4Actions, useInEu4Analysis } from "../../store";
 import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import { Button } from "@/components/Button";
@@ -19,8 +15,7 @@ import flagReb from "../../../../../../../assets/game/eu4/common/images/REB.png"
 type FlagTag = keyof typeof flagJson;
 type FlagContextState = { name: string; tag: string };
 const FlagContext = createContext<FlagContextState | undefined>(undefined);
-const useFlag = () =>
-  check(useContext(FlagContext), "flag context is undefined");
+const useFlag = () => check(useContext(FlagContext), "flag context is undefined");
 
 type CompoundProps = FlagContextState & { children: React.ReactNode };
 const RootFlag = (props: CompoundProps | FlagAvatarProps) => {
@@ -50,9 +45,7 @@ const FlagTooltip = React.forwardRef<
       <Tooltip.Trigger ref={ref} {...props}>
         {children}
       </Tooltip.Trigger>
-      <Tooltip.Content>
-        {showName ? `${flag.name} (${flag.tag})` : flag.tag}
-      </Tooltip.Content>
+      <Tooltip.Content>{showName ? `${flag.name} (${flag.tag})` : flag.tag}</Tooltip.Content>
     </Tooltip>
   );
 });
@@ -92,18 +85,17 @@ const FlagImage = (props: FlagImageProps) => {
 };
 Flag.Image = FlagImage;
 
-const FlagCountryName = React.forwardRef<
-  HTMLSpanElement,
-  React.HTMLAttributes<HTMLSpanElement>
->(function FlagCountryName(props, ref) {
-  const flag = useFlag();
+const FlagCountryName = React.forwardRef<HTMLSpanElement, React.HTMLAttributes<HTMLSpanElement>>(
+  function FlagCountryName(props, ref) {
+    const flag = useFlag();
 
-  return (
-    <span ref={ref} {...props}>
-      {flag.name}
-    </span>
-  );
-});
+    return (
+      <span ref={ref} {...props}>
+        {flag.name}
+      </span>
+    );
+  },
+);
 
 Flag.CountryName = FlagCountryName;
 
@@ -143,8 +135,7 @@ const dimensions = spriteDimension({
 // are white at the edges (like austria). Using a 1px border resulted
 // in a weird gap in chrome so we have to use outline with a negative
 // offset to account for the avatar's border radius.
-const className =
-  "shrink-0 outline -outline-offset-1 outline-gray-500 dark:outline-gray-800";
+const className = "shrink-0 outline -outline-offset-1 outline-gray-500 dark:outline-gray-800";
 
 function RebFlag({ size }: { size?: AvatarSize }) {
   const factor = sizeFactor(size);
@@ -231,9 +222,7 @@ const FlagAvatar = (props: FlagAvatarProps) => {
   );
 
   const withTrigger = interactive ? (
-    <Flag.DrawerTrigger className={!props.condensed ? "pr-4" : ""}>
-      {withName}
-    </Flag.DrawerTrigger>
+    <Flag.DrawerTrigger className={!props.condensed ? "pr-4" : ""}>{withName}</Flag.DrawerTrigger>
   ) : (
     withName
   );

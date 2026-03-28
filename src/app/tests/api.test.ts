@@ -14,8 +14,7 @@ import type { PdxSession } from "@/server-lib/auth/session";
 import type { SaveResponse } from "@/routes/api.saves.$saveId";
 import type { NewKeyResponse } from "@/services/appApi";
 
-const dbConnection =
-  "postgres://app_user:mercantilismbaby@localhost:5433/postgres";
+const dbConnection = "postgres://app_user:mercantilismbaby@localhost:5433/postgres";
 
 beforeEach(async () => {
   await oneshotDb(dbConnection, async (db) => {
@@ -223,9 +222,7 @@ test("same campaign", async () => {
   expect(startUpload.save_id).toBeDefined();
 
   // When retrieving the achievements, we should only see the save with the earliest date
-  const achievementLeaderboard = await client.get<AchievementApiResponse>(
-    "/api/achievements/18",
-  );
+  const achievementLeaderboard = await client.get<AchievementApiResponse>("/api/achievements/18");
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(startUpload.save_id);
 
@@ -269,9 +266,7 @@ test("same playthrough id", async () => {
   expect(persia.save_id).toBeDefined();
 
   // When retrieving the shahanshah achievement we should only see the start data
-  const achievementLeaderboard = await client.get<AchievementApiResponse>(
-    "/api/achievements/89",
-  );
+  const achievementLeaderboard = await client.get<AchievementApiResponse>("/api/achievements/89");
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(shahansha.save_id);
 
@@ -308,9 +303,7 @@ test("reject duplicate uploads", async () => {
   const tatarUpload = await client.uploadSave(tatarPath);
   expect(tatarUpload.save_id).toBeDefined();
 
-  await expect(client.uploadSave(tatarPath)).rejects.toThrow(
-    "save already exists",
-  );
+  await expect(client.uploadSave(tatarPath)).rejects.toThrow("save already exists");
 });
 
 test("delete save", async () => {
@@ -334,9 +327,7 @@ test("delete save", async () => {
   userProfile = await client.get<UserSaves>("/api/users/100");
   expect(userProfile.saves).toHaveLength(0);
 
-  const achievement = await client.get<AchievementApiResponse>(
-    "/api/achievements/18",
-  );
+  const achievement = await client.get<AchievementApiResponse>("/api/achievements/18");
   expect(achievement.saves).toHaveLength(0);
 
   const kandy2 = await client.uploadSave(kandyPath);
@@ -348,9 +339,7 @@ test("set aar", async () => {
   const ita1Path = "ita1.eu4";
   const initAar = "hello world";
   const uploadResponse = await client.uploadSave(ita1Path, { aar: initAar });
-  const uploadedSave = await client.get<SaveResponse>(
-    `/api/saves/${uploadResponse.save_id}`,
-  );
+  const uploadedSave = await client.get<SaveResponse>(`/api/saves/${uploadResponse.save_id}`);
   expect(uploadedSave.aar).toBe(initAar);
 
   await client.patch(`/api/saves/${uploadResponse.save_id}`, {
@@ -358,9 +347,7 @@ test("set aar", async () => {
     filename: "hello world.eu4",
   });
 
-  const updatedSave = await client.get<SaveResponse>(
-    `/api/saves/${uploadResponse.save_id}`,
-  );
+  const updatedSave = await client.get<SaveResponse>(`/api/saves/${uploadResponse.save_id}`);
   expect(updatedSave.aar).toBe("goodbye");
   expect(updatedSave.filename).toBe("hello world.eu4");
 });
@@ -405,8 +392,7 @@ test("get profile with api key", async () => {
   await fetchOk(pdxUrl(`/api/saves/${kandy.save_id}`), {
     method: "DELETE",
     headers: {
-      Authorization:
-        "Basic " + Buffer.from(`100:${key.api_key}`).toString("base64"),
+      Authorization: "Basic " + Buffer.from(`100:${key.api_key}`).toString("base64"),
     },
   });
 
@@ -428,9 +414,7 @@ test("admin rebalance", async () => {
   // test with empty database
   await client.post("/api/admin/rebalance?__patch_override_for_testing=243");
 
-  const achievementLeaderboard = await client.get<AchievementApiResponse>(
-    "/api/achievements/18",
-  );
+  const achievementLeaderboard = await client.get<AchievementApiResponse>("/api/achievements/18");
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].patch).toBe("1.29");
   expect(achievementLeaderboard.saves[0].days).toBe(30527);
@@ -457,16 +441,12 @@ test("leaderboard disqualification", async () => {
   expect(upload.save_id).toBeDefined();
 
   // Verify save appears on achievement leaderboard
-  let achievementLeaderboard = await client.get<AchievementApiResponse>(
-    "/api/achievements/18",
-  );
+  let achievementLeaderboard = await client.get<AchievementApiResponse>("/api/achievements/18");
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(upload.save_id);
 
   // Verify save detail includes leaderboard_qualified field (defaults to true)
-  let saveDetail = await client.get<SaveResponse>(
-    `/api/saves/${upload.save_id}`,
-  );
+  let saveDetail = await client.get<SaveResponse>(`/api/saves/${upload.save_id}`);
   expect(saveDetail.leaderboard_qualified).toBe(true);
 
   // Disqualify the save from leaderboards
@@ -475,9 +455,7 @@ test("leaderboard disqualification", async () => {
   });
 
   // Verify save no longer appears on achievement leaderboard
-  achievementLeaderboard = await client.get<AchievementApiResponse>(
-    "/api/achievements/18",
-  );
+  achievementLeaderboard = await client.get<AchievementApiResponse>("/api/achievements/18");
   expect(achievementLeaderboard.saves).toHaveLength(0);
 
   // Verify save detail reflects disqualification
@@ -490,9 +468,7 @@ test("leaderboard disqualification", async () => {
   });
 
   // Verify save reappears on achievement leaderboard
-  achievementLeaderboard = await client.get<AchievementApiResponse>(
-    "/api/achievements/18",
-  );
+  achievementLeaderboard = await client.get<AchievementApiResponse>("/api/achievements/18");
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(upload.save_id);
 

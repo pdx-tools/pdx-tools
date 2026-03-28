@@ -12,11 +12,7 @@ export const captureException = (
   exception: Parameters<CaptureException>[0],
   captureContext?: Parameters<CaptureException>[1],
 ): ReturnType<CaptureException> | undefined => {
-  if (
-    exception !== null &&
-    typeof exception === "object" &&
-    "stack" in exception
-  ) {
+  if (exception !== null && typeof exception === "object" && "stack" in exception) {
     console.error(exception, exception.stack);
   } else {
     console.error(exception);

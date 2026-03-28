@@ -11,9 +11,7 @@ export function Eu5HoverDisplay() {
   if (hoverData.kind === "location") {
     return (
       <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg bg-slate-800/90 px-4 py-3 text-sm text-white shadow-lg backdrop-blur-sm">
-        <div className="font-semibold text-blue-300">
-          {hoverData.locationName}
-        </div>
+        <div className="font-semibold text-blue-300">{hoverData.locationName}</div>
         {hoverData.development !== undefined && (
           <div className="mt-1">
             Development:{" "}
@@ -25,17 +23,13 @@ export function Eu5HoverDisplay() {
         {hoverData.population !== undefined && (
           <div className="mt-1">
             Population:{" "}
-            <span className="font-mono text-green-300">
-              {formatInt(hoverData.population)}
-            </span>
+            <span className="font-mono text-green-300">{formatInt(hoverData.population)}</span>
           </div>
         )}
         {hoverData.rgoLevel !== undefined && (
           <div className="mt-1">
             RGO Level:{" "}
-            <span className="font-mono text-orange-300">
-              {formatInt(hoverData.rgoLevel)}
-            </span>
+            <span className="font-mono text-orange-300">{formatInt(hoverData.rgoLevel)}</span>
           </div>
         )}
         {hoverData.controlValue !== undefined && (
@@ -49,9 +43,7 @@ export function Eu5HoverDisplay() {
         {hoverData.buildingLevel !== undefined && (
           <div className="mt-1">
             Building Levels:{" "}
-            <span className="font-mono text-cyan-300">
-              {formatInt(hoverData.buildingLevel)}
-            </span>
+            <span className="font-mono text-cyan-300">{formatInt(hoverData.buildingLevel)}</span>
           </div>
         )}
         {hoverData.marketAccess !== undefined && (
@@ -65,25 +57,19 @@ export function Eu5HoverDisplay() {
         {hoverData.possibleTax !== undefined && (
           <div className="mt-1">
             Possible Tax:{" "}
-            <span className="font-mono text-red-300">
-              {formatFloat(hoverData.possibleTax, 2)}
-            </span>
+            <span className="font-mono text-red-300">{formatFloat(hoverData.possibleTax, 2)}</span>
           </div>
         )}
         {hoverData.locationReligionName !== undefined && (
           <div className="mt-1">
             Location Religion:{" "}
-            <span className="font-mono text-amber-300">
-              {hoverData.locationReligionName}
-            </span>
+            <span className="font-mono text-amber-300">{hoverData.locationReligionName}</span>
           </div>
         )}
         {hoverData.ownerReligionName !== undefined && (
           <div className="mt-1">
             Owner Religion:{" "}
-            <span className="font-mono text-pink-300">
-              {hoverData.ownerReligionName}
-            </span>
+            <span className="font-mono text-pink-300">{hoverData.ownerReligionName}</span>
           </div>
         )}
       </div>
@@ -96,9 +82,7 @@ export function Eu5HoverDisplay() {
         <div className="font-semibold text-blue-300">
           {hoverData.marketCenterName || hoverData.countryName}
           {!hoverData.marketCenterName && (
-            <span className="ml-2 text-xs text-slate-400">
-              ({hoverData.countryTag})
-            </span>
+            <span className="ml-2 text-xs text-slate-400">({hoverData.countryTag})</span>
           )}
         </div>
         {hoverData.totalDevelopment !== undefined && (
@@ -112,17 +96,13 @@ export function Eu5HoverDisplay() {
         {hoverData.totalPopulation !== undefined && (
           <div className="mt-1">
             Total Population:{" "}
-            <span className="font-mono text-green-300">
-              {formatInt(hoverData.totalPopulation)}
-            </span>
+            <span className="font-mono text-green-300">{formatInt(hoverData.totalPopulation)}</span>
           </div>
         )}
         {hoverData.totalRgoLevel !== undefined && (
           <div className="mt-1">
             Total RGO Levels:{" "}
-            <span className="font-mono text-orange-300">
-              {formatInt(hoverData.totalRgoLevel)}
-            </span>
+            <span className="font-mono text-orange-300">{formatInt(hoverData.totalRgoLevel)}</span>
           </div>
         )}
         {hoverData.averageControlValue !== undefined && (
@@ -144,9 +124,7 @@ export function Eu5HoverDisplay() {
         {hoverData.marketValue !== undefined && (
           <div className="mt-1">
             Market Value:{" "}
-            <span className="font-mono text-pink-300">
-              {formatFloat(hoverData.marketValue, 2)}
-            </span>
+            <span className="font-mono text-pink-300">{formatFloat(hoverData.marketValue, 2)}</span>
           </div>
         )}
         {hoverData.totalPossibleTax !== undefined && (
@@ -160,9 +138,7 @@ export function Eu5HoverDisplay() {
         {hoverData.countryReligionName !== undefined && (
           <div className="mt-1">
             Religion:{" "}
-            <span className="font-mono text-amber-300">
-              {hoverData.countryReligionName}
-            </span>
+            <span className="font-mono text-amber-300">{hoverData.countryReligionName}</span>
           </div>
         )}
       </div>

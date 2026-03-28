@@ -120,10 +120,7 @@ export function calculateInstitutionSteps({
   return steps;
 }
 
-export type ConsolidatedInstitutionStep = Extract<
-  InstitutionStep,
-  { type: "develop" }
-> & {
+export type ConsolidatedInstitutionStep = Extract<InstitutionStep, { type: "develop" }> & {
   followedBy: InstitutionStep[];
 };
 
@@ -132,9 +129,7 @@ export type ConsolidatedInstitutionStep = Extract<
  * point and then expands / exploits the province, so we group them together as
  * a form of tag system when developing.
  */
-export function consolidateSteps(
-  steps: InstitutionStep[],
-): ConsolidatedInstitutionStep[] {
+export function consolidateSteps(steps: InstitutionStep[]): ConsolidatedInstitutionStep[] {
   const result: ConsolidatedInstitutionStep[] = [];
   let stepIdx = 0;
 
@@ -157,10 +152,7 @@ export function consolidateSteps(
     }
 
     // Collect any subsequent expand/exploit steps
-    while (
-      steps[stepIdx]?.type === "expand" ||
-      steps[stepIdx]?.type === "exploit"
-    ) {
+    while (steps[stepIdx]?.type === "expand" || steps[stepIdx]?.type === "exploit") {
       followedBy.push(steps[stepIdx]);
       stepIdx++;
     }

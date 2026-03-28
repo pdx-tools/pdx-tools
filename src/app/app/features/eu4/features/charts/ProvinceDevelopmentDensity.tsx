@@ -12,10 +12,7 @@ import { isDarkMode } from "@/lib/dark";
 export const ProvinceDevelopmentDensity = () => {
   const countryFilter = useTagFilter();
   const { data, error } = useAnalysisWorker(
-    useCallback(
-      (worker) => worker.eu4GetProvinceDevDensity(countryFilter),
-      [countryFilter],
-    ),
+    useCallback((worker) => worker.eu4GetProvinceDevDensity(countryFilter), [countryFilter]),
   );
   const visualizationDispatch = useVisualizationDispatch();
 
@@ -167,15 +164,12 @@ export const ProvinceDevelopmentDensity = () => {
     <div className="flex flex-col gap-4 pb-10">
       {data.totalProvinces === 0 ? (
         <Alert variant="info">
-          <Alert.Description>
-            No provinces matched the current filter.
-          </Alert.Description>
+          <Alert.Description>No provinces matched the current filter.</Alert.Description>
         </Alert>
       ) : null}
       <div className="text-sm text-slate-600 dark:text-slate-300">
-        Bandwidth: {formatFloat(data.bandwidth, 2)} | Range:{" "}
-        {formatFloat(data.min, 2)} – {formatFloat(data.max, 2)} | Provinces
-        counted: {formatInt(data.totalProvinces)}
+        Bandwidth: {formatFloat(data.bandwidth, 2)} | Range: {formatFloat(data.min, 2)} –{" "}
+        {formatFloat(data.max, 2)} | Provinces counted: {formatInt(data.totalProvinces)}
       </div>
       {data.points.length !== 0 ? (
         <EChart option={option} style={{ height: "400px", width: "100%" }} />

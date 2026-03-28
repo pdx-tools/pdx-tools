@@ -12,9 +12,7 @@ export const HelpTooltip = ({ help, className }: HelpTooltipProps) => {
       shape="none"
       variant="ghost"
       className={className}
-      icon={
-        <QuestionMarkCircleIcon className="h-4 w-4 cursor-help text-gray-500" />
-      }
+      icon={<QuestionMarkCircleIcon className="h-4 w-4 cursor-help text-gray-500" />}
       tooltip={help}
     />
   );

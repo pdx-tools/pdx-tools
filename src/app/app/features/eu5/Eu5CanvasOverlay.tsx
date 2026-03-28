@@ -163,10 +163,7 @@ export const Eu5CanvasOverlay = () => {
         </div>
 
         <div className="space-y-4 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
-          <label
-            htmlFor={bordersSwitchId}
-            className="flex items-center justify-between gap-3"
-          >
+          <label htmlFor={bordersSwitchId} className="flex items-center justify-between gap-3">
             <div className="flex flex-col gap-1">
               <span className="text-xs font-semibold tracking-wide text-slate-300 uppercase">
                 Owner Borders
@@ -196,12 +193,8 @@ export const Eu5CanvasOverlay = () => {
             <div className="flex items-center gap-3">
               <ChartAreaIcon className="h-5 w-5 text-purple-300" />
               <div className="flex flex-col leading-tight">
-                <span className="text-sm font-semibold text-slate-100">
-                  Charts
-                </span>
-                <span className="text-xs text-slate-300/80">
-                  View analytics and insights
-                </span>
+                <span className="text-sm font-semibold text-slate-100">Charts</span>
+                <span className="text-xs text-slate-300/80">View analytics and insights</span>
               </div>
             </div>
             <span className="text-[11px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
@@ -223,8 +216,7 @@ const EarlyAccessRoadmap = () => {
         <span>🚧 Under construction 🚧</span>
       </header>
       <p className="mt-2 text-center text-balance text-amber-50/90">
-        EU5 is being brought up to speed. The UI is very much in flux. Stay
-        tuned!
+        EU5 is being brought up to speed. The UI is very much in flux. Stay tuned!
       </p>
       <div className="mt-4 grid grid-cols-4 place-items-center gap-2">
         {COMING_SOON_FEATURES.map((feature) => (
@@ -319,12 +311,8 @@ function Screenshot() {
           <CameraIcon className="h-5 w-5 text-sky-300" />
         )}
         <div className="flex flex-col leading-tight">
-          <span className="text-sm font-semibold text-slate-100">
-            Capture screenshot
-          </span>
-          <span className="text-xs text-slate-300/80">
-            Shift-click for full resolution.
-          </span>
+          <span className="text-sm font-semibold text-slate-100">Capture screenshot</span>
+          <span className="text-xs text-slate-300/80">Shift-click for full resolution.</span>
         </div>
       </div>
       <span className="text-[11px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
@@ -342,9 +330,7 @@ function Melt() {
     action: async () => {
       try {
         const meltedData = await engine.trigger.melt();
-        const baseName =
-          saveFilename.substring(0, saveFilename.lastIndexOf(".")) ||
-          saveFilename;
+        const baseName = saveFilename.substring(0, saveFilename.lastIndexOf(".")) || saveFilename;
         const filename = `${baseName}_melted.eu5`;
         downloadData(meltedData, filename);
         toast.success(`Save file melted and downloaded`, {
@@ -380,12 +366,8 @@ function Melt() {
           <SparklesIcon className="h-5 w-5 text-emerald-300" />
         )}
         <div className="flex flex-col leading-tight">
-          <span className="text-sm font-semibold text-slate-100">
-            Melt save file
-          </span>
-          <span className="text-xs text-slate-300/80">
-            Convert the save to plaintext
-          </span>
+          <span className="text-sm font-semibold text-slate-100">Melt save file</span>
+          <span className="text-xs text-slate-300/80">Convert the save to plaintext</span>
         </div>
       </div>
       <span className="text-[11px] font-semibold tracking-[0.2em] text-slate-400 uppercase">

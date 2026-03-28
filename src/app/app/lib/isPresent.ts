@@ -9,8 +9,7 @@ export function isOfType<
   Union extends { kind: GenericType },
   SpecificType extends GenericType,
 >(val: SpecificType) {
-  return (obj: Union): obj is Extract<Union, { kind: SpecificType }> =>
-    obj.kind === val;
+  return (obj: Union): obj is Extract<Union, { kind: SpecificType }> => obj.kind === val;
 }
 
 export function check<T>(t: T | undefined | null, msg?: string): T {

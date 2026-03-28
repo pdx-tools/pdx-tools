@@ -7,11 +7,7 @@ import spriteSrc from "@/images/eu4/personalities/personalities.webp";
 
 let dimensions: SpriteDimension | undefined;
 
-export const PersonalityAvatar = ({
-  id,
-  name,
-  size = 64,
-}: LocalizedObj & { size?: 64 | 42 }) => {
+export const PersonalityAvatar = ({ id, name, size = 64 }: LocalizedObj & { size?: 64 | 42 }) => {
   dimensions ??= spriteDimension({
     data: spriteData,
     spriteCell: { width: 64, height: 64 },

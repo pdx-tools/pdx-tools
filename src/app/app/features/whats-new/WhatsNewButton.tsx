@@ -63,9 +63,7 @@ function WhatsNewBody({ hasClicked }: { hasClicked?: boolean }) {
           </span>
         ) : null}
       </span>
-      {hasUnread ? (
-        <span className="sr-only">New updates available</span>
-      ) : null}
+      {hasUnread ? <span className="sr-only">New updates available</span> : null}
     </>
   );
 }

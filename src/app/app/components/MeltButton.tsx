@@ -44,8 +44,7 @@ export const MeltButton = ({ filename, worker, game }: MeltProps) => {
     <Tooltip>
       <Tooltip.Trigger asChild>
         <Button className="flex gap-2 self-start" onClick={melt}>
-          {loading ? <LoadingIcon className="h-4 w-4 text-gray-800" /> : null}{" "}
-          <span>Melt</span>
+          {loading ? <LoadingIcon className="h-4 w-4 text-gray-800" /> : null} <span>Melt</span>
         </Button>
       </Tooltip.Trigger>
       <Tooltip.Content>Convert (melt) save into plain text</Tooltip.Content>

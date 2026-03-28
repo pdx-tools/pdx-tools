@@ -12,9 +12,7 @@ export function Eu4MeltButton() {
   const filename = useSaveFilename();
 
   if (!meta.is_random_new_world) {
-    return (
-      <MeltButton game="eu4" worker={getEu4Worker()} filename={filename} />
-    );
+    return <MeltButton game="eu4" worker={getEu4Worker()} filename={filename} />;
   } else {
     return <MeltRnw />;
   }
@@ -45,8 +43,7 @@ function MeltRnw() {
             <Button>Cancel</Button>
           </Dialog.Close>
           <Button className="items-center gap-2" onClick={melt}>
-            {loading ? <LoadingIcon className="h-4 w-4 text-gray-800" /> : null}{" "}
-            Melt
+            {loading ? <LoadingIcon className="h-4 w-4 text-gray-800" /> : null} Melt
           </Button>
         </Dialog.Footer>
       </Dialog.Content>

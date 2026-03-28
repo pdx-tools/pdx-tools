@@ -11,17 +11,10 @@ type Action =
   | { type: "update-csv-data"; getCsvData: VisualizationState["getCsvData"] };
 
 type Dispatch = (action: Action) => void;
-const VisualizationContext = React.createContext<
-  VisualizationState | undefined
->(undefined);
-const VisualizationDispatchContext = React.createContext<Dispatch | undefined>(
-  undefined,
-);
+const VisualizationContext = React.createContext<VisualizationState | undefined>(undefined);
+const VisualizationDispatchContext = React.createContext<Dispatch | undefined>(undefined);
 
-function visualizationReducer(
-  state: VisualizationState,
-  action: Action,
-): VisualizationState {
+function visualizationReducer(state: VisualizationState, action: Action): VisualizationState {
   switch (action.type) {
     case "enqueue-loading":
       return { ...state, loading: state.loading + 1 };
@@ -36,9 +29,7 @@ interface VisualizationProviderProps {
   children: React.ReactNode;
 }
 
-export const VisualizationProvider = ({
-  children,
-}: VisualizationProviderProps) => {
+export const VisualizationProvider = ({ children }: VisualizationProviderProps) => {
   const [state, dispatch] = React.useReducer(visualizationReducer, {
     loading: 0,
     getCsvData: async () => "",

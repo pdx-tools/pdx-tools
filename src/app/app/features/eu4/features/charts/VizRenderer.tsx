@@ -1,11 +1,6 @@
 import { IdeaGroupsChart } from "./IdeaGroupsChart";
 import type { VizModules } from "../../types/visualizations";
-import {
-  AnnualIncome,
-  AnnualScore,
-  AnnualNationSize,
-  AnnualInflation,
-} from "./annual-ledger";
+import { AnnualIncome, AnnualScore, AnnualNationSize, AnnualInflation } from "./annual-ledger";
 import { HealthGrid } from "./HealthGrid";
 import { WarTable } from "./WarTable";
 import { CountriesArmyCasualtiesTable } from "./casualties/CountriesArmyCasualtiesTable";

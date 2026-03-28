@@ -37,11 +37,7 @@ export const CountrySelect = memo(function CountrySelect({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <Button
-          role="combobox"
-          aria-expanded={open}
-          className="w-52 justify-between"
-        >
+        <Button role="combobox" aria-expanded={open} className="w-52 justify-between">
           {children}
           <PlayIcon className="h-3 w-3 rotate-90 self-center opacity-50" />
         </Button>
@@ -58,11 +54,7 @@ export const CountrySelect = memo(function CountrySelect({
             }
           }}
         >
-          <Command.Input
-            value={input}
-            onValueChange={setInput}
-            placeholder="Search countries"
-          />
+          <Command.Input value={input} onValueChange={setInput} placeholder="Search countries" />
           <Command.List>
             <Command.Empty>No countries found.</Command.Empty>
             <CountrySelectGroup
@@ -94,11 +86,7 @@ const CountrySelectGroup = memo(function CountrySelectGroup({
   return (
     <Command.Group heading={title}>
       {countries.map((x) => (
-        <Command.Item
-          key={x}
-          value={x.toLowerCase()}
-          onSelect={() => onSelect(x)}
-        >
+        <Command.Item key={x} value={x.toLowerCase()} onSelect={() => onSelect(x)}>
           <CheckIcon
             className={cx(
               "mr-2 h-4 w-4 opacity-0 data-selected:opacity-100",

@@ -42,9 +42,7 @@ export const WhatsNewDrawer = ({ children }: UpdatesDrawerProps) => {
                   className="rounded-lg border border-white/10 bg-white/5 px-4 py-3"
                 >
                   <header className="mb-2 flex items-center justify-between gap-3">
-                    <h3 className="text-base font-semibold">
-                      {release.release_date}
-                    </h3>
+                    <h3 className="text-base font-semibold">{release.release_date}</h3>
                     {release.learn_more_url ? (
                       <Link
                         href={release.learn_more_url}
@@ -57,9 +55,7 @@ export const WhatsNewDrawer = ({ children }: UpdatesDrawerProps) => {
                   {release.headline ? (
                     <p className="text-sm font-medium">{release.headline}</p>
                   ) : null}
-                  {release.summary ? (
-                    <p className="text-xs opacity-80">{release.summary}</p>
-                  ) : null}
+                  {release.summary ? <p className="text-xs opacity-80">{release.summary}</p> : null}
 
                   {SECTION_ORDER.map((sectionKey) => {
                     const items = release.sections[sectionKey] ?? [];
@@ -73,9 +69,7 @@ export const WhatsNewDrawer = ({ children }: UpdatesDrawerProps) => {
                             key={`${release.release_date}-${sectionKey}-${index}`}
                             className="flex gap-2"
                           >
-                            <span aria-hidden="true">
-                              {SECTION_EMOJI[sectionKey]}
-                            </span>
+                            <span aria-hidden="true">{SECTION_EMOJI[sectionKey]}</span>
                             <span>{item}</span>
                           </li>
                         ))}

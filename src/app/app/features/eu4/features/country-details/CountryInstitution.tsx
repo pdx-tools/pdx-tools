@@ -17,10 +17,7 @@ import { Tooltip } from "@/components/Tooltip";
 import { InputNumber } from "@/components/InputNumber";
 import { Link } from "@/components/Link";
 import { Badge } from "@/components/Badge";
-import {
-  calculateInstitutionSteps,
-  consolidateSteps,
-} from "./institutionSteps";
+import { calculateInstitutionSteps, consolidateSteps } from "./institutionSteps";
 import styles from "./CountryInstitution.module.css";
 
 function ProvinceModifier(props: InstitutionCost) {
@@ -42,17 +39,14 @@ function ProvinceModifier(props: InstitutionCost) {
         }}
       />
       %
-      {override !== undefined &&
-      override !== props.dev_cost_modifier_heuristic ? (
+      {override !== undefined && override !== props.dev_cost_modifier_heuristic ? (
         <IconButton
           className="pl-2"
           variant="ghost"
           shape="none"
           onClick={() => actions.clearOverride(props.province_id)}
           tooltip={"Reset modified dev cost modifier"}
-          icon={
-            <XMarkIcon className="h-4 w-4 opacity-50 transition-opacity hover:opacity-100" />
-          }
+          icon={<XMarkIcon className="h-4 w-4 opacity-50 transition-opacity hover:opacity-100" />}
         />
       ) : null}
     </div>
@@ -60,10 +54,7 @@ function ProvinceModifier(props: InstitutionCost) {
 }
 
 function InstructionSteps({ row }: { row: InstitutionCost }) {
-  const steps = useMemo(
-    () => consolidateSteps(calculateInstitutionSteps(row)),
-    [row],
-  );
+  const steps = useMemo(() => consolidateSteps(calculateInstitutionSteps(row)), [row]);
 
   return (
     <div className="space-y-1 text-xs">
@@ -106,23 +97,18 @@ function InstructionSteps({ row }: { row: InstitutionCost }) {
 const columnHelper = createColumnHelper<InstitutionCost>();
 const columns = [
   columnHelper.accessor("name", {
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Province" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Province" />,
     enableColumnFilter: true,
     cell: ({ row }) => (
       <div className="font-medium">
-        {row.original.name}{" "}
-        <span className="text-gray-500">({row.original.province_id})</span>
+        {row.original.name} <span className="text-gray-500">({row.original.province_id})</span>
       </div>
     ),
   }),
 
   columnHelper.accessor("current_institution_progress", {
     enableColumnFilter: false,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Progress" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Progress" />,
     cell: (info) => (
       <div className="text-right">
         <div className="relative pt-1">
@@ -132,9 +118,7 @@ const columns = [
               style={{ width: `${Math.min(100, info.getValue())}%` }}
             ></div>
           </div>
-          <div className="mt-1 text-xs font-medium">
-            {formatFloat(info.getValue(), 2)}%
-          </div>
+          <div className="mt-1 text-xs font-medium">{formatFloat(info.getValue(), 2)}%</div>
         </div>
       </div>
     ),
@@ -143,15 +127,9 @@ const columns = [
   columnHelper.accessor("mana_cost", {
     enableColumnFilter: false,
     header: ({ column }) => (
-      <Table.ColumnHeader
-        column={column}
-        className={styles["header"]}
-        title="Mana cost"
-      />
+      <Table.ColumnHeader column={column} className={styles["header"]} title="Mana cost" />
     ),
-    cell: (info) => (
-      <div className="text-right">{formatInt(info.getValue())}</div>
-    ),
+    cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("dev_cost_modifier", {
@@ -162,9 +140,8 @@ const columns = [
           <Table.ColumnHeader column={column} title="Dev modifier" />
         </Tooltip.Trigger>
         <Tooltip.Content className="max-w-72">
-          The calculated development cost modifier from province specific and
-          country-wide sources. Can be edited for exactness (exclude base cost
-          from development and expand infrastructure)
+          The calculated development cost modifier from province specific and country-wide sources.
+          Can be edited for exactness (exclude base cost from development and expand infrastructure)
         </Tooltip.Content>
       </Tooltip>
     ),
@@ -211,26 +188,16 @@ const useInstitutionStore = create<CountryInstitutionState>()((set, get) => ({
 }));
 
 const useInstitutionActions = () => useInstitutionStore((x) => x.actions);
-const useProvinceModifierOverride = (id: number) =>
-  useInstitutionStore((x) => x.overrides.get(id));
+const useProvinceModifierOverride = (id: number) => useInstitutionStore((x) => x.overrides.get(id));
 
-export const CountryInstitution = ({
-  details,
-}: {
-  details: CountryDetails;
-}) => {
+export const CountryInstitution = ({ details }: { details: CountryDetails }) => {
   const [modifier, setModifier] = useState(0);
   const [expandCost, setExpandCost] = useState(50);
   const overrides = useInstitutionStore((x) => x.overrides);
   const institutionPush = useThrottle(
     useCallback(
       (worker: Eu4Worker) =>
-        worker.eu4GetCountryInstitutionPush(
-          details.tag,
-          modifier / 100,
-          expandCost,
-          overrides,
-        ),
+        worker.eu4GetCountryInstitutionPush(details.tag, modifier / 100, expandCost, overrides),
       [details.tag, modifier, expandCost, overrides],
     ),
     150,
@@ -249,11 +216,7 @@ export const CountryInstitution = ({
   return (
     <div>
       <Badge
-        variant={
-          data.institutions_embraced == data.institutions_available
-            ? "green"
-            : "default"
-        }
+        variant={data.institutions_embraced == data.institutions_available ? "green" : "default"}
       >
         {data.institutions_embraced == data.institutions_available
           ? "All"
@@ -262,10 +225,7 @@ export const CountryInstitution = ({
       </Badge>
       <Divider paddingClassNames="pt-5">
         Dev Push Institution (
-        <Link
-          target="_blank"
-          href="/docs/eu4-guides/optimize-dev-push-institution/"
-        >
+        <Link target="_blank" href="/docs/eu4-guides/optimize-dev-push-institution/">
           guide
         </Link>
         )
@@ -287,8 +247,7 @@ export const CountryInstitution = ({
               </div>
             </Tooltip.Trigger>
             <Tooltip.Content className="max-w-72">
-              The development cost modifier that all provinces share (eg:
-              renaissance: -5%)
+              The development cost modifier that all provinces share (eg: renaissance: -5%)
             </Tooltip.Content>
           </Tooltip>
           <div>
@@ -303,9 +262,7 @@ export const CountryInstitution = ({
           </div>
         </div>
         <div>
-          <div className="font-semibold">
-            Detected province development cost modifiers
-          </div>
+          <div className="font-semibold">Detected province development cost modifiers</div>
           <ul className="flex h-20 flex-col flex-wrap gap-x-12 pl-4">
             <li>✔️ Terrain</li>
             <li>✔️ Center of Trade</li>

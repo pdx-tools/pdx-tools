@@ -10,19 +10,11 @@ import { userId } from "@/lib/auth";
 import type { LoggedInUser } from "@/lib/auth";
 
 export type PdxSessionStorage = ReturnType<typeof pdxSession>;
-export const pdxSession = ({
-  request,
-  context,
-}: {
-  request: Request;
-  context: AppLoadContext;
-}) => {
+export const pdxSession = ({ request, context }: { request: Request; context: AppLoadContext }) => {
   const storage = createCookieSessionStorage({
     cookie: {
       name: "sid",
-      secrets: [
-        check(context.cloudflare.env.SESSION_SECRET, "missing session secret"),
-      ],
+      secrets: [check(context.cloudflare.env.SESSION_SECRET, "missing session secret")],
       sameSite: "strict",
       httpOnly: true,
       secure: true,
@@ -59,8 +51,7 @@ const SessionPayloadSchema = z
 
 export type SessionPayload = z.infer<typeof SessionPayloadSchema>;
 
-const unauthResponse = () =>
-  Response.json({ msg: "unable to authorize" }, { status: 401 });
+const unauthResponse = () => Response.json({ msg: "unable to authorize" }, { status: 401 });
 
 export async function getAuth({
   request,
@@ -76,13 +67,11 @@ export async function getAuth({
       throw unauthResponse();
     }
 
-    const users = await oneshotDb(
-      context.cloudflare.env.PDX_DB.connectionString,
-      (db) =>
-        db
-          .select({ apiKey: table.users.apiKey, account: table.users.account })
-          .from(table.users)
-          .where(eq(table.users.userId, creds.username)),
+    const users = await oneshotDb(context.cloudflare.env.PDX_DB.connectionString, (db) =>
+      db
+        .select({ apiKey: table.users.apiKey, account: table.users.account })
+        .from(table.users)
+        .where(eq(table.users.userId, creds.username)),
     );
     const user = users[0];
 

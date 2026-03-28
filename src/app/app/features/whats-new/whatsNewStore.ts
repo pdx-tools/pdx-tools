@@ -29,8 +29,7 @@ const useWhatsNewStore = create<UpdatesClientStore>()(
           } else {
             useWhatsNewStore.setState({
               lastSeenReleaseDate:
-                state?.lastSeenReleaseDate ??
-                new Date().toISOString().slice(0, 10),
+                state?.lastSeenReleaseDate ?? new Date().toISOString().slice(0, 10),
             });
           }
         };
@@ -39,10 +38,8 @@ const useWhatsNewStore = create<UpdatesClientStore>()(
   ),
 );
 
-export const useWhatsNewActions = () =>
-  useWhatsNewStore((state) => state.actions);
-export const rehydrateWhatsNewStore = () =>
-  useWhatsNewStore.persist.rehydrate();
+export const useWhatsNewActions = () => useWhatsNewStore((state) => state.actions);
+export const rehydrateWhatsNewStore = () => useWhatsNewStore.persist.rehydrate();
 export const useWhatsNewLastSeenReleaseDate = () =>
   useWhatsNewStore((state) => state.lastSeenReleaseDate);
 export const useWhatsNewBannerDismissedOn = () =>

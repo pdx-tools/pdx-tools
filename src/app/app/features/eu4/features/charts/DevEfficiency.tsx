@@ -4,10 +4,7 @@ import { useAnalysisWorker } from "../../worker";
 import { EChart, useVisualizationDispatch } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { Alert } from "@/components/Alert";
-import type {
-  CountryDevEfficiencies,
-  CountryDevEffiency,
-} from "@/wasm/wasm_eu4";
+import type { CountryDevEfficiencies, CountryDevEffiency } from "@/wasm/wasm_eu4";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -21,18 +18,12 @@ const columnHelper = createColumnHelper<CountryDevEffiency>();
 const columns = [
   columnHelper.accessor("country.name", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Country" />
-    ),
-    cell: ({ row }) => (
-      <Flag tag={row.original.country.tag} name={row.original.country.name} />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
+    cell: ({ row }) => <Flag tag={row.original.country.tag} name={row.original.country.name} />,
   }),
   columnHelper.accessor("dev_clicks", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Dev Clicks" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Dev Clicks" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -41,24 +32,17 @@ const columns = [
     header: "Mana spent",
     columns: [
       ...(["adm", "dip", "mil", "total"] as const).map((category) =>
-        columnHelper.accessor(
-          category === "total" ? "dev_mana" : `mana.${category}.develop_prov`,
-          {
-            sortingFn: "basic",
-            header: ({ column }) => (
-              <Table.ColumnHeader column={column} title={category} />
-            ),
-            meta: { className: "text-right" },
-            cell: (info) => formatInt(info.getValue()),
-          },
-        ),
+        columnHelper.accessor(category === "total" ? "dev_mana" : `mana.${category}.develop_prov`, {
+          sortingFn: "basic",
+          header: ({ column }) => <Table.ColumnHeader column={column} title={category} />,
+          meta: { className: "text-right" },
+          cell: (info) => formatInt(info.getValue()),
+        }),
       ),
       columnHelper.accessor((x) => x.dev_mana / x.dev_clicks, {
         id: "per click",
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title={"per click"} />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title={"per click"} />,
         meta: { className: "text-right" },
         cell: (info) => formatFloat(info.getValue(), 2),
       }),
@@ -97,14 +81,7 @@ export const DevEfficiency = () => {
           mil: row.mana.mil.develop_prov,
         }));
 
-        return createCsv(csv, [
-          "name",
-          "tag",
-          "dev_clicks",
-          "adm",
-          "dip",
-          "mil",
-        ]);
+        return createCsv(csv, ["name", "tag", "dev_clicks", "adm", "dip", "mil"]);
       },
     });
   }, [data, visualizationDispatch]);
@@ -126,10 +103,7 @@ export const DevEfficiency = () => {
 };
 
 function DevEfficiencyChart({ data }: { data: CountryDevEfficiencies }) {
-  const topCountries = useMemo(
-    () => new Set(data.slice(0, 15).map((x) => x.country.tag)),
-    [data],
-  );
+  const topCountries = useMemo(() => new Set(data.slice(0, 15).map((x) => x.country.tag)), [data]);
   const isDark = isDarkMode();
 
   const option = useMemo((): EChartsOption => {

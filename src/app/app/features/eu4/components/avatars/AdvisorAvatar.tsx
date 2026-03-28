@@ -9,18 +9,9 @@ type AdvisorAvatarProps = {
   enabled: boolean;
 };
 
-export const AdvisorAvatar = ({
-  triggerDate,
-  localized,
-  enabled,
-}: AdvisorAvatarProps) => {
+export const AdvisorAvatar = ({ triggerDate, localized, enabled }: AdvisorAvatarProps) => {
   const image = (
-    <AdvisorImage
-      id={localized.id}
-      alt=""
-      size={48}
-      className={cx(!enabled && "grayscale")}
-    />
+    <AdvisorImage id={localized.id} alt="" size={48} className={cx(!enabled && "grayscale")} />
   );
   if (image === null) {
     return <div>{localized.id}</div>;

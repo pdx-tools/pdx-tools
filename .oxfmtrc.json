@@ -1,0 +1,7 @@
+{
+  "sortTailwindcss": {
+    "stylesheet": "./src/app/app/styles/tailwind.css",
+    "functions": ["cx"],
+    "preserveWhitespace": true
+  }
+}

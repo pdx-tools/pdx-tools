@@ -10,8 +10,8 @@ import { Alert } from "@/components/Alert";
 const FallbackMessage = () => {
   return (
     <p className="max-w-prose">
-      Your browser does not support watching for file changes. Please use a
-      browser that supports the{" "}
+      Your browser does not support watching for file changes. Please use a browser that supports
+      the{" "}
       <a
         target="_blank"
         rel="noreferrer"
@@ -45,8 +45,8 @@ export const WatchContent = () => {
     <div className="flex flex-col gap-10">
       <div className="mb-0 max-w-prose space-y-4">
         <p>
-          Watching a save will update PDX Tools whenever the choosen elapsed
-          amount of time has passed in the loaded save.
+          Watching a save will update PDX Tools whenever the choosen elapsed amount of time has
+          passed in the loaded save.
         </p>
         <p>
           {
@@ -54,8 +54,8 @@ export const WatchContent = () => {
           }
         </p>
         <p>
-          Ironman files will automatically update every 3 months. Watching an
-          autosave is dependent on in-game settings.
+          Ironman files will automatically update every 3 months. Watching an autosave is dependent
+          on in-game settings.
         </p>
       </div>
       <div className="flex gap-12">
@@ -64,39 +64,25 @@ export const WatchContent = () => {
           disabled={watcher.status !== "idle"}
           className="inline-flex self-center"
           defaultValue={defaultFrequency}
-          onValueChange={(x) =>
-            x && setUpdateFrequency(x as FileObservationFrequency)
-          }
+          onValueChange={(x) => x && setUpdateFrequency(x as FileObservationFrequency)}
           aria-label="update frequency"
         >
-          <ToggleGroup.Item
-            value={"EverySave" satisfies FileObservationFrequency}
-            asChild
-          >
+          <ToggleGroup.Item value={"EverySave" satisfies FileObservationFrequency} asChild>
             <Button shape="none" className="px-4 py-2">
               Any Modification
             </Button>
           </ToggleGroup.Item>
-          <ToggleGroup.Item
-            value={"Daily" satisfies FileObservationFrequency}
-            asChild
-          >
+          <ToggleGroup.Item value={"Daily" satisfies FileObservationFrequency} asChild>
             <Button shape="none" className="px-4 py-2">
               Daily
             </Button>
           </ToggleGroup.Item>
-          <ToggleGroup.Item
-            value={"Monthly" satisfies FileObservationFrequency}
-            asChild
-          >
+          <ToggleGroup.Item value={"Monthly" satisfies FileObservationFrequency} asChild>
             <Button shape="none" className="px-4 py-2">
               Monthly
             </Button>
           </ToggleGroup.Item>
-          <ToggleGroup.Item
-            value={"Yearly" satisfies FileObservationFrequency}
-            asChild
-          >
+          <ToggleGroup.Item value={"Yearly" satisfies FileObservationFrequency} asChild>
             <Button shape="none" className="px-4 py-2">
               Yearly
             </Button>
@@ -109,10 +95,7 @@ export const WatchContent = () => {
           >
             Start
           </Button>
-          <Button
-            disabled={watcher.status === "idle"}
-            onClick={() => actions.stopWatcher()}
-          >
+          <Button disabled={watcher.status === "idle"} onClick={() => actions.stopWatcher()}>
             Stop
           </Button>
         </div>

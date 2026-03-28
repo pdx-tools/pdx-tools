@@ -29,9 +29,7 @@ async function fetchRelease(date: string): Promise<UpdateRelease> {
   };
 }
 
-async function fetchReleases(
-  dates: readonly string[],
-): Promise<UpdateRelease[]> {
+async function fetchReleases(dates: readonly string[]): Promise<UpdateRelease[]> {
   const limitedDates = dates.slice(0, MAX_RELEASES);
   const releases = await Promise.all(limitedDates.map(fetchRelease));
   return releases;
@@ -57,9 +55,7 @@ export const useWhatsNew = () => {
   });
 
   const [releaseDates, setReleaseDates] = useState<string[]>([]);
-  const newReleaseDates = indexQuery.data?.filter(
-    (x) => x > (lastSeenReleaseDate ?? ""),
-  );
+  const newReleaseDates = indexQuery.data?.filter((x) => x > (lastSeenReleaseDate ?? ""));
   if ((newReleaseDates?.length ?? 0) > releaseDates.length) {
     setReleaseDates(newReleaseDates ?? []);
   }
@@ -75,9 +71,7 @@ export const useWhatsNew = () => {
   });
 
   const releases = releasesQuery.data ?? [];
-  const latestRelease = releases.find(
-    (release) => release.release_date === latestReleaseDate,
-  );
+  const latestRelease = releases.find((release) => release.release_date === latestReleaseDate);
 
   const error = indexQuery.error ?? releasesQuery.error;
 

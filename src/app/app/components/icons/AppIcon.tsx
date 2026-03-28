@@ -8,13 +8,5 @@ type AppSvgProps = {
 };
 
 export const AppSvg = ({ alt, height, width, ...props }: AppSvgProps) => {
-  return (
-    <img
-      alt={alt ?? "logo"}
-      src={app}
-      width={width}
-      height={height}
-      {...props}
-    />
-  );
+  return <img alt={alt ?? "logo"} src={app} width={width} height={height} {...props} />;
 };

@@ -19,10 +19,7 @@ export function useList<T>(arg: { data: T[] } & BalanceOptions): {
   items: T[][];
 };
 
-export function useList<T>({
-  data,
-  ...options
-}: { data: T[] } & ListVariantOptions) {
+export function useList<T>({ data, ...options }: { data: T[] } & ListVariantOptions) {
   switch (options.variant) {
     case "overflow": {
       const needsOverflow = data.length > options.max;

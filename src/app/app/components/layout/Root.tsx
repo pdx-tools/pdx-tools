@@ -12,11 +12,7 @@ export const Root = ({ children }: RootProps) => {
     <Tooltip.Provider delayDuration={300}>
       <ErrorCatcher
         fallback={(args) => (
-          <ErrorDisplay
-            {...args}
-            className="m-8"
-            title="An unexpected error occurred"
-          />
+          <ErrorDisplay {...args} className="m-8" title="An unexpected error occurred" />
         )}
       >
         {children}
