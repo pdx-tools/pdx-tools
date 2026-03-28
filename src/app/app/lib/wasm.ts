@@ -25,11 +25,11 @@ type StashOp =
     }
   | { kind: "remote"; url: string };
 
-export function createWasmGame<
-  WasmModule extends Wasm<P>,
-  SaveFile extends Allocated,
-  P,
->(mod: WasmModule, wasmPath: P, tokenPath: string) {
+export function createWasmGame<WasmModule extends Wasm<P>, SaveFile extends Allocated, P>(
+  mod: WasmModule,
+  wasmPath: P,
+  tokenPath: string,
+) {
   let _save: SaveFile | undefined;
   let bytes = new Uint8Array();
   let initTask: Promise<void> | undefined = undefined;
@@ -121,9 +121,7 @@ export function createWasmGame<
 
         lastModified = file.lastModified;
         stashed = { kind: "handle", file: handle, lastModified };
-        const bytes = await timeAsync("read polled file", () =>
-          file.arrayBuffer(),
-        );
+        const bytes = await timeAsync("read polled file", () => file.arrayBuffer());
         await callback(new Uint8Array(bytes));
       }
 

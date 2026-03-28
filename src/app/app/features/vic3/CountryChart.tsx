@@ -52,12 +52,9 @@ export const CountryGDPChart = ({ stats, type }: CountryChartProps) => {
           const items = Array.isArray(params) ? params : [params];
           return items
             .map((param) => {
-              const rawValue = Array.isArray(param.value)
-                ? param.value[1]
-                : param.value;
+              const rawValue = Array.isArray(param.value) ? param.value[1] : param.value;
               const isGrowth =
-                param.seriesName === typeMap.gdpcGrowth ||
-                param.seriesName === typeMap.gdpGrowth;
+                param.seriesName === typeMap.gdpcGrowth || param.seriesName === typeMap.gdpGrowth;
               const suffix = isGrowth ? "%" : "";
               return `${param.marker}${escapeEChartsHtml(
                 param.seriesName,

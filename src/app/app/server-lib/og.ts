@@ -17,9 +17,7 @@ export const pdxOg = ({
   return {
     enabled: token && puppeteerUrlEnv,
     generateOgIntoS3: async (saveId: string) => {
-      const url = import.meta.env.PROD
-        ? "https://pdx.tools"
-        : "http://localhost:3001";
+      const url = import.meta.env.PROD ? "https://pdx.tools" : "http://localhost:3001";
 
       const s3Key = s3.keys.preview(saveId);
 

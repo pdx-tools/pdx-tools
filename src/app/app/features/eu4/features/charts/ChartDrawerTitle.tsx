@@ -8,10 +8,7 @@ import { Select } from "@/components/Select";
 import { Sheet } from "@/components/Sheet";
 import { Help } from "./Help";
 import { CountryFilterButton } from "../../components/CountryFilterButton";
-import {
-  QuestionMarkCircleIcon,
-  TableCellsIcon,
-} from "@heroicons/react/24/outline";
+import { QuestionMarkCircleIcon, TableCellsIcon } from "@heroicons/react/24/outline";
 import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
 import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
 import { PlayIcon } from "@heroicons/react/20/solid";
@@ -36,16 +33,8 @@ export const ChartDrawerTitle = ({
   return (
     <div className="flex items-center gap-2">
       <Sheet.Close />
-      <Button
-        shape="square"
-        onClick={() => setExpanded(!expanded)}
-        className="hidden md:flex"
-      >
-        {expanded ? (
-          <MenuUnfoldIcon className="h-4 w-4" />
-        ) : (
-          <MenuFoldIcon className="h-4 w-4" />
-        )}
+      <Button shape="square" onClick={() => setExpanded(!expanded)} className="hidden md:flex">
+        {expanded ? <MenuUnfoldIcon className="h-4 w-4" /> : <MenuFoldIcon className="h-4 w-4" />}
         <span className="sr-only">{expanded ? "Fold" : "Expand"}</span>
       </Button>
 
@@ -74,19 +63,13 @@ export const ChartDrawerTitle = ({
             <Select.Item value="dev-efficiency">Dev Efficiency</Select.Item>
             <Select.Item value="mana-expenditure">Mana Expenditure</Select.Item>
             <Select.Item value="mana-by-category">Mana by Category</Select.Item>
-            <Select.Item value="province-dev-density">
-              Development Distribution
-            </Select.Item>
+            <Select.Item value="province-dev-density">Development Distribution</Select.Item>
           </Select.Group>
 
           <Select.Group>
             <Select.Label>Trees</Select.Label>
-            <Select.Item value="geographical-development">
-              Geographical Development
-            </Select.Item>
-            <Select.Item value="owned-development-states">
-              Owned Development States
-            </Select.Item>
+            <Select.Item value="geographical-development">Geographical Development</Select.Item>
+            <Select.Item value="owned-development-states">Owned Development States</Select.Item>
           </Select.Group>
 
           <Select.Group>
@@ -95,12 +78,8 @@ export const ChartDrawerTitle = ({
             <Select.Item value="navy-casualties">Navy Casualties</Select.Item>
             <Select.Item value="wars">Wars and Battles</Select.Item>
             <Select.Item value="income-table">Last Month's Income</Select.Item>
-            <Select.Item value="expense-table">
-              Last Month's Expenses
-            </Select.Item>
-            <Select.Item value="total-expense-table">
-              Accumulated Expenses
-            </Select.Item>
+            <Select.Item value="expense-table">Last Month's Expenses</Select.Item>
+            <Select.Item value="total-expense-table">Accumulated Expenses</Select.Item>
             <Select.Item value="provinces">Provinces</Select.Item>
           </Select.Group>
           <Select.Group>

@@ -11,11 +11,7 @@ import { usingDb } from "@/server-lib/db/connection";
 import { withCore } from "@/server-lib/middleware";
 import { pdxApi, pdxKeys } from "@/services/appApi";
 import { Await, useLoaderData, useParams } from "react-router";
-import {
-  dehydrate,
-  HydrationBoundary,
-  QueryClient,
-} from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { Suspense } from "react";
 import type { Route } from "./+types/users.$userId";
 
@@ -25,31 +21,29 @@ export const meta = ({ params: { userId } }: Route.MetaArgs) =>
     description: `EU4 Saves uploaded by user ${userId}`,
   });
 
-export const loader = withCore(
-  async ({ params, context }: Route.LoaderArgs) => {
-    const { userId: uid } = params;
-    if (!uid) {
-      throw new Response("Missing user", {
-        status: 400,
-      });
-    }
+export const loader = withCore(async ({ params, context }: Route.LoaderArgs) => {
+  const { userId: uid } = params;
+  if (!uid) {
+    throw new Response("Missing user", {
+      status: 400,
+    });
+  }
 
-    const { db, close } = usingDb(context);
-    const queryClient = new QueryClient();
-    const prefetch = queryClient
-      .fetchQuery({
-        queryKey: pdxKeys.user(uid),
-        queryFn: () => getUser(db, userId(uid)),
-        retry: false,
-      })
-      .then(() => dehydrate(queryClient))
-      .finally(() => close());
+  const { db, close } = usingDb(context);
+  const queryClient = new QueryClient();
+  const prefetch = queryClient
+    .fetchQuery({
+      queryKey: pdxKeys.user(uid),
+      queryFn: () => getUser(db, userId(uid)),
+      retry: false,
+    })
+    .then(() => dehydrate(queryClient))
+    .finally(() => close());
 
-    return {
-      prefetch,
-    };
-  },
-);
+  return {
+    prefetch,
+  };
+});
 
 export default function UserRoute() {
   const { prefetch } = useLoaderData<typeof loader>();

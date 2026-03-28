@@ -63,9 +63,7 @@ const columns = [
 
   columnHelper.accessor("start_date", {
     sortingFn: "alphanumeric",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Start" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Start" />,
     meta: { className: "text-right no-break" },
     cell: (info) => info.getValue() ?? "---",
   }),
@@ -98,9 +96,7 @@ const columns = [
 
   columnHelper.accessor("battles", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Battles" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Battles" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -110,18 +106,14 @@ const columns = [
     columns: [
       columnHelper.accessor("totalBattleLosses", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Battle" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Battle" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       columnHelper.accessor("totalAttritionLosses", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Attrition" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Attrition" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
@@ -133,18 +125,14 @@ const columns = [
     columns: [
       columnHelper.accessor("attackers.losses.totalBattle", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Battle" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Battle" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       columnHelper.accessor("attackers.losses.totalAttrition", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Attrition" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Attrition" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
@@ -156,18 +144,14 @@ const columns = [
     columns: [
       columnHelper.accessor("defenders.losses.totalBattle", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Battle" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Battle" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       columnHelper.accessor("defenders.losses.totalAttrition", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Attrition" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Attrition" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),

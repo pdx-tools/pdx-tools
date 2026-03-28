@@ -15,9 +15,7 @@ import { proxy, transfer, wrap } from "comlink";
 
 const tokensTask = fetchOk(tokenPath).then((x) => x.arrayBuffer());
 const initialized = (async () => {
-  const result = await timeAsync("Load EU5 Wasm module", () =>
-    init({ module_or_path: wasmPath }),
-  );
+  const result = await timeAsync("Load EU5 Wasm module", () => init({ module_or_path: wasmPath }));
 
   return { memory: result.memory };
 })();
@@ -50,9 +48,7 @@ export const createGame = async (
   timeSync("Set EU5 Tokens", () => wasm_eu5.set_tokens(new Uint8Array(tokens)));
   onProgress?.(5); // Initialize wasm/tokens
 
-  const metaParser = timeSync("Create Meta Parser", () =>
-    wasm_eu5.Eu5MetaParser.create(),
-  );
+  const metaParser = timeSync("Create Meta Parser", () => wasm_eu5.Eu5MetaParser.create());
 
   const saveData = await saveDataTask;
   onProgress?.(10); // Read save file
@@ -66,9 +62,7 @@ export const createGame = async (
   bundle.setVersion(version);
   const gameDataTask = bundle.fetch();
 
-  const gamestate = timeSync("Parse Gamestate", () =>
-    saveParser.parse_gamestate(),
-  );
+  const gamestate = timeSync("Parse Gamestate", () => saveParser.parse_gamestate());
   onProgress?.(30); // Parse gamestate
 
   const gameBundleData = await gameDataTask;
@@ -77,9 +71,7 @@ export const createGame = async (
   );
   onProgress?.(5); // Create game bundle
 
-  const app = timeSync("Initialize App", () =>
-    wasm_eu5.Eu5App.init(gamestate, gameBundle),
-  );
+  const app = timeSync("Initialize App", () => wasm_eu5.Eu5App.init(gamestate, gameBundle));
   onProgress?.(5); // Initialize app
 
   if (!mapEndpoint) {
@@ -93,11 +85,7 @@ export const createGame = async (
 
   const syncLocationData = () => {
     const buffer = app.location_arrays();
-    const locationArray = new Uint32Array(
-      wasm.memory.buffer,
-      buffer.ptr(),
-      buffer.len(),
-    );
+    const locationArray = new Uint32Array(wasm.memory.buffer, buffer.ptr(), buffer.len());
 
     // Making a clone in the web worker instead of having the channel do a
     // structured clone is 100x faster on firefox. Decreased latency from 600ms
@@ -147,11 +135,7 @@ export const createGame = async (
     },
     getLocationArrays: (): Blob => {
       const buffer = app.location_arrays();
-      const locationArray = new Uint32Array(
-        wasm.memory.buffer,
-        buffer.ptr(),
-        buffer.len(),
-      );
+      const locationArray = new Uint32Array(wasm.memory.buffer, buffer.ptr(), buffer.len());
       // Create a copy of the data since the original is tied to WASM memory
       const dataArray = new Uint32Array(locationArray);
       return new Blob([dataArray.buffer], { type: "application/octet-stream" });
@@ -162,8 +146,7 @@ export const createGame = async (
       const saveData = await timeAsync("Read Save File", () => readFile());
       return timeSync(
         "Melt save file",
-        () =>
-          wasm_eu5.melt(new Uint8Array(saveData)) as Uint8Array<ArrayBuffer>,
+        () => wasm_eu5.melt(new Uint8Array(saveData)) as Uint8Array<ArrayBuffer>,
       );
     },
     onHoverDisplayUpdate: (callback: (data: HoverDisplayData) => void) => {

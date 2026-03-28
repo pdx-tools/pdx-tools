@@ -23,8 +23,7 @@ export const AccountContent = () => {
       <Card className="space-y-4 p-6">
         <h2 className="text-xl font-medium">API Key Management</h2>
         <p className="">
-          Generate a new API key for 3rd party apps. Previous API key is
-          overwritten
+          Generate a new API key for 3rd party apps. Previous API key is overwritten
         </p>
         <Button
           className=""
@@ -46,8 +45,7 @@ export const AccountContent = () => {
         {key ? (
           <Alert key={key} variant="info" className="p-4">
             <Alert.Description>
-              Your new API Key:{" "}
-              <pre className="inline rounded p-1 font-mono">{key}</pre>
+              Your new API Key: <pre className="inline rounded p-1 font-mono">{key}</pre>
             </Alert.Description>
           </Alert>
         ) : null}
@@ -79,9 +77,7 @@ export const AccountContent = () => {
             </Button>
             <Button asChild className="w-full sm:w-auto">
               <label className="flex cursor-pointer items-center justify-center">
-                {reprocess.isPending && (
-                  <LoadingIcon className="mr-2 h-4 w-4" />
-                )}
+                {reprocess.isPending && <LoadingIcon className="mr-2 h-4 w-4" />}
                 Reprocess file
                 <input
                   className="absolute opacity-0"
@@ -97,8 +93,7 @@ export const AccountContent = () => {
                     const file = e.currentTarget.files[0];
                     const data = JSON.parse(await file.text());
                     reprocess.mutate(data, {
-                      onSuccess: () =>
-                        toast.success("Reprocessed successfully"),
+                      onSuccess: () => toast.success("Reprocessed successfully"),
                       onError: (e) =>
                         toast.error("Reprocess failed", {
                           description: e.message,
@@ -133,10 +128,7 @@ export const AccountContent = () => {
               value={saveIdValue}
               onChange={(e) => setSaveIdValue(e.target.value)}
             />
-            <Button
-              type="submit"
-              disabled={og.isPending || !saveIdValue.trim()}
-            >
+            <Button type="submit" disabled={og.isPending || !saveIdValue.trim()}>
               {og.isPending && <LoadingIcon className="mr-2 h-4 w-4" />}
               Update OG
             </Button>

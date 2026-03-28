@@ -42,13 +42,7 @@ import { AdvisorImage } from "../../components/AdvisorImage";
 import { LeaderStats } from "../../components/LeaderStats";
 import { expandLosses } from "../../utils/losses";
 import type { Losses } from "../../utils/losses";
-import {
-  abbreviateInt,
-  formatInt,
-  formatList,
-  pluralize,
-  sentenceCasing,
-} from "@/lib/format";
+import { abbreviateInt, formatInt, formatList, pluralize, sentenceCasing } from "@/lib/format";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEu4Actions, useEu4Meta, useSelectedDate } from "../../store";
 import { MapIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
@@ -85,9 +79,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow text-xs font-semibold text-gray-400/75">
-              {evt.date}
-            </div>
+            <div className="grow text-xs font-semibold text-gray-400/75">{evt.date}</div>
             <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
@@ -104,9 +96,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow text-xs font-semibold text-gray-400/75">
-              {evt.date}
-            </div>
+            <div className="grow text-xs font-semibold text-gray-400/75">{evt.date}</div>
             <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
@@ -121,9 +111,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow text-xs font-semibold text-gray-400/75">
-              {evt.date}
-            </div>
+            <div className="grow text-xs font-semibold text-gray-400/75">{evt.date}</div>
             <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
@@ -137,9 +125,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow text-xs font-semibold text-gray-400/75">
-              {evt.date}
-            </div>
+            <div className="grow text-xs font-semibold text-gray-400/75">{evt.date}</div>
             <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
@@ -153,9 +139,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow text-xs font-semibold text-gray-400/75">
-              {evt.date}
-            </div>
+            <div className="grow text-xs font-semibold text-gray-400/75">{evt.date}</div>
             <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
@@ -168,9 +152,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow text-xs font-semibold text-gray-400/75">
-              {evt.date}
-            </div>
+            <div className="grow text-xs font-semibold text-gray-400/75">{evt.date}</div>
             <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
@@ -183,9 +165,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow text-xs font-semibold text-gray-400/75">
-              {evt.date}
-            </div>
+            <div className="grow text-xs font-semibold text-gray-400/75">{evt.date}</div>
             <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
@@ -224,9 +204,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow text-xs font-semibold text-gray-400/75">
-              {evt.date}
-            </div>
+            <div className="grow text-xs font-semibold text-gray-400/75">{evt.date}</div>
             <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
@@ -239,9 +217,7 @@ const CountryHistoryCard = ({
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
-            <div className="grow text-xs font-semibold text-gray-400/75">
-              {evt.date}
-            </div>
+            <div className="grow text-xs font-semibold text-gray-400/75">{evt.date}</div>
             <HistoryIcons evt={evt} />
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
@@ -255,9 +231,7 @@ const CountryHistoryCard = ({
                   <div>
                     <div>{x.name}</div>
                     <div className="text-xs font-semibold text-gray-400/75">
-                      {x.personality?.name
-                        .replace("_personality", "")
-                        .replaceAll("_", " ")}
+                      {x.personality?.name.replace("_personality", "").replaceAll("_", " ")}
                     </div>
                   </div>
                 </div>
@@ -318,11 +292,7 @@ const CountryHistoryCard = ({
                 </div>
                 <div className="flex">
                   {evt.event.personalities.map((personality) => (
-                    <PersonalityAvatar
-                      key={personality.id}
-                      {...personality}
-                      size={42}
-                    />
+                    <PersonalityAvatar key={personality.id} {...personality} size={42} />
                   ))}
                 </div>
               </div>
@@ -376,35 +346,26 @@ const CountryHistoryCard = ({
                 <div className="flex flex-col">
                   <div className="text-sm font-semibold">Attackers</div>
                   {evt.event.is_active ? (
-                    <SideCasualties
-                      losses={expandLosses(evt.event.attacker_losses)}
-                    />
+                    <SideCasualties losses={expandLosses(evt.event.attacker_losses)} />
                   ) : null}
                   <FlagList flags={evt.event.attackers} />
                 </div>
                 <div>
                   <div className="text-sm font-semibold">Defenders</div>
                   {evt.event.is_active ? (
-                    <SideCasualties
-                      losses={expandLosses(evt.event.defender_losses)}
-                    />
+                    <SideCasualties losses={expandLosses(evt.event.defender_losses)} />
                   ) : null}
                   <FlagList flags={evt.event.defenders} />
                 </div>
                 {evt.event.is_active ? (
                   <div>
                     <div>
-                      <span className="text-sm font-semibold">
-                        {country.name}
-                      </span>{" "}
+                      <span className="text-sm font-semibold">{country.name}</span>{" "}
                       <span className="no-break text-xs font-semibold text-gray-400/75">
-                        (participation:{" "}
-                        {formatInt(evt.event.our_participation_percent * 100)}%)
+                        (participation: {formatInt(evt.event.our_participation_percent * 100)}%)
                       </span>
                     </div>
-                    <SideCasualties
-                      losses={expandLosses(evt.event.our_losses)}
-                    />
+                    <SideCasualties losses={expandLosses(evt.event.our_losses)} />
                   </div>
                 ) : null}
               </div>
@@ -418,15 +379,13 @@ const CountryHistoryCard = ({
       const attackingLosses = expandLosses(evt.event.attacker_losses);
       const defendingLosses = expandLosses(evt.event.defender_losses);
 
-      const warStatus = evt.event.war_end
-        ? `ended on ${evt.event.war_end}`
-        : "is ongoing";
+      const warStatus = evt.event.war_end ? `ended on ${evt.event.war_end}` : "is ongoing";
       return (
         <Card>
           <div className="flex px-2 pt-0.5">
             <div className="grow text-xs font-semibold text-gray-400/75">
-              {evt.date}: {evt.event.war_end != evt.date ? "Separate" : ""}{" "}
-              peace after {formatInt(evt.event.our_duration_days)} days
+              {evt.date}: {evt.event.war_end != evt.date ? "Separate" : ""} peace after{" "}
+              {formatInt(evt.event.our_duration_days)} days
               {evt.event.war_end != evt.date
                 ? `. War ${warStatus} after ${formatInt(
                     evt.event.war_duration_days,
@@ -453,12 +412,9 @@ const CountryHistoryCard = ({
                 </div>
                 <div>
                   <div>
-                    <span className="text-sm font-semibold">
-                      {country.name}
-                    </span>{" "}
+                    <span className="text-sm font-semibold">{country.name}</span>{" "}
                     <span className="no-break text-xs font-semibold text-gray-400/75">
-                      (participation:{" "}
-                      {formatInt(evt.event.our_participation_percent * 100)}%)
+                      (participation: {formatInt(evt.event.our_participation_percent * 100)}%)
                     </span>
                   </div>
                   <SideCasualties losses={losses} />
@@ -466,10 +422,7 @@ const CountryHistoryCard = ({
               </div>
               <div>
                 <ProvinceChanges provinces={evt.event.province_gains} gained />
-                <ProvinceChanges
-                  provinces={evt.event.province_losses}
-                  gained={false}
-                />
+                <ProvinceChanges provinces={evt.event.province_losses} gained={false} />
                 <WarBattlesSummary
                   is_attacking={evt.event.is_attacking}
                   battles={evt.event.land_battles}
@@ -512,9 +465,7 @@ const CountryHistoryCard = ({
           </div>
           <div className="flex items-center gap-4 px-4 pb-4">
             <NationalFocusIcon focus={evt.event.focus} />
-            <p>
-              {evt.event.focus == "none" ? "Removed focus" : evt.event.focus}
-            </p>
+            <p>{evt.event.focus == "none" ? "Removed focus" : evt.event.focus}</p>
           </div>
         </Card>
       );
@@ -545,20 +496,12 @@ function FlagList({ flags }: { flags: LocalizedTag[] }) {
   );
 }
 
-function ProvinceChanges({
-  provinces,
-  gained,
-}: {
-  provinces: ProvinceConquer[];
-  gained: boolean;
-}) {
+function ProvinceChanges({ provinces, gained }: { provinces: ProvinceConquer[]; gained: boolean }) {
   if (provinces.length === 0) {
     return null;
   }
 
-  const tags = new Set(
-    provinces.map((x) => (gained ? x.from.name : x.to.name)),
-  );
+  const tags = new Set(provinces.map((x) => (gained ? x.from.name : x.to.name)));
 
   return (
     <div className="text-xs font-semibold text-gray-400/75">
@@ -664,9 +607,7 @@ const HistoryFilterIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
       onClick={() => {
         actions.addFilter(filterName);
       }}
-      icon={
-        <EyeSlashIcon className="h-6 w-6 opacity-50 transition-opacity hover:opacity-100" />
-      }
+      icon={<EyeSlashIcon className="h-6 w-6 opacity-50 transition-opacity hover:opacity-100" />}
     />
   );
 };
@@ -687,11 +628,7 @@ const HistoryMapIcon = ({ evt }: { evt: CountryHistoryEvent }) => {
           ? actions.setSelectedDateText(evt.date)
           : actions.setSelectedDateText(meta.date)
       }
-      tooltip={
-        date.text != evt.date
-          ? `Set map date to ${evt.date}`
-          : `Reset date to ${meta.date}`
-      }
+      tooltip={date.text != evt.date ? `Set map date to ${evt.date}` : `Reset date to ${meta.date}`}
       icon={
         <MapIcon
           className={cx(
@@ -719,8 +656,7 @@ const WarBattlesSummary = ({
 
   return (
     <div className="text-xs font-semibold text-gray-400/75">
-      {type} battles: {formatInt(battles.count)}. The{" "}
-      {is_attacking ? "attackers" : "defenders"} won{" "}
+      {type} battles: {formatInt(battles.count)}. The {is_attacking ? "attackers" : "defenders"} won{" "}
       {pluralize("battle", battles.won)}.
       {battles.battle_ground ? (
         <>
@@ -752,10 +688,7 @@ const NationalFocusIcon = ({ focus }: { focus: string }) => {
   }
 };
 
-const WarStartHeader = ({
-  date,
-  event,
-}: CountryHistoryEvent & { event: { kind: "warStart" } }) => {
+const WarStartHeader = ({ date, event }: CountryHistoryEvent & { event: { kind: "warStart" } }) => {
   if (event.is_war_leader) {
     return event.is_attacking ? "declared war" : "led defense of";
   }
@@ -785,21 +718,15 @@ const SideCasualties = ({ losses }: { losses: Losses }) => {
   return (
     <div className="flex w-44 justify-between gap-2">
       <div className="flex items-end">
-        <span className="all-small-caps">
-          {abbreviateInt(losses.landTotal)}
-        </span>
+        <span className="all-small-caps">{abbreviateInt(losses.landTotal)}</span>
         <InfantryIcon alt="Battles + attrition losses" />
       </div>
       <div className="flex items-end">
-        <span className="all-small-caps">
-          {abbreviateInt(losses.landTotalAttrition)}
-        </span>
+        <span className="all-small-caps">{abbreviateInt(losses.landTotalAttrition)}</span>
         <AttritionLossesIcon />
       </div>
       <div className="flex items-end">
-        <span className="all-small-caps">
-          {abbreviateInt(losses.navyTotal)}
-        </span>
+        <span className="all-small-caps">{abbreviateInt(losses.navyTotal)}</span>
         <HeavyShipIcon alt="Ships lost" />
       </div>
     </div>
@@ -815,7 +742,7 @@ const FilterOverlay = () => {
   }
 
   return (
-    <div className="animate-in slide-in-from-right sticky top-0 left-0 z-10 flex justify-end">
+    <div className="sticky top-0 left-0 z-10 flex justify-end animate-in slide-in-from-right">
       <div className="shadow-md">
         <Button
           shape="none"
@@ -850,15 +777,8 @@ const CountryHistoryVirtualList = ({
 
   return (
     <div className="absolute top-0 right-0 bottom-0 left-4">
-      <div
-        ref={parentRef}
-        className="h-full w-full overflow-y-auto"
-        style={{ contain: "strict" }}
-      >
-        <div
-          className="relative w-full"
-          style={{ height: virtualizer.getTotalSize() }}
-        >
+      <div ref={parentRef} className="h-full w-full overflow-y-auto" style={{ contain: "strict" }}>
+        <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           <FilterOverlay />
           <div
             className="absolute top-0 left-0 w-full"
@@ -899,10 +819,7 @@ const CountryHistoryList = memo(function CountryHistoryList({
 
 export const CountryHistory = ({ details }: { details: CountryDetails }) => {
   const { data, error } = useEu4Worker(
-    useCallback(
-      async (worker) => worker.eu4GetCountryHistory(details.tag),
-      [details.tag],
-    ),
+    useCallback(async (worker) => worker.eu4GetCountryHistory(details.tag), [details.tag]),
   );
 
   if (error) {
@@ -943,9 +860,7 @@ const useFilteredHistory = (data: CountryHistoryYear[]) => {
     () =>
       data.map((year) => ({
         ...year,
-        events: year.events.filter(
-          (event) => !filters.has(eventToFilter(event)),
-        ),
+        events: year.events.filter((event) => !filters.has(eventToFilter(event))),
       })),
     [data, filters],
   );

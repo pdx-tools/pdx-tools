@@ -153,10 +153,7 @@ const TotalManaBarImpl = ({ adm, dip, mil }: TotalManaBarProps) => {
 const TotalManaBar = React.memo(TotalManaBarImpl);
 
 const ManaCategoryBarsImpl = ({ mana }: { mana: CountryMana }) => {
-  const categories = useMemo(
-    () => ["Ideas", "Advance Tech", "Develop Prov"],
-    [],
-  );
+  const categories = useMemo(() => ["Ideas", "Advance Tech", "Develop Prov"], []);
 
   const data = useMemo(
     () => ({
@@ -398,16 +395,9 @@ const LeadersCard = ({ mana }: { mana: CountryMana }) => {
           </div>
         </div>
         <div className="flex w-full justify-evenly">
-          <div>
-            {formatFloat(
-              milDevCost / (mana.generals + mana.conquistadors) || 0,
-              2,
-            )}
-          </div>
+          <div>{formatFloat(milDevCost / (mana.generals + mana.conquistadors) || 0, 2)}</div>
           <div>Avg. mana cost</div>
-          <div>
-            {formatFloat(dipDevCost / (mana.admirals + mana.explorers) || 0, 2)}
-          </div>
+          <div>{formatFloat(dipDevCost / (mana.admirals + mana.explorers) || 0, 2)}</div>
         </div>
       </div>
     </Card>
@@ -504,10 +494,7 @@ function NegativeMana({ rows }: { rows: DataPoint[] }) {
 
 export const CountryManaUsage = ({ details }: CountryManaProps) => {
   const { data, error } = useEu4Worker(
-    useCallback(
-      (worker) => worker.eu4GetCountrymana(details.tag),
-      [details.tag],
-    ),
+    useCallback((worker) => worker.eu4GetCountrymana(details.tag), [details.tag]),
   );
 
   return (

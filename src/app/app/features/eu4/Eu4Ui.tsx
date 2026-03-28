@@ -55,14 +55,9 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
     <>
       {loadingIcon}
 
-      {data !== null ? (
-        <div className="absolute inset-0 bg-slate-900"></div>
-      ) : null}
+      {data !== null ? <div className="absolute inset-0 bg-slate-900"></div> : null}
 
-      <div
-        className="absolute inset-0 right-14 overflow-hidden rounded-tr-3xl"
-        ref={mapContainer}
-      >
+      <div className="absolute inset-0 right-14 overflow-hidden rounded-tr-3xl" ref={mapContainer}>
         <TrackingCanvas ref={mapCanvas} />
       </div>
 
@@ -81,9 +76,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
       ) : null}
 
       <div className="absolute w-full">
-        {loading !== null ? (
-          <ProgressBar height={32} value={loading.percent ?? 0} />
-        ) : null}
+        {loading !== null ? <ProgressBar height={32} value={loading.percent ?? 0} /> : null}
         {error !== null ? (
           <Alert className="px-2 py-4" variant="error">
             <Alert.Description>{getErrorMessage(error)}</Alert.Description>

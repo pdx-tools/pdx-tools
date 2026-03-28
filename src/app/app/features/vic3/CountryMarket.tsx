@@ -13,9 +13,7 @@ export const CountryMarketTable = ({ goods_prices }: CountryMarketProps) => {
   const columns = [
     columnHelper.accessor("good", {
       sortingFn: "basic",
-      header: ({ column }) => (
-        <Table.ColumnHeader column={column} title="Good" />
-      ),
+      header: ({ column }) => <Table.ColumnHeader column={column} title="Good" />,
     }),
     columnHelper.accessor("price", {
       sortingFn: "basic",

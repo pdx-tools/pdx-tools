@@ -15,11 +15,7 @@ import type {
   CountryTag,
 } from "../types/models";
 import { getEu4Worker } from "../worker/getEu4Worker";
-import type {
-  EnhancedMeta,
-  FileObservationFrequency,
-  MapTimelapseItem,
-} from "../worker/module";
+import type { EnhancedMeta, FileObservationFrequency, MapTimelapseItem } from "../worker/module";
 import { proxy } from "comlink";
 import { emitEvent } from "@/lib/events";
 
@@ -44,9 +40,7 @@ type Eu4StateProps = {
     achievements: AchievementsScore;
     countries: EnhancedCountryInfo[];
     defaultSelectedCountry: string;
-    saveInfo:
-      | { kind: "sync"; data: string }
-      | { kind: "async"; saveId: string };
+    saveInfo: { kind: "sync"; data: string } | { kind: "async"; saveId: string };
     initialPoliticalMapColors: Uint8Array;
   };
   map: MapController;
@@ -88,9 +82,7 @@ type Eu4State = Eu4StateProps & {
     setSelectedDateText: (text: string) => Promise<void>;
     startWatcher: (frequency: FileObservationFrequency) => void;
     stopWatcher: () => void;
-    updateProvinceColors: (options?: {
-      countryColors?: Uint8Array;
-    }) => Promise<void>;
+    updateProvinceColors: (options?: { countryColors?: Uint8Array }) => Promise<void>;
     updateMap: (frame: MapTimelapseItem) => void;
     updateTagFilter: (matcher: Partial<CountryMatcher>) => Promise<void>;
     updateSave: (save: {
@@ -110,12 +102,7 @@ type Eu4StoreInit = Eu4StateProps & {
 };
 export const Eu4SaveContext = createContext<Eu4Store | null>(null);
 
-export const createEu4Store = async ({
-  store: prevStore,
-  save,
-  map,
-  settings,
-}: Eu4StoreInit) => {
+export const createEu4Store = async ({ store: prevStore, save, map, settings }: Eu4StoreInit) => {
   const defaults = {
     mapMode: "political",
     paintSubjectInOverlordHue: false,
@@ -133,8 +120,7 @@ export const createEu4Store = async ({
     const report = compatibilityReport().webgl2;
     state.map.update(
       {
-        renderTerrain:
-          state.renderTerrain && report.enabled && !report.performanceCaveat,
+        renderTerrain: state.renderTerrain && report.enabled && !report.performanceCaveat,
         showProvinceBorders: state.showProvinceBorders,
         showCountryBorders: selectShowCountryBorders(state),
         showMapModeBorders: state.showMapModeBorders,
@@ -239,12 +225,10 @@ export const createEu4Store = async ({
         get().map.redrawMap();
       },
 
-      setSelectedTag: (tag: string) =>
-        set({ selectedTag: tag, countryDrawerVisible: true }),
+      setSelectedTag: (tag: string) => set({ selectedTag: tag, countryDrawerVisible: true }),
       setPrefersPercents: (checked: boolean) =>
         set({ prefereredValueFormat: checked ? "percent" : "absolute" }),
-      setShowOneTimeLineItems: (checked: boolean) =>
-        set({ showOneTimeLineItems: checked }),
+      setShowOneTimeLineItems: (checked: boolean) => set({ showOneTimeLineItems: checked }),
       startWatcher: (frequency: FileObservationFrequency) => {
         emitEvent({ kind: "Save watching", frequency });
         getEu4Worker().startFileObserver(
@@ -273,23 +257,17 @@ export const createEu4Store = async ({
         await get().actions.updateProvinceColors();
         get().map.redrawMap();
       },
-      updateProvinceColors: async (options?: {
-        countryColors?: Uint8Array;
-      }) => {
+      updateProvinceColors: async (options?: { countryColors?: Uint8Array }) => {
         const payload = selectMapPayload(get());
         const colors = await getEu4Worker().eu4MapColors(payload);
-        const secondary = get().showSecondaryColor
-          ? colors.secondary
-          : colors.primary;
+        const secondary = get().showSecondaryColor ? colors.secondary : colors.primary;
         get().map.updateProvinceColors(colors.primary, secondary, {
           country: options?.countryColors ?? colors.country,
         });
       },
       updateMap: (frame: MapTimelapseItem) => {
         get().actions.setSelectedDate(frame.date);
-        const stripes = get().showSecondaryColor
-          ? frame.secondary
-          : frame.primary;
+        const stripes = get().showSecondaryColor ? frame.secondary : frame.primary;
         get().map.updateProvinceColors(frame.primary, stripes, {
           country: frame.country,
         });
@@ -333,8 +311,7 @@ const selectDefaultDate = (meta: EnhancedMeta) => ({
 export const selectMapPayload = (state: Eu4State): MapPayload => ({
   kind: state.mapMode,
   tagFilter: state.countryFilter,
-  date: selectDate(state.mapMode, state.save.meta, state.selectedDate)
-    .enabledDays,
+  date: selectDate(state.mapMode, state.save.meta, state.selectedDate).enabledDays,
   paintSubjectInOverlordHue: state.paintSubjectInOverlordHue,
 });
 
@@ -353,26 +330,19 @@ export const useEu4Actions = () => useEu4Store((x) => x.actions);
 export const useEu4MapMode = () => useEu4Store((x) => x.mapMode);
 export const useTerrainOverlay = () => useEu4Store((x) => x.renderTerrain);
 export const useMapShowStripes = () => useEu4Store((x) => x.showSecondaryColor);
-export const useShowProvinceBorders = () =>
-  useEu4Store((x) => x.showProvinceBorders);
-export const useShowCountryBorders = () =>
-  useEu4Store(selectShowCountryBorders);
+export const useShowProvinceBorders = () => useEu4Store((x) => x.showProvinceBorders);
+export const useShowCountryBorders = () => useEu4Store(selectShowCountryBorders);
 export const selectShowCountryBorders = (x: Eu4State) =>
   x.mapMode == "political" ? x.showMapModeBorders : x.showCountryBorders;
-export const useShowMapModeBorders = () =>
-  useEu4Store((x) => x.showMapModeBorders);
-export const usePaintSubjectInOverlordHue = () =>
-  useEu4Store((x) => x.paintSubjectInOverlordHue);
+export const useShowMapModeBorders = () => useEu4Store((x) => x.showMapModeBorders);
+export const usePaintSubjectInOverlordHue = () => useEu4Store((x) => x.paintSubjectInOverlordHue);
 export const useEu4Meta = () => useEu4Store((x) => x.save.meta);
 export const useAchievements = () => useEu4Store((x) => x.save.achievements);
 export const useSelectedTag = () => useEu4Store((x) => x.selectedTag);
 export const useTagFilter = () => useEu4Store((x) => x.countryFilter);
-export const useValueFormatPreference = () =>
-  useEu4Store((x) => x.prefereredValueFormat);
-export const useShowOnetimeLineItems = () =>
-  useEu4Store((x) => x.showOneTimeLineItems);
-export const useCountryDrawerVisible = () =>
-  useEu4Store((x) => x.countryDrawerVisible);
+export const useValueFormatPreference = () => useEu4Store((x) => x.prefereredValueFormat);
+export const useShowOnetimeLineItems = () => useEu4Store((x) => x.showOneTimeLineItems);
+export const useCountryDrawerVisible = () => useEu4Store((x) => x.countryDrawerVisible);
 export const useWatcher = () => useEu4Store((x) => x.watcher);
 export const useColonialOverlord = (tag: CountryTag) =>
   useEu4Store((x) => x.save.meta.colonialSubjects).get(tag);
@@ -410,18 +380,14 @@ export const useSaveFilename = () => {
 export const useSaveFilenameWith = (suffix: string) => {
   const filename = useSaveFilename();
   const nameInd = filename.lastIndexOf(".");
-  const outputName =
-    nameInd == -1 ? `${filename}` : `${filename.substring(0, nameInd)}`;
+  const outputName = nameInd == -1 ? `${filename}` : `${filename.substring(0, nameInd)}`;
 
   return `${outputName}${suffix}`;
 };
 
 export const useCountryNameLookup = () => {
   const countries = useEu4Countries();
-  return useMemo(
-    () => new Map(countries.map((x) => [x.normalizedName, x])),
-    [countries],
-  );
+  return useMemo(() => new Map(countries.map((x) => [x.normalizedName, x])), [countries]);
 };
 
 export const useEu4Countries = () => useEu4Store((x) => x.save.countries);
@@ -446,11 +412,7 @@ const dateEnabledMapMode = (mode: MapPayload["kind"]) => {
   return mode === "political" || mode === "religion" || mode === "battles";
 };
 
-export const selectDate = (
-  mode: MapPayload["kind"],
-  meta: EnhancedMeta,
-  date: MapDate,
-) => {
+export const selectDate = (mode: MapPayload["kind"], meta: EnhancedMeta, date: MapDate) => {
   if (!dateEnabledMapMode(mode)) {
     return {
       kind: "disabled",
@@ -472,10 +434,7 @@ export const useSelectedDate = () => {
   const selectedDate = useEu4Store((x) => x.selectedDate);
   const mode = useEu4MapMode();
   const meta = useEu4Meta();
-  return useMemo(
-    () => selectDate(mode, meta, selectedDate),
-    [mode, meta, selectedDate],
-  );
+  return useMemo(() => selectDate(mode, meta, selectedDate), [mode, meta, selectedDate]);
 };
 
 type PersistedMapSettings = {
@@ -491,9 +450,7 @@ function persistMapSettings(settings: PersistedMapSettings) {
 
 export function loadSettings(): PersistedMapSettings {
   const deprecatedSettings = {
-    renderTerrain: !!JSON.parse(
-      localStorage.getItem("map-show-terrain") ?? "false",
-    ),
+    renderTerrain: !!JSON.parse(localStorage.getItem("map-show-terrain") ?? "false"),
   };
 
   const mapSettings = JSON.parse(localStorage.getItem("map-settings") ?? "{}");

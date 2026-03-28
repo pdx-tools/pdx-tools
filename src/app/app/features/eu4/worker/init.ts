@@ -34,10 +34,7 @@ export async function fetchData(save: Eu4SaveInput) {
   }
 }
 
-export function eu4GameParse(
-  gameData: Uint8Array,
-  provinceIdToColorIndex: Uint16Array,
-) {
+export function eu4GameParse(gameData: Uint8Array, provinceIdToColorIndex: Uint16Array) {
   const data = wasm.takeStash();
   wasm.save = wasm.module.parse_save(data, gameData, provinceIdToColorIndex);
   const meta = getMeta(wasm.save);
@@ -56,9 +53,7 @@ export type EnhancedMeta = ReturnType<typeof getMeta>;
 export function getMeta(savefile: mod.SaveFile) {
   const meta = savefile.get_meta_raw();
   const starting_tag = savefile.get_starting_country() ?? null;
-  const starting_tag_name = starting_tag
-    ? savefile.localize_country(starting_tag)
-    : null;
+  const starting_tag_name = starting_tag ? savefile.localize_country(starting_tag) : null;
 
   const start_date = savefile.get_start_date();
   const total_days = savefile.get_total_days();

@@ -4,11 +4,7 @@ import achievementData from "@/images/eu4/achievements/achievements.json";
 export function AchievementWall() {
   const data = Object.keys(achievementData);
   const slice = data.length / 3;
-  const [fst, snd, thrd] = [
-    data.slice(0, slice),
-    data.slice(slice, -slice),
-    data.slice(-slice),
-  ];
+  const [fst, snd, thrd] = [data.slice(0, slice), data.slice(slice, -slice), data.slice(-slice)];
 
   return (
     <div className="mt-4 flex h-48">

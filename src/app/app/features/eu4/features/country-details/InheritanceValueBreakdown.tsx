@@ -13,9 +13,7 @@ export interface InheranticeLabelProps {
   details: CountryDetails;
 }
 
-export const InheritanceValueBreakdown = ({
-  details,
-}: InheranticeLabelProps) => {
+export const InheritanceValueBreakdown = ({ details }: InheranticeLabelProps) => {
   const { inheritance } = details;
   const meta = useEu4Meta();
   const saveYear = +meta.date.split("-")[0];
@@ -30,10 +28,7 @@ export const InheritanceValueBreakdown = ({
         </Button>
       </Sheet.Trigger>
 
-      <Sheet.Content
-        side="right"
-        className="w-[450px] max-w-full bg-white dark:bg-slate-900"
-      >
+      <Sheet.Content side="right" className="w-[450px] max-w-full bg-white dark:bg-slate-900">
         <Sheet.Header className="z-10 items-center p-4 shadow-md">
           <Sheet.Close />
           <Sheet.Title>Inheritance Value Breakdown</Sheet.Title>
@@ -54,25 +49,14 @@ export const InheritanceValueBreakdown = ({
                 </tr>
                 <tr>
                   <td>
-                    Curia Controller Nation ID (
-                    {inheritance.calculations.curia.controller_tag})
+                    Curia Controller Nation ID ({inheritance.calculations.curia.controller_tag})
                   </td>
-                  <td
-                    className={
-                      inheritance.calculations.curia.enabled
-                        ? ""
-                        : "line-through"
-                    }
-                  >
+                  <td className={inheritance.calculations.curia.enabled ? "" : "line-through"}>
                     <Tooltip>
                       <Tooltip.Trigger>
-                        {formatInt(
-                          inheritance.calculations.curia.controller_id,
-                        )}
+                        {formatInt(inheritance.calculations.curia.controller_id)}
                       </Tooltip.Trigger>
-                      <Tooltip.Content>
-                        Only applies to Catholic nations
-                      </Tooltip.Content>
+                      <Tooltip.Content>Only applies to Catholic nations</Tooltip.Content>
                     </Tooltip>
                   </td>
                 </tr>
@@ -87,18 +71,10 @@ export const InheritanceValueBreakdown = ({
                 {isJuniorParter ? (
                   <tr>
                     <td>Heir ID ({details.tag})</td>
-                    <td
-                      className={
-                        inheritance.calculations.heir.enabled
-                          ? ""
-                          : "line-through"
-                      }
-                    >
+                    <td className={inheritance.calculations.heir.enabled ? "" : "line-through"}>
                       <Tooltip>
                         <Tooltip.Trigger>
-                          {formatInt(
-                            inheritance.calculations.heir.heir_id ?? 0,
-                          )}
+                          {formatInt(inheritance.calculations.heir.heir_id ?? 0)}
                         </Tooltip.Trigger>
                         <Tooltip.Content>
                           Only if the heir is younger than 15 years old
@@ -109,15 +85,11 @@ export const InheritanceValueBreakdown = ({
                 ) : null}
                 <tr>
                   <td>Previous Rulers ({details.tag})</td>
-                  <td>
-                    {formatInt(inheritance.calculations.previous_ruler_ids)}
-                  </td>
+                  <td>{formatInt(inheritance.calculations.previous_ruler_ids)}</td>
                 </tr>
                 <tr>
                   <td>Capital Province ({details.tag})</td>
-                  <td>
-                    {formatInt(inheritance.calculations.capital_province)}
-                  </td>
+                  <td>{formatInt(inheritance.calculations.capital_province)}</td>
                 </tr>
                 <tr>
                   <td>Owned Provinces ({details.tag})</td>
@@ -126,11 +98,7 @@ export const InheritanceValueBreakdown = ({
                 <tr className="bg-gray-200 dark:bg-slate-700">
                   <td>Subtotal</td>
                   <td>
-                    {formatInt(
-                      isJuniorParter
-                        ? inheritance.pu_subtotal
-                        : inheritance.subtotal,
-                    )}
+                    {formatInt(isJuniorParter ? inheritance.pu_subtotal : inheritance.subtotal)}
                   </td>
                 </tr>
                 <tr>
@@ -194,22 +162,18 @@ export const InheritanceValueBreakdown = ({
               </table>
             ) : (
               <p>
-                Inheritance occurs when the inheritance chance (shown in game)
-                is greater than inheritance value (
-                {inheritance.pu_inheritance_value})
+                Inheritance occurs when the inheritance chance (shown in game) is greater than
+                inheritance value ({inheritance.pu_inheritance_value})
               </p>
             )}
 
             <p>
-              <Link
-                target="_blank"
-                href="/docs/eu4-guides/royal-marriage-inheritance/"
-              >
+              <Link target="_blank" href="/docs/eu4-guides/royal-marriage-inheritance/">
                 Check out the guide on inheritance values
               </Link>
-              , which will deteministically tell you if the death of an heirless
-              ruler will result in a PU or even an inheritance! It will also
-              tell you if the junior partner of a PU will be inherited.
+              , which will deteministically tell you if the death of an heirless ruler will result
+              in a PU or even an inheritance! It will also tell you if the junior partner of a PU
+              will be inherited.
             </p>
           </div>
         </Sheet.Body>

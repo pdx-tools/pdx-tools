@@ -7,11 +7,7 @@ import { getSaves } from "@/server-lib/fn/new";
 import { withCore } from "@/server-lib/middleware";
 import { pdxKeys } from "@/services/appApi";
 import { Await, useLoaderData } from "react-router";
-import {
-  dehydrate,
-  HydrationBoundary,
-  QueryClient,
-} from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { Suspense } from "react";
 import type { Route } from "./+types/eu4._index";
 

@@ -18,11 +18,7 @@ const requestHandler = createRequestHandler(
 );
 
 export const app = {
-  async fetch(
-    request: Request,
-    env: CloudflareWorkerEnv,
-    ctx: ExecutionContext,
-  ) {
+  async fetch(request: Request, env: CloudflareWorkerEnv, ctx: ExecutionContext) {
     try {
       return await requestHandler(request, {
         cloudflare: {

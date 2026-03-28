@@ -7,11 +7,7 @@ import {
   useLoaderData,
   useRouteError,
 } from "react-router";
-import type {
-  LinksFunction,
-  LoaderFunctionArgs,
-  MetaFunction,
-} from "react-router";
+import type { LinksFunction, LoaderFunctionArgs, MetaFunction } from "react-router";
 import tailwind from "@/styles/tailwind.css?url";
 import appCss from "@/styles/styles.css?url";
 import { useState } from "react";
@@ -94,8 +90,8 @@ export const ErrorBoundary = () => {
           <>
             <p>We ran into an unexpected error while loading this page.</p>
             <p className="mt-2">
-              Try refreshing the page. If the problem continues, use the support
-              links below to share what happened.
+              Try refreshing the page. If the problem continues, use the support links below to
+              share what happened.
             </p>
           </>
         }

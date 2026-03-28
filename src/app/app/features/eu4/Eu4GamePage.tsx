@@ -44,11 +44,7 @@ export const Eu4GamePage = () => {
         <Suspense fallback={<LoadingState />}>
           <ErrorCatcher
             fallback={(args) => (
-              <ErrorDisplay
-                {...args}
-                className="m-8"
-                title="Failed to load latest EU4 saves"
-              />
+              <ErrorDisplay {...args} className="m-8" title="Failed to load latest EU4 saves" />
             )}
           >
             <NewestSavesTable />

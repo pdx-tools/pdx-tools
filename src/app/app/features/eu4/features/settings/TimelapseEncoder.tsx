@@ -15,9 +15,7 @@ import type { Eu4Store } from "../../store";
 import { log } from "@/lib/log";
 import { formatInt } from "@/lib/format";
 
-export async function* mapTimelapseCursor(
-  ...args: Parameters<Eu4Worker["mapTimelapse"]>
-) {
+export async function* mapTimelapseCursor(...args: Parameters<Eu4Worker["mapTimelapse"]>) {
   const worker = getEu4Worker();
   await worker.mapTimelapse(...args);
   let item;
@@ -76,9 +74,7 @@ export class TimelapseEncoder {
     ctx2d.drawImage(this.map.canvas, 0, 0);
 
     const isScaled = Number.isInteger(IMG_WIDTH / ctx2d.canvas.width);
-    const scale = !isScaled
-      ? window.devicePixelRatio
-      : (ctx2d.canvas.width / IMG_WIDTH) * 4;
+    const scale = !isScaled ? window.devicePixelRatio : (ctx2d.canvas.width / IMG_WIDTH) * 4;
     ctx2d.font = `700 ${20 * scale}px ${this.fontFamily}`;
     overlayDate({
       ctx2d,
@@ -163,14 +159,7 @@ export class TimelapseEncoder {
     return "VideoEncoder" in window;
   }
 
-  static async create({
-    map,
-    frames,
-    encoding,
-    fps,
-    freezeFrame,
-    store,
-  }: TimelapseEncoderOptions) {
+  static async create({ map, frames, encoding, fps, freezeFrame, store }: TimelapseEncoderOptions) {
     // H264 only supports even sized frames.
     const { height, width } =
       encoding == "mp4"
@@ -183,9 +172,7 @@ export class TimelapseEncoder {
             height: map.canvas.height,
           };
 
-    async function findSupportedEncoder(
-      codecs: Readonly<Readonly<[string, string]>[]>,
-    ) {
+    async function findSupportedEncoder(codecs: Readonly<Readonly<[string, string]>[]>) {
       for (const [codec, muxCodec] of codecs) {
         try {
           const canvasRate = recordingCanvas.height * recordingCanvas.width;
@@ -232,9 +219,7 @@ export class TimelapseEncoder {
     }
 
     const format =
-      encoding == "mp4"
-        ? new Mp4OutputFormat({ fastStart: "in-memory" })
-        : new WebMOutputFormat();
+      encoding == "mp4" ? new Mp4OutputFormat({ fastStart: "in-memory" }) : new WebMOutputFormat();
 
     const output = new Output({
       format,

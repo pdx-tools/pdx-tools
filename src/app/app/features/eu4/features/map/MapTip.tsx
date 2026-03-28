@@ -1,10 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import {
-  selectDate,
-  useEu4Context,
-  useEu4Map,
-  useEu4MapMode,
-} from "../../store";
+import { selectDate, useEu4Context, useEu4Map, useEu4MapMode } from "../../store";
 import type { QuickTipPayload } from "../../types/map";
 import { getEu4Worker } from "../../worker";
 import { MapTipContents } from "./MapTipContents";
@@ -29,9 +24,7 @@ export const MapTip = () => {
     let isDown = false;
 
     function pointerMove(e: PointerEvent) {
-      setPointerDisplay(
-        !isDown && e.target instanceof Element && e.target.nodeName == "CANVAS",
-      );
+      setPointerDisplay(!isDown && e.target instanceof Element && e.target.nodeName == "CANVAS");
       setPointer({ x: e.x, y: e.y });
     }
 
@@ -73,15 +66,9 @@ export const MapTip = () => {
 
     const rect = toolTipRef.current.getBoundingClientRect();
 
-    const x = Math.min(
-      document.documentElement.clientWidth - rect.width - 5,
-      pointer.x + 10,
-    );
+    const x = Math.min(document.documentElement.clientWidth - rect.width - 5, pointer.x + 10);
 
-    let y = Math.min(
-      document.documentElement.clientHeight - rect.height - 5,
-      pointer.y + 10,
-    );
+    let y = Math.min(document.documentElement.clientHeight - rect.height - 5, pointer.y + 10);
 
     // Make the map tip above the cursor when at the bottom of the page to avoid
     // DOM flicker
@@ -128,11 +115,7 @@ export const MapTip = () => {
           left: 0,
         };
   return (
-    <div
-      ref={toolTipRef}
-      className="pointer-events-none absolute"
-      style={toolTipStyle}
-    >
+    <div ref={toolTipRef} className="pointer-events-none absolute" style={toolTipStyle}>
       {provinceId !== 0 ? (
         <MapTipProvince
           provinceId={provinceId}
@@ -171,11 +154,7 @@ function MapTipProvince({
     tooltipTimer.current = setTimeout(async () => {
       const state = store.getState();
       const mapMode = state.mapMode;
-      const currentMapDate = selectDate(
-        mapMode,
-        state.save.meta,
-        state.selectedDate,
-      );
+      const currentMapDate = selectDate(mapMode, state.save.meta, state.selectedDate);
 
       const days = currentMapDate.enabledDays;
       const data = await worker.eu4GetMapTooltip(provinceId, mapMode, days);

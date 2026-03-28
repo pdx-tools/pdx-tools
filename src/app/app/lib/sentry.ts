@@ -21,9 +21,7 @@ export function sentryInit() {
         enabled: !!SENTRY_DSN,
         debug: !import.meta.env.PROD,
         tunnel: "/api/tunnel",
-        ignoreErrors: [
-          "ResizeObserver loop completed with undelivered notifications.",
-        ],
+        ignoreErrors: ["ResizeObserver loop completed with undelivered notifications."],
         beforeSend: (event, _hint) => {
           return isEnvironmentSupported() ? event : null;
         },

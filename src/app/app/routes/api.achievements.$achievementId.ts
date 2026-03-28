@@ -6,10 +6,7 @@ import { z } from "zod";
 import type { Route } from "./+types/api.achievements.$achievementId";
 
 export type AchievementApiResponse = Awaited<ReturnType<typeof getAchievement>>;
-async function getAchievement(
-  db: DbConnection,
-  { achievementId }: { achievementId: string },
-) {
+async function getAchievement(db: DbConnection, { achievementId }: { achievementId: string }) {
   const achievement = findAchievement({ achievementId });
   const saves = await fetchAchievement(db, achievement);
   return { achievement, saves: saves.saves };

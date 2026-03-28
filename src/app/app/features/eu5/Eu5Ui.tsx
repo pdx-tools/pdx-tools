@@ -15,10 +15,7 @@ type Eu5UiProps = {
 };
 
 const TrackingCanvas = memo(
-  forwardRef<HTMLCanvasElement>(function TrackingCanvas(
-    _,
-    ref: ForwardedRef<HTMLCanvasElement>,
-  ) {
+  forwardRef<HTMLCanvasElement>(function TrackingCanvas(_, ref: ForwardedRef<HTMLCanvasElement>) {
     useEffect(() => {
       return () => {
         developerLog("tracking canvas unmounted");
@@ -60,9 +57,7 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
     <>
       {loadingIcon}
 
-      {data !== null ? (
-        <div className="absolute inset-0 bg-slate-900"></div>
-      ) : null}
+      {data !== null ? <div className="absolute inset-0 bg-slate-900"></div> : null}
 
       <div className="absolute inset-0 overflow-hidden" ref={mapContainer}>
         <TrackingCanvas ref={mapCanvas} />
@@ -81,9 +76,7 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
       ) : null}
 
       <div className="absolute w-full">
-        {loading !== null ? (
-          <ProgressBar height={32} value={loading.percent ?? 0} />
-        ) : null}
+        {loading !== null ? <ProgressBar height={32} value={loading.percent ?? 0} /> : null}
         {error !== null ? <Eu5ErrorDisplay error={error} /> : null}
       </div>
     </>

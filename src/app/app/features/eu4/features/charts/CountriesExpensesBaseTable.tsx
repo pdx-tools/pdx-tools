@@ -25,9 +25,7 @@ type BaseTableProps = {
 
 const mapping = expenseLedgerAliases();
 
-export const CountriesExpensesBaseTable = ({
-  monthlyExpenses,
-}: BaseTableProps) => {
+export const CountriesExpensesBaseTable = ({ monthlyExpenses }: BaseTableProps) => {
   const { setShowOneTimeLineItems, setPrefersPercents } = useEu4Actions();
   const doShowPercent = useValueFormatPreference() === "percent";
   const showRecurringOnly = !useShowOnetimeLineItems();
@@ -38,16 +36,8 @@ export const CountriesExpensesBaseTable = ({
     useCallback(
       (worker) =>
         monthlyExpenses
-          ? worker.eu4GetCountriesExpenses(
-              countryFilter,
-              doShowPercent,
-              showRecurringOnly,
-            )
-          : worker.eu4GetCountriesTotalExpenses(
-              countryFilter,
-              doShowPercent,
-              showRecurringOnly,
-            ),
+          ? worker.eu4GetCountriesExpenses(countryFilter, doShowPercent, showRecurringOnly)
+          : worker.eu4GetCountriesTotalExpenses(countryFilter, doShowPercent, showRecurringOnly),
       [countryFilter, doShowPercent, showRecurringOnly, monthlyExpenses],
     ),
   );
@@ -78,27 +68,19 @@ export const CountriesExpensesBaseTable = ({
     return [
       columnHelper.accessor("name", {
         sortingFn: "text",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Country" />
-        ),
-        cell: ({ row }) => (
-          <Flag tag={row.original.tag} name={row.original.name} />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
+        cell: ({ row }) => <Flag tag={row.original.tag} name={row.original.name} />,
       }),
       columnHelper.accessor("total", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Total" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Total" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
       ...mapping.map(([key, text]) =>
         columnHelper.accessor(key, {
           sortingFn: "basic",
-          header: ({ column }) => (
-            <Table.ColumnHeader column={column} title={text} />
-          ),
+          header: ({ column }) => <Table.ColumnHeader column={column} title={text} />,
           meta: { className: "text-right" },
           cell: (info) => numRenderer(info.getValue()),
         }),
@@ -112,10 +94,7 @@ export const CountriesExpensesBaseTable = ({
         <div className="flex items-center space-x-2">
           <span>Show as percentages:</span>
 
-          <Switch
-            checked={doShowPercent}
-            onCheckedChange={setPrefersPercents}
-          />
+          <Switch checked={doShowPercent} onCheckedChange={setPrefersPercents} />
         </div>
 
         <div className="flex items-center space-x-2">

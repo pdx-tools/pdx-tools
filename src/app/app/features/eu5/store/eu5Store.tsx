@@ -51,17 +51,12 @@ const useEu5Store = <T,>(selector: (state: Eu5State) => T): T =>
 
 export const useEu5Engine = () => useEu5Store((x) => x.engine);
 export const useEu5AppState = () => useEu5Store((x) => x.appState);
-export const useEu5MapMode = () =>
-  useEu5Store((x) => x.appState.currentMapMode);
-export const useEu5HoverData = () =>
-  useEu5Store((x) => x.appState.hoverDisplayData);
-export const useEu5OwnerBorders = () =>
-  useEu5Store((x) => x.appState.ownerBordersEnabled);
+export const useEu5MapMode = () => useEu5Store((x) => x.appState.currentMapMode);
+export const useEu5HoverData = () => useEu5Store((x) => x.appState.hoverDisplayData);
+export const useEu5OwnerBorders = () => useEu5Store((x) => x.appState.ownerBordersEnabled);
 export const useEu5IsGeneratingScreenshot = () =>
   useEu5Store((x) => x.appState.isGeneratingScreenshot);
-export const useEu5MapModeRange = () =>
-  useEu5Store((x) => x.appState.mapModeRange);
+export const useEu5MapModeRange = () => useEu5Store((x) => x.appState.mapModeRange);
 export const useSaveFilename = () => useEu5Store((x) => x.filename);
 export const useEu5SaveDate = () => useEu5Store((x) => x.saveDate);
-export const useEu5PlaythroughName = () =>
-  useEu5Store((x) => x.playthroughName);
+export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);

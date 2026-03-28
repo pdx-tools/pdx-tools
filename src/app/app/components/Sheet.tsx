@@ -33,7 +33,7 @@ const SheetOverlay = React.forwardRef<
   return (
     <SheetPrimitive.Overlay
       className={cx(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-300 bg-sky-900/80 backdrop-blur-sm",
+        "fixed inset-0 z-300 bg-sky-900/80 backdrop-blur-sm data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
         className,
       )}
       {...props}
@@ -70,10 +70,7 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ComponentRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(function SheetContent(
-  { side = "right", className, children, ...props },
-  ref,
-) {
+>(function SheetContent({ side = "right", className, children, ...props }, ref) {
   return (
     <Sheet.Portal>
       <Sheet.Overlay />
@@ -112,34 +109,19 @@ const SheetClose = React.forwardRef<
 });
 Sheet.Close = SheetClose;
 
-const SheetHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cx("flex text-center sm:text-left", className)} {...props} />
 );
 Sheet.Header = SheetHeader;
 
-const SheetBody = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cx("relative max-h-full grow overflow-auto", className)}
-    {...props}
-  />
+const SheetBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cx("relative max-h-full grow overflow-auto", className)} {...props} />
 );
 Sheet.Body = SheetBody;
 
-const SheetFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cx(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-      className,
-    )}
+    className={cx("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)}
     {...props}
   />
 );

@@ -2,11 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 import type { ComponentProps, ComponentType } from "react";
 import { WebPage } from "@/components/layout";
 import { PageDropOverlay } from "./components/PageDropOverlay";
-import {
-  useEngineActions,
-  useSaveFileInput,
-  useSaveInputId,
-} from "./engineStore";
+import { useEngineActions, useSaveFileInput, useSaveInputId } from "./engineStore";
 import type { SaveGameInput } from "./engineStore";
 import classes from "./GameView.module.css";
 import type Eu4Ui from "@/features/eu4/Eu4Ui";
@@ -44,10 +40,9 @@ const DynamicHoi4: ComponentType<ComponentProps<typeof Hoi4Ui>> = lazy(
   timeModule(() => import("@/features/hoi4/Hoi4Ui"), "hoi4"),
 );
 
-const DynamicImperator: ComponentType<ComponentProps<typeof ImperatorUi>> =
-  lazy(
-    timeModule(() => import("@/features/imperator/ImperatorUi"), "imperator"),
-  );
+const DynamicImperator: ComponentType<ComponentProps<typeof ImperatorUi>> = lazy(
+  timeModule(() => import("@/features/imperator/ImperatorUi"), "imperator"),
+);
 
 const DynamicVic3: ComponentType<ComponentProps<typeof Vic3Ui>> = lazy(
   timeModule(() => import("@/features/vic3/vic3Ui"), "vic3"),
@@ -142,10 +137,7 @@ export const GameView = ({ children }: GameViewProps) => {
   const savegame = useSaveFileInput();
   const inputId = useSaveInputId();
   const { resetSaveAnalysis } = useEngineActions();
-  const game = useMemo(
-    () => gameRenderer(savegame, inputId),
-    [savegame, inputId],
-  );
+  const game = useMemo(() => gameRenderer(savegame, inputId), [savegame, inputId]);
   useEffect(() => resetSaveAnalysis, [resetSaveAnalysis]);
   useWindowMessageDrop();
 
@@ -157,9 +149,7 @@ export const GameView = ({ children }: GameViewProps) => {
           {game?.kind === "in-screen" ? game.component() : null}
         </WebPage>
       ) : null}
-      {game?.kind === "full-screen" ? (
-        <FullscreenPage>{game.component()}</FullscreenPage>
-      ) : null}
+      {game?.kind === "full-screen" ? <FullscreenPage>{game.component()}</FullscreenPage> : null}
       <PageDropOverlay />
     </>
   );

@@ -36,9 +36,7 @@ export const CountryDetails = () => {
                   .sort(),
               ),
               variables: Object.fromEntries(
-                [...data.variables.entries()]
-                  .map(([k, v]) => [k, +v.toFixed(3)])
-                  .sort(),
+                [...data.variables.entries()].map(([k, v]) => [k, +v.toFixed(3)]).sort(),
               ),
             },
             null,

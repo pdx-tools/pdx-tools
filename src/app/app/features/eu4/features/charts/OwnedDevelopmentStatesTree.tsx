@@ -4,10 +4,7 @@ import type { EChartsOption } from "@/components/viz";
 import { useAnalysisWorker } from "@/features/eu4/worker";
 import { createCsv } from "@/lib/csv";
 import { useTagFilter } from "../../store";
-import type {
-  OwnedDevelopmentStates,
-  ProvinceDevelopment,
-} from "../../types/models";
+import type { OwnedDevelopmentStates, ProvinceDevelopment } from "../../types/models";
 import { Flag } from "../../components/avatars";
 import { formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
@@ -18,10 +15,7 @@ import { classicCyclic } from "@/lib/colors";
 export const OwnedDevelopmentStatesTree = () => {
   const countryFilter = useTagFilter();
   const { data, error } = useAnalysisWorker(
-    useCallback(
-      (worker) => worker.eu4OwnedDevelopmentStates(countryFilter),
-      [countryFilter],
-    ),
+    useCallback((worker) => worker.eu4OwnedDevelopmentStates(countryFilter), [countryFilter]),
   );
   const visualizationDispatch = useVisualizationDispatch();
 
@@ -108,10 +102,7 @@ function getColor(name: string) {
   }
 }
 
-function CountryStateDevelopmentTree({
-  dev,
-  max,
-}: CountryDevelopmentTreeProps) {
+function CountryStateDevelopmentTree({ dev, max }: CountryDevelopmentTreeProps) {
   const isDark = isDarkMode();
 
   const devs = useMemo(
@@ -209,9 +200,7 @@ function CountryStateDevelopmentTree({
             <Flag.Image size="large" />
             <div className="flex flex-col items-start">
               <Flag.CountryName />
-              <span className="font-normal">
-                Development: {formatInt(total)}
-              </span>
+              <span className="font-normal">Development: {formatInt(total)}</span>
             </div>
           </Flag.DrawerTrigger>
         </Flag.Tooltip>

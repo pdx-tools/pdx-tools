@@ -5,13 +5,9 @@ describe("auth", () => {
   it("guest auth", () => {
     const user = pdxUser({ kind: "guest" });
     expect(hasPermission(user, "savefile:update")).toBe(false);
-    expect(
-      hasPermission(user, "savefile:update", { userId: userId("10") }),
-    ).toBe(false);
+    expect(hasPermission(user, "savefile:update", { userId: userId("10") })).toBe(false);
     expect(hasPermission(user, "savefile:create")).toBe(false);
-    expect(
-      hasPermission(user, "savefile:delete", { userId: userId("10") }),
-    ).toBe(false);
+    expect(hasPermission(user, "savefile:delete", { userId: userId("10") })).toBe(false);
     expect(hasPermission(user, "savefile:delete")).toBe(false);
   });
 
@@ -23,19 +19,11 @@ describe("auth", () => {
       steamId: "3",
     });
     expect(hasPermission(user, "savefile:update")).toBe(false);
-    expect(
-      hasPermission(user, "savefile:update", { userId: userId("10") }),
-    ).toBe(false);
-    expect(
-      hasPermission(user, "savefile:update", { userId: userId("2") }),
-    ).toBe(true);
+    expect(hasPermission(user, "savefile:update", { userId: userId("10") })).toBe(false);
+    expect(hasPermission(user, "savefile:update", { userId: userId("2") })).toBe(true);
     expect(hasPermission(user, "savefile:create")).toBe(true);
-    expect(
-      hasPermission(user, "savefile:delete", { userId: userId("10") }),
-    ).toBe(false);
-    expect(
-      hasPermission(user, "savefile:delete", { userId: userId("2") }),
-    ).toBe(true);
+    expect(hasPermission(user, "savefile:delete", { userId: userId("10") })).toBe(false);
+    expect(hasPermission(user, "savefile:delete", { userId: userId("2") })).toBe(true);
     expect(hasPermission(user, "savefile:delete")).toBe(false);
   });
 
@@ -47,13 +35,9 @@ describe("auth", () => {
       steamId: "3",
     });
     expect(hasPermission(user, "savefile:update")).toBe(true);
-    expect(
-      hasPermission(user, "savefile:update", { userId: userId("10") }),
-    ).toBe(true);
+    expect(hasPermission(user, "savefile:update", { userId: userId("10") })).toBe(true);
     expect(hasPermission(user, "savefile:create")).toBe(true);
-    expect(
-      hasPermission(user, "savefile:delete", { userId: userId("10") }),
-    ).toBe(true);
+    expect(hasPermission(user, "savefile:delete", { userId: userId("10") })).toBe(true);
     expect(hasPermission(user, "savefile:delete")).toBe(true);
   });
 });

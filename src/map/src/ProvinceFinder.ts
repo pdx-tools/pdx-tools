@@ -6,10 +6,7 @@ export class ProvinceFinder {
     private sortedColors: Uint8Array,
     private provinceColorIndex: Uint16Array,
   ) {
-    const provinceCanvas = new OffscreenCanvas(
-      provinces1.width * 2,
-      provinces2.height,
-    );
+    const provinceCanvas = new OffscreenCanvas(provinces1.width * 2, provinces2.height);
     provinceCanvas.width = provinces1.width * 2;
     provinceCanvas.height = provinces2.height;
 
@@ -18,13 +15,7 @@ export class ProvinceFinder {
     // turn off anti-aliasing else we will get color values that don't exist
     this.ctx.imageSmoothingEnabled = false;
     this.ctx.drawImage(provinces1, 0, 0, provinces1.width, provinces1.height);
-    this.ctx.drawImage(
-      provinces2,
-      provinces1.width,
-      0,
-      provinces2.width,
-      provinces2.height,
-    );
+    this.ctx.drawImage(provinces2, provinces1.width, 0, provinces2.width, provinces2.height);
   }
 
   findProvinceId(x: number, y: number) {
@@ -33,11 +24,7 @@ export class ProvinceFinder {
     }
 
     const pixels = this.ctx.getImageData(x, y, 1, 1);
-    const pixel: [number, number, number] = [
-      pixels.data[0],
-      pixels.data[1],
-      pixels.data[2],
-    ];
+    const pixel: [number, number, number] = [pixels.data[0], pixels.data[1], pixels.data[2]];
     const colorIndex = binarySearch(this.sortedColors, pixel);
     return {
       r: pixels.data[0],
@@ -71,12 +58,6 @@ function binarySearch(colors: Uint8Array, rgb: [number, number, number]) {
   return -m - 1;
 }
 
-function comparePixel(
-  colors: Uint8Array,
-  ind: number,
-  rgb: [number, number, number],
-) {
-  return (
-    rgb[0] - colors[ind] || rgb[1] - colors[ind + 1] || rgb[2] - colors[ind + 2]
-  );
+function comparePixel(colors: Uint8Array, ind: number, rgb: [number, number, number]) {
+  return rgb[0] - colors[ind] || rgb[1] - colors[ind + 1] || rgb[2] - colors[ind + 2];
 }

@@ -2,9 +2,7 @@ import type { GameDifficulty } from "@/services/appApi";
 import type { AchievementDifficulty } from "../services/appApi";
 import type { SortingFn } from "@tanstack/react-table";
 
-export const difficultyText = (
-  diff: AchievementDifficulty | GameDifficulty,
-): string => {
+export const difficultyText = (diff: AchievementDifficulty | GameDifficulty): string => {
   switch (diff) {
     case "VeryEasy":
       return "Very Easy";
@@ -15,9 +13,7 @@ export const difficultyText = (
   }
 };
 
-export const difficultyNum = (
-  diff: AchievementDifficulty | GameDifficulty,
-): number => {
+export const difficultyNum = (diff: AchievementDifficulty | GameDifficulty): number => {
   switch (diff) {
     case "VeryEasy":
       return 0;
@@ -58,5 +54,4 @@ export const difficultyComparator = (a: DiffProp, b: DiffProp): number => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const difficultySort: SortingFn<any> = (rowA, rowB, columnId) =>
-  difficultyNum(rowA.getValue(columnId)) -
-  difficultyNum(rowB.getValue(columnId));
+  difficultyNum(rowA.getValue(columnId)) - difficultyNum(rowB.getValue(columnId));

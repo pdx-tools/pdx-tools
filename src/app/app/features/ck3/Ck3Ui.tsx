@@ -59,10 +59,7 @@ type Ck3LoadActions =
   | { kind: "data"; data: Ck3Metadata }
   | { kind: "error"; error: unknown };
 
-const loadStateReducer = (
-  state: Ck3LoadState,
-  action: Ck3LoadActions,
-): Ck3LoadState => {
+const loadStateReducer = (state: Ck3LoadState, action: Ck3LoadActions): Ck3LoadState => {
   switch (action.kind) {
     case "start": {
       return {
@@ -119,9 +116,7 @@ function useLoadCk3(input: Ck3SaveFile) {
 
 type Ck3PageProps = Ck3SaveFile & { meta: Ck3Metadata };
 const Ck3Page = ({ save, meta }: Ck3PageProps) => {
-  useDocumentTitle(
-    `${save.file.name.replace(".ck3", "")} - CK3 (${meta.version}) - PDX Tools`,
-  );
+  useDocumentTitle(`${save.file.name.replace(".ck3", "")} - CK3 (${meta.version}) - PDX Tools`);
   return (
     <main className="mx-auto mt-4 max-w-screen-lg">
       <div className="mx-auto flex max-w-prose flex-col gap-4">
@@ -130,11 +125,7 @@ const Ck3Page = ({ save, meta }: Ck3PageProps) => {
           {`A CK3 save was detected (version ${meta.version}). At this time, CK3 functionality is limited but one can still melt binary ironman saves into plaintext`}
         </p>
         {meta.isMeltable && (
-          <MeltButton
-            worker={getCk3Worker()}
-            game="ck3"
-            filename={save.file.name}
-          />
+          <MeltButton worker={getCk3Worker()} game="ck3" filename={save.file.name} />
         )}
       </div>
     </main>

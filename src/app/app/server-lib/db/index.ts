@@ -7,12 +7,7 @@ import type { Achievement } from "@/wasm/wasm_app";
 import { eu4DaysToDate } from "../game";
 import type { DbConnection } from "./connection";
 import type { UserId } from "@/lib/auth";
-export {
-  type User,
-  type Save,
-  type GameDifficulty,
-  type NewSave,
-} from "./schema";
+export { type User, type Save, type GameDifficulty, type NewSave } from "./schema";
 
 export const userView = {
   get userName() {
@@ -54,11 +49,7 @@ export function saveView<S, U>(opts?: { save?: S; user?: U }) {
 }
 
 type DbRow = { upload_time: Date; difficulty: GameDifficulty };
-export function toApiSave<T extends DbRow>({
-  upload_time,
-  difficulty,
-  ...save
-}: T) {
+export function toApiSave<T extends DbRow>({ upload_time, difficulty, ...save }: T) {
   return {
     ...save,
     upload_time: new Date(upload_time).toISOString(),
@@ -66,12 +57,11 @@ export function toApiSave<T extends DbRow>({
   };
 }
 
-function reverseRecord<T extends PropertyKey, U extends PropertyKey>(
-  input: Record<T, U>,
-) {
-  return Object.fromEntries(
-    Object.entries(input).map(([key, value]) => [value, key]),
-  ) as Record<U, T>;
+function reverseRecord<T extends PropertyKey, U extends PropertyKey>(input: Record<T, U>) {
+  return Object.fromEntries(Object.entries(input).map(([key, value]) => [value, key])) as Record<
+    U,
+    T
+  >;
 }
 
 const difficultyTable = {
@@ -84,10 +74,8 @@ const difficultyTable = {
 
 const dbDifficultyTable = reverseRecord(difficultyTable);
 
-export const dbDifficulty = (dbDiff: GameDifficulty) =>
-  dbDifficultyTable[dbDiff];
-export const toDbDifficulty = (diff: keyof typeof difficultyTable) =>
-  difficultyTable[diff];
+export const dbDifficulty = (dbDiff: GameDifficulty) => dbDifficultyTable[dbDiff];
+export const toDbDifficulty = (diff: keyof typeof difficultyTable) => difficultyTable[diff];
 
 export const apiKeyAtRest = async (key: string) => {
   const data = new TextEncoder().encode(key);
@@ -106,8 +94,7 @@ export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
     players: save.player_names,
     playthroughId: save.playthrough_id,
     achieveIds: save.achievements == null ? [] : save.achievements,
-    gameDifficulty:
-      save.game_difficulty && toDbDifficulty(save.game_difficulty),
+    gameDifficulty: save.game_difficulty && toDbDifficulty(save.game_difficulty),
     saveVersionFirst: save.patch?.first,
     saveVersionSecond: save.patch?.second,
     saveVersionThird: save.patch?.third,
@@ -116,9 +103,7 @@ export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
     hash: save.hash,
   };
 
-  return Object.fromEntries(
-    Object.entries(result).filter(([_, v]) => v !== undefined),
-  );
+  return Object.fromEntries(Object.entries(result).filter(([_, v]) => v !== undefined));
 };
 
 export const table = {
@@ -167,17 +152,12 @@ export async function getUser(db: DbConnection, userId: UserId) {
   };
 }
 
-export async function getAchievementDb(
-  db: DbConnection,
-  achievement: Achievement,
-) {
+export async function getAchievementDb(db: DbConnection, achievement: Achievement) {
   // saves with achievement
   const saves = db
     .select({
       id: table.saves.id,
-      rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY playthrough_id ORDER BY score_days)`.as(
-        "rn",
-      ),
+      rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY playthrough_id ORDER BY score_days)`.as("rn"),
     })
     .from(table.saves)
     .where(
@@ -207,17 +187,15 @@ export async function getAchievementDb(
     .where(inArray(table.saves.id, top))
     .orderBy(asc(table.saves.scoreDays), asc(table.saves.createdOn));
 
-  const leaderboard = result.map(
-    ({ save: { scoreDays, days, ...save }, user }) => ({
-      ...user,
-      ...toApiSave(save),
-      days,
-      weighted_score: {
-        days: scoreDays as number,
-        date: eu4DaysToDate(scoreDays as number),
-      },
-    }),
-  );
+  const leaderboard = result.map(({ save: { scoreDays, days, ...save }, user }) => ({
+    ...user,
+    ...toApiSave(save),
+    days,
+    weighted_score: {
+      days: scoreDays as number,
+      date: eu4DaysToDate(scoreDays as number),
+    },
+  }));
 
   const gold = leaderboard.at(0);
   const goldDate = gold ? eu4DaysToDate(gold.weighted_score.days) : undefined;

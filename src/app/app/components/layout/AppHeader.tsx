@@ -23,9 +23,7 @@ const HeaderMenu = () => {
       <NavigationMenu>
         <NavigationMenu.List>
           <NavigationMenu.Item>
-            <NavigationMenu.Trigger className="px-4 py-2">
-              EU4
-            </NavigationMenu.Trigger>
+            <NavigationMenu.Trigger className="px-4 py-2">EU4</NavigationMenu.Trigger>
             <NavigationMenu.Content className="bg-slate-900 p-4">
               <NavigationMenu.Link variant="button" asChild>
                 <Link variant="ghost" to="/eu4">
@@ -40,15 +38,9 @@ const HeaderMenu = () => {
             </NavigationMenu.Content>
           </NavigationMenu.Item>
           <NavigationMenu.Item>
-            <NavigationMenu.Trigger className="px-4 py-2">
-              About
-            </NavigationMenu.Trigger>
+            <NavigationMenu.Trigger className="px-4 py-2">About</NavigationMenu.Trigger>
             <NavigationMenu.Content className="bg-slate-900 p-4">
-              <NavigationMenu.Link
-                asChild
-                variant="button"
-                className="lg:hidden"
-              >
+              <NavigationMenu.Link asChild variant="button" className="lg:hidden">
                 <Link variant="ghost" href="/changelog">
                   Changelog
                 </Link>
@@ -58,21 +50,11 @@ const HeaderMenu = () => {
                   Docs
                 </Link>
               </NavigationMenu.Link>
-              <NavigationMenu.Link
-                variant="button"
-                asChild
-                className="lg:hidden"
-              >
+              <NavigationMenu.Link variant="button" asChild className="lg:hidden">
                 <Link href="https://discord.gg/rCpNWQW">Discord</Link>
               </NavigationMenu.Link>
-              <NavigationMenu.Link
-                variant="button"
-                asChild
-                className="lg:hidden"
-              >
-                <Link href="https://github.com/pdx-tools/pdx-tools">
-                  Github
-                </Link>
+              <NavigationMenu.Link variant="button" asChild className="lg:hidden">
+                <Link href="https://github.com/pdx-tools/pdx-tools">Github</Link>
               </NavigationMenu.Link>
               <NavigationMenu.Link variant="button" asChild>
                 <Link variant="ghost" href="/blog">
@@ -81,10 +63,7 @@ const HeaderMenu = () => {
               </NavigationMenu.Link>
 
               <NavigationMenu.Link variant="button" asChild>
-                <Link
-                  variant="ghost"
-                  href="https://github.com/sponsors/nickbabcock"
-                >
+                <Link variant="ghost" href="https://github.com/sponsors/nickbabcock">
                   Donate
                 </Link>
               </NavigationMenu.Link>
@@ -134,11 +113,7 @@ const HeaderMenu = () => {
                     </Link>
                   </NavigationMenu.Link>
 
-                  <NavigationMenu.Link
-                    variant="button"
-                    asChild
-                    className="no-break"
-                  >
+                  <NavigationMenu.Link variant="button" asChild className="no-break">
                     <Link variant="ghost" to={`/users/${session.id}`}>
                       My Saves
                     </Link>
@@ -159,8 +134,9 @@ const HeaderMenu = () => {
   );
 };
 
-export const CurrentAnnouncement: (() => React.ReactElement) | undefined =
-  undefined as unknown as (() => React.ReactElement) | undefined;
+export const CurrentAnnouncement: (() => React.ReactElement) | undefined = undefined as unknown as
+  | (() => React.ReactElement)
+  | undefined;
 
 export const AppHeader = () => {
   const { resetSaveAnalysis } = useEngineActions();

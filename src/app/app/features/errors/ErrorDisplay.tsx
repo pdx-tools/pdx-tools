@@ -49,12 +49,7 @@ export const ErrorDisplay = ({
   const { resetSaveAnalysis } = useEngineActions();
 
   return (
-    <Card
-      className={cx(
-        "relative w-full max-w-lg justify-self-center p-6",
-        className,
-      )}
-    >
+    <Card className={cx("relative w-full max-w-lg justify-self-center p-6", className)}>
       <div className="absolute top-4 right-4">
         <Button asChild shape="circle" variant="ghost">
           <Link
@@ -76,13 +71,9 @@ export const ErrorDisplay = ({
       <div className="mb-4 flex items-start gap-3">
         <ExclamationTriangleIcon className="h-8 w-8 flex-shrink-0 text-rose-600" />
         <div>
-          <h2 className="text-xl font-semibold text-rose-800 dark:text-rose-300">
-            {title}
-          </h2>
+          <h2 className="text-xl font-semibold text-rose-800 dark:text-rose-300">{title}</h2>
           {message && (
-            <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-              {message}
-            </div>
+            <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">{message}</div>
           )}
         </div>
       </div>

@@ -20,16 +20,13 @@ import { MoraleText } from "../../components/MoraleText";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const healthSort: SortingFn<any> = (rowA, rowB, column) =>
-  rowA.getValue<HealthDatum>(column).value -
-  rowB.getValue<HealthDatum>(column).value;
+  rowA.getValue<HealthDatum>(column).value - rowB.getValue<HealthDatum>(column).value;
 
 const columnHelper = createColumnHelper<CountryHealth>();
 const columns = [
   columnHelper.accessor("name", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Country" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
     cell: ({ row }) => <Flag tag={row.original.tag} name={row.original.name} />,
   }),
 
@@ -44,8 +41,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => formatInt(info.getValue().value),
   }),
@@ -61,8 +57,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => formatInt(info.getValue().value),
   }),
@@ -78,20 +73,16 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => formatInt(info.getValue().value),
   }),
 
   columnHelper.accessor("buildings", {
     sortingFn: healthSort,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Buildings" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Buildings" />,
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => formatInt(info.getValue().value),
   }),
@@ -107,8 +98,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => formatFloat(info.getValue().value, 2),
   }),
@@ -124,8 +114,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: LeaderDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: LeaderDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => {
       const general = info.getValue();
@@ -147,8 +136,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => formatFloat(info.getValue().value, 2),
   }),
@@ -164,8 +152,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => <MoraleText value={info.getValue().value} />,
   }),
@@ -181,12 +168,9 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
-    cell: (info) => (
-      <LandForceStrengthTooltip force={info.row.original.armedForces} />
-    ),
+    cell: (info) => <LandForceStrengthTooltip force={info.row.original.armedForces} />,
   }),
 
   columnHelper.accessor("netManpower", {
@@ -200,8 +184,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => `${formatInt(info.getValue().value)}K`,
   }),
@@ -217,8 +200,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => `${formatInt(info.getValue().value)}K`,
   }),
@@ -234,8 +216,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => formatInt(info.getValue().value * 100) + "%",
   }),
@@ -251,8 +232,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: LeaderDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: LeaderDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => {
       const general = info.getValue();
@@ -275,8 +255,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => <MoraleText value={info.getValue().value} />,
   }),
@@ -291,8 +270,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => formatFloat(info.getValue().value, 2),
   }),
@@ -308,12 +286,9 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
-    cell: (info) => (
-      <NavalForceStrengthTooltip forces={info.row.original.armedForces} />
-    ),
+    cell: (info) => <NavalForceStrengthTooltip forces={info.row.original.armedForces} />,
   }),
 
   columnHelper.accessor("stability", {
@@ -326,26 +301,20 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => formatInt(info.getValue().value),
   }),
 
   columnHelper.accessor("technology", {
     sortingFn: healthSort,
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Technology" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Technology" />,
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => {
       const tech = info.getValue();
-      return `(${formatInt(tech.adm)} / ${formatInt(tech.dip)} / ${formatInt(
-        tech.mil,
-      )})`;
+      return `(${formatInt(tech.adm)} / ${formatInt(tech.dip)} / ${formatInt(tech.mil)})`;
     },
   }),
 
@@ -359,8 +328,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => formatInt(info.getValue().value),
   }),
@@ -375,8 +343,7 @@ const columns = [
       />
     ),
     meta: {
-      className: (x: HealthDatum) =>
-        cx("no-break text-right", colorToClass(x.color)),
+      className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
     },
     cell: (info) => formatFloat(info.getValue().value, 2),
   }),

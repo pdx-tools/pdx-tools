@@ -4,10 +4,7 @@ import type {
   CountryManaSpend,
 } from "../../types/models";
 
-export const incomeLedgerAliases = (): [
-  keyof CountryIncomeLedger,
-  string,
-][] => [
+export const incomeLedgerAliases = (): [keyof CountryIncomeLedger, string][] => [
   ["taxation", "Tax"],
   ["production", "Production"],
   ["trade", "Trade"],
@@ -66,10 +63,7 @@ export const expenseLedgerColorPalette = (): [string, string][] => [
   ["Colony Changes", "#B15928"],
 ];
 
-export const expenseLedgerAliases = (): [
-  keyof CountryExpenseLedger,
-  string,
-][] => [
+export const expenseLedgerAliases = (): [keyof CountryExpenseLedger, string][] => [
   ["advisor_maintenance", "Advisor Maintenance"],
   ["state_maintenance", "State Maintenance"],
   ["subsidies", "Subsidies"],
@@ -205,9 +199,7 @@ export const manaSpendColorPalette = (): [string, string][] => [
   ["Other", "#E5C874"],
 ];
 
-export const filterToRecurringIncome = (
-  value: CountryIncomeLedger,
-): CountryIncomeLedger => ({
+export const filterToRecurringIncome = (value: CountryIncomeLedger): CountryIncomeLedger => ({
   ...value,
   other: 0,
   interest: 0,
@@ -219,9 +211,7 @@ export const filterToRecurringIncome = (
   gifts: 0,
 });
 
-export const filterToRecurringExpenses = (
-  value: CountryExpenseLedger,
-): CountryExpenseLedger => ({
+export const filterToRecurringExpenses = (value: CountryExpenseLedger): CountryExpenseLedger => ({
   ...value,
   raising_armies: 0,
   building_fleets: 0,

@@ -24,10 +24,7 @@ export const action = withCore(
 
     const newKey = `pdx_${raw}`;
     const apiKey = await apiKeyAtRest(newKey);
-    await db
-      .update(table.users)
-      .set({ apiKey })
-      .where(eq(table.users.userId, session.id));
+    await db.update(table.users).set({ apiKey }).where(eq(table.users.userId, session.id));
 
     return Response.json({ api_key: newKey });
   }),

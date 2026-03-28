@@ -13,11 +13,7 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 export type ImperatorSaveFile = { save: { file: File } };
 type ImperatorPageProps = ImperatorSaveFile & { meta: ImperatorMetadata };
 export const ImperatorPage = ({ save, meta }: ImperatorPageProps) => {
-  useDocumentTitle(
-    `${save.file.name.replace(".rome", "")} - Imperator (${
-      meta.date
-    }) - PDX Tools`,
-  );
+  useDocumentTitle(`${save.file.name.replace(".rome", "")} - Imperator (${meta.date}) - PDX Tools`);
   return (
     <main className="mx-auto mt-4 max-w-screen-lg">
       <div className="mx-auto flex max-w-prose flex-col gap-4">
@@ -26,11 +22,7 @@ export const ImperatorPage = ({ save, meta }: ImperatorPageProps) => {
           {`An Imperator save was detected (date ${meta.date}). At this time, Imperator functionality is limited but one can still melt binary saves into plaintext`}
         </p>
         {meta.isMeltable && (
-          <MeltButton
-            game="imperator"
-            worker={getImperatorWorker()}
-            filename={save.file.name}
-          />
+          <MeltButton game="imperator" worker={getImperatorWorker()} filename={save.file.name} />
         )}
       </div>
     </main>

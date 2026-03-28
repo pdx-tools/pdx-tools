@@ -26,7 +26,7 @@
   "customizations": {
     "vscode": {
       "settings": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.defaultFormatter": "oxc.oxc-vscode",
         "files.associations": {
           "*.css": "tailwindcss"
         },
@@ -39,7 +39,6 @@
       "extensions": [
         "bradlc.vscode-tailwindcss",
         "oxc.oxc-vscode",
-        "esbenp.prettier-vscode",
         "rust-lang.rust-analyzer",
         "slevesque.shader",
         "vadimcn.vscode-lldb"

@@ -9,10 +9,7 @@ interface UserSaveTableProps {
   canDeleteSaves: boolean;
 }
 
-export const UserSaveTable = ({
-  saves,
-  canDeleteSaves,
-}: UserSaveTableProps) => {
+export const UserSaveTable = ({ saves, canDeleteSaves }: UserSaveTableProps) => {
   const data = useSavesGroupedByPlaythrough(saves);
 
   return (
@@ -41,12 +38,10 @@ export function useSavesGroupedByPlaythrough(saves: UserSaves["saves"]) {
     const fileGroup = groupBy(saves, (x) => x.filename);
 
     // File names that map to one playthrough id
-    const elgibleFilenames = [...fileGroup.entries()].flatMap(
-      ([filename, saves]) => {
-        const playthroughIds = new Set(saves.map((x) => x.playthrough_id));
-        return playthroughIds.size === 1 ? [filename] : [];
-      },
-    );
+    const elgibleFilenames = [...fileGroup.entries()].flatMap(([filename, saves]) => {
+      const playthroughIds = new Set(saves.map((x) => x.playthrough_id));
+      return playthroughIds.size === 1 ? [filename] : [];
+    });
     const uniqnames = new Set(elgibleFilenames);
 
     const groups = groupBy(saves, (x) => x.playthrough_id);
@@ -59,10 +54,7 @@ export function useSavesGroupedByPlaythrough(saves: UserSaves["saves"]) {
       // Playthrough name: if all saves in the group have the same name
       // then use the filename unless other saves outside the group also
       // share the same name.
-      const name =
-        allSameName && uniqnames.has(filename)
-          ? filename
-          : playthroughName(group);
+      const name = allSameName && uniqnames.has(filename) ? filename : playthroughName(group);
 
       saves.sort((a, b) => b.days - a.days);
       return saves.map((x) => ({
@@ -71,9 +63,7 @@ export function useSavesGroupedByPlaythrough(saves: UserSaves["saves"]) {
       }));
     });
 
-    return playthroughs.sort(
-      (a, b) => -diff(a[0].upload_time, b[0].upload_time),
-    );
+    return playthroughs.sort((a, b) => -diff(a[0].upload_time, b[0].upload_time));
   }, [saves]);
 }
 

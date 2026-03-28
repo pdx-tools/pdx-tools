@@ -40,9 +40,7 @@ const columns = [
 
   columnHelper.accessor("tag", {
     header: "Tag",
-    cell: ({ row }) => (
-      <Flag tag={row.original.tag} name={row.original.name} size="small" />
-    ),
+    cell: ({ row }) => <Flag tag={row.original.tag} name={row.original.name} size="small" />,
   }),
 
   columnHelper.accessor((x) => x.treasury - x.debt, {
@@ -172,10 +170,7 @@ export const WatchCountryDetails = () => {
               "mercenaryUnits",
             ]);
 
-            downloadData(
-              new Blob([csvData], { type: "text/csv" }),
-              csvFilename,
-            );
+            downloadData(new Blob([csvData], { type: "text/csv" }), csvFilename);
           }}
         />
       </div>

@@ -34,9 +34,7 @@ export function useNearestSeriesItem() {
   }, []);
 
   const getClosestItem = useCallback(
-    (
-      items: DefaultLabelFormatterCallbackParams[],
-    ): DefaultLabelFormatterCallbackParams => {
+    (items: DefaultLabelFormatterCallbackParams[]): DefaultLabelFormatterCallbackParams => {
       const chart = chartInstanceRef.current;
       const pixelY = mousePixelYRef.current;
 
@@ -44,10 +42,7 @@ export function useNearestSeriesItem() {
         return items[0]!;
       }
 
-      const [, dataY] = chart.convertFromPixel({ seriesIndex: 0 }, [
-        0,
-        pixelY,
-      ]) as [number, number];
+      const [, dataY] = chart.convertFromPixel({ seriesIndex: 0 }, [0, pixelY]) as [number, number];
       let closest = items[0]!;
       let minDist = Infinity;
       for (const item of items) {

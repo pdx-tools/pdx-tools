@@ -5,9 +5,7 @@ interface AchievementsPageProps {
   staticAchievements?: Achievement[];
 }
 
-export const AchievementsPage = ({
-  staticAchievements,
-}: AchievementsPageProps) => {
+export const AchievementsPage = ({ staticAchievements }: AchievementsPageProps) => {
   return (
     <div className="mx-auto max-w-5xl p-5">
       <h1 className="text-4xl">Achievements</h1>

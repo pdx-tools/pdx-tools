@@ -47,10 +47,7 @@ export const ManaExpenditure = () => {
         const rows: Record<string, string | number>[] = [];
         for (const entry of data) {
           for (const [field, label] of aliases) {
-            const val =
-              entry.mana.adm[field] +
-              entry.mana.dip[field] +
-              entry.mana.mil[field];
+            const val = entry.mana.adm[field] + entry.mana.dip[field] + entry.mana.mil[field];
             if (val !== 0) {
               rows.push({
                 name: entry.country.name,
@@ -65,15 +62,7 @@ export const ManaExpenditure = () => {
           }
         }
 
-        return createCsv(rows, [
-          "name",
-          "tag",
-          "category",
-          "adm",
-          "dip",
-          "mil",
-          "total",
-        ]);
+        return createCsv(rows, ["name", "tag", "category", "adm", "dip", "mil", "total"]);
       },
     });
   }, [data, visualizationDispatch]);
@@ -105,9 +94,7 @@ function ManaExpenditureChart({ data }: { data: CountriesManaExpenditure }) {
     // (reversed so A is at the top of the chart)
     const categoryLabels = aliases
       .filter(([field]) =>
-        data.some(
-          (e) => e.mana.adm[field] + e.mana.dip[field] + e.mana.mil[field] > 0,
-        ),
+        data.some((e) => e.mana.adm[field] + e.mana.dip[field] + e.mana.mil[field] > 0),
       )
       .map(([, label]) => label)
       .sort((a, b) => b.localeCompare(a));
@@ -120,8 +107,7 @@ function ManaExpenditureChart({ data }: { data: CountriesManaExpenditure }) {
       const jitterBase = tagHash(entry.country.tag);
 
       for (const [field, label] of aliases) {
-        const val =
-          entry.mana.adm[field] + entry.mana.dip[field] + entry.mana.mil[field];
+        const val = entry.mana.adm[field] + entry.mana.dip[field] + entry.mana.mil[field];
         if (val <= 0) continue;
 
         const catIdx = categoryIndex.get(label);
@@ -246,10 +232,5 @@ function ManaExpenditureChart({ data }: { data: CountriesManaExpenditure }) {
 
   const chartHeight = Math.max(categoryLabels.length * 28 + 80, 200);
 
-  return (
-    <EChart
-      option={option}
-      style={{ height: `${chartHeight}px`, width: "100%" }}
-    />
-  );
+  return <EChart option={option} style={{ height: `${chartHeight}px`, width: "100%" }} />;
 }

@@ -109,12 +109,7 @@ const CountryBuildingCountImpl = ({ details }: CountryBuildingCountProps) => {
     };
   }, [data, details.num_cities, isDark]);
 
-  return (
-    <EChart
-      option={option}
-      style={{ height: 20 + 30 * data.length, width: "100%" }}
-    />
-  );
+  return <EChart option={option} style={{ height: 20 + 30 * data.length, width: "100%" }} />;
 };
 
 export const CountryBuildingCount = React.memo(CountryBuildingCountImpl);

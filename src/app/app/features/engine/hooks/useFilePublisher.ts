@@ -47,16 +47,14 @@ async function inputSaveGame(input: AnalyzeInput): Promise<SaveGameInput> {
     case "ck3":
     case "hoi4":
     case "imperator": {
-      const file =
-        input.kind === "handle" ? await input.file.getFile() : input.file;
+      const file = input.kind === "handle" ? await input.file.getFile() : input.file;
       return {
         kind: game,
         file,
       };
     }
     default: {
-      const file =
-        input.kind === "handle" ? await input.file.getFile() : input.file;
+      const file = input.kind === "handle" ? await input.file.getFile() : input.file;
       return {
         kind: game,
         file,

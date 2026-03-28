@@ -85,10 +85,7 @@ const MapTipsTable = ({ tip }: MapTipContentsProps) => {
           <tbody>
             {mapTagDescriptions(tip)}
             <tr>
-              <td>
-                Development (
-                {tip.baseManpower + tip.baseProduction + tip.baseTax}):
-              </td>
+              <td>Development ({tip.baseManpower + tip.baseProduction + tip.baseTax}):</td>
               <td className="pl-2">
                 {tip.baseTax} / {tip.baseProduction} / {tip.baseManpower}
               </td>

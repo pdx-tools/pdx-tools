@@ -33,9 +33,7 @@ const columns = [
 
   columnHelper.accessor("name", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Country" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
     cell: ({ row }) => <Flag tag={row.original.tag} name={row.original.name} />,
   }),
 
@@ -44,9 +42,7 @@ const columns = [
     columns: unitTypes.map(([title, type]) =>
       columnHelper.accessor(`${type}Battle`, {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title={title} />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title={title} />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
@@ -58,9 +54,7 @@ const columns = [
     columns: unitTypes.map(([title, type]) =>
       columnHelper.accessor(`${type}Attrition`, {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title={title} />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title={title} />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
@@ -72,9 +66,7 @@ const columns = [
     columns: unitTypes.map(([title, type]) =>
       columnHelper.accessor(`${type}Capture`, {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title={title} />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title={title} />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
@@ -84,19 +76,14 @@ const columns = [
   columnHelper.accessor((x) => (x.navyTotalAttrition / x.navyTotal) * 100, {
     id: "attrition",
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="% from Attrition" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="% from Attrition" />,
     meta: { className: "text-right" },
-    cell: (info) =>
-      isNaN(info.getValue()) ? "0%" : formatInt(info.getValue()) + "%",
+    cell: (info) => (isNaN(info.getValue()) ? "0%" : formatInt(info.getValue()) + "%"),
   }),
 
   columnHelper.accessor("navyTotal", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Total Losses" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Total Losses" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -114,12 +101,8 @@ export const CountriesNavyCasualtiesTable = () => {
           "tag",
           "name",
           ...unitTypes.map(([_, type]) => `${type}Battle` as keyof TableLosses),
-          ...unitTypes.map(
-            ([_, type]) => `${type}Attrition` as keyof TableLosses,
-          ),
-          ...unitTypes.map(
-            ([_, type]) => `${type}Capture` as keyof TableLosses,
-          ),
+          ...unitTypes.map(([_, type]) => `${type}Attrition` as keyof TableLosses),
+          ...unitTypes.map(([_, type]) => `${type}Capture` as keyof TableLosses),
           "navyTotal",
         ];
         return createCsv(casualties.data, keys);

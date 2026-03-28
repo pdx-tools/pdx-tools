@@ -23,12 +23,7 @@ const AlertRoot = React.forwardRef<
     return null;
   }
   return (
-    <div
-      ref={ref}
-      role="alert"
-      className={cx(alert({ variant }), className)}
-      {...props}
-    >
+    <div ref={ref} role="alert" className={cx(alert({ variant }), className)} {...props}>
       <div className="grow">{children}</div>
       <button
         type="button"
@@ -48,36 +43,26 @@ export const Alert = AlertRoot as typeof AlertRoot & {
   Error: typeof AlertError;
 };
 
-const AlertTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(function AlertTitle({ className, children, ...props }, ref) {
-  return (
-    <h5
-      ref={ref}
-      className={cx(
-        "mb-1 text-base leading-none font-medium tracking-tight",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-    </h5>
-  );
-});
+const AlertTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
+  function AlertTitle({ className, children, ...props }, ref) {
+    return (
+      <h5
+        ref={ref}
+        className={cx("mb-1 text-base leading-none font-medium tracking-tight", className)}
+        {...props}
+      >
+        {children}
+      </h5>
+    );
+  },
+);
 Alert.Title = AlertTitle;
 
 const AlertDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(function AlertDescription({ className, ...props }, ref) {
-  return (
-    <div
-      ref={ref}
-      className={cx("text-sm leading-relaxed", className)}
-      {...props}
-    />
-  );
+  return <div ref={ref} className={cx("text-sm leading-relaxed", className)} {...props} />;
 });
 Alert.Description = AlertDescription;
 

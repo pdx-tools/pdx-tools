@@ -13,47 +13,35 @@ const columnHelper = createColumnHelper<CountryStateEfficacy>();
 const columns = [
   columnHelper.accessor("name", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Country" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
-        <span className="font-mono text-xs text-slate-400">
-          {row.original.tag}
-        </span>
+        <span className="font-mono text-xs text-slate-400">{row.original.tag}</span>
         <span>{row.original.name}</span>
       </div>
     ),
   }),
   columnHelper.accessor("locationCount", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Locations" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Locations" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
   columnHelper.accessor("totalEfficacy", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Total Efficacy" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Total Efficacy" />,
     meta: { className: "text-right" },
     cell: (info) => formatFloat(info.getValue(), 1),
   }),
   columnHelper.accessor("avgEfficacy", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Avg per Location" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Avg per Location" />,
     meta: { className: "text-right" },
     cell: (info) => formatFloat(info.getValue(), 2),
   }),
   columnHelper.accessor("totalPopulation", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Population" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Population" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -65,10 +53,7 @@ interface StateEfficacyProps {
 
 export const StateEfficacy = ({ data }: StateEfficacyProps) => {
   // Filter nations with < 10 locations
-  const filteredData = useMemo(
-    () => data.countries.filter((c) => c.locationCount >= 10),
-    [data],
-  );
+  const filteredData = useMemo(() => data.countries.filter((c) => c.locationCount >= 10), [data]);
 
   return (
     <div className="flex flex-col gap-8 pb-10">
@@ -84,10 +69,7 @@ export const StateEfficacy = ({ data }: StateEfficacyProps) => {
 };
 
 function StateEfficacyChart({ data }: { data: CountryStateEfficacy[] }) {
-  const topCountries = useMemo(
-    () => new Set(data.slice(0, 12).map((x) => x.tag)),
-    [data],
-  );
+  const topCountries = useMemo(() => new Set(data.slice(0, 12).map((x) => x.tag)), [data]);
   const isDark = isDarkMode();
 
   const option = useMemo((): EChartsOption => {
@@ -99,9 +81,7 @@ function StateEfficacyChart({ data }: { data: CountryStateEfficacy[] }) {
     const scatterData = data.map((d) => {
       // Scale symbol size between 4-28 based on population
       const normalizedPop =
-        maxPop > minPop
-          ? (d.totalPopulation - minPop) / (maxPop - minPop)
-          : 0.5;
+        maxPop > minPop ? (d.totalPopulation - minPop) / (maxPop - minPop) : 0.5;
       const symbolSize = 4 + normalizedPop * 24;
 
       return {

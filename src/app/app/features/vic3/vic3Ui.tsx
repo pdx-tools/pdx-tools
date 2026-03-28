@@ -7,12 +7,7 @@ import { TagSelect } from "./TagSelect";
 import { MeltButton } from "@/components/MeltButton";
 import { Alert } from "@/components/Alert";
 import { VisualizationProvider } from "@/components/viz";
-import {
-  Vic3StoreProvider,
-  useLoadVic3,
-  useSaveFilename,
-  useVic3Meta,
-} from "./store";
+import { Vic3StoreProvider, useLoadVic3, useSaveFilename, useVic3Meta } from "./store";
 import type { Vic3SaveInput } from "./store";
 import { useVic3Worker } from "./worker/useVic3Worker";
 import { ExportDataButton } from "./ExportDataButton";
@@ -23,20 +18,12 @@ export const Vic3Page = () => {
   const filename = useSaveFilename();
   const [selectedTag, setSelectedTag] = useState(meta.lastPlayedTag);
   const { data: stats } = useVic3Worker(
-    useCallback(
-      (worker) => worker.get_country_stats(selectedTag),
-      [selectedTag],
-    ),
+    useCallback((worker) => worker.get_country_stats(selectedTag), [selectedTag]),
   );
   const { data: prices } = useVic3Worker(
-    useCallback(
-      (worker) => worker.get_country_goods_prices(selectedTag),
-      [selectedTag],
-    ),
+    useCallback((worker) => worker.get_country_goods_prices(selectedTag), [selectedTag]),
   );
-  useDocumentTitle(
-    `${filename.replace(".v3", "")} - Vic3 (${meta.date}) - PDX Tools`,
-  );
+  useDocumentTitle(`${filename.replace(".v3", "")} - Vic3 (${meta.date}) - PDX Tools`);
 
   return (
     <main className="mx-auto mt-4">
@@ -47,11 +34,7 @@ export const Vic3Page = () => {
             {`A Vic3 save was detected (date ${meta.date}). At this time, Vic3 functionality is limited but one can still melt binary saves into plaintext`}
           </p>
           {meta.isMeltable && (
-            <MeltButton
-              game="vic3"
-              worker={getVic3Worker()}
-              filename={filename}
-            />
+            <MeltButton game="vic3" worker={getVic3Worker()} filename={filename} />
           )}
           <div className="flex items-center gap-4">
             <ExportDataButton />

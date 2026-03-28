@@ -5,11 +5,9 @@ import { flushEvents } from "./posthog";
 import type { LoaderFunctionArgs } from "react-router";
 import { AuthorizationError } from "@/lib/auth";
 
-export function withCore<
-  A1 extends LoaderFunctionArgs,
-  T extends Array<unknown>,
-  R,
->(fn: (a1: A1, ...args: T) => Promise<R>) {
+export function withCore<A1 extends LoaderFunctionArgs, T extends Array<unknown>, R>(
+  fn: (a1: A1, ...args: T) => Promise<R>,
+) {
   return function (a1: A1, ...args: T) {
     return fn(a1, ...args)
       .catch((err) => {
@@ -28,10 +26,7 @@ export function withCore<
         } else if (err instanceof AuthorizationError) {
           throw Response.json(obj, { status: 403 });
         } else if (err instanceof NotFoundError) {
-          throw Response.json(
-            { ...obj, msg: `${obj.msg} not found` },
-            { status: 404 },
-          );
+          throw Response.json({ ...obj, msg: `${obj.msg} not found` }, { status: 404 });
         } else if (err instanceof ZodError) {
           throw Response.json(
             {

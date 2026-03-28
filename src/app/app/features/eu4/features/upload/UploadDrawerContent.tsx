@@ -7,11 +7,7 @@ import type { FileUploadMutation } from "./hooks";
 import { useSession } from "@/features/account";
 import { hasPermission } from "@/lib/auth";
 
-export const UploadDrawerContent = ({
-  fileUpload,
-}: {
-  fileUpload: FileUploadMutation;
-}) => {
+export const UploadDrawerContent = ({ fileUpload }: { fileUpload: FileUploadMutation }) => {
   const sideBarContainerRef = useSideBarContainerRef();
   const session = useSession();
   const hasPermissionToUpload = hasPermission(session, "savefile:create");
@@ -20,11 +16,10 @@ export const UploadDrawerContent = ({
       {!hasPermissionToUpload ? (
         <Alert className="px-4 py-2" variant="info">
           <Alert.Description>
-            Did you know that all this analysis happens without the save leaving
-            your computer? Pretty cool. Except sometimes you want to share a
-            save with your friends or the world. If you want to share your save,
-            register first. That way you can manage all your uploaded saves in
-            one place.
+            Did you know that all this analysis happens without the save leaving your computer?
+            Pretty cool. Except sometimes you want to share a save with your friends or the world.
+            If you want to share your save, register first. That way you can manage all your
+            uploaded saves in one place.
           </Alert.Description>
         </Alert>
       ) : null}

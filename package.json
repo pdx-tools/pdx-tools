@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css}\"",
-    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,css}\"",
+    "format": "oxfmt --write \"**/*.{js,jsx,ts,tsx,css}\"",
+    "format:check": "oxfmt --check \"**/*.{js,jsx,ts,tsx,css}\"",
     "lint": "oxlint",
     "typecheck": "tsc --build"
   },
@@ -14,9 +14,8 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "oxlint": "1.46.0",
-    "prettier-plugin-tailwindcss": "0.7.2",
-    "prettier": "3.7.4",
+    "oxfmt": "0.42.0",
+    "oxlint": "1.57.0",
     "typescript": "catalog:"
   },
   "prettier": {

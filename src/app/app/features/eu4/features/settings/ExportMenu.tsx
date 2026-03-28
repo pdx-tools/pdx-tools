@@ -18,11 +18,8 @@ export const ExportMenu = () => {
   }, [store]);
 
   const indicesCb = useCallback(async () => {
-    const provinceIdToColorIndex =
-      await getEu4Worker().eu4GetProvinceIdToColorIndex();
-    const colorIndexToProvinceId = provinceIdToColorIndexInvert(
-      provinceIdToColorIndex,
-    );
+    const provinceIdToColorIndex = await getEu4Worker().eu4GetProvinceIdToColorIndex();
+    const colorIndexToProvinceId = provinceIdToColorIndexInvert(provinceIdToColorIndex);
     downloadData(colorIndexToProvinceId, "color-index.bin");
   }, []);
 

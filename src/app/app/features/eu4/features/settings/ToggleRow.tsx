@@ -10,13 +10,7 @@ export interface ToggleRowProps {
   help?: string;
 }
 
-export const ToggleRow = ({
-  value,
-  onChange,
-  text,
-  disabled = false,
-  help,
-}: ToggleRowProps) => {
+export const ToggleRow = ({ value, onChange, text, disabled = false, help }: ToggleRowProps) => {
   const id = useId();
   return (
     <div className="flex">

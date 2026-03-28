@@ -1,8 +1,4 @@
-import type {
-  ActionFunctionArgs,
-  EntryContext,
-  LoaderFunctionArgs,
-} from "react-router";
+import type { ActionFunctionArgs, EntryContext, LoaderFunctionArgs } from "react-router";
 import { ServerRouter } from "react-router";
 import { renderToReadableStream } from "react-dom/server";
 import { log } from "./server-lib/logging";
@@ -44,10 +40,7 @@ export default async function handleRequest(
   });
 }
 
-export function handleError(
-  error: unknown,
-  { request }: LoaderFunctionArgs | ActionFunctionArgs,
-) {
+export function handleError(error: unknown, { request }: LoaderFunctionArgs | ActionFunctionArgs) {
   if (
     !request.signal.aborted &&
     !(

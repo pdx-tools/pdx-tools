@@ -1,15 +1,10 @@
 import { describe, it, expect } from "vitest";
-import {
-  calculateInstitutionSteps,
-  consolidateSteps,
-} from "./institutionSteps";
+import { calculateInstitutionSteps, consolidateSteps } from "./institutionSteps";
 import type { InstitutionStep } from "./institutionSteps";
 import type { InstitutionCost } from "@/wasm/wasm_eu4";
 
 // Helper to create institution cost with default values
-function createInstitutionCost(
-  overrides: Partial<InstitutionCost> = {},
-): InstitutionCost {
+function createInstitutionCost(overrides: Partial<InstitutionCost> = {}): InstitutionCost {
   return {
     province_id: 1,
     name: "Test Province",
@@ -199,9 +194,7 @@ describe("consolidateSteps", () => {
   });
 
   it("should return single step with empty followedBy if no expand/exploit follows", () => {
-    const steps = [
-      { type: "develop", from: 5, to: 10 },
-    ] satisfies InstitutionStep[];
+    const steps = [{ type: "develop", from: 5, to: 10 }] satisfies InstitutionStep[];
     const expected = [{ type: "develop", from: 5, to: 10, followedBy: [] }];
     const result = consolidateSteps(steps);
     expect(result).toEqual(expected);

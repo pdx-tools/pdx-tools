@@ -75,10 +75,7 @@ export const loader = withCore(
   }),
 );
 
-async function steamInfo(
-  context: AppLoadContext,
-  searchParams: URLSearchParams,
-) {
+async function steamInfo(context: AppLoadContext, searchParams: URLSearchParams) {
   const steam = pdxSteam({ context });
   const steamUid = await steam.loginVerify(searchParams);
   const steamName = await steam.getPlayerName(steamUid);

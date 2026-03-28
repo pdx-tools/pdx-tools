@@ -26,9 +26,7 @@ function getBundleUrl(version: string): string {
   }
 
   const lastBundle = bundlePaths[bundlePaths.length - 1];
-  console.warn(
-    `Bundle for version ${version} not found, falling back to ${lastBundle}`,
-  );
+  console.warn(`Bundle for version ${version} not found, falling back to ${lastBundle}`);
   return bundleUrls[lastBundle];
 }
 
@@ -61,18 +59,14 @@ export class Eu5GameAdapter {
     private eu5MapWorker: Eu5MapWorker,
   ) {}
   public static create(): Eu5GameAdapter {
-    const eu5RawWorker = new Worker(
-      new URL("./workers/game/worker.ts", import.meta.url),
-      {
-        type: "module",
-      },
-    );
+    const eu5RawWorker = new Worker(new URL("./workers/game/worker.ts", import.meta.url), {
+      type: "module",
+    });
     const eu5Worker = wrap<Eu5Worker>(eu5RawWorker);
 
-    const mapRawWorker = new Worker(
-      new URL("./workers/map/worker.ts", import.meta.url),
-      { type: "module" },
-    );
+    const mapRawWorker = new Worker(new URL("./workers/map/worker.ts", import.meta.url), {
+      type: "module",
+    });
     const eu5MapWorker = wrap<Eu5MapWorker>(mapRawWorker);
 
     const logLevel = getLogLevel();
@@ -81,12 +75,7 @@ export class Eu5GameAdapter {
     eu5MapWorker.initialize(transfer(channel.port1, [channel.port1]), logLevel);
     eu5Worker.initialize(transfer(channel.port2, [channel.port2]), logLevel);
 
-    return new Eu5GameAdapter(
-      eu5RawWorker,
-      mapRawWorker,
-      eu5Worker,
-      eu5MapWorker,
-    );
+    return new Eu5GameAdapter(eu5RawWorker, mapRawWorker, eu5Worker, eu5MapWorker);
   }
 
   async newSave(
@@ -190,8 +179,7 @@ export function saveWorker(
       mapEngine.resize(width, height, scaleFactor),
     getZoom: () => mapEngine.get_zoom(),
     onCursorMove: (x: number, y: number) => mapEngine.onCursorMove(x, y),
-    onMouseButton: (button: number, pressed: boolean) =>
-      mapEngine.onMouseButton(button, pressed),
+    onMouseButton: (button: number, pressed: boolean) => mapEngine.onMouseButton(button, pressed),
     onScroll: (scrollLines: number) => mapEngine.onScroll(scrollLines),
     onKeyDown: (code: string) => mapEngine.onKeyDown(code),
     onKeyUp: (code: string) => mapEngine.onKeyUp(code),
@@ -202,16 +190,10 @@ export function saveWorker(
     },
     generateWorldScreenshot: async (fullResolution: boolean): Promise<Blob> => {
       const overlayData = await saveEngine.getOverlayData();
-      return await mapEngine.generateWorldScreenshot(
-        fullResolution,
-        overlayData,
-      );
+      return await mapEngine.generateWorldScreenshot(fullResolution, overlayData);
     },
     setOwnerBorders: (enabled: boolean) => {
-      mapEngine.execCommands([
-        { kind: "setOwnerBorders", enabled },
-        { kind: "render" },
-      ]);
+      mapEngine.execCommands([{ kind: "setOwnerBorders", enabled }, { kind: "render" }]);
     },
     getLocationArrays: () => {
       return saveEngine.getLocationArrays();

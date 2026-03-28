@@ -8,17 +8,9 @@ import { MapController, createMapWorker } from "@pdx.tools/map";
 import type { MapWorker, InitToken } from "@pdx.tools/map";
 import { useRef, useEffect, useReducer } from "react";
 import type { Dispatch } from "react";
-import {
-  shaderUrls,
-  fetchProvinceUniqueIndex,
-  resourceUrls,
-} from "../features/map/resources";
+import { shaderUrls, fetchProvinceUniqueIndex, resourceUrls } from "../features/map/resources";
 import { getEu4Worker } from "../worker/getEu4Worker";
-import {
-  initialEu4CountryFilter,
-  createEu4Store,
-  loadSettings,
-} from "./eu4Store";
+import { initialEu4CountryFilter, createEu4Store, loadSettings } from "./eu4Store";
 import type { Eu4Store } from "./eu4Store";
 import { dataUrls, gameVersion } from "@/lib/game_gen";
 import { pdxAbortController } from "@/lib/abortController";
@@ -45,10 +37,7 @@ type Eu4LoadActions =
   | { kind: "data"; data: Eu4Store }
   | { kind: "error"; error: unknown };
 
-const loadStateReducer = (
-  state: Eu4LoadState,
-  action: Eu4LoadActions,
-): Eu4LoadState => {
+const loadStateReducer = (state: Eu4LoadState, action: Eu4LoadActions): Eu4LoadState => {
   switch (action.kind) {
     case "start": {
       return {
@@ -89,10 +78,7 @@ type Task<T> = {
   progress: number;
 };
 
-function runTask<T>(
-  dispatch: Dispatch<Eu4LoadActions>,
-  { fn, name, progress }: Task<T>,
-) {
+function runTask<T>(dispatch: Dispatch<Eu4LoadActions>, { fn, name, progress }: Task<T>) {
   return timeAsync(name, fn).then((result) => {
     dispatch({ kind: "progress", value: progress });
     return result;
@@ -156,8 +142,7 @@ async function loadEu4Save(
         const offscreen = mapCanvas.transferControlToOffscreen();
         mapCanvas.setAttribute("data-offscreen", "true");
         return runTask(dispatch, {
-          fn: () =>
-            mapWorker.init(transfer(offscreen, [offscreen]), shaderUrls()),
+          fn: () => mapWorker.init(transfer(offscreen, [offscreen]), shaderUrls()),
           name: "shader compilation",
           progress: 10,
         }).then(res, reject);
@@ -234,8 +219,7 @@ async function loadEu4Save(
   ])
     .then(([init, resources, terrain]) =>
       run({
-        fn: () =>
-          mapWorker.withMap(window.devicePixelRatio, init, resources, terrain),
+        fn: () => mapWorker.withMap(window.devicePixelRatio, init, resources, terrain),
         name: "constructed offscreen worker",
         progress: 5,
       }),

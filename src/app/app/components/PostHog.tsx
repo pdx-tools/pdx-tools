@@ -1,9 +1,6 @@
 import posthog from "posthog-js";
 import { useEffect } from "react";
-import {
-  compatibilityReport,
-  isEnvironmentSupported,
-} from "@/lib/compatibility";
+import { compatibilityReport, isEnvironmentSupported } from "@/lib/compatibility";
 import { emitEvent } from "@/lib/events";
 import { PostHogProvider } from "posthog-js/react";
 import { useLocation } from "react-router";

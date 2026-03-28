@@ -23,10 +23,7 @@ export const Link = React.forwardRef<
   HTMLAnchorElement,
   Omit<ComponentPropsWithoutRef<typeof LinkPrimitive>, "to"> &
     VariantProps<typeof linkVariants> &
-    (
-      | { href: string }
-      | { to: ComponentPropsWithoutRef<typeof LinkPrimitive>["to"] }
-    )
+    ({ href: string } | { to: ComponentPropsWithoutRef<typeof LinkPrimitive>["to"] })
 >(function Link({ className, variant, children, ...props }, ref) {
   if ("href" in props) {
     const isExternal = props.href.toString().startsWith("http");
@@ -43,11 +40,7 @@ export const Link = React.forwardRef<
     );
   } else {
     return (
-      <LinkPrimitive
-        className={cx(linkVariants({ variant }), className)}
-        ref={ref}
-        {...props}
-      >
+      <LinkPrimitive className={cx(linkVariants({ variant }), className)} ref={ref} {...props}>
         {children}
       </LinkPrimitive>
     );

@@ -78,10 +78,7 @@ const IdeasTable = ({ ideas }: Pick<CountryDetails, "ideas">) => {
     }
     for (; i < 7; i++) {
       ideaMarkers.push(
-        <div
-          key={i}
-          className="h-4 w-4 rounded-full outline outline-1 -outline-offset-2"
-        />,
+        <div key={i} className="h-4 w-4 rounded-full outline outline-1 -outline-offset-2" />,
       );
     }
     return (
@@ -150,9 +147,7 @@ const GovernmentStrength = ({
   }
 };
 
-export const CountryDetailsDescriptions = ({
-  details,
-}: CountryDetailsProps) => {
+export const CountryDetailsDescriptions = ({ details }: CountryDetailsProps) => {
   const { ruler, ideas } = details;
   const isJuniorPartner = useIsJuniorPartner(details);
 
@@ -162,11 +157,7 @@ export const CountryDetailsDescriptions = ({
         <div className="grid grid-cols-3 gap-4">
           <div>
             <div className="flex text-right">
-              {details.national_focus === "ADM" ? (
-                <AdminManaFocusedIcon />
-              ) : (
-                <AdminManaIcon />
-              )}
+              {details.national_focus === "ADM" ? <AdminManaFocusedIcon /> : <AdminManaIcon />}
               <span className="grow">{formatInt(details.adm_mana)}</span>
             </div>
 
@@ -199,9 +190,7 @@ export const CountryDetailsDescriptions = ({
             </div>
             <div className="flex text-right">
               <AdminTechIcon />
-              <span className="grow">
-                {formatInt(details.technology.adm_tech)}
-              </span>
+              <span className="grow">{formatInt(details.technology.adm_tech)}</span>
             </div>
           </div>
 
@@ -240,9 +229,7 @@ export const CountryDetailsDescriptions = ({
             </div>
             <div className="flex text-right">
               <DiplomaticTechIcon />
-              <span className="grow">
-                {formatInt(details.technology.dip_tech)}
-              </span>
+              <span className="grow">{formatInt(details.technology.dip_tech)}</span>
             </div>
           </div>
 
@@ -261,28 +248,18 @@ export const CountryDetailsDescriptions = ({
             </div>
             <div className="flex text-right">
               <PowerProjectionIcon />
-              <span className="grow">
-                {formatInt(details.power_projection)}
-              </span>
+              <span className="grow">{formatInt(details.power_projection)}</span>
             </div>
-            <GovernmentStrength
-              government_strength={details.government_strength}
-            />
+            <GovernmentStrength government_strength={details.government_strength} />
             <div className="flex text-right">
               <AverageAutonomyIcon />
               <span className="grow">
-                {formatInt(
-                  100 - (details.development / details.raw_development) * 100 ||
-                    0,
-                )}
-                %
+                {formatInt(100 - (details.development / details.raw_development) * 100 || 0)}%
               </span>
             </div>
             <div className="flex text-right">
               <ReligiousUnityIcon />
-              <span className="grow">
-                {formatInt(details.religious_unity * 100)}%
-              </span>
+              <span className="grow">{formatInt(details.religious_unity * 100)}%</span>
             </div>
             <div className="flex text-right">
               <SplendorIcon />
@@ -290,9 +267,7 @@ export const CountryDetailsDescriptions = ({
             </div>
             <div className="flex text-right">
               <MilitaryTechIcon />
-              <span className="grow">
-                {formatInt(details.technology.mil_tech)}
-              </span>
+              <span className="grow">{formatInt(details.technology.mil_tech)}</span>
             </div>
           </div>
         </div>
@@ -368,9 +343,7 @@ export const CountryDetailsDescriptions = ({
             </div>
             <div className="mt-2 flex text-right">
               <ProfessionalismIcon />
-              <span className="grow">
-                {formatInt(details.professionalism * 100)}%
-              </span>
+              <span className="grow">{formatInt(details.professionalism * 100)}%</span>
             </div>
             <div className="flex text-right">
               <ArmyTraditionIcon />
@@ -385,30 +358,22 @@ export const CountryDetailsDescriptions = ({
           <div>
             <div className="flex text-right">
               <InfantryIcon />
-              <span className="grow">
-                {formatInt(details.infantryUnits.count)}
-              </span>
+              <span className="grow">{formatInt(details.infantryUnits.count)}</span>
             </div>
 
             <div className="flex text-right">
               <CavalryIcon />
-              <div className="grow">
-                {formatInt(details.cavalryUnits.count)}
-              </div>
+              <div className="grow">{formatInt(details.cavalryUnits.count)}</div>
             </div>
 
             <div className="flex text-right">
               <ArtilleryIcon />
-              <span className="grow">
-                {formatInt(details.artilleryUnits.count)}
-              </span>
+              <span className="grow">{formatInt(details.artilleryUnits.count)}</span>
             </div>
 
             <div className="flex text-right">
               <MercenaryIcon />
-              <span className="grow">
-                {formatInt(details.mercenaryUnits.count)}
-              </span>
+              <span className="grow">{formatInt(details.mercenaryUnits.count)}</span>
             </div>
           </div>
           <div>
@@ -513,9 +478,7 @@ export const CountryDetailsDescriptions = ({
         <div className="flex gap-2">
           <IdeaGroupsIcon />
           <div className="grow text-lg">Ideas</div>
-          <div>
-            {formatInt(ideas.reduce((acc, [_, count]) => acc + count, 0))}
-          </div>
+          <div>{formatInt(ideas.reduce((acc, [_, count]) => acc + count, 0))}</div>
         </div>
         <div>
           <IdeasTable ideas={ideas} />

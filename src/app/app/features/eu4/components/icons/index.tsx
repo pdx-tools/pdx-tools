@@ -162,17 +162,13 @@ export const OverextensionIcon = () => <GameIcon src={"overextension"} />;
 export const DebtIcon = () => <GameIcon src={"debt"} />;
 export const InnovativenessIcon = () => <GameIcon src={"innovativeness"} />;
 export const InflationIcon = () => <GameIcon src={"inflation"} />;
-export const InfantryIcon = ({ alt }: { alt?: string }) => (
-  <GameIcon src={"infantry"} alt={alt} />
-);
+export const InfantryIcon = ({ alt }: { alt?: string }) => <GameIcon src={"infantry"} alt={alt} />;
 export const InfantrySkullIcon = ({ alt }: { alt?: string }) => (
   <GameIcon src={"infantry_skull"} alt={alt} />
 );
 export const CavalryIcon = () => <GameIcon src={"cavalry"} />;
 export const ArtilleryIcon = () => <GameIcon src={"artillery"} />;
-export const ManpowerIcon = ({ alt }: { alt?: string }) => (
-  <GameIcon src={"manpower"} alt={alt} />
-);
+export const ManpowerIcon = ({ alt }: { alt?: string }) => <GameIcon src={"manpower"} alt={alt} />;
 export const LandMoraleIcon = ({ alt }: { alt?: string }) => (
   <GameIcon src="land_morale" alt={alt} />
 );
@@ -191,23 +187,13 @@ export const GalleyIcon = () => <GameIcon src={"galley"} />;
 export const TransportIcon = () => <GameIcon src={"transport"} />;
 export const RulerIcon = () => <GameIcon src={"ruler"} />;
 export const AdminManaIcon = () => <GameIcon src={"powers_administrative"} />;
-export const AdminManaFocusedIcon = () => (
-  <GameIcon src={"powers_administrative_focused"} />
-);
+export const AdminManaFocusedIcon = () => <GameIcon src={"powers_administrative_focused"} />;
 export const DiplomaticManaIcon = () => <GameIcon src={"powers_diplomatic"} />;
-export const DiplomaticManaFocusedIcon = () => (
-  <GameIcon src={"powers_diplomatic_focused"} />
-);
+export const DiplomaticManaFocusedIcon = () => <GameIcon src={"powers_diplomatic_focused"} />;
 export const MilitaryManaIcon = () => <GameIcon src={"powers_military"} />;
-export const MilitaryManaFocusedIcon = () => (
-  <GameIcon src={"powers_military_focused"} />
-);
-export const AdminTechIcon = () => (
-  <GameIcon src={"powers_administrative_tech"} />
-);
-export const DiplomaticTechIcon = () => (
-  <GameIcon src={"powers_diplomatic_tech"} />
-);
+export const MilitaryManaFocusedIcon = () => <GameIcon src={"powers_military_focused"} />;
+export const AdminTechIcon = () => <GameIcon src={"powers_administrative_tech"} />;
+export const DiplomaticTechIcon = () => <GameIcon src={"powers_diplomatic_tech"} />;
 export const MilitaryTechIcon = () => <GameIcon src={"powers_military_tech"} />;
 export const IdeaGroupsIcon = () => <GameIcon src={"idea_groups"} />;
 export const ReinforcementsIcon = () => <GameIcon src={"reinforcements"} />;
@@ -216,16 +202,12 @@ export const MercenaryIcon = () => <GameIcon src={"mercenary"} />;
 export const ProvincesIcon = () => <GameIcon src={"provinces"} />;
 export const DevelopmentIcon = () => <GameIcon src={"development"} />;
 export const AverageAutonomyIcon = () => <GameIcon src={"autonomy"} />;
-export const AutonomyDevelopmentIcon = () => (
-  <GameIcon src={"autonomy_development"} />
-);
+export const AutonomyDevelopmentIcon = () => <GameIcon src={"autonomy_development"} />;
 export const HordeUnityIcon = () => <GameIcon src={"horde_unity"} />;
 export const DevotionIcon = () => <GameIcon src={"devotion"} alt="Devotion" />;
 export const LegitimacyIcon = () => <GameIcon src={"legitimacy"} />;
 export const MeritocracyIcon = () => <GameIcon src={"meritocracy"} />;
-export const RepublicanTraditionIcon = () => (
-  <GameIcon src={"republican_tradition"} />
-);
+export const RepublicanTraditionIcon = () => <GameIcon src={"republican_tradition"} />;
 export const AbsolutismIcon = () => <GameIcon src={"absolutism"} />;
 export const MercantilismIcon = () => <GameIcon src={"mercantilism"} />;
 export const SplendorIcon = () => <GameIcon src={"splendor"} />;

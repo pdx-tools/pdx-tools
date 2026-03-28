@@ -18,15 +18,11 @@ const columnHelper = createColumnHelper<CountryStateDetails>();
 const columns = [
   columnHelper.accessor("state.name", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="State" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="State" />,
     cell: ({ row }) => (
       <div className="flex min-w-[150px] items-center gap-2">
         <Tooltip>
-          <Tooltip.Trigger className="text-left">
-            {row.original.state.name}
-          </Tooltip.Trigger>
+          <Tooltip.Trigger className="text-left">{row.original.state.name}</Tooltip.Trigger>
           <Tooltip.Content>{row.original.state.id}</Tooltip.Content>
         </Tooltip>
         {row.original.capital_state && (
@@ -44,16 +40,12 @@ const columns = [
   columnHelper.accessor("total_dev", {
     sortingFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Dev" />,
-    cell: (info) => (
-      <div className="text-right">{formatInt(info.getValue())}</div>
-    ),
+    cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("total_gc", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Gov. Cost" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Gov. Cost" />,
     cell: ({ row }) => (
       <Tooltip>
         <Tooltip.Trigger className="w-full text-right">
@@ -73,12 +65,8 @@ const columns = [
   columnHelper.accessor((x) => x.total_gc - x.total_gc_if_centralized, {
     id: "total_gc_if_centralized",
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Next Centralize Savings" />
-    ),
-    cell: (info) => (
-      <div className="text-right">{formatFloat(info.getValue(), 2)}</div>
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Next Centralize Savings" />,
+    cell: (info) => <div className="text-right">{formatFloat(info.getValue(), 2)}</div>,
   }),
 
   columnHelper.accessor("centralizing", {
@@ -87,9 +75,7 @@ const columns = [
       const bValue = b.getValue<CountryStateDetails["centralizing"]>(column);
       return (aValue?.progress ?? -1) - (bValue?.progress ?? -1);
     },
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Centralizing" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Centralizing" />,
     meta: { className: "text-right" },
     cell: (info) => {
       const x = info.getValue();
@@ -106,28 +92,20 @@ const columns = [
 
   columnHelper.accessor("centralized", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Centralized" />
-    ),
-    cell: (info) => (
-      <div className="text-right">{formatInt(info.getValue())}</div>
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Centralized" />,
+    cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("state_house", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="State House" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="State House" />,
     meta: { className: "text-right" },
     cell: (info) => (info.getValue() ? "✔️" : ""),
   }),
 
   columnHelper.accessor("prosperity", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Prosperity" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Prosperity" />,
     meta: { className: "text-right" },
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
@@ -138,9 +116,7 @@ const columns = [
         {row.original.prosperity_mode === false && (
           <PlayIcon className="h-3 w-3 rotate-90 text-gray-800/80" />
         )}
-        {row.original.prosperity_mode === undefined && (
-          <MinusIcon className="h-3 w-3" />
-        )}
+        {row.original.prosperity_mode === undefined && <MinusIcon className="h-3 w-3" />}
       </div>
     ),
   }),
@@ -161,10 +137,7 @@ const CountryStateDataTableImpl = React.memo(CountryStatesDataTable);
 
 export const CountryStates = ({ details }: CountryStatesProps) => {
   const { data = [], error } = useEu4Worker(
-    useCallback(
-      (worker) => worker.eu4GetCountryStates(details.tag),
-      [details.tag],
-    ),
+    useCallback((worker) => worker.eu4GetCountryStates(details.tag), [details.tag]),
   );
   return (
     <>

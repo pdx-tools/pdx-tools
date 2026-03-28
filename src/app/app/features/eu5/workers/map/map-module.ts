@@ -12,21 +12,16 @@ import { formatInt } from "@/lib/format";
 import type { ScreenshotOverlayData, TableCell } from "@/wasm/wasm_eu5";
 
 const initialized = (async () => {
-  await timeAsync("Load EU5 Map Wasm module", () =>
-    init({ module_or_path: wasmPath }),
-  );
+  await timeAsync("Load EU5 Map Wasm module", () => init({ module_or_path: wasmPath }));
 })();
 
-let appResolve: (
-  value: Eu5WasmMapRenderer | PromiseLike<Eu5WasmMapRenderer>,
-) => void;
+let appResolve: (value: Eu5WasmMapRenderer | PromiseLike<Eu5WasmMapRenderer>) => void;
 let appReject: (reason?: any) => void;
 let appTask = new Promise<Eu5WasmMapRenderer>((res, rej) => {
   appResolve = res;
   appReject = rej;
 });
-let hoverEventCallback: ((event: LocationHoverChangeEvent) => void) | null =
-  null;
+let hoverEventCallback: ((event: LocationHoverChangeEvent) => void) | null = null;
 let zoomChangeCallback: ((zoom: number) => void) | null = null;
 let renderOrQueue: () => void = () => {};
 let newLocations: Uint32Array | null = null;
@@ -47,14 +42,10 @@ const mapGameEndpoint = () => {
 
     async center_at_color_id(color_id: number) {
       const app = await appTask;
-      timeSync("Centering map over capital", () =>
-        app.center_at_color_id(color_id),
-      );
+      timeSync("Centering map over capital", () => app.center_at_color_id(color_id));
     },
 
-    onLocationHoverUpdate: (
-      callback: (event: LocationHoverChangeEvent) => void,
-    ) => {
+    onLocationHoverUpdate: (callback: (event: LocationHoverChangeEvent) => void) => {
       hoverEventCallback = callback;
     },
 
@@ -98,9 +89,7 @@ export const createMapEngine = async (
   const bundle = await bundleFetch();
 
   const gameBundle = Eu5WasmGameBundle.open(bundle);
-  const textureData = timeSync("Create Texture Data", () =>
-    gameBundle.load_texture_data(),
-  );
+  const textureData = timeSync("Create Texture Data", () => gameBundle.load_texture_data());
 
   const westView = timeSync("Upload Texture Data (West)", () =>
     canvasInit.upload_west_texture(textureData),
@@ -160,11 +149,7 @@ export const createMapEngine = async (
         // Firefox also needs to wait for queued work before resizing
         // otherwise it will freeze up
         await app.queued_work().wait();
-        app.resize(
-          newDimensions.width,
-          newDimensions.height,
-          newDimensions.scaleFactor,
-        );
+        app.resize(newDimensions.width, newDimensions.height, newDimensions.scaleFactor);
       }
 
       newDimensions = null;
@@ -219,10 +204,8 @@ export const createMapEngine = async (
     const threshold = 1.0;
     const hasChanged =
       !lastProcessedWorldCoordinates ||
-      Math.abs(worldCoordinates.x - lastProcessedWorldCoordinates.x) >=
-        threshold ||
-      Math.abs(worldCoordinates.y - lastProcessedWorldCoordinates.y) >=
-        threshold;
+      Math.abs(worldCoordinates.x - lastProcessedWorldCoordinates.x) >= threshold ||
+      Math.abs(worldCoordinates.y - lastProcessedWorldCoordinates.y) >= threshold;
 
     if (!hasChanged) {
       return;
@@ -298,19 +281,14 @@ export const createMapEngine = async (
       // Create small overlay canvas if provided (minimal memory footprint ~3MB vs 512MB)
       let overlayInfo: OverlayCanvasInfo | null = null;
       if (overlayData) {
-        overlayInfo = createOverlayCanvas(
-          overlayData,
-          fullResolution,
-          output.height,
-        );
+        overlayInfo = createOverlayCanvas(overlayData, fullResolution, output.height);
       }
 
       // Create dedicated screenshot canvas for independent screenshot renderer
       const screenshotCanvas = new OffscreenCanvas(8192, 8192);
 
       // Create independent screenshot renderer
-      const screenshotRenderer =
-        app.create_screenshot_renderer(screenshotCanvas);
+      const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
 
       // Render west tile using independent screenshot renderer
       screenshotRenderer.render_west_tile();
@@ -318,13 +296,7 @@ export const createMapEngine = async (
 
       // Render east tile using independent screenshot renderer
       screenshotRenderer.render_east_tile();
-      ctx.drawImage(
-        screenshotCanvas,
-        output.width / 2,
-        0,
-        output.width / 2,
-        output.height,
-      );
+      ctx.drawImage(screenshotCanvas, output.width / 2, 0, output.width / 2, output.height);
 
       // Composite the small overlay canvas on top if provided
       if (overlayInfo) {
@@ -438,11 +410,8 @@ function createOverlayCanvas(
   const titleMetrics = tempCtx.measureText(overlayData.title);
   const dateAndPatchText = `${overlayData.saveDate} (${overlayData.patchVersion})`;
   const dateAndPatchMetrics = tempCtx.measureText(dateAndPatchText);
-  const headerHeight =
-    titleMetrics.actualBoundingBoxAscent +
-    titleMetrics.actualBoundingBoxDescent;
-  const maxHeaderWidth =
-    titleMetrics.width + headerSpacing + dateAndPatchMetrics.width;
+  const headerHeight = titleMetrics.actualBoundingBoxAscent + titleMetrics.actualBoundingBoxDescent;
+  const maxHeaderWidth = titleMetrics.width + headerSpacing + dateAndPatchMetrics.width;
 
   // Table data
   tempCtx.font = bodyFont;
@@ -486,22 +455,16 @@ function createOverlayCanvas(
     ? Math.max(rightTableWidth, tempCtx.measureText(rightTable.title).width)
     : rightTableWidth;
 
-  const totalTableWidth =
-    adjustedLeftTableWidth + tableGap + adjustedRightTableWidth;
+  const totalTableWidth = adjustedLeftTableWidth + tableGap + adjustedRightTableWidth;
 
   // Layout calculations
-  const titleRowHeight =
-    leftTable.title || rightTable.title ? bodyLineHeight : 0;
-  const totalBodyHeight =
-    titleRowHeight + bodyLineHeight + leftRows.length * bodyLineHeight;
+  const titleRowHeight = leftTable.title || rightTable.title ? bodyLineHeight : 0;
+  const totalBodyHeight = titleRowHeight + bodyLineHeight + leftRows.length * bodyLineHeight;
   const backdropWidth = Math.max(maxHeaderWidth, totalTableWidth) + padding * 2;
   const backdropHeight = headerHeight + totalBodyHeight + padding * 4;
 
   // Create overlay canvas sized exactly to fit the infographic
-  const overlayCanvas = new OffscreenCanvas(
-    Math.ceil(backdropWidth),
-    Math.ceil(backdropHeight),
-  );
+  const overlayCanvas = new OffscreenCanvas(Math.ceil(backdropWidth), Math.ceil(backdropHeight));
   const ctxRaw = overlayCanvas.getContext("2d");
   if (!ctxRaw) {
     throw new Error("Failed to create overlay canvas context");
@@ -533,12 +496,7 @@ function createOverlayCanvas(
   const rightTableX = leftTableX + adjustedLeftTableWidth + tableGap;
 
   // Helper function to render a table
-  function renderTable(
-    table: any,
-    rows: TableCell[][],
-    columnWidths: number[],
-    startX: number,
-  ) {
+  function renderTable(table: any, rows: TableCell[][], columnWidths: number[], startX: number) {
     let y = currentY;
 
     // Table title
@@ -562,10 +520,7 @@ function createOverlayCanvas(
       row.forEach((cell: TableCell, colIndex: number) => {
         const cellData = cellToString(cell);
         // Right-align numeric columns (except first column)
-        if (
-          colIndex > 0 &&
-          (cell.type === "integer" || cell.type === "float")
-        ) {
+        if (colIndex > 0 && (cell.type === "integer" || cell.type === "float")) {
           const textWidth = ctx.measureText(cellData).width;
           ctx.fillText(cellData, x + columnWidths[colIndex] - textWidth, y);
         } else {

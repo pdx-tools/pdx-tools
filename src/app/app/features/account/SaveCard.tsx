@@ -12,10 +12,7 @@ export function SaveCard({
   save,
   canDelete,
 }: {
-  save: Omit<
-    ReturnType<typeof useSavesGroupedByPlaythrough>[number][number],
-    "days"
-  > &
+  save: Omit<ReturnType<typeof useSavesGroupedByPlaythrough>[number][number], "days"> &
     Partial<{ user_name: string; user_id: string }>;
   canDelete: boolean;
 }) {
@@ -51,10 +48,7 @@ export function SaveCard({
 
           {save.players <= 1 ? (
             <div className="flex justify-center gap-2 lg:my-3">
-              <Flag
-                tag={save.player_tag}
-                name={save.player_tag_name ?? save.player_tag}
-              >
+              <Flag tag={save.player_tag} name={save.player_tag_name ?? save.player_tag}>
                 <Flag.Image size="large" />
                 <div>
                   <Flag.CountryName className="line-clamp-1 break-all" />
@@ -62,8 +56,7 @@ export function SaveCard({
                     {save.patch}{" "}
                     <span
                       className={
-                        difficultyColor(save.game_difficulty) ??
-                        "text-gray-600 dark:text-gray-400"
+                        difficultyColor(save.game_difficulty) ?? "text-gray-600 dark:text-gray-400"
                       }
                     >
                       ({save.game_difficulty})
@@ -92,9 +85,7 @@ export function SaveCard({
 
         <div className="my-2 grow border-b border-gray-600" />
         <div className="flex justify-evenly gap-4">
-          {canDelete && (
-            <DeleteSave saveId={save.id} variant="ghost" shape="none" />
-          )}
+          {canDelete && <DeleteSave saveId={save.id} variant="ghost" shape="none" />}
           <Link to={`/eu4/saves/${save.id}`} target="_blank">
             <ArrowTopRightOnSquareIcon className="h-8 w-8" />
           </Link>

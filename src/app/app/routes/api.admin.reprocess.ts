@@ -22,10 +22,7 @@ export const action = withCore(
     for (const save of saves) {
       const update = fromParsedSave(save.save);
       log.info({ saveId: save.saveId, msg: "updating to", update });
-      await db
-        .update(table.saves)
-        .set(update)
-        .where(eq(table.saves.id, save.saveId));
+      await db.update(table.saves).set(update).where(eq(table.saves.id, save.saveId));
     }
 
     return Response.json({ msg: "done" });

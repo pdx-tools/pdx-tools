@@ -119,22 +119,16 @@ export const IdeaGroupsChart = () => {
 
   const option = useMemo((): EChartsOption => {
     // Get unique idea group names
-    const ideaGroupNames = Array.from(
-      new Set(ideaGroups.map((d) => d.name)),
-    ).sort();
+    const ideaGroupNames = Array.from(new Set(ideaGroups.map((d) => d.name))).sort();
 
     // Organize data by type
     const completedData = ideaGroupNames.map((name) => {
-      const datum = ideaGroups.find(
-        (d) => d.name === name && d.type === "completed",
-      );
+      const datum = ideaGroups.find((d) => d.name === name && d.type === "completed");
       return datum?.count ?? 0;
     });
 
     const selectedData = ideaGroupNames.map((name) => {
-      const datum = ideaGroups.find(
-        (d) => d.name === name && d.type === "selected",
-      );
+      const datum = ideaGroups.find((d) => d.name === name && d.type === "selected");
       return datum?.count ?? 0;
     });
 

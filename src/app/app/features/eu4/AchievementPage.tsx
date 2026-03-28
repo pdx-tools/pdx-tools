@@ -34,9 +34,8 @@ export const AchievementLayout = ({
         </div>
         <div className="mt-2 max-w-prose leading-snug">
           <p className="text-gray-600 dark:text-gray-300">
-            Achievement leaderboards are based on patch in-game days: the number
-            of elapsed in game days, taxed 10% per patch behind the latest EU4
-            minor version
+            Achievement leaderboards are based on patch in-game days: the number of elapsed in game
+            days, taxed 10% per patch behind the latest EU4 minor version
           </p>
         </div>
       </div>
@@ -46,13 +45,7 @@ export const AchievementLayout = ({
   );
 };
 
-function AchievementPlatform({
-  save,
-  className,
-}: {
-  save: RankedSave;
-  className?: string;
-}) {
+function AchievementPlatform({ save, className }: { save: RankedSave; className?: string }) {
   return (
     <Card
       className={cx(
@@ -102,9 +95,7 @@ function AchievementPlatform({
                 <tfoot>
                   <tr className="border-t border-white">
                     <td>{save.weighted_score.date}:</td>
-                    <td className="text-right">
-                      {formatInt(save.weighted_score.days)}
-                    </td>
+                    <td className="text-right">{formatInt(save.weighted_score.days)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -122,8 +113,7 @@ function AchievementPlatform({
 
           <div className="flex flex-col items-center">
             <div className="text-xl">
-              <span className="tracking-tight">{save.date}</span> on{" "}
-              {save.patch}
+              <span className="tracking-tight">{save.date}</span> on {save.patch}
             </div>
             {save.game_difficulty !== "Normal" ? (
               <p
@@ -238,17 +228,13 @@ export const AchievementPage = ({
       <AchievementPodium saves={[gold, silver, bronze]} />
       {data.goldDate ? (
         <div className="text-center">
-          <p className="text-xl">
-            Earn gold by completing the achievement before:
-          </p>
+          <p className="text-xl">Earn gold by completing the achievement before:</p>
           <p className="text-3xl font-semibold">{data.goldDate}</p>
         </div>
       ) : null}
       {rest.length ? (
         <div className="flex flex-col gap-4">
-          <h2 className="text-center text-lg font-semibold">
-            Other completions:
-          </h2>
+          <h2 className="text-center text-lg font-semibold">Other completions:</h2>
           <RecordTable records={rest} />
         </div>
       ) : null}

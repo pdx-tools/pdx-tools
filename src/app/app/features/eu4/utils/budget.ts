@@ -18,10 +18,7 @@ export const reduceToTableLedger = (
     ? Array.from(
         data.entries(),
         ([key, value]) =>
-          [
-            key,
-            { ...value, income: filterToRecurringIncome(value.income) },
-          ] as const,
+          [key, { ...value, income: filterToRecurringIncome(value.income) }] as const,
       )
     : Array.from(data.entries());
 
@@ -30,10 +27,7 @@ export const reduceToTableLedger = (
     const vals = !percent
       ? income
       : Object.fromEntries(
-          Object.entries(income).map(([key, value]) => [
-            key,
-            Math.round((value / total) * 100),
-          ]),
+          Object.entries(income).map(([key, value]) => [key, Math.round((value / total) * 100)]),
         );
 
     return {
@@ -56,10 +50,7 @@ export const reduceToTableExpenseLedger = (
     ? Array.from(
         data.entries(),
         ([key, value]) =>
-          [
-            key,
-            { ...value, expenses: filterToRecurringExpenses(value.expenses) },
-          ] as const,
+          [key, { ...value, expenses: filterToRecurringExpenses(value.expenses) }] as const,
       )
     : Array.from(data.entries());
 
@@ -68,10 +59,7 @@ export const reduceToTableExpenseLedger = (
     const vals = !percent
       ? expenses
       : Object.fromEntries(
-          Object.entries(expenses).map(([key, value]) => [
-            key,
-            Math.round((value / total) * 100),
-          ]),
+          Object.entries(expenses).map(([key, value]) => [key, Math.round((value / total) * 100)]),
         );
 
     return {

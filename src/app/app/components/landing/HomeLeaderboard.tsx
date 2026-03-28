@@ -22,10 +22,7 @@ const HomeLeaderboardImpl = () => {
       <h3 className="flex flex-col items-center gap-3 text-2xl font-bold">
         <p>Featured leaderboard:</p>
         <div className="flex items-center gap-2">
-          <AchievementAvatar
-            size={40}
-            id={achievementQuery.data.achievement.id}
-          />
+          <AchievementAvatar size={40} id={achievementQuery.data.achievement.id} />
           <Link to={`/eu4/achievements/${achievementId}`}>
             {achievementQuery.data.achievement.name}
           </Link>

@@ -12,10 +12,7 @@ import { cx } from "class-variance-authority";
 import { VizRenderer } from "./VizRenderer";
 import { ChartDrawerTitle } from "./ChartDrawerTitle";
 
-export const ChartSideBarButton = ({
-  children,
-  ...props
-}: SideBarButtonProps) => {
+export const ChartSideBarButton = ({ children, ...props }: SideBarButtonProps) => {
   return (
     <Sheet modal={false}>
       <Sheet.Trigger asChild>
@@ -34,9 +31,7 @@ export const ChartSideBarButton = ({
 const DEFAULT_VIZUALIZATION_SELECTION = "monthly-income";
 
 export const ChartContent = () => {
-  const [selectedViz, setSelectedViz] = useState<VizModules>(
-    DEFAULT_VIZUALIZATION_SELECTION,
-  );
+  const [selectedViz, setSelectedViz] = useState<VizModules>(DEFAULT_VIZUALIZATION_SELECTION);
   const [expanded, setExpanded] = useState(false);
   const sideBarContainerRef = useSideBarContainerRef();
 

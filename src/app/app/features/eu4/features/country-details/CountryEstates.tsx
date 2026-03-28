@@ -63,11 +63,7 @@ const CountryEstateDetails = ({ data }: { data: Estate[] }) => {
   return (
     <div className="flex flex-col gap-4">
       <div className="w-96 text-center">
-        Crownland:{" "}
-        {formatInt(
-          data.map((x) => x.territory).reduce((acc, x) => acc - x, 100),
-        )}
-        %
+        Crownland: {formatInt(data.map((x) => x.territory).reduce((acc, x) => acc - x, 100))}%
       </div>
       <div className="flex flex-wrap gap-8">
         {data.map((x) => (
@@ -86,10 +82,7 @@ export interface CountryEstatesProps {
 
 export const CountryEstates = ({ details }: CountryEstatesProps) => {
   const { data = [], error } = useEu4Worker(
-    useCallback(
-      (worker) => worker.eu4GetCountryEstates(details.tag),
-      [details.tag],
-    ),
+    useCallback((worker) => worker.eu4GetCountryEstates(details.tag), [details.tag]),
   );
 
   if (error) {

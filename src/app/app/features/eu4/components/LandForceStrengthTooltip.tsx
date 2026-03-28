@@ -2,11 +2,7 @@ import { Tooltip } from "@/components/Tooltip";
 import type { CountryArmedForces } from "@/wasm/wasm_eu4";
 import { formatInt } from "@/lib/format";
 
-export const LandForceStrengthTooltip = ({
-  force,
-}: {
-  force: CountryArmedForces;
-}) => {
+export const LandForceStrengthTooltip = ({ force }: { force: CountryArmedForces }) => {
   return (
     <Tooltip>
       <Tooltip.Trigger>

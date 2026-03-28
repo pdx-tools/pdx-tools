@@ -7,13 +7,7 @@ import { PlusCircleIcon } from "@heroicons/react/24/solid";
 import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
 import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
 
-export const SheetExpansion = ({
-  children,
-  title,
-}: {
-  children: ReactNode;
-  title: string;
-}) => {
+export const SheetExpansion = ({ children, title }: { children: ReactNode; title: string }) => {
   const [expanded, setExpanded] = useState(false);
   return (
     <Sheet modal={true}>
@@ -32,11 +26,7 @@ export const SheetExpansion = ({
       >
         <Sheet.Header className="z-1 flex items-center gap-2 px-4 pb-4 shadow-md">
           <Sheet.Close />
-          <Button
-            shape="square"
-            onClick={() => setExpanded(!expanded)}
-            className="hidden md:flex"
-          >
+          <Button shape="square" onClick={() => setExpanded(!expanded)} className="hidden md:flex">
             {expanded ? (
               <MenuUnfoldIcon className="h-4 w-4" />
             ) : (

@@ -2,21 +2,14 @@ import * as React from "react";
 import type { Column, SortDirection } from "@tanstack/react-table";
 import { cx } from "class-variance-authority";
 import { Button } from "./Button";
-import {
-  ChevronDownIcon,
-  ChevronUpDownIcon,
-  ChevronUpIcon,
-} from "@heroicons/react/20/solid";
+import { ChevronDownIcon, ChevronUpDownIcon, ChevronUpIcon } from "@heroicons/react/20/solid";
 import { check } from "@/lib/isPresent";
 import { useContext } from "react";
 import { Tooltip } from "./Tooltip";
 
 type TableContextState = { size: "standard" | "compact" | "small" };
-const TableContext = React.createContext<TableContextState | undefined>(
-  undefined,
-);
-const useTable = () =>
-  check(useContext(TableContext), "table context is undefined");
+const TableContext = React.createContext<TableContextState | undefined>(undefined);
+const useTable = () => check(useContext(TableContext), "table context is undefined");
 
 const TableImpl = React.forwardRef<
   HTMLTableElement,
@@ -24,18 +17,11 @@ const TableImpl = React.forwardRef<
     size?: "standard" | "compact" | "small";
     overflow?: boolean;
   }
->(function Table(
-  { className, size = "standard", overflow = true, ...props },
-  ref,
-) {
+>(function Table({ className, size = "standard", overflow = true, ...props }, ref) {
   return (
     <TableContext.Provider value={{ size }}>
       <div className={cx("w-full", overflow && "overflow-auto")}>
-        <table
-          ref={ref}
-          className={cx("w-full caption-bottom text-sm", className)}
-          {...props}
-        />
+        <table ref={ref} className={cx("w-full caption-bottom text-sm", className)} {...props} />
       </div>
     </TableContext.Provider>
   );
@@ -59,10 +45,7 @@ const TableHeader = React.forwardRef<
   return (
     <thead
       ref={ref}
-      className={cx(
-        "[&_tr]:border-0 [&_tr]:border-b [&_tr]:border-solid",
-        className,
-      )}
+      className={cx("[&_tr]:border-0 [&_tr]:border-b [&_tr]:border-solid", className)}
       {...props}
     />
   );
@@ -73,13 +56,7 @@ const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(function TableBody({ className, ...props }, ref) {
-  return (
-    <tbody
-      ref={ref}
-      className={cx("[&_tr:last-child]:border-0", className)}
-      {...props}
-    />
-  );
+  return <tbody ref={ref} className={cx("[&_tr:last-child]:border-0", className)} {...props} />;
 });
 Table.Body = TableBody;
 
@@ -87,27 +64,24 @@ const TableFooter = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(function TableFooter({ className, ...props }, ref) {
-  return (
-    <tfoot ref={ref} className={cx("font-medium", className)} {...props} />
-  );
+  return <tfoot ref={ref} className={cx("font-medium", className)} {...props} />;
 });
 Table.Footer = TableFooter;
 
-const TableRow = React.forwardRef<
-  HTMLTableRowElement,
-  React.HTMLAttributes<HTMLTableRowElement>
->(function TableRow({ className, ...props }, ref) {
-  return (
-    <tr
-      ref={ref}
-      className={cx(
-        "border-0 border-b border-solid transition-colors hover:bg-gray-200/50 data-[state=selected]:bg-gray-200 dark:border-gray-600 dark:hover:bg-gray-600/50 dark:data-[state=selected]:bg-gray-600/50",
-        className,
-      )}
-      {...props}
-    />
-  );
-});
+const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableRowElement>>(
+  function TableRow({ className, ...props }, ref) {
+    return (
+      <tr
+        ref={ref}
+        className={cx(
+          "border-0 border-b border-solid transition-colors hover:bg-gray-200/50 data-[state=selected]:bg-gray-200 dark:border-gray-600 dark:hover:bg-gray-600/50 dark:data-[state=selected]:bg-gray-600/50",
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
+);
 Table.Row = TableRow;
 
 const TableHead = React.forwardRef<
@@ -153,13 +127,7 @@ const TableCaption = React.forwardRef<
   HTMLTableCaptionElement,
   React.HTMLAttributes<HTMLTableCaptionElement>
 >(function TableCaption({ className, ...props }, ref) {
-  return (
-    <caption
-      ref={ref}
-      className={cx("mt-4 text-sm text-gray-600", className)}
-      {...props}
-    />
-  );
+  return <caption ref={ref} className={cx("mt-4 text-sm text-gray-600", className)} {...props} />;
 });
 Table.Caption = TableCaption;
 
@@ -179,11 +147,7 @@ function ColumnHeaderButtonInner<TData, TValue>(
   return (
     <Button
       {...rest}
-      className={cx(
-        "h-full w-full gap-2 font-semibold",
-        className,
-        !icon && "justify-between",
-      )}
+      className={cx("h-full w-full gap-2 font-semibold", className, !icon && "justify-between")}
       variant="ghost"
       shape="none"
       ref={ref}
@@ -207,10 +171,7 @@ function ColumnHeaderButtonInner<TData, TValue>(
   );
 }
 
-const ColumnHeaderButton = React.forwardRef(ColumnHeaderButtonInner) as <
-  TData,
-  TValue,
->(
+const ColumnHeaderButton = React.forwardRef(ColumnHeaderButtonInner) as <TData, TValue>(
   props: ColumnHeaderProps<TData, TValue> & {
     ref?: React.ForwardedRef<HTMLButtonElement>;
   },

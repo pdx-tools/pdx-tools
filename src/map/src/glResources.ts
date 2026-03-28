@@ -1,12 +1,7 @@
 import type { StaticResources, TerrainOverlayResources } from "./types";
 import type { MapShader } from "./MapShader";
 import type { XbrShader } from "./XbrShader";
-import {
-  IMG_WIDTH,
-  IMG_HEIGHT,
-  IMG_PADDED_WIDTH,
-  SPLIT_IMG_PADDED_WIDTH,
-} from "./mapDimensions";
+import { IMG_WIDTH, IMG_HEIGHT, IMG_PADDED_WIDTH, SPLIT_IMG_PADDED_WIDTH } from "./mapDimensions";
 import { notNull } from "./nullcheck";
 
 const MAX_TEXTURE_SIZE = 4096;
@@ -75,12 +70,7 @@ export class GLResources {
     let rawMapFramebuffer1 = notNull(gl.createFramebuffer());
     gl.bindFramebuffer(gl.FRAMEBUFFER, rawMapFramebuffer1);
     let fbRawMapEdgesTexture1 = notNull(gl.createTexture());
-    setupFramebufferTexture(
-      gl,
-      fbRawMapEdgesTexture1,
-      SPLIT_IMG_PADDED_WIDTH,
-      IMG_HEIGHT,
-    );
+    setupFramebufferTexture(gl, fbRawMapEdgesTexture1, SPLIT_IMG_PADDED_WIDTH, IMG_HEIGHT);
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
       gl.COLOR_ATTACHMENT0,
@@ -89,12 +79,7 @@ export class GLResources {
       0,
     );
     let fbRawMapTexture1 = notNull(gl.createTexture());
-    setupFramebufferTexture(
-      gl,
-      fbRawMapTexture1,
-      SPLIT_IMG_PADDED_WIDTH,
-      IMG_HEIGHT,
-    );
+    setupFramebufferTexture(gl, fbRawMapTexture1, SPLIT_IMG_PADDED_WIDTH, IMG_HEIGHT);
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
       gl.COLOR_ATTACHMENT1,
@@ -107,12 +92,7 @@ export class GLResources {
     let rawMapFramebuffer2 = notNull(gl.createFramebuffer());
     gl.bindFramebuffer(gl.FRAMEBUFFER, rawMapFramebuffer2);
     let fbRawMapEdgesTexture2 = notNull(gl.createTexture());
-    setupFramebufferTexture(
-      gl,
-      fbRawMapEdgesTexture2,
-      SPLIT_IMG_PADDED_WIDTH,
-      IMG_HEIGHT,
-    );
+    setupFramebufferTexture(gl, fbRawMapEdgesTexture2, SPLIT_IMG_PADDED_WIDTH, IMG_HEIGHT);
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
       gl.COLOR_ATTACHMENT0,
@@ -121,12 +101,7 @@ export class GLResources {
       0,
     );
     let fbRawMapTexture2 = notNull(gl.createTexture());
-    setupFramebufferTexture(
-      gl,
-      fbRawMapTexture2,
-      SPLIT_IMG_PADDED_WIDTH,
-      IMG_HEIGHT,
-    );
+    setupFramebufferTexture(gl, fbRawMapTexture2, SPLIT_IMG_PADDED_WIDTH, IMG_HEIGHT);
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
       gl.COLOR_ATTACHMENT1,
@@ -177,12 +152,7 @@ export class GLResources {
       surfaceNormalRock,
       surfaceNormalGreen,
       heightMap,
-      setupProvinceColorsTexture(
-        gl,
-        gl.RGB,
-        provinceCount,
-        staticRes.provincesUniqueColor,
-      ),
+      setupProvinceColorsTexture(gl, gl.RGB, provinceCount, staticRes.provincesUniqueColor),
       setupProvinceColorsTexture(gl, gl.RGBA, provinceCount),
       setupProvinceCustomColorsTexture(gl, provinceCount),
       setupProvinceCustomColorsTexture(gl, provinceCount),
@@ -209,27 +179,15 @@ export class GLResources {
   }
 
   fillCountryProvinceColorsTexture(countryProvinceColors: Uint8Array) {
-    fillCustomProvinceColorsTexture(
-      this.gl,
-      this.countryProvinceColors,
-      countryProvinceColors,
-    );
+    fillCustomProvinceColorsTexture(this.gl, this.countryProvinceColors, countryProvinceColors);
   }
 
   fillPrimaryProvinceColorsTexture(provinceUniqueColors: Uint8Array) {
-    fillCustomProvinceColorsTexture(
-      this.gl,
-      this.primaryProvinceColors,
-      provinceUniqueColors,
-    );
+    fillCustomProvinceColorsTexture(this.gl, this.primaryProvinceColors, provinceUniqueColors);
   }
 
   fillSecondaryProvinceColorsTexture(provinceUniqueColors: Uint8Array) {
-    fillCustomProvinceColorsTexture(
-      this.gl,
-      this.secondaryProvinceColors,
-      provinceUniqueColors,
-    );
+    fillCustomProvinceColorsTexture(this.gl, this.secondaryProvinceColors, provinceUniqueColors);
   }
 
   updateTerrainTextures(textures: TerrainOverlayResources) {
@@ -243,16 +201,8 @@ export class GLResources {
     this.water = setupTexture(gl, textures.water, gl.LINEAR);
     this.surfaceRock = setupTexture(gl, textures.surfaceRock, gl.LINEAR);
     this.surfaceGreen = setupTexture(gl, textures.surfaceGreen, gl.LINEAR);
-    this.surfaceNormalRock = setupTexture(
-      gl,
-      textures.surfaceNormalRock,
-      gl.LINEAR,
-    );
-    this.surfaceNormalGreen = setupTexture(
-      gl,
-      textures.surfaceNormalGreen,
-      gl.LINEAR,
-    );
+    this.surfaceNormalRock = setupTexture(gl, textures.surfaceNormalRock, gl.LINEAR);
+    this.surfaceNormalGreen = setupTexture(gl, textures.surfaceNormalGreen, gl.LINEAR);
     this.heightMap = setupTexture(gl, textures.heightMap, gl.LINEAR);
   }
 }
@@ -318,14 +268,7 @@ function setupTexture(
   const internalFormat = gl.RGBA; // format we want in the texture
   const srcFormat = gl.RGBA; // format of data we are supplying
   const srcType = gl.UNSIGNED_BYTE; // type of data we are supplying
-  gl.texImage2D(
-    gl.TEXTURE_2D,
-    mipLevel,
-    internalFormat,
-    srcFormat,
-    srcType,
-    img,
-  );
+  gl.texImage2D(gl.TEXTURE_2D, mipLevel, internalFormat, srcFormat, srcType, img);
   gl.bindTexture(gl.TEXTURE_2D, null);
   return texture;
 }
@@ -352,8 +295,7 @@ function setupProvinceColorsTexture(
   const srcFormat = type;
   const srcType = gl.UNSIGNED_BYTE;
 
-  const total =
-    MAX_TEXTURE_SIZE * (Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1) * 4;
+  const total = MAX_TEXTURE_SIZE * (Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1) * 4;
   const buffed = new Uint8Array(total);
   if (data) {
     buffed.set(data);
@@ -374,10 +316,7 @@ function setupProvinceColorsTexture(
   return texture;
 }
 
-function setupProvinceCustomColorsTexture(
-  gl: WebGL2RenderingContext,
-  provinceCount: number,
-) {
+function setupProvinceCustomColorsTexture(gl: WebGL2RenderingContext, provinceCount: number) {
   const texture = gl.createTexture();
   if (texture === null) {
     throw new Error("unexpected null texture");
@@ -394,8 +333,7 @@ function setupProvinceCustomColorsTexture(
   const srcFormat = gl.RGBA;
   const srcType = gl.UNSIGNED_BYTE;
 
-  const total =
-    MAX_TEXTURE_SIZE * (Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1) * 4;
+  const total = MAX_TEXTURE_SIZE * (Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1) * 4;
   const buffed = new Uint8Array(total);
 
   gl.texImage2D(
@@ -423,8 +361,7 @@ function fillCustomProvinceColorsTexture(
   gl.bindTexture(gl.TEXTURE_2D, provinceUniqueColorsTexture);
   const provinceCount = provinceUniqueColors.length / 4;
 
-  const total =
-    MAX_TEXTURE_SIZE * (Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1) * 4;
+  const total = MAX_TEXTURE_SIZE * (Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1) * 4;
   const buffed = new Uint8Array(total);
   buffed.set(provinceUniqueColors);
 

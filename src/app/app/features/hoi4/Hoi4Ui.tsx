@@ -9,9 +9,7 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 export const Hoi4Page = () => {
   const meta = hoi4.useMeta();
   const saveFile = hoi4.useSaveInput();
-  useDocumentTitle(
-    `${saveFile.name.replace(".hoi4", "")} - Hoi4 (${meta.date}) - PDX Tools`,
-  );
+  useDocumentTitle(`${saveFile.name.replace(".hoi4", "")} - Hoi4 (${meta.date}) - PDX Tools`);
   return (
     <main className="mx-auto mt-4 max-w-screen-lg">
       <div className="mx-auto flex max-w-prose flex-col gap-4">
@@ -20,11 +18,7 @@ export const Hoi4Page = () => {
           {`An Hoi4 save was detected (date ${meta.date}). At this time, Hoi4 functionality is limited but one can still melt binary saves into plaintext`}
         </p>
         {meta.isMeltable && (
-          <MeltButton
-            game="hoi4"
-            worker={getHoi4Worker()}
-            filename={saveFile.name}
-          />
+          <MeltButton game="hoi4" worker={getHoi4Worker()} filename={saveFile.name} />
         )}
 
         <CountryDetails />

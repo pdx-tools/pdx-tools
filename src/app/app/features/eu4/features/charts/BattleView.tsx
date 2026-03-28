@@ -29,13 +29,8 @@ const NumberCell = ({ children }: { children: number }) => (
   <Table.Cell className="text-right">{formatInt(children)}</Table.Cell>
 );
 
-const ParticipantsSummary = ({
-  participants,
-}: {
-  participants: WarParticipant[];
-}) => {
-  const fieldSum = (k: keyof Losses) =>
-    participants.reduce((acc, x) => acc + x.losses[k], 0);
+const ParticipantsSummary = ({ participants }: { participants: WarParticipant[] }) => {
+  const fieldSum = (k: keyof Losses) => participants.reduce((acc, x) => acc + x.losses[k], 0);
 
   return (
     <Table.Row>
@@ -65,46 +60,32 @@ const columnHelper = createColumnHelper<WarParticipant>();
 const participantColumns = [
   columnHelper.accessor("country.name", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Country" />
-    ),
-    cell: ({ row }) => (
-      <Flag tag={row.original.country.tag} name={row.original.country.name} />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
+    cell: ({ row }) => <Flag tag={row.original.country.tag} name={row.original.country.name} />,
   }),
 
   columnHelper.accessor("participation", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Participation" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Participation" />,
     meta: { className: "text-right" },
     cell: ({ row }) => (
       <Tooltip>
-        <Tooltip.Trigger>
-          {formatInt(row.original.participationPercent * 100)}%
-        </Tooltip.Trigger>
-        <Tooltip.Content>
-          {formatFloat(row.original.participation)}
-        </Tooltip.Content>
+        <Tooltip.Trigger>{formatInt(row.original.participationPercent * 100)}%</Tooltip.Trigger>
+        <Tooltip.Content>{formatFloat(row.original.participation)}</Tooltip.Content>
       </Tooltip>
     ),
   }),
 
   columnHelper.accessor("joined", {
     sortingFn: "alphanumeric",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Joined" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Joined" />,
     meta: { className: "text-right no-break" },
     cell: (info) => info.getValue() ?? "---",
   }),
 
   columnHelper.accessor("exited", {
     sortingFn: "alphanumeric",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Exited" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Exited" />,
     meta: { className: "text-right no-break" },
     cell: (info) => info.getValue() ?? "---",
   }),
@@ -114,9 +95,7 @@ const participantColumns = [
     columns: unitTypes.map(([title, column, _c]) =>
       columnHelper.accessor(`losses.${column}`, {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title={title} />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title={title} />,
         meta: { className: "text-right no-break" },
         cell: (info) => formatInt(info.getValue()),
       }),
@@ -128,9 +107,7 @@ const participantColumns = [
     columns: unitTypes.map(([title, _c, column]) =>
       columnHelper.accessor(`losses.${column}`, {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title={title} />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title={title} />,
         meta: { className: "text-right no-break" },
         cell: (info) => formatInt(info.getValue()),
       }),
@@ -155,17 +132,8 @@ const landColumns = [
   battleColumnHelper.accessor("attacker", {
     header: "Attacker",
     cell: (info) => (
-      <div
-        className={
-          info.row.original.attackerWon
-            ? "flex bg-green-300 dark:bg-green-700"
-            : ""
-        }
-      >
-        <Flag
-          tag={info.getValue().country.tag}
-          name={info.getValue().country.name}
-        />
+      <div className={info.row.original.attackerWon ? "flex bg-green-300 dark:bg-green-700" : ""}>
+        <Flag tag={info.getValue().country.tag} name={info.getValue().country.name} />
       </div>
     ),
   }),
@@ -173,35 +141,22 @@ const landColumns = [
   battleColumnHelper.accessor("defender", {
     header: "Defender",
     cell: (info) => (
-      <div
-        className={
-          !info.row.original.attackerWon
-            ? "flex bg-green-300 dark:bg-green-700"
-            : ""
-        }
-      >
-        <Flag
-          tag={info.getValue().country.tag}
-          name={info.getValue().country.name}
-        />
+      <div className={!info.row.original.attackerWon ? "flex bg-green-300 dark:bg-green-700" : ""}>
+        <Flag tag={info.getValue().country.tag} name={info.getValue().country.name} />
       </div>
     ),
   }),
 
   battleColumnHelper.accessor("forces", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Forces" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Forces" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
 
   battleColumnHelper.accessor("losses", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Losses" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Losses" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -216,48 +171,36 @@ const landColumns = [
             "---"
           ) : (
             <Tooltip>
-              <Tooltip.Trigger>
-                {row.original.attacker.commander_stats}
-              </Tooltip.Trigger>
-              <Tooltip.Content>
-                {row.original.attacker.commander}
-              </Tooltip.Content>
+              <Tooltip.Trigger>{row.original.attacker.commander_stats}</Tooltip.Trigger>
+              <Tooltip.Content>{row.original.attacker.commander}</Tooltip.Content>
             </Tooltip>
           ),
       }),
 
       battleColumnHelper.accessor("attacker.infantry", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Inf" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Inf" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.cavalry", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Cav" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Cav" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.artillery", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Art" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Art" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.losses", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Losses" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Losses" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
@@ -274,48 +217,36 @@ const landColumns = [
             "---"
           ) : (
             <Tooltip>
-              <Tooltip.Trigger>
-                {row.original.defender.commander_stats}
-              </Tooltip.Trigger>
-              <Tooltip.Content>
-                {row.original.defender.commander}
-              </Tooltip.Content>
+              <Tooltip.Trigger>{row.original.defender.commander_stats}</Tooltip.Trigger>
+              <Tooltip.Content>{row.original.defender.commander}</Tooltip.Content>
             </Tooltip>
           ),
       }),
 
       battleColumnHelper.accessor("defender.infantry", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Inf" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Inf" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.cavalry", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Cav" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Cav" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.artillery", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Art" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Art" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.losses", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Losses" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Losses" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
@@ -339,17 +270,8 @@ const navyColumns = [
   battleColumnHelper.accessor("attacker", {
     header: "Attacker",
     cell: (info) => (
-      <div
-        className={
-          info.row.original.attackerWon
-            ? "flex bg-green-300 dark:bg-green-700"
-            : ""
-        }
-      >
-        <Flag
-          tag={info.getValue().country.tag}
-          name={info.getValue().country.name}
-        />
+      <div className={info.row.original.attackerWon ? "flex bg-green-300 dark:bg-green-700" : ""}>
+        <Flag tag={info.getValue().country.tag} name={info.getValue().country.name} />
       </div>
     ),
   }),
@@ -357,35 +279,22 @@ const navyColumns = [
   battleColumnHelper.accessor("defender", {
     header: "Defender",
     cell: (info) => (
-      <div
-        className={
-          !info.row.original.attackerWon
-            ? "flex bg-green-300 dark:bg-green-700"
-            : ""
-        }
-      >
-        <Flag
-          tag={info.getValue().country.tag}
-          name={info.getValue().country.name}
-        />
+      <div className={!info.row.original.attackerWon ? "flex bg-green-300 dark:bg-green-700" : ""}>
+        <Flag tag={info.getValue().country.tag} name={info.getValue().country.name} />
       </div>
     ),
   }),
 
   battleColumnHelper.accessor("forces", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Forces" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Forces" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
 
   battleColumnHelper.accessor("losses", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Losses" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Losses" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -400,57 +309,43 @@ const navyColumns = [
             "---"
           ) : (
             <Tooltip>
-              <Tooltip.Trigger>
-                {row.original.attacker.commander_stats}
-              </Tooltip.Trigger>
-              <Tooltip.Content>
-                {row.original.attacker.commander}
-              </Tooltip.Content>
+              <Tooltip.Trigger>{row.original.attacker.commander_stats}</Tooltip.Trigger>
+              <Tooltip.Content>{row.original.attacker.commander}</Tooltip.Content>
             </Tooltip>
           ),
       }),
 
       battleColumnHelper.accessor("attacker.heavy_ship", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Heavy" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Heavy" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.light_ship", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Light" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Light" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.galley", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Galley" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Galley" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.transport", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Trnspt" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Trnspt" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.losses", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Losses" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Losses" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
@@ -467,57 +362,43 @@ const navyColumns = [
             "---"
           ) : (
             <Tooltip>
-              <Tooltip.Trigger>
-                {row.original.defender.commander_stats}
-              </Tooltip.Trigger>
-              <Tooltip.Content>
-                {row.original.defender.commander}
-              </Tooltip.Content>
+              <Tooltip.Trigger>{row.original.defender.commander_stats}</Tooltip.Trigger>
+              <Tooltip.Content>{row.original.defender.commander}</Tooltip.Content>
             </Tooltip>
           ),
       }),
 
       battleColumnHelper.accessor("defender.heavy_ship", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Heavy" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Heavy" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.light_ship", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Light" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Light" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.galley", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Galley" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Galley" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.transport", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Trnspt" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Trnspt" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.losses", {
         sortingFn: "basic",
-        header: ({ column }) => (
-          <Table.ColumnHeader column={column} title="Losses" />
-        ),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Losses" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
@@ -535,9 +416,7 @@ export const BattleView = ({ warName }: BattleViewProps) => {
         const landBattleInfos: BattleInfo[] = [];
         for (const battle of battles) {
           if (
-            battle.attacker.infantry +
-              battle.attacker.cavalry +
-              battle.attacker.artillery ===
+            battle.attacker.infantry + battle.attacker.cavalry + battle.attacker.artillery ===
             0
           ) {
             navalBattleInfos.push(battle);

@@ -1,8 +1,5 @@
 import { transfer } from "comlink";
-import {
-  reduceToTableExpenseLedger,
-  reduceToTableLedger,
-} from "../utils/budget";
+import { reduceToTableExpenseLedger, reduceToTableLedger } from "../utils/budget";
 import type {
   CountryCulture,
   CountryExpenses,
@@ -22,11 +19,7 @@ import type { MapPayload, QuickTipPayload } from "../types/map";
 import { workLedgerData } from "../utils/ledger";
 import { expandLosses } from "../utils/losses";
 import { wasm } from "./common";
-import type {
-  ActiveWarParticipant,
-  TimelapseIter,
-  Wars,
-} from "@/wasm/wasm_eu4";
+import type { ActiveWarParticipant, TimelapseIter, Wars } from "@/wasm/wasm_eu4";
 import { timeSync } from "@/lib/timeit";
 import { createBudget } from "../features/country-details/budget";
 export * from "./init";
@@ -36,9 +29,7 @@ export const melt = () => wasm.melt();
 
 let provinceIdToColorIndex = new Uint16Array();
 
-export function eu4SetProvinceIdToColorIndex(
-  _provinceIdToColorIndex: Uint16Array<ArrayBuffer>,
-) {
+export function eu4SetProvinceIdToColorIndex(_provinceIdToColorIndex: Uint16Array<ArrayBuffer>) {
   provinceIdToColorIndex = _provinceIdToColorIndex;
 }
 
@@ -102,10 +93,7 @@ export function mapTimelapseNext(): MapTimelapseItem | undefined {
     return transfer({ date, primary, secondary, country }, [arr.buffer]);
   } else if (parts == 3) {
     const primary = arr.subarray(0, arr.length / parts);
-    const secondary = arr.subarray(
-      arr.length / parts,
-      (arr.length * 2) / parts,
-    );
+    const secondary = arr.subarray(arr.length / parts, (arr.length * 2) / parts);
     const country = arr.subarray((arr.length * 2) / parts);
     return transfer({ date, primary, secondary, country }, [arr.buffer]);
   } else {
@@ -179,9 +167,7 @@ export function eu4GetCountrymana(tag: string) {
 }
 
 export function eu4GetCountryHistory(tag: string) {
-  return timeSync("country history calculation", () =>
-    wasm.save.get_country_history(tag),
-  );
+  return timeSync("country history calculation", () => wasm.save.get_country_history(tag));
 }
 
 export function eu4GetCountryInstitutionPush(
@@ -251,9 +237,7 @@ export function eu4GetAnnualIncomeData(filter: CountryMatcher): LedgerDatum[] {
   return workLedgerData(data);
 }
 
-export function eu4GetAnnualNationSizeData(
-  filter: CountryMatcher,
-): LedgerDatum[] {
+export function eu4GetAnnualNationSizeData(filter: CountryMatcher): LedgerDatum[] {
   const data = wasm.save.get_annual_nation_size_ledger(filter);
   return workLedgerData(data);
 }
@@ -263,9 +247,7 @@ export function eu4GetAnnualScoreData(filter: CountryMatcher): LedgerDatum[] {
   return workLedgerData(data);
 }
 
-export function eu4GetAnnualInflationData(
-  filter: CountryMatcher,
-): LedgerDatum[] {
+export function eu4GetAnnualInflationData(filter: CountryMatcher): LedgerDatum[] {
   const data = wasm.save.get_annual_inflation_ledger(filter);
   return workLedgerData(data);
 }
@@ -321,15 +303,11 @@ export function eu4GeographicalDevelopment(filter: CountryMatcher) {
   return wasm.save.geographical_development(filter);
 }
 
-export function eu4OwnedDevelopmentStates(
-  filter: CountryMatcher,
-): OwnedDevelopmentStates[] {
+export function eu4OwnedDevelopmentStates(filter: CountryMatcher): OwnedDevelopmentStates[] {
   return wasm.save.owned_development_states(filter);
 }
 
-export function eu4GetCountriesWarLosses(
-  filter: CountryMatcher,
-): CountryLosses[] {
+export function eu4GetCountriesWarLosses(filter: CountryMatcher): CountryLosses[] {
   const result = wasm.save.countries_war_losses(filter);
 
   return result.map(({ losses, ...rest }) => {
@@ -340,9 +318,7 @@ export function eu4GetCountriesWarLosses(
   });
 }
 
-export type SingleCountryWarCasualties = ReturnType<
-  typeof eu4GetSingleCountryCasualties
->[number];
+export type SingleCountryWarCasualties = ReturnType<typeof eu4GetSingleCountryCasualties>[number];
 export function eu4GetSingleCountryCasualties(tag: string) {
   const raw = wasm.save.get_country_casualties(tag);
   return raw.map((x) => ({

@@ -53,10 +53,7 @@ type FormatListOptions = {
   style?: "long" | "short";
 };
 
-export function formatList(
-  x: string[],
-  options?: Partial<FormatListOptions>,
-): string {
+export function formatList(x: string[], options?: Partial<FormatListOptions>): string {
   if (x.length === 0) {
     return "(None)";
   }

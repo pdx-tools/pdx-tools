@@ -1,8 +1,4 @@
-import type {
-  CountryIncomeLedger,
-  CountryExpenseLedger,
-  CountryInfo,
-} from "@/wasm/wasm_eu4";
+import type { CountryIncomeLedger, CountryExpenseLedger, CountryInfo } from "@/wasm/wasm_eu4";
 import type { Losses } from "../utils/losses";
 export type { CountryDetails } from "../worker/module";
 export type {

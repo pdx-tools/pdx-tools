@@ -29,10 +29,7 @@ type Eu5LoadActions =
   | { kind: "data"; data: Eu5Store }
   | { kind: "error"; error: unknown };
 
-const loadStateReducer = (
-  state: Eu5LoadState,
-  action: Eu5LoadActions,
-): Eu5LoadState => {
+const loadStateReducer = (state: Eu5LoadState, action: Eu5LoadActions): Eu5LoadState => {
   switch (action.kind) {
     case "start": {
       return {
@@ -92,8 +89,7 @@ async function loadEu5Save(
   };
 
   // Extract filename from variant
-  const filename =
-    saveInput.kind === "handle" ? saveInput.name : saveInput.file.name;
+  const filename = saveInput.kind === "handle" ? saveInput.name : saveInput.file.name;
 
   const { engine, saveDate, playthroughName } = await run({
     fn: () =>
@@ -157,13 +153,7 @@ export function useLoadEu5(save: Eu5SaveInput) {
     dispatch({ kind: "start" });
     const controller = pdxAbortController();
 
-    loadEu5Save(
-      save,
-      offscreenCanvas,
-      mapContainer.current!,
-      controller.signal,
-      dispatch,
-    )
+    loadEu5Save(save, offscreenCanvas, mapContainer.current!, controller.signal, dispatch)
       .then(({ store, engine }) => {
         engineRef.current = engine;
         dispatch({ kind: "data", data: store });

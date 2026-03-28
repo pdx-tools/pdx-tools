@@ -3,11 +3,10 @@ import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
 import { cx } from "class-variance-authority";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 
-export const Collapsible =
-  CollapsiblePrimitive.Root as typeof CollapsiblePrimitive.Root & {
-    Trigger: typeof CollapsibleTrigger;
-    Content: typeof CollapsibleContent;
-  };
+export const Collapsible = CollapsiblePrimitive.Root as typeof CollapsiblePrimitive.Root & {
+  Trigger: typeof CollapsibleTrigger;
+  Content: typeof CollapsibleContent;
+};
 Collapsible.Trigger = CollapsiblePrimitive.Trigger;
 Collapsible.Content = CollapsiblePrimitive.Content;
 
@@ -16,10 +15,7 @@ const CollapsibleTrigger = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger> & {
     showChevron?: boolean;
   }
->(function CollapsibleTrigger(
-  { className, children, showChevron = true, ...props },
-  ref,
-) {
+>(function CollapsibleTrigger({ className, children, showChevron = true, ...props }, ref) {
   return (
     <CollapsiblePrimitive.Trigger
       ref={ref}

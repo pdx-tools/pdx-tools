@@ -15,11 +15,7 @@ export interface CountryLeadersProps {
   details: CountryDetails;
 }
 
-const TagsSelect = ({
-  onChange,
-}: {
-  onChange: (s: string | undefined) => void;
-}) => {
+const TagsSelect = ({ onChange }: { onChange: (s: string | undefined) => void }) => {
   const [value, setValue] = useState<string | undefined>();
 
   const valueUpdate = (x: string | undefined) => {
@@ -30,11 +26,7 @@ const TagsSelect = ({
   // Update the select key to do a re-render:
   // https://github.com/radix-ui/primitives/issues/1569
   return (
-    <Select
-      key={value ?? "def"}
-      value={value}
-      onValueChange={(e) => valueUpdate(e)}
-    >
+    <Select key={value ?? "def"} value={value} onValueChange={(e) => valueUpdate(e)}>
       <Select.Trigger className="data-placeholder:font-semibold" asChild>
         <Button>
           <Select.Value placeholder="Tags" />
@@ -51,10 +43,7 @@ const TagsSelect = ({
         <Select.Item value="Conquistador">Conquistador</Select.Item>
         <Select.Item value="ruler">Ruler</Select.Item>
 
-        <Button
-          className="mx-1 mt-2 justify-center"
-          onClick={() => valueUpdate(undefined)}
-        >
+        <Button className="mx-1 mt-2 justify-center" onClick={() => valueUpdate(undefined)}>
           Clear
         </Button>
       </Select.Content>
@@ -71,9 +60,7 @@ const columnHelper = createColumnHelper<
 const columns = [
   columnHelper.accessor("name", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Leader" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Leader" />,
     meta: { className: "min-w-[180px]" },
     cell: ({ row }) =>
       `${row.original.name}${
@@ -85,18 +72,14 @@ const columns = [
 
   columnHelper.accessor("tags", {
     filterFn: "arrIncludes",
-    header: ({ column }) => (
-      <TagsSelect onChange={(e) => column.setFilterValue(e)} />
-    ),
+    header: ({ column }) => <TagsSelect onChange={(e) => column.setFilterValue(e)} />,
     cell: ({ row }) => (
       <>
         {row.original.active && <Badge variant="green">ACTIVE</Badge>}
-        {(row.original.kind == "Admiral" ||
-          row.original.kind == "Explorer") && (
+        {(row.original.kind == "Admiral" || row.original.kind == "Explorer") && (
           <Badge variant="blue">{row.original.kind.toUpperCase()}</Badge>
         )}
-        {(row.original.kind == "General" ||
-          row.original.kind == "Conquistador") && (
+        {(row.original.kind == "General" || row.original.kind == "Conquistador") && (
           <Badge variant="default">{row.original.kind.toUpperCase()}</Badge>
         )}
         {!!row.original.monarch_stats && <Badge variant="gold">RULER</Badge>}
@@ -106,57 +89,37 @@ const columns = [
 
   columnHelper.accessor("activation", {
     sortingFn: "text",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Activation" />
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Activation" />,
   }),
 
   columnHelper.accessor("fire", {
     sortingFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Fire" />,
-    cell: (info) => (
-      <div className="text-right">{formatInt(info.getValue())}</div>
-    ),
+    cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("shock", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Shock" />
-    ),
-    cell: (info) => (
-      <div className="text-right">{formatInt(info.getValue())}</div>
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Shock" />,
+    cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("maneuver", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Maneuver" />
-    ),
-    cell: (info) => (
-      <div className="text-right">{formatInt(info.getValue())}</div>
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Maneuver" />,
+    cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("siege", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Siege" />
-    ),
-    cell: (info) => (
-      <div className="text-right">{formatInt(info.getValue())}</div>
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Siege" />,
+    cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("total", {
     sortingFn: "basic",
-    header: ({ column }) => (
-      <Table.ColumnHeader column={column} title="Total" />
-    ),
-    cell: (info) => (
-      <div className="text-right">{formatInt(info.getValue())}</div>
-    ),
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Total" />,
+    cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 ];
 

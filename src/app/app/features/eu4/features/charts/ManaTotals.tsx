@@ -109,22 +109,10 @@ function ManaTotalsChart({ data }: { data: CountriesManaExpenditure }) {
     return totals.reverse();
   }, [data]);
 
-  const names = useMemo(
-    () => countries.map((country) => country.name),
-    [countries],
-  );
-  const admValues = useMemo(
-    () => countries.map((country) => country.adm),
-    [countries],
-  );
-  const dipValues = useMemo(
-    () => countries.map((country) => country.dip),
-    [countries],
-  );
-  const milValues = useMemo(
-    () => countries.map((country) => country.mil),
-    [countries],
-  );
+  const names = useMemo(() => countries.map((country) => country.name), [countries]);
+  const admValues = useMemo(() => countries.map((country) => country.adm), [countries]);
+  const dipValues = useMemo(() => countries.map((country) => country.dip), [countries]);
+  const milValues = useMemo(() => countries.map((country) => country.mil), [countries]);
 
   const option = useMemo((): EChartsOption => {
     return {
@@ -242,10 +230,5 @@ function ManaTotalsChart({ data }: { data: CountriesManaExpenditure }) {
 
   const chartHeight = Math.max(countries.length * 22 + 80, 200);
 
-  return (
-    <EChart
-      option={option}
-      style={{ height: `${chartHeight}px`, width: "100%" }}
-    />
-  );
+  return <EChart option={option} style={{ height: `${chartHeight}px`, width: "100%" }} />;
 }

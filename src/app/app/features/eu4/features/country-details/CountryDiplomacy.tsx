@@ -73,9 +73,7 @@ const genericSubjects = [
   ["pronoia_subject_type", "Pronoias"],
 ] as const;
 
-const genericSubjectTypes = new Set(
-  genericSubjects.map(([type]) => type as string),
-);
+const genericSubjectTypes = new Set(genericSubjects.map(([type]) => type as string));
 
 export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
   const dip = useMemo(
@@ -99,8 +97,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
   );
 
   const juniorPartners = useMemo(
-    () =>
-      dip.filter(isOfType("JuniorPartner")).map((x) => ({ ...x, ...notMe(x) })),
+    () => dip.filter(isOfType("JuniorPartner")).map((x) => ({ ...x, ...notMe(x) })),
     [dip, notMe],
   );
 
@@ -134,31 +131,21 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
   );
 
   const marriages = useMemo(
-    () =>
-      dip.filter(isOfType("RoyalMarriage")).map((x) => ({ ...x, ...notMe(x) })),
+    () => dip.filter(isOfType("RoyalMarriage")).map((x) => ({ ...x, ...notMe(x) })),
     [dip, notMe],
   );
 
   const relations = <T extends (typeof dip)[number]>(relations: T[]) => {
     const to = relations.filter((x) => x.first.tag === details.tag);
     const from = relations.filter((x) => x.second.tag === details.tag);
-    return [
-      to.map((x) => ({ ...x, ...x.second })),
-      from.map((x) => ({ ...x, ...x.first })),
-    ];
+    return [to.map((x) => ({ ...x, ...x.second })), from.map((x) => ({ ...x, ...x.first }))];
   };
 
   const [warned, warnedBy] = relations(dip.filter(isOfType("Warning")));
   const [subsidizing, subsidized] = relations(dip.filter(isOfType("Subsidy")));
-  const [reparationsGiving, reparationsReceiving] = relations(
-    dip.filter(isOfType("Reparations")),
-  );
-  const [tradePowerGiving, tradePowerReceiving] = relations(
-    dip.filter(isOfType("TransferTrade")),
-  );
-  const [steerTradeGiving, steerTradeReceiving] = relations(
-    dip.filter(isOfType("SteerTrade")),
-  );
+  const [reparationsGiving, reparationsReceiving] = relations(dip.filter(isOfType("Reparations")));
+  const [tradePowerGiving, tradePowerReceiving] = relations(dip.filter(isOfType("TransferTrade")));
+  const [steerTradeGiving, steerTradeReceiving] = relations(dip.filter(isOfType("SteerTrade")));
 
   return (
     <table className="w-full border-collapse">
@@ -176,11 +163,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
         </DiploRow>
 
         {genericSubjects.map(([type, name]) => (
-          <DiploRow
-            key={type}
-            title={name}
-            relations={deps.filter((x) => x.subject_type === type)}
-          >
+          <DiploRow key={type} title={name} relations={deps.filter((x) => x.subject_type === type)}>
             {(x) => <RelationshipSince x={x} />}
           </DiploRow>
         ))}
@@ -189,12 +172,8 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           {(x) => (
             <div>
               <p className="m-0 text-sm">{`${x.name} (${x.tag})`}</p>
-              <p className="m-0 text-sm">
-                {sentenceCasing(x.subject_type.replace("_", " "))}
-              </p>
-              {x.start_date && (
-                <p className="m-0 text-sm">Since: {x.start_date}</p>
-              )}
+              <p className="m-0 text-sm">{sentenceCasing(x.subject_type.replace("_", " "))}</p>
+              {x.start_date && <p className="m-0 text-sm">Since: {x.start_date}</p>}
             </div>
           )}
         </DiploRow>
@@ -203,12 +182,8 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           {(x) => (
             <div>
               <p className="m-0 text-sm">{`${x.name} (${x.tag})`}</p>
-              <p className="m-0 text-sm">
-                Inheritance Value: {x.pu_inheritance_value}
-              </p>
-              {x.start_date && (
-                <p className="m-0 text-sm">Since: {x.start_date}</p>
-              )}
+              <p className="m-0 text-sm">Inheritance Value: {x.pu_inheritance_value}</p>
+              {x.start_date && <p className="m-0 text-sm">Since: {x.start_date}</p>}
             </div>
           )}
         </DiploRow>
@@ -225,9 +200,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           {(x) => (
             <div>
               <p className="m-0 text-sm">{`${x.name} (${x.tag})`}</p>
-              <p className="m-0 text-sm">
-                Monthly amount: {formatInt(x.amount)}
-              </p>
+              <p className="m-0 text-sm">Monthly amount: {formatInt(x.amount)}</p>
               {x.start_date && (
                 <p className="m-0 text-sm">{`Since ${x.start_date}${
                   x.total !== undefined && `: ${formatInt(x.total)}`
@@ -241,9 +214,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           {(x) => (
             <div>
               <p className="m-0 text-sm">{`${x.name} (${x.tag})`}</p>
-              <p className="m-0 text-sm">
-                Monthly amount: {formatInt(x.amount)}
-              </p>
+              <p className="m-0 text-sm">Monthly amount: {formatInt(x.amount)}</p>
               {x.start_date && (
                 <p className="m-0 text-sm">{`Since ${x.start_date}${
                   x.total !== undefined && `: ${formatInt(x.total)}`
@@ -253,16 +224,11 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           )}
         </DiploRow>
 
-        <DiploRow
-          title="Reparations (receiving)"
-          relations={reparationsReceiving}
-        >
+        <DiploRow title="Reparations (receiving)" relations={reparationsReceiving}>
           {(x) => (
             <div>
               <p className="m-0 text-sm">{`${x.name} (${x.tag})`}</p>
-              {x.start_date && (
-                <p className="m-0 text-sm">Since: {x.start_date}</p>
-              )}
+              {x.start_date && <p className="m-0 text-sm">Since: {x.start_date}</p>}
               {x.end_date && <p className="m-0 text-sm">End: {x.end_date}</p>}
             </div>
           )}
@@ -272,18 +238,13 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           {(x) => (
             <div>
               <p className="m-0 text-sm">{`${x.name} (${x.tag})`}</p>
-              {x.start_date && (
-                <p className="m-0 text-sm">Since: {x.start_date}</p>
-              )}
+              {x.start_date && <p className="m-0 text-sm">Since: {x.start_date}</p>}
               {x.end_date && <p className="m-0 text-sm">End: {x.end_date}</p>}
             </div>
           )}
         </DiploRow>
 
-        <DiploRow
-          title="Trade Power (receiving)"
-          relations={tradePowerReceiving}
-        >
+        <DiploRow title="Trade Power (receiving)" relations={tradePowerReceiving}>
           {(x) => <RelationshipSince x={x} />}
         </DiploRow>
 
@@ -291,10 +252,7 @@ export const CountryDiplomacy = ({ details }: { details: CountryDetails }) => {
           {(x) => <RelationshipSince x={x} />}
         </DiploRow>
 
-        <DiploRow
-          title="Steer Trade (receiving)"
-          relations={steerTradeReceiving}
-        >
+        <DiploRow title="Steer Trade (receiving)" relations={steerTradeReceiving}>
           {(x) => <RelationshipSince x={x} />}
         </DiploRow>
 

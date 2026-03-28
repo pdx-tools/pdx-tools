@@ -26,8 +26,7 @@ export const DeleteSave = ({ saveId, ...rest }: DeleteSaveProps) => {
         <Dialog.Header>
           <Dialog.Title>Are you sure this save should be deleted?</Dialog.Title>
           <Dialog.Description>
-            The save will no longer be accessible and any records will be
-            removed
+            The save will no longer be accessible and any records will be removed
           </Dialog.Description>
         </Dialog.Header>
 
@@ -54,10 +53,8 @@ export const DeleteSave = ({ saveId, ...rest }: DeleteSaveProps) => {
               })
             }
           >
-            {saveDeletion.isPending ? (
-              <LoadingIcon className="h-4 w-4 text-gray-800" />
-            ) : null}{" "}
-            Yes, Delete
+            {saveDeletion.isPending ? <LoadingIcon className="h-4 w-4 text-gray-800" /> : null} Yes,
+            Delete
           </Button>
         </Dialog.Footer>
       </Dialog.Content>

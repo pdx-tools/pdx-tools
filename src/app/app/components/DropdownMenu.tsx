@@ -2,24 +2,23 @@ import React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { cx } from "class-variance-authority";
 
-export const DropdownMenu =
-  DropdownMenuPrimitive.Root as typeof DropdownMenuPrimitive.Root & {
-    Trigger: typeof DropdownMenuPrimitive.Trigger;
-    Group: typeof DropdownMenuPrimitive.Group;
-    Portal: typeof DropdownMenuPrimitive.Portal;
-    Sub: typeof DropdownMenuPrimitive.Sub;
-    RadioGroup: typeof DropdownMenuPrimitive.RadioGroup;
-    SubTrigger: typeof DropdownMenuSubTrigger;
-    SubContent: typeof DropdownMenuSubContent;
-    Content: typeof DropdownMenuContent;
-    Item: typeof DropdownMenuItem;
-    CheckboxItem: typeof DropdownMenuCheckboxItem;
-    RadioItem: typeof DropdownMenuRadioItem;
-    Label: typeof DropdownMenuLabel;
-    Separator: typeof DropdownMenuSeparator;
-    Shortcut: typeof DropdownMenuShortcut;
-    Arrow: typeof DropdownMenuPrimitive.Arrow;
-  };
+export const DropdownMenu = DropdownMenuPrimitive.Root as typeof DropdownMenuPrimitive.Root & {
+  Trigger: typeof DropdownMenuPrimitive.Trigger;
+  Group: typeof DropdownMenuPrimitive.Group;
+  Portal: typeof DropdownMenuPrimitive.Portal;
+  Sub: typeof DropdownMenuPrimitive.Sub;
+  RadioGroup: typeof DropdownMenuPrimitive.RadioGroup;
+  SubTrigger: typeof DropdownMenuSubTrigger;
+  SubContent: typeof DropdownMenuSubContent;
+  Content: typeof DropdownMenuContent;
+  Item: typeof DropdownMenuItem;
+  CheckboxItem: typeof DropdownMenuCheckboxItem;
+  RadioItem: typeof DropdownMenuRadioItem;
+  Label: typeof DropdownMenuLabel;
+  Separator: typeof DropdownMenuSeparator;
+  Shortcut: typeof DropdownMenuShortcut;
+  Arrow: typeof DropdownMenuPrimitive.Arrow;
+};
 
 DropdownMenu.Trigger = DropdownMenuPrimitive.Trigger;
 DropdownMenu.Group = DropdownMenuPrimitive.Group;
@@ -33,10 +32,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
     inset?: boolean;
   }
->(function DropdownMenuSubTrigger(
-  { className, inset, children, ...props },
-  ref,
-) {
+>(function DropdownMenuSubTrigger({ className, inset, children, ...props }, ref) {
   return (
     <DropdownMenuPrimitive.SubTrigger
       ref={ref}
@@ -62,7 +58,7 @@ const DropdownMenuSubContent = React.forwardRef<
     <DropdownMenuPrimitive.SubContent
       ref={ref}
       className={cx(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 overflow-hidden rounded-md border p-1 shadow-lg",
+        "z-50 overflow-hidden rounded-md border p-1 shadow-lg data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
         className,
       )}
       {...props}
@@ -81,7 +77,7 @@ const DropdownMenuContent = React.forwardRef<
         ref={ref}
         sideOffset={sideOffset}
         className={cx(
-          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-1001 overflow-hidden rounded-md border bg-white p-1 shadow-md dark:border-gray-600 dark:bg-slate-800",
+          "z-1001 overflow-hidden rounded-md border bg-white p-1 shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 dark:border-gray-600 dark:bg-slate-800",
           className,
         )}
         {...props}
@@ -114,10 +110,7 @@ DropdownMenu.Item = DropdownMenuItem;
 const DropdownMenuCheckboxItem = React.forwardRef<
   React.ComponentRef<typeof DropdownMenuPrimitive.CheckboxItem>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
->(function DropdownMenuCheckboxItem(
-  { className, children, checked, ...props },
-  ref,
-) {
+>(function DropdownMenuCheckboxItem({ className, children, checked, ...props }, ref) {
   return (
     <DropdownMenuPrimitive.CheckboxItem
       ref={ref}
@@ -129,9 +122,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
       {...props}
     >
       <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-        <DropdownMenuPrimitive.ItemIndicator>
-          ✔️
-        </DropdownMenuPrimitive.ItemIndicator>
+        <DropdownMenuPrimitive.ItemIndicator>✔️</DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}
     </DropdownMenuPrimitive.CheckboxItem>
@@ -153,9 +144,7 @@ const DropdownMenuRadioItem = React.forwardRef<
       {...props}
     >
       <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-        <DropdownMenuPrimitive.ItemIndicator>
-          🔵
-        </DropdownMenuPrimitive.ItemIndicator>
+        <DropdownMenuPrimitive.ItemIndicator>🔵</DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}
     </DropdownMenuPrimitive.RadioItem>
@@ -172,11 +161,7 @@ const DropdownMenuLabel = React.forwardRef<
   return (
     <DropdownMenuPrimitive.Label
       ref={ref}
-      className={cx(
-        "px-2 py-1.5 text-sm font-semibold",
-        inset && "pl-8",
-        className,
-      )}
+      className={cx("px-2 py-1.5 text-sm font-semibold", inset && "pl-8", className)}
       {...props}
     />
   );
@@ -197,15 +182,9 @@ const DropdownMenuSeparator = React.forwardRef<
 });
 DropdownMenu.Separator = DropdownMenuSeparator;
 
-const DropdownMenuShortcut = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLSpanElement>) => {
+const DropdownMenuShortcut = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => {
   return (
-    <span
-      className={cx("ml-auto text-xs tracking-widest opacity-60", className)}
-      {...props}
-    />
+    <span className={cx("ml-auto text-xs tracking-widest opacity-60", className)} {...props} />
   );
 };
 DropdownMenu.Shortcut = DropdownMenuShortcut;

@@ -1,10 +1,7 @@
 import { ErrorCatcher, ErrorDisplay } from "@/features/errors";
 import { WebPage } from "@/components/layout";
 import { LoadingState } from "@/components/LoadingState";
-import {
-  AchievementLayout,
-  AchievementPage,
-} from "@/features/eu4/AchievementPage";
+import { AchievementLayout, AchievementPage } from "@/features/eu4/AchievementPage";
 import { seo } from "@/lib/seo";
 import { usingDb } from "@/server-lib/db/connection";
 import { fetchAchievement, findAchievement } from "@/server-lib/fn/achievement";
@@ -21,21 +18,17 @@ export const meta = ({ data }: Route.MetaArgs) =>
   });
 
 const ParamSchema = z.object({ achievementId: z.string() });
-export const loader = withCore(
-  async ({ params: rawParams, context }: Route.LoaderArgs) => {
-    const params = ParamSchema.parse(rawParams);
-    const achievement = findAchievement(params);
+export const loader = withCore(async ({ params: rawParams, context }: Route.LoaderArgs) => {
+  const params = ParamSchema.parse(rawParams);
+  const achievement = findAchievement(params);
 
-    const { db, close } = usingDb(context);
-    const savesPromise = fetchAchievement(db, achievement).finally(() =>
-      close(),
-    );
-    return {
-      achievement,
-      savesPromise,
-    };
-  },
-);
+  const { db, close } = usingDb(context);
+  const savesPromise = fetchAchievement(db, achievement).finally(() => close());
+  return {
+    achievement,
+    savesPromise,
+  };
+});
 
 export default function Eu4Achievement() {
   const { achievement, savesPromise } = useLoaderData<typeof loader>();

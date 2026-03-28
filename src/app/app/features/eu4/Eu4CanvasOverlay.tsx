@@ -42,9 +42,7 @@ export const Eu4CanvasOverlay = () => {
   useDocumentTitle(
     `${filename.replace(".eu4", "")} (${meta.date}) - EU4 (${
       meta.savegame_version.first
-    }.${meta.savegame_version.second}.${
-      meta.savegame_version.third
-    }) - PDX Tools`,
+    }.${meta.savegame_version.second}.${meta.savegame_version.third}) - PDX Tools`,
   );
 
   const homeButton = (

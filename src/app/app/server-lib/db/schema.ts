@@ -22,9 +22,7 @@ export const gameDifficulty = pgEnum("game_difficulty", [
 ]);
 
 const timestampColumn = () =>
-  timestamp("created_on", { precision: 6, withTimezone: true })
-    .notNull()
-    .defaultNow();
+  timestamp("created_on", { precision: 6, withTimezone: true }).notNull().defaultNow();
 
 export const users = pgTable(
   "users",
@@ -71,9 +69,7 @@ export const saves = pgTable(
     gameDifficulty: gameDifficulty("game_difficulty").notNull(),
     aar: text("aar"),
     playthroughId: text("playthrough_id").notNull(),
-    leaderboardQualified: boolean("leaderboard_qualified")
-      .notNull()
-      .default(true),
+    leaderboardQualified: boolean("leaderboard_qualified").notNull().default(true),
   },
   (saves) => [
     index("idx_save_achieve_ids").on(saves.achieveIds),

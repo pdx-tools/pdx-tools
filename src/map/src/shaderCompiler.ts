@@ -1,10 +1,7 @@
 import { notNull } from "./nullcheck";
 import type { ShaderSource } from "./types";
 
-export function compileShaders(
-  gl: WebGL2RenderingContext,
-  sources: ShaderSource[],
-) {
+export function compileShaders(gl: WebGL2RenderingContext, sources: ShaderSource[]) {
   const programs = createPrograms(gl, sources);
   return {
     linked: () => {
@@ -39,11 +36,7 @@ function createPrograms(gl: WebGL2RenderingContext, sources: ShaderSource[]) {
   });
 }
 
-function createShader(
-  gl: WebGL2RenderingContext,
-  type: number,
-  source: string,
-) {
+function createShader(gl: WebGL2RenderingContext, type: number, source: string) {
   const shader = notNull(gl.createShader(type));
   gl.shaderSource(shader, source);
   gl.compileShader(shader);

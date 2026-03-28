@@ -13,9 +13,7 @@ export const ProvinceSelectListener = () => {
   useEffect(() => {
     map.register({
       async onProvinceSelect(province) {
-        const details = await getEu4Worker().eu4GetProvinceDeteails(
-          province.provinceId,
-        );
+        const details = await getEu4Worker().eu4GetProvinceDeteails(province.provinceId);
         if (details) {
           map.highlightProvince(province);
           setDrawerVisible(true);

@@ -53,14 +53,11 @@ export const Home = ({ subtitle }: HomeProps) => {
           <div className="flex flex-col gap-y-4 justify-self-end lg:max-w-lg">
             <h1 className="text-4xl font-extrabold tracking-tight text-balance text-white sm:mt-0 lg:mt-6 lg:text-5xl xl:text-6xl">
               Explore the world{" "}
-              <span className="block italic supports-[text-wrap:balance]:inline">
-                you created
-              </span>
+              <span className="block italic supports-[text-wrap:balance]:inline">you created</span>
             </h1>
             <p className="mt-8 grid max-w-prose gap-4 text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
-              Save files contain a treasure trove of information. PDX Tools is a
-              modern save file analyzer that will unlock hidden EU4 insights
-              without the save leaving your browser.
+              Save files contain a treasure trove of information. PDX Tools is a modern save file
+              analyzer that will unlock hidden EU4 insights without the save leaving your browser.
             </p>
             <p className="grid max-w-prose gap-4 text-base text-gray-300 sm:text-xl lg:text-lg xl:text-xl">
               Ready to explore maps, timelapses, and charts?
@@ -101,23 +98,18 @@ export const Home = ({ subtitle }: HomeProps) => {
       >
         <div className="max-w-7xl">
           <h2 className="text-center text-3xl font-extrabold tracking-tight xl:text-4xl">
-            <span className="mr-2 tracking-widest">{formatInt(1000000)}+</span>{" "}
-            saves analyzed
+            <span className="mr-2 tracking-widest">{formatInt(1000000)}+</span> saves analyzed
           </h2>
-          <p className="mt-3 mb-6 text-center text-xl">
-            Answering questions about your EU4 saves
-          </p>
+          <p className="mt-3 mb-6 text-center text-xl">Answering questions about your EU4 saves</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-y-6 xl:grid-cols-4">
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
               <p className="text-center text-2xl">
-                Could a royal marriage cause a{" "}
-                <abbr title="Personal Union">PU</abbr> or inheritance?
+                Could a royal marriage cause a <abbr title="Personal Union">PU</abbr> or
+                inheritance?
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="text-center text-2xl">
-                How much mana was spent developing provinces?
-              </p>
+              <p className="text-center text-2xl">How much mana was spent developing provinces?</p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white sm:col-span-2">
               <p className="text-center text-2xl">
@@ -125,37 +117,26 @@ export const Home = ({ subtitle }: HomeProps) => {
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="text-center text-2xl">
-                How fast did the reformation spread?
-              </p>
+              <p className="text-center text-2xl">How fast did the reformation spread?</p>
             </div>
 
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="text-center text-2xl">
-                What one time advisor events remain?
-              </p>
+              <p className="text-center text-2xl">What one time advisor events remain?</p>
             </div>
 
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white sm:col-span-2">
               <p className="text-center text-2xl">
-                Where should an institution be developed and how much mana will
-                it cost?
+                Where should an institution be developed and how much mana will it cost?
               </p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="text-center text-2xl">
-                How much more dev is needed to culture shift?
-              </p>
+              <p className="text-center text-2xl">How much more dev is needed to culture shift?</p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="text-center text-2xl">
-                Who fought in the bloodiest and longest wars?
-              </p>
+              <p className="text-center text-2xl">Who fought in the bloodiest and longest wars?</p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
-              <p className="text-center text-2xl">
-                What heirs failed to take the throne?
-              </p>
+              <p className="text-center text-2xl">What heirs failed to take the throne?</p>
             </div>
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-4 text-white">
               <p className="text-center text-2xl">
@@ -178,8 +159,8 @@ export const Home = ({ subtitle }: HomeProps) => {
           </h2>
           <p className="mt-3 mb-6 max-w-prose text-center text-xl">
             Go for gold! Uploaded saves are tagged with{" "}
-            <Link href="/eu4/achievements">supported achievements</Link>.
-            Competition kept fresh with saves on the latest patch prioritized.
+            <Link href="/eu4/achievements">supported achievements</Link>. Competition kept fresh
+            with saves on the latest patch prioritized.
           </p>
           <AchievementWall />
           <HomeLeaderboard />
@@ -194,18 +175,13 @@ export const Home = ({ subtitle }: HomeProps) => {
       >
         <section>
           <div className="grid max-w-prose gap-4">
-            <h2 className="text-2xl font-bold">
-              BYOB (Bring your own browser)
-            </h2>
+            <h2 className="text-2xl font-bold">BYOB (Bring your own browser)</h2>
             <p>
-              No account needed, no downloads, no installs. All analysis takes
-              place within the browser with unparalleled speed
+              No account needed, no downloads, no installs. All analysis takes place within the
+              browser with unparalleled speed
             </p>
             <p>Saves can be uploaded to be shared with others or as a backup</p>
-            <p>
-              Uploaded saves receive enhancements automatically as PDX Tools is
-              updated
-            </p>
+            <p>Uploaded saves receive enhancements automatically as PDX Tools is updated</p>
             <div className="flex flex-col gap-y-2">
               <div className="flex items-center gap-x-2">
                 <FirefoxIcon className="h-8 w-8 text-gray-300" />
@@ -223,10 +199,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             </div>
           </div>
           <div className="flex justify-center">
-            <span
-              className="drop-shadow-xl"
-              style={{ fontSize: "200px", lineHeight: "1" }}
-            >
+            <span className="drop-shadow-xl" style={{ fontSize: "200px", lineHeight: "1" }}>
               ☁️
             </span>
           </div>
@@ -243,12 +216,12 @@ export const Home = ({ subtitle }: HomeProps) => {
           <div className="grid max-w-prose gap-4">
             <h2 className="text-2xl font-bold">Melting Support</h2>
             <p>
-              PDX Tools can convert (aka melt) ironman and binary saves into
-              normal saves so that one can easily inspect the raw contents
+              PDX Tools can convert (aka melt) ironman and binary saves into normal saves so that
+              one can easily inspect the raw contents
             </p>
             <p>
-              As a bonus the newly converted save can be continued in game as if
-              it was a normal save all along
+              As a bonus the newly converted save can be continued in game as if it was a normal
+              save all along
             </p>
           </div>
           <div>
@@ -309,10 +282,7 @@ export const Home = ({ subtitle }: HomeProps) => {
               <Link href="https://discord.gg/rCpNWQW">discord!</Link>
             </p>
             <p>
-              See PDX Tools on{" "}
-              <Link href="https://github.com/pdx-tools/pdx-tools">
-                our Github
-              </Link>{" "}
+              See PDX Tools on <Link href="https://github.com/pdx-tools/pdx-tools">our Github</Link>{" "}
               and help contribute!
             </p>
           </div>
@@ -326,8 +296,8 @@ export const Home = ({ subtitle }: HomeProps) => {
       <footer className="px-5 py-8 text-center text-sm text-balance text-slate-400">
         <a href="https://www.flaticon.com/free-icons/north">EU4</a>,{" "}
         <a href="https://www.flaticon.com/free-icons/victoria-day">V3</a>, and{" "}
-        <a href="https://www.flaticon.com/free-icons/military">HOI4</a> icons
-        created by Freepik and Good Ware - Flaticon
+        <a href="https://www.flaticon.com/free-icons/military">HOI4</a> icons created by Freepik and
+        Good Ware - Flaticon
       </footer>
     </div>
   );

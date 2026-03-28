@@ -13,10 +13,7 @@ export const Slider = React.forwardRef<
   return (
     <SliderPrimitive.Root
       ref={ref}
-      className={cx(
-        "relative flex w-full touch-none items-center select-none",
-        className,
-      )}
+      className={cx("relative flex w-full touch-none items-center select-none", className)}
       {...props}
     >
       <SliderPrimitive.Track

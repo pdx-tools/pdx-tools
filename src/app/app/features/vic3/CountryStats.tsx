@@ -13,49 +13,37 @@ export const CountryStatsTable = ({ stats }: CountryStatsProps) => {
   const columns = [
     columnHelper.accessor("date", {
       sortingFn: "basic",
-      header: ({ column }) => (
-        <Table.ColumnHeader column={column} title="Date" />
-      ),
+      header: ({ column }) => <Table.ColumnHeader column={column} title="Date" />,
     }),
     columnHelper.accessor("gdp", {
       sortingFn: "basic",
       cell: (info) => formatFloat(info.getValue()),
       meta: { className: "text-right" },
-      header: ({ column }) => (
-        <Table.ColumnHeader column={column} title="GDP" />
-      ),
+      header: ({ column }) => <Table.ColumnHeader column={column} title="GDP" />,
     }),
     columnHelper.accessor("gdpGrowth", {
       sortingFn: "basic",
       cell: (info) => formatFloat(info.getValue() * 100, 2) + "%",
       meta: { className: "text-right" },
-      header: ({ column }) => (
-        <Table.ColumnHeader column={column} title="GDP growth" />
-      ),
+      header: ({ column }) => <Table.ColumnHeader column={column} title="GDP growth" />,
     }),
     columnHelper.accessor("gdpc", {
       sortingFn: "basic",
       cell: (info) => formatFloat(info.getValue()),
       meta: { className: "text-right" },
-      header: ({ column }) => (
-        <Table.ColumnHeader column={column} title="GDP/c" />
-      ),
+      header: ({ column }) => <Table.ColumnHeader column={column} title="GDP/c" />,
     }),
     columnHelper.accessor("gdpcGrowth", {
       sortingFn: "basic",
       cell: (info) => formatFloat(info.getValue() * 100, 2) + "%",
       meta: { className: "text-right" },
-      header: ({ column }) => (
-        <Table.ColumnHeader column={column} title="GDP growth" />
-      ),
+      header: ({ column }) => <Table.ColumnHeader column={column} title="GDP growth" />,
     }),
     columnHelper.accessor("sol", {
       sortingFn: "basic",
       cell: (info) => formatFloat(info.getValue()),
       meta: { className: "text-right" },
-      header: ({ column }) => (
-        <Table.ColumnHeader column={column} title="SoL" />
-      ),
+      header: ({ column }) => <Table.ColumnHeader column={column} title="SoL" />,
     }),
   ];
 
