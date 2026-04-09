@@ -1,11 +1,12 @@
 import { wrap, transfer, proxy } from "comlink";
 import type { Remote } from "comlink";
 import type { HoverDisplayData, MapMode } from "@/wasm/wasm_eu5";
-import type { Eu5SaveInput } from "./store/useLoadEu5";
+import type { Eu5SaveInput } from "./store/types";
 import { fetchOk } from "@/lib/fetch";
 import { getLogLevel } from "@/lib/isDeveloper";
 import type * as Eu5WorkerModuleDefinition from "./workers/game/game-module";
 import type * as Eu5MapWorkerModuleDefinition from "./workers/map/map-module";
+import type { SharedCanvasInputConfig } from "@/lib/canvas_courier";
 
 const bundleUrls = import.meta.glob<true, string, string>(
   "../../../../../assets/game/eu5/eu5-*.zip",
@@ -46,11 +47,6 @@ export interface MapModeRange {
   maxValue: number;
 }
 
-export interface CanvasConfig {
-  canvas: HTMLCanvasElement;
-  container: HTMLElement;
-}
-
 export class Eu5GameAdapter {
   private constructor(
     private eu5RawWorker: Worker,
@@ -86,6 +82,7 @@ export class Eu5GameAdapter {
         height: number;
         scaleFactor: number;
       };
+      inputConfig: SharedCanvasInputConfig;
       save: Eu5SaveInput;
     },
     onProgress?: (increment: number) => void,
@@ -142,6 +139,7 @@ export class Eu5GameAdapter {
           {
             canvas: config.canvas,
             display: config.display,
+            inputConfig: config.inputConfig,
           },
           [config.canvas],
         ),
@@ -175,15 +173,7 @@ export function saveWorker(
   );
 
   return {
-    resize: (width: number, height: number, scaleFactor: number) =>
-      mapEngine.resize(width, height, scaleFactor),
     getZoom: () => mapEngine.get_zoom(),
-    onCursorMove: (x: number, y: number) => mapEngine.onCursorMove(x, y),
-    onMouseButton: (button: number, pressed: boolean) => mapEngine.onMouseButton(button, pressed),
-    onScroll: (scrollLines: number) => mapEngine.onScroll(scrollLines),
-    onKeyDown: (code: string) => mapEngine.onKeyDown(code),
-    onKeyUp: (code: string) => mapEngine.onKeyUp(code),
-    isDragging: () => mapEngine.isDragging(),
     setMapMode: async (mode: MapMode) => {
       await saveEngine.setMapMode(mode);
       return mode;
@@ -202,9 +192,6 @@ export function saveWorker(
     melt: () => {
       return saveEngine.melt();
     },
-
-    updateCursorWorldPosition: (canvasX: number, canvasY: number) =>
-      mapEngine.updateCursorWorldPosition(canvasX, canvasY),
 
     startHoverTracking: () => mapEngine.startHoverTracking(),
 

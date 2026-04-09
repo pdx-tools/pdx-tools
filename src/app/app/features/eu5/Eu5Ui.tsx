@@ -1,71 +1,54 @@
-import { useEffect, forwardRef, memo } from "react";
-import type { ForwardedRef } from "react";
+import { memo, useEffect } from "react";
 import { Eu5CanvasOverlay } from "./Eu5CanvasOverlay";
 import { AppLoading } from "@/components/AppLoading";
 import { developerLog } from "@/lib/log";
 import { useLoadEu5, Eu5StoreProvider } from "./store";
-import type { Eu5SaveInput } from "./store/useLoadEu5";
-import { CanvasEventHandler } from "./CanvasEventHandler";
+import type { Eu5SaveInput } from "./store/types";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Eu5HoverDisplay } from "./Eu5HoverDisplay";
 import { Eu5ErrorDisplay } from "./Eu5ErrorDisplay";
+import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 
 type Eu5UiProps = {
   save: Eu5SaveInput;
 };
 
-const TrackingCanvas = memo(
-  forwardRef<HTMLCanvasElement>(function TrackingCanvas(_, ref: ForwardedRef<HTMLCanvasElement>) {
-    useEffect(() => {
-      return () => {
-        developerLog("tracking canvas unmounted");
-      };
-    }, []);
-
-    // Auto-focus canvas on mount so keyboard events work immediately
-    useEffect(() => {
-      if (typeof ref === "object") {
-        ref?.current?.focus();
-      }
-    }, [ref]);
-
-    // Need touch-none for pointermove events to work
-    // ref: https://stackoverflow.com/a/48254578/433785
-    return (
-      <canvas
-        className="h-full w-full touch-none outline-none"
-        ref={ref}
-        width={600}
-        height={400}
-        tabIndex={0}
-      />
-    );
-  }),
-);
-
 export const Eu5Ui = ({ save }: Eu5UiProps) => {
-  const { loading, data, error, mapCanvas, mapContainer } = useLoadEu5(save);
+  const { controller, data, error, loading } = useLoadEu5(save);
+  const { canvasRef, surfaceRef, focus } = useCanvasCourierSurface({ controller });
 
-  const loadingIcon =
-    data === null ? (
-      <div className="absolute inset-0">
-        <AppLoading />
-      </div>
-    ) : null;
+  useEffect(() => {
+    focus();
+  }, [focus, controller]);
+
+  useEffect(() => {
+    if (error !== null) {
+      developerLog(`Eu5 surface error: ${error}`);
+    }
+  }, [error]);
 
   return (
     <>
-      {loadingIcon}
+      {data === null && error === null ? (
+        <div className="absolute inset-0">
+          <AppLoading />
+        </div>
+      ) : null}
 
       {data !== null ? <div className="absolute inset-0 bg-slate-900"></div> : null}
 
-      <div className="absolute inset-0 overflow-hidden" ref={mapContainer}>
-        <TrackingCanvas ref={mapCanvas} />
+      <div className="absolute inset-0 overflow-hidden" ref={surfaceRef}>
+        <canvas
+          className="h-full w-full touch-none outline-none"
+          ref={canvasRef}
+          width={600}
+          height={400}
+          tabIndex={0}
+        />
       </div>
 
       {data !== null ? (
         <Eu5StoreProvider store={data}>
-          <CanvasEventHandler canvasRef={mapCanvas} />
           <Eu5HoverDisplay />
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-stretch justify-end p-6">
             <div className="pointer-events-auto h-full w-[22rem] max-w-full">

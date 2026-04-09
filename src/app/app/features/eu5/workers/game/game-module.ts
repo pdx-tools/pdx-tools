@@ -1,6 +1,6 @@
 import { fetchOk } from "@/lib/fetch";
 import type { Eu5MapEndpoint } from "../map/map-module";
-import type { Eu5SaveInput } from "../../store/useLoadEu5";
+import type { Eu5SaveInput } from "../../store/types";
 import { timeAsync, timeSync } from "@/lib/timeit";
 import init, * as wasm_eu5 from "../../../../wasm/wasm_eu5";
 import type {

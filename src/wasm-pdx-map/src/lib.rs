@@ -201,19 +201,22 @@ impl PdxMapRenderer {
         self.interaction.is_dragging()
     }
 
-    /// Resize the canvas and reconfigure the surface
+    /// Resize the canvas and reconfigure the surface.
+    ///
+    /// Width and height are physical pixels.
     #[wasm_bindgen]
-    pub fn resize(&mut self, logical_width: u32, logical_height: u32, scale_factor: f32) {
-        let size = LogicalSize::new(logical_width, logical_height);
-
+    pub fn resize(&mut self, width: u32, height: u32, scale_factor: f32) {
         // Update both controllers
-        self.interaction.on_resize(size);
+        self.interaction.on_resize(LogicalSize::new(
+            ((width as f32) / scale_factor) as u32,
+            ((height as f32) / scale_factor) as u32,
+        ));
 
         // Transfer updated viewport bounds to render controller
         let bounds = self.interaction.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
 
-        self.controller.resize(size.to_physical(scale_factor));
+        self.controller.resize(PhysicalSize::new(width, height));
     }
 
     /// Convert canvas coordinates to world coordinates
@@ -423,13 +426,15 @@ impl WasmQueuedWorkFuture {
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct CanvasDisplay {
+    /// Physical pixel width of the canvas.
     width: f32,
+    /// Physical pixel height of the canvas.
     height: f32,
     scale_factor: f32,
 }
 
 impl CanvasDisplay {
-    /// Create a new CanvasDisplay
+    /// Create a new CanvasDisplay from physical pixel dimensions.
     pub fn new(width: f32, height: f32, scale_factor: f32) -> Self {
         Self {
             width,
@@ -442,8 +447,8 @@ impl CanvasDisplay {
 impl From<CanvasDisplay> for CanvasDimensions {
     fn from(display: CanvasDisplay) -> Self {
         CanvasDimensions::new(
-            display.width as u32,
-            display.height as u32,
+            (display.width / display.scale_factor) as u32,
+            (display.height / display.scale_factor) as u32,
             display.scale_factor,
         )
     }

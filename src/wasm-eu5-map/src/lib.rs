@@ -2,8 +2,8 @@ use eu5app::{game_data::optimized::OptimizedTextureBundle, should_highlight_indi
 use pdx_map::{
     CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
     InteractionController, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
-    MapTexture, MapViewController, MouseButton, R16, SurfaceMapRenderer, World, WorldPoint,
-    default_clock,
+    MapTexture, MapViewController, MouseButton, PhysicalSize, R16, SurfaceMapRenderer, World,
+    WorldPoint, default_clock,
 };
 use std::time::Duration;
 use wasm_bindgen::prelude::*;
@@ -233,17 +233,21 @@ impl Eu5WasmMapRenderer {
         self.input.is_dragging()
     }
 
-    /// Resize the canvas and reconfigure the surface
+    /// Resize the canvas and reconfigure the surface.
+    ///
+    /// Width and height are physical pixels.
     #[wasm_bindgen]
-    pub fn resize(&mut self, logical_width: u32, logical_height: u32, scale_factor: f32) {
-        let size = LogicalSize::new(logical_width, logical_height);
-        self.input.on_resize(size);
+    pub fn resize(&mut self, width: u32, height: u32, scale_factor: f32) {
+        self.input.on_resize(LogicalSize::new(
+            ((width as f32) / scale_factor) as u32,
+            ((height as f32) / scale_factor) as u32,
+        ));
 
         // Transfer updated viewport bounds to render controller
         let bounds = self.input.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
 
-        self.controller.resize(size.to_physical(scale_factor));
+        self.controller.resize(PhysicalSize::new(width, height));
     }
 
     /// Create a separate screenshot renderer that shares GPU resources but operates independently

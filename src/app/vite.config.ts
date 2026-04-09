@@ -8,6 +8,12 @@ export default defineConfig(() => ({
   resolve: {
     tsconfigPaths: true,
   },
+  server: {
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
+  },
   plugins: [cloudflare({ viteEnvironment: { name: "ssr" } }), tailwindcss(), reactRouter()].concat(
     process.env.PDX_RELEASE
       ? [

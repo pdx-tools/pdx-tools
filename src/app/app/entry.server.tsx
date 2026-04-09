@@ -34,6 +34,10 @@ export default async function handleRequest(
 
   responseHeaders.set("Content-Type", "text/html");
   responseHeaders.set("Content-Security-Policy", globalCsp.join("; "));
+
+  // For shared array buffer for the canvas courier
+  responseHeaders.set("Cross-Origin-Embedder-Policy", "require-corp");
+  responseHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
   return new Response(body, {
     headers: responseHeaders,
     status: responseStatusCode,
