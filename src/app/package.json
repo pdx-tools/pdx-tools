@@ -46,7 +46,7 @@
     "d3-scale": "4.0.2",
     "d3-selection": "3.0.0",
     "dayjs": "1.11.13",
-    "drizzle-orm": "0.44.6",
+    "drizzle-orm": "0.45.2",
     "echarts": "6.0.0",
     "mediabunny": "1.23.0",
     "nanoid": "5.0.9",
