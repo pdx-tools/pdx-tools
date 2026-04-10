@@ -2,16 +2,13 @@ import { defineConfig } from "vite";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { reactRouter } from "@react-router/dev/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
-import tsconfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig(() => ({
-  plugins: [
-    cloudflare({ viteEnvironment: { name: "ssr" } }),
-    tailwindcss(),
-    reactRouter(),
-    tsconfigPaths(),
-  ].concat(
+  resolve: {
+    tsconfigPaths: true,
+  },
+  plugins: [cloudflare({ viteEnvironment: { name: "ssr" } }), tailwindcss(), reactRouter()].concat(
     process.env.PDX_RELEASE
       ? [
           sentryVitePlugin({
@@ -24,7 +21,4 @@ export default defineConfig(() => ({
         ]
       : [],
   ),
-  worker: {
-    plugins: () => [tsconfigPaths()],
-  },
 }));
