@@ -61,10 +61,10 @@
     "zustand": "5.0.2"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.25.0",
+    "@cloudflare/vite-plugin": "1.31.2",
     "@react-router/dev": "7.14.0",
     "@react-router/fs-routes": "7.14.0",
-    "@tailwindcss/vite": "4.1.14",
+    "@tailwindcss/vite": "4.2.2",
     "@types/d3-axis": "3.0.6",
     "@types/d3-scale": "4.0.9",
     "@types/d3-selection": "3.0.11",
@@ -74,12 +74,11 @@
     "@types/wicg-file-system-access": "2023.10.5",
     "drizzle-kit": "0.31.5",
     "postcss": "8.4.49",
-    "tailwindcss": "4.1.14",
+    "tailwindcss": "4.2.2",
     "tailwindcss-animate": "1.0.7",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-tsconfig-paths": "5.1.4",
-    "vitest": "4.0.15",
+    "vitest": "4.1.4",
     "wrangler": "catalog:"
   },
   "browserslist": [
