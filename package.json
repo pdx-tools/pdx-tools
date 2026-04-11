@@ -14,8 +14,8 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "oxfmt": "0.42.0",
-    "oxlint": "1.57.0",
+    "oxfmt": "0.44.0",
+    "oxlint": "1.59.0",
     "typescript": "catalog:"
   },
   "prettier": {
