@@ -35,7 +35,7 @@ import { Link } from "@/components/Link";
 import { Alert } from "@/components/Alert";
 import { emitEvent } from "@/lib/events";
 import { getErrorMessage } from "@/lib/getErrorMessage";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { throttle } from "@/lib/throttle";
 import { useTriggeredAction } from "@/hooks/useTriggeredAction";
 import { DropdownMenu } from "@/components/DropdownMenu";

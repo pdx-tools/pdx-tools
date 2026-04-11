@@ -20,7 +20,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { downloadData } from "@/lib/downloadData";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useTriggeredAction } from "@/hooks/useTriggeredAction";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { Switch } from "@/components/Switch";

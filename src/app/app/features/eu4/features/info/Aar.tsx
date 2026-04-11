@@ -5,7 +5,7 @@ import { Button } from "@/components/Button";
 import { cx } from "class-variance-authority";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import { check } from "@/lib/isPresent";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface AarProps {
   defaultValue?: string;

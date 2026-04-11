@@ -4,7 +4,7 @@ import { Button } from "@/components/Button";
 import type { ButtonProps } from "@/components/Button";
 import { Dialog } from "@/components/Dialog";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { TrashIcon } from "@heroicons/react/24/outline";
 
 interface DeleteSaveProps extends ButtonProps {
