@@ -2,7 +2,7 @@ import { Alert } from "@/components/Alert";
 import { pdxApi } from "@/services/appApi";
 import { Button } from "@/components/Button";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { Input } from "@/components/Input";
 import { useSession } from "./SessionProvider";

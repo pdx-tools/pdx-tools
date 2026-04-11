@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export function useToastOnError(error: Error | null, title: string) {
   useEffect(() => {

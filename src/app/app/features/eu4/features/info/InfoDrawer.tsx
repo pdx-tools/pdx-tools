@@ -29,7 +29,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Dialog } from "@/components/Dialog";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { pdxApi } from "@/services/appApi";
 import type { CompletedAchievement, GreatPower, PlayerHistory } from "@/wasm/wasm_eu4";
 import { findMap } from "@/lib/findMap";
