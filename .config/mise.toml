@@ -7,8 +7,8 @@
 "ubi:google/flatbuffers" = { version = "25.2.10", matching = "clang", exe = "flatc" }
 "ubi:llvm/llvm-project" = { version = "llvmorg-19.1.7", matching = "LLVM-", extract_all = "true", bin_path = "bin", os = ["macos"] }
 "ubi:rclone/rclone" = { version = "1.70.3" }
-"ubi:rustwasm/wasm-bindgen" = { version = "0.2.114", extract_all = "true" }
-"ubi:WebAssembly/binaryen" = { version = "version_125", extract_all = "true", bin_path = "bin" }
+"ubi:rustwasm/wasm-bindgen" = { version = "0.2.118", extract_all = "true" }
+"ubi:WebAssembly/binaryen" = { version = "version_129", extract_all = "true", bin_path = "bin" }
 
 [settings]
 idiomatic_version_file_enable_tools = ["rust"]
