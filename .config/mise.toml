@@ -69,27 +69,17 @@ depends = ["tokenize"]
 run = "cargo build -p pdx-tools-api"
 hide = true
 
-[tasks."build:docs:docusaurus"]
+[tasks."build:docs:astro"]
 depends = ["pnpm-install", "docs:setup:changelog"]
 dir = "src/docs"
 hide = true
 run = "pnpm run build"
 
 [tasks."build:docs"]
-depends = ["build:docs:docusaurus"]
-dir = "src/docs/build"
+depends = ["build:docs:astro"]
 hide = true
-run = [
-    "cp -r assets blog docs blog.html changelog.html docs.html img ../../app/public/."
-]
-run_windows = [
-    "xcopy assets ..\\..\\app\\public\\assets /E /I /Y",
-    "xcopy blog ..\\..\\app\\public\\blog /E /I /Y",
-    "xcopy docs ..\\..\\app\\public\\docs /E /I /Y",
-    "xcopy blog.html ..\\..\\app\\public /I /Y",
-    "xcopy docs.html ..\\..\\app\\public /I /Y",
-    "xcopy img ..\\..\\app\\public\\img /E /I /Y",
-]
+run = "cp -r src/docs/dist/. src/app/public/."
+run_windows = "xcopy src\\docs\\dist src\\app\\public /E /I /Y"
 
 [tasks."build:app"]
 description = "Build pdx.tools frontend for deployment"
@@ -182,7 +172,7 @@ run = "pnpm run dev"
 description = "Run the docs"
 depends = ["pnpm-install", "docs:setup:changelog"]
 dir = "./src/docs"
-run = "pnpm run docusaurus start --no-open"
+run = "pnpm run dev"
 
 [tasks.dev]
 description = "Run complete development setup (backend and frontend)"

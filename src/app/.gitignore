@@ -4,6 +4,9 @@ public/changelog*
 public/docs*
 public/img
 public/whats-new.json
+public/pagefind
+public/_astro
+public/404.html
 *_gen.ts
 app/server-lib/save-parsing-types.ts
 app/wasm/
