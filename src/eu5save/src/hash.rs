@@ -83,3 +83,4 @@ pub type FxHashMap<K, V> = std::collections::HashMap<K, V, FxBuildHasher>;
 pub type FxHashSet<K> = std::collections::HashSet<K, FxBuildHasher>;
 
 pub type FnvHashMap<K, V> = std::collections::HashMap<K, V, FnvBuildHasher>;
+pub type FnvHashSet<K> = std::collections::HashSet<K, FnvBuildHasher>;
