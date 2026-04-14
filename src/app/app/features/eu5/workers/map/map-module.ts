@@ -10,6 +10,18 @@ import wasmPath from "../../../../wasm/wasm_eu5_map_bg.wasm?url";
 import { proxy, expose } from "comlink";
 import { formatInt } from "@/lib/format";
 import type { ScreenshotOverlayData, TableCell } from "@/wasm/wasm_eu5";
+import {
+  SharedCanvasInputReader,
+  SharedCanvasEventType,
+  SharedCanvasEventAction,
+  WebKeyCode,
+} from "@/lib/canvas_courier";
+import type { SharedCanvasInputConfig, SharedCanvasDecodedEvent } from "@/lib/canvas_courier";
+
+// Reverse lookup: numeric WebKeyCode value → string key code name
+const webKeyCodeToString = Object.fromEntries(
+  Object.entries(WebKeyCode).map(([name, value]) => [value as number, name]),
+) as Record<number, string>;
 
 const initialized = (async () => {
   await timeAsync("Load EU5 Map Wasm module", () => init({ module_or_path: wasmPath }));
@@ -61,9 +73,11 @@ export const createMapEngine = async (
   {
     canvas,
     display,
+    inputConfig,
   }: {
     canvas: OffscreenCanvas;
     display: CanvasDisplay;
+    inputConfig: SharedCanvasInputConfig;
   },
   {
     bundleFetch,
@@ -127,46 +141,6 @@ export const createMapEngine = async (
     _dirtyRender = true;
   };
 
-  // You would think that we should only render when dirty, but for some reason
-  // firefox trips over itself and the clear color bleeds through. So for now we
-  // just render every frame.
-  let hasLocationInformation = false;
-  const rafRender = async () => {
-    if (newLocations) {
-      hasLocationInformation = true;
-      app.sync_location_array(newLocations);
-      newLocations = null;
-    }
-
-    if (newDimensions) {
-      let diff =
-        Math.abs(newDimensions.width - prevDimensions.width) +
-        Math.abs(newDimensions.height - prevDimensions.height) +
-        Math.abs(newDimensions.scaleFactor - prevDimensions.scaleFactor);
-
-      if (diff >= 4) {
-        prevDimensions = { ...newDimensions };
-        // Firefox also needs to wait for queued work before resizing
-        // otherwise it will freeze up
-        await app.queued_work().wait();
-        app.resize(newDimensions.width, newDimensions.height, newDimensions.scaleFactor);
-      }
-
-      newDimensions = null;
-    }
-
-    app.tick();
-    if (pressedKeys.size > 0 && lastCursorPosition) {
-      updateCursorWorldPosition(lastCursorPosition.x, lastCursorPosition.y);
-    }
-
-    if (hasLocationInformation) {
-      app.render();
-    }
-    requestAnimationFrame(rafRender);
-  };
-  rafRender();
-
   const startHoverTracking = () => {
     hoverTrackingActive = true;
   };
@@ -229,40 +203,112 @@ export const createMapEngine = async (
     }
   };
 
+  const processInputEvent = (event: SharedCanvasDecodedEvent) => {
+    switch (event.type) {
+      case SharedCanvasEventType.Pointer: {
+        const { action, x, y, button } = event;
+        if (action === SharedCanvasEventAction.Move) {
+          app.on_cursor_move(x, y);
+          updateCursorWorldPosition(x, y);
+          lastCursorPosition = { x, y };
+          renderOrQueue();
+        } else if (action === SharedCanvasEventAction.Down) {
+          app.on_cursor_move(x, y);
+          lastCursorPosition = { x, y };
+          app.on_mouse_button(button >= 0 ? button : 0, true);
+          renderOrQueue();
+        } else if (action === SharedCanvasEventAction.Up) {
+          app.on_mouse_button(button >= 0 ? button : 0, false);
+          renderOrQueue();
+        } else if (action === SharedCanvasEventAction.Leave) {
+          app.on_mouse_button(0, false);
+          lastCursorPosition = null;
+          updateCursorWorldPosition(-1, -1);
+          renderOrQueue();
+        }
+        break;
+      }
+      case SharedCanvasEventType.Keyboard: {
+        const code = webKeyCodeToString[event.keyCode] ?? "Unknown";
+        if (event.action === SharedCanvasEventAction.Down && !event.repeat) {
+          pressedKeys.add(code);
+          app.on_key_down(code);
+        } else if (event.action === SharedCanvasEventAction.Up) {
+          pressedKeys.delete(code);
+          app.on_key_up(code);
+        }
+        break;
+      }
+      case SharedCanvasEventType.Wheel: {
+        const scrollLines = event.deltaY < 0 ? 1 : -1;
+        app.on_scroll(scrollLines);
+        zoomChangeCallback?.(app.get_zoom());
+        renderOrQueue();
+        break;
+      }
+      case SharedCanvasEventType.Resize: {
+        newDimensions = {
+          width: event.width,
+          height: event.height,
+          scaleFactor: event.scaleFactor,
+        };
+        renderOrQueue();
+        break;
+      }
+      default:
+        break;
+    }
+  };
+
+  // You would think that we should only render when dirty, but for some reason
+  // firefox trips over itself and the clear color bleeds through. So for now we
+  // just render every frame.
+  let hasLocationInformation = false;
+  const rafRender = async () => {
+    // Sync location data before draining events so that updateCursorWorldPosition
+    // always has valid location arrays available when it calls gpu_loc_to_app.
+    if (newLocations) {
+      hasLocationInformation = true;
+      app.sync_location_array(newLocations);
+      newLocations = null;
+    }
+
+    // Drain canvas_courier input events before ticking
+    inputReader.drain(processInputEvent);
+
+    if (newDimensions) {
+      let diff =
+        Math.abs(newDimensions.width - prevDimensions.width) +
+        Math.abs(newDimensions.height - prevDimensions.height) +
+        Math.abs(newDimensions.scaleFactor - prevDimensions.scaleFactor);
+
+      if (diff >= 4) {
+        prevDimensions = { ...newDimensions };
+        // Firefox also needs to wait for queued work before resizing
+        // otherwise it will freeze up
+        await app.queued_work().wait();
+        app.resize(newDimensions.width, newDimensions.height, newDimensions.scaleFactor);
+      }
+
+      newDimensions = null;
+    }
+
+    app.tick();
+    if (pressedKeys.size > 0 && lastCursorPosition) {
+      updateCursorWorldPosition(lastCursorPosition.x, lastCursorPosition.y);
+    }
+
+    if (hasLocationInformation) {
+      app.render();
+    }
+    requestAnimationFrame(rafRender);
+  };
+  let inputReader = new SharedCanvasInputReader(inputConfig);
+  rafRender();
+
   return proxy({
-    resize: (width: number, height: number, scaleFactor: number) => {
-      newDimensions = { width, height, scaleFactor };
-      renderOrQueue();
-    },
     get_zoom: () => {
       return app.get_zoom();
-    },
-    onCursorMove: (x: number, y: number) => {
-      app.on_cursor_move(x, y);
-      renderOrQueue();
-    },
-    onMouseButton: (button: number, pressed: boolean) => {
-      app.on_mouse_button(button, pressed);
-      renderOrQueue();
-    },
-    onScroll: (scrollLines: number) => {
-      app.on_scroll(scrollLines);
-      renderOrQueue();
-
-      // Notify about zoom level change
-      const newZoom = app.get_zoom();
-      zoomChangeCallback?.(newZoom);
-    },
-    onKeyDown: (code: string) => {
-      pressedKeys.add(code);
-      app.on_key_down(code);
-    },
-    onKeyUp: (code: string) => {
-      pressedKeys.delete(code);
-      app.on_key_up(code);
-    },
-    isDragging: () => {
-      return app.is_dragging();
     },
     generateWorldScreenshot: async (
       fullResolution: boolean,
@@ -337,8 +383,6 @@ export const createMapEngine = async (
     highlightLocation: (locationIdx: number) => {
       app.highlight_location(locationIdx);
     },
-
-    updateCursorWorldPosition: updateCursorWorldPosition,
 
     startHoverTracking: startHoverTracking,
 

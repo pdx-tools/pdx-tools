@@ -38,7 +38,7 @@ pub use renderer::{
 #[cfg(feature = "render")]
 pub use wgpu;
 
-/// Canvas dimensions in logical pixels (eg: browser window size)
+/// Canvas dimensions with a logical size and scale factor.
 ///
 /// Helper type bundling logical size and scale factor.
 /// Used by WASM bindings and platform integration layers for convenience.
@@ -49,6 +49,7 @@ pub struct CanvasDimensions {
 }
 
 impl CanvasDimensions {
+    /// Create a new CanvasDimensions from a logical size.
     pub fn new(width: u32, height: u32, scale_factor: f32) -> Self {
         Self {
             size: LogicalSize::new(width, height),

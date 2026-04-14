@@ -1,8 +1,9 @@
 import { dequal } from "@/lib/dequal";
 import { create } from "zustand";
 import type { Eu4SaveInput } from "@/features/eu4/store";
-import type { Eu5SaveInput } from "@/features/eu5/store/useLoadEu5";
+import type { Eu5SaveInput } from "@/features/eu5/store/types";
 import type { Vic3SaveInput } from "@/features/vic3/store";
+import { terminateCurrentAnalysis } from "./analysisLifecycle";
 
 export type SaveGameInput =
   | { kind: "eu4"; data: Eu4SaveInput }
@@ -45,9 +46,13 @@ const useEngineStore = create<EngineState>()((set, get) => ({
   input: null,
   inputId: 0,
   actions: {
-    resetSaveAnalysis: () => set({ input: null }),
+    resetSaveAnalysis: () => {
+      terminateCurrentAnalysis();
+      set({ input: null });
+    },
     fileInput: (input: SaveGameInput) => {
       if (!dequal(input, get().input)) {
+        terminateCurrentAnalysis();
         set({ input, inputId: get().inputId + 1 });
       }
     },
