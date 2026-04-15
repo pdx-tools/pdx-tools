@@ -27,6 +27,7 @@ pub enum MapMode {
     BuildingLevels,
     PossibleTax,
     Religion,
+    StateEfficacy,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
@@ -56,6 +57,7 @@ pub struct SelectionSummaryData {
     pub entity_count: u32,
     pub location_count: u32,
     pub is_empty: bool,
+    pub total_population: u32,
 }
 
 impl From<MapMode> for Eu5MapMode {
@@ -70,6 +72,7 @@ impl From<MapMode> for Eu5MapMode {
             MapMode::BuildingLevels => Eu5MapMode::BuildingLevels,
             MapMode::PossibleTax => Eu5MapMode::PossibleTax,
             MapMode::Religion => Eu5MapMode::Religion,
+            MapMode::StateEfficacy => Eu5MapMode::StateEfficacy,
         }
     }
 }
@@ -86,6 +89,7 @@ impl From<Eu5MapMode> for MapMode {
             Eu5MapMode::BuildingLevels => MapMode::BuildingLevels,
             Eu5MapMode::PossibleTax => MapMode::PossibleTax,
             Eu5MapMode::Religion => MapMode::Religion,
+            Eu5MapMode::StateEfficacy => MapMode::StateEfficacy,
         }
     }
 }
@@ -370,8 +374,9 @@ impl Eu5App {
             Eu5MapMode::RgoLevel => (0.0, session.max_rgo_level()),
             Eu5MapMode::BuildingLevels => (0.0, session.max_building_levels()),
             Eu5MapMode::PossibleTax => (0.0, session.max_possible_tax()),
+            Eu5MapMode::StateEfficacy => (0.0, session.max_state_efficacy()),
             Eu5MapMode::Control => (0.0, 1.0),
-            // For non-numeric modes (Political, Markets), return default range
+            // For non-numeric modes (Political, Markets, Religion), return default range
             _ => (0.0, 1.0),
         };
 
@@ -430,10 +435,22 @@ impl Eu5App {
     pub fn get_selection_summary(&self) -> SelectionSummaryData {
         let sel = self.app.selection_state();
         let summary = sel.entity_summary(&self.app);
+        let total_population: u32 = sel
+            .selected_locations()
+            .iter()
+            .filter_map(|&idx| {
+                let loc = self.app.gamestate().locations.index(idx).location();
+                if loc.owner.is_dummy() {
+                    return None;
+                }
+                Some(self.app.gamestate().location_population(loc) as u32)
+            })
+            .sum();
         SelectionSummaryData {
             entity_count: summary.entity_count as u32,
             location_count: summary.location_count as u32,
             is_empty: sel.is_empty(),
+            total_population,
         }
     }
 

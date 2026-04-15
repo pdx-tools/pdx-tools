@@ -15,6 +15,7 @@ const NUMERIC_MAP_MODES: Record<MapMode, boolean> = {
   buildingLevels: true,
   possibleTax: true,
   religion: false,
+  stateEfficacy: true,
 };
 
 function formatLegendValue(mode: MapMode, value: number): string {

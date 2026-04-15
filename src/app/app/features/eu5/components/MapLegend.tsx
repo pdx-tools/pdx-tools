@@ -37,6 +37,7 @@ const MAP_MODE_TITLES: Record<MapMode, string> = {
   buildingLevels: "Building Levels",
   possibleTax: "Possible Tax",
   religion: "Religion",
+  stateEfficacy: "State Efficacy",
 };
 
 export function MapLegend({ data }: MapLegendProps) {

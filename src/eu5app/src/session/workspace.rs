@@ -177,6 +177,12 @@ impl<'bump> Eu5Workspace<'bump> {
         self.gradient_domain(|_, loc| loc.possible_tax).1
     }
 
+    /// Effective max for the state efficacy gradient (filtered when selection active).
+    pub fn max_state_efficacy(&self) -> f64 {
+        self.gradient_domain(|_, loc| loc.control * loc.development)
+            .1
+    }
+
     /// Lazily computes and caches building levels for all locations.
     /// Returns a reference to the cached data.
     pub fn get_location_building_levels(&self) -> &LocationIndexedVec<f64> {
@@ -416,6 +422,29 @@ impl<'bump> Eu5Workspace<'bump> {
         self.interpolate_brown_green(save_location.possible_tax, max_possible_tax)
     }
 
+    pub fn location_state_efficacy_color(
+        &self,
+        location_idx: eu5save::models::LocationIdx,
+        max_efficacy: f64,
+    ) -> GpuColor {
+        let terrain = self.location_terrain(location_idx);
+        if terrain.is_water() {
+            return GpuColor::WATER;
+        } else if !terrain.is_passable() {
+            return GpuColor::IMPASSABLE;
+        }
+
+        let save_location_entry = self.gamestate.locations.index(location_idx);
+        let save_location = save_location_entry.location();
+
+        if save_location.owner.is_dummy() {
+            return GpuColor::UNOWNED;
+        }
+
+        let efficacy = save_location.control * save_location.development;
+        self.interpolate_brown_green(efficacy, max_efficacy)
+    }
+
     pub(crate) fn get_country_color_for_location<F>(
         &self,
         location_idx: eu5save::models::LocationIdx,
@@ -637,6 +666,7 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::BuildingLevels => self.apply_building_levels_colors(),
             MapMode::PossibleTax => self.apply_possible_tax_colors(),
             MapMode::Religion => self.apply_religion_colors(),
+            MapMode::StateEfficacy => self.apply_state_efficacy_colors(),
         }
 
         self.apply_selection_dimming();
@@ -858,6 +888,37 @@ impl<'bump> Eu5Workspace<'bump> {
             };
             let possible_tax_color = self.location_possible_tax_color(location_idx, max);
             color_data.push((idx, possible_tax_color));
+        }
+
+        // Apply colors
+        for (idx, color) in color_data {
+            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
+                continue;
+            };
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
+            gpu_location.set_primary_color(color);
+        }
+
+        // Copy primary colors to secondary to disable stripes
+        self.location_arrays.copy_primary_to_secondary();
+    }
+
+    fn apply_state_efficacy_colors(&mut self) {
+        let (global_max, filtered_max) =
+            self.gradient_domain(|_, loc| loc.control * loc.development);
+
+        // Collect color data first to avoid borrow conflicts
+        let mut color_data = Vec::new();
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let max = if self.selection_state.contains(location_idx) {
+                filtered_max
+            } else {
+                global_max
+            };
+            let efficacy_color = self.location_state_efficacy_color(location_idx, max);
+            color_data.push((idx, efficacy_color));
         }
 
         // Apply colors
@@ -1684,6 +1745,13 @@ impl<'bump> Eu5Workspace<'bump> {
 
             // Skip unowned locations
             if location.owner.is_dummy() {
+                continue;
+            }
+
+            // When a selection is active, only include selected locations
+            if !self.selection_state.is_empty()
+                && !self.selection_state.contains(location_entry.idx())
+            {
                 continue;
             }
 
