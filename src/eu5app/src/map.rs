@@ -35,6 +35,7 @@ pub enum MapMode {
     BuildingLevels,
     PossibleTax,
     Religion,
+    StateEfficacy,
 }
 
 impl MapMode {
@@ -49,6 +50,7 @@ impl MapMode {
             MapMode::BuildingLevels => "Building Levels",
             MapMode::PossibleTax => "Possible Tax",
             MapMode::Religion => "Religion",
+            MapMode::StateEfficacy => "State Efficacy",
         }
     }
 }

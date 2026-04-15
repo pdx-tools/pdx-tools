@@ -49,11 +49,15 @@ const columns = [
 
 interface StateEfficacyProps {
   data: StateEfficacyData;
+  minLocations?: number;
 }
 
-export const StateEfficacy = ({ data }: StateEfficacyProps) => {
-  // Filter nations with < 10 locations
-  const filteredData = useMemo(() => data.countries.filter((c) => c.locationCount >= 10), [data]);
+export const StateEfficacy = ({ data, minLocations = 10 }: StateEfficacyProps) => {
+  // Filter nations with fewer than minLocations locations
+  const filteredData = useMemo(
+    () => data.countries.filter((c) => c.locationCount >= minLocations),
+    [data, minLocations],
+  );
 
   return (
     <div className="flex flex-col gap-8 pb-10">
