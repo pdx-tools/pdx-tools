@@ -1,4 +1,5 @@
 use crate::game_data::GameData;
+use crate::selection::{LocationData, SelectionAdapter, SelectionState};
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::FxHashMap;
 use eu5save::models::{
@@ -23,6 +24,9 @@ pub struct Eu5Workspace<'bump> {
     current_map_mode: MapMode,
     location_arrays: pdx_map::LocationArrays,
     gpu_indices: LocationIndexedVec<Option<GpuLocationIdx>>,
+
+    // Filter / selection state
+    selection_state: SelectionState,
 }
 
 impl<'bump> Eu5Workspace<'bump> {
@@ -95,6 +99,7 @@ impl<'bump> Eu5Workspace<'bump> {
             current_map_mode: MapMode::Political,
             location_arrays,
             gpu_indices,
+            selection_state: SelectionState::new(),
         };
 
         workspace.build_location_arrays();
@@ -559,7 +564,26 @@ impl<'bump> Eu5Workspace<'bump> {
         &self.location_arrays
     }
 
+    pub fn selection_state(&self) -> &SelectionState {
+        &self.selection_state
+    }
+
+    /// Select entities by resolving `clicked_idx` using the current map mode and zoom.
+    /// Replaces any existing selection.
+    pub fn select_entity(&mut self, clicked_idx: eu5save::models::LocationIdx, zoom: f32) {
+        let mode = self.current_map_mode;
+        let new_selection = SelectionAdapter::new(&*self).resolve_click(clicked_idx, mode, zoom);
+        self.selection_state.replace(new_selection);
+    }
+
+    pub fn clear_selection(&mut self) {
+        self.selection_state.clear();
+    }
+
     pub fn set_map_mode(&mut self, mode: MapMode) {
+        if mode != self.current_map_mode {
+            self.selection_state.clear();
+        }
         self.current_map_mode = mode;
 
         // Apply colors based on mode
@@ -1646,6 +1670,32 @@ pub struct CountryStateEfficacy {
     pub location_count: u32,
     pub avg_efficacy: f64,
     pub total_population: u32,
+}
+
+impl LocationData for Eu5Workspace<'_> {
+    fn iter_locations(
+        &self,
+    ) -> impl Iterator<Item = (eu5save::models::LocationIdx, crate::selection::LocationInfo)> + '_
+    {
+        self.gamestate.locations.iter().map(|entry| {
+            let loc = entry.location();
+            (
+                entry.idx(),
+                crate::selection::LocationInfo {
+                    owner: loc.owner.real_id(),
+                    market: loc.market,
+                },
+            )
+        })
+    }
+
+    fn location_info(&self, idx: eu5save::models::LocationIdx) -> crate::selection::LocationInfo {
+        let loc = self.gamestate.locations.index(idx).location();
+        crate::selection::LocationInfo {
+            owner: loc.owner.real_id(),
+            market: loc.market,
+        }
+    }
 }
 
 impl std::fmt::Debug for Eu5Workspace<'_> {
