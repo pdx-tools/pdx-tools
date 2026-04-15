@@ -121,25 +121,60 @@ impl<'bump> Eu5Workspace<'bump> {
         &self.gamestate
     }
 
+    /// Compute gradient domain bounds for a quantitative mode in a single pass.
+    ///
+    /// Returns `(global_max, filtered_max)`:
+    fn gradient_domain(
+        &self,
+        extract: impl Fn(eu5save::models::LocationIdx, &eu5save::models::Location) -> f64,
+    ) -> (f64, f64) {
+        let has_selection = !self.selection_state.is_empty();
+        let mut global_max = 0.0_f64;
+        let mut filtered_max = 0.0_f64;
+        for loc_entry in self.gamestate.locations.iter() {
+            let idx = loc_entry.idx();
+            let terrain = self.location_terrain(idx);
+            if terrain.is_water() || !terrain.is_passable() {
+                continue;
+            }
+            let loc = loc_entry.location();
+            if loc.owner.is_dummy() {
+                continue;
+            }
+            let value = extract(idx, loc);
+            global_max = global_max.max(value);
+            if !has_selection || self.selection_state.contains(idx) {
+                filtered_max = filtered_max.max(value);
+            }
+        }
+        (global_max, filtered_max)
+    }
+
+    /// Effective max for the development gradient (filtered when selection active).
     pub fn max_development(&self) -> f64 {
-        self.gamestate.location_max_development().0
+        self.gradient_domain(|_, loc| loc.development).1
     }
 
+    /// Effective max for the RGO level gradient (filtered when selection active).
     pub fn max_rgo_level(&self) -> f64 {
-        self.gamestate.location_max_rgo_level().0
+        self.gradient_domain(|_, loc| loc.rgo_level).1
     }
 
+    /// Effective max for the population gradient (filtered when selection active).
     pub fn max_population(&self) -> f64 {
-        self.gamestate.location_max_population().0
+        self.gradient_domain(|_, loc| self.gamestate.location_population(loc))
+            .1
     }
 
+    /// Effective max for the building levels gradient (filtered when selection active).
     pub fn max_building_levels(&self) -> f64 {
         let levels = self.get_location_building_levels();
-        levels.iter().copied().fold(0.0_f64, f64::max)
+        self.gradient_domain(|idx, _| levels[idx]).1
     }
 
+    /// Effective max for the possible tax gradient (filtered when selection active).
     pub fn max_possible_tax(&self) -> f64 {
-        self.gamestate.location_max_possible_tax().0
+        self.gradient_domain(|_, loc| loc.possible_tax).1
     }
 
     /// Lazily computes and caches building levels for all locations.
@@ -665,13 +700,18 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn apply_development_colors(&mut self) {
-        let max_development = self.max_development();
+        let (global_max, filtered_max) = self.gradient_domain(|_, loc| loc.development);
 
         // Collect color data first to avoid borrow conflicts
         let mut color_data = Vec::new();
         for idx in 0..self.gamestate.locations.len() {
             let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let development_color = self.location_development_color(location_idx, max_development);
+            let max = if self.selection_state.contains(location_idx) {
+                filtered_max
+            } else {
+                global_max
+            };
+            let development_color = self.location_development_color(location_idx, max);
             color_data.push((idx, development_color));
         }
 
@@ -690,13 +730,19 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn apply_population_colors(&mut self) {
-        let max_population = self.max_population();
+        let (global_max, filtered_max) =
+            self.gradient_domain(|_, loc| self.gamestate.location_population(loc));
 
         // Collect color data first to avoid borrow conflicts
         let mut color_data = Vec::new();
         for idx in 0..self.gamestate.locations.len() {
             let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let population_color = self.location_population_color(location_idx, max_population);
+            let max = if self.selection_state.contains(location_idx) {
+                filtered_max
+            } else {
+                global_max
+            };
+            let population_color = self.location_population_color(location_idx, max);
             color_data.push((idx, population_color));
         }
 
@@ -738,13 +784,18 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn apply_rgo_level_colors(&mut self) {
-        let max_rgo_level = self.max_rgo_level();
+        let (global_max, filtered_max) = self.gradient_domain(|_, loc| loc.rgo_level);
 
         // Collect color data first to avoid borrow conflicts
         let mut color_data = Vec::new();
         for idx in 0..self.gamestate.locations.len() {
             let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let rgo_level_color = self.location_rgo_level_color(location_idx, max_rgo_level);
+            let max = if self.selection_state.contains(location_idx) {
+                filtered_max
+            } else {
+                global_max
+            };
+            let rgo_level_color = self.location_rgo_level_color(location_idx, max);
             color_data.push((idx, rgo_level_color));
         }
 
@@ -763,14 +814,19 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn apply_building_levels_colors(&mut self) {
-        let max_building_levels = self.max_building_levels();
+        let levels = self.get_location_building_levels();
+        let (global_max, filtered_max) = self.gradient_domain(|idx, _| levels[idx]);
 
         // Collect color data first to avoid borrow conflicts
         let mut color_data = Vec::new();
         for idx in 0..self.gamestate.locations.len() {
             let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let building_levels_color =
-                self.location_building_levels_color(location_idx, max_building_levels);
+            let max = if self.selection_state.contains(location_idx) {
+                filtered_max
+            } else {
+                global_max
+            };
+            let building_levels_color = self.location_building_levels_color(location_idx, max);
             color_data.push((idx, building_levels_color));
         }
 
@@ -789,14 +845,18 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn apply_possible_tax_colors(&mut self) {
-        let max_possible_tax = self.max_possible_tax();
+        let (global_max, filtered_max) = self.gradient_domain(|_, loc| loc.possible_tax);
 
         // Collect color data first to avoid borrow conflicts
         let mut color_data = Vec::new();
         for idx in 0..self.gamestate.locations.len() {
             let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let possible_tax_color =
-                self.location_possible_tax_color(location_idx, max_possible_tax);
+            let max = if self.selection_state.contains(location_idx) {
+                filtered_max
+            } else {
+                global_max
+            };
+            let possible_tax_color = self.location_possible_tax_color(location_idx, max);
             color_data.push((idx, possible_tax_color));
         }
 
