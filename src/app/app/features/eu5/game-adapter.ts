@@ -1,6 +1,6 @@
 import { wrap, transfer, proxy } from "comlink";
 import type { Remote } from "comlink";
-import type { HoverDisplayData, MapMode } from "@/wasm/wasm_eu5";
+import type { HoverDisplayData, MapMode, SelectionSummaryData } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/types";
 import { fetchOk } from "@/lib/fetch";
 import { getLogLevel } from "@/lib/isDeveloper";
@@ -39,7 +39,7 @@ export type Eu5MapWorkerModule = typeof Eu5MapWorkerModuleDefinition;
 export type Eu5MapWorker = Remote<Eu5MapWorkerModule>;
 
 export type GameInstance = ReturnType<typeof saveWorker>;
-export type { HoverDisplayData };
+export type { HoverDisplayData, SelectionSummaryData };
 
 export interface MapModeRange {
   mode: MapMode;
@@ -164,11 +164,19 @@ export function saveWorker(
   mapEngine: Awaited<ReturnType<Eu5MapWorker["createMapEngine"]>>,
 ) {
   let hoverDisplayCallback: ((data: HoverDisplayData) => void) | null = null;
+  let selectionCallback: ((data: SelectionSummaryData) => void) | null = null;
 
   // Set up hover display callback from game worker
   saveEngine.onHoverDisplayUpdate(
     proxy((data: HoverDisplayData) => {
       hoverDisplayCallback?.(data);
+    }),
+  );
+
+  // Set up selection callback from game worker
+  saveEngine.onSelectionUpdate(
+    proxy((data: SelectionSummaryData) => {
+      selectionCallback?.(data);
     }),
   );
 
@@ -199,6 +207,14 @@ export function saveWorker(
 
     onHoverDisplayUpdate: (callback: (data: HoverDisplayData) => void) => {
       hoverDisplayCallback = callback;
+    },
+
+    onSelectionUpdate: (callback: (data: SelectionSummaryData) => void) => {
+      selectionCallback = callback;
+    },
+
+    selectAtLocation: (locationIdx: number) => {
+      return saveEngine.selectAtLocation(locationIdx);
     },
 
     getMapModeRange: async (mode: MapMode): Promise<MapModeRange> => {

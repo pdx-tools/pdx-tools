@@ -58,6 +58,17 @@ impl GpuColor {
         hash
     }
 
+    /// Multiply each RGB channel by `factor` (0.0 = black, 1.0 = unchanged).
+    pub fn dim(self, factor: f32) -> Self {
+        let (r, g, b) = self.rgb();
+        let f = factor.clamp(0.0, 1.0);
+        Self::from_rgb(
+            (r as f32 * f) as u8,
+            (g as f32 * f) as u8,
+            (b as f32 * f) as u8,
+        )
+    }
+
     /// Blend with another color using linear interpolation
     /// factor: 0.0 = self, 1.0 = other
     pub fn blend(self, other: Self, factor: f32) -> Self {

@@ -8,6 +8,7 @@ import type {
   HoverDisplayData,
   MapModeRange,
   StateEfficacyData,
+  SelectionSummaryData,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
@@ -113,10 +114,24 @@ export const createGame = async (
     }),
   );
 
+  mapEndpoint.onLocationClickUpdate(
+    proxy((event) => {
+      if (event.kind === "update" && currentZoom !== null) {
+        app.select_entity(event.locationIdx, currentZoom);
+      } else {
+        app.clear_selection();
+      }
+      syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+    }),
+  );
+
   return proxy({
     setMapMode: (mode: MapMode) => {
       app.set_map_mode(mode);
-      return syncLocationData();
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
     },
     getMapMode: () => {
       return app.get_map_mode();
@@ -152,6 +167,15 @@ export const createGame = async (
     onHoverDisplayUpdate: (callback: (data: HoverDisplayData) => void) => {
       hoverDisplayCallback = callback;
     },
+    onSelectionUpdate: (callback: (data: SelectionSummaryData) => void) => {
+      selectionCallback = callback;
+    },
+    selectAtLocation: (locationIdx: number) => {
+      app.select_entity(locationIdx, currentZoom ?? 0);
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
     getMapModeRange: (mode: MapMode): MapModeRange => {
       return app.get_map_mode_range(mode);
     },
@@ -164,6 +188,7 @@ export const createGame = async (
 let mapEndpoint: Eu5MapEndpoint | null = null;
 let currentZoom: number | null = null; // Will be set by initial callback from map worker
 let hoverDisplayCallback: ((data: HoverDisplayData) => void) | null = null;
+let selectionCallback: ((data: SelectionSummaryData) => void) | null = null;
 
 export async function initialize(port: MessagePort, level: wasm_eu5.LogLevel) {
   mapEndpoint = wrap<Eu5MapEndpoint>(port);

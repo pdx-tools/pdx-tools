@@ -569,8 +569,13 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     /// Select entities by resolving `clicked_idx` using the current map mode and zoom.
-    /// Replaces any existing selection.
+    /// If the clicked location is already in the selection, the selection is cleared (toggle).
+    /// Otherwise replaces the selection with the resolved entity set.
     pub fn select_entity(&mut self, clicked_idx: eu5save::models::LocationIdx, zoom: f32) {
+        if self.selection_state.contains(clicked_idx) {
+            self.selection_state.clear();
+            return;
+        }
         let mode = self.current_map_mode;
         let new_selection = SelectionAdapter::new(&*self).resolve_click(clicked_idx, mode, zoom);
         self.selection_state.replace(new_selection);
@@ -597,6 +602,27 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::BuildingLevels => self.apply_building_levels_colors(),
             MapMode::PossibleTax => self.apply_possible_tax_colors(),
             MapMode::Religion => self.apply_religion_colors(),
+        }
+
+        self.apply_selection_dimming();
+    }
+
+    fn apply_selection_dimming(&mut self) {
+        if self.selection_state.is_empty() {
+            return;
+        }
+        const DIM: f32 = 0.3;
+        for idx in 0..self.gamestate.locations.len() {
+            let loc = eu5save::models::LocationIdx::new(idx as u32);
+            if self.selection_state.contains(loc) {
+                continue;
+            }
+            let Some(gpu_idx) = self.gpu_indices[loc] else {
+                continue;
+            };
+            let mut s = self.location_arrays.get_mut(gpu_idx);
+            s.set_primary_color(s.primary_color().dim(DIM));
+            s.set_secondary_color(s.secondary_color().dim(DIM));
         }
     }
 
