@@ -60,3 +60,4 @@ export const useEu5MapModeRange = () => useEu5Store((x) => x.appState.mapModeRan
 export const useSaveFilename = () => useEu5Store((x) => x.filename);
 export const useEu5SaveDate = () => useEu5Store((x) => x.saveDate);
 export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);
+export const useEu5SelectionState = () => useEu5Store((x) => x.appState.selectionState);
