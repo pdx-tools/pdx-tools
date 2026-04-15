@@ -50,6 +50,23 @@ pub struct StateEfficacyData {
     pub countries: Vec<CountryStateEfficacy>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct CountrySearchEntry {
+    pub id: u32,
+    pub tag: String,
+    pub name: String,
+    pub capital_location_idx: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct CountriesData {
+    pub countries: Vec<CountrySearchEntry>,
+}
+
 #[derive(Debug, Clone, tsify::Tsify, Serialize)]
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
@@ -768,6 +785,45 @@ impl Eu5App {
             patch_version,
             body: OverlayBodyConfig::from(overlay_data),
         }
+    }
+
+    /// Return the GPU color ID needed to center the map at a given location.
+    /// Returns None if the location has no map presence (e.g. impassable terrain).
+    #[wasm_bindgen]
+    pub fn center_at(&self, location_idx: u32) -> Option<u32> {
+        let idx = eu5save::models::LocationIdx::new(location_idx);
+        self.app().center_at(idx).map(|c| c.value() as u32)
+    }
+
+    /// Return all countries with their tag, localized name, and capital location index.
+    #[wasm_bindgen]
+    pub fn get_countries(&self) -> CountriesData {
+        let countries = self
+            .app()
+            .gamestate()
+            .countries
+            .iter()
+            .filter_map(|entry| {
+                let data = entry.data()?;
+                let id = entry.id().value();
+                let tag = entry.tag().to_str().to_string();
+                let name = self
+                    .app()
+                    .localized_country_name(&data.country_name)
+                    .to_string();
+                let capital_location_idx = data
+                    .capital
+                    .and_then(|id| self.app().gamestate().locations.get(id))
+                    .map(|idx| idx.value());
+                Some(CountrySearchEntry {
+                    id,
+                    tag,
+                    name,
+                    capital_location_idx,
+                })
+            })
+            .collect();
+        CountriesData { countries }
     }
 
     /// Calculate state efficacy scores for all nations

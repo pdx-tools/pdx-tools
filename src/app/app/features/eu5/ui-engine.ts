@@ -21,6 +21,14 @@ export interface AppState {
 export type AppStateListener = (state: AppState) => void;
 export type AppStateSelector<T> = (state: AppState) => T;
 
+export interface SearchResult {
+  kind: "country";
+  id: number;
+  name: string;
+  tag: string;
+  locationIdx: number;
+}
+
 export interface AppTriggers {
   selectMapMode(mode: MapMode): Promise<void>;
   generateScreenshot(fullResolution: boolean): Promise<Blob>;
@@ -29,6 +37,8 @@ export interface AppTriggers {
   melt(): Promise<Uint8Array<ArrayBuffer>>;
   getStateEfficacy(): Promise<StateEfficacyData>;
   selectAtLocation(locationIdx: number): Promise<void>;
+  selectCountry(locationIdx: number): Promise<void>;
+  searchEntities(query: string): Promise<SearchResult[]>;
 }
 
 export interface AppEngine {
@@ -84,6 +94,8 @@ export class Eu5UIEngine implements AppEngine {
     melt: () => this.handleMelt(),
     getStateEfficacy: () => this.handleGetStateEfficacy(),
     selectAtLocation: (locationIdx) => this.handleSelectAtLocation(locationIdx),
+    selectCountry: (locationIdx) => this.handleSelectCountry(locationIdx),
+    searchEntities: (query) => this.handleSearchEntities(query),
   };
 
   get state(): AppState {
@@ -164,6 +176,21 @@ export class Eu5UIEngine implements AppEngine {
 
   private async handleSelectAtLocation(locationIdx: number): Promise<void> {
     await this.gameInstance.selectAtLocation(locationIdx);
+  }
+
+  private async handleSelectCountry(locationIdx: number): Promise<void> {
+    await this.gameInstance.selectCountry(locationIdx);
+  }
+
+  private async handleSearchEntities(query: string): Promise<SearchResult[]> {
+    const results = await this.gameInstance.searchCountries(query);
+    return results.map((r) => ({
+      kind: "country" as const,
+      id: r.id,
+      name: r.name,
+      tag: r.tag,
+      locationIdx: r.capitalLocationIdx ?? 0,
+    }));
   }
 }
 
