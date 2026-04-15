@@ -9,7 +9,6 @@ import {
   useEu5SaveDate,
   useEu5PlaythroughName,
 } from "./store";
-import { Eu5MapLegend } from "./Eu5MapLegend";
 import { CameraIcon } from "@heroicons/react/24/solid";
 import {
   ArrowUpTrayIcon,
@@ -33,42 +32,15 @@ import { useEngineActions } from "../engine";
 import { ChartsDialog } from "./features/charts/ChartsDialog";
 
 const MAP_MODE_CONFIG = [
-  {
-    value: "political",
-    label: "Political",
-  },
-  {
-    value: "control",
-    label: "Control",
-  },
-  {
-    value: "development",
-    label: "Development",
-  },
-  {
-    value: "population",
-    label: "Population",
-  },
-  {
-    value: "markets",
-    label: "Markets",
-  },
-  {
-    value: "rgoLevel",
-    label: "RGO Level",
-  },
-  {
-    value: "buildingLevels",
-    label: "Building Levels",
-  },
-  {
-    value: "possibleTax",
-    label: "Possible Tax",
-  },
-  {
-    value: "religion",
-    label: "Religion",
-  },
+  { value: "political", label: "Political" },
+  { value: "control", label: "Control" },
+  { value: "development", label: "Development" },
+  { value: "population", label: "Population" },
+  { value: "markets", label: "Markets" },
+  { value: "rgoLevel", label: "RGO Level" },
+  { value: "buildingLevels", label: "Building Levels" },
+  { value: "possibleTax", label: "Possible Tax" },
+  { value: "religion", label: "Religion" },
 ] as const;
 
 type MapModeOption = (typeof MAP_MODE_CONFIG)[number]["value"];
@@ -79,21 +51,22 @@ type ComingSoonFeature = {
 };
 
 const COMING_SOON_FEATURES: ComingSoonFeature[] = [
-  {
-    tooltip: "Uploads",
-    icon: ArrowUpTrayIcon,
-  },
-  {
-    tooltip: "Guides",
-    icon: BookOpenIcon,
-  },
-  {
-    tooltip: "Country insights",
-    icon: FlagIcon,
-  },
+  { tooltip: "Uploads", icon: ArrowUpTrayIcon },
+  { tooltip: "Guides", icon: BookOpenIcon },
+  { tooltip: "Country insights", icon: FlagIcon },
 ];
 
-export const Eu5CanvasOverlay = () => {
+export const EU5ControlPanel = () => {
+  return (
+    <div className="pointer-events-auto absolute inset-y-0 left-0 z-30 w-[20rem]">
+      <div className="h-full w-full border-r border-white/10 bg-slate-950/75 text-slate-100 shadow-xl backdrop-blur">
+        <SidebarContent />
+      </div>
+    </div>
+  );
+};
+
+const SidebarContent = () => {
   const engine = useEu5Engine();
   const currentMapMode = useEu5MapMode();
   const ownerBordersEnabled = useEu5OwnerBorders();
@@ -110,17 +83,13 @@ export const Eu5CanvasOverlay = () => {
   };
 
   return (
-    <div className="relative flex h-full w-full flex-col gap-4 rounded-3xl border border-white/10 bg-slate-950/75 p-5 text-slate-100 shadow-xl backdrop-blur">
-      <div className="pointer-events-none absolute bottom-0 -left-[120px]">
-        <Eu5MapLegend />
-      </div>
-
+    <div className="flex h-full w-full flex-col gap-4 p-5">
       <Link
         to="/"
         onClick={() => {
           resetSaveAnalysis();
         }}
-        className="absolute top-5 right-5 inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:outline-none"
+        className="inline-flex items-center justify-center self-start focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:outline-none"
       >
         <span className="sr-only">Return to home</span>
         <HomeIcon className="h-[30px] w-[30px] text-slate-300 transition-transform duration-150 hover:scale-110" />
@@ -162,7 +131,7 @@ export const Eu5CanvasOverlay = () => {
           </ToggleGroup>
         </div>
 
-        <div className="space-y-4 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
+        <div className="space-y-4 rounded-2xl border border-white/5 bg-white/3 px-4 py-3">
           <label htmlFor={bordersSwitchId} className="flex items-center justify-between gap-3">
             <div className="flex flex-col gap-1">
               <span className="text-xs font-semibold tracking-wide text-slate-300 uppercase">
@@ -187,7 +156,7 @@ export const Eu5CanvasOverlay = () => {
             type="button"
             className={cx(
               "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:outline-none",
-              "border-white/5 bg-white/[0.03] hover:border-sky-400/40 hover:bg-white/10",
+              "border-white/5 bg-white/3 hover:border-sky-400/40 hover:bg-white/10",
             )}
           >
             <div className="flex items-center gap-3">
@@ -211,7 +180,7 @@ export const Eu5CanvasOverlay = () => {
 
 const EarlyAccessRoadmap = () => {
   return (
-    <section className="mt-10 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 text-[11px] leading-relaxed text-amber-100 shadow-inner shadow-amber-500/20">
+    <section className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 text-[11px] leading-relaxed text-amber-100 shadow-inner shadow-amber-500/20">
       <header className="text-center text-[10px] font-semibold tracking-[0.3em] text-amber-200 uppercase">
         <span>🚧 Under construction 🚧</span>
       </header>
@@ -276,9 +245,7 @@ function Screenshot() {
         const blob = await engine.trigger.generateScreenshot(fullResolution);
         const filename = `${playthroughName}-${saveDate}-${mapMode}.png`;
         downloadData(blob, filename);
-        toast.success(`Screenshot downloaded`, {
-          duration: 2000,
-        });
+        toast.success(`Screenshot downloaded`, { duration: 2000 });
       } catch (error) {
         toast.error("Screenshot error", {
           description: getErrorMessage(error),
@@ -300,7 +267,7 @@ function Screenshot() {
       }}
       className={cx(
         "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:outline-none",
-        "border-white/5 bg-white/[0.03] hover:border-sky-400/40 hover:bg-white/10",
+        "border-white/5 bg-white/3 hover:border-sky-400/40 hover:bg-white/10",
         isDisabled && "cursor-not-allowed opacity-60 hover:border-white/5",
       )}
     >
@@ -333,9 +300,7 @@ function Melt() {
         const baseName = saveFilename.substring(0, saveFilename.lastIndexOf(".")) || saveFilename;
         const filename = `${baseName}_melted.eu5`;
         downloadData(meltedData, filename);
-        toast.success(`Save file melted and downloaded`, {
-          duration: 2000,
-        });
+        toast.success(`Save file melted and downloaded`, { duration: 2000 });
       } catch (error) {
         toast.error("Melt error", {
           description: getErrorMessage(error),
@@ -355,7 +320,7 @@ function Melt() {
       }}
       className={cx(
         "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:outline-none",
-        "border-white/5 bg-white/[0.03] hover:border-sky-400/40 hover:bg-white/10",
+        "border-white/5 bg-white/3 hover:border-sky-400/40 hover:bg-white/10",
         isLoading && "cursor-not-allowed opacity-60 hover:border-white/5",
       )}
     >
