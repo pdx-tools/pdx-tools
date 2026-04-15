@@ -34,6 +34,7 @@ let appTask = new Promise<Eu5WasmMapRenderer>((res, rej) => {
   appReject = rej;
 });
 let hoverEventCallback: ((event: LocationHoverChangeEvent) => void) | null = null;
+let clickEventCallback: ((event: LocationHoverChangeEvent) => void) | null = null;
 let zoomChangeCallback: ((zoom: number) => void) | null = null;
 let renderOrQueue: () => void = () => {};
 let newLocations: Uint32Array | null = null;
@@ -43,6 +44,7 @@ let newDimensions: {
   scaleFactor: number;
 } | null = null;
 let lastCursorPosition: { x: number; y: number } | null = null;
+let mouseDownPos: { x: number; y: number } | null = null;
 const pressedKeys = new Set<string>();
 
 const mapGameEndpoint = () => {
@@ -59,6 +61,10 @@ const mapGameEndpoint = () => {
 
     onLocationHoverUpdate: (callback: (event: LocationHoverChangeEvent) => void) => {
       hoverEventCallback = callback;
+    },
+
+    onLocationClickUpdate: (callback: (event: LocationHoverChangeEvent) => void) => {
+      clickEventCallback = callback;
     },
 
     onZoomChange: (callback: (rawZoom: number) => void) => {
@@ -215,13 +221,29 @@ export const createMapEngine = async (
         } else if (action === SharedCanvasEventAction.Down) {
           app.on_cursor_move(x, y);
           lastCursorPosition = { x, y };
+          if (button === 0) {
+            mouseDownPos = { x, y };
+          }
           app.on_mouse_button(button >= 0 ? button : 0, true);
           renderOrQueue();
         } else if (action === SharedCanvasEventAction.Up) {
-          app.on_mouse_button(button >= 0 ? button : 0, false);
+          const btn = button >= 0 ? button : 0;
+          if (btn === 0 && mouseDownPos !== null) {
+            const dist = Math.hypot(x - mouseDownPos.x, y - mouseDownPos.y);
+            if (dist < 5) {
+              if (lastKnownLocationId !== null) {
+                clickEventCallback?.({ kind: "update", locationIdx: lastKnownLocationId });
+              } else {
+                clickEventCallback?.({ kind: "clear" });
+              }
+            }
+            mouseDownPos = null;
+          }
+          app.on_mouse_button(btn, false);
           renderOrQueue();
         } else if (action === SharedCanvasEventAction.Leave) {
           app.on_mouse_button(0, false);
+          mouseDownPos = null;
           lastCursorPosition = null;
           updateCursorWorldPosition(-1, -1);
           renderOrQueue();

@@ -49,6 +49,15 @@ pub struct StateEfficacyData {
     pub countries: Vec<CountryStateEfficacy>,
 }
 
+#[derive(Debug, Clone, tsify::Tsify, Serialize)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectionSummaryData {
+    pub entity_count: u32,
+    pub location_count: u32,
+    pub is_empty: bool,
+}
+
 impl From<MapMode> for Eu5MapMode {
     fn from(mode: MapMode) -> Self {
         match mode {
@@ -395,6 +404,37 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn clear_highlights(&mut self) {
         self.app.clear_highlights();
+    }
+
+    /// Select the entity at the given location, resolving it by the current map
+    /// mode and zoom level. Replaces the existing selection and reapplies colors
+    /// with out-of-filter dimming.
+    #[wasm_bindgen]
+    pub fn select_entity(&mut self, location_idx: u32, zoom: f32) {
+        let idx = eu5save::models::LocationIdx::new(location_idx);
+        self.app.select_entity(idx, zoom);
+        let mode = self.app.get_map_mode();
+        self.app.set_map_mode(mode);
+    }
+
+    /// Clear the current selection and restore full-brightness colors.
+    #[wasm_bindgen]
+    pub fn clear_selection(&mut self) {
+        self.app.clear_selection();
+        let mode = self.app.get_map_mode();
+        self.app.set_map_mode(mode);
+    }
+
+    /// Return a summary of the current selection (entity and location counts).
+    #[wasm_bindgen]
+    pub fn get_selection_summary(&self) -> SelectionSummaryData {
+        let sel = self.app.selection_state();
+        let summary = sel.entity_summary(&self.app);
+        SelectionSummaryData {
+            entity_count: summary.entity_count as u32,
+            location_count: summary.location_count as u32,
+            is_empty: sel.is_empty(),
+        }
     }
 
     /// Get hover display data for a location based on zoom level

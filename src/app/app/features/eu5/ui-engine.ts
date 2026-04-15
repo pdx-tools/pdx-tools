@@ -1,5 +1,10 @@
 import { Eu5GameAdapter } from "./game-adapter";
-import type { GameInstance, HoverDisplayData, MapModeRange } from "./game-adapter";
+import type {
+  GameInstance,
+  HoverDisplayData,
+  MapModeRange,
+  SelectionSummaryData,
+} from "./game-adapter";
 import type { Eu5SaveInput } from "./store/types";
 import type { MapMode, StateEfficacyData } from "@/wasm/wasm_eu5";
 import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
@@ -10,6 +15,7 @@ export interface AppState {
   isGeneratingScreenshot: boolean;
   ownerBordersEnabled: boolean;
   mapModeRange: MapModeRange | null;
+  selectionState: SelectionSummaryData | null;
 }
 
 export type AppStateListener = (state: AppState) => void;
@@ -22,6 +28,7 @@ export interface AppTriggers {
   getLocationArrays(): Promise<Blob>;
   melt(): Promise<Uint8Array<ArrayBuffer>>;
   getStateEfficacy(): Promise<StateEfficacyData>;
+  selectAtLocation(locationIdx: number): Promise<void>;
 }
 
 export interface AppEngine {
@@ -47,6 +54,7 @@ export class Eu5UIEngine implements AppEngine {
       isGeneratingScreenshot: false,
       ownerBordersEnabled: true,
       mapModeRange: null,
+      selectionState: null,
       ...initialState,
     };
 
@@ -54,6 +62,13 @@ export class Eu5UIEngine implements AppEngine {
     this.gameInstance.onHoverDisplayUpdate((data) => {
       this.updateState(() => ({
         hoverDisplayData: data,
+      }));
+    });
+
+    // Set up selection state callback
+    this.gameInstance.onSelectionUpdate((data) => {
+      this.updateState(() => ({
+        selectionState: data,
       }));
     });
 
@@ -68,6 +83,7 @@ export class Eu5UIEngine implements AppEngine {
     getLocationArrays: () => this.handleGetLocationArrays(),
     melt: () => this.handleMelt(),
     getStateEfficacy: () => this.handleGetStateEfficacy(),
+    selectAtLocation: (locationIdx) => this.handleSelectAtLocation(locationIdx),
   };
 
   get state(): AppState {
@@ -144,6 +160,10 @@ export class Eu5UIEngine implements AppEngine {
 
   private async handleGetStateEfficacy(): Promise<StateEfficacyData> {
     return await this.gameInstance.getStateEfficacy();
+  }
+
+  private async handleSelectAtLocation(locationIdx: number): Promise<void> {
+    await this.gameInstance.selectAtLocation(locationIdx);
   }
 }
 
