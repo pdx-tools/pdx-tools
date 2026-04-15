@@ -7,11 +7,13 @@ import { developerLog } from "@/lib/log";
 import { useLoadEu5, Eu5StoreProvider, useEu5SelectionState } from "./store";
 import type { Eu5SaveInput } from "./store/types";
 import { ProgressBar } from "@/components/ProgressBar";
-import { Eu5HoverDisplay } from "./Eu5HoverDisplay";
+import { Eu5CursorTooltip } from "./Eu5CursorTooltip";
+import { useCursorPosition } from "@/hooks/useCursorPosition";
 import { Eu5ErrorDisplay } from "./Eu5ErrorDisplay";
 import { Eu5MapLegend } from "./Eu5MapLegend";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import { ChevronLeftIcon } from "@heroicons/react/24/solid";
+import type { CursorPosition } from "@/components/CursorTooltip";
 
 type Eu5UiProps = {
   save: Eu5SaveInput;
@@ -20,6 +22,7 @@ type Eu5UiProps = {
 export const Eu5Ui = ({ save }: Eu5UiProps) => {
   const { controller, data, error, loading } = useLoadEu5(save);
   const { canvasRef, surfaceRef, focus } = useCanvasCourierSurface({ controller });
+  const cursorRef = useCursorPosition(surfaceRef.current);
 
   useEffect(() => {
     focus();
@@ -55,7 +58,7 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
       {/* UI layer — only when data loaded */}
       {data !== null ? (
         <Eu5StoreProvider store={data}>
-          <Eu5UiContent />
+          <Eu5UiContent cursorRef={cursorRef} />
         </Eu5StoreProvider>
       ) : null}
 
@@ -71,7 +74,7 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
  * Inner component rendered inside Eu5StoreProvider so it can access the store.
  * Manages insight panel open state and auto-opens when selection becomes non-empty.
  */
-const Eu5UiContent = () => {
+const Eu5UiContent = ({ cursorRef }: { cursorRef: React.RefObject<CursorPosition> }) => {
   const [insightOpen, setInsightOpen] = useState(false);
   const selectionState = useEu5SelectionState();
   const wasEmptyRef = useRef(true);
@@ -105,7 +108,7 @@ const Eu5UiContent = () => {
       ) : null}
 
       {/* Canvas overlays */}
-      <Eu5HoverDisplay />
+      <Eu5CursorTooltip cursorRef={cursorRef} />
       <Eu5FilterPalette />
       <div className="pointer-events-none absolute bottom-6 left-[21.5rem]">
         <Eu5MapLegend />
