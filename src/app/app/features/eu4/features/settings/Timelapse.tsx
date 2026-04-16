@@ -281,7 +281,10 @@ export const Timelapse = () => {
                 tooltip="Map and timelapse settings"
               />
             </Popover.Trigger>
-            <Popover.Content sideOffset={7}>
+            <Popover.Content
+              sideOffset={7}
+              className="rounded-md bg-white p-4 shadow-md dark:bg-slate-800"
+            >
               <div className="flex flex-col gap-2">
                 <div className="flex w-full">
                   <h2 className="grow font-semibold">Map Settings</h2>

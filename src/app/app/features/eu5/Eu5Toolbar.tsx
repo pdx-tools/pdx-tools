@@ -6,6 +6,7 @@ import { cx } from "class-variance-authority";
 import { formatInt } from "@/lib/format";
 import type { SearchResult } from "./ui-engine";
 import styles from "./Eu5Toolbar.module.css";
+import { Eu5ShortcutPanel } from "./Eu5ShortcutPanel";
 
 export function Eu5Toolbar() {
   const [searchActive, setSearchActive] = useState(false);
@@ -164,6 +165,9 @@ export function Eu5Toolbar() {
             </span>
           )
         )}
+
+        {/* Shortcuts toggle — always at right edge */}
+        <Eu5ShortcutPanel />
       </div>
     </div>
   );

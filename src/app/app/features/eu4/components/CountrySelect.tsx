@@ -29,7 +29,7 @@ export const CountrySelect = memo(function CountrySelect({
           <PlayIcon className="h-3 w-3 rotate-90 self-center opacity-50" />
         </Button>
       </Popover.Trigger>
-      <Popover.Content className="max-h-96 w-80 overflow-auto">
+      <Popover.Content className="max-h-96 w-80 overflow-auto rounded-md bg-white p-4 shadow-md dark:bg-slate-800">
         <SelectContent onSelect={onSelect} isSelected={isSelected} setOpen={setOpen} />
       </Popover.Content>
     </Popover>
