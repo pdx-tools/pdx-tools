@@ -466,6 +466,27 @@ impl Eu5App {
         self.app.rebuild_colors();
     }
 
+    #[wasm_bindgen]
+    pub fn apply_resolved_box_selection(&mut self, location_idxs: js_sys::Uint32Array, add: bool) {
+        let locations = location_idxs
+            .to_vec()
+            .into_iter()
+            .map(eu5save::models::LocationIdx::new);
+        self.app.apply_resolved_box_selection(locations, add);
+        self.app.clear_highlights();
+        self.app.rebuild_colors();
+    }
+
+    /// Return the grouping table for the current map mode as a flat Uint32Array.
+    /// Each element is the raw GroupId for the corresponding GPU location index.
+    /// Sentinel value `u32::MAX` means no group (unowned / no market).
+    #[wasm_bindgen]
+    pub fn grouping_table(&self) -> js_sys::Uint32Array {
+        let table = self.app.build_grouping_table();
+        let raw: Vec<u32> = table.iter().map(|(_, g)| g.raw()).collect();
+        js_sys::Uint32Array::from(raw.as_slice())
+    }
+
     /// Select all locations owned by human-controlled countries and their subjects.
     #[wasm_bindgen]
     pub fn select_players(&mut self) {

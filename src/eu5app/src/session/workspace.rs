@@ -1,5 +1,5 @@
 use crate::game_data::GameData;
-use crate::selection::{LocationData, SelectionAdapter, SelectionState};
+use crate::selection::{GroupId, GroupingTable, LocationData, SelectionAdapter, SelectionState};
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap};
 use eu5save::models::{
@@ -632,6 +632,30 @@ impl<'bump> Eu5Workspace<'bump> {
         &self.selection_state
     }
 
+    /// Build a flat lookup table mapping GPU location index → group ID for
+    /// the current map mode. Built once per mode switch; used by the map
+    /// renderer for per-frame box-select preview highlighting.
+    pub fn build_grouping_table(&self) -> GroupingTable {
+        let len = self.location_arrays.len();
+        let mut groups = vec![GroupId::NONE; len];
+
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            let Some(gpu_idx) = self.gpu_indices[entry.idx()] else {
+                continue;
+            };
+
+            let group = match self.current_map_mode {
+                MapMode::Markets => loc.market.map(GroupId::from_market),
+                _ => loc.owner.real_id().map(GroupId::from_owner),
+            };
+
+            groups[gpu_idx.value() as usize] = group.unwrap_or(GroupId::NONE);
+        }
+
+        GroupingTable::new(groups)
+    }
+
     /// Select entities by resolving `clicked_idx` using the current map mode and zoom.
     /// If the clicked location is already in the selection, deselects just that entity's
     /// resolved group (leaving other selected entities intact). Otherwise replaces the
@@ -663,6 +687,21 @@ impl<'bump> Eu5Workspace<'bump> {
         let resolved = SelectionAdapter::new(&*self).resolve_click(clicked_idx, mode, zoom);
         for idx in resolved {
             self.selection_state.remove(idx);
+        }
+    }
+
+    /// Apply a pre-resolved set of locations (produced by the map renderer's
+    /// `commit_box_selection`) to the selection state.
+    pub fn apply_resolved_box_selection(
+        &mut self,
+        resolved_locations: impl IntoIterator<Item = eu5save::models::LocationIdx>,
+        add: bool,
+    ) {
+        let set: FnvHashSet<_> = resolved_locations.into_iter().collect();
+        if add {
+            self.selection_state.add_all(&set);
+        } else {
+            self.selection_state.remove_all(&set);
         }
     }
 

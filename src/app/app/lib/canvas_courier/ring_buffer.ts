@@ -44,14 +44,14 @@ export const SharedCanvasEventAction = {
 export type SharedCanvasEventAction =
   (typeof SharedCanvasEventAction)[keyof typeof SharedCanvasEventAction];
 
-const SharedCanvasModifierBits = {
+export const SharedCanvasModifierBits = {
   Shift: 1 << 0,
   Ctrl: 1 << 1,
   Alt: 1 << 2,
   Meta: 1 << 3,
 } as const;
 
-type SharedCanvasModifierBits =
+export type SharedCanvasModifierBits =
   (typeof SharedCanvasModifierBits)[keyof typeof SharedCanvasModifierBits];
 
 export const SharedCanvasPointerKind = {

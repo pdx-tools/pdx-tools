@@ -13,6 +13,7 @@ import type {
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
 import { proxy, transfer, wrap } from "comlink";
+import { SharedCanvasModifierBits } from "@/lib/canvas_courier";
 
 const tokensTask = fetchOk(tokenPath).then((x) => x.arrayBuffer());
 const initialized = (async () => {
@@ -98,7 +99,19 @@ export const createGame = async (
     return mapEndpoint?.syncLocationData(transfer(cloned, [cloned.buffer]));
   };
 
+  const syncGroupingTable = () => {
+    const raw = app.grouping_table();
+    return mapEndpoint?.syncGroupingTable(transfer(raw, [raw.buffer]));
+  };
+
+  const syncAll = () => {
+    const p = syncLocationData();
+    syncGroupingTable();
+    return p;
+  };
+
   await syncLocationData();
+  syncGroupingTable();
   onProgress?.(5); // Sync location data
 
   mapEndpoint.onLocationHoverUpdate(
@@ -117,15 +130,13 @@ export const createGame = async (
     }),
   );
 
-  const SHIFT = 1 << 0;
-  const ALT = 1 << 2;
   mapEndpoint.onLocationClickUpdate(
     proxy((event) => {
       if (event.kind === "update" && currentZoom !== null) {
         const mods = event.modifiers;
-        if (mods & SHIFT) {
+        if (mods & SharedCanvasModifierBits.Shift) {
           app.add_entity(event.locationIdx, currentZoom);
-        } else if (mods & ALT) {
+        } else if (mods & SharedCanvasModifierBits.Alt) {
           app.remove_entity(event.locationIdx, currentZoom);
         } else {
           app.select_entity(event.locationIdx, currentZoom);
@@ -138,10 +149,19 @@ export const createGame = async (
     }),
   );
 
+  mapEndpoint.onBoxSelectCommit(
+    proxy((event) => {
+      app.apply_resolved_box_selection(event.locationIdxs, event.add);
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    }),
+  );
+
   return proxy({
     setMapMode: (mode: MapMode) => {
       app.set_map_mode(mode);
-      const p = syncLocationData();
+      const p = syncAll();
       selectionCallback?.(app.get_selection_summary());
       return p;
     },

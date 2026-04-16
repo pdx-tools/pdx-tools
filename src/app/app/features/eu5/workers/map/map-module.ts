@@ -14,9 +14,15 @@ import {
   SharedCanvasInputReader,
   SharedCanvasEventType,
   SharedCanvasEventAction,
+  SharedCanvasModifierBits,
   WebKeyCode,
 } from "@/lib/canvas_courier";
 import type { SharedCanvasInputConfig, SharedCanvasDecodedEvent } from "@/lib/canvas_courier";
+import type {
+  BoxSelectOperation,
+  BoxSelectOverlayRect,
+  BoxSelectCommitEvent,
+} from "../../types/box-select";
 
 // Reverse lookup: numeric WebKeyCode value → string key code name
 const webKeyCodeToString = Object.fromEntries(
@@ -36,6 +42,9 @@ let appTask = new Promise<Eu5WasmMapRenderer>((res, rej) => {
 let hoverEventCallback: ((event: LocationHoverChangeEvent) => void) | null = null;
 let clickEventCallback: ((event: LocationClickChangeEvent) => void) | null = null;
 let zoomChangeCallback: ((zoom: number) => void) | null = null;
+let boxSelectCommitCallback: ((event: BoxSelectCommitEvent) => void) | null = null;
+let boxSelectRectCallback: ((rect: BoxSelectOverlayRect | null) => void) | null = null;
+let newGroupingTable: Uint32Array | null = null;
 let renderOrQueue: () => void = () => {};
 let newLocations: Uint32Array | null = null;
 let newDimensions: {
@@ -54,6 +63,10 @@ const mapGameEndpoint = () => {
       renderOrQueue();
     },
 
+    async syncGroupingTable(raw: Uint32Array) {
+      newGroupingTable = raw;
+    },
+
     async center_at_color_id(color_id: number) {
       const app = await appTask;
       timeSync("Centering map over capital", () => app.center_at_color_id(color_id));
@@ -69,6 +82,10 @@ const mapGameEndpoint = () => {
 
     onZoomChange: (callback: (rawZoom: number) => void) => {
       zoomChangeCallback = callback;
+    },
+
+    onBoxSelectCommit: (callback: (event: BoxSelectCommitEvent) => void) => {
+      boxSelectCommitCallback = callback;
     },
   };
 };
@@ -141,6 +158,8 @@ export const createMapEngine = async (
   let hoverTrackingActive = false;
   let lastKnownLocationId: number | null = null;
   let lastProcessedWorldCoordinates: { x: number; y: number } | null = null;
+  let boxDrag: BoxSelectDrag | null = null;
+  let boxDragDirty = false;
 
   let _dirtyRender: boolean = false;
   renderOrQueue = () => {
@@ -209,26 +228,90 @@ export const createMapEngine = async (
     }
   };
 
+  const normalizeBoxRect = (drag: BoxSelectDrag): BoxSelectOverlayRect => {
+    const left = Math.min(drag.start.x, drag.current.x);
+    const top = Math.min(drag.start.y, drag.current.y);
+    return {
+      left,
+      top,
+      width: Math.abs(drag.current.x - drag.start.x),
+      height: Math.abs(drag.current.y - drag.start.y),
+      operation: drag.operation,
+    };
+  };
+
+  const updateBoxSelect = (drag: BoxSelectDrag) => {
+    boxSelectRectCallback?.(normalizeBoxRect(drag));
+    app.preview_box_highlight(drag.start.x, drag.start.y, drag.current.x, drag.current.y);
+  };
+
+  const cancelBoxSelect = () => {
+    if (boxDrag === null) {
+      return;
+    }
+    app.clear_box_highlight();
+    boxDrag = null;
+    boxDragDirty = false;
+    boxSelectRectCallback?.(null);
+  };
+
   const processInputEvent = (event: SharedCanvasDecodedEvent) => {
     switch (event.type) {
       case SharedCanvasEventType.Pointer: {
         const { action, x, y, button, modifiers } = event;
         if (action === SharedCanvasEventAction.Move) {
           app.on_cursor_move(x, y);
-          updateCursorWorldPosition(x, y);
           lastCursorPosition = { x, y };
+          if (boxDrag !== null) {
+            boxDrag.current = { x, y };
+            boxDragDirty = true;
+          } else {
+            updateCursorWorldPosition(x, y);
+          }
           renderOrQueue();
         } else if (action === SharedCanvasEventAction.Down) {
           app.on_cursor_move(x, y);
           lastCursorPosition = { x, y };
-          if (button === 0) {
-            mouseDownPos = { x, y };
+          const useBoxSelect =
+            button === 0 &&
+            ((modifiers & SharedCanvasModifierBits.Shift) !== 0 ||
+              (modifiers & SharedCanvasModifierBits.Alt) !== 0);
+          if (useBoxSelect) {
+            const operation = (modifiers & SharedCanvasModifierBits.Alt) !== 0 ? "remove" : "add";
+            boxDrag = {
+              start: { x, y },
+              current: { x, y },
+              operation,
+            };
+            mouseDownPos = null;
+            if (lastKnownLocationId !== null) {
+              hoverEventCallback?.({ kind: "clear" });
+              lastKnownLocationId = null;
+            }
+            updateBoxSelect(boxDrag);
+          } else {
+            if (button === 0) {
+              mouseDownPos = { x, y };
+            }
+            app.on_mouse_button(button >= 0 ? button : 0, true);
           }
-          app.on_mouse_button(button >= 0 ? button : 0, true);
           renderOrQueue();
         } else if (action === SharedCanvasEventAction.Up) {
           const btn = button >= 0 ? button : 0;
-          if (btn === 0 && mouseDownPos !== null) {
+          if (btn === 0 && boxDrag !== null) {
+            boxDrag.current = { x, y };
+            const locationIdxs = app.commit_box_selection(
+              boxDrag.start.x,
+              boxDrag.start.y,
+              boxDrag.current.x,
+              boxDrag.current.y,
+            );
+            boxSelectCommitCallback?.({ locationIdxs, add: boxDrag.operation === "add" });
+            app.clear_box_highlight();
+            boxDrag = null;
+            boxDragDirty = false;
+            boxSelectRectCallback?.(null);
+          } else if (btn === 0 && mouseDownPos !== null) {
             const dist = Math.hypot(x - mouseDownPos.x, y - mouseDownPos.y);
             if (dist < 5) {
               if (lastKnownLocationId !== null) {
@@ -242,10 +325,13 @@ export const createMapEngine = async (
               }
             }
             mouseDownPos = null;
+            app.on_mouse_button(btn, false);
+          } else {
+            app.on_mouse_button(btn, false);
           }
-          app.on_mouse_button(btn, false);
           renderOrQueue();
         } else if (action === SharedCanvasEventAction.Leave) {
+          cancelBoxSelect();
           app.on_mouse_button(0, false);
           mouseDownPos = null;
           lastCursorPosition = null;
@@ -298,9 +384,17 @@ export const createMapEngine = async (
       app.sync_location_array(newLocations);
       newLocations = null;
     }
+    if (newGroupingTable) {
+      app.sync_grouping_table(newGroupingTable);
+      newGroupingTable = null;
+    }
 
     // Drain canvas_courier input events before ticking
     inputReader.drain(processInputEvent);
+    if (boxDrag !== null && boxDragDirty) {
+      updateBoxSelect(boxDrag);
+      boxDragDirty = false;
+    }
 
     if (newDimensions) {
       let diff =
@@ -320,7 +414,7 @@ export const createMapEngine = async (
     }
 
     app.tick();
-    if (pressedKeys.size > 0 && lastCursorPosition) {
+    if (pressedKeys.size > 0 && lastCursorPosition && boxDrag === null) {
       updateCursorWorldPosition(lastCursorPosition.x, lastCursorPosition.y);
     }
 
@@ -410,6 +504,10 @@ export const createMapEngine = async (
       app.highlight_location(locationIdx);
     },
 
+    onBoxSelectRectUpdate: (callback: (rect: BoxSelectOverlayRect | null) => void) => {
+      boxSelectRectCallback = callback;
+    },
+
     startHoverTracking: startHoverTracking,
 
     stopHoverTracking: stopHoverTracking,
@@ -421,6 +519,12 @@ export type MapCommand =
   | { kind: "highlight"; locationIdx: number }
   | { kind: "setOwnerBorders"; enabled: boolean }
   | { kind: "render" };
+
+type BoxSelectDrag = {
+  start: { x: number; y: number };
+  current: { x: number; y: number };
+  operation: BoxSelectOperation;
+};
 
 export type LocationLookupResult = {
   locationIdx: number;

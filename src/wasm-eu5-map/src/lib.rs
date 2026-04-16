@@ -1,9 +1,13 @@
-use eu5app::{game_data::optimized::OptimizedTextureBundle, should_highlight_individual_locations};
+use eu5app::{
+    GroupId, GroupingTable, game_data::optimized::OptimizedTextureBundle,
+    should_highlight_individual_locations,
+};
+use eu5save::hash::FnvHashSet;
 use pdx_map::{
     CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
     InteractionController, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
-    MapTexture, MapViewController, MouseButton, PhysicalSize, R16, SurfaceMapRenderer, World,
-    WorldPoint, default_clock,
+    MapTexture, MapViewController, MouseButton, PhysicalSize, R16, SpatialIndex,
+    SurfaceMapRenderer, World, WorldPoint, default_clock,
 };
 use std::time::Duration;
 use wasm_bindgen::prelude::*;
@@ -78,7 +82,10 @@ pub struct Eu5WasmMapRenderer {
     controller: MapViewController,
     input: InteractionController,
     world: World,
+    spatial_index: SpatialIndex,
     location_arrays: LocationArrays,
+    grouping_table: GroupingTable,
+    cached_preview_groups: FnvHashSet<GroupId>,
     clock: Box<dyn Clock>,
     last_tick: Option<Duration>,
 }
@@ -108,6 +115,7 @@ impl Eu5WasmMapRenderer {
 
         let map_size = renderer.hemisphere_size().world();
         let world = texture_data.into_world(renderer.hemisphere_size().width_length());
+        let spatial_index = world.build_spatial_index();
         let mut controller = MapViewController::new(renderer);
 
         // Initialize input controller with map size
@@ -122,7 +130,10 @@ impl Eu5WasmMapRenderer {
             controller,
             input,
             world,
+            spatial_index,
             location_arrays: LocationArrays::new(),
+            grouping_table: GroupingTable::empty(),
+            cached_preview_groups: FnvHashSet::default(),
             clock: default_clock(),
             last_tick: None,
         })
@@ -139,6 +150,92 @@ impl Eu5WasmMapRenderer {
     pub fn canvas_to_world(&self) -> Vec<f32> {
         let world_pos = self.input.world_position();
         vec![world_pos.x, world_pos.y]
+    }
+
+    /// Update the grouping table used for box-select preview highlighting.
+    /// `raw` is the flat array returned by the game worker's `grouping_table()` method.
+    #[wasm_bindgen]
+    pub fn sync_grouping_table(&mut self, raw: js_sys::Uint32Array) {
+        let groups: Vec<GroupId> = raw.to_vec().into_iter().map(GroupId::from_raw).collect();
+        self.grouping_table = GroupingTable::new(groups);
+    }
+
+    /// Highlight all GPU locations that share a group with any location inside the canvas rect.
+    /// Called on every drag-update frame during a box-select drag.
+    #[wasm_bindgen]
+    pub fn preview_box_highlight(&mut self, start_x: f32, start_y: f32, end_x: f32, end_y: f32) {
+        if self.grouping_table.is_empty() {
+            return;
+        }
+
+        let start = LogicalPoint::new(start_x, start_y);
+        let end = LogicalPoint::new(end_x, end_y);
+
+        self.cached_preview_groups = self.resolve_groups_in_rect(start, end);
+
+        for (gpu, group) in self.grouping_table.iter() {
+            let mut loc = self.location_arrays.get_mut(gpu);
+            if self.cached_preview_groups.contains(&group) {
+                loc.flags_mut().set(LocationFlags::HIGHLIGHTED);
+            } else {
+                loc.flags_mut().clear(LocationFlags::HIGHLIGHTED);
+            }
+        }
+
+        self.upload_location_arrays();
+    }
+
+    /// Resolve the canvas rect to a flat array of app-level location indices,
+    /// expanding each hit location to all members of the same group.
+    /// Called once on pointer-up to produce the final selection payload.
+    #[wasm_bindgen]
+    pub fn commit_box_selection(
+        &mut self,
+        start_x: f32,
+        start_y: f32,
+        end_x: f32,
+        end_y: f32,
+    ) -> js_sys::Uint32Array {
+        if self.grouping_table.is_empty() {
+            return js_sys::Uint32Array::new_with_length(0);
+        }
+
+        let groups = if self.cached_preview_groups.is_empty() {
+            let start = LogicalPoint::new(start_x, start_y);
+            let end = LogicalPoint::new(end_x, end_y);
+            self.resolve_groups_in_rect(start, end)
+        } else {
+            std::mem::take(&mut self.cached_preview_groups)
+        };
+
+        let mut app_ids: Vec<u32> = self
+            .grouping_table
+            .iter()
+            .filter(|(_, group)| groups.contains(group))
+            .map(|(gpu, _)| self.location_arrays.get_location_id(gpu).value())
+            .collect();
+
+        let mut iter = self.location_arrays.iter_mut();
+        while let Some(mut loc) = iter.next_location() {
+            loc.flags_mut().clear(LocationFlags::HIGHLIGHTED);
+        }
+
+        self.upload_location_arrays();
+
+        app_ids.sort_unstable();
+        app_ids.dedup();
+        js_sys::Uint32Array::from(app_ids.as_slice())
+    }
+
+    /// Clear all box-select preview highlights.
+    /// Called after the commit has been applied to the game worker.
+    #[wasm_bindgen]
+    pub fn clear_box_highlight(&mut self) {
+        let mut iter = self.location_arrays.iter_mut();
+        while let Some(mut location) = iter.next_location() {
+            location.flags_mut().clear(LocationFlags::HIGHLIGHTED);
+        }
+        self.upload_location_arrays();
     }
 
     #[wasm_bindgen]
@@ -354,6 +451,21 @@ impl Eu5WasmMapRenderer {
     fn upload_location_arrays(&mut self) {
         let renderer = self.controller.renderer_mut();
         renderer.update_locations(&self.location_arrays);
+    }
+
+    fn resolve_groups_in_rect(
+        &self,
+        start: LogicalPoint<f32>,
+        end: LogicalPoint<f32>,
+    ) -> FnvHashSet<GroupId> {
+        let (primary, secondary) = self.input.canvas_rect_to_world_aabbs(start, end);
+
+        std::iter::once(primary)
+            .chain(secondary)
+            .flat_map(|aabb| self.spatial_index.query(aabb))
+            .map(|r16| self.grouping_table.get(GpuLocationIdx::new(r16.value())))
+            .filter(|group| !group.is_none())
+            .collect()
     }
 }
 

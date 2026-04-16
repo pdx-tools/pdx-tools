@@ -1,4 +1,6 @@
-use crate::{LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldSize, units::WorldPoint};
+use crate::{
+    Aabb, LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldSize, units::WorldPoint,
+};
 use std::time::Duration;
 
 use super::keyboard::{KeyboardKey, KeyboardState};
@@ -222,6 +224,20 @@ impl InteractionController {
     /// Get the current world position under the cursor.
     pub fn world_position(&self) -> WorldPoint<f32> {
         self.viewport.canvas_to_world(self.cursor_position())
+    }
+
+    /// Convert a canvas-local logical pixel position to world coordinates.
+    pub fn canvas_to_world(&self, canvas: LogicalPoint<f32>) -> WorldPoint<f32> {
+        self.viewport.canvas_to_world(canvas)
+    }
+
+    /// Convert a canvas-space rectangle to world-space AABBs, handling map wrap-around.
+    pub fn canvas_rect_to_world_aabbs(
+        &self,
+        start: LogicalPoint<f32>,
+        end: LogicalPoint<f32>,
+    ) -> (Aabb, Option<Aabb>) {
+        self.viewport.canvas_rect_to_world_aabbs(start, end)
     }
 
     /// Center on world point.
