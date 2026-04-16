@@ -961,6 +961,11 @@ impl<'bump> Eu5Workspace<'bump> {
         self.current_map_mode
     }
 
+    /// Return the GPU color ID needed to center the map at this location.
+    pub fn center_at(&self, location_idx: eu5save::models::LocationIdx) -> Option<crate::ColorIdx> {
+        self.gpu_indices[location_idx].map(|gpu_idx| crate::ColorIdx::new(gpu_idx.value()))
+    }
+
     /// Get the color ID of the player's capital location for map centering.
     /// Returns None if no player country, no capital, or capital has no map presence.
     pub fn player_capital_color_id(&self) -> Option<crate::ColorIdx> {

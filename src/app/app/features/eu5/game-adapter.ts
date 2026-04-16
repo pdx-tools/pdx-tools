@@ -216,6 +216,9 @@ export function saveWorker(
     selectAtLocation: (locationIdx: number) => {
       return saveEngine.selectAtLocation(locationIdx);
     },
+    selectCountry: (locationIdx: number) => {
+      return saveEngine.selectCountry(locationIdx);
+    },
 
     getMapModeRange: async (mode: MapMode): Promise<MapModeRange> => {
       return await saveEngine.getMapModeRange(mode);
@@ -227,6 +230,10 @@ export function saveWorker(
 
     getStateEfficacy: async () => {
       return await saveEngine.getStateEfficacy();
+    },
+
+    searchCountries: async (query: string) => {
+      return await saveEngine.searchCountries(query);
     },
   };
 }

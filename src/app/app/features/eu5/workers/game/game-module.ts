@@ -75,6 +75,9 @@ export const createGame = async (
   const app = timeSync("Initialize App", () => wasm_eu5.Eu5App.init(gamestate, gameBundle));
   onProgress?.(5); // Initialize app
 
+  // Build the country search index once after initialization
+  const countryIndex = timeSync("Build country index", () => app.get_countries().countries);
+
   if (!mapEndpoint) {
     throw new Error("Map endpoint not initialized");
   }
@@ -176,11 +179,34 @@ export const createGame = async (
       selectionCallback?.(app.get_selection_summary());
       return p;
     },
+    selectCountry: (locationIdx: number) => {
+      // Pass zoom 0 to force country-level selection regardless of current zoom
+      app.select_entity(locationIdx, 0);
+      const colorId = app.center_at(locationIdx);
+      if (colorId !== undefined && colorId !== null) {
+        mapEndpoint?.center_at_color_id(colorId);
+      }
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
     getMapModeRange: (mode: MapMode): MapModeRange => {
       return app.get_map_mode_range(mode);
     },
     getStateEfficacy: (): StateEfficacyData => {
       return app.get_state_efficacy();
+    },
+
+    searchCountries: (query: string) => {
+      const lower = query.toLowerCase();
+      return countryIndex
+        .filter(
+          (c) =>
+            c.capitalLocationIdx !== null &&
+            c.capitalLocationIdx !== undefined &&
+            (c.name.toLowerCase().includes(lower) || c.tag.toLowerCase().includes(lower)),
+        )
+        .slice(0, 20);
     },
   });
 };

@@ -1,7 +1,6 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { EU5ControlPanel } from "./EU5ControlPanel";
 import { Eu5InsightPanel } from "./Eu5InsightPanel";
-import { Eu5FilterPalette } from "./Eu5FilterPalette";
 import { AppLoading } from "@/components/AppLoading";
 import { developerLog } from "@/lib/log";
 import { useLoadEu5, Eu5StoreProvider, useEu5SelectionState } from "./store";
@@ -11,6 +10,7 @@ import { Eu5CursorTooltip } from "./Eu5CursorTooltip";
 import { useCursorPosition } from "@/hooks/useCursorPosition";
 import { Eu5ErrorDisplay } from "./Eu5ErrorDisplay";
 import { Eu5MapLegend } from "./Eu5MapLegend";
+import { Eu5Toolbar } from "./Eu5Toolbar";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import { ChevronLeftIcon } from "@heroicons/react/24/solid";
 import type { CursorPosition } from "@/components/CursorTooltip";
@@ -109,7 +109,7 @@ const Eu5UiContent = ({ cursorRef }: { cursorRef: React.RefObject<CursorPosition
 
       {/* Canvas overlays */}
       <Eu5CursorTooltip cursorRef={cursorRef} />
-      <Eu5FilterPalette />
+      <Eu5Toolbar />
       <div className="pointer-events-none absolute bottom-6 left-[21.5rem]">
         <Eu5MapLegend />
       </div>
