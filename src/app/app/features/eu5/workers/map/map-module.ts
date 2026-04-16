@@ -34,7 +34,7 @@ let appTask = new Promise<Eu5WasmMapRenderer>((res, rej) => {
   appReject = rej;
 });
 let hoverEventCallback: ((event: LocationHoverChangeEvent) => void) | null = null;
-let clickEventCallback: ((event: LocationHoverChangeEvent) => void) | null = null;
+let clickEventCallback: ((event: LocationClickChangeEvent) => void) | null = null;
 let zoomChangeCallback: ((zoom: number) => void) | null = null;
 let renderOrQueue: () => void = () => {};
 let newLocations: Uint32Array | null = null;
@@ -63,7 +63,7 @@ const mapGameEndpoint = () => {
       hoverEventCallback = callback;
     },
 
-    onLocationClickUpdate: (callback: (event: LocationHoverChangeEvent) => void) => {
+    onLocationClickUpdate: (callback: (event: LocationClickChangeEvent) => void) => {
       clickEventCallback = callback;
     },
 
@@ -212,7 +212,7 @@ export const createMapEngine = async (
   const processInputEvent = (event: SharedCanvasDecodedEvent) => {
     switch (event.type) {
       case SharedCanvasEventType.Pointer: {
-        const { action, x, y, button } = event;
+        const { action, x, y, button, modifiers } = event;
         if (action === SharedCanvasEventAction.Move) {
           app.on_cursor_move(x, y);
           updateCursorWorldPosition(x, y);
@@ -232,7 +232,11 @@ export const createMapEngine = async (
             const dist = Math.hypot(x - mouseDownPos.x, y - mouseDownPos.y);
             if (dist < 5) {
               if (lastKnownLocationId !== null) {
-                clickEventCallback?.({ kind: "update", locationIdx: lastKnownLocationId });
+                clickEventCallback?.({
+                  kind: "update",
+                  locationIdx: lastKnownLocationId,
+                  modifiers,
+                });
               } else {
                 clickEventCallback?.({ kind: "clear" });
               }
@@ -428,6 +432,10 @@ export type LocationHoverChangeEvent =
       kind: "update";
       locationIdx: number;
     }
+  | { kind: "clear" };
+
+export type LocationClickChangeEvent =
+  | { kind: "update"; locationIdx: number; modifiers: number }
   | { kind: "clear" };
 
 interface OverlayCanvasInfo {

@@ -439,6 +439,26 @@ impl Eu5App {
         self.app.set_map_mode(mode);
     }
 
+    /// Add the entity at `location_idx` (and its resolved group) to the existing selection,
+    /// then reapply colors with out-of-filter dimming.
+    #[wasm_bindgen]
+    pub fn add_entity(&mut self, location_idx: u32, zoom: f32) {
+        let idx = eu5save::models::LocationIdx::new(location_idx);
+        self.app.add_entity(idx, zoom);
+        let mode = self.app.get_map_mode();
+        self.app.set_map_mode(mode);
+    }
+
+    /// Remove the entity at `location_idx` (and its resolved group) from the selection,
+    /// then reapply colors with out-of-filter dimming.
+    #[wasm_bindgen]
+    pub fn remove_entity(&mut self, location_idx: u32, zoom: f32) {
+        let idx = eu5save::models::LocationIdx::new(location_idx);
+        self.app.remove_entity(idx, zoom);
+        let mode = self.app.get_map_mode();
+        self.app.set_map_mode(mode);
+    }
+
     /// Clear the current selection and restore full-brightness colors.
     #[wasm_bindgen]
     pub fn clear_selection(&mut self) {

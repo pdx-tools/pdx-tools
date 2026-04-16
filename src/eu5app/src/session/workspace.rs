@@ -633,16 +633,37 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     /// Select entities by resolving `clicked_idx` using the current map mode and zoom.
-    /// If the clicked location is already in the selection, the selection is cleared (toggle).
-    /// Otherwise replaces the selection with the resolved entity set.
+    /// If the clicked location is already in the selection, deselects just that entity's
+    /// resolved group (leaving other selected entities intact). Otherwise replaces the
+    /// selection with the resolved entity set.
     pub fn select_entity(&mut self, clicked_idx: eu5save::models::LocationIdx, zoom: f32) {
+        let mode = self.current_map_mode;
+        let resolved = SelectionAdapter::new(&*self).resolve_click(clicked_idx, mode, zoom);
         if self.selection_state.contains(clicked_idx) {
-            self.selection_state.clear();
+            for idx in resolved {
+                self.selection_state.remove(idx);
+            }
             return;
         }
+        self.selection_state.replace(resolved);
+    }
+
+    /// Add the entity at `clicked_idx` (and its resolved group) to the existing selection.
+    pub fn add_entity(&mut self, clicked_idx: eu5save::models::LocationIdx, zoom: f32) {
         let mode = self.current_map_mode;
-        let new_selection = SelectionAdapter::new(&*self).resolve_click(clicked_idx, mode, zoom);
-        self.selection_state.replace(new_selection);
+        let resolved = SelectionAdapter::new(&*self).resolve_click(clicked_idx, mode, zoom);
+        for idx in resolved {
+            self.selection_state.add(idx);
+        }
+    }
+
+    /// Remove the entity at `clicked_idx` (and its resolved group) from the selection.
+    pub fn remove_entity(&mut self, clicked_idx: eu5save::models::LocationIdx, zoom: f32) {
+        let mode = self.current_map_mode;
+        let resolved = SelectionAdapter::new(&*self).resolve_click(clicked_idx, mode, zoom);
+        for idx in resolved {
+            self.selection_state.remove(idx);
+        }
     }
 
     pub fn clear_selection(&mut self) {
