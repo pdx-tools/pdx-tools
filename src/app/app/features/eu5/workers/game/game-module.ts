@@ -117,10 +117,19 @@ export const createGame = async (
     }),
   );
 
+  const SHIFT = 1 << 0;
+  const ALT = 1 << 2;
   mapEndpoint.onLocationClickUpdate(
     proxy((event) => {
       if (event.kind === "update" && currentZoom !== null) {
-        app.select_entity(event.locationIdx, currentZoom);
+        const mods = event.modifiers;
+        if (mods & SHIFT) {
+          app.add_entity(event.locationIdx, currentZoom);
+        } else if (mods & ALT) {
+          app.remove_entity(event.locationIdx, currentZoom);
+        } else {
+          app.select_entity(event.locationIdx, currentZoom);
+        }
       } else {
         app.clear_selection();
       }
