@@ -1,7 +1,7 @@
 use crate::game_data::GameData;
 use crate::selection::{LocationData, SelectionAdapter, SelectionState};
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
-use eu5save::hash::FxHashMap;
+use eu5save::hash::{FnvHashSet, FxHashMap};
 use eu5save::models::{
     CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIndexedVec, RawMaterialsName,
 };
@@ -649,10 +649,69 @@ impl<'bump> Eu5Workspace<'bump> {
         self.selection_state.clear();
     }
 
-    pub fn set_map_mode(&mut self, mode: MapMode) {
-        if mode != self.current_map_mode {
-            self.selection_state.clear();
+    /// Select all locations owned by human-controlled countries and their subjects.
+    pub fn select_players(&mut self) {
+        let player_idxs: FnvHashSet<CountryIdx> = self
+            .gamestate
+            .played_countries
+            .iter()
+            .filter_map(|p| self.gamestate.countries.get(p.country))
+            .collect();
+
+        if player_idxs.is_empty() {
+            return;
         }
+
+        let player_and_subjects: FnvHashSet<CountryIdx> = self
+            .gamestate
+            .countries
+            .iter()
+            .filter_map(|entry| {
+                self.is_player_or_subject(entry.idx(), &player_idxs)
+                    .then_some(entry.idx())
+            })
+            .collect();
+
+        let locations: FnvHashSet<eu5save::models::LocationIdx> = self
+            .gamestate
+            .locations
+            .iter()
+            .filter_map(|entry| {
+                let owner_id = entry.location().owner.real_id()?;
+                let owner_idx = self.gamestate.countries.get(owner_id.country_id())?;
+                player_and_subjects
+                    .contains(&owner_idx)
+                    .then_some(entry.idx())
+            })
+            .collect();
+
+        self.selection_state
+            .replace_with_preset(locations, crate::selection::SelectionPreset::Players);
+    }
+
+    fn is_player_or_subject(
+        &self,
+        mut current: CountryIdx,
+        player_idxs: &FnvHashSet<CountryIdx>,
+    ) -> bool {
+        loop {
+            if player_idxs.contains(&current) {
+                return true;
+            }
+            match self.overlord_of[current] {
+                Some(overlord) => current = overlord,
+                None => return false,
+            }
+        }
+    }
+
+    /// Rebuild all GPU location colors for the current mode and selection.
+    /// Call this after any mutation that affects the selection or rendered values.
+    pub fn rebuild_colors(&mut self) {
+        self.set_map_mode(self.current_map_mode);
+    }
+
+    pub fn set_map_mode(&mut self, mode: MapMode) {
         self.current_map_mode = mode;
 
         // Apply colors based on mode

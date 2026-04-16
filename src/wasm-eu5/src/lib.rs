@@ -75,6 +75,7 @@ pub struct SelectionSummaryData {
     pub location_count: u32,
     pub is_empty: bool,
     pub total_population: u32,
+    pub preset: Option<String>,
 }
 
 impl From<MapMode> for Eu5MapMode {
@@ -435,16 +436,21 @@ impl Eu5App {
     pub fn select_entity(&mut self, location_idx: u32, zoom: f32) {
         let idx = eu5save::models::LocationIdx::new(location_idx);
         self.app.select_entity(idx, zoom);
-        let mode = self.app.get_map_mode();
-        self.app.set_map_mode(mode);
+        self.app.rebuild_colors();
     }
 
     /// Clear the current selection and restore full-brightness colors.
     #[wasm_bindgen]
     pub fn clear_selection(&mut self) {
         self.app.clear_selection();
-        let mode = self.app.get_map_mode();
-        self.app.set_map_mode(mode);
+        self.app.rebuild_colors();
+    }
+
+    /// Select all locations owned by human-controlled countries and their subjects.
+    #[wasm_bindgen]
+    pub fn select_players(&mut self) {
+        self.app.select_players();
+        self.app.rebuild_colors();
     }
 
     /// Return a summary of the current selection (entity and location counts).
@@ -463,11 +469,15 @@ impl Eu5App {
                 Some(self.app.gamestate().location_population(loc) as u32)
             })
             .sum();
+        let preset = sel.preset().map(|p| match p {
+            eu5app::SelectionPreset::Players => "players".to_string(),
+        });
         SelectionSummaryData {
             entity_count: summary.entity_count as u32,
             location_count: summary.location_count as u32,
             is_empty: sel.is_empty(),
             total_population,
+            preset,
         }
     }
 

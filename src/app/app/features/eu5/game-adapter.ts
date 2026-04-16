@@ -220,6 +220,14 @@ export function saveWorker(
       return saveEngine.selectCountry(locationIdx);
     },
 
+    selectPlayers: () => {
+      return saveEngine.selectPlayers();
+    },
+
+    clearSelection: () => {
+      return saveEngine.clearSelection();
+    },
+
     getMapModeRange: async (mode: MapMode): Promise<MapModeRange> => {
       return await saveEngine.getMapModeRange(mode);
     },

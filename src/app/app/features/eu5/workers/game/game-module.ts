@@ -190,6 +190,18 @@ export const createGame = async (
       selectionCallback?.(app.get_selection_summary());
       return p;
     },
+    selectPlayers: () => {
+      app.select_players();
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
+    clearSelection: () => {
+      app.clear_selection();
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
     getMapModeRange: (mode: MapMode): MapModeRange => {
       return app.get_map_mode_range(mode);
     },
