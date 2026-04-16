@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useEu5SelectionState, useEu5Engine } from "./store";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon, FunnelIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon } from "@heroicons/react/24/solid";
+import { Popover } from "@/components/Popover";
 import { Command as CommandPrimitive } from "cmdk";
 import { cx } from "class-variance-authority";
 import { formatInt } from "@/lib/format";
@@ -10,12 +12,18 @@ import { Eu5ShortcutPanel } from "./Eu5ShortcutPanel";
 
 export function Eu5Toolbar() {
   const [searchActive, setSearchActive] = useState(false);
+  const [presetMenuOpen, setPresetMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const engine = useEu5Engine();
   const selectionState = useEu5SelectionState();
+
+  const openSearch = useCallback(() => {
+    setPresetMenuOpen(false);
+    setSearchActive(true);
+  }, []);
 
   // Global "/" shortcut to open search
   useEffect(() => {
@@ -27,12 +35,12 @@ export function Eu5Toolbar() {
         !(document.activeElement instanceof HTMLTextAreaElement)
       ) {
         e.preventDefault();
-        setSearchActive(true);
+        openSearch();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [searchActive]);
+  }, [searchActive, openSearch]);
 
   // Auto-focus input when search activates
   useEffect(() => {
@@ -76,9 +84,21 @@ export function Eu5Toolbar() {
     setResults([]);
   }, []);
 
+  const handleSelectPlayers = useCallback(async () => {
+    setPresetMenuOpen(false);
+    await engine.trigger.selectPlayers();
+  }, [engine]);
+
+  const handleClearSelection = useCallback(async () => {
+    await engine.trigger.clearSelection();
+  }, [engine]);
+
   const countryResults = useMemo(() => results.filter((r) => r.kind === "country"), [results]);
   const hasResults = countryResults.length > 0;
   const showDropdown = searchActive && (hasResults || (query.trim().length > 0 && !isSearching));
+
+  const hasSelection = selectionState != null && !selectionState.isEmpty;
+  const presetActive = selectionState?.preset != null;
 
   return (
     <div
@@ -87,28 +107,68 @@ export function Eu5Toolbar() {
         searchActive ? "pointer-events-auto" : "pointer-events-none",
       )}
     >
-      {/* Click-away backdrop when dropdown is open */}
+      {/* Click-away backdrop for search dropdown */}
       {showDropdown && (
         <div className="pointer-events-auto fixed inset-0 z-[-1]" onClick={handleDismiss} />
       )}
 
       <div
         className={cx(
-          "relative flex items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/80 shadow-xl backdrop-blur-md",
+          "relative flex items-center gap-1.5 rounded-2xl border border-white/10 bg-slate-950/80 px-2 py-2 shadow-xl backdrop-blur-md",
           "transition-all duration-200",
-          searchActive ? "w-[24rem] px-3 py-2" : "px-3 py-2",
+          searchActive && "w-[24rem]",
         )}
       >
-        {/* Search icon — always interactive */}
+        {/* Search icon */}
         <button
           type="button"
-          onClick={() => setSearchActive(true)}
+          onClick={openSearch}
           className="pointer-events-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-200"
           aria-label="Search countries"
         >
           <MagnifyingGlassIcon className="h-4 w-4" />
         </button>
 
+        {/* Preset/filter button — hidden while search is open */}
+        {!searchActive && (
+          <Popover open={presetMenuOpen} onOpenChange={setPresetMenuOpen}>
+            <Popover.Trigger asChild>
+              <button
+                type="button"
+                className={cx(
+                  "pointer-events-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
+                  presetMenuOpen || presetActive
+                    ? "text-sky-300"
+                    : "text-slate-400 hover:text-slate-200",
+                )}
+                aria-label="Presets"
+              >
+                <FunnelIcon className="h-4 w-4" />
+              </button>
+            </Popover.Trigger>
+            <Popover.Content
+              side="bottom"
+              align="center"
+              sideOffset={12}
+              className="w-36 rounded-xl border border-white/10 bg-slate-950/95 p-1.5 shadow-2xl backdrop-blur-md"
+            >
+              <button
+                type="button"
+                onClick={() => void handleSelectPlayers()}
+                className="flex w-full items-center rounded-lg px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-slate-100"
+              >
+                Players
+              </button>
+            </Popover.Content>
+          </Popover>
+        )}
+
+        {/* Thin divider — shown when toolbar has content to the right */}
+        {!searchActive && hasSelection && (
+          <span className="h-4 w-px shrink-0 bg-white/10" aria-hidden="true" />
+        )}
+
+        {/* Search input OR selection chip */}
         {searchActive ? (
           <CommandPrimitive shouldFilter={false} className="flex-1">
             <CommandPrimitive.Input
@@ -158,12 +218,25 @@ export function Eu5Toolbar() {
             )}
           </CommandPrimitive>
         ) : (
-          selectionState &&
-          !selectionState.isEmpty && (
-            <span className="text-sm text-slate-100">
-              {formatSelectionSummary(selectionState.entityCount, selectionState.locationCount)}
+          hasSelection && (
+            <span className="px-0.5 text-sm text-slate-100">
+              {selectionState.preset === "players"
+                ? "Players preset"
+                : formatSelectionSummary(selectionState.entityCount, selectionState.locationCount)}
             </span>
           )
+        )}
+
+        {/* Clear button — shown when there is an active selection */}
+        {!searchActive && hasSelection && (
+          <button
+            type="button"
+            onClick={() => void handleClearSelection()}
+            className="pointer-events-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:text-slate-200"
+            aria-label="Clear selection"
+          >
+            <XMarkIcon className="h-3.5 w-3.5" />
+          </button>
         )}
 
         {/* Shortcuts toggle — always at right edge */}

@@ -38,6 +38,8 @@ export interface AppTriggers {
   getStateEfficacy(): Promise<StateEfficacyData>;
   selectAtLocation(locationIdx: number): Promise<void>;
   selectCountry(locationIdx: number): Promise<void>;
+  selectPlayers(): Promise<void>;
+  clearSelection(): Promise<void>;
   searchEntities(query: string): Promise<SearchResult[]>;
 }
 
@@ -95,6 +97,8 @@ export class Eu5UIEngine implements AppEngine {
     getStateEfficacy: () => this.handleGetStateEfficacy(),
     selectAtLocation: (locationIdx) => this.handleSelectAtLocation(locationIdx),
     selectCountry: (locationIdx) => this.handleSelectCountry(locationIdx),
+    selectPlayers: () => this.handleSelectPlayers(),
+    clearSelection: () => this.handleClearSelection(),
     searchEntities: (query) => this.handleSearchEntities(query),
   };
 
@@ -180,6 +184,14 @@ export class Eu5UIEngine implements AppEngine {
 
   private async handleSelectCountry(locationIdx: number): Promise<void> {
     await this.gameInstance.selectCountry(locationIdx);
+  }
+
+  private async handleSelectPlayers(): Promise<void> {
+    await this.gameInstance.selectPlayers();
+  }
+
+  private async handleClearSelection(): Promise<void> {
+    await this.gameInstance.clearSelection();
   }
 
   private async handleSearchEntities(query: string): Promise<SearchResult[]> {

@@ -35,6 +35,12 @@ impl<T: LocationData> LocationData for &T {
     }
 }
 
+/// Which preset (if any) was used to populate the current selection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SelectionPreset {
+    Players,
+}
+
 /// Tracks the set of currently selected [`LocationIdx`] values.
 ///
 /// All mutations are O(1) amortised; [`SelectionState::entity_summary`] is O(n)
@@ -42,6 +48,7 @@ impl<T: LocationData> LocationData for &T {
 #[derive(Debug, Default)]
 pub struct SelectionState {
     locations: FnvHashSet<LocationIdx>,
+    preset: Option<SelectionPreset>,
 }
 
 impl SelectionState {
@@ -60,13 +67,31 @@ impl SelectionState {
     }
 
     /// Replace the entire selection with `locations`, discarding the previous set.
+    /// Clears any active preset.
     pub fn replace(&mut self, locations: FnvHashSet<LocationIdx>) {
         self.locations = locations;
+        self.preset = None;
     }
 
-    /// Clear the entire selection.
+    /// Replace the entire selection with `locations` and record the active preset.
+    pub fn replace_with_preset(
+        &mut self,
+        locations: FnvHashSet<LocationIdx>,
+        preset: SelectionPreset,
+    ) {
+        self.locations = locations;
+        self.preset = Some(preset);
+    }
+
+    /// Clear the entire selection and any active preset.
     pub fn clear(&mut self) {
         self.locations.clear();
+        self.preset = None;
+    }
+
+    /// Return the active preset, if one was used to populate this selection.
+    pub fn preset(&self) -> Option<SelectionPreset> {
+        self.preset
     }
 
     pub fn contains(&self, idx: LocationIdx) -> bool {
