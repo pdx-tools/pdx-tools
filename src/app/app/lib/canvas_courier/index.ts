@@ -37,9 +37,11 @@ export {
   SharedCanvasEventAction,
   SharedCanvasPointerKind,
   SharedCanvasWheelDeltaMode,
+  SharedCanvasModifierBits,
   type CanvasSize,
   type SharedCanvasInputConfig,
   type SharedCanvasDecodedEvent,
+  type SharedCanvasModifierBits as SharedCanvasModifierBitsType,
 } from "./ring_buffer";
 export { useCanvasCourierSurface } from "./useCanvasCourierSurface";
 export type { CanvasCourierController, CanvasCourierSurface } from "./types";

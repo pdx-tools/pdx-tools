@@ -1,5 +1,6 @@
 import { Eu5GameAdapter } from "./game-adapter";
 import type {
+  BoxSelectOverlayRect,
   GameInstance,
   HoverDisplayData,
   MapModeRange,
@@ -16,6 +17,7 @@ export interface AppState {
   ownerBordersEnabled: boolean;
   mapModeRange: MapModeRange | null;
   selectionState: SelectionSummaryData | null;
+  boxSelectRect: BoxSelectOverlayRect | null;
 }
 
 export type AppStateListener = (state: AppState) => void;
@@ -67,6 +69,7 @@ export class Eu5UIEngine implements AppEngine {
       ownerBordersEnabled: true,
       mapModeRange: null,
       selectionState: null,
+      boxSelectRect: null,
       ...initialState,
     };
 
@@ -81,6 +84,12 @@ export class Eu5UIEngine implements AppEngine {
     this.gameInstance.onSelectionUpdate((data) => {
       this.updateState(() => ({
         selectionState: data,
+      }));
+    });
+
+    this.gameInstance.onBoxSelectRectUpdate((rect) => {
+      this.updateState(() => ({
+        boxSelectRect: rect,
       }));
     });
 

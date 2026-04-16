@@ -1,4 +1,4 @@
-use crate::{LogicalPoint, LogicalSize, Rect, WorldRect, WorldSize, units::WorldPoint};
+use crate::{Aabb, LogicalPoint, LogicalSize, Rect, WorldRect, WorldSize, units::WorldPoint};
 use std::fmt;
 
 /// Represents the bounds of the current viewport in world coordinates
@@ -190,6 +190,49 @@ impl MapViewport {
         self.viewport_position.y = new_viewport_y.clamp(0.0, max_y as f32);
     }
 
+    /// Convert a canvas-space rectangle to one or two world-space AABBs,
+    /// handling map wrap-around when the rectangle crosses the antimeridian.
+    pub fn canvas_rect_to_world_aabbs(
+        &self,
+        start: LogicalPoint<f32>,
+        end: LogicalPoint<f32>,
+    ) -> (Aabb, Option<Aabb>) {
+        let world_start = self.canvas_to_world(start);
+        let world_end = self.canvas_to_world(end);
+
+        let world_width = self.map_size.width as f32;
+        let max_x = (self.map_size.width - 1) as f32;
+        let max_y_f = (self.map_size.height - 1) as f32;
+
+        let min_y = world_start.y.min(world_end.y).floor().clamp(0.0, max_y_f) as u16;
+        let max_y = world_start.y.max(world_end.y).ceil().clamp(0.0, max_y_f) as u16;
+        let raw_min_x = world_start.x.min(world_end.x);
+        let raw_max_x = world_start.x.max(world_end.x);
+
+        if raw_max_x - raw_min_x >= world_width - 1.0 {
+            let aabb = Aabb::new(
+                WorldPoint::new(0u16, min_y),
+                WorldPoint::new(max_x as u16, max_y),
+            );
+            (aabb, None)
+        } else {
+            let x0 = raw_min_x.rem_euclid(world_width).floor().clamp(0.0, max_x) as u16;
+            let x1 = raw_max_x.rem_euclid(world_width).ceil().clamp(0.0, max_x) as u16;
+
+            if x0 <= x1 {
+                let aabb = Aabb::new(WorldPoint::new(x0, min_y), WorldPoint::new(x1, max_y));
+                (aabb, None)
+            } else {
+                let right = Aabb::new(
+                    WorldPoint::new(x0, min_y),
+                    WorldPoint::new(max_x as u16, max_y),
+                );
+                let left = Aabb::new(WorldPoint::new(0u16, min_y), WorldPoint::new(x1, max_y));
+                (right, Some(left))
+            }
+        }
+    }
+
     fn min_zoom(&self) -> f32 {
         Self::min_zoom_for_canvas(self.canvas_size, self.map_size)
     }
@@ -294,6 +337,111 @@ mod tests {
             zoom_level: 2.0,
         };
         assert_eq!(format!("{}", bounds), "800x600@(0,0) z:2.00");
+    }
+
+    fn make_viewport_at(
+        canvas: LogicalSize<u32>,
+        tile: WorldSize<u32>,
+        world_pos: WorldPoint<f32>,
+        zoom: f32,
+    ) -> MapViewport {
+        let mut vp = MapViewport::new(canvas, tile);
+        vp.zoom_level = zoom;
+        vp.viewport_position = world_pos;
+        vp
+    }
+
+    #[test]
+    fn test_canvas_rect_non_wrapping() {
+        // Simple 1:1 zoom, viewport at origin
+        let vp = make_viewport_at(
+            LogicalSize::new(100, 100),
+            WorldSize::new(500, 500),
+            WorldPoint::new(10.0, 10.0),
+            1.0,
+        );
+
+        let (primary, secondary) = vp
+            .canvas_rect_to_world_aabbs(LogicalPoint::new(5.0, 5.0), LogicalPoint::new(20.0, 20.0));
+        assert_eq!(secondary, None);
+        assert_eq!(primary.min(), WorldPoint::new(15u16, 15u16));
+        assert_eq!(primary.max(), WorldPoint::new(30u16, 30u16));
+    }
+
+    #[test]
+    fn test_canvas_rect_symmetry() {
+        let vp = make_viewport_at(
+            LogicalSize::new(100, 100),
+            WorldSize::new(500, 500),
+            WorldPoint::new(10.0, 10.0),
+            1.0,
+        );
+
+        let (p1, s1) = vp
+            .canvas_rect_to_world_aabbs(LogicalPoint::new(5.0, 5.0), LogicalPoint::new(20.0, 20.0));
+        let (p2, s2) = vp
+            .canvas_rect_to_world_aabbs(LogicalPoint::new(20.0, 20.0), LogicalPoint::new(5.0, 5.0));
+        assert_eq!(p1, p2);
+        assert_eq!(s1, s2);
+    }
+
+    #[test]
+    fn test_canvas_rect_y_clamping() {
+        // Viewport near top edge so one canvas point maps to negative world Y
+        let vp = make_viewport_at(
+            LogicalSize::new(100, 100),
+            WorldSize::new(500, 500),
+            WorldPoint::new(100.0, 2.0),
+            1.0,
+        );
+
+        let (primary, secondary) = vp.canvas_rect_to_world_aabbs(
+            LogicalPoint::new(0.0, -50.0), // maps to world y = 2 - 50 = -48 → clamped to 0
+            LogicalPoint::new(10.0, 10.0),
+        );
+        assert_eq!(secondary, None);
+        assert_eq!(primary.min().y, 0u16);
+    }
+
+    #[test]
+    fn test_canvas_rect_full_width() {
+        // Rect wide enough to cover the whole world width
+        let tile_w = 500u32;
+        let world_w = tile_w * 2; // 1000
+        let vp = make_viewport_at(
+            LogicalSize::new(2000, 100),
+            WorldSize::new(tile_w, 500),
+            WorldPoint::new(0.0, 0.0),
+            1.0,
+        );
+
+        // Canvas [0, 0] → [1000, 10] spans entire world width
+        let (primary, secondary) = vp.canvas_rect_to_world_aabbs(
+            LogicalPoint::new(0.0, 5.0),
+            LogicalPoint::new(world_w as f32, 10.0),
+        );
+        assert_eq!(secondary, None);
+        assert_eq!(primary.min().x, 0u16);
+        assert_eq!(primary.max().x, (world_w - 1) as u16);
+    }
+
+    #[test]
+    fn test_canvas_rect_antimeridian_wrap() {
+        let tile_w = 500u32;
+        // Position viewport near the right edge so the rect wraps
+        let vp = make_viewport_at(
+            LogicalSize::new(200, 100),
+            WorldSize::new(tile_w, 500),
+            WorldPoint::new(990.0, 0.0), // world_width = 1000, so viewport starts at 990
+            1.0,
+        );
+
+        // Canvas [0, 0] → [20, 10]: world x from 990 to 1010, which wraps to [990,999] + [0,10]
+        let (primary, secondary) = vp
+            .canvas_rect_to_world_aabbs(LogicalPoint::new(0.0, 0.0), LogicalPoint::new(20.0, 10.0));
+        assert!(secondary.is_some(), "expected two AABBs for wrapping rect");
+        // Primary should be right segment, secondary the left
+        assert!(primary.min().x > secondary.as_ref().unwrap().max().x);
     }
 
     #[test]

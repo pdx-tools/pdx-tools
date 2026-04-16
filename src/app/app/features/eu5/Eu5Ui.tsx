@@ -11,6 +11,7 @@ import { useCursorPosition } from "@/hooks/useCursorPosition";
 import { Eu5ErrorDisplay } from "./Eu5ErrorDisplay";
 import { Eu5MapLegend } from "./Eu5MapLegend";
 import { Eu5Toolbar } from "./Eu5Toolbar";
+import { BoxSelectOverlay } from "./BoxSelectOverlay";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import { ChevronLeftIcon } from "@heroicons/react/24/solid";
 import type { CursorPosition } from "@/components/CursorTooltip";
@@ -58,7 +59,7 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
       {/* UI layer — only when data loaded */}
       {data !== null ? (
         <Eu5StoreProvider store={data}>
-          <Eu5UiContent cursorRef={cursorRef} />
+          <Eu5UiContent cursorRef={cursorRef} canvasRef={canvasRef} />
         </Eu5StoreProvider>
       ) : null}
 
@@ -74,10 +75,55 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
  * Inner component rendered inside Eu5StoreProvider so it can access the store.
  * Manages insight panel open state and auto-opens when selection becomes non-empty.
  */
-const Eu5UiContent = ({ cursorRef }: { cursorRef: React.RefObject<CursorPosition> }) => {
+const Eu5UiContent = ({
+  cursorRef,
+  canvasRef,
+}: {
+  cursorRef: React.RefObject<CursorPosition>;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+}) => {
   const [insightOpen, setInsightOpen] = useState(false);
   const selectionState = useEu5SelectionState();
+  const [boxSelectModifier, setBoxSelectModifier] = useState(false);
   const wasEmptyRef = useRef(true);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if (event.key === "Shift" || event.key === "Alt") {
+        setBoxSelectModifier(true);
+      }
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if (event.key === "Shift" || event.key === "Alt") {
+        setBoxSelectModifier(false);
+      }
+    };
+    const onBlur = () => setBoxSelectModifier(false);
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    canvas.style.cursor = boxSelectModifier ? "crosshair" : "grab";
+  }, [boxSelectModifier, canvasRef]);
 
   useEffect(() => {
     const isEmpty = selectionState?.isEmpty ?? true;
@@ -108,6 +154,7 @@ const Eu5UiContent = ({ cursorRef }: { cursorRef: React.RefObject<CursorPosition
       ) : null}
 
       {/* Canvas overlays */}
+      <BoxSelectOverlay />
       <Eu5CursorTooltip cursorRef={cursorRef} />
       <Eu5Toolbar />
       <div className="pointer-events-none absolute bottom-6 left-[21.5rem]">

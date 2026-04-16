@@ -4069,6 +4069,7 @@ name = "wasm-eu5-map"
 version = "0.1.0"
 dependencies = [
  "eu5app",
+ "eu5save",
  "js-sys",
  "pdx-map",
  "wasm-bindgen",

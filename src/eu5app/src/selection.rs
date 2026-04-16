@@ -2,6 +2,7 @@ use crate::MapMode;
 use crate::map::should_highlight_individual_locations;
 use eu5save::hash::FnvHashSet;
 use eu5save::models::{LocationIdx, MarketId, RealCountryId};
+use pdx_map::GpuLocationIdx;
 
 /// Per-location data used by [`SelectionAdapter`] to resolve clicks and by
 /// [`SelectionState::entity_summary`] to aggregate selection statistics.
@@ -59,11 +60,25 @@ impl SelectionState {
     /// Add a location to the selection. Idempotent.
     pub fn add(&mut self, idx: LocationIdx) {
         self.locations.insert(idx);
+        self.preset = None;
     }
 
     /// Remove a location from the selection. No-op if not present.
     pub fn remove(&mut self, idx: LocationIdx) {
         self.locations.remove(&idx);
+        self.preset = None;
+    }
+
+    /// Add all provided locations to the selection. Idempotent for already-selected locations.
+    pub fn add_all(&mut self, locations: &FnvHashSet<LocationIdx>) {
+        self.locations.extend(locations.iter().copied());
+        self.preset = None;
+    }
+
+    /// Remove all provided locations from the selection. No-op for locations not present.
+    pub fn remove_all(&mut self, locations: &FnvHashSet<LocationIdx>) {
+        self.locations.retain(|idx| !locations.contains(idx));
+        self.preset = None;
     }
 
     /// Replace the entire selection with `locations`, discarding the previous set.
@@ -205,6 +220,79 @@ impl<D: LocationData> SelectionAdapter<D> {
     }
 }
 
+/// Opaque group identifier used in the grouping table.
+///
+/// Represents the entity a location belongs to under a given map mode:
+/// the owner country in most modes, or the market in Markets mode.
+///
+/// The raw value is mode-specific and must not be compared across tables
+/// built for different modes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct GroupId(u32);
+
+impl GroupId {
+    /// Sentinel for locations with no resolvable group (unowned, no market).
+    pub const NONE: Self = Self(u32::MAX);
+
+    pub fn from_owner(id: RealCountryId) -> Self {
+        Self(id.country_id().value())
+    }
+
+    pub fn from_market(id: MarketId) -> Self {
+        Self(id.value())
+    }
+
+    /// Reconstitute from a raw u32 received across the WASM boundary.
+    /// Preserves the sentinel: `u32::MAX` maps to `GroupId::NONE`.
+    pub fn from_raw(raw: u32) -> Self {
+        Self(raw)
+    }
+
+    pub fn is_none(self) -> bool {
+        self == Self::NONE
+    }
+
+    pub fn raw(self) -> u32 {
+        self.0
+    }
+}
+
+/// Flat lookup table mapping GPU location index → group ID.
+/// Built once per map mode switch; read on every box-select preview frame.
+pub struct GroupingTable {
+    groups: Vec<GroupId>,
+}
+
+impl GroupingTable {
+    pub fn new(groups: Vec<GroupId>) -> Self {
+        Self { groups }
+    }
+
+    pub fn empty() -> Self {
+        Self { groups: Vec::new() }
+    }
+
+    pub fn get(&self, idx: GpuLocationIdx) -> GroupId {
+        self.groups[idx.value() as usize]
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (GpuLocationIdx, GroupId)> + '_ {
+        self.groups
+            .iter()
+            .enumerate()
+            .map(|(i, &g)| (GpuLocationIdx::new(i as u16), g))
+    }
+
+    pub fn len(&self) -> usize {
+        self.groups.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.groups.is_empty()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -293,6 +381,26 @@ mod tests {
         assert!(state.contains(loc(2)));
         assert!(state.contains(loc(3)));
         assert_eq!(state.len(), 2);
+    }
+
+    #[test]
+    fn remove_all_removes_locations_and_clears_preset() {
+        let mut state = SelectionState::new();
+        let mut initial = FnvHashSet::default();
+        initial.insert(loc(0));
+        initial.insert(loc(1));
+        initial.insert(loc(2));
+        state.replace_with_preset(initial, SelectionPreset::Players);
+
+        let mut to_remove = FnvHashSet::default();
+        to_remove.insert(loc(1));
+        to_remove.insert(loc(9));
+        state.remove_all(&to_remove);
+
+        assert!(state.contains(loc(0)));
+        assert!(!state.contains(loc(1)));
+        assert!(state.contains(loc(2)));
+        assert_eq!(state.preset(), None);
     }
 
     #[test]
@@ -392,5 +500,67 @@ mod tests {
         let development =
             SelectionAdapter::new(&data).resolve_click(loc(0), MapMode::Development, 0.5);
         assert_eq!(political, development);
+    }
+
+    #[test]
+    fn group_id_none_sentinel_is_none() {
+        assert!(GroupId::NONE.is_none());
+    }
+
+    #[test]
+    fn group_id_from_raw_max_is_none() {
+        assert!(GroupId::from_raw(u32::MAX).is_none());
+    }
+
+    #[test]
+    fn group_id_from_owner_is_not_none() {
+        let gid = GroupId::from_owner(real_country(1));
+        assert!(!gid.is_none());
+    }
+
+    #[test]
+    fn group_id_from_market_is_not_none() {
+        let gid = GroupId::from_market(market(2));
+        assert!(!gid.is_none());
+    }
+
+    #[test]
+    fn group_id_raw_round_trip() {
+        let gid = GroupId::from_raw(42);
+        assert_eq!(gid.raw(), 42);
+        assert_eq!(GroupId::from_raw(gid.raw()), gid);
+    }
+
+    #[test]
+    fn group_id_none_raw_is_u32_max() {
+        assert_eq!(GroupId::NONE.raw(), u32::MAX);
+    }
+
+    #[test]
+    fn grouping_table_empty_has_zero_len() {
+        let t = GroupingTable::empty();
+        assert!(t.is_empty());
+        assert_eq!(t.len(), 0);
+    }
+
+    #[test]
+    fn grouping_table_get_returns_stored_value() {
+        let g0 = GroupId::NONE;
+        let g1 = GroupId::from_raw(7);
+        let t = GroupingTable::new(vec![g0, g1]);
+        assert_eq!(t.get(GpuLocationIdx::new(0)), GroupId::NONE);
+        assert_eq!(t.get(GpuLocationIdx::new(1)), GroupId::from_raw(7));
+    }
+
+    #[test]
+    fn grouping_table_iter_yields_all_entries() {
+        let groups = vec![GroupId::NONE, GroupId::from_raw(1), GroupId::from_raw(2)];
+        let t = GroupingTable::new(groups.clone());
+        let collected: Vec<(GpuLocationIdx, GroupId)> = t.iter().collect();
+        assert_eq!(collected.len(), 3);
+        for (i, &expected) in groups.iter().enumerate() {
+            assert_eq!(collected[i].0, GpuLocationIdx::new(i as u16));
+            assert_eq!(collected[i].1, expected);
+        }
     }
 }

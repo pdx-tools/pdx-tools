@@ -1,6 +1,6 @@
 import { CursorTooltip } from "@/components/CursorTooltip";
 import type { CursorPosition } from "@/components/CursorTooltip";
-import { useEu5HoverData, useEu5MapMode } from "./store";
+import { useEu5HoverData, useEu5MapMode, useEu5BoxSelectRect } from "./store";
 import { formatFloat, formatInt } from "@/lib/format";
 import type { HoverDisplayData, MapMode } from "@/wasm/wasm_eu5";
 
@@ -95,8 +95,9 @@ function getTooltipContent(hoverData: HoverDisplayData, mapMode: MapMode): Toolt
 export function Eu5CursorTooltip({ cursorRef }: Eu5CursorTooltipProps) {
   const hoverData = useEu5HoverData();
   const mapMode = useEu5MapMode();
+  const isBoxSelecting = useEu5BoxSelectRect() !== null;
 
-  const content = hoverData ? getTooltipContent(hoverData, mapMode) : null;
+  const content = !isBoxSelecting && hoverData ? getTooltipContent(hoverData, mapMode) : null;
 
   return (
     <CursorTooltip cursorRef={cursorRef} visible={content !== null}>
