@@ -8,7 +8,7 @@ import type { Eu4SaveInput } from "./store";
 import { BrowserCheck } from "@/components/landing/BrowserCheck";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
-import { MapTip } from "./features/map/MapTip";
+import { Eu4CursorTooltip } from "./features/map/Eu4CursorTooltip";
 import { Timelapse } from "./features/settings/Timelapse";
 
 type Eu4UiProps = {
@@ -71,7 +71,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
             <Eu4CanvasOverlay />
           </div>
 
-          <MapTip />
+          <Eu4CursorTooltip />
         </Eu4StoreProvider>
       ) : null}
 
