@@ -1,4 +1,4 @@
-export type BoxSelectOperation = "add" | "remove";
+export type BoxSelectOperation = "add" | "remove" | "replace";
 
 export type BoxSelectOverlayRect = {
   left: number;
@@ -10,5 +10,5 @@ export type BoxSelectOverlayRect = {
 
 export type BoxSelectCommitEvent = {
   locationIdxs: Uint32Array;
-  add: boolean;
+  operation: BoxSelectOperation;
 };

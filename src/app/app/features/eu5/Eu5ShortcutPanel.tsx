@@ -35,7 +35,9 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { action: "Select area", keys: ["Shift", "+", "Drag"] },
       { action: "Remove area", keys: ["Alt", "+", "Drag"] },
-      { action: "Location-level select", keys: ["Ctrl", "+", "Drag"] },
+      { action: "Location box-select (replace)", keys: ["Ctrl", "+", "Drag"] },
+      { action: "Location box-select (add)", keys: ["Ctrl", "+", "Shift", "+", "Drag"] },
+      { action: "Location box-select (remove)", keys: ["Ctrl", "+", "Alt", "+", "Drag"] },
     ],
   },
   {

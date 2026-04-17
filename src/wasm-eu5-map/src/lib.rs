@@ -86,6 +86,7 @@ pub struct Eu5WasmMapRenderer {
     location_arrays: LocationArrays,
     grouping_table: GroupingTable,
     cached_preview_groups: FnvHashSet<GroupId>,
+    cached_preview_locations: FnvHashSet<GpuLocationIdx>,
     clock: Box<dyn Clock>,
     last_tick: Option<Duration>,
 }
@@ -134,6 +135,7 @@ impl Eu5WasmMapRenderer {
             location_arrays: LocationArrays::new(),
             grouping_table: GroupingTable::empty(),
             cached_preview_groups: FnvHashSet::default(),
+            cached_preview_locations: FnvHashSet::default(),
             clock: default_clock(),
             last_tick: None,
         })
@@ -236,6 +238,69 @@ impl Eu5WasmMapRenderer {
             location.flags_mut().clear(LocationFlags::HIGHLIGHTED);
         }
         self.upload_location_arrays();
+    }
+
+    /// Highlight individual GPU locations (not entity-expanded) within the canvas rect.
+    /// Called on every drag-update frame during a Ctrl+drag box-select.
+    #[wasm_bindgen]
+    pub fn preview_box_highlight_locations(
+        &mut self,
+        start_x: f32,
+        start_y: f32,
+        end_x: f32,
+        end_y: f32,
+    ) {
+        let start = LogicalPoint::new(start_x, start_y);
+        let end = LogicalPoint::new(end_x, end_y);
+
+        self.cached_preview_locations = self.resolve_gpu_locations_in_rect(start, end);
+
+        for (gpu, _group) in self.grouping_table.iter() {
+            let mut loc = self.location_arrays.get_mut(gpu);
+            if self.cached_preview_locations.contains(&gpu) {
+                loc.flags_mut().set(LocationFlags::HIGHLIGHTED);
+            } else {
+                loc.flags_mut().clear(LocationFlags::HIGHLIGHTED);
+            }
+        }
+
+        self.upload_location_arrays();
+    }
+
+    /// Resolve the canvas rect to individual app-level location indices without entity expansion.
+    /// Called once on pointer-up during a Ctrl+drag box-select.
+    #[wasm_bindgen]
+    pub fn commit_box_selection_locations(
+        &mut self,
+        start_x: f32,
+        start_y: f32,
+        end_x: f32,
+        end_y: f32,
+    ) -> js_sys::Uint32Array {
+        let gpu_locs = if self.cached_preview_locations.is_empty() {
+            let start = LogicalPoint::new(start_x, start_y);
+            let end = LogicalPoint::new(end_x, end_y);
+            self.resolve_gpu_locations_in_rect(start, end)
+        } else {
+            std::mem::take(&mut self.cached_preview_locations)
+        };
+
+        let mut app_ids: Vec<u32> = gpu_locs
+            .into_iter()
+            .filter(|gpu| !self.grouping_table.get(*gpu).is_none())
+            .map(|gpu| self.location_arrays.get_location_id(gpu).value())
+            .collect();
+
+        let mut iter = self.location_arrays.iter_mut();
+        while let Some(mut loc) = iter.next_location() {
+            loc.flags_mut().clear(LocationFlags::HIGHLIGHTED);
+        }
+
+        self.upload_location_arrays();
+
+        app_ids.sort_unstable();
+        app_ids.dedup();
+        js_sys::Uint32Array::from(app_ids.as_slice())
     }
 
     #[wasm_bindgen]
@@ -453,19 +518,36 @@ impl Eu5WasmMapRenderer {
         renderer.update_locations(&self.location_arrays);
     }
 
-    fn resolve_groups_in_rect(
+    fn gpu_locations_in_rect(
         &self,
         start: LogicalPoint<f32>,
         end: LogicalPoint<f32>,
-    ) -> FnvHashSet<GroupId> {
+    ) -> impl Iterator<Item = GpuLocationIdx> + '_ {
         let (primary, secondary) = self.input.canvas_rect_to_world_aabbs(start, end);
 
         std::iter::once(primary)
             .chain(secondary)
             .flat_map(|aabb| self.spatial_index.query(aabb))
-            .map(|r16| self.grouping_table.get(GpuLocationIdx::new(r16.value())))
-            .filter(|group| !group.is_none())
+            .map(|r16| GpuLocationIdx::new(r16.value()))
+            .filter(|gpu| !self.grouping_table.get(*gpu).is_none())
+    }
+
+    fn resolve_groups_in_rect(
+        &self,
+        start: LogicalPoint<f32>,
+        end: LogicalPoint<f32>,
+    ) -> FnvHashSet<GroupId> {
+        self.gpu_locations_in_rect(start, end)
+            .map(|gpu| self.grouping_table.get(gpu))
             .collect()
+    }
+
+    fn resolve_gpu_locations_in_rect(
+        &self,
+        start: LogicalPoint<f32>,
+        end: LogicalPoint<f32>,
+    ) -> FnvHashSet<GpuLocationIdx> {
+        self.gpu_locations_in_rect(start, end).collect()
     }
 }
 

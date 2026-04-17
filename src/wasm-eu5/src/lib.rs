@@ -477,6 +477,17 @@ impl Eu5App {
         self.app.rebuild_colors();
     }
 
+    #[wasm_bindgen]
+    pub fn replace_selection_with_locations(&mut self, location_idxs: js_sys::Uint32Array) {
+        let locations = location_idxs
+            .to_vec()
+            .into_iter()
+            .map(eu5save::models::LocationIdx::new);
+        self.app.replace_selection_with_locations(locations);
+        self.app.clear_highlights();
+        self.app.rebuild_colors();
+    }
+
     /// Return the grouping table for the current map mode as a flat Uint32Array.
     /// Each element is the raw GroupId for the corresponding GPU location index.
     /// Sentinel value `u32::MAX` means no group (unowned / no market).

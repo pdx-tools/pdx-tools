@@ -242,7 +242,16 @@ export const createMapEngine = async (
 
   const updateBoxSelect = (drag: BoxSelectDrag) => {
     boxSelectRectCallback?.(normalizeBoxRect(drag));
-    app.preview_box_highlight(drag.start.x, drag.start.y, drag.current.x, drag.current.y);
+    if (drag.resolution === "location") {
+      app.preview_box_highlight_locations(
+        drag.start.x,
+        drag.start.y,
+        drag.current.x,
+        drag.current.y,
+      );
+    } else {
+      app.preview_box_highlight(drag.start.x, drag.start.y, drag.current.x, drag.current.y);
+    }
   };
 
   const cancelBoxSelect = () => {
@@ -275,13 +284,23 @@ export const createMapEngine = async (
           const useBoxSelect =
             button === 0 &&
             ((modifiers & SharedCanvasModifierBits.Shift) !== 0 ||
-              (modifiers & SharedCanvasModifierBits.Alt) !== 0);
+              (modifiers & SharedCanvasModifierBits.Alt) !== 0 ||
+              (modifiers & SharedCanvasModifierBits.Ctrl) !== 0);
           if (useBoxSelect) {
-            const operation = (modifiers & SharedCanvasModifierBits.Alt) !== 0 ? "remove" : "add";
+            const isCtrl = (modifiers & SharedCanvasModifierBits.Ctrl) !== 0;
+            const isAlt = (modifiers & SharedCanvasModifierBits.Alt) !== 0;
+            const isShift = (modifiers & SharedCanvasModifierBits.Shift) !== 0;
+            const operation: BoxSelectOperation = isAlt
+              ? "remove"
+              : isCtrl && !isShift
+                ? "replace"
+                : "add";
+            const resolution = isCtrl ? "location" : "entity";
             boxDrag = {
               start: { x, y },
               current: { x, y },
               operation,
+              resolution,
             };
             mouseDownPos = null;
             if (lastKnownLocationId !== null) {
@@ -300,13 +319,21 @@ export const createMapEngine = async (
           const btn = button >= 0 ? button : 0;
           if (btn === 0 && boxDrag !== null) {
             boxDrag.current = { x, y };
-            const locationIdxs = app.commit_box_selection(
-              boxDrag.start.x,
-              boxDrag.start.y,
-              boxDrag.current.x,
-              boxDrag.current.y,
-            );
-            boxSelectCommitCallback?.({ locationIdxs, add: boxDrag.operation === "add" });
+            const locationIdxs =
+              boxDrag.resolution === "location"
+                ? app.commit_box_selection_locations(
+                    boxDrag.start.x,
+                    boxDrag.start.y,
+                    boxDrag.current.x,
+                    boxDrag.current.y,
+                  )
+                : app.commit_box_selection(
+                    boxDrag.start.x,
+                    boxDrag.start.y,
+                    boxDrag.current.x,
+                    boxDrag.current.y,
+                  );
+            boxSelectCommitCallback?.({ locationIdxs, operation: boxDrag.operation });
             app.clear_box_highlight();
             boxDrag = null;
             boxDragDirty = false;
@@ -524,6 +551,7 @@ type BoxSelectDrag = {
   start: { x: number; y: number };
   current: { x: number; y: number };
   operation: BoxSelectOperation;
+  resolution: "entity" | "location";
 };
 
 export type LocationLookupResult = {

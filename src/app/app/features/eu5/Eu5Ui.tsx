@@ -92,7 +92,7 @@ const Eu5UiContent = ({
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
         return;
       }
-      if (event.key === "Shift" || event.key === "Alt") {
+      if (event.key === "Shift" || event.key === "Alt" || event.key === "Control") {
         setBoxSelectModifier(true);
       }
     };
@@ -100,7 +100,7 @@ const Eu5UiContent = ({
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
         return;
       }
-      if (event.key === "Shift" || event.key === "Alt") {
+      if (event.key === "Shift" || event.key === "Alt" || event.key === "Control") {
         setBoxSelectModifier(false);
       }
     };
