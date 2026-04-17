@@ -1,0 +1,1 @@
+export { EntityProfileRoot } from "./EntityProfileRoot";

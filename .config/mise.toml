@@ -275,7 +275,7 @@ run = [
 
 [tasks.lint]
 description = "Lint the web and Rust code. Run before creating PR"
-depends = ["pnpm-install"]
+depends = ["pnpm-install", "setup:wasm"]
 run = [
     "cargo clippy --all-targets --all-features --workspace -- -D warnings",
     "pnpm run lint --deny-warnings"

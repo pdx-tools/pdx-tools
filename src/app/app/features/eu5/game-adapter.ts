@@ -1,6 +1,16 @@
 import { wrap, transfer, proxy } from "comlink";
 import type { Remote } from "comlink";
-import type { HoverDisplayData, MapMode, SelectionSummaryData } from "@/wasm/wasm_eu5";
+import type {
+  HoverDisplayData,
+  MapMode,
+  SelectionSummaryData,
+  EntityHeader,
+  OverviewSection,
+  EconomySection,
+  LocationsSection,
+  DiplomacySection,
+  LocationProfile,
+} from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/types";
 import { fetchOk } from "@/lib/fetch";
 import { getLogLevel } from "@/lib/isDeveloper";
@@ -229,6 +239,30 @@ export function saveWorker(
     selectEntity: (locationIdx: number) => {
       return saveEngine.selectEntity(locationIdx);
     },
+    selectCountry: (locationIdx: number) => {
+      return saveEngine.selectCountry(locationIdx);
+    },
+    addCountry: (locationIdx: number) => {
+      return saveEngine.addCountry(locationIdx);
+    },
+    removeCountry: (locationIdx: number) => {
+      return saveEngine.removeCountry(locationIdx);
+    },
+    selectMarket: (locationIdx: number) => {
+      return saveEngine.selectMarket(locationIdx);
+    },
+    addMarket: (locationIdx: number) => {
+      return saveEngine.addMarket(locationIdx);
+    },
+    removeMarket: (locationIdx: number) => {
+      return saveEngine.removeMarket(locationIdx);
+    },
+    addEntity: (locationIdx: number) => {
+      return saveEngine.addEntity(locationIdx);
+    },
+    removeEntity: (locationIdx: number) => {
+      return saveEngine.removeEntity(locationIdx);
+    },
     setFocusedLocation: (locationIdx: number) => {
       return saveEngine.setFocusedLocation(locationIdx);
     },
@@ -257,6 +291,25 @@ export function saveWorker(
 
     getStateEfficacy: async () => {
       return await saveEngine.getStateEfficacy();
+    },
+
+    getEntityHeader: async (): Promise<EntityHeader | null> => {
+      return await saveEngine.getEntityHeader();
+    },
+    getOverviewSection: async (): Promise<OverviewSection | null> => {
+      return await saveEngine.getOverviewSection();
+    },
+    getEconomySection: async (): Promise<EconomySection | null> => {
+      return await saveEngine.getEconomySection();
+    },
+    getLocationsSection: async (): Promise<LocationsSection | null> => {
+      return await saveEngine.getLocationsSection();
+    },
+    getDiplomacySection: async (): Promise<DiplomacySection | null> => {
+      return await saveEngine.getDiplomacySection();
+    },
+    getLocationProfile: async (locationIdx: number): Promise<LocationProfile | null> => {
+      return await saveEngine.getLocationProfile(locationIdx);
     },
 
     searchCountries: async (query: string) => {

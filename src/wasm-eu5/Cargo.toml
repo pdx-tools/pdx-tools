@@ -15,7 +15,7 @@ zstd_rust = ["eu5app/zstd_rust"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-eu5app = { workspace = true, default-features = false }
+eu5app = { workspace = true, default-features = false, features = ["tsify"] }
 eu5save = { workspace = true }
 js-sys = { workspace = true }
 pdx-zstd = { workspace = true }

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[cfg_attr(target_family = "wasm", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct Eu5DateComponents {
     pub year: i16,
@@ -147,7 +147,7 @@ pub enum Eu5LoadError {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[cfg_attr(target_family = "wasm", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct Eu5SaveMetadata {
     pub version: GameVersion,

@@ -7,7 +7,17 @@ import type {
   SelectionSummaryData,
 } from "./game-adapter";
 import type { Eu5SaveInput } from "./store/types";
-import type { Eu5DateComponents, MapMode, StateEfficacyData } from "@/wasm/wasm_eu5";
+import type {
+  MapMode,
+  StateEfficacyData,
+  EntityHeader,
+  OverviewSection,
+  EconomySection,
+  LocationsSection,
+  DiplomacySection,
+  LocationProfile,
+  Eu5DateComponents,
+} from "@/wasm/wasm_eu5";
 import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
 
 export interface AppState {
@@ -38,7 +48,19 @@ export interface AppTriggers {
   getLocationArrays(): Promise<Blob>;
   melt(): Promise<Uint8Array<ArrayBuffer>>;
   getStateEfficacy(): Promise<StateEfficacyData>;
+  getEntityHeader(): Promise<EntityHeader | null>;
+  getOverviewSection(): Promise<OverviewSection | null>;
+  getEconomySection(): Promise<EconomySection | null>;
+  getLocationsSection(): Promise<LocationsSection | null>;
+  getDiplomacySection(): Promise<DiplomacySection | null>;
+  getLocationProfile(locationIdx: number): Promise<LocationProfile | null>;
   selectEntity(locationIdx: number): Promise<void>;
+  selectCountry(anchorLocationIdx: number): Promise<void>;
+  addCountry(anchorLocationIdx: number): Promise<void>;
+  removeCountry(anchorLocationIdx: number): Promise<void>;
+  selectMarket(anchorLocationIdx: number): Promise<void>;
+  addMarket(anchorLocationIdx: number): Promise<void>;
+  removeMarket(anchorLocationIdx: number): Promise<void>;
   setFocusedLocation(locationIdx: number): Promise<void>;
   clearFocus(): Promise<void>;
   clearFocusOrSelection(): Promise<void>;
@@ -106,7 +128,19 @@ export class Eu5UIEngine implements AppEngine {
     getLocationArrays: () => this.handleGetLocationArrays(),
     melt: () => this.handleMelt(),
     getStateEfficacy: () => this.handleGetStateEfficacy(),
+    getEntityHeader: () => this.gameInstance.getEntityHeader(),
+    getOverviewSection: () => this.gameInstance.getOverviewSection(),
+    getEconomySection: () => this.gameInstance.getEconomySection(),
+    getLocationsSection: () => this.gameInstance.getLocationsSection(),
+    getDiplomacySection: () => this.gameInstance.getDiplomacySection(),
+    getLocationProfile: (locationIdx) => this.gameInstance.getLocationProfile(locationIdx),
     selectEntity: (locationIdx) => this.handleSelectEntity(locationIdx),
+    selectCountry: (locationIdx) => this.gameInstance.selectCountry(locationIdx),
+    addCountry: (locationIdx) => this.gameInstance.addCountry(locationIdx),
+    removeCountry: (locationIdx) => this.gameInstance.removeCountry(locationIdx),
+    selectMarket: (locationIdx) => this.gameInstance.selectMarket(locationIdx),
+    addMarket: (locationIdx) => this.gameInstance.addMarket(locationIdx),
+    removeMarket: (locationIdx) => this.gameInstance.removeMarket(locationIdx),
     setFocusedLocation: (locationIdx) => this.handleSetFocusedLocation(locationIdx),
     clearFocus: () => this.handleClearFocus(),
     clearFocusOrSelection: () => this.handleClearFocusOrSelection(),

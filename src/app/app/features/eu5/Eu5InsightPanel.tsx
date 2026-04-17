@@ -5,6 +5,7 @@ import { formatInt } from "@/lib/format";
 import { StateEfficacy } from "./features/charts/StateEfficacy";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import type { StateEfficacyData, MapMode } from "@/wasm/wasm_eu5";
+import { EntityProfileRoot } from "./EntityProfile";
 
 type Eu5InsightPanelProps = {
   open: boolean;
@@ -29,14 +30,37 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
 
 function PanelContent() {
   const selectionState = useEu5SelectionState();
+  const locationCount = selectionState?.locationCount ?? 0;
+  const isEmpty = selectionState?.isEmpty ?? true;
+  const focusedLocation = selectionState?.focusedLocation;
+  const derivedEntityAnchor = selectionState?.derivedEntityAnchor;
+
+  // Route to entity profile for focused, single-entity, or standalone-leaf selections.
+  if (focusedLocation != null) {
+    return <EntityProfileRoot key={`focus-${focusedLocation}`} />;
+  }
+  if (derivedEntityAnchor != null && !isEmpty) {
+    return <EntityProfileRoot key="compound" />;
+  }
+  if (locationCount === 1) {
+    return <EntityProfileRoot key="leaf" />;
+  }
+
+  // Fallback: world summary + mode-contextual chart
+  return <SummaryPanelContent selectionState={selectionState ?? null} isEmpty={isEmpty} />;
+}
+
+function SummaryPanelContent({
+  selectionState,
+  isEmpty,
+}: {
+  selectionState: SelectionState | null;
+  isEmpty: boolean;
+}) {
   const currentMapMode = useEu5MapMode();
   const engine = useEu5Engine();
   const [stateEfficacyData, setStateEfficacyData] = useState<StateEfficacyData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // locationCount drives refetch: changes when selection changes.
-  // Mode is intentionally NOT a dependency — calculate_state_efficacy is not
-  // mode-dependent, so the data stays valid across mode switches.
   const locationCount = selectionState?.locationCount ?? 0;
 
   useEffect(() => {
@@ -53,30 +77,11 @@ function PanelContent() {
     };
   }, [locationCount, engine]);
 
-  const isEmpty = selectionState?.isEmpty ?? true;
-  const focusedLocation = selectionState?.focusedLocation;
-  const focusedLocationName = selectionState?.focusedLocationName;
-  const scopeDisplayName = selectionState?.scopeDisplayName ?? "entity";
-
   return (
     <div className="flex flex-col gap-4 p-4">
-      {focusedLocation != null && (
-        <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-          <button
-            type="button"
-            onClick={() => void engine.trigger.clearFocus()}
-            className="mb-2 rounded px-2 py-1 text-xs text-sky-300 transition-colors hover:bg-white/10 hover:text-sky-200"
-          >
-            ← {scopeDisplayName}
-          </button>
-          <div className="text-sm font-semibold text-slate-100">
-            {focusedLocationName ?? `Location ${focusedLocation}`}
-          </div>
-        </div>
-      )}
       <SummaryHeader
         isEmpty={isEmpty}
-        selectionState={selectionState ?? null}
+        selectionState={selectionState}
         stateEfficacyData={stateEfficacyData}
         isLoading={isLoading}
       />
