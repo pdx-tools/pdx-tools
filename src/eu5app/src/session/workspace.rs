@@ -705,6 +705,15 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
+    pub fn replace_selection_with_locations(
+        &mut self,
+        resolved_locations: impl IntoIterator<Item = eu5save::models::LocationIdx>,
+    ) {
+        let set: FnvHashSet<_> = resolved_locations.into_iter().collect();
+        self.selection_state.clear();
+        self.selection_state.add_all(&set);
+    }
+
     pub fn clear_selection(&mut self) {
         self.selection_state.clear();
     }

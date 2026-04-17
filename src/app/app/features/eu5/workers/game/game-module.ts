@@ -151,7 +151,17 @@ export const createGame = async (
 
   mapEndpoint.onBoxSelectCommit(
     proxy((event) => {
-      app.apply_resolved_box_selection(event.locationIdxs, event.add);
+      switch (event.operation) {
+        case "add":
+          app.apply_resolved_box_selection(event.locationIdxs, true);
+          break;
+        case "remove":
+          app.apply_resolved_box_selection(event.locationIdxs, false);
+          break;
+        case "replace":
+          app.replace_selection_with_locations(event.locationIdxs);
+          break;
+      }
       const p = syncLocationData();
       selectionCallback?.(app.get_selection_summary());
       return p;
