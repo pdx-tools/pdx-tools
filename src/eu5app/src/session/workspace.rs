@@ -1,5 +1,7 @@
 use crate::game_data::GameData;
-use crate::selection::{GroupId, GroupingTable, LocationData, SelectionAdapter, SelectionState};
+use crate::selection::{
+    GroupId, GroupingTable, LocationData, SelectionAdapter, SelectionState, single_entity_scope,
+};
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap};
 use eu5save::models::{
@@ -27,6 +29,13 @@ pub struct Eu5Workspace<'bump> {
 
     // Filter / selection state
     selection_state: SelectionState,
+    derived_entity_anchor: Option<eu5save::models::LocationIdx>,
+}
+
+enum SelectionSetOperation {
+    Add,
+    Remove,
+    Replace,
 }
 
 impl<'bump> Eu5Workspace<'bump> {
@@ -100,9 +109,11 @@ impl<'bump> Eu5Workspace<'bump> {
             location_arrays,
             gpu_indices,
             selection_state: SelectionState::new(),
+            derived_entity_anchor: None,
         };
 
         workspace.build_location_arrays();
+        workspace.recompute_derived_scope();
 
         Ok(workspace)
     }
@@ -632,6 +643,15 @@ impl<'bump> Eu5Workspace<'bump> {
         &self.selection_state
     }
 
+    fn recompute_derived_scope(&mut self) {
+        self.derived_entity_anchor =
+            single_entity_scope(&self.selection_state, &*self, self.current_map_mode);
+    }
+
+    pub fn derived_entity_anchor(&self) -> Option<eu5save::models::LocationIdx> {
+        self.derived_entity_anchor
+    }
+
     /// Build a flat lookup table mapping GPU location index → group ID for
     /// the current map mode. Built once per mode switch; used by the map
     /// renderer for per-frame box-select preview highlighting.
@@ -656,38 +676,79 @@ impl<'bump> Eu5Workspace<'bump> {
         GroupingTable::new(groups)
     }
 
-    /// Select entities by resolving `clicked_idx` using the current map mode and zoom.
-    /// If the clicked location is already in the selection, deselects just that entity's
-    /// resolved group (leaving other selected entities intact). Otherwise replaces the
-    /// selection with the resolved entity set.
-    pub fn select_entity(&mut self, clicked_idx: eu5save::models::LocationIdx, zoom: f32) {
+    /// Select the entity at `clicked_idx`, or focus a location when the current
+    /// filter already resolves to that location's entity.
+    pub fn select_entity(&mut self, clicked_idx: eu5save::models::LocationIdx) {
         let mode = self.current_map_mode;
-        let resolved = SelectionAdapter::new(&*self).resolve_click(clicked_idx, mode, zoom);
-        if self.selection_state.contains(clicked_idx) {
-            for idx in resolved {
+        let outcome = SelectionAdapter::new(&*self).resolve_click(
+            clicked_idx,
+            mode,
+            &self.selection_state,
+            self.derived_entity_anchor,
+        );
+
+        let is_same_entity_click = outcome.focused_location.is_none()
+            && !outcome.locations.is_empty()
+            && self.selection_state.len() == outcome.locations.len()
+            && self
+                .derived_entity_anchor
+                .is_some_and(|anchor| self.same_entity(anchor, clicked_idx, mode));
+
+        if let Some(focus) = outcome.focused_location {
+            if self.selection_state.focused_location() == Some(focus) {
+                self.selection_state.clear_focus();
+            } else {
+                self.selection_state.set_focus(focus);
+            }
+        } else if is_same_entity_click {
+            if self.selection_state.has_focus() {
+                self.selection_state.clear_focus();
+            }
+        } else {
+            self.selection_state.replace(outcome.locations);
+        }
+        self.recompute_derived_scope();
+        self.rebuild_colors();
+    }
+
+    /// Add the entity at `clicked_idx` to the existing selection.
+    pub fn add_entity(&mut self, clicked_idx: eu5save::models::LocationIdx) {
+        let mode = self.current_map_mode;
+        let outcome = SelectionAdapter::new(&*self).resolve_click(
+            clicked_idx,
+            mode,
+            &self.selection_state,
+            self.derived_entity_anchor,
+        );
+        if outcome.focused_location.is_some() {
+            self.selection_state.set_focus(clicked_idx);
+        } else {
+            for idx in outcome.locations {
+                self.selection_state.add(idx);
+            }
+        }
+        self.recompute_derived_scope();
+        self.rebuild_colors();
+    }
+
+    /// Remove the entity at `clicked_idx` from the selection.
+    pub fn remove_entity(&mut self, clicked_idx: eu5save::models::LocationIdx) {
+        let mode = self.current_map_mode;
+        let outcome = SelectionAdapter::new(&*self).resolve_click(
+            clicked_idx,
+            mode,
+            &self.selection_state,
+            self.derived_entity_anchor,
+        );
+        if outcome.focused_location.is_some() {
+            self.selection_state.remove(clicked_idx);
+        } else {
+            for idx in outcome.locations {
                 self.selection_state.remove(idx);
             }
-            return;
         }
-        self.selection_state.replace(resolved);
-    }
-
-    /// Add the entity at `clicked_idx` (and its resolved group) to the existing selection.
-    pub fn add_entity(&mut self, clicked_idx: eu5save::models::LocationIdx, zoom: f32) {
-        let mode = self.current_map_mode;
-        let resolved = SelectionAdapter::new(&*self).resolve_click(clicked_idx, mode, zoom);
-        for idx in resolved {
-            self.selection_state.add(idx);
-        }
-    }
-
-    /// Remove the entity at `clicked_idx` (and its resolved group) from the selection.
-    pub fn remove_entity(&mut self, clicked_idx: eu5save::models::LocationIdx, zoom: f32) {
-        let mode = self.current_map_mode;
-        let resolved = SelectionAdapter::new(&*self).resolve_click(clicked_idx, mode, zoom);
-        for idx in resolved {
-            self.selection_state.remove(idx);
-        }
+        self.recompute_derived_scope();
+        self.rebuild_colors();
     }
 
     /// Apply a pre-resolved set of locations (produced by the map renderer's
@@ -698,11 +759,12 @@ impl<'bump> Eu5Workspace<'bump> {
         add: bool,
     ) {
         let set: FnvHashSet<_> = resolved_locations.into_iter().collect();
-        if add {
-            self.selection_state.add_all(&set);
+        let operation = if add {
+            SelectionSetOperation::Add
         } else {
-            self.selection_state.remove_all(&set);
-        }
+            SelectionSetOperation::Remove
+        };
+        self.apply_selection_set(set, operation);
     }
 
     pub fn replace_selection_with_locations(
@@ -710,12 +772,102 @@ impl<'bump> Eu5Workspace<'bump> {
         resolved_locations: impl IntoIterator<Item = eu5save::models::LocationIdx>,
     ) {
         let set: FnvHashSet<_> = resolved_locations.into_iter().collect();
-        self.selection_state.clear();
-        self.selection_state.add_all(&set);
+        self.apply_selection_set(set, SelectionSetOperation::Replace);
+    }
+
+    fn apply_selection_set(
+        &mut self,
+        locations: FnvHashSet<eu5save::models::LocationIdx>,
+        operation: SelectionSetOperation,
+    ) {
+        match operation {
+            SelectionSetOperation::Add => self.selection_state.add_all(&locations),
+            SelectionSetOperation::Remove => self.selection_state.remove_all(&locations),
+            SelectionSetOperation::Replace => self.selection_state.replace(locations),
+        }
+        self.recompute_derived_scope();
+        self.rebuild_colors();
     }
 
     pub fn clear_selection(&mut self) {
         self.selection_state.clear();
+        self.recompute_derived_scope();
+        self.rebuild_colors();
+    }
+
+    pub fn clear_focus(&mut self) {
+        self.selection_state.clear_focus();
+        self.recompute_derived_scope();
+        self.rebuild_colors();
+    }
+
+    pub fn clear_focus_or_selection(&mut self) {
+        if self.selection_state.has_focus() {
+            self.selection_state.clear_focus();
+        } else {
+            self.selection_state.clear();
+        }
+        self.recompute_derived_scope();
+        self.rebuild_colors();
+    }
+
+    /// Set focus to `location`, replacing the filter with its entity first if
+    /// the current filter does not already resolve to that entity.
+    pub fn set_focused_location(
+        &mut self,
+        location: eu5save::models::LocationIdx,
+    ) -> Option<crate::ColorIdx> {
+        let already_scoped_here = self
+            .derived_entity_anchor
+            .map(|anchor| self.same_entity(location, anchor, self.current_map_mode))
+            .unwrap_or(false);
+
+        if !already_scoped_here {
+            let entity_locs = SelectionAdapter::new(&*self)
+                .resolve_in_entity_mode(location, self.current_map_mode);
+            if entity_locs.is_empty() {
+                return None;
+            }
+            self.selection_state.replace(entity_locs);
+            self.recompute_derived_scope();
+        }
+
+        self.selection_state.set_focus(location);
+        self.recompute_derived_scope();
+        self.rebuild_colors();
+        self.center_at(location)
+    }
+
+    pub fn focused_location_display_name(&self) -> Option<String> {
+        self.selection_state
+            .focused_location()
+            .map(|idx| self.location_name(idx).to_string())
+    }
+
+    /// Display name for the currently derived single-entity scope.
+    pub fn scope_display_name(&self) -> Option<String> {
+        let anchor = self.derived_entity_anchor?;
+        let loc = self.gamestate.locations.index(anchor).location();
+        match self.current_map_mode {
+            MapMode::Markets => {
+                let market_id = loc.market?;
+                let market = self.gamestate.market_manager.get(market_id)?;
+                let center_idx = self.gamestate.locations.get(market.center)?;
+                Some(format!("{} Market", self.location_name(center_idx)))
+            }
+            _ => {
+                let owner_id = loc.owner.real_id()?;
+                let country_id = owner_id.country_id();
+                let country_idx = self.gamestate.countries.get(country_id)?;
+                let entry = self.gamestate.countries.index(country_idx);
+                Some(
+                    entry
+                        .data()
+                        .map(|data| self.localized_country_name(&data.country_name).to_string())
+                        .unwrap_or_else(|| format!("Country {}", country_id.value())),
+                )
+            }
+        }
     }
 
     /// Select all locations owned by human-controlled countries and their subjects.
@@ -756,6 +908,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
         self.selection_state
             .replace_with_preset(locations, crate::selection::SelectionPreset::Players);
+        self.recompute_derived_scope();
     }
 
     fn is_player_or_subject(
@@ -782,6 +935,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub fn set_map_mode(&mut self, mode: MapMode) {
         self.current_map_mode = mode;
+        self.recompute_derived_scope();
 
         // Apply colors based on mode
         match mode {
@@ -798,12 +952,14 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         self.apply_selection_dimming();
+        self.apply_focused_flag();
     }
 
     fn apply_selection_dimming(&mut self) {
         if self.selection_state.is_empty() {
             return;
         }
+
         const DIM: f32 = 0.3;
         for idx in 0..self.gamestate.locations.len() {
             let loc = eu5save::models::LocationIdx::new(idx as u32);
@@ -816,6 +972,21 @@ impl<'bump> Eu5Workspace<'bump> {
             let mut s = self.location_arrays.get_mut(gpu_idx);
             s.set_primary_color(s.primary_color().dim(DIM));
             s.set_secondary_color(s.secondary_color().dim(DIM));
+        }
+    }
+
+    fn apply_focused_flag(&mut self) {
+        // Clear all focused flags
+        let mut iter = self.location_arrays.iter_mut();
+        while let Some(mut loc) = iter.next_location() {
+            loc.flags_mut().clear(LocationFlags::FOCUSED);
+        }
+        // Set focused flag for the focused location
+        if let Some(fl) = self.selection_state.focused_location()
+            && let Some(gpu_idx) = self.gpu_indices[fl]
+        {
+            let mut state = self.location_arrays.get_mut(gpu_idx);
+            state.flags_mut().set(LocationFlags::FOCUSED);
         }
     }
 
@@ -1128,16 +1299,20 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn handle_location_hover(&mut self, location_idx: eu5save::models::LocationIdx, zoom: f32) {
-        const HIGHLIGHT_ZOOM: f32 = 0.85;
+    pub fn handle_location_hover(&mut self, location_idx: eu5save::models::LocationIdx) {
+        debug_assert_eq!(
+            self.derived_entity_anchor,
+            single_entity_scope(&self.selection_state, &*self, self.current_map_mode),
+            "derived_entity_anchor is stale; a selection mutation forgot to recompute"
+        );
 
-        if zoom >= HIGHLIGHT_ZOOM {
+        if let Some(anchor) = self.derived_entity_anchor
+            && self.same_entity(location_idx, anchor, self.current_map_mode)
+        {
             if !self.can_highlight_location(location_idx) {
                 return;
             }
-
-            let gpu_idx = self.gpu_indices[location_idx];
-            let Some(gpu_index) = gpu_idx else {
+            let Some(gpu_index) = self.gpu_indices[location_idx] else {
                 return;
             };
             let mut state = self.location_arrays.get_mut(gpu_index);
@@ -1145,9 +1320,12 @@ impl<'bump> Eu5Workspace<'bump> {
             return;
         }
 
+        self.highlight_entity(location_idx);
+    }
+
+    fn highlight_entity(&mut self, location_idx: eu5save::models::LocationIdx) {
         let location = self.gamestate.locations.index(location_idx).location();
 
-        // For Markets map mode, highlight by market instead of owner
         if self.current_map_mode == MapMode::Markets {
             let Some(market_id) = location.market else {
                 return;
@@ -1159,13 +1337,11 @@ impl<'bump> Eu5Workspace<'bump> {
             }
 
             let mut iter = self.location_arrays.iter_mut();
-            while let Some(mut location) = iter.next_location() {
-                let loc_idx = eu5save::models::LocationIdx::new(location.location_id().value());
-                if !idxs[loc_idx] {
-                    continue;
+            while let Some(mut loc) = iter.next_location() {
+                let loc_idx = eu5save::models::LocationIdx::new(loc.location_id().value());
+                if idxs[loc_idx] {
+                    loc.flags_mut().set(LocationFlags::HIGHLIGHTED);
                 }
-
-                location.flags_mut().set(LocationFlags::HIGHLIGHTED);
             }
         } else {
             let owner = location.owner.real_id();
@@ -1179,13 +1355,11 @@ impl<'bump> Eu5Workspace<'bump> {
             }
 
             let mut iter = self.location_arrays.iter_mut();
-            while let Some(mut location) = iter.next_location() {
-                let loc_idx = eu5save::models::LocationIdx::new(location.location_id().value());
-                if !idxs[loc_idx] {
-                    continue;
+            while let Some(mut loc) = iter.next_location() {
+                let loc_idx = eu5save::models::LocationIdx::new(loc.location_id().value());
+                if idxs[loc_idx] {
+                    loc.flags_mut().set(LocationFlags::HIGHLIGHTED);
                 }
-
-                location.flags_mut().set(LocationFlags::HIGHLIGHTED);
             }
         }
     }

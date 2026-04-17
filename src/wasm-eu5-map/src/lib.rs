@@ -210,22 +210,15 @@ impl Eu5WasmMapRenderer {
             std::mem::take(&mut self.cached_preview_groups)
         };
 
-        let mut app_ids: Vec<u32> = self
+        let app_ids: Vec<u32> = self
             .grouping_table
             .iter()
             .filter(|(_, group)| groups.contains(group))
             .map(|(gpu, _)| self.location_arrays.get_location_id(gpu).value())
             .collect();
 
-        let mut iter = self.location_arrays.iter_mut();
-        while let Some(mut loc) = iter.next_location() {
-            loc.flags_mut().clear(LocationFlags::HIGHLIGHTED);
-        }
+        self.clear_all_highlights_and_upload();
 
-        self.upload_location_arrays();
-
-        app_ids.sort_unstable();
-        app_ids.dedup();
         js_sys::Uint32Array::from(app_ids.as_slice())
     }
 
@@ -233,11 +226,7 @@ impl Eu5WasmMapRenderer {
     /// Called after the commit has been applied to the game worker.
     #[wasm_bindgen]
     pub fn clear_box_highlight(&mut self) {
-        let mut iter = self.location_arrays.iter_mut();
-        while let Some(mut location) = iter.next_location() {
-            location.flags_mut().clear(LocationFlags::HIGHLIGHTED);
-        }
-        self.upload_location_arrays();
+        self.clear_all_highlights_and_upload();
     }
 
     /// Highlight individual GPU locations (not entity-expanded) within the canvas rect.
@@ -285,22 +274,23 @@ impl Eu5WasmMapRenderer {
             std::mem::take(&mut self.cached_preview_locations)
         };
 
-        let mut app_ids: Vec<u32> = gpu_locs
+        let app_ids: Vec<u32> = gpu_locs
             .into_iter()
             .filter(|gpu| !self.grouping_table.get(*gpu).is_none())
             .map(|gpu| self.location_arrays.get_location_id(gpu).value())
             .collect();
 
+        self.clear_all_highlights_and_upload();
+
+        js_sys::Uint32Array::from(app_ids.as_slice())
+    }
+
+    fn clear_all_highlights_and_upload(&mut self) {
         let mut iter = self.location_arrays.iter_mut();
         while let Some(mut loc) = iter.next_location() {
             loc.flags_mut().clear(LocationFlags::HIGHLIGHTED);
         }
-
         self.upload_location_arrays();
-
-        app_ids.sort_unstable();
-        app_ids.dedup();
-        js_sys::Uint32Array::from(app_ids.as_slice())
     }
 
     #[wasm_bindgen]

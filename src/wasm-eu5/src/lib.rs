@@ -1,9 +1,9 @@
-use eu5app::Eu5SaveMetadata;
 use eu5app::TableCell as Eu5TableCell;
 use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
+use eu5app::{Eu5SaveMetadata, LocationData};
 use eu5save::models::Gamestate;
 use eu5save::{Eu5ErrorKind, Eu5Melt};
 use eu5save::{FailedResolveStrategy, MeltOptions};
@@ -76,6 +76,14 @@ pub struct SelectionSummaryData {
     pub is_empty: bool,
     pub total_population: u32,
     pub preset: Option<String>,
+    /// Raw location index of the focused single tile, or `None`.
+    pub focused_location: Option<u32>,
+    /// Display name of the focused location, if any.
+    pub focused_location_name: Option<String>,
+    /// Representative location of the single entity the filter resolves to, if any.
+    pub derived_entity_anchor: Option<u32>,
+    /// Display name of the single entity the filter resolves to, if any.
+    pub scope_display_name: Option<String>,
 }
 
 impl From<MapMode> for Eu5MapMode {
@@ -419,9 +427,9 @@ impl Eu5App {
     }
 
     #[wasm_bindgen]
-    pub fn handle_location_hover(&mut self, location_idx: u32, zoom: f32) {
+    pub fn handle_location_hover(&mut self, location_idx: u32) {
         let location_idx = eu5save::models::LocationIdx::new(location_idx);
-        self.app.handle_location_hover(location_idx, zoom)
+        self.app.handle_location_hover(location_idx)
     }
 
     #[wasm_bindgen]
@@ -429,41 +437,63 @@ impl Eu5App {
         self.app.clear_highlights();
     }
 
-    /// Select the entity at the given location, resolving it by the current map
-    /// mode and zoom level. Replaces the existing selection and reapplies colors
-    /// with out-of-filter dimming.
+    /// Select the entity at the given location based on the current interaction mode.
     #[wasm_bindgen]
-    pub fn select_entity(&mut self, location_idx: u32, zoom: f32) {
+    pub fn select_entity(&mut self, location_idx: u32) {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        self.app.select_entity(idx, zoom);
-        self.app.rebuild_colors();
+        self.app.select_entity(idx);
     }
 
-    /// Add the entity at `location_idx` (and its resolved group) to the existing selection,
-    /// then reapply colors with out-of-filter dimming.
+    /// Add the entity at `location_idx` to the existing selection.
     #[wasm_bindgen]
-    pub fn add_entity(&mut self, location_idx: u32, zoom: f32) {
+    pub fn add_entity(&mut self, location_idx: u32) {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        self.app.add_entity(idx, zoom);
-        let mode = self.app.get_map_mode();
-        self.app.set_map_mode(mode);
+        self.app.add_entity(idx);
     }
 
-    /// Remove the entity at `location_idx` (and its resolved group) from the selection,
-    /// then reapply colors with out-of-filter dimming.
+    /// Remove the entity at `location_idx` from the selection.
     #[wasm_bindgen]
-    pub fn remove_entity(&mut self, location_idx: u32, zoom: f32) {
+    pub fn remove_entity(&mut self, location_idx: u32) {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        self.app.remove_entity(idx, zoom);
-        let mode = self.app.get_map_mode();
-        self.app.set_map_mode(mode);
+        self.app.remove_entity(idx);
     }
 
-    /// Clear the current selection and restore full-brightness colors.
+    /// Clear the current selection and focus.
     #[wasm_bindgen]
     pub fn clear_selection(&mut self) {
         self.app.clear_selection();
-        self.app.rebuild_colors();
+    }
+
+    /// Set `focused_location` to `location_idx`, entering that location's entity
+    /// filter first if needed. Returns the GPU color id for centering.
+    #[wasm_bindgen]
+    pub fn set_focused_location(&mut self, location_idx: u32) -> Option<u32> {
+        let idx = eu5save::models::LocationIdx::new(location_idx);
+        self.app.set_focused_location(idx).map(|c| c.value() as u32)
+    }
+
+    /// Clear the focused location.
+    #[wasm_bindgen]
+    pub fn clear_focus(&mut self) {
+        self.app.clear_focus();
+    }
+
+    /// Clear focus if set; otherwise clear the selection.
+    #[wasm_bindgen]
+    pub fn clear_focus_or_selection(&mut self) {
+        self.app.clear_focus_or_selection();
+    }
+
+    /// Display name for the focused location.
+    #[wasm_bindgen]
+    pub fn focused_location_display_name(&self) -> Option<String> {
+        self.app().focused_location_display_name()
+    }
+
+    /// Display name for the current derived entity scope.
+    #[wasm_bindgen]
+    pub fn scope_display_name(&self) -> Option<String> {
+        self.app().scope_display_name()
     }
 
     #[wasm_bindgen]
@@ -474,7 +504,6 @@ impl Eu5App {
             .map(eu5save::models::LocationIdx::new);
         self.app.apply_resolved_box_selection(locations, add);
         self.app.clear_highlights();
-        self.app.rebuild_colors();
     }
 
     #[wasm_bindgen]
@@ -485,7 +514,6 @@ impl Eu5App {
             .map(eu5save::models::LocationIdx::new);
         self.app.replace_selection_with_locations(locations);
         self.app.clear_highlights();
-        self.app.rebuild_colors();
     }
 
     /// Return the grouping table for the current map mode as a flat Uint32Array.
@@ -530,19 +558,29 @@ impl Eu5App {
             is_empty: sel.is_empty(),
             total_population,
             preset,
+            focused_location: sel.focused_location().map(|idx| idx.value()),
+            focused_location_name: self.app.focused_location_display_name(),
+            derived_entity_anchor: self.app.derived_entity_anchor().map(|idx| idx.value()),
+            scope_display_name: self.app.scope_display_name(),
         }
     }
 
-    /// Get hover display data for a location based on zoom level
+    /// Get hover display data for a location based on the current interaction mode.
+    /// Shows location-level detail when scoped and hovering an in-scope location.
     #[wasm_bindgen]
-    pub fn get_hover_data(&self, location_id: u32, zoom: f32) -> HoverDisplayData {
+    pub fn get_hover_data(&self, location_id: u32) -> HoverDisplayData {
         let location_idx = eu5save::models::LocationIdx::new(location_id);
 
-        // Get current map mode from app
         let current_map_mode = self.app().get_map_mode();
 
-        const DETAIL_THRESHOLD: f32 = 0.85;
-        let should_show_location = zoom >= DETAIL_THRESHOLD;
+        let should_show_location = self
+            .app()
+            .derived_entity_anchor()
+            .map(|anchor| {
+                self.app()
+                    .same_entity(anchor, location_idx, current_map_mode)
+            })
+            .unwrap_or(false);
 
         let location = self
             .app()

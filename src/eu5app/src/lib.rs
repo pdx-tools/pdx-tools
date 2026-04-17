@@ -6,7 +6,10 @@ mod selection;
 mod session;
 mod subject_color;
 
-pub use selection::{GroupId, GroupingTable, SelectionPreset, SelectionState, SelectionSummary};
+pub use selection::{
+    ClickOutcome, GroupId, GroupingTable, LocationData, SelectionPreset, SelectionState,
+    SelectionSummary, single_entity_scope,
+};
 pub use session::{Eu5LoadError, Eu5LoadedSave, Eu5SaveLoader, Eu5SaveMetadata, Eu5Workspace};
 
 pub use hexcolor::HexColor;

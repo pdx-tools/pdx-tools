@@ -71,7 +71,7 @@ export function Eu5Toolbar() {
 
   const handleSelect = useCallback(
     async (result: SearchResult) => {
-      await engine.trigger.selectCountry(result.locationIdx);
+      await engine.trigger.selectEntity(result.locationIdx);
       setQuery("");
       setResults([]);
     },

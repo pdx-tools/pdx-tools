@@ -118,10 +118,9 @@ export const createGame = async (
     proxy((event) => {
       app.clear_highlights();
 
-      if (event.kind === "update" && currentZoom !== null) {
-        const zoom = currentZoom;
-        app.handle_location_hover(event.locationIdx, zoom);
-        hoverDisplayCallback?.(app.get_hover_data(event.locationIdx, zoom));
+      if (event.kind === "update") {
+        app.handle_location_hover(event.locationIdx);
+        hoverDisplayCallback?.(app.get_hover_data(event.locationIdx));
       } else if (event.kind === "clear") {
         hoverDisplayCallback?.({ kind: "clear" });
       }
@@ -132,17 +131,17 @@ export const createGame = async (
 
   mapEndpoint.onLocationClickUpdate(
     proxy((event) => {
-      if (event.kind === "update" && currentZoom !== null) {
+      if (event.kind === "update") {
         const mods = event.modifiers;
         if (mods & SharedCanvasModifierBits.Shift) {
-          app.add_entity(event.locationIdx, currentZoom);
+          app.add_entity(event.locationIdx);
         } else if (mods & SharedCanvasModifierBits.Alt) {
-          app.remove_entity(event.locationIdx, currentZoom);
+          app.remove_entity(event.locationIdx);
         } else {
-          app.select_entity(event.locationIdx, currentZoom);
+          app.select_entity(event.locationIdx);
         }
       } else {
-        app.clear_selection();
+        app.clear_focus_or_selection();
       }
       syncLocationData();
       selectionCallback?.(app.get_selection_summary());
@@ -212,19 +211,29 @@ export const createGame = async (
     onSelectionUpdate: (callback: (data: SelectionSummaryData) => void) => {
       selectionCallback = callback;
     },
-    selectAtLocation: (locationIdx: number) => {
-      app.select_entity(locationIdx, currentZoom ?? 0);
+    selectEntity: (locationIdx: number) => {
+      app.select_entity(locationIdx);
       const p = syncLocationData();
       selectionCallback?.(app.get_selection_summary());
       return p;
     },
-    selectCountry: (locationIdx: number) => {
-      // Pass zoom 0 to force country-level selection regardless of current zoom
-      app.select_entity(locationIdx, 0);
-      const colorId = app.center_at(locationIdx);
-      if (colorId !== undefined && colorId !== null) {
+    setFocusedLocation: (locationIdx: number) => {
+      const colorId = app.set_focused_location(locationIdx);
+      if (colorId !== undefined) {
         mapEndpoint?.center_at_color_id(colorId);
       }
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
+    clearFocus: () => {
+      app.clear_focus();
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
+    clearFocusOrSelection: () => {
+      app.clear_focus_or_selection();
       const p = syncLocationData();
       selectionCallback?.(app.get_selection_summary());
       return p;
@@ -263,20 +272,11 @@ export const createGame = async (
 };
 
 let mapEndpoint: Eu5MapEndpoint | null = null;
-let currentZoom: number | null = null; // Will be set by initial callback from map worker
 let hoverDisplayCallback: ((data: HoverDisplayData) => void) | null = null;
 let selectionCallback: ((data: SelectionSummaryData) => void) | null = null;
 
 export async function initialize(port: MessagePort, level: wasm_eu5.LogLevel) {
   mapEndpoint = wrap<Eu5MapEndpoint>(port);
-
-  // Set up zoom change callback
-  mapEndpoint.onZoomChange(
-    proxy((rawZoom: number) => {
-      currentZoom = rawZoom;
-    }),
-  );
-
   await initialized;
   timeSync("Setup EU5 Wasm", () => wasm_eu5.setup_eu5_wasm(level));
 }

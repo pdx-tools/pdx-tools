@@ -27,7 +27,11 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { action: "Select entity", keys: ["Click"] },
       { action: "Add to selection", keys: ["Shift", "+", "Click"] },
       { action: "Remove from selection", keys: ["Alt", "+", "Click"] },
-      { action: "Clear selection", keys: ["Esc"] },
+      { action: "Focus location in selected entity", keys: ["Click"] },
+      { action: "Clear focused location", keys: ["Click"] },
+      { action: "Replace selection", keys: ["Click"] },
+      { action: "Clear focus or selection", keys: ["Empty", "+", "Click"] },
+      { action: "Clear focus or selection", keys: ["Esc"] },
     ],
   },
   {
@@ -38,13 +42,6 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { action: "Location box-select (replace)", keys: ["Ctrl", "+", "Drag"] },
       { action: "Location box-select (add)", keys: ["Ctrl", "+", "Shift", "+", "Drag"] },
       { action: "Location box-select (remove)", keys: ["Ctrl", "+", "Alt", "+", "Drag"] },
-    ],
-  },
-  {
-    label: "Location mode",
-    shortcuts: [
-      { action: "Enter location mode", keys: ["Double-click"] },
-      { action: "Exit location mode", keys: ["Esc"] },
     ],
   },
   {

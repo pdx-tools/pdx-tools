@@ -1,8 +1,16 @@
 use crate::MapMode;
-use crate::map::should_highlight_individual_locations;
 use eu5save::hash::FnvHashSet;
 use eu5save::models::{LocationIdx, MarketId, RealCountryId};
 use pdx_map::GpuLocationIdx;
+
+/// Result of [`SelectionAdapter::resolve_click`].
+#[derive(Debug, Clone)]
+pub struct ClickOutcome {
+    /// The set of locations to apply to the selection state.
+    pub locations: FnvHashSet<LocationIdx>,
+    /// Set when the click is within the derived single-entity scope.
+    pub focused_location: Option<LocationIdx>,
+}
 
 /// Per-location data used by [`SelectionAdapter`] to resolve clicks and by
 /// [`SelectionState::entity_summary`] to aggregate selection statistics.
@@ -24,6 +32,24 @@ pub trait LocationData {
     /// Used for the clicked location itself — avoids a full scan to resolve the
     /// grouping key before iterating the rest.
     fn location_info(&self, idx: LocationIdx) -> LocationInfo;
+
+    /// Return whether two locations belong to the same resolved entity under the given map mode.
+    /// Locations without a resolved owner/market are ungroupable, so this returns false even if
+    /// both locations lack one.
+    fn same_entity(&self, a: LocationIdx, b: LocationIdx, mode: MapMode) -> bool {
+        let info_a = self.location_info(a);
+        let info_b = self.location_info(b);
+        match mode {
+            MapMode::Markets => match (info_a.market, info_b.market) {
+                (Some(m1), Some(m2)) => m1 == m2,
+                _ => false,
+            },
+            _ => match (info_a.owner, info_b.owner) {
+                (Some(o1), Some(o2)) => o1 == o2,
+                _ => false,
+            },
+        }
+    }
 }
 
 impl<T: LocationData> LocationData for &T {
@@ -46,10 +72,15 @@ pub enum SelectionPreset {
 ///
 /// All mutations are O(1) amortised; [`SelectionState::entity_summary`] is O(n)
 /// over the selected set.
+///
+/// `focused_location` is optional context inside the current filter. Whether the
+/// filter is scoped to one entity is derived from `locations`, not stored here.
 #[derive(Debug, Default)]
 pub struct SelectionState {
     locations: FnvHashSet<LocationIdx>,
     preset: Option<SelectionPreset>,
+    /// Single tile focused within the current scope.
+    focused_location: Option<LocationIdx>,
 }
 
 impl SelectionState {
@@ -57,38 +88,43 @@ impl SelectionState {
         Self::default()
     }
 
-    /// Add a location to the selection. Idempotent.
+    /// Add a location to the selection. Clears focus because the filter changed.
     pub fn add(&mut self, idx: LocationIdx) {
         self.locations.insert(idx);
         self.preset = None;
+        self.focused_location = None;
     }
 
-    /// Remove a location from the selection. No-op if not present.
+    /// Remove a location from the selection. Clears focus because the filter changed.
     pub fn remove(&mut self, idx: LocationIdx) {
         self.locations.remove(&idx);
         self.preset = None;
+        self.focused_location = None;
     }
 
-    /// Add all provided locations to the selection. Idempotent for already-selected locations.
+    /// Add all provided locations to the selection. Clears focus because the filter changed.
     pub fn add_all(&mut self, locations: &FnvHashSet<LocationIdx>) {
         self.locations.extend(locations.iter().copied());
         self.preset = None;
+        self.focused_location = None;
     }
 
-    /// Remove all provided locations from the selection. No-op for locations not present.
+    /// Remove all provided locations from the selection. Clears focus because the filter changed.
     pub fn remove_all(&mut self, locations: &FnvHashSet<LocationIdx>) {
         self.locations.retain(|idx| !locations.contains(idx));
         self.preset = None;
+        self.focused_location = None;
     }
 
-    /// Replace the entire selection with `locations`, discarding the previous set.
-    /// Clears any active preset.
+    /// Replace the entire selection with `locations`, discarding focus.
     pub fn replace(&mut self, locations: FnvHashSet<LocationIdx>) {
         self.locations = locations;
         self.preset = None;
+        self.focused_location = None;
     }
 
     /// Replace the entire selection with `locations` and record the active preset.
+    /// Discards focus.
     pub fn replace_with_preset(
         &mut self,
         locations: FnvHashSet<LocationIdx>,
@@ -96,12 +132,36 @@ impl SelectionState {
     ) {
         self.locations = locations;
         self.preset = Some(preset);
+        self.focused_location = None;
     }
 
-    /// Clear the entire selection and any active preset.
+    /// Clear the entire selection, focus, and any active preset.
     pub fn clear(&mut self) {
         self.locations.clear();
         self.preset = None;
+        self.focused_location = None;
+    }
+
+    /// Add `idx` to the filter if needed and set it as the focused location.
+    pub fn set_focus(&mut self, idx: LocationIdx) {
+        if self.locations.insert(idx) {
+            self.preset = None;
+        }
+        self.focused_location = Some(idx);
+    }
+
+    /// Clear the focused location only.
+    pub fn clear_focus(&mut self) {
+        self.focused_location = None;
+    }
+
+    /// Return the focused location, if any.
+    pub fn focused_location(&self) -> Option<LocationIdx> {
+        self.focused_location
+    }
+
+    pub fn has_focus(&self) -> bool {
+        self.focused_location.is_some()
     }
 
     /// Return the active preset, if one was used to populate this selection.
@@ -144,6 +204,34 @@ impl SelectionState {
     }
 }
 
+/// If all locations in the filter belong to one entity under `map_mode`, return
+/// a representative location for that entity. Empty and unowned filters are not
+/// scoped.
+pub fn single_entity_scope<D: LocationData>(
+    selection: &SelectionState,
+    data: &D,
+    map_mode: MapMode,
+) -> Option<LocationIdx> {
+    let mut iter = selection.selected_locations().iter().copied();
+    let anchor = iter.next()?;
+    for other in iter {
+        if !data.same_entity(anchor, other, map_mode) {
+            return None;
+        }
+    }
+
+    let info = data.location_info(anchor);
+    match map_mode {
+        MapMode::Markets => {
+            info.market?;
+        }
+        _ => {
+            info.owner?;
+        }
+    }
+    Some(anchor)
+}
+
 /// Aggregate statistics for the current selection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SelectionSummary {
@@ -153,12 +241,11 @@ pub struct SelectionSummary {
     pub location_count: usize,
 }
 
-/// Resolves a map click into a set of [`LocationIdx`] values to select.
+/// Resolves a map click into a [`ClickOutcome`] based on selection state.
 ///
-/// Resolution strategy depends on [`MapMode`] and zoom level:
-/// - `zoom >= 0.85`: single clicked location (empty if unowned).
-/// - [`MapMode::Markets`]: all locations sharing the same market.
-/// - All other modes: all locations sharing the same non-dummy owner.
+/// If the current filter resolves to one entity and the click is inside that
+/// entity, the filter is preserved and the clicked tile becomes focus.
+/// Otherwise, the click resolves to the clicked entity under the map mode.
 ///
 /// An empty set is returned when the clicked location has no applicable
 /// grouping entity (unowned, or no market in Markets mode).
@@ -175,25 +262,32 @@ impl<D: LocationData> SelectionAdapter<D> {
         &self,
         clicked_idx: LocationIdx,
         mode: MapMode,
-        zoom: f32,
-    ) -> FnvHashSet<LocationIdx> {
-        if should_highlight_individual_locations(zoom) {
-            return self.resolve_single(clicked_idx);
+        selection: &SelectionState,
+        derived_entity_anchor: Option<LocationIdx>,
+    ) -> ClickOutcome {
+        if let Some(anchor) = derived_entity_anchor
+            && self.data.same_entity(anchor, clicked_idx, mode)
+        {
+            return ClickOutcome {
+                locations: selection.selected_locations().clone(),
+                focused_location: Some(clicked_idx),
+            };
         }
 
-        match mode {
-            MapMode::Markets => self.resolve_by_market(clicked_idx),
-            _ => self.resolve_by_owner(clicked_idx),
+        ClickOutcome {
+            locations: self.resolve_in_entity_mode(clicked_idx, mode),
+            focused_location: None,
         }
     }
 
-    fn resolve_single(&self, idx: LocationIdx) -> FnvHashSet<LocationIdx> {
-        if self.data.location_info(idx).owner.is_some() {
-            let mut set = FnvHashSet::default();
-            set.insert(idx);
-            set
-        } else {
-            FnvHashSet::default()
+    pub fn resolve_in_entity_mode(
+        &self,
+        clicked_idx: LocationIdx,
+        mode: MapMode,
+    ) -> FnvHashSet<LocationIdx> {
+        match mode {
+            MapMode::Markets => self.resolve_by_market(clicked_idx),
+            _ => self.resolve_by_owner(clicked_idx),
         }
     }
 
@@ -368,6 +462,15 @@ mod tests {
     }
 
     #[test]
+    fn clear_also_clears_focus() {
+        let mut state = SelectionState::new();
+        state.add(loc(0));
+        state.set_focus(loc(0));
+        state.clear();
+        assert!(state.focused_location().is_none());
+    }
+
+    #[test]
     fn replace_removes_previous_and_adds_new() {
         let mut state = SelectionState::new();
         state.add(loc(0));
@@ -381,6 +484,15 @@ mod tests {
         assert!(state.contains(loc(2)));
         assert!(state.contains(loc(3)));
         assert_eq!(state.len(), 2);
+    }
+
+    #[test]
+    fn replace_clears_focus() {
+        let mut state = SelectionState::new();
+        state.add(loc(0));
+        state.set_focus(loc(0));
+        state.replace(FnvHashSet::default());
+        assert!(state.focused_location().is_none());
     }
 
     #[test]
@@ -404,6 +516,24 @@ mod tests {
     }
 
     #[test]
+    fn add_clears_focus() {
+        let mut state = SelectionState::new();
+        state.add(loc(0));
+        state.set_focus(loc(0));
+        state.add(loc(1));
+        assert!(state.focused_location().is_none());
+    }
+
+    #[test]
+    fn remove_clears_focus() {
+        let mut state = SelectionState::new();
+        state.add(loc(0));
+        state.set_focus(loc(0));
+        state.remove(loc(0));
+        assert!(state.focused_location().is_none());
+    }
+
+    #[test]
     fn contains_works_correctly() {
         let mut state = SelectionState::new();
         assert!(!state.contains(loc(5)));
@@ -423,7 +553,6 @@ mod tests {
 
     #[test]
     fn entity_summary_counts_distinct_non_dummy_owners() {
-        // 4 selected locations: 2 from c1, 1 from c2, 1 unowned
         let data = MockLocations {
             locations: vec![
                 info(Some(real_country(1)), None),
@@ -443,63 +572,228 @@ mod tests {
     }
 
     #[test]
-    fn high_zoom_returns_single_location() {
+    fn entity_mode_political_returns_all_locations_with_same_owner() {
         let data = make_mock();
-        let result = SelectionAdapter::new(&data).resolve_click(loc(0), MapMode::Political, 0.85);
-        assert_eq!(result.len(), 1);
-        assert!(result.contains(&loc(0)));
+        let state = SelectionState::new();
+        let result =
+            SelectionAdapter::new(&data).resolve_click(loc(0), MapMode::Political, &state, None);
+        assert_eq!(result.locations.len(), 3); // c1 owns idx 0, 1, 4
+        assert!(result.locations.contains(&loc(0)));
+        assert!(result.locations.contains(&loc(1)));
+        assert!(result.locations.contains(&loc(4)));
+        assert!(result.focused_location.is_none());
     }
 
     #[test]
-    fn political_mode_returns_all_locations_with_same_owner() {
+    fn entity_mode_markets_returns_all_locations_with_same_market() {
         let data = make_mock();
-        // c1 owns idx 0, 1, 4
-        let result = SelectionAdapter::new(&data).resolve_click(loc(0), MapMode::Political, 0.5);
-        assert_eq!(result.len(), 3);
-        assert!(result.contains(&loc(0)));
-        assert!(result.contains(&loc(1)));
-        assert!(result.contains(&loc(4)));
+        let state = SelectionState::new();
+        let result =
+            SelectionAdapter::new(&data).resolve_click(loc(0), MapMode::Markets, &state, None);
+        assert_eq!(result.locations.len(), 2); // m1 has idx 0 and 2
+        assert!(result.locations.contains(&loc(0)));
+        assert!(result.locations.contains(&loc(2)));
+        assert!(result.focused_location.is_none());
     }
 
     #[test]
-    fn markets_mode_returns_all_locations_with_same_market() {
+    fn entity_mode_unowned_location_returns_empty_set() {
         let data = make_mock();
-        // m1 has idx 0 and 2
-        let result = SelectionAdapter::new(&data).resolve_click(loc(0), MapMode::Markets, 0.5);
-        assert_eq!(result.len(), 2);
-        assert!(result.contains(&loc(0)));
-        assert!(result.contains(&loc(2)));
+        let state = SelectionState::new();
+        let result =
+            SelectionAdapter::new(&data).resolve_click(loc(3), MapMode::Political, &state, None);
+        assert!(result.locations.is_empty());
+        assert!(result.focused_location.is_none());
     }
 
     #[test]
-    fn unowned_location_returns_empty_set() {
+    fn entity_mode_no_market_returns_empty_set() {
         let data = make_mock();
-        let result = SelectionAdapter::new(&data).resolve_click(loc(3), MapMode::Political, 0.5);
-        assert!(result.is_empty());
+        let state = SelectionState::new();
+        let result =
+            SelectionAdapter::new(&data).resolve_click(loc(4), MapMode::Markets, &state, None);
+        assert!(result.locations.is_empty());
+        assert!(result.focused_location.is_none());
     }
 
     #[test]
-    fn unowned_location_high_zoom_returns_empty_set() {
+    fn entity_mode_development_resolves_by_owner_like_political() {
         let data = make_mock();
-        let result = SelectionAdapter::new(&data).resolve_click(loc(3), MapMode::Political, 0.90);
-        assert!(result.is_empty());
-    }
-
-    #[test]
-    fn no_market_in_markets_mode_returns_empty_set() {
-        let data = make_mock();
-        // idx 4 has owner but no market
-        let result = SelectionAdapter::new(&data).resolve_click(loc(4), MapMode::Markets, 0.5);
-        assert!(result.is_empty());
-    }
-
-    #[test]
-    fn development_mode_resolves_by_owner_like_political() {
-        let data = make_mock();
-        let political = SelectionAdapter::new(&data).resolve_click(loc(0), MapMode::Political, 0.5);
+        let state = SelectionState::new();
+        let political =
+            SelectionAdapter::new(&data).resolve_click(loc(0), MapMode::Political, &state, None);
         let development =
-            SelectionAdapter::new(&data).resolve_click(loc(0), MapMode::Development, 0.5);
-        assert_eq!(political, development);
+            SelectionAdapter::new(&data).resolve_click(loc(0), MapMode::Development, &state, None);
+        assert_eq!(political.locations, development.locations);
+    }
+
+    #[test]
+    fn entity_mode_click_never_sets_focus() {
+        let data = make_mock();
+        let state = SelectionState::new();
+        for i in 0..5 {
+            let result = SelectionAdapter::new(&data).resolve_click(
+                loc(i),
+                MapMode::Political,
+                &state,
+                None,
+            );
+            assert!(
+                result.focused_location.is_none(),
+                "focused_location should be None in entity mode"
+            );
+        }
+    }
+
+    #[test]
+    fn click_in_single_entity_filter_sets_focus_and_preserves_filter() {
+        let data = make_mock();
+        let mut state = SelectionState::new();
+        state.add(loc(0));
+        state.add(loc(1));
+        state.add(loc(4));
+        let result = SelectionAdapter::new(&data).resolve_click(
+            loc(1),
+            MapMode::Political,
+            &state,
+            Some(loc(0)),
+        );
+        assert_eq!(result.locations, *state.selected_locations());
+        assert_eq!(result.focused_location, Some(loc(1)));
+    }
+
+    #[test]
+    fn click_anchor_tile_itself_sets_focus() {
+        let data = make_mock();
+        let mut state = SelectionState::new();
+        state.add(loc(0));
+        state.add(loc(1));
+        state.add(loc(4));
+        let result = SelectionAdapter::new(&data).resolve_click(
+            loc(0),
+            MapMode::Political,
+            &state,
+            Some(loc(0)),
+        );
+        assert_eq!(result.locations, *state.selected_locations());
+        assert_eq!(result.focused_location, Some(loc(0)));
+    }
+
+    #[test]
+    fn click_on_different_entity_replaces_filter_and_clears_focus_via_outcome() {
+        let data = make_mock();
+        let mut state = SelectionState::new();
+        state.add(loc(0));
+        state.add(loc(1));
+        state.add(loc(4));
+        let result = SelectionAdapter::new(&data).resolve_click(
+            loc(2),
+            MapMode::Political,
+            &state,
+            Some(loc(0)),
+        );
+        assert_eq!(result.locations.len(), 1); // c2 only owns loc(2)
+        assert!(result.locations.contains(&loc(2)));
+        assert!(result.focused_location.is_none());
+    }
+
+    #[test]
+    fn click_in_empty_filter_resolves_to_entity() {
+        let data = make_mock();
+        let state = SelectionState::new();
+        let result =
+            SelectionAdapter::new(&data).resolve_click(loc(2), MapMode::Political, &state, None);
+        assert_eq!(result.locations.len(), 1);
+        assert!(result.locations.contains(&loc(2)));
+        assert!(result.focused_location.is_none());
+    }
+
+    #[test]
+    fn click_when_filter_has_multiple_entities_resolves_to_entity() {
+        let data = make_mock();
+        let mut state = SelectionState::new();
+        state.add(loc(0));
+        state.add(loc(2));
+        let result =
+            SelectionAdapter::new(&data).resolve_click(loc(1), MapMode::Political, &state, None);
+        assert_eq!(result.locations.len(), 3);
+        assert!(result.locations.contains(&loc(0)));
+        assert!(result.locations.contains(&loc(1)));
+        assert!(result.locations.contains(&loc(4)));
+        assert!(result.focused_location.is_none());
+    }
+
+    #[test]
+    fn same_entity_country_match() {
+        let data = make_mock();
+        assert!(data.same_entity(loc(0), loc(1), MapMode::Political));
+        assert!(data.same_entity(loc(0), loc(4), MapMode::Political));
+    }
+
+    #[test]
+    fn same_entity_country_mismatch() {
+        let data = make_mock();
+        assert!(!data.same_entity(loc(0), loc(2), MapMode::Political));
+    }
+
+    #[test]
+    fn same_entity_market_match() {
+        let data = make_mock();
+        assert!(data.same_entity(loc(0), loc(2), MapMode::Markets));
+    }
+
+    #[test]
+    fn same_entity_market_mismatch() {
+        let data = make_mock();
+        assert!(!data.same_entity(loc(0), loc(1), MapMode::Markets));
+    }
+
+    #[test]
+    fn same_entity_unowned_is_not_same() {
+        let data = make_mock();
+        assert!(!data.same_entity(loc(0), loc(3), MapMode::Political));
+        assert!(!data.same_entity(loc(3), loc(0), MapMode::Political));
+    }
+
+    #[test]
+    fn single_entity_scope_returns_anchor_when_filter_is_one_country() {
+        let data = make_mock();
+        let mut state = SelectionState::new();
+        state.add(loc(0));
+        state.add(loc(1));
+        state.add(loc(4));
+        let anchor = single_entity_scope(&state, &data, MapMode::Political);
+        assert!(anchor.is_some());
+        assert!(state.contains(anchor.unwrap()));
+    }
+
+    #[test]
+    fn single_entity_scope_returns_none_when_filter_spans_two_countries() {
+        let data = make_mock();
+        let mut state = SelectionState::new();
+        state.add(loc(0));
+        state.add(loc(2));
+        assert_eq!(single_entity_scope(&state, &data, MapMode::Political), None);
+    }
+
+    #[test]
+    fn single_entity_scope_returns_none_for_unowned_filter() {
+        let data = make_mock();
+        let mut state = SelectionState::new();
+        state.add(loc(3));
+        assert_eq!(single_entity_scope(&state, &data, MapMode::Political), None);
+    }
+
+    #[test]
+    fn single_entity_scope_respects_map_mode() {
+        let data = make_mock();
+        let mut state = SelectionState::new();
+        state.add(loc(0));
+        state.add(loc(2));
+        assert_eq!(single_entity_scope(&state, &data, MapMode::Political), None);
+        let anchor = single_entity_scope(&state, &data, MapMode::Markets);
+        assert!(anchor.is_some());
+        assert!(state.contains(anchor.unwrap()));
     }
 
     #[test]

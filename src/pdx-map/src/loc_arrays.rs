@@ -29,6 +29,7 @@ pub struct LocationFlags(u32);
 impl LocationFlags {
     pub const NO_LOCATION_BORDERS: Self = Self(1 << 0); // Bit 0: opt out of location border drawing
     pub const HIGHLIGHTED: Self = Self(1 << 1); // Bit 1: location is highlighted
+    pub const FOCUSED: Self = Self(1 << 2); // Bit 2: location is the focused single tile
 
     #[inline]
     pub const fn new() -> Self {

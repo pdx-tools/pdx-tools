@@ -38,8 +38,10 @@ export interface AppTriggers {
   getLocationArrays(): Promise<Blob>;
   melt(): Promise<Uint8Array<ArrayBuffer>>;
   getStateEfficacy(): Promise<StateEfficacyData>;
-  selectAtLocation(locationIdx: number): Promise<void>;
-  selectCountry(locationIdx: number): Promise<void>;
+  selectEntity(locationIdx: number): Promise<void>;
+  setFocusedLocation(locationIdx: number): Promise<void>;
+  clearFocus(): Promise<void>;
+  clearFocusOrSelection(): Promise<void>;
   selectPlayers(): Promise<void>;
   clearSelection(): Promise<void>;
   searchEntities(query: string): Promise<SearchResult[]>;
@@ -104,8 +106,10 @@ export class Eu5UIEngine implements AppEngine {
     getLocationArrays: () => this.handleGetLocationArrays(),
     melt: () => this.handleMelt(),
     getStateEfficacy: () => this.handleGetStateEfficacy(),
-    selectAtLocation: (locationIdx) => this.handleSelectAtLocation(locationIdx),
-    selectCountry: (locationIdx) => this.handleSelectCountry(locationIdx),
+    selectEntity: (locationIdx) => this.handleSelectEntity(locationIdx),
+    setFocusedLocation: (locationIdx) => this.handleSetFocusedLocation(locationIdx),
+    clearFocus: () => this.handleClearFocus(),
+    clearFocusOrSelection: () => this.handleClearFocusOrSelection(),
     selectPlayers: () => this.handleSelectPlayers(),
     clearSelection: () => this.handleClearSelection(),
     searchEntities: (query) => this.handleSearchEntities(query),
@@ -187,12 +191,20 @@ export class Eu5UIEngine implements AppEngine {
     return await this.gameInstance.getStateEfficacy();
   }
 
-  private async handleSelectAtLocation(locationIdx: number): Promise<void> {
-    await this.gameInstance.selectAtLocation(locationIdx);
+  private async handleSelectEntity(locationIdx: number): Promise<void> {
+    await this.gameInstance.selectEntity(locationIdx);
   }
 
-  private async handleSelectCountry(locationIdx: number): Promise<void> {
-    await this.gameInstance.selectCountry(locationIdx);
+  private async handleSetFocusedLocation(locationIdx: number): Promise<void> {
+    await this.gameInstance.setFocusedLocation(locationIdx);
+  }
+
+  private async handleClearFocus(): Promise<void> {
+    await this.gameInstance.clearFocus();
+  }
+
+  private async handleClearFocusOrSelection(): Promise<void> {
+    await this.gameInstance.clearFocusOrSelection();
   }
 
   private async handleSelectPlayers(): Promise<void> {
