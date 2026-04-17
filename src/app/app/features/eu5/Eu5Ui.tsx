@@ -3,7 +3,7 @@ import { EU5ControlPanel } from "./EU5ControlPanel";
 import { Eu5InsightPanel } from "./Eu5InsightPanel";
 import { AppLoading } from "@/components/AppLoading";
 import { developerLog } from "@/lib/log";
-import { useLoadEu5, Eu5StoreProvider, useEu5SelectionState } from "./store";
+import { useLoadEu5, Eu5StoreProvider, useEu5SelectionState, useEu5Engine } from "./store";
 import type { Eu5SaveInput } from "./store/types";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Eu5CursorTooltip } from "./Eu5CursorTooltip";
@@ -84,12 +84,17 @@ const Eu5UiContent = ({
 }) => {
   const [insightOpen, setInsightOpen] = useState(false);
   const selectionState = useEu5SelectionState();
+  const engine = useEu5Engine();
   const [boxSelectModifier, setBoxSelectModifier] = useState(false);
   const wasEmptyRef = useRef(true);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if (event.key === "Escape") {
+        void engine.trigger.clearFocusOrSelection();
         return;
       }
       if (event.key === "Shift" || event.key === "Alt" || event.key === "Control") {
@@ -114,7 +119,7 @@ const Eu5UiContent = ({
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
     };
-  }, []);
+  }, [engine]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

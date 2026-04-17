@@ -226,11 +226,17 @@ export function saveWorker(
       boxSelectRectCallback = callback;
     },
 
-    selectAtLocation: (locationIdx: number) => {
-      return saveEngine.selectAtLocation(locationIdx);
+    selectEntity: (locationIdx: number) => {
+      return saveEngine.selectEntity(locationIdx);
     },
-    selectCountry: (locationIdx: number) => {
-      return saveEngine.selectCountry(locationIdx);
+    setFocusedLocation: (locationIdx: number) => {
+      return saveEngine.setFocusedLocation(locationIdx);
+    },
+    clearFocus: () => {
+      return saveEngine.clearFocus();
+    },
+    clearFocusOrSelection: () => {
+      return saveEngine.clearFocusOrSelection();
     },
 
     selectPlayers: () => {

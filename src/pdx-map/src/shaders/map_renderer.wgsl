@@ -39,6 +39,7 @@ struct ComputeUniforms {
 
 const STATE_NO_LOCATION_BORDERS = 1u; // Bit 0: opt out of location border drawing
 const STATE_HIGHLIGHTED = 2u; // Bit 1: location is highlighted (hover effect)
+const STATE_FOCUSED = 4u; // Bit 2: location is the focused single tile
 
 const TAU = acos(-1.0) * 2.0;
 
@@ -205,9 +206,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // Get location index directly from R16 texture
     let location_idx = get_location_index_at(global_x, global_y);
 
-    // Check if this location is highlighted
+    // Check if this location is highlighted or focused
     let state_flags = get_state_flags_by_index(location_idx);
     let is_highlighted = (state_flags & STATE_HIGHLIGHTED) != 0u;
+    let is_focused = (state_flags & STATE_FOCUSED) != 0u;
 
     let primary_color = get_primary_color_by_index(location_idx);
     let secondary_color = get_secondary_color_by_index(location_idx);
@@ -216,13 +218,16 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let stripe_blend = stripe_blend_factor(world_x, world_y);
     let in_secondary_zone = has_stripes && stripe_blend > 0.5;
 
-    // Check for different types of borders (owner borders take precedence)
+    // Check for different types of borders
     let center_owner_color = get_owner_color_by_index(location_idx);
     let is_owner_border = is_owner_border_pixel(global_x, global_y, location_idx, center_owner_color);
     let is_location_border = is_location_border_pixel(global_x, global_y, location_idx, in_secondary_zone, secondary_color);
 
     var output_color: vec4<f32>;
-    if (is_owner_border) {
+    if (is_focused && is_location_border) {
+        // Focused border: bright white outline to distinguish the focused tile
+        output_color = vec4<f32>(1.0, 1.0, 1.0, 1.0);
+    } else if (is_owner_border) {
         // Owner border: darken the current pixel by 30%
         let mapped_value = get_owner_color_by_index(location_idx);
         let mapped_rgb = unpack_color(mapped_value);
@@ -256,6 +261,15 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                 min(1.0, output_color.r + 0.25),
                 min(1.0, output_color.g + 0.25),
                 min(1.0, output_color.b + 0.25),
+                1.0
+            );
+        }
+        // Apply focus glow for the selected single tile
+        if (is_focused) {
+            output_color = vec4<f32>(
+                min(1.0, output_color.r + 0.35),
+                min(1.0, output_color.g + 0.35),
+                min(1.0, output_color.b + 0.35),
                 1.0
             );
         }

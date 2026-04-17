@@ -54,9 +54,26 @@ function PanelContent() {
   }, [locationCount, engine]);
 
   const isEmpty = selectionState?.isEmpty ?? true;
+  const focusedLocation = selectionState?.focusedLocation;
+  const focusedLocationName = selectionState?.focusedLocationName;
+  const scopeDisplayName = selectionState?.scopeDisplayName ?? "entity";
 
   return (
     <div className="flex flex-col gap-4 p-4">
+      {focusedLocation != null && (
+        <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => void engine.trigger.clearFocus()}
+            className="mb-2 rounded px-2 py-1 text-xs text-sky-300 transition-colors hover:bg-white/10 hover:text-sky-200"
+          >
+            ← {scopeDisplayName}
+          </button>
+          <div className="text-sm font-semibold text-slate-100">
+            {focusedLocationName ?? `Location ${focusedLocation}`}
+          </div>
+        </div>
+      )}
       <SummaryHeader
         isEmpty={isEmpty}
         selectionState={selectionState ?? null}
