@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from "react";
-import { EU5ControlPanel } from "./EU5ControlPanel";
+import { Eu5ControlPanel } from "./control-panel/Eu5ControlPanel";
 import { Eu5InsightPanel } from "./Eu5InsightPanel";
 import { AppLoading } from "@/components/AppLoading";
 import { developerLog } from "@/lib/log";
@@ -9,7 +9,6 @@ import { ProgressBar } from "@/components/ProgressBar";
 import { Eu5CursorTooltip } from "./Eu5CursorTooltip";
 import { useCursorPosition } from "@/hooks/useCursorPosition";
 import { Eu5ErrorDisplay } from "./Eu5ErrorDisplay";
-import { Eu5MapLegend } from "./Eu5MapLegend";
 import { Eu5Toolbar } from "./Eu5Toolbar";
 import { BoxSelectOverlay } from "./BoxSelectOverlay";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
@@ -141,7 +140,7 @@ const Eu5UiContent = ({
   return (
     <div className="pointer-events-none absolute inset-0">
       {/* Left sidebar — always visible */}
-      <EU5ControlPanel />
+      <Eu5ControlPanel />
 
       {/* Right panel — slides off right edge when closed */}
       <Eu5InsightPanel open={insightOpen} onClose={() => setInsightOpen(false)} />
@@ -162,9 +161,6 @@ const Eu5UiContent = ({
       <BoxSelectOverlay />
       <Eu5CursorTooltip cursorRef={cursorRef} />
       <Eu5Toolbar />
-      <div className="pointer-events-none absolute bottom-6 left-[21.5rem]">
-        <Eu5MapLegend />
-      </div>
     </div>
   );
 };

@@ -177,9 +177,6 @@ export const createGame = async (
     getMapMode: () => {
       return app.get_map_mode();
     },
-    getDate: () => {
-      return app.get_date();
-    },
     getSaveMetadata: () => {
       return metadata;
     },

@@ -1,11 +1,20 @@
 use bumpalo_serde::ArenaDeserialize;
 use eu5save::{
-    Eu5BinaryDeserialization, Eu5Date, Eu5File, ReaderAt,
+    Eu5BinaryDeserialization, Eu5File, ReaderAt,
     models::{GameVersion, Gamestate, ZipPrelude},
 };
-use jomini::binary::TokenResolver;
+use jomini::{binary::TokenResolver, common::PdsDate};
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg_attr(target_family = "wasm", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct Eu5DateComponents {
+    pub year: i16,
+    pub month: u8,
+    pub day: u8,
+}
 
 #[derive(Debug)]
 pub struct Eu5SaveLoader<R, RES> {
@@ -36,7 +45,11 @@ impl Eu5SaveLoader<(), ()> {
             let meta = meta.map_err(Eu5LoadError::MetaDeserialization)?;
             Eu5SaveMetadata {
                 version: meta.metadata.version,
-                date: meta.metadata.date,
+                date: Eu5DateComponents {
+                    year: meta.metadata.date.year(),
+                    month: meta.metadata.date.month(),
+                    day: meta.metadata.date.day(),
+                },
                 playthrough_name: meta.metadata.playthrough_name.to_string(),
             }
         };
@@ -138,6 +151,6 @@ pub enum Eu5LoadError {
 #[serde(rename_all = "camelCase")]
 pub struct Eu5SaveMetadata {
     pub version: GameVersion,
-    pub date: Eu5Date,
+    pub date: Eu5DateComponents,
     pub playthrough_name: String,
 }

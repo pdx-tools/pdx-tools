@@ -331,7 +331,7 @@ pub struct Eu5App {
     _loaded_save: Eu5LoadedSave,
     app: eu5app::Eu5Workspace<'static>, // depends on _loaded_save
 
-    meta: Eu5SaveMetadataHandle,
+    _meta: Eu5SaveMetadataHandle,
 }
 
 #[wasm_bindgen]
@@ -351,7 +351,7 @@ impl Eu5App {
         Ok(Eu5App {
             _loaded_save: gamestate.parsed_save,
             app,
-            meta,
+            _meta: meta,
         })
     }
 
@@ -411,12 +411,6 @@ impl Eu5App {
             min_value,
             max_value,
         }
-    }
-
-    /// Get the current map mode
-    #[wasm_bindgen]
-    pub fn get_date(&self) -> String {
-        format!("{}", self.meta.date.date_fmt())
     }
 
     /// Check if a location can be highlighted based on its terrain
