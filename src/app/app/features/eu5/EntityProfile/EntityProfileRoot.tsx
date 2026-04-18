@@ -3,24 +3,35 @@ import { useEu5Trigger } from "./useEu5Trigger";
 import { CompoundProfile } from "./CompoundProfile";
 import { LeafProfile } from "./LeafProfile";
 
-export function EntityProfileRoot() {
+interface Props {
+  anchorIdx?: number;
+}
+
+export function EntityProfileRoot({ anchorIdx }: Props = {}) {
   const selection = useEu5SelectionState();
   const anchor = selection?.derivedEntityAnchor;
   const focused = selection?.focusedLocation;
   const count = selection?.locationCount ?? 0;
   const standaloneLeafIdx = anchor == null && count === 1 ? selection?.firstLocationIdx : undefined;
-  const isLeaf = focused != null || standaloneLeafIdx != null;
+  // In drill-in mode (anchorIdx set) always show compound profile, never leaf.
+  const isLeaf = anchorIdx == null && (focused != null || standaloneLeafIdx != null);
   const leafIdx = focused ?? standaloneLeafIdx;
 
   const headerQuery = useEu5Trigger(
-    (engine) => (!isLeaf ? engine.trigger.getEntityHeader() : Promise.resolve(null)),
-    [anchor, count, isLeaf],
+    (engine) => {
+      if (anchorIdx != null) return engine.trigger.getEntityHeaderFor(anchorIdx);
+      if (!isLeaf) return engine.trigger.getEntityHeader();
+      return Promise.resolve(null);
+    },
+    [anchor, count, isLeaf, anchorIdx],
   );
 
   const leafQuery = useEu5Trigger(
     (engine) =>
-      leafIdx != null ? engine.trigger.getLocationProfile(leafIdx) : Promise.resolve(null),
-    [leafIdx],
+      leafIdx != null && anchorIdx == null
+        ? engine.trigger.getLocationProfile(leafIdx)
+        : Promise.resolve(null),
+    [leafIdx, anchorIdx],
   );
 
   if (isLeaf) {
@@ -37,7 +48,7 @@ export function EntityProfileRoot() {
 
   if (headerQuery.loading && !headerQuery.data) return <ProfileSkeleton />;
   if (!headerQuery.data) return null;
-  return <CompoundProfile header={headerQuery.data} />;
+  return <CompoundProfile header={headerQuery.data} anchorIdx={anchorIdx} />;
 }
 
 function ProfileSkeleton() {

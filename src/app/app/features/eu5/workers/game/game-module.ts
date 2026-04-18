@@ -15,6 +15,8 @@ import type {
   LocationsSection,
   DiplomacySection,
   LocationProfile,
+  EntityBreakdownData,
+  LocationDistribution,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
@@ -331,6 +333,28 @@ export const createGame = async (
     },
     getLocationProfile: (locationIdx: number): LocationProfile | null => {
       return app.get_location_profile(locationIdx) ?? null;
+    },
+
+    getEntityBreakdown: (): EntityBreakdownData => {
+      return app.get_entity_breakdown();
+    },
+    getLocationDistribution: (): LocationDistribution => {
+      return app.get_location_distribution();
+    },
+    getEntityHeaderFor: (anchorLocationIdx: number): EntityHeader | null => {
+      return app.get_entity_header_for(anchorLocationIdx) ?? null;
+    },
+    getOverviewSectionFor: (anchorLocationIdx: number): OverviewSection | null => {
+      return app.get_overview_section_for(anchorLocationIdx) ?? null;
+    },
+    getEconomySectionFor: (anchorLocationIdx: number): EconomySection | null => {
+      return app.get_economy_section_for(anchorLocationIdx) ?? null;
+    },
+    getLocationsSectionFor: (anchorLocationIdx: number): LocationsSection | null => {
+      return app.get_locations_section_for(anchorLocationIdx) ?? null;
+    },
+    getDiplomacySectionFor: (anchorLocationIdx: number): DiplomacySection | null => {
+      return app.get_diplomacy_section_for(anchorLocationIdx) ?? null;
     },
 
     searchCountries: (query: string) => {

@@ -1,6 +1,7 @@
 import type { EntityHeader as EntityHeaderData, LocationHeader } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { EntityLink } from "./EntityLink";
+import { StatItem } from "./components/StatItem";
 
 export function EntityHeader({ header }: { header: EntityHeaderData }) {
   return (
@@ -18,9 +19,21 @@ export function EntityHeader({ header }: { header: EntityHeaderData }) {
         </div>
       </div>
       <div className="flex gap-5">
-        <StatItem label="Locations" value={formatInt(header.headline.locationCount)} />
-        <StatItem label="Development" value={formatFloat(header.headline.totalDevelopment, 1)} />
-        <StatItem label="Population" value={formatInt(header.headline.totalPopulation)} />
+        <StatItem
+          label="Locations"
+          value={formatInt(header.headline.locationCount)}
+          valueClassName="text-sm"
+        />
+        <StatItem
+          label="Development"
+          value={formatFloat(header.headline.totalDevelopment, 1)}
+          valueClassName="text-sm"
+        />
+        <StatItem
+          label="Population"
+          value={formatInt(header.headline.totalPopulation)}
+          valueClassName="text-sm"
+        />
       </div>
     </div>
   );
@@ -35,17 +48,6 @@ export function LeafHeader({ header }: { header: LocationHeader }) {
           <EntityLink entity={header.owner} />
         </div>
       )}
-    </div>
-  );
-}
-
-function StatItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
-        {label}
-      </span>
-      <span className="text-sm font-bold text-slate-100">{value}</span>
     </div>
   );
 }

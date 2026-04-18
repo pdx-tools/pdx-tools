@@ -16,6 +16,8 @@ import type {
   LocationsSection,
   DiplomacySection,
   LocationProfile,
+  EntityBreakdownData,
+  LocationDistribution,
   Eu5DateComponents,
 } from "@/wasm/wasm_eu5";
 import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
@@ -54,6 +56,13 @@ export interface AppTriggers {
   getLocationsSection(): Promise<LocationsSection | null>;
   getDiplomacySection(): Promise<DiplomacySection | null>;
   getLocationProfile(locationIdx: number): Promise<LocationProfile | null>;
+  getEntityBreakdown(): Promise<EntityBreakdownData>;
+  getLocationDistribution(): Promise<LocationDistribution>;
+  getEntityHeaderFor(anchorLocationIdx: number): Promise<EntityHeader | null>;
+  getOverviewSectionFor(anchorLocationIdx: number): Promise<OverviewSection | null>;
+  getEconomySectionFor(anchorLocationIdx: number): Promise<EconomySection | null>;
+  getLocationsSectionFor(anchorLocationIdx: number): Promise<LocationsSection | null>;
+  getDiplomacySectionFor(anchorLocationIdx: number): Promise<DiplomacySection | null>;
   selectEntity(locationIdx: number): Promise<void>;
   selectCountry(anchorLocationIdx: number): Promise<void>;
   addCountry(anchorLocationIdx: number): Promise<void>;
@@ -134,6 +143,18 @@ export class Eu5UIEngine implements AppEngine {
     getLocationsSection: () => this.gameInstance.getLocationsSection(),
     getDiplomacySection: () => this.gameInstance.getDiplomacySection(),
     getLocationProfile: (locationIdx) => this.gameInstance.getLocationProfile(locationIdx),
+    getEntityBreakdown: () => this.gameInstance.getEntityBreakdown(),
+    getLocationDistribution: () => this.gameInstance.getLocationDistribution(),
+    getEntityHeaderFor: (anchorLocationIdx) =>
+      this.gameInstance.getEntityHeaderFor(anchorLocationIdx),
+    getOverviewSectionFor: (anchorLocationIdx) =>
+      this.gameInstance.getOverviewSectionFor(anchorLocationIdx),
+    getEconomySectionFor: (anchorLocationIdx) =>
+      this.gameInstance.getEconomySectionFor(anchorLocationIdx),
+    getLocationsSectionFor: (anchorLocationIdx) =>
+      this.gameInstance.getLocationsSectionFor(anchorLocationIdx),
+    getDiplomacySectionFor: (anchorLocationIdx) =>
+      this.gameInstance.getDiplomacySectionFor(anchorLocationIdx),
     selectEntity: (locationIdx) => this.handleSelectEntity(locationIdx),
     selectCountry: (locationIdx) => this.gameInstance.selectCountry(locationIdx),
     addCountry: (locationIdx) => this.gameInstance.addCountry(locationIdx),

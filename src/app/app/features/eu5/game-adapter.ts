@@ -10,6 +10,8 @@ import type {
   LocationsSection,
   DiplomacySection,
   LocationProfile,
+  EntityBreakdownData,
+  LocationDistribution,
 } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/types";
 import { fetchOk } from "@/lib/fetch";
@@ -310,6 +312,28 @@ export function saveWorker(
     },
     getLocationProfile: async (locationIdx: number): Promise<LocationProfile | null> => {
       return await saveEngine.getLocationProfile(locationIdx);
+    },
+
+    getEntityBreakdown: async (): Promise<EntityBreakdownData> => {
+      return await saveEngine.getEntityBreakdown();
+    },
+    getLocationDistribution: async (): Promise<LocationDistribution> => {
+      return await saveEngine.getLocationDistribution();
+    },
+    getEntityHeaderFor: async (anchorLocationIdx: number): Promise<EntityHeader | null> => {
+      return await saveEngine.getEntityHeaderFor(anchorLocationIdx);
+    },
+    getOverviewSectionFor: async (anchorLocationIdx: number): Promise<OverviewSection | null> => {
+      return await saveEngine.getOverviewSectionFor(anchorLocationIdx);
+    },
+    getEconomySectionFor: async (anchorLocationIdx: number): Promise<EconomySection | null> => {
+      return await saveEngine.getEconomySectionFor(anchorLocationIdx);
+    },
+    getLocationsSectionFor: async (anchorLocationIdx: number): Promise<LocationsSection | null> => {
+      return await saveEngine.getLocationsSectionFor(anchorLocationIdx);
+    },
+    getDiplomacySectionFor: async (anchorLocationIdx: number): Promise<DiplomacySection | null> => {
+      return await saveEngine.getDiplomacySectionFor(anchorLocationIdx);
     },
 
     searchCountries: async (query: string) => {
