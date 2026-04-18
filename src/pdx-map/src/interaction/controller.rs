@@ -1,10 +1,23 @@
 use crate::{
-    Aabb, LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldSize, units::WorldPoint,
+    Aabb, LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldSize,
+    units::{WorldLength, WorldPoint},
+    viewport::{PanTarget, ViewportInsets},
 };
 use std::time::Duration;
 
 use super::keyboard::{KeyboardKey, KeyboardState};
 use super::mouse::MouseButton;
+
+const PAN_SNAP_PX: f32 = 20.0;
+const PAN_DURATION_MS: u64 = 300;
+
+#[derive(Debug, Clone, Copy)]
+struct PanAnimation {
+    from: WorldPoint<f32>,
+    to: WorldPoint<f32>,
+    elapsed: Duration,
+    duration: Duration,
+}
 
 /// Input controller for map navigation.
 ///
@@ -24,6 +37,7 @@ pub struct InteractionController {
 
     keyboard_state: KeyboardState,
     was_keyboard_active: bool,
+    pan_animation: Option<PanAnimation>,
 }
 
 impl InteractionController {
@@ -44,6 +58,7 @@ impl InteractionController {
                 right: false,
             },
             was_keyboard_active: false,
+            pan_animation: None,
         }
     }
 
@@ -75,6 +90,7 @@ impl InteractionController {
 
         if pressed {
             // Start drag: capture world coordinates under cursor
+            self.pan_animation = None;
             let canvas_pos = self.cursor_position();
             self.drag_anchor_world = Some(self.viewport.canvas_to_world(canvas_pos));
             self.is_dragging = true;
@@ -117,6 +133,9 @@ impl InteractionController {
         tracing::instrument(name = "pdx-map.ui.key-down", skip(self), level = "debug")
     )]
     pub fn on_key_down(&mut self, key: KeyboardKey) {
+        if key.is_pan_key() {
+            self.pan_animation = None;
+        }
         self.keyboard_state.set(key, true);
     }
 
@@ -131,6 +150,30 @@ impl InteractionController {
 
     /// Apply per-frame updates.
     pub fn tick(&mut self, mut delta: Duration) {
+        // Advance pan animation before keyboard so a key press that same frame overrides it.
+        if let Some(ref mut anim) = self.pan_animation {
+            anim.elapsed = (anim.elapsed + delta).min(anim.duration);
+            let t = anim.elapsed.as_secs_f32() / anim.duration.as_secs_f32();
+            let eased = 1.0 - (1.0 - t).powi(3);
+
+            let map_w = self.viewport.map_size().width as f32;
+            // Shortest-path signed delta in world space; handles antimeridian wrap.
+            let delta = WorldLength::wrapped_delta(
+                WorldLength::new(anim.from.x),
+                WorldLength::new(anim.to.x),
+                WorldLength::new(map_w),
+            );
+            let interp_x = anim.to.x - delta.value * (1.0 - eased);
+            let interp_y = anim.from.y + (anim.to.y - anim.from.y) * eased;
+
+            self.viewport
+                .set_position_clamped(WorldPoint::new(interp_x, interp_y));
+
+            if anim.elapsed >= anim.duration {
+                self.pan_animation = None;
+            }
+        }
+
         let is_active = self.keyboard_state.active();
 
         if is_active && !self.was_keyboard_active {
@@ -238,6 +281,53 @@ impl InteractionController {
         end: LogicalPoint<f32>,
     ) -> (Aabb, Option<Aabb>) {
         self.viewport.canvas_rect_to_world_aabbs(start, end)
+    }
+
+    /// Start an animated pan toward the resolved target.
+    ///
+    /// Returns `true` if a pan was kicked off (animated or snapped), `false` if no pan was needed.
+    pub fn pan_to_visible_region(&mut self, target: PanTarget, insets: ViewportInsets) -> bool {
+        let Some(resolved) = self.viewport.resolve_pan(target, insets) else {
+            return false;
+        };
+
+        let current = self.viewport.viewport_position();
+        let zoom = self.viewport.zoom_level();
+        let map_w = self.viewport.map_size().width as f32;
+
+        // Screen-space distance via the short horizontal wrap path.
+        let dx_canvas = WorldLength::wrapped_delta(
+            WorldLength::new(current.x),
+            WorldLength::new(resolved.x),
+            WorldLength::new(map_w),
+        )
+        .to_logical(zoom);
+        let dy_canvas = (resolved.y - current.y) * zoom;
+        let distance = (dx_canvas.value * dx_canvas.value + dy_canvas * dy_canvas).sqrt();
+
+        if distance < PAN_SNAP_PX {
+            self.viewport.set_position_clamped(resolved);
+            self.pan_animation = None;
+        } else {
+            self.pan_animation = Some(PanAnimation {
+                from: current,
+                to: resolved,
+                elapsed: Duration::ZERO,
+                duration: Duration::from_millis(PAN_DURATION_MS),
+            });
+        }
+
+        true
+    }
+
+    /// Whether `target` is currently fully contained in the visible region.
+    pub fn is_target_visible(&self, target: PanTarget, insets: ViewportInsets) -> bool {
+        self.viewport.is_target_visible(target, insets)
+    }
+
+    /// Whether a programmatic pan animation is currently in flight.
+    pub fn is_animating_pan(&self) -> bool {
+        self.pan_animation.is_some()
     }
 
     /// Center on world point.
@@ -445,5 +535,220 @@ mod tests {
         assert_eq!(second_delta_x, expected_delta);
 
         input.on_key_up(KeyboardKey::ArrowRight);
+    }
+
+    use crate::units::Length;
+    use crate::viewport::{PanTarget, ViewportInsets};
+
+    fn no_insets() -> ViewportInsets {
+        ViewportInsets::default()
+    }
+
+    fn side_insets(each: f32) -> ViewportInsets {
+        ViewportInsets {
+            left: Length::new(each),
+            right: Length::new(each),
+            top: Length::new(0.0),
+            bottom: Length::new(0.0),
+        }
+    }
+
+    /// Controller with viewport positioned at a specific world coordinate.
+    fn make_controller_at(
+        canvas_size: LogicalSize<u32>,
+        map_size: WorldSize<u32>,
+        vp_x: f32,
+        vp_y: f32,
+    ) -> InteractionController {
+        let mut c = InteractionController::new(canvas_size, map_size);
+        c.viewport.set_position_clamped(WorldPoint::new(vp_x, vp_y));
+        c
+    }
+
+    #[test]
+    fn test_pan_animation_starts_and_completes() {
+        // Canvas 800x600, map 2000x1000. Target off-screen → animation starts.
+        let mut c = make_controller(LogicalSize::new(800, 600), WorldSize::new(2000, 1000));
+        let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
+        let started = c.pan_to_visible_region(target, no_insets());
+        assert!(started);
+        assert!(c.is_animating_pan());
+
+        // Tick past the full duration.
+        c.tick(Duration::from_millis(PAN_DURATION_MS + 10));
+        assert!(!c.is_animating_pan(), "animation should be done");
+    }
+
+    #[test]
+    fn test_pan_animation_easeout_midpoint_exact() {
+        // Cubic ease-out at t=0.5: eased = 1 - 0.5^3 = 0.875.
+        // Target at (1000, 300) is off-screen right (canvas_x=1000 > 800).
+        // resolved.x = 1000 - 400 = 600, no antimeridian wrap involved.
+        let mut c = make_controller_at(
+            LogicalSize::new(800, 600),
+            WorldSize::new(2000, 1000),
+            0.0,
+            0.0,
+        );
+        let target = PanTarget::Point(WorldPoint::new(1000.0, 300.0));
+        let from_x = c.viewport.viewport_position().x; // 0.0
+        c.pan_to_visible_region(target, no_insets());
+        let to_x = c
+            .viewport
+            .resolve_pan(target, no_insets())
+            .map(|p| p.x)
+            .unwrap_or(from_x); // 600.0
+
+        c.tick(Duration::from_millis(PAN_DURATION_MS / 2));
+
+        let mid_x = c.viewport.viewport_position().x;
+        let expected = from_x + (to_x - from_x) * 0.875;
+        assert!(
+            (mid_x - expected).abs() < 1.0,
+            "cubic ease-out midpoint: expected {expected:.1}, got {mid_x:.1}"
+        );
+    }
+
+    #[test]
+    fn test_pan_animation_lands_on_target() {
+        let mut c = make_controller_at(
+            LogicalSize::new(800, 600),
+            WorldSize::new(2000, 1000),
+            0.0,
+            0.0,
+        );
+        let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
+        let resolved = c.viewport.resolve_pan(target, no_insets()).unwrap();
+        c.pan_to_visible_region(target, no_insets());
+        c.tick(Duration::from_millis(PAN_DURATION_MS + 50));
+
+        let pos = c.viewport.viewport_position();
+        assert!((pos.x - resolved.x).abs() < 1.0, "x should land on target");
+        assert!((pos.y - resolved.y).abs() < 1.0, "y should land on target");
+    }
+
+    #[test]
+    fn test_short_pan_snaps_immediately() {
+        // Canvas 800x600, zoom=1. Side panels shrink visible x to [390, 410] (20px wide).
+        // Target at world x=415 → canvas_x=415 > vis_right=410 → just off right edge.
+        // resolve_pan centers it at vis_center=400: new_vp_x = 415 - 400 = 15.
+        // Canvas delta = (15 - 0)*1 = 15px < 20 → snap, not animate.
+        let mut c = make_controller_at(
+            LogicalSize::new(800, 600),
+            WorldSize::new(2000, 1000),
+            0.0,
+            0.0,
+        );
+        let insets = side_insets(390.0);
+        let target = PanTarget::Point(WorldPoint::new(415.0, 300.0));
+        let result = c.pan_to_visible_region(target, insets);
+        assert!(result, "pan should be triggered");
+        assert!(
+            !c.is_animating_pan(),
+            "sub-20px pan should snap, not animate"
+        );
+    }
+
+    #[test]
+    fn test_drag_interrupts_animation() {
+        let mut c = make_controller(LogicalSize::new(800, 600), WorldSize::new(2000, 1000));
+        let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
+        c.pan_to_visible_region(target, no_insets());
+        assert!(c.is_animating_pan());
+
+        // Tick partway.
+        c.tick(Duration::from_millis(100));
+        assert!(c.is_animating_pan());
+
+        // Drag start clears animation.
+        c.on_cursor_move(LogicalPoint::new(400.0, 300.0));
+        c.on_mouse_button(MouseButton::Left, true);
+        assert!(!c.is_animating_pan(), "drag should interrupt animation");
+        assert!(c.is_dragging());
+    }
+
+    #[test]
+    fn test_second_pan_snapshots_current_position_as_from() {
+        let mut c = make_controller_at(
+            LogicalSize::new(800, 600),
+            WorldSize::new(2000, 1000),
+            0.0,
+            0.0,
+        );
+        let target_a = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
+        c.pan_to_visible_region(target_a, no_insets());
+
+        // Tick to halfway.
+        c.tick(Duration::from_millis(PAN_DURATION_MS / 2));
+        let mid_pos = c.viewport.viewport_position();
+
+        // Start a second pan toward a different target.
+        let target_b = PanTarget::Point(WorldPoint::new(200.0, 450.0));
+        c.pan_to_visible_region(target_b, no_insets());
+
+        // A zero-delta tick evaluates the animation at t=0, which produces exactly `from`.
+        // If animation B snapshotted mid_pos as its `from`, position returns to mid_pos.
+        c.tick(Duration::ZERO);
+        let after_zero_tick = c.viewport.viewport_position();
+        assert!(
+            (after_zero_tick.x - mid_pos.x).abs() < 1.0
+                && (after_zero_tick.y - mid_pos.y).abs() < 1.0,
+            "animation B's from should be A's mid-flight position: mid={mid_pos:?} got={after_zero_tick:?}"
+        );
+    }
+
+    #[test]
+    fn test_keyboard_interrupts_animation() {
+        let mut c = make_controller(LogicalSize::new(800, 600), WorldSize::new(2000, 1000));
+        let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
+        c.pan_to_visible_region(target, no_insets());
+        assert!(c.is_animating_pan());
+
+        c.on_key_down(KeyboardKey::ArrowLeft);
+        assert!(
+            !c.is_animating_pan(),
+            "arrow key should interrupt animation"
+        );
+    }
+
+    #[test]
+    fn test_interruption_leaves_intermediate_position() {
+        let mut c = make_controller_at(
+            LogicalSize::new(800, 600),
+            WorldSize::new(2000, 1000),
+            0.0,
+            0.0,
+        );
+        let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
+        let from = c.viewport.viewport_position();
+        c.pan_to_visible_region(target, no_insets());
+        let to = c.viewport.resolve_pan(target, no_insets());
+
+        c.tick(Duration::from_millis(100));
+        let interrupted = c.viewport.viewport_position();
+        c.on_mouse_button(MouseButton::Left, true);
+
+        // Position should be between from and to, not at either extreme.
+        if let Some(to_pos) = to {
+            assert!(
+                (interrupted.x - from.x).abs() > 0.1 || (interrupted.y - from.y).abs() > 0.1,
+                "should have moved from start"
+            );
+            assert!(
+                (interrupted.x - to_pos.x).abs() > 0.1 || (interrupted.y - to_pos.y).abs() > 0.1,
+                "should not have reached target yet"
+            );
+        }
+    }
+
+    #[test]
+    fn test_pan_to_visible_region_delegates_to_viewport() {
+        let mut c = make_controller(LogicalSize::new(800, 600), WorldSize::new(2000, 1000));
+        let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
+        let insets = no_insets();
+        // resolve_pan on the viewport itself should agree with pan_to_visible_region return.
+        let viewport_says = c.viewport.resolve_pan(target, insets).is_some();
+        let controller_says = c.pan_to_visible_region(target, insets);
+        assert_eq!(viewport_says, controller_says);
     }
 }

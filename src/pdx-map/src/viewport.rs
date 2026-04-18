@@ -1,5 +1,29 @@
-use crate::{Aabb, LogicalPoint, LogicalSize, Rect, WorldRect, WorldSize, units::WorldPoint};
+use crate::{
+    Aabb, LogicalPoint, LogicalSize, Rect, WorldRect, WorldSize,
+    units::{Length, Logical, WorldPoint},
+};
 use std::fmt;
+
+/// Logical-pixel insets from canvas edges where DOM panels occlude the map.
+///
+/// Each field is the width of the panel on that edge in logical (CSS) pixels.
+/// A value of zero means no panel on that side. The visible map region is the
+/// canvas minus these insets; `resolve_pan` only pans when the target falls
+/// outside this visible region.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct ViewportInsets {
+    pub left: Length<Logical, f32>,
+    pub right: Length<Logical, f32>,
+    pub top: Length<Logical, f32>,
+    pub bottom: Length<Logical, f32>,
+}
+
+/// A pan target in world coordinates.
+#[derive(Debug, Clone, Copy)]
+pub enum PanTarget {
+    /// A single-location focus (e.g., a city marker or country capital).
+    Point(WorldPoint<f32>),
+}
 
 /// Represents the bounds of the current viewport in world coordinates
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -233,6 +257,111 @@ impl MapViewport {
         }
     }
 
+    /// Get current viewport position in world coordinates.
+    pub fn viewport_position(&self) -> WorldPoint<f32> {
+        self.viewport_position
+    }
+
+    /// Get the full map size in world coordinates.
+    pub fn map_size(&self) -> WorldSize<u32> {
+        self.map_size
+    }
+
+    /// Set viewport position, applying the same wrap/clamp rules as `pan_by`.
+    pub fn set_position_clamped(&mut self, pos: WorldPoint<f32>) {
+        let world_height = self.canvas_size.height as f32 / self.zoom_level;
+        let max_y = (self.map_size.height as f32 - world_height).max(0.0);
+        self.viewport_position.x = pos.x.rem_euclid(self.map_size.width as f32);
+        self.viewport_position.y = pos.y.clamp(0.0, max_y);
+    }
+
+    /// Return the viewport position that would make `target` fully visible in the
+    /// region not occluded by `insets`, or `None` if it already is.
+    pub fn resolve_pan(
+        &self,
+        target: PanTarget,
+        insets: ViewportInsets,
+    ) -> Option<WorldPoint<f32>> {
+        let canvas_w = self.canvas_size.width as f32;
+        let canvas_h = self.canvas_size.height as f32;
+        debug_assert!(
+            canvas_w > 0.0 && canvas_h > 0.0,
+            "canvas dimensions must be positive"
+        );
+
+        // Compute visible region, falling back to full canvas on degenerate insets.
+        let vis_left = insets.left.value;
+        let vis_right = canvas_w - insets.right.value;
+        let vis_top = insets.top.value;
+        let vis_bottom = canvas_h - insets.bottom.value;
+
+        let (vis_left, vis_right) = if vis_left >= vis_right {
+            (0.0, canvas_w)
+        } else {
+            (vis_left, vis_right)
+        };
+        let (vis_top, vis_bottom) = if vis_top >= vis_bottom {
+            (0.0, canvas_h)
+        } else {
+            (vis_top, vis_bottom)
+        };
+
+        let PanTarget::Point(target) = target;
+
+        let zoom = self.zoom_level;
+        let map_w = self.map_size.width as f32;
+        let map_w_canvas = map_w * zoom;
+
+        // Raw canvas position of target (may be off-screen due to wrap).
+        let raw_canvas_x = (target.x - self.viewport_position.x) * zoom;
+        let raw_canvas_y = (target.y - self.viewport_position.y) * zoom;
+
+        // Choose the horizontal wrap variant closest to the visible region center.
+        let vis_center_x = (vis_left + vis_right) / 2.0;
+        let canvas_x = [
+            raw_canvas_x - map_w_canvas,
+            raw_canvas_x,
+            raw_canvas_x + map_w_canvas,
+        ]
+        .into_iter()
+        .min_by(|a, b| {
+            (a - vis_center_x)
+                .abs()
+                .partial_cmp(&(b - vis_center_x).abs())
+                .unwrap()
+        })
+        .unwrap();
+
+        // Already visible — nothing to do.
+        if canvas_x >= vis_left
+            && canvas_x <= vis_right
+            && raw_canvas_y >= vis_top
+            && raw_canvas_y <= vis_bottom
+        {
+            return None;
+        }
+
+        // New viewport position that places the target at the visible region center.
+        let vis_center_canvas_x = (vis_left + vis_right) / 2.0;
+        let vis_center_canvas_y = (vis_top + vis_bottom) / 2.0;
+
+        let new_viewport_x = target.x - vis_center_canvas_x / zoom;
+        let new_viewport_y = target.y - vis_center_canvas_y / zoom;
+
+        let world_height = canvas_h / zoom;
+        let max_y = (self.map_size.height as f32 - world_height).max(0.0);
+
+        Some(WorldPoint::new(
+            new_viewport_x.rem_euclid(map_w),
+            new_viewport_y.clamp(0.0, max_y),
+        ))
+    }
+
+    /// Whether `target` is currently fully contained in the visible region.
+    pub fn is_target_visible(&self, target: PanTarget, insets: ViewportInsets) -> bool {
+        self.resolve_pan(target, insets).is_none()
+    }
+
     fn min_zoom(&self) -> f32 {
         Self::min_zoom_for_canvas(self.canvas_size, self.map_size)
     }
@@ -442,6 +571,174 @@ mod tests {
         assert!(secondary.is_some(), "expected two AABBs for wrapping rect");
         // Primary should be right segment, secondary the left
         assert!(primary.min().x > secondary.as_ref().unwrap().max().x);
+    }
+
+    // --- resolve_pan / is_target_visible tests ---
+
+    fn vp_at(
+        canvas: LogicalSize<u32>,
+        tile: WorldSize<u32>,
+        pos: WorldPoint<f32>,
+        zoom: f32,
+    ) -> MapViewport {
+        make_viewport_at(canvas, tile, pos, zoom)
+    }
+
+    fn insets(left: f32, right: f32, top: f32, bottom: f32) -> ViewportInsets {
+        use crate::units::Length;
+        ViewportInsets {
+            left: Length::new(left),
+            right: Length::new(right),
+            top: Length::new(top),
+            bottom: Length::new(bottom),
+        }
+    }
+
+    fn no_insets() -> ViewportInsets {
+        ViewportInsets::default()
+    }
+
+    #[test]
+    fn test_resolve_pan_target_inside_no_insets_returns_none() {
+        // 1:1 zoom, viewport at origin, target at canvas center → no pan needed
+        let vp = vp_at(
+            LogicalSize::new(1000, 600),
+            WorldSize::new(500, 600),
+            WorldPoint::new(0.0, 0.0),
+            1.0,
+        );
+        // canvas center world = (500, 300)
+        let result = vp.resolve_pan(PanTarget::Point(WorldPoint::new(500.0, 300.0)), no_insets());
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_resolve_pan_target_inside_asymmetric_insets_returns_none() {
+        // Visible region is [100, 900] x [0, 600]. Target at canvas (500, 300) world → still inside.
+        let vp = vp_at(
+            LogicalSize::new(1000, 600),
+            WorldSize::new(500, 600),
+            WorldPoint::new(0.0, 0.0),
+            1.0,
+        );
+        let insets = insets(100.0, 100.0, 0.0, 0.0);
+        // world (500, 300) → canvas x = (500 - 0)*1 = 500 → inside [100, 900]
+        let result = vp.resolve_pan(PanTarget::Point(WorldPoint::new(500.0, 300.0)), insets);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_resolve_pan_target_behind_right_panel_returns_some_visible() {
+        // Canvas 1000x600, right panel 300px wide → visible x [0, 700]
+        // Target at world x=800 → canvas x 800 > vis_right 700 → not visible
+        let vp = vp_at(
+            LogicalSize::new(1000, 600),
+            WorldSize::new(500, 600),
+            WorldPoint::new(0.0, 0.0),
+            1.0,
+        );
+        let insets = insets(0.0, 300.0, 0.0, 0.0);
+        let target = PanTarget::Point(WorldPoint::new(800.0, 150.0));
+        let new_pos = vp.resolve_pan(target, insets);
+        assert!(new_pos.is_some(), "expected a pan to be needed");
+        // Verify the returned position actually makes the target visible.
+        let mut vp2 = vp;
+        vp2.viewport_position = new_pos.unwrap();
+        assert!(
+            vp2.is_target_visible(target, insets),
+            "resolved position should make target visible"
+        );
+    }
+
+    #[test]
+    fn test_resolve_pan_target_fully_off_screen_returns_some() {
+        let vp = vp_at(
+            LogicalSize::new(1000, 600),
+            WorldSize::new(5000, 5000),
+            WorldPoint::new(0.0, 0.0),
+            1.0,
+        );
+        // Target at world x=8000, way outside canvas [0, 1000]
+        let result = vp.resolve_pan(
+            PanTarget::Point(WorldPoint::new(8000.0, 5000.0)),
+            no_insets(),
+        );
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_resolve_pan_antimeridian_wrap_picks_short_path() {
+        // tile=(500, 500), world_width=1000. Viewport at x=990, target at world x=5.
+        // Without wrap: canvas_cx = (5-990)*1 = -985 (off left). With wrap: -985+1000 = 15 (visible).
+        let vp = vp_at(
+            LogicalSize::new(200, 100),
+            WorldSize::new(500, 500),
+            WorldPoint::new(990.0, 200.0),
+            1.0,
+        );
+        let target = PanTarget::Point(WorldPoint::new(5.0, 250.0));
+        // canvas y = (250-200)*1 = 50 → inside [0,100]. canvas x via wrap = 15 → inside [0,200].
+        let result = vp.resolve_pan(target, no_insets());
+        assert_eq!(result, None, "target should appear visible via wrap");
+    }
+
+    #[test]
+    fn test_resolve_pan_degenerate_insets_falls_back_to_full_canvas() {
+        // Insets sum >= canvas width → degenerate; should produce identical result to zero insets.
+        let vp = vp_at(
+            LogicalSize::new(200, 200),
+            WorldSize::new(500, 500),
+            WorldPoint::new(0.0, 0.0),
+            1.0,
+        );
+        let degenerate = insets(300.0, 300.0, 0.0, 0.0);
+        let target = PanTarget::Point(WorldPoint::new(100.0, 100.0));
+        let pathological = vp.resolve_pan(target, degenerate);
+        let fallback = vp.resolve_pan(target, ViewportInsets::default());
+        assert_eq!(
+            pathological, fallback,
+            "degenerate insets should fall back to full-canvas behavior"
+        );
+    }
+
+    #[test]
+    fn test_is_target_visible_agrees_with_resolve_pan() {
+        let vp = vp_at(
+            LogicalSize::new(1000, 600),
+            WorldSize::new(500, 600),
+            WorldPoint::new(0.0, 0.0),
+            1.0,
+        );
+        let insets = insets(50.0, 50.0, 0.0, 0.0);
+
+        let cases = [
+            PanTarget::Point(WorldPoint::new(500.0, 300.0)), // center — visible
+            PanTarget::Point(WorldPoint::new(5.0, 5.0)),     // near top-left — might be hidden
+        ];
+
+        for t in cases {
+            assert_eq!(
+                vp.is_target_visible(t, insets),
+                vp.resolve_pan(t, insets).is_none(),
+                "is_target_visible and resolve_pan disagree for {:?}",
+                t
+            );
+        }
+    }
+
+    #[test]
+    fn test_resolve_pan_point_near_edge_with_insets() {
+        // Point at canvas (5, 5) but top/left insets are 100px → outside visible region.
+        let vp = vp_at(
+            LogicalSize::new(400, 400),
+            WorldSize::new(500, 500),
+            WorldPoint::new(0.0, 0.0),
+            1.0,
+        );
+        let insets = insets(100.0, 0.0, 100.0, 0.0);
+        // world (5, 5) → canvas x = 5 < vis_left=100 → not visible
+        let result = vp.resolve_pan(PanTarget::Point(WorldPoint::new(5.0, 5.0)), insets);
+        assert!(result.is_some());
     }
 
     #[test]
