@@ -1,2 +1,36 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
+
+@theme {
+  /* EU5 surface ramp — slate base, dark to elevated */
+  --color-eu5-bg-deepest: #07090d;
+  --color-eu5-bg-panel: #0e1218;
+  --color-eu5-bg-panel-2: #131822;
+  --color-eu5-bg-elevated: #1a212c;
+  --color-eu5-bg-hover: #222a37;
+  --color-eu5-bg-active: #2a3343;
+
+  /* EU5 hairlines (alpha-on-dark, single source of truth) */
+  --color-eu5-line: rgba(255, 255, 255, 0.06);
+  --color-eu5-line-strong: rgba(255, 255, 255, 0.1);
+  --color-eu5-line-hover: rgba(255, 255, 255, 0.16);
+
+  /* EU5 type — parchment-tinted whites */
+  /* Three stops only — a fourth "faded" stop was tried and removed: any value dark enough to
+     feel faded failed WCAG AA on bg-panel, and any value that passed was indistinguishable
+     from ink-500. Use a line token for decorative near-invisible strokes instead. */
+  --color-eu5-ink-100: #f3ede1;
+  --color-eu5-ink-300: #cbc6bc;
+  --color-eu5-ink-500: #8a8478;
+
+  /* EU5 single accent — bronze. Used for active state + primary action. */
+  --color-eu5-bronze-100: #f4d39a;
+  --color-eu5-bronze-300: #d4a05a;
+  --color-eu5-bronze-500: #b07a2c;
+  --color-eu5-bronze-700: #6b4915;
+
+  /* EU5 row rhythm */
+  --eu5-row-h: 28px;
+  --eu5-action-h: 48px;
+  --eu5-section-pad-x: 14px;
+}

@@ -3,12 +3,13 @@ import { createContext, useContext } from "react";
 import { createStore, useStore } from "zustand";
 import type { StoreApi } from "zustand";
 import type { AppEngine, AppState } from "../ui-engine";
+import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
 
 type Eu5State = {
   engine: AppEngine;
   appState: AppState;
   filename: string;
-  saveDate: string;
+  saveDate: Eu5DateComponents;
   playthroughName: string;
 };
 
@@ -19,7 +20,7 @@ export const Eu5Context = createContext<Eu5Store | null>(null);
 export const createEu5Store = (
   engine: AppEngine,
   filename: string,
-  saveDate: string,
+  saveDate: Eu5DateComponents,
   playthroughName: string,
 ): Eu5Store => {
   const store = createStore<Eu5State>()(() => ({
@@ -30,7 +31,6 @@ export const createEu5Store = (
     playthroughName,
   }));
 
-  // Subscribe to engine state changes
   engine.subscribe((appState) => {
     store.setState({ appState });
   });

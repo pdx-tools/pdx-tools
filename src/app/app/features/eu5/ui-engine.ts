@@ -7,7 +7,7 @@ import type {
   SelectionSummaryData,
 } from "./game-adapter";
 import type { Eu5SaveInput } from "./store/types";
-import type { MapMode, StateEfficacyData } from "@/wasm/wasm_eu5";
+import type { Eu5DateComponents, MapMode, StateEfficacyData } from "@/wasm/wasm_eu5";
 import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
 
 export interface AppState {
@@ -236,7 +236,11 @@ export async function createLoadedEngine(
     inputConfig: SharedCanvasInputConfig;
   },
   onProgress?: (increment: number) => void,
-): Promise<{ engine: Eu5UIEngine; saveDate: string; playthroughName: string }> {
+): Promise<{
+  engine: Eu5UIEngine;
+  saveDate: Eu5DateComponents;
+  playthroughName: string;
+}> {
   const { offscreen, display, inputConfig } = canvas;
 
   const workers = Eu5GameAdapter.create();
