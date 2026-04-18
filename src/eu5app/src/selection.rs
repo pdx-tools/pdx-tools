@@ -291,7 +291,7 @@ impl<D: LocationData> SelectionAdapter<D> {
         }
     }
 
-    fn resolve_by_owner(&self, clicked_idx: LocationIdx) -> FnvHashSet<LocationIdx> {
+    pub fn resolve_by_owner(&self, clicked_idx: LocationIdx) -> FnvHashSet<LocationIdx> {
         let Some(owner) = self.data.location_info(clicked_idx).owner else {
             return FnvHashSet::default();
         };
@@ -302,7 +302,7 @@ impl<D: LocationData> SelectionAdapter<D> {
             .collect()
     }
 
-    fn resolve_by_market(&self, clicked_idx: LocationIdx) -> FnvHashSet<LocationIdx> {
+    pub fn resolve_by_market(&self, clicked_idx: LocationIdx) -> FnvHashSet<LocationIdx> {
         let Some(market) = self.data.location_info(clicked_idx).market else {
             return FnvHashSet::default();
         };

@@ -1,4 +1,8 @@
 use eu5app::TableCell as Eu5TableCell;
+use eu5app::entity_profile::{
+    DiplomacySection, EconomySection, EntityHeader, LocationProfile, LocationsSection,
+    OverviewSection,
+};
 use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
@@ -84,6 +88,8 @@ pub struct SelectionSummaryData {
     pub derived_entity_anchor: Option<u32>,
     /// Display name of the single entity the filter resolves to, if any.
     pub scope_display_name: Option<String>,
+    /// First selected location index, set when exactly one location is selected and no entity anchor exists.
+    pub first_location_idx: Option<u32>,
 }
 
 impl From<MapMode> for Eu5MapMode {
@@ -452,6 +458,42 @@ impl Eu5App {
         self.app.remove_entity(idx);
     }
 
+    #[wasm_bindgen]
+    pub fn select_country(&mut self, anchor_location_idx: u32) -> Option<u32> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app.select_country_at(idx).map(|c| c.value() as u32)
+    }
+
+    #[wasm_bindgen]
+    pub fn add_country(&mut self, anchor_location_idx: u32) {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app.add_country_at(idx);
+    }
+
+    #[wasm_bindgen]
+    pub fn remove_country(&mut self, anchor_location_idx: u32) {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app.remove_country_at(idx);
+    }
+
+    #[wasm_bindgen]
+    pub fn select_market(&mut self, anchor_location_idx: u32) -> Option<u32> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app.select_market_at(idx).map(|c| c.value() as u32)
+    }
+
+    #[wasm_bindgen]
+    pub fn add_market(&mut self, anchor_location_idx: u32) {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app.add_market_at(idx);
+    }
+
+    #[wasm_bindgen]
+    pub fn remove_market(&mut self, anchor_location_idx: u32) {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app.remove_market_at(idx);
+    }
+
     /// Clear the current selection and focus.
     #[wasm_bindgen]
     pub fn clear_selection(&mut self) {
@@ -546,6 +588,15 @@ impl Eu5App {
         let preset = sel.preset().map(|p| match p {
             eu5app::SelectionPreset::Players => "players".to_string(),
         });
+        let derived_entity_anchor = self.app.derived_entity_anchor().map(|idx| idx.value());
+        let first_location_idx = if derived_entity_anchor.is_none() && summary.location_count == 1 {
+            sel.selected_locations()
+                .iter()
+                .next()
+                .map(|idx| idx.value())
+        } else {
+            None
+        };
         SelectionSummaryData {
             entity_count: summary.entity_count as u32,
             location_count: summary.location_count as u32,
@@ -554,8 +605,9 @@ impl Eu5App {
             preset,
             focused_location: sel.focused_location().map(|idx| idx.value()),
             focused_location_name: self.app.focused_location_display_name(),
-            derived_entity_anchor: self.app.derived_entity_anchor().map(|idx| idx.value()),
+            derived_entity_anchor,
             scope_display_name: self.app.scope_display_name(),
+            first_location_idx,
         }
     }
 
@@ -938,6 +990,47 @@ impl Eu5App {
             .collect();
 
         StateEfficacyData { countries }
+    }
+
+    // ── Entity Profile Endpoints ──────────────────────────────────────────
+
+    /// Header data for the current single-entity scope. None when empty or
+    /// when the filter spans multiple entities.
+    #[wasm_bindgen]
+    pub fn get_entity_header(&self) -> Option<EntityHeader> {
+        self.app().entity_header()
+    }
+
+    /// Overview section stats for the current single-entity scope.
+    #[wasm_bindgen]
+    pub fn get_overview_section(&self) -> Option<OverviewSection> {
+        self.app().overview_section()
+    }
+
+    /// Economy section for the current single-entity scope.
+    #[wasm_bindgen]
+    pub fn get_economy_section(&self) -> Option<EconomySection> {
+        self.app().economy_section()
+    }
+
+    /// Locations section for the current single-entity scope.
+    #[wasm_bindgen]
+    pub fn get_locations_section(&self) -> Option<LocationsSection> {
+        self.app().locations_section()
+    }
+
+    /// Diplomacy section for the current single country scope.
+    /// Returns None for market entities.
+    #[wasm_bindgen]
+    pub fn get_diplomacy_section(&self) -> Option<DiplomacySection> {
+        self.app().diplomacy_section()
+    }
+
+    /// Full profile for a single location.
+    #[wasm_bindgen]
+    pub fn get_location_profile(&self, location_idx: u32) -> Option<LocationProfile> {
+        let idx = eu5save::models::LocationIdx::new(location_idx);
+        self.app().location_profile_for(idx)
     }
 }
 

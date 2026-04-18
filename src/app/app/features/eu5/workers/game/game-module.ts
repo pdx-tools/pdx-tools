@@ -9,6 +9,12 @@ import type {
   MapModeRange,
   StateEfficacyData,
   SelectionSummaryData,
+  EntityHeader,
+  OverviewSection,
+  EconomySection,
+  LocationsSection,
+  DiplomacySection,
+  LocationProfile,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
@@ -214,6 +220,60 @@ export const createGame = async (
       selectionCallback?.(app.get_selection_summary());
       return p;
     },
+    selectCountry: (locationIdx: number) => {
+      const colorId = app.select_country(locationIdx);
+      if (colorId !== undefined && colorId !== null) {
+        mapEndpoint?.center_at_color_id(colorId);
+      }
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
+    addCountry: (locationIdx: number) => {
+      app.add_country(locationIdx);
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
+    removeCountry: (locationIdx: number) => {
+      app.remove_country(locationIdx);
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
+    selectMarket: (locationIdx: number) => {
+      const colorId = app.select_market(locationIdx);
+      if (colorId !== undefined && colorId !== null) {
+        mapEndpoint?.center_at_color_id(colorId);
+      }
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
+    addMarket: (locationIdx: number) => {
+      app.add_market(locationIdx);
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
+    removeMarket: (locationIdx: number) => {
+      app.remove_market(locationIdx);
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
+    addEntity: (locationIdx: number) => {
+      app.add_entity(locationIdx);
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
+    removeEntity: (locationIdx: number) => {
+      app.remove_entity(locationIdx);
+      const p = syncLocationData();
+      selectionCallback?.(app.get_selection_summary());
+      return p;
+    },
     setFocusedLocation: (locationIdx: number) => {
       const colorId = app.set_focused_location(locationIdx);
       if (colorId !== undefined) {
@@ -252,6 +312,25 @@ export const createGame = async (
     },
     getStateEfficacy: (): StateEfficacyData => {
       return app.get_state_efficacy();
+    },
+
+    getEntityHeader: (): EntityHeader | null => {
+      return app.get_entity_header() ?? null;
+    },
+    getOverviewSection: (): OverviewSection | null => {
+      return app.get_overview_section() ?? null;
+    },
+    getEconomySection: (): EconomySection | null => {
+      return app.get_economy_section() ?? null;
+    },
+    getLocationsSection: (): LocationsSection | null => {
+      return app.get_locations_section() ?? null;
+    },
+    getDiplomacySection: (): DiplomacySection | null => {
+      return app.get_diplomacy_section() ?? null;
+    },
+    getLocationProfile: (locationIdx: number): LocationProfile | null => {
+      return app.get_location_profile(locationIdx) ?? null;
     },
 
     searchCountries: (query: string) => {

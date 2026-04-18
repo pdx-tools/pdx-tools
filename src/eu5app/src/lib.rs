@@ -1,3 +1,4 @@
+pub mod entity_profile;
 pub mod game_data;
 mod hexcolor;
 mod map;
@@ -6,6 +7,7 @@ mod selection;
 mod session;
 mod subject_color;
 
+pub use entity_profile::EntityKind;
 pub use selection::{
     ClickOutcome, GroupId, GroupingTable, LocationData, SelectionPreset, SelectionState,
     SelectionSummary, single_entity_scope,
