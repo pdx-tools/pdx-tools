@@ -4,6 +4,7 @@ mod hexcolor;
 mod map;
 mod models;
 mod selection;
+pub mod selection_views;
 mod session;
 mod subject_color;
 

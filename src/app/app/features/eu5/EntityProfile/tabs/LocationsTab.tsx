@@ -7,15 +7,25 @@ import { DataTable } from "@/components/DataTable";
 import type { LocationRow, MapMode } from "@/wasm/wasm_eu5";
 import type { Row } from "@tanstack/react-table";
 import { EntityLink } from "../EntityLink";
+import { usePanelNav } from "../PanelNavContext";
 
 const columnHelper = createColumnHelper<LocationRow>();
 
 function NameCell({ row }: { row: Row<LocationRow> }) {
   const engine = useEu5Engine();
+  const nav = usePanelNav();
   return (
     <button
       type="button"
-      onClick={() => void engine.trigger.setFocusedLocation(row.original.locationIdx)}
+      onClick={() => {
+        if (nav.stack.length > 0) {
+          nav.pushMany([
+            { kind: "focus", locationIdx: row.original.locationIdx, label: row.original.name },
+          ]);
+        } else {
+          void engine.trigger.setFocusedLocation(row.original.locationIdx);
+        }
+      }}
       className="min-w-0 truncate text-left text-xs text-sky-300 hover:text-sky-200 hover:underline"
     >
       {row.original.name}
@@ -80,14 +90,17 @@ const SORT_BY_MODE: Partial<Record<MapMode, { id: string; desc: boolean }>> = {
   religion: { id: "name", desc: false },
 };
 
-export function LocationsTab() {
+export function LocationsTab({ anchorIdx }: { anchorIdx?: number } = {}) {
   const selection = useEu5SelectionState();
   const anchor = selection?.derivedEntityAnchor;
   const mode = useEu5MapMode();
 
   const { data, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getLocationsSection(),
-    [anchor],
+    (engine) =>
+      anchorIdx != null
+        ? engine.trigger.getLocationsSectionFor(anchorIdx)
+        : engine.trigger.getLocationsSection(),
+    [anchor, anchorIdx],
   );
 
   if (loading && !data) {

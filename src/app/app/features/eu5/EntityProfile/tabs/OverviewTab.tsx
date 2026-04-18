@@ -11,13 +11,16 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { EntityLink } from "../EntityLink";
 
-export function OverviewTab() {
+export function OverviewTab({ anchorIdx }: { anchorIdx?: number } = {}) {
   const selection = useEu5SelectionState();
   const anchor = selection?.derivedEntityAnchor;
 
   const { data, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getOverviewSection(),
-    [anchor],
+    (engine) =>
+      anchorIdx != null
+        ? engine.trigger.getOverviewSectionFor(anchorIdx)
+        : engine.trigger.getOverviewSection(),
+    [anchor, anchorIdx],
   );
 
   if (loading && !data) {

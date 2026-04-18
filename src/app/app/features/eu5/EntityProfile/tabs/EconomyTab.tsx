@@ -2,11 +2,17 @@ import { useEu5SelectionState } from "../../store";
 import { useEu5Trigger } from "../useEu5Trigger";
 import { formatFloat } from "@/lib/format";
 
-export function EconomyTab() {
+export function EconomyTab({ anchorIdx }: { anchorIdx?: number } = {}) {
   const selection = useEu5SelectionState();
   const anchor = selection?.derivedEntityAnchor;
 
-  const { data, loading } = useEu5Trigger((engine) => engine.trigger.getEconomySection(), [anchor]);
+  const { data, loading } = useEu5Trigger(
+    (engine) =>
+      anchorIdx != null
+        ? engine.trigger.getEconomySectionFor(anchorIdx)
+        : engine.trigger.getEconomySection(),
+    [anchor, anchorIdx],
+  );
 
   if (loading && !data) {
     return <div className="h-24 animate-pulse rounded bg-white/5" />;

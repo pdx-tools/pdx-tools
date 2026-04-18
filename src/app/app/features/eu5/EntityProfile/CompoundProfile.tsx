@@ -9,11 +9,12 @@ import { DiplomacyTab } from "./tabs/DiplomacyTab";
 
 interface Props {
   header: EntityHeader;
+  anchorIdx?: number;
 }
 
 type TabValue = "overview" | "economy" | "locations" | "diplomacy";
 
-export function CompoundProfile({ header }: Props) {
+export function CompoundProfile({ header, anchorIdx }: Props) {
   const hasDiplomacy = header.kind === "country";
   const availableTabs = useMemo<TabValue[]>(
     () =>
@@ -45,23 +46,23 @@ export function CompoundProfile({ header }: Props) {
           {hasDiplomacy && <Tabs.Trigger value="diplomacy">Diplomacy</Tabs.Trigger>}
         </Tabs.List>
         <Tabs.Content value="overview" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
-          <OverviewTab />
+          <OverviewTab anchorIdx={anchorIdx} />
         </Tabs.Content>
         <Tabs.Content value="economy" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
-          <EconomyTab />
+          <EconomyTab anchorIdx={anchorIdx} />
         </Tabs.Content>
         <Tabs.Content
           value="locations"
           className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
         >
-          <LocationsTab />
+          <LocationsTab anchorIdx={anchorIdx} />
         </Tabs.Content>
         {hasDiplomacy && (
           <Tabs.Content
             value="diplomacy"
             className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
           >
-            <DiplomacyTab />
+            <DiplomacyTab anchorIdx={anchorIdx} />
           </Tabs.Content>
         )}
       </Tabs>

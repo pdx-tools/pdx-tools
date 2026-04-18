@@ -5,6 +5,7 @@ use eu5app::entity_profile::{
 };
 use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
+use eu5app::selection_views::{EntityBreakdownData, LocationDistribution};
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
 use eu5app::{Eu5SaveMetadata, LocationData};
@@ -1031,6 +1032,59 @@ impl Eu5App {
     pub fn get_location_profile(&self, location_idx: u32) -> Option<LocationProfile> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
         self.app().location_profile_for(idx)
+    }
+
+    // ── Multi-entity & Aggregate Endpoints ───────────────────────────────
+
+    /// Per-entity breakdown for the current selection (or world if empty).
+    /// Groups by owner in most modes; by market in Markets mode.
+    #[wasm_bindgen]
+    pub fn get_entity_breakdown(&self) -> EntityBreakdownData {
+        self.app().selection_entity_breakdown()
+    }
+
+    /// Histogram distribution of location metric values for the current mode
+    /// over the current selection (or world if empty).
+    #[wasm_bindgen]
+    pub fn get_location_distribution(&self) -> LocationDistribution {
+        self.app().selection_location_distribution()
+    }
+
+    /// Entity header for a specific entity resolved from `anchor_location_idx`,
+    /// over that entity's full territory (ignores current selection).
+    #[wasm_bindgen]
+    pub fn get_entity_header_for(&self, anchor_location_idx: u32) -> Option<EntityHeader> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app().entity_header_for(idx)
+    }
+
+    /// Overview section for a specific entity's full territory.
+    #[wasm_bindgen]
+    pub fn get_overview_section_for(&self, anchor_location_idx: u32) -> Option<OverviewSection> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app().overview_section_for(idx)
+    }
+
+    /// Economy section for a specific entity's full territory.
+    #[wasm_bindgen]
+    pub fn get_economy_section_for(&self, anchor_location_idx: u32) -> Option<EconomySection> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app().economy_section_for(idx)
+    }
+
+    /// Locations section for a specific entity's full territory.
+    #[wasm_bindgen]
+    pub fn get_locations_section_for(&self, anchor_location_idx: u32) -> Option<LocationsSection> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app().locations_section_for(idx)
+    }
+
+    /// Diplomacy section for a specific country entity.
+    /// Returns None for market entities.
+    #[wasm_bindgen]
+    pub fn get_diplomacy_section_for(&self, anchor_location_idx: u32) -> Option<DiplomacySection> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app().diplomacy_section_for(idx)
     }
 }
 

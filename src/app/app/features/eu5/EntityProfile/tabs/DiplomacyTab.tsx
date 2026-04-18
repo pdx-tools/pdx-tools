@@ -3,13 +3,16 @@ import { useEu5Trigger } from "../useEu5Trigger";
 import type { EntityRef } from "@/wasm/wasm_eu5";
 import { EntityLink } from "../EntityLink";
 
-export function DiplomacyTab() {
+export function DiplomacyTab({ anchorIdx }: { anchorIdx?: number } = {}) {
   const selection = useEu5SelectionState();
   const anchor = selection?.derivedEntityAnchor;
 
   const { data, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getDiplomacySection(),
-    [anchor],
+    (engine) =>
+      anchorIdx != null
+        ? engine.trigger.getDiplomacySectionFor(anchorIdx)
+        : engine.trigger.getDiplomacySection(),
+    [anchor, anchorIdx],
   );
 
   if (loading && !data) {

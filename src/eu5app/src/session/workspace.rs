@@ -8,10 +8,14 @@ use crate::game_data::GameData;
 use crate::selection::{
     GroupId, GroupingTable, LocationData, SelectionAdapter, SelectionState, single_entity_scope,
 };
+use crate::selection_views::{
+    DistributionBucket, EntityBreakdownData, EntityBreakdownRow, LocationDistribution,
+};
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap};
 use eu5save::models::{
-    CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIndexedVec, RawMaterialsName,
+    CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIdx, LocationIndexedVec,
+    MarketId, RawMaterialsName,
 };
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
 use std::collections::HashMap;
@@ -2380,8 +2384,23 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Returns aggregated overview stats for the current single-entity scope.
     pub fn overview_section(&self) -> Option<OverviewSection> {
         let anchor = self.derived_entity_anchor?;
-        let selected = self.selection_state.selected_locations();
-        if selected.is_empty() {
+        let kind = self.derived_entity_kind()?;
+        let locations: Vec<LocationIdx> = self
+            .selection_state
+            .selected_locations()
+            .iter()
+            .copied()
+            .collect();
+        self.build_overview_section(anchor, kind, &locations)
+    }
+
+    fn build_overview_section(
+        &self,
+        anchor: LocationIdx,
+        kind: EntityKind,
+        locations: &[LocationIdx],
+    ) -> Option<OverviewSection> {
+        if locations.is_empty() {
             return None;
         }
         let building_levels = self.get_location_building_levels();
@@ -2391,8 +2410,8 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut total_building_levels = 0.0_f64;
         let mut religion_counts: HashMap<String, (u32, String)> = HashMap::new();
         let mut top_locations_by_development: Vec<RankedLocation> = Vec::new();
-        let count = selected.len() as f64;
-        for &idx in selected {
+        let count = locations.len() as f64;
+        for &idx in locations {
             let loc = self.gamestate.locations.index(idx).location();
             total_control += loc.control;
             total_development += loc.development;
@@ -2458,13 +2477,14 @@ impl<'bump> Eu5Workspace<'bump> {
         let top_economic_indicators = self.overview_economic_indicators(
             anchor,
             total_building_levels,
-            selected
+            locations
                 .iter()
                 .map(|&idx| self.gamestate.locations.index(idx).location().possible_tax)
                 .sum(),
+            kind,
         )?;
 
-        let diplomatic_summary = self.overview_diplomatic_summary(anchor);
+        let diplomatic_summary = self.overview_diplomatic_summary(anchor, kind);
 
         Some(OverviewSection {
             avg_control: if count > 0.0 {
@@ -2491,8 +2511,9 @@ impl<'bump> Eu5Workspace<'bump> {
         anchor: eu5save::models::LocationIdx,
         total_building_levels: f64,
         total_possible_tax: f64,
+        kind: EntityKind,
     ) -> Option<Vec<EconomicIndicator>> {
-        match self.derived_entity_kind()? {
+        match kind {
             EntityKind::Country => {
                 let loc = self.gamestate.locations.index(anchor).location();
                 let owner_id = loc.owner.real_id()?.country_id();
@@ -2557,8 +2578,9 @@ impl<'bump> Eu5Workspace<'bump> {
     fn overview_diplomatic_summary(
         &self,
         anchor: eu5save::models::LocationIdx,
+        kind: EntityKind,
     ) -> Option<DiplomaticSummary> {
-        if matches!(self.derived_entity_kind()?, EntityKind::Market) {
+        if matches!(kind, EntityKind::Market) {
             return None;
         }
         let loc = self.gamestate.locations.index(anchor).location();
@@ -2581,13 +2603,23 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Returns economy section for the current single-entity scope.
     pub fn economy_section(&self) -> Option<EconomySection> {
         let anchor = self.derived_entity_anchor?;
+        let locations: Vec<eu5save::models::LocationIdx> = self
+            .selection_state
+            .selected_locations()
+            .iter()
+            .copied()
+            .collect();
         match self.derived_entity_kind()? {
-            EntityKind::Country => self.country_economy(anchor),
-            EntityKind::Market => self.market_economy(anchor),
+            EntityKind::Country => self.country_economy(anchor, &locations),
+            EntityKind::Market => self.market_economy(anchor, &locations),
         }
     }
 
-    fn country_economy(&self, anchor: eu5save::models::LocationIdx) -> Option<EconomySection> {
+    fn country_economy(
+        &self,
+        anchor: eu5save::models::LocationIdx,
+        locations: &[eu5save::models::LocationIdx],
+    ) -> Option<EconomySection> {
         let loc = self.gamestate.locations.index(anchor).location();
         let owner_id = loc.owner.real_id()?.country_id();
         let country_idx = self.gamestate.countries.get(owner_id)?;
@@ -2598,7 +2630,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut total_possible_tax = 0.0_f64;
         let mut market_counts: FxHashMap<String, u32> = FxHashMap::default();
 
-        for &idx in self.selection_state.selected_locations() {
+        for &idx in locations {
             let loc = self.gamestate.locations.index(idx).location();
             total_building_levels += building_levels[idx];
             total_possible_tax += loc.possible_tax;
@@ -2628,7 +2660,11 @@ impl<'bump> Eu5Workspace<'bump> {
         })
     }
 
-    fn market_economy(&self, anchor: eu5save::models::LocationIdx) -> Option<EconomySection> {
+    fn market_economy(
+        &self,
+        anchor: eu5save::models::LocationIdx,
+        locations: &[eu5save::models::LocationIdx],
+    ) -> Option<EconomySection> {
         let loc = self.gamestate.locations.index(anchor).location();
         let market_id = loc.market?;
         let market = self.gamestate.market_manager.get(market_id)?;
@@ -2636,7 +2672,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let building_levels = self.get_location_building_levels();
         let mut total_building_levels = 0.0_f64;
         let mut total_possible_tax = 0.0_f64;
-        for &idx in self.selection_state.selected_locations() {
+        for &idx in locations {
             let l = self.gamestate.locations.index(idx).location();
             total_building_levels += building_levels[idx];
             total_possible_tax += l.possible_tax;
@@ -2670,11 +2706,20 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Returns location rows for all selected locations, sorted by location index.
     pub fn locations_section(&self) -> Option<LocationsSection> {
         self.derived_entity_anchor?;
-        let selected = self.selection_state.selected_locations();
-        if selected.is_empty() {
+        let locations: Vec<LocationIdx> = self
+            .selection_state
+            .selected_locations()
+            .iter()
+            .copied()
+            .collect();
+        self.build_locations_section(&locations)
+    }
+
+    fn build_locations_section(&self, locations: &[LocationIdx]) -> Option<LocationsSection> {
+        if locations.is_empty() {
             return None;
         }
-        let mut locations: Vec<LocationRow> = selected
+        let mut rows: Vec<LocationRow> = locations
             .iter()
             .map(|&idx| {
                 let loc = self.gamestate.locations.index(idx).location();
@@ -2691,8 +2736,8 @@ impl<'bump> Eu5Workspace<'bump> {
                 }
             })
             .collect();
-        locations.sort_by_key(|row| row.location_idx);
-        Some(LocationsSection { locations })
+        rows.sort_by_key(|row| row.location_idx);
+        Some(LocationsSection { locations: rows })
     }
 
     /// Returns diplomacy data for the current country scope.
@@ -2790,6 +2835,397 @@ impl<'bump> Eu5Workspace<'bump> {
             },
             buildings,
         })
+    }
+
+    // ── Multi-entity & Aggregate Views ────────────────────────────────────
+
+    fn entity_kind_for_mode(&self) -> EntityKind {
+        if self.current_map_mode == MapMode::Markets {
+            EntityKind::Market
+        } else {
+            EntityKind::Country
+        }
+    }
+
+    fn collect_entity_locations(
+        &self,
+        anchor_idx: eu5save::models::LocationIdx,
+        kind: EntityKind,
+    ) -> Option<Vec<eu5save::models::LocationIdx>> {
+        match kind {
+            EntityKind::Country => {
+                let loc = self.gamestate.locations.index(anchor_idx).location();
+                let owner = loc.owner.real_id()?;
+                let locations = self
+                    .gamestate
+                    .locations
+                    .iter()
+                    .filter(|entry| entry.location().owner.real_id() == Some(owner))
+                    .map(|entry| entry.idx())
+                    .collect();
+                Some(locations)
+            }
+            EntityKind::Market => {
+                let loc = self.gamestate.locations.index(anchor_idx).location();
+                let market_id = loc.market?;
+                let locations = self
+                    .gamestate
+                    .locations
+                    .iter()
+                    .filter(|entry| entry.location().market == Some(market_id))
+                    .map(|entry| entry.idx())
+                    .collect();
+                Some(locations)
+            }
+        }
+    }
+
+    /// Returns per-entity breakdown data for the current selection.
+    /// Groups by owner in most map modes; by market in Markets mode.
+    /// When the selection is empty, falls back to all locations (world view).
+    pub fn selection_entity_breakdown(&self) -> EntityBreakdownData {
+        let use_markets = self.current_map_mode == MapMode::Markets;
+        let building_levels = self.get_location_building_levels();
+
+        #[derive(Default)]
+        struct Agg {
+            location_count: u32,
+            total_development: f64,
+            total_population: u32,
+            total_possible_tax: f64,
+            total_control: f64,
+            total_rgo_level: f64,
+            total_building_levels: f64,
+            total_efficacy: f64,
+        }
+
+        let mut country_aggs: FxHashMap<CountryId, Agg> = FxHashMap::default();
+        let mut market_aggs: FxHashMap<MarketId, Agg> = FxHashMap::default();
+
+        let mut add_location = |idx: LocationIdx| {
+            let loc = self.gamestate.locations.index(idx).location();
+            if loc.owner.is_dummy() {
+                return;
+            }
+            let population = self.gamestate.location_population(loc) as u32;
+            let bl = building_levels[idx];
+
+            if use_markets {
+                if let Some(market_id) = loc.market {
+                    let agg = market_aggs.entry(market_id).or_default();
+                    agg.location_count += 1;
+                    agg.total_development += loc.development;
+                    agg.total_population += population;
+                    agg.total_possible_tax += loc.possible_tax;
+                    agg.total_control += loc.control;
+                    agg.total_rgo_level += loc.rgo_level;
+                    agg.total_building_levels += bl;
+                    agg.total_efficacy += loc.control * loc.development;
+                }
+            } else {
+                let agg = country_aggs.entry(loc.owner).or_default();
+                agg.location_count += 1;
+                agg.total_development += loc.development;
+                agg.total_population += population;
+                agg.total_possible_tax += loc.possible_tax;
+                agg.total_control += loc.control;
+                agg.total_rgo_level += loc.rgo_level;
+                agg.total_building_levels += bl;
+                agg.total_efficacy += loc.control * loc.development;
+            }
+        };
+
+        if self.selection_state.is_empty() {
+            for entry in self.gamestate.locations.iter() {
+                add_location(entry.idx());
+            }
+        } else {
+            for &idx in self.selection_state.selected_locations() {
+                add_location(idx);
+            }
+        }
+
+        let mode_metric_label: &str = match self.current_map_mode {
+            MapMode::Control => "Avg Control",
+            MapMode::Population => "Population",
+            MapMode::RgoLevel => "RGO Level",
+            MapMode::BuildingLevels => "Building Levels",
+            MapMode::PossibleTax | MapMode::Markets => "Possible Tax",
+            MapMode::StateEfficacy => "State Efficacy",
+            _ => "Development",
+        };
+
+        let compute_mode_metric = |agg: &Agg| -> f64 {
+            match self.current_map_mode {
+                MapMode::Control => {
+                    if agg.location_count > 0 {
+                        agg.total_control / agg.location_count as f64
+                    } else {
+                        0.0
+                    }
+                }
+                MapMode::Population => agg.total_population as f64,
+                MapMode::RgoLevel => agg.total_rgo_level,
+                MapMode::BuildingLevels => agg.total_building_levels,
+                MapMode::PossibleTax | MapMode::Markets => agg.total_possible_tax,
+                MapMode::StateEfficacy => agg.total_efficacy,
+                _ => agg.total_development,
+            }
+        };
+
+        let mut rows: Vec<EntityBreakdownRow> = Vec::new();
+
+        if use_markets {
+            for (market_id, agg) in market_aggs {
+                if let Some(entity_ref) = self.market_ref_from_id(market_id) {
+                    let mode_metric = compute_mode_metric(&agg);
+                    let avg_development = if agg.location_count > 0 {
+                        agg.total_development / agg.location_count as f64
+                    } else {
+                        0.0
+                    };
+                    rows.push(EntityBreakdownRow {
+                        entity_ref,
+                        location_count: agg.location_count,
+                        total_development: agg.total_development,
+                        total_population: agg.total_population,
+                        avg_development,
+                        total_possible_tax: agg.total_possible_tax,
+                        mode_metric,
+                        mode_metric_label: mode_metric_label.to_string(),
+                    });
+                }
+            }
+        } else {
+            for (country_id, agg) in country_aggs {
+                if let Some(country_idx) = self.gamestate.countries.get(country_id)
+                    && let Some(entity_ref) = self.entity_ref_from_country_idx(country_idx)
+                {
+                    let mode_metric = compute_mode_metric(&agg);
+                    let avg_development = if agg.location_count > 0 {
+                        agg.total_development / agg.location_count as f64
+                    } else {
+                        0.0
+                    };
+                    rows.push(EntityBreakdownRow {
+                        entity_ref,
+                        location_count: agg.location_count,
+                        total_development: agg.total_development,
+                        total_population: agg.total_population,
+                        avg_development,
+                        total_possible_tax: agg.total_possible_tax,
+                        mode_metric,
+                        mode_metric_label: mode_metric_label.to_string(),
+                    });
+                }
+            }
+        }
+
+        rows.sort_by(|a, b| {
+            b.mode_metric
+                .total_cmp(&a.mode_metric)
+                .then_with(|| a.entity_ref.name.cmp(&b.entity_ref.name))
+        });
+
+        EntityBreakdownData { rows }
+    }
+
+    /// Returns a histogram distribution of per-location metric values for the
+    /// current map mode over the current selection (or all locations if empty).
+    pub fn selection_location_distribution(&self) -> LocationDistribution {
+        let building_levels = self.get_location_building_levels();
+
+        let metric_label = match self.current_map_mode {
+            MapMode::Control => "Control",
+            MapMode::Population => "Population",
+            MapMode::RgoLevel => "RGO Level",
+            MapMode::BuildingLevels => "Building Levels",
+            MapMode::PossibleTax | MapMode::Markets => "Possible Tax",
+            MapMode::StateEfficacy => "State Efficacy",
+            _ => "Development",
+        };
+
+        let mut metrics: Vec<(LocationIdx, f64)> = Vec::new();
+        let mut add_location = |idx: LocationIdx| {
+            let loc = self.gamestate.locations.index(idx).location();
+            if loc.owner.is_dummy() {
+                return;
+            }
+            let value = match self.current_map_mode {
+                MapMode::Control => loc.control,
+                MapMode::Population => self.gamestate.location_population(loc),
+                MapMode::RgoLevel => loc.rgo_level,
+                MapMode::BuildingLevels => building_levels[idx],
+                MapMode::PossibleTax | MapMode::Markets => loc.possible_tax,
+                MapMode::StateEfficacy => loc.control * loc.development,
+                _ => loc.development,
+            };
+            metrics.push((idx, value));
+        };
+
+        if self.selection_state.is_empty() {
+            for entry in self.gamestate.locations.iter() {
+                add_location(entry.idx());
+            }
+        } else {
+            for &idx in self.selection_state.selected_locations() {
+                add_location(idx);
+            }
+        }
+
+        if metrics.is_empty() {
+            return LocationDistribution {
+                metric_label: metric_label.to_string(),
+                buckets: vec![],
+                top_locations: vec![],
+            };
+        }
+
+        let min_val = metrics
+            .iter()
+            .map(|(_, v)| *v)
+            .fold(f64::INFINITY, f64::min);
+        let max_val = metrics
+            .iter()
+            .map(|(_, v)| *v)
+            .fold(f64::NEG_INFINITY, f64::max);
+
+        const MAX_BUCKETS: usize = 20;
+
+        let buckets = if (max_val - min_val).abs() < f64::EPSILON {
+            vec![DistributionBucket {
+                lo: min_val,
+                hi: max_val,
+                count: metrics.len() as u32,
+            }]
+        } else {
+            let bucket_width = (max_val - min_val) / MAX_BUCKETS as f64;
+            let mut counts = vec![0u32; MAX_BUCKETS];
+            for (_, v) in &metrics {
+                let b = ((v - min_val) / bucket_width).floor() as usize;
+                let b = b.min(MAX_BUCKETS - 1);
+                counts[b] += 1;
+            }
+            counts
+                .into_iter()
+                .enumerate()
+                .map(|(i, count)| DistributionBucket {
+                    lo: min_val + i as f64 * bucket_width,
+                    hi: min_val + (i + 1) as f64 * bucket_width,
+                    count,
+                })
+                .collect()
+        };
+
+        let mut sorted_metrics = metrics;
+        sorted_metrics.sort_by(|a, b| b.1.total_cmp(&a.1));
+        let top_locations: Vec<RankedLocation> = sorted_metrics
+            .iter()
+            .take(10)
+            .map(|(idx, value)| RankedLocation {
+                location_idx: idx.value(),
+                name: self.location_name(*idx).to_string(),
+                value: *value,
+            })
+            .collect();
+
+        LocationDistribution {
+            metric_label: metric_label.to_string(),
+            buckets,
+            top_locations,
+        }
+    }
+
+    /// Header for a specific entity resolved from `anchor_idx`, over that
+    /// entity's full territory in the gamestate (ignores current selection).
+    pub fn entity_header_for(
+        &self,
+        anchor_idx: eu5save::models::LocationIdx,
+    ) -> Option<EntityHeader> {
+        let kind = self.entity_kind_for_mode();
+        let locations = self.collect_entity_locations(anchor_idx, kind)?;
+        let mut total_development = 0.0_f64;
+        let mut total_population = 0u32;
+        let location_count = locations.len() as u32;
+        for &idx in &locations {
+            let loc = self.gamestate.locations.index(idx).location();
+            total_development += loc.development;
+            total_population += self.gamestate.location_population(loc) as u32;
+        }
+        let headline = HeadlineStats {
+            location_count,
+            total_development,
+            total_population,
+        };
+        match kind {
+            EntityKind::Country => self.country_header(anchor_idx, headline),
+            EntityKind::Market => self.market_header(anchor_idx, headline),
+        }
+    }
+
+    /// Overview section for a specific entity's full territory.
+    pub fn overview_section_for(
+        &self,
+        anchor_idx: eu5save::models::LocationIdx,
+    ) -> Option<OverviewSection> {
+        let kind = self.entity_kind_for_mode();
+        let locations = self.collect_entity_locations(anchor_idx, kind)?;
+        self.build_overview_section(anchor_idx, kind, &locations)
+    }
+
+    /// Economy section for a specific entity's full territory.
+    pub fn economy_section_for(
+        &self,
+        anchor_idx: eu5save::models::LocationIdx,
+    ) -> Option<EconomySection> {
+        let kind = self.entity_kind_for_mode();
+        let locations = self.collect_entity_locations(anchor_idx, kind)?;
+        match kind {
+            EntityKind::Country => self.country_economy(anchor_idx, &locations),
+            EntityKind::Market => self.market_economy(anchor_idx, &locations),
+        }
+    }
+
+    /// Locations section for a specific entity's full territory.
+    pub fn locations_section_for(
+        &self,
+        anchor_idx: eu5save::models::LocationIdx,
+    ) -> Option<LocationsSection> {
+        let kind = self.entity_kind_for_mode();
+        let locations = self.collect_entity_locations(anchor_idx, kind)?;
+        self.build_locations_section(&locations)
+    }
+
+    /// Diplomacy section for a specific country entity (by anchor location).
+    /// Returns None for market entities or if the anchor doesn't resolve to a country.
+    pub fn diplomacy_section_for(
+        &self,
+        anchor_idx: eu5save::models::LocationIdx,
+    ) -> Option<DiplomacySection> {
+        if matches!(self.entity_kind_for_mode(), EntityKind::Market) {
+            return None;
+        }
+        let loc = self.gamestate.locations.index(anchor_idx).location();
+        let owner_id = loc.owner.real_id()?.country_id();
+        let anchor_country_idx = self.gamestate.countries.get(owner_id)?;
+
+        let overlord = self.overlord_of[anchor_country_idx]
+            .and_then(|idx| self.entity_ref_from_country_idx(idx));
+
+        let subjects: Vec<EntityRef> = self
+            .gamestate
+            .countries
+            .iter()
+            .filter_map(|entry| {
+                if self.overlord_of[entry.idx()] == Some(anchor_country_idx) {
+                    self.entity_ref_from_country_idx(entry.idx())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Some(DiplomacySection { overlord, subjects })
     }
 }
 
