@@ -3,7 +3,14 @@ import { Eu5ControlPanel } from "./control-panel/Eu5ControlPanel";
 import { Eu5InsightPanel } from "./Eu5InsightPanel";
 import { AppLoading } from "@/components/AppLoading";
 import { developerLog } from "@/lib/log";
-import { useLoadEu5, Eu5StoreProvider, useEu5SelectionState, useEu5Engine } from "./store";
+import {
+  useLoadEu5,
+  Eu5StoreProvider,
+  useEu5SelectionState,
+  useEu5Engine,
+  useEu5InsightPanelOpen,
+  useSetEu5InsightPanelOpen,
+} from "./store";
 import type { Eu5SaveInput } from "./store/types";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Eu5CursorTooltip } from "./Eu5CursorTooltip";
@@ -81,7 +88,8 @@ const Eu5UiContent = ({
   cursorRef: React.RefObject<CursorPosition>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
 }) => {
-  const [insightOpen, setInsightOpen] = useState(false);
+  const insightOpen = useEu5InsightPanelOpen();
+  const setInsightOpen = useSetEu5InsightPanelOpen();
   const selectionState = useEu5SelectionState();
   const engine = useEu5Engine();
   const [boxSelectModifier, setBoxSelectModifier] = useState(false);
@@ -135,7 +143,7 @@ const Eu5UiContent = ({
       setInsightOpen(true);
     }
     wasEmptyRef.current = isEmpty;
-  }, [selectionState]);
+  }, [selectionState, setInsightOpen]);
 
   return (
     <div className="pointer-events-none absolute inset-0">

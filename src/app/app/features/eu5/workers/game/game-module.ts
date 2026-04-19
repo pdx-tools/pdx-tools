@@ -223,10 +223,7 @@ export const createGame = async (
       return p;
     },
     selectCountry: (locationIdx: number) => {
-      const colorId = app.select_country(locationIdx);
-      if (colorId !== undefined && colorId !== null) {
-        mapEndpoint?.center_at_color_id(colorId);
-      }
+      app.select_country(locationIdx);
       const p = syncLocationData();
       selectionCallback?.(app.get_selection_summary());
       return p;
@@ -244,10 +241,7 @@ export const createGame = async (
       return p;
     },
     selectMarket: (locationIdx: number) => {
-      const colorId = app.select_market(locationIdx);
-      if (colorId !== undefined && colorId !== null) {
-        mapEndpoint?.center_at_color_id(colorId);
-      }
+      app.select_market(locationIdx);
       const p = syncLocationData();
       selectionCallback?.(app.get_selection_summary());
       return p;
@@ -277,10 +271,7 @@ export const createGame = async (
       return p;
     },
     setFocusedLocation: (locationIdx: number) => {
-      const colorId = app.set_focused_location(locationIdx);
-      if (colorId !== undefined) {
-        mapEndpoint?.center_at_color_id(colorId);
-      }
+      app.set_focused_location(locationIdx);
       const p = syncLocationData();
       selectionCallback?.(app.get_selection_summary());
       return p;
@@ -367,6 +358,10 @@ export const createGame = async (
             (c.name.toLowerCase().includes(lower) || c.tag.toLowerCase().includes(lower)),
         )
         .slice(0, 20);
+    },
+
+    getLocationColorId: (locationIdx: number): number | null => {
+      return app.center_at(locationIdx) ?? null;
     },
   });
 };

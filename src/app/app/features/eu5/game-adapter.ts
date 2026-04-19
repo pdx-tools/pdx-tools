@@ -339,5 +339,15 @@ export function saveWorker(
     searchCountries: async (query: string) => {
       return await saveEngine.searchCountries(query);
     },
+
+    panToLocation: async (
+      locationIdx: number,
+      insets: { left: number; right: number; top: number; bottom: number },
+    ) => {
+      const colorId = await saveEngine.getLocationColorId(locationIdx);
+      if (colorId != null) {
+        await mapEngine.pan_to_color_id(colorId, insets);
+      }
+    },
   };
 }
