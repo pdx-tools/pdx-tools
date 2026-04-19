@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { cx } from "class-variance-authority";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
@@ -14,6 +14,7 @@ interface ResizablePanelProps {
   collapseThreshold?: number;
   header?: ReactNode;
   children: ReactNode;
+  onWidthChange?: (width: number) => void;
 }
 
 const RESIZE_STEP = 16;
@@ -28,9 +29,14 @@ export function ResizablePanel({
   collapseThreshold = 224,
   header,
   children,
+  onWidthChange,
 }: ResizablePanelProps) {
   const [width, setWidth] = useState(defaultWidth);
   const [isMaximized, setIsMaximized] = useState(false);
+
+  useEffect(() => {
+    onWidthChange?.(width);
+  }, [width, onWidthChange]);
   const [isDragging, setIsDragging] = useState(false);
   const previousWidthRef = useRef(width);
   const startXRef = useRef(0);

@@ -2,6 +2,7 @@ import type React from "react";
 import { cx } from "class-variance-authority";
 import type { EntityRef } from "@/wasm/wasm_eu5";
 import { useEu5Engine } from "../store";
+import { usePanToEntity } from "../usePanToEntity";
 
 type EntityLinkProps = {
   entity: EntityRef;
@@ -11,6 +12,7 @@ type EntityLinkProps = {
 
 export function EntityLink({ entity, className, children }: EntityLinkProps) {
   const engine = useEu5Engine();
+  const panToEntity = usePanToEntity();
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -22,6 +24,7 @@ export function EntityLink({ entity, className, children }: EntityLinkProps) {
       void (isCountry ? engine.trigger.removeCountry(idx) : engine.trigger.removeMarket(idx));
     } else {
       void (isCountry ? engine.trigger.selectCountry(idx) : engine.trigger.selectMarket(idx));
+      panToEntity(idx);
     }
   };
 

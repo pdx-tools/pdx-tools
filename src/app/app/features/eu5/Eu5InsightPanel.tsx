@@ -1,7 +1,12 @@
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ResizablePanel } from "@/components/ResizablePanel";
-import { useEu5Engine, useEu5MapMode, useEu5SelectionState } from "./store";
+import {
+  useEu5Engine,
+  useEu5MapMode,
+  useEu5SelectionState,
+  useSetEu5InsightPanelWidth,
+} from "./store";
 import { formatInt } from "@/lib/format";
 import { StateEfficacy } from "./features/charts/StateEfficacy";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
@@ -25,6 +30,12 @@ type Eu5InsightPanelProps = {
 };
 
 export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
+  const setInsightPanelWidth = useSetEu5InsightPanelWidth();
+  const handleWidthChange = useCallback(
+    (width: number) => setInsightPanelWidth(width),
+    [setInsightPanelWidth],
+  );
+
   return (
     <ResizablePanel
       open={open}
@@ -34,6 +45,7 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
       collapseThreshold={256}
       maxWidth={1920}
       header={<span className="text-sm font-semibold text-slate-300">Insights</span>}
+      onWidthChange={handleWidthChange}
     >
       <PanelContent />
     </ResizablePanel>

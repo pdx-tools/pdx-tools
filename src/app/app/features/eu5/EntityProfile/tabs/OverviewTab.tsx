@@ -1,6 +1,7 @@
 import type React from "react";
 import { useEu5Engine, useEu5SelectionState } from "../../store";
 import { useEu5Trigger } from "../useEu5Trigger";
+import { usePanToEntity } from "../../usePanToEntity";
 import { formatFloat, formatInt } from "@/lib/format";
 import type {
   DiplomaticSummary,
@@ -91,6 +92,7 @@ function EconomicIndicatorGrid({ indicators }: { indicators: EconomicIndicator[]
 
 function TopLocationsList({ locations }: { locations: RankedLocation[] }) {
   const engine = useEu5Engine();
+  const panToEntity = usePanToEntity();
   if (locations.length === 0) return null;
   return (
     <section>
@@ -103,7 +105,10 @@ function TopLocationsList({ locations }: { locations: RankedLocation[] }) {
             </span>
             <button
               type="button"
-              onClick={() => void engine.trigger.setFocusedLocation(location.locationIdx)}
+              onClick={() => {
+                panToEntity(location.locationIdx);
+                void engine.trigger.setFocusedLocation(location.locationIdx);
+              }}
               className="min-w-0 flex-1 truncate text-left text-sky-300 hover:text-sky-200 hover:underline"
             >
               {location.name}

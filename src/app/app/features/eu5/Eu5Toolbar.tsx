@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useEu5SelectionState, useEu5Engine } from "./store";
+import { usePanToEntity } from "./usePanToEntity";
 import { MagnifyingGlassIcon, FunnelIcon } from "@heroicons/react/24/outline";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Popover } from "@/components/Popover";
@@ -69,13 +70,16 @@ export function Eu5Toolbar() {
     return () => clearTimeout(timer);
   }, [query, engine]);
 
+  const panToEntity = usePanToEntity();
+
   const handleSelect = useCallback(
     async (result: SearchResult) => {
       await engine.trigger.selectEntity(result.locationIdx);
+      panToEntity(result.locationIdx);
       setQuery("");
       setResults([]);
     },
-    [engine],
+    [engine, panToEntity],
   );
 
   const handleDismiss = useCallback(() => {

@@ -6,8 +6,8 @@ use eu5save::hash::FnvHashSet;
 use pdx_map::{
     CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
     InteractionController, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
-    MapTexture, MapViewController, MouseButton, PhysicalSize, R16, SpatialIndex,
-    SurfaceMapRenderer, World, WorldPoint, default_clock,
+    MapTexture, MapViewController, MouseButton, PanTarget, PhysicalSize, R16, SpatialIndex,
+    SurfaceMapRenderer, ViewportInsets, World, WorldPoint, default_clock,
 };
 use std::time::Duration;
 use wasm_bindgen::prelude::*;
@@ -16,7 +16,7 @@ use web_sys::OffscreenCanvas;
 // Re-export common types from wasm-pdxmap
 pub use wasm_pdx_map::{
     CanvasDisplay, PdxScreenshotRenderer as WasmScreenshotRenderer, WasmGpuColor,
-    WasmGpuLocationIdx, WasmGpuLocationIdxReadback, WasmQueuedWorkFuture,
+    WasmGpuLocationIdx, WasmGpuLocationIdxReadback, WasmQueuedWorkFuture, WasmViewportInsets,
     create_screenshot_renderer_for_app, get_surface_target,
 };
 
@@ -488,6 +488,21 @@ impl Eu5WasmMapRenderer {
 
         let bounds = self.input.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
+    }
+
+    /// Pan to make the location with `color_id` (R16 texture index) visible,
+    /// respecting panel insets. Returns true if a pan was started.
+    /// Uses the spatial index AABB center — fast, no pixel scan.
+    #[wasm_bindgen]
+    pub fn pan_to_color_id(&mut self, color_id: u16, insets: WasmViewportInsets) -> bool {
+        let aabb = self.spatial_index.aabb_of(R16::new(color_id));
+        let center = WorldPoint::new(
+            (aabb.min().x as f32 + aabb.max().x as f32) / 2.0,
+            (aabb.min().y as f32 + aabb.max().y as f32) / 2.0,
+        );
+        let viewport_insets: ViewportInsets = insets.into();
+        self.input
+            .pan_to_visible_region(PanTarget::Point(center), viewport_insets)
     }
 
     /// Enable or disable owner border rendering

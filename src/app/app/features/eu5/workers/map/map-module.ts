@@ -531,6 +531,13 @@ export const createMapEngine = async (
       app.highlight_location(locationIdx);
     },
 
+    pan_to_color_id: (
+      colorId: number,
+      insets: { left: number; right: number; top: number; bottom: number },
+    ) => {
+      return app.pan_to_color_id(colorId, insets);
+    },
+
     onBoxSelectRectUpdate: (callback: (rect: BoxSelectOverlayRect | null) => void) => {
       boxSelectRectCallback = callback;
     },

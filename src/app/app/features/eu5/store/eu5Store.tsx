@@ -11,6 +11,10 @@ type Eu5State = {
   filename: string;
   saveDate: Eu5DateComponents;
   playthroughName: string;
+  insightPanelOpen: boolean;
+  insightPanelWidth: number;
+  setInsightPanelOpen: (open: boolean) => void;
+  setInsightPanelWidth: (width: number) => void;
 };
 
 export type Eu5Store = StoreApi<Eu5State>;
@@ -23,12 +27,16 @@ export const createEu5Store = (
   saveDate: Eu5DateComponents,
   playthroughName: string,
 ): Eu5Store => {
-  const store = createStore<Eu5State>()(() => ({
+  const store = createStore<Eu5State>()((set) => ({
     engine,
     appState: engine.getState(),
     filename,
     saveDate,
     playthroughName,
+    insightPanelOpen: false,
+    insightPanelWidth: 640,
+    setInsightPanelOpen: (open) => set({ insightPanelOpen: open }),
+    setInsightPanelWidth: (width) => set({ insightPanelWidth: width }),
   }));
 
   engine.subscribe((appState) => {
@@ -62,3 +70,7 @@ export const useSaveFilename = () => useEu5Store((x) => x.filename);
 export const useEu5SaveDate = () => useEu5Store((x) => x.saveDate);
 export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);
 export const useEu5SelectionState = () => useEu5Store((x) => x.appState.selectionState);
+export const useEu5InsightPanelOpen = () => useEu5Store((x) => x.insightPanelOpen);
+export const useEu5InsightPanelWidth = () => useEu5Store((x) => x.insightPanelWidth);
+export const useSetEu5InsightPanelOpen = () => useEu5Store((x) => x.setInsightPanelOpen);
+export const useSetEu5InsightPanelWidth = () => useEu5Store((x) => x.setInsightPanelWidth);

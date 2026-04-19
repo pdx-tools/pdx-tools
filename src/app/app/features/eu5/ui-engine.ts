@@ -76,6 +76,10 @@ export interface AppTriggers {
   selectPlayers(): Promise<void>;
   clearSelection(): Promise<void>;
   searchEntities(query: string): Promise<SearchResult[]>;
+  panToLocation(
+    locationIdx: number,
+    insets: { left: number; right: number; top: number; bottom: number },
+  ): Promise<void>;
 }
 
 export interface AppEngine {
@@ -168,6 +172,7 @@ export class Eu5UIEngine implements AppEngine {
     selectPlayers: () => this.handleSelectPlayers(),
     clearSelection: () => this.handleClearSelection(),
     searchEntities: (query) => this.handleSearchEntities(query),
+    panToLocation: (locationIdx, insets) => this.gameInstance.panToLocation(locationIdx, insets),
   };
 
   get state(): AppState {

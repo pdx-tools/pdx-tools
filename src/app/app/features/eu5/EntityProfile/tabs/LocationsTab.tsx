@@ -1,5 +1,6 @@
 import { useEu5Engine, useEu5MapMode, useEu5SelectionState } from "../../store";
 import { useEu5Trigger } from "../useEu5Trigger";
+import { usePanToEntity } from "../../usePanToEntity";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
@@ -14,10 +15,12 @@ const columnHelper = createColumnHelper<LocationRow>();
 function NameCell({ row }: { row: Row<LocationRow> }) {
   const engine = useEu5Engine();
   const nav = usePanelNav();
+  const panToEntity = usePanToEntity();
   return (
     <button
       type="button"
       onClick={() => {
+        panToEntity(row.original.locationIdx);
         if (nav.stack.length > 0) {
           nav.pushMany([
             { kind: "focus", locationIdx: row.original.locationIdx, label: row.original.name },
