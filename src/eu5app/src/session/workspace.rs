@@ -1074,6 +1074,10 @@ impl<'bump> Eu5Workspace<'bump> {
         const DIM: f32 = 0.3;
         for idx in 0..self.gamestate.locations.len() {
             let loc = eu5save::models::LocationIdx::new(idx as u32);
+            let terrain = self.location_terrain(loc);
+            if terrain.is_water() || !terrain.is_passable() {
+                continue;
+            }
             if self.selection_state.contains(loc) {
                 continue;
             }
