@@ -7,21 +7,21 @@ use std::fmt::{self, Display};
 use std::marker::PhantomData;
 
 /// Marker type for physical pixel units (device pixels)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Physical;
 
 /// Marker type for logical pixel units (CSS/virtual pixels)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Logical;
 
 /// Marker type for World units (game world coordinates)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct WorldSpace;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct HemisphereSpace;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Length<Unit, T> {
     pub value: T,
     _unit: PhantomData<Unit>,
@@ -33,6 +33,31 @@ impl<Unit, T> Length<Unit, T> {
             value,
             _unit: PhantomData,
         }
+    }
+}
+
+impl<Unit> Length<Unit, f32> {
+    /// Returns the shorter signed delta between two positions on a cylinder of circumference
+    /// `period`. Use this to interpolate across the antimeridian instead of the long way round.
+    pub fn wrapped_delta(
+        from: Length<Unit, f32>,
+        to: Length<Unit, f32>,
+        period: Length<Unit, f32>,
+    ) -> Length<Unit, f32> {
+        let dx = to.value - from.value;
+        let p = period.value;
+        Length::new(if dx.abs() > p / 2.0 {
+            dx - p * dx.signum()
+        } else {
+            dx
+        })
+    }
+}
+
+impl Length<WorldSpace, f32> {
+    /// Convert a world-space scalar length to logical (canvas) pixels at the given zoom.
+    pub fn to_logical(self, zoom: f32) -> Length<Logical, f32> {
+        Length::new(self.value * zoom)
     }
 }
 
@@ -148,6 +173,7 @@ impl<Unit, T: Display> Display for Rect<Unit, T> {
 
 // Type aliases for ergonomics
 pub type WorldLength<T> = Length<WorldSpace, T>;
+pub type LogicalLength<T> = Length<Logical, T>;
 pub type HemisphereLength<T> = Length<HemisphereSpace, T>;
 pub type PhysicalSize<T> = Size<Physical, T>;
 pub type LogicalSize<T> = Size<Logical, T>;
@@ -194,6 +220,43 @@ impl PhysicalPoint<f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use super::WorldLength;
+
+    #[test]
+    fn test_wrapped_delta_short_path() {
+        // from=990, to=10: direct delta=-980, but the short path wraps forward by +20.
+        // dx=-980 → |dx|>500 → wrapped = -980 - 1000*(-1) = +20.
+        let delta = WorldLength::wrapped_delta(
+            WorldLength::new(990.0f32),
+            WorldLength::new(10.0f32),
+            WorldLength::new(1000.0f32),
+        );
+        assert_eq!(delta.value, 20.0);
+    }
+
+    #[test]
+    fn test_wrapped_delta_direct_path() {
+        // from=100, to=300: delta=200 < 500 (period/2), so no wrap.
+        let delta = WorldLength::wrapped_delta(
+            WorldLength::new(100.0f32),
+            WorldLength::new(300.0f32),
+            WorldLength::new(1000.0f32),
+        );
+        assert_eq!(delta.value, 200.0);
+    }
+
+    #[test]
+    fn test_wrapped_delta_negative_short_path() {
+        // from=10, to=990: direct delta=+980, but short path wraps backward by -20.
+        // dx=980 → |dx|>500 → wrapped = 980 - 1000*1 = -20.
+        let delta = WorldLength::wrapped_delta(
+            WorldLength::new(10.0f32),
+            WorldLength::new(990.0f32),
+            WorldLength::new(1000.0f32),
+        );
+        assert_eq!(delta.value, -20.0);
+    }
 
     #[test]
     fn test_logical_to_physical() {

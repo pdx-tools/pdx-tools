@@ -1,8 +1,9 @@
 use pdx_map::{
     CanvasDimensions, Clock, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
-    InteractionController, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
-    MapTexture, MapViewController, MouseButton, PhysicalSize, QueuedWorkFuture, R16Palette,
-    RenderError, SurfaceMapRenderer, World, WorldLength, WorldPoint, WorldSize, default_clock,
+    InteractionController, KeyboardKey, Length, LocationArrays, LocationFlags, LogicalPoint,
+    LogicalSize, MapTexture, MapViewController, MouseButton, PanTarget, PhysicalSize,
+    QueuedWorkFuture, R16Palette, RenderError, SurfaceMapRenderer, ViewportInsets, World,
+    WorldLength, WorldPoint, WorldSize, default_clock,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -308,6 +309,27 @@ impl PdxMapRenderer {
         self.controller.set_viewport_bounds(bounds);
     }
 
+    /// Pan to make a world point visible, respecting panel insets. Returns true if a pan was
+    /// started. The snap or animation is applied on the next `tick()`.
+    #[wasm_bindgen]
+    pub fn pan_to_point(&mut self, x: f32, y: f32, insets: WasmViewportInsets) -> bool {
+        self.interaction
+            .pan_to_visible_region(PanTarget::Point(WorldPoint::new(x, y)), insets.into())
+    }
+
+    /// Whether a world point is currently visible within the inset-adjusted region.
+    #[wasm_bindgen]
+    pub fn is_point_visible(&self, x: f32, y: f32, insets: WasmViewportInsets) -> bool {
+        self.interaction
+            .is_target_visible(PanTarget::Point(WorldPoint::new(x, y)), insets.into())
+    }
+
+    /// Whether a programmatic pan animation is currently in flight.
+    #[wasm_bindgen]
+    pub fn is_animating_pan(&self) -> bool {
+        self.interaction.is_animating_pan()
+    }
+
     /// Enable or disable owner border rendering
     #[wasm_bindgen]
     pub fn set_owner_borders(&mut self, enabled: bool) {
@@ -419,6 +441,27 @@ impl WasmQueuedWorkFuture {
     /// Create a new WasmQueuedWorkFuture from a QueuedWorkFuture (for library use)
     pub fn from_queued_work_future(future: QueuedWorkFuture) -> Self {
         Self { future }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct WasmViewportInsets {
+    pub left: f32,
+    pub right: f32,
+    pub top: f32,
+    pub bottom: f32,
+}
+
+impl From<WasmViewportInsets> for ViewportInsets {
+    fn from(v: WasmViewportInsets) -> Self {
+        Self {
+            left: Length::new(v.left),
+            right: Length::new(v.right),
+            top: Length::new(v.top),
+            bottom: Length::new(v.bottom),
+        }
     }
 }
 

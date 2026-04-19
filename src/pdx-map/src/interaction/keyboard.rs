@@ -200,6 +200,21 @@ pub enum KeyboardKey {
 }
 
 impl KeyboardKey {
+    /// Whether this key triggers directional map panning.
+    pub fn is_pan_key(self) -> bool {
+        matches!(
+            self,
+            KeyboardKey::ArrowUp
+                | KeyboardKey::ArrowDown
+                | KeyboardKey::ArrowLeft
+                | KeyboardKey::ArrowRight
+                | KeyboardKey::KeyW
+                | KeyboardKey::KeyS
+                | KeyboardKey::KeyA
+                | KeyboardKey::KeyD
+        )
+    }
+
     pub fn from_web_code(code: &str) -> Self {
         match code {
             "Unidentified" => Self::Unidentified,
