@@ -8,6 +8,57 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
+pub struct CountryDevSummary {
+    pub anchor_location_idx: u32,
+    pub tag: String,
+    pub name: String,
+    pub color_hex: String,
+    pub total_development: f64,
+    pub avg_development: f64,
+    pub location_count: u32,
+    pub total_population: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct DevTopLocation {
+    pub location_idx: u32,
+    pub name: String,
+    pub development: f64,
+    pub population: u32,
+    pub control: f64,
+    pub owner: EntityRef,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct DevelopmentInsightData {
+    pub countries: Vec<CountryDevSummary>,
+    pub top_locations: Vec<DevTopLocation>,
+    pub distribution: LocationDistribution,
+}
+
+/// Aggregated totals for the current scope: the active selection when non-empty,
+/// or the entire world when the filter is empty.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct ScopeSummary {
+    pub entity_count: u32,
+    pub location_count: u32,
+    pub total_population: u32,
+    pub is_empty: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
 pub struct EntityBreakdownRow {
     pub entity_ref: EntityRef,
     pub location_count: u32,

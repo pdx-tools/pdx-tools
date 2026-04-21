@@ -4,6 +4,10 @@ import type { EChartsOption } from "@/components/viz";
 import type { LocationDistribution } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 
+function formatBound(v: number): string {
+  return Number.isInteger(v) ? String(v) : formatFloat(v, 1);
+}
+
 interface Props {
   distribution: LocationDistribution;
 }
@@ -19,12 +23,12 @@ export function LocationDistributionChart({ distribution }: Props) {
           if (!p) return "";
           const b = buckets[p.dataIndex];
           if (!b) return "";
-          return `${formatFloat(b.lo, 1)} – ${formatFloat(b.hi, 1)}: ${formatInt(p.value)} locations`;
+          return `${formatBound(b.lo)} – ${formatBound(b.hi)}: ${formatInt(p.value)} locations`;
         },
       },
       xAxis: {
         type: "category",
-        data: buckets.map((b) => `${formatFloat(b.lo, 1)}-${formatFloat(b.hi, 1)}`),
+        data: buckets.map((b) => `${formatBound(b.lo)}–${formatBound(b.hi)}`),
         axisLabel: { rotate: 35, color: "#94a3b8", fontSize: 10 },
         axisLine: { lineStyle: { color: "#334155" } },
       },

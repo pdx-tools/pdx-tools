@@ -4,10 +4,8 @@ import { useEu5Trigger } from "../useEu5Trigger";
 import { EntityList } from "./EntityList";
 import { EntityComparisonChart } from "./EntityComparisonChart";
 import { LocationDistributionChart } from "./LocationDistributionChart";
-import { formatInt, formatFloat } from "@/lib/format";
 import { usePanelNav } from "../PanelNavContext";
 import { getSelectionIdentityKey } from "../selectionIdentity";
-import { StatItem } from "../components/StatItem";
 
 export function MultiEntitySummaryPanel() {
   const selectionState = useEu5SelectionState();
@@ -35,8 +33,6 @@ export function MultiEntitySummaryPanel() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <AggregateSummaryBar rows={rows} selectionState={selectionState} />
-
       {breakdownQuery.loading && !breakdownQuery.data ? (
         <div className="h-24 animate-pulse rounded bg-white/5" />
       ) : rows.length > 0 ? (
@@ -57,36 +53,6 @@ export function MultiEntitySummaryPanel() {
           <LocationDistributionChart distribution={distributionQuery.data} />
         </section>
       )}
-    </div>
-  );
-}
-
-type SelectionState = NonNullable<ReturnType<typeof useEu5SelectionState>>;
-
-function AggregateSummaryBar({
-  rows,
-  selectionState,
-}: {
-  rows: { totalDevelopment: number; locationCount: number }[];
-  selectionState: SelectionState | null;
-}) {
-  const entityCount = selectionState?.entityCount ?? rows.length;
-  const locationCount = selectionState?.locationCount ?? 0;
-  const totalPopulation = selectionState?.totalPopulation ?? 0;
-  const avgDev =
-    rows.length > 0
-      ? rows.reduce((s, r) => s + r.totalDevelopment, 0) /
-        rows.reduce((s, r) => s + r.locationCount, 0)
-      : 0;
-
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-      <div className="flex flex-wrap gap-5">
-        <StatItem label="Entities" value={formatInt(entityCount)} />
-        <StatItem label="Locations" value={formatInt(locationCount)} />
-        <StatItem label="Population" value={formatInt(totalPopulation)} />
-        {rows.length > 0 && <StatItem label="Avg Dev" value={formatFloat(avgDev, 1)} />}
-      </div>
     </div>
   );
 }

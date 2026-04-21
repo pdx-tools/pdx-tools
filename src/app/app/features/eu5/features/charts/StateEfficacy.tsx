@@ -7,6 +7,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { isDarkMode } from "@/lib/dark";
+import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 
 const columnHelper = createColumnHelper<CountryStateEfficacy>();
@@ -77,6 +78,7 @@ function StateEfficacyChart({ data }: { data: CountryStateEfficacy[] }) {
   const isDark = isDarkMode();
 
   const option = useMemo((): EChartsOption => {
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
     // Calculate population min/max for symbol sizing
     const populations = data.map((d) => d.totalPopulation);
     const minPop = Math.min(...populations);
@@ -114,23 +116,23 @@ function StateEfficacyChart({ data }: { data: CountryStateEfficacy[] }) {
         nameLocation: "middle",
         nameGap: 45,
         nameTextStyle: {
-          color: isDark ? "#fff" : "#000",
+          color: labelColor,
           fontSize: 12,
           fontWeight: 600,
         },
         axisLabel: {
-          color: isDark ? "#bbb" : "#666",
+          color: tickColor,
         },
         axisLine: {
           lineStyle: {
-            color: isDark ? "#666" : "#999",
+            color: axisColor,
           },
         },
         splitLine: {
           show: true,
           lineStyle: {
             type: "dashed",
-            color: isDark ? "#444" : "#ccc",
+            color: gridLineColor,
             opacity: 0.5,
             width: 1,
           },
@@ -143,23 +145,23 @@ function StateEfficacyChart({ data }: { data: CountryStateEfficacy[] }) {
         nameLocation: "middle",
         nameGap: 60,
         nameTextStyle: {
-          color: isDark ? "#fff" : "#000",
+          color: labelColor,
           fontSize: 12,
           fontWeight: 600,
         },
         axisLabel: {
-          color: isDark ? "#bbb" : "#666",
+          color: tickColor,
         },
         axisLine: {
           lineStyle: {
-            color: isDark ? "#666" : "#999",
+            color: axisColor,
           },
         },
         splitLine: {
           show: true,
           lineStyle: {
             type: "dashed",
-            color: isDark ? "#444" : "#ccc",
+            color: gridLineColor,
             opacity: 0.5,
             width: 1,
           },
@@ -214,7 +216,7 @@ function StateEfficacyChart({ data }: { data: CountryStateEfficacy[] }) {
               return topCountries.has(d.tag) ? d.tag : "";
             },
             position: "top",
-            color: isDark ? "#fff" : "#000",
+            color: labelColor,
             fontSize: 10,
             fontWeight: 600,
             distance: 5,

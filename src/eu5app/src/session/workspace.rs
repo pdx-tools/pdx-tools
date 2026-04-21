@@ -9,7 +9,8 @@ use crate::selection::{
     GroupId, GroupingTable, LocationData, SelectionAdapter, SelectionState, single_entity_scope,
 };
 use crate::selection_views::{
-    DistributionBucket, EntityBreakdownData, EntityBreakdownRow, LocationDistribution,
+    CountryDevSummary, DevTopLocation, DevelopmentInsightData, DistributionBucket,
+    EntityBreakdownData, EntityBreakdownRow, LocationDistribution, ScopeSummary,
 };
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap};
@@ -47,6 +48,27 @@ enum SelectionSetOperation {
     Add,
     Remove,
     Replace,
+}
+
+/// Computes a "nice" step size for histogram buckets so boundaries fall on
+/// round numbers (1, 2, 5, 10, 20, ...) rather than arbitrary fractions.
+fn nice_bucket_step(range: f64, target_buckets: usize) -> f64 {
+    let raw_step = range / target_buckets.max(1) as f64;
+    if raw_step <= 0.0 {
+        return 1.0;
+    }
+    let magnitude = 10.0_f64.powf(raw_step.log10().floor());
+    let norm = raw_step / magnitude;
+    let nice_norm = if norm <= 1.0 {
+        1.0
+    } else if norm <= 2.0 {
+        2.0
+    } else if norm <= 5.0 {
+        5.0
+    } else {
+        10.0
+    };
+    nice_norm * magnitude
 }
 
 impl<'bump> Eu5Workspace<'bump> {
@@ -3094,7 +3116,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .map(|(_, v)| *v)
             .fold(f64::NEG_INFINITY, f64::max);
 
-        const MAX_BUCKETS: usize = 20;
+        const TARGET_BUCKETS: usize = 20;
 
         let buckets = if (max_val - min_val).abs() < f64::EPSILON {
             vec![DistributionBucket {
@@ -3103,19 +3125,23 @@ impl<'bump> Eu5Workspace<'bump> {
                 count: metrics.len() as u32,
             }]
         } else {
-            let bucket_width = (max_val - min_val) / MAX_BUCKETS as f64;
-            let mut counts = vec![0u32; MAX_BUCKETS];
+            let step = nice_bucket_step(max_val - min_val, TARGET_BUCKETS);
+            let start = (min_val / step).floor() * step;
+            let end = (max_val / step).ceil() * step;
+            let num_buckets = ((end - start) / step).ceil() as usize;
+            let num_buckets = num_buckets.clamp(1, TARGET_BUCKETS * 2);
+            let mut counts = vec![0u32; num_buckets];
             for (_, v) in &metrics {
-                let b = ((v - min_val) / bucket_width).floor() as usize;
-                let b = b.min(MAX_BUCKETS - 1);
+                let b = ((*v - start) / step).floor() as usize;
+                let b = b.min(num_buckets - 1);
                 counts[b] += 1;
             }
             counts
                 .into_iter()
                 .enumerate()
                 .map(|(i, count)| DistributionBucket {
-                    lo: min_val + i as f64 * bucket_width,
-                    hi: min_val + (i + 1) as f64 * bucket_width,
+                    lo: start + i as f64 * step,
+                    hi: start + (i + 1) as f64 * step,
                     count,
                 })
                 .collect()
@@ -3137,6 +3163,144 @@ impl<'bump> Eu5Workspace<'bump> {
             metric_label: metric_label.to_string(),
             buckets,
             top_locations,
+        }
+    }
+
+    /// Development insight: per-country aggregates + top locations by development,
+    /// over the current selection (or all locations when empty).
+    pub fn calculate_development_insight(&self) -> DevelopmentInsightData {
+        #[derive(Default)]
+        struct DevAgg {
+            total_dev: f64,
+            count: u32,
+            pop: u32,
+        }
+
+        let mut aggregates: FxHashMap<CountryId, DevAgg> = FxHashMap::default();
+        let mut all_locs: Vec<(LocationIdx, f64, u32, f64)> = Vec::new();
+
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            if loc.owner.is_dummy() {
+                continue;
+            }
+            if !self.selection_state.is_empty() && !self.selection_state.contains(entry.idx()) {
+                continue;
+            }
+
+            let dev = loc.development;
+            let pop = self.gamestate.location_population(loc) as u32;
+            let ctrl = loc.control;
+            all_locs.push((entry.idx(), dev, pop, ctrl));
+
+            if let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) {
+                let agg = aggregates.entry(owner_id).or_default();
+                agg.total_dev += dev;
+                agg.count += 1;
+                agg.pop += pop;
+            }
+        }
+
+        let mut countries: Vec<CountryDevSummary> = aggregates
+            .into_iter()
+            .filter_map(|(cid, agg)| {
+                let cidx = self.gamestate.countries.get(cid)?;
+                let eref = self.entity_ref_from_country_idx(cidx)?;
+                Some(CountryDevSummary {
+                    anchor_location_idx: eref.anchor_location_idx,
+                    tag: eref.tag,
+                    name: eref.name,
+                    color_hex: eref.color_hex,
+                    total_development: agg.total_dev,
+                    avg_development: if agg.count > 0 {
+                        agg.total_dev / agg.count as f64
+                    } else {
+                        0.0
+                    },
+                    location_count: agg.count,
+                    total_population: agg.pop,
+                })
+            })
+            .collect();
+        countries.sort_by(|a, b| {
+            b.total_development
+                .total_cmp(&a.total_development)
+                .then_with(|| a.tag.cmp(&b.tag))
+        });
+
+        all_locs.sort_by(|a, b| b.1.total_cmp(&a.1));
+        // Tuned for client-side pagination: raising this materially increases
+        // both payload size and DataTable initial render cost.
+        const TOP_LOCATIONS: usize = 50;
+        let top_locations: Vec<DevTopLocation> = all_locs
+            .iter()
+            .take(TOP_LOCATIONS)
+            .filter_map(|&(idx, dev, pop, ctrl)| {
+                let loc = self.gamestate.locations.index(idx).location();
+                let owner = self.owner_ref_for_location(loc)?;
+                Some(DevTopLocation {
+                    location_idx: idx.value(),
+                    name: self.location_name(idx).to_string(),
+                    development: dev,
+                    population: pop,
+                    control: ctrl,
+                    owner,
+                })
+            })
+            .collect();
+
+        let distribution = self.selection_location_distribution();
+
+        DevelopmentInsightData {
+            countries,
+            top_locations,
+            distribution,
+        }
+    }
+
+    /// Totals for the active scope: selected entities when the filter is non-empty,
+    /// or all entities in the world when the filter is empty.
+    pub fn get_scope_summary(&self) -> ScopeSummary {
+        if !self.selection_state.is_empty() {
+            let mut entity_ids: FnvHashSet<CountryId> = FnvHashSet::default();
+            let mut total_population = 0u32;
+            for &idx in self.selection_state.selected_locations() {
+                let loc = self.gamestate.locations.index(idx).location();
+                if loc.owner.is_dummy() {
+                    continue;
+                }
+                total_population += self.gamestate.location_population(loc) as u32;
+                if let Some(id) = loc.owner.real_id().map(|r| r.country_id()) {
+                    entity_ids.insert(id);
+                }
+            }
+            return ScopeSummary {
+                entity_count: entity_ids.len() as u32,
+                location_count: self.selection_state.len() as u32,
+                total_population,
+                is_empty: false,
+            };
+        }
+
+        let mut entity_ids: FnvHashSet<CountryId> = FnvHashSet::default();
+        let mut location_count = 0u32;
+        let mut total_population = 0u32;
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            if loc.owner.is_dummy() {
+                continue;
+            }
+            location_count += 1;
+            total_population += self.gamestate.location_population(loc) as u32;
+            if let Some(id) = loc.owner.real_id().map(|r| r.country_id()) {
+                entity_ids.insert(id);
+            }
+        }
+        ScopeSummary {
+            entity_count: entity_ids.len() as u32,
+            location_count,
+            total_population,
+            is_empty: true,
         }
     }
 
@@ -3283,9 +3447,44 @@ impl std::fmt::Debug for Eu5Workspace<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     pub fn test_workspace_is_send() {
         fn assert_send<T: Send + Sync>() {}
         assert_send::<Eu5Workspace>();
+    }
+
+    #[test]
+    fn nice_bucket_step_zero_range_returns_fallback() {
+        assert_eq!(nice_bucket_step(0.0, 20), 1.0);
+    }
+
+    #[test]
+    fn nice_bucket_step_negative_range_returns_fallback() {
+        assert_eq!(nice_bucket_step(-5.0, 20), 1.0);
+    }
+
+    #[test]
+    fn nice_bucket_step_integer_range_snaps_to_round() {
+        // 100 / 20 = 5.0 → already nice
+        assert_eq!(nice_bucket_step(100.0, 20), 5.0);
+    }
+
+    #[test]
+    fn nice_bucket_step_fractional_range_uses_fractional_step() {
+        // 1.0 / 20 = 0.05 → magnitude 0.01, norm 5.0 → nice 5 * 0.01
+        assert_eq!(nice_bucket_step(1.0, 20), 0.05);
+    }
+
+    #[test]
+    fn nice_bucket_step_single_bucket_target() {
+        // 100 / 1 = 100 → magnitude 100, norm 1.0 → nice 1 * 100
+        assert_eq!(nice_bucket_step(100.0, 1), 100.0);
+    }
+
+    #[test]
+    fn nice_bucket_step_zero_target_uses_max_one() {
+        // target clamped to 1 → same as single bucket case
+        assert_eq!(nice_bucket_step(100.0, 0), 100.0);
     }
 }

@@ -18,6 +18,8 @@ import type {
   LocationProfile,
   EntityBreakdownData,
   LocationDistribution,
+  DevelopmentInsightData,
+  ScopeSummary,
   Eu5DateComponents,
 } from "@/wasm/wasm_eu5";
 import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
@@ -58,6 +60,8 @@ export interface AppTriggers {
   getLocationProfile(locationIdx: number): Promise<LocationProfile | null>;
   getEntityBreakdown(): Promise<EntityBreakdownData>;
   getLocationDistribution(): Promise<LocationDistribution>;
+  getDevelopmentInsight(): Promise<DevelopmentInsightData>;
+  getScopeSummary(): Promise<ScopeSummary>;
   getEntityHeaderFor(anchorLocationIdx: number): Promise<EntityHeader | null>;
   getOverviewSectionFor(anchorLocationIdx: number): Promise<OverviewSection | null>;
   getEconomySectionFor(anchorLocationIdx: number): Promise<EconomySection | null>;
@@ -149,6 +153,8 @@ export class Eu5UIEngine implements AppEngine {
     getLocationProfile: (locationIdx) => this.gameInstance.getLocationProfile(locationIdx),
     getEntityBreakdown: () => this.gameInstance.getEntityBreakdown(),
     getLocationDistribution: () => this.gameInstance.getLocationDistribution(),
+    getDevelopmentInsight: () => this.gameInstance.getDevelopmentInsight(),
+    getScopeSummary: () => this.gameInstance.getScopeSummary(),
     getEntityHeaderFor: (anchorLocationIdx) =>
       this.gameInstance.getEntityHeaderFor(anchorLocationIdx),
     getOverviewSectionFor: (anchorLocationIdx) =>
