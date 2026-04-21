@@ -1,7 +1,7 @@
 use crate::Eu5Date;
 use crate::models::countries::CountryId;
-use serde::Deserialize;
 use serde::de;
+use serde::{Deserialize, Deserializer};
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
@@ -127,14 +127,119 @@ impl<'bump> bumpalo_serde::ArenaDeserialize<'bump> for DiplomacyManager<'bump> {
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq, bumpalo_serde::ArenaDeserialize)]
+#[derive(Debug, PartialEq)]
 pub struct DiplomacyDependency {
-    #[arena(default)]
     pub first: CountryId,
-    #[arena(default)]
     pub second: CountryId,
     pub start_date: Option<Eu5Date>,
     pub subject_type: DiplomacySubjectType,
+}
+
+impl<'bump> bumpalo_serde::ArenaDeserialize<'bump> for DiplomacyDependency {
+    fn deserialize_in_arena<'de, D>(
+        deserializer: D,
+        _allocator: &'bump bumpalo::Bump,
+    ) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = DiplomacyDependencyRaw::deserialize(deserializer)?;
+        Self::from_raw(raw)
+    }
+}
+
+impl<'de> Deserialize<'de> for DiplomacyDependency {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = DiplomacyDependencyRaw::deserialize(deserializer)?;
+        Self::from_raw(raw)
+    }
+}
+
+impl DiplomacyDependency {
+    fn from_raw<E>(raw: DiplomacyDependencyRaw) -> Result<Self, E>
+    where
+        E: de::Error,
+    {
+        Ok(DiplomacyDependency {
+            first: raw.first,
+            second: raw.second,
+            start_date: raw.start_date,
+            subject_type: raw
+                .subject_type
+                .or(raw.named_targets)
+                .ok_or_else(|| de::Error::missing_field("subject_type"))?,
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct DiplomacyDependencyRaw {
+    #[serde(default)]
+    first: CountryId,
+    #[serde(default)]
+    second: CountryId,
+    start_date: Option<Eu5Date>,
+    subject_type: Option<DiplomacySubjectType>,
+    #[serde(default, deserialize_with = "deserialize_dependency_named_targets")]
+    named_targets: Option<DiplomacySubjectType>,
+}
+
+fn deserialize_dependency_named_targets<'de, D>(
+    deserializer: D,
+) -> Result<Option<DiplomacySubjectType>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct NamedTargetsVisitor;
+
+    impl<'de> de::Visitor<'de> for NamedTargetsVisitor {
+        type Value = Option<DiplomacySubjectType>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("dependency named targets")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: de::SeqAccess<'de>,
+        {
+            let mut subject_type = None;
+
+            while let Some(target) = seq.next_element::<DependencyNamedTarget>()? {
+                if subject_type.is_none()
+                    && target.flag == Some(DependencyNamedTargetFlag::SubjectType)
+                {
+                    subject_type = target.target.and_then(|target| target.object);
+                }
+            }
+
+            Ok(subject_type)
+        }
+    }
+
+    deserializer.deserialize_seq(NamedTargetsVisitor)
+}
+
+#[derive(Debug, Deserialize)]
+struct DependencyNamedTarget {
+    flag: Option<DependencyNamedTargetFlag>,
+    target: Option<DependencyNamedTargetValue>,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+enum DependencyNamedTargetFlag {
+    SubjectType,
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Debug, Deserialize)]
+struct DependencyNamedTargetValue {
+    object: Option<DiplomacySubjectType>,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy, Deserialize, bumpalo_serde::ArenaDeserialize)]
@@ -152,4 +257,65 @@ pub enum DiplomacySubjectType {
     MahaSamanta,
     #[serde(other)]
     Other,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bumpalo_serde::ArenaDeserialize;
+    use jomini::TextDeserializer;
+
+    fn deserialize_manager<'bump>(
+        data: &str,
+        allocator: &'bump bumpalo::Bump,
+    ) -> DiplomacyManager<'bump> {
+        let deserializer =
+            TextDeserializer::from_utf8_slice(data.as_bytes()).expect("valid text data");
+
+        DiplomacyManager::deserialize_in_arena(&deserializer, allocator)
+            .expect("diplomacy manager deserializes")
+    }
+
+    fn assert_vassal_dependency(data: &str) {
+        let allocator = bumpalo::Bump::new();
+        let manager = deserialize_manager(data, &allocator);
+        let dependencies: Vec<_> = manager.dependencies().collect();
+
+        assert_eq!(dependencies.len(), 1);
+        assert_eq!(dependencies[0].first, CountryId::new(314));
+        assert_eq!(dependencies[0].second, CountryId::new(339));
+        assert_eq!(dependencies[0].subject_type, DiplomacySubjectType::Vassal);
+    }
+
+    #[test]
+    fn diplomacy_dependency_deserializes_direct_subject_type() {
+        assert_vassal_dependency(
+            r#"
+dependency={
+    first=314
+    second=339
+    subject_type=vassal
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn diplomacy_dependency_deserializes_named_target_subject_type() {
+        assert_vassal_dependency(
+            r#"
+dependency={
+    first=314
+    second=339
+    named_targets={ {
+            flag="subject_type"
+            target={
+                type=subject_type
+                object=vassal
+            }
+        } }
+}
+"#,
+        );
+    }
 }
