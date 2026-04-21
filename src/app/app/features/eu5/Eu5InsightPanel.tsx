@@ -9,6 +9,7 @@ import {
 } from "./store";
 import { formatInt } from "@/lib/format";
 import { StateEfficacy } from "./features/charts/StateEfficacy";
+import { DevelopmentInsight } from "./features/charts/DevelopmentInsight";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import type { StateEfficacyData, MapMode } from "@/wasm/wasm_eu5";
 import { EntityProfileRoot } from "./EntityProfile";
@@ -64,13 +65,16 @@ function PanelContentInner() {
   const nav = usePanelNav();
   const { top, stack } = nav;
   const selectionState = useEu5SelectionState();
+  const currentMapMode = useEu5MapMode();
   const locationCount = selectionState?.locationCount ?? 0;
   const entityCount = selectionState?.entityCount ?? 0;
   const isEmpty = selectionState?.isEmpty ?? true;
   const focusedLocation = selectionState?.focusedLocation;
   const derivedEntityAnchor = selectionState?.derivedEntityAnchor;
+  const selectionKey = getSelectionIdentityKey(selectionState);
 
   let content: React.ReactNode;
+  let showScopeHeader = false;
 
   if (top?.kind === "focus") {
     content = <NavFocusPanel locationIdx={top.locationIdx} />;
@@ -80,14 +84,19 @@ function PanelContentInner() {
     content = <EntityProfileRoot key={`focus-${focusedLocation}`} />;
   } else if (derivedEntityAnchor != null && !isEmpty) {
     content = <EntityProfileRoot key="compound" />;
+  } else if (currentMapMode === "development") {
+    content = <DevelopmentInsight selectionKey={selectionKey} />;
+    showScopeHeader = true;
   } else if (locationCount === 1) {
     content = <EntityProfileRoot key="leaf" />;
   } else if (!isEmpty) {
     const useAggregate = entityCount > MULTI_ENTITY_MAX || locationCount > LOCATION_HEAVY_THRESHOLD;
     if (!useAggregate && entityCount >= 2) {
       content = <MultiEntitySummaryPanel />;
+      showScopeHeader = true;
     } else if (useAggregate) {
       content = <AggregatePanel />;
+      showScopeHeader = true;
     }
   }
 
@@ -104,7 +113,40 @@ function PanelContentInner() {
     );
   }
 
+  if (showScopeHeader) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="shrink-0 px-4 pt-4">
+          <PanelScopeHeader selectionKey={selectionKey} />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">{content}</div>
+      </div>
+    );
+  }
+
   return <>{content}</>;
+}
+
+function PanelScopeHeader({ selectionKey }: { selectionKey: string }) {
+  const { data } = useEu5Trigger((engine) => engine.trigger.getScopeSummary(), [selectionKey]);
+
+  if (!data) {
+    return <div className="mb-0 h-[52px] animate-pulse rounded-xl bg-white/5" />;
+  }
+
+  const { entityCount, locationCount, totalPopulation, isEmpty } = data;
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+      <div className="flex gap-5">
+        {(isEmpty || entityCount > 1) && (
+          <StatItem label={isEmpty ? "Nations" : "Entities"} value={formatInt(entityCount)} />
+        )}
+        <StatItem label="Locations" value={formatInt(locationCount)} />
+        <StatItem label="Population" value={formatInt(totalPopulation)} />
+      </div>
+    </div>
+  );
 }
 
 function NavFocusPanel({ locationIdx }: { locationIdx: number }) {

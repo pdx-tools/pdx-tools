@@ -3,11 +3,10 @@ import { useEu5MapMode, useEu5SelectionState } from "../../store";
 import { useEu5Trigger } from "../useEu5Trigger";
 import { EntityList } from "../MultiEntity/EntityList";
 import { LocationDistributionChart } from "../MultiEntity/LocationDistributionChart";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatFloat } from "@/lib/format";
 import type { RankedLocation } from "@/wasm/wasm_eu5";
 import { usePanelNav } from "../PanelNavContext";
 import { getSelectionIdentityKey } from "../selectionIdentity";
-import { StatItem } from "../components/StatItem";
 
 const TOP_ENTITIES_SHOWN = 10;
 
@@ -30,14 +29,6 @@ export function AggregatePanel() {
 
   const allRows = breakdownQuery.data?.rows ?? [];
   const topRows = allRows.slice(0, TOP_ENTITIES_SHOWN);
-  const entityCount = selectionState?.entityCount ?? allRows.length;
-  const totalPopulation = selectionState?.totalPopulation ?? 0;
-  const avgDev =
-    allRows.length > 0
-      ? allRows.reduce((s, r) => s + r.totalDevelopment, 0) /
-        allRows.reduce((s, r) => s + r.locationCount, 0)
-      : 0;
-
   const tierLabel = `${locationCount} locations`;
 
   function onDrillIn(anchorIdx: number, label: string) {
@@ -46,15 +37,6 @@ export function AggregatePanel() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-        <div className="flex flex-wrap gap-5">
-          <StatItem label="Entities" value={formatInt(entityCount)} />
-          <StatItem label="Locations" value={formatInt(locationCount)} />
-          <StatItem label="Population" value={formatInt(totalPopulation)} />
-          {allRows.length > 0 && <StatItem label="Avg Dev" value={formatFloat(avgDev, 1)} />}
-        </div>
-      </div>
-
       {distributionQuery.data && (
         <section>
           <LocationDistributionChart distribution={distributionQuery.data} />

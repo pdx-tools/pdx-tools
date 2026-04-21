@@ -71,31 +71,33 @@ export const escapeEChartsHtml = (value: unknown) =>
 export const EChart = memo(function EChart({ option, style, onInit, className }: EChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
+  const onInitRef = useRef(onInit);
+  onInitRef.current = onInit;
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const chart = echarts.init(containerRef.current);
     chartRef.current = chart;
-    onInit?.(chart);
+    onInitRef.current?.(chart);
 
-    let resizeTimeout: ReturnType<typeof setTimeout> | undefined;
+    let rafId: ReturnType<typeof requestAnimationFrame> | undefined;
     const resizeObserver = new ResizeObserver(() => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
+      if (rafId != null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
         chart.resize();
-      }, 100);
+      });
     });
 
     resizeObserver.observe(containerRef.current);
 
     return () => {
-      clearTimeout(resizeTimeout);
+      if (rafId != null) cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
       chart.dispose();
       chartRef.current = null;
     };
-  }, [onInit]);
+  }, []);
 
   useEffect(() => {
     const chart = chartRef.current;

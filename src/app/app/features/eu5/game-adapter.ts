@@ -12,6 +12,8 @@ import type {
   LocationProfile,
   EntityBreakdownData,
   LocationDistribution,
+  DevelopmentInsightData,
+  ScopeSummary,
 } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/types";
 import { fetchOk } from "@/lib/fetch";
@@ -319,6 +321,12 @@ export function saveWorker(
     },
     getLocationDistribution: async (): Promise<LocationDistribution> => {
       return await saveEngine.getLocationDistribution();
+    },
+    getDevelopmentInsight: async (): Promise<DevelopmentInsightData> => {
+      return await saveEngine.getDevelopmentInsight();
+    },
+    getScopeSummary: async (): Promise<ScopeSummary> => {
+      return await saveEngine.getScopeSummary();
     },
     getEntityHeaderFor: async (anchorLocationIdx: number): Promise<EntityHeader | null> => {
       return await saveEngine.getEntityHeaderFor(anchorLocationIdx);

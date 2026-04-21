@@ -5,7 +5,9 @@ use eu5app::entity_profile::{
 };
 use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
-use eu5app::selection_views::{EntityBreakdownData, LocationDistribution};
+use eu5app::selection_views::{
+    DevelopmentInsightData, EntityBreakdownData, LocationDistribution, ScopeSummary,
+};
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
 use eu5app::{Eu5SaveMetadata, LocationData};
@@ -1048,6 +1050,20 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_location_distribution(&self) -> LocationDistribution {
         self.app().selection_location_distribution()
+    }
+
+    /// Development insight data: per-country aggregates for scatter chart and
+    /// top development locations for the table view.
+    #[wasm_bindgen]
+    pub fn get_development_insight(&self) -> DevelopmentInsightData {
+        self.app().calculate_development_insight()
+    }
+
+    /// Scope summary: entity/location/population totals for the active selection,
+    /// or world totals when no selection is active.
+    #[wasm_bindgen]
+    pub fn get_scope_summary(&self) -> ScopeSummary {
+        self.app().get_scope_summary()
     }
 
     /// Entity header for a specific entity resolved from `anchor_location_idx`,

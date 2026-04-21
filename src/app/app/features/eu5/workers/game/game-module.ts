@@ -17,6 +17,8 @@ import type {
   LocationProfile,
   EntityBreakdownData,
   LocationDistribution,
+  DevelopmentInsightData,
+  ScopeSummary,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
@@ -331,6 +333,12 @@ export const createGame = async (
     },
     getLocationDistribution: (): LocationDistribution => {
       return app.get_location_distribution();
+    },
+    getDevelopmentInsight: (): DevelopmentInsightData => {
+      return app.get_development_insight();
+    },
+    getScopeSummary: (): ScopeSummary => {
+      return app.get_scope_summary();
     },
     getEntityHeaderFor: (anchorLocationIdx: number): EntityHeader | null => {
       return app.get_entity_header_for(anchorLocationIdx) ?? null;

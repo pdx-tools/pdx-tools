@@ -1,0 +1,97 @@
+import { useMemo } from "react";
+import { createColumnHelper } from "@tanstack/react-table";
+import { DataTable } from "@/components/DataTable";
+import { Table } from "@/components/Table";
+import type { DevTopLocation } from "@/wasm/wasm_eu5";
+import { formatFloat, formatInt } from "@/lib/format";
+import { usePanelNav } from "../../EntityProfile/PanelNavContext";
+import { usePanToEntity } from "../../usePanToEntity";
+
+const BACK_LABEL = "Development";
+
+const columnHelper = createColumnHelper<DevTopLocation>();
+
+interface Props {
+  locations: DevTopLocation[];
+}
+
+export function DevelopmentTopLocations({ locations }: Props) {
+  const nav = usePanelNav();
+  const panToEntity = usePanToEntity();
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("name", {
+        sortingFn: "text",
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Location" />,
+        cell: ({ row }) => {
+          const loc = row.original;
+          return (
+            <button
+              type="button"
+              className="text-left text-sky-300 hover:text-sky-200 hover:underline"
+              onClick={() => {
+                nav.pushMany(
+                  [{ kind: "focus", locationIdx: loc.locationIdx, label: loc.name }],
+                  BACK_LABEL,
+                );
+                panToEntity(loc.locationIdx);
+              }}
+            >
+              {loc.name}
+            </button>
+          );
+        },
+      }),
+      columnHelper.accessor("development", {
+        sortingFn: "basic",
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Development" />,
+        meta: { className: "text-right" },
+        cell: (info) => formatFloat(info.getValue(), 1),
+      }),
+      columnHelper.accessor("owner", {
+        id: "owner",
+        sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
+        cell: ({ row }) => {
+          const owner = row.original.owner;
+          return (
+            <button
+              type="button"
+              className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
+              onClick={() => {
+                nav.pushMany(
+                  [{ kind: "entity", anchorIdx: owner.anchorLocationIdx, label: owner.name }],
+                  BACK_LABEL,
+                );
+                panToEntity(owner.anchorLocationIdx);
+              }}
+            >
+              <span
+                className="inline-block h-2 w-2 shrink-0 rounded-sm"
+                style={{ backgroundColor: owner.colorHex }}
+              />
+              {owner.tag && <span className="font-mono text-xs text-slate-500">{owner.tag}</span>}
+              <span className="truncate">{owner.name}</span>
+            </button>
+          );
+        },
+      }),
+      columnHelper.accessor("population", {
+        sortingFn: "basic",
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Population" />,
+        meta: { className: "text-right" },
+        cell: (info) => formatInt(info.getValue()),
+      }),
+      columnHelper.accessor("control", {
+        sortingFn: "basic",
+        header: ({ column }) => <Table.ColumnHeader column={column} title="Control" />,
+        meta: { className: "text-right" },
+        cell: (info) => formatFloat(info.getValue(), 2),
+      }),
+    ],
+    [nav, panToEntity],
+  );
+
+  return <DataTable className="w-full" columns={columns} data={locations} pagination={true} />;
+}
