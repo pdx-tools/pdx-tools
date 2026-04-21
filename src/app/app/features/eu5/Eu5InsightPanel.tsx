@@ -8,9 +8,8 @@ import {
   useSetEu5InsightPanelWidth,
 } from "./store";
 import { formatInt } from "@/lib/format";
-import { StateEfficacy } from "./features/charts/StateEfficacy";
+import { StateEfficacyInsight } from "./features/charts/StateEfficacy";
 import { DevelopmentInsight } from "./features/charts/DevelopmentInsight";
-import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import type { StateEfficacyData, MapMode } from "@/wasm/wasm_eu5";
 import { EntityProfileRoot } from "./EntityProfile";
 import { MultiEntitySummaryPanel } from "./EntityProfile/MultiEntity/MultiEntitySummaryPanel";
@@ -86,6 +85,9 @@ function PanelContentInner() {
     content = <EntityProfileRoot key="compound" />;
   } else if (currentMapMode === "development") {
     content = <DevelopmentInsight selectionKey={selectionKey} />;
+    showScopeHeader = true;
+  } else if (currentMapMode === "stateEfficacy") {
+    content = <StateEfficacyInsight selectionKey={selectionKey} />;
     showScopeHeader = true;
   } else if (locationCount === 1) {
     content = <EntityProfileRoot key="leaf" />;
@@ -202,11 +204,7 @@ function SummaryPanelContent({
         stateEfficacyData={stateEfficacyData}
         isLoading={isLoading}
       />
-      <ModeContextualChart
-        currentMapMode={currentMapMode}
-        stateEfficacyData={stateEfficacyData}
-        isLoading={isLoading}
-      />
+      <ModeContextualChart currentMapMode={currentMapMode} />
     </div>
   );
 }
@@ -282,37 +280,7 @@ const MODE_NAMES: Partial<Record<MapMode, string>> = {
   stateEfficacy: "State Efficacy",
 };
 
-function ModeContextualChart({
-  currentMapMode,
-  stateEfficacyData,
-  isLoading,
-}: {
-  currentMapMode: MapMode;
-  stateEfficacyData: StateEfficacyData | null;
-  isLoading: boolean;
-}) {
-  if (currentMapMode === "stateEfficacy") {
-    // Show spinner only on initial load; stale data renders immediately while refreshing
-    if (isLoading && stateEfficacyData == null) {
-      return (
-        <div className="flex items-center justify-center py-12">
-          <LoadingIcon className="h-8 w-8 text-sky-400" />
-        </div>
-      );
-    }
-    if (stateEfficacyData != null) {
-      return (
-        <div className="pb-4">
-          <p className="mb-3 text-[10px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
-            State Efficacy · Control × Development
-          </p>
-          <StateEfficacy data={stateEfficacyData} minLocations={0} />
-        </div>
-      );
-    }
-    return null;
-  }
-
+function ModeContextualChart({ currentMapMode }: { currentMapMode: MapMode }) {
   const modeName = MODE_NAMES[currentMapMode] ?? currentMapMode;
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
