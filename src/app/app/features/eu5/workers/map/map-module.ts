@@ -44,6 +44,8 @@ let clickEventCallback: ((event: LocationClickChangeEvent) => void) | null = nul
 let zoomChangeCallback: ((zoom: number) => void) | null = null;
 let boxSelectCommitCallback: ((event: BoxSelectCommitEvent) => void) | null = null;
 let boxSelectRectCallback: ((rect: BoxSelectOverlayRect | null) => void) | null = null;
+let cursorHintCallback: ((hint: CursorHint) => void) | null = null;
+let lastCursorHint: CursorHint | null = null;
 let newGroupingTable: Uint32Array | null = null;
 let renderOrQueue: () => void = () => {};
 let newLocations: Uint32Array | null = null;
@@ -87,10 +89,21 @@ const mapGameEndpoint = () => {
     onBoxSelectCommit: (callback: (event: BoxSelectCommitEvent) => void) => {
       boxSelectCommitCallback = callback;
     },
+
+    onCursorHintUpdate: (callback: (hint: CursorHint) => void) => {
+      cursorHintCallback = callback;
+      if (lastCursorHint !== null) callback(lastCursorHint);
+    },
   };
 };
 
 export type Eu5MapEndpoint = ReturnType<typeof mapGameEndpoint>;
+
+const emitCursor = (hint: CursorHint) => {
+  if (hint === lastCursorHint) return;
+  lastCursorHint = hint;
+  cursorHintCallback?.(hint);
+};
 
 export const createMapEngine = async (
   {
@@ -177,6 +190,24 @@ export const createMapEngine = async (
       hoverEventCallback?.({ kind: "clear" });
     }
     lastKnownLocationId = null;
+  };
+
+  const hasBoxSelectModifier = (modifiers?: number): boolean => {
+    if (modifiers !== undefined) {
+      return (
+        (modifiers & SharedCanvasModifierBits.Shift) !== 0 ||
+        (modifiers & SharedCanvasModifierBits.Alt) !== 0 ||
+        (modifiers & SharedCanvasModifierBits.Ctrl) !== 0
+      );
+    }
+    return (
+      pressedKeys.has("ShiftLeft") ||
+      pressedKeys.has("ShiftRight") ||
+      pressedKeys.has("AltLeft") ||
+      pressedKeys.has("AltRight") ||
+      pressedKeys.has("ControlLeft") ||
+      pressedKeys.has("ControlRight")
+    );
   };
 
   const updateCursorWorldPosition = (canvasX: number, canvasY: number) => {
@@ -277,6 +308,14 @@ export const createMapEngine = async (
           } else {
             updateCursorWorldPosition(x, y);
           }
+          if (boxDrag !== null) {
+            emitCursor("crosshair");
+          } else if (mouseDownPos !== null) {
+            const dist = Math.hypot(x - mouseDownPos.x, y - mouseDownPos.y);
+            if (dist >= 5) emitCursor("move");
+          } else {
+            emitCursor(hasBoxSelectModifier(modifiers) ? "crosshair" : "default");
+          }
           renderOrQueue();
         } else if (action === SharedCanvasEventAction.Down) {
           app.on_cursor_move(x, y);
@@ -308,6 +347,7 @@ export const createMapEngine = async (
               lastKnownLocationId = null;
             }
             updateBoxSelect(boxDrag);
+            emitCursor("crosshair");
           } else {
             if (button === 0) {
               mouseDownPos = { x, y };
@@ -356,6 +396,7 @@ export const createMapEngine = async (
           } else {
             app.on_mouse_button(btn, false);
           }
+          emitCursor(hasBoxSelectModifier(modifiers) ? "crosshair" : "default");
           renderOrQueue();
         } else if (action === SharedCanvasEventAction.Leave) {
           cancelBoxSelect();
@@ -363,6 +404,7 @@ export const createMapEngine = async (
           mouseDownPos = null;
           lastCursorPosition = null;
           updateCursorWorldPosition(-1, -1);
+          emitCursor("default");
           renderOrQueue();
         }
         break;
@@ -375,6 +417,9 @@ export const createMapEngine = async (
         } else if (event.action === SharedCanvasEventAction.Up) {
           pressedKeys.delete(code);
           app.on_key_up(code);
+        }
+        if (mouseDownPos === null && boxDrag === null && lastCursorPosition !== null) {
+          emitCursor(hasBoxSelectModifier() ? "crosshair" : "default");
         }
         break;
       }
@@ -542,6 +587,11 @@ export const createMapEngine = async (
       boxSelectRectCallback = callback;
     },
 
+    onCursorHintUpdate: (callback: (hint: CursorHint) => void) => {
+      cursorHintCallback = callback;
+      if (lastCursorHint !== null) callback(lastCursorHint);
+    },
+
     startHoverTracking: startHoverTracking,
 
     stopHoverTracking: stopHoverTracking,
@@ -576,6 +626,8 @@ export type LocationHoverChangeEvent =
 export type LocationClickChangeEvent =
   | { kind: "update"; locationIdx: number; modifiers: number }
   | { kind: "clear" };
+
+export type CursorHint = "default" | "move" | "crosshair";
 
 interface OverlayCanvasInfo {
   canvas: OffscreenCanvas;

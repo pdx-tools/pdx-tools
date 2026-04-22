@@ -66,6 +66,7 @@ export const useEu5IsGeneratingScreenshot = () =>
   useEu5Store((x) => x.appState.isGeneratingScreenshot);
 export const useEu5MapModeRange = () => useEu5Store((x) => x.appState.mapModeRange);
 export const useEu5BoxSelectRect = () => useEu5Store((x) => x.appState.boxSelectRect);
+export const useEu5CursorHint = () => useEu5Store((x) => x.appState.cursorHint);
 export const useSaveFilename = () => useEu5Store((x) => x.filename);
 export const useEu5SaveDate = () => useEu5Store((x) => x.saveDate);
 export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);
