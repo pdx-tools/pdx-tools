@@ -24,6 +24,7 @@ import type * as Eu5WorkerModuleDefinition from "./workers/game/game-module";
 import type * as Eu5MapWorkerModuleDefinition from "./workers/map/map-module";
 import type { SharedCanvasInputConfig } from "@/lib/canvas_courier";
 import type { BoxSelectOverlayRect } from "./types/box-select";
+import type { CursorHint } from "./workers/map/map-module";
 
 const bundleUrls = import.meta.glob<true, string, string>(
   "../../../../../assets/game/eu5/eu5-*.zip",
@@ -58,6 +59,7 @@ export type Eu5MapWorker = Remote<Eu5MapWorkerModule>;
 export type GameInstance = ReturnType<typeof saveWorker>;
 export type { HoverDisplayData, SelectionSummaryData };
 export type { BoxSelectOverlayRect } from "./types/box-select";
+export type { CursorHint } from "./workers/map/map-module";
 
 export interface MapModeRange {
   mode: MapMode;
@@ -184,6 +186,7 @@ export function saveWorker(
   let hoverDisplayCallback: ((data: HoverDisplayData) => void) | null = null;
   let selectionCallback: ((data: SelectionSummaryData) => void) | null = null;
   let boxSelectRectCallback: ((rect: BoxSelectOverlayRect | null) => void) | null = null;
+  let cursorHintCallback: ((hint: CursorHint) => void) | null = null;
 
   // Set up hover display callback from game worker
   saveEngine.onHoverDisplayUpdate(
@@ -202,6 +205,12 @@ export function saveWorker(
   mapEngine.onBoxSelectRectUpdate(
     proxy((rect: BoxSelectOverlayRect | null) => {
       boxSelectRectCallback?.(rect);
+    }),
+  );
+
+  mapEngine.onCursorHintUpdate(
+    proxy((hint: CursorHint) => {
+      cursorHintCallback?.(hint);
     }),
   );
 
@@ -240,6 +249,10 @@ export function saveWorker(
 
     onBoxSelectRectUpdate: (callback: (rect: BoxSelectOverlayRect | null) => void) => {
       boxSelectRectCallback = callback;
+    },
+
+    onCursorHintUpdate: (callback: (hint: CursorHint) => void) => {
+      cursorHintCallback = callback;
     },
 
     selectEntity: (locationIdx: number) => {

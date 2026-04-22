@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef } from "react";
 import { Eu5ControlPanel } from "./control-panel/Eu5ControlPanel";
 import { Eu5InsightPanel } from "./Eu5InsightPanel";
 import { AppLoading } from "@/components/AppLoading";
@@ -7,6 +7,7 @@ import {
   useLoadEu5,
   Eu5StoreProvider,
   useEu5SelectionState,
+  useEu5CursorHint,
   useEu5Engine,
   useEu5InsightPanelOpen,
   useSetEu5InsightPanelOpen,
@@ -91,8 +92,8 @@ const Eu5UiContent = ({
   const insightOpen = useEu5InsightPanelOpen();
   const setInsightOpen = useSetEu5InsightPanelOpen();
   const selectionState = useEu5SelectionState();
+  const cursorHint = useEu5CursorHint();
   const engine = useEu5Engine();
-  const [boxSelectModifier, setBoxSelectModifier] = useState(false);
   const wasEmptyRef = useRef(true);
 
   useEffect(() => {
@@ -102,40 +103,18 @@ const Eu5UiContent = ({
       }
       if (event.key === "Escape") {
         void engine.trigger.clearFocusOrSelection();
-        return;
-      }
-      if (event.key === "Shift" || event.key === "Alt" || event.key === "Control") {
-        setBoxSelectModifier(true);
       }
     };
-    const onKeyUp = (event: KeyboardEvent) => {
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-      if (event.key === "Shift" || event.key === "Alt" || event.key === "Control") {
-        setBoxSelectModifier(false);
-      }
-    };
-    const onBlur = () => setBoxSelectModifier(false);
 
     window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("blur", onBlur);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("blur", onBlur);
-    };
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [engine]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
-
-    canvas.style.cursor = boxSelectModifier ? "crosshair" : "grab";
-  }, [boxSelectModifier, canvasRef]);
+    if (!canvas) return;
+    canvas.style.cursor = cursorHint;
+  }, [cursorHint, canvasRef]);
 
   useEffect(() => {
     const isEmpty = selectionState?.isEmpty ?? true;

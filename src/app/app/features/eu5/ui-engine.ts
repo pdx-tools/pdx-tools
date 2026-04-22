@@ -1,6 +1,7 @@
 import { Eu5GameAdapter } from "./game-adapter";
 import type {
   BoxSelectOverlayRect,
+  CursorHint,
   GameInstance,
   HoverDisplayData,
   MapModeRange,
@@ -34,6 +35,7 @@ export interface AppState {
   mapModeRange: MapModeRange | null;
   selectionState: SelectionSummaryData | null;
   boxSelectRect: BoxSelectOverlayRect | null;
+  cursorHint: CursorHint;
 }
 
 export type AppStateListener = (state: AppState) => void;
@@ -115,6 +117,7 @@ export class Eu5UIEngine implements AppEngine {
       mapModeRange: null,
       selectionState: null,
       boxSelectRect: null,
+      cursorHint: "default",
       ...initialState,
     };
 
@@ -136,6 +139,10 @@ export class Eu5UIEngine implements AppEngine {
       this.updateState(() => ({
         boxSelectRect: rect,
       }));
+    });
+
+    this.gameInstance.onCursorHintUpdate((hint) => {
+      this.updateState(() => ({ cursorHint: hint }));
     });
 
     // Start hover tracking
