@@ -6,6 +6,7 @@ import { EntityComparisonChart } from "./EntityComparisonChart";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { usePanelNav } from "../PanelNavContext";
 import { getSelectionIdentityKey } from "../selectionIdentity";
+import { ScopeSummaryHeader } from "../../features/InsightScopeHeader";
 
 export function MultiEntitySummaryPanel() {
   const selectionState = useEu5SelectionState();
@@ -33,6 +34,7 @@ export function MultiEntitySummaryPanel() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
+      <ScopeSummaryHeader selectionKey={selectionKey} />
       {breakdownQuery.loading && !breakdownQuery.data ? (
         <div className="h-24 animate-pulse rounded bg-white/5" />
       ) : rows.length > 0 ? (

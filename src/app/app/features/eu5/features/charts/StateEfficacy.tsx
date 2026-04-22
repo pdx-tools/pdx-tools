@@ -14,6 +14,7 @@ import { useEu5Trigger } from "../../EntityProfile/useEu5Trigger";
 import { LocationDistributionChart } from "../../EntityProfile/MultiEntity/LocationDistributionChart";
 import { usePanelNav } from "../../EntityProfile/PanelNavContext";
 import { usePanToEntity } from "../../usePanToEntity";
+import { ScopeSummaryHeader } from "../InsightScopeHeader";
 import type * as echarts from "echarts/core";
 
 export function StateEfficacyInsight({ selectionKey }: { selectionKey: string }) {
@@ -23,6 +24,7 @@ export function StateEfficacyInsight({ selectionKey }: { selectionKey: string })
 
   return (
     <div className="flex flex-col gap-4 p-4">
+      <ScopeSummaryHeader selectionKey={selectionKey} />
       {insightQuery.loading && !insightQuery.data ? (
         <div className="h-64 animate-pulse rounded bg-white/5" />
       ) : (
