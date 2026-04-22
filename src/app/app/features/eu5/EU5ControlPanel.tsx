@@ -38,6 +38,7 @@ const MAP_MODE_CONFIG = [
   { value: "rgoLevel", label: "RGO Level" },
   { value: "buildingLevels", label: "Building Levels" },
   { value: "possibleTax", label: "Possible Tax" },
+  { value: "taxGap", label: "Tax Gap" },
   { value: "religion", label: "Religion" },
   { value: "stateEfficacy", label: "State Efficacy" },
 ] as const;

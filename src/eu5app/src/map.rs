@@ -34,6 +34,7 @@ pub enum MapMode {
     RgoLevel,
     BuildingLevels,
     PossibleTax,
+    TaxGap,
     Religion,
     StateEfficacy,
 }
@@ -49,6 +50,7 @@ impl MapMode {
             MapMode::RgoLevel => "RGO Level",
             MapMode::BuildingLevels => "Building Levels",
             MapMode::PossibleTax => "Possible Tax",
+            MapMode::TaxGap => "Tax Gap",
             MapMode::Religion => "Religion",
             MapMode::StateEfficacy => "State Efficacy",
         }

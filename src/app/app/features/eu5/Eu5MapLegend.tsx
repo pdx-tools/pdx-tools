@@ -14,6 +14,7 @@ const NUMERIC_MAP_MODES: Record<MapMode, boolean> = {
   rgoLevel: true,
   buildingLevels: true,
   possibleTax: true,
+  taxGap: true,
   religion: false,
   stateEfficacy: true,
 };
@@ -33,6 +34,7 @@ function formatLegendValue(mode: MapMode, value: number): string {
     case "buildingLevels":
     case "rgoLevel":
     case "possibleTax":
+    case "taxGap":
       // Display with 1 decimal place
       return formatFloat(value, 1);
     default:

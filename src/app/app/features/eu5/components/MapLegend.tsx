@@ -36,6 +36,7 @@ const MAP_MODE_TITLES: Record<MapMode, string> = {
   rgoLevel: "RGO Level",
   buildingLevels: "Building Levels",
   possibleTax: "Possible Tax",
+  taxGap: "Tax Gap",
   religion: "Religion",
   stateEfficacy: "State Efficacy",
 };

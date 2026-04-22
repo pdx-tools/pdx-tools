@@ -17,6 +17,7 @@ export function LocationOverviewTab({ profile }: Props) {
         <StatRow label="Control" value={formatFloat(s.control, 2)} />
         <StatRow label="RGO Level" value={formatFloat(s.rgoLevel, 1)} />
         <StatRow label="Market Access" value={formatFloat(s.marketAccess, 2)} />
+        <StatRow label="Current Tax" value={formatFloat(s.tax, 2)} />
         <StatRow label="Possible Tax" value={formatFloat(s.possibleTax, 2)} />
         <StatRow label="Terrain" value={s.terrain} />
         {s.religion && <StatRow label="Religion" value={s.religion} />}

@@ -23,7 +23,7 @@ export function EconomyTab({ anchorIdx }: { anchorIdx?: number } = {}) {
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3">
         {data.currentTaxBase != null && (
-          <StatRow label="Tax Base" value={formatFloat(data.currentTaxBase, 2)} />
+          <StatRow label="Current Tax" value={formatFloat(data.currentTaxBase, 2)} />
         )}
         {data.monthlyTradeValue != null && (
           <StatRow label="Monthly Trade" value={formatFloat(data.monthlyTradeValue, 2)} />

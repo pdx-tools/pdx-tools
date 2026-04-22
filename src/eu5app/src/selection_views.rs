@@ -17,6 +17,7 @@ pub enum HoverStat {
     RgoLevel { value: f64 },
     BuildingLevels { value: f64 },
     PossibleTax { value: f64 },
+    TaxGap { value: f64 },
     Religion { name: String },
     StateEfficacy { value: f64 },
 }
@@ -110,10 +111,8 @@ pub struct CountryPossibleTax {
     pub tag: String,
     pub name: String,
     pub color_hex: String,
-    pub current_tax_base: f64,
     pub total_possible_tax: f64,
-    pub tax_gap: f64,
-    pub realization_ratio: f64,
+    pub avg_possible_tax: f64,
     pub location_count: u32,
     pub total_population: u32,
 }
@@ -148,8 +147,62 @@ pub struct PossibleTaxInsightData {
 #[serde(rename_all = "camelCase")]
 pub struct PossibleTaxScope {
     pub location_count: u32,
+    pub total_possible_tax: f64,
+    pub avg_possible_tax: f64,
+    pub is_empty: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct CountryTaxGap {
+    pub anchor_location_idx: u32,
+    pub tag: String,
+    pub name: String,
+    pub color_hex: String,
     pub current_tax_base: f64,
     pub total_possible_tax: f64,
+    pub tax_gap: f64,
+    pub realization_ratio: f64,
+    pub location_count: u32,
+    pub total_population: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct TaxGapTopLocation {
+    pub location_idx: u32,
+    pub name: String,
+    pub tax: f64,
+    pub possible_tax: f64,
+    pub tax_gap: f64,
+    pub development: f64,
+    pub control: f64,
+    pub population: u32,
+    pub owner: EntityRef,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct TaxGapInsightData {
+    pub countries: Vec<CountryTaxGap>,
+    pub top_locations: Vec<TaxGapTopLocation>,
+    pub distribution: LocationDistribution,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct TaxGapScope {
+    pub location_count: u32,
+    pub tax_gap: f64,
+    pub realization_ratio: f64,
     pub is_empty: bool,
 }
 
