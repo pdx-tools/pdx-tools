@@ -116,6 +116,20 @@ impl SelectionState {
         self.focused_location = None;
     }
 
+    /// Remove locations from the current explicit filter. If the filter is
+    /// empty, first materialize the caller-provided global scope so subtraction
+    /// behaves as "global minus these locations" instead of a no-op.
+    pub fn remove_all_from_scope_or_global(
+        &mut self,
+        locations: &FnvHashSet<LocationIdx>,
+        global_locations: FnvHashSet<LocationIdx>,
+    ) {
+        if self.is_empty() && !locations.is_empty() {
+            self.replace(global_locations);
+        }
+        self.remove_all(locations);
+    }
+
     /// Replace the entire selection with `locations`, discarding focus.
     pub fn replace(&mut self, locations: FnvHashSet<LocationIdx>) {
         self.locations = locations;
@@ -291,6 +305,13 @@ impl<D: LocationData> SelectionAdapter<D> {
         }
     }
 
+    pub fn resolve_all_in_entity_mode(&self, mode: MapMode) -> FnvHashSet<LocationIdx> {
+        match mode {
+            MapMode::Markets => self.resolve_all_by_market(),
+            _ => self.resolve_all_by_owner(),
+        }
+    }
+
     pub fn resolve_by_owner(&self, clicked_idx: LocationIdx) -> FnvHashSet<LocationIdx> {
         let Some(owner) = self.data.location_info(clicked_idx).owner else {
             return FnvHashSet::default();
@@ -302,6 +323,14 @@ impl<D: LocationData> SelectionAdapter<D> {
             .collect()
     }
 
+    pub fn resolve_all_by_owner(&self) -> FnvHashSet<LocationIdx> {
+        self.data
+            .iter_locations()
+            .filter(|(_, info)| info.owner.is_some())
+            .map(|(idx, _)| idx)
+            .collect()
+    }
+
     pub fn resolve_by_market(&self, clicked_idx: LocationIdx) -> FnvHashSet<LocationIdx> {
         let Some(market) = self.data.location_info(clicked_idx).market else {
             return FnvHashSet::default();
@@ -309,6 +338,14 @@ impl<D: LocationData> SelectionAdapter<D> {
         self.data
             .iter_locations()
             .filter(|(_, info)| info.market == Some(market))
+            .map(|(idx, _)| idx)
+            .collect()
+    }
+
+    pub fn resolve_all_by_market(&self) -> FnvHashSet<LocationIdx> {
+        self.data
+            .iter_locations()
+            .filter(|(_, info)| info.market.is_some())
             .map(|(idx, _)| idx)
             .collect()
     }
@@ -516,6 +553,36 @@ mod tests {
     }
 
     #[test]
+    fn remove_all_from_empty_materializes_global_then_removes_locations() {
+        let mut state = SelectionState::new();
+        let mut global = FnvHashSet::default();
+        global.insert(loc(0));
+        global.insert(loc(1));
+        global.insert(loc(2));
+
+        let mut to_remove = FnvHashSet::default();
+        to_remove.insert(loc(1));
+
+        state.remove_all_from_scope_or_global(&to_remove, global);
+
+        assert!(state.contains(loc(0)));
+        assert!(!state.contains(loc(1)));
+        assert!(state.contains(loc(2)));
+        assert_eq!(state.len(), 2);
+    }
+
+    #[test]
+    fn remove_all_from_empty_with_empty_removal_stays_empty() {
+        let mut state = SelectionState::new();
+        let mut global = FnvHashSet::default();
+        global.insert(loc(0));
+
+        state.remove_all_from_scope_or_global(&FnvHashSet::default(), global);
+
+        assert!(state.is_empty());
+    }
+
+    #[test]
     fn add_clears_focus() {
         let mut state = SelectionState::new();
         state.add(loc(0));
@@ -625,6 +692,32 @@ mod tests {
         let development =
             SelectionAdapter::new(&data).resolve_click(loc(0), MapMode::Development, &state, None);
         assert_eq!(political.locations, development.locations);
+    }
+
+    #[test]
+    fn resolve_all_in_country_entity_mode_returns_owned_locations() {
+        let data = make_mock();
+        let result = SelectionAdapter::new(&data).resolve_all_in_entity_mode(MapMode::Development);
+
+        assert_eq!(result.len(), 4);
+        assert!(result.contains(&loc(0)));
+        assert!(result.contains(&loc(1)));
+        assert!(result.contains(&loc(2)));
+        assert!(result.contains(&loc(4)));
+        assert!(!result.contains(&loc(3)));
+    }
+
+    #[test]
+    fn resolve_all_in_market_entity_mode_returns_market_locations() {
+        let data = make_mock();
+        let result = SelectionAdapter::new(&data).resolve_all_in_entity_mode(MapMode::Markets);
+
+        assert_eq!(result.len(), 3);
+        assert!(result.contains(&loc(0)));
+        assert!(result.contains(&loc(1)));
+        assert!(result.contains(&loc(2)));
+        assert!(!result.contains(&loc(3)));
+        assert!(!result.contains(&loc(4)));
     }
 
     #[test]

@@ -7,6 +7,7 @@ use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
 use eu5app::selection_views::{
     DevelopmentInsightData, EntityBreakdownData, LocationDistribution, ScopeSummary,
+    StateEfficacyTopLocation,
 };
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
@@ -41,6 +42,7 @@ pub enum MapMode {
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct CountryStateEfficacy {
+    pub anchor_location_idx: u32,
     pub tag: String,
     pub name: String,
     pub color: String,
@@ -55,6 +57,8 @@ pub struct CountryStateEfficacy {
 #[serde(rename_all = "camelCase")]
 pub struct StateEfficacyData {
     pub countries: Vec<CountryStateEfficacy>,
+    pub top_locations: Vec<StateEfficacyTopLocation>,
+    pub distribution: LocationDistribution,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
@@ -982,6 +986,7 @@ impl Eu5App {
         let countries = results
             .into_iter()
             .map(|efficacy| CountryStateEfficacy {
+                anchor_location_idx: efficacy.anchor_location_idx,
                 tag: efficacy.tag,
                 name: efficacy.name,
                 color: efficacy.color,
@@ -992,7 +997,11 @@ impl Eu5App {
             })
             .collect();
 
-        StateEfficacyData { countries }
+        StateEfficacyData {
+            countries,
+            top_locations: self.app().state_efficacy_top_locations(),
+            distribution: self.app().state_efficacy_location_distribution(),
+        }
     }
 
     // ── Entity Profile Endpoints ──────────────────────────────────────────

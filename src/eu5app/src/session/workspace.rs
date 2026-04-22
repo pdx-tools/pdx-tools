@@ -11,6 +11,7 @@ use crate::selection::{
 use crate::selection_views::{
     CountryDevSummary, DevTopLocation, DevelopmentInsightData, DistributionBucket,
     EntityBreakdownData, EntityBreakdownRow, LocationDistribution, ScopeSummary,
+    StateEfficacyTopLocation,
 };
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap};
@@ -804,6 +805,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Remove the entity at `clicked_idx` from the selection.
     pub fn remove_entity(&mut self, clicked_idx: eu5save::models::LocationIdx) {
         let mode = self.current_map_mode;
+        let kind = Self::entity_kind_for_map_mode(mode);
         let derived_entity_anchor = self.map_click_derived_anchor();
         let outcome = SelectionAdapter::new(&*self).resolve_click(
             clicked_idx,
@@ -814,9 +816,7 @@ impl<'bump> Eu5Workspace<'bump> {
         if outcome.focused_location.is_some() {
             self.selection_state.remove(clicked_idx);
         } else {
-            for idx in outcome.locations {
-                self.selection_state.remove(idx);
-            }
+            self.remove_locations_from_scope_for_kind(&outcome.locations, kind);
         }
         self.recompute_derived_scope();
         self.rebuild_colors();
@@ -848,7 +848,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Remove the country owning `anchor_idx` from the selection.
     pub fn remove_country_at(&mut self, anchor_idx: eu5save::models::LocationIdx) {
         let locs = SelectionAdapter::new(&*self).resolve_by_owner(anchor_idx);
-        self.selection_state.remove_all(&locs);
+        self.remove_locations_from_scope_for_kind(&locs, EntityKind::Country);
         self.recompute_derived_scope_for_kind(EntityKind::Country);
         self.rebuild_colors();
     }
@@ -879,7 +879,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Remove the market containing `anchor_idx` from the selection.
     pub fn remove_market_at(&mut self, anchor_idx: eu5save::models::LocationIdx) {
         let locs = SelectionAdapter::new(&*self).resolve_by_market(anchor_idx);
-        self.selection_state.remove_all(&locs);
+        self.remove_locations_from_scope_for_kind(&locs, EntityKind::Market);
         self.recompute_derived_scope_for_kind(EntityKind::Market);
         self.rebuild_colors();
     }
@@ -915,11 +915,29 @@ impl<'bump> Eu5Workspace<'bump> {
     ) {
         match operation {
             SelectionSetOperation::Add => self.selection_state.add_all(&locations),
-            SelectionSetOperation::Remove => self.selection_state.remove_all(&locations),
+            SelectionSetOperation::Remove => {
+                let kind = Self::entity_kind_for_map_mode(self.current_map_mode);
+                self.remove_locations_from_scope_for_kind(&locations, kind);
+            }
             SelectionSetOperation::Replace => self.selection_state.replace(locations),
         }
         self.recompute_derived_scope();
         self.rebuild_colors();
+    }
+
+    fn remove_locations_from_scope_for_kind(
+        &mut self,
+        locations: &FnvHashSet<eu5save::models::LocationIdx>,
+        kind: EntityKind,
+    ) {
+        if self.selection_state.is_empty() && !locations.is_empty() {
+            let mode = Self::map_mode_for_entity_kind(kind);
+            let global_locations = SelectionAdapter::new(&*self).resolve_all_in_entity_mode(mode);
+            self.selection_state
+                .remove_all_from_scope_or_global(locations, global_locations);
+        } else {
+            self.selection_state.remove_all(locations);
+        }
     }
 
     pub fn clear_selection(&mut self) {
@@ -2217,15 +2235,8 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut results: Vec<CountryStateEfficacy> = aggregates
             .into_iter()
             .filter_map(|(country_id, aggregate)| {
-                // Get country info
                 let country_idx = self.gamestate.countries.get(country_id)?;
-                let country_entry = self.gamestate.countries.index(country_idx);
-                let country_data = country_entry.data()?;
-
-                let tag = country_entry.tag().to_str().to_string();
-                let name = self
-                    .localized_country_name(&country_data.country_name)
-                    .to_string();
+                let entity_ref = self.entity_ref_from_country_idx(country_idx)?;
 
                 let avg_efficacy = if aggregate.location_count > 0 {
                     aggregate.total_efficacy / (aggregate.location_count as f64)
@@ -2234,12 +2245,10 @@ impl<'bump> Eu5Workspace<'bump> {
                 };
 
                 Some(CountryStateEfficacy {
-                    tag,
-                    name,
-                    color: format!(
-                        "#{:02x}{:02x}{:02x}",
-                        country_data.color.0[0], country_data.color.0[1], country_data.color.0[2]
-                    ),
+                    anchor_location_idx: entity_ref.anchor_location_idx,
+                    tag: entity_ref.tag,
+                    name: entity_ref.name,
+                    color: entity_ref.color_hex,
                     total_efficacy: aggregate.total_efficacy,
                     location_count: aggregate.location_count,
                     avg_efficacy,
@@ -2256,6 +2265,123 @@ impl<'bump> Eu5Workspace<'bump> {
         });
 
         results
+    }
+
+    pub fn state_efficacy_location_distribution(&self) -> LocationDistribution {
+        let mut metrics = self.state_efficacy_location_metrics();
+
+        if metrics.is_empty() {
+            return LocationDistribution {
+                metric_label: "State Efficacy".to_string(),
+                buckets: vec![],
+                top_locations: vec![],
+            };
+        }
+
+        let min_val = metrics
+            .iter()
+            .map(|(_, v, _, _, _)| *v)
+            .fold(f64::INFINITY, f64::min);
+        let max_val = metrics
+            .iter()
+            .map(|(_, v, _, _, _)| *v)
+            .fold(f64::NEG_INFINITY, f64::max);
+
+        const TARGET_BUCKETS: usize = 20;
+
+        let buckets = if (max_val - min_val).abs() < f64::EPSILON {
+            vec![DistributionBucket {
+                lo: min_val,
+                hi: max_val,
+                count: metrics.len() as u32,
+            }]
+        } else {
+            let step = nice_bucket_step(max_val - min_val, TARGET_BUCKETS);
+            let start = (min_val / step).floor() * step;
+            let end = (max_val / step).ceil() * step;
+            let num_buckets = ((end - start) / step).ceil() as usize;
+            let num_buckets = num_buckets.clamp(1, TARGET_BUCKETS * 2);
+            let mut counts = vec![0u32; num_buckets];
+            for (_, value, _, _, _) in &metrics {
+                let b = ((*value - start) / step).floor() as usize;
+                let b = b.min(num_buckets - 1);
+                counts[b] += 1;
+            }
+            counts
+                .into_iter()
+                .enumerate()
+                .map(|(i, count)| DistributionBucket {
+                    lo: start + i as f64 * step,
+                    hi: start + (i + 1) as f64 * step,
+                    count,
+                })
+                .collect()
+        };
+
+        metrics.sort_by(|a, b| b.1.total_cmp(&a.1));
+        let top_locations: Vec<RankedLocation> = metrics
+            .iter()
+            .take(10)
+            .map(|(idx, value, _, _, _)| RankedLocation {
+                location_idx: idx.value(),
+                name: self.location_name(*idx).to_string(),
+                value: *value,
+            })
+            .collect();
+
+        LocationDistribution {
+            metric_label: "State Efficacy".to_string(),
+            buckets,
+            top_locations,
+        }
+    }
+
+    pub fn state_efficacy_top_locations(&self) -> Vec<StateEfficacyTopLocation> {
+        let mut metrics = self.state_efficacy_location_metrics();
+        metrics.sort_by(|a, b| b.1.total_cmp(&a.1));
+
+        const TOP_LOCATIONS: usize = 50;
+        metrics
+            .iter()
+            .take(TOP_LOCATIONS)
+            .filter_map(|&(idx, state_efficacy, development, control, population)| {
+                let loc = self.gamestate.locations.index(idx).location();
+                let owner = self.owner_ref_for_location(loc)?;
+                Some(StateEfficacyTopLocation {
+                    location_idx: idx.value(),
+                    name: self.location_name(idx).to_string(),
+                    state_efficacy,
+                    development,
+                    control,
+                    population,
+                    owner,
+                })
+            })
+            .collect()
+    }
+
+    fn state_efficacy_location_metrics(&self) -> Vec<(LocationIdx, f64, f64, f64, u32)> {
+        let mut metrics = Vec::new();
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            if loc.owner.is_dummy() {
+                continue;
+            }
+            if !self.selection_state.is_empty() && !self.selection_state.contains(entry.idx()) {
+                continue;
+            }
+            let development = loc.development;
+            let control = loc.control;
+            let population = self.gamestate.location_population(loc) as u32;
+            metrics.push((
+                entry.idx(),
+                control * development,
+                development,
+                control,
+                population,
+            ));
+        }
+        metrics
     }
 
     // ── Entity Profile ────────────────────────────────────────────────────
@@ -3400,6 +3526,7 @@ impl<'bump> Eu5Workspace<'bump> {
 /// State efficacy data for a single country
 #[derive(Debug, Clone)]
 pub struct CountryStateEfficacy {
+    pub anchor_location_idx: u32,
     pub tag: String,
     pub name: String,
     pub color: String,

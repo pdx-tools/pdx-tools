@@ -36,6 +36,20 @@ pub struct DevTopLocation {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
+pub struct StateEfficacyTopLocation {
+    pub location_idx: u32,
+    pub name: String,
+    pub state_efficacy: f64,
+    pub development: f64,
+    pub control: f64,
+    pub population: u32,
+    pub owner: EntityRef,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
 pub struct DevelopmentInsightData {
     pub countries: Vec<CountryDevSummary>,
     pub top_locations: Vec<DevTopLocation>,
