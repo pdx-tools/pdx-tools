@@ -13,6 +13,8 @@ import type {
   EntityBreakdownData,
   LocationDistribution,
   DevelopmentInsightData,
+  PossibleTaxInsightData,
+  PossibleTaxScope,
   ScopeSummary,
 } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/types";
@@ -324,6 +326,12 @@ export function saveWorker(
     },
     getDevelopmentInsight: async (): Promise<DevelopmentInsightData> => {
       return await saveEngine.getDevelopmentInsight();
+    },
+    getPossibleTaxInsight: async (): Promise<PossibleTaxInsightData> => {
+      return await saveEngine.getPossibleTaxInsight();
+    },
+    getPossibleTaxScope: async (): Promise<PossibleTaxScope> => {
+      return await saveEngine.getPossibleTaxScope();
     },
     getScopeSummary: async (): Promise<ScopeSummary> => {
       return await saveEngine.getScopeSummary();

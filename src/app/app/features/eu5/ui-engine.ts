@@ -19,6 +19,8 @@ import type {
   EntityBreakdownData,
   LocationDistribution,
   DevelopmentInsightData,
+  PossibleTaxInsightData,
+  PossibleTaxScope,
   ScopeSummary,
   Eu5DateComponents,
 } from "@/wasm/wasm_eu5";
@@ -61,6 +63,8 @@ export interface AppTriggers {
   getEntityBreakdown(): Promise<EntityBreakdownData>;
   getLocationDistribution(): Promise<LocationDistribution>;
   getDevelopmentInsight(): Promise<DevelopmentInsightData>;
+  getPossibleTaxInsight(): Promise<PossibleTaxInsightData>;
+  getPossibleTaxScope(): Promise<PossibleTaxScope>;
   getScopeSummary(): Promise<ScopeSummary>;
   getEntityHeaderFor(anchorLocationIdx: number): Promise<EntityHeader | null>;
   getOverviewSectionFor(anchorLocationIdx: number): Promise<OverviewSection | null>;
@@ -154,6 +158,8 @@ export class Eu5UIEngine implements AppEngine {
     getEntityBreakdown: () => this.gameInstance.getEntityBreakdown(),
     getLocationDistribution: () => this.gameInstance.getLocationDistribution(),
     getDevelopmentInsight: () => this.gameInstance.getDevelopmentInsight(),
+    getPossibleTaxInsight: () => this.gameInstance.getPossibleTaxInsight(),
+    getPossibleTaxScope: () => this.gameInstance.getPossibleTaxScope(),
     getScopeSummary: () => this.gameInstance.getScopeSummary(),
     getEntityHeaderFor: (anchorLocationIdx) =>
       this.gameInstance.getEntityHeaderFor(anchorLocationIdx),

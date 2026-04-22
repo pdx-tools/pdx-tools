@@ -18,6 +18,8 @@ import type {
   EntityBreakdownData,
   LocationDistribution,
   DevelopmentInsightData,
+  PossibleTaxInsightData,
+  PossibleTaxScope,
   ScopeSummary,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
@@ -336,6 +338,12 @@ export const createGame = async (
     },
     getDevelopmentInsight: (): DevelopmentInsightData => {
       return app.get_development_insight();
+    },
+    getPossibleTaxInsight: (): PossibleTaxInsightData => {
+      return app.get_possible_tax_insight();
+    },
+    getPossibleTaxScope: (): PossibleTaxScope => {
+      return app.get_possible_tax_scope();
     },
     getScopeSummary: (): ScopeSummary => {
       return app.get_scope_summary();

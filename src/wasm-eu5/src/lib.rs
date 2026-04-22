@@ -6,8 +6,8 @@ use eu5app::entity_profile::{
 use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
 use eu5app::selection_views::{
-    DevelopmentInsightData, EntityBreakdownData, LocationDistribution, ScopeSummary,
-    StateEfficacyTopLocation,
+    DevelopmentInsightData, EntityBreakdownData, LocationDistribution, PossibleTaxInsightData,
+    PossibleTaxScope, ScopeSummary, StateEfficacyTopLocation,
 };
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
@@ -1068,11 +1068,25 @@ impl Eu5App {
         self.app().calculate_development_insight()
     }
 
+    /// Possible-tax insight data: per-country realized vs ceiling aggregates
+    /// and top locations by possible tax.
+    #[wasm_bindgen]
+    pub fn get_possible_tax_insight(&self) -> PossibleTaxInsightData {
+        self.app().calculate_possible_tax_insight()
+    }
+
     /// Scope summary: entity/location/population totals for the active selection,
     /// or world totals when no selection is active.
     #[wasm_bindgen]
     pub fn get_scope_summary(&self) -> ScopeSummary {
         self.app().get_scope_summary()
+    }
+
+    /// Possible-tax scope: location count, summed possible tax ceiling, and
+    /// summed realized tax base for the active selection or entire world.
+    #[wasm_bindgen]
+    pub fn get_possible_tax_scope(&self) -> PossibleTaxScope {
+        self.app().get_possible_tax_scope()
     }
 
     /// Entity header for a specific entity resolved from `anchor_location_idx`,

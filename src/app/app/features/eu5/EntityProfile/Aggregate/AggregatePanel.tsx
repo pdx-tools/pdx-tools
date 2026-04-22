@@ -7,6 +7,7 @@ import { formatFloat } from "@/lib/format";
 import type { RankedLocation } from "@/wasm/wasm_eu5";
 import { usePanelNav } from "../PanelNavContext";
 import { getSelectionIdentityKey } from "../selectionIdentity";
+import { ScopeSummaryHeader } from "../../features/InsightScopeHeader";
 
 const TOP_ENTITIES_SHOWN = 10;
 
@@ -37,6 +38,7 @@ export function AggregatePanel() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
+      <ScopeSummaryHeader selectionKey={selectionKey} />
       {distributionQuery.data && (
         <section>
           <LocationDistributionChart distribution={distributionQuery.data} />

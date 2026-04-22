@@ -9,8 +9,9 @@ use crate::selection::{
     GroupId, GroupingTable, LocationData, SelectionAdapter, SelectionState, single_entity_scope,
 };
 use crate::selection_views::{
-    CountryDevSummary, DevTopLocation, DevelopmentInsightData, DistributionBucket,
-    EntityBreakdownData, EntityBreakdownRow, LocationDistribution, ScopeSummary,
+    CountryDevSummary, CountryPossibleTax, DevTopLocation, DevelopmentInsightData,
+    DistributionBucket, EntityBreakdownData, EntityBreakdownRow, LocationDistribution,
+    PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation, ScopeSummary,
     StateEfficacyTopLocation,
 };
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
@@ -3384,6 +3385,111 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
+    /// Possible-tax insight: per-country realized vs ceiling aggregates and top locations
+    /// by possible tax, over the current selection (or all locations when empty).
+    /// Only country-owned locations contribute to `current_tax_base`; market-anchored
+    /// locations are skipped on the realized side because markets have no `current_tax_base`.
+    pub fn calculate_possible_tax_insight(&self) -> PossibleTaxInsightData {
+        #[derive(Default)]
+        struct TaxAgg {
+            total_possible_tax: f64,
+            count: u32,
+            pop: u32,
+        }
+
+        let mut aggregates: FxHashMap<CountryId, TaxAgg> = FxHashMap::default();
+        let mut all_locs: Vec<(LocationIdx, f64, u32, f64, f64)> = Vec::new();
+
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            if loc.owner.is_dummy() {
+                continue;
+            }
+            if !self.selection_state.is_empty() && !self.selection_state.contains(entry.idx()) {
+                continue;
+            }
+
+            let ptax = loc.possible_tax;
+            let pop = self.gamestate.location_population(loc) as u32;
+            let ctrl = loc.control;
+            let dev = loc.development;
+            all_locs.push((entry.idx(), ptax, pop, ctrl, dev));
+
+            if let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) {
+                let agg = aggregates.entry(owner_id).or_default();
+                agg.total_possible_tax += ptax;
+                agg.count += 1;
+                agg.pop += pop;
+            }
+        }
+
+        let mut countries: Vec<CountryPossibleTax> = aggregates
+            .into_iter()
+            .filter_map(|(cid, agg)| {
+                let cidx = self.gamestate.countries.get(cid)?;
+                let eref = self.entity_ref_from_country_idx(cidx)?;
+                let current_tax_base = self
+                    .gamestate
+                    .countries
+                    .index(cidx)
+                    .data()
+                    .map(|d| d.current_tax_base)
+                    .unwrap_or(0.0);
+                let tax_gap = agg.total_possible_tax - current_tax_base;
+                let realization_ratio = if agg.total_possible_tax > 0.0 {
+                    current_tax_base / agg.total_possible_tax
+                } else {
+                    0.0
+                };
+                Some(CountryPossibleTax {
+                    anchor_location_idx: eref.anchor_location_idx,
+                    tag: eref.tag,
+                    name: eref.name,
+                    color_hex: eref.color_hex,
+                    current_tax_base,
+                    total_possible_tax: agg.total_possible_tax,
+                    tax_gap,
+                    realization_ratio,
+                    location_count: agg.count,
+                    total_population: agg.pop,
+                })
+            })
+            .collect();
+        countries.sort_by(|a, b| {
+            b.total_possible_tax
+                .total_cmp(&a.total_possible_tax)
+                .then_with(|| a.tag.cmp(&b.tag))
+        });
+
+        all_locs.sort_by(|a, b| b.1.total_cmp(&a.1));
+        const TOP_LOCATIONS: usize = 50;
+        let top_locations: Vec<PossibleTaxTopLocation> = all_locs
+            .iter()
+            .take(TOP_LOCATIONS)
+            .filter_map(|&(idx, ptax, pop, ctrl, dev)| {
+                let loc = self.gamestate.locations.index(idx).location();
+                let owner = self.owner_ref_for_location(loc)?;
+                Some(PossibleTaxTopLocation {
+                    location_idx: idx.value(),
+                    name: self.location_name(idx).to_string(),
+                    possible_tax: ptax,
+                    development: dev,
+                    control: ctrl,
+                    population: pop,
+                    owner,
+                })
+            })
+            .collect();
+
+        let distribution = self.selection_location_distribution();
+
+        PossibleTaxInsightData {
+            countries,
+            top_locations,
+            distribution,
+        }
+    }
+
     /// Totals for the active scope: selected entities when the filter is non-empty,
     /// or all entities in the world when the filter is empty.
     pub fn get_scope_summary(&self) -> ScopeSummary {
@@ -3427,6 +3533,47 @@ impl<'bump> Eu5Workspace<'bump> {
             location_count,
             total_population,
             is_empty: true,
+        }
+    }
+
+    pub fn get_possible_tax_scope(&self) -> PossibleTaxScope {
+        let is_empty = self.selection_state.is_empty();
+        let mut total_possible_tax = 0.0f64;
+        let mut location_count = 0u32;
+        let mut country_ids: FnvHashSet<CountryId> = FnvHashSet::default();
+
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            if loc.owner.is_dummy() {
+                continue;
+            }
+            if !is_empty && !self.selection_state.contains(entry.idx()) {
+                continue;
+            }
+            total_possible_tax += loc.possible_tax;
+            location_count += 1;
+            if let Some(id) = loc.owner.real_id().map(|r| r.country_id()) {
+                country_ids.insert(id);
+            }
+        }
+
+        let current_tax_base: f64 = country_ids
+            .iter()
+            .filter_map(|&cid| {
+                let cidx = self.gamestate.countries.get(cid)?;
+                self.gamestate
+                    .countries
+                    .index(cidx)
+                    .data()
+                    .map(|d| d.current_tax_base)
+            })
+            .sum();
+
+        PossibleTaxScope {
+            location_count,
+            current_tax_base,
+            total_possible_tax,
+            is_empty,
         }
     }
 
