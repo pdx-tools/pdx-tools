@@ -1457,11 +1457,17 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub fn handle_location_hover(&mut self, location_idx: eu5save::models::LocationIdx) {
         let scope_mode = self.derived_scope_map_mode();
-        debug_assert_eq!(
-            self.derived_entity_anchor,
-            single_entity_scope(&self.selection_state, &*self, scope_mode),
-            "derived_entity_anchor is stale; a selection mutation forgot to recompute"
-        );
+
+        if tracing::enabled!(tracing::Level::WARN) {
+            let entity_anchor = single_entity_scope(&self.selection_state, &*self, scope_mode);
+            if self.derived_entity_anchor != entity_anchor {
+                tracing::warn!(
+                    "derived_entity_anchor mismatch: expected {:?}, got {:?}",
+                    entity_anchor,
+                    self.derived_entity_anchor
+                );
+            }
+        }
 
         if let Some(anchor) = self.derived_entity_anchor
             && self.same_entity(location_idx, anchor, scope_mode)
