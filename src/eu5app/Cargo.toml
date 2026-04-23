@@ -28,5 +28,16 @@ tracing = { workspace = true }
 tsify = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
 [dev-dependencies]
+attohttpc = { workspace = true }
+bytemuck = { workspace = true }
+eu5app = { path = ".", default-features = false, features = ["game-install"] }
+highway = { workspace = true }
+insta = { workspace = true, features = ["glob"] }
 rstest = { workspace = true }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
