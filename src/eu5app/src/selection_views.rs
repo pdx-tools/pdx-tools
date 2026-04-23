@@ -7,6 +7,51 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(tag = "mode", content = "value", rename_all = "camelCase")]
+pub enum HoverStat {
+    None,
+    Control { value: f64 },
+    Development { value: f64 },
+    Population { value: u32 },
+    Markets { access: f64 },
+    RgoLevel { value: f64 },
+    BuildingLevels { value: f64 },
+    PossibleTax { value: f64 },
+    Religion { name: String },
+    StateEfficacy { value: f64 },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum HoverDisplayData {
+    Clear,
+    Location {
+        location_id: u32,
+        location_name: String,
+        stat: HoverStat,
+    },
+    Country {
+        location_id: u32,
+        country_tag: String,
+        country_name: String,
+        stat: HoverStat,
+    },
+    Market {
+        location_id: u32,
+        market_center_name: String,
+        market_value: f64,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryDevSummary {
     pub anchor_location_idx: u32,

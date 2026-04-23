@@ -1,8 +1,8 @@
 import { CursorTooltip } from "@/components/CursorTooltip";
 import type { CursorPosition } from "@/components/CursorTooltip";
-import { useEu5HoverData, useEu5MapMode, useEu5BoxSelectRect } from "./store";
+import { useEu5HoverData, useEu5BoxSelectRect } from "./store";
 import { formatFloat, formatInt } from "@/lib/format";
-import type { HoverDisplayData, MapMode } from "@/wasm/wasm_eu5";
+import type { HoverDisplayData, HoverStat } from "@/wasm/wasm_eu5";
 
 interface Eu5CursorTooltipProps {
   cursorRef: React.RefObject<CursorPosition>;
@@ -13,91 +13,60 @@ interface TooltipContent {
   stat: string | null;
 }
 
-function getLocationStat(
-  data: Extract<HoverDisplayData, { kind: "location" }>,
-  mode: MapMode,
-): string | null {
-  switch (mode) {
-    case "development":
-      return data.development !== undefined ? formatFloat(data.development, 2) : null;
-    case "population":
-      return data.population !== undefined ? formatInt(data.population) : null;
-    case "control":
-      return data.controlValue !== undefined ? `${formatFloat(data.controlValue * 100, 2)}%` : null;
-    case "rgoLevel":
-      return data.rgoLevel !== undefined ? formatInt(data.rgoLevel) : null;
-    case "buildingLevels":
-      return data.buildingLevel !== undefined ? formatInt(data.buildingLevel) : null;
-    case "possibleTax":
-      return data.possibleTax !== undefined ? formatFloat(data.possibleTax, 2) : null;
-    case "markets":
-      return data.marketAccess !== undefined ? `${formatInt(data.marketAccess * 100)}%` : null;
-    case "religion":
-      return data.locationReligionName ?? null;
-    case "political":
-    case "stateEfficacy":
-    default:
+function formatHoverStat(stat: HoverStat): string | null {
+  switch (stat.mode) {
+    case "none":
       return null;
+    case "control":
+      return `${formatFloat(stat.value.value * 100, 2)}%`;
+    case "development":
+    case "possibleTax":
+    case "stateEfficacy":
+      return formatFloat(stat.value.value, 2);
+    case "population":
+    case "rgoLevel":
+    case "buildingLevels":
+      return formatInt(stat.value.value);
+    case "markets":
+      return `${formatInt(stat.value.access * 100)}%`;
+    case "religion":
+      return stat.value.name;
   }
+
+  const _exhaustive: never = stat;
+  return _exhaustive;
 }
 
-function getCountryStat(
-  data: Extract<HoverDisplayData, { kind: "country" }>,
-  mode: MapMode,
-): string | null {
-  switch (mode) {
-    case "development":
-      return data.totalDevelopment !== undefined ? formatFloat(data.totalDevelopment, 2) : null;
-    case "population":
-      return data.totalPopulation !== undefined ? formatInt(data.totalPopulation) : null;
-    case "control":
-      return data.averageControlValue !== undefined
-        ? `${formatFloat(data.averageControlValue * 100, 2)}%`
-        : null;
-    case "rgoLevel":
-      return data.totalRgoLevel !== undefined ? formatInt(data.totalRgoLevel) : null;
-    case "buildingLevels":
-      return data.totalBuildingLevels !== undefined ? formatInt(data.totalBuildingLevels) : null;
-    case "possibleTax":
-      return data.totalPossibleTax !== undefined ? formatFloat(data.totalPossibleTax, 2) : null;
-    case "markets":
-      return data.marketValue !== undefined ? formatFloat(data.marketValue, 2) : null;
-    case "religion":
-      return data.countryReligionName ?? null;
-    case "political":
-      return data.countryTag ? `(${data.countryTag})` : null;
-    case "stateEfficacy":
-    default:
+function getTooltipContent(hoverData: HoverDisplayData): TooltipContent | null {
+  switch (hoverData.kind) {
+    case "clear":
       return null;
-  }
-}
-
-function getTooltipContent(hoverData: HoverDisplayData, mapMode: MapMode): TooltipContent | null {
-  if (hoverData.kind === "clear") return null;
-
-  if (hoverData.kind === "location") {
-    return {
-      name: hoverData.locationName,
-      stat: getLocationStat(hoverData, mapMode),
-    };
-  }
-
-  if (hoverData.kind === "country") {
-    return {
-      name: hoverData.marketCenterName || hoverData.countryName,
-      stat: getCountryStat(hoverData, mapMode),
-    };
+    case "location":
+      return {
+        name: hoverData.locationName,
+        stat: formatHoverStat(hoverData.stat),
+      };
+    case "country":
+      return {
+        name: hoverData.countryName,
+        stat: formatHoverStat(hoverData.stat),
+      };
+    case "market":
+      return {
+        name: hoverData.marketCenterName,
+        stat: formatFloat(hoverData.marketValue, 2),
+      };
   }
 
-  return null;
+  const _exhaustive: never = hoverData;
+  return _exhaustive;
 }
 
 export function Eu5CursorTooltip({ cursorRef }: Eu5CursorTooltipProps) {
   const hoverData = useEu5HoverData();
-  const mapMode = useEu5MapMode();
   const isBoxSelecting = useEu5BoxSelectRect() !== null;
 
-  const content = !isBoxSelecting && hoverData ? getTooltipContent(hoverData, mapMode) : null;
+  const content = !isBoxSelecting && hoverData ? getTooltipContent(hoverData) : null;
 
   return (
     <CursorTooltip cursorRef={cursorRef} visible={content !== null}>
