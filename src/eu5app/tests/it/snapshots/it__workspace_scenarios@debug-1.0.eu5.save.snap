@@ -1,0 +1,36 @@
+---
+source: src/eu5app/tests/it/main.rs
+expression: snapshot
+input_file: src/eu5app/tests/it/saves.d/debug-1.0.eu5.save
+---
+{
+  "location": [
+    {
+      "id": 1,
+      "name": "stockholm",
+      "owner": {
+        "id": 3,
+        "name": "Sweden",
+        "tag": "SWE"
+      }
+    }
+  ],
+  "map_mode_colors": {
+    "building_levels": "0x27ed432203485b6056bf5412ce89784e14c8605968694d952847dc11ebf217f5",
+    "control": "0x45de2260ad584c284a87a5bebbee55bce6bc8268711bb7b6c6427e532e0073cd",
+    "development": "0x4d893473c13460b7208b830a549a704ba9561c678d8861172a173439319c0ce7",
+    "markets": "0x250d38d1849dceef72516ba840f26487c09f5cbe8e8c357cf6e9abf2972da5ef",
+    "political": "0x581133f6e235f7f728f0cf3eab84db641a410726acd71a3d35f5a2fba5185c8a",
+    "population": "0xeb3002ccd5f33e035e38376177f7e3401c058da203e5778d488a720d2a517569",
+    "possible_tax": "0xfe7c661fa1dc74efc3416f1c8a8d06faaac9f74b31d5271cec786ddfbfd413d4",
+    "religion": "0xcdd369549b541164e4df30eec2f86bd52e51e6e4a8f8d70e02ad1de525ff9769",
+    "rgo_level": "0x89a04bdb7ec39c783f22de1667a723f549cc389005e525a221bc50a951b738e4",
+    "state_efficacy": "0xd79e37a44ce98868a22bc4f6c3fc581c8106cffb7850e0ff31dde85c1a2f0c21"
+  },
+  "save_version": "1.0.0",
+  "selection_counts": {
+    "after_add": 250,
+    "after_remove": 119,
+    "after_select": 131
+  }
+}

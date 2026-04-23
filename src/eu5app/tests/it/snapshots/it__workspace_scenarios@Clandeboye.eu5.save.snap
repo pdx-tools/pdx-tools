@@ -1,0 +1,36 @@
+---
+source: src/eu5app/tests/it/main.rs
+expression: snapshot
+input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
+---
+{
+  "location": [
+    {
+      "id": 1,
+      "name": "stockholm",
+      "owner": {
+        "id": 3,
+        "name": "Sweden",
+        "tag": "SWE"
+      }
+    }
+  ],
+  "map_mode_colors": {
+    "building_levels": "0x71435ec48180398259e55e7cc950e91622ae31963650a15890a67fbaf57b67e7",
+    "control": "0x2c73eeba600179897c3d16d4aa3768a7b818e3e8badeddbf49310060a146f9a5",
+    "development": "0xb4446f4e26a36b4d4cb6854e09d702f9c718606b22d66edcd9ac191592d5def7",
+    "markets": "0x7eef6b272c18867c72b7880422d2bfef8ac23380b653d387f0762bb2a6957955",
+    "political": "0x3c5e79d1450bbb157fa83171d2c1ad0f23f6794f9097cde8c0dfbc3cd2c73e1d",
+    "population": "0x6c9c29269f5a32b78dd27e9de9ee520fb1f051150083a27c5da6a0d61fed72a1",
+    "possible_tax": "0xe94556dfd31b4d9a12bd5d32b8faf083a9dd2d4c747b38be56e8efdcc8c2975b",
+    "religion": "0xe424c860024bd7e944ef54962a0337845a7ee7962f35552a7603e8385117177a",
+    "rgo_level": "0x56b80d7e678d97f946a5a3e1cb69537bb330fee932a326d3f6adefdc00772f22",
+    "state_efficacy": "0x109b42f0535026793b89f6edef8715093ee746a5f9e656dcee14a2bb66e4826f"
+  },
+  "save_version": "1.0.4",
+  "selection_counts": {
+    "after_add": 395,
+    "after_remove": 134,
+    "after_select": 261
+  }
+}
