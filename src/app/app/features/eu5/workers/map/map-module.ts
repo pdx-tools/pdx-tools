@@ -247,11 +247,7 @@ export const createMapEngine = async (
       const gpuLoc = app.pick_location();
       let locationId = app.gpu_loc_to_app(gpuLoc);
       if (locationId !== lastKnownLocationId) {
-        if (locationId) {
-          hoverEventCallback?.({ kind: "update", locationIdx: locationId });
-        } else {
-          hoverEventCallback?.({ kind: "clear" });
-        }
+        hoverEventCallback?.({ kind: "update", locationIdx: locationId });
         lastKnownLocationId = locationId || null;
       }
     } catch (error) {
