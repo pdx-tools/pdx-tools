@@ -9,10 +9,10 @@ use crate::selection::{
     GroupId, GroupingTable, LocationData, SelectionAdapter, SelectionState, single_entity_scope,
 };
 use crate::selection_views::{
-    CountryDevSummary, CountryPossibleTax, DevTopLocation, DevelopmentInsightData,
+    CountryDevSummary, CountryPossibleTax, CountryTaxGap, DevTopLocation, DevelopmentInsightData,
     DistributionBucket, EntityBreakdownData, EntityBreakdownRow, HoverDisplayData, HoverStat,
     LocationDistribution, PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation,
-    ScopeSummary, StateEfficacyTopLocation,
+    ScopeSummary, StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope, TaxGapTopLocation,
 };
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap};
@@ -197,6 +197,53 @@ impl<'bump> Eu5Workspace<'bump> {
         (global_max, filtered_max)
     }
 
+    fn gradient_range(
+        &self,
+        extract: impl Fn(eu5save::models::LocationIdx, &eu5save::models::Location) -> f64,
+    ) -> (f64, f64) {
+        self.gradient_range_with_filter(true, extract)
+    }
+
+    fn gradient_global_range(
+        &self,
+        extract: impl Fn(eu5save::models::LocationIdx, &eu5save::models::Location) -> f64,
+    ) -> (f64, f64) {
+        self.gradient_range_with_filter(false, extract)
+    }
+
+    fn gradient_range_with_filter(
+        &self,
+        filter_selection: bool,
+        extract: impl Fn(eu5save::models::LocationIdx, &eu5save::models::Location) -> f64,
+    ) -> (f64, f64) {
+        let has_selection = !self.selection_state.is_empty();
+        let mut min_value = f64::INFINITY;
+        let mut max_value = f64::NEG_INFINITY;
+        for loc_entry in self.gamestate.locations.iter() {
+            let idx = loc_entry.idx();
+            let terrain = self.location_terrain(idx);
+            if terrain.is_water() || !terrain.is_passable() {
+                continue;
+            }
+            if filter_selection && has_selection && !self.selection_state.contains(idx) {
+                continue;
+            }
+            let loc = loc_entry.location();
+            if loc.owner.is_dummy() {
+                continue;
+            }
+            let value = extract(idx, loc);
+            min_value = min_value.min(value);
+            max_value = max_value.max(value);
+        }
+
+        if min_value.is_finite() && max_value.is_finite() {
+            (min_value, max_value)
+        } else {
+            (0.0, 0.0)
+        }
+    }
+
     /// Effective max for the development gradient (filtered when selection active).
     pub fn max_development(&self) -> f64 {
         self.gradient_domain(|_, loc| loc.development).1
@@ -222,6 +269,12 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Effective max for the possible tax gradient (filtered when selection active).
     pub fn max_possible_tax(&self) -> f64 {
         self.gradient_domain(|_, loc| loc.possible_tax).1
+    }
+
+    pub fn tax_gap_range(&self) -> (f64, f64) {
+        let (min, max) = self.gradient_range(|_, loc| loc.possible_tax - loc.tax);
+        let max_abs = min.abs().max(max.abs());
+        (min, max_abs)
     }
 
     /// Effective max for the state efficacy gradient (filtered when selection active).
@@ -469,6 +522,29 @@ impl<'bump> Eu5Workspace<'bump> {
         self.interpolate_brown_green(save_location.possible_tax, max_possible_tax)
     }
 
+    pub fn location_tax_gap_color(
+        &self,
+        location_idx: eu5save::models::LocationIdx,
+        max_abs_gap: f64,
+    ) -> GpuColor {
+        let terrain = self.location_terrain(location_idx);
+        if terrain.is_water() {
+            return GpuColor::WATER;
+        } else if !terrain.is_passable() {
+            return GpuColor::IMPASSABLE;
+        }
+
+        let save_location_entry = self.gamestate.locations.index(location_idx);
+        let save_location = save_location_entry.location();
+
+        if save_location.owner.is_dummy() {
+            return GpuColor::UNOWNED;
+        }
+
+        let gap = save_location.possible_tax - save_location.tax;
+        self.interpolate_tax_gap(gap, max_abs_gap)
+    }
+
     pub fn location_state_efficacy_color(
         &self,
         location_idx: eu5save::models::LocationIdx,
@@ -630,6 +706,23 @@ impl<'bump> Eu5Workspace<'bump> {
             // Blend from brown to green (0.5 to 1.0)
             let local_factor = (normalized - 0.5) * 2.0; // Scale 0.5-1 to 0-1
             brown.blend(green, local_factor as f32)
+        }
+    }
+
+    pub(crate) fn interpolate_tax_gap(&self, value: f64, max_abs_value: f64) -> GpuColor {
+        let neutral = GpuColor::from_rgb(101, 67, 33);
+        if max_abs_value == 0.0 {
+            return neutral;
+        }
+
+        let overperforming = GpuColor::from_rgb(20, 5, 5);
+        let untapped = GpuColor::from_rgb(34, 139, 34);
+        let normalized = (value.abs() / max_abs_value).clamp(0.0, 1.0) as f32;
+
+        if value < 0.0 {
+            neutral.blend(overperforming, normalized)
+        } else {
+            neutral.blend(untapped, normalized)
         }
     }
 
@@ -1099,6 +1192,7 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::RgoLevel => self.apply_rgo_level_colors(),
             MapMode::BuildingLevels => self.apply_building_levels_colors(),
             MapMode::PossibleTax => self.apply_possible_tax_colors(),
+            MapMode::TaxGap => self.apply_tax_gap_colors(),
             MapMode::Religion => self.apply_religion_colors(),
             MapMode::StateEfficacy => self.apply_state_efficacy_colors(),
         }
@@ -1359,6 +1453,40 @@ impl<'bump> Eu5Workspace<'bump> {
         self.location_arrays.copy_primary_to_secondary();
     }
 
+    fn apply_tax_gap_colors(&mut self) {
+        let (global_min, global_max) =
+            self.gradient_global_range(|_, loc| loc.possible_tax - loc.tax);
+        let global_max_abs = global_min.abs().max(global_max.abs());
+        let (filtered_min, filtered_max) = if self.selection_state.is_empty() {
+            (global_min, global_max)
+        } else {
+            self.gradient_range(|_, loc| loc.possible_tax - loc.tax)
+        };
+        let filtered_max_abs = filtered_min.abs().max(filtered_max.abs());
+
+        let mut color_data = Vec::new();
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let max = if self.selection_state.contains(location_idx) {
+                filtered_max_abs
+            } else {
+                global_max_abs
+            };
+            color_data.push((idx, self.location_tax_gap_color(location_idx, max)));
+        }
+
+        for (idx, color) in color_data {
+            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
+                continue;
+            };
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
+            gpu_location.set_primary_color(color);
+        }
+
+        self.location_arrays.copy_primary_to_secondary();
+    }
+
     fn apply_state_efficacy_colors(&mut self) {
         let (global_max, filtered_max) =
             self.gradient_domain(|_, loc| loc.control * loc.development);
@@ -1472,6 +1600,9 @@ impl<'bump> Eu5Workspace<'bump> {
             },
             MapMode::PossibleTax => HoverStat::PossibleTax {
                 value: location.possible_tax,
+            },
+            MapMode::TaxGap => HoverStat::TaxGap {
+                value: location.possible_tax - location.tax,
             },
             MapMode::Religion => location
                 .religion
@@ -1608,6 +1739,18 @@ impl<'bump> Eu5Workspace<'bump> {
                 }
 
                 HoverStat::PossibleTax { value: total }
+            }
+            MapMode::TaxGap => {
+                let mut total = 0.0;
+
+                for entry in self.gamestate().locations.iter() {
+                    let location = entry.location();
+                    if location.owner == owner_id {
+                        total += location.possible_tax - location.tax;
+                    }
+                }
+
+                HoverStat::TaxGap { value: total }
             }
             MapMode::Religion => self
                 .gamestate()
@@ -3108,6 +3251,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     development: loc.development,
                     population,
                     control: loc.control,
+                    tax: loc.tax,
                     possible_tax: loc.possible_tax,
                     owner: self.owner_ref_for_location(loc),
                     market: self.market_ref_for_location(loc),
@@ -3207,6 +3351,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 terrain,
                 religion,
                 raw_material,
+                tax: loc.tax,
                 possible_tax: loc.possible_tax,
                 rgo_level: loc.rgo_level,
                 market_access: loc.market_access,
@@ -3271,6 +3416,7 @@ impl<'bump> Eu5Workspace<'bump> {
             total_development: f64,
             total_population: u32,
             total_possible_tax: f64,
+            total_tax_gap: f64,
             total_control: f64,
             total_rgo_level: f64,
             total_building_levels: f64,
@@ -3295,6 +3441,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     agg.total_development += loc.development;
                     agg.total_population += population;
                     agg.total_possible_tax += loc.possible_tax;
+                    agg.total_tax_gap += loc.possible_tax - loc.tax;
                     agg.total_control += loc.control;
                     agg.total_rgo_level += loc.rgo_level;
                     agg.total_building_levels += bl;
@@ -3306,6 +3453,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 agg.total_development += loc.development;
                 agg.total_population += population;
                 agg.total_possible_tax += loc.possible_tax;
+                agg.total_tax_gap += loc.possible_tax - loc.tax;
                 agg.total_control += loc.control;
                 agg.total_rgo_level += loc.rgo_level;
                 agg.total_building_levels += bl;
@@ -3329,6 +3477,7 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::RgoLevel => "RGO Level",
             MapMode::BuildingLevels => "Building Levels",
             MapMode::PossibleTax | MapMode::Markets => "Possible Tax",
+            MapMode::TaxGap => "Tax Gap",
             MapMode::StateEfficacy => "State Efficacy",
             _ => "Development",
         };
@@ -3346,6 +3495,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 MapMode::RgoLevel => agg.total_rgo_level,
                 MapMode::BuildingLevels => agg.total_building_levels,
                 MapMode::PossibleTax | MapMode::Markets => agg.total_possible_tax,
+                MapMode::TaxGap => agg.total_tax_gap,
                 MapMode::StateEfficacy => agg.total_efficacy,
                 _ => agg.total_development,
             }
@@ -3419,6 +3569,7 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::RgoLevel => "RGO Level",
             MapMode::BuildingLevels => "Building Levels",
             MapMode::PossibleTax | MapMode::Markets => "Possible Tax",
+            MapMode::TaxGap => "Tax Gap",
             MapMode::StateEfficacy => "State Efficacy",
             _ => "Development",
         };
@@ -3435,6 +3586,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 MapMode::RgoLevel => loc.rgo_level,
                 MapMode::BuildingLevels => building_levels[idx],
                 MapMode::PossibleTax | MapMode::Markets => loc.possible_tax,
+                MapMode::TaxGap => loc.possible_tax - loc.tax,
                 MapMode::StateEfficacy => loc.control * loc.development,
                 _ => loc.development,
             };
@@ -3610,10 +3762,8 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    /// Possible-tax insight: per-country realized vs ceiling aggregates and top locations
+    /// Possible-tax insight: per-country ceiling aggregates and top locations
     /// by possible tax, over the current selection (or all locations when empty).
-    /// Only country-owned locations contribute to `current_tax_base`; market-anchored
-    /// locations are skipped on the realized side because markets have no `current_tax_base`.
     pub fn calculate_possible_tax_insight(&self) -> PossibleTaxInsightData {
         #[derive(Default)]
         struct TaxAgg {
@@ -3653,28 +3803,17 @@ impl<'bump> Eu5Workspace<'bump> {
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
                 let eref = self.entity_ref_from_country_idx(cidx)?;
-                let current_tax_base = self
-                    .gamestate
-                    .countries
-                    .index(cidx)
-                    .data()
-                    .map(|d| d.current_tax_base)
-                    .unwrap_or(0.0);
-                let tax_gap = agg.total_possible_tax - current_tax_base;
-                let realization_ratio = if agg.total_possible_tax > 0.0 {
-                    current_tax_base / agg.total_possible_tax
-                } else {
-                    0.0
-                };
                 Some(CountryPossibleTax {
                     anchor_location_idx: eref.anchor_location_idx,
                     tag: eref.tag,
                     name: eref.name,
                     color_hex: eref.color_hex,
-                    current_tax_base,
                     total_possible_tax: agg.total_possible_tax,
-                    tax_gap,
-                    realization_ratio,
+                    avg_possible_tax: if agg.count > 0 {
+                        agg.total_possible_tax / agg.count as f64
+                    } else {
+                        0.0
+                    },
                     location_count: agg.count,
                     total_population: agg.pop,
                 })
@@ -3709,6 +3848,112 @@ impl<'bump> Eu5Workspace<'bump> {
         let distribution = self.selection_location_distribution();
 
         PossibleTaxInsightData {
+            countries,
+            top_locations,
+            distribution,
+        }
+    }
+
+    pub fn calculate_tax_gap_insight(&self) -> TaxGapInsightData {
+        #[derive(Default)]
+        struct TaxAgg {
+            total_tax: f64,
+            total_possible_tax: f64,
+            count: u32,
+            pop: u32,
+        }
+
+        let mut aggregates: FxHashMap<CountryId, TaxAgg> = FxHashMap::default();
+        let mut all_locs: Vec<(LocationIdx, f64, f64, f64, u32, f64, f64)> = Vec::new();
+
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            if loc.owner.is_dummy() {
+                continue;
+            }
+            if !self.selection_state.is_empty() && !self.selection_state.contains(entry.idx()) {
+                continue;
+            }
+
+            let tax = loc.tax;
+            let ptax = loc.possible_tax;
+            let gap = ptax - tax;
+            let pop = self.gamestate.location_population(loc) as u32;
+            all_locs.push((
+                entry.idx(),
+                tax,
+                ptax,
+                gap,
+                pop,
+                loc.control,
+                loc.development,
+            ));
+
+            if let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) {
+                let agg = aggregates.entry(owner_id).or_default();
+                agg.total_tax += tax;
+                agg.total_possible_tax += ptax;
+                agg.count += 1;
+                agg.pop += pop;
+            }
+        }
+
+        let mut countries: Vec<CountryTaxGap> = aggregates
+            .into_iter()
+            .filter_map(|(cid, agg)| {
+                let cidx = self.gamestate.countries.get(cid)?;
+                let eref = self.entity_ref_from_country_idx(cidx)?;
+                let tax_gap = agg.total_possible_tax - agg.total_tax;
+                let realization_ratio = if agg.total_possible_tax > 0.0 {
+                    agg.total_tax / agg.total_possible_tax
+                } else {
+                    0.0
+                };
+                Some(CountryTaxGap {
+                    anchor_location_idx: eref.anchor_location_idx,
+                    tag: eref.tag,
+                    name: eref.name,
+                    color_hex: eref.color_hex,
+                    current_tax_base: agg.total_tax,
+                    total_possible_tax: agg.total_possible_tax,
+                    tax_gap,
+                    realization_ratio,
+                    location_count: agg.count,
+                    total_population: agg.pop,
+                })
+            })
+            .collect();
+        countries.sort_by(|a, b| {
+            b.tax_gap
+                .total_cmp(&a.tax_gap)
+                .then_with(|| a.tag.cmp(&b.tag))
+        });
+
+        all_locs.sort_by(|a, b| b.3.total_cmp(&a.3));
+        const TOP_LOCATIONS: usize = 50;
+        let top_locations: Vec<TaxGapTopLocation> = all_locs
+            .iter()
+            .take(TOP_LOCATIONS)
+            .filter_map(|&(idx, tax, ptax, gap, pop, ctrl, dev)| {
+                let loc = self.gamestate.locations.index(idx).location();
+                let owner = self.owner_ref_for_location(loc)?;
+                Some(TaxGapTopLocation {
+                    location_idx: idx.value(),
+                    name: self.location_name(idx).to_string(),
+                    tax,
+                    possible_tax: ptax,
+                    tax_gap: gap,
+                    development: dev,
+                    control: ctrl,
+                    population: pop,
+                    owner,
+                })
+            })
+            .collect();
+
+        let distribution = self.selection_location_distribution();
+
+        TaxGapInsightData {
             countries,
             top_locations,
             distribution,
@@ -3765,7 +4010,6 @@ impl<'bump> Eu5Workspace<'bump> {
         let is_empty = self.selection_state.is_empty();
         let mut total_possible_tax = 0.0f64;
         let mut location_count = 0u32;
-        let mut country_ids: FnvHashSet<CountryId> = FnvHashSet::default();
 
         for entry in self.gamestate.locations.iter() {
             let loc = entry.location();
@@ -3777,27 +4021,49 @@ impl<'bump> Eu5Workspace<'bump> {
             }
             total_possible_tax += loc.possible_tax;
             location_count += 1;
-            if let Some(id) = loc.owner.real_id().map(|r| r.country_id()) {
-                country_ids.insert(id);
-            }
         }
-
-        let current_tax_base: f64 = country_ids
-            .iter()
-            .filter_map(|&cid| {
-                let cidx = self.gamestate.countries.get(cid)?;
-                self.gamestate
-                    .countries
-                    .index(cidx)
-                    .data()
-                    .map(|d| d.current_tax_base)
-            })
-            .sum();
 
         PossibleTaxScope {
             location_count,
-            current_tax_base,
             total_possible_tax,
+            avg_possible_tax: if location_count > 0 {
+                total_possible_tax / location_count as f64
+            } else {
+                0.0
+            },
+            is_empty,
+        }
+    }
+
+    pub fn get_tax_gap_scope(&self) -> TaxGapScope {
+        let is_empty = self.selection_state.is_empty();
+        let mut total_tax = 0.0f64;
+        let mut total_possible_tax = 0.0f64;
+        let mut location_count = 0u32;
+
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            if loc.owner.is_dummy() {
+                continue;
+            }
+            if !is_empty && !self.selection_state.contains(entry.idx()) {
+                continue;
+            }
+            total_tax += loc.tax;
+            total_possible_tax += loc.possible_tax;
+            location_count += 1;
+        }
+
+        let tax_gap = total_possible_tax - total_tax;
+
+        TaxGapScope {
+            location_count,
+            tax_gap,
+            realization_ratio: if total_possible_tax > 0.0 {
+                total_tax / total_possible_tax
+            } else {
+                0.0
+            },
             is_empty,
         }
     }

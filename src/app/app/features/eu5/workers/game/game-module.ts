@@ -20,6 +20,8 @@ import type {
   DevelopmentInsightData,
   PossibleTaxInsightData,
   PossibleTaxScope,
+  TaxGapInsightData,
+  TaxGapScope,
   ScopeSummary,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
@@ -344,6 +346,12 @@ export const createGame = async (
     },
     getPossibleTaxScope: (): PossibleTaxScope => {
       return app.get_possible_tax_scope();
+    },
+    getTaxGapInsight: (): TaxGapInsightData => {
+      return app.get_tax_gap_insight();
+    },
+    getTaxGapScope: (): TaxGapScope => {
+      return app.get_tax_gap_scope();
     },
     getScopeSummary: (): ScopeSummary => {
       return app.get_scope_summary();

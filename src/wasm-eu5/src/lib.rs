@@ -6,9 +6,10 @@ use eu5app::entity_profile::{
 };
 use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
+use eu5app::selection_views::HoverDisplayData;
 use eu5app::selection_views::{
-    DevelopmentInsightData, EntityBreakdownData, HoverDisplayData, LocationDistribution,
-    PossibleTaxInsightData, PossibleTaxScope, ScopeSummary, StateEfficacyTopLocation,
+    DevelopmentInsightData, EntityBreakdownData, LocationDistribution, PossibleTaxInsightData,
+    PossibleTaxScope, ScopeSummary, StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope,
 };
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
@@ -34,6 +35,7 @@ pub enum MapMode {
     RgoLevel,
     BuildingLevels,
     PossibleTax,
+    TaxGap,
     Religion,
     StateEfficacy,
 }
@@ -110,6 +112,7 @@ impl From<MapMode> for Eu5MapMode {
             MapMode::RgoLevel => Eu5MapMode::RgoLevel,
             MapMode::BuildingLevels => Eu5MapMode::BuildingLevels,
             MapMode::PossibleTax => Eu5MapMode::PossibleTax,
+            MapMode::TaxGap => Eu5MapMode::TaxGap,
             MapMode::Religion => Eu5MapMode::Religion,
             MapMode::StateEfficacy => Eu5MapMode::StateEfficacy,
         }
@@ -127,6 +130,7 @@ impl From<Eu5MapMode> for MapMode {
             Eu5MapMode::RgoLevel => MapMode::RgoLevel,
             Eu5MapMode::BuildingLevels => MapMode::BuildingLevels,
             Eu5MapMode::PossibleTax => MapMode::PossibleTax,
+            Eu5MapMode::TaxGap => MapMode::TaxGap,
             Eu5MapMode::Religion => MapMode::Religion,
             Eu5MapMode::StateEfficacy => MapMode::StateEfficacy,
         }
@@ -413,6 +417,7 @@ impl Eu5App {
             Eu5MapMode::RgoLevel => (0.0, session.max_rgo_level()),
             Eu5MapMode::BuildingLevels => (0.0, session.max_building_levels()),
             Eu5MapMode::PossibleTax => (0.0, session.max_possible_tax()),
+            Eu5MapMode::TaxGap => session.tax_gap_range(),
             Eu5MapMode::StateEfficacy => (0.0, session.max_state_efficacy()),
             Eu5MapMode::Control => (0.0, 1.0),
             // For non-numeric modes (Political, Markets, Religion), return default range
@@ -778,6 +783,13 @@ impl Eu5App {
         self.app().calculate_possible_tax_insight()
     }
 
+    /// Tax-gap insight data: per-country realized vs ceiling aggregates and
+    /// top locations by signed gap.
+    #[wasm_bindgen]
+    pub fn get_tax_gap_insight(&self) -> TaxGapInsightData {
+        self.app().calculate_tax_gap_insight()
+    }
+
     /// Scope summary: entity/location/population totals for the active selection,
     /// or world totals when no selection is active.
     #[wasm_bindgen]
@@ -790,6 +802,13 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_possible_tax_scope(&self) -> PossibleTaxScope {
         self.app().get_possible_tax_scope()
+    }
+
+    /// Tax-gap scope: location count, signed gap, and aggregate realization
+    /// ratio for the active selection or entire world.
+    #[wasm_bindgen]
+    pub fn get_tax_gap_scope(&self) -> TaxGapScope {
+        self.app().get_tax_gap_scope()
     }
 
     /// Entity header for a specific entity resolved from `anchor_location_idx`,

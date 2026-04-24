@@ -11,6 +11,7 @@ import { formatInt } from "@/lib/format";
 import { StateEfficacyInsight } from "./features/charts/StateEfficacy";
 import { DevelopmentInsight } from "./features/charts/DevelopmentInsight";
 import { PossibleTaxInsight } from "./features/charts/PossibleTax";
+import { TaxGapInsight } from "./features/charts/TaxGap";
 import type { StateEfficacyData, MapMode } from "@/wasm/wasm_eu5";
 import { EntityProfileRoot } from "./EntityProfile";
 import { MultiEntitySummaryPanel } from "./EntityProfile/MultiEntity/MultiEntitySummaryPanel";
@@ -89,6 +90,8 @@ function PanelContentInner() {
     content = <StateEfficacyInsight selectionKey={selectionKey} />;
   } else if (currentMapMode === "possibleTax") {
     content = <PossibleTaxInsight selectionKey={selectionKey} />;
+  } else if (currentMapMode === "taxGap") {
+    content = <TaxGapInsight selectionKey={selectionKey} />;
   } else if (locationCount === 1) {
     content = <EntityProfileRoot key="leaf" />;
   } else if (!isEmpty) {
@@ -241,6 +244,7 @@ const MODE_NAMES: Partial<Record<MapMode, string>> = {
   rgoLevel: "RGO Level",
   buildingLevels: "Building Levels",
   possibleTax: "Possible Tax",
+  taxGap: "Tax Gap",
   religion: "Religion",
   stateEfficacy: "State Efficacy",
 };
