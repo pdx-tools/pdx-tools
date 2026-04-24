@@ -104,6 +104,8 @@ type BarDatum = CountryTaxGap & {
   overperformed: number;
 };
 
+type ScatterDatum = [x: number, y: number];
+
 function countryTooltip(d: CountryTaxGap): string {
   return [
     `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
@@ -138,13 +140,27 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const categories = sorted.map((d) => d.tag);
     const showZoom = sorted.length > BAR_CAP;
 
-    const makeData = (field: keyof BarDatum) =>
-      sorted.map((d) => ({ ...d, value: d[field] as number }));
-
     return {
+      dataset: {
+        source: sorted,
+        dimensions: [
+          "name",
+          "tag",
+          "currentTaxBase",
+          "totalPossibleTax",
+          "taxGap",
+          "realizationRatio",
+          "locationCount",
+          "totalPopulation",
+          "anchorLocationIdx",
+          "colorHex",
+          "matched",
+          "untapped",
+          "overperformed",
+        ],
+      },
       grid: {
         left: 60,
         right: 20,
@@ -162,7 +178,6 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
       },
       yAxis: {
         type: "category",
-        data: categories,
         inverse: true,
         axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 44 },
         axisLine: { lineStyle: { color: axisColor } },
@@ -190,7 +205,10 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
           const arr = Array.isArray(params) ? params : [params];
           const first = arr[0];
           if (!first) return "";
-          const d = (first as unknown as { data: BarDatum }).data;
+          const dataIndex = (first as { dataIndex?: number }).dataIndex;
+          if (dataIndex == null) return "";
+          const d = sorted[dataIndex];
+          if (!d) return "";
           return countryTooltip(d);
         },
       },
@@ -199,7 +217,7 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
           name: "Location Tax",
           type: "bar",
           stack: "tax",
-          data: makeData("matched"),
+          encode: { x: "matched", y: "tag" },
           itemStyle: { color: isDark ? "#475569" : "#94a3b8" },
           emphasis: { focus: "series" },
         },
@@ -207,7 +225,7 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
           name: "Untapped",
           type: "bar",
           stack: "tax",
-          data: makeData("untapped"),
+          encode: { x: "untapped", y: "tag" },
           itemStyle: { color: isDark ? "#38bdf8" : "#0ea5e9" },
           emphasis: { focus: "series" },
         },
@@ -215,7 +233,7 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
           name: "Over-realized",
           type: "bar",
           stack: "tax",
-          data: makeData("overperformed"),
+          encode: { x: "overperformed", y: "tag" },
           itemStyle: { color: isDark ? "#fbbf24" : "#f59e0b" },
           emphasis: { focus: "series" },
         },
@@ -226,7 +244,8 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
   const handleInit = useCallback(
     (chart: echarts.ECharts) => {
       chart.on("click", (params) => {
-        const d = (params as unknown as { data?: BarDatum }).data;
+        const dataIndex = (params as { dataIndex?: number }).dataIndex;
+        const d = dataIndex == null ? undefined : sorted[dataIndex];
         if (d?.anchorLocationIdx == null) return;
         const idx = d.anchorLocationIdx;
         if ((params.event?.event as MouseEvent)?.shiftKey) {
@@ -239,7 +258,7 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
         }
       });
     },
-    [engine, panToEntity],
+    [engine, panToEntity, sorted],
   );
 
   if (!hasGap) {
@@ -266,21 +285,7 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
   );
 
   const scatterData = useMemo(
-    () =>
-      countries.map((c) => ({
-        value: [c.currentTaxBase, c.totalPossibleTax] as [number, number],
-        tag: c.tag,
-        name: c.name,
-        locationCount: c.locationCount,
-        currentTaxBase: c.currentTaxBase,
-        totalPossibleTax: c.totalPossibleTax,
-        taxGap: c.taxGap,
-        realizationRatio: c.realizationRatio,
-        totalPopulation: c.totalPopulation,
-        color: c.colorHex,
-        anchorLocationIdx: c.anchorLocationIdx,
-        symbolSize: Math.max(6, Math.min(28, Math.sqrt(c.locationCount))),
-      })),
+    (): ScatterDatum[] => countries.map((c) => [c.currentTaxBase, c.totalPossibleTax]),
     [countries],
   );
 
@@ -330,7 +335,10 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
         trigger: "item",
         formatter: (params) => {
           if (Array.isArray(params)) return "";
-          const d = params.data as (typeof scatterData)[number];
+          const dataIndex = params.dataIndex;
+          if (dataIndex == null) return "";
+          const d = countries[dataIndex];
+          if (!d) return "";
           return [
             `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
             `Location Tax: ${formatFloat(d.currentTaxBase, 2)}`,
@@ -359,23 +367,21 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
           type: "scatter",
           data: scatterData,
           symbolSize: (_val, params) => {
-            const d = params.data as (typeof scatterData)[number];
-            return d.symbolSize;
+            const d = countries[params.dataIndex];
+            return d ? Math.max(6, Math.min(28, Math.sqrt(d.locationCount))) : 6;
           },
           itemStyle: {
             color: (params) => {
-              if (Array.isArray(params)) return isDark ? "#93c5fd" : "#3b82f6";
-              const d = params.data as (typeof scatterData)[number];
-              return d.color ?? (isDark ? "#93c5fd" : "#3b82f6");
+              const d = countries[params.dataIndex];
+              return d?.colorHex ?? (isDark ? "#93c5fd" : "#3b82f6");
             },
             opacity: 0.8,
           },
           label: {
             show: true,
             formatter: (params) => {
-              if (Array.isArray(params)) return "";
-              const d = params.data as (typeof scatterData)[number];
-              return topCountries.has(d.tag) || countries.length <= 5 ? d.tag : "";
+              const d = countries[params.dataIndex];
+              return d && (topCountries.has(d.tag) || countries.length <= 5) ? d.tag : "";
             },
             position: "top",
             color: isDark ? "#e2e8f0" : "#1e293b",
@@ -386,13 +392,13 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
         },
       ],
     };
-  }, [scatterData, topCountries, isDark, countries.length, diagonalMax]);
+  }, [scatterData, topCountries, isDark, countries, diagonalMax]);
 
   const handleInit = useCallback(
     (chart: echarts.ECharts) => {
       chart.on("click", (params) => {
-        if (Array.isArray(params.data)) return;
-        const d = params.data as (typeof scatterData)[number];
+        const dataIndex = (params as { dataIndex?: number }).dataIndex;
+        const d = dataIndex == null ? undefined : countries[dataIndex];
         if (d?.anchorLocationIdx == null) return;
         const idx = d.anchorLocationIdx;
         if ((params.event?.event as MouseEvent)?.shiftKey) {
@@ -405,7 +411,7 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
         }
       });
     },
-    [engine, panToEntity],
+    [engine, panToEntity, countries],
   );
 
   return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;

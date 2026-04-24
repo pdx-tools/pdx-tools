@@ -7,6 +7,7 @@ import {
   LegendComponent,
   TitleComponent,
   DataZoomComponent,
+  DatasetComponent,
   GraphicComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
@@ -24,6 +25,7 @@ import type {
   LegendComponentOption,
   TitleComponentOption,
   DataZoomComponentOption,
+  DatasetComponentOption,
   GraphicComponentOption,
 } from "echarts/components";
 
@@ -36,6 +38,7 @@ echarts.use([
   TreemapChart,
   TooltipComponent,
   DataZoomComponent,
+  DatasetComponent,
   GraphicComponent,
   GridComponent,
   LegendComponent,
@@ -55,6 +58,7 @@ export type EChartsOption = ComposeOption<
   | LegendComponentOption
   | TitleComponentOption
   | DataZoomComponentOption
+  | DatasetComponentOption
   | GraphicComponentOption
 >;
 
