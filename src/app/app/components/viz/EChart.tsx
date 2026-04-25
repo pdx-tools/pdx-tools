@@ -1,6 +1,13 @@
 import { useEffect, useRef, memo } from "react";
 import * as echarts from "echarts/core";
-import { PieChart, BarChart, LineChart, ScatterChart, TreemapChart } from "echarts/charts";
+import {
+  PieChart,
+  BarChart,
+  LineChart,
+  ScatterChart,
+  TreemapChart,
+  HeatmapChart,
+} from "echarts/charts";
 import {
   TooltipComponent,
   GridComponent,
@@ -9,6 +16,7 @@ import {
   DataZoomComponent,
   DatasetComponent,
   GraphicComponent,
+  VisualMapComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import type { ComposeOption } from "echarts/core";
@@ -18,6 +26,7 @@ import type {
   LineSeriesOption,
   ScatterSeriesOption,
   TreemapSeriesOption,
+  HeatmapSeriesOption,
 } from "echarts/charts";
 import type {
   TooltipComponentOption,
@@ -27,6 +36,7 @@ import type {
   DataZoomComponentOption,
   DatasetComponentOption,
   GraphicComponentOption,
+  VisualMapComponentOption,
 } from "echarts/components";
 
 // Register the required components and charts
@@ -36,6 +46,7 @@ echarts.use([
   LineChart,
   ScatterChart,
   TreemapChart,
+  HeatmapChart,
   TooltipComponent,
   DataZoomComponent,
   DatasetComponent,
@@ -43,6 +54,7 @@ echarts.use([
   GridComponent,
   LegendComponent,
   TitleComponent,
+  VisualMapComponent,
   CanvasRenderer,
 ]);
 
@@ -53,6 +65,7 @@ export type EChartsOption = ComposeOption<
   | LineSeriesOption
   | ScatterSeriesOption
   | TreemapSeriesOption
+  | HeatmapSeriesOption
   | TooltipComponentOption
   | GridComponentOption
   | LegendComponentOption
@@ -60,6 +73,7 @@ export type EChartsOption = ComposeOption<
   | DataZoomComponentOption
   | DatasetComponentOption
   | GraphicComponentOption
+  | VisualMapComponentOption
 >;
 
 export interface EChartProps {

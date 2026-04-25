@@ -8,8 +8,9 @@ use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
 use eu5app::selection_views::HoverDisplayData;
 use eu5app::selection_views::{
-    DevelopmentInsightData, EntityBreakdownData, LocationDistribution, PossibleTaxInsightData,
-    PossibleTaxScope, ScopeSummary, StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope,
+    DevelopmentInsightData, EntityBreakdownData, LocationDistribution, MarketInsightData,
+    PossibleTaxInsightData, PossibleTaxScope, ScopeSummary, StateEfficacyTopLocation,
+    TaxGapInsightData, TaxGapScope,
 };
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
@@ -809,6 +810,13 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_tax_gap_scope(&self) -> TaxGapScope {
         self.app().get_tax_gap_scope()
+    }
+
+    /// Market insight data: scoped goods pressure, scoped market stress,
+    /// and top production-opportunity locations for the current filter.
+    #[wasm_bindgen]
+    pub fn get_market_insight(&self) -> MarketInsightData {
+        self.app().calculate_market_insight()
     }
 
     /// Entity header for a specific entity resolved from `anchor_location_idx`,

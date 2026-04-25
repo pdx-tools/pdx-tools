@@ -206,6 +206,106 @@ pub struct TaxGapScope {
     pub is_empty: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct MarketScopeSummary {
+    pub location_count: u32,
+    pub market_count: u32,
+    pub good_count: u32,
+    pub market_value: f64,
+    pub shortage_value: f64,
+    pub surplus_value: f64,
+    pub avg_market_access: f64,
+    pub is_empty: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct ScopedGoodSummary {
+    pub name: String,
+    pub supply: f64,
+    pub demand: f64,
+    pub total_taken: f64,
+    pub weighted_price: f64,
+    pub shortage: f64,
+    pub surplus: f64,
+    pub shortage_value: f64,
+    pub surplus_value: f64,
+    pub balance_ratio: f64,
+    pub impact: f64,
+    pub stockpile: f64,
+    pub market_count: u32,
+    pub producing_location_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct ScopedMarketSummary {
+    pub anchor_location_idx: u32,
+    pub center_name: String,
+    pub color_hex: String,
+    pub market_value: f64,
+    pub shortage_pressure: f64,
+    pub surplus_pressure: f64,
+    pub total_taken: f64,
+    pub scoped_location_count: u32,
+    pub member_country_count: u32,
+    pub avg_market_access: f64,
+    pub good_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct ProductionLocationSummary {
+    pub location_idx: u32,
+    pub name: String,
+    pub owner: EntityRef,
+    pub market_center_name: Option<String>,
+    pub raw_material: Option<String>,
+    pub rgo_level: f64,
+    pub market_access: f64,
+    pub development: f64,
+    pub population: u32,
+    pub good_price: f64,
+    pub good_shortage_value: f64,
+    pub production_opportunity: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct GoodMarketBalanceCell {
+    pub good: String,
+    pub market_anchor_location_idx: u32,
+    pub supply: f64,
+    pub demand: f64,
+    pub price: f64,
+    pub total_taken: f64,
+    pub balance_ratio: f64,
+    pub imbalance_value: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct MarketInsightData {
+    pub scope: MarketScopeSummary,
+    pub goods: Vec<ScopedGoodSummary>,
+    pub markets: Vec<ScopedMarketSummary>,
+    pub good_market_cells: Vec<GoodMarketBalanceCell>,
+    pub top_production_locations: Vec<ProductionLocationSummary>,
+}
+
 /// Aggregated totals for the current scope: the active selection when non-empty,
 /// or the entire world when the filter is empty.
 #[derive(Debug, Clone, Serialize, Deserialize)]

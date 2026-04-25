@@ -11,8 +11,10 @@ use crate::selection::{
 use crate::selection_views::{
     CountryDevSummary, CountryPossibleTax, CountryTaxGap, DevTopLocation, DevelopmentInsightData,
     DistributionBucket, EntityBreakdownData, EntityBreakdownRow, HoverDisplayData, HoverStat,
-    LocationDistribution, PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation,
-    ScopeSummary, StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope, TaxGapTopLocation,
+    LocationDistribution, MarketInsightData, MarketScopeSummary, PossibleTaxInsightData,
+    PossibleTaxScope, PossibleTaxTopLocation, ProductionLocationSummary, ScopeSummary,
+    ScopedGoodSummary, ScopedMarketSummary, StateEfficacyTopLocation, TaxGapInsightData,
+    TaxGapScope, TaxGapTopLocation,
 };
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap};
@@ -3957,6 +3959,348 @@ impl<'bump> Eu5Workspace<'bump> {
             countries,
             top_locations,
             distribution,
+        }
+    }
+
+    /// Market insight: scoped per-good and per-market aggregates that describe
+    /// where the selection's economy is constrained, plus a ranked list of top
+    /// production-opportunity locations. Scoped markets are markets whose center
+    /// location sits inside the current location filter (or every market if the
+    /// selection is empty). Production-opportunity rows only include locations
+    /// in the current scope.
+    pub fn calculate_market_insight(&self) -> MarketInsightData {
+        use eu5save::models::LocationId;
+
+        let is_empty_selection = self.selection_state.is_empty();
+        let in_scope = |idx: LocationIdx| is_empty_selection || self.selection_state.contains(idx);
+
+        #[derive(Default)]
+        struct GoodAgg {
+            supply: f64,
+            demand: f64,
+            total_taken: f64,
+            price_weighted_numer: f64,
+            price_weighted_denom: f64,
+            shortage: f64,
+            surplus: f64,
+            shortage_value: f64,
+            surplus_value: f64,
+            max_impact: f64,
+            stockpile: f64,
+            market_count: u32,
+            producing_location_count: u32,
+        }
+
+        struct MarketAgg<'a> {
+            center_idx: LocationIdx,
+            name: String,
+            color_hex: String,
+            market_value: f64,
+            shortage_pressure: f64,
+            surplus_pressure: f64,
+            total_taken: f64,
+            good_count: u32,
+            member_locations: Vec<(LocationIdx, &'a eu5save::models::Location<'a>)>,
+        }
+
+        let mut good_aggs: FxHashMap<RawMaterialsName, GoodAgg> = FxHashMap::default();
+        let mut market_aggs: Vec<MarketAgg> = Vec::new();
+        let mut good_price_by_market: FxHashMap<(u32, RawMaterialsName), (f64, f64, f64)> =
+            FxHashMap::default();
+        let mut good_market_cells: Vec<crate::selection_views::GoodMarketBalanceCell> = Vec::new();
+
+        let mut total_market_value = 0.0f64;
+        let mut total_shortage_value = 0.0f64;
+        let mut total_surplus_value = 0.0f64;
+
+        let lookup_center_idx = |center: LocationId| self.gamestate.locations.get(center);
+
+        for market in self.gamestate.market_manager.database.iter() {
+            let Some(center_idx) = lookup_center_idx(market.center) else {
+                continue;
+            };
+            if !in_scope(center_idx) {
+                continue;
+            }
+
+            let mut market_value = 0.0f64;
+            let mut shortage_pressure = 0.0f64;
+            let mut surplus_pressure = 0.0f64;
+            let mut total_taken = 0.0f64;
+
+            for good in market.goods {
+                let shortage = (good.demand - good.supply).max(0.0);
+                let surplus = (good.supply - good.demand).max(0.0);
+                let shortage_value = shortage * good.price;
+                let surplus_value = surplus * good.price;
+                let good_value = good.price * good.total_taken;
+
+                market_value += good_value;
+                shortage_pressure += shortage_value;
+                surplus_pressure += surplus_value;
+                total_taken += good.total_taken;
+
+                let agg = good_aggs.entry(good.good).or_default();
+                agg.supply += good.supply;
+                agg.demand += good.demand;
+                agg.total_taken += good.total_taken;
+                agg.price_weighted_numer += good.price * good.total_taken;
+                agg.price_weighted_denom += good.total_taken;
+                agg.shortage += shortage;
+                agg.surplus += surplus;
+                agg.shortage_value += shortage_value;
+                agg.surplus_value += surplus_value;
+                if good.impact > agg.max_impact {
+                    agg.max_impact = good.impact;
+                }
+                agg.stockpile += good.stockpile;
+                agg.market_count += 1;
+
+                good_price_by_market.insert(
+                    (center_idx.value(), good.good),
+                    (good.price, shortage_value, good.demand),
+                );
+
+                let balance_ratio = if good.demand > 0.0 {
+                    good.supply / good.demand
+                } else {
+                    0.0
+                };
+                let imbalance_value = (good.supply - good.demand) * good.price;
+                good_market_cells.push(crate::selection_views::GoodMarketBalanceCell {
+                    good: good.good.to_string(),
+                    market_anchor_location_idx: center_idx.value(),
+                    supply: good.supply,
+                    demand: good.demand,
+                    price: good.price,
+                    total_taken: good.total_taken,
+                    balance_ratio,
+                    imbalance_value,
+                });
+            }
+
+            total_market_value += market_value;
+            total_shortage_value += shortage_pressure;
+            total_surplus_value += surplus_pressure;
+
+            let color_hex = format!(
+                "#{:02x}{:02x}{:02x}",
+                market.color.0[0], market.color.0[1], market.color.0[2]
+            );
+            let name = format!("{} Market", self.location_name(center_idx));
+
+            market_aggs.push(MarketAgg {
+                center_idx,
+                name,
+                color_hex,
+                market_value,
+                shortage_pressure,
+                surplus_pressure,
+                total_taken,
+                good_count: market.goods.len() as u32,
+                member_locations: Vec::new(),
+            });
+        }
+
+        let market_center_idx_set: FxHashMap<u32, usize> = market_aggs
+            .iter()
+            .enumerate()
+            .map(|(i, m)| (m.center_idx.value(), i))
+            .collect();
+
+        let mut scoped_location_count = 0u32;
+        let mut market_access_sum = 0.0f64;
+        let mut market_access_count = 0u32;
+        let mut production_candidates: Vec<(LocationIdx, &eu5save::models::Location)> = Vec::new();
+        let mut producing_location_counts: FxHashMap<RawMaterialsName, u32> = FxHashMap::default();
+
+        for entry in self.gamestate.locations.iter() {
+            let idx = entry.idx();
+            if !in_scope(idx) {
+                continue;
+            }
+            let loc = entry.location();
+            if loc.owner.is_dummy() {
+                continue;
+            }
+            scoped_location_count += 1;
+            market_access_sum += loc.market_access;
+            market_access_count += 1;
+
+            if let Some(market_id) = loc.market
+                && let Some(market) = self.gamestate.market_manager.get(market_id)
+                && let Some(center_idx) = lookup_center_idx(market.center)
+                && let Some(&market_i) = market_center_idx_set.get(&center_idx.value())
+            {
+                market_aggs[market_i].member_locations.push((idx, loc));
+            }
+
+            if let Some(rm) = loc.raw_material {
+                *producing_location_counts.entry(rm).or_insert(0) += 1;
+                production_candidates.push((idx, loc));
+            }
+        }
+
+        for (name, count) in &producing_location_counts {
+            if let Some(agg) = good_aggs.get_mut(name) {
+                agg.producing_location_count = *count;
+            }
+        }
+
+        let mut goods: Vec<ScopedGoodSummary> = good_aggs
+            .into_iter()
+            .map(|(name, agg)| {
+                let weighted_price = if agg.price_weighted_denom > 0.0 {
+                    agg.price_weighted_numer / agg.price_weighted_denom
+                } else {
+                    0.0
+                };
+                let balance_ratio = if agg.demand > 0.0 {
+                    agg.supply / agg.demand
+                } else {
+                    0.0
+                };
+                ScopedGoodSummary {
+                    name: name.to_string(),
+                    supply: agg.supply,
+                    demand: agg.demand,
+                    total_taken: agg.total_taken,
+                    weighted_price,
+                    shortage: agg.shortage,
+                    surplus: agg.surplus,
+                    shortage_value: agg.shortage_value,
+                    surplus_value: agg.surplus_value,
+                    balance_ratio,
+                    impact: agg.max_impact,
+                    stockpile: agg.stockpile,
+                    market_count: agg.market_count,
+                    producing_location_count: agg.producing_location_count,
+                }
+            })
+            .collect();
+        goods.sort_by(|a, b| {
+            let a_imbalance = a.shortage_value.max(a.surplus_value);
+            let b_imbalance = b.shortage_value.max(b.surplus_value);
+            b_imbalance
+                .total_cmp(&a_imbalance)
+                .then_with(|| a.name.cmp(&b.name))
+        });
+
+        let markets: Vec<ScopedMarketSummary> = {
+            let mut rows: Vec<ScopedMarketSummary> = market_aggs
+                .into_iter()
+                .map(|agg| {
+                    let mut access_sum = 0.0f64;
+                    let mut access_count = 0u32;
+                    let mut country_ids: FnvHashSet<CountryId> = FnvHashSet::default();
+                    for (_, loc) in &agg.member_locations {
+                        access_sum += loc.market_access;
+                        access_count += 1;
+                        if let Some(id) = loc.owner.real_id().map(|r| r.country_id()) {
+                            country_ids.insert(id);
+                        }
+                    }
+                    ScopedMarketSummary {
+                        anchor_location_idx: agg.center_idx.value(),
+                        center_name: agg.name,
+                        color_hex: agg.color_hex,
+                        market_value: agg.market_value,
+                        shortage_pressure: agg.shortage_pressure,
+                        surplus_pressure: agg.surplus_pressure,
+                        total_taken: agg.total_taken,
+                        scoped_location_count: agg.member_locations.len() as u32,
+                        member_country_count: country_ids.len() as u32,
+                        avg_market_access: if access_count > 0 {
+                            access_sum / access_count as f64
+                        } else {
+                            0.0
+                        },
+                        good_count: agg.good_count,
+                    }
+                })
+                .collect();
+            rows.sort_by(|a, b| {
+                b.market_value
+                    .total_cmp(&a.market_value)
+                    .then_with(|| a.center_name.cmp(&b.center_name))
+            });
+            rows
+        };
+
+        let mut production_rows: Vec<ProductionLocationSummary> = Vec::new();
+        for (idx, loc) in production_candidates {
+            let Some(owner) = self.owner_ref_for_location(loc) else {
+                continue;
+            };
+            let Some(raw_material) = loc.raw_material else {
+                continue;
+            };
+            let (market_center_name, center_location_idx_opt) = if let Some(market_id) = loc.market
+                && let Some(market) = self.gamestate.market_manager.get(market_id)
+                && let Some(center_idx) = lookup_center_idx(market.center)
+            {
+                (
+                    Some(self.location_name(center_idx).to_string()),
+                    Some(center_idx.value()),
+                )
+            } else {
+                (None, None)
+            };
+
+            let (price, shortage_value) = center_location_idx_opt
+                .and_then(|cidx| {
+                    good_price_by_market
+                        .get(&(cidx, raw_material))
+                        .map(|(p, sv, _)| (*p, *sv))
+                })
+                .unwrap_or((0.0, 0.0));
+
+            let opportunity = loc.rgo_level.max(0.0) * loc.market_access.max(0.0) * shortage_value;
+
+            production_rows.push(ProductionLocationSummary {
+                location_idx: idx.value(),
+                name: self.location_name(idx).to_string(),
+                owner,
+                market_center_name,
+                raw_material: Some(raw_material.to_string()),
+                rgo_level: loc.rgo_level,
+                market_access: loc.market_access,
+                development: loc.development,
+                population: self.gamestate.location_population(loc) as u32,
+                good_price: price,
+                good_shortage_value: shortage_value,
+                production_opportunity: opportunity,
+            });
+        }
+        production_rows.sort_by(|a, b| {
+            b.production_opportunity
+                .total_cmp(&a.production_opportunity)
+                .then_with(|| b.rgo_level.total_cmp(&a.rgo_level))
+        });
+        const TOP_PRODUCTION: usize = 50;
+        production_rows.truncate(TOP_PRODUCTION);
+
+        let scope = MarketScopeSummary {
+            location_count: scoped_location_count,
+            market_count: markets.len() as u32,
+            good_count: goods.len() as u32,
+            market_value: total_market_value,
+            shortage_value: total_shortage_value,
+            surplus_value: total_surplus_value,
+            avg_market_access: if market_access_count > 0 {
+                market_access_sum / market_access_count as f64
+            } else {
+                0.0
+            },
+            is_empty: is_empty_selection,
+        };
+
+        MarketInsightData {
+            scope,
+            goods,
+            markets,
+            good_market_cells,
+            top_production_locations: production_rows,
         }
     }
 
