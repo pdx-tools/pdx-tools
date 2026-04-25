@@ -14,10 +14,11 @@ use crate::selection_views::{
     CountryTaxGap, DevTopLocation, DevelopmentInsightData, DistributionBucket, EntityBreakdownData,
     EntityBreakdownRow, HoverDisplayData, HoverStat, LocationDistribution, MarketInsightData,
     MarketScopeSummary, PopulationConcentrationPoint, PopulationInsightData, PopulationRankSegment,
-    PopulationScopeSummary, PopulationTopLocation, PopulationTypeProfileRow,
-    PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation, ProductionLocationSummary,
-    ScopeSummary, ScopedCountryPopulation, ScopedGoodSummary, ScopedMarketSummary,
-    StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope, TaxGapTopLocation,
+    PopulationReligionShare, PopulationScopeSummary, PopulationTopLocation,
+    PopulationTypeProfileRow, PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation,
+    ProductionLocationSummary, ReligionInsightData, ReligionRow, ScopeSummary,
+    ScopedCountryPopulation, ScopedGoodSummary, ScopedMarketSummary, StateEfficacyTopLocation,
+    StateReligionRow, TaxGapInsightData, TaxGapScope, TaxGapTopLocation,
 };
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap, FxHashSet};
@@ -4564,6 +4565,191 @@ impl<'bump> Eu5Workspace<'bump> {
             concentration,
             top_locations,
             type_profile,
+        }
+    }
+
+    pub fn calculate_religion_insight(&self) -> ReligionInsightData {
+        use eu5save::models::ReligionId;
+
+        struct StateReligionAgg {
+            country_ids: FnvHashSet<CountryId>,
+            total_ruled_population: f64,
+            state_religion_population: f64,
+            population_by_religion: FxHashMap<ReligionId, f64>,
+        }
+
+        #[derive(Default)]
+        struct FollowerAgg {
+            total_followers: f64,
+            state_religion_population: f64,
+        }
+
+        let is_empty = self.selection_state.is_empty();
+        let mut country_state_religion: FxHashMap<CountryId, Option<ReligionId>> =
+            FxHashMap::default();
+        let mut state_rel_aggs: FxHashMap<ReligionId, StateReligionAgg> = FxHashMap::default();
+        let mut follower_aggs: FxHashMap<ReligionId, FollowerAgg> = FxHashMap::default();
+
+        for entry in self.gamestate.locations.iter() {
+            let idx = entry.idx();
+            if !is_empty && !self.selection_state.contains(idx) {
+                continue;
+            }
+
+            let loc = entry.location();
+            let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) else {
+                continue;
+            };
+
+            let state_religion_id = *country_state_religion.entry(owner_id).or_insert_with(|| {
+                self.gamestate
+                    .countries
+                    .get(owner_id)
+                    .and_then(|cidx| self.gamestate.countries.index(cidx).data())
+                    .and_then(|data| data.primary_religion)
+            });
+
+            for &pop_id in loc.population.pops {
+                let Some(pop) = self.gamestate.population.database.lookup(pop_id) else {
+                    continue;
+                };
+
+                let pop_size = (pop.size * 1000.0).floor();
+                let pop_rel_id = pop.religion;
+
+                let follower = follower_aggs.entry(pop_rel_id).or_default();
+                follower.total_followers += pop_size;
+
+                if let Some(sr_id) = state_religion_id {
+                    let agg = state_rel_aggs
+                        .entry(sr_id)
+                        .or_insert_with(|| StateReligionAgg {
+                            country_ids: FnvHashSet::default(),
+                            total_ruled_population: 0.0,
+                            state_religion_population: 0.0,
+                            population_by_religion: FxHashMap::default(),
+                        });
+                    agg.country_ids.insert(owner_id);
+                    agg.total_ruled_population += pop_size;
+                    *agg.population_by_religion.entry(pop_rel_id).or_default() += pop_size;
+
+                    if pop_rel_id == sr_id {
+                        agg.state_religion_population += pop_size;
+                        follower.state_religion_population += pop_size;
+                    }
+                }
+            }
+        }
+
+        let religion_color_hex = |rid: ReligionId| -> Option<(String, String)> {
+            let rel = self.gamestate.religion_manager.lookup(rid)?;
+            let name = rel.name.to_str().to_string();
+            let hex = format!(
+                "#{:02x}{:02x}{:02x}",
+                rel.color.0[0], rel.color.0[1], rel.color.0[2]
+            );
+            Some((name, hex))
+        };
+
+        let mut state_religions: Vec<StateReligionRow> = state_rel_aggs
+            .iter()
+            .filter_map(|(&sr_id, agg)| {
+                let (religion, color_hex) = religion_color_hex(sr_id)?;
+                let total = agg.total_ruled_population;
+                let sr_pop = agg.state_religion_population;
+                let coverage = if total > 0.0 { sr_pop / total } else { 0.0 };
+
+                let mut by_religion: Vec<(ReligionId, f64)> = agg
+                    .population_by_religion
+                    .iter()
+                    .map(|(&k, &v)| (k, v))
+                    .collect();
+                by_religion.sort_by(|a, b| b.1.total_cmp(&a.1));
+                let top_population_religions: Vec<PopulationReligionShare> = by_religion
+                    .into_iter()
+                    .take(3)
+                    .filter_map(|(rid, pop)| {
+                        let (rel_name, rel_hex) = religion_color_hex(rid)?;
+                        Some(PopulationReligionShare {
+                            religion: rel_name,
+                            color_hex: rel_hex,
+                            population: pop as u32,
+                        })
+                    })
+                    .collect();
+
+                Some(StateReligionRow {
+                    religion,
+                    color_hex,
+                    country_count: agg.country_ids.len() as u32,
+                    total_ruled_population: total as u32,
+                    state_religion_population: sr_pop as u32,
+                    other_faith_population: (total - sr_pop) as u32,
+                    state_religion_coverage: coverage,
+                    top_population_religions,
+                })
+            })
+            .collect();
+        state_religions.sort_by(|a, b| {
+            b.total_ruled_population
+                .cmp(&a.total_ruled_population)
+                .then_with(|| a.religion.cmp(&b.religion))
+        });
+
+        let all_religion_ids: FxHashSet<ReligionId> = state_rel_aggs
+            .keys()
+            .chain(follower_aggs.keys())
+            .copied()
+            .collect();
+
+        let mut religions: Vec<ReligionRow> = all_religion_ids
+            .iter()
+            .filter_map(|&rid| {
+                let (religion, color_hex) = religion_color_hex(rid)?;
+                let state_agg = state_rel_aggs.get(&rid);
+                let follower_agg = follower_aggs.get(&rid);
+
+                let state_country_count =
+                    state_agg.map(|a| a.country_ids.len() as u32).unwrap_or(0);
+                let total_ruled = state_agg.map(|a| a.total_ruled_population).unwrap_or(0.0);
+                let sr_pop = state_agg
+                    .map(|a| a.state_religion_population)
+                    .unwrap_or(0.0);
+                let coverage = if total_ruled > 0.0 {
+                    sr_pop / total_ruled
+                } else {
+                    0.0
+                };
+
+                let follower_population =
+                    follower_agg.map(|a| a.total_followers as u32).unwrap_or(0);
+                let followers_as_state = follower_agg
+                    .map(|a| a.state_religion_population as u32)
+                    .unwrap_or(0);
+
+                Some(ReligionRow {
+                    religion,
+                    color_hex,
+                    state_country_count,
+                    total_ruled_population: total_ruled as u32,
+                    state_religion_population: sr_pop as u32,
+                    other_faith_population: (total_ruled - sr_pop) as u32,
+                    state_religion_coverage: coverage,
+                    follower_population,
+                    followers_outside_same_faith_states: follower_population
+                        .saturating_sub(followers_as_state),
+                })
+            })
+            .collect();
+        religions.sort_by(|a, b| {
+            b.total_ruled_population
+                .cmp(&a.total_ruled_population)
+                .then_with(|| a.religion.cmp(&b.religion))
+        });
+
+        ReligionInsightData {
+            state_religions,
+            religions,
         }
     }
 
