@@ -13,15 +13,16 @@ use crate::selection_views::{
     DistributionBucket, EntityBreakdownData, EntityBreakdownRow, HoverDisplayData, HoverStat,
     LocationDistribution, MarketInsightData, MarketScopeSummary, PopulationConcentrationPoint,
     PopulationInsightData, PopulationRankSegment, PopulationScopeSummary, PopulationTopLocation,
-    PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation, ProductionLocationSummary,
-    ScopeSummary, ScopedCountryPopulation, ScopedGoodSummary, ScopedMarketSummary,
-    StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope, TaxGapTopLocation,
+    PopulationTypeProfileRow, PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation,
+    ProductionLocationSummary, ScopeSummary, ScopedCountryPopulation, ScopedGoodSummary,
+    ScopedMarketSummary, StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope,
+    TaxGapTopLocation,
 };
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap};
 use eu5save::models::{
     CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIdx, LocationIndexedVec,
-    LocationRank, MarketId, RawMaterialsName,
+    LocationRank, MarketId, PopulationType, RawMaterialsName,
 };
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
 use std::collections::HashMap;
@@ -4458,6 +4459,97 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
+        #[derive(Default)]
+        struct TypeAgg {
+            population: f64,
+            satisfaction_num: f64,
+            literacy_num: f64,
+            pop_count: u32,
+        }
+
+        fn pop_type_id(kind: PopulationType) -> Option<usize> {
+            match kind {
+                PopulationType::Peasants => Some(0),
+                PopulationType::Laborers => Some(1),
+                PopulationType::Burghers => Some(2),
+                PopulationType::Nobles => Some(3),
+                PopulationType::Clergy => Some(4),
+                PopulationType::Soldiers => Some(5),
+                PopulationType::Slaves => Some(6),
+                PopulationType::Tribesmen => Some(7),
+                PopulationType::Other => None,
+            }
+        }
+
+        let mut baseline_agg: [TypeAgg; 8] = Default::default();
+        let mut scoped_agg: [TypeAgg; 8] = Default::default();
+
+        for entry in self.gamestate.locations.iter() {
+            let idx = entry.idx();
+            let loc = entry.location();
+            if loc.owner.real_id().is_none() {
+                continue;
+            }
+            let in_scope = is_empty || self.selection_state.contains(idx);
+            for &pop_id in loc.population.pops {
+                let Some(pop) = self.gamestate.population.database.lookup(pop_id) else {
+                    continue;
+                };
+                let Some(type_idx) = pop_type_id(pop.kind) else {
+                    continue;
+                };
+                baseline_agg[type_idx].population += pop.size;
+                baseline_agg[type_idx].satisfaction_num += pop.satisfaction * pop.size;
+                baseline_agg[type_idx].literacy_num += pop.literacy * pop.size;
+                baseline_agg[type_idx].pop_count += 1;
+                if in_scope {
+                    scoped_agg[type_idx].population += pop.size;
+                    scoped_agg[type_idx].satisfaction_num += pop.satisfaction * pop.size;
+                    scoped_agg[type_idx].literacy_num += pop.literacy * pop.size;
+                    scoped_agg[type_idx].pop_count += 1;
+                }
+            }
+        }
+
+        let baseline_total: f64 = baseline_agg.iter().map(|a| a.population).sum();
+        let scoped_total: f64 = scoped_agg.iter().map(|a| a.population).sum();
+
+        let type_profile: Vec<PopulationTypeProfileRow> = (0u8..8)
+            .map(|i| {
+                let b = &baseline_agg[i as usize];
+                let s = &scoped_agg[i as usize];
+                let baseline_share = if baseline_total > 0.0 {
+                    b.population / baseline_total
+                } else {
+                    0.0
+                };
+                let share = if scoped_total > 0.0 {
+                    s.population / scoped_total
+                } else {
+                    0.0
+                };
+                PopulationTypeProfileRow {
+                    population_type: i,
+                    population: s.population,
+                    share,
+                    baseline_population: b.population,
+                    baseline_share,
+                    share_delta: share - baseline_share,
+                    avg_satisfaction: if s.population > 0.0 {
+                        s.satisfaction_num / s.population
+                    } else {
+                        0.0
+                    },
+                    avg_literacy: if s.population > 0.0 {
+                        s.literacy_num / s.population
+                    } else {
+                        0.0
+                    },
+                    pop_count: s.pop_count,
+                }
+            })
+            .collect();
+
         PopulationInsightData {
             scope: PopulationScopeSummary {
                 location_count,
@@ -4470,6 +4562,7 @@ impl<'bump> Eu5Workspace<'bump> {
             countries,
             concentration,
             top_locations,
+            type_profile,
         }
     }
 

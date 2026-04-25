@@ -370,12 +370,29 @@ pub struct PopulationTopLocation {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
+pub struct PopulationTypeProfileRow {
+    pub population_type: u8,
+    pub population: f64,
+    pub share: f64,
+    pub baseline_population: f64,
+    pub baseline_share: f64,
+    pub share_delta: f64,
+    pub avg_satisfaction: f64,
+    pub avg_literacy: f64,
+    pub pop_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
 pub struct PopulationInsightData {
     pub scope: PopulationScopeSummary,
     pub rank_totals: Vec<PopulationRankSegment>,
     pub countries: Vec<ScopedCountryPopulation>,
     pub concentration: Vec<PopulationConcentrationPoint>,
     pub top_locations: Vec<PopulationTopLocation>,
+    pub type_profile: Vec<PopulationTypeProfileRow>,
 }
 
 /// Aggregated totals for the current scope: the active selection when non-empty,
