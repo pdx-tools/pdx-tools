@@ -395,6 +395,81 @@ pub struct PopulationInsightData {
     pub type_profile: Vec<PopulationTypeProfileRow>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct BuildingLevelsScopeSummary {
+    pub location_count: u32,
+    pub total_levels: f64,
+    pub foreign_levels: f64,
+    pub foreign_location_count: u32,
+    pub foreign_owner_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct BuildingTypeSummary {
+    pub kind: String,
+    pub levels: f64,
+    pub foreign_levels: f64,
+    pub employed: f64,
+    pub building_count: u32,
+    pub location_count: u32,
+    pub foreign_owner_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct BuildingTypeForeignOwnerCell {
+    pub kind: String,
+    pub owner: EntityRef,
+    pub levels: f64,
+    pub employed: f64,
+    pub building_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct BuildingLevelsTopLocation {
+    pub location_idx: u32,
+    pub name: String,
+    pub owner: EntityRef,
+    pub levels: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct ForeignBuildingLocationRow {
+    pub location_idx: u32,
+    pub location_name: String,
+    pub location_owner: EntityRef,
+    pub foreign_owner: EntityRef,
+    pub kind: String,
+    pub foreign_levels: f64,
+    pub location_total_levels: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct BuildingLevelsInsightData {
+    pub scope: BuildingLevelsScopeSummary,
+    pub types: Vec<BuildingTypeSummary>,
+    pub foreign_owner_cells: Vec<BuildingTypeForeignOwnerCell>,
+    pub foreign_location_rows: Vec<ForeignBuildingLocationRow>,
+    pub top_locations: Vec<BuildingLevelsTopLocation>,
+}
+
 /// Aggregated totals for the current scope: the active selection when non-empty,
 /// or the entire world when the filter is empty.
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -8,9 +8,9 @@ use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
 use eu5app::selection_views::HoverDisplayData;
 use eu5app::selection_views::{
-    DevelopmentInsightData, EntityBreakdownData, LocationDistribution, MarketInsightData,
-    PopulationInsightData, PossibleTaxInsightData, PossibleTaxScope, ScopeSummary,
-    StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope,
+    BuildingLevelsInsightData, DevelopmentInsightData, EntityBreakdownData, LocationDistribution,
+    MarketInsightData, PopulationInsightData, PossibleTaxInsightData, PossibleTaxScope,
+    ScopeSummary, StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope,
 };
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
@@ -824,6 +824,13 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_population_insight(&self) -> PopulationInsightData {
         self.app().calculate_population_insight()
+    }
+
+    /// Building levels insight data: scoped building type aggregates, foreign owner
+    /// summaries, heatmap cells, and top locations by total levels.
+    #[wasm_bindgen]
+    pub fn get_building_levels_insight(&self) -> BuildingLevelsInsightData {
+        self.app().calculate_building_levels_insight()
     }
 
     /// Entity header for a specific entity resolved from `anchor_location_idx`,
