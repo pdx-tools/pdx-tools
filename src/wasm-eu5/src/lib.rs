@@ -9,8 +9,8 @@ use eu5app::game_data::OptimizedGameBundle;
 use eu5app::selection_views::HoverDisplayData;
 use eu5app::selection_views::{
     DevelopmentInsightData, EntityBreakdownData, LocationDistribution, MarketInsightData,
-    PossibleTaxInsightData, PossibleTaxScope, ScopeSummary, StateEfficacyTopLocation,
-    TaxGapInsightData, TaxGapScope,
+    PopulationInsightData, PossibleTaxInsightData, PossibleTaxScope, ScopeSummary,
+    StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope,
 };
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
@@ -817,6 +817,13 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_market_insight(&self) -> MarketInsightData {
         self.app().calculate_market_insight()
+    }
+
+    /// Population insight data: scoped country population, concentration curve,
+    /// and top populated locations for the current filter.
+    #[wasm_bindgen]
+    pub fn get_population_insight(&self) -> PopulationInsightData {
+        self.app().calculate_population_insight()
     }
 
     /// Entity header for a specific entity resolved from `anchor_location_idx`,

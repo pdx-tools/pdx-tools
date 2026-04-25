@@ -163,7 +163,6 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
         right: 20,
         top: 10,
         bottom: showZoom ? 30 : 10,
-        containLabel: false,
       },
       xAxis: {
         type: "value",

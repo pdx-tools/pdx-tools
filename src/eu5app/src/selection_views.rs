@@ -306,6 +306,78 @@ pub struct MarketInsightData {
     pub top_production_locations: Vec<ProductionLocationSummary>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct PopulationScopeSummary {
+    pub location_count: u32,
+    pub country_count: u32,
+    pub total_population: u32,
+    pub median_location_population: u32,
+    pub is_empty: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct PopulationRankSegment {
+    pub rank: u8,
+    pub population: u32,
+    pub location_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct ScopedCountryPopulation {
+    pub anchor_location_idx: u32,
+    pub tag: String,
+    pub name: String,
+    pub color_hex: String,
+    pub total_population: u32,
+    pub location_count: u32,
+    pub ranks: Vec<PopulationRankSegment>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct PopulationConcentrationPoint {
+    pub location_rank: u32,
+    pub location_count: u32,
+    pub population: u32,
+    pub cumulative_population: u32,
+    pub population_share: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct PopulationTopLocation {
+    pub location_idx: u32,
+    pub name: String,
+    pub owner: EntityRef,
+    pub population: u32,
+    pub rank: u8,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct PopulationInsightData {
+    pub scope: PopulationScopeSummary,
+    pub rank_totals: Vec<PopulationRankSegment>,
+    pub countries: Vec<ScopedCountryPopulation>,
+    pub concentration: Vec<PopulationConcentrationPoint>,
+    pub top_locations: Vec<PopulationTopLocation>,
+}
+
 /// Aggregated totals for the current scope: the active selection when non-empty,
 /// or the entire world when the filter is empty.
 #[derive(Debug, Clone, Serialize, Deserialize)]

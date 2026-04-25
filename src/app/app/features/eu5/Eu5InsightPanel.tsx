@@ -14,6 +14,7 @@ import { DevelopmentInsight } from "./features/charts/DevelopmentInsight";
 import { PossibleTaxInsight } from "./features/charts/PossibleTax";
 import { TaxGapInsight } from "./features/charts/TaxGap";
 import { MarketsInsight } from "./features/charts/Markets";
+import { PopulationInsight } from "./features/charts/Population";
 import type { StateEfficacyData, MapMode } from "@/wasm/wasm_eu5";
 import { EntityProfileRoot } from "./EntityProfile";
 import { MultiEntitySummaryPanel } from "./EntityProfile/MultiEntity/MultiEntitySummaryPanel";
@@ -94,6 +95,8 @@ function PanelContentInner() {
     content = <TaxGapInsight />;
   } else if (currentMapMode === "markets") {
     content = <MarketsInsight />;
+  } else if (currentMapMode === "population") {
+    content = <PopulationInsight />;
   } else if (locationCount === 1) {
     content = <EntityProfileRoot key="leaf" />;
   } else if (!isEmpty) {

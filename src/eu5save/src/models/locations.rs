@@ -126,6 +126,23 @@ pub struct Location<'bump> {
     #[arena(default)]
     pub possible_tax: f64,
     pub raw_material: Option<models::RawMaterialsName<'bump>>,
+    #[arena(default)]
+    pub rank: LocationRank,
+}
+
+#[derive(Debug, ArenaDeserialize, Deserialize, PartialEq, Eq, Default)]
+pub enum LocationRank {
+    #[serde(rename = "rural_settlement")]
+    RuralSettlement,
+    #[serde(rename = "town")]
+    Town,
+    #[serde(rename = "city")]
+    City,
+    #[serde(rename = "metropolis")]
+    Metropolis,
+    #[default]
+    #[serde(other)]
+    Other,
 }
 
 #[derive(Debug, Default, ArenaDeserialize)]
