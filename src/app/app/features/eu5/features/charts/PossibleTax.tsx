@@ -7,7 +7,7 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5Engine } from "../../store";
-import { useEu5Trigger } from "../../EntityProfile/useEu5Trigger";
+import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { LocationDistributionChart } from "../../EntityProfile/MultiEntity/LocationDistributionChart";
 import { PossibleTaxTopLocations } from "./PossibleTaxTopLocations";
 import { usePanToEntity } from "../../usePanToEntity";
@@ -15,10 +15,9 @@ import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeH
 import { StatItem } from "../../EntityProfile/components/StatItem";
 import type * as echarts from "echarts/core";
 
-function PossibleTaxScopeHeader({ selectionKey }: { selectionKey: string }) {
-  const { data, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getPossibleTaxScope(),
-    [selectionKey],
+function PossibleTaxScopeHeader() {
+  const { data, loading } = useEu5SelectionTrigger((engine) =>
+    engine.trigger.getPossibleTaxScope(),
   );
 
   if (loading && !data) return <InsightScopeHeaderSkeleton />;
@@ -33,17 +32,14 @@ function PossibleTaxScopeHeader({ selectionKey }: { selectionKey: string }) {
   );
 }
 
-export function PossibleTaxInsight({ selectionKey }: { selectionKey: string }) {
-  const insightQuery = useEu5Trigger(
-    (engine) => engine.trigger.getPossibleTaxInsight(),
-    [selectionKey],
-  );
+export function PossibleTaxInsight() {
+  const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getPossibleTaxInsight());
 
   const countries = insightQuery.data?.countries ?? [];
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <PossibleTaxScopeHeader selectionKey={selectionKey} />
+      <PossibleTaxScopeHeader />
       {insightQuery.loading && !insightQuery.data ? (
         <div className="h-64 animate-pulse rounded bg-white/5" />
       ) : (

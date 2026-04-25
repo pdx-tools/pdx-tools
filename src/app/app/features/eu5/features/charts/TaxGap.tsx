@@ -7,7 +7,7 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5Engine } from "../../store";
-import { useEu5Trigger } from "../../EntityProfile/useEu5Trigger";
+import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { LocationDistributionChart } from "../../EntityProfile/MultiEntity/LocationDistributionChart";
 import { TaxGapTopLocations } from "./TaxGapTopLocations";
 import { RealizationHistogram } from "./RealizationHistogram";
@@ -18,11 +18,8 @@ import type * as echarts from "echarts/core";
 
 const BAR_CAP = 25;
 
-function TaxGapScopeHeader({ selectionKey }: { selectionKey: string }) {
-  const { data, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getTaxGapScope(),
-    [selectionKey],
-  );
+function TaxGapScopeHeader() {
+  const { data, loading } = useEu5SelectionTrigger((engine) => engine.trigger.getTaxGapScope());
 
   if (loading && !data) {
     return <InsightScopeHeaderSkeleton />;
@@ -39,14 +36,14 @@ function TaxGapScopeHeader({ selectionKey }: { selectionKey: string }) {
   );
 }
 
-export function TaxGapInsight({ selectionKey }: { selectionKey: string }) {
-  const insightQuery = useEu5Trigger((engine) => engine.trigger.getTaxGapInsight(), [selectionKey]);
+export function TaxGapInsight() {
+  const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getTaxGapInsight());
 
   const countries = insightQuery.data?.countries ?? [];
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <TaxGapScopeHeader selectionKey={selectionKey} />
+      <TaxGapScopeHeader />
       {insightQuery.loading && !insightQuery.data ? (
         <div className="h-64 animate-pulse rounded bg-white/5" />
       ) : (

@@ -1,27 +1,24 @@
 import type React from "react";
-import { useEu5MapMode, useEu5SelectionState } from "../../store";
-import { useEu5Trigger } from "../useEu5Trigger";
+import { useEu5MapMode } from "../../store";
+import { useEu5SelectionTrigger } from "../useEu5Trigger";
 import { EntityList } from "./EntityList";
 import { EntityComparisonChart } from "./EntityComparisonChart";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { usePanelNav } from "../PanelNavContext";
-import { getSelectionIdentityKey } from "../selectionIdentity";
 import { ScopeSummaryHeader } from "../../features/InsightScopeHeader";
 
 export function MultiEntitySummaryPanel() {
-  const selectionState = useEu5SelectionState();
   const mapMode = useEu5MapMode();
-  const selectionKey = getSelectionIdentityKey(selectionState);
   const nav = usePanelNav();
 
-  const breakdownQuery = useEu5Trigger(
+  const breakdownQuery = useEu5SelectionTrigger(
     (engine) => engine.trigger.getEntityBreakdown(),
-    [selectionKey, mapMode],
+    [mapMode],
   );
 
-  const distributionQuery = useEu5Trigger(
+  const distributionQuery = useEu5SelectionTrigger(
     (engine) => engine.trigger.getLocationDistribution(),
-    [selectionKey, mapMode],
+    [mapMode],
   );
 
   const rows = breakdownQuery.data?.rows ?? [];
@@ -34,7 +31,7 @@ export function MultiEntitySummaryPanel() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <ScopeSummaryHeader selectionKey={selectionKey} />
+      <ScopeSummaryHeader />
       {breakdownQuery.loading && !breakdownQuery.data ? (
         <div className="h-24 animate-pulse rounded bg-white/5" />
       ) : rows.length > 0 ? (

@@ -1,6 +1,6 @@
 import type React from "react";
 import { useEu5Engine, useEu5SelectionState } from "../../store";
-import { useEu5Trigger } from "../useEu5Trigger";
+import { useEu5SelectionTrigger } from "../useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
 import { formatFloat, formatInt } from "@/lib/format";
 import type {
@@ -16,7 +16,7 @@ export function OverviewTab({ anchorIdx }: { anchorIdx?: number } = {}) {
   const selection = useEu5SelectionState();
   const anchor = selection?.derivedEntityAnchor;
 
-  const { data, loading } = useEu5Trigger(
+  const { data, loading } = useEu5SelectionTrigger(
     (engine) =>
       anchorIdx != null
         ? engine.trigger.getOverviewSectionFor(anchorIdx)

@@ -1,5 +1,5 @@
 import { useEu5Engine, useEu5MapMode, useEu5SelectionState } from "../../store";
-import { useEu5Trigger } from "../useEu5Trigger";
+import { useEu5SelectionTrigger } from "../useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -112,7 +112,7 @@ export function LocationsTab({ anchorIdx }: { anchorIdx?: number } = {}) {
   const anchor = selection?.derivedEntityAnchor;
   const mode = useEu5MapMode();
 
-  const { data, loading } = useEu5Trigger(
+  const { data, loading } = useEu5SelectionTrigger(
     (engine) =>
       anchorIdx != null
         ? engine.trigger.getLocationsSectionFor(anchorIdx)

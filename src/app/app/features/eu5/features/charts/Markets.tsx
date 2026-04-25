@@ -7,7 +7,7 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5Engine } from "../../store";
-import { useEu5Trigger } from "../../EntityProfile/useEu5Trigger";
+import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
@@ -32,8 +32,8 @@ function MarketsScopeHeader({ data }: { data?: MarketScopeSummary }) {
   );
 }
 
-export function MarketsInsight({ selectionKey }: { selectionKey: string }) {
-  const insightQuery = useEu5Trigger((engine) => engine.trigger.getMarketInsight(), [selectionKey]);
+export function MarketsInsight() {
+  const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getMarketInsight());
 
   const goods = insightQuery.data?.goods ?? [];
   const markets = insightQuery.data?.markets ?? [];

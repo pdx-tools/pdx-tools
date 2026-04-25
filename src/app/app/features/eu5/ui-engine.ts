@@ -37,6 +37,7 @@ export interface AppState {
   ownerBordersEnabled: boolean;
   mapModeRange: MapModeRange | null;
   selectionState: SelectionSummaryData | null;
+  selectionRevision: number;
   boxSelectRect: BoxSelectOverlayRect | null;
   cursorHint: CursorHint;
 }
@@ -122,6 +123,7 @@ export class Eu5UIEngine implements AppEngine {
       ownerBordersEnabled: true,
       mapModeRange: null,
       selectionState: null,
+      selectionRevision: 0,
       boxSelectRect: null,
       cursorHint: "default",
       ...initialState,
@@ -136,8 +138,9 @@ export class Eu5UIEngine implements AppEngine {
 
     // Set up selection state callback
     this.gameInstance.onSelectionUpdate((data) => {
-      this.updateState(() => ({
+      this.updateState((state) => ({
         selectionState: data,
+        selectionRevision: state.selectionRevision + 1,
       }));
     });
 

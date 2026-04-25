@@ -1,12 +1,11 @@
 import type React from "react";
 import { useEu5MapMode, useEu5SelectionState } from "../../store";
-import { useEu5Trigger } from "../useEu5Trigger";
+import { useEu5SelectionTrigger } from "../useEu5Trigger";
 import { EntityList } from "../MultiEntity/EntityList";
 import { LocationDistributionChart } from "../MultiEntity/LocationDistributionChart";
 import { formatFloat } from "@/lib/format";
 import type { RankedLocation } from "@/wasm/wasm_eu5";
 import { usePanelNav } from "../PanelNavContext";
-import { getSelectionIdentityKey } from "../selectionIdentity";
 import { ScopeSummaryHeader } from "../../features/InsightScopeHeader";
 
 const TOP_ENTITIES_SHOWN = 10;
@@ -15,17 +14,16 @@ export function AggregatePanel() {
   const selectionState = useEu5SelectionState();
   const mapMode = useEu5MapMode();
   const locationCount = selectionState?.locationCount ?? 0;
-  const selectionKey = getSelectionIdentityKey(selectionState);
   const nav = usePanelNav();
 
-  const breakdownQuery = useEu5Trigger(
+  const breakdownQuery = useEu5SelectionTrigger(
     (engine) => engine.trigger.getEntityBreakdown(),
-    [selectionKey, mapMode],
+    [mapMode],
   );
 
-  const distributionQuery = useEu5Trigger(
+  const distributionQuery = useEu5SelectionTrigger(
     (engine) => engine.trigger.getLocationDistribution(),
-    [selectionKey, mapMode],
+    [mapMode],
   );
 
   const allRows = breakdownQuery.data?.rows ?? [];
@@ -38,7 +36,7 @@ export function AggregatePanel() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <ScopeSummaryHeader selectionKey={selectionKey} />
+      <ScopeSummaryHeader />
       {distributionQuery.data && (
         <section>
           <LocationDistributionChart distribution={distributionQuery.data} />
