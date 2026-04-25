@@ -10,6 +10,7 @@ import type {
   PopulationRankSegment,
   PopulationScopeSummary,
   PopulationTopLocation,
+  PopulationTypeProfileRow,
   ScopedCountryPopulation,
 } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
@@ -69,6 +70,8 @@ export function PopulationInsight() {
   const rankTotals = insightQuery.data?.rankTotals ?? [];
   const concentration = insightQuery.data?.concentration ?? [];
   const topLocations = insightQuery.data?.topLocations ?? [];
+  const typeProfile = insightQuery.data?.typeProfile ?? [];
+  const scopeIsEmpty = insightQuery.data?.scope.isEmpty ?? true;
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -81,6 +84,19 @@ export function PopulationInsight() {
             <section>
               <SectionTitle>Who holds the selected population?</SectionTitle>
               <CountryPopulationSpine countries={countries} />
+            </section>
+          )}
+
+          {typeProfile.some(
+            (r: PopulationTypeProfileRow) => r.population > 0 || r.baselinePopulation > 0,
+          ) && (
+            <section>
+              <SectionTitle>
+                {scopeIsEmpty
+                  ? "What is the population made of?"
+                  : "What makes this selection unusual?"}
+              </SectionTitle>
+              <PopulationTypeProfile rows={typeProfile} isEmpty={scopeIsEmpty} />
             </section>
           )}
 
@@ -100,7 +116,7 @@ export function PopulationInsight() {
 
           {topLocations.length > 0 && (
             <section>
-              <SectionTitle>Where should I look first?</SectionTitle>
+              <SectionTitle>What are the most populous locations?</SectionTitle>
               <PopulationTopLocations locations={topLocations} />
             </section>
           )}
@@ -535,4 +551,159 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
       pagination
     />
   );
+}
+
+const POP_TYPE_LABELS = [
+  "Peasants",
+  "Laborers",
+  "Burghers",
+  "Nobles",
+  "Clergy",
+  "Soldiers",
+  "Slaves",
+  "Tribesmen",
+] as const;
+
+function popTypeLabel(id: number): string {
+  return POP_TYPE_LABELS[id] ?? `Type ${id}`;
+}
+
+function PopulationTypeProfile({
+  rows,
+  isEmpty,
+}: {
+  rows: PopulationTypeProfileRow[];
+  isEmpty: boolean;
+}) {
+  const isDark = isDarkMode();
+
+  const data = useMemo(
+    () =>
+      rows.map((r) => ({
+        ...r,
+        label: popTypeLabel(r.populationType),
+        posBar: Math.max(0, r.shareDelta),
+        negBar: Math.min(0, r.shareDelta),
+      })),
+    [rows],
+  );
+
+  const option = useMemo((): EChartsOption => {
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+
+    if (isEmpty) {
+      return {
+        dataset: { source: data, dimensions: ["label", "share"] },
+        grid: { left: 72, right: 16, top: 8, bottom: 28 },
+        xAxis: {
+          type: "value",
+          min: 0,
+          max: 1,
+          axisLabel: {
+            color: tickColor,
+            fontSize: 10,
+            formatter: (v: number) => formatPercent(v, 0),
+          },
+          axisLine: { lineStyle: { color: axisColor } },
+          splitLine: {
+            lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
+          },
+        },
+        yAxis: {
+          type: "category",
+          inverse: true,
+          axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 66 },
+          axisLine: { lineStyle: { color: axisColor } },
+        },
+        tooltip: {
+          trigger: "axis",
+          axisPointer: { type: "shadow" },
+          formatter: (params) => {
+            const arr = Array.isArray(params) ? params : [params];
+            const idx = (arr[0] as { dataIndex?: number } | undefined)?.dataIndex;
+            if (idx == null) return "";
+            const d = data[idx];
+            if (!d) return "";
+            return [
+              `<strong>${escapeEChartsHtml(d.label)}</strong>`,
+              `Population: ${formatFloat(d.population, 0)}`,
+              `Share: ${formatPercent(d.share)}`,
+              `Avg Satisfaction: ${formatFloat(d.avgSatisfaction * 100, 1)}%`,
+              `Avg Literacy: ${formatPercent(d.avgLiteracy)}`,
+              `Pop records: ${formatInt(d.popCount)}`,
+            ].join("<br/>");
+          },
+        },
+        series: [
+          {
+            type: "bar",
+            encode: { x: "share", y: "label" },
+            itemStyle: { color: isDark ? "#f59e0b" : "#d97706" },
+          },
+        ],
+      };
+    }
+
+    return {
+      dataset: { source: data, dimensions: ["label", "posBar", "negBar"] },
+      grid: { left: 72, right: 16, top: 8, bottom: 28 },
+      xAxis: {
+        type: "value",
+        axisLabel: {
+          color: tickColor,
+          fontSize: 10,
+          formatter: (v: number) => formatPercent(v, 1),
+        },
+        axisLine: { lineStyle: { color: axisColor } },
+        splitLine: {
+          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
+        },
+      },
+      yAxis: {
+        type: "category",
+        inverse: true,
+        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 66 },
+        axisLine: { lineStyle: { color: axisColor } },
+      },
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        formatter: (params) => {
+          const arr = Array.isArray(params) ? params : [params];
+          const idx = (arr[0] as { dataIndex?: number } | undefined)?.dataIndex;
+          if (idx == null) return "";
+          const d = data[idx];
+          if (!d) return "";
+          return [
+            `<strong>${escapeEChartsHtml(d.label)}</strong>`,
+            `Selected pop: ${formatFloat(d.population, 0)} (${formatPercent(d.share)})`,
+            `World share: ${formatPercent(d.baselineShare)}`,
+            `Difference: ${formatPercent(d.shareDelta, 1)}`,
+            `Avg Satisfaction: ${formatFloat(d.avgSatisfaction * 100, 1)}%`,
+            `Avg Literacy: ${formatPercent(d.avgLiteracy)}`,
+            `Pop records: ${formatInt(d.popCount)}`,
+          ].join("<br/>");
+        },
+      },
+      series: [
+        {
+          name: "Over",
+          type: "bar",
+          stack: "delta",
+          encode: { x: "posBar", y: "label" },
+          itemStyle: { color: isDark ? "#f97316" : "#ea580c" },
+        },
+        {
+          name: "Under",
+          type: "bar",
+          stack: "delta",
+          encode: { x: "negBar", y: "label" },
+          itemStyle: { color: isDark ? "#38bdf8" : "#0ea5e9" },
+        },
+      ],
+    };
+  }, [isDark, data, isEmpty]);
+
+  const height = data.length * 22 + 52;
+  return <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />;
 }
