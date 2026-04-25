@@ -1,5 +1,5 @@
 import { useEu5SelectionState } from "../../store";
-import { useEu5Trigger } from "../useEu5Trigger";
+import { useEu5SelectionTrigger } from "../useEu5Trigger";
 import type { EntityRef } from "@/wasm/wasm_eu5";
 import { EntityLink } from "../EntityLink";
 
@@ -7,7 +7,7 @@ export function DiplomacyTab({ anchorIdx }: { anchorIdx?: number } = {}) {
   const selection = useEu5SelectionState();
   const anchor = selection?.derivedEntityAnchor;
 
-  const { data, loading } = useEu5Trigger(
+  const { data, loading } = useEu5SelectionTrigger(
     (engine) =>
       anchorIdx != null
         ? engine.trigger.getDiplomacySectionFor(anchorIdx)

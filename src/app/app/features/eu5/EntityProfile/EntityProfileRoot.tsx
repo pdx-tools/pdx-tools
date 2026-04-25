@@ -1,5 +1,5 @@
 import { useEu5SelectionState } from "../store";
-import { useEu5Trigger } from "./useEu5Trigger";
+import { useEu5SelectionTrigger } from "./useEu5Trigger";
 import { CompoundProfile } from "./CompoundProfile";
 import { LeafProfile } from "./LeafProfile";
 
@@ -17,7 +17,7 @@ export function EntityProfileRoot({ anchorIdx }: Props = {}) {
   const isLeaf = anchorIdx == null && (focused != null || standaloneLeafIdx != null);
   const leafIdx = focused ?? standaloneLeafIdx;
 
-  const headerQuery = useEu5Trigger(
+  const headerQuery = useEu5SelectionTrigger(
     (engine) => {
       if (anchorIdx != null) return engine.trigger.getEntityHeaderFor(anchorIdx);
       if (!isLeaf) return engine.trigger.getEntityHeader();
@@ -26,7 +26,7 @@ export function EntityProfileRoot({ anchorIdx }: Props = {}) {
     [anchor, count, isLeaf, anchorIdx],
   );
 
-  const leafQuery = useEu5Trigger(
+  const leafQuery = useEu5SelectionTrigger(
     (engine) =>
       leafIdx != null && anchorIdx == null
         ? engine.trigger.getLocationProfile(leafIdx)

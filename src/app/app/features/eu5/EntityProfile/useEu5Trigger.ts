@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { DependencyList } from "react";
-import { useEu5Engine } from "../store";
+import { useEu5Engine, useEu5SelectionRevision } from "../store";
 import type { AppEngine } from "../ui-engine";
 
 export function useEu5Trigger<T>(
@@ -27,4 +27,12 @@ export function useEu5Trigger<T>(
   }, [engine, ...deps]);
 
   return { data, loading };
+}
+
+export function useEu5SelectionTrigger<T>(
+  fetch: (engine: AppEngine) => Promise<T>,
+  deps: DependencyList = [],
+): { data: T | undefined; loading: boolean } {
+  const selectionRevision = useEu5SelectionRevision();
+  return useEu5Trigger(fetch, [selectionRevision, ...deps]);
 }

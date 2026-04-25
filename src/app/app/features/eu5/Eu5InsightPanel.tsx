@@ -4,6 +4,7 @@ import { ResizablePanel } from "@/components/ResizablePanel";
 import {
   useEu5Engine,
   useEu5MapMode,
+  useEu5SelectionRevision,
   useEu5SelectionState,
   useSetEu5InsightPanelWidth,
 } from "./store";
@@ -21,7 +22,6 @@ import { PanelNavProvider, usePanelNav } from "./EntityProfile/PanelNavContext";
 import { Breadcrumb } from "./EntityProfile/Breadcrumb";
 import { useEu5Trigger } from "./EntityProfile/useEu5Trigger";
 import { LeafProfile } from "./EntityProfile/LeafProfile";
-import { getSelectionIdentityKey } from "./EntityProfile/selectionIdentity";
 import { StatItem } from "./EntityProfile/components/StatItem";
 
 const MULTI_ENTITY_MAX = 20;
@@ -73,7 +73,6 @@ function PanelContentInner() {
   const isEmpty = selectionState?.isEmpty ?? true;
   const focusedLocation = selectionState?.focusedLocation;
   const derivedEntityAnchor = selectionState?.derivedEntityAnchor;
-  const selectionKey = getSelectionIdentityKey(selectionState);
 
   let content: React.ReactNode;
 
@@ -86,15 +85,15 @@ function PanelContentInner() {
   } else if (derivedEntityAnchor != null && !isEmpty) {
     content = <EntityProfileRoot key="compound" />;
   } else if (currentMapMode === "development") {
-    content = <DevelopmentInsight selectionKey={selectionKey} />;
+    content = <DevelopmentInsight />;
   } else if (currentMapMode === "stateEfficacy") {
-    content = <StateEfficacyInsight selectionKey={selectionKey} />;
+    content = <StateEfficacyInsight />;
   } else if (currentMapMode === "possibleTax") {
-    content = <PossibleTaxInsight selectionKey={selectionKey} />;
+    content = <PossibleTaxInsight />;
   } else if (currentMapMode === "taxGap") {
-    content = <TaxGapInsight selectionKey={selectionKey} />;
+    content = <TaxGapInsight />;
   } else if (currentMapMode === "markets") {
-    content = <MarketsInsight selectionKey={selectionKey} />;
+    content = <MarketsInsight />;
   } else if (locationCount === 1) {
     content = <EntityProfileRoot key="leaf" />;
   } else if (!isEmpty) {
@@ -149,9 +148,9 @@ function SummaryPanelContent({
 }) {
   const currentMapMode = useEu5MapMode();
   const engine = useEu5Engine();
+  const selectionRevision = useEu5SelectionRevision();
   const [stateEfficacyData, setStateEfficacyData] = useState<StateEfficacyData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const selectionKey = getSelectionIdentityKey(selectionState);
 
   useEffect(() => {
     let cancelled = false;
@@ -165,7 +164,7 @@ function SummaryPanelContent({
     return () => {
       cancelled = true;
     };
-  }, [selectionKey, engine]);
+  }, [selectionRevision, engine]);
 
   return (
     <div className="flex flex-col gap-4 p-4">

@@ -1,12 +1,12 @@
 import { useEu5SelectionState } from "../../store";
-import { useEu5Trigger } from "../useEu5Trigger";
+import { useEu5SelectionTrigger } from "../useEu5Trigger";
 import { formatFloat } from "@/lib/format";
 
 export function EconomyTab({ anchorIdx }: { anchorIdx?: number } = {}) {
   const selection = useEu5SelectionState();
   const anchor = selection?.derivedEntityAnchor;
 
-  const { data, loading } = useEu5Trigger(
+  const { data, loading } = useEu5SelectionTrigger(
     (engine) =>
       anchorIdx != null
         ? engine.trigger.getEconomySectionFor(anchorIdx)

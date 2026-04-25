@@ -7,24 +7,21 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5Engine } from "../../store";
-import { useEu5Trigger } from "../../EntityProfile/useEu5Trigger";
+import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { LocationDistributionChart } from "../../EntityProfile/MultiEntity/LocationDistributionChart";
 import { DevelopmentTopLocations } from "./DevelopmentTopLocations";
 import { usePanToEntity } from "../../usePanToEntity";
 import { ScopeSummaryHeader } from "../InsightScopeHeader";
 import type * as echarts from "echarts/core";
 
-export function DevelopmentInsight({ selectionKey }: { selectionKey: string }) {
-  const insightQuery = useEu5Trigger(
-    (engine) => engine.trigger.getDevelopmentInsight(),
-    [selectionKey],
-  );
+export function DevelopmentInsight() {
+  const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getDevelopmentInsight());
 
   const countries = insightQuery.data?.countries ?? [];
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <ScopeSummaryHeader selectionKey={selectionKey} />
+      <ScopeSummaryHeader />
       {insightQuery.loading && !insightQuery.data ? (
         <div className="h-64 animate-pulse rounded bg-white/5" />
       ) : (

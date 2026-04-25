@@ -8,8 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useEu5SelectionState } from "../store";
-import { getSelectionIdentityKey } from "./selectionIdentity";
+import { useEu5SelectionRevision } from "../store";
 
 export type PanelNavEntry =
   | { kind: "entity"; anchorIdx: number; label: string }
@@ -36,21 +35,20 @@ export function usePanelNav(): PanelNavApi {
 export function PanelNavProvider({ children }: { children: React.ReactNode }) {
   const [stack, setStack] = useState<PanelNavEntry[]>([]);
   const [rootLabel, setRootLabel] = useState<string | undefined>(undefined);
-  const selectionState = useEu5SelectionState();
 
-  const selectionKey = getSelectionIdentityKey(selectionState);
-  const prevKeyRef = useRef(selectionKey);
-  const selectionChanged = prevKeyRef.current !== selectionKey;
+  const selectionRevision = useEu5SelectionRevision();
+  const prevRevisionRef = useRef(selectionRevision);
+  const selectionChanged = prevRevisionRef.current !== selectionRevision;
   const effectiveStack = selectionChanged ? EMPTY_STACK : stack;
   const effectiveRootLabel = selectionChanged ? undefined : rootLabel;
 
   useEffect(() => {
-    if (prevKeyRef.current !== selectionKey) {
-      prevKeyRef.current = selectionKey;
+    if (prevRevisionRef.current !== selectionRevision) {
+      prevRevisionRef.current = selectionRevision;
       setStack([]);
       setRootLabel(undefined);
     }
-  }, [selectionKey]);
+  }, [selectionRevision]);
 
   const pushMany = useCallback((entries: PanelNavEntry[], nextRootLabel?: string) => {
     if (nextRootLabel != null) {

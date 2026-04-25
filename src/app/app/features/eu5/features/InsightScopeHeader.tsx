@@ -2,7 +2,7 @@ import { formatInt } from "@/lib/format";
 import type { ReactNode } from "react";
 import { StatItem } from "../EntityProfile/components/StatItem";
 import { usePanelNav } from "../EntityProfile/PanelNavContext";
-import { useEu5Trigger } from "../EntityProfile/useEu5Trigger";
+import { useEu5SelectionTrigger } from "../EntityProfile/useEu5Trigger";
 
 interface Stat {
   label: string;
@@ -36,11 +36,8 @@ export function InsightScopeHeader({ children, stats }: InsightScopeHeaderProps)
   );
 }
 
-export function ScopeSummaryHeader({ selectionKey }: { selectionKey: string }) {
-  const { data, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getScopeSummary(),
-    [selectionKey],
-  );
+export function ScopeSummaryHeader() {
+  const { data, loading } = useEu5SelectionTrigger((engine) => engine.trigger.getScopeSummary());
 
   if (loading && !data) {
     return <InsightScopeHeaderSkeleton />;
