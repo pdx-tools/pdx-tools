@@ -163,7 +163,6 @@ function GoodsPressureChart({ goods }: { goods: ScopedGoodSummary[] }) {
         right: 20,
         top: 10,
         bottom: 30,
-        containLabel: false,
       },
       xAxis: {
         type: "value",

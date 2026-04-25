@@ -18,6 +18,7 @@ import type {
   TaxGapInsightData,
   TaxGapScope,
   MarketInsightData,
+  PopulationInsightData,
   ScopeSummary,
 } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/types";
@@ -357,6 +358,9 @@ export function saveWorker(
     },
     getMarketInsight: async (): Promise<MarketInsightData> => {
       return await saveEngine.getMarketInsight();
+    },
+    getPopulationInsight: async (): Promise<PopulationInsightData> => {
+      return await saveEngine.getPopulationInsight();
     },
     getScopeSummary: async (): Promise<ScopeSummary> => {
       return await saveEngine.getScopeSummary();

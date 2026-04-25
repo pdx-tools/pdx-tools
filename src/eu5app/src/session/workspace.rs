@@ -11,16 +11,17 @@ use crate::selection::{
 use crate::selection_views::{
     CountryDevSummary, CountryPossibleTax, CountryTaxGap, DevTopLocation, DevelopmentInsightData,
     DistributionBucket, EntityBreakdownData, EntityBreakdownRow, HoverDisplayData, HoverStat,
-    LocationDistribution, MarketInsightData, MarketScopeSummary, PossibleTaxInsightData,
-    PossibleTaxScope, PossibleTaxTopLocation, ProductionLocationSummary, ScopeSummary,
-    ScopedGoodSummary, ScopedMarketSummary, StateEfficacyTopLocation, TaxGapInsightData,
-    TaxGapScope, TaxGapTopLocation,
+    LocationDistribution, MarketInsightData, MarketScopeSummary, PopulationConcentrationPoint,
+    PopulationInsightData, PopulationRankSegment, PopulationScopeSummary, PopulationTopLocation,
+    PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation, ProductionLocationSummary,
+    ScopeSummary, ScopedCountryPopulation, ScopedGoodSummary, ScopedMarketSummary,
+    StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope, TaxGapTopLocation,
 };
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap};
 use eu5save::models::{
     CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIdx, LocationIndexedVec,
-    MarketId, RawMaterialsName,
+    LocationRank, MarketId, RawMaterialsName,
 };
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
 use std::collections::HashMap;
@@ -4301,6 +4302,174 @@ impl<'bump> Eu5Workspace<'bump> {
             markets,
             good_market_cells,
             top_production_locations: production_rows,
+        }
+    }
+
+    /// Population insight: scoped country population, concentration curve, and
+    /// top populated locations for the current selection or whole save.
+    pub fn calculate_population_insight(&self) -> PopulationInsightData {
+        #[derive(Default)]
+        struct RankAgg {
+            population: u32,
+            location_count: u32,
+        }
+
+        #[derive(Default)]
+        struct CountryPopAgg {
+            population: u32,
+            location_count: u32,
+            ranks: [RankAgg; 4],
+        }
+
+        let is_empty = self.selection_state.is_empty();
+        let mut scoped_locations: Vec<(LocationIdx, CountryId, u32, Option<usize>)> = Vec::new();
+
+        for entry in self.gamestate.locations.iter() {
+            let idx = entry.idx();
+            if !is_empty && !self.selection_state.contains(idx) {
+                continue;
+            }
+
+            let loc = entry.location();
+            let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) else {
+                continue;
+            };
+            let population = self.gamestate.location_population(loc) as u32;
+            let rank_idx = match &loc.rank {
+                LocationRank::RuralSettlement => Some(0),
+                LocationRank::Town => Some(1),
+                LocationRank::City => Some(2),
+                LocationRank::Metropolis => Some(3),
+                LocationRank::Other => None,
+            };
+            scoped_locations.push((idx, owner_id, population, rank_idx));
+        }
+
+        let location_count = scoped_locations.len() as u32;
+        let total_population: u32 = scoped_locations.iter().map(|(_, _, pop, _)| *pop).sum();
+
+        let mut populations: Vec<u32> =
+            scoped_locations.iter().map(|(_, _, pop, _)| *pop).collect();
+        populations.sort_unstable();
+
+        let median_location_population = if populations.is_empty() {
+            0
+        } else {
+            populations[populations.len() / 2]
+        };
+
+        let mut country_aggs: FxHashMap<CountryId, CountryPopAgg> = FxHashMap::default();
+        let mut rank_totals = [
+            RankAgg::default(),
+            RankAgg::default(),
+            RankAgg::default(),
+            RankAgg::default(),
+        ];
+        let mut sorted_locations = scoped_locations.clone();
+        sorted_locations.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| a.0.value().cmp(&b.0.value())));
+
+        for &(_, owner_id, population, rank_idx) in &scoped_locations {
+            let agg = country_aggs.entry(owner_id).or_default();
+            agg.population += population;
+            agg.location_count += 1;
+            if let Some(rank_idx) = rank_idx {
+                agg.ranks[rank_idx].population += population;
+                agg.ranks[rank_idx].location_count += 1;
+                rank_totals[rank_idx].population += population;
+                rank_totals[rank_idx].location_count += 1;
+            }
+        }
+
+        let mut countries: Vec<ScopedCountryPopulation> = country_aggs
+            .into_iter()
+            .filter_map(|(cid, agg)| {
+                let cidx = self.gamestate.countries.get(cid)?;
+                let eref = self.entity_ref_from_country_idx(cidx)?;
+                let ranks = agg
+                    .ranks
+                    .into_iter()
+                    .enumerate()
+                    .map(|(idx, rank)| PopulationRankSegment {
+                        rank: idx as u8,
+                        population: rank.population,
+                        location_count: rank.location_count,
+                    })
+                    .collect();
+                Some(ScopedCountryPopulation {
+                    anchor_location_idx: eref.anchor_location_idx,
+                    tag: eref.tag,
+                    name: eref.name,
+                    color_hex: eref.color_hex,
+                    total_population: agg.population,
+                    location_count: agg.location_count,
+                    ranks,
+                })
+            })
+            .collect();
+        countries.sort_by(|a, b| {
+            b.total_population
+                .cmp(&a.total_population)
+                .then_with(|| a.tag.cmp(&b.tag))
+        });
+
+        let mut cumulative_population = 0u32;
+        let concentration: Vec<PopulationConcentrationPoint> = sorted_locations
+            .iter()
+            .enumerate()
+            .map(|(idx, (_, _, population, _))| {
+                cumulative_population += *population;
+                PopulationConcentrationPoint {
+                    location_rank: idx as u32 + 1,
+                    location_count,
+                    population: *population,
+                    cumulative_population,
+                    population_share: if total_population > 0 {
+                        cumulative_population as f64 / total_population as f64
+                    } else {
+                        0.0
+                    },
+                }
+            })
+            .collect();
+
+        let top_locations: Vec<PopulationTopLocation> = sorted_locations
+            .into_iter()
+            .filter(|(_, _, _, rank_idx)| rank_idx.is_some())
+            .take(50)
+            .filter_map(|(idx, _, population, rank_idx)| {
+                let loc = self.gamestate.locations.index(idx).location();
+                let owner = self.owner_ref_for_location(loc)?;
+                Some(PopulationTopLocation {
+                    location_idx: idx.value(),
+                    name: self.location_name(idx).to_string(),
+                    owner,
+                    population,
+                    rank: rank_idx? as u8,
+                })
+            })
+            .collect();
+        let rank_totals = rank_totals
+            .into_iter()
+            .enumerate()
+            .map(|(idx, rank)| PopulationRankSegment {
+                rank: idx as u8,
+                population: rank.population,
+                location_count: rank.location_count,
+            })
+            .collect();
+
+        PopulationInsightData {
+            scope: PopulationScopeSummary {
+                location_count,
+                country_count: countries.len() as u32,
+                total_population,
+                median_location_population,
+                is_empty,
+            },
+            rank_totals,
+            countries,
+            concentration,
+            top_locations,
         }
     }
 

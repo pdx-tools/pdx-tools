@@ -25,6 +25,7 @@ import type {
   TaxGapInsightData,
   TaxGapScope,
   MarketInsightData,
+  PopulationInsightData,
   ScopeSummary,
   Eu5DateComponents,
 } from "@/wasm/wasm_eu5";
@@ -74,6 +75,7 @@ export interface AppTriggers {
   getTaxGapInsight(): Promise<TaxGapInsightData>;
   getTaxGapScope(): Promise<TaxGapScope>;
   getMarketInsight(): Promise<MarketInsightData>;
+  getPopulationInsight(): Promise<PopulationInsightData>;
   getScopeSummary(): Promise<ScopeSummary>;
   getEntityHeaderFor(anchorLocationIdx: number): Promise<EntityHeader | null>;
   getOverviewSectionFor(anchorLocationIdx: number): Promise<OverviewSection | null>;
@@ -179,6 +181,7 @@ export class Eu5UIEngine implements AppEngine {
     getTaxGapInsight: () => this.gameInstance.getTaxGapInsight(),
     getTaxGapScope: () => this.gameInstance.getTaxGapScope(),
     getMarketInsight: () => this.gameInstance.getMarketInsight(),
+    getPopulationInsight: () => this.gameInstance.getPopulationInsight(),
     getScopeSummary: () => this.gameInstance.getScopeSummary(),
     getEntityHeaderFor: (anchorLocationIdx) =>
       this.gameInstance.getEntityHeaderFor(anchorLocationIdx),

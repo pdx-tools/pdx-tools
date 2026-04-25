@@ -78,7 +78,7 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
     const { axisColor, tickColor } = getEChartsTheme(isDark);
 
     return {
-      grid: { left: 120, right: 40, top: 20, bottom: 100, containLabel: false },
+      grid: { left: 120, right: 40, top: 20, bottom: 100 },
       xAxis: {
         type: "category",
         data: marketLabels,

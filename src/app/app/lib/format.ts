@@ -1,15 +1,13 @@
-const intFormatter = new Intl.NumberFormat(undefined, {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
-const floatFormatter = new Intl.NumberFormat(undefined, {
-  minimumFractionDigits: 3,
-  maximumFractionDigits: 3,
-});
-const floatFormatter2 = new Intl.NumberFormat(undefined, {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+const floatFormatters = Array.from(
+  { length: 4 },
+  (_, n) =>
+    new Intl.NumberFormat(undefined, {
+      minimumFractionDigits: n,
+      maximumFractionDigits: n,
+    }),
+);
+
+const intFormatter = floatFormatters[0];
 
 export function formatInt(x: number) {
   return intFormatter.format(x);
@@ -26,11 +24,7 @@ export function abbreviateInt(x: number) {
 }
 
 export function formatFloat(x: number, precision?: number) {
-  if (precision === 2) {
-    return floatFormatter2.format(x);
-  } else {
-    return floatFormatter.format(x);
-  }
+  return floatFormatters[precision ?? 3].format(x);
 }
 
 export function sentenceCasing(x: string): string {

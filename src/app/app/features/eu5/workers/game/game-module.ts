@@ -23,6 +23,7 @@ import type {
   TaxGapInsightData,
   TaxGapScope,
   MarketInsightData,
+  PopulationInsightData,
   ScopeSummary,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
@@ -356,6 +357,9 @@ export const createGame = async (
     },
     getMarketInsight: (): MarketInsightData => {
       return app.get_market_insight();
+    },
+    getPopulationInsight: (): PopulationInsightData => {
+      return app.get_population_insight();
     },
     getScopeSummary: (): ScopeSummary => {
       return app.get_scope_summary();
