@@ -9,17 +9,18 @@ use crate::selection::{
     GroupId, GroupingTable, LocationData, SelectionAdapter, SelectionState, single_entity_scope,
 };
 use crate::selection_views::{
-    CountryDevSummary, CountryPossibleTax, CountryTaxGap, DevTopLocation, DevelopmentInsightData,
-    DistributionBucket, EntityBreakdownData, EntityBreakdownRow, HoverDisplayData, HoverStat,
-    LocationDistribution, MarketInsightData, MarketScopeSummary, PopulationConcentrationPoint,
-    PopulationInsightData, PopulationRankSegment, PopulationScopeSummary, PopulationTopLocation,
-    PopulationTypeProfileRow, PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation,
-    ProductionLocationSummary, ScopeSummary, ScopedCountryPopulation, ScopedGoodSummary,
-    ScopedMarketSummary, StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope,
-    TaxGapTopLocation,
+    BuildingLevelsInsightData, BuildingLevelsScopeSummary, BuildingLevelsTopLocation,
+    BuildingTypeForeignOwnerCell, BuildingTypeSummary, CountryDevSummary, CountryPossibleTax,
+    CountryTaxGap, DevTopLocation, DevelopmentInsightData, DistributionBucket, EntityBreakdownData,
+    EntityBreakdownRow, HoverDisplayData, HoverStat, LocationDistribution, MarketInsightData,
+    MarketScopeSummary, PopulationConcentrationPoint, PopulationInsightData, PopulationRankSegment,
+    PopulationScopeSummary, PopulationTopLocation, PopulationTypeProfileRow,
+    PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation, ProductionLocationSummary,
+    ScopeSummary, ScopedCountryPopulation, ScopedGoodSummary, ScopedMarketSummary,
+    StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope, TaxGapTopLocation,
 };
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
-use eu5save::hash::{FnvHashSet, FxHashMap};
+use eu5save::hash::{FnvHashSet, FxHashMap, FxHashSet};
 use eu5save::models::{
     CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIdx, LocationIndexedVec,
     LocationRank, MarketId, PopulationType, RawMaterialsName,
@@ -3336,7 +3337,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .iter()
             .filter(|b| b.location == location_id && b.owner == loc.owner)
             .map(|b| BuildingEntry {
-                name: b._type.to_str().to_string(),
+                name: b.kind.to_str().to_string(),
                 level: b.level,
             })
             .collect();
@@ -4563,6 +4564,264 @@ impl<'bump> Eu5Workspace<'bump> {
             concentration,
             top_locations,
             type_profile,
+        }
+    }
+
+    pub fn calculate_building_levels_insight(&self) -> BuildingLevelsInsightData {
+        use crate::selection_views::ForeignBuildingLocationRow;
+        use eu5save::models::CountryId;
+
+        let is_empty = self.selection_state.is_empty();
+        let in_scope =
+            |idx: eu5save::models::LocationIdx| is_empty || self.selection_state.contains(idx);
+
+        #[derive(Default)]
+        struct TypeAgg {
+            levels: f64,
+            foreign_levels: f64,
+            employed: f64,
+            building_count: u32,
+            locations: FxHashSet<u32>,
+            foreign_owners: FxHashSet<CountryId>,
+        }
+
+        #[derive(Default)]
+        struct ForeignOwnerAgg {
+            levels: f64,
+            employed: f64,
+        }
+
+        #[derive(Default)]
+        struct ForeignCellAgg {
+            levels: f64,
+            employed: f64,
+            building_count: u32,
+        }
+
+        #[derive(Default)]
+        struct LocationAgg {
+            levels: f64,
+            foreign_levels: f64,
+        }
+
+        let mut type_agg: FxHashMap<&str, TypeAgg> = FxHashMap::default();
+        let mut foreign_owner_agg: FxHashMap<CountryId, ForeignOwnerAgg> = FxHashMap::default();
+        let mut foreign_cell_agg: FxHashMap<(&str, CountryId), ForeignCellAgg> =
+            FxHashMap::default();
+        // (loc_idx_val, kind, foreign_owner) -> foreign levels
+        let mut loc_foreign_cell_agg: FxHashMap<(u32, &str, CountryId), f64> = FxHashMap::default();
+        let mut loc_agg: FxHashMap<u32, LocationAgg> = FxHashMap::default();
+
+        let mut total_levels = 0.0f64;
+        let mut total_foreign_levels = 0.0f64;
+
+        for building in self.gamestate.building_manager.database.iter() {
+            let Some(loc_idx) = self.gamestate.locations.get(building.location) else {
+                continue;
+            };
+            if !in_scope(loc_idx) {
+                continue;
+            }
+            let location = self.gamestate.locations.index(loc_idx).location();
+            let loc_owner = location.owner;
+            if loc_owner.is_dummy() {
+                continue;
+            }
+
+            let kind: &str = building.kind.to_str();
+            let level = building.level;
+            let employed = building.employed * 1000.0;
+            let is_foreign = building.owner != loc_owner && building.owner.real_id().is_some();
+            let loc_idx_val = loc_idx.value();
+
+            total_levels += level;
+            if is_foreign {
+                total_foreign_levels += level;
+            }
+
+            // Type aggregation
+            {
+                let t = type_agg.entry(kind).or_default();
+                t.levels += level;
+                t.employed += employed;
+                t.building_count += 1;
+                t.locations.insert(loc_idx_val);
+                if is_foreign {
+                    t.foreign_levels += level;
+                    t.foreign_owners.insert(building.owner);
+                }
+            }
+
+            // Location aggregation
+            {
+                let la = loc_agg.entry(loc_idx_val).or_default();
+                la.levels += level;
+                if is_foreign {
+                    la.foreign_levels += level;
+                }
+            }
+
+            if is_foreign {
+                // Foreign owner aggregation
+                {
+                    let fo = foreign_owner_agg.entry(building.owner).or_default();
+                    fo.levels += level;
+                    fo.employed += employed;
+                }
+                // Foreign cell aggregation (by kind + owner, for heatmap)
+                {
+                    let fc = foreign_cell_agg.entry((kind, building.owner)).or_default();
+                    fc.levels += level;
+                    fc.employed += employed;
+                    fc.building_count += 1;
+                }
+                // Per-location foreign cell (location + kind + owner, for location table)
+                *loc_foreign_cell_agg
+                    .entry((loc_idx_val, kind, building.owner))
+                    .or_default() += level;
+            }
+        }
+
+        let location_count = loc_agg.len() as u32;
+
+        // Build type summaries (all types, sorted by levels descending)
+        let mut types: Vec<BuildingTypeSummary> = type_agg
+            .into_iter()
+            .map(|(kind, t)| BuildingTypeSummary {
+                kind: kind.to_string(),
+                levels: t.levels,
+                foreign_levels: t.foreign_levels,
+                employed: t.employed,
+                building_count: t.building_count,
+                location_count: t.locations.len() as u32,
+                foreign_owner_count: t.foreign_owners.len() as u32,
+            })
+            .collect();
+        types.sort_by(|a, b| {
+            b.levels
+                .total_cmp(&a.levels)
+                .then_with(|| a.kind.cmp(&b.kind))
+        });
+
+        // Keep the top foreign owners needed by the owner/type cell table.
+        let foreign_owner_count = foreign_owner_agg.len() as u32;
+        let mut foreign_owner_vec: Vec<(CountryId, ForeignOwnerAgg)> =
+            foreign_owner_agg.into_iter().collect();
+        foreign_owner_vec.sort_by(|a, b| {
+            b.1.levels
+                .total_cmp(&a.1.levels)
+                .then_with(|| b.1.employed.total_cmp(&a.1.employed))
+        });
+        foreign_owner_vec.truncate(20);
+
+        // Build foreign owner cells for top 20 types x top 20 foreign owners
+        let top_type_kinds: FxHashSet<&str> =
+            types.iter().take(20).map(|t| t.kind.as_str()).collect();
+        let top_owner_ids: FxHashSet<CountryId> = foreign_owner_vec
+            .iter()
+            .take(20)
+            .map(|(cid, _)| *cid)
+            .collect();
+
+        // Resolve EntityRef for each top foreign owner
+        let owner_erefs: FxHashMap<CountryId, EntityRef> = foreign_owner_vec
+            .iter()
+            .take(20)
+            .filter_map(|(cid, _)| {
+                let cidx = self.gamestate.countries.get(*cid)?;
+                let eref = self.entity_ref_from_country_idx(cidx)?;
+                Some((*cid, eref))
+            })
+            .collect();
+
+        let mut foreign_owner_cells: Vec<BuildingTypeForeignOwnerCell> = foreign_cell_agg
+            .into_iter()
+            .filter(|&((kind, ref cid), _)| {
+                top_type_kinds.contains(kind) && top_owner_ids.contains(cid)
+            })
+            .filter_map(|((kind, cid), fc)| {
+                let owner = owner_erefs.get(&cid)?.clone();
+                Some(BuildingTypeForeignOwnerCell {
+                    kind: kind.to_string(),
+                    owner,
+                    levels: fc.levels,
+                    employed: fc.employed,
+                    building_count: fc.building_count,
+                })
+            })
+            .collect();
+        foreign_owner_cells.sort_by(|a, b| b.levels.total_cmp(&a.levels));
+
+        // Scope-level foreign counts (loc_agg consumed below, owner_agg consumed above)
+        let foreign_location_count = loc_agg
+            .values()
+            .filter(|la| la.foreign_levels > 0.0)
+            .count() as u32;
+
+        // Build top 100 foreign (location, kind, owner) rows sorted by foreign levels
+        let mut loc_foreign_vec: Vec<((u32, &str, CountryId), f64)> =
+            loc_foreign_cell_agg.into_iter().collect();
+        loc_foreign_vec.sort_by(|a, b| b.1.total_cmp(&a.1));
+        loc_foreign_vec.truncate(100);
+
+        let foreign_location_rows: Vec<ForeignBuildingLocationRow> = loc_foreign_vec
+            .into_iter()
+            .filter_map(|((loc_idx_val, kind, foreign_owner_id), fl)| {
+                let loc_idx = eu5save::models::LocationIdx::new(loc_idx_val);
+                let loc = self.gamestate.locations.index(loc_idx).location();
+                let location_owner = self.owner_ref_for_location(loc)?;
+                let foreign_cidx = self.gamestate.countries.get(foreign_owner_id)?;
+                let foreign_owner = self.entity_ref_from_country_idx(foreign_cidx)?;
+                let location_total_levels = loc_agg.get(&loc_idx_val).map_or(0.0, |la| la.levels);
+                Some(ForeignBuildingLocationRow {
+                    location_idx: loc_idx_val,
+                    location_name: self.location_name(loc_idx).to_string(),
+                    location_owner,
+                    foreign_owner,
+                    kind: kind.to_string(),
+                    foreign_levels: fl,
+                    location_total_levels,
+                })
+            })
+            .collect();
+
+        // Build top 50 locations sorted by total levels descending
+        let mut loc_vec: Vec<(u32, LocationAgg)> = loc_agg.into_iter().collect();
+        loc_vec.sort_by(|a, b| {
+            b.1.levels
+                .total_cmp(&a.1.levels)
+                .then_with(|| b.1.foreign_levels.total_cmp(&a.1.foreign_levels))
+                .then_with(|| a.0.cmp(&b.0))
+        });
+        loc_vec.truncate(50);
+
+        let top_locations: Vec<BuildingLevelsTopLocation> = loc_vec
+            .into_iter()
+            .filter_map(|(loc_idx_val, la)| {
+                let loc_idx = eu5save::models::LocationIdx::new(loc_idx_val);
+                let loc = self.gamestate.locations.index(loc_idx).location();
+                let owner = self.owner_ref_for_location(loc)?;
+                Some(BuildingLevelsTopLocation {
+                    location_idx: loc_idx_val,
+                    name: self.location_name(loc_idx).to_string(),
+                    owner,
+                    levels: la.levels,
+                })
+            })
+            .collect();
+
+        BuildingLevelsInsightData {
+            scope: BuildingLevelsScopeSummary {
+                location_count,
+                total_levels,
+                foreign_levels: total_foreign_levels,
+                foreign_location_count,
+                foreign_owner_count,
+            },
+            types,
+            foreign_owner_cells,
+            foreign_location_rows,
+            top_locations,
         }
     }
 

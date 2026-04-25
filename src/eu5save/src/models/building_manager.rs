@@ -46,12 +46,14 @@ impl BuildingId {
 #[derive(Debug, ArenaDeserialize, PartialEq)]
 pub struct Building<'bump> {
     #[arena(alias = "type")]
-    pub _type: BStr<'bump>,
+    pub kind: BStr<'bump>,
     #[arena(default)]
     pub level: f64,
     pub location: LocationId,
     #[arena(default)]
     pub owner: CountryId,
+    #[arena(default)]
+    pub employed: f64, // 0.08 => 80 employed
 }
 
 #[inline]
