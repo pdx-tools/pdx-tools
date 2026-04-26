@@ -575,3 +575,64 @@ pub struct DistributionBucket {
     pub hi: f64,
     pub count: u32,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct RgoScopeSummary {
+    pub location_count: u32,
+    pub total_rgo_level: f64,
+    pub avg_rgo_level: f64,
+    pub is_empty: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct RgoMaterialSummary {
+    pub raw_material: String,
+    pub total_rgo_level: f64,
+    pub avg_rgo_level: f64,
+    pub median_rgo_level: f64,
+    pub location_count: u32,
+    pub scoped_share: f64,
+    pub global_share: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct RgoMaterialProfileDelta {
+    pub raw_material: String,
+    pub scoped_share: f64,
+    pub global_share: f64,
+    pub share_delta: f64,
+    pub total_rgo_level: f64,
+    pub location_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct RgoTopLocation {
+    pub location_idx: u32,
+    pub name: String,
+    pub owner: EntityRef,
+    pub raw_material: String,
+    pub rgo_level: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct RgoInsightData {
+    pub scope: RgoScopeSummary,
+    pub materials: Vec<RgoMaterialSummary>,
+    pub profile_deltas: Vec<RgoMaterialProfileDelta>,
+    pub top_locations: Vec<RgoTopLocation>,
+}

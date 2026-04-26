@@ -16,7 +16,8 @@ use crate::selection_views::{
     MarketScopeSummary, PopulationConcentrationPoint, PopulationInsightData, PopulationRankSegment,
     PopulationReligionShare, PopulationScopeSummary, PopulationTopLocation,
     PopulationTypeProfileRow, PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation,
-    ProductionLocationSummary, ReligionInsightData, ReligionRow, ScopeSummary,
+    ProductionLocationSummary, ReligionInsightData, ReligionRow, RgoInsightData,
+    RgoMaterialProfileDelta, RgoMaterialSummary, RgoScopeSummary, RgoTopLocation, ScopeSummary,
     ScopedCountryPopulation, ScopedGoodSummary, ScopedMarketSummary, StateEfficacyTopLocation,
     StateReligionRow, TaxGapInsightData, TaxGapScope, TaxGapTopLocation,
 };
@@ -5247,6 +5248,187 @@ impl LocationData for Eu5Workspace<'_> {
         crate::selection::LocationInfo {
             owner: loc.owner.real_id(),
             market: loc.market,
+        }
+    }
+}
+
+impl<'bump> Eu5Workspace<'bump> {
+    pub fn calculate_rgo_insight(&self) -> RgoInsightData {
+        const TOP_LOCATIONS_CAP: usize = 50;
+        const PROFILE_DELTA_CAP: usize = 20;
+
+        let is_selection_empty = self.selection_state.is_empty();
+
+        #[derive(Default)]
+        struct MaterialAgg {
+            total_rgo_level: f64,
+            location_count: u32,
+            levels: Vec<f64>,
+        }
+
+        struct LocEntry<'a> {
+            idx: LocationIdx,
+            raw_material: RawMaterialsName<'a>,
+            rgo_level: f64,
+        }
+
+        let mut scoped_mat: FxHashMap<RawMaterialsName<'_>, MaterialAgg> = FxHashMap::default();
+        let mut global_mat_total: FxHashMap<RawMaterialsName<'_>, f64> = FxHashMap::default();
+
+        let mut scoped_total = 0.0_f64;
+        let mut global_total = 0.0_f64;
+        let mut scoped_loc_count = 0u32;
+        let mut scoped_locs: Vec<LocEntry<'_>> = Vec::new();
+
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            let Some(raw_material) = loc.raw_material else {
+                continue;
+            };
+            if loc.rgo_level <= 0.0 {
+                continue;
+            }
+
+            let idx = entry.idx();
+            let in_scope = is_selection_empty || self.selection_state.contains(idx);
+
+            *global_mat_total.entry(raw_material).or_default() += loc.rgo_level;
+            global_total += loc.rgo_level;
+
+            if in_scope {
+                scoped_total += loc.rgo_level;
+                scoped_loc_count += 1;
+
+                let mat = scoped_mat.entry(raw_material).or_default();
+                mat.total_rgo_level += loc.rgo_level;
+                mat.location_count += 1;
+                mat.levels.push(loc.rgo_level);
+
+                if loc.owner.real_id().is_some() {
+                    scoped_locs.push(LocEntry {
+                        idx,
+                        raw_material,
+                        rgo_level: loc.rgo_level,
+                    });
+                }
+            }
+        }
+
+        let mut mat_entries: Vec<(RawMaterialsName<'_>, MaterialAgg)> =
+            scoped_mat.into_iter().collect();
+        mat_entries.sort_by(|a, b| b.1.total_rgo_level.total_cmp(&a.1.total_rgo_level));
+
+        for (_, agg) in &mut mat_entries {
+            agg.levels.sort_by(f64::total_cmp);
+        }
+
+        let materials: Vec<RgoMaterialSummary> = mat_entries
+            .iter()
+            .map(|(raw_material, agg)| {
+                let n = agg.levels.len();
+                let median_rgo_level = if n % 2 == 1 {
+                    agg.levels[n / 2]
+                } else {
+                    (agg.levels[n / 2 - 1] + agg.levels[n / 2]) / 2.0
+                };
+                let scoped_share = if scoped_total > 0.0 {
+                    agg.total_rgo_level / scoped_total
+                } else {
+                    0.0
+                };
+                let global_rgo = global_mat_total.get(raw_material).copied().unwrap_or(0.0);
+                let global_share = if global_total > 0.0 {
+                    global_rgo / global_total
+                } else {
+                    0.0
+                };
+                RgoMaterialSummary {
+                    raw_material: raw_material.to_str().to_string(),
+                    total_rgo_level: agg.total_rgo_level,
+                    avg_rgo_level: agg.total_rgo_level / agg.location_count as f64,
+                    median_rgo_level,
+                    location_count: agg.location_count,
+                    scoped_share,
+                    global_share,
+                }
+            })
+            .collect();
+
+        let profile_deltas: Vec<RgoMaterialProfileDelta> = if is_selection_empty {
+            Vec::new()
+        } else {
+            let scoped_lookup: FxHashMap<RawMaterialsName<'_>, &MaterialAgg> =
+                mat_entries.iter().map(|(name, agg)| (*name, agg)).collect();
+
+            let mut deltas: Vec<RgoMaterialProfileDelta> = global_mat_total
+                .iter()
+                .map(|(raw_material, global_rgo)| {
+                    let scoped_agg = scoped_lookup.get(raw_material).copied();
+                    let scoped_rgo = scoped_agg.map(|a| a.total_rgo_level).unwrap_or(0.0);
+                    let location_count = scoped_agg.map(|a| a.location_count).unwrap_or(0);
+                    let scoped_share = if scoped_total > 0.0 {
+                        scoped_rgo / scoped_total
+                    } else {
+                        0.0
+                    };
+                    let global_share = if global_total > 0.0 {
+                        global_rgo / global_total
+                    } else {
+                        0.0
+                    };
+                    RgoMaterialProfileDelta {
+                        raw_material: raw_material.to_str().to_string(),
+                        scoped_share,
+                        global_share,
+                        share_delta: scoped_share - global_share,
+                        total_rgo_level: scoped_rgo,
+                        location_count,
+                    }
+                })
+                .collect();
+            deltas.sort_by(|a, b| {
+                b.share_delta
+                    .abs()
+                    .total_cmp(&a.share_delta.abs())
+                    .then_with(|| a.raw_material.cmp(&b.raw_material))
+            });
+            deltas.truncate(PROFILE_DELTA_CAP);
+            deltas
+        };
+
+        scoped_locs.sort_by(|a, b| b.rgo_level.total_cmp(&a.rgo_level));
+        let top_locations: Vec<RgoTopLocation> = scoped_locs
+            .iter()
+            .take(TOP_LOCATIONS_CAP)
+            .filter_map(|entry| {
+                let loc = self.gamestate.locations.index(entry.idx).location();
+                let owner = self.owner_ref_for_location(loc)?;
+                Some(RgoTopLocation {
+                    location_idx: entry.idx.value(),
+                    name: self.location_name(entry.idx).to_string(),
+                    owner,
+                    raw_material: entry.raw_material.to_str().to_string(),
+                    rgo_level: entry.rgo_level,
+                })
+            })
+            .collect();
+
+        let scope = RgoScopeSummary {
+            location_count: scoped_loc_count,
+            total_rgo_level: scoped_total,
+            avg_rgo_level: if scoped_loc_count > 0 {
+                scoped_total / scoped_loc_count as f64
+            } else {
+                0.0
+            },
+            is_empty: is_selection_empty,
+        };
+
+        RgoInsightData {
+            scope,
+            materials,
+            profile_deltas,
+            top_locations,
         }
     }
 }

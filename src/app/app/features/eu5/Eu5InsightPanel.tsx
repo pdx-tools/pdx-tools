@@ -17,6 +17,7 @@ import { MarketsInsight } from "./features/charts/Markets";
 import { PopulationInsight } from "./features/charts/Population";
 import { BuildingLevelsInsight } from "./features/charts/BuildingLevels";
 import { ReligionInsight } from "./features/charts/ReligionInsight";
+import { RgoInsight } from "./features/charts/Rgo";
 import type { StateEfficacyData, MapMode } from "@/wasm/wasm_eu5";
 import { EntityProfileRoot } from "./EntityProfile";
 import { MultiEntitySummaryPanel } from "./EntityProfile/MultiEntity/MultiEntitySummaryPanel";
@@ -103,6 +104,8 @@ function PanelContentInner() {
     content = <BuildingLevelsInsight />;
   } else if (currentMapMode === "religion") {
     content = <ReligionInsight />;
+  } else if (currentMapMode === "rgoLevel") {
+    content = <RgoInsight />;
   } else if (locationCount === 1) {
     content = <EntityProfileRoot key="leaf" />;
   } else if (!isEmpty) {
