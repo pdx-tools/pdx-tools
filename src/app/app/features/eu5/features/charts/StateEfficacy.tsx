@@ -31,20 +31,23 @@ export function StateEfficacyInsight() {
         <>
           {countries.length >= 2 && (
             <section>
-              <SectionTitle>State Efficacy · Total vs Average per Location</SectionTitle>
+              <SectionTitle>Which powers realize the most territorial capacity?</SectionTitle>
               <StateEfficacyScatterChart countries={countries} />
             </section>
           )}
 
           {insightQuery.data?.distribution && (
             <section>
+              <SectionTitle>
+                How is effective development distributed across locations?
+              </SectionTitle>
               <LocationDistributionChart distribution={insightQuery.data.distribution} />
             </section>
           )}
 
           {insightQuery.data && insightQuery.data.topLocations.length > 0 && (
             <section>
-              <SectionTitle>Top State Efficacy Locations</SectionTitle>
+              <SectionTitle>What are the strongest effective locations?</SectionTitle>
               <StateEfficacyTopLocations locations={insightQuery.data.topLocations} />
             </section>
           )}
@@ -95,7 +98,7 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
       grid: { left: 80, right: 60, top: 20, bottom: 60 },
       xAxis: {
         type: "value",
-        name: "Total State Efficacy",
+        name: "Total Effective Development",
         nameLocation: "middle",
         nameGap: 40,
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },

@@ -10,16 +10,17 @@ use crate::selection::{
 };
 use crate::selection_views::{
     BuildingLevelsInsightData, BuildingLevelsScopeSummary, BuildingLevelsTopLocation,
-    BuildingTypeForeignOwnerCell, BuildingTypeSummary, CountryDevSummary, CountryPossibleTax,
-    CountryTaxGap, DevTopLocation, DevelopmentInsightData, DistributionBucket, EntityBreakdownData,
-    EntityBreakdownRow, HoverDisplayData, HoverStat, LocationDistribution, MarketInsightData,
-    MarketScopeSummary, PopulationConcentrationPoint, PopulationInsightData, PopulationRankSegment,
-    PopulationReligionShare, PopulationScopeSummary, PopulationTopLocation,
-    PopulationTypeProfileRow, PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation,
-    ProductionLocationSummary, ReligionInsightData, ReligionRow, RgoInsightData,
-    RgoMaterialProfileDelta, RgoMaterialSummary, RgoScopeSummary, RgoTopLocation, ScopeSummary,
-    ScopedCountryPopulation, ScopedGoodSummary, ScopedMarketSummary, StateEfficacyTopLocation,
-    StateReligionRow, TaxGapInsightData, TaxGapScope, TaxGapTopLocation,
+    BuildingTypeForeignOwnerCell, BuildingTypeSummary, ControlBandSegment, ControlInsightData,
+    ControlScopeSummary, ControlTopLocation, CountryControlBarSummary, CountryControlPoint,
+    CountryDevSummary, CountryPossibleTax, CountryTaxGap, DevTopLocation, DevelopmentInsightData,
+    DistributionBucket, EntityBreakdownData, EntityBreakdownRow, HoverDisplayData, HoverStat,
+    LocationDistribution, MarketInsightData, MarketScopeSummary, PopulationConcentrationPoint,
+    PopulationInsightData, PopulationRankSegment, PopulationReligionShare, PopulationScopeSummary,
+    PopulationTopLocation, PopulationTypeProfileRow, PossibleTaxInsightData, PossibleTaxScope,
+    PossibleTaxTopLocation, ProductionLocationSummary, ReligionInsightData, ReligionRow,
+    RgoInsightData, RgoMaterialProfileDelta, RgoMaterialSummary, RgoScopeSummary, RgoTopLocation,
+    ScopeSummary, ScopedCountryPopulation, ScopedGoodSummary, ScopedMarketSummary,
+    StateEfficacyTopLocation, StateReligionRow, TaxGapInsightData, TaxGapScope, TaxGapTopLocation,
 };
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap, FxHashSet};
@@ -5428,6 +5429,234 @@ impl<'bump> Eu5Workspace<'bump> {
             scope,
             materials,
             profile_deltas,
+            top_locations,
+        }
+    }
+
+    pub fn calculate_control_insight(&self) -> ControlInsightData {
+        const COUNTRY_BAR_CAP: usize = 20;
+        const COUNTRY_SCATTER_CAP: usize = 250;
+        const TOP_LOCATION_CAP: usize = 50;
+        const MIN_SCATTER_DEVELOPMENT: f64 = 10.0;
+        const MIN_SCATTER_LOCATIONS: u32 = 5;
+        const CONTROL_BANDS: [(&str, f64, f64); 5] = [
+            ("superficial", 0.0, 0.25),
+            ("functional", 0.25, 0.50),
+            ("effective", 0.50, 0.75),
+            ("great", 0.75, 0.90),
+            ("perfect", 0.90, 1.01),
+        ];
+
+        #[derive(Default, Clone, Copy)]
+        struct ControlBandAgg {
+            development: f64,
+            lost_development: f64,
+            location_count: u32,
+        }
+
+        #[derive(Default)]
+        struct CountryControlAgg {
+            total_development: f64,
+            effective_development: f64,
+            lost_development: f64,
+            location_count: u32,
+            bands: [ControlBandAgg; 5],
+        }
+
+        fn weighted_avg_control(agg: &CountryControlAgg) -> f64 {
+            if agg.total_development > 0.0 {
+                agg.effective_development / agg.total_development
+            } else {
+                0.0
+            }
+        }
+
+        struct ControlLocationCandidate {
+            idx: LocationIdx,
+            control: f64,
+            development: f64,
+            lost_development: f64,
+            population: u32,
+        }
+
+        let is_empty = self.selection_state.is_empty();
+        let mut country_aggs: FxHashMap<CountryId, CountryControlAgg> = FxHashMap::default();
+        let mut location_candidates: Vec<ControlLocationCandidate> = Vec::new();
+
+        let mut scope_total_development = 0.0f64;
+        let mut scope_effective_development = 0.0f64;
+        let mut scope_lost_development = 0.0f64;
+        let mut scope_location_count = 0u32;
+
+        for entry in self.gamestate.locations.iter() {
+            let idx = entry.idx();
+            if !is_empty && !self.selection_state.contains(idx) {
+                continue;
+            }
+            let loc = entry.location();
+            let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) else {
+                continue;
+            };
+
+            let development = loc.development;
+            let control = loc.control.clamp(0.0, 1.0);
+            let effective_development = control * development;
+            let lost_development = (1.0 - control) * development;
+            let population = self.gamestate.location_population(loc) as u32;
+
+            scope_total_development += development;
+            scope_effective_development += effective_development;
+            scope_lost_development += lost_development;
+            scope_location_count += 1;
+
+            let agg = country_aggs.entry(owner_id).or_default();
+            agg.total_development += development;
+            agg.effective_development += effective_development;
+            agg.lost_development += lost_development;
+            agg.location_count += 1;
+
+            let band_idx = CONTROL_BANDS
+                .iter()
+                .position(|(_, lo, hi)| control >= *lo && control < *hi)
+                .unwrap_or(4);
+            agg.bands[band_idx].development += development;
+            agg.bands[band_idx].lost_development += lost_development;
+            agg.bands[band_idx].location_count += 1;
+
+            if lost_development > 0.0 {
+                location_candidates.push(ControlLocationCandidate {
+                    idx,
+                    control,
+                    development,
+                    lost_development,
+                    population,
+                });
+            }
+        }
+
+        let scope_weighted_avg_control = if scope_total_development > 0.0 {
+            scope_effective_development / scope_total_development
+        } else {
+            0.0
+        };
+
+        let total_countries = country_aggs.len();
+
+        // Sort once; bar and scatter both draw from this order.
+        let mut all_countries: Vec<(CountryId, CountryControlAgg)> =
+            country_aggs.into_iter().collect();
+        all_countries.sort_by(|a, b| {
+            b.1.lost_development
+                .total_cmp(&a.1.lost_development)
+                .then_with(|| a.0.value().cmp(&b.0.value()))
+        });
+
+        // Bar: top 20 by lost_development, with band detail.
+        let bar_countries: Vec<CountryControlBarSummary> = all_countries
+            .iter()
+            .take(COUNTRY_BAR_CAP)
+            .filter_map(|(cid, agg)| {
+                let cidx = self.gamestate.countries.get(*cid)?;
+                let eref = self.entity_ref_from_country_idx(cidx)?;
+                let bands = CONTROL_BANDS
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (name, _, _))| ControlBandSegment {
+                        band: name.to_string(),
+                        lost_development: agg.bands[i].lost_development,
+                        development: agg.bands[i].development,
+                        location_count: agg.bands[i].location_count,
+                    })
+                    .collect();
+                Some(CountryControlBarSummary {
+                    anchor_location_idx: eref.anchor_location_idx,
+                    tag: eref.tag,
+                    name: eref.name,
+                    color_hex: eref.color_hex,
+                    total_development: agg.total_development,
+                    effective_development: agg.effective_development,
+                    lost_development: agg.lost_development,
+                    weighted_avg_control: weighted_avg_control(agg),
+                    location_count: agg.location_count,
+                    bands,
+                })
+            })
+            .collect();
+
+        // Scatter: all countries (selection active) or materiality-filtered (global),
+        // capped to 250. No band detail needed.
+        let to_scatter_point =
+            |(cid, agg): &(CountryId, CountryControlAgg)| -> Option<CountryControlPoint> {
+                let cidx = self.gamestate.countries.get(*cid)?;
+                let eref = self.entity_ref_from_country_idx(cidx)?;
+                Some(CountryControlPoint {
+                    anchor_location_idx: eref.anchor_location_idx,
+                    tag: eref.tag,
+                    name: eref.name,
+                    color_hex: eref.color_hex,
+                    total_development: agg.total_development,
+                    lost_development: agg.lost_development,
+                    weighted_avg_control: weighted_avg_control(agg),
+                    location_count: agg.location_count,
+                })
+            };
+
+        let scatter_countries: Vec<CountryControlPoint> = if !is_empty {
+            all_countries
+                .iter()
+                .take(COUNTRY_SCATTER_CAP)
+                .filter_map(to_scatter_point)
+                .collect()
+        } else {
+            all_countries
+                .iter()
+                .filter(|(_, agg)| {
+                    agg.lost_development > 0.0
+                        || agg.total_development >= MIN_SCATTER_DEVELOPMENT
+                        || agg.location_count >= MIN_SCATTER_LOCATIONS
+                })
+                .take(COUNTRY_SCATTER_CAP)
+                .filter_map(to_scatter_point)
+                .collect()
+        };
+
+        // Top locations: first 50 by lost_development.
+        location_candidates.sort_by(|a, b| {
+            b.lost_development
+                .total_cmp(&a.lost_development)
+                .then_with(|| a.idx.value().cmp(&b.idx.value()))
+        });
+
+        let top_locations: Vec<ControlTopLocation> = location_candidates
+            .iter()
+            .take(TOP_LOCATION_CAP)
+            .filter_map(|cand| {
+                let loc = self.gamestate.locations.index(cand.idx).location();
+                let owner = self.owner_ref_for_location(loc)?;
+                Some(ControlTopLocation {
+                    location_idx: cand.idx.value(),
+                    name: self.location_name(cand.idx).to_string(),
+                    owner,
+                    control: cand.control,
+                    development: cand.development,
+                    lost_development: cand.lost_development,
+                    population: cand.population,
+                })
+            })
+            .collect();
+
+        ControlInsightData {
+            scope: ControlScopeSummary {
+                location_count: scope_location_count,
+                country_count: total_countries as u32,
+                total_development: scope_total_development,
+                effective_development: scope_effective_development,
+                lost_development: scope_lost_development,
+                weighted_avg_control: scope_weighted_avg_control,
+                is_empty,
+            },
+            bar_countries,
+            scatter_countries,
             top_locations,
         }
     }
