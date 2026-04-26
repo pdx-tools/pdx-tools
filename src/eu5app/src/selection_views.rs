@@ -520,6 +520,88 @@ pub struct ReligionInsightData {
     pub religions: Vec<ReligionRow>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct ControlScopeSummary {
+    pub location_count: u32,
+    pub country_count: u32,
+    pub total_development: f64,
+    pub effective_development: f64,
+    pub lost_development: f64,
+    pub weighted_avg_control: f64,
+    pub is_empty: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct ControlBandSegment {
+    pub band: String,
+    pub lost_development: f64,
+    pub development: f64,
+    pub location_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct CountryControlBarSummary {
+    pub anchor_location_idx: u32,
+    pub tag: String,
+    pub name: String,
+    pub color_hex: String,
+    pub total_development: f64,
+    pub effective_development: f64,
+    pub lost_development: f64,
+    pub weighted_avg_control: f64,
+    pub location_count: u32,
+    pub bands: Vec<ControlBandSegment>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct CountryControlPoint {
+    pub anchor_location_idx: u32,
+    pub tag: String,
+    pub name: String,
+    pub color_hex: String,
+    pub total_development: f64,
+    pub lost_development: f64,
+    pub weighted_avg_control: f64,
+    pub location_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct ControlTopLocation {
+    pub location_idx: u32,
+    pub name: String,
+    pub owner: EntityRef,
+    pub control: f64,
+    pub development: f64,
+    pub lost_development: f64,
+    pub population: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct ControlInsightData {
+    pub scope: ControlScopeSummary,
+    pub bar_countries: Vec<CountryControlBarSummary>,
+    pub scatter_countries: Vec<CountryControlPoint>,
+    pub top_locations: Vec<ControlTopLocation>,
+}
+
 /// Aggregated totals for the current scope: the active selection when non-empty,
 /// or the entire world when the filter is empty.
 #[derive(Debug, Clone, Serialize, Deserialize)]

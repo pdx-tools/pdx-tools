@@ -10,6 +10,7 @@ import {
 } from "./store";
 import { formatInt } from "@/lib/format";
 import { StateEfficacyInsight } from "./features/charts/StateEfficacy";
+import { ControlInsight } from "./features/charts/Control";
 import { DevelopmentInsight } from "./features/charts/DevelopmentInsight";
 import { PossibleTaxInsight } from "./features/charts/PossibleTax";
 import { TaxGapInsight } from "./features/charts/TaxGap";
@@ -88,6 +89,8 @@ function PanelContentInner() {
     content = <EntityProfileRoot key={`focus-${focusedLocation}`} />;
   } else if (derivedEntityAnchor != null && !isEmpty) {
     content = <EntityProfileRoot key="compound" />;
+  } else if (currentMapMode === "control") {
+    content = <ControlInsight />;
   } else if (currentMapMode === "development") {
     content = <DevelopmentInsight />;
   } else if (currentMapMode === "stateEfficacy") {
