@@ -10,7 +10,7 @@ use eu5app::selection_views::HoverDisplayData;
 use eu5app::selection_views::{
     BuildingLevelsInsightData, DevelopmentInsightData, EntityBreakdownData, LocationDistribution,
     MarketInsightData, PopulationInsightData, PossibleTaxInsightData, PossibleTaxScope,
-    ScopeSummary, StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope,
+    ReligionInsightData, ScopeSummary, StateEfficacyTopLocation, TaxGapInsightData, TaxGapScope,
 };
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
@@ -831,6 +831,13 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_building_levels_insight(&self) -> BuildingLevelsInsightData {
         self.app().calculate_building_levels_insight()
+    }
+
+    /// Religion insight data: state religions by ruled population and per-religion
+    /// follower/coverage breakdown for the current filter.
+    #[wasm_bindgen]
+    pub fn get_religion_insight(&self) -> ReligionInsightData {
+        self.app().calculate_religion_insight()
     }
 
     /// Entity header for a specific entity resolved from `anchor_location_idx`,

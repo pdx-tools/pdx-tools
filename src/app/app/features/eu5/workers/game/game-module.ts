@@ -25,6 +25,7 @@ import type {
   MarketInsightData,
   PopulationInsightData,
   BuildingLevelsInsightData,
+  ReligionInsightData,
   ScopeSummary,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
@@ -364,6 +365,9 @@ export const createGame = async (
     },
     getBuildingLevelsInsight: (): BuildingLevelsInsightData => {
       return app.get_building_levels_insight();
+    },
+    getReligionInsight: (): ReligionInsightData => {
+      return app.get_religion_insight();
     },
     getScopeSummary: (): ScopeSummary => {
       return app.get_scope_summary();

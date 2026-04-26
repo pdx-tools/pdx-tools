@@ -470,6 +470,56 @@ pub struct BuildingLevelsInsightData {
     pub top_locations: Vec<BuildingLevelsTopLocation>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct PopulationReligionShare {
+    pub religion: String,
+    pub color_hex: String,
+    pub population: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct StateReligionRow {
+    pub religion: String,
+    pub color_hex: String,
+    pub country_count: u32,
+    pub total_ruled_population: u32,
+    pub state_religion_population: u32,
+    pub other_faith_population: u32,
+    pub state_religion_coverage: f64,
+    pub top_population_religions: Vec<PopulationReligionShare>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct ReligionRow {
+    pub religion: String,
+    pub color_hex: String,
+    pub state_country_count: u32,
+    pub total_ruled_population: u32,
+    pub state_religion_population: u32,
+    pub other_faith_population: u32,
+    pub state_religion_coverage: f64,
+    pub follower_population: u32,
+    pub followers_outside_same_faith_states: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct ReligionInsightData {
+    pub state_religions: Vec<StateReligionRow>,
+    pub religions: Vec<ReligionRow>,
+}
+
 /// Aggregated totals for the current scope: the active selection when non-empty,
 /// or the entire world when the filter is empty.
 #[derive(Debug, Clone, Serialize, Deserialize)]
