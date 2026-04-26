@@ -21,6 +21,7 @@ import type {
   PopulationInsightData,
   BuildingLevelsInsightData,
   ReligionInsightData,
+  RgoInsightData,
   ScopeSummary,
 } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/types";
@@ -369,6 +370,9 @@ export function saveWorker(
     },
     getReligionInsight: async (): Promise<ReligionInsightData> => {
       return await saveEngine.getReligionInsight();
+    },
+    getRgoInsight: async (): Promise<RgoInsightData> => {
+      return await saveEngine.getRgoInsight();
     },
     getScopeSummary: async (): Promise<ScopeSummary> => {
       return await saveEngine.getScopeSummary();

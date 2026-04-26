@@ -28,6 +28,7 @@ import type {
   PopulationInsightData,
   BuildingLevelsInsightData,
   ReligionInsightData,
+  RgoInsightData,
   ScopeSummary,
   Eu5DateComponents,
 } from "@/wasm/wasm_eu5";
@@ -80,6 +81,7 @@ export interface AppTriggers {
   getPopulationInsight(): Promise<PopulationInsightData>;
   getBuildingLevelsInsight(): Promise<BuildingLevelsInsightData>;
   getReligionInsight(): Promise<ReligionInsightData>;
+  getRgoInsight(): Promise<RgoInsightData>;
   getScopeSummary(): Promise<ScopeSummary>;
   getEntityHeaderFor(anchorLocationIdx: number): Promise<EntityHeader | null>;
   getOverviewSectionFor(anchorLocationIdx: number): Promise<OverviewSection | null>;
@@ -188,6 +190,7 @@ export class Eu5UIEngine implements AppEngine {
     getPopulationInsight: () => this.gameInstance.getPopulationInsight(),
     getBuildingLevelsInsight: () => this.gameInstance.getBuildingLevelsInsight(),
     getReligionInsight: () => this.gameInstance.getReligionInsight(),
+    getRgoInsight: () => this.gameInstance.getRgoInsight(),
     getScopeSummary: () => this.gameInstance.getScopeSummary(),
     getEntityHeaderFor: (anchorLocationIdx) =>
       this.gameInstance.getEntityHeaderFor(anchorLocationIdx),
