@@ -1,5 +1,5 @@
 import React from "react";
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
+import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
 
 export const DropdownMenu = DropdownMenuPrimitive.Root as typeof DropdownMenuPrimitive.Root & {

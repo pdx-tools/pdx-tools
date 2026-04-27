@@ -1,4 +1,4 @@
-import * as Toggle from "@radix-ui/react-toggle";
+import { Toggle } from "radix-ui";
 import { Tooltip } from "@/components/Tooltip";
 import { useEu5Engine, useEu5OwnerBorders } from "../store";
 

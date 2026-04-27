@@ -1,5 +1,5 @@
 import React from "react";
-import * as SwitchPrimitives from "@radix-ui/react-switch";
+import { Switch as SwitchPrimitives } from "radix-ui";
 import { cx } from "class-variance-authority";
 
 export const Switch = React.forwardRef<

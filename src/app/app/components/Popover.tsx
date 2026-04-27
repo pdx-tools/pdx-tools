@@ -1,5 +1,5 @@
 import React from "react";
-import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { Popover as PopoverPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
 
 export const Popover = PopoverPrimitive.Root as typeof PopoverPrimitive.Root & {

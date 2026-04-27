@@ -1,5 +1,5 @@
 import React from "react";
-import { Slot } from "@radix-ui/react-slot";
+import { Slot as SlotPrimitive } from "radix-ui";
 import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
 
@@ -39,7 +39,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   { className, variant, shape, type, asChild = false, ...props },
   ref,
 ) {
-  const Comp = asChild ? Slot : "button";
+  const Comp = asChild ? SlotPrimitive.Slot : "button";
   return (
     <Comp
       type={type ?? "button"}

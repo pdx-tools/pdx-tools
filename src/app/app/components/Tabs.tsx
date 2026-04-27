@@ -1,5 +1,5 @@
 import React from "react";
-import * as TabsPrimitive from "@radix-ui/react-tabs";
+import { Tabs as TabsPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
 
 export const Tabs = TabsPrimitive.Root as typeof TabsPrimitive.Root & {
