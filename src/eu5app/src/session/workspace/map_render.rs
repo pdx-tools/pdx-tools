@@ -1,3 +1,5 @@
+use crate::gradient::{self, GradientScale};
+
 use super::*;
 
 impl<'bump> Eu5Workspace<'bump> {
@@ -184,7 +186,11 @@ impl<'bump> Eu5Workspace<'bump> {
             return GpuColor::UNOWNED;
         }
 
-        self.interpolate_brown_green(save_location.development, max_dev)
+        gradient::interpolate_eu5_gradient(
+            save_location.development,
+            max_dev,
+            GradientScale::Linear,
+        )
     }
 
     pub fn location_population_color(
@@ -206,8 +212,10 @@ impl<'bump> Eu5Workspace<'bump> {
             return GpuColor::UNOWNED;
         }
 
-        let population = self.gamestate.location_population(save_location);
-        self.interpolate_brown_green(population, max_pop)
+        // location_population returns floor(size * 1000); divide back to thousands
+        // so the log curve is meaningful (ln_1p operates on 0–max_k, not 0–max_k*1000)
+        let population = self.gamestate.location_population(save_location) / 1000.0;
+        gradient::interpolate_eu5_gradient(population, max_pop / 1000.0, GradientScale::Log)
     }
 
     pub fn location_control_value_color(
@@ -228,7 +236,7 @@ impl<'bump> Eu5Workspace<'bump> {
             return GpuColor::UNOWNED;
         }
 
-        self.interpolate_brown_green(save_location.control, 1.0)
+        gradient::interpolate_eu5_gradient(save_location.control, 1.0, GradientScale::Linear)
     }
 
     pub fn location_market_color(&self, location_idx: eu5save::models::LocationIdx) -> GpuColor {
@@ -294,18 +302,11 @@ impl<'bump> Eu5Workspace<'bump> {
             return GpuColor::UNOWNED;
         }
 
-        // Simple brown-to-green interpolation
-        // Brown at 0: RGB(101, 67, 33)
-        // Green at max: RGB(34, 139, 34)
-        let brown = GpuColor::from_rgb(101, 67, 33);
-        let green = GpuColor::from_rgb(34, 139, 34);
-
-        if max_rgo_level == 0.0 {
-            return brown; // All brown if no RGO levels exist
-        }
-
-        let normalized = (save_location.rgo_level / max_rgo_level).clamp(0.0, 1.0);
-        brown.blend(green, normalized as f32)
+        gradient::interpolate_eu5_gradient(
+            save_location.rgo_level,
+            max_rgo_level,
+            GradientScale::Linear,
+        )
     }
 
     pub fn location_building_levels_color(
@@ -330,7 +331,11 @@ impl<'bump> Eu5Workspace<'bump> {
         let levels = self.get_location_building_levels();
         let building_levels_sum = levels[location_idx];
 
-        self.interpolate_brown_green(building_levels_sum, max_building_levels)
+        gradient::interpolate_eu5_gradient(
+            building_levels_sum,
+            max_building_levels,
+            GradientScale::Linear,
+        )
     }
 
     pub fn location_possible_tax_color(
@@ -352,7 +357,11 @@ impl<'bump> Eu5Workspace<'bump> {
             return GpuColor::UNOWNED;
         }
 
-        self.interpolate_brown_green(save_location.possible_tax, max_possible_tax)
+        gradient::interpolate_eu5_gradient(
+            save_location.possible_tax,
+            max_possible_tax,
+            GradientScale::Linear,
+        )
     }
 
     pub fn location_tax_gap_color(
@@ -375,7 +384,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         let gap = save_location.possible_tax - save_location.tax;
-        self.interpolate_tax_gap(gap, max_abs_gap)
+        gradient::interpolate_tax_gap(gap, max_abs_gap)
     }
 
     pub fn location_state_efficacy_color(
@@ -398,7 +407,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         let efficacy = save_location.control * save_location.development;
-        self.interpolate_brown_green(efficacy, max_efficacy)
+        gradient::interpolate_eu5_gradient(efficacy, max_efficacy, GradientScale::Linear)
     }
 
     pub(crate) fn get_country_color_for_location<F>(
@@ -514,49 +523,6 @@ impl<'bump> Eu5Workspace<'bump> {
         };
 
         GpuColor::from(owner_religion.color.0)
-    }
-
-    pub(crate) fn interpolate_brown_green(&self, value: f64, max_value: f64) -> GpuColor {
-        if max_value == 0.0 {
-            return GpuColor::from_rgb(20, 5, 5); // Dark red for no data
-        }
-
-        let normalized = (value / max_value).clamp(0.0, 1.0);
-
-        // Three-color gradient:
-        // Dark red at 0: RGB(20, 5, 5)
-        // Brown at 0.5: RGB(101, 67, 33)
-        // Green at 1: RGB(34, 139, 34)
-        let dark_red = GpuColor::from_rgb(20, 5, 5);
-        let brown = GpuColor::from_rgb(101, 67, 33);
-        let green = GpuColor::from_rgb(34, 139, 34);
-
-        if normalized <= 0.5 {
-            // Blend from dark red to brown (0.0 to 0.5)
-            let local_factor = normalized * 2.0; // Scale 0-0.5 to 0-1
-            dark_red.blend(brown, local_factor as f32)
-        } else {
-            // Blend from brown to green (0.5 to 1.0)
-            let local_factor = (normalized - 0.5) * 2.0; // Scale 0.5-1 to 0-1
-            brown.blend(green, local_factor as f32)
-        }
-    }
-
-    pub(crate) fn interpolate_tax_gap(&self, value: f64, max_abs_value: f64) -> GpuColor {
-        let neutral = GpuColor::from_rgb(101, 67, 33);
-        if max_abs_value == 0.0 {
-            return neutral;
-        }
-
-        let overperforming = GpuColor::from_rgb(20, 5, 5);
-        let untapped = GpuColor::from_rgb(34, 139, 34);
-        let normalized = (value.abs() / max_abs_value).clamp(0.0, 1.0) as f32;
-
-        if value < 0.0 {
-            neutral.blend(overperforming, normalized)
-        } else {
-            neutral.blend(untapped, normalized)
-        }
     }
 
     pub(super) fn build_location_arrays(&mut self) {

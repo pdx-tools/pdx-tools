@@ -16,16 +16,16 @@ input_file: src/eu5app/tests/it/saves.d/debug-1.0.eu5.save
     }
   ],
   "map_mode_colors": {
-    "building_levels": "0x27ed432203485b6056bf5412ce89784e14c8605968694d952847dc11ebf217f5",
-    "control": "0x45de2260ad584c284a87a5bebbee55bce6bc8268711bb7b6c6427e532e0073cd",
-    "development": "0x4d893473c13460b7208b830a549a704ba9561c678d8861172a173439319c0ce7",
+    "building_levels": "0x4c85a6fc211e826dc99dcde117dae98a30afa8077f105a06b2144daff953ffab",
+    "control": "0x30c0fe477b303a9f5be4c14317d9bd4b97375fc4214144eb755da82a30ad4c4d",
+    "development": "0xe607c912a03177e4448d95ea553e51cb4c1c566fcee400f0655f4c3d2d00418f",
     "markets": "0x250d38d1849dceef72516ba840f26487c09f5cbe8e8c357cf6e9abf2972da5ef",
     "political": "0x581133f6e235f7f728f0cf3eab84db641a410726acd71a3d35f5a2fba5185c8a",
-    "population": "0xeb3002ccd5f33e035e38376177f7e3401c058da203e5778d488a720d2a517569",
-    "possible_tax": "0xfe7c661fa1dc74efc3416f1c8a8d06faaac9f74b31d5271cec786ddfbfd413d4",
+    "population": "0x0f1d06df69f6379c616dc273a78e42cffb86ff962f34c1dee8d0363d7302bb4a",
+    "possible_tax": "0xd442603f9b52f9ee32a5c3310a365289ebe36039fe7cde6e2185503bb0615f89",
     "religion": "0xcdd369549b541164e4df30eec2f86bd52e51e6e4a8f8d70e02ad1de525ff9769",
-    "rgo_level": "0x89a04bdb7ec39c783f22de1667a723f549cc389005e525a221bc50a951b738e4",
-    "state_efficacy": "0xd79e37a44ce98868a22bc4f6c3fc581c8106cffb7850e0ff31dde85c1a2f0c21",
+    "rgo_level": "0xe6ad949687bed97bdf923df24c6eb6104f1abc4a3337dd41220c97b367166f80",
+    "state_efficacy": "0x3cb5ab4cb962b133063acd9adfdd5515f6009af4412e19699a921168bca85f7a",
     "tax_gap": "0x12022969409d277436e4ea957bbd41488381931064693c9735cd79bfd099c1b5"
   },
   "save_version": "1.0.0",

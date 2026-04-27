@@ -20,9 +20,9 @@ function formatValue(mode: MapMode, value: number): string {
   }
 }
 
-// Dark red → brown → green (standard), or brown → green (2-stop)
-const GRADIENT_STANDARD = "linear-gradient(to right, rgb(20,5,5), rgb(101,67,33), rgb(34,139,34))";
-const GRADIENT_TWO_STOP = "linear-gradient(to right, rgb(101,67,33), rgb(34,139,34))";
+// EU5 6-stop HSV gradient (stops from game\loading_screen\common\defines\graphic\00_graphics.txt)
+const GRADIENT_EU5 =
+  "linear-gradient(to right, rgb(4,1,1), rgb(87,13,13), rgb(191,151,10), rgb(35,153,15), rgb(36,255,0), rgb(0,255,240))";
 const GRADIENT_DIVERGING = "linear-gradient(to right, rgb(20,5,5), rgb(101,67,33), rgb(34,139,34))";
 
 // Modes whose range is fixed rather than data-driven
@@ -30,37 +30,34 @@ const FIXED_RANGE: Partial<Record<MapMode, { min: number; max: number }>> = {
   control: { min: 0, max: 1 },
 };
 
-// Modes that use a 2-stop gradient (no midpoint)
-const TWO_STOP = new Set<MapMode>(["rgoLevel", "control"]);
-
 type Props = {
   mode: MapMode;
   range: MapModeRange;
 };
 
+// For log-scaled modes the color midpoint is the geometric mean, not the arithmetic mean.
+// Mirrors the Rust log normalization: ln_1p(v/1000) / ln_1p(max/1000).
+function logMidpoint(max: number): number {
+  const maxK = max / 1000;
+  return Math.expm1(0.5 * Math.log1p(maxK)) * 1000;
+}
+
 export function GradientLegend({ mode, range }: Props) {
   const fixed = FIXED_RANGE[mode];
   const min = fixed?.min ?? range.minValue;
   const max = fixed?.max ?? range.maxValue;
-  const twoStop = TWO_STOP.has(mode);
   const diverging = mode === "taxGap";
-  const mid = (min + max) / 2;
+  const mid = mode === "population" ? logMidpoint(max) : (min + max) / 2;
 
   return (
     <div className="flex flex-col gap-1 px-3.5 pb-2">
       <div
         className="h-1.5 w-full rounded-full"
-        style={{
-          background: diverging
-            ? GRADIENT_DIVERGING
-            : twoStop
-              ? GRADIENT_TWO_STOP
-              : GRADIENT_STANDARD,
-        }}
+        style={{ background: diverging ? GRADIENT_DIVERGING : GRADIENT_EU5 }}
       />
       <div className="flex justify-between font-mono text-[10px] text-eu5-ink-500">
         <span>{formatValue(mode, min)}</span>
-        {!twoStop && <span>{formatValue(mode, diverging ? 0 : mid)}</span>}
+        <span>{formatValue(mode, diverging ? 0 : mid)}</span>
         <span>{formatValue(mode, max)}</span>
       </div>
     </div>
