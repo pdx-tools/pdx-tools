@@ -8,10 +8,9 @@ use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
 use eu5app::selection_views::HoverDisplayData;
 use eu5app::selection_views::{
-    BuildingLevelsInsightData, ControlInsightData, DevelopmentInsightData, EntityBreakdownData,
-    LocationDistribution, MarketInsightData, PopulationInsightData, PossibleTaxInsightData,
-    PossibleTaxScope, ReligionInsightData, RgoInsightData, ScopeSummary, StateEfficacyTopLocation,
-    TaxGapInsightData, TaxGapScope,
+    BuildingLevelsInsightData, ControlInsightData, DevelopmentInsightData, MarketInsightData,
+    PopulationInsightData, PossibleTaxInsightData, PossibleTaxScope, ReligionInsightData,
+    RgoInsightData, StateEfficacyInsightData, TaxGapInsightData, TaxGapScope,
 };
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
@@ -40,29 +39,6 @@ pub enum MapMode {
     TaxGap,
     Religion,
     StateEfficacy,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
-#[tsify(into_wasm_abi)]
-#[serde(rename_all = "camelCase")]
-pub struct CountryStateEfficacy {
-    pub anchor_location_idx: u32,
-    pub tag: String,
-    pub name: String,
-    pub color: String,
-    pub total_efficacy: f64,
-    pub location_count: u32,
-    pub avg_efficacy: f64,
-    pub total_population: u32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
-#[tsify(into_wasm_abi)]
-#[serde(rename_all = "camelCase")]
-pub struct StateEfficacyData {
-    pub countries: Vec<CountryStateEfficacy>,
-    pub top_locations: Vec<StateEfficacyTopLocation>,
-    pub distribution: LocationDistribution,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
@@ -691,27 +667,15 @@ impl Eu5App {
 
     /// Calculate state efficacy scores for all nations
     #[wasm_bindgen]
-    pub fn get_state_efficacy(&self) -> StateEfficacyData {
-        let results = self.app().calculate_state_efficacy();
-        let countries = results
-            .into_iter()
-            .map(|efficacy| CountryStateEfficacy {
-                anchor_location_idx: efficacy.anchor_location_idx,
-                tag: efficacy.tag,
-                name: efficacy.name,
-                color: efficacy.color,
-                total_efficacy: efficacy.total_efficacy,
-                location_count: efficacy.location_count,
-                avg_efficacy: efficacy.avg_efficacy,
-                total_population: efficacy.total_population,
-            })
-            .collect();
+    pub fn get_state_efficacy(&self) -> StateEfficacyInsightData {
+        self.app().calculate_state_efficacy_insight()
+    }
 
-        StateEfficacyData {
-            countries,
-            top_locations: self.app().state_efficacy_top_locations(),
-            distribution: self.app().state_efficacy_location_distribution(),
-        }
+    /// Returns the anchor location index for the best default political country,
+    /// without mutating selection state.
+    #[wasm_bindgen]
+    pub fn political_default_country_anchor(&self) -> Option<u32> {
+        self.app().political_default_country_anchor()
     }
 
     // ── Entity Profile Endpoints ──────────────────────────────────────────
@@ -755,22 +719,6 @@ impl Eu5App {
         self.app().location_profile_for(idx)
     }
 
-    // ── Multi-entity & Aggregate Endpoints ───────────────────────────────
-
-    /// Per-entity breakdown for the current selection (or world if empty).
-    /// Groups by owner in most modes; by market in Markets mode.
-    #[wasm_bindgen]
-    pub fn get_entity_breakdown(&self) -> EntityBreakdownData {
-        self.app().selection_entity_breakdown()
-    }
-
-    /// Histogram distribution of location metric values for the current mode
-    /// over the current selection (or world if empty).
-    #[wasm_bindgen]
-    pub fn get_location_distribution(&self) -> LocationDistribution {
-        self.app().selection_location_distribution()
-    }
-
     /// Development insight data: per-country aggregates for scatter chart and
     /// top development locations for the table view.
     #[wasm_bindgen]
@@ -790,13 +738,6 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_tax_gap_insight(&self) -> TaxGapInsightData {
         self.app().calculate_tax_gap_insight()
-    }
-
-    /// Scope summary: entity/location/population totals for the active selection,
-    /// or world totals when no selection is active.
-    #[wasm_bindgen]
-    pub fn get_scope_summary(&self) -> ScopeSummary {
-        self.app().get_scope_summary()
     }
 
     /// Possible-tax scope: location count, summed possible tax ceiling, and

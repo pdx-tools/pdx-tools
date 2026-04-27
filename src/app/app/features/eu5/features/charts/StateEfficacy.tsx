@@ -1,7 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import type { CountryStateEfficacy, StateEfficacyTopLocation } from "@/wasm/wasm_eu5";
+import type {
+  CountryStateEfficacy,
+  StateEfficacyScopeSummary,
+  StateEfficacyTopLocation,
+} from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
@@ -11,11 +15,29 @@ import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { useEu5Engine } from "../../store";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
-import { LocationDistributionChart } from "../../EntityProfile/MultiEntity/LocationDistributionChart";
+import { LocationDistributionChart } from "./LocationDistributionChart";
 import { usePanelNav } from "../../EntityProfile/PanelNavContext";
 import { usePanToEntity } from "../../usePanToEntity";
-import { ScopeSummaryHeader } from "../InsightScopeHeader";
+import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
+import { StatItem } from "../../EntityProfile/components/StatItem";
 import type * as echarts from "echarts/core";
+
+function StateEfficacyScopeHeader({ data }: { data?: StateEfficacyScopeSummary }) {
+  if (!data) return <InsightScopeHeaderSkeleton />;
+
+  return (
+    <InsightScopeHeader>
+      <StatItem
+        label={data.isEmpty ? "Nations" : "Entities"}
+        value={formatInt(data.countryCount)}
+      />
+      <StatItem label="Locations" value={formatInt(data.locationCount)} />
+      <StatItem label="Effective Dev" value={formatFloat(data.totalEfficacy, 1)} />
+      <StatItem label="Avg Efficacy" value={formatFloat(data.avgEfficacy, 2)} />
+      <StatItem label="Population" value={formatInt(data.totalPopulation)} />
+    </InsightScopeHeader>
+  );
+}
 
 export function StateEfficacyInsight() {
   const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getStateEfficacy());
@@ -24,7 +46,7 @@ export function StateEfficacyInsight() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <ScopeSummaryHeader />
+      <StateEfficacyScopeHeader data={insightQuery.data?.scope} />
       {insightQuery.loading && !insightQuery.data ? (
         <div className="h-64 animate-pulse rounded bg-white/5" />
       ) : (
@@ -85,7 +107,7 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
         totalEfficacy: c.totalEfficacy,
         avgEfficacy: c.avgEfficacy,
         totalPopulation: c.totalPopulation,
-        color: c.color,
+        color: c.colorHex,
         anchorLocationIdx: c.anchorLocationIdx,
       })),
     [countries],

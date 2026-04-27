@@ -12,21 +12,23 @@ use crate::selection_views::{
     BuildingLevelsInsightData, BuildingLevelsScopeSummary, BuildingLevelsTopLocation,
     BuildingTypeForeignOwnerCell, BuildingTypeSummary, ControlBandSegment, ControlInsightData,
     ControlScopeSummary, ControlTopLocation, CountryControlBarSummary, CountryControlPoint,
-    CountryDevSummary, CountryPossibleTax, CountryTaxGap, DevTopLocation, DevelopmentInsightData,
-    DistributionBucket, EntityBreakdownData, EntityBreakdownRow, HoverDisplayData, HoverStat,
-    LocationDistribution, MarketInsightData, MarketScopeSummary, PopulationConcentrationPoint,
-    PopulationInsightData, PopulationRankSegment, PopulationReligionShare, PopulationScopeSummary,
-    PopulationTopLocation, PopulationTypeProfileRow, PossibleTaxInsightData, PossibleTaxScope,
-    PossibleTaxTopLocation, ProductionLocationSummary, ReligionInsightData, ReligionRow,
-    RgoInsightData, RgoMaterialProfileDelta, RgoMaterialSummary, RgoScopeSummary, RgoTopLocation,
-    ScopeSummary, ScopedCountryPopulation, ScopedGoodSummary, ScopedMarketSummary,
-    StateEfficacyTopLocation, StateReligionRow, TaxGapInsightData, TaxGapScope, TaxGapTopLocation,
+    CountryDevSummary, CountryPossibleTax, CountryStateEfficacy, CountryTaxGap, DevTopLocation,
+    DevelopmentInsightData, DevelopmentScopeSummary, DistributionBucket, HoverDisplayData,
+    HoverStat, LocationDistribution, MarketInsightData, MarketScopeSummary,
+    PopulationConcentrationPoint, PopulationInsightData, PopulationRankSegment,
+    PopulationReligionShare, PopulationScopeSummary, PopulationTopLocation,
+    PopulationTypeProfileRow, PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation,
+    ProductionLocationSummary, ReligionInsightData, ReligionRow, RgoInsightData,
+    RgoMaterialProfileDelta, RgoMaterialSummary, RgoScopeSummary, RgoTopLocation,
+    ScopedCountryPopulation, ScopedGoodSummary, ScopedMarketSummary, StateEfficacyInsightData,
+    StateEfficacyScopeSummary, StateEfficacyTopLocation, StateReligionRow, TaxGapInsightData,
+    TaxGapScope, TaxGapTopLocation,
 };
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap, FxHashSet};
 use eu5save::models::{
     CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIdx, LocationIndexedVec,
-    LocationRank, MarketId, PopulationType, RawMaterialsName,
+    LocationRank, PopulationType, RawMaterialsName,
 };
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
 use std::collections::HashMap;
@@ -1810,6 +1812,58 @@ impl<'bump> Eu5Workspace<'bump> {
         Some(crate::ColorIdx::new(gpu_idx.value()))
     }
 
+    /// Returns the anchor location index for the best default country to display
+    /// in the political map mode. When a multi-country selection is active,
+    /// the candidate set is limited to countries inside that selection.
+    /// Priority: first human-played country, then highest great-power rank.
+    pub fn political_default_country_anchor(&self) -> Option<u32> {
+        let mut candidates = Vec::new();
+        let mut seen = FnvHashSet::default();
+
+        if self.selection_state.is_empty() {
+            for entry in self.gamestate.countries.iter() {
+                if entry.data().is_some() && seen.insert(entry.idx()) {
+                    candidates.push(entry.idx());
+                }
+            }
+        } else {
+            for &idx in self.selection_state.selected_locations() {
+                let loc = self.gamestate.locations.index(idx).location();
+                let Some(country_id) = loc.owner.real_id().map(|id| id.country_id()) else {
+                    continue;
+                };
+                let Some(country_idx) = self.gamestate.countries.get(country_id) else {
+                    continue;
+                };
+                if seen.insert(country_idx) {
+                    candidates.push(country_idx);
+                }
+            }
+        }
+
+        let country_idx = self
+            .gamestate
+            .played_countries
+            .iter()
+            .filter_map(|p| self.gamestate.countries.get(p.country))
+            .find(|idx| seen.contains(idx))
+            .or_else(|| {
+                candidates
+                    .iter()
+                    .filter_map(|&idx| {
+                        let entry = self.gamestate.countries.index(idx);
+                        let rank = entry.data()?.great_power_rank;
+                        (rank > 0).then_some((rank, entry.tag().to_str(), idx))
+                    })
+                    .min_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(b.1)))
+                    .map(|(_, _, idx)| idx)
+            })
+            .or_else(|| candidates.first().copied())?;
+
+        let entity_ref = self.entity_ref_from_country_idx(country_idx)?;
+        Some(entity_ref.anchor_location_idx)
+    }
+
     /// Check if a location can be highlighted based on its terrain (not water and not impassable)
     pub fn can_highlight_location(&self, location_idx: eu5save::models::LocationIdx) -> bool {
         let terrain = self.location_terrain(location_idx);
@@ -2569,7 +2623,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// State efficacy measures territorial quality by combining location control and development.
     /// Formula: Location Efficacy = Control × Development
     /// National metrics: Total Efficacy (sum), Average Efficacy (mean), Location Count, Total Population
-    pub fn calculate_state_efficacy(&self) -> Vec<CountryStateEfficacy> {
+    pub fn calculate_state_efficacy_insight(&self) -> StateEfficacyInsightData {
         #[derive(Default)]
         struct EfficacyAggregator {
             total_efficacy: f64,
@@ -2578,6 +2632,9 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         let mut aggregates: FxHashMap<CountryId, EfficacyAggregator> = FxHashMap::default();
+        let mut location_count = 0u32;
+        let mut total_efficacy = 0.0f64;
+        let mut total_population = 0u32;
 
         // Single pass through all locations
         for location_entry in self.gamestate.locations.iter() {
@@ -2599,13 +2656,16 @@ impl<'bump> Eu5Workspace<'bump> {
             let location_efficacy = location.control * location.development;
 
             // Get population for this location
-            let population = self.gamestate.location_population(location);
+            let population = self.gamestate.location_population(location) as u32;
+            location_count += 1;
+            total_efficacy += location_efficacy;
+            total_population += population;
 
             // Aggregate by country
             let aggregate = aggregates.entry(location.owner).or_default();
             aggregate.total_efficacy += location_efficacy;
             aggregate.location_count += 1;
-            aggregate.total_population += population as u32;
+            aggregate.total_population += population;
         }
 
         // Convert to result vector
@@ -2625,7 +2685,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     anchor_location_idx: entity_ref.anchor_location_idx,
                     tag: entity_ref.tag,
                     name: entity_ref.name,
-                    color: entity_ref.color_hex,
+                    color_hex: entity_ref.color_hex,
                     total_efficacy: aggregate.total_efficacy,
                     location_count: aggregate.location_count,
                     avg_efficacy,
@@ -2641,7 +2701,23 @@ impl<'bump> Eu5Workspace<'bump> {
                 .then_with(|| a.tag.cmp(&b.tag))
         });
 
-        results
+        StateEfficacyInsightData {
+            scope: StateEfficacyScopeSummary {
+                location_count,
+                country_count: results.len() as u32,
+                total_efficacy,
+                avg_efficacy: if location_count > 0 {
+                    total_efficacy / location_count as f64
+                } else {
+                    0.0
+                },
+                total_population,
+                is_empty: self.selection_state.is_empty(),
+            },
+            countries: results,
+            top_locations: self.state_efficacy_top_locations(),
+            distribution: self.state_efficacy_location_distribution(),
+        }
     }
 
     pub fn state_efficacy_location_distribution(&self) -> LocationDistribution {
@@ -3411,161 +3487,6 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    /// Returns per-entity breakdown data for the current selection.
-    /// Groups by owner in most map modes; by market in Markets mode.
-    /// When the selection is empty, falls back to all locations (world view).
-    pub fn selection_entity_breakdown(&self) -> EntityBreakdownData {
-        let use_markets = self.current_map_mode == MapMode::Markets;
-        let building_levels = self.get_location_building_levels();
-
-        #[derive(Default)]
-        struct Agg {
-            location_count: u32,
-            total_development: f64,
-            total_population: u32,
-            total_possible_tax: f64,
-            total_tax_gap: f64,
-            total_control: f64,
-            total_rgo_level: f64,
-            total_building_levels: f64,
-            total_efficacy: f64,
-        }
-
-        let mut country_aggs: FxHashMap<CountryId, Agg> = FxHashMap::default();
-        let mut market_aggs: FxHashMap<MarketId, Agg> = FxHashMap::default();
-
-        let mut add_location = |idx: LocationIdx| {
-            let loc = self.gamestate.locations.index(idx).location();
-            if loc.owner.is_dummy() {
-                return;
-            }
-            let population = self.gamestate.location_population(loc) as u32;
-            let bl = building_levels[idx];
-
-            if use_markets {
-                if let Some(market_id) = loc.market {
-                    let agg = market_aggs.entry(market_id).or_default();
-                    agg.location_count += 1;
-                    agg.total_development += loc.development;
-                    agg.total_population += population;
-                    agg.total_possible_tax += loc.possible_tax;
-                    agg.total_tax_gap += loc.possible_tax - loc.tax;
-                    agg.total_control += loc.control;
-                    agg.total_rgo_level += loc.rgo_level;
-                    agg.total_building_levels += bl;
-                    agg.total_efficacy += loc.control * loc.development;
-                }
-            } else {
-                let agg = country_aggs.entry(loc.owner).or_default();
-                agg.location_count += 1;
-                agg.total_development += loc.development;
-                agg.total_population += population;
-                agg.total_possible_tax += loc.possible_tax;
-                agg.total_tax_gap += loc.possible_tax - loc.tax;
-                agg.total_control += loc.control;
-                agg.total_rgo_level += loc.rgo_level;
-                agg.total_building_levels += bl;
-                agg.total_efficacy += loc.control * loc.development;
-            }
-        };
-
-        if self.selection_state.is_empty() {
-            for entry in self.gamestate.locations.iter() {
-                add_location(entry.idx());
-            }
-        } else {
-            for &idx in self.selection_state.selected_locations() {
-                add_location(idx);
-            }
-        }
-
-        let mode_metric_label: &str = match self.current_map_mode {
-            MapMode::Control => "Avg Control",
-            MapMode::Population => "Population",
-            MapMode::RgoLevel => "RGO Level",
-            MapMode::BuildingLevels => "Building Levels",
-            MapMode::PossibleTax | MapMode::Markets => "Possible Tax",
-            MapMode::TaxGap => "Tax Gap",
-            MapMode::StateEfficacy => "State Efficacy",
-            _ => "Development",
-        };
-
-        let compute_mode_metric = |agg: &Agg| -> f64 {
-            match self.current_map_mode {
-                MapMode::Control => {
-                    if agg.location_count > 0 {
-                        agg.total_control / agg.location_count as f64
-                    } else {
-                        0.0
-                    }
-                }
-                MapMode::Population => agg.total_population as f64,
-                MapMode::RgoLevel => agg.total_rgo_level,
-                MapMode::BuildingLevels => agg.total_building_levels,
-                MapMode::PossibleTax | MapMode::Markets => agg.total_possible_tax,
-                MapMode::TaxGap => agg.total_tax_gap,
-                MapMode::StateEfficacy => agg.total_efficacy,
-                _ => agg.total_development,
-            }
-        };
-
-        let mut rows: Vec<EntityBreakdownRow> = Vec::new();
-
-        if use_markets {
-            for (market_id, agg) in market_aggs {
-                if let Some(entity_ref) = self.market_ref_from_id(market_id) {
-                    let mode_metric = compute_mode_metric(&agg);
-                    let avg_development = if agg.location_count > 0 {
-                        agg.total_development / agg.location_count as f64
-                    } else {
-                        0.0
-                    };
-                    rows.push(EntityBreakdownRow {
-                        entity_ref,
-                        location_count: agg.location_count,
-                        total_development: agg.total_development,
-                        total_population: agg.total_population,
-                        avg_development,
-                        total_possible_tax: agg.total_possible_tax,
-                        mode_metric,
-                        mode_metric_label: mode_metric_label.to_string(),
-                    });
-                }
-            }
-        } else {
-            for (country_id, agg) in country_aggs {
-                if let Some(country_idx) = self.gamestate.countries.get(country_id)
-                    && let Some(entity_ref) = self.entity_ref_from_country_idx(country_idx)
-                {
-                    let mode_metric = compute_mode_metric(&agg);
-                    let avg_development = if agg.location_count > 0 {
-                        agg.total_development / agg.location_count as f64
-                    } else {
-                        0.0
-                    };
-                    rows.push(EntityBreakdownRow {
-                        entity_ref,
-                        location_count: agg.location_count,
-                        total_development: agg.total_development,
-                        total_population: agg.total_population,
-                        avg_development,
-                        total_possible_tax: agg.total_possible_tax,
-                        mode_metric,
-                        mode_metric_label: mode_metric_label.to_string(),
-                    });
-                }
-            }
-        }
-
-        rows.sort_by(|a, b| {
-            b.mode_metric
-                .total_cmp(&a.mode_metric)
-                .then_with(|| a.entity_ref.name.cmp(&b.entity_ref.name))
-        });
-
-        EntityBreakdownData { rows }
-    }
-
     /// Returns a histogram distribution of per-location metric values for the
     /// current map mode over the current selection (or all locations if empty).
     pub fn selection_location_distribution(&self) -> LocationDistribution {
@@ -3690,6 +3611,8 @@ impl<'bump> Eu5Workspace<'bump> {
 
         let mut aggregates: FxHashMap<CountryId, DevAgg> = FxHashMap::default();
         let mut all_locs: Vec<(LocationIdx, f64, u32, f64)> = Vec::new();
+        let mut total_development = 0.0f64;
+        let mut total_population = 0u32;
 
         for entry in self.gamestate.locations.iter() {
             let loc = entry.location();
@@ -3704,6 +3627,8 @@ impl<'bump> Eu5Workspace<'bump> {
             let pop = self.gamestate.location_population(loc) as u32;
             let ctrl = loc.control;
             all_locs.push((entry.idx(), dev, pop, ctrl));
+            total_development += dev;
+            total_population += pop;
 
             if let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) {
                 let agg = aggregates.entry(owner_id).or_default();
@@ -3762,8 +3687,21 @@ impl<'bump> Eu5Workspace<'bump> {
             .collect();
 
         let distribution = self.selection_location_distribution();
+        let location_count = all_locs.len() as u32;
 
         DevelopmentInsightData {
+            scope: DevelopmentScopeSummary {
+                location_count,
+                country_count: countries.len() as u32,
+                total_development,
+                avg_development: if location_count > 0 {
+                    total_development / location_count as f64
+                } else {
+                    0.0
+                },
+                total_population,
+                is_empty: self.selection_state.is_empty(),
+            },
             countries,
             top_locations,
             distribution,
@@ -5013,52 +4951,6 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    /// Totals for the active scope: selected entities when the filter is non-empty,
-    /// or all entities in the world when the filter is empty.
-    pub fn get_scope_summary(&self) -> ScopeSummary {
-        if !self.selection_state.is_empty() {
-            let mut entity_ids: FnvHashSet<CountryId> = FnvHashSet::default();
-            let mut total_population = 0u32;
-            for &idx in self.selection_state.selected_locations() {
-                let loc = self.gamestate.locations.index(idx).location();
-                if loc.owner.is_dummy() {
-                    continue;
-                }
-                total_population += self.gamestate.location_population(loc) as u32;
-                if let Some(id) = loc.owner.real_id().map(|r| r.country_id()) {
-                    entity_ids.insert(id);
-                }
-            }
-            return ScopeSummary {
-                entity_count: entity_ids.len() as u32,
-                location_count: self.selection_state.len() as u32,
-                total_population,
-                is_empty: false,
-            };
-        }
-
-        let mut entity_ids: FnvHashSet<CountryId> = FnvHashSet::default();
-        let mut location_count = 0u32;
-        let mut total_population = 0u32;
-        for entry in self.gamestate.locations.iter() {
-            let loc = entry.location();
-            if loc.owner.is_dummy() {
-                continue;
-            }
-            location_count += 1;
-            total_population += self.gamestate.location_population(loc) as u32;
-            if let Some(id) = loc.owner.real_id().map(|r| r.country_id()) {
-                entity_ids.insert(id);
-            }
-        }
-        ScopeSummary {
-            entity_count: entity_ids.len() as u32,
-            location_count,
-            total_population,
-            is_empty: true,
-        }
-    }
-
     pub fn get_possible_tax_scope(&self) -> PossibleTaxScope {
         let is_empty = self.selection_state.is_empty();
         let mut total_possible_tax = 0.0f64;
@@ -5212,19 +5104,6 @@ impl<'bump> Eu5Workspace<'bump> {
 
         Some(DiplomacySection { overlord, subjects })
     }
-}
-
-/// State efficacy data for a single country
-#[derive(Debug, Clone)]
-pub struct CountryStateEfficacy {
-    pub anchor_location_idx: u32,
-    pub tag: String,
-    pub name: String,
-    pub color: String,
-    pub total_efficacy: f64,
-    pub location_count: u32,
-    pub avg_efficacy: f64,
-    pub total_population: u32,
 }
 
 impl LocationData for Eu5Workspace<'_> {

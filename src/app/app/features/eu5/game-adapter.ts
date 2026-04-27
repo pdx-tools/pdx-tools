@@ -10,8 +10,6 @@ import type {
   LocationsSection,
   DiplomacySection,
   LocationProfile,
-  EntityBreakdownData,
-  LocationDistribution,
   DevelopmentInsightData,
   PossibleTaxInsightData,
   PossibleTaxScope,
@@ -23,7 +21,6 @@ import type {
   ReligionInsightData,
   RgoInsightData,
   ControlInsightData,
-  ScopeSummary,
 } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/types";
 import { fetchOk } from "@/lib/fetch";
@@ -339,12 +336,6 @@ export function saveWorker(
       return await saveEngine.getLocationProfile(locationIdx);
     },
 
-    getEntityBreakdown: async (): Promise<EntityBreakdownData> => {
-      return await saveEngine.getEntityBreakdown();
-    },
-    getLocationDistribution: async (): Promise<LocationDistribution> => {
-      return await saveEngine.getLocationDistribution();
-    },
     getDevelopmentInsight: async (): Promise<DevelopmentInsightData> => {
       return await saveEngine.getDevelopmentInsight();
     },
@@ -378,9 +369,6 @@ export function saveWorker(
     getControlInsight: async (): Promise<ControlInsightData> => {
       return await saveEngine.getControlInsight();
     },
-    getScopeSummary: async (): Promise<ScopeSummary> => {
-      return await saveEngine.getScopeSummary();
-    },
     getEntityHeaderFor: async (anchorLocationIdx: number): Promise<EntityHeader | null> => {
       return await saveEngine.getEntityHeaderFor(anchorLocationIdx);
     },
@@ -395,6 +383,10 @@ export function saveWorker(
     },
     getDiplomacySectionFor: async (anchorLocationIdx: number): Promise<DiplomacySection | null> => {
       return await saveEngine.getDiplomacySectionFor(anchorLocationIdx);
+    },
+
+    getPoliticalDefaultCountryAnchor: async (): Promise<number | null> => {
+      return await saveEngine.getPoliticalDefaultCountryAnchor();
     },
 
     searchCountries: async (query: string) => {
