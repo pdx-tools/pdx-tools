@@ -20,7 +20,11 @@ import { StatItem } from "../../EntityProfile/components/StatItem";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { useEu5Engine } from "../../store";
 import { usePanToEntity } from "../../usePanToEntity";
-import { usePanelNav } from "../../EntityProfile/PanelNavContext";
+import {
+  countryProfileEntry,
+  locationProfileEntry,
+  usePanelNav,
+} from "../../EntityProfile/PanelNavContext";
 import type * as echarts from "echarts/core";
 
 const SCATTER_LABEL_CAP = 8;
@@ -423,10 +427,7 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
               type="button"
               className="text-left text-sky-300 hover:text-sky-200 hover:underline"
               onClick={() => {
-                nav.pushMany(
-                  [{ kind: "focus", locationIdx: loc.locationIdx, label: loc.name }],
-                  BACK_LABEL,
-                );
+                nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
                 panToEntity(loc.locationIdx);
               }}
             >
@@ -447,7 +448,7 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
               className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
               onClick={() => {
                 nav.pushMany(
-                  [{ kind: "entity", anchorIdx: owner.anchorLocationIdx, label: owner.name }],
+                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
                   BACK_LABEL,
                 );
                 panToEntity(owner.anchorLocationIdx);

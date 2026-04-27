@@ -1,5 +1,4 @@
-import { useEu5Engine, useEu5MapMode, useEu5SelectionState } from "../../store";
-import { useEu5SelectionTrigger } from "../useEu5Trigger";
+import { useEu5Engine } from "../../store";
 import { usePanToEntity } from "../../usePanToEntity";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -8,7 +7,7 @@ import { DataTable } from "@/components/DataTable";
 import type { LocationRow, MapMode } from "@/wasm/wasm_eu5";
 import type { Row } from "@tanstack/react-table";
 import { EntityLink } from "../EntityLink";
-import { usePanelNav } from "../PanelNavContext";
+import { locationProfileEntry, usePanelNav } from "../PanelNavContext";
 
 const columnHelper = createColumnHelper<LocationRow>();
 
@@ -22,9 +21,7 @@ function NameCell({ row }: { row: Row<LocationRow> }) {
       onClick={() => {
         panToEntity(row.original.locationIdx);
         if (nav.stack.length > 0) {
-          nav.pushMany([
-            { kind: "focus", locationIdx: row.original.locationIdx, label: row.original.name },
-          ]);
+          nav.pushMany([locationProfileEntry(row.original.locationIdx, row.original.name)]);
         } else {
           void engine.trigger.setFocusedLocation(row.original.locationIdx);
         }
@@ -107,33 +104,16 @@ const SORT_BY_MODE: Partial<Record<MapMode, { id: string; desc: boolean }>> = {
   religion: { id: "name", desc: false },
 };
 
-export function LocationsTab({ anchorIdx }: { anchorIdx?: number } = {}) {
-  const selection = useEu5SelectionState();
-  const anchor = selection?.derivedEntityAnchor;
-  const mode = useEu5MapMode();
-
-  const { data, loading } = useEu5SelectionTrigger(
-    (engine) =>
-      anchorIdx != null
-        ? engine.trigger.getLocationsSectionFor(anchorIdx)
-        : engine.trigger.getLocationsSection(),
-    [anchor, anchorIdx],
-  );
-
-  if (loading && !data) {
-    return <div className="h-24 animate-pulse rounded bg-white/5" />;
-  }
-  if (!data) return null;
-
+export function LocationsTabContent({
+  locations,
+  mode,
+}: {
+  locations: LocationRow[];
+  mode: MapMode;
+}) {
   const sort = SORT_BY_MODE[mode] ?? { id: "development", desc: true };
 
   return (
-    <DataTable
-      key={mode}
-      columns={columns}
-      data={data.locations}
-      initialSorting={[sort]}
-      pagination
-    />
+    <DataTable key={mode} columns={columns} data={locations} initialSorting={[sort]} pagination />
   );
 }

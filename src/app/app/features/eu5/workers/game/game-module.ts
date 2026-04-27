@@ -9,11 +9,8 @@ import type {
   MapModeRange,
   StateEfficacyInsightData,
   SelectionSummaryData,
-  EntityHeader,
-  OverviewSection,
-  EconomySection,
-  LocationsSection,
-  DiplomacySection,
+  CountryProfile,
+  MarketProfile,
   LocationProfile,
   DevelopmentInsightData,
   PossibleTaxInsightData,
@@ -317,20 +314,11 @@ export const createGame = async (
       return app.get_state_efficacy();
     },
 
-    getEntityHeader: (): EntityHeader | null => {
-      return app.get_entity_header() ?? null;
+    getCountryProfile: (anchorLocationIdx: number): CountryProfile | null => {
+      return app.get_country_profile(anchorLocationIdx) ?? null;
     },
-    getOverviewSection: (): OverviewSection | null => {
-      return app.get_overview_section() ?? null;
-    },
-    getEconomySection: (): EconomySection | null => {
-      return app.get_economy_section() ?? null;
-    },
-    getLocationsSection: (): LocationsSection | null => {
-      return app.get_locations_section() ?? null;
-    },
-    getDiplomacySection: (): DiplomacySection | null => {
-      return app.get_diplomacy_section() ?? null;
+    getMarketProfile: (anchorLocationIdx: number): MarketProfile | null => {
+      return app.get_market_profile(anchorLocationIdx) ?? null;
     },
     getLocationProfile: (locationIdx: number): LocationProfile | null => {
       return app.get_location_profile(locationIdx) ?? null;
@@ -368,21 +356,6 @@ export const createGame = async (
     },
     getControlInsight: (): ControlInsightData => {
       return app.get_control_insight();
-    },
-    getEntityHeaderFor: (anchorLocationIdx: number): EntityHeader | null => {
-      return app.get_entity_header_for(anchorLocationIdx) ?? null;
-    },
-    getOverviewSectionFor: (anchorLocationIdx: number): OverviewSection | null => {
-      return app.get_overview_section_for(anchorLocationIdx) ?? null;
-    },
-    getEconomySectionFor: (anchorLocationIdx: number): EconomySection | null => {
-      return app.get_economy_section_for(anchorLocationIdx) ?? null;
-    },
-    getLocationsSectionFor: (anchorLocationIdx: number): LocationsSection | null => {
-      return app.get_locations_section_for(anchorLocationIdx) ?? null;
-    },
-    getDiplomacySectionFor: (anchorLocationIdx: number): DiplomacySection | null => {
-      return app.get_diplomacy_section_for(anchorLocationIdx) ?? null;
     },
 
     searchEntities: (query: string) => {

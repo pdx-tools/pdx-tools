@@ -1,8 +1,9 @@
 use crate::entity_profile::{
-    BuildingEntry, DiplomacySection, DiplomaticSummary, EconomicIndicator, EconomySection,
-    EntityHeader, EntityKind, EntityRef, HeadlineStats, IndicatorFormat, LocationHeader,
-    LocationProfile, LocationRow, LocationStats, LocationsSection, MarketGoodEntry,
-    MarketMembership, OverviewSection, RankedLocation, ReligionShare,
+    ActiveProfileIdentity, BuildingEntry, CountryProfile, DiplomacySection, DiplomaticSummary,
+    EconomicIndicator, EconomySection, EntityHeader, EntityKind, EntityRef, HeadlineStats,
+    IndicatorFormat, LocationHeader, LocationProfile, LocationRow, LocationStats, LocationsSection,
+    MarketGoodEntry, MarketMemberCountry, MarketMembership, MarketProfile, OverviewSection,
+    RankedLocation, ReligionShare,
 };
 use crate::game_data::GameData;
 use crate::selection::{

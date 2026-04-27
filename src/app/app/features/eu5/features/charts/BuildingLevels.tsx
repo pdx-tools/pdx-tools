@@ -20,7 +20,11 @@ import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeH
 import { StatItem } from "../../EntityProfile/components/StatItem";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
-import { usePanelNav } from "../../EntityProfile/PanelNavContext";
+import {
+  countryProfileEntry,
+  locationProfileEntry,
+  usePanelNav,
+} from "../../EntityProfile/PanelNavContext";
 
 const BACK_LABEL = "Building Levels";
 
@@ -196,10 +200,7 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
               type="button"
               className="text-left text-sky-300 hover:text-sky-200 hover:underline"
               onClick={() => {
-                nav.pushMany(
-                  [{ kind: "focus", locationIdx: loc.locationIdx, label: loc.name }],
-                  BACK_LABEL,
-                );
+                nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
                 panToEntity(loc.locationIdx);
               }}
             >
@@ -220,7 +221,7 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
               className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
               onClick={() => {
                 nav.pushMany(
-                  [{ kind: "entity", anchorIdx: owner.anchorLocationIdx, label: owner.name }],
+                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
                   BACK_LABEL,
                 );
                 panToEntity(owner.anchorLocationIdx);
@@ -274,10 +275,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
               type="button"
               className="text-left text-sky-300 hover:text-sky-200 hover:underline"
               onClick={() => {
-                nav.pushMany(
-                  [{ kind: "focus", locationIdx: r.locationIdx, label: r.locationName }],
-                  BACK_LABEL,
-                );
+                nav.pushMany([locationProfileEntry(r.locationIdx, r.locationName)], BACK_LABEL);
                 panToEntity(r.locationIdx);
               }}
             >
@@ -299,7 +297,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
               className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
               onClick={() => {
                 nav.pushMany(
-                  [{ kind: "entity", anchorIdx: owner.anchorLocationIdx, label: owner.name }],
+                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
                   BACK_LABEL,
                 );
                 panToEntity(owner.anchorLocationIdx);
@@ -327,7 +325,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
               className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
               onClick={() => {
                 nav.pushMany(
-                  [{ kind: "entity", anchorIdx: owner.anchorLocationIdx, label: owner.name }],
+                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
                   BACK_LABEL,
                 );
                 panToEntity(owner.anchorLocationIdx);
@@ -389,7 +387,7 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
               className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
               onClick={() => {
                 nav.pushMany(
-                  [{ kind: "entity", anchorIdx: owner.anchorLocationIdx, label: owner.name }],
+                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
                   BACK_LABEL,
                 );
                 panToEntity(owner.anchorLocationIdx);

@@ -24,5 +24,7 @@ export function PoliticalInsight() {
     );
   }
 
-  return <EntityProfileRoot anchorIdx={query.data} />;
+  return (
+    <EntityProfileRoot identity={{ kind: "country", anchor_location_idx: query.data, label: "" }} />
+  );
 }

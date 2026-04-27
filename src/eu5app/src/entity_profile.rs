@@ -15,6 +15,25 @@ pub enum EntityKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ActiveProfileIdentity {
+    Country {
+        anchor_location_idx: u32,
+        label: String,
+    },
+    Market {
+        anchor_location_idx: u32,
+        label: String,
+    },
+    Location {
+        location_idx: u32,
+        label: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct EntityHeader {
     pub kind: EntityKind,
@@ -23,6 +42,30 @@ pub struct EntityHeader {
     pub color_hex: String,
     pub anchor_location_idx: u32,
     pub headline: HeadlineStats,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct CountryProfile {
+    pub header: EntityHeader,
+    pub overview: OverviewSection,
+    pub economy: EconomySection,
+    pub locations: LocationsSection,
+    pub diplomacy: DiplomacySection,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct MarketProfile {
+    pub header: EntityHeader,
+    pub overview: OverviewSection,
+    pub economy: EconomySection,
+    pub locations: LocationsSection,
+    pub member_countries: Vec<MarketMemberCountry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,6 +164,17 @@ pub struct EconomySection {
 pub struct MarketMembership {
     pub market_center_name: String,
     pub location_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct MarketMemberCountry {
+    pub country: EntityRef,
+    pub location_count: u32,
+    pub population: u32,
+    pub development: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

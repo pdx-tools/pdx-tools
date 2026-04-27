@@ -1,24 +1,7 @@
-import { useEu5SelectionState } from "../../store";
-import { useEu5SelectionTrigger } from "../useEu5Trigger";
 import { formatFloat } from "@/lib/format";
+import type { EconomySection } from "@/wasm/wasm_eu5";
 
-export function EconomyTab({ anchorIdx }: { anchorIdx?: number } = {}) {
-  const selection = useEu5SelectionState();
-  const anchor = selection?.derivedEntityAnchor;
-
-  const { data, loading } = useEu5SelectionTrigger(
-    (engine) =>
-      anchorIdx != null
-        ? engine.trigger.getEconomySectionFor(anchorIdx)
-        : engine.trigger.getEconomySection(),
-    [anchor, anchorIdx],
-  );
-
-  if (loading && !data) {
-    return <div className="h-24 animate-pulse rounded bg-white/5" />;
-  }
-  if (!data) return null;
-
+export function EconomyTabContent({ data }: { data: EconomySection }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3">

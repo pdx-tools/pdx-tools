@@ -6,24 +6,116 @@ impl<'bump> Eu5Workspace<'bump> {
         self.derived_entity_kind
     }
 
+    pub fn active_profile_identity(&self) -> Option<ActiveProfileIdentity> {
+        if let Some(idx) = self.selection_state.focused_location() {
+            return Some(ActiveProfileIdentity::Location {
+                location_idx: idx.value(),
+                label: self.location_name(idx).to_string(),
+            });
+        }
+
+        if let (Some(anchor), Some(kind)) = (self.derived_entity_anchor, self.derived_entity_kind) {
+            return match kind {
+                EntityKind::Country => {
+                    self.country_header(anchor, self.empty_headline()).map(|h| {
+                        ActiveProfileIdentity::Country {
+                            anchor_location_idx: h.anchor_location_idx,
+                            label: h.name,
+                        }
+                    })
+                }
+                EntityKind::Market => self.market_header(anchor, self.empty_headline()).map(|h| {
+                    ActiveProfileIdentity::Market {
+                        anchor_location_idx: h.anchor_location_idx,
+                        label: h.name,
+                    }
+                }),
+            };
+        }
+
+        if self.selection_state.len() == 1 {
+            let idx = self
+                .selection_state
+                .selected_locations()
+                .iter()
+                .next()
+                .copied()?;
+            return Some(ActiveProfileIdentity::Location {
+                location_idx: idx.value(),
+                label: self.location_name(idx).to_string(),
+            });
+        }
+
+        None
+    }
+
+    fn empty_headline(&self) -> HeadlineStats {
+        HeadlineStats {
+            location_count: 0,
+            total_development: 0.0,
+            total_population: 0,
+        }
+    }
+
+    fn headline_for_locations(&self, locations: &[LocationIdx]) -> HeadlineStats {
+        let mut total_development = 0.0_f64;
+        let mut total_population = 0u32;
+        for &idx in locations {
+            let loc = self.gamestate.locations.index(idx).location();
+            total_development += loc.development;
+            total_population += self.gamestate.location_population(loc) as u32;
+        }
+        HeadlineStats {
+            location_count: locations.len() as u32,
+            total_development,
+            total_population,
+        }
+    }
+
+    pub fn country_profile_for(&self, anchor_idx: LocationIdx) -> Option<CountryProfile> {
+        let locations = self.collect_entity_locations(anchor_idx, EntityKind::Country)?;
+        let header = self.country_header(anchor_idx, self.headline_for_locations(&locations))?;
+        let overview = self.build_overview_section(anchor_idx, EntityKind::Country, &locations)?;
+        let economy = self.country_economy(anchor_idx, &locations)?;
+        let locations = self.build_locations_section(&locations)?;
+        let diplomacy = self.country_diplomacy(anchor_idx)?;
+        Some(CountryProfile {
+            header,
+            overview,
+            economy,
+            locations,
+            diplomacy,
+        })
+    }
+
+    pub fn market_profile_for(&self, anchor_idx: LocationIdx) -> Option<MarketProfile> {
+        let locations = self.collect_entity_locations(anchor_idx, EntityKind::Market)?;
+        let header = self.market_header(anchor_idx, self.headline_for_locations(&locations))?;
+        let overview = self.build_overview_section(anchor_idx, EntityKind::Market, &locations)?;
+        let economy = self.market_economy(anchor_idx, &locations)?;
+        let member_countries = self.market_member_countries(&locations);
+        let locations = self.build_locations_section(&locations)?;
+        Some(MarketProfile {
+            header,
+            overview,
+            economy,
+            locations,
+            member_countries,
+        })
+    }
+
     /// Returns header data for the current single-entity scope.
     /// Returns None when the filter is empty or spans multiple entities.
     pub fn entity_header(&self) -> Option<EntityHeader> {
         let anchor = self.derived_entity_anchor?;
         let kind = self.derived_entity_kind()?;
-        let mut total_development = 0.0_f64;
-        let mut total_population = 0u32;
-        let location_count = self.selection_state.len() as u32;
-        for &idx in self.selection_state.selected_locations() {
-            let loc = self.gamestate.locations.index(idx).location();
-            total_development += loc.development;
-            total_population += self.gamestate.location_population(loc) as u32;
-        }
-        let headline = HeadlineStats {
-            location_count,
-            total_development,
-            total_population,
-        };
+        let locations: Vec<LocationIdx> = self
+            .selection_state
+            .selected_locations()
+            .iter()
+            .copied()
+            .collect();
+        let headline = self.headline_for_locations(&locations);
         match kind {
             EntityKind::Country => self.country_header(anchor, headline),
             EntityKind::Market => self.market_header(anchor, headline),
@@ -447,6 +539,10 @@ impl<'bump> Eu5Workspace<'bump> {
         if matches!(self.derived_entity_kind()?, EntityKind::Market) {
             return None;
         }
+        self.country_diplomacy(anchor)
+    }
+
+    fn country_diplomacy(&self, anchor: LocationIdx) -> Option<DiplomacySection> {
         let loc = self.gamestate.locations.index(anchor).location();
         let owner_id = loc.owner.real_id()?.country_id();
         let anchor_country_idx = self.gamestate.countries.get(owner_id)?;
@@ -468,6 +564,42 @@ impl<'bump> Eu5Workspace<'bump> {
             .collect();
 
         Some(DiplomacySection { overlord, subjects })
+    }
+
+    fn market_member_countries(&self, locations: &[LocationIdx]) -> Vec<MarketMemberCountry> {
+        let mut countries: FxHashMap<CountryIdx, (u32, u32, f64)> = FxHashMap::default();
+        for &idx in locations {
+            let loc = self.gamestate.locations.index(idx).location();
+            let Some(owner_id) = loc.owner.real_id().map(|id| id.country_id()) else {
+                continue;
+            };
+            let Some(country_idx) = self.gamestate.countries.get(owner_id) else {
+                continue;
+            };
+            let entry = countries.entry(country_idx).or_insert((0, 0, 0.0));
+            entry.0 += 1;
+            entry.1 += self.gamestate.location_population(loc) as u32;
+            entry.2 += loc.development;
+        }
+
+        let mut rows: Vec<_> = countries
+            .into_iter()
+            .filter_map(|(country_idx, (location_count, population, development))| {
+                Some(MarketMemberCountry {
+                    country: self.entity_ref_from_country_idx(country_idx)?,
+                    location_count,
+                    population,
+                    development,
+                })
+            })
+            .collect();
+        rows.sort_by(|a, b| {
+            b.location_count
+                .cmp(&a.location_count)
+                .then_with(|| b.population.cmp(&a.population))
+                .then_with(|| a.country.name.cmp(&b.country.name))
+        });
+        rows
     }
 
     /// Returns a full data profile for a single location.
