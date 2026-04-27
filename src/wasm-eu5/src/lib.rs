@@ -58,6 +58,22 @@ pub struct CountriesData {
     pub countries: Vec<CountrySearchEntry>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct LocationSearchEntry {
+    pub id: u32,
+    pub name: String,
+    pub location_idx: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, tsify::Tsify)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct LocationsData {
+    pub locations: Vec<LocationSearchEntry>,
+}
+
 #[derive(Debug, Clone, tsify::Tsify, Serialize)]
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
@@ -663,6 +679,26 @@ impl Eu5App {
             })
             .collect();
         CountriesData { countries }
+    }
+
+    /// Return all named map-present locations for search.
+    #[wasm_bindgen]
+    pub fn get_locations(&self) -> LocationsData {
+        let locations = self
+            .app()
+            .gamestate()
+            .locations
+            .iter()
+            .map(|entry| {
+                let location_idx = entry.idx();
+                LocationSearchEntry {
+                    id: entry.id().value(),
+                    name: self.app().location_name(location_idx).to_string(),
+                    location_idx: location_idx.value(),
+                }
+            })
+            .collect();
+        LocationsData { locations }
     }
 
     /// Calculate state efficacy scores for all nations

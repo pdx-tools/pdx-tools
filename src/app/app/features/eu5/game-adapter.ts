@@ -389,8 +389,8 @@ export function saveWorker(
       return await saveEngine.getPoliticalDefaultCountryAnchor();
     },
 
-    searchCountries: async (query: string) => {
-      return await saveEngine.searchCountries(query);
+    searchEntities: async (query: string) => {
+      return await saveEngine.searchEntities(query);
     },
 
     panToLocation: async (

@@ -47,13 +47,20 @@ export interface AppState {
 export type AppStateListener = (state: AppState) => void;
 export type AppStateSelector<T> = (state: AppState) => T;
 
-export interface SearchResult {
-  kind: "country";
-  id: number;
-  name: string;
-  tag: string;
-  locationIdx: number;
-}
+export type SearchResult =
+  | {
+      kind: "country";
+      id: number;
+      name: string;
+      tag: string;
+      locationIdx: number;
+    }
+  | {
+      kind: "location";
+      id: number;
+      name: string;
+      locationIdx: number;
+    };
 
 export interface AppTriggers {
   selectMapMode(mode: MapMode): Promise<void>;
@@ -315,14 +322,7 @@ export class Eu5UIEngine implements AppEngine {
   }
 
   private async handleSearchEntities(query: string): Promise<SearchResult[]> {
-    const results = await this.gameInstance.searchCountries(query);
-    return results.map((r) => ({
-      kind: "country" as const,
-      id: r.id,
-      name: r.name,
-      tag: r.tag,
-      locationIdx: r.capitalLocationIdx ?? 0,
-    }));
+    return await this.gameInstance.searchEntities(query);
   }
 }
 

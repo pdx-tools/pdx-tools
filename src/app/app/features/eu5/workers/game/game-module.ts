@@ -93,8 +93,9 @@ export const createGame = async (
   const app = timeSync("Initialize App", () => wasm_eu5.Eu5App.init(gamestate, gameBundle));
   onProgress?.(5); // Initialize app
 
-  // Build the country search index once after initialization
+  // Build search indexes once after initialization.
   const countryIndex = timeSync("Build country index", () => app.get_countries().countries);
+  const locationIndex = timeSync("Build location index", () => app.get_locations().locations);
 
   if (!mapEndpoint) {
     throw new Error("Map endpoint not initialized");
@@ -384,16 +385,33 @@ export const createGame = async (
       return app.get_diplomacy_section_for(anchorLocationIdx) ?? null;
     },
 
-    searchCountries: (query: string) => {
+    searchEntities: (query: string) => {
       const lower = query.toLowerCase();
-      return countryIndex
+      const countries = countryIndex
         .filter(
           (c) =>
             c.capitalLocationIdx !== null &&
             c.capitalLocationIdx !== undefined &&
             (c.name.toLowerCase().includes(lower) || c.tag.toLowerCase().includes(lower)),
         )
-        .slice(0, 20);
+        .map((c) => ({
+          kind: "country" as const,
+          id: c.id,
+          name: c.name,
+          tag: c.tag,
+          locationIdx: c.capitalLocationIdx!,
+        }));
+
+      const locations = locationIndex
+        .filter((location) => location.name.toLowerCase().includes(lower))
+        .map((location) => ({
+          kind: "location" as const,
+          id: location.id,
+          name: location.name,
+          locationIdx: location.locationIdx,
+        }));
+
+      return [...countries, ...locations].slice(0, 20);
     },
 
     getLocationColorId: (locationIdx: number): number | null => {
