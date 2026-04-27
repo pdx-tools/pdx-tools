@@ -8,7 +8,7 @@ import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5Engine } from "../../store";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
-import { LocationDistributionChart } from "../../EntityProfile/MultiEntity/LocationDistributionChart";
+import { LocationDistributionChart } from "./LocationDistributionChart";
 import { TaxGapTopLocations } from "./TaxGapTopLocations";
 import { RealizationHistogram } from "./RealizationHistogram";
 import { usePanToEntity } from "../../usePanToEntity";

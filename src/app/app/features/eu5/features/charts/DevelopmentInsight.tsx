@@ -1,18 +1,36 @@
 import { useCallback, useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import type { CountryDevSummary } from "@/wasm/wasm_eu5";
+import type { CountryDevSummary, DevelopmentScopeSummary } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5Engine } from "../../store";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
-import { LocationDistributionChart } from "../../EntityProfile/MultiEntity/LocationDistributionChart";
+import { LocationDistributionChart } from "./LocationDistributionChart";
 import { DevelopmentTopLocations } from "./DevelopmentTopLocations";
 import { usePanToEntity } from "../../usePanToEntity";
-import { ScopeSummaryHeader } from "../InsightScopeHeader";
+import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
+import { StatItem } from "../../EntityProfile/components/StatItem";
 import type * as echarts from "echarts/core";
+
+function DevelopmentScopeHeader({ data }: { data?: DevelopmentScopeSummary }) {
+  if (!data) return <InsightScopeHeaderSkeleton />;
+
+  return (
+    <InsightScopeHeader>
+      <StatItem
+        label={data.isEmpty ? "Nations" : "Entities"}
+        value={formatInt(data.countryCount)}
+      />
+      <StatItem label="Locations" value={formatInt(data.locationCount)} />
+      <StatItem label="Development" value={formatFloat(data.totalDevelopment, 1)} />
+      <StatItem label="Avg Dev" value={formatFloat(data.avgDevelopment, 2)} />
+      <StatItem label="Population" value={formatInt(data.totalPopulation)} />
+    </InsightScopeHeader>
+  );
+}
 
 export function DevelopmentInsight() {
   const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getDevelopmentInsight());
@@ -21,7 +39,7 @@ export function DevelopmentInsight() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <ScopeSummaryHeader />
+      <DevelopmentScopeHeader data={insightQuery.data?.scope} />
       {insightQuery.loading && !insightQuery.data ? (
         <div className="h-64 animate-pulse rounded bg-white/5" />
       ) : (

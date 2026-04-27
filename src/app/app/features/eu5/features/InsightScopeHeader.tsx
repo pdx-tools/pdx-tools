@@ -1,8 +1,6 @@
-import { formatInt } from "@/lib/format";
 import type { ReactNode } from "react";
 import { StatItem } from "../EntityProfile/components/StatItem";
 import { usePanelNav } from "../EntityProfile/PanelNavContext";
-import { useEu5SelectionTrigger } from "../EntityProfile/useEu5Trigger";
 
 interface Stat {
   label: string;
@@ -33,28 +31,5 @@ export function InsightScopeHeader({ children, stats }: InsightScopeHeaderProps)
         {children ?? stats?.map((s) => <StatItem key={s.label} label={s.label} value={s.value} />)}
       </div>
     </div>
-  );
-}
-
-export function ScopeSummaryHeader() {
-  const { data, loading } = useEu5SelectionTrigger((engine) => engine.trigger.getScopeSummary());
-
-  if (loading && !data) {
-    return <InsightScopeHeaderSkeleton />;
-  }
-
-  if (!data) return null;
-
-  return (
-    <InsightScopeHeader>
-      {(data.isEmpty || data.entityCount > 1) && (
-        <StatItem
-          label={data.isEmpty ? "Nations" : "Entities"}
-          value={formatInt(data.entityCount)}
-        />
-      )}
-      <StatItem label="Locations" value={formatInt(data.locationCount)} />
-      <StatItem label="Population" value={formatInt(data.totalPopulation)} />
-    </InsightScopeHeader>
   );
 }

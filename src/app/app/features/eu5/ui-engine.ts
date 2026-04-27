@@ -10,15 +10,13 @@ import type {
 import type { Eu5SaveInput } from "./store/types";
 import type {
   MapMode,
-  StateEfficacyData,
+  StateEfficacyInsightData,
   EntityHeader,
   OverviewSection,
   EconomySection,
   LocationsSection,
   DiplomacySection,
   LocationProfile,
-  EntityBreakdownData,
-  LocationDistribution,
   DevelopmentInsightData,
   PossibleTaxInsightData,
   PossibleTaxScope,
@@ -30,7 +28,6 @@ import type {
   ReligionInsightData,
   RgoInsightData,
   ControlInsightData,
-  ScopeSummary,
   Eu5DateComponents,
 } from "@/wasm/wasm_eu5";
 import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
@@ -64,15 +61,13 @@ export interface AppTriggers {
   toggleOwnerBorders(): Promise<void>;
   getLocationArrays(): Promise<Blob>;
   melt(): Promise<Uint8Array<ArrayBuffer>>;
-  getStateEfficacy(): Promise<StateEfficacyData>;
+  getStateEfficacy(): Promise<StateEfficacyInsightData>;
   getEntityHeader(): Promise<EntityHeader | null>;
   getOverviewSection(): Promise<OverviewSection | null>;
   getEconomySection(): Promise<EconomySection | null>;
   getLocationsSection(): Promise<LocationsSection | null>;
   getDiplomacySection(): Promise<DiplomacySection | null>;
   getLocationProfile(locationIdx: number): Promise<LocationProfile | null>;
-  getEntityBreakdown(): Promise<EntityBreakdownData>;
-  getLocationDistribution(): Promise<LocationDistribution>;
   getDevelopmentInsight(): Promise<DevelopmentInsightData>;
   getPossibleTaxInsight(): Promise<PossibleTaxInsightData>;
   getPossibleTaxScope(): Promise<PossibleTaxScope>;
@@ -84,12 +79,12 @@ export interface AppTriggers {
   getReligionInsight(): Promise<ReligionInsightData>;
   getRgoInsight(): Promise<RgoInsightData>;
   getControlInsight(): Promise<ControlInsightData>;
-  getScopeSummary(): Promise<ScopeSummary>;
   getEntityHeaderFor(anchorLocationIdx: number): Promise<EntityHeader | null>;
   getOverviewSectionFor(anchorLocationIdx: number): Promise<OverviewSection | null>;
   getEconomySectionFor(anchorLocationIdx: number): Promise<EconomySection | null>;
   getLocationsSectionFor(anchorLocationIdx: number): Promise<LocationsSection | null>;
   getDiplomacySectionFor(anchorLocationIdx: number): Promise<DiplomacySection | null>;
+  getPoliticalDefaultCountryAnchor(): Promise<number | null>;
   selectEntity(locationIdx: number): Promise<void>;
   selectCountry(anchorLocationIdx: number): Promise<void>;
   addCountry(anchorLocationIdx: number): Promise<void>;
@@ -181,8 +176,6 @@ export class Eu5UIEngine implements AppEngine {
     getLocationsSection: () => this.gameInstance.getLocationsSection(),
     getDiplomacySection: () => this.gameInstance.getDiplomacySection(),
     getLocationProfile: (locationIdx) => this.gameInstance.getLocationProfile(locationIdx),
-    getEntityBreakdown: () => this.gameInstance.getEntityBreakdown(),
-    getLocationDistribution: () => this.gameInstance.getLocationDistribution(),
     getDevelopmentInsight: () => this.gameInstance.getDevelopmentInsight(),
     getPossibleTaxInsight: () => this.gameInstance.getPossibleTaxInsight(),
     getPossibleTaxScope: () => this.gameInstance.getPossibleTaxScope(),
@@ -194,7 +187,6 @@ export class Eu5UIEngine implements AppEngine {
     getReligionInsight: () => this.gameInstance.getReligionInsight(),
     getRgoInsight: () => this.gameInstance.getRgoInsight(),
     getControlInsight: () => this.gameInstance.getControlInsight(),
-    getScopeSummary: () => this.gameInstance.getScopeSummary(),
     getEntityHeaderFor: (anchorLocationIdx) =>
       this.gameInstance.getEntityHeaderFor(anchorLocationIdx),
     getOverviewSectionFor: (anchorLocationIdx) =>
@@ -205,6 +197,7 @@ export class Eu5UIEngine implements AppEngine {
       this.gameInstance.getLocationsSectionFor(anchorLocationIdx),
     getDiplomacySectionFor: (anchorLocationIdx) =>
       this.gameInstance.getDiplomacySectionFor(anchorLocationIdx),
+    getPoliticalDefaultCountryAnchor: () => this.gameInstance.getPoliticalDefaultCountryAnchor(),
     selectEntity: (locationIdx) => this.handleSelectEntity(locationIdx),
     selectCountry: (locationIdx) => this.gameInstance.selectCountry(locationIdx),
     addCountry: (locationIdx) => this.gameInstance.addCountry(locationIdx),
@@ -293,7 +286,7 @@ export class Eu5UIEngine implements AppEngine {
     return await this.gameInstance.melt();
   }
 
-  private async handleGetStateEfficacy(): Promise<StateEfficacyData> {
+  private async handleGetStateEfficacy(): Promise<StateEfficacyInsightData> {
     return await this.gameInstance.getStateEfficacy();
   }
 

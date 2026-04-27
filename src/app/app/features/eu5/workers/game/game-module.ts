@@ -7,7 +7,7 @@ import type {
   MapMode,
   HoverDisplayData,
   MapModeRange,
-  StateEfficacyData,
+  StateEfficacyInsightData,
   SelectionSummaryData,
   EntityHeader,
   OverviewSection,
@@ -15,8 +15,6 @@ import type {
   LocationsSection,
   DiplomacySection,
   LocationProfile,
-  EntityBreakdownData,
-  LocationDistribution,
   DevelopmentInsightData,
   PossibleTaxInsightData,
   PossibleTaxScope,
@@ -28,7 +26,6 @@ import type {
   ReligionInsightData,
   RgoInsightData,
   ControlInsightData,
-  ScopeSummary,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
@@ -315,7 +312,7 @@ export const createGame = async (
     getMapModeRange: (mode: MapMode): MapModeRange => {
       return app.get_map_mode_range(mode);
     },
-    getStateEfficacy: (): StateEfficacyData => {
+    getStateEfficacy: (): StateEfficacyInsightData => {
       return app.get_state_efficacy();
     },
 
@@ -338,12 +335,6 @@ export const createGame = async (
       return app.get_location_profile(locationIdx) ?? null;
     },
 
-    getEntityBreakdown: (): EntityBreakdownData => {
-      return app.get_entity_breakdown();
-    },
-    getLocationDistribution: (): LocationDistribution => {
-      return app.get_location_distribution();
-    },
     getDevelopmentInsight: (): DevelopmentInsightData => {
       return app.get_development_insight();
     },
@@ -377,9 +368,6 @@ export const createGame = async (
     getControlInsight: (): ControlInsightData => {
       return app.get_control_insight();
     },
-    getScopeSummary: (): ScopeSummary => {
-      return app.get_scope_summary();
-    },
     getEntityHeaderFor: (anchorLocationIdx: number): EntityHeader | null => {
       return app.get_entity_header_for(anchorLocationIdx) ?? null;
     },
@@ -410,6 +398,10 @@ export const createGame = async (
 
     getLocationColorId: (locationIdx: number): number | null => {
       return app.center_at(locationIdx) ?? null;
+    },
+
+    getPoliticalDefaultCountryAnchor: (): number | null => {
+      return app.political_default_country_anchor() ?? null;
     },
   });
 };

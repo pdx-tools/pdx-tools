@@ -18,17 +18,17 @@ export function LocationDistributionChart({ distribution }: Props) {
     return {
       tooltip: {
         trigger: "axis",
-        formatter: (params: unknown) => {
+        formatter: (params) => {
           const p = (params as { dataIndex: number; value: number }[])[0];
           if (!p) return "";
           const b = buckets[p.dataIndex];
           if (!b) return "";
-          return `${formatBound(b.lo)} – ${formatBound(b.hi)}: ${formatInt(p.value)} locations`;
+          return `${formatBound(b.lo)} - ${formatBound(b.hi)}: ${formatInt(p.value)} locations`;
         },
       },
       xAxis: {
         type: "category",
-        data: buckets.map((b) => `${formatBound(b.lo)}–${formatBound(b.hi)}`),
+        data: buckets.map((b) => `${formatBound(b.lo)}-${formatBound(b.hi)}`),
         axisLabel: { rotate: 35, color: "#94a3b8", fontSize: 10 },
         axisLine: { lineStyle: { color: "#334155" } },
       },
