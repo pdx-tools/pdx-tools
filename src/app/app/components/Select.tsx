@@ -1,5 +1,5 @@
 import React from "react";
-import * as SelectPrimitive from "@radix-ui/react-select";
+import { Select as SelectPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
 import { CheckIcon } from "@heroicons/react/24/outline";
 

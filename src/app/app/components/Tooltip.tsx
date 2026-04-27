@@ -1,5 +1,5 @@
 import React from "react";
-import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import { Tooltip as TooltipPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
 import { createPortal } from "react-dom";
 

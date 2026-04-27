@@ -1,5 +1,5 @@
 import React from "react";
-import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
+import { Collapsible as CollapsiblePrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 

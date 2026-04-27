@@ -1,5 +1,5 @@
 import React from "react";
-import type { DialogProps } from "@radix-ui/react-dialog";
+import type { Dialog as DialogNamespace } from "radix-ui";
 import { Command as CommandPrimitive } from "cmdk";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { Dialog } from "@/components/Dialog";
@@ -33,7 +33,7 @@ export const Command = CommandRoot as typeof CommandRoot & {
   Separator: typeof CommandSeparator;
 };
 
-type CommandDialogProps = DialogProps;
+type CommandDialogProps = DialogNamespace.DialogProps;
 
 const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
   return (
