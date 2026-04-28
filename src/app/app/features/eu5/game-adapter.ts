@@ -1,6 +1,8 @@
 import { wrap, transfer, proxy } from "comlink";
 import type { Remote } from "comlink";
 import type {
+  GradientConfig,
+  GradientPalette,
   HoverDisplayData,
   MapMode,
   SelectionSummaryData,
@@ -59,15 +61,10 @@ export type Eu5MapWorkerModule = typeof Eu5MapWorkerModuleDefinition;
 export type Eu5MapWorker = Remote<Eu5MapWorkerModule>;
 
 export type GameInstance = ReturnType<typeof saveWorker>;
-export type { HoverDisplayData, SelectionSummaryData };
+export type PaletteGradients = Record<GradientPalette, string>;
+export type { GradientConfig, HoverDisplayData, SelectionSummaryData };
 export type { BoxSelectOverlayRect } from "./types/box-select";
 export type { CursorHint } from "./workers/map/map-module";
-
-export interface MapModeRange {
-  mode: MapMode;
-  minValue: number;
-  maxValue: number;
-}
 
 export class Eu5GameAdapter {
   private constructor(
@@ -186,21 +183,20 @@ export function saveWorker(
   mapEngine: Awaited<ReturnType<Eu5MapWorker["createMapEngine"]>>,
 ) {
   let hoverDisplayCallback: ((data: HoverDisplayData) => void) | null = null;
-  let selectionCallback: ((data: SelectionSummaryData) => void) | null = null;
+  let selectionCallback: ((data: SelectionSummaryData, gradient?: GradientConfig) => void) | null =
+    null;
   let boxSelectRectCallback: ((rect: BoxSelectOverlayRect | null) => void) | null = null;
   let cursorHintCallback: ((hint: CursorHint) => void) | null = null;
 
-  // Set up hover display callback from game worker
   saveEngine.onHoverDisplayUpdate(
     proxy((data: HoverDisplayData) => {
       hoverDisplayCallback?.(data);
     }),
   );
 
-  // Set up selection callback from game worker
   saveEngine.onSelectionUpdate(
-    proxy((data: SelectionSummaryData) => {
-      selectionCallback?.(data);
+    proxy((data: SelectionSummaryData, gradient?: GradientConfig) => {
+      selectionCallback?.(data, gradient);
     }),
   );
 
@@ -218,9 +214,11 @@ export function saveWorker(
 
   return {
     getZoom: () => mapEngine.get_zoom(),
-    setMapMode: async (mode: MapMode) => {
+    getPaletteGradients: async (): Promise<PaletteGradients> => {
+      return await saveEngine.getPaletteGradients();
+    },
+    setMapMode: async (mode: MapMode): Promise<void> => {
       await saveEngine.setMapMode(mode);
-      return mode;
     },
     generateWorldScreenshot: async (fullResolution: boolean): Promise<Blob> => {
       const overlayData = await saveEngine.getOverlayData();
@@ -245,7 +243,9 @@ export function saveWorker(
       hoverDisplayCallback = callback;
     },
 
-    onSelectionUpdate: (callback: (data: SelectionSummaryData) => void) => {
+    onSelectionUpdate: (
+      callback: (data: SelectionSummaryData, gradient?: GradientConfig) => void,
+    ) => {
       selectionCallback = callback;
     },
 
@@ -300,10 +300,6 @@ export function saveWorker(
 
     clearSelection: () => {
       return saveEngine.clearSelection();
-    },
-
-    getMapModeRange: async (mode: MapMode): Promise<MapModeRange> => {
-      return await saveEngine.getMapModeRange(mode);
     },
 
     getSaveMetadata: async () => {

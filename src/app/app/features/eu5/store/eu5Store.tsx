@@ -64,7 +64,8 @@ export const useEu5HoverData = () => useEu5Store((x) => x.appState.hoverDisplayD
 export const useEu5OwnerBorders = () => useEu5Store((x) => x.appState.ownerBordersEnabled);
 export const useEu5IsGeneratingScreenshot = () =>
   useEu5Store((x) => x.appState.isGeneratingScreenshot);
-export const useEu5MapModeRange = () => useEu5Store((x) => x.appState.mapModeRange);
+export const useEu5MapModeGradient = () => useEu5Store((x) => x.appState.mapModeGradient);
+export const useEu5PaletteGradients = () => useEu5Store((x) => x.appState.paletteGradients);
 export const useEu5BoxSelectRect = () => useEu5Store((x) => x.appState.boxSelectRect);
 export const useEu5CursorHint = () => useEu5Store((x) => x.appState.cursorHint);
 export const useSaveFilename = () => useEu5Store((x) => x.filename);

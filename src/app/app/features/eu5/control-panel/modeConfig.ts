@@ -18,14 +18,3 @@ export const MAP_MODES: ModeConfig[] = [
   { value: "population", label: "Population" },
   { value: "stateEfficacy", label: "State Efficacy" },
 ];
-
-export const GRADIENT_MODES = new Set<MapMode>([
-  "control",
-  "development",
-  "population",
-  "possibleTax",
-  "taxGap",
-  "rgoLevel",
-  "buildingLevels",
-  "stateEfficacy",
-]);

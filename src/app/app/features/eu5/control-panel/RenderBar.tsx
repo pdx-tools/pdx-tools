@@ -1,11 +1,9 @@
 import { ViewToggles } from "./ViewToggles";
 import { Legend } from "./Legend";
-import { useEu5MapMode } from "../store";
-import { GRADIENT_MODES } from "./modeConfig";
+import { useEu5MapModeGradient } from "../store";
 
 export function RenderBar() {
-  const mapMode = useEu5MapMode();
-  const hasLegend = GRADIENT_MODES.has(mapMode);
+  const hasLegend = useEu5MapModeGradient() != null;
 
   return (
     <section className="shrink-0 border-b border-eu5-line">

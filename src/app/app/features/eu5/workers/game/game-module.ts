@@ -6,7 +6,8 @@ import init, * as wasm_eu5 from "../../../../wasm/wasm_eu5";
 import type {
   MapMode,
   HoverDisplayData,
-  MapModeRange,
+  GradientConfig,
+  GradientPalette,
   StateEfficacyInsightData,
   SelectionSummaryData,
   CountryProfile,
@@ -30,6 +31,14 @@ import { proxy, transfer, wrap } from "comlink";
 import { SharedCanvasModifierBits } from "@/lib/canvas_courier";
 
 const tokensTask = fetchOk(tokenPath).then((x) => x.arrayBuffer());
+
+const paletteToCss = (palette: GradientPalette): string => {
+  const stops = wasm_eu5
+    .palette_stops(palette)
+    .map((s) => `${s.color} ${(s.offset * 100).toFixed(2)}%`)
+    .join(", ");
+  return `linear-gradient(to right, ${stops})`;
+};
 const initialized = (async () => {
   const result = await timeAsync("Load EU5 Wasm module", () => init({ module_or_path: wasmPath }));
 
@@ -94,6 +103,14 @@ export const createGame = async (
   const countryIndex = timeSync("Build country index", () => app.get_countries().countries);
   const locationIndex = timeSync("Build location index", () => app.get_locations().locations);
 
+  // Render each palette into a CSS gradient string once. The palette stops
+  // come from Rust (single source of truth with the shader); the FE only ever
+  // sees opaque CSS strings keyed by palette tag.
+  const paletteGradients: Record<GradientPalette, string> = {
+    eu5: paletteToCss("eu5"),
+    taxGap: paletteToCss("taxGap"),
+  };
+
   if (!mapEndpoint) {
     throw new Error("Map endpoint not initialized");
   }
@@ -125,6 +142,20 @@ export const createGame = async (
     return p;
   };
 
+  // Push selection state and the gradient produced by the most recent mutation
+  // back to the UI. `gradient` is undefined when the mode produces no gradient
+  // (e.g. political, markets, religion).
+  const pushSelection = (gradient?: GradientConfig) => {
+    selectionCallback?.(app.get_selection_summary(), gradient);
+  };
+
+  // Run a selection mutation, sync GPU buffers, and push the new state.
+  const afterMutation = (gradient?: GradientConfig) => {
+    const p = syncLocationData();
+    pushSelection(gradient);
+    return p;
+  };
+
   await syncLocationData();
   syncGroupingTable();
   onProgress?.(5); // Sync location data
@@ -146,52 +177,54 @@ export const createGame = async (
 
   mapEndpoint.onLocationClickUpdate(
     proxy((event) => {
+      let gradient: GradientConfig | undefined;
       if (event.kind === "update") {
         const mods = event.modifiers;
         if (mods & SharedCanvasModifierBits.Shift) {
-          app.add_entity(event.locationIdx);
+          gradient = app.add_entity(event.locationIdx);
         } else if (mods & SharedCanvasModifierBits.Alt) {
-          app.remove_entity(event.locationIdx);
+          gradient = app.remove_entity(event.locationIdx);
         } else {
-          app.select_entity(event.locationIdx);
+          gradient = app.select_entity(event.locationIdx);
         }
       } else {
-        app.clear_focus_or_selection();
+        gradient = app.clear_focus_or_selection();
       }
       syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
+      pushSelection(gradient);
     }),
   );
 
   mapEndpoint.onBoxSelectCommit(
     proxy((event) => {
+      let gradient: GradientConfig | undefined;
       switch (event.operation) {
         case "add":
-          app.apply_resolved_box_selection(event.locationIdxs, true);
+          gradient = app.apply_resolved_box_selection(event.locationIdxs, true);
           break;
         case "remove":
-          app.apply_resolved_box_selection(event.locationIdxs, false);
+          gradient = app.apply_resolved_box_selection(event.locationIdxs, false);
           break;
         case "replace":
-          app.replace_selection_with_locations(event.locationIdxs);
+          gradient = app.replace_selection_with_locations(event.locationIdxs);
           break;
       }
       const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
+      pushSelection(gradient);
       return p;
     }),
   );
 
   return proxy({
-    setMapMode: (mode: MapMode) => {
-      app.set_map_mode(mode);
-      const p = syncAll();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
+    setMapMode: async (mode: MapMode): Promise<void> => {
+      const gradient = app.set_map_mode(mode);
+      await syncAll();
+      pushSelection(gradient);
     },
     getMapMode: () => {
       return app.get_map_mode();
     },
+    getPaletteGradients: () => paletteGradients,
     getSaveMetadata: () => {
       return metadata;
     },
@@ -220,96 +253,26 @@ export const createGame = async (
     onHoverDisplayUpdate: (callback: (data: HoverDisplayData) => void) => {
       hoverDisplayCallback = callback;
     },
-    onSelectionUpdate: (callback: (data: SelectionSummaryData) => void) => {
+    onSelectionUpdate: (
+      callback: (data: SelectionSummaryData, gradient?: GradientConfig) => void,
+    ) => {
       selectionCallback = callback;
     },
-    selectEntity: (locationIdx: number) => {
-      app.select_entity(locationIdx);
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    selectCountry: (locationIdx: number) => {
-      app.select_country(locationIdx);
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    addCountry: (locationIdx: number) => {
-      app.add_country(locationIdx);
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    removeCountry: (locationIdx: number) => {
-      app.remove_country(locationIdx);
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    selectMarket: (locationIdx: number) => {
-      app.select_market(locationIdx);
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    addMarket: (locationIdx: number) => {
-      app.add_market(locationIdx);
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    removeMarket: (locationIdx: number) => {
-      app.remove_market(locationIdx);
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    addEntity: (locationIdx: number) => {
-      app.add_entity(locationIdx);
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    removeEntity: (locationIdx: number) => {
-      app.remove_entity(locationIdx);
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    setFocusedLocation: (locationIdx: number) => {
-      app.set_focused_location(locationIdx);
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    clearFocus: () => {
-      app.clear_focus();
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    clearFocusOrSelection: () => {
-      app.clear_focus_or_selection();
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    selectPlayers: () => {
-      app.select_players();
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    clearSelection: () => {
-      app.clear_selection();
-      const p = syncLocationData();
-      selectionCallback?.(app.get_selection_summary());
-      return p;
-    },
-    getMapModeRange: (mode: MapMode): MapModeRange => {
-      return app.get_map_mode_range(mode);
-    },
+    selectEntity: (locationIdx: number) => afterMutation(app.select_entity(locationIdx)),
+    selectCountry: (locationIdx: number) => afterMutation(app.select_country(locationIdx).gradient),
+    addCountry: (locationIdx: number) => afterMutation(app.add_country(locationIdx)),
+    removeCountry: (locationIdx: number) => afterMutation(app.remove_country(locationIdx)),
+    selectMarket: (locationIdx: number) => afterMutation(app.select_market(locationIdx).gradient),
+    addMarket: (locationIdx: number) => afterMutation(app.add_market(locationIdx)),
+    removeMarket: (locationIdx: number) => afterMutation(app.remove_market(locationIdx)),
+    addEntity: (locationIdx: number) => afterMutation(app.add_entity(locationIdx)),
+    removeEntity: (locationIdx: number) => afterMutation(app.remove_entity(locationIdx)),
+    setFocusedLocation: (locationIdx: number) =>
+      afterMutation(app.set_focused_location(locationIdx).gradient),
+    clearFocus: () => afterMutation(app.clear_focus()),
+    clearFocusOrSelection: () => afterMutation(app.clear_focus_or_selection()),
+    selectPlayers: () => afterMutation(app.select_players()),
+    clearSelection: () => afterMutation(app.clear_selection()),
     getStateEfficacy: (): StateEfficacyInsightData => {
       return app.get_state_efficacy();
     },
@@ -399,7 +362,8 @@ export const createGame = async (
 
 let mapEndpoint: Eu5MapEndpoint | null = null;
 let hoverDisplayCallback: ((data: HoverDisplayData) => void) | null = null;
-let selectionCallback: ((data: SelectionSummaryData) => void) | null = null;
+let selectionCallback: ((data: SelectionSummaryData, gradient?: GradientConfig) => void) | null =
+  null;
 
 export async function initialize(port: MessagePort, level: wasm_eu5.LogLevel) {
   mapEndpoint = wrap<Eu5MapEndpoint>(port);
