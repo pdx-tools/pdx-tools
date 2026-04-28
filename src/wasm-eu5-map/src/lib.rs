@@ -4,10 +4,10 @@ use eu5app::{
 };
 use eu5save::hash::FnvHashSet;
 use pdx_map::{
-    CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
-    InteractionController, KeyboardKey, LocationArrays, LocationFlags, LogicalPoint, LogicalSize,
-    MapTexture, MapViewController, MouseButton, PanTarget, PhysicalSize, R16, SpatialIndex,
-    SurfaceMapRenderer, ViewportInsets, World, WorldPoint, default_clock,
+    Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
+    InteractionController, KeyboardKey, LocationArrays, LocationBitset, LocationFlags,
+    LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton, PanTarget, PhysicalSize,
+    R16, SpatialIndex, SurfaceMapRenderer, ViewportInsets, World, WorldPoint, default_clock,
 };
 use std::time::Duration;
 use wasm_bindgen::prelude::*;
@@ -83,6 +83,7 @@ pub struct Eu5WasmMapRenderer {
     input: InteractionController,
     world: World,
     spatial_index: SpatialIndex,
+    spatial_scratch: LocationBitset,
     location_arrays: LocationArrays,
     grouping_table: GroupingTable,
     cached_preview_groups: FnvHashSet<GroupId>,
@@ -132,6 +133,7 @@ impl Eu5WasmMapRenderer {
             input,
             world,
             spatial_index,
+            spatial_scratch: LocationBitset::new(),
             location_arrays: LocationArrays::new(),
             grouping_table: GroupingTable::empty(),
             cached_preview_groups: FnvHashSet::default(),
@@ -492,14 +494,12 @@ impl Eu5WasmMapRenderer {
 
     /// Pan to make the location with `color_id` (R16 texture index) visible,
     /// respecting panel insets. Returns true if a pan was started.
-    /// Uses the spatial index AABB center — fast, no pixel scan.
+    /// Uses a concrete pixel from the spatial index, so wrapping locations pan
+    /// to an actual owned pixel instead of an invalid world-midpoint AABB.
     #[wasm_bindgen]
     pub fn pan_to_color_id(&mut self, color_id: u16, insets: WasmViewportInsets) -> bool {
-        let aabb = self.spatial_index.aabb_of(R16::new(color_id));
-        let center = WorldPoint::new(
-            (aabb.min().x as f32 + aabb.max().x as f32) / 2.0,
-            (aabb.min().y as f32 + aabb.max().y as f32) / 2.0,
-        );
+        let point = self.spatial_index.point_of(R16::new(color_id));
+        let center = WorldPoint::new(point.x as f32, point.y as f32);
         let viewport_insets: ViewportInsets = insets.into();
         self.input
             .pan_to_visible_region(PanTarget::Point(center), viewport_insets)
@@ -523,36 +523,41 @@ impl Eu5WasmMapRenderer {
         renderer.update_locations(&self.location_arrays);
     }
 
-    fn gpu_locations_in_rect(
-        &self,
-        start: LogicalPoint<f32>,
-        end: LogicalPoint<f32>,
-    ) -> impl Iterator<Item = GpuLocationIdx> + '_ {
+    fn fill_locations_in_rect(&mut self, start: LogicalPoint<f32>, end: LogicalPoint<f32>) {
         let (primary, secondary) = self.input.canvas_rect_to_world_aabbs(start, end);
-
-        std::iter::once(primary)
-            .chain(secondary)
-            .flat_map(|aabb| self.spatial_index.query(aabb))
-            .map(|r16| GpuLocationIdx::new(r16.value()))
-            .filter(|gpu| !self.grouping_table.get(*gpu).is_none())
+        let rects: &[Aabb] = match &secondary {
+            Some(s) => &[primary, *s],
+            None => std::slice::from_ref(&primary),
+        };
+        self.spatial_index
+            .query_exact(rects, &mut self.spatial_scratch);
     }
 
     fn resolve_groups_in_rect(
-        &self,
+        &mut self,
         start: LogicalPoint<f32>,
         end: LogicalPoint<f32>,
     ) -> FnvHashSet<GroupId> {
-        self.gpu_locations_in_rect(start, end)
+        self.fill_locations_in_rect(start, end);
+        self.spatial_scratch
+            .drain()
+            .map(|r16| GpuLocationIdx::new(r16.value()))
+            .filter(|gpu| !self.grouping_table.get(*gpu).is_none())
             .map(|gpu| self.grouping_table.get(gpu))
             .collect()
     }
 
     fn resolve_gpu_locations_in_rect(
-        &self,
+        &mut self,
         start: LogicalPoint<f32>,
         end: LogicalPoint<f32>,
     ) -> FnvHashSet<GpuLocationIdx> {
-        self.gpu_locations_in_rect(start, end).collect()
+        self.fill_locations_in_rect(start, end);
+        self.spatial_scratch
+            .drain()
+            .map(|r16| GpuLocationIdx::new(r16.value()))
+            .filter(|gpu| !self.grouping_table.get(*gpu).is_none())
+            .collect()
     }
 }
 

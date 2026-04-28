@@ -1,4 +1,7 @@
-use pdx_map::{Aabb, R16, R16Palette, SpatialIndex, TopologyIndex, World, WorldLength, WorldPoint};
+use pdx_map::{
+    Aabb, LocationBitset, R16, R16Palette, SpatialIndex, TopologyIndex, World, WorldLength,
+    WorldPoint,
+};
 use std::path::{Path, PathBuf};
 
 pub const PROVINCES_WIDTH: u32 = 5632;
@@ -45,6 +48,7 @@ fn sampled_neighbor_count(adjacency: &TopologyIndex) -> usize {
 pub struct SpatialQueryInput {
     pub index: SpatialIndex,
     pub query: Aabb,
+    pub scratch: LocationBitset,
 }
 
 pub fn setup_small_query(asset_name: &str) -> SpatialQueryInput {
@@ -79,7 +83,11 @@ fn setup_query(asset_name: &str, small: bool) -> SpatialQueryInput {
         Aabb::new(WorldPoint::new(0, 0), WorldPoint::new(max_x, max_y))
     };
 
-    SpatialQueryInput { index, query }
+    SpatialQueryInput {
+        index,
+        query,
+        scratch: LocationBitset::new(),
+    }
 }
 
 fn from_rgb8(rgb_data: &[u8]) -> (World, pdx_map::R16Palette) {
@@ -90,8 +98,9 @@ fn aabb_index_build(world: &World) -> SpatialIndex {
     world.build_spatial_index()
 }
 
-fn aabb_index_query(input: &SpatialQueryInput) -> usize {
-    input.index.query(input.query).count()
+fn aabb_index_query(input: &mut SpatialQueryInput) -> usize {
+    input.index.query(&[input.query], &mut input.scratch);
+    input.scratch.count()
 }
 
 fn adjacency_build(world: &World) -> TopologyIndex {
@@ -122,18 +131,18 @@ pub mod criterion {
 
     pub fn map_aabb_index_benchmark(c: &mut Criterion) {
         let world = super::setup_world(super::PROVINCES_ASSET);
-        let small_query = super::setup_small_query(super::PROVINCES_ASSET);
-        let large_query = super::setup_large_query(super::PROVINCES_ASSET);
+        let mut small_query = super::setup_small_query(super::PROVINCES_ASSET);
+        let mut large_query = super::setup_large_query(super::PROVINCES_ASSET);
 
         let mut group = c.benchmark_group("map/aabb");
         group.bench_function("build", |b| {
             b.iter(|| black_box(super::aabb_index_build(&world)))
         });
         group.bench_function("query_small", |b| {
-            b.iter(|| black_box(super::aabb_index_query(&small_query)))
+            b.iter(|| black_box(super::aabb_index_query(&mut small_query)))
         });
         group.bench_function("query_large", |b| {
-            b.iter(|| black_box(super::aabb_index_query(&large_query)))
+            b.iter(|| black_box(super::aabb_index_query(&mut large_query)))
         });
         group.finish();
     }
@@ -181,8 +190,8 @@ pub mod gungraun {
     #[library_benchmark]
     #[bench::query_small(args = (crate::benchmarks::map::PROVINCES_ASSET), setup = crate::benchmarks::map::setup_small_query)]
     #[bench::query_large(args = (crate::benchmarks::map::PROVINCES_ASSET), setup = crate::benchmarks::map::setup_large_query)]
-    fn aabb_index_query_benchmark(input: crate::benchmarks::map::SpatialQueryInput) -> usize {
-        crate::benchmarks::map::aabb_index_query(&input)
+    fn aabb_index_query_benchmark(mut input: crate::benchmarks::map::SpatialQueryInput) -> usize {
+        crate::benchmarks::map::aabb_index_query(&mut input)
     }
 
     #[library_benchmark(setup = crate::benchmarks::map::setup_world)]

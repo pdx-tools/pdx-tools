@@ -111,7 +111,32 @@ fn index_rgb<const SRC_DEPTH: usize>(img: &[u8], width: WorldLength<u32>) -> (Wo
 
     let world = world_builder.build();
 
+    #[cfg(debug_assertions)]
+    assert_scan_order_assignment(&world);
+
     (world, R16Palette::new(palette))
+}
+
+#[cfg(debug_assertions)]
+fn assert_scan_order_assignment(world: &World) {
+    let mut seen = vec![false; world.location_capacity()];
+    let mut next = 0u16;
+
+    for row in world.rows() {
+        for &r16 in row {
+            let value = r16.value();
+            if !seen[value as usize] {
+                assert_eq!(
+                    value, next,
+                    "R16 values must be assigned in first-pixel scan order"
+                );
+                seen[value as usize] = true;
+                next = next
+                    .checked_add(1)
+                    .expect("R16 scan-order assertion overflowed");
+            }
+        }
+    }
 }
 
 #[cfg(test)]
