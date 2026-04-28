@@ -74,8 +74,13 @@ export function Eu5Toolbar() {
 
   const handleSelect = useCallback(
     async (result: SearchResult) => {
-      await engine.trigger.selectEntity(result.locationIdx);
+      if (result.kind === "location") {
+        await engine.trigger.setFocusedLocation(result.locationIdx);
+      } else {
+        await engine.trigger.selectEntity(result.locationIdx);
+      }
       panToEntity(result.locationIdx);
+      setSearchActive(false);
       setQuery("");
       setResults([]);
     },
@@ -98,7 +103,8 @@ export function Eu5Toolbar() {
   }, [engine]);
 
   const countryResults = useMemo(() => results.filter((r) => r.kind === "country"), [results]);
-  const hasResults = countryResults.length > 0;
+  const locationResults = useMemo(() => results.filter((r) => r.kind === "location"), [results]);
+  const hasResults = countryResults.length > 0 || locationResults.length > 0;
   const showDropdown = searchActive && (hasResults || (query.trim().length > 0 && !isSearching));
 
   const hasSelection = selectionState != null && !selectionState.isEmpty;
@@ -128,7 +134,7 @@ export function Eu5Toolbar() {
           type="button"
           onClick={openSearch}
           className="pointer-events-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-200"
-          aria-label="Search countries"
+          aria-label="Search countries or locations"
         >
           <MagnifyingGlassIcon className="h-4 w-4" />
         </button>
@@ -185,7 +191,7 @@ export function Eu5Toolbar() {
                   handleDismiss();
                 }
               }}
-              placeholder="Search countries..."
+              placeholder="Search countries or locations..."
               className="h-7 w-full border-0 bg-transparent px-0 text-sm text-slate-100 outline-none placeholder:text-slate-500"
             />
 
@@ -204,13 +210,30 @@ export function Eu5Toolbar() {
                       >
                         {countryResults.map((result) => (
                           <CommandPrimitive.Item
-                            key={result.id}
-                            onSelect={() => handleSelect(result)}
+                            key={`country-${result.id}`}
+                            onSelect={() => void handleSelect(result)}
                             className="flex cursor-default items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-slate-300 outline-none select-none aria-selected:bg-white/10 aria-selected:text-slate-100"
                           >
                             <span className="shrink-0 font-mono text-[11px] text-slate-500">
                               {result.tag}
                             </span>
+                            <span className="truncate">{result.name}</span>
+                          </CommandPrimitive.Item>
+                        ))}
+                      </CommandPrimitive.Group>
+                    )}
+
+                    {locationResults.length > 0 && (
+                      <CommandPrimitive.Group
+                        heading="Locations"
+                        className={cx("overflow-hidden", styles.searchGroup)}
+                      >
+                        {locationResults.map((result) => (
+                          <CommandPrimitive.Item
+                            key={`location-${result.id}`}
+                            onSelect={() => void handleSelect(result)}
+                            className="flex cursor-default items-center rounded-lg px-2.5 py-2 text-sm text-slate-300 outline-none select-none aria-selected:bg-white/10 aria-selected:text-slate-100"
+                          >
                             <span className="truncate">{result.name}</span>
                           </CommandPrimitive.Item>
                         ))}
