@@ -605,19 +605,23 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         const DIM: f32 = 0.3;
-        for idx in 0..self.gamestate.locations.len() {
-            let loc = eu5save::models::LocationIdx::new(idx as u32);
-            let terrain = self.location_terrain(loc);
-            if terrain.is_water() || !terrain.is_passable() {
+        for location in self.gamestate.locations.iter() {
+            let terrain = self.location_terrain(location.idx());
+            if matches!(terrain, Terrain::Impassable) {
                 continue;
             }
-            if self.selection_state.contains(loc) {
+            if self.selection_state.contains(location.idx()) {
                 continue;
             }
-            let Some(gpu_idx) = self.gpu_indices[loc] else {
+            let Some(gpu_idx) = self.gpu_indices[location.idx()] else {
                 continue;
             };
             let mut s = self.location_arrays.get_mut(gpu_idx);
+
+            // Only dim water that has been painted by the map mode (ie: market mode).
+            if terrain.is_water() && s.primary_color() == GpuColor::WATER {
+                continue;
+            }
             s.set_primary_color(s.primary_color().dim(DIM));
             s.set_secondary_color(s.secondary_color().dim(DIM));
         }
