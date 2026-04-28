@@ -1,5 +1,7 @@
+mod color;
 pub mod entity_profile;
 pub mod game_data;
+mod gradient;
 mod hexcolor;
 mod map;
 mod models;

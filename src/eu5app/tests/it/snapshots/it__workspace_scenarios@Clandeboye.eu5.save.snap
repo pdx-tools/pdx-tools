@@ -16,16 +16,16 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     }
   ],
   "map_mode_colors": {
-    "building_levels": "0x71435ec48180398259e55e7cc950e91622ae31963650a15890a67fbaf57b67e7",
-    "control": "0x2c73eeba600179897c3d16d4aa3768a7b818e3e8badeddbf49310060a146f9a5",
-    "development": "0xb4446f4e26a36b4d4cb6854e09d702f9c718606b22d66edcd9ac191592d5def7",
+    "building_levels": "0xf3c03224d8dc0794b478bfcbd6e5720df7d62229d8d602c2b81fd4c29c3a9bb6",
+    "control": "0xfe012cddbf3709f6bdc62afcf3406de09dadfaedad4db8c035b50ad726811181",
+    "development": "0xdd95ba93a37136d7dde68d7e1cafe24a7a8fefd5eb898e2e93749b3f9e401d29",
     "markets": "0x7eef6b272c18867c72b7880422d2bfef8ac23380b653d387f0762bb2a6957955",
     "political": "0x3c5e79d1450bbb157fa83171d2c1ad0f23f6794f9097cde8c0dfbc3cd2c73e1d",
-    "population": "0x6c9c29269f5a32b78dd27e9de9ee520fb1f051150083a27c5da6a0d61fed72a1",
-    "possible_tax": "0xe94556dfd31b4d9a12bd5d32b8faf083a9dd2d4c747b38be56e8efdcc8c2975b",
+    "population": "0x799e75484664a7f27fc01c4a9f419cb966d61c8dbcdce5e1759fc24b6c8af73c",
+    "possible_tax": "0x6900729141c0595d2f5bff1dfe665bdad4c7d53adc8e3248f77741f16f07ba58",
     "religion": "0xe424c860024bd7e944ef54962a0337845a7ee7962f35552a7603e8385117177a",
-    "rgo_level": "0x56b80d7e678d97f946a5a3e1cb69537bb330fee932a326d3f6adefdc00772f22",
-    "state_efficacy": "0x109b42f0535026793b89f6edef8715093ee746a5f9e656dcee14a2bb66e4826f",
+    "rgo_level": "0xecef7be6af747cb86a9b0e434da3435323c170e42a827881b791241a64e68551",
+    "state_efficacy": "0xc4f549fd28ac2645823e85681716cbcab97e0814f05d4934d7e770859f73dfd3",
     "tax_gap": "0x0415ddfd7fef3c73a6f462bc3e442cf59729f4c9a6fd28fa0c9c15b7b24422d9"
   },
   "save_version": "1.0.4",
