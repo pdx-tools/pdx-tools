@@ -4,7 +4,11 @@ import { DataTable } from "@/components/DataTable";
 import { Table } from "@/components/Table";
 import type { TaxGapTopLocation } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
-import { usePanelNav } from "../../EntityProfile/PanelNavContext";
+import {
+  countryProfileEntry,
+  locationProfileEntry,
+  usePanelNav,
+} from "../../EntityProfile/PanelNavContext";
 import { usePanToEntity } from "../../usePanToEntity";
 
 const BACK_LABEL = "Tax Gap";
@@ -26,10 +30,7 @@ export function TaxGapTopLocations({ locations }: { locations: TaxGapTopLocation
               type="button"
               className="text-left text-sky-300 hover:text-sky-200 hover:underline"
               onClick={() => {
-                nav.pushMany(
-                  [{ kind: "focus", locationIdx: loc.locationIdx, label: loc.name }],
-                  BACK_LABEL,
-                );
+                nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
                 panToEntity(loc.locationIdx);
               }}
             >
@@ -87,7 +88,7 @@ export function TaxGapTopLocations({ locations }: { locations: TaxGapTopLocation
               className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
               onClick={() => {
                 nav.pushMany(
-                  [{ kind: "entity", anchorIdx: owner.anchorLocationIdx, label: owner.name }],
+                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
                   BACK_LABEL,
                 );
                 panToEntity(owner.anchorLocationIdx);

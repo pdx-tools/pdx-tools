@@ -8,11 +8,24 @@ import {
   useRef,
   useState,
 } from "react";
+import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
 import { useEu5SelectionRevision } from "../store";
 
 export type PanelNavEntry =
-  | { kind: "entity"; anchorIdx: number; label: string }
-  | { kind: "focus"; locationIdx: number; label: string };
+  | { kind: "profile"; profile: ActiveProfileIdentity; label: string }
+  | { kind: "focus"; profile: Extract<ActiveProfileIdentity, { kind: "location" }>; label: string };
+
+export function locationProfileEntry(locationIdx: number, label: string): PanelNavEntry {
+  return { kind: "focus", profile: { kind: "location", location_idx: locationIdx, label }, label };
+}
+
+export function countryProfileEntry(anchorLocationIdx: number, label: string): PanelNavEntry {
+  return {
+    kind: "profile",
+    profile: { kind: "country", anchor_location_idx: anchorLocationIdx, label },
+    label,
+  };
+}
 
 interface PanelNavApi {
   stack: PanelNavEntry[];

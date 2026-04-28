@@ -16,7 +16,11 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { useEu5Engine } from "../../store";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
-import { usePanelNav } from "../../EntityProfile/PanelNavContext";
+import {
+  countryProfileEntry,
+  locationProfileEntry,
+  usePanelNav,
+} from "../../EntityProfile/PanelNavContext";
 import { usePanToEntity } from "../../usePanToEntity";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
@@ -235,10 +239,7 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
               type="button"
               className="text-left text-sky-300 hover:text-sky-200 hover:underline"
               onClick={() => {
-                nav.pushMany(
-                  [{ kind: "focus", locationIdx: loc.locationIdx, label: loc.name }],
-                  BACK_LABEL,
-                );
+                nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
                 panToEntity(loc.locationIdx);
               }}
             >
@@ -277,7 +278,7 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
               className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
               onClick={() => {
                 nav.pushMany(
-                  [{ kind: "entity", anchorIdx: owner.anchorLocationIdx, label: owner.name }],
+                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
                   BACK_LABEL,
                 );
                 panToEntity(owner.anchorLocationIdx);

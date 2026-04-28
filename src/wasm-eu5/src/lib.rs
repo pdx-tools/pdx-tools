@@ -1,8 +1,8 @@
 use eu5app::Eu5SaveMetadata;
 use eu5app::TableCell as Eu5TableCell;
 use eu5app::entity_profile::{
-    DiplomacySection, EconomySection, EntityHeader, LocationProfile, LocationsSection,
-    OverviewSection,
+    ActiveProfileIdentity, CountryProfile, DiplomacySection, EconomySection, EntityHeader,
+    LocationProfile, LocationsSection, MarketProfile, OverviewSection,
 };
 use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
@@ -93,6 +93,8 @@ pub struct SelectionSummaryData {
     pub scope_display_name: Option<String>,
     /// First selected location index, set when exactly one location is selected and no entity anchor exists.
     pub first_location_idx: Option<u32>,
+    /// Typed profile identity that the current selection naturally opens in the insight panel.
+    pub active_profile: Option<ActiveProfileIdentity>,
 }
 
 impl From<MapMode> for Eu5MapMode {
@@ -614,6 +616,7 @@ impl Eu5App {
             derived_entity_anchor,
             scope_display_name: self.app.scope_display_name(),
             first_location_idx,
+            active_profile: self.app.active_profile_identity(),
         }
     }
 
@@ -721,6 +724,20 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_entity_header(&self) -> Option<EntityHeader> {
         self.app().entity_header()
+    }
+
+    /// Full country profile resolved from `anchor_location_idx`, independent of current map mode.
+    #[wasm_bindgen]
+    pub fn get_country_profile(&self, anchor_location_idx: u32) -> Option<CountryProfile> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app().country_profile_for(idx)
+    }
+
+    /// Full market profile resolved from `anchor_location_idx`, independent of current map mode.
+    #[wasm_bindgen]
+    pub fn get_market_profile(&self, anchor_location_idx: u32) -> Option<MarketProfile> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app().market_profile_for(idx)
     }
 
     /// Overview section stats for the current single-entity scope.

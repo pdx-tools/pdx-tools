@@ -1,0 +1,52 @@
+import { Tabs } from "@/components/Tabs";
+import { EntityHeader } from "./EntityHeader";
+import { OverviewTabContent } from "./tabs/OverviewTab";
+import { EconomyTabContent } from "./tabs/EconomyTab";
+import { LocationsTabContent } from "./tabs/LocationsTab";
+import { DiplomacyTabContent } from "./tabs/DiplomacyTab";
+import { useEu5MapMode } from "../store";
+import { useEu5Trigger } from "./useEu5Trigger";
+import { ProfileSkeleton } from "./ProfileSkeleton";
+
+export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: number }) {
+  const mode = useEu5MapMode();
+  const { data: profile, loading } = useEu5Trigger(
+    (engine) => engine.trigger.getCountryProfile(anchorLocationIdx),
+    [anchorLocationIdx],
+  );
+
+  if (loading && !profile) return <ProfileSkeleton />;
+  if (!profile) return null;
+
+  return (
+    <div className="flex h-full flex-col">
+      <EntityHeader header={profile.header} />
+      <Tabs defaultValue="overview" className="flex min-h-0 flex-1 flex-col">
+        <Tabs.List className="shrink-0 border-b border-white/10 px-2">
+          <Tabs.Trigger value="overview">Overview</Tabs.Trigger>
+          <Tabs.Trigger value="economy">Economy</Tabs.Trigger>
+          <Tabs.Trigger value="locations">Locations</Tabs.Trigger>
+          <Tabs.Trigger value="diplomacy">Diplomacy</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="overview" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
+          <OverviewTabContent data={profile.overview} />
+        </Tabs.Content>
+        <Tabs.Content value="economy" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
+          <EconomyTabContent data={profile.economy} />
+        </Tabs.Content>
+        <Tabs.Content
+          value="locations"
+          className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
+        >
+          <LocationsTabContent locations={profile.locations.locations} mode={mode} />
+        </Tabs.Content>
+        <Tabs.Content
+          value="diplomacy"
+          className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
+        >
+          <DiplomacyTabContent data={profile.diplomacy} />
+        </Tabs.Content>
+      </Tabs>
+    </div>
+  );
+}

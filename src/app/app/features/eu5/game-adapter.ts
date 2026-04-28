@@ -4,11 +4,8 @@ import type {
   HoverDisplayData,
   MapMode,
   SelectionSummaryData,
-  EntityHeader,
-  OverviewSection,
-  EconomySection,
-  LocationsSection,
-  DiplomacySection,
+  CountryProfile,
+  MarketProfile,
   LocationProfile,
   DevelopmentInsightData,
   PossibleTaxInsightData,
@@ -317,20 +314,11 @@ export function saveWorker(
       return await saveEngine.getStateEfficacy();
     },
 
-    getEntityHeader: async (): Promise<EntityHeader | null> => {
-      return await saveEngine.getEntityHeader();
+    getCountryProfile: async (anchorLocationIdx: number): Promise<CountryProfile | null> => {
+      return await saveEngine.getCountryProfile(anchorLocationIdx);
     },
-    getOverviewSection: async (): Promise<OverviewSection | null> => {
-      return await saveEngine.getOverviewSection();
-    },
-    getEconomySection: async (): Promise<EconomySection | null> => {
-      return await saveEngine.getEconomySection();
-    },
-    getLocationsSection: async (): Promise<LocationsSection | null> => {
-      return await saveEngine.getLocationsSection();
-    },
-    getDiplomacySection: async (): Promise<DiplomacySection | null> => {
-      return await saveEngine.getDiplomacySection();
+    getMarketProfile: async (anchorLocationIdx: number): Promise<MarketProfile | null> => {
+      return await saveEngine.getMarketProfile(anchorLocationIdx);
     },
     getLocationProfile: async (locationIdx: number): Promise<LocationProfile | null> => {
       return await saveEngine.getLocationProfile(locationIdx);
@@ -369,22 +357,6 @@ export function saveWorker(
     getControlInsight: async (): Promise<ControlInsightData> => {
       return await saveEngine.getControlInsight();
     },
-    getEntityHeaderFor: async (anchorLocationIdx: number): Promise<EntityHeader | null> => {
-      return await saveEngine.getEntityHeaderFor(anchorLocationIdx);
-    },
-    getOverviewSectionFor: async (anchorLocationIdx: number): Promise<OverviewSection | null> => {
-      return await saveEngine.getOverviewSectionFor(anchorLocationIdx);
-    },
-    getEconomySectionFor: async (anchorLocationIdx: number): Promise<EconomySection | null> => {
-      return await saveEngine.getEconomySectionFor(anchorLocationIdx);
-    },
-    getLocationsSectionFor: async (anchorLocationIdx: number): Promise<LocationsSection | null> => {
-      return await saveEngine.getLocationsSectionFor(anchorLocationIdx);
-    },
-    getDiplomacySectionFor: async (anchorLocationIdx: number): Promise<DiplomacySection | null> => {
-      return await saveEngine.getDiplomacySectionFor(anchorLocationIdx);
-    },
-
     getPoliticalDefaultCountryAnchor: async (): Promise<number | null> => {
       return await saveEngine.getPoliticalDefaultCountryAnchor();
     },

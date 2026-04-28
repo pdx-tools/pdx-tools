@@ -1,21 +1,26 @@
 import { Tabs } from "@/components/Tabs";
-import type { LocationProfile } from "@/wasm/wasm_eu5";
 import { LocationOverviewTab } from "./tabs/LocationOverviewTab";
 import { LocationEconomyTab } from "./tabs/LocationEconomyTab";
-import { LeafHeader } from "./EntityHeader";
+import { LocationHeaderView } from "./EntityHeader";
 import { useEu5Engine } from "../store";
 import { usePanelNav } from "./PanelNavContext";
+import { useEu5Trigger } from "./useEu5Trigger";
+import { ProfileSkeleton } from "./ProfileSkeleton";
 
 interface Props {
-  profile: LocationProfile;
+  locationIdx: number;
   showBreadcrumb?: boolean;
   scopeName?: string;
 }
 
-export function LeafProfile({ profile, showBreadcrumb = false, scopeName }: Props) {
+export function LocationProfile({ locationIdx, showBreadcrumb = false, scopeName }: Props) {
   const engine = useEu5Engine();
   const nav = usePanelNav();
   const hasNavStack = nav.stack.length > 0;
+  const { data: profile, loading } = useEu5Trigger(
+    (engine) => engine.trigger.getLocationProfile(locationIdx),
+    [locationIdx],
+  );
 
   function handleBack() {
     if (hasNavStack) {
@@ -26,6 +31,9 @@ export function LeafProfile({ profile, showBreadcrumb = false, scopeName }: Prop
   }
 
   const showBack = hasNavStack || showBreadcrumb;
+
+  if (loading && !profile) return <ProfileSkeleton />;
+  if (!profile) return null;
 
   return (
     <div className="flex h-full flex-col">
@@ -39,7 +47,7 @@ export function LeafProfile({ profile, showBreadcrumb = false, scopeName }: Prop
           {hasNavStack ? (nav.stack[nav.stack.length - 2]?.label ?? "Back") : (scopeName ?? "Back")}
         </button>
       )}
-      <LeafHeader header={profile.header} />
+      <LocationHeaderView header={profile.header} />
       <Tabs defaultValue="overview" className="flex min-h-0 flex-1 flex-col">
         <Tabs.List className="shrink-0 border-b border-white/10 px-2">
           <Tabs.Trigger value="overview">Overview</Tabs.Trigger>

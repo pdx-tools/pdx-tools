@@ -11,11 +11,8 @@ import type { Eu5SaveInput } from "./store/types";
 import type {
   MapMode,
   StateEfficacyInsightData,
-  EntityHeader,
-  OverviewSection,
-  EconomySection,
-  LocationsSection,
-  DiplomacySection,
+  CountryProfile,
+  MarketProfile,
   LocationProfile,
   DevelopmentInsightData,
   PossibleTaxInsightData,
@@ -69,11 +66,8 @@ export interface AppTriggers {
   getLocationArrays(): Promise<Blob>;
   melt(): Promise<Uint8Array<ArrayBuffer>>;
   getStateEfficacy(): Promise<StateEfficacyInsightData>;
-  getEntityHeader(): Promise<EntityHeader | null>;
-  getOverviewSection(): Promise<OverviewSection | null>;
-  getEconomySection(): Promise<EconomySection | null>;
-  getLocationsSection(): Promise<LocationsSection | null>;
-  getDiplomacySection(): Promise<DiplomacySection | null>;
+  getCountryProfile(anchorLocationIdx: number): Promise<CountryProfile | null>;
+  getMarketProfile(anchorLocationIdx: number): Promise<MarketProfile | null>;
   getLocationProfile(locationIdx: number): Promise<LocationProfile | null>;
   getDevelopmentInsight(): Promise<DevelopmentInsightData>;
   getPossibleTaxInsight(): Promise<PossibleTaxInsightData>;
@@ -86,11 +80,6 @@ export interface AppTriggers {
   getReligionInsight(): Promise<ReligionInsightData>;
   getRgoInsight(): Promise<RgoInsightData>;
   getControlInsight(): Promise<ControlInsightData>;
-  getEntityHeaderFor(anchorLocationIdx: number): Promise<EntityHeader | null>;
-  getOverviewSectionFor(anchorLocationIdx: number): Promise<OverviewSection | null>;
-  getEconomySectionFor(anchorLocationIdx: number): Promise<EconomySection | null>;
-  getLocationsSectionFor(anchorLocationIdx: number): Promise<LocationsSection | null>;
-  getDiplomacySectionFor(anchorLocationIdx: number): Promise<DiplomacySection | null>;
   getPoliticalDefaultCountryAnchor(): Promise<number | null>;
   selectEntity(locationIdx: number): Promise<void>;
   selectCountry(anchorLocationIdx: number): Promise<void>;
@@ -177,11 +166,9 @@ export class Eu5UIEngine implements AppEngine {
     getLocationArrays: () => this.handleGetLocationArrays(),
     melt: () => this.handleMelt(),
     getStateEfficacy: () => this.handleGetStateEfficacy(),
-    getEntityHeader: () => this.gameInstance.getEntityHeader(),
-    getOverviewSection: () => this.gameInstance.getOverviewSection(),
-    getEconomySection: () => this.gameInstance.getEconomySection(),
-    getLocationsSection: () => this.gameInstance.getLocationsSection(),
-    getDiplomacySection: () => this.gameInstance.getDiplomacySection(),
+    getCountryProfile: (anchorLocationIdx) =>
+      this.gameInstance.getCountryProfile(anchorLocationIdx),
+    getMarketProfile: (anchorLocationIdx) => this.gameInstance.getMarketProfile(anchorLocationIdx),
     getLocationProfile: (locationIdx) => this.gameInstance.getLocationProfile(locationIdx),
     getDevelopmentInsight: () => this.gameInstance.getDevelopmentInsight(),
     getPossibleTaxInsight: () => this.gameInstance.getPossibleTaxInsight(),
@@ -194,16 +181,6 @@ export class Eu5UIEngine implements AppEngine {
     getReligionInsight: () => this.gameInstance.getReligionInsight(),
     getRgoInsight: () => this.gameInstance.getRgoInsight(),
     getControlInsight: () => this.gameInstance.getControlInsight(),
-    getEntityHeaderFor: (anchorLocationIdx) =>
-      this.gameInstance.getEntityHeaderFor(anchorLocationIdx),
-    getOverviewSectionFor: (anchorLocationIdx) =>
-      this.gameInstance.getOverviewSectionFor(anchorLocationIdx),
-    getEconomySectionFor: (anchorLocationIdx) =>
-      this.gameInstance.getEconomySectionFor(anchorLocationIdx),
-    getLocationsSectionFor: (anchorLocationIdx) =>
-      this.gameInstance.getLocationsSectionFor(anchorLocationIdx),
-    getDiplomacySectionFor: (anchorLocationIdx) =>
-      this.gameInstance.getDiplomacySectionFor(anchorLocationIdx),
     getPoliticalDefaultCountryAnchor: () => this.gameInstance.getPoliticalDefaultCountryAnchor(),
     selectEntity: (locationIdx) => this.handleSelectEntity(locationIdx),
     selectCountry: (locationIdx) => this.gameInstance.selectCountry(locationIdx),

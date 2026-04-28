@@ -1,6 +1,7 @@
 import type React from "react";
 import { useCallback } from "react";
 import { ResizablePanel } from "@/components/ResizablePanel";
+import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
 import { useEu5MapMode, useEu5SelectionState, useSetEu5InsightPanelWidth } from "./store";
 import { StateEfficacyInsight } from "./features/charts/StateEfficacy";
 import { ControlInsight } from "./features/charts/Control";
@@ -16,8 +17,6 @@ import { PoliticalInsight } from "./features/charts/Political";
 import { EntityProfileRoot } from "./EntityProfile";
 import { PanelNavProvider, usePanelNav } from "./EntityProfile/PanelNavContext";
 import { Breadcrumb } from "./EntityProfile/Breadcrumb";
-import { useEu5Trigger } from "./EntityProfile/useEu5Trigger";
-import { LeafProfile } from "./EntityProfile/LeafProfile";
 
 type Eu5InsightPanelProps = {
   open: boolean;
@@ -60,23 +59,18 @@ function PanelContentInner() {
   const { top, stack } = nav;
   const selectionState = useEu5SelectionState();
   const currentMapMode = useEu5MapMode();
-  const locationCount = selectionState?.locationCount ?? 0;
-  const isEmpty = selectionState?.isEmpty ?? true;
-  const focusedLocation = selectionState?.focusedLocation;
-  const derivedEntityAnchor = selectionState?.derivedEntityAnchor;
+  const activeProfile = selectionState?.activeProfile;
 
   let content: React.ReactNode;
 
   if (top?.kind === "focus") {
-    content = <NavFocusPanel locationIdx={top.locationIdx} />;
-  } else if (top?.kind === "entity") {
-    content = <EntityProfileRoot anchorIdx={top.anchorIdx} />;
-  } else if (focusedLocation != null) {
-    content = <EntityProfileRoot key={`focus-${focusedLocation}`} />;
-  } else if (derivedEntityAnchor != null && !isEmpty) {
-    content = <EntityProfileRoot key="compound" />;
-  } else if (locationCount === 1) {
-    content = <EntityProfileRoot key="leaf" />;
+    content = <EntityProfileRoot identity={top.profile} />;
+  } else if (top?.kind === "profile") {
+    content = <EntityProfileRoot identity={top.profile} />;
+  } else if (activeProfile != null) {
+    content = (
+      <EntityProfileRoot key={profileIdentityKey(activeProfile)} identity={activeProfile} />
+    );
   } else if (currentMapMode === "political") {
     content = <PoliticalInsight />;
   } else if (currentMapMode === "control") {
@@ -117,22 +111,9 @@ function PanelContentInner() {
   return <>{content}</>;
 }
 
-function NavFocusPanel({ locationIdx }: { locationIdx: number }) {
-  const { data, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getLocationProfile(locationIdx),
-    [locationIdx],
-  );
-  if (loading && !data) {
-    return (
-      <div className="flex flex-col gap-3 p-4">
-        <div className="h-16 animate-pulse rounded-lg bg-white/5" />
-        <div className="h-8 animate-pulse rounded bg-white/5" />
-        <div className="h-32 animate-pulse rounded bg-white/5" />
-      </div>
-    );
-  }
-  if (!data) return null;
-  return <LeafProfile profile={data} />;
+function profileIdentityKey(profile: ActiveProfileIdentity) {
+  if (profile.kind === "location") return `location:${profile.location_idx}`;
+  return `${profile.kind}:${profile.anchor_location_idx}`;
 }
 
 function EmptyInsightState() {

@@ -1,25 +1,7 @@
-import { useEu5SelectionState } from "../../store";
-import { useEu5SelectionTrigger } from "../useEu5Trigger";
-import type { EntityRef } from "@/wasm/wasm_eu5";
+import type { DiplomacySection, EntityRef } from "@/wasm/wasm_eu5";
 import { EntityLink } from "../EntityLink";
 
-export function DiplomacyTab({ anchorIdx }: { anchorIdx?: number } = {}) {
-  const selection = useEu5SelectionState();
-  const anchor = selection?.derivedEntityAnchor;
-
-  const { data, loading } = useEu5SelectionTrigger(
-    (engine) =>
-      anchorIdx != null
-        ? engine.trigger.getDiplomacySectionFor(anchorIdx)
-        : engine.trigger.getDiplomacySection(),
-    [anchor, anchorIdx],
-  );
-
-  if (loading && !data) {
-    return <div className="h-24 animate-pulse rounded bg-white/5" />;
-  }
-  if (!data) return null;
-
+export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
   return (
     <div className="flex flex-col gap-4">
       {data.overlord && (
