@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffectEvent, useMemo } from "react";
 import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
@@ -267,25 +267,24 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
     };
   }, [isDark, rows]);
 
-  const handleInit = useCallback(
-    (chart: echarts.ECharts) => {
-      chart.on("click", (params) => {
-        const idx = (params as { dataIndex?: number }).dataIndex;
-        const country = idx == null ? undefined : rows[idx];
-        if (!country) return;
-        const event = params.event?.event as MouseEvent | undefined;
-        if (event?.shiftKey) {
-          void engine.trigger.addCountry(country.anchorLocationIdx);
-        } else if (event?.altKey) {
-          void engine.trigger.removeCountry(country.anchorLocationIdx);
-        } else {
-          void engine.trigger.selectCountry(country.anchorLocationIdx);
-          panToEntity(country.anchorLocationIdx);
-        }
-      });
-    },
-    [engine, panToEntity, rows],
-  );
+  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
+    const idx = params.dataIndex;
+    const country = idx == null ? undefined : rows[idx];
+    if (!country) return;
+    const event = params.event?.event as MouseEvent | undefined;
+    if (event?.shiftKey) {
+      void engine.trigger.addCountry(country.anchorLocationIdx);
+    } else if (event?.altKey) {
+      void engine.trigger.removeCountry(country.anchorLocationIdx);
+    } else {
+      void engine.trigger.selectCountry(country.anchorLocationIdx);
+      panToEntity(country.anchorLocationIdx);
+    }
+  });
+
+  const handleInit = useCallback((chart: echarts.ECharts) => {
+    chart.on("click", handleClick);
+  }, []);
 
   const height = rows.length * 24 + 54;
   return (

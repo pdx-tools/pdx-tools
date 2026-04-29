@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffectEvent, useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { MarketScopeSummary, ScopedGoodSummary, ScopedMarketSummary } from "@/wasm/wasm_eu5";
@@ -340,25 +340,24 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
     };
   }, [markets, topMarkets, isDark, maxTaken]);
 
-  const handleInit = useCallback(
-    (chart: echarts.ECharts) => {
-      chart.on("click", (params) => {
-        const dataIndex = (params as { dataIndex?: number }).dataIndex;
-        const d = dataIndex == null ? undefined : markets[dataIndex];
-        if (d?.anchorLocationIdx == null) return;
-        const idx = d.anchorLocationIdx;
-        if ((params.event?.event as MouseEvent)?.shiftKey) {
-          void engine.trigger.addMarket(idx);
-        } else if ((params.event?.event as MouseEvent)?.altKey) {
-          void engine.trigger.removeMarket(idx);
-        } else {
-          void engine.trigger.selectMarket(idx);
-          panToEntity(idx);
-        }
-      });
-    },
-    [engine, panToEntity, markets],
-  );
+  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
+    const dataIndex = params.dataIndex;
+    const d = dataIndex == null ? undefined : markets[dataIndex];
+    if (d?.anchorLocationIdx == null) return;
+    const idx = d.anchorLocationIdx;
+    if ((params.event?.event as MouseEvent)?.shiftKey) {
+      void engine.trigger.addMarket(idx);
+    } else if ((params.event?.event as MouseEvent)?.altKey) {
+      void engine.trigger.removeMarket(idx);
+    } else {
+      void engine.trigger.selectMarket(idx);
+      panToEntity(idx);
+    }
+  });
+
+  const handleInit = useCallback((chart: echarts.ECharts) => {
+    chart.on("click", handleClick);
+  }, []);
 
   return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffectEvent, useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type {
@@ -154,25 +154,24 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
     };
   }, [isDark, marketLabels, topGoods, topMarkets, filteredCells, seriesData, maxAbs]);
 
-  const handleInit = useCallback(
-    (chart: echarts.ECharts) => {
-      chart.on("click", (params) => {
-        const idx = (params as { dataIndex?: number }).dataIndex;
-        const c = idx == null ? undefined : filteredCells[idx];
-        if (c?.marketAnchorLocationIdx == null) return;
-        const mIdx = c.marketAnchorLocationIdx;
-        if ((params.event?.event as MouseEvent)?.shiftKey) {
-          void engine.trigger.addMarket(mIdx);
-        } else if ((params.event?.event as MouseEvent)?.altKey) {
-          void engine.trigger.removeMarket(mIdx);
-        } else {
-          void engine.trigger.selectMarket(mIdx);
-          panToEntity(mIdx);
-        }
-      });
-    },
-    [engine, panToEntity, filteredCells],
-  );
+  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
+    const idx = params.dataIndex;
+    const c = idx == null ? undefined : filteredCells[idx];
+    if (c?.marketAnchorLocationIdx == null) return;
+    const mIdx = c.marketAnchorLocationIdx;
+    if ((params.event?.event as MouseEvent)?.shiftKey) {
+      void engine.trigger.addMarket(mIdx);
+    } else if ((params.event?.event as MouseEvent)?.altKey) {
+      void engine.trigger.removeMarket(mIdx);
+    } else {
+      void engine.trigger.selectMarket(mIdx);
+      panToEntity(mIdx);
+    }
+  });
+
+  const handleInit = useCallback((chart: echarts.ECharts) => {
+    chart.on("click", handleClick);
+  }, []);
 
   if (topGoods.length === 0 || topMarkets.length === 0) {
     return (
