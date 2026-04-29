@@ -16,6 +16,8 @@ extern "C" {
     fn console_warn(s: &str);
     #[wasm_bindgen(js_namespace = console, js_name = error)]
     fn console_error(s: &str);
+    #[wasm_bindgen(js_namespace = performance, js_name = now)]
+    fn performance_now() -> f64;
 }
 
 pub fn init_with_level(level: Level) {
@@ -94,6 +96,7 @@ struct SpanData {
     level: Level,
     fields: String,
     entered: bool,
+    start_ms: f64,
 }
 
 impl Subscriber for ConsoleSubscriber {
@@ -112,6 +115,7 @@ impl Subscriber for ConsoleSubscriber {
             level: *span.metadata().level(),
             fields: scratch.clone(),
             entered: false,
+            start_ms: 0.0,
         };
 
         let id = Id::from_u64(spans.len() as u64 + 1);
@@ -140,7 +144,7 @@ impl Subscriber for ConsoleSubscriber {
 
     fn enter(&self, span: &Id) {
         let mut state = self.state.borrow_mut();
-        let SpanState { spans, scratch } = &mut *state;
+        let SpanState { spans, .. } = &mut *state;
         let Some(data) = spans.get_mut(span.into_u64() as usize - 1) else {
             return;
         };
@@ -153,16 +157,23 @@ impl Subscriber for ConsoleSubscriber {
         }
 
         data.entered = true;
-        scratch.clear();
-        scratch.push_str(data.name);
-        if !data.fields.is_empty() {
-            scratch.push(' ');
-            scratch.push_str(&data.fields);
-        }
-        log_for_level(&data.level, scratch);
+        data.start_ms = performance_now();
     }
 
-    fn exit(&self, _span: &Id) {}
+    fn exit(&self, span: &Id) {
+        let mut state = self.state.borrow_mut();
+        let SpanState { spans, scratch } = &mut *state;
+        let Some(data) = spans.get_mut(span.into_u64() as usize - 1) else {
+            return;
+        };
+        if !self.enabled_for_level(&data.level) || !data.entered {
+            return;
+        }
+        let elapsed = performance_now() - data.start_ms;
+        scratch.clear();
+        write!(scratch, "[{:5.0}ms] {}", elapsed, data.name).unwrap();
+        log_for_level(&data.level, scratch);
+    }
 
     fn event(&self, event: &tracing::Event<'_>) {
         let metadata = event.metadata();
