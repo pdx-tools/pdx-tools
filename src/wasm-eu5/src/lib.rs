@@ -159,13 +159,54 @@ impl From<Eu5TableCell> for TableCell {
     }
 }
 
+pub use eu5app::gradient::{GradientConfig, GradientKind, GradientPalette, GradientScale};
+
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
+#[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
-pub struct MapModeRange {
-    mode: MapMode,
-    min_value: f64,
-    max_value: f64,
+pub struct SelectionChange {
+    center_color_id: Option<u32>,
+    gradient: Option<GradientConfig>,
+}
+
+#[derive(Clone, Debug, Serialize, tsify::Tsify)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct GradientStop {
+    offset: f64,
+    color: String,
+}
+
+/// Returns the rendered stops for a palette. Cheap; intended to be called once
+/// per palette per session — the FE can build a CSS gradient string and cache
+/// it. Keeping the rendering on the Rust side keeps the palette definition the
+/// single source of truth shared with the shader.
+#[wasm_bindgen]
+pub fn palette_stops(palette: GradientPalette) -> Vec<GradientStop> {
+    eu5app::gradient::palette_stops(palette)
+        .into_iter()
+        .map(|(offset, (r, g, b))| GradientStop {
+            offset,
+            color: format!("rgb({r}, {g}, {b})"),
+        })
+        .collect()
+}
+
+fn legend_to_gradient(legend: eu5app::gradient::MapLegend) -> Option<GradientConfig> {
+    match legend {
+        eu5app::gradient::MapLegend::Qualitative => None,
+        eu5app::gradient::MapLegend::Quantitative(c) => Some(c),
+    }
+}
+
+fn selection_change(
+    center: Option<eu5app::ColorIdx>,
+    legend: eu5app::gradient::MapLegend,
+) -> SelectionChange {
+    SelectionChange {
+        center_color_id: center.map(|c| c.value() as u32),
+        gradient: legend_to_gradient(legend),
+    }
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
@@ -391,40 +432,14 @@ impl Eu5App {
 
     /// Switch map mode to the specified mode
     #[wasm_bindgen]
-    pub fn set_map_mode(&mut self, mode: MapMode) {
-        self.app.set_map_mode(mode.into());
+    pub fn set_map_mode(&mut self, mode: MapMode) -> Option<GradientConfig> {
+        legend_to_gradient(self.app.set_map_mode(mode.into()))
     }
 
     /// Get the current map mode
     #[wasm_bindgen]
     pub fn get_map_mode(&self) -> MapMode {
         self.app().get_map_mode().into()
-    }
-
-    /// Get the min and max values for a given map mode
-    #[wasm_bindgen]
-    pub fn get_map_mode_range(&self, mode: MapMode) -> MapModeRange {
-        let eu5_mode: Eu5MapMode = mode.into();
-        let session = self.app();
-
-        let (min_value, max_value) = match eu5_mode {
-            Eu5MapMode::Development => (0.0, session.max_development()),
-            Eu5MapMode::Population => (0.0, session.max_population()),
-            Eu5MapMode::RgoLevel => (0.0, session.max_rgo_level()),
-            Eu5MapMode::BuildingLevels => (0.0, session.max_building_levels()),
-            Eu5MapMode::PossibleTax => (0.0, session.max_possible_tax()),
-            Eu5MapMode::TaxGap => session.tax_gap_range(),
-            Eu5MapMode::StateEfficacy => (0.0, session.max_state_efficacy()),
-            Eu5MapMode::Control => (0.0, 1.0),
-            // For non-numeric modes (Political, Markets, Religion), return default range
-            _ => (0.0, 1.0),
-        };
-
-        MapModeRange {
-            mode,
-            min_value,
-            max_value,
-        }
     }
 
     /// Check if a location can be highlighted based on its terrain
@@ -447,85 +462,88 @@ impl Eu5App {
 
     /// Select the entity at the given location based on the current interaction mode.
     #[wasm_bindgen]
-    pub fn select_entity(&mut self, location_idx: u32) {
+    pub fn select_entity(&mut self, location_idx: u32) -> Option<GradientConfig> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        self.app.select_entity(idx);
+        legend_to_gradient(self.app.select_entity(idx))
     }
 
     /// Add the entity at `location_idx` to the existing selection.
     #[wasm_bindgen]
-    pub fn add_entity(&mut self, location_idx: u32) {
+    pub fn add_entity(&mut self, location_idx: u32) -> Option<GradientConfig> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        self.app.add_entity(idx);
+        legend_to_gradient(self.app.add_entity(idx))
     }
 
     /// Remove the entity at `location_idx` from the selection.
     #[wasm_bindgen]
-    pub fn remove_entity(&mut self, location_idx: u32) {
+    pub fn remove_entity(&mut self, location_idx: u32) -> Option<GradientConfig> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        self.app.remove_entity(idx);
+        legend_to_gradient(self.app.remove_entity(idx))
     }
 
     #[wasm_bindgen]
-    pub fn select_country(&mut self, anchor_location_idx: u32) -> Option<u32> {
+    pub fn select_country(&mut self, anchor_location_idx: u32) -> SelectionChange {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app.select_country_at(idx).map(|c| c.value() as u32)
+        let (center, gradient) = self.app.select_country_at(idx);
+        selection_change(center, gradient)
     }
 
     #[wasm_bindgen]
-    pub fn add_country(&mut self, anchor_location_idx: u32) {
+    pub fn add_country(&mut self, anchor_location_idx: u32) -> Option<GradientConfig> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app.add_country_at(idx);
+        legend_to_gradient(self.app.add_country_at(idx))
     }
 
     #[wasm_bindgen]
-    pub fn remove_country(&mut self, anchor_location_idx: u32) {
+    pub fn remove_country(&mut self, anchor_location_idx: u32) -> Option<GradientConfig> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app.remove_country_at(idx);
+        legend_to_gradient(self.app.remove_country_at(idx))
     }
 
     #[wasm_bindgen]
-    pub fn select_market(&mut self, anchor_location_idx: u32) -> Option<u32> {
+    pub fn select_market(&mut self, anchor_location_idx: u32) -> SelectionChange {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app.select_market_at(idx).map(|c| c.value() as u32)
+        let (center, gradient) = self.app.select_market_at(idx);
+        selection_change(center, gradient)
     }
 
     #[wasm_bindgen]
-    pub fn add_market(&mut self, anchor_location_idx: u32) {
+    pub fn add_market(&mut self, anchor_location_idx: u32) -> Option<GradientConfig> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app.add_market_at(idx);
+        legend_to_gradient(self.app.add_market_at(idx))
     }
 
     #[wasm_bindgen]
-    pub fn remove_market(&mut self, anchor_location_idx: u32) {
+    pub fn remove_market(&mut self, anchor_location_idx: u32) -> Option<GradientConfig> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app.remove_market_at(idx);
+        legend_to_gradient(self.app.remove_market_at(idx))
     }
 
     /// Clear the current selection and focus.
     #[wasm_bindgen]
-    pub fn clear_selection(&mut self) {
-        self.app.clear_selection();
+    pub fn clear_selection(&mut self) -> Option<GradientConfig> {
+        legend_to_gradient(self.app.clear_selection())
     }
 
     /// Set `focused_location` to `location_idx`, entering that location's entity
-    /// filter first if needed. Returns the GPU color id for centering.
+    /// filter first if needed.
     #[wasm_bindgen]
-    pub fn set_focused_location(&mut self, location_idx: u32) -> Option<u32> {
+    pub fn set_focused_location(&mut self, location_idx: u32) -> SelectionChange {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        self.app.set_focused_location(idx).map(|c| c.value() as u32)
+        let (center, gradient) = self.app.set_focused_location(idx);
+        selection_change(center, gradient)
     }
 
     /// Clear the focused location.
     #[wasm_bindgen]
-    pub fn clear_focus(&mut self) {
-        self.app.clear_focus();
+    pub fn clear_focus(&mut self) -> Option<GradientConfig> {
+        legend_to_gradient(self.app.clear_focus())
     }
 
     /// Clear focus if set; otherwise clear the selection.
     #[wasm_bindgen]
-    pub fn clear_focus_or_selection(&mut self) {
-        self.app.clear_focus_or_selection();
+    pub fn clear_focus_or_selection(&mut self) -> Option<GradientConfig> {
+        legend_to_gradient(self.app.clear_focus_or_selection())
     }
 
     /// Display name for the focused location.
@@ -541,23 +559,32 @@ impl Eu5App {
     }
 
     #[wasm_bindgen]
-    pub fn apply_resolved_box_selection(&mut self, location_idxs: js_sys::Uint32Array, add: bool) {
+    pub fn apply_resolved_box_selection(
+        &mut self,
+        location_idxs: js_sys::Uint32Array,
+        add: bool,
+    ) -> Option<GradientConfig> {
         let locations = location_idxs
             .to_vec()
             .into_iter()
             .map(eu5save::models::LocationIdx::new);
-        self.app.apply_resolved_box_selection(locations, add);
+        let gradient = self.app.apply_resolved_box_selection(locations, add);
         self.app.clear_highlights();
+        legend_to_gradient(gradient)
     }
 
     #[wasm_bindgen]
-    pub fn replace_selection_with_locations(&mut self, location_idxs: js_sys::Uint32Array) {
+    pub fn replace_selection_with_locations(
+        &mut self,
+        location_idxs: js_sys::Uint32Array,
+    ) -> Option<GradientConfig> {
         let locations = location_idxs
             .to_vec()
             .into_iter()
             .map(eu5save::models::LocationIdx::new);
-        self.app.replace_selection_with_locations(locations);
+        let gradient = self.app.replace_selection_with_locations(locations);
         self.app.clear_highlights();
+        legend_to_gradient(gradient)
     }
 
     /// Return the grouping table for the current map mode as a flat Uint32Array.
@@ -572,9 +599,9 @@ impl Eu5App {
 
     /// Select all locations owned by human-controlled countries and their subjects.
     #[wasm_bindgen]
-    pub fn select_players(&mut self) {
+    pub fn select_players(&mut self) -> Option<GradientConfig> {
         self.app.select_players();
-        self.app.rebuild_colors();
+        legend_to_gradient(self.app.rebuild_colors())
     }
 
     /// Return a summary of the current selection (entity and location counts).

@@ -3,8 +3,9 @@ import type {
   BoxSelectOverlayRect,
   CursorHint,
   GameInstance,
+  GradientConfig,
   HoverDisplayData,
-  MapModeRange,
+  PaletteGradients,
   SelectionSummaryData,
 } from "./game-adapter";
 import type { Eu5SaveInput } from "./store/types";
@@ -34,7 +35,8 @@ export interface AppState {
   hoverDisplayData: HoverDisplayData | null;
   isGeneratingScreenshot: boolean;
   ownerBordersEnabled: boolean;
-  mapModeRange: MapModeRange | null;
+  paletteGradients: PaletteGradients;
+  mapModeGradient: GradientConfig | null;
   selectionState: SelectionSummaryData | null;
   selectionRevision: number;
   boxSelectRect: BoxSelectOverlayRect | null;
@@ -115,6 +117,7 @@ export class Eu5UIEngine implements AppEngine {
   constructor(
     private gameInstance: GameInstance,
     private workers: Eu5GameAdapter,
+    paletteGradients: PaletteGradients,
     initialState?: Partial<AppState>,
   ) {
     this._state = {
@@ -122,7 +125,8 @@ export class Eu5UIEngine implements AppEngine {
       hoverDisplayData: null,
       isGeneratingScreenshot: false,
       ownerBordersEnabled: true,
-      mapModeRange: null,
+      paletteGradients,
+      mapModeGradient: null,
       selectionState: null,
       selectionRevision: 0,
       boxSelectRect: null,
@@ -137,11 +141,11 @@ export class Eu5UIEngine implements AppEngine {
       }));
     });
 
-    // Set up selection state callback
-    this.gameInstance.onSelectionUpdate((data) => {
+    this.gameInstance.onSelectionUpdate((data, gradient) => {
       this.updateState((state) => ({
         selectionState: data,
         selectionRevision: state.selectionRevision + 1,
+        mapModeGradient: gradient ?? null,
       }));
     });
 
@@ -228,17 +232,12 @@ export class Eu5UIEngine implements AppEngine {
   }
 
   private async handleSelectMapMode(mode: MapMode): Promise<void> {
-    await this.gameInstance.setMapMode(mode);
-
-    // Fetch map mode range for legend
     try {
-      const mapModeRange = await this.gameInstance.getMapModeRange(mode);
-      this.updateState(() => ({ currentMapMode: mode, mapModeRange }));
+      await this.gameInstance.setMapMode(mode);
     } catch (error) {
-      // If getting the range fails, still update the map mode
-      console.error("Failed to fetch map mode range:", error);
-      this.updateState(() => ({ currentMapMode: mode, mapModeRange: null }));
+      console.error("Failed to set map mode:", error);
     }
+    this.updateState(() => ({ currentMapMode: mode }));
   }
 
   private async handleToggleOwnerBorders(): Promise<void> {
@@ -330,9 +329,12 @@ export async function createLoadedEngine(
     onProgress,
   );
 
-  const metadata = await gameInstance.getSaveMetadata();
+  const [metadata, paletteGradients] = await Promise.all([
+    gameInstance.getSaveMetadata(),
+    gameInstance.getPaletteGradients(),
+  ]);
 
-  const engine = new Eu5UIEngine(gameInstance, workers);
+  const engine = new Eu5UIEngine(gameInstance, workers, paletteGradients);
   return {
     engine,
     saveDate: metadata.date,

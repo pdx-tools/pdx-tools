@@ -27,7 +27,10 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Select the entity at `clicked_idx`, or focus a location when the current
     /// filter already resolves to that location's entity.
-    pub fn select_entity(&mut self, clicked_idx: eu5save::models::LocationIdx) {
+    pub fn select_entity(
+        &mut self,
+        clicked_idx: eu5save::models::LocationIdx,
+    ) -> crate::gradient::MapLegend {
         let mode = self.current_map_mode;
         let derived_entity_anchor = self.map_click_derived_anchor();
         let outcome = SelectionAdapter::new(&*self).resolve_click(
@@ -57,11 +60,14 @@ impl<'bump> Eu5Workspace<'bump> {
             self.selection_state.replace(outcome.locations);
         }
         self.recompute_derived_scope();
-        self.rebuild_colors();
+        self.rebuild_colors()
     }
 
     /// Add the entity at `clicked_idx` to the existing selection.
-    pub fn add_entity(&mut self, clicked_idx: eu5save::models::LocationIdx) {
+    pub fn add_entity(
+        &mut self,
+        clicked_idx: eu5save::models::LocationIdx,
+    ) -> crate::gradient::MapLegend {
         let mode = self.current_map_mode;
         let derived_entity_anchor = self.map_click_derived_anchor();
         let outcome = SelectionAdapter::new(&*self).resolve_click(
@@ -78,11 +84,14 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
         self.recompute_derived_scope();
-        self.rebuild_colors();
+        self.rebuild_colors()
     }
 
     /// Remove the entity at `clicked_idx` from the selection.
-    pub fn remove_entity(&mut self, clicked_idx: eu5save::models::LocationIdx) {
+    pub fn remove_entity(
+        &mut self,
+        clicked_idx: eu5save::models::LocationIdx,
+    ) -> crate::gradient::MapLegend {
         let mode = self.current_map_mode;
         let kind = Self::entity_kind_for_map_mode(mode);
         let derived_entity_anchor = self.map_click_derived_anchor();
@@ -98,69 +107,81 @@ impl<'bump> Eu5Workspace<'bump> {
             self.remove_locations_from_scope_for_kind(&outcome.locations, kind);
         }
         self.recompute_derived_scope();
-        self.rebuild_colors();
+        self.rebuild_colors()
     }
 
     /// Replace the selection with the country owning `anchor_idx`.
     pub fn select_country_at(
         &mut self,
         anchor_idx: eu5save::models::LocationIdx,
-    ) -> Option<crate::ColorIdx> {
+    ) -> (Option<crate::ColorIdx>, crate::gradient::MapLegend) {
         let locs = SelectionAdapter::new(&*self).resolve_by_owner(anchor_idx);
         if locs.is_empty() {
-            return None;
+            return (None, crate::gradient::MapLegend::Qualitative);
         }
         self.selection_state.replace(locs);
         self.recompute_derived_scope_for_kind(EntityKind::Country);
-        self.rebuild_colors();
-        self.center_at(anchor_idx)
+        let gradient = self.rebuild_colors();
+        (self.center_at(anchor_idx), gradient)
     }
 
     /// Add the country owning `anchor_idx` to the existing selection.
-    pub fn add_country_at(&mut self, anchor_idx: eu5save::models::LocationIdx) {
+    pub fn add_country_at(
+        &mut self,
+        anchor_idx: eu5save::models::LocationIdx,
+    ) -> crate::gradient::MapLegend {
         let locs = SelectionAdapter::new(&*self).resolve_by_owner(anchor_idx);
         self.selection_state.add_all(&locs);
         self.recompute_derived_scope_for_kind(EntityKind::Country);
-        self.rebuild_colors();
+        self.rebuild_colors()
     }
 
     /// Remove the country owning `anchor_idx` from the selection.
-    pub fn remove_country_at(&mut self, anchor_idx: eu5save::models::LocationIdx) {
+    pub fn remove_country_at(
+        &mut self,
+        anchor_idx: eu5save::models::LocationIdx,
+    ) -> crate::gradient::MapLegend {
         let locs = SelectionAdapter::new(&*self).resolve_by_owner(anchor_idx);
         self.remove_locations_from_scope_for_kind(&locs, EntityKind::Country);
         self.recompute_derived_scope_for_kind(EntityKind::Country);
-        self.rebuild_colors();
+        self.rebuild_colors()
     }
 
     /// Replace the selection with the market containing `anchor_idx`.
     pub fn select_market_at(
         &mut self,
         anchor_idx: eu5save::models::LocationIdx,
-    ) -> Option<crate::ColorIdx> {
+    ) -> (Option<crate::ColorIdx>, crate::gradient::MapLegend) {
         let locs = SelectionAdapter::new(&*self).resolve_by_market(anchor_idx);
         if locs.is_empty() {
-            return None;
+            return (None, crate::gradient::MapLegend::Qualitative);
         }
         self.selection_state.replace(locs);
         self.recompute_derived_scope_for_kind(EntityKind::Market);
-        self.rebuild_colors();
-        self.center_at(anchor_idx)
+        let gradient = self.rebuild_colors();
+        (self.center_at(anchor_idx), gradient)
     }
 
     /// Add the market containing `anchor_idx` to the existing selection.
-    pub fn add_market_at(&mut self, anchor_idx: eu5save::models::LocationIdx) {
+    pub fn add_market_at(
+        &mut self,
+        anchor_idx: eu5save::models::LocationIdx,
+    ) -> crate::gradient::MapLegend {
         let locs = SelectionAdapter::new(&*self).resolve_by_market(anchor_idx);
         self.selection_state.add_all(&locs);
         self.recompute_derived_scope_for_kind(EntityKind::Market);
-        self.rebuild_colors();
+        self.rebuild_colors()
     }
 
     /// Remove the market containing `anchor_idx` from the selection.
-    pub fn remove_market_at(&mut self, anchor_idx: eu5save::models::LocationIdx) {
+    pub fn remove_market_at(
+        &mut self,
+        anchor_idx: eu5save::models::LocationIdx,
+    ) -> crate::gradient::MapLegend {
         let locs = SelectionAdapter::new(&*self).resolve_by_market(anchor_idx);
         self.remove_locations_from_scope_for_kind(&locs, EntityKind::Market);
         self.recompute_derived_scope_for_kind(EntityKind::Market);
-        self.rebuild_colors();
+        self.rebuild_colors()
     }
 
     /// Apply a pre-resolved set of locations (produced by the map renderer's
@@ -169,29 +190,29 @@ impl<'bump> Eu5Workspace<'bump> {
         &mut self,
         resolved_locations: impl IntoIterator<Item = eu5save::models::LocationIdx>,
         add: bool,
-    ) {
+    ) -> crate::gradient::MapLegend {
         let set: FnvHashSet<_> = resolved_locations.into_iter().collect();
         let operation = if add {
             SelectionSetOperation::Add
         } else {
             SelectionSetOperation::Remove
         };
-        self.apply_selection_set(set, operation);
+        self.apply_selection_set(set, operation)
     }
 
     pub fn replace_selection_with_locations(
         &mut self,
         resolved_locations: impl IntoIterator<Item = eu5save::models::LocationIdx>,
-    ) {
+    ) -> crate::gradient::MapLegend {
         let set: FnvHashSet<_> = resolved_locations.into_iter().collect();
-        self.apply_selection_set(set, SelectionSetOperation::Replace);
+        self.apply_selection_set(set, SelectionSetOperation::Replace)
     }
 
     fn apply_selection_set(
         &mut self,
         locations: FnvHashSet<eu5save::models::LocationIdx>,
         operation: SelectionSetOperation,
-    ) {
+    ) -> crate::gradient::MapLegend {
         match operation {
             SelectionSetOperation::Add => self.selection_state.add_all(&locations),
             SelectionSetOperation::Remove => {
@@ -201,7 +222,7 @@ impl<'bump> Eu5Workspace<'bump> {
             SelectionSetOperation::Replace => self.selection_state.replace(locations),
         }
         self.recompute_derived_scope();
-        self.rebuild_colors();
+        self.rebuild_colors()
     }
 
     fn remove_locations_from_scope_for_kind(
@@ -219,26 +240,26 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn clear_selection(&mut self) {
+    pub fn clear_selection(&mut self) -> crate::gradient::MapLegend {
         self.selection_state.clear();
         self.recompute_derived_scope();
-        self.rebuild_colors();
+        self.rebuild_colors()
     }
 
-    pub fn clear_focus(&mut self) {
+    pub fn clear_focus(&mut self) -> crate::gradient::MapLegend {
         self.selection_state.clear_focus();
         self.recompute_derived_scope();
-        self.rebuild_colors();
+        self.rebuild_colors()
     }
 
-    pub fn clear_focus_or_selection(&mut self) {
+    pub fn clear_focus_or_selection(&mut self) -> crate::gradient::MapLegend {
         if self.selection_state.has_focus() {
             self.selection_state.clear_focus();
         } else {
             self.selection_state.clear();
         }
         self.recompute_derived_scope();
-        self.rebuild_colors();
+        self.rebuild_colors()
     }
 
     /// Set focus to `location`, replacing the filter with its entity first if
@@ -246,7 +267,7 @@ impl<'bump> Eu5Workspace<'bump> {
     pub fn set_focused_location(
         &mut self,
         location: eu5save::models::LocationIdx,
-    ) -> Option<crate::ColorIdx> {
+    ) -> (Option<crate::ColorIdx>, crate::gradient::MapLegend) {
         let scope_mode = self.derived_scope_map_mode();
         let already_scoped_here = self
             .derived_entity_anchor
@@ -257,7 +278,7 @@ impl<'bump> Eu5Workspace<'bump> {
             let entity_locs = SelectionAdapter::new(&*self)
                 .resolve_in_entity_mode(location, self.current_map_mode);
             if entity_locs.is_empty() {
-                return None;
+                return (None, crate::gradient::MapLegend::Qualitative);
             }
             self.selection_state.replace(entity_locs);
             self.recompute_derived_scope();
@@ -265,8 +286,8 @@ impl<'bump> Eu5Workspace<'bump> {
 
         self.selection_state.set_focus(location);
         self.recompute_derived_scope();
-        self.rebuild_colors();
-        self.center_at(location)
+        let gradient = self.rebuild_colors();
+        (self.center_at(location), gradient)
     }
 
     pub fn focused_location_display_name(&self) -> Option<String> {

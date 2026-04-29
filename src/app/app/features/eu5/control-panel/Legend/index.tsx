@@ -1,11 +1,10 @@
-import { useEu5MapMode, useEu5MapModeRange } from "../../store";
-import { GRADIENT_MODES } from "../modeConfig";
+import { useEu5MapMode, useEu5MapModeGradient } from "../../store";
 import { GradientLegend } from "./GradientLegend";
 
 export function Legend() {
   const mapMode = useEu5MapMode();
-  const mapModeRange = useEu5MapModeRange();
+  const gradient = useEu5MapModeGradient();
 
-  if (!GRADIENT_MODES.has(mapMode) || !mapModeRange) return null;
-  return <GradientLegend mode={mapMode} range={mapModeRange} />;
+  if (!gradient) return null;
+  return <GradientLegend mode={mapMode} gradient={gradient} />;
 }

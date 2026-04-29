@@ -573,15 +573,14 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Rebuild all GPU location colors for the current mode and selection.
     /// Call this after any mutation that affects the selection or rendered values.
-    pub fn rebuild_colors(&mut self) {
-        self.set_map_mode(self.current_map_mode);
+    pub fn rebuild_colors(&mut self) -> gradient::MapLegend {
+        self.set_map_mode(self.current_map_mode)
     }
 
-    pub fn set_map_mode(&mut self, mode: MapMode) {
+    pub fn set_map_mode(&mut self, mode: MapMode) -> gradient::MapLegend {
         self.current_map_mode = mode;
 
-        // Apply colors based on mode
-        match mode {
+        let gradient = match mode {
             MapMode::Political => self.apply_political_colors(),
             MapMode::Control => self.apply_control_colors(),
             MapMode::Development => self.apply_development_colors(),
@@ -593,10 +592,12 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::TaxGap => self.apply_tax_gap_colors(),
             MapMode::Religion => self.apply_religion_colors(),
             MapMode::StateEfficacy => self.apply_state_efficacy_colors(),
-        }
+        };
 
         self.apply_selection_dimming();
         self.apply_focused_flag();
+
+        gradient
     }
 
     fn apply_selection_dimming(&mut self) {
@@ -642,7 +643,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    fn apply_political_colors(&mut self) {
+    fn apply_political_colors(&mut self) -> gradient::MapLegend {
         for idx in 0..self.gamestate.locations.len() {
             let location_idx = eu5save::models::LocationIdx::new(idx as u32);
             let Some(gpu_index) = self.gpu_indices[location_idx] else {
@@ -655,9 +656,10 @@ impl<'bump> Eu5Workspace<'bump> {
             gpu_location.set_primary_color(primary);
             gpu_location.set_secondary_color(controller);
         }
+        gradient::MapLegend::Qualitative
     }
 
-    fn apply_control_colors(&mut self) {
+    fn apply_control_colors(&mut self) -> gradient::MapLegend {
         // Collect color data first to avoid borrow conflicts
         let mut color_data = Vec::new();
         for idx in 0..self.gamestate.locations.len() {
@@ -678,9 +680,11 @@ impl<'bump> Eu5Workspace<'bump> {
 
         // Control mode: copy primary colors to secondary to disable stripes
         self.location_arrays.copy_primary_to_secondary();
+
+        gradient::MapLegend::Quantitative(gradient::sequential(GradientScale::Linear, 0.0, 1.0))
     }
 
-    fn apply_development_colors(&mut self) {
+    fn apply_development_colors(&mut self) -> gradient::MapLegend {
         let (global_max, filtered_max) = self.gradient_domain(|_, loc| loc.development);
 
         // Collect color data first to avoid borrow conflicts
@@ -708,9 +712,15 @@ impl<'bump> Eu5Workspace<'bump> {
 
         // Copy primary colors to secondary to disable stripes
         self.location_arrays.copy_primary_to_secondary();
+
+        gradient::MapLegend::Quantitative(gradient::sequential(
+            GradientScale::Linear,
+            0.0,
+            filtered_max,
+        ))
     }
 
-    fn apply_population_colors(&mut self) {
+    fn apply_population_colors(&mut self) -> gradient::MapLegend {
         let (global_max, filtered_max) =
             self.gradient_domain(|_, loc| self.gamestate.location_population(loc));
 
@@ -739,9 +749,15 @@ impl<'bump> Eu5Workspace<'bump> {
 
         // Copy primary colors to secondary to disable stripes
         self.location_arrays.copy_primary_to_secondary();
+
+        gradient::MapLegend::Quantitative(gradient::sequential(
+            GradientScale::Log,
+            0.0,
+            filtered_max,
+        ))
     }
 
-    fn apply_markets_colors(&mut self) {
+    fn apply_markets_colors(&mut self) -> gradient::MapLegend {
         // Collect color data first to avoid borrow conflicts
         let mut color_data = Vec::new();
         for idx in 0..self.gamestate.locations.len() {
@@ -762,9 +778,11 @@ impl<'bump> Eu5Workspace<'bump> {
 
         // Copy primary colors to secondary to disable stripes
         self.location_arrays.copy_primary_to_secondary();
+
+        gradient::MapLegend::Qualitative
     }
 
-    fn apply_rgo_level_colors(&mut self) {
+    fn apply_rgo_level_colors(&mut self) -> gradient::MapLegend {
         let (global_max, filtered_max) = self.gradient_domain(|_, loc| loc.rgo_level);
 
         // Collect color data first to avoid borrow conflicts
@@ -792,9 +810,15 @@ impl<'bump> Eu5Workspace<'bump> {
 
         // Copy primary colors to secondary to disable stripes
         self.location_arrays.copy_primary_to_secondary();
+
+        gradient::MapLegend::Quantitative(gradient::sequential(
+            GradientScale::Linear,
+            0.0,
+            filtered_max,
+        ))
     }
 
-    fn apply_building_levels_colors(&mut self) {
+    fn apply_building_levels_colors(&mut self) -> gradient::MapLegend {
         let levels = self.get_location_building_levels();
         let (global_max, filtered_max) = self.gradient_domain(|idx, _| levels[idx]);
 
@@ -823,9 +847,15 @@ impl<'bump> Eu5Workspace<'bump> {
 
         // Copy primary colors to secondary to disable stripes
         self.location_arrays.copy_primary_to_secondary();
+
+        gradient::MapLegend::Quantitative(gradient::sequential(
+            GradientScale::Linear,
+            0.0,
+            filtered_max,
+        ))
     }
 
-    fn apply_possible_tax_colors(&mut self) {
+    fn apply_possible_tax_colors(&mut self) -> gradient::MapLegend {
         let (global_max, filtered_max) = self.gradient_domain(|_, loc| loc.possible_tax);
 
         // Collect color data first to avoid borrow conflicts
@@ -853,9 +883,15 @@ impl<'bump> Eu5Workspace<'bump> {
 
         // Copy primary colors to secondary to disable stripes
         self.location_arrays.copy_primary_to_secondary();
+
+        gradient::MapLegend::Quantitative(gradient::sequential(
+            GradientScale::Linear,
+            0.0,
+            filtered_max,
+        ))
     }
 
-    fn apply_tax_gap_colors(&mut self) {
+    fn apply_tax_gap_colors(&mut self) -> gradient::MapLegend {
         let (global_min, global_max) =
             self.gradient_global_range(|_, loc| loc.possible_tax - loc.tax);
         let global_max_abs = global_min.abs().max(global_max.abs());
@@ -887,9 +923,11 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         self.location_arrays.copy_primary_to_secondary();
+
+        gradient::MapLegend::Quantitative(gradient::tax_gap(filtered_min, filtered_max_abs))
     }
 
-    fn apply_state_efficacy_colors(&mut self) {
+    fn apply_state_efficacy_colors(&mut self) -> gradient::MapLegend {
         let (global_max, filtered_max) =
             self.gradient_domain(|_, loc| loc.control * loc.development);
 
@@ -918,9 +956,15 @@ impl<'bump> Eu5Workspace<'bump> {
 
         // Copy primary colors to secondary to disable stripes
         self.location_arrays.copy_primary_to_secondary();
+
+        gradient::MapLegend::Quantitative(gradient::sequential(
+            GradientScale::Linear,
+            0.0,
+            filtered_max,
+        ))
     }
 
-    fn apply_religion_colors(&mut self) {
+    fn apply_religion_colors(&mut self) -> gradient::MapLegend {
         // Collect color data first to avoid borrow conflicts
         let mut color_data = Vec::new();
         for idx in 0..self.gamestate.locations.len() {
@@ -940,6 +984,8 @@ impl<'bump> Eu5Workspace<'bump> {
             gpu_location.set_primary_color(primary);
             gpu_location.set_secondary_color(secondary);
         }
+
+        gradient::MapLegend::Qualitative
     }
 
     pub fn get_map_mode(&self) -> MapMode {
