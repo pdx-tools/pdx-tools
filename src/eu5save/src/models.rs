@@ -3,6 +3,7 @@ mod building_manager;
 mod character_db;
 mod color;
 mod countries;
+mod culture_manager;
 mod de;
 mod diplomacy_manager;
 mod loan_manager;
@@ -20,6 +21,7 @@ pub use building_manager::*;
 pub use character_db::*;
 pub use color::Color;
 pub use countries::*;
+pub use culture_manager::*;
 pub use diplomacy_manager::*;
 pub use loan_manager::*;
 pub use locations::*;
@@ -84,6 +86,7 @@ pub struct Gamestate<'bump> {
     pub loan_manager: LoanManager<'bump>,
     pub trade_manager: TradeManager<'bump>,
     pub religion_manager: ReligionManager<'bump>,
+    pub culture_manager: CultureManager<'bump>,
 }
 
 #[derive(Debug, ArenaDeserialize)]

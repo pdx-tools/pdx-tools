@@ -1,6 +1,6 @@
 use crate::hash::FnvHashMap;
-use crate::models::ReligionId;
 use crate::models::de::Maybe;
+use crate::models::{CultureId, ReligionId};
 use bumpalo_serde::ArenaDeserialize;
 use jomini::JominiDeserialize;
 use serde::Deserialize;
@@ -41,6 +41,8 @@ pub struct Population {
     pub price: f64,
     #[jomini(default)]
     pub religion: ReligionId,
+    #[jomini(default)]
+    pub culture: Option<CultureId>,
 }
 
 pub(crate) struct PopDatabaseVisitor<'bump>(&'bump bumpalo::Bump);
