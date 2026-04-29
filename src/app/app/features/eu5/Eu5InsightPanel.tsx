@@ -41,7 +41,8 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
       header={<span className="text-sm font-semibold text-slate-300">Insights</span>}
       onWidthChange={handleWidthChange}
     >
-      <PanelContent />
+      {/* Don't render panel content until open as panels can be very expensive to render with large charts */}
+      {open ? <PanelContent /> : null}
     </ResizablePanel>
   );
 }
