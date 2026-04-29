@@ -1,4 +1,4 @@
-import { useCallback, useEffectEvent, useMemo } from "react";
+import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { CountryPossibleTax } from "@/wasm/wasm_eu5";
@@ -6,14 +6,12 @@ import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
-import { useEu5Engine } from "../../store";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { PossibleTaxTopLocations } from "./PossibleTaxTopLocations";
-import { usePanToEntity } from "../../usePanToEntity";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
-import type * as echarts from "echarts/core";
+import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 function PossibleTaxScopeHeader() {
   const { data, loading } = useEu5SelectionTrigger((engine) =>
@@ -78,8 +76,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 function PossibleTaxScatterChart({ countries }: { countries: CountryPossibleTax[] }) {
-  const engine = useEu5Engine();
-  const panToEntity = usePanToEntity();
   const isDark = isDarkMode();
 
   const topCountries = useMemo(
@@ -183,24 +179,13 @@ function PossibleTaxScatterChart({ countries }: { countries: CountryPossibleTax[
     };
   }, [scatterData, topCountries, isDark, countries.length]);
 
-  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
-    if (Array.isArray(params.data)) return;
-    const d = params.data as (typeof scatterData)[number];
-    if (d?.anchorLocationIdx == null) return;
-    const idx = d.anchorLocationIdx;
-    if ((params.event?.event as MouseEvent)?.shiftKey) {
-      void engine.trigger.addCountry(idx);
-    } else if ((params.event?.event as MouseEvent)?.altKey) {
-      void engine.trigger.removeCountry(idx);
-    } else {
-      void engine.trigger.selectCountry(idx);
-      panToEntity(idx);
-    }
+  const handleInit = useEu5EntityChartClick({
+    kind: "country",
+    getAnchorLocationIdx: (params) => {
+      if (Array.isArray(params.data)) return null;
+      return (params.data as (typeof scatterData)[number])?.anchorLocationIdx;
+    },
   });
-
-  const handleInit = useCallback((chart: echarts.ECharts) => {
-    chart.on("click", handleClick);
-  }, []);
 
   return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffectEvent, useMemo } from "react";
+import { useMemo } from "react";
 import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
@@ -20,14 +20,13 @@ import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
-import { useEu5Engine } from "../../store";
 import { usePanToEntity } from "../../usePanToEntity";
 import {
   countryProfileEntry,
   locationProfileEntry,
   usePanelNav,
 } from "../../EntityProfile/PanelNavContext";
-import type * as echarts from "echarts/core";
+import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 const COUNTRY_CAP = 24;
 const BACK_LABEL = "Population";
@@ -182,8 +181,6 @@ function countryTooltip(country: ScopedCountryPopulation): string {
 }
 
 function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulation[] }) {
-  const engine = useEu5Engine();
-  const panToEntity = usePanToEntity();
   const isDark = isDarkMode();
 
   const rows = useMemo<CountrySpineDatum[]>(
@@ -267,24 +264,13 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
     };
   }, [isDark, rows]);
 
-  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
-    const idx = params.dataIndex;
-    const country = idx == null ? undefined : rows[idx];
-    if (!country) return;
-    const event = params.event?.event as MouseEvent | undefined;
-    if (event?.shiftKey) {
-      void engine.trigger.addCountry(country.anchorLocationIdx);
-    } else if (event?.altKey) {
-      void engine.trigger.removeCountry(country.anchorLocationIdx);
-    } else {
-      void engine.trigger.selectCountry(country.anchorLocationIdx);
-      panToEntity(country.anchorLocationIdx);
-    }
+  const handleInit = useEu5EntityChartClick({
+    kind: "country",
+    getAnchorLocationIdx: (params) => {
+      const idx = params.dataIndex;
+      return idx == null ? null : rows[idx]?.anchorLocationIdx;
+    },
   });
-
-  const handleInit = useCallback((chart: echarts.ECharts) => {
-    chart.on("click", handleClick);
-  }, []);
 
   const height = rows.length * 24 + 54;
   return (
