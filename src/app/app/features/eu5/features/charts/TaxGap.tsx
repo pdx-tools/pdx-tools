@@ -1,4 +1,4 @@
-import { useCallback, useEffectEvent, useMemo } from "react";
+import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { CountryTaxGap } from "@/wasm/wasm_eu5";
@@ -6,15 +6,13 @@ import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
-import { useEu5Engine } from "../../store";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { TaxGapTopLocations } from "./TaxGapTopLocations";
 import { RealizationHistogram } from "./RealizationHistogram";
-import { usePanToEntity } from "../../usePanToEntity";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
-import type * as echarts from "echarts/core";
+import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 const BAR_CAP = 25;
 
@@ -116,8 +114,6 @@ function countryTooltip(d: CountryTaxGap): string {
 }
 
 function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
-  const engine = useEu5Engine();
-  const panToEntity = usePanToEntity();
   const isDark = isDarkMode();
 
   const sorted = useMemo(
@@ -237,24 +233,13 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
     };
   }, [sorted, isDark]);
 
-  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
-    const dataIndex = params.dataIndex;
-    const d = dataIndex == null ? undefined : sorted[dataIndex];
-    if (d?.anchorLocationIdx == null) return;
-    const idx = d.anchorLocationIdx;
-    if ((params.event?.event as MouseEvent)?.shiftKey) {
-      void engine.trigger.addCountry(idx);
-    } else if ((params.event?.event as MouseEvent)?.altKey) {
-      void engine.trigger.removeCountry(idx);
-    } else {
-      void engine.trigger.selectCountry(idx);
-      panToEntity(idx);
-    }
+  const handleInit = useEu5EntityChartClick({
+    kind: "country",
+    getAnchorLocationIdx: (params) => {
+      const dataIndex = params.dataIndex;
+      return dataIndex == null ? null : sorted[dataIndex]?.anchorLocationIdx;
+    },
   });
-
-  const handleInit = useCallback((chart: echarts.ECharts) => {
-    chart.on("click", handleClick);
-  }, []);
 
   if (!hasGap) {
     return (
@@ -270,8 +255,6 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
 }
 
 function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
-  const engine = useEu5Engine();
-  const panToEntity = usePanToEntity();
   const isDark = isDarkMode();
 
   const topCountries = useMemo(
@@ -389,24 +372,13 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
     };
   }, [scatterData, topCountries, isDark, countries, diagonalMax]);
 
-  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
-    const dataIndex = params.dataIndex;
-    const d = dataIndex == null ? undefined : countries[dataIndex];
-    if (d?.anchorLocationIdx == null) return;
-    const idx = d.anchorLocationIdx;
-    if ((params.event?.event as MouseEvent)?.shiftKey) {
-      void engine.trigger.addCountry(idx);
-    } else if ((params.event?.event as MouseEvent)?.altKey) {
-      void engine.trigger.removeCountry(idx);
-    } else {
-      void engine.trigger.selectCountry(idx);
-      panToEntity(idx);
-    }
+  const handleInit = useEu5EntityChartClick({
+    kind: "country",
+    getAnchorLocationIdx: (params) => {
+      const dataIndex = params.dataIndex;
+      return dataIndex == null ? null : countries[dataIndex]?.anchorLocationIdx;
+    },
   });
-
-  const handleInit = useCallback((chart: echarts.ECharts) => {
-    chart.on("click", handleClick);
-  }, []);
 
   return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }

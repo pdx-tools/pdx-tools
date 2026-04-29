@@ -1,4 +1,4 @@
-import { useCallback, useEffectEvent, useMemo } from "react";
+import { useMemo } from "react";
 import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
@@ -18,14 +18,13 @@ import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
-import { useEu5Engine } from "../../store";
 import { usePanToEntity } from "../../usePanToEntity";
 import {
   countryProfileEntry,
   locationProfileEntry,
   usePanelNav,
 } from "../../EntityProfile/PanelNavContext";
-import type * as echarts from "echarts/core";
+import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 const SCATTER_LABEL_CAP = 8;
 const BACK_LABEL = "Control";
@@ -137,8 +136,6 @@ function countryBarTooltip(country: BarRow): string {
 }
 
 function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] }) {
-  const engine = useEu5Engine();
-  const panToEntity = usePanToEntity();
   const isDark = isDarkMode();
 
   const rows = useMemo(
@@ -245,23 +242,11 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
     };
   }, [isDark, rows]);
 
-  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
-    const country = params.data as (typeof rows)[number] | undefined;
-    if (!country) return;
-    const event = params.event?.event as MouseEvent | undefined;
-    if (event?.shiftKey) {
-      void engine.trigger.addCountry(country.anchorLocationIdx);
-    } else if (event?.altKey) {
-      void engine.trigger.removeCountry(country.anchorLocationIdx);
-    } else {
-      void engine.trigger.selectCountry(country.anchorLocationIdx);
-      panToEntity(country.anchorLocationIdx);
-    }
+  const handleInit = useEu5EntityChartClick({
+    kind: "country",
+    getAnchorLocationIdx: (params) =>
+      (params.data as (typeof rows)[number] | undefined)?.anchorLocationIdx,
   });
-
-  const handleInit = useCallback((chart: echarts.ECharts) => {
-    chart.on("click", handleClick);
-  }, []);
 
   const height = rows.length * 24 + 54;
   return (
@@ -270,8 +255,6 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
 }
 
 function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }) {
-  const engine = useEu5Engine();
-  const panToEntity = usePanToEntity();
   const isDark = isDarkMode();
 
   const labelSet = useMemo(() => {
@@ -385,24 +368,13 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
     };
   }, [scatterData, labelSet, maxLost, isDark]);
 
-  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
-    if (Array.isArray(params.data)) return;
-    const d = params.data as (typeof scatterData)[number];
-    const idx = d?.anchorLocationIdx;
-    if (idx == null) return;
-    if ((params.event?.event as MouseEvent)?.shiftKey) {
-      void engine.trigger.addCountry(idx);
-    } else if ((params.event?.event as MouseEvent)?.altKey) {
-      void engine.trigger.removeCountry(idx);
-    } else {
-      void engine.trigger.selectCountry(idx);
-      panToEntity(idx);
-    }
+  const handleInit = useEu5EntityChartClick({
+    kind: "country",
+    getAnchorLocationIdx: (params) => {
+      if (Array.isArray(params.data)) return null;
+      return (params.data as (typeof scatterData)[number])?.anchorLocationIdx;
+    },
   });
-
-  const handleInit = useCallback((chart: echarts.ECharts) => {
-    chart.on("click", handleClick);
-  }, []);
 
   return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }

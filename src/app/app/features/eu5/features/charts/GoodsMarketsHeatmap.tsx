@@ -1,4 +1,4 @@
-import { useCallback, useEffectEvent, useMemo } from "react";
+import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type {
@@ -10,9 +10,7 @@ import { formatFloat } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
-import { useEu5Engine } from "../../store";
-import { usePanToEntity } from "../../usePanToEntity";
-import type * as echarts from "echarts/core";
+import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 const MARKETS_COLS = 20;
 
@@ -23,8 +21,6 @@ interface Props {
 }
 
 export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
-  const engine = useEu5Engine();
-  const panToEntity = usePanToEntity();
   const isDark = isDarkMode();
 
   const topGoods = useMemo(() => [...goods].sort((a, b) => a.name.localeCompare(b.name)), [goods]);
@@ -154,24 +150,13 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
     };
   }, [isDark, marketLabels, topGoods, topMarkets, filteredCells, seriesData, maxAbs]);
 
-  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
-    const idx = params.dataIndex;
-    const c = idx == null ? undefined : filteredCells[idx];
-    if (c?.marketAnchorLocationIdx == null) return;
-    const mIdx = c.marketAnchorLocationIdx;
-    if ((params.event?.event as MouseEvent)?.shiftKey) {
-      void engine.trigger.addMarket(mIdx);
-    } else if ((params.event?.event as MouseEvent)?.altKey) {
-      void engine.trigger.removeMarket(mIdx);
-    } else {
-      void engine.trigger.selectMarket(mIdx);
-      panToEntity(mIdx);
-    }
+  const handleInit = useEu5EntityChartClick({
+    kind: "market",
+    getAnchorLocationIdx: (params) => {
+      const idx = params.dataIndex;
+      return idx == null ? null : filteredCells[idx]?.marketAnchorLocationIdx;
+    },
   });
-
-  const handleInit = useCallback((chart: echarts.ECharts) => {
-    chart.on("click", handleClick);
-  }, []);
 
   if (topGoods.length === 0 || topMarkets.length === 0) {
     return (

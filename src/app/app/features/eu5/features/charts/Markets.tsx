@@ -1,4 +1,4 @@
-import { useCallback, useEffectEvent, useMemo } from "react";
+import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { MarketScopeSummary, ScopedGoodSummary, ScopedMarketSummary } from "@/wasm/wasm_eu5";
@@ -6,14 +6,12 @@ import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
-import { useEu5Engine } from "../../store";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
-import { usePanToEntity } from "../../usePanToEntity";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
 import { MarketProductionLocations } from "./MarketProductionLocations";
 import { GoodsMarketsHeatmap } from "./GoodsMarketsHeatmap";
-import type * as echarts from "echarts/core";
+import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 const GOODS_BAR_CAP = 20;
 
@@ -240,8 +238,6 @@ function marketTooltip(d: ScopedMarketSummary): string {
 }
 
 function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
-  const engine = useEu5Engine();
-  const panToEntity = usePanToEntity();
   const isDark = isDarkMode();
 
   const topMarkets = useMemo(
@@ -340,24 +336,13 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
     };
   }, [markets, topMarkets, isDark, maxTaken]);
 
-  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
-    const dataIndex = params.dataIndex;
-    const d = dataIndex == null ? undefined : markets[dataIndex];
-    if (d?.anchorLocationIdx == null) return;
-    const idx = d.anchorLocationIdx;
-    if ((params.event?.event as MouseEvent)?.shiftKey) {
-      void engine.trigger.addMarket(idx);
-    } else if ((params.event?.event as MouseEvent)?.altKey) {
-      void engine.trigger.removeMarket(idx);
-    } else {
-      void engine.trigger.selectMarket(idx);
-      panToEntity(idx);
-    }
+  const handleInit = useEu5EntityChartClick({
+    kind: "market",
+    getAnchorLocationIdx: (params) => {
+      const dataIndex = params.dataIndex;
+      return dataIndex == null ? null : markets[dataIndex]?.anchorLocationIdx;
+    },
   });
-
-  const handleInit = useCallback((chart: echarts.ECharts) => {
-    chart.on("click", handleClick);
-  }, []);
 
   return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }
