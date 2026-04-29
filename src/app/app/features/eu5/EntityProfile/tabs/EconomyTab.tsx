@@ -1,20 +1,13 @@
 import { formatFloat } from "@/lib/format";
-import type { EconomySection } from "@/wasm/wasm_eu5";
+import type { CountryEconomySection, MarketGoodsSection } from "@/wasm/wasm_eu5";
 
-export function EconomyTabContent({ data }: { data: EconomySection }) {
+export function CountryEconomyTabContent({ data }: { data: CountryEconomySection }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3">
-        {data.currentTaxBase != null && (
-          <StatRow label="Current Tax" value={formatFloat(data.currentTaxBase, 2)} />
-        )}
-        {data.monthlyTradeValue != null && (
-          <StatRow label="Monthly Trade" value={formatFloat(data.monthlyTradeValue, 2)} />
-        )}
-        {data.gold != null && <StatRow label="Gold" value={formatFloat(data.gold, 1)} />}
-        {data.marketValue != null && (
-          <StatRow label="Market Value" value={formatFloat(data.marketValue, 2)} />
-        )}
+        <StatRow label="Current Tax" value={formatFloat(data.currentTaxBase, 2)} />
+        <StatRow label="Monthly Trade" value={formatFloat(data.monthlyTradeValue, 2)} />
+        <StatRow label="Gold" value={formatFloat(data.gold, 1)} />
         <StatRow label="Building Levels" value={formatFloat(data.totalBuildingLevels, 1)} />
         <StatRow label="Possible Tax" value={formatFloat(data.totalPossibleTax, 2)} />
       </div>
@@ -34,6 +27,18 @@ export function EconomyTabContent({ data }: { data: EconomySection }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+export function MarketGoodsTabContent({ data }: { data: MarketGoodsSection }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-3">
+        <StatRow label="Market Value" value={formatFloat(data.marketValue, 2)} />
+        <StatRow label="Building Levels" value={formatFloat(data.totalBuildingLevels, 1)} />
+        <StatRow label="Possible Tax" value={formatFloat(data.totalPossibleTax, 2)} />
+      </div>
 
       {data.topGoods.length > 0 && (
         <div>
