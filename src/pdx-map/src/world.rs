@@ -4,7 +4,7 @@ mod spatial;
 mod topology;
 
 pub use hemisphere::Hemisphere;
-pub use spatial::{Aabb, SpatialIndex};
+pub use spatial::{Aabb, LocationBitset, SpatialIndex};
 pub use topology::TopologyIndex;
 
 use crate::{R16, R16Palette, WorldLength, WorldPoint, WorldSize};
