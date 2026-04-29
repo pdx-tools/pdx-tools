@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffectEvent, useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { CountryDevSummary, DevelopmentScopeSummary } from "@/wasm/wasm_eu5";
@@ -182,25 +182,24 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
     };
   }, [scatterData, topCountries, isDark, countries.length]);
 
-  const handleInit = useCallback(
-    (chart: echarts.ECharts) => {
-      chart.on("click", (params) => {
-        if (Array.isArray(params.data)) return;
-        const d = params.data as (typeof scatterData)[number];
-        if (d?.anchorLocationIdx == null) return;
-        const idx = d.anchorLocationIdx;
-        if ((params.event?.event as MouseEvent)?.shiftKey) {
-          void engine.trigger.addCountry(idx);
-        } else if ((params.event?.event as MouseEvent)?.altKey) {
-          void engine.trigger.removeCountry(idx);
-        } else {
-          void engine.trigger.selectCountry(idx);
-          panToEntity(idx);
-        }
-      });
-    },
-    [engine, panToEntity],
-  );
+  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
+    if (Array.isArray(params.data)) return;
+    const d = params.data as (typeof scatterData)[number];
+    if (d?.anchorLocationIdx == null) return;
+    const idx = d.anchorLocationIdx;
+    if ((params.event?.event as MouseEvent)?.shiftKey) {
+      void engine.trigger.addCountry(idx);
+    } else if ((params.event?.event as MouseEvent)?.altKey) {
+      void engine.trigger.removeCountry(idx);
+    } else {
+      void engine.trigger.selectCountry(idx);
+      panToEntity(idx);
+    }
+  });
+
+  const handleInit = useCallback((chart: echarts.ECharts) => {
+    chart.on("click", handleClick);
+  }, []);
 
   return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }

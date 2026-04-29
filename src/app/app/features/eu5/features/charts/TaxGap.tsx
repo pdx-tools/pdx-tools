@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffectEvent, useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { CountryTaxGap } from "@/wasm/wasm_eu5";
@@ -237,25 +237,24 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
     };
   }, [sorted, isDark]);
 
-  const handleInit = useCallback(
-    (chart: echarts.ECharts) => {
-      chart.on("click", (params) => {
-        const dataIndex = (params as { dataIndex?: number }).dataIndex;
-        const d = dataIndex == null ? undefined : sorted[dataIndex];
-        if (d?.anchorLocationIdx == null) return;
-        const idx = d.anchorLocationIdx;
-        if ((params.event?.event as MouseEvent)?.shiftKey) {
-          void engine.trigger.addCountry(idx);
-        } else if ((params.event?.event as MouseEvent)?.altKey) {
-          void engine.trigger.removeCountry(idx);
-        } else {
-          void engine.trigger.selectCountry(idx);
-          panToEntity(idx);
-        }
-      });
-    },
-    [engine, panToEntity, sorted],
-  );
+  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
+    const dataIndex = params.dataIndex;
+    const d = dataIndex == null ? undefined : sorted[dataIndex];
+    if (d?.anchorLocationIdx == null) return;
+    const idx = d.anchorLocationIdx;
+    if ((params.event?.event as MouseEvent)?.shiftKey) {
+      void engine.trigger.addCountry(idx);
+    } else if ((params.event?.event as MouseEvent)?.altKey) {
+      void engine.trigger.removeCountry(idx);
+    } else {
+      void engine.trigger.selectCountry(idx);
+      panToEntity(idx);
+    }
+  });
+
+  const handleInit = useCallback((chart: echarts.ECharts) => {
+    chart.on("click", handleClick);
+  }, []);
 
   if (!hasGap) {
     return (
@@ -390,25 +389,24 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
     };
   }, [scatterData, topCountries, isDark, countries, diagonalMax]);
 
-  const handleInit = useCallback(
-    (chart: echarts.ECharts) => {
-      chart.on("click", (params) => {
-        const dataIndex = (params as { dataIndex?: number }).dataIndex;
-        const d = dataIndex == null ? undefined : countries[dataIndex];
-        if (d?.anchorLocationIdx == null) return;
-        const idx = d.anchorLocationIdx;
-        if ((params.event?.event as MouseEvent)?.shiftKey) {
-          void engine.trigger.addCountry(idx);
-        } else if ((params.event?.event as MouseEvent)?.altKey) {
-          void engine.trigger.removeCountry(idx);
-        } else {
-          void engine.trigger.selectCountry(idx);
-          panToEntity(idx);
-        }
-      });
-    },
-    [engine, panToEntity, countries],
-  );
+  const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
+    const dataIndex = params.dataIndex;
+    const d = dataIndex == null ? undefined : countries[dataIndex];
+    if (d?.anchorLocationIdx == null) return;
+    const idx = d.anchorLocationIdx;
+    if ((params.event?.event as MouseEvent)?.shiftKey) {
+      void engine.trigger.addCountry(idx);
+    } else if ((params.event?.event as MouseEvent)?.altKey) {
+      void engine.trigger.removeCountry(idx);
+    } else {
+      void engine.trigger.selectCountry(idx);
+      panToEntity(idx);
+    }
+  });
+
+  const handleInit = useCallback((chart: echarts.ECharts) => {
+    chart.on("click", handleClick);
+  }, []);
 
   return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }
