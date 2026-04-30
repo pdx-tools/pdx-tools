@@ -4,7 +4,7 @@ import type { EChartsOption } from "@/components/viz";
 import type { CountryTaxGap } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
@@ -114,7 +114,7 @@ function countryTooltip(d: CountryTaxGap): string {
 }
 
 function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const sorted = useMemo(
     (): BarDatum[] =>
@@ -255,7 +255,7 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
 }
 
 function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const topCountries = useMemo(
     () => new Set(countries.slice(0, 10).map((c) => c.tag)),

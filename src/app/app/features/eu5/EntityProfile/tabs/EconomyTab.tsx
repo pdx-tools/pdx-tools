@@ -3,7 +3,7 @@ import { formatFloat } from "@/lib/format";
 import type { CountryEconomySection, LocationRow } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { GoodsPressureChart } from "../../features/charts/Markets";
@@ -47,7 +47,7 @@ export function CountryEconomyTabContent({
 }
 
 function TaxGapScatter({ locations }: { locations: LocationRow[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const eligible = useMemo(() => locations.filter((r) => r.possibleTax > 0), [locations]);
 

@@ -7,7 +7,7 @@ import { Alert } from "@/components/Alert";
 import type { CountriesManaExpenditure } from "@/wasm/wasm_eu4";
 import { formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { createCsv } from "@/lib/csv";
 import { manaSpendAliases } from "../country-details/data";
 import type { CountryManaSpend } from "../../types/models";
@@ -86,7 +86,7 @@ interface ManaTotalsRow {
 }
 
 function ManaTotalsChart({ data }: { data: CountriesManaExpenditure }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const countries = useMemo(() => {
     const totals = data

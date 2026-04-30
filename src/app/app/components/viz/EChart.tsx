@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo } from "react";
+import { useEffect, useMemo, useRef, memo } from "react";
 import * as echarts from "echarts/core";
 import {
   PieChart,
@@ -40,6 +40,8 @@ import type {
   GraphicComponentOption,
   VisualMapComponentOption,
 } from "echarts/components";
+import { useIsDarkMode } from "@/lib/dark";
+import { getEChartsTheme } from "./echartsTheme";
 
 // Register the required components and charts
 echarts.use([
@@ -94,6 +96,8 @@ export const EChart = memo(function EChart({ option, style, onInit, className }:
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
   const onInitRef = useRef(onInit);
+  const isDark = useIsDarkMode();
+  const themedOption = useMemo(() => applyEChartsTheme(option, isDark), [option, isDark]);
   onInitRef.current = onInit;
 
   useEffect(() => {
@@ -125,8 +129,8 @@ export const EChart = memo(function EChart({ option, style, onInit, className }:
     const chart = chartRef.current;
     if (!chart) return;
 
-    chart.setOption(option, { notMerge: true });
-  }, [option]);
+    chart.setOption(themedOption, { notMerge: true });
+  }, [themedOption]);
 
   return (
     <div
@@ -136,3 +140,33 @@ export const EChart = memo(function EChart({ option, style, onInit, className }:
     />
   );
 });
+
+function applyEChartsTheme(option: EChartsOption, isDark: boolean): EChartsOption {
+  const theme = getEChartsTheme(isDark);
+  const current = option as Record<string, unknown>;
+  const tooltip =
+    typeof current.tooltip === "object" &&
+    current.tooltip !== null &&
+    !Array.isArray(current.tooltip)
+      ? (current.tooltip as Record<string, unknown>)
+      : {};
+  const textStyle =
+    typeof current.textStyle === "object" && current.textStyle !== null
+      ? (current.textStyle as Record<string, unknown>)
+      : {};
+
+  return {
+    ...option,
+    backgroundColor: current.backgroundColor ?? theme.backgroundColor,
+    textStyle: {
+      color: theme.labelColor,
+      ...textStyle,
+    },
+    tooltip: {
+      backgroundColor: theme.tooltipBackgroundColor,
+      borderColor: theme.tooltipBorderColor,
+      textStyle: { color: theme.tooltipTextColor },
+      ...tooltip,
+    },
+  } as EChartsOption;
+}

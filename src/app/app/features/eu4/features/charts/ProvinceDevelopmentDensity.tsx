@@ -7,7 +7,7 @@ import { Alert } from "@/components/Alert";
 import { createCsv } from "@/lib/csv";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 
 export const ProvinceDevelopmentDensity = () => {
   const countryFilter = useTagFilter();
@@ -60,7 +60,7 @@ export const ProvinceDevelopmentDensity = () => {
     return null;
   }
 
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const option: EChartsOption = {
     grid: {

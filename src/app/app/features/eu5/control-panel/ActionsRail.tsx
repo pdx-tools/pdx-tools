@@ -35,15 +35,21 @@ export function ActionsRail() {
       <div className="flex h-8 items-center px-3.5">
         {hoveredAction ? (
           <div className="flex w-full items-baseline justify-between gap-2">
-            <span className="text-[12px] text-eu5-ink-300">{hoveredAction.label}</span>
-            <span className="font-mono text-[10px] text-eu5-ink-500">{hoveredAction.hint}</span>
+            <span className="text-[12px] text-slate-700 dark:text-eu5-ink-300">
+              {hoveredAction.label}
+            </span>
+            <span className="font-mono text-[10px] text-slate-500 dark:text-eu5-ink-500">
+              {hoveredAction.hint}
+            </span>
           </div>
         ) : (
-          <span className="font-mono text-[10px] text-eu5-ink-500 italic">Hover an action</span>
+          <span className="font-mono text-[10px] text-slate-500 italic dark:text-eu5-ink-500">
+            Hover an action
+          </span>
         )}
       </div>
 
-      <div className="flex h-12 items-center justify-center gap-2 border-t border-eu5-line">
+      <div className="flex h-12 items-center justify-center gap-2 border-t border-slate-200 dark:border-eu5-line">
         <ScreenshotButton def={ACTION_DEFS[0]} onHover={setHoveredAction} />
         <MeltButton def={ACTION_DEFS[1]} onHover={setHoveredAction} />
       </div>
@@ -69,7 +75,7 @@ function ActionButton({ def, onHover, children, isLoading, onClick }: ActionButt
       onMouseLeave={() => onHover(null)}
       className={cx(
         "grid h-10 w-10 place-items-center rounded transition-colors duration-100",
-        "text-eu5-ink-500 hover:bg-eu5-bg-hover hover:text-eu5-ink-100",
+        "text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-eu5-ink-500 dark:hover:bg-eu5-bg-hover dark:hover:text-eu5-ink-100",
         isLoading && "cursor-not-allowed opacity-40",
       )}
     >

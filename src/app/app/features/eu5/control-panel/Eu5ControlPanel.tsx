@@ -6,7 +6,7 @@ import { ActionsRail } from "./ActionsRail";
 export const Eu5ControlPanel = () => {
   return (
     <div className="pointer-events-auto absolute inset-y-0 left-0 z-30 w-[332px]">
-      <aside className="flex h-full w-full flex-col border-r border-eu5-line-strong bg-eu5-bg-panel/95 backdrop-blur-md">
+      <aside className="flex h-full w-full flex-col border-r border-slate-200 bg-white/95 shadow-xl backdrop-blur-md dark:border-eu5-line-strong dark:bg-eu5-bg-panel/95">
         <PanelHeader />
         <MapModesSection />
         <div className="flex-1 overflow-hidden" />

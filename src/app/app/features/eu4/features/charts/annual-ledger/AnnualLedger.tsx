@@ -6,7 +6,7 @@ import { createCsv } from "@/lib/csv";
 import { useCountryNameLookup } from "@/features/eu4/store";
 import type { useLedgerData } from "./hooks";
 import { Alert } from "@/components/Alert";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 
@@ -19,7 +19,7 @@ type MemoProps = LedgerProps & {
 };
 
 const AnnualLedgerPropped = React.memo(function AnnualLedgerPropped({ ledger, lookup }: MemoProps) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
   const { onInit, getClosestItem } = useNearestSeriesItem();
 
   const option = useMemo((): EChartsOption => {

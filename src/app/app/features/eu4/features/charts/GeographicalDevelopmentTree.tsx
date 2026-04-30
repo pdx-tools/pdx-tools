@@ -7,7 +7,7 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { createCsv } from "@/lib/csv";
 import { useTagFilter } from "../../store";
 import { Alert } from "@/components/Alert";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import type { RootTree } from "@/wasm/wasm_eu4";
 
 type DevelopmentStatisticProps = {
@@ -163,7 +163,7 @@ export const GeographicalDevelopmentTree = () => {
 };
 
 function GeographicalDevelopmentTreeData({ data }: { data: RootTree }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
   const treeData = useMemo(
     () =>
       normalizeTree({

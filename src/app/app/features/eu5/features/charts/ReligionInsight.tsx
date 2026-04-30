@@ -7,7 +7,7 @@ import { Table } from "@/components/Table";
 import type { ReligionRow, StateReligionRow } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import type * as echarts from "echarts/core";
@@ -96,7 +96,7 @@ function stateReligionTooltip(row: FlatStateReligionDatum): string {
 }
 
 function StateReligionChart({ stateReligions }: { stateReligions: StateReligionRow[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const rows = useMemo<FlatStateReligionDatum[]>(
     () =>

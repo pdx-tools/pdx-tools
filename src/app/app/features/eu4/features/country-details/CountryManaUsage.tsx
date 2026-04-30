@@ -3,7 +3,7 @@ import { manaSpendAliases, manaSpendColorPalette } from "./data";
 import { EChart, PieTable } from "@/components/viz";
 import type { DataPoint, EChartsOption } from "@/components/viz";
 import type { CountryDetails } from "../../types/models";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { useEu4Worker } from "../../worker";
 import type { CountryMana } from "@/wasm/wasm_eu4";
 import { Alert } from "@/components/Alert";
@@ -41,7 +41,7 @@ interface TotalManaBarProps {
 }
 
 const TotalManaBarImpl = ({ adm, dip, mil }: TotalManaBarProps) => {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const data = useMemo(
     () => [
@@ -176,7 +176,7 @@ const ManaCategoryBarsImpl = ({ mana }: { mana: CountryMana }) => {
     [mana],
   );
 
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const option = useMemo((): EChartsOption => {
     return {

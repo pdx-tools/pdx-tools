@@ -9,7 +9,7 @@ import { Flag } from "../../components/avatars";
 import { formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { Alert } from "@/components/Alert";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { classicCyclic } from "@/lib/colors";
 
 export const OwnedDevelopmentStatesTree = () => {
@@ -103,7 +103,7 @@ function getColor(name: string) {
 }
 
 function CountryStateDevelopmentTree({ dev, max }: CountryDevelopmentTreeProps) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const devs = useMemo(
     () =>

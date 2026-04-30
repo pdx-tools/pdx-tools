@@ -7,7 +7,7 @@ import { Alert } from "@/components/Alert";
 import type { CountriesManaExpenditure } from "@/wasm/wasm_eu4";
 import { formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { createCsv } from "@/lib/csv";
 import { manaSpendAliases } from "../../features/country-details/data";
 
@@ -87,7 +87,7 @@ interface ScatterPoint {
 }
 
 function ManaExpenditureChart({ data }: { data: CountriesManaExpenditure }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const { categoryLabels, scatterData } = useMemo(() => {
     // Determine which categories have any non-zero values, sorted alphabetically

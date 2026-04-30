@@ -50,7 +50,9 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
         </div>
       ) : null}
 
-      {data !== null ? <div className="absolute inset-0 bg-slate-900"></div> : null}
+      {data !== null ? (
+        <div className="absolute inset-0 bg-slate-100 dark:bg-slate-900"></div>
+      ) : null}
 
       {/* Canvas layer — always present, always fills viewport */}
       <div className="absolute inset-0 overflow-hidden" ref={surfaceRef}>
@@ -137,10 +139,10 @@ const Eu5UiContent = ({
         <button
           type="button"
           onClick={() => setInsightOpen(true)}
-          className="pointer-events-auto absolute top-3 right-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-slate-950/80 backdrop-blur-md transition-colors duration-150 hover:border-white/20 hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:outline-none"
+          className="pointer-events-auto absolute top-3 right-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white/90 backdrop-blur-md transition-colors duration-150 hover:border-slate-300 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:outline-none dark:border-white/10 dark:bg-slate-950/80 dark:hover:border-white/20 dark:hover:bg-slate-800"
           aria-label="Open insights panel"
         >
-          <ChevronLeftIcon className="h-4 w-4 text-slate-300" />
+          <ChevronLeftIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
         </button>
       ) : null}
 

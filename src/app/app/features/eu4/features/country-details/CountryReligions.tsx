@@ -13,7 +13,7 @@ import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import type { RebelReligion } from "@/wasm/wasm_eu4";
 import { Link } from "@/components/Link";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 
 export interface CountryReligionsProps {
   details: CountryDetails;
@@ -75,7 +75,7 @@ const columns = [
 ];
 
 const CountryReligionVizImpl = ({ data, largeLayout }: CountryReligionVizProps) => {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const option = useMemo((): EChartsOption => {
     return {

@@ -38,7 +38,9 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
       defaultWidth={640}
       collapseThreshold={256}
       maxWidth={1920}
-      header={<span className="text-sm font-semibold text-slate-300">Insights</span>}
+      header={
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Insights</span>
+      }
       onWidthChange={handleWidthChange}
     >
       {/* Don't render panel content until open as panels can be very expensive to render with large charts */}
@@ -119,7 +121,7 @@ function profileIdentityKey(profile: ActiveProfileIdentity) {
 
 function EmptyInsightState() {
   return (
-    <div className="flex h-full items-center justify-center p-4 text-sm text-slate-500">
+    <div className="flex h-full items-center justify-center p-4 text-sm text-slate-500 dark:text-slate-500">
       No insight available for this view.
     </div>
   );

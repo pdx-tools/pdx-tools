@@ -76,7 +76,7 @@ export function Eu5ShortcutPanel() {
       <Popover.Trigger asChild>
         <button
           type="button"
-          className="pointer-events-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-200"
+          className="pointer-events-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-200"
           aria-label="Keyboard shortcuts"
         >
           <QuestionMarkCircleIcon className="h-4 w-4" />
@@ -86,18 +86,20 @@ export function Eu5ShortcutPanel() {
         side="bottom"
         align="center"
         sideOffset={16}
-        className="w-[26rem] rounded-2xl border border-white/10 bg-slate-950/90 p-0 shadow-2xl backdrop-blur-xl"
+        className="w-[26rem] rounded-2xl border border-slate-200 bg-white/95 p-0 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/90"
       >
         <div className="px-5 pt-4 pb-5">
           {SHORTCUT_GROUPS.map((group, groupIdx) => (
             <div key={group.label}>
-              {groupIdx > 0 && <div className="my-3 h-px bg-white/6" />}
+              {groupIdx > 0 && <div className="my-3 h-px bg-slate-200 dark:bg-white/6" />}
               <div className="mb-2 pl-0.5 text-[10px] font-medium tracking-[0.18em] text-slate-500 uppercase">
                 {group.label}
               </div>
               {group.shortcuts.map((shortcut, i) => (
                 <div key={i} className="flex items-center justify-between gap-3 py-[5px]">
-                  <span className="text-[13px] text-slate-400">{shortcut.action}</span>
+                  <span className="text-[13px] text-slate-700 dark:text-slate-400">
+                    {shortcut.action}
+                  </span>
                   <span className="flex shrink-0 items-center gap-1">
                     {shortcut.keys.map((key, j) =>
                       key === "+" ? (
@@ -107,7 +109,7 @@ export function Eu5ShortcutPanel() {
                       ) : (
                         <kbd
                           key={j}
-                          className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-[5px] border border-white/10 bg-white/6 px-1.5 font-mono text-[11px] text-slate-300"
+                          className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-[5px] border border-slate-200 bg-slate-50 px-1.5 font-mono text-[11px] text-slate-700 dark:border-white/10 dark:bg-white/6 dark:text-slate-300"
                         >
                           {key}
                         </kbd>
@@ -120,8 +122,8 @@ export function Eu5ShortcutPanel() {
           ))}
         </div>
 
-        <div className="flex items-center justify-center gap-1 border-t border-white/6 py-2.5">
-          <kbd className="inline-flex h-[18px] min-w-[16px] items-center justify-center rounded-[4px] border border-white/10 bg-white/6 px-1 font-mono text-[10px] text-slate-400">
+        <div className="flex items-center justify-center gap-1 border-t border-slate-200 py-2.5 dark:border-white/6">
+          <kbd className="inline-flex h-[18px] min-w-[16px] items-center justify-center rounded-[4px] border border-slate-200 bg-slate-50 px-1 font-mono text-[10px] text-slate-600 dark:border-white/10 dark:bg-white/6 dark:text-slate-400">
             ?
           </kbd>
           <span className="text-[11px] text-slate-500">to dismiss</span>

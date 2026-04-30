@@ -13,7 +13,7 @@ import { Card } from "@/components/Card";
 import { useEu4Meta } from "../../store";
 import { ToggleGroup } from "@/components/ToggleGroup";
 import { throttle } from "@/lib/throttle";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { emitEvent } from "@/lib/events";
@@ -34,6 +34,7 @@ function negate<T extends Record<string, number>>(obj: T): T {
 type BudgetBar = { key: string; value: number; start: number; end: number };
 
 export function CountryBudget({ details }: CountryBudgetCountProps) {
+  const isDark = useIsDarkMode();
   const date = useEu4Meta().date;
   const [ytdYear, ytdMonth] = date.split("-").map((x) => +x);
   const ytdMonthDivisor = Math.max(+ytdMonth - 1, 1);
@@ -372,19 +373,19 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
         label: {
           show: true,
           formatter: "{b}",
-          color: isDarkMode() ? "#fff" : "#000",
+          color: isDark ? "#fff" : "#000",
           fontSize: 10,
           overflow: "truncate",
         },
         upperLabel: {
           show: true,
           height: 20,
-          color: isDarkMode() ? "#fff" : "#000",
+          color: isDark ? "#fff" : "#000",
           fontSize: 12,
           fontWeight: "bold",
         },
         itemStyle: {
-          borderColor: isDarkMode() ? "#333" : "#fff",
+          borderColor: isDark ? "#333" : "#fff",
           borderWidth: 1,
           gapWidth: 1,
         },

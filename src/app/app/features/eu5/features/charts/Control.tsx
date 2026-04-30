@@ -13,7 +13,7 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
@@ -136,7 +136,7 @@ function countryBarTooltip(country: BarRow): string {
 }
 
 function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const rows = useMemo(
     () =>
@@ -255,7 +255,7 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
 }
 
 function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const labelSet = useMemo(() => {
     if (countries.length <= 10) return new Set(countries.map((c) => c.tag));

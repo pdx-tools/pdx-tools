@@ -18,7 +18,7 @@ type InsightScopeHeaderProps =
     };
 
 export function InsightScopeHeaderSkeleton() {
-  return <div className="mb-0 h-[52px] animate-pulse rounded-xl bg-white/5" />;
+  return <div className="mb-0 h-[52px] animate-pulse rounded-xl bg-slate-100 dark:bg-white/5" />;
 }
 
 export function InsightScopeHeader({ children, stats }: InsightScopeHeaderProps) {
@@ -26,7 +26,7 @@ export function InsightScopeHeader({ children, stats }: InsightScopeHeaderProps)
   if (nav.stack.length > 0) return null;
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/5">
       <div className="flex gap-5">
         {children ?? stats?.map((s) => <StatItem key={s.label} label={s.label} value={s.value} />)}
       </div>

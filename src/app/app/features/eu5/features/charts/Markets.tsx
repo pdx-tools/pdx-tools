@@ -5,7 +5,7 @@ import type { EChartsOption } from "@/components/viz";
 import type { MarketScopeSummary, ScopedGoodSummary, ScopedMarketSummary } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
@@ -121,7 +121,7 @@ function goodTooltip(d: ScopedGoodSummary): string {
 }
 
 export function GoodsPressureChart({ goods }: { goods: ScopedGoodSummary[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
   const [metric, setMetric] = useState<GoodsPressureMetric>("value");
   const isValueMetric = metric === "value";
 
@@ -274,7 +274,7 @@ function marketTooltip(d: ScopedMarketSummary): string {
 }
 
 function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const topMarkets = useMemo(
     () =>

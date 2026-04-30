@@ -6,7 +6,7 @@ import type { EChartsOption } from "@/components/viz";
 import { createCsv } from "@/lib/csv";
 import { useEu4Meta, useTagFilter } from "../../store";
 import { Alert } from "@/components/Alert";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 
 interface IdeaGroupDatum {
   name: string;
@@ -115,7 +115,7 @@ export const IdeaGroupsChart = () => {
     });
   }, [ideaGroups, visualizationDispatch]);
 
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const option = useMemo((): EChartsOption => {
     // Get unique idea group names

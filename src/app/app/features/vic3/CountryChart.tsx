@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Vic3GraphData } from "./worker/types";
 import { formatFloat } from "@/lib/format";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import type { EChartsOption } from "@/components/viz/EChart";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { EChart } from "@/components/viz/EChart";
@@ -19,6 +19,7 @@ const typeMap = {
 };
 
 export const CountryGDPChart = ({ stats, type }: CountryChartProps) => {
+  const isDark = useIsDarkMode();
   const data = useMemo(
     () =>
       stats.map((obj) => ({
@@ -37,8 +38,6 @@ export const CountryGDPChart = ({ stats, type }: CountryChartProps) => {
     const xAxisData = data.map((item) => item.date);
     const primarySeries = data.map((item) => item[type] as number);
     const growthSeries = data.map((item) => item[growthKey] as number);
-    const isDark = isDarkMode();
-
     return {
       legend: {
         data: [typeMap[seriesKey], typeMap[growthSeriesKey]],
@@ -146,7 +145,7 @@ export const CountryGDPChart = ({ stats, type }: CountryChartProps) => {
         },
       ],
     } satisfies EChartsOption;
-  }, [data, type]);
+  }, [data, isDark, type]);
 
   return <EChart option={option} />;
 };

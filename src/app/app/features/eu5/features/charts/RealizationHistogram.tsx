@@ -3,14 +3,14 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { CountryTaxGap } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 
 const BUCKET_WIDTH = 5;
 const MAX_BUCKET = 100;
 
 export function RealizationHistogram({ countries }: { countries: CountryTaxGap[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const { buckets, zeroPossibleCount } = useMemo(() => {
     const ratios = countries

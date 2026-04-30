@@ -14,7 +14,7 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
@@ -53,7 +53,7 @@ function BuildingLevelsScopeHeader({ data }: { data?: BuildingLevelsScopeSummary
 }
 
 function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const rows = useMemo(
     () =>

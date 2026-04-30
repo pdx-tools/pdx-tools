@@ -10,7 +10,7 @@ import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
@@ -91,7 +91,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 function StateEfficacyScatterChart({ countries }: { countries: CountryStateEfficacy[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const topCountries = useMemo(
     () => new Set(countries.slice(0, 10).map((c) => c.tag)),

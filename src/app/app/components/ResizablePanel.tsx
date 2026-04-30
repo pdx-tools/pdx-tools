@@ -99,7 +99,7 @@ export function ResizablePanel({
       style={isMaximized ? undefined : { width: `${width}px` }}
       className={cx(
         "pointer-events-auto absolute inset-y-0 z-30 flex flex-col",
-        "border-white/10 bg-slate-950/75 shadow-xl backdrop-blur",
+        "border-slate-200 bg-white/90 text-slate-900 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/75 dark:text-slate-100",
         side === "right" ? "right-0 border-l" : "left-0 border-r",
         isMaximized && "w-screen!",
         !isDragging && "transition-transform duration-300 ease-out",
@@ -136,11 +136,11 @@ export function ResizablePanel({
       )}
 
       {/* Header bar */}
-      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-white/10">
         <button
           type="button"
           onClick={onClose}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:outline-none"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:outline-none dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200"
           aria-label="Close panel"
         >
           {side === "right" ? (
@@ -162,7 +162,7 @@ export function ResizablePanel({
             }
             setIsMaximized((m) => !m);
           }}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:outline-none"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:outline-none dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200"
           aria-label={isMaximized ? "Restore panel size" : "Maximize panel"}
         >
           {isMaximized ? (

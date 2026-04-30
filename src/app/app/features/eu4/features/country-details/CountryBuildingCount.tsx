@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import type { CountryDetails } from "../../types/models";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 
@@ -18,7 +18,7 @@ const CountryBuildingCountImpl = ({ details }: CountryBuildingCountProps) => {
 
   data.sort((a, b) => a.label.localeCompare(b.label));
 
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const option = useMemo((): EChartsOption => {
     return {

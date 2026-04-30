@@ -5,7 +5,7 @@ import { StatItem } from "./components/StatItem";
 
 export function EntityHeader({ header }: { header: EntityHeaderData }) {
   return (
-    <div className="shrink-0 border-b border-white/10 px-4 py-3">
+    <div className="shrink-0 border-b border-slate-200 px-4 py-3 dark:border-white/10">
       <div className="mb-2 flex items-center gap-3">
         <span
           className="h-4 w-4 shrink-0 rounded-sm"
@@ -13,7 +13,9 @@ export function EntityHeader({ header }: { header: EntityHeaderData }) {
         />
         <div className="min-w-0">
           <div className="flex items-baseline gap-2">
-            <span className="truncate text-base font-semibold text-slate-100">{header.name}</span>
+            <span className="truncate text-base font-semibold text-slate-950 dark:text-slate-100">
+              {header.name}
+            </span>
             {header.tag && <span className="font-mono text-xs text-slate-500">{header.tag}</span>}
           </div>
         </div>
@@ -41,8 +43,8 @@ export function EntityHeader({ header }: { header: EntityHeaderData }) {
 
 export function LocationHeaderView({ header }: { header: LocationHeader }) {
   return (
-    <div className="shrink-0 border-b border-white/10 px-4 py-3">
-      <h2 className="text-base font-semibold text-slate-100">{header.name}</h2>
+    <div className="shrink-0 border-b border-slate-200 px-4 py-3 dark:border-white/10">
+      <h2 className="text-base font-semibold text-slate-950 dark:text-slate-100">{header.name}</h2>
       {header.owner && (
         <div className="mt-1 text-sm">
           <EntityLink entity={header.owner} />

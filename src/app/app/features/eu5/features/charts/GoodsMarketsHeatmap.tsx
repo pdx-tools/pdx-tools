@@ -8,7 +8,7 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatFloat } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
@@ -21,7 +21,7 @@ interface Props {
 }
 
 export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const topGoods = useMemo(() => [...goods].sort((a, b) => a.name.localeCompare(b.name)), [goods]);
 

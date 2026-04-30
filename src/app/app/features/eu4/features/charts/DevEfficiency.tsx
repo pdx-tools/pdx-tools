@@ -11,7 +11,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { Flag } from "../../components/avatars";
 import { DataTable } from "@/components/DataTable";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { createCsv } from "@/lib/csv";
 
 const columnHelper = createColumnHelper<CountryDevEffiency>();
@@ -104,7 +104,7 @@ export const DevEfficiency = () => {
 
 function DevEfficiencyChart({ data }: { data: CountryDevEfficiencies }) {
   const topCountries = useMemo(() => new Set(data.slice(0, 15).map((x) => x.country.tag)), [data]);
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const option = useMemo((): EChartsOption => {
     const scatterData = data.map((d) => ({

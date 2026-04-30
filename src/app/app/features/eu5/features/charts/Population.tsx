@@ -16,7 +16,7 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
+import { useIsDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
@@ -182,7 +182,7 @@ function countryTooltip(country: ScopedCountryPopulation): string {
 }
 
 function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulation[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const rows = useMemo<CountrySpineDatum[]>(
     () =>
@@ -280,7 +280,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
 }
 
 export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const row = useMemo(
     () => ({
@@ -383,7 +383,7 @@ export function PopulationConcentrationCurve({
 }: {
   points: PopulationConcentrationPoint[];
 }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
@@ -566,7 +566,7 @@ export function PopulationTypeProfile({
   rows: PopulationTypeProfileRow[];
   isEmpty: boolean;
 }) {
-  const isDark = isDarkMode();
+  const isDark = useIsDarkMode();
 
   const data = useMemo(
     () =>
