@@ -150,7 +150,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 LocationRank::RuralSettlement => Some(0),
                 LocationRank::Town => Some(1),
                 LocationRank::City => Some(2),
-                LocationRank::Metropolis => Some(3),
+                LocationRank::Megalopolis => Some(3),
                 LocationRank::Other => None,
             };
             if let Some(rank_idx) = rank_idx {

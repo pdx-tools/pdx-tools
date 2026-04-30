@@ -1015,7 +1015,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 LocationRank::RuralSettlement => Some(0),
                 LocationRank::Town => Some(1),
                 LocationRank::City => Some(2),
-                LocationRank::Metropolis => Some(3),
+                LocationRank::Megalopolis => Some(3),
                 LocationRank::Other => None,
             };
             scoped_locations.push((idx, owner_id, population, rank_idx));
