@@ -66,6 +66,7 @@ pub struct CountryProfile {
 pub struct CountryPopulationProfile {
     pub type_profile: Vec<PopulationTypeProfileRow>,
     pub rank_totals: Vec<PopulationRankSegment>,
+    pub sankey_rows: Vec<LocationPopRow>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
