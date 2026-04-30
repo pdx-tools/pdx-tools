@@ -2,6 +2,7 @@ import { Tabs } from "@/components/Tabs";
 import { EntityHeader } from "./EntityHeader";
 import { CountryOverviewTabContent } from "./tabs/OverviewTab";
 import { CountryEconomyTabContent } from "./tabs/EconomyTab";
+import { ReligionTabContent } from "./tabs/ReligionTab";
 import { LocationsTabContent } from "./tabs/LocationsTab";
 import { DiplomacyTabContent } from "./tabs/DiplomacyTab";
 import { useEu5MapMode } from "../store";
@@ -25,6 +26,7 @@ export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: numbe
         <Tabs.List className="shrink-0 border-b border-white/10 px-2">
           <Tabs.Trigger value="overview">Overview</Tabs.Trigger>
           <Tabs.Trigger value="economy">Economy</Tabs.Trigger>
+          <Tabs.Trigger value="religion">Religion</Tabs.Trigger>
           <Tabs.Trigger value="locations">Locations</Tabs.Trigger>
           <Tabs.Trigger value="diplomacy">Diplomacy</Tabs.Trigger>
         </Tabs.List>
@@ -36,6 +38,9 @@ export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: numbe
         </Tabs.Content>
         <Tabs.Content value="economy" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
           <CountryEconomyTabContent data={profile.economy} />
+        </Tabs.Content>
+        <Tabs.Content value="religion" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
+          <ReligionTabContent data={profile.religion} />
         </Tabs.Content>
         <Tabs.Content
           value="locations"

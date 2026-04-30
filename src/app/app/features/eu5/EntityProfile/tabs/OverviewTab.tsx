@@ -7,7 +7,6 @@ import type {
   LocationDistribution,
   LocationRow,
   MarketOverviewSection,
-  ReligionShare,
 } from "@/wasm/wasm_eu5";
 import { EntityLink } from "../EntityLink";
 import { LocationDistributionChart } from "../../features/charts/LocationDistributionChart";
@@ -33,7 +32,6 @@ export function CountryOverviewTabContent({
       <OverviewStats overview={data} />
       <LocationDistributionChart distribution={developmentDistribution} />
       <LocationDistributionChart distribution={controlDistribution} />
-      <ReligionList breakdown={data.religionBreakdown} />
       <EconomicIndicatorGrid indicators={data.topEconomicIndicators} />
       <DiplomaticSummaryRow summary={data.diplomaticSummary} />
     </div>
@@ -57,27 +55,6 @@ function OverviewStats({ overview }: { overview: CountryOverviewSection | Market
       <StatRow label="Total RGO Level" value={formatFloat(overview.totalRgoLevel, 1)} />
       <StatRow label="Total Buildings" value={formatFloat(overview.totalBuildingLevels, 1)} />
     </div>
-  );
-}
-
-function ReligionList({ breakdown }: { breakdown: ReligionShare[] }) {
-  if (breakdown.length === 0) return null;
-  return (
-    <section>
-      <SectionTitle>Religions</SectionTitle>
-      <ul className="flex flex-col gap-1">
-        {breakdown.map((row) => (
-          <li key={row.religion} className="flex items-center gap-2 text-sm">
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-sm"
-              style={{ backgroundColor: row.colorHex }}
-            />
-            <span className="min-w-0 flex-1 truncate text-slate-300">{row.religion}</span>
-            <span className="font-mono text-xs text-slate-400">{formatInt(row.locationCount)}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 
