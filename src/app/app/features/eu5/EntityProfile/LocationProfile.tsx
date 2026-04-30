@@ -4,7 +4,7 @@ import { LocationEconomyTab } from "./tabs/LocationEconomyTab";
 import { LocationPopulationTab } from "./tabs/LocationPopulationTab";
 import { LocationHeaderView } from "./EntityHeader";
 import { useEu5Engine } from "../store";
-import { usePanelNav } from "./PanelNavContext";
+import { usePanelNav, useProfileTab } from "./PanelNavContext";
 import { useEu5Trigger } from "./useEu5Trigger";
 import { ProfileSkeleton } from "./ProfileSkeleton";
 
@@ -17,6 +17,7 @@ interface Props {
 export function LocationProfile({ locationIdx, showBreadcrumb = false, scopeName }: Props) {
   const engine = useEu5Engine();
   const nav = usePanelNav();
+  const profileTab = useProfileTab("location");
   const hasNavStack = nav.stack.length > 0;
   const { data: profile, loading } = useEu5Trigger(
     (engine) => engine.trigger.getLocationProfile(locationIdx),
@@ -49,7 +50,11 @@ export function LocationProfile({ locationIdx, showBreadcrumb = false, scopeName
         </button>
       )}
       <LocationHeaderView header={profile.header} />
-      <Tabs defaultValue="overview" className="flex min-h-0 flex-1 flex-col">
+      <Tabs
+        value={profileTab.value}
+        onValueChange={profileTab.onValueChange}
+        className="flex min-h-0 flex-1 flex-col"
+      >
         <Tabs.List className="shrink-0 border-b border-white/10 px-2">
           <Tabs.Trigger value="overview">Overview</Tabs.Trigger>
           <Tabs.Trigger value="buildings">Buildings</Tabs.Trigger>
