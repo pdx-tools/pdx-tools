@@ -798,23 +798,53 @@ impl<'bump> Eu5Workspace<'bump> {
         let owner_id = loc.owner.real_id()?.country_id();
         let anchor_country_idx = self.gamestate.countries.get(owner_id)?;
 
+        let mut subject_type_map: FxHashMap<CountryIdx, SaveDiplomacySubjectType> =
+            FxHashMap::default();
+        let mut overlord_subject_type: Option<DiplomacySubjectType> = None;
+        for dep in self.gamestate.diplomacy_manager.dependencies() {
+            let Some(first_idx) = self.gamestate.countries.get(dep.first) else {
+                continue;
+            };
+            let Some(second_idx) = self.gamestate.countries.get(dep.second) else {
+                continue;
+            };
+            if first_idx == anchor_country_idx {
+                subject_type_map.insert(second_idx, dep.subject_type);
+            } else if second_idx == anchor_country_idx {
+                overlord_subject_type = Some(into_profile_subject_type(dep.subject_type));
+            }
+        }
+
         let overlord = self.overlord_of[anchor_country_idx]
             .and_then(|idx| self.entity_ref_from_country_idx(idx));
 
-        let subjects: Vec<EntityRef> = self
+        let subjects: Vec<SubjectRef> = self
             .gamestate
             .countries
             .iter()
             .filter_map(|entry| {
                 if self.overlord_of[entry.idx()] == Some(anchor_country_idx) {
-                    self.entity_ref_from_country_idx(entry.idx())
+                    let entity = self.entity_ref_from_country_idx(entry.idx())?;
+                    let subject_type = subject_type_map
+                        .get(&entry.idx())
+                        .copied()
+                        .map(into_profile_subject_type)
+                        .unwrap_or(DiplomacySubjectType::Other);
+                    Some(SubjectRef {
+                        entity,
+                        subject_type,
+                    })
                 } else {
                     None
                 }
             })
             .collect();
 
-        Some(DiplomacySection { overlord, subjects })
+        Some(DiplomacySection {
+            overlord,
+            overlord_subject_type,
+            subjects,
+        })
     }
 
     fn market_member_countries(&self, locations: &[LocationIdx]) -> Vec<MarketMemberCountry> {
@@ -1048,22 +1078,68 @@ impl<'bump> Eu5Workspace<'bump> {
         let owner_id = loc.owner.real_id()?.country_id();
         let anchor_country_idx = self.gamestate.countries.get(owner_id)?;
 
+        let mut subject_type_map: FxHashMap<CountryIdx, SaveDiplomacySubjectType> =
+            FxHashMap::default();
+        let mut overlord_subject_type: Option<DiplomacySubjectType> = None;
+        for dep in self.gamestate.diplomacy_manager.dependencies() {
+            let Some(first_idx) = self.gamestate.countries.get(dep.first) else {
+                continue;
+            };
+            let Some(second_idx) = self.gamestate.countries.get(dep.second) else {
+                continue;
+            };
+            if first_idx == anchor_country_idx {
+                subject_type_map.insert(second_idx, dep.subject_type);
+            } else if second_idx == anchor_country_idx {
+                overlord_subject_type = Some(into_profile_subject_type(dep.subject_type));
+            }
+        }
+
         let overlord = self.overlord_of[anchor_country_idx]
             .and_then(|idx| self.entity_ref_from_country_idx(idx));
 
-        let subjects: Vec<EntityRef> = self
+        let subjects: Vec<SubjectRef> = self
             .gamestate
             .countries
             .iter()
             .filter_map(|entry| {
                 if self.overlord_of[entry.idx()] == Some(anchor_country_idx) {
-                    self.entity_ref_from_country_idx(entry.idx())
+                    let entity = self.entity_ref_from_country_idx(entry.idx())?;
+                    let subject_type = subject_type_map
+                        .get(&entry.idx())
+                        .copied()
+                        .map(into_profile_subject_type)
+                        .unwrap_or(DiplomacySubjectType::Other);
+                    Some(SubjectRef {
+                        entity,
+                        subject_type,
+                    })
                 } else {
                     None
                 }
             })
             .collect();
 
-        Some(DiplomacySection { overlord, subjects })
+        Some(DiplomacySection {
+            overlord,
+            overlord_subject_type,
+            subjects,
+        })
+    }
+}
+
+fn into_profile_subject_type(t: SaveDiplomacySubjectType) -> DiplomacySubjectType {
+    match t {
+        SaveDiplomacySubjectType::Dominion => DiplomacySubjectType::Dominion,
+        SaveDiplomacySubjectType::Fiefdom => DiplomacySubjectType::Fiefdom,
+        SaveDiplomacySubjectType::Vassal => DiplomacySubjectType::Vassal,
+        SaveDiplomacySubjectType::Tributary => DiplomacySubjectType::Tributary,
+        SaveDiplomacySubjectType::HanseaticMember => DiplomacySubjectType::HanseaticMember,
+        SaveDiplomacySubjectType::Samanta => DiplomacySubjectType::Samanta,
+        SaveDiplomacySubjectType::Appanage => DiplomacySubjectType::Appanage,
+        SaveDiplomacySubjectType::Tusi => DiplomacySubjectType::Tusi,
+        SaveDiplomacySubjectType::March => DiplomacySubjectType::March,
+        SaveDiplomacySubjectType::MahaSamanta => DiplomacySubjectType::MahaSamanta,
+        SaveDiplomacySubjectType::Other => DiplomacySubjectType::Other,
     }
 }

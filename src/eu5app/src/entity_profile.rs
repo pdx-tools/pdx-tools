@@ -253,13 +253,44 @@ pub struct LocationRow {
     pub market: Option<EntityRef>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "PascalCase")]
+pub enum DiplomacySubjectType {
+    Dominion,
+    Fiefdom,
+    Vassal,
+    Tributary,
+    #[serde(rename = "Hanseatic Member")]
+    HanseaticMember,
+    Samanta,
+    Appanage,
+    Tusi,
+    March,
+    #[serde(rename = "Maha Samanta")]
+    MahaSamanta,
+    #[serde(rename = "Subject")]
+    Other,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct SubjectRef {
+    pub entity: EntityRef,
+    pub subject_type: DiplomacySubjectType,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct DiplomacySection {
     pub overlord: Option<EntityRef>,
-    pub subjects: Vec<EntityRef>,
+    pub overlord_subject_type: Option<DiplomacySubjectType>,
+    pub subjects: Vec<SubjectRef>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
