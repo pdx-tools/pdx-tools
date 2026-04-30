@@ -16,6 +16,7 @@ import type {
   CountryProfile,
   MarketProfile,
   LocationProfile,
+  MarketProductionLocationSummary,
   DevelopmentInsightData,
   PossibleTaxInsightData,
   PossibleTaxScope,
@@ -74,6 +75,7 @@ export interface AppTriggers {
   getCountryPopulationProfile(anchorLocationIdx: number): Promise<CountryPopulationProfile | null>;
   getMarketProfile(anchorLocationIdx: number): Promise<MarketProfile | null>;
   getMarketGoodsProfile(anchorLocationIdx: number): Promise<ScopedGoodSummary[]>;
+  getMarketLocationsProfile(anchorLocationIdx: number): Promise<MarketProductionLocationSummary[]>;
   getLocationProfile(locationIdx: number): Promise<LocationProfile | null>;
   getDevelopmentInsight(): Promise<DevelopmentInsightData>;
   getPossibleTaxInsight(): Promise<PossibleTaxInsightData>;
@@ -181,6 +183,8 @@ export class Eu5UIEngine implements AppEngine {
     getMarketProfile: (anchorLocationIdx) => this.gameInstance.getMarketProfile(anchorLocationIdx),
     getMarketGoodsProfile: (anchorLocationIdx) =>
       this.gameInstance.getMarketGoodsProfile(anchorLocationIdx),
+    getMarketLocationsProfile: (anchorLocationIdx) =>
+      this.gameInstance.getMarketLocationsProfile(anchorLocationIdx),
     getLocationProfile: (locationIdx) => this.gameInstance.getLocationProfile(locationIdx),
     getDevelopmentInsight: () => this.gameInstance.getDevelopmentInsight(),
     getPossibleTaxInsight: () => this.gameInstance.getPossibleTaxInsight(),

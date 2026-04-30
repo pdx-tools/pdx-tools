@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { DataTable } from "@/components/DataTable";
 import { Table } from "@/components/Table";
-import type { ProductionLocationSummary } from "@/wasm/wasm_eu5";
+import type { MarketProductionLocationSummary } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import {
   countryProfileEntry,
@@ -12,12 +12,12 @@ import {
 import { usePanToEntity } from "../../usePanToEntity";
 
 const BACK_LABEL = "Markets";
-const columnHelper = createColumnHelper<ProductionLocationSummary>();
+const columnHelper = createColumnHelper<MarketProductionLocationSummary>();
 
 export function MarketProductionLocations({
   locations,
 }: {
-  locations: ProductionLocationSummary[];
+  locations: MarketProductionLocationSummary[];
 }) {
   const nav = usePanelNav();
   const panToEntity = usePanToEntity();
@@ -49,12 +49,6 @@ export function MarketProductionLocations({
         header: ({ column }) => <Table.ColumnHeader column={column} title="Good" />,
         cell: (info) => info.getValue() ?? "—",
       }),
-      columnHelper.accessor("marketCenterName", {
-        sortingFn: (a, b) =>
-          (a.original.marketCenterName ?? "").localeCompare(b.original.marketCenterName ?? ""),
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Market" />,
-        cell: (info) => info.getValue() ?? "—",
-      }),
       columnHelper.accessor("rgoLevel", {
         sortingFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="RGO" />,
@@ -66,24 +60,6 @@ export function MarketProductionLocations({
         header: ({ column }) => <Table.ColumnHeader column={column} title="Access" />,
         meta: { className: "text-right" },
         cell: (info) => `${formatFloat(info.getValue() * 100, 0)}%`,
-      }),
-      columnHelper.accessor("goodPrice", {
-        sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Price" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 2),
-      }),
-      columnHelper.accessor("goodShortageValue", {
-        sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Shortage $" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 0),
-      }),
-      columnHelper.accessor("productionOpportunity", {
-        sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Opportunity" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 0),
       }),
       columnHelper.accessor("owner", {
         id: "owner",
@@ -134,7 +110,7 @@ export function MarketProductionLocations({
       className="w-full"
       columns={columns}
       data={locations}
-      initialSorting={[{ id: "productionOpportunity", desc: true }]}
+      initialSorting={[{ id: "rgoLevel", desc: true }]}
       pagination
     />
   );

@@ -14,6 +14,7 @@ import type {
   CountryProfile,
   MarketProfile,
   LocationProfile,
+  MarketProductionLocationSummary,
   DevelopmentInsightData,
   PossibleTaxInsightData,
   PossibleTaxScope,
@@ -290,6 +291,9 @@ export const createGame = async (
     },
     getMarketGoodsProfile: (anchorLocationIdx: number): ScopedGoodSummary[] => {
       return app.get_market_goods_profile(anchorLocationIdx);
+    },
+    getMarketLocationsProfile: (anchorLocationIdx: number): MarketProductionLocationSummary[] => {
+      return app.get_market_locations_profile(anchorLocationIdx);
     },
     getLocationProfile: (locationIdx: number): LocationProfile | null => {
       return app.get_location_profile(locationIdx) ?? null;
