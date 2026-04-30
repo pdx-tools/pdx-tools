@@ -2,17 +2,15 @@ import { useState } from "react";
 import { Tabs } from "@/components/Tabs";
 import { formatFloat, formatInt } from "@/lib/format";
 import type { MarketMemberCountry } from "@/wasm/wasm_eu5";
+import { MarketProductionLocations } from "../features/charts/MarketProductionLocations";
 import { EntityHeader } from "./EntityHeader";
 import { EntityLink } from "./EntityLink";
 import { MarketOverviewTabContent } from "./tabs/OverviewTab";
 import { MarketGoodsTabContent } from "./tabs/EconomyTab";
-import { LocationsTabContent } from "./tabs/LocationsTab";
-import { useEu5MapMode } from "../store";
 import { useEu5Trigger } from "./useEu5Trigger";
 import { ProfileSkeleton } from "./ProfileSkeleton";
 
 export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number }) {
-  const mode = useEu5MapMode();
   const [tabState, setTabState] = useState({ anchorLocationIdx, value: "overview" });
   const activeTab = tabState.anchorLocationIdx === anchorLocationIdx ? tabState.value : "overview";
   const { data: profile, loading } = useEu5Trigger(
@@ -47,7 +45,9 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
           value="locations"
           className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
         >
-          <LocationsTabContent locations={profile.locations.locations} mode={mode} />
+          {activeTab === "locations" && (
+            <MarketLocationsTabContent anchorLocationIdx={anchorLocationIdx} />
+          )}
         </Tabs.Content>
         <Tabs.Content value="members" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
           <MarketMembers members={profile.memberCountries} />
@@ -55,6 +55,23 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
       </Tabs>
     </div>
   );
+}
+
+function MarketLocationsTabContent({ anchorLocationIdx }: { anchorLocationIdx: number }) {
+  const { data: locations, loading } = useEu5Trigger(
+    (engine) => engine.trigger.getMarketLocationsProfile(anchorLocationIdx),
+    [anchorLocationIdx],
+  );
+
+  if (loading && !locations) {
+    return <div className="h-64 animate-pulse rounded bg-white/5" />;
+  }
+
+  if (!locations || locations.length === 0) {
+    return <p className="py-6 text-center text-sm text-slate-500">No production locations.</p>;
+  }
+
+  return <MarketProductionLocations locations={locations} />;
 }
 
 function MarketMembers({ members }: { members: MarketMemberCountry[] }) {

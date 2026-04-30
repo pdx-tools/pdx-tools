@@ -10,6 +10,7 @@ import type {
   CountryProfile,
   MarketProfile,
   LocationProfile,
+  MarketProductionLocationSummary,
   DevelopmentInsightData,
   PossibleTaxInsightData,
   PossibleTaxScope,
@@ -325,6 +326,11 @@ export function saveWorker(
     },
     getMarketGoodsProfile: async (anchorLocationIdx: number): Promise<ScopedGoodSummary[]> => {
       return await saveEngine.getMarketGoodsProfile(anchorLocationIdx);
+    },
+    getMarketLocationsProfile: async (
+      anchorLocationIdx: number,
+    ): Promise<MarketProductionLocationSummary[]> => {
+      return await saveEngine.getMarketLocationsProfile(anchorLocationIdx);
     },
     getLocationProfile: async (locationIdx: number): Promise<LocationProfile | null> => {
       return await saveEngine.getLocationProfile(locationIdx);

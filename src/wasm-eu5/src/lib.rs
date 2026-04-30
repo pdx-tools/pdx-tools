@@ -10,8 +10,9 @@ use eu5app::game_data::OptimizedGameBundle;
 use eu5app::selection_views::HoverDisplayData;
 use eu5app::selection_views::{
     BuildingLevelsInsightData, ControlInsightData, DevelopmentInsightData, MarketInsightData,
-    PopulationInsightData, PossibleTaxInsightData, PossibleTaxScope, ReligionInsightData,
-    RgoInsightData, ScopedGoodSummary, StateEfficacyInsightData, TaxGapInsightData, TaxGapScope,
+    MarketProductionLocationSummary, PopulationInsightData, PossibleTaxInsightData,
+    PossibleTaxScope, ReligionInsightData, RgoInsightData, ScopedGoodSummary,
+    StateEfficacyInsightData, TaxGapInsightData, TaxGapScope,
 };
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
@@ -952,6 +953,16 @@ impl Eu5App {
     pub fn get_market_goods_profile(&self, anchor_location_idx: u32) -> Vec<ScopedGoodSummary> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
         self.app().market_goods_profile(idx)
+    }
+
+    /// Production-opportunity locations for a specific market entity's full territory.
+    #[wasm_bindgen]
+    pub fn get_market_locations_profile(
+        &self,
+        anchor_location_idx: u32,
+    ) -> Vec<MarketProductionLocationSummary> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app().market_locations_profile(idx)
     }
 
     /// Locations section for a specific entity's full territory.

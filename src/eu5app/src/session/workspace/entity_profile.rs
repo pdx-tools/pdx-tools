@@ -95,11 +95,9 @@ impl<'bump> Eu5Workspace<'bump> {
         let header = self.market_header(anchor_idx, self.headline_for_locations(&locations))?;
         let overview = self.market_overview(anchor_idx, &locations)?;
         let member_countries = self.market_member_countries(&locations);
-        let locations = self.build_locations_section(&locations)?;
         Some(MarketProfile {
             header,
             overview,
-            locations,
             member_countries,
         })
     }
@@ -743,6 +741,50 @@ impl<'bump> Eu5Workspace<'bump> {
                 .then_with(|| a.name.cmp(&b.name))
         });
         goods
+    }
+
+    pub fn market_locations_profile(
+        &self,
+        anchor: LocationIdx,
+    ) -> Vec<MarketProductionLocationSummary> {
+        let loc = self.gamestate.locations.index(anchor).location();
+        let Some(market_id) = loc.market else {
+            return Vec::new();
+        };
+
+        let mut production_rows = Vec::new();
+        for entry in self.gamestate.locations.iter() {
+            let idx = entry.idx();
+            let loc = entry.location();
+            if loc.owner.is_dummy() || loc.market != Some(market_id) {
+                continue;
+            }
+
+            let Some(raw_material) = loc.raw_material else {
+                continue;
+            };
+            let Some(owner) = self.owner_ref_for_location(loc) else {
+                continue;
+            };
+
+            production_rows.push(MarketProductionLocationSummary {
+                location_idx: idx.value(),
+                name: self.location_name(idx).to_string(),
+                owner,
+                raw_material: Some(raw_material.to_string()),
+                rgo_level: loc.rgo_level,
+                market_access: loc.market_access,
+                development: loc.development,
+                population: self.gamestate.location_population(loc) as u32,
+            });
+        }
+
+        production_rows.sort_by(|a, b| {
+            b.rgo_level
+                .total_cmp(&a.rgo_level)
+                .then_with(|| a.name.cmp(&b.name))
+        });
+        production_rows
     }
 
     /// Returns location rows for all selected locations, sorted by location index.

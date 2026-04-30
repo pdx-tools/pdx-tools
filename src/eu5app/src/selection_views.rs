@@ -336,6 +336,21 @@ pub struct ProductionLocationSummary {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
+pub struct MarketProductionLocationSummary {
+    pub location_idx: u32,
+    pub name: String,
+    pub owner: EntityRef,
+    pub raw_material: Option<String>,
+    pub rgo_level: f64,
+    pub market_access: f64,
+    pub development: f64,
+    pub population: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
 pub struct GoodMarketBalanceCell {
     pub good: String,
     pub market_anchor_location_idx: u32,
