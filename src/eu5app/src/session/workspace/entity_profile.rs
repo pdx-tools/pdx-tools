@@ -335,6 +335,20 @@ impl<'bump> Eu5Workspace<'bump> {
         ) = self.overview_totals(locations)?;
         let top_economic_indicators =
             self.market_overview_economic_indicators(anchor, total_possible_tax)?;
+        let location_market_access = locations
+            .iter()
+            .map(|&idx| self.gamestate.locations.index(idx).location().market_access)
+            .collect();
+        let location_market_attraction = locations
+            .iter()
+            .map(|&idx| {
+                self.gamestate
+                    .locations
+                    .index(idx)
+                    .location()
+                    .market_attraction
+            })
+            .collect();
 
         Some(MarketOverviewSection {
             avg_control,
@@ -342,6 +356,8 @@ impl<'bump> Eu5Workspace<'bump> {
             total_rgo_level,
             total_building_levels,
             top_economic_indicators,
+            location_market_access,
+            location_market_attraction,
         })
     }
 

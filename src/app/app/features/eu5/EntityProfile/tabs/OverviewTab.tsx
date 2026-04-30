@@ -39,9 +39,30 @@ export function CountryOverviewTabContent({
 }
 
 export function MarketOverviewTabContent({ data }: { data: MarketOverviewSection }) {
+  const marketAccessDistribution =
+    data.locationMarketAccess.length >= 5
+      ? bucketLocations(
+          "Market Access (%)",
+          data.locationMarketAccess.map((value) => value * 100),
+        )
+      : null;
+  const marketAttractionDistribution =
+    data.locationMarketAttraction.length >= 5
+      ? bucketLocations(
+          "Market Attraction (%)",
+          data.locationMarketAttraction.map((value) => value * 100),
+        )
+      : null;
+
   return (
     <div className="flex flex-col gap-4">
       <OverviewStats overview={data} />
+      {marketAccessDistribution && (
+        <LocationDistributionChart distribution={marketAccessDistribution} />
+      )}
+      {marketAttractionDistribution && (
+        <LocationDistributionChart distribution={marketAttractionDistribution} />
+      )}
       <EconomicIndicatorGrid indicators={data.topEconomicIndicators} />
     </div>
   );
