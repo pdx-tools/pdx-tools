@@ -278,7 +278,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
   );
 }
 
-function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
+export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
   const isDark = isDarkMode();
 
   const row = useMemo(
@@ -377,7 +377,11 @@ function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
   return <EChart option={option} style={{ height: "86px", width: "100%" }} />;
 }
 
-function PopulationConcentrationCurve({ points }: { points: PopulationConcentrationPoint[] }) {
+export function PopulationConcentrationCurve({
+  points,
+}: {
+  points: PopulationConcentrationPoint[];
+}) {
   const isDark = isDarkMode();
 
   const option = useMemo((): EChartsOption => {
@@ -554,7 +558,7 @@ function popTypeLabel(id: number): string {
   return POP_TYPE_LABELS[id] ?? `Type ${id}`;
 }
 
-function PopulationTypeProfile({
+export function PopulationTypeProfile({
   rows,
   isEmpty,
 }: {

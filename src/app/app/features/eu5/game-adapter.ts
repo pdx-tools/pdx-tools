@@ -6,6 +6,7 @@ import type {
   HoverDisplayData,
   MapMode,
   SelectionSummaryData,
+  CountryPopulationProfile,
   CountryProfile,
   MarketProfile,
   LocationProfile,
@@ -312,6 +313,11 @@ export function saveWorker(
 
     getCountryProfile: async (anchorLocationIdx: number): Promise<CountryProfile | null> => {
       return await saveEngine.getCountryProfile(anchorLocationIdx);
+    },
+    getCountryPopulationProfile: async (
+      anchorLocationIdx: number,
+    ): Promise<CountryPopulationProfile | null> => {
+      return await saveEngine.getCountryPopulationProfile(anchorLocationIdx);
     },
     getMarketProfile: async (anchorLocationIdx: number): Promise<MarketProfile | null> => {
       return await saveEngine.getMarketProfile(anchorLocationIdx);

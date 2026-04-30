@@ -12,6 +12,7 @@ import type { Eu5SaveInput } from "./store/types";
 import type {
   MapMode,
   StateEfficacyInsightData,
+  CountryPopulationProfile,
   CountryProfile,
   MarketProfile,
   LocationProfile,
@@ -69,6 +70,7 @@ export interface AppTriggers {
   melt(): Promise<Uint8Array<ArrayBuffer>>;
   getStateEfficacy(): Promise<StateEfficacyInsightData>;
   getCountryProfile(anchorLocationIdx: number): Promise<CountryProfile | null>;
+  getCountryPopulationProfile(anchorLocationIdx: number): Promise<CountryPopulationProfile | null>;
   getMarketProfile(anchorLocationIdx: number): Promise<MarketProfile | null>;
   getLocationProfile(locationIdx: number): Promise<LocationProfile | null>;
   getDevelopmentInsight(): Promise<DevelopmentInsightData>;
@@ -172,6 +174,8 @@ export class Eu5UIEngine implements AppEngine {
     getStateEfficacy: () => this.handleGetStateEfficacy(),
     getCountryProfile: (anchorLocationIdx) =>
       this.gameInstance.getCountryProfile(anchorLocationIdx),
+    getCountryPopulationProfile: (anchorLocationIdx) =>
+      this.gameInstance.getCountryPopulationProfile(anchorLocationIdx),
     getMarketProfile: (anchorLocationIdx) => this.gameInstance.getMarketProfile(anchorLocationIdx),
     getLocationProfile: (locationIdx) => this.gameInstance.getLocationProfile(locationIdx),
     getDevelopmentInsight: () => this.gameInstance.getDevelopmentInsight(),

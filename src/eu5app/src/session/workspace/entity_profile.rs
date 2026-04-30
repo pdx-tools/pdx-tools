@@ -106,6 +106,124 @@ impl<'bump> Eu5Workspace<'bump> {
         })
     }
 
+    pub fn country_population_profile_for(
+        &self,
+        anchor_idx: LocationIdx,
+    ) -> Option<CountryPopulationProfile> {
+        #[derive(Default)]
+        struct RankAgg {
+            population: u32,
+            location_count: u32,
+        }
+
+        #[derive(Default)]
+        struct TypeAgg {
+            population: f64,
+            satisfaction_num: f64,
+            literacy_num: f64,
+            pop_count: u32,
+        }
+
+        fn pop_type_id(kind: PopulationType) -> Option<usize> {
+            match kind {
+                PopulationType::Peasants => Some(0),
+                PopulationType::Laborers => Some(1),
+                PopulationType::Burghers => Some(2),
+                PopulationType::Nobles => Some(3),
+                PopulationType::Clergy => Some(4),
+                PopulationType::Soldiers => Some(5),
+                PopulationType::Slaves => Some(6),
+                PopulationType::Tribesmen => Some(7),
+                PopulationType::Other => None,
+            }
+        }
+
+        let locations = self.collect_entity_locations(anchor_idx, EntityKind::Country)?;
+        let mut rank_totals = [
+            RankAgg::default(),
+            RankAgg::default(),
+            RankAgg::default(),
+            RankAgg::default(),
+        ];
+        let mut type_aggs: [TypeAgg; 8] = Default::default();
+
+        for idx in locations {
+            let loc = self.gamestate.locations.index(idx).location();
+            let population = self.gamestate.location_population(loc) as u32;
+            let rank_idx = match &loc.rank {
+                LocationRank::RuralSettlement => Some(0),
+                LocationRank::Town => Some(1),
+                LocationRank::City => Some(2),
+                LocationRank::Metropolis => Some(3),
+                LocationRank::Other => None,
+            };
+            if let Some(rank_idx) = rank_idx {
+                rank_totals[rank_idx].population += population;
+                rank_totals[rank_idx].location_count += 1;
+            }
+
+            for &pop_id in loc.population.pops {
+                let Some(pop) = self.gamestate.population.database.lookup(pop_id) else {
+                    continue;
+                };
+                let Some(type_idx) = pop_type_id(pop.kind) else {
+                    continue;
+                };
+                let agg = &mut type_aggs[type_idx];
+                agg.population += pop.size;
+                agg.satisfaction_num += pop.satisfaction * pop.size;
+                agg.literacy_num += pop.literacy * pop.size;
+                agg.pop_count += 1;
+            }
+        }
+
+        let total_population: f64 = type_aggs.iter().map(|a| a.population).sum();
+        let type_profile = (0u8..8)
+            .map(|i| {
+                let agg = &type_aggs[i as usize];
+                let share = if total_population > 0.0 {
+                    agg.population / total_population
+                } else {
+                    0.0
+                };
+                PopulationTypeProfileRow {
+                    population_type: i,
+                    population: agg.population,
+                    share,
+                    baseline_population: agg.population,
+                    baseline_share: share,
+                    share_delta: 0.0,
+                    avg_satisfaction: if agg.population > 0.0 {
+                        agg.satisfaction_num / agg.population
+                    } else {
+                        0.0
+                    },
+                    avg_literacy: if agg.population > 0.0 {
+                        agg.literacy_num / agg.population
+                    } else {
+                        0.0
+                    },
+                    pop_count: agg.pop_count,
+                }
+            })
+            .collect();
+
+        let rank_totals = rank_totals
+            .into_iter()
+            .enumerate()
+            .map(|(idx, rank)| PopulationRankSegment {
+                rank: idx as u8,
+                population: rank.population,
+                location_count: rank.location_count,
+            })
+            .collect();
+
+        Some(CountryPopulationProfile {
+            type_profile,
+            rank_totals,
+        })
+    }
+
     /// Returns header data for the current single-entity scope.
     /// Returns None when the filter is empty or spans multiple entities.
     pub fn entity_header(&self) -> Option<EntityHeader> {
