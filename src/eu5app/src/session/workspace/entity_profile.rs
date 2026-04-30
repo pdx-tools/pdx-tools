@@ -77,13 +77,15 @@ impl<'bump> Eu5Workspace<'bump> {
         let header = self.country_header(anchor_idx, self.headline_for_locations(&locations))?;
         let overview = self.country_overview(anchor_idx, &locations)?;
         let economy = self.country_economy(anchor_idx, &locations)?;
-        let locations = self.build_locations_section(&locations)?;
+        let religion = self.country_religion(&locations);
+        let locations_section = self.build_locations_section(&locations)?;
         let diplomacy = self.country_diplomacy(anchor_idx)?;
         Some(CountryProfile {
             header,
             overview,
             economy,
-            locations,
+            religion,
+            locations: locations_section,
             diplomacy,
         })
     }
@@ -251,53 +253,6 @@ impl<'bump> Eu5Workspace<'bump> {
             total_building_levels,
             total_possible_tax,
         ) = self.overview_totals(locations)?;
-        let mut religion_counts: HashMap<String, (u32, String)> = HashMap::new();
-        for &idx in locations {
-            let loc = self.gamestate.locations.index(idx).location();
-            if let Some(rid) = loc.religion
-                && let Some(rel) = self.gamestate.religion_manager.lookup(rid)
-            {
-                let color_hex = format!(
-                    "#{:02x}{:02x}{:02x}",
-                    rel.color.0[0], rel.color.0[1], rel.color.0[2]
-                );
-                religion_counts
-                    .entry(rel.name.to_str().to_string())
-                    .and_modify(|(count, _)| *count += 1)
-                    .or_insert((1, color_hex));
-            }
-        }
-
-        let mut religion_rows: Vec<_> = religion_counts
-            .into_iter()
-            .map(|(religion, (location_count, color_hex))| ReligionShare {
-                religion,
-                location_count,
-                color_hex,
-            })
-            .collect();
-        religion_rows.sort_by(|a, b| {
-            b.location_count
-                .cmp(&a.location_count)
-                .then_with(|| a.religion.cmp(&b.religion))
-        });
-        let religion_breakdown = if religion_rows.len() > 3 {
-            let other_count = religion_rows
-                .iter()
-                .skip(3)
-                .map(|row| row.location_count)
-                .sum();
-            religion_rows.truncate(3);
-            religion_rows.push(ReligionShare {
-                religion: "Other".to_string(),
-                location_count: other_count,
-                color_hex: "#64748b".to_string(),
-            });
-            religion_rows
-        } else {
-            religion_rows
-        };
-
         let top_economic_indicators = self.country_overview_economic_indicators(
             anchor,
             total_building_levels,
@@ -311,10 +266,59 @@ impl<'bump> Eu5Workspace<'bump> {
             avg_development,
             total_rgo_level,
             total_building_levels,
-            religion_breakdown,
             top_economic_indicators,
             diplomatic_summary,
         })
+    }
+
+    fn country_religion(&self, locations: &[LocationIdx]) -> CountryReligionSection {
+        #[derive(Default)]
+        struct ReligionAgg {
+            location_count: u32,
+            population: u32,
+        }
+        let mut by_religion: HashMap<eu5save::models::ReligionId, ReligionAgg> = HashMap::new();
+
+        for &idx in locations {
+            let loc = self.gamestate.locations.index(idx).location();
+
+            if let Some(rid) = loc.religion {
+                by_religion.entry(rid).or_default().location_count += 1;
+            }
+
+            for &pop_id in loc.population.pops {
+                if let Some(pop) = self.gamestate.population.database.lookup(pop_id) {
+                    let pop_size = (pop.size * 1000.0).floor() as u32;
+                    by_religion.entry(pop.religion).or_default().population += pop_size;
+                }
+            }
+        }
+
+        let mut rows: Vec<ReligionShare> = by_religion
+            .into_iter()
+            .filter_map(|(rid, agg)| {
+                let rel = self.gamestate.religion_manager.lookup(rid)?;
+                let color_hex = format!(
+                    "#{:02x}{:02x}{:02x}",
+                    rel.color.0[0], rel.color.0[1], rel.color.0[2]
+                );
+                Some(ReligionShare {
+                    religion: rel.name.to_str().to_string(),
+                    location_count: agg.location_count,
+                    population: agg.population,
+                    color_hex,
+                })
+            })
+            .collect();
+        rows.sort_by(|a, b| {
+            b.location_count
+                .cmp(&a.location_count)
+                .then_with(|| a.religion.cmp(&b.religion))
+        });
+
+        CountryReligionSection {
+            religion_breakdown: rows,
+        }
     }
 
     fn market_overview(

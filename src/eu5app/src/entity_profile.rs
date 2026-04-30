@@ -52,6 +52,7 @@ pub struct CountryProfile {
     pub header: EntityHeader,
     pub overview: CountryOverviewSection,
     pub economy: CountryEconomySection,
+    pub religion: CountryReligionSection,
     pub locations: LocationsSection,
     pub diplomacy: DiplomacySection,
 }
@@ -87,7 +88,6 @@ pub struct CountryOverviewSection {
     pub avg_development: f64,
     pub total_rgo_level: f64,
     pub total_building_levels: f64,
-    pub religion_breakdown: Vec<ReligionShare>,
     pub top_economic_indicators: Vec<EconomicIndicator>,
     pub diplomatic_summary: DiplomaticSummary,
 }
@@ -111,7 +111,16 @@ pub struct MarketOverviewSection {
 pub struct ReligionShare {
     pub religion: String,
     pub location_count: u32,
+    pub population: u32,
     pub color_hex: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct CountryReligionSection {
+    pub religion_breakdown: Vec<ReligionShare>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
