@@ -35,7 +35,10 @@ export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: numbe
           />
         </Tabs.Content>
         <Tabs.Content value="economy" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
-          <CountryEconomyTabContent data={profile.economy} />
+          <CountryEconomyTabContent
+            data={profile.economy}
+            locations={profile.locations.locations}
+          />
         </Tabs.Content>
         <Tabs.Content
           value="locations"
