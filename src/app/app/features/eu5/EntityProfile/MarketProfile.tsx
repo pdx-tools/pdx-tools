@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Tabs } from "@/components/Tabs";
 import { formatFloat, formatInt } from "@/lib/format";
 import type { MarketMemberCountry } from "@/wasm/wasm_eu5";
@@ -9,10 +8,11 @@ import { MarketOverviewTabContent } from "./tabs/OverviewTab";
 import { MarketGoodsTabContent } from "./tabs/EconomyTab";
 import { useEu5Trigger } from "./useEu5Trigger";
 import { ProfileSkeleton } from "./ProfileSkeleton";
+import { useProfileTab } from "./PanelNavContext";
 
 export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number }) {
-  const [tabState, setTabState] = useState({ anchorLocationIdx, value: "overview" });
-  const activeTab = tabState.anchorLocationIdx === anchorLocationIdx ? tabState.value : "overview";
+  const profileTab = useProfileTab("market");
+  const activeTab = profileTab.value;
   const { data: profile, loading } = useEu5Trigger(
     (engine) => engine.trigger.getMarketProfile(anchorLocationIdx),
     [anchorLocationIdx],
@@ -26,7 +26,7 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
       <EntityHeader header={profile.header} />
       <Tabs
         value={activeTab}
-        onValueChange={(value) => setTabState({ anchorLocationIdx, value })}
+        onValueChange={profileTab.onValueChange}
         className="flex min-h-0 flex-1 flex-col"
       >
         <Tabs.List className="shrink-0 border-b border-white/10 px-2">
