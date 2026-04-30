@@ -113,6 +113,8 @@ pub struct MarketOverviewSection {
     pub total_rgo_level: f64,
     pub total_building_levels: f64,
     pub top_economic_indicators: Vec<EconomicIndicator>,
+    pub location_market_access: Vec<f64>,
+    pub location_market_attraction: Vec<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
