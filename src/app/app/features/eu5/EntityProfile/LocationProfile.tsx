@@ -1,6 +1,7 @@
 import { Tabs } from "@/components/Tabs";
 import { LocationOverviewTab } from "./tabs/LocationOverviewTab";
 import { LocationEconomyTab } from "./tabs/LocationEconomyTab";
+import { LocationPopulationTab } from "./tabs/LocationPopulationTab";
 import { LocationHeaderView } from "./EntityHeader";
 import { useEu5Engine } from "../store";
 import { usePanelNav } from "./PanelNavContext";
@@ -51,13 +52,23 @@ export function LocationProfile({ locationIdx, showBreadcrumb = false, scopeName
       <Tabs defaultValue="overview" className="flex min-h-0 flex-1 flex-col">
         <Tabs.List className="shrink-0 border-b border-white/10 px-2">
           <Tabs.Trigger value="overview">Overview</Tabs.Trigger>
-          <Tabs.Trigger value="economy">Economy</Tabs.Trigger>
+          <Tabs.Trigger value="buildings">Buildings</Tabs.Trigger>
+          <Tabs.Trigger value="population">Population</Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="overview" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
           <LocationOverviewTab profile={profile} />
         </Tabs.Content>
-        <Tabs.Content value="economy" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
+        <Tabs.Content
+          value="buildings"
+          className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
+        >
           <LocationEconomyTab profile={profile} />
+        </Tabs.Content>
+        <Tabs.Content
+          value="population"
+          className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
+        >
+          <LocationPopulationTab profile={profile} />
         </Tabs.Content>
       </Tabs>
     </div>

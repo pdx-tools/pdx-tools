@@ -12,7 +12,7 @@ pub struct PopulationDirectory<'bump> {
     pub database: PopDatabase<'bump>,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy, Deserialize, ArenaDeserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Deserialize, ArenaDeserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PopulationType {
     Burghers,

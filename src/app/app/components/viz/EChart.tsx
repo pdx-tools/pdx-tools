@@ -7,6 +7,7 @@ import {
   ScatterChart,
   TreemapChart,
   HeatmapChart,
+  SankeyChart,
 } from "echarts/charts";
 import {
   TooltipComponent,
@@ -27,6 +28,7 @@ import type {
   ScatterSeriesOption,
   TreemapSeriesOption,
   HeatmapSeriesOption,
+  SankeySeriesOption,
 } from "echarts/charts";
 import type {
   TooltipComponentOption,
@@ -47,6 +49,7 @@ echarts.use([
   ScatterChart,
   TreemapChart,
   HeatmapChart,
+  SankeyChart,
   TooltipComponent,
   DataZoomComponent,
   DatasetComponent,
@@ -66,6 +69,7 @@ export type EChartsOption = ComposeOption<
   | ScatterSeriesOption
   | TreemapSeriesOption
   | HeatmapSeriesOption
+  | SankeySeriesOption
   | TooltipComponentOption
   | GridComponentOption
   | LegendComponentOption
