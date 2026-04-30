@@ -1,10 +1,11 @@
 use crate::entity_profile::{
     ActiveProfileIdentity, BuildingEntry, CountryEconomySection, CountryOverviewSection,
     CountryPopulationProfile, CountryProfile, CountryReligionSection, DiplomacySection,
-    DiplomaticSummary, EconomicIndicator, EntityHeader, EntityKind, EntityRef, HeadlineStats,
-    IndicatorFormat, LocationHeader, LocationProfile, LocationRow, LocationStats, LocationsSection,
-    MarketGoodEntry, MarketGoodsSection, MarketMemberCountry, MarketMembership,
-    MarketOverviewSection, MarketProfile, RankedLocation, ReligionShare,
+    DiplomacySubjectType, DiplomaticSummary, EconomicIndicator, EntityHeader, EntityKind,
+    EntityRef, HeadlineStats, IndicatorFormat, LocationHeader, LocationProfile, LocationRow,
+    LocationStats, LocationsSection, MarketGoodEntry, MarketGoodsSection, MarketMemberCountry,
+    MarketMembership, MarketOverviewSection, MarketProfile, RankedLocation, ReligionShare,
+    SubjectRef,
 };
 use crate::game_data::GameData;
 use crate::selection::{
@@ -29,7 +30,8 @@ use crate::selection_views::{
 use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap, FxHashSet};
 use eu5save::models::{
-    CountryId, CountryIdx, CountryIndexedVecOwned, Gamestate, LocationIdx, LocationIndexedVec,
+    CountryId, CountryIdx, CountryIndexedVecOwned,
+    DiplomacySubjectType as SaveDiplomacySubjectType, Gamestate, LocationIdx, LocationIndexedVec,
     LocationRank, PopulationType, RawMaterialsName,
 };
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
