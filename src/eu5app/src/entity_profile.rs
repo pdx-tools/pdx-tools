@@ -50,8 +50,8 @@ pub struct EntityHeader {
 #[serde(rename_all = "camelCase")]
 pub struct CountryProfile {
     pub header: EntityHeader,
-    pub overview: OverviewSection,
-    pub economy: EconomySection,
+    pub overview: CountryOverviewSection,
+    pub economy: CountryEconomySection,
     pub locations: LocationsSection,
     pub diplomacy: DiplomacySection,
 }
@@ -62,8 +62,8 @@ pub struct CountryProfile {
 #[serde(rename_all = "camelCase")]
 pub struct MarketProfile {
     pub header: EntityHeader,
-    pub overview: OverviewSection,
-    pub economy: EconomySection,
+    pub overview: MarketOverviewSection,
+    pub economy: MarketGoodsSection,
     pub locations: LocationsSection,
     pub member_countries: Vec<MarketMemberCountry>,
 }
@@ -82,15 +82,26 @@ pub struct HeadlineStats {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
-pub struct OverviewSection {
+pub struct CountryOverviewSection {
     pub avg_control: f64,
     pub avg_development: f64,
     pub total_rgo_level: f64,
     pub total_building_levels: f64,
     pub religion_breakdown: Vec<ReligionShare>,
     pub top_economic_indicators: Vec<EconomicIndicator>,
-    pub top_locations_by_development: Vec<RankedLocation>,
-    pub diplomatic_summary: Option<DiplomaticSummary>,
+    pub diplomatic_summary: DiplomaticSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct MarketOverviewSection {
+    pub avg_control: f64,
+    pub avg_development: f64,
+    pub total_rgo_level: f64,
+    pub total_building_levels: f64,
+    pub top_economic_indicators: Vec<EconomicIndicator>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,14 +157,23 @@ pub struct DiplomaticSummary {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
-pub struct EconomySection {
-    pub current_tax_base: Option<f64>,
-    pub monthly_trade_value: Option<f64>,
-    pub gold: Option<f64>,
+pub struct CountryEconomySection {
+    pub current_tax_base: f64,
+    pub monthly_trade_value: f64,
+    pub gold: f64,
     pub total_building_levels: f64,
     pub total_possible_tax: f64,
     pub market_membership: Vec<MarketMembership>,
-    pub market_value: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct MarketGoodsSection {
+    pub market_value: f64,
+    pub total_building_levels: f64,
+    pub total_possible_tax: f64,
     pub top_goods: Vec<MarketGoodEntry>,
 }
 

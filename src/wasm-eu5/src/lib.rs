@@ -1,8 +1,9 @@
 use eu5app::Eu5SaveMetadata;
 use eu5app::TableCell as Eu5TableCell;
 use eu5app::entity_profile::{
-    ActiveProfileIdentity, CountryProfile, DiplomacySection, EconomySection, EntityHeader,
-    LocationProfile, LocationsSection, MarketProfile, OverviewSection,
+    ActiveProfileIdentity, CountryEconomySection, CountryOverviewSection, CountryProfile,
+    DiplomacySection, EntityHeader, LocationProfile, LocationsSection, MarketGoodsSection,
+    MarketOverviewSection, MarketProfile,
 };
 use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
@@ -767,16 +768,28 @@ impl Eu5App {
         self.app().market_profile_for(idx)
     }
 
-    /// Overview section stats for the current single-entity scope.
+    /// Overview section stats for the current country scope.
     #[wasm_bindgen]
-    pub fn get_overview_section(&self) -> Option<OverviewSection> {
-        self.app().overview_section()
+    pub fn get_country_overview_section(&self) -> Option<CountryOverviewSection> {
+        self.app().country_overview_section()
     }
 
-    /// Economy section for the current single-entity scope.
+    /// Overview section stats for the current market scope.
     #[wasm_bindgen]
-    pub fn get_economy_section(&self) -> Option<EconomySection> {
-        self.app().economy_section()
+    pub fn get_market_overview_section(&self) -> Option<MarketOverviewSection> {
+        self.app().market_overview_section()
+    }
+
+    /// Economy section for the current country scope.
+    #[wasm_bindgen]
+    pub fn get_country_economy_section(&self) -> Option<CountryEconomySection> {
+        self.app().country_economy_section()
+    }
+
+    /// Goods section for the current market scope.
+    #[wasm_bindgen]
+    pub fn get_market_goods_section(&self) -> Option<MarketGoodsSection> {
+        self.app().market_goods_section()
     }
 
     /// Locations section for the current single-entity scope.
@@ -884,18 +897,44 @@ impl Eu5App {
         self.app().entity_header_for(idx)
     }
 
-    /// Overview section for a specific entity's full territory.
+    /// Overview section for a specific country entity's full territory.
     #[wasm_bindgen]
-    pub fn get_overview_section_for(&self, anchor_location_idx: u32) -> Option<OverviewSection> {
+    pub fn get_country_overview_section_for(
+        &self,
+        anchor_location_idx: u32,
+    ) -> Option<CountryOverviewSection> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app().overview_section_for(idx)
+        self.app().country_overview_section_for(idx)
     }
 
-    /// Economy section for a specific entity's full territory.
+    /// Overview section for a specific market entity's full territory.
     #[wasm_bindgen]
-    pub fn get_economy_section_for(&self, anchor_location_idx: u32) -> Option<EconomySection> {
+    pub fn get_market_overview_section_for(
+        &self,
+        anchor_location_idx: u32,
+    ) -> Option<MarketOverviewSection> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app().economy_section_for(idx)
+        self.app().market_overview_section_for(idx)
+    }
+
+    /// Economy section for a specific country entity's full territory.
+    #[wasm_bindgen]
+    pub fn get_country_economy_section_for(
+        &self,
+        anchor_location_idx: u32,
+    ) -> Option<CountryEconomySection> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app().country_economy_section_for(idx)
+    }
+
+    /// Goods section for a specific market entity's full territory.
+    #[wasm_bindgen]
+    pub fn get_market_goods_section_for(
+        &self,
+        anchor_location_idx: u32,
+    ) -> Option<MarketGoodsSection> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app().market_goods_section_for(idx)
     }
 
     /// Locations section for a specific entity's full territory.
