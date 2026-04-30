@@ -10,6 +10,7 @@ import type {
   GradientPalette,
   StateEfficacyInsightData,
   SelectionSummaryData,
+  CountryPopulationProfile,
   CountryProfile,
   MarketProfile,
   LocationProfile,
@@ -279,6 +280,9 @@ export const createGame = async (
 
     getCountryProfile: (anchorLocationIdx: number): CountryProfile | null => {
       return app.get_country_profile(anchorLocationIdx) ?? null;
+    },
+    getCountryPopulationProfile: (anchorLocationIdx: number): CountryPopulationProfile | null => {
+      return app.get_country_population_profile(anchorLocationIdx) ?? null;
     },
     getMarketProfile: (anchorLocationIdx: number): MarketProfile | null => {
       return app.get_market_profile(anchorLocationIdx) ?? null;

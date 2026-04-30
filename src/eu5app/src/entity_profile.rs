@@ -3,6 +3,8 @@
 /// Aggregation logic lives on Eu5Workspace; these are plain data containers.
 use serde::{Deserialize, Serialize};
 
+use crate::selection_views::{PopulationRankSegment, PopulationTypeProfileRow};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
@@ -55,6 +57,15 @@ pub struct CountryProfile {
     pub religion: CountryReligionSection,
     pub locations: LocationsSection,
     pub diplomacy: DiplomacySection,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct CountryPopulationProfile {
+    pub type_profile: Vec<PopulationTypeProfileRow>,
+    pub rank_totals: Vec<PopulationRankSegment>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

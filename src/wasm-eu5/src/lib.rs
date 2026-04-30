@@ -1,9 +1,9 @@
 use eu5app::Eu5SaveMetadata;
 use eu5app::TableCell as Eu5TableCell;
 use eu5app::entity_profile::{
-    ActiveProfileIdentity, CountryEconomySection, CountryOverviewSection, CountryProfile,
-    DiplomacySection, EntityHeader, LocationProfile, LocationsSection, MarketGoodsSection,
-    MarketOverviewSection, MarketProfile,
+    ActiveProfileIdentity, CountryEconomySection, CountryOverviewSection, CountryPopulationProfile,
+    CountryProfile, DiplomacySection, EntityHeader, LocationProfile, LocationsSection,
+    MarketGoodsSection, MarketOverviewSection, MarketProfile,
 };
 use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
@@ -759,6 +759,16 @@ impl Eu5App {
     pub fn get_country_profile(&self, anchor_location_idx: u32) -> Option<CountryProfile> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
         self.app().country_profile_for(idx)
+    }
+
+    /// Population profile resolved from `anchor_location_idx`, independent of current map mode.
+    #[wasm_bindgen]
+    pub fn get_country_population_profile(
+        &self,
+        anchor_location_idx: u32,
+    ) -> Option<CountryPopulationProfile> {
+        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        self.app().country_population_profile_for(idx)
     }
 
     /// Full market profile resolved from `anchor_location_idx`, independent of current map mode.
