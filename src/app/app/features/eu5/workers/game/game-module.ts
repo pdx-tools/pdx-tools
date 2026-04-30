@@ -19,6 +19,7 @@ import type {
   TaxGapInsightData,
   TaxGapScope,
   MarketInsightData,
+  ScopedGoodSummary,
   PopulationInsightData,
   BuildingLevelsInsightData,
   ReligionInsightData,
@@ -282,6 +283,9 @@ export const createGame = async (
     },
     getMarketProfile: (anchorLocationIdx: number): MarketProfile | null => {
       return app.get_market_profile(anchorLocationIdx) ?? null;
+    },
+    getMarketGoodsProfile: (anchorLocationIdx: number): ScopedGoodSummary[] => {
+      return app.get_market_goods_profile(anchorLocationIdx);
     },
     getLocationProfile: (locationIdx: number): LocationProfile | null => {
       return app.get_location_profile(locationIdx) ?? null;

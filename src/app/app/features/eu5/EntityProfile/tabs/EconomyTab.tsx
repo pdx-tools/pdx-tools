@@ -1,11 +1,13 @@
 import { useMemo } from "react";
 import { formatFloat } from "@/lib/format";
-import type { CountryEconomySection, LocationRow, MarketGoodsSection } from "@/wasm/wasm_eu5";
+import type { CountryEconomySection, LocationRow } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
+import { GoodsPressureChart } from "../../features/charts/Markets";
+import { useEu5Trigger } from "../useEu5Trigger";
 
 export function CountryEconomyTabContent({
   data,
@@ -136,32 +138,23 @@ function TaxGapScatter({ locations }: { locations: LocationRow[] }) {
   );
 }
 
-export function MarketGoodsTabContent({ data }: { data: MarketGoodsSection }) {
+export function MarketGoodsTabContent({ anchorLocationIdx }: { anchorLocationIdx: number }) {
+  const { data: goods, loading } = useEu5Trigger(
+    (engine) => engine.trigger.getMarketGoodsProfile(anchorLocationIdx),
+    [anchorLocationIdx],
+  );
+
+  if (loading && !goods) {
+    return <div className="h-64 animate-pulse rounded bg-white/5" />;
+  }
+
+  if (!goods || goods.length === 0) {
+    return <p className="py-6 text-center text-sm text-slate-500">No market goods data.</p>;
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3">
-        <StatRow label="Market Value" value={formatFloat(data.marketValue, 2)} />
-        <StatRow label="Building Levels" value={formatFloat(data.totalBuildingLevels, 1)} />
-        <StatRow label="Possible Tax" value={formatFloat(data.totalPossibleTax, 2)} />
-      </div>
-
-      {data.topGoods.length > 0 && (
-        <div>
-          <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
-            Top goods
-          </p>
-          <div className="flex flex-col gap-1">
-            {data.topGoods.map((g) => (
-              <div key={g.goodName} className="flex items-center justify-between text-xs">
-                <span className="text-slate-300">{g.goodName}</span>
-                <span className="font-mono text-slate-400">
-                  {formatFloat(g.price, 2)} · sup {formatFloat(g.supply, 1)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <GoodsPressureChart goods={goods} />
     </div>
   );
 }

@@ -11,7 +11,6 @@ import { budgetSelect, createBudget, expenseBudget } from "./budget";
 import type { Budget } from "./budget";
 import { Card } from "@/components/Card";
 import { useEu4Meta } from "../../store";
-import { Button } from "@/components/Button";
 import { ToggleGroup } from "@/components/ToggleGroup";
 import { throttle } from "@/lib/throttle";
 import { isDarkMode } from "@/lib/dark";
@@ -493,7 +492,7 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
         <h3 className="text-bold mb-2 text-lg font-semibold">Budget Waterfall</h3>
         <ToggleGroup
           type="single"
-          className="inline-flex"
+          className="inline-flex rounded-md border border-white/10 bg-white/5 p-1"
           value={budgetInterval}
           onValueChange={(value) => {
             if (!value) {
@@ -504,24 +503,14 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
             setBudgetInterval(value as "last-month" | "ytd" | "last-year");
           }}
         >
-          <ToggleGroup.Item value="last-month" asChild>
-            <Button shape="none" className="px-4 py-2">
-              {new Date(ytdYear, ytdMonth - 1).toLocaleString(undefined, {
-                month: "long",
-              })}{" "}
-              {ytdYear}
-            </Button>
+          <ToggleGroup.Item value="last-month">
+            {new Date(ytdYear, ytdMonth - 1).toLocaleString(undefined, {
+              month: "long",
+            })}{" "}
+            {ytdYear}
           </ToggleGroup.Item>
-          <ToggleGroup.Item value="ytd" asChild>
-            <Button shape="none" className="px-4 py-2">
-              {ytdYear} YTD
-            </Button>
-          </ToggleGroup.Item>
-          <ToggleGroup.Item value="last-year" asChild>
-            <Button shape="none" className="px-4 py-2">
-              Year of {ytdYear - 1}
-            </Button>
-          </ToggleGroup.Item>
+          <ToggleGroup.Item value="ytd">{ytdYear} YTD</ToggleGroup.Item>
+          <ToggleGroup.Item value="last-year">Year of {ytdYear - 1}</ToggleGroup.Item>
         </ToggleGroup>
       </div>
 

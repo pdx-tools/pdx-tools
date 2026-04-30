@@ -21,6 +21,7 @@ import type {
   TaxGapInsightData,
   TaxGapScope,
   MarketInsightData,
+  ScopedGoodSummary,
   PopulationInsightData,
   BuildingLevelsInsightData,
   ReligionInsightData,
@@ -70,6 +71,7 @@ export interface AppTriggers {
   getStateEfficacy(): Promise<StateEfficacyInsightData>;
   getCountryProfile(anchorLocationIdx: number): Promise<CountryProfile | null>;
   getMarketProfile(anchorLocationIdx: number): Promise<MarketProfile | null>;
+  getMarketGoodsProfile(anchorLocationIdx: number): Promise<ScopedGoodSummary[]>;
   getLocationProfile(locationIdx: number): Promise<LocationProfile | null>;
   getDevelopmentInsight(): Promise<DevelopmentInsightData>;
   getPossibleTaxInsight(): Promise<PossibleTaxInsightData>;
@@ -173,6 +175,8 @@ export class Eu5UIEngine implements AppEngine {
     getCountryProfile: (anchorLocationIdx) =>
       this.gameInstance.getCountryProfile(anchorLocationIdx),
     getMarketProfile: (anchorLocationIdx) => this.gameInstance.getMarketProfile(anchorLocationIdx),
+    getMarketGoodsProfile: (anchorLocationIdx) =>
+      this.gameInstance.getMarketGoodsProfile(anchorLocationIdx),
     getLocationProfile: (locationIdx) => this.gameInstance.getLocationProfile(locationIdx),
     getDevelopmentInsight: () => this.gameInstance.getDevelopmentInsight(),
     getPossibleTaxInsight: () => this.gameInstance.getPossibleTaxInsight(),

@@ -64,7 +64,6 @@ pub struct CountryProfile {
 pub struct MarketProfile {
     pub header: EntityHeader,
     pub overview: MarketOverviewSection,
-    pub economy: MarketGoodsSection,
     pub locations: LocationsSection,
     pub member_countries: Vec<MarketMemberCountry>,
 }

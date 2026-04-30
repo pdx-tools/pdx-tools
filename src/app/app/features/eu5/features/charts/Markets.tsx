@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { ToggleGroup } from "@/components/ToggleGroup";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { MarketScopeSummary, ScopedGoodSummary, ScopedMarketSummary } from "@/wasm/wasm_eu5";
@@ -101,6 +102,8 @@ type GoodBarDatum = ScopedGoodSummary & {
   surplusBar: number;
 };
 
+type GoodsPressureMetric = "units" | "value";
+
 function goodTooltip(d: ScopedGoodSummary): string {
   return [
     `<strong>${escapeEChartsHtml(d.name)}</strong>`,
@@ -117,28 +120,39 @@ function goodTooltip(d: ScopedGoodSummary): string {
   ].join("<br/>");
 }
 
-function GoodsPressureChart({ goods }: { goods: ScopedGoodSummary[] }) {
+export function GoodsPressureChart({ goods }: { goods: ScopedGoodSummary[] }) {
   const isDark = isDarkMode();
+  const [metric, setMetric] = useState<GoodsPressureMetric>("value");
+  const isValueMetric = metric === "value";
 
   const sorted = useMemo((): GoodBarDatum[] => {
     const top = [...goods]
       .sort((a, b) => {
-        const ai = Math.max(a.shortageValue, a.surplusValue);
-        const bi = Math.max(b.shortageValue, b.surplusValue);
+        const ai = Math.max(
+          isValueMetric ? a.shortageValue : a.shortage,
+          isValueMetric ? a.surplusValue : a.surplus,
+        );
+        const bi = Math.max(
+          isValueMetric ? b.shortageValue : b.shortage,
+          isValueMetric ? b.surplusValue : b.surplus,
+        );
         return bi - ai;
       })
       .slice(0, GOODS_BAR_CAP);
     return top.map((g) => ({
       ...g,
-      shortageBar: g.shortageValue,
-      surplusBar: -g.surplusValue,
+      shortageBar: isValueMetric ? g.shortageValue : g.shortage,
+      surplusBar: -(isValueMetric ? g.surplusValue : g.surplus),
     }));
-  }, [goods]);
+  }, [goods, isValueMetric]);
 
-  const hasImbalance = sorted.some((d) => d.shortageValue > 0 || d.surplusValue > 0);
+  const hasImbalance = sorted.some((d) =>
+    isValueMetric ? d.shortageValue > 0 || d.surplusValue > 0 : d.shortage > 0 || d.surplus > 0,
+  );
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const metricLabel = isValueMetric ? "value" : "units";
 
     return {
       dataset: {
@@ -164,6 +178,10 @@ function GoodsPressureChart({ goods }: { goods: ScopedGoodSummary[] }) {
       },
       xAxis: {
         type: "value",
+        name: `Surplus ${metricLabel} ← 0 → Shortage ${metricLabel}`,
+        nameLocation: "middle",
+        nameGap: 24,
+        nameTextStyle: { color: tickColor, fontSize: 11, fontWeight: 600 },
         axisLabel: { color: tickColor, fontSize: 10 },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: {
@@ -192,7 +210,7 @@ function GoodsPressureChart({ goods }: { goods: ScopedGoodSummary[] }) {
       },
       series: [
         {
-          name: "Surplus $",
+          name: `Surplus ${metricLabel}`,
           type: "bar",
           stack: "balance",
           encode: { x: "surplusBar", y: "name" },
@@ -200,7 +218,7 @@ function GoodsPressureChart({ goods }: { goods: ScopedGoodSummary[] }) {
           emphasis: { focus: "series" },
         },
         {
-          name: "Shortage $",
+          name: `Shortage ${metricLabel}`,
           type: "bar",
           stack: "balance",
           encode: { x: "shortageBar", y: "name" },
@@ -209,7 +227,7 @@ function GoodsPressureChart({ goods }: { goods: ScopedGoodSummary[] }) {
         },
       ],
     };
-  }, [sorted, isDark]);
+  }, [sorted, isDark, isValueMetric]);
 
   if (!hasImbalance) {
     return (
@@ -220,7 +238,25 @@ function GoodsPressureChart({ goods }: { goods: ScopedGoodSummary[] }) {
   }
 
   const height = sorted.length * 20 + 60;
-  return <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />;
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <ToggleGroup
+          type="single"
+          value={metric}
+          onValueChange={(value) => {
+            if (value) setMetric(value as GoodsPressureMetric);
+          }}
+          className="inline-flex w-fit rounded-md border border-white/10 bg-white/5 p-1"
+          aria-label="Goods pressure metric comparison"
+        >
+          <ToggleGroup.Item value="value">Value</ToggleGroup.Item>
+          <ToggleGroup.Item value="units">Units</ToggleGroup.Item>
+        </ToggleGroup>
+      </div>
+      <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />
+    </div>
+  );
 }
 
 function marketTooltip(d: ScopedMarketSummary): string {

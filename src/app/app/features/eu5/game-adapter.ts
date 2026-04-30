@@ -15,6 +15,7 @@ import type {
   TaxGapInsightData,
   TaxGapScope,
   MarketInsightData,
+  ScopedGoodSummary,
   PopulationInsightData,
   BuildingLevelsInsightData,
   ReligionInsightData,
@@ -315,6 +316,9 @@ export function saveWorker(
     },
     getMarketProfile: async (anchorLocationIdx: number): Promise<MarketProfile | null> => {
       return await saveEngine.getMarketProfile(anchorLocationIdx);
+    },
+    getMarketGoodsProfile: async (anchorLocationIdx: number): Promise<ScopedGoodSummary[]> => {
+      return await saveEngine.getMarketGoodsProfile(anchorLocationIdx);
     },
     getLocationProfile: async (locationIdx: number): Promise<LocationProfile | null> => {
       return await saveEngine.getLocationProfile(locationIdx);
