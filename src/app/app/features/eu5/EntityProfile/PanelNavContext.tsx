@@ -15,6 +15,23 @@ export type PanelNavEntry =
   | { kind: "profile"; profile: ActiveProfileIdentity; label: string }
   | { kind: "focus"; profile: Extract<ActiveProfileIdentity, { kind: "location" }>; label: string };
 
+type ProfileTabKind = ActiveProfileIdentity["kind"];
+type ProfileTabs = Record<ProfileTabKind, string>;
+
+export const DEFAULT_PROFILE_TABS: ProfileTabs = {
+  country: "overview",
+  market: "overview",
+  location: "overview",
+};
+
+export function setProfileTabValue(
+  tabs: ProfileTabs,
+  kind: ProfileTabKind,
+  value: string,
+): ProfileTabs {
+  return { ...tabs, [kind]: value };
+}
+
 export function locationProfileEntry(locationIdx: number, label: string): PanelNavEntry {
   return { kind: "focus", profile: { kind: "location", location_idx: locationIdx, label }, label };
 }
@@ -34,6 +51,8 @@ interface PanelNavApi {
   pushMany: (entries: PanelNavEntry[], rootLabel?: string) => void;
   popTo: (length: number) => void;
   reset: () => void;
+  profileTabs: ProfileTabs;
+  setProfileTab: (kind: ProfileTabKind, value: string) => void;
 }
 
 const PanelNavContext = createContext<PanelNavApi | null>(null);
@@ -45,9 +64,21 @@ export function usePanelNav(): PanelNavApi {
   return ctx;
 }
 
+export function useProfileTab(kind: ProfileTabKind, defaultValue = "overview") {
+  const nav = usePanelNav();
+  const value = nav.profileTabs[kind] ?? defaultValue;
+  const onValueChange = useCallback(
+    (nextValue: string) => nav.setProfileTab(kind, nextValue),
+    [kind, nav],
+  );
+
+  return { value, onValueChange };
+}
+
 export function PanelNavProvider({ children }: { children: React.ReactNode }) {
   const [stack, setStack] = useState<PanelNavEntry[]>([]);
   const [rootLabel, setRootLabel] = useState<string | undefined>(undefined);
+  const [profileTabs, setProfileTabs] = useState<ProfileTabs>(DEFAULT_PROFILE_TABS);
 
   const selectionRevision = useEu5SelectionRevision();
   const prevRevisionRef = useRef(selectionRevision);
@@ -79,6 +110,10 @@ export function PanelNavProvider({ children }: { children: React.ReactNode }) {
     setRootLabel(undefined);
   }, []);
 
+  const setProfileTab = useCallback((kind: ProfileTabKind, value: string) => {
+    setProfileTabs((tabs) => setProfileTabValue(tabs, kind, value));
+  }, []);
+
   const api = useMemo<PanelNavApi>(
     () => ({
       stack: effectiveStack,
@@ -87,8 +122,10 @@ export function PanelNavProvider({ children }: { children: React.ReactNode }) {
       pushMany,
       popTo,
       reset,
+      profileTabs,
+      setProfileTab,
     }),
-    [effectiveStack, effectiveRootLabel, pushMany, popTo, reset],
+    [effectiveStack, effectiveRootLabel, pushMany, popTo, reset, profileTabs, setProfileTab],
   );
 
   return <PanelNavContext.Provider value={api}>{children}</PanelNavContext.Provider>;

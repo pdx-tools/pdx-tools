@@ -9,9 +9,11 @@ import { DiplomacyTabContent } from "./tabs/DiplomacyTab";
 import { useEu5MapMode } from "../store";
 import { useEu5Trigger } from "./useEu5Trigger";
 import { ProfileSkeleton } from "./ProfileSkeleton";
+import { useProfileTab } from "./PanelNavContext";
 
 export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: number }) {
   const mode = useEu5MapMode();
+  const profileTab = useProfileTab("country");
   const { data: profile, loading } = useEu5Trigger(
     (engine) => engine.trigger.getCountryProfile(anchorLocationIdx),
     [anchorLocationIdx],
@@ -23,7 +25,11 @@ export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: numbe
   return (
     <div className="flex h-full flex-col">
       <EntityHeader header={profile.header} />
-      <Tabs defaultValue="overview" className="flex min-h-0 flex-1 flex-col">
+      <Tabs
+        value={profileTab.value}
+        onValueChange={profileTab.onValueChange}
+        className="flex min-h-0 flex-1 flex-col"
+      >
         <Tabs.List className="shrink-0 border-b border-white/10 px-2">
           <Tabs.Trigger value="overview">Overview</Tabs.Trigger>
           <Tabs.Trigger value="economy">Economy</Tabs.Trigger>
