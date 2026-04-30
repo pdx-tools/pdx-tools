@@ -674,6 +674,31 @@ pub struct ControlInsightData {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
+pub struct PoliticalWorldRow {
+    pub ordinal_rank: u32,
+    pub anchor_location_idx: u32,
+    pub tag: String,
+    pub name: String,
+    pub color_hex: String,
+    pub is_player: bool,
+    pub total_state_efficacy: f64,
+    pub active_state_capacity: f64,
+    pub total_population: u32,
+    pub tax_trade_income: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct PoliticalWorldScoreboard {
+    pub rows: Vec<PoliticalWorldRow>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
 pub struct LocationDistribution {
     pub metric_label: String,
     pub buckets: Vec<DistributionBucket>,

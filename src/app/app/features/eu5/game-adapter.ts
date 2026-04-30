@@ -23,6 +23,7 @@ import type {
   ReligionInsightData,
   RgoInsightData,
   ControlInsightData,
+  PoliticalWorldScoreboard,
 } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/types";
 import { fetchOk } from "@/lib/fetch";
@@ -368,6 +369,9 @@ export function saveWorker(
     },
     getControlInsight: async (): Promise<ControlInsightData> => {
       return await saveEngine.getControlInsight();
+    },
+    getPoliticalWorldScoreboard: async (): Promise<PoliticalWorldScoreboard> => {
+      return await saveEngine.getPoliticalWorldScoreboard();
     },
     getPoliticalDefaultCountryAnchor: async (): Promise<number | null> => {
       return await saveEngine.getPoliticalDefaultCountryAnchor();

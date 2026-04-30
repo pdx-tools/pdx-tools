@@ -10,9 +10,9 @@ use eu5app::game_data::OptimizedGameBundle;
 use eu5app::selection_views::HoverDisplayData;
 use eu5app::selection_views::{
     BuildingLevelsInsightData, ControlInsightData, DevelopmentInsightData, MarketInsightData,
-    MarketProductionLocationSummary, PopulationInsightData, PossibleTaxInsightData,
-    PossibleTaxScope, ReligionInsightData, RgoInsightData, ScopedGoodSummary,
-    StateEfficacyInsightData, TaxGapInsightData, TaxGapScope,
+    MarketProductionLocationSummary, PoliticalWorldScoreboard, PopulationInsightData,
+    PossibleTaxInsightData, PossibleTaxScope, ReligionInsightData, RgoInsightData,
+    ScopedGoodSummary, StateEfficacyInsightData, TaxGapInsightData, TaxGapScope,
 };
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
@@ -744,6 +744,13 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn political_default_country_anchor(&self) -> Option<u32> {
         self.app().political_default_country_anchor()
+    }
+
+    /// Political world scoreboard: top great powers in scope plus player
+    /// countries outside the top tier.
+    #[wasm_bindgen]
+    pub fn get_political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
+        self.app().calculate_political_world_scoreboard()
     }
 
     // ── Entity Profile Endpoints ──────────────────────────────────────────

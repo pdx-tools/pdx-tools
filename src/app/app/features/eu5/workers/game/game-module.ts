@@ -27,6 +27,7 @@ import type {
   ReligionInsightData,
   RgoInsightData,
   ControlInsightData,
+  PoliticalWorldScoreboard,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
@@ -331,6 +332,9 @@ export const createGame = async (
     },
     getControlInsight: (): ControlInsightData => {
       return app.get_control_insight();
+    },
+    getPoliticalWorldScoreboard: (): PoliticalWorldScoreboard => {
+      return app.get_political_world_scoreboard();
     },
 
     searchEntities: (query: string) => {

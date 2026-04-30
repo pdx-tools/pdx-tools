@@ -1,6 +1,115 @@
 use super::*;
 
+const POLITICAL_SCOREBOARD_TOP_COUNT: usize = 10;
+
+#[derive(Debug, Clone)]
+struct PoliticalWorldCandidate {
+    great_power_rank: i32,
+    tag: String,
+    row: PoliticalWorldRow,
+}
+
+fn political_world_display_rows(
+    mut candidates: Vec<PoliticalWorldCandidate>,
+) -> Vec<PoliticalWorldRow> {
+    candidates.sort_by(|a, b| {
+        a.great_power_rank
+            .cmp(&b.great_power_rank)
+            .then_with(|| a.tag.cmp(&b.tag))
+    });
+
+    candidates
+        .into_iter()
+        .enumerate()
+        .filter_map(|(idx, mut candidate)| {
+            let ordinal_rank = (idx + 1) as u32;
+            if idx < POLITICAL_SCOREBOARD_TOP_COUNT || candidate.row.is_player {
+                candidate.row.ordinal_rank = ordinal_rank;
+                Some(candidate.row)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 impl<'bump> Eu5Workspace<'bump> {
+    pub fn calculate_political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
+        #[derive(Default)]
+        struct PoliticalCountryAgg {
+            total_state_efficacy: f64,
+            active_state_capacity: f64,
+            total_population: u32,
+        }
+
+        let is_empty = self.selection_state.is_empty();
+        let players_only =
+            self.selection_state.preset() == Some(crate::selection::SelectionPreset::Players);
+        let mut aggregates: FxHashMap<CountryId, PoliticalCountryAgg> = FxHashMap::default();
+        let played_countries: FnvHashSet<CountryId> = self
+            .gamestate
+            .played_countries
+            .iter()
+            .map(|played| played.country)
+            .collect();
+
+        for entry in self.gamestate.locations.iter() {
+            let idx = entry.idx();
+            if !is_empty && !self.selection_state.contains(idx) {
+                continue;
+            }
+
+            let loc = entry.location();
+            let Some(country_id) = loc.owner.real_id().map(|id| id.country_id()) else {
+                continue;
+            };
+            if players_only && !played_countries.contains(&country_id) {
+                continue;
+            }
+
+            let agg = aggregates.entry(country_id).or_default();
+            let population = self.gamestate.location_population(loc) as u32;
+            let state_efficacy = loc.control * loc.development;
+            agg.total_state_efficacy += state_efficacy;
+            agg.active_state_capacity += population as f64 * state_efficacy;
+            agg.total_population += population;
+        }
+
+        let candidates = aggregates
+            .into_iter()
+            .filter_map(|(country_id, aggregate)| {
+                let country_idx = self.gamestate.countries.get(country_id)?;
+                let entry = self.gamestate.countries.index(country_idx);
+                let data = entry.data()?;
+                if data.great_power_rank <= 0 {
+                    return None;
+                }
+
+                let entity_ref = self.entity_ref_from_country_idx(country_idx)?;
+                Some(PoliticalWorldCandidate {
+                    great_power_rank: data.great_power_rank,
+                    tag: entity_ref.tag.clone(),
+                    row: PoliticalWorldRow {
+                        ordinal_rank: 0,
+                        anchor_location_idx: entity_ref.anchor_location_idx,
+                        tag: entity_ref.tag,
+                        name: entity_ref.name,
+                        color_hex: entity_ref.color_hex,
+                        is_player: played_countries.contains(&country_id),
+                        total_state_efficacy: aggregate.total_state_efficacy,
+                        active_state_capacity: aggregate.active_state_capacity,
+                        total_population: aggregate.total_population,
+                        tax_trade_income: data.estimated_monthly_income_trade_and_tax,
+                    },
+                })
+            })
+            .collect();
+
+        PoliticalWorldScoreboard {
+            rows: political_world_display_rows(candidates),
+        }
+    }
+
     /// Calculate state efficacy scores for all nations
     ///
     /// State efficacy measures territorial quality by combining location control and development.
@@ -2151,5 +2260,93 @@ impl<'bump> Eu5Workspace<'bump> {
             scatter_countries,
             top_locations,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn candidate(
+        tag: &str,
+        great_power_rank: i32,
+        is_player: bool,
+        total_state_efficacy: f64,
+        active_state_capacity: f64,
+        total_population: u32,
+        tax_trade_income: f64,
+    ) -> PoliticalWorldCandidate {
+        PoliticalWorldCandidate {
+            great_power_rank,
+            tag: tag.to_string(),
+            row: PoliticalWorldRow {
+                ordinal_rank: 0,
+                anchor_location_idx: great_power_rank as u32,
+                tag: tag.to_string(),
+                name: format!("{tag} Nation"),
+                color_hex: "#112233".to_string(),
+                is_player,
+                total_state_efficacy,
+                active_state_capacity,
+                total_population,
+                tax_trade_income,
+            },
+        }
+    }
+
+    #[test]
+    fn political_world_rows_sort_and_assign_ordinals() {
+        let rows = political_world_display_rows(vec![
+            candidate("BBB", 30, false, 2.5, 250.0, 200, 20.0),
+            candidate("AAA", 10, false, 1.5, 150.0, 100, 10.0),
+            candidate("CCC", 20, true, 3.5, 350.0, 300, 30.0),
+        ]);
+
+        assert_eq!(
+            rows.iter().map(|row| row.tag.as_str()).collect::<Vec<_>>(),
+            ["AAA", "CCC", "BBB"]
+        );
+        assert_eq!(
+            rows.iter().map(|row| row.ordinal_rank).collect::<Vec<_>>(),
+            [1, 2, 3]
+        );
+        assert!(rows[1].is_player);
+        assert_eq!(rows[1].total_state_efficacy, 3.5);
+        assert_eq!(rows[1].active_state_capacity, 350.0);
+        assert_eq!(rows[1].total_population, 300);
+        assert_eq!(rows[1].tax_trade_income, 30.0);
+    }
+
+    #[test]
+    fn political_world_rows_append_players_outside_top_ten() {
+        let mut candidates = (1..=12)
+            .map(|rank| {
+                candidate(
+                    &format!("C{rank:02}"),
+                    rank,
+                    false,
+                    rank as f64,
+                    rank as f64 * 100.0,
+                    rank as u32,
+                    0.0,
+                )
+            })
+            .collect::<Vec<_>>();
+        candidates[11].row.is_player = true;
+
+        let rows = political_world_display_rows(candidates);
+
+        assert_eq!(rows.len(), 11);
+        assert_eq!(rows[9].tag, "C10");
+        assert_eq!(rows[9].ordinal_rank, 10);
+        assert_eq!(rows[10].tag, "C12");
+        assert_eq!(rows[10].ordinal_rank, 12);
+        assert!(rows[10].is_player);
+        assert!(!rows.iter().any(|row| row.tag == "C11"));
+    }
+
+    #[test]
+    fn political_world_rows_return_empty_for_empty_input() {
+        assert!(political_world_display_rows(Vec::new()).is_empty());
     }
 }
