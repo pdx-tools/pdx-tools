@@ -928,6 +928,91 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
+        #[derive(Default)]
+        struct PopAgg {
+            size: u32,
+            sat_weighted: f64,
+            lit_weighted: f64,
+        }
+        let mut by_pop: HashMap<
+            (
+                eu5save::models::PopulationType,
+                Option<eu5save::models::CultureId>,
+                eu5save::models::ReligionId,
+            ),
+            PopAgg,
+        > = HashMap::new();
+        for &pop_id in loc.population.pops {
+            let Some(pop) = self.gamestate.population.database.lookup(pop_id) else {
+                continue;
+            };
+            let pop_size = (pop.size * 1000.0).floor() as u32;
+            let entry = by_pop
+                .entry((pop.kind, pop.culture, pop.religion))
+                .or_default();
+            entry.size += pop_size;
+            entry.sat_weighted += pop.satisfaction * pop_size as f64;
+            entry.lit_weighted += pop.literacy * pop_size as f64;
+        }
+        let mut population_profile: Vec<LocationPopRow> = by_pop
+            .into_iter()
+            .map(|((kind, culture_id, religion_id), agg)| {
+                let kind = match kind {
+                    eu5save::models::PopulationType::Burghers => "Burghers",
+                    eu5save::models::PopulationType::Clergy => "Clergy",
+                    eu5save::models::PopulationType::Laborers => "Laborers",
+                    eu5save::models::PopulationType::Nobles => "Nobles",
+                    eu5save::models::PopulationType::Peasants => "Peasants",
+                    eu5save::models::PopulationType::Slaves => "Slaves",
+                    eu5save::models::PopulationType::Soldiers => "Soldiers",
+                    eu5save::models::PopulationType::Tribesmen => "Tribesmen",
+                    eu5save::models::PopulationType::Other => "Other",
+                }
+                .to_string();
+                let (culture_name, culture_color_hex) = culture_id
+                    .and_then(|cid| self.gamestate.culture_manager.lookup(cid))
+                    .map(|c| {
+                        let hex = format!(
+                            "#{:02x}{:02x}{:02x}",
+                            c.color.0[0], c.color.0[1], c.color.0[2]
+                        );
+                        (c.name.to_str().to_string(), hex)
+                    })
+                    .unwrap_or_else(|| ("Unknown".to_string(), "#808080".to_string()));
+                let (religion_name, religion_color_hex) = self
+                    .gamestate
+                    .religion_manager
+                    .lookup(religion_id)
+                    .map(|r| {
+                        let hex = format!(
+                            "#{:02x}{:02x}{:02x}",
+                            r.color.0[0], r.color.0[1], r.color.0[2]
+                        );
+                        (r.name.to_str().to_string(), hex)
+                    })
+                    .unwrap_or_else(|| ("Unknown".to_string(), "#808080".to_string()));
+                let (satisfaction, literacy) = if agg.size > 0 {
+                    (
+                        agg.sat_weighted / agg.size as f64,
+                        agg.lit_weighted / agg.size as f64,
+                    )
+                } else {
+                    (0.0, 0.0)
+                };
+                LocationPopRow {
+                    kind,
+                    culture_name,
+                    culture_color_hex,
+                    religion_name,
+                    religion_color_hex,
+                    size: agg.size,
+                    satisfaction,
+                    literacy,
+                }
+            })
+            .collect();
+        population_profile.sort_by(|a, b| b.size.cmp(&a.size));
+
         Some(LocationProfile {
             header: LocationHeader {
                 location_idx: idx.value(),
@@ -948,6 +1033,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 market_access: loc.market_access,
             },
             buildings,
+            population_profile,
         })
     }
 

@@ -313,6 +313,7 @@ pub struct LocationProfile {
     pub header: LocationHeader,
     pub stats: LocationStats,
     pub buildings: Vec<BuildingEntry>,
+    pub population_profile: Vec<LocationPopRow>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -350,4 +351,19 @@ pub struct LocationStats {
 pub struct BuildingEntry {
     pub name: String,
     pub level: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct LocationPopRow {
+    pub kind: String,
+    pub culture_name: String,
+    pub culture_color_hex: String,
+    pub religion_name: String,
+    pub religion_color_hex: String,
+    pub size: u32,
+    pub satisfaction: f64,
+    pub literacy: f64,
 }
