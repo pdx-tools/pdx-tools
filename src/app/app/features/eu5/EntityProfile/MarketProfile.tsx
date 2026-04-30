@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Tabs } from "@/components/Tabs";
 import { formatFloat, formatInt } from "@/lib/format";
 import type { MarketMemberCountry } from "@/wasm/wasm_eu5";
@@ -12,6 +13,8 @@ import { ProfileSkeleton } from "./ProfileSkeleton";
 
 export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number }) {
   const mode = useEu5MapMode();
+  const [tabState, setTabState] = useState({ anchorLocationIdx, value: "overview" });
+  const activeTab = tabState.anchorLocationIdx === anchorLocationIdx ? tabState.value : "overview";
   const { data: profile, loading } = useEu5Trigger(
     (engine) => engine.trigger.getMarketProfile(anchorLocationIdx),
     [anchorLocationIdx],
@@ -23,7 +26,11 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
   return (
     <div className="flex h-full flex-col">
       <EntityHeader header={profile.header} />
-      <Tabs defaultValue="overview" className="flex min-h-0 flex-1 flex-col">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setTabState({ anchorLocationIdx, value })}
+        className="flex min-h-0 flex-1 flex-col"
+      >
         <Tabs.List className="shrink-0 border-b border-white/10 px-2">
           <Tabs.Trigger value="overview">Overview</Tabs.Trigger>
           <Tabs.Trigger value="goods">Goods</Tabs.Trigger>
@@ -34,7 +41,7 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
           <MarketOverviewTabContent data={profile.overview} />
         </Tabs.Content>
         <Tabs.Content value="goods" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
-          <MarketGoodsTabContent data={profile.economy} />
+          {activeTab === "goods" && <MarketGoodsTabContent anchorLocationIdx={anchorLocationIdx} />}
         </Tabs.Content>
         <Tabs.Content
           value="locations"

@@ -94,13 +94,11 @@ impl<'bump> Eu5Workspace<'bump> {
         let locations = self.collect_entity_locations(anchor_idx, EntityKind::Market)?;
         let header = self.market_header(anchor_idx, self.headline_for_locations(&locations))?;
         let overview = self.market_overview(anchor_idx, &locations)?;
-        let economy = self.market_goods(anchor_idx, &locations)?;
         let member_countries = self.market_member_countries(&locations);
         let locations = self.build_locations_section(&locations)?;
         Some(MarketProfile {
             header,
             overview,
-            economy,
             locations,
             member_countries,
         })
@@ -677,6 +675,74 @@ impl<'bump> Eu5Workspace<'bump> {
             total_possible_tax,
             top_goods,
         })
+    }
+
+    pub fn market_goods_profile(&self, anchor: LocationIdx) -> Vec<ScopedGoodSummary> {
+        let loc = self.gamestate.locations.index(anchor).location();
+        let Some(market_id) = loc.market else {
+            return Vec::new();
+        };
+        let Some(market) = self.gamestate.market_manager.get(market_id) else {
+            return Vec::new();
+        };
+
+        let mut producing_location_counts: FxHashMap<RawMaterialsName, u32> = FxHashMap::default();
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            if loc.owner.is_dummy() || loc.market != Some(market_id) {
+                continue;
+            }
+            if let Some(raw_material) = loc.raw_material {
+                *producing_location_counts.entry(raw_material).or_insert(0) += 1;
+            }
+        }
+
+        let mut goods: Vec<ScopedGoodSummary> = market
+            .goods
+            .iter()
+            .map(|good| {
+                let shortage = (good.demand - good.supply).max(0.0);
+                let surplus = (good.supply - good.demand).max(0.0);
+                let balance_ratio = if good.demand > 0.0 {
+                    good.supply / good.demand
+                } else {
+                    0.0
+                };
+
+                ScopedGoodSummary {
+                    name: good.good.to_string(),
+                    supply: good.supply,
+                    demand: good.demand,
+                    total_taken: good.total_taken,
+                    weighted_price: if good.total_taken > 0.0 {
+                        good.price
+                    } else {
+                        0.0
+                    },
+                    shortage,
+                    surplus,
+                    shortage_value: shortage * good.price,
+                    surplus_value: surplus * good.price,
+                    balance_ratio,
+                    impact: good.impact,
+                    stockpile: good.stockpile,
+                    market_count: 1,
+                    producing_location_count: producing_location_counts
+                        .get(&good.good)
+                        .copied()
+                        .unwrap_or(0),
+                }
+            })
+            .collect();
+
+        goods.sort_by(|a, b| {
+            let a_imbalance = a.shortage_value.max(a.surplus_value);
+            let b_imbalance = b.shortage_value.max(b.surplus_value);
+            b_imbalance
+                .total_cmp(&a_imbalance)
+                .then_with(|| a.name.cmp(&b.name))
+        });
+        goods
     }
 
     /// Returns location rows for all selected locations, sorted by location index.

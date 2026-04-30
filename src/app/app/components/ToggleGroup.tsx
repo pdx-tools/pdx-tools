@@ -13,7 +13,7 @@ const ToggleGroupRoot = React.forwardRef<
 const toggleGroupItemVariants = cva("focus-visible:z-10", {
   variants: {
     variant: {
-      pill: "border-r-0 first:rounded-l-md last:rounded-r-md last:border-r data-[state=on]:bg-sky-100 data-[state=on]:text-sky-800 dark:data-[state=on]:bg-sky-600 dark:data-[state=on]:text-sky-100",
+      pill: "rounded px-2 py-1 text-xs font-semibold text-slate-400 transition hover:bg-white/5 hover:text-slate-200 data-[state=on]:bg-sky-500/20 data-[state=on]:text-sky-200",
       card: "group flex w-full items-start justify-between gap-3 rounded-2xl border border-white/5 bg-white/3 px-4 py-3 text-left text-slate-200 transition-all hover:border-sky-400/40 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 data-[state=on]:border-sky-400/60 data-[state=on]:bg-sky-500/15 data-[state=on]:text-sky-100 data-[state=on]:shadow-sm data-[state=on]:shadow-sky-500/20",
     },
   },

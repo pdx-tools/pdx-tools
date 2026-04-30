@@ -62,30 +62,22 @@ export const WatchContent = () => {
         <ToggleGroup
           type="single"
           disabled={watcher.status !== "idle"}
-          className="inline-flex self-center"
+          className="inline-flex self-center rounded-md border border-white/10 bg-white/5 p-1"
           defaultValue={defaultFrequency}
           onValueChange={(x) => x && setUpdateFrequency(x as FileObservationFrequency)}
           aria-label="update frequency"
         >
-          <ToggleGroup.Item value={"EverySave" satisfies FileObservationFrequency} asChild>
-            <Button shape="none" className="px-4 py-2">
-              Any Modification
-            </Button>
+          <ToggleGroup.Item value={"EverySave" satisfies FileObservationFrequency}>
+            Any Modification
           </ToggleGroup.Item>
-          <ToggleGroup.Item value={"Daily" satisfies FileObservationFrequency} asChild>
-            <Button shape="none" className="px-4 py-2">
-              Daily
-            </Button>
+          <ToggleGroup.Item value={"Daily" satisfies FileObservationFrequency}>
+            Daily
           </ToggleGroup.Item>
-          <ToggleGroup.Item value={"Monthly" satisfies FileObservationFrequency} asChild>
-            <Button shape="none" className="px-4 py-2">
-              Monthly
-            </Button>
+          <ToggleGroup.Item value={"Monthly" satisfies FileObservationFrequency}>
+            Monthly
           </ToggleGroup.Item>
-          <ToggleGroup.Item value={"Yearly" satisfies FileObservationFrequency} asChild>
-            <Button shape="none" className="px-4 py-2">
-              Yearly
-            </Button>
+          <ToggleGroup.Item value={"Yearly" satisfies FileObservationFrequency}>
+            Yearly
           </ToggleGroup.Item>
         </ToggleGroup>
         <div className="flex gap-2">
