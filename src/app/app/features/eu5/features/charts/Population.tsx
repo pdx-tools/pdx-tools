@@ -6,6 +6,7 @@ import type { EChartsOption } from "@/components/viz";
 import { DataTable } from "@/components/DataTable";
 import { Table } from "@/components/Table";
 import type {
+  LocationPopRow,
   PopulationConcentrationPoint,
   PopulationRankSegment,
   PopulationScopeSummary,
@@ -696,4 +697,116 @@ export function PopulationTypeProfile({
 
   const height = data.length * 22 + 52;
   return <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />;
+}
+
+const OTHER_COLOR = "#6b7280";
+
+function buildSankeyOption(rows: LocationPopRow[]): EChartsOption {
+  const totalSize = rows.reduce((s, r) => s + r.size, 0);
+  if (totalSize === 0) return {};
+  const threshold = totalSize * 0.02;
+
+  const religionTotals = new Map<string, number>();
+  const cultureTotals = new Map<string, number>();
+  for (const row of rows) {
+    religionTotals.set(row.religionName, (religionTotals.get(row.religionName) ?? 0) + row.size);
+    cultureTotals.set(row.cultureName, (cultureTotals.get(row.cultureName) ?? 0) + row.size);
+  }
+
+  const remapped = rows.map((row) => ({
+    ...row,
+    religionName:
+      (religionTotals.get(row.religionName) ?? 0) >= threshold ? row.religionName : "Others",
+    religionColorHex:
+      (religionTotals.get(row.religionName) ?? 0) >= threshold ? row.religionColorHex : OTHER_COLOR,
+    cultureName:
+      (cultureTotals.get(row.cultureName) ?? 0) >= threshold ? row.cultureName : "Others",
+    cultureColorHex:
+      (cultureTotals.get(row.cultureName) ?? 0) >= threshold ? row.cultureColorHex : OTHER_COLOR,
+  }));
+
+  const rId = (name: string) => `r:${name}`;
+  const cId = (name: string) => `c:${name}`;
+
+  const religionColorMap = new Map<string, string>();
+  const cultureColorMap = new Map<string, string>();
+  for (const row of remapped) {
+    religionColorMap.set(rId(row.religionName), row.religionColorHex);
+    cultureColorMap.set(cId(row.cultureName), row.cultureColorHex);
+  }
+  const kindNames = [...new Set(remapped.map((r) => r.kind))];
+
+  const nodes = [
+    ...[...religionColorMap.entries()].map(([id, color]) => ({
+      name: id,
+      itemStyle: { color },
+    })),
+    ...kindNames.map((name) => ({ name })),
+    ...[...cultureColorMap.entries()].map(([id, color]) => ({
+      name: id,
+      itemStyle: { color },
+    })),
+  ];
+
+  const religionKindMap = new Map<string, number>();
+  const kindCultureMap = new Map<string, number>();
+  for (const row of remapped) {
+    const rkKey = `${rId(row.religionName)}||${row.kind}`;
+    religionKindMap.set(rkKey, (religionKindMap.get(rkKey) ?? 0) + row.size);
+    const kcKey = `${row.kind}||${cId(row.cultureName)}`;
+    kindCultureMap.set(kcKey, (kindCultureMap.get(kcKey) ?? 0) + row.size);
+  }
+
+  const links = [
+    ...[...religionKindMap.entries()].map(([key, value]) => {
+      const [source, target] = key.split("||");
+      return { source, target, value };
+    }),
+    ...[...kindCultureMap.entries()].map(([key, value]) => {
+      const [source, target] = key.split("||");
+      return { source, target, value };
+    }),
+  ];
+
+  return {
+    tooltip: {
+      trigger: "item",
+      triggerOn: "mousemove",
+      formatter: (params: unknown) => {
+        const p = params as {
+          name?: string;
+          value?: number;
+          data?: { source?: string; target?: string; value?: number };
+        };
+        const strip = (s?: string) => s?.replace(/^[rc]:/, "") ?? "";
+        if (p.data?.source != null) {
+          return `${strip(p.data.source)} → ${strip(p.data.target)}: ${formatInt(p.data.value ?? 0)}`;
+        }
+        return `${strip(p.name)}: ${formatInt(p.value ?? 0)}`;
+      },
+    },
+    series: [
+      {
+        type: "sankey",
+        emphasis: { focus: "adjacency" },
+        nodeAlign: "left",
+        label: {
+          formatter: (params: unknown) => (params as { name: string }).name.replace(/^[rc]:/, ""),
+          color: "#e2e8f0",
+          fontSize: 11,
+          backgroundColor: "rgba(15,23,42,0.7)",
+          padding: [2, 5],
+          borderRadius: 3,
+        },
+        data: nodes,
+        links,
+      },
+    ],
+  };
+}
+
+export function PopulationSankey({ rows }: { rows: LocationPopRow[] }) {
+  const option = useMemo(() => buildSankeyOption(rows), [rows]);
+  if (rows.length === 0) return null;
+  return <EChart option={option} style={{ height: "320px", width: "100%" }} />;
 }

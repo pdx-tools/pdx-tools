@@ -134,6 +134,13 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
+        #[derive(Default)]
+        struct SankeyAgg {
+            size: u32,
+            sat_weighted: f64,
+            lit_weighted: f64,
+        }
+
         let locations = self.collect_entity_locations(anchor_idx, EntityKind::Country)?;
         let mut rank_totals = [
             RankAgg::default(),
@@ -142,6 +149,14 @@ impl<'bump> Eu5Workspace<'bump> {
             RankAgg::default(),
         ];
         let mut type_aggs: [TypeAgg; 8] = Default::default();
+        let mut sankey_map: HashMap<
+            (
+                PopulationType,
+                Option<eu5save::models::CultureId>,
+                eu5save::models::ReligionId,
+            ),
+            SankeyAgg,
+        > = HashMap::new();
 
         for idx in locations {
             let loc = self.gamestate.locations.index(idx).location();
@@ -162,14 +177,22 @@ impl<'bump> Eu5Workspace<'bump> {
                 let Some(pop) = self.gamestate.population.database.lookup(pop_id) else {
                     continue;
                 };
-                let Some(type_idx) = pop_type_id(pop.kind) else {
-                    continue;
-                };
-                let agg = &mut type_aggs[type_idx];
-                agg.population += pop.size;
-                agg.satisfaction_num += pop.satisfaction * pop.size;
-                agg.literacy_num += pop.literacy * pop.size;
-                agg.pop_count += 1;
+                if let Some(type_idx) = pop_type_id(pop.kind) {
+                    let agg = &mut type_aggs[type_idx];
+                    agg.population += pop.size;
+                    agg.satisfaction_num += pop.satisfaction * pop.size;
+                    agg.literacy_num += pop.literacy * pop.size;
+                    agg.pop_count += 1;
+                }
+                if pop.kind != PopulationType::Other {
+                    let pop_size = (pop.size * 1000.0).floor() as u32;
+                    let entry = sankey_map
+                        .entry((pop.kind, pop.culture, pop.religion))
+                        .or_default();
+                    entry.size += pop_size;
+                    entry.sat_weighted += pop.satisfaction * pop_size as f64;
+                    entry.lit_weighted += pop.literacy * pop_size as f64;
+                }
             }
         }
 
@@ -214,9 +237,69 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
+        let mut sankey_rows: Vec<LocationPopRow> = sankey_map
+            .into_iter()
+            .map(|((kind, culture_id, religion_id), agg)| {
+                let kind = match kind {
+                    PopulationType::Burghers => "Burghers",
+                    PopulationType::Clergy => "Clergy",
+                    PopulationType::Laborers => "Laborers",
+                    PopulationType::Nobles => "Nobles",
+                    PopulationType::Peasants => "Peasants",
+                    PopulationType::Slaves => "Slaves",
+                    PopulationType::Soldiers => "Soldiers",
+                    PopulationType::Tribesmen => "Tribesmen",
+                    PopulationType::Other => "Other",
+                }
+                .to_string();
+                let (culture_name, culture_color_hex) = culture_id
+                    .and_then(|cid| self.gamestate.culture_manager.lookup(cid))
+                    .map(|c| {
+                        let hex = format!(
+                            "#{:02x}{:02x}{:02x}",
+                            c.color.0[0], c.color.0[1], c.color.0[2]
+                        );
+                        (c.name.to_str().to_string(), hex)
+                    })
+                    .unwrap_or_else(|| ("Unknown".to_string(), "#808080".to_string()));
+                let (religion_name, religion_color_hex) = self
+                    .gamestate
+                    .religion_manager
+                    .lookup(religion_id)
+                    .map(|r| {
+                        let hex = format!(
+                            "#{:02x}{:02x}{:02x}",
+                            r.color.0[0], r.color.0[1], r.color.0[2]
+                        );
+                        (r.name.to_str().to_string(), hex)
+                    })
+                    .unwrap_or_else(|| ("Unknown".to_string(), "#808080".to_string()));
+                let (satisfaction, literacy) = if agg.size > 0 {
+                    (
+                        agg.sat_weighted / agg.size as f64,
+                        agg.lit_weighted / agg.size as f64,
+                    )
+                } else {
+                    (0.0, 0.0)
+                };
+                LocationPopRow {
+                    kind,
+                    culture_name,
+                    culture_color_hex,
+                    religion_name,
+                    religion_color_hex,
+                    size: agg.size,
+                    satisfaction,
+                    literacy,
+                }
+            })
+            .collect();
+        sankey_rows.sort_by(|a, b| b.size.cmp(&a.size));
+
         Some(CountryPopulationProfile {
             type_profile,
             rank_totals,
+            sankey_rows,
         })
     }
 

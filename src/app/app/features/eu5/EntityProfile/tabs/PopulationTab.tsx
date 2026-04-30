@@ -4,6 +4,7 @@ import type { LocationRow, PopulationConcentrationPoint } from "@/wasm/wasm_eu5"
 import { formatInt } from "@/lib/format";
 import {
   PopulationConcentrationCurve,
+  PopulationSankey,
   PopulationTypeProfile,
   UrbanizationMix,
 } from "../../features/charts/Population";
@@ -87,6 +88,13 @@ export function CountryPopulationTabContent({
         <section>
           <SectionTitle>How concentrated is the population?</SectionTitle>
           <PopulationConcentrationCurve points={concentration} />
+        </section>
+      )}
+
+      {(data?.sankeyRows ?? []).length > 0 && (
+        <section>
+          <SectionTitle>How does religion and culture shape the population?</SectionTitle>
+          <PopulationSankey rows={data!.sankeyRows} />
         </section>
       )}
     </div>
