@@ -1,7 +1,7 @@
 import type React from "react";
 import { useCallback } from "react";
-import { ResizablePanel } from "@/components/ResizablePanel";
-import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
+import { ResizablePanel } from "./components/ResizablePanel";
+import type { ActiveProfileIdentity, EntityHeader } from "@/wasm/wasm_eu5";
 import { useEu5MapMode, useEu5SelectionState, useSetEu5InsightPanelWidth } from "./store";
 import { StateEfficacyInsight } from "./features/charts/StateEfficacy";
 import { ControlInsight } from "./features/charts/Control";
@@ -17,6 +17,7 @@ import { PoliticalInsight } from "./features/charts/Political";
 import { EntityProfileRoot } from "./EntityProfile";
 import { PanelNavProvider, usePanelNav } from "./EntityProfile/PanelNavContext";
 import { Breadcrumb } from "./EntityProfile/Breadcrumb";
+import { useEu5Trigger } from "./EntityProfile/useEu5Trigger";
 
 type Eu5InsightPanelProps = {
   open: boolean;
@@ -30,27 +31,31 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
     [setInsightPanelWidth],
   );
 
-  return (
-    <ResizablePanel
-      open={open}
-      onClose={onClose}
-      side="right"
-      defaultWidth={640}
-      collapseThreshold={256}
-      maxWidth={1920}
-      header={<span className="text-sm font-semibold text-slate-300">Insights</span>}
-      onWidthChange={handleWidthChange}
-    >
-      {/* Don't render panel content until open as panels can be very expensive to render with large charts */}
-      {open ? <PanelContent /> : null}
-    </ResizablePanel>
-  );
-}
+  const btnCx =
+    "border border-game-line bg-white/5 text-game-ink-500 hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-game-accent-300/50";
 
-function PanelContent() {
   return (
     <PanelNavProvider>
-      <PanelContentInner />
+      <ResizablePanel.Root
+        open={open}
+        onClose={onClose}
+        side="right"
+        defaultWidth={640}
+        collapseThreshold={256}
+        maxWidth={1920}
+        onWidthChange={handleWidthChange}
+        className="border-l border-game-line bg-game-panel shadow-xl backdrop-blur"
+      >
+        <ResizablePanel.Header className="border-b border-game-line">
+          <ResizablePanel.CloseButton className={btnCx} />
+          <div className="min-w-0 flex-1">
+            <InsightPanelTitle />
+          </div>
+          <ResizablePanel.MaximizeButton className={btnCx} />
+        </ResizablePanel.Header>
+        {/* Don't render panel content until open as panels can be very expensive to render with large charts */}
+        <ResizablePanel.Content>{open ? <PanelContentInner /> : null}</ResizablePanel.Content>
+      </ResizablePanel.Root>
     </PanelNavProvider>
   );
 }
@@ -119,8 +124,108 @@ function profileIdentityKey(profile: ActiveProfileIdentity) {
 
 function EmptyInsightState() {
   return (
-    <div className="flex h-full items-center justify-center p-4 text-sm text-slate-500">
+    <div className="flex h-full items-center justify-center p-4 text-sm text-game-ink-500">
       No insight available for this view.
     </div>
+  );
+}
+
+const MAP_MODE_TITLES = {
+  political: "Great powers",
+  control: "Control",
+  development: "Development",
+  stateEfficacy: "State Efficacy",
+  possibleTax: "Possible Tax",
+  taxGap: "Tax Gap",
+  markets: "Markets",
+  population: "Population",
+  buildingLevels: "Building Levels",
+  religion: "Religion",
+  rgoLevel: "RGO Level",
+} as const;
+
+function InsightPanelTitle() {
+  const nav = usePanelNav();
+  const selectionState = useEu5SelectionState();
+  const currentMapMode = useEu5MapMode();
+  const topProfile =
+    nav.top?.kind === "profile" || nav.top?.kind === "focus" ? nav.top.profile : null;
+  const identity = topProfile ?? selectionState?.activeProfile;
+
+  if (identity) return <ProfilePanelTitle identity={identity} />;
+
+  return (
+    <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
+      {MAP_MODE_TITLES[currentMapMode] ?? "Insights"}
+    </span>
+  );
+}
+
+function ProfilePanelTitle({ identity }: { identity: ActiveProfileIdentity }) {
+  if (identity.kind === "location") {
+    return (
+      <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
+        {identity.label}
+      </span>
+    );
+  }
+
+  return (
+    <EntityPanelTitle
+      kind={identity.kind}
+      anchorLocationIdx={identity.anchor_location_idx}
+      fallbackLabel={identity.label}
+    />
+  );
+}
+
+function EntityPanelTitle({
+  kind,
+  anchorLocationIdx,
+  fallbackLabel,
+}: {
+  kind: "country" | "market";
+  anchorLocationIdx: number;
+  fallbackLabel: string;
+}) {
+  const { data: header } = useEu5Trigger(
+    (engine) => {
+      if (kind === "country") {
+        return engine.trigger
+          .getCountryProfile(anchorLocationIdx)
+          .then((profile) => profile?.header);
+      }
+      return engine.trigger.getMarketProfile(anchorLocationIdx).then((profile) => profile?.header);
+    },
+    [anchorLocationIdx, kind],
+  );
+
+  if (!header) {
+    return (
+      <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
+        {fallbackLabel}
+      </span>
+    );
+  }
+
+  return <EntityTitleContent header={header} />;
+}
+
+function EntityTitleContent({ header }: { header: EntityHeader }) {
+  return (
+    <span className="inline-flex max-w-full min-w-0 items-center gap-2">
+      <span
+        className="h-3.5 w-3.5 shrink-0 rounded-[1px] border border-black/25"
+        style={{ backgroundColor: header.colorHex }}
+      />
+      {header.tag && (
+        <span className="shrink-0 rounded-[1px] border border-game-line-strong px-1 font-game-num text-[10px] tracking-[0.06em] text-game-ink-700">
+          {header.tag}
+        </span>
+      )}
+      <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
+        {header.name}
+      </span>
+    </span>
   );
 }

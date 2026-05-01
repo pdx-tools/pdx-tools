@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { DataTable } from "@/components/DataTable";
+import { Eu5DataTable } from "../../components";
 import { Table } from "@/components/Table";
 import type { ReligionRow, StateReligionRow } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
@@ -10,13 +10,18 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
+import {
+  Eu5InsightEmptyState,
+  Eu5InsightErrorState,
+  Eu5InsightLoadingState,
+} from "../Eu5InsightState";
 import type * as echarts from "echarts/core";
 
 const STATE_RELIGION_CAP = 30;
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );
@@ -34,8 +39,10 @@ export function ReligionInsight() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      {insightQuery.loading && !insightQuery.data ? (
-        <div className="h-64 animate-pulse rounded bg-white/5" />
+      {insightQuery.error ? (
+        <Eu5InsightErrorState error={insightQuery.error} />
+      ) : insightQuery.loading && !insightQuery.data ? (
+        <Eu5InsightLoadingState />
       ) : (
         <>
           {stateReligions.length > 0 && (
@@ -53,9 +60,7 @@ export function ReligionInsight() {
           )}
 
           {stateReligions.length === 0 && (
-            <p className="py-6 text-center text-sm text-slate-500">
-              No religion data in the selected scope
-            </p>
+            <Eu5InsightEmptyState title="No religion data in the selected scope." />
           )}
         </>
       )}
@@ -204,15 +209,15 @@ function CoverageBar({
   colorHex: string;
 }) {
   const total = srPop + otherPop;
-  if (total === 0) return <span className="text-slate-600">—</span>;
+  if (total === 0) return <span className="text-game-ink-500">—</span>;
   const srPct = srPop / total;
   return (
     <div className="flex flex-col gap-1">
       <div className="flex h-2 w-24 overflow-hidden rounded-sm">
         <div style={{ width: `${srPct * 100}%`, backgroundColor: colorHex }} />
-        <div className="flex-1 bg-slate-700" />
+        <div className="flex-1 bg-game-panel-hover" />
       </div>
-      <span className="text-[11px] text-slate-400">{formatPercent(srPct)} state religion</span>
+      <span className="text-[11px] text-game-ink-300">{formatPercent(srPct)} state religion</span>
     </div>
   );
 }
@@ -242,14 +247,14 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
         header: ({ column }) => <Table.ColumnHeader column={column} title="State Religion" />,
         cell: ({ row }) => {
           const r = row.original;
-          if (r.stateCountryCount === 0) return <span className="text-slate-600">—</span>;
+          if (r.stateCountryCount === 0) return <span className="text-game-ink-500">—</span>;
           return (
             <div className="flex flex-col">
               <span>
                 {formatInt(r.stateCountryCount)}{" "}
                 {r.stateCountryCount === 1 ? "country" : "countries"}
               </span>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-game-ink-300">
                 {formatInt(r.totalRuledPopulation)} ruled population
               </span>
             </div>
@@ -281,11 +286,11 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
         header: ({ column }) => <Table.ColumnHeader column={column} title="Followers" />,
         cell: ({ row }) => {
           const r = row.original;
-          if (r.followerPopulation === 0) return <span className="text-slate-600">—</span>;
+          if (r.followerPopulation === 0) return <span className="text-game-ink-500">—</span>;
           return (
             <div className="flex flex-col">
               <span>{formatInt(r.followerPopulation)}</span>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-game-ink-300">
                 {formatInt(r.followersOutsideSameFaithStates)} outside same-faith states
               </span>
             </div>
@@ -297,7 +302,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
   );
 
   return (
-    <DataTable
+    <Eu5DataTable
       className="w-full"
       columns={columns}
       data={religions}

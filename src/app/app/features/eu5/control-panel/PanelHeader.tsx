@@ -24,7 +24,7 @@ function SaveDateReadout({ date }: { date: Eu5DateComponents }) {
   const monthDay = `${MONTH_ABBR[date.month]} ${date.day}`;
   return (
     <p className="flex items-baseline gap-1">
-      <span className="font-serif text-[13px] text-game-ink-500">{date.year}</span>
+      <span className="font-game-num text-[13px] text-game-ink-500">{date.year}</span>
       <span className="font-mono text-[10px] text-game-ink-500">{monthDay}</span>
     </p>
   );
@@ -47,7 +47,7 @@ export function PanelHeader() {
       </Link>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate font-serif text-[17px] leading-tight font-medium text-game-ink-100">
+        <p className="truncate font-game-ui text-[17px] leading-tight font-medium text-game-ink-100">
           {playthroughName}
         </p>
         <SaveDateReadout date={saveDate} />

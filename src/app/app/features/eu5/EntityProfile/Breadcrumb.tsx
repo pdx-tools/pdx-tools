@@ -24,7 +24,7 @@ export function Breadcrumb() {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="flex shrink-0 flex-wrap items-center gap-1 border-b border-white/10 px-4 py-2"
+      className="flex shrink-0 flex-wrap items-center gap-1 border-b border-game-line px-4 py-2"
     >
       <ol className="flex flex-wrap items-center gap-1">
         {crumbs.map((entry) => (
@@ -32,9 +32,9 @@ export function Breadcrumb() {
             <button
               type="button"
               onClick={() => nav.popTo(entry.depth)}
-              className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200"
+              className="flex items-center gap-1 text-xs text-game-ink-500 hover:text-game-ink-100"
             >
-              <span>←</span>
+              <span aria-hidden="true">←</span>
               <span>{entry.label}</span>
             </button>
           </li>

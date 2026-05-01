@@ -72,9 +72,11 @@ export function Eu5CursorTooltip({ cursorRef }: Eu5CursorTooltipProps) {
   return (
     <CursorTooltip cursorRef={cursorRef} visible={content !== null}>
       {content && (
-        <div className="rounded-md border border-white/10 bg-slate-900/90 px-2.5 py-1.5 text-xs text-slate-100 shadow-lg backdrop-blur-sm">
+        <div className="rounded-[3px] border border-game-line-strong bg-game-overlay px-2.5 py-1.5 font-game-ui text-xs text-game-ink-100 shadow-lg backdrop-blur-sm">
           <span className="font-medium">{content.name}</span>
-          {content.stat && <span className="ml-2 font-mono text-slate-400">{content.stat}</span>}
+          {content.stat && (
+            <span className="ml-2 font-game-num text-game-ink-500">{content.stat}</span>
+          )}
         </div>
       )}
     </CursorTooltip>

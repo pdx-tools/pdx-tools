@@ -152,15 +152,19 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
 
   const handleInit = useEu5EntityChartClick({
     kind: "market",
-    getAnchorLocationIdx: (params) => {
+    backLabel: "Markets",
+    getTarget: (params) => {
       const idx = params.dataIndex;
-      return idx == null ? null : filteredCells[idx]?.marketAnchorLocationIdx;
+      const cell = idx == null ? null : filteredCells[idx];
+      return cell
+        ? { anchorLocationIdx: cell.marketAnchorLocationIdx, label: cell.marketName }
+        : null;
     },
   });
 
   if (topGoods.length === 0 || topMarkets.length === 0) {
     return (
-      <p className="py-6 text-center text-sm text-slate-500">
+      <p className="py-6 text-center text-sm text-game-ink-500">
         Not enough scoped market data for a heatmap
       </p>
     );

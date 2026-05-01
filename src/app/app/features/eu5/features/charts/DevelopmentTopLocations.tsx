@@ -1,15 +1,12 @@
 import { useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
-import { DataTable } from "@/components/DataTable";
+import { Eu5DataTable } from "../../components";
 import { Table } from "@/components/Table";
 import type { DevTopLocation } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
-import {
-  countryProfileEntry,
-  locationProfileEntry,
-  usePanelNav,
-} from "../../EntityProfile/PanelNavContext";
+import { locationProfileEntry, usePanelNav } from "../../EntityProfile/PanelNavContext";
 import { usePanToEntity } from "../../usePanToEntity";
+import { EntityLink } from "../../EntityProfile/EntityLink";
 
 const BACK_LABEL = "Development";
 
@@ -33,7 +30,7 @@ export function DevelopmentTopLocations({ locations }: Props) {
           return (
             <button
               type="button"
-              className="text-left text-sky-300 hover:text-sky-200 hover:underline"
+              className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
                 nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
                 panToEntity(loc.locationIdx);
@@ -54,29 +51,7 @@ export function DevelopmentTopLocations({ locations }: Props) {
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
         header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
-        cell: ({ row }) => {
-          const owner = row.original.owner;
-          return (
-            <button
-              type="button"
-              className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
-              onClick={() => {
-                nav.pushMany(
-                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
-                  BACK_LABEL,
-                );
-                panToEntity(owner.anchorLocationIdx);
-              }}
-            >
-              <span
-                className="inline-block h-2 w-2 shrink-0 rounded-sm"
-                style={{ backgroundColor: owner.colorHex }}
-              />
-              {owner.tag && <span className="font-mono text-xs text-slate-500">{owner.tag}</span>}
-              <span className="truncate">{owner.name}</span>
-            </button>
-          );
-        },
+        cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
       }),
       columnHelper.accessor("population", {
         sortingFn: "basic",
@@ -94,5 +69,5 @@ export function DevelopmentTopLocations({ locations }: Props) {
     [nav, panToEntity],
   );
 
-  return <DataTable className="w-full" columns={columns} data={locations} pagination={true} />;
+  return <Eu5DataTable className="w-full" columns={columns} data={locations} pagination={true} />;
 }

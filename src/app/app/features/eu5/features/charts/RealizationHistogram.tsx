@@ -90,7 +90,7 @@ export function RealizationHistogram({ countries }: { countries: CountryTaxGap[]
     <div>
       <EChart option={option} style={{ height: "260px", width: "100%" }} />
       {zeroPossibleCount > 0 && (
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-game-ink-500">
           {formatInt(zeroPossibleCount)} countries with zero possible tax excluded.
         </p>
       )}

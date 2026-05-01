@@ -2,7 +2,7 @@ import type { LocationProfile, LocationPopRow } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
-import { DataTable } from "@/components/DataTable";
+import { Eu5DataTable } from "../../components";
 import { PopulationSankey } from "../../features/charts/Population";
 
 interface Props {
@@ -51,13 +51,13 @@ export function LocationPopulationTab({ profile }: Props) {
   const rows = profile.populationProfile;
 
   if (rows.length === 0) {
-    return <p className="text-sm text-slate-500">No population data.</p>;
+    return <p className="text-sm text-game-ink-500">No population data.</p>;
   }
 
   return (
     <div className="flex flex-col gap-6">
       <PopulationSankey rows={rows} />
-      <DataTable columns={columns} data={rows} initialSorting={[{ id: "size", desc: true }]} />
+      <Eu5DataTable columns={columns} data={rows} initialSorting={[{ id: "size", desc: true }]} />
     </div>
   );
 }

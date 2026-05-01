@@ -9,20 +9,22 @@ import type {
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
-import { DataTable } from "@/components/DataTable";
+import { Eu5DataTable } from "../../components";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
-import {
-  countryProfileEntry,
-  locationProfileEntry,
-  usePanelNav,
-} from "../../EntityProfile/PanelNavContext";
+import { locationProfileEntry, usePanelNav } from "../../EntityProfile/PanelNavContext";
 import { usePanToEntity } from "../../usePanToEntity";
+import { EntityLink } from "../../EntityProfile/EntityLink";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
+import {
+  Eu5InsightEmptyState,
+  Eu5InsightErrorState,
+  Eu5InsightLoadingState,
+} from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 function StateEfficacyScopeHeader({ data }: { data?: StateEfficacyScopeSummary }) {
@@ -50,8 +52,10 @@ export function StateEfficacyInsight() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <StateEfficacyScopeHeader data={insightQuery.data?.scope} />
-      {insightQuery.loading && !insightQuery.data ? (
-        <div className="h-64 animate-pulse rounded bg-white/5" />
+      {insightQuery.error ? (
+        <Eu5InsightErrorState error={insightQuery.error} />
+      ) : insightQuery.loading && !insightQuery.data ? (
+        <Eu5InsightLoadingState />
       ) : (
         <>
           {countries.length >= 2 && (
@@ -76,6 +80,10 @@ export function StateEfficacyInsight() {
               <StateEfficacyTopLocations locations={insightQuery.data.topLocations} />
             </section>
           )}
+
+          {countries.length === 0 && !insightQuery.data?.distribution && (
+            <Eu5InsightEmptyState title="No state efficacy data in the selected scope." />
+          )}
         </>
       )}
     </div>
@@ -84,7 +92,7 @@ export function StateEfficacyInsight() {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );
@@ -94,7 +102,7 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
   const isDark = isDarkMode();
 
   const topCountries = useMemo(
-    () => new Set(countries.slice(0, 10).map((c) => c.tag)),
+    () => new Set(countries.slice(0, 10).map((c) => c.country.tag)),
     [countries],
   );
 
@@ -102,14 +110,14 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
     () =>
       countries.map((c) => ({
         value: [c.totalEfficacy, c.avgEfficacy] as [number, number],
-        tag: c.tag,
-        name: c.name,
+        tag: c.country.tag,
+        name: c.country.name,
         locationCount: c.locationCount,
         totalEfficacy: c.totalEfficacy,
         avgEfficacy: c.avgEfficacy,
         totalPopulation: c.totalPopulation,
-        color: c.colorHex,
-        anchorLocationIdx: c.anchorLocationIdx,
+        color: c.country.colorHex,
+        anchorLocationIdx: c.country.anchorLocationIdx,
       })),
     [countries],
   );
@@ -196,9 +204,11 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    getAnchorLocationIdx: (params) => {
+    backLabel: BACK_LABEL,
+    getTarget: (params) => {
       if (Array.isArray(params.data)) return null;
-      return (params.data as (typeof scatterData)[number])?.anchorLocationIdx;
+      const country = params.data as (typeof scatterData)[number] | undefined;
+      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
     },
   });
 
@@ -222,7 +232,7 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
           return (
             <button
               type="button"
-              className="text-left text-sky-300 hover:text-sky-200 hover:underline"
+              className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
                 nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
                 panToEntity(loc.locationIdx);
@@ -255,29 +265,7 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
         header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
-        cell: ({ row }) => {
-          const owner = row.original.owner;
-          return (
-            <button
-              type="button"
-              className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
-              onClick={() => {
-                nav.pushMany(
-                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
-                  BACK_LABEL,
-                );
-                panToEntity(owner.anchorLocationIdx);
-              }}
-            >
-              <span
-                className="inline-block h-2 w-2 shrink-0 rounded-sm"
-                style={{ backgroundColor: owner.colorHex }}
-              />
-              {owner.tag && <span className="font-mono text-xs text-slate-500">{owner.tag}</span>}
-              <span className="truncate">{owner.name}</span>
-            </button>
-          );
-        },
+        cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
       }),
       columnHelper.accessor("population", {
         sortingFn: "basic",
@@ -289,5 +277,5 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
     [nav, panToEntity],
   );
 
-  return <DataTable className="w-full" columns={columns} data={locations} pagination={true} />;
+  return <Eu5DataTable className="w-full" columns={columns} data={locations} pagination={true} />;
 }

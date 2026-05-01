@@ -44,6 +44,24 @@ export function countryProfileEntry(anchorLocationIdx: number, label: string): P
   };
 }
 
+export function marketProfileEntry(anchorLocationIdx: number, label: string): PanelNavEntry {
+  return {
+    kind: "profile",
+    profile: { kind: "market", anchor_location_idx: anchorLocationIdx, label },
+    label,
+  };
+}
+
+export function entityProfileEntry(
+  kind: "country" | "market",
+  anchorLocationIdx: number,
+  label: string,
+): PanelNavEntry {
+  return kind === "market"
+    ? marketProfileEntry(anchorLocationIdx, label)
+    : countryProfileEntry(anchorLocationIdx, label);
+}
+
 interface PanelNavApi {
   stack: PanelNavEntry[];
   rootLabel: string | undefined;

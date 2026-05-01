@@ -452,7 +452,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .or_else(|| candidates.first().copied())?;
 
         let entity_ref = self.entity_ref_from_country_idx(country_idx)?;
-        Some(entity_ref.anchor_location_idx)
+        Some(entity_ref.anchor_location_idx())
     }
 
     /// Check if a location can be highlighted based on its terrain (not water and not impassable)

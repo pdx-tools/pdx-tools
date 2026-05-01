@@ -3,7 +3,7 @@ import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { DataTable } from "@/components/DataTable";
+import { Eu5DataTable } from "../../components";
 import { Table } from "@/components/Table";
 import type {
   LocationPopRow,
@@ -22,11 +22,13 @@ import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeH
 import { StatItem } from "../../EntityProfile/components/StatItem";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
+import { locationProfileEntry, usePanelNav } from "../../EntityProfile/PanelNavContext";
+import { EntityLink } from "../../EntityProfile/EntityLink";
 import {
-  countryProfileEntry,
-  locationProfileEntry,
-  usePanelNav,
-} from "../../EntityProfile/PanelNavContext";
+  Eu5InsightEmptyState,
+  Eu5InsightErrorState,
+  Eu5InsightLoadingState,
+} from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 const COUNTRY_CAP = 24;
@@ -41,7 +43,7 @@ const RANK_LABELS = ["Rural", "Town", "City", "Megalopolis"] as const;
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );
@@ -80,8 +82,10 @@ export function PopulationInsight() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <PopulationScopeHeader data={insightQuery.data?.scope} />
-      {insightQuery.loading && !insightQuery.data ? (
-        <div className="h-64 animate-pulse rounded bg-white/5" />
+      {insightQuery.error ? (
+        <Eu5InsightErrorState error={insightQuery.error} />
+      ) : insightQuery.loading && !insightQuery.data ? (
+        <Eu5InsightLoadingState />
       ) : (
         <>
           {countries.length > 0 && (
@@ -126,9 +130,7 @@ export function PopulationInsight() {
           )}
 
           {countries.length === 0 && (
-            <p className="py-6 text-center text-sm text-slate-500">
-              No population data in the selected scope
-            </p>
+            <Eu5InsightEmptyState title="No population data in the selected scope." />
           )}
         </>
       )}
@@ -137,6 +139,8 @@ export function PopulationInsight() {
 }
 
 type CountrySpineDatum = ScopedCountryPopulation & {
+  name: string;
+  anchorLocationIdx: number;
   rural: number;
   town: number;
   city: number;
@@ -171,8 +175,8 @@ function countryTooltip(country: ScopedCountryPopulation): string {
     );
 
   return [
-    `<strong>${escapeEChartsHtml(country.name)}</strong>`,
-    country.tag ? `Tag: ${escapeEChartsHtml(country.tag)}` : "",
+    `<strong>${escapeEChartsHtml(country.country.name)}</strong>`,
+    country.country.tag ? `Tag: ${escapeEChartsHtml(country.country.tag)}` : "",
     `Population: ${formatInt(country.totalPopulation)}`,
     `Locations: ${formatInt(country.locationCount)}`,
     ...ranks,
@@ -188,6 +192,8 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
     () =>
       countries.slice(0, COUNTRY_CAP).map((country) => ({
         ...country,
+        name: country.country.name,
+        anchorLocationIdx: country.country.anchorLocationIdx,
         rural: rankValue(country, 0),
         town: rankValue(country, 1),
         city: rankValue(country, 2),
@@ -267,9 +273,11 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    getAnchorLocationIdx: (params) => {
+    backLabel: "Population",
+    getTarget: (params) => {
       const idx = params.dataIndex;
-      return idx == null ? null : rows[idx]?.anchorLocationIdx;
+      const country = idx == null ? null : rows[idx];
+      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
     },
   });
 
@@ -468,7 +476,7 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
           return (
             <button
               type="button"
-              className="text-left text-sky-300 hover:text-sky-200 hover:underline"
+              className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
                 nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
                 panToEntity(loc.locationIdx);
@@ -483,29 +491,7 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
         header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
-        cell: ({ row }) => {
-          const owner = row.original.owner;
-          return (
-            <button
-              type="button"
-              className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
-              onClick={() => {
-                nav.pushMany(
-                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
-                  BACK_LABEL,
-                );
-                panToEntity(owner.anchorLocationIdx);
-              }}
-            >
-              <span
-                className="inline-block h-2 w-2 shrink-0 rounded-sm"
-                style={{ backgroundColor: owner.colorHex }}
-              />
-              {owner.tag && <span className="font-mono text-xs text-slate-500">{owner.tag}</span>}
-              <span className="truncate">{owner.name}</span>
-            </button>
-          );
-        },
+        cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
       }),
       columnHelper.accessor("population", {
         sortingFn: "basic",
@@ -534,7 +520,7 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
   );
 
   return (
-    <DataTable
+    <Eu5DataTable
       className="w-full"
       columns={columns}
       data={locations}

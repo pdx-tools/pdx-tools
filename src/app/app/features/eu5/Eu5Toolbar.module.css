@@ -2,6 +2,6 @@
 
 .searchGroup [cmdk-group-heading] {
   @apply text-[11px] font-semibold tracking-[0.15em] uppercase;
-  color: theme(colors.slate.500);
+  color: var(--color-game-ink-500);
   padding: theme(spacing.1) theme(spacing[2.5]);
 }

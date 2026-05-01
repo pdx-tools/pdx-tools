@@ -1,7 +1,7 @@
 /// Data types for multi-entity summary and aggregate views.
 /// Mirrors the style of entity_profile.rs: owned data, tsify feature-gated,
 /// camelCase serde.
-use crate::entity_profile::{EntityRef, RankedLocation};
+use crate::entity_profile::{CountryRef, EntityRef, RankedLocation};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,10 +55,7 @@ pub enum HoverDisplayData {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryDevSummary {
-    pub anchor_location_idx: u32,
-    pub tag: String,
-    pub name: String,
-    pub color_hex: String,
+    pub country: CountryRef,
     pub total_development: f64,
     pub avg_development: f64,
     pub location_count: u32,
@@ -121,10 +118,7 @@ pub struct DevelopmentInsightData {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryStateEfficacy {
-    pub anchor_location_idx: u32,
-    pub tag: String,
-    pub name: String,
-    pub color_hex: String,
+    pub country: CountryRef,
     pub total_efficacy: f64,
     pub location_count: u32,
     pub avg_efficacy: f64,
@@ -160,10 +154,7 @@ pub struct StateEfficacyInsightData {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryPossibleTax {
-    pub anchor_location_idx: u32,
-    pub tag: String,
-    pub name: String,
-    pub color_hex: String,
+    pub country: CountryRef,
     pub total_possible_tax: f64,
     pub avg_possible_tax: f64,
     pub location_count: u32,
@@ -210,10 +201,7 @@ pub struct PossibleTaxScope {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryTaxGap {
-    pub anchor_location_idx: u32,
-    pub tag: String,
-    pub name: String,
-    pub color_hex: String,
+    pub country: CountryRef,
     pub current_tax_base: f64,
     pub total_possible_tax: f64,
     pub tax_gap: f64,
@@ -352,6 +340,7 @@ pub struct MarketProductionLocationSummary {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct GoodMarketBalanceCell {
+    pub market_name: String,
     pub good: String,
     pub market_anchor_location_idx: u32,
     pub supply: f64,
@@ -401,10 +390,7 @@ pub struct PopulationRankSegment {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct ScopedCountryPopulation {
-    pub anchor_location_idx: u32,
-    pub tag: String,
-    pub name: String,
-    pub color_hex: String,
+    pub country: CountryRef,
     pub total_population: u32,
     pub location_count: u32,
     pub ranks: Vec<PopulationRankSegment>,
@@ -618,10 +604,7 @@ pub struct ControlBandSegment {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryControlBarSummary {
-    pub anchor_location_idx: u32,
-    pub tag: String,
-    pub name: String,
-    pub color_hex: String,
+    pub country: CountryRef,
     pub total_development: f64,
     pub effective_development: f64,
     pub lost_development: f64,
@@ -635,10 +618,7 @@ pub struct CountryControlBarSummary {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryControlPoint {
-    pub anchor_location_idx: u32,
-    pub tag: String,
-    pub name: String,
-    pub color_hex: String,
+    pub country: CountryRef,
     pub total_development: f64,
     pub lost_development: f64,
     pub weighted_avg_control: f64,
@@ -676,11 +656,7 @@ pub struct ControlInsightData {
 #[serde(rename_all = "camelCase")]
 pub struct PoliticalWorldRow {
     pub ordinal_rank: u32,
-    pub anchor_location_idx: u32,
-    pub tag: String,
-    pub name: String,
-    pub color_hex: String,
-    pub is_player: bool,
+    pub country: CountryRef,
     pub total_state_efficacy: f64,
     pub active_state_capacity: f64,
     pub total_population: u32,

@@ -3,7 +3,7 @@ import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { DataTable } from "@/components/DataTable";
+import { Eu5DataTable } from "../../components";
 import { Table } from "@/components/Table";
 import type {
   BuildingLevelsScopeSummary,
@@ -20,17 +20,19 @@ import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeH
 import { StatItem } from "../../EntityProfile/components/StatItem";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
+import { locationProfileEntry, usePanelNav } from "../../EntityProfile/PanelNavContext";
+import { EntityLink } from "../../EntityProfile/EntityLink";
 import {
-  countryProfileEntry,
-  locationProfileEntry,
-  usePanelNav,
-} from "../../EntityProfile/PanelNavContext";
+  Eu5InsightEmptyState,
+  Eu5InsightErrorState,
+  Eu5InsightLoadingState,
+} from "../Eu5InsightState";
 
 const BACK_LABEL = "Building Levels";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );
@@ -149,21 +151,21 @@ function ForeignShareCallout({ scope }: { scope: BuildingLevelsScopeSummary }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between text-sm">
-        <span className="text-slate-300">
+        <span className="text-game-ink-300">
           Foreign-owned:{" "}
           <span className="font-semibold text-white">{formatLevels(scope.foreignLevels)}</span> /{" "}
           {formatLevels(scope.totalLevels)} levels
         </span>
         <span className="font-semibold text-[#c0614a]">{formatFloat(pct, 1)}%</span>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-game-panel-hover">
         <div
           className="h-full rounded-full bg-[#c0614a]"
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </div>
       {(scope.foreignLocationCount > 0 || scope.foreignOwnerCount > 0) && (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-game-ink-500">
           {scope.foreignLocationCount > 0 && (
             <>
               {formatInt(scope.foreignLocationCount)} location
@@ -198,7 +200,7 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
           return (
             <button
               type="button"
-              className="text-left text-sky-300 hover:text-sky-200 hover:underline"
+              className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
                 nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
                 panToEntity(loc.locationIdx);
@@ -213,28 +215,7 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
         header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
-        cell: ({ row }) => {
-          const owner = row.original.owner;
-          return (
-            <button
-              type="button"
-              className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
-              onClick={() => {
-                nav.pushMany(
-                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
-                  BACK_LABEL,
-                );
-                panToEntity(owner.anchorLocationIdx);
-              }}
-            >
-              <span
-                className="inline-block h-2 w-2 shrink-0 rounded-sm"
-                style={{ backgroundColor: owner.colorHex }}
-              />
-              <span className="truncate">{owner.name}</span>
-            </button>
-          );
-        },
+        cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
       }),
       topLocColHelper.accessor("levels", {
         sortingFn: "basic",
@@ -247,7 +228,7 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
   );
 
   return (
-    <DataTable
+    <Eu5DataTable
       className="w-full"
       columns={columns}
       data={locations}
@@ -273,7 +254,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
           return (
             <button
               type="button"
-              className="text-left text-sky-300 hover:text-sky-200 hover:underline"
+              className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
                 nav.pushMany([locationProfileEntry(r.locationIdx, r.locationName)], BACK_LABEL);
                 panToEntity(r.locationIdx);
@@ -289,57 +270,16 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
         sortingFn: (a, b) =>
           a.original.locationOwner.name.localeCompare(b.original.locationOwner.name),
         header: ({ column }) => <Table.ColumnHeader column={column} title="Loc Owner" />,
-        cell: ({ row }) => {
-          const owner = row.original.locationOwner;
-          return (
-            <button
-              type="button"
-              className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
-              onClick={() => {
-                nav.pushMany(
-                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
-                  BACK_LABEL,
-                );
-                panToEntity(owner.anchorLocationIdx);
-              }}
-            >
-              <span
-                className="inline-block h-2 w-2 shrink-0 rounded-sm"
-                style={{ backgroundColor: owner.colorHex }}
-              />
-              <span className="truncate">{owner.name}</span>
-            </button>
-          );
-        },
+        cell: ({ row }) => (
+          <EntityLink entity={row.original.locationOwner} backLabel={BACK_LABEL} />
+        ),
       }),
       foreignLocColHelper.accessor("foreignOwner", {
         id: "foreignOwner",
         sortingFn: (a, b) =>
           a.original.foreignOwner.name.localeCompare(b.original.foreignOwner.name),
         header: ({ column }) => <Table.ColumnHeader column={column} title="Building Owner" />,
-        cell: ({ row }) => {
-          const owner = row.original.foreignOwner;
-          return (
-            <button
-              type="button"
-              className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
-              onClick={() => {
-                nav.pushMany(
-                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
-                  BACK_LABEL,
-                );
-                panToEntity(owner.anchorLocationIdx);
-              }}
-            >
-              <span
-                className="inline-block h-2 w-2 shrink-0 rounded-sm"
-                style={{ backgroundColor: owner.colorHex }}
-              />
-              {owner.tag && <span className="font-mono text-xs text-slate-500">{owner.tag}</span>}
-              <span className="truncate">{owner.name}</span>
-            </button>
-          );
-        },
+        cell: ({ row }) => <EntityLink entity={row.original.foreignOwner} backLabel={BACK_LABEL} />,
       }),
       foreignLocColHelper.accessor("kind", {
         sortingFn: "text",
@@ -357,7 +297,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
   );
 
   return (
-    <DataTable
+    <Eu5DataTable
       className="w-full"
       columns={columns}
       data={rows}
@@ -370,38 +310,13 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
 const foreignOwnerCellColHelper = createColumnHelper<BuildingTypeForeignOwnerCell>();
 
 function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell[] }) {
-  const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
-
   const columns = useMemo(
     () => [
       foreignOwnerCellColHelper.accessor("owner", {
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
         header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
-        cell: ({ row }) => {
-          const owner = row.original.owner;
-          return (
-            <button
-              type="button"
-              className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
-              onClick={() => {
-                nav.pushMany(
-                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
-                  BACK_LABEL,
-                );
-                panToEntity(owner.anchorLocationIdx);
-              }}
-            >
-              <span
-                className="inline-block h-2 w-2 shrink-0 rounded-sm"
-                style={{ backgroundColor: owner.colorHex }}
-              />
-              {owner.tag && <span className="font-mono text-xs text-slate-500">{owner.tag}</span>}
-              <span className="truncate">{owner.name}</span>
-            </button>
-          );
-        },
+        cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
       }),
       foreignOwnerCellColHelper.accessor("kind", {
         sortingFn: "text",
@@ -421,11 +336,11 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
         cell: (info) => formatInt(info.getValue()),
       }),
     ],
-    [nav, panToEntity],
+    [],
   );
 
   return (
-    <DataTable
+    <Eu5DataTable
       className="w-full"
       columns={columns}
       data={cells}
@@ -451,8 +366,10 @@ export function BuildingLevelsInsight() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <BuildingLevelsScopeHeader data={scope} />
-      {insightQuery.loading && !insightQuery.data ? (
-        <div className="h-64 animate-pulse rounded bg-white/5" />
+      {insightQuery.error ? (
+        <Eu5InsightErrorState error={insightQuery.error} />
+      ) : insightQuery.loading && !insightQuery.data ? (
+        <Eu5InsightLoadingState />
       ) : (
         <>
           {types.length > 0 && (
@@ -491,9 +408,7 @@ export function BuildingLevelsInsight() {
           )}
 
           {types.length === 0 && (
-            <p className="py-6 text-center text-sm text-slate-500">
-              No building data in the selected scope
-            </p>
+            <Eu5InsightEmptyState title="No building data in the selected scope." />
           )}
         </>
       )}

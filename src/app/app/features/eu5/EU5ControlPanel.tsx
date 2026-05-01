@@ -59,7 +59,7 @@ const COMING_SOON_FEATURES: ComingSoonFeature[] = [
 export const EU5ControlPanel = () => {
   return (
     <div className="pointer-events-auto absolute inset-y-0 left-0 z-30 w-[20rem]">
-      <div className="h-full w-full border-r border-white/10 bg-slate-950/75 text-slate-100 shadow-xl backdrop-blur">
+      <div className="h-full w-full border-r border-game-line bg-game-page/75 text-game-ink-100 shadow-xl backdrop-blur">
         <SidebarContent />
       </div>
     </div>
@@ -89,10 +89,10 @@ const SidebarContent = () => {
         onClick={() => {
           resetSaveAnalysis();
         }}
-        className="inline-flex items-center justify-center self-start focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:outline-none"
+        className="inline-flex items-center justify-center self-start focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:ring-offset-2 focus-visible:ring-offset-game-page focus-visible:outline-none"
       >
         <span className="sr-only">Return to home</span>
-        <HomeIcon className="h-[30px] w-[30px] text-slate-300 transition-transform duration-150 hover:scale-110" />
+        <HomeIcon className="h-[30px] w-[30px] text-game-ink-300 transition-transform duration-150 hover:scale-110" />
       </Link>
 
       <EarlyAccessRoadmap />
@@ -102,7 +102,7 @@ const SidebarContent = () => {
           <div className="mb-3 flex flex-col gap-1 pr-1">
             <p
               id={mapModesHeadingId}
-              className="text-[11px] font-semibold tracking-[0.25em] text-slate-300 uppercase"
+              className="text-[11px] font-semibold tracking-[0.25em] text-game-ink-300 uppercase"
             >
               Map Modes
             </p>
@@ -134,10 +134,10 @@ const SidebarContent = () => {
         <div className="space-y-4 rounded-2xl border border-white/5 bg-white/3 px-4 py-3">
           <label htmlFor={bordersSwitchId} className="flex items-center justify-between gap-3">
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold tracking-wide text-slate-300 uppercase">
+              <span className="text-xs font-semibold tracking-wide text-game-ink-300 uppercase">
                 Owner Borders
               </span>
-              <span className="text-xs text-slate-300/80">
+              <span className="text-xs text-game-ink-500">
                 Highlight borders between countries.
               </span>
             </div>
@@ -246,23 +246,23 @@ function Screenshot() {
         run(event.shiftKey);
       }}
       className={cx(
-        "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:outline-none",
-        "border-white/5 bg-white/3 hover:border-sky-400/40 hover:bg-white/10",
-        isDisabled && "cursor-not-allowed opacity-60 hover:border-white/5",
+        "flex w-full items-center justify-between gap-3 rounded-panel border px-4 py-3 text-left transition focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:ring-offset-2 focus-visible:ring-offset-game-page focus-visible:outline-none",
+        "border-game-line-strong bg-game-panel hover:border-game-accent-line hover:bg-game-panel-hover",
+        isDisabled && "cursor-not-allowed opacity-60 hover:border-game-line-strong",
       )}
     >
       <div className="flex items-center gap-3">
         {isDisabled ? (
-          <LoadingIcon className="h-5 w-5 text-sky-300" />
+          <LoadingIcon className="h-5 w-5 text-game-info" />
         ) : (
-          <CameraIcon className="h-5 w-5 text-sky-300" />
+          <CameraIcon className="h-5 w-5 text-game-info" />
         )}
         <div className="flex flex-col leading-tight">
-          <span className="text-sm font-semibold text-slate-100">Capture screenshot</span>
-          <span className="text-xs text-slate-300/80">Shift-click for full resolution.</span>
+          <span className="text-sm font-semibold text-game-ink-100">Capture screenshot</span>
+          <span className="text-xs text-game-ink-500">Shift-click for full resolution.</span>
         </div>
       </div>
-      <span className="text-[11px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
+      <span className="text-[11px] font-semibold tracking-[0.2em] text-game-ink-500 uppercase">
         PNG
       </span>
     </button>
@@ -299,23 +299,23 @@ function Melt() {
         run();
       }}
       className={cx(
-        "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:outline-none",
-        "border-white/5 bg-white/3 hover:border-sky-400/40 hover:bg-white/10",
-        isLoading && "cursor-not-allowed opacity-60 hover:border-white/5",
+        "flex w-full items-center justify-between gap-3 rounded-panel border px-4 py-3 text-left transition focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:ring-offset-2 focus-visible:ring-offset-game-page focus-visible:outline-none",
+        "border-game-line-strong bg-game-panel hover:border-game-accent-line hover:bg-game-panel-hover",
+        isLoading && "cursor-not-allowed opacity-60 hover:border-game-line-strong",
       )}
     >
       <div className="flex items-center gap-3">
         {isLoading ? (
-          <LoadingIcon className="h-5 w-5 text-emerald-300" />
+          <LoadingIcon className="h-5 w-5 text-game-good" />
         ) : (
-          <SparklesIcon className="h-5 w-5 text-emerald-300" />
+          <SparklesIcon className="h-5 w-5 text-game-good" />
         )}
         <div className="flex flex-col leading-tight">
-          <span className="text-sm font-semibold text-slate-100">Melt save file</span>
-          <span className="text-xs text-slate-300/80">Convert the save to plaintext</span>
+          <span className="text-sm font-semibold text-game-ink-100">Melt save file</span>
+          <span className="text-xs text-game-ink-500">Convert the save to plaintext</span>
         </div>
       </div>
-      <span className="text-[11px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
+      <span className="text-[11px] font-semibold tracking-[0.2em] text-game-ink-500 uppercase">
         TXT
       </span>
     </button>

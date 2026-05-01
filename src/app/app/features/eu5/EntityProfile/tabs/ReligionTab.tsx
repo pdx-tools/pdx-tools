@@ -9,7 +9,7 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 export function ReligionTabContent({ data }: { data: CountryReligionSection }) {
   const { religionBreakdown } = data;
   if (religionBreakdown.length === 0) {
-    return <p className="text-sm text-slate-500">No religion data.</p>;
+    return <p className="text-sm text-game-ink-500">No religion data.</p>;
   }
 
   return (
@@ -92,7 +92,7 @@ function ReligionLegend({ breakdown }: { breakdown: ReligionShare[] }) {
   return (
     <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
       {breakdown.map((row) => (
-        <div key={row.religion} className="flex items-center gap-1.5 text-xs text-slate-400">
+        <div key={row.religion} className="flex items-center gap-1.5 text-xs text-game-ink-300">
           <span className="h-2 w-2 shrink-0 rounded-sm" style={{ backgroundColor: row.colorHex }} />
           {row.religion}
         </div>
@@ -103,7 +103,7 @@ function ReligionLegend({ breakdown }: { breakdown: ReligionShare[] }) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );

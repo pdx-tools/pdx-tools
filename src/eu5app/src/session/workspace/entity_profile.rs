@@ -1003,7 +1003,7 @@ impl<'bump> Eu5Workspace<'bump> {
             b.location_count
                 .cmp(&a.location_count)
                 .then_with(|| b.population.cmp(&a.population))
-                .then_with(|| a.country.name.cmp(&b.country.name))
+                .then_with(|| a.country.name().cmp(b.country.name()))
         });
         rows
     }

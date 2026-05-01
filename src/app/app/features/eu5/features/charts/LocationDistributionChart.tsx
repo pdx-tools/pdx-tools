@@ -56,7 +56,7 @@ export function LocationDistributionChart({ distribution }: Props) {
 
   return (
     <div>
-      <p className="mb-1 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+      <p className="mb-1 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
         {distribution.metricLabel} distribution
       </p>
       <EChart option={option} style={{ height: 180 }} />

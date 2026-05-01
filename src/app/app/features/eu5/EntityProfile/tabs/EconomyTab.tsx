@@ -29,14 +29,14 @@ export function CountryEconomyTabContent({
 
       {data.marketMembership.length > 0 && (
         <div>
-          <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+          <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
             Market membership
           </p>
           <div className="flex flex-col gap-1">
             {data.marketMembership.map((m) => (
               <div key={m.marketCenterName} className="flex items-center justify-between text-sm">
-                <span className="text-slate-300">{m.marketCenterName}</span>
-                <span className="font-mono text-xs text-slate-400">{m.locationCount} loc</span>
+                <span className="text-game-ink-300">{m.marketCenterName}</span>
+                <span className="font-mono text-xs text-game-ink-300">{m.locationCount} loc</span>
               </div>
             ))}
           </div>
@@ -130,7 +130,7 @@ function TaxGapScatter({ locations }: { locations: LocationRow[] }) {
 
   return (
     <section>
-      <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+      <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
         Tax Gap · Possible vs Actual
       </p>
       <EChart option={option} style={{ height: "300px", width: "100%" }} />
@@ -145,11 +145,11 @@ export function MarketGoodsTabContent({ anchorLocationIdx }: { anchorLocationIdx
   );
 
   if (loading && !goods) {
-    return <div className="h-64 animate-pulse rounded bg-white/5" />;
+    return <div className="h-64 animate-pulse rounded bg-game-panel-hover" />;
   }
 
   if (!goods || goods.length === 0) {
-    return <p className="py-6 text-center text-sm text-slate-500">No market goods data.</p>;
+    return <p className="py-6 text-center text-sm text-game-ink-500">No market goods data.</p>;
   }
 
   return (
@@ -161,11 +161,11 @@ export function MarketGoodsTabContent({ anchorLocationIdx }: { anchorLocationIdx
 
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-0.5 rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-      <span className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
+    <div className="flex flex-col gap-0.5 rounded-lg border border-game-line bg-game-panel-hover px-3 py-2">
+      <span className="text-[10px] font-semibold tracking-wider text-game-ink-300 uppercase">
         {label}
       </span>
-      <span className="text-sm font-semibold text-slate-100">{value}</span>
+      <span className="text-sm font-semibold text-game-ink-100">{value}</span>
     </div>
   );
 }
