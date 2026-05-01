@@ -138,8 +138,8 @@ pub enum LocationRank {
     Town,
     #[serde(rename = "city")]
     City,
-    #[serde(rename = "metropolis")]
-    Metropolis,
+    #[serde(rename = "megalopolis")]
+    Megalopolis,
     #[default]
     #[serde(other)]
     Other,

@@ -35,9 +35,9 @@ const RANK_COLORS = {
   rural: "#b85c5c",
   town: "#8b949e",
   city: "#d6a84f",
-  metropolis: "#2aa6a1",
+  megalopolis: "#2aa6a1",
 };
-const RANK_LABELS = ["Rural", "Town", "City", "Metropolis"] as const;
+const RANK_LABELS = ["Rural", "Town", "City", "Megalopolis"] as const;
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -140,7 +140,7 @@ type CountrySpineDatum = ScopedCountryPopulation & {
   rural: number;
   town: number;
   city: number;
-  metropolis: number;
+  megalopolis: number;
 };
 
 function rankLabel(rank: number) {
@@ -148,7 +148,7 @@ function rankLabel(rank: number) {
 }
 
 function rankKey(rank: number): keyof typeof RANK_COLORS {
-  return (["rural", "town", "city", "metropolis"] as const)[rank] ?? "town";
+  return (["rural", "town", "city", "megalopolis"] as const)[rank] ?? "town";
 }
 
 function rankKeyFromLabel(label: string): keyof typeof RANK_COLORS {
@@ -191,7 +191,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
         rural: rankValue(country, 0),
         town: rankValue(country, 1),
         city: rankValue(country, 2),
-        metropolis: rankValue(country, 3),
+        megalopolis: rankValue(country, 3),
       })),
     [countries],
   );
@@ -202,7 +202,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
     return {
       dataset: {
         source: rows,
-        dimensions: ["name", "rural", "town", "city", "metropolis"],
+        dimensions: ["name", "rural", "town", "city", "megalopolis"],
       },
       grid: { left: 110, right: 24, top: 10, bottom: 28 },
       xAxis: {
@@ -255,11 +255,11 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
           itemStyle: { color: RANK_COLORS.city },
         },
         {
-          name: "Metropolis",
+          name: "Megalopolis",
           type: "bar",
           stack: "population",
-          encode: { x: "metropolis", y: "name" },
-          itemStyle: { color: RANK_COLORS.metropolis },
+          encode: { x: "megalopolis", y: "name" },
+          itemStyle: { color: RANK_COLORS.megalopolis },
         },
       ],
     };
@@ -288,12 +288,12 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
       rural: ranks.find((rank) => rank.rank === 0)?.population ?? 0,
       town: ranks.find((rank) => rank.rank === 1)?.population ?? 0,
       city: ranks.find((rank) => rank.rank === 2)?.population ?? 0,
-      metropolis: ranks.find((rank) => rank.rank === 3)?.population ?? 0,
+      megalopolis: ranks.find((rank) => rank.rank === 3)?.population ?? 0,
     }),
     [ranks],
   );
 
-  const total = row.rural + row.town + row.city + row.metropolis;
+  const total = row.rural + row.town + row.city + row.megalopolis;
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, tickColor } = getEChartsTheme(isDark);
@@ -301,7 +301,7 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
     return {
       dataset: {
         source: [row],
-        dimensions: ["scope", "rural", "town", "city", "metropolis"],
+        dimensions: ["scope", "rural", "town", "city", "megalopolis"],
       },
       grid: {
         left: 0,
@@ -365,11 +365,11 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
           itemStyle: { color: RANK_COLORS.city },
         },
         {
-          name: "Metropolis",
+          name: "Megalopolis",
           type: "bar",
           stack: "population",
-          encode: { x: "metropolis", y: "scope" },
-          itemStyle: { color: RANK_COLORS.metropolis },
+          encode: { x: "megalopolis", y: "scope" },
+          itemStyle: { color: RANK_COLORS.megalopolis },
         },
       ],
     };
