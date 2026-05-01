@@ -29,6 +29,7 @@ import type {
   ReligionInsightData,
   RgoInsightData,
   ControlInsightData,
+  PoliticalWorldScoreboard,
   Eu5DateComponents,
 } from "@/wasm/wasm_eu5";
 import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
@@ -88,6 +89,7 @@ export interface AppTriggers {
   getReligionInsight(): Promise<ReligionInsightData>;
   getRgoInsight(): Promise<RgoInsightData>;
   getControlInsight(): Promise<ControlInsightData>;
+  getPoliticalWorldScoreboard(): Promise<PoliticalWorldScoreboard>;
   getPoliticalDefaultCountryAnchor(): Promise<number | null>;
   selectEntity(locationIdx: number): Promise<void>;
   selectCountry(anchorLocationIdx: number): Promise<void>;
@@ -197,6 +199,7 @@ export class Eu5UIEngine implements AppEngine {
     getReligionInsight: () => this.gameInstance.getReligionInsight(),
     getRgoInsight: () => this.gameInstance.getRgoInsight(),
     getControlInsight: () => this.gameInstance.getControlInsight(),
+    getPoliticalWorldScoreboard: () => this.gameInstance.getPoliticalWorldScoreboard(),
     getPoliticalDefaultCountryAnchor: () => this.gameInstance.getPoliticalDefaultCountryAnchor(),
     selectEntity: (locationIdx) => this.handleSelectEntity(locationIdx),
     selectCountry: (locationIdx) => this.gameInstance.selectCountry(locationIdx),
