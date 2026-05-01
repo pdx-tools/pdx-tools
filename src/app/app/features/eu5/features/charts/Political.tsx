@@ -5,7 +5,10 @@ import { Tooltip } from "@/components/Tooltip";
 import type { PoliticalWorldRow } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
-import { useEu5EntityActivate } from "../../useEntityActivate";
+import { countryProfileEntry, usePanelNav } from "../../EntityProfile/PanelNavContext";
+import { usePanToEntity } from "../../usePanToEntity";
+
+const BACK_LABEL = "Overview";
 
 export function PoliticalInsight() {
   const query = useEu5SelectionTrigger((engine) => engine.trigger.getPoliticalWorldScoreboard());
@@ -35,14 +38,13 @@ export function PoliticalInsight() {
 }
 
 function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
-  const activate = useEu5EntityActivate();
+  const nav = usePanelNav();
+  const panToEntity = usePanToEntity();
   let hasRenderedSeparator = false;
 
-  const handleClick = (row: PoliticalWorldRow, event: React.MouseEvent<HTMLButtonElement>) => {
-    activate(
-      { kind: "country", anchorLocationIdx: row.anchorLocationIdx },
-      { shiftKey: event.shiftKey, altKey: event.altKey },
-    );
+  const handleClick = (row: PoliticalWorldRow) => {
+    nav.pushMany([countryProfileEntry(row.anchorLocationIdx, row.name)], BACK_LABEL);
+    panToEntity(row.anchorLocationIdx);
   };
 
   return (
@@ -87,7 +89,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
               )}
               <button
                 type="button"
-                onClick={(event) => handleClick(row, event)}
+                onClick={() => handleClick(row)}
                 className={cx(
                   "grid w-full grid-cols-[4.5rem_minmax(0,1fr)_5.25rem_5.25rem_5.25rem_5.25rem] items-center gap-2 rounded border border-white/10 bg-white/3 px-2 py-2 text-left transition hover:border-sky-300/40 hover:bg-sky-300/10",
                   row.isPlayer && "border-amber-300/25 bg-amber-300/10 hover:bg-amber-300/15",
