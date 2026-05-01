@@ -2,6 +2,7 @@ import React from "react";
 import { Select as SelectPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
 import { CheckIcon } from "@heroicons/react/24/outline";
+import { useGameThemeContainer } from "@/components/GameThemeProvider";
 
 export const Select = SelectPrimitive.Root as typeof SelectPrimitive.Root & {
   Group: typeof SelectPrimitive.Group;
@@ -40,8 +41,10 @@ const SelectContent = React.forwardRef<
   React.ComponentRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
 >(function SelectContent({ className, children, position = "popper", ...props }, ref) {
+  const container = useGameThemeContainer();
+
   return (
-    <SelectPrimitive.Portal>
+    <SelectPrimitive.Portal container={container ?? undefined}>
       <SelectPrimitive.Content
         ref={ref}
         className={cx(

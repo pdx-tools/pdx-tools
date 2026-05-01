@@ -4,6 +4,7 @@ import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
 import { Button } from "./Button";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useGameThemeContainer } from "@/components/GameThemeProvider";
 
 // https://github.com/shadcn-ui/ui/issues/399
 const SheetRoot = (props: React.ComponentProps<typeof SheetPrimitive.Root>) => (
@@ -71,8 +72,10 @@ const SheetContent = React.forwardRef<
   React.ComponentRef<typeof SheetPrimitive.Content>,
   SheetContentProps
 >(function SheetContent({ side = "right", className, children, ...props }, ref) {
+  const container = useGameThemeContainer();
+
   return (
-    <Sheet.Portal>
+    <SheetPrimitive.Portal container={container ?? undefined}>
       <Sheet.Overlay />
       <SheetPrimitive.Content
         ref={ref}
@@ -81,7 +84,7 @@ const SheetContent = React.forwardRef<
       >
         {children}
       </SheetPrimitive.Content>
-    </Sheet.Portal>
+    </SheetPrimitive.Portal>
   );
 });
 Sheet.Content = SheetContent;

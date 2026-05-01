@@ -1,36 +1,35 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 
-@theme {
-  /* EU5 surface ramp — slate base, dark to elevated */
-  --color-eu5-bg-deepest: #07090d;
-  --color-eu5-bg-panel: #0e1218;
-  --color-eu5-bg-panel-2: #131822;
-  --color-eu5-bg-elevated: #1a212c;
-  --color-eu5-bg-hover: #222a37;
-  --color-eu5-bg-active: #2a3343;
+@theme inline {
+  /* Semantic game tokens. Per-game values are scoped by [data-game-theme]. */
+  --color-game-panel: var(--game-panel);
+  --color-game-panel-hover: var(--game-panel-hover);
 
-  /* EU5 hairlines (alpha-on-dark, single source of truth) */
-  --color-eu5-line: rgba(255, 255, 255, 0.06);
-  --color-eu5-line-strong: rgba(255, 255, 255, 0.1);
-  --color-eu5-line-hover: rgba(255, 255, 255, 0.16);
+  --color-game-line: var(--game-line);
+  --color-game-line-strong: var(--game-line-strong);
 
-  /* EU5 type — parchment-tinted whites */
-  /* Three stops only — a fourth "faded" stop was tried and removed: any value dark enough to
-     feel faded failed WCAG AA on bg-panel, and any value that passed was indistinguishable
-     from ink-500. Use a line token for decorative near-invisible strokes instead. */
-  --color-eu5-ink-100: #f3ede1;
-  --color-eu5-ink-300: #cbc6bc;
-  --color-eu5-ink-500: #8a8478;
+  --color-game-ink-100: var(--game-ink-100);
+  --color-game-ink-300: var(--game-ink-300);
+  --color-game-ink-500: var(--game-ink-500);
 
-  /* EU5 single accent — bronze. Used for active state + primary action. */
-  --color-eu5-bronze-100: #f4d39a;
-  --color-eu5-bronze-300: #d4a05a;
-  --color-eu5-bronze-500: #b07a2c;
-  --color-eu5-bronze-700: #6b4915;
+  --color-game-accent-100: var(--game-accent-100);
+  --color-game-accent-300: var(--game-accent-300);
+  --color-game-accent-500: var(--game-accent-500);
+}
 
-  /* EU5 row rhythm */
-  --eu5-row-h: 28px;
-  --eu5-action-h: 48px;
-  --eu5-section-pad-x: 14px;
+[data-game-theme="eu5"] {
+  --game-panel: #0e1218;
+  --game-panel-hover: #222a37;
+
+  --game-line: rgba(255, 255, 255, 0.06);
+  --game-line-strong: rgba(255, 255, 255, 0.1);
+
+  --game-ink-100: #f3ede1;
+  --game-ink-300: #cbc6bc;
+  --game-ink-500: #8a8478;
+
+  --game-accent-100: #f4d39a;
+  --game-accent-300: #d4a05a;
+  --game-accent-500: #b07a2c;
 }

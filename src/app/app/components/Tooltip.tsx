@@ -2,6 +2,7 @@ import React from "react";
 import { Tooltip as TooltipPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
 import { createPortal } from "react-dom";
+import { useGameThemeContainer } from "@/components/GameThemeProvider";
 
 export const Tooltip = TooltipPrimitive.Root as typeof TooltipPrimitive.Root & {
   Provider: typeof TooltipPrimitive.Provider;
@@ -30,6 +31,8 @@ const TooltipContent = React.forwardRef<
   React.ComponentRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
 >(function TooltipContent({ className, sideOffset = 4, ...props }, ref) {
+  const container = useGameThemeContainer();
+
   if (!("document" in globalThis)) {
     return null;
   }
@@ -45,7 +48,7 @@ const TooltipContent = React.forwardRef<
       )}
       {...props}
     />,
-    document.body,
+    container ?? document.body,
   );
 });
 Tooltip.Content = TooltipContent;

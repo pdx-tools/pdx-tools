@@ -6,7 +6,7 @@ export function RenderBar() {
   const hasLegend = useEu5MapModeGradient() != null;
 
   return (
-    <section className="shrink-0 border-b border-eu5-line">
+    <section className="shrink-0 border-b border-game-line">
       {hasLegend && <Legend />}
       <div className="flex items-center px-3.5 py-2">
         <ViewToggles />

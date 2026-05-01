@@ -6,9 +6,9 @@ import type { MapMode } from "@/wasm/wasm_eu5";
 
 export function MapModesSection() {
   return (
-    <section className="flex flex-col overflow-hidden border-b border-eu5-line">
+    <section className="flex flex-col overflow-hidden border-b border-game-line">
       <div className="flex h-9 shrink-0 items-center px-3.5">
-        <h3 className="font-mono text-[9.5px] font-medium tracking-[0.28em] text-eu5-ink-500 uppercase">
+        <h3 className="font-mono text-[9.5px] font-medium tracking-[0.28em] text-game-ink-500 uppercase">
           Map Modes
         </h3>
       </div>
@@ -32,16 +32,16 @@ function ModeRow({ mode }: { mode: ModeConfig }) {
       onClick={() => engine.trigger.selectMapMode(mode.value as MapMode)}
       className={cx(
         "relative flex h-7 w-full items-center pr-3.5 pl-3.5 text-left",
-        "text-[12.5px] text-eu5-ink-300 transition-colors duration-100",
-        "hover:bg-eu5-bg-hover hover:text-eu5-ink-100",
-        isActive && "text-eu5-bronze-100",
-        isActive && "bg-linear-to-r from-eu5-bronze-500/15 to-transparent",
+        "text-[12.5px] text-game-ink-300 transition-colors duration-100",
+        "hover:bg-game-panel-hover hover:text-game-ink-100",
+        isActive && "text-game-accent-100",
+        isActive && "bg-linear-to-r from-game-accent-500/15 to-transparent",
       )}
     >
       <span
         className={cx(
           "absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full",
-          isActive ? "bg-eu5-bronze-500" : "bg-transparent",
+          isActive ? "bg-game-accent-500" : "bg-transparent",
         )}
       />
       <span className={cx(isActive && "font-medium")}>{mode.label}</span>
