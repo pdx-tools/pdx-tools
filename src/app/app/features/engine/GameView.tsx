@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 import type { ComponentProps, ComponentType } from "react";
+import { GameThemeProvider } from "@/components/GameThemeProvider";
 import { WebPage } from "@/components/layout";
 import { PageDropOverlay } from "./components/PageDropOverlay";
 import { useEngineActions, useSaveFileInput, useSaveInputId } from "./engineStore";
@@ -65,9 +66,11 @@ const gameRenderer = (savegame: SaveGameInput | null, inputId: number) => {
       return {
         kind: "full-screen",
         component: () => (
-          <Suspense fallback={null}>
-            <DynamicEu5 key={inputId} save={savegame.data} />
-          </Suspense>
+          <GameThemeProvider theme="eu5">
+            <Suspense fallback={null}>
+              <DynamicEu5 key={inputId} save={savegame.data} />
+            </Suspense>
+          </GameThemeProvider>
         ),
       } as const;
     case "ck3":

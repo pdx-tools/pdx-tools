@@ -24,8 +24,8 @@ function SaveDateReadout({ date }: { date: Eu5DateComponents }) {
   const monthDay = `${MONTH_ABBR[date.month]} ${date.day}`;
   return (
     <p className="flex items-baseline gap-1">
-      <span className="font-serif text-[13px] text-eu5-ink-500">{date.year}</span>
-      <span className="font-mono text-[10px] text-eu5-ink-500">{monthDay}</span>
+      <span className="font-serif text-[13px] text-game-ink-500">{date.year}</span>
+      <span className="font-mono text-[10px] text-game-ink-500">{monthDay}</span>
     </p>
   );
 }
@@ -36,18 +36,18 @@ export function PanelHeader() {
   const playthroughName = useEu5PlaythroughName();
 
   return (
-    <header className="flex shrink-0 items-center gap-2.5 border-b border-eu5-line px-3.5 pt-6 pb-2">
+    <header className="flex shrink-0 items-center gap-2.5 border-b border-game-line px-3.5 pt-6 pb-2">
       <Link
         to="/"
         onClick={resetSaveAnalysis}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-eu5-ink-500 transition-colors duration-100 hover:bg-eu5-bg-hover hover:text-eu5-ink-100 focus-visible:ring-2 focus-visible:ring-eu5-bronze-300/50 focus-visible:outline-none"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-game-ink-500 transition-colors duration-100 hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-300/50 focus-visible:outline-none"
         aria-label="Return to home"
       >
         <HomeIcon className="h-4 w-4" />
       </Link>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate font-serif text-[17px] leading-tight font-medium text-eu5-ink-100">
+        <p className="truncate font-serif text-[17px] leading-tight font-medium text-game-ink-100">
           {playthroughName}
         </p>
         <SaveDateReadout date={saveDate} />

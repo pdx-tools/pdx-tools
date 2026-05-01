@@ -1,6 +1,7 @@
 import React from "react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
+import { useGameThemeContainer } from "@/components/GameThemeProvider";
 
 export const DropdownMenu = DropdownMenuPrimitive.Root as typeof DropdownMenuPrimitive.Root & {
   Trigger: typeof DropdownMenuPrimitive.Trigger;
@@ -71,8 +72,10 @@ const DropdownMenuContent = React.forwardRef<
   React.ComponentRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
 >(function DropdownMenuContent({ className, sideOffset = 4, ...props }, ref) {
+  const container = useGameThemeContainer();
+
   return (
-    <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Portal container={container ?? undefined}>
       <DropdownMenuPrimitive.Content
         ref={ref}
         sideOffset={sideOffset}

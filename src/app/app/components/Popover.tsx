@@ -1,6 +1,7 @@
 import React from "react";
 import { Popover as PopoverPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
+import { useGameThemeContainer } from "@/components/GameThemeProvider";
 
 export const Popover = PopoverPrimitive.Root as typeof PopoverPrimitive.Root & {
   Trigger: typeof PopoverPrimitive.Trigger;
@@ -14,8 +15,10 @@ const PopoverContent = React.forwardRef<
   React.ComponentRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
 >(function PopoverContent({ className, align = "center", sideOffset = 4, ...props }, ref) {
+  const container = useGameThemeContainer();
+
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={container ?? undefined}>
       <PopoverPrimitive.Content
         ref={ref}
         align={align}

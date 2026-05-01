@@ -8,7 +8,7 @@ export function ViewToggles() {
 
   return (
     <div className="flex items-center gap-1">
-      <span className="mr-1 font-mono text-[9.5px] font-medium tracking-[0.2em] text-eu5-ink-500 uppercase">
+      <span className="mr-1 font-mono text-[9.5px] font-medium tracking-[0.2em] text-game-ink-500 uppercase">
         View
       </span>
 
@@ -19,7 +19,7 @@ export function ViewToggles() {
               pressed={ownerBordersEnabled}
               onPressedChange={() => engine.trigger.toggleOwnerBorders()}
               aria-label="Owner Borders"
-              className="grid h-7 w-7 place-items-center rounded text-eu5-ink-500 transition-colors duration-100 hover:bg-eu5-bg-hover hover:text-eu5-ink-100 data-[state=on]:bg-eu5-bronze-500/15 data-[state=on]:text-eu5-bronze-100"
+              className="grid h-7 w-7 place-items-center rounded text-game-ink-500 transition-colors duration-100 hover:bg-game-panel-hover hover:text-game-ink-100 data-[state=on]:bg-game-accent-500/15 data-[state=on]:text-game-accent-100"
             >
               <svg
                 viewBox="0 0 12 12"
