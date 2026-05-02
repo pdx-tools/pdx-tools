@@ -634,16 +634,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let country_idx = self.gamestate.countries.get(owner_id)?;
         let overlord =
             self.overlord_of[country_idx].and_then(|idx| self.entity_ref_from_country_idx(idx));
-        let subject_count = self
-            .gamestate
-            .countries
-            .iter()
-            .filter(|entry| self.overlord_of[entry.idx()] == Some(country_idx))
-            .count() as u32;
-        Some(DiplomaticSummary {
-            overlord,
-            subject_count,
-        })
+        Some(DiplomaticSummary { overlord })
     }
 
     /// Returns economy section for the current country scope.
@@ -940,8 +931,49 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
-        let overlord = self.overlord_of[anchor_country_idx]
-            .and_then(|idx| self.entity_ref_from_country_idx(idx));
+        #[derive(Default, Clone)]
+        struct MetricsAgg {
+            total_state_efficacy: f64,
+            active_state_capacity: f64,
+            total_population: u32,
+        }
+
+        let mut metrics_map: FxHashMap<CountryIdx, MetricsAgg> = FxHashMap::default();
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            let Some(owner_id) = loc.owner.real_id().map(|id| id.country_id()) else {
+                continue;
+            };
+            let Some(country_idx) = self.gamestate.countries.get(owner_id) else {
+                continue;
+            };
+            let agg = metrics_map.entry(country_idx).or_default();
+            let population = self.gamestate.location_population(loc) as u32;
+            let state_efficacy = loc.control * loc.development;
+            agg.total_state_efficacy += state_efficacy;
+            agg.active_state_capacity += population as f64 * state_efficacy;
+            agg.total_population += population;
+        }
+
+        let country_metrics = |idx: CountryIdx| -> CountryMetrics {
+            let agg = metrics_map.get(&idx).cloned().unwrap_or_default();
+            let data = self.gamestate.countries.index(idx).data();
+            let tax_trade_income = data
+                .map(|d| d.estimated_monthly_income_trade_and_tax)
+                .unwrap_or(0.0);
+            let great_power_rank = data.map(|d| d.great_power_rank).unwrap_or(0);
+            CountryMetrics {
+                great_power_rank,
+                total_state_efficacy: agg.total_state_efficacy,
+                active_state_capacity: agg.active_state_capacity,
+                total_population: agg.total_population,
+                tax_trade_income,
+            }
+        };
+
+        let overlord_country_idx = self.overlord_of[anchor_country_idx];
+        let overlord = overlord_country_idx.and_then(|idx| self.entity_ref_from_country_idx(idx));
+        let overlord_metrics = overlord_country_idx.map(country_metrics);
 
         let subjects: Vec<SubjectRef> = self
             .gamestate
@@ -958,6 +990,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     Some(SubjectRef {
                         entity,
                         subject_type,
+                        metrics: country_metrics(entry.idx()),
                     })
                 } else {
                     None
@@ -968,6 +1001,7 @@ impl<'bump> Eu5Workspace<'bump> {
         Some(DiplomacySection {
             overlord,
             overlord_subject_type,
+            overlord_metrics,
             subjects,
         })
     }
@@ -1306,8 +1340,49 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
-        let overlord = self.overlord_of[anchor_country_idx]
-            .and_then(|idx| self.entity_ref_from_country_idx(idx));
+        #[derive(Default, Clone)]
+        struct MetricsAgg {
+            total_state_efficacy: f64,
+            active_state_capacity: f64,
+            total_population: u32,
+        }
+
+        let mut metrics_map: FxHashMap<CountryIdx, MetricsAgg> = FxHashMap::default();
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            let Some(owner_id) = loc.owner.real_id().map(|id| id.country_id()) else {
+                continue;
+            };
+            let Some(country_idx) = self.gamestate.countries.get(owner_id) else {
+                continue;
+            };
+            let agg = metrics_map.entry(country_idx).or_default();
+            let population = self.gamestate.location_population(loc) as u32;
+            let state_efficacy = loc.control * loc.development;
+            agg.total_state_efficacy += state_efficacy;
+            agg.active_state_capacity += population as f64 * state_efficacy;
+            agg.total_population += population;
+        }
+
+        let country_metrics = |idx: CountryIdx| -> CountryMetrics {
+            let agg = metrics_map.get(&idx).cloned().unwrap_or_default();
+            let data = self.gamestate.countries.index(idx).data();
+            let tax_trade_income = data
+                .map(|d| d.estimated_monthly_income_trade_and_tax)
+                .unwrap_or(0.0);
+            let great_power_rank = data.map(|d| d.great_power_rank).unwrap_or(0);
+            CountryMetrics {
+                great_power_rank,
+                total_state_efficacy: agg.total_state_efficacy,
+                active_state_capacity: agg.active_state_capacity,
+                total_population: agg.total_population,
+                tax_trade_income,
+            }
+        };
+
+        let overlord_country_idx = self.overlord_of[anchor_country_idx];
+        let overlord = overlord_country_idx.and_then(|idx| self.entity_ref_from_country_idx(idx));
+        let overlord_metrics = overlord_country_idx.map(country_metrics);
 
         let subjects: Vec<SubjectRef> = self
             .gamestate
@@ -1324,6 +1399,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     Some(SubjectRef {
                         entity,
                         subject_type,
+                        metrics: country_metrics(entry.idx()),
                     })
                 } else {
                     None
@@ -1334,6 +1410,7 @@ impl<'bump> Eu5Workspace<'bump> {
         Some(DiplomacySection {
             overlord,
             overlord_subject_type,
+            overlord_metrics,
             subjects,
         })
     }

@@ -98,19 +98,12 @@ function EconomicIndicatorGrid({ indicators }: { indicators: EconomicIndicator[]
 }
 
 function DiplomaticSummaryRow({ summary }: { summary: DiplomaticSummary }) {
+  if (!summary.overlord) return null;
   return (
-    <section>
-      <SectionTitle>Diplomacy</SectionTitle>
-      <div className="flex flex-col gap-1 text-sm text-game-ink-300">
-        {summary.overlord && (
-          <div className="flex items-center gap-2">
-            <span className="text-game-ink-500">Subject of</span>
-            <EntityLink entity={summary.overlord} />
-          </div>
-        )}
-        <div>{formatInt(summary.subjectCount)} subjects</div>
-      </div>
-    </section>
+    <div className="flex items-center gap-1.5 text-xs text-game-ink-500">
+      <span>Subject of</span>
+      <EntityLink entity={summary.overlord} size="xs" />
+    </div>
   );
 }
 

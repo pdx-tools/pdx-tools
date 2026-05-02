@@ -171,7 +171,6 @@ pub struct RankedLocation {
 #[serde(rename_all = "camelCase")]
 pub struct DiplomaticSummary {
     pub overlord: Option<EntityRef>,
-    pub subject_count: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -278,9 +277,22 @@ pub enum DiplomacySubjectType {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
+pub struct CountryMetrics {
+    pub great_power_rank: i32,
+    pub total_state_efficacy: f64,
+    pub active_state_capacity: f64,
+    pub total_population: u32,
+    pub tax_trade_income: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
 pub struct SubjectRef {
     pub entity: EntityRef,
     pub subject_type: DiplomacySubjectType,
+    pub metrics: CountryMetrics,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -290,6 +302,7 @@ pub struct SubjectRef {
 pub struct DiplomacySection {
     pub overlord: Option<EntityRef>,
     pub overlord_subject_type: Option<DiplomacySubjectType>,
+    pub overlord_metrics: Option<CountryMetrics>,
     pub subjects: Vec<SubjectRef>,
 }
 
