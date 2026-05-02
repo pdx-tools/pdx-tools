@@ -3,8 +3,12 @@
 
 @theme inline {
   /* Semantic game tokens. Per-game values are scoped by [data-game-theme]. */
+  --color-game-page: var(--game-page);
   --color-game-panel: var(--game-panel);
+  --color-game-panel-2: var(--game-panel-2);
   --color-game-panel-hover: var(--game-panel-hover);
+  --color-game-panel-active: var(--game-panel-active);
+  --color-game-overlay: var(--game-overlay);
 
   --color-game-line: var(--game-line);
   --color-game-line-strong: var(--game-line-strong);
@@ -12,24 +16,64 @@
   --color-game-ink-100: var(--game-ink-100);
   --color-game-ink-300: var(--game-ink-300);
   --color-game-ink-500: var(--game-ink-500);
+  --color-game-ink-700: var(--game-ink-700);
+  --color-game-ink-disabled: var(--game-ink-disabled);
 
   --color-game-accent-100: var(--game-accent-100);
   --color-game-accent-300: var(--game-accent-300);
   --color-game-accent-500: var(--game-accent-500);
+  --color-game-accent-soft: var(--game-accent-soft);
+  --color-game-accent-line: var(--game-accent-line);
+
+  --color-game-warn: var(--game-warn);
+  --color-game-err: var(--game-err);
+  --color-game-info: var(--game-info);
+  --color-game-good: var(--game-good);
+
+  --font-game-ui: var(--font-game-ui);
+  --font-game-num: var(--font-game-num);
+
+  /* Shape — low-radius plates */
+  --radius-plate: 2px;
+  --radius-panel: 4px;
+  --radius-control: 3px;
+
+  /* Row heights */
+  --spacing-row-compact: 28px;
+  --spacing-row-cozy: 36px;
+  --spacing-row-control: 28px;
 }
 
 [data-game-theme="eu5"] {
-  --game-panel: #0e1218;
-  --game-panel-hover: #222a37;
+  --game-page: var(--color-zinc-950);
+  --game-panel: var(--color-slate-950);
+  --game-panel-2: var(--color-slate-900);
+  --game-panel-hover: var(--color-slate-800);
+  --game-panel-active: var(--color-slate-800);
+  --game-overlay: color-mix(in srgb, var(--color-slate-950) 72%, transparent);
 
-  --game-line: rgba(255, 255, 255, 0.06);
-  --game-line-strong: rgba(255, 255, 255, 0.1);
+  --game-line: color-mix(in srgb, var(--color-white) 6%, transparent);
+  --game-line-strong: color-mix(in srgb, var(--color-white) 10%, transparent);
 
-  --game-ink-100: #f3ede1;
-  --game-ink-300: #cbc6bc;
-  --game-ink-500: #8a8478;
+  --game-ink-100: var(--color-stone-100);
+  --game-ink-300: var(--color-stone-300);
+  --game-ink-500: var(--color-stone-500);
+  --game-ink-700: var(--color-stone-600);
+  --game-ink-disabled: var(--color-stone-700);
 
-  --game-accent-100: #f4d39a;
-  --game-accent-300: #d4a05a;
-  --game-accent-500: #b07a2c;
+  --game-accent-100: var(--color-amber-200);
+  --game-accent-300: var(--color-amber-600);
+  --game-accent-500: var(--color-amber-700);
+  --game-accent-soft: color-mix(in srgb, var(--color-amber-600) 14%, transparent);
+  --game-accent-line: color-mix(in srgb, var(--color-amber-600) 55%, transparent);
+
+  --game-warn: var(--color-amber-500);
+  --game-err: var(--color-red-400);
+  --game-info: var(--color-slate-400);
+  --game-good: var(--color-green-400);
+
+  --font-game-ui: "Public Sans", -apple-system, system-ui, "Segoe UI", sans-serif;
+  --font-game-num: "IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace;
+  font-family: var(--font-game-ui);
+  letter-spacing: 0;
 }

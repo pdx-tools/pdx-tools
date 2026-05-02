@@ -1,3 +1,18 @@
+import "@fontsource/public-sans/latin-400.css";
+import "@fontsource/public-sans/latin-500.css";
+import "@fontsource/public-sans/latin-600.css";
+import "@fontsource/public-sans/latin-700.css";
+import "@fontsource/public-sans/latin-ext-400.css";
+import "@fontsource/public-sans/latin-ext-500.css";
+import "@fontsource/public-sans/latin-ext-600.css";
+import "@fontsource/public-sans/latin-ext-700.css";
+import "@fontsource/public-sans/vietnamese-400.css";
+import "@fontsource/public-sans/vietnamese-500.css";
+import "@fontsource/public-sans/vietnamese-600.css";
+import "@fontsource/public-sans/vietnamese-700.css";
+import "@fontsource/ibm-plex-mono/latin-400.css";
+import "@fontsource/ibm-plex-mono/latin-500.css";
+import "@fontsource/ibm-plex-mono/latin-600.css";
 import { memo, useEffect, useRef } from "react";
 import { Eu5ControlPanel } from "./control-panel/Eu5ControlPanel";
 import { Eu5InsightPanel } from "./Eu5InsightPanel";
@@ -18,6 +33,7 @@ import { Eu5CursorTooltip } from "./Eu5CursorTooltip";
 import { useCursorPosition } from "@/hooks/useCursorPosition";
 import { Eu5ErrorDisplay } from "./Eu5ErrorDisplay";
 import { Eu5Toolbar } from "./Eu5Toolbar";
+import { Eu5SelectionPill } from "./Eu5SelectionPill";
 import { BoxSelectOverlay } from "./BoxSelectOverlay";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import { ChevronLeftIcon } from "@heroicons/react/24/solid";
@@ -50,7 +66,7 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
         </div>
       ) : null}
 
-      {data !== null ? <div className="absolute inset-0 bg-slate-900"></div> : null}
+      {data !== null ? <div className="absolute inset-0 bg-game-page"></div> : null}
 
       {/* Canvas layer — always present, always fills viewport */}
       <div className="absolute inset-0 overflow-hidden" ref={surfaceRef}>
@@ -137,16 +153,17 @@ const Eu5UiContent = ({
         <button
           type="button"
           onClick={() => setInsightOpen(true)}
-          className="pointer-events-auto absolute top-3 right-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-slate-950/80 backdrop-blur-md transition-colors duration-150 hover:border-white/20 hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:outline-none"
+          className="pointer-events-auto absolute top-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-[3px] border border-game-line-strong bg-game-overlay text-game-ink-300 backdrop-blur-md transition-colors duration-150 hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
           aria-label="Open insights panel"
         >
-          <ChevronLeftIcon className="h-4 w-4 text-slate-300" />
+          <ChevronLeftIcon className="h-4 w-4" />
         </button>
       ) : null}
 
       {/* Canvas overlays */}
       <BoxSelectOverlay />
       <Eu5CursorTooltip cursorRef={cursorRef} />
+      <Eu5SelectionPill />
       <Eu5Toolbar />
     </div>
   );

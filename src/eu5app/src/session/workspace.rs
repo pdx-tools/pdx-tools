@@ -1,6 +1,6 @@
 use crate::entity_profile::{
     ActiveProfileIdentity, BuildingEntry, CountryEconomySection, CountryOverviewSection,
-    CountryPopulationProfile, CountryProfile, CountryReligionSection, DiplomacySection,
+    CountryPopulationProfile, CountryProfile, CountryRef, CountryReligionSection, DiplomacySection,
     DiplomacySubjectType, DiplomaticSummary, EconomicIndicator, EntityHeader, EntityKind,
     EntityRef, HeadlineStats, IndicatorFormat, LocationHeader, LocationPopRow, LocationProfile,
     LocationRow, LocationStats, LocationsSection, MarketGoodEntry, MarketGoodsSection,
@@ -233,10 +233,10 @@ impl<'bump> Eu5Workspace<'bump> {
         self.derived_entity_anchor
     }
 
-    fn entity_ref_from_country_idx(
+    fn country_ref_from_country_idx(
         &self,
         country_idx: eu5save::models::CountryIdx,
-    ) -> Option<EntityRef> {
+    ) -> Option<CountryRef> {
         let entry = self.gamestate.countries.index(country_idx);
         let data = entry.data()?;
         let owner = entry.id().real_id()?;
@@ -258,13 +258,27 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .map(|idx| idx.value())
             .unwrap_or(0);
-        Some(EntityRef {
-            kind: EntityKind::Country,
+        let country_id = owner.country_id();
+        let is_player = self
+            .gamestate
+            .played_countries
+            .iter()
+            .any(|p| p.country == country_id);
+        Some(CountryRef {
             anchor_location_idx,
             tag,
             name,
             color_hex,
+            is_player,
         })
+    }
+
+    fn entity_ref_from_country_idx(
+        &self,
+        country_idx: eu5save::models::CountryIdx,
+    ) -> Option<EntityRef> {
+        self.country_ref_from_country_idx(country_idx)
+            .map(EntityRef::Country)
     }
 
     fn market_ref_from_id(&self, market_id: eu5save::models::MarketId) -> Option<EntityRef> {
@@ -275,10 +289,8 @@ impl<'bump> Eu5Workspace<'bump> {
             "#{:02x}{:02x}{:02x}",
             market.color.0[0], market.color.0[1], market.color.0[2]
         );
-        Some(EntityRef {
-            kind: EntityKind::Market,
+        Some(EntityRef::Market {
             anchor_location_idx: center_idx.value(),
-            tag: String::new(),
             name,
             color_hex,
         })

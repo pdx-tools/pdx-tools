@@ -12,17 +12,25 @@ import { TaxGapTopLocations } from "./TaxGapTopLocations";
 import { RealizationHistogram } from "./RealizationHistogram";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
+import {
+  Eu5InsightEmptyState,
+  Eu5InsightErrorState,
+  Eu5InsightLoadingState,
+} from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 const BAR_CAP = 25;
 
 function TaxGapScopeHeader() {
-  const { data, loading } = useEu5SelectionTrigger((engine) => engine.trigger.getTaxGapScope());
+  const { data, error, loading } = useEu5SelectionTrigger((engine) =>
+    engine.trigger.getTaxGapScope(),
+  );
 
   if (loading && !data) {
     return <InsightScopeHeaderSkeleton />;
   }
 
+  if (error && !data) return <Eu5InsightErrorState error={error} />;
   if (!data) return null;
 
   return (
@@ -42,8 +50,10 @@ export function TaxGapInsight() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <TaxGapScopeHeader />
-      {insightQuery.loading && !insightQuery.data ? (
-        <div className="h-64 animate-pulse rounded bg-white/5" />
+      {insightQuery.error ? (
+        <Eu5InsightErrorState error={insightQuery.error} />
+      ) : insightQuery.loading && !insightQuery.data ? (
+        <Eu5InsightLoadingState />
       ) : (
         <>
           {countries.length >= 1 && (
@@ -79,6 +89,10 @@ export function TaxGapInsight() {
               <TaxGapTopLocations locations={insightQuery.data.topLocations} />
             </section>
           )}
+
+          {countries.length === 0 && !insightQuery.data?.distribution && (
+            <Eu5InsightEmptyState title="No tax gap in the selected scope." />
+          )}
         </>
       )}
     </div>
@@ -87,7 +101,7 @@ export function TaxGapInsight() {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );
@@ -97,7 +111,7 @@ type ScatterDatum = [x: number, y: number];
 
 function countryTooltip(d: CountryTaxGap): string {
   return [
-    `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
+    `<strong>${escapeEChartsHtml(d.country.name)}</strong> (${escapeEChartsHtml(d.country.tag)})`,
     `Location Tax: ${formatFloat(d.currentTaxBase, 2)}`,
     `Possible Tax: ${formatFloat(d.totalPossibleTax, 2)}`,
     `Gap: ${formatFloat(d.taxGap, 2)}`,
@@ -139,7 +153,7 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
       yAxis: {
         type: "category",
         inverse: true,
-        data: sorted.map((d) => d.tag),
+        data: sorted.map((d) => d.country.tag),
         axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 44 },
         axisLine: { lineStyle: { color: axisColor } },
       },
@@ -201,15 +215,17 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    getAnchorLocationIdx: (params) => {
-      const d = params.data as (CountryTaxGap & { value: number }) | undefined;
-      return d?.anchorLocationIdx ?? null;
+    backLabel: "Tax Gap",
+    getTarget: (params) => {
+      const dataIndex = params.dataIndex;
+      const x = dataIndex == null ? null : sorted[dataIndex];
+      return x ? { anchorLocationIdx: x.country.anchorLocationIdx, label: x.country.name } : null;
     },
   });
 
   if (!hasGap) {
     return (
-      <p className="py-6 text-center text-sm text-slate-500">No tax gap in the selected scope</p>
+      <p className="py-6 text-center text-sm text-game-ink-500">No tax gap in the selected scope</p>
     );
   }
 
@@ -224,7 +240,7 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
   const isDark = isDarkMode();
 
   const topCountries = useMemo(
-    () => new Set(countries.slice(0, 10).map((c) => c.tag)),
+    () => new Set(countries.slice(0, 10).map((c) => c.country.tag)),
     [countries],
   );
 
@@ -284,7 +300,7 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
           const d = countries[dataIndex];
           if (!d) return "";
           return [
-            `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
+            `<strong>${escapeEChartsHtml(d.country.name)}</strong> (${escapeEChartsHtml(d.country.tag)})`,
             `Location Tax: ${formatFloat(d.currentTaxBase, 2)}`,
             `Possible Tax: ${formatFloat(d.totalPossibleTax, 2)}`,
             `Gap: ${formatFloat(d.taxGap, 2)}`,
@@ -317,7 +333,7 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
           itemStyle: {
             color: (params) => {
               const d = countries[params.dataIndex];
-              return d?.colorHex ?? (isDark ? "#93c5fd" : "#3b82f6");
+              return d?.country.colorHex ?? (isDark ? "#93c5fd" : "#3b82f6");
             },
             opacity: 0.8,
           },
@@ -325,7 +341,9 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
             show: true,
             formatter: (params) => {
               const d = countries[params.dataIndex];
-              return d && (topCountries.has(d.tag) || countries.length <= 5) ? d.tag : "";
+              return d && (topCountries.has(d.country.tag) || countries.length <= 5)
+                ? d.country.tag
+                : "";
             },
             position: "top",
             color: isDark ? "#e2e8f0" : "#1e293b",
@@ -340,9 +358,11 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    getAnchorLocationIdx: (params) => {
+    backLabel: "Tax Gap",
+    getTarget: (params) => {
       const dataIndex = params.dataIndex;
-      return dataIndex == null ? null : countries[dataIndex]?.anchorLocationIdx;
+      const country = dataIndex == null ? null : countries[dataIndex]?.country;
+      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
     },
   });
 

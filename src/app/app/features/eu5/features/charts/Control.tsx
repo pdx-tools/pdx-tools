@@ -3,7 +3,7 @@ import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { DataTable } from "@/components/DataTable";
+import { Eu5DataTable } from "../../components";
 import { Table } from "@/components/Table";
 import type {
   ControlScopeSummary,
@@ -19,11 +19,13 @@ import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeH
 import { StatItem } from "../../EntityProfile/components/StatItem";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
+import { locationProfileEntry, usePanelNav } from "../../EntityProfile/PanelNavContext";
+import { EntityLink } from "../../EntityProfile/EntityLink";
 import {
-  countryProfileEntry,
-  locationProfileEntry,
-  usePanelNav,
-} from "../../EntityProfile/PanelNavContext";
+  Eu5InsightEmptyState,
+  Eu5InsightErrorState,
+  Eu5InsightLoadingState,
+} from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 const SCATTER_LABEL_CAP = 8;
@@ -39,7 +41,7 @@ const CONTROL_BANDS = [
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );
@@ -76,8 +78,10 @@ export function ControlInsight() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <ControlScopeHeader data={data?.scope} />
-      {insightQuery.loading && !data ? (
-        <div className="h-64 animate-pulse rounded bg-white/5" />
+      {insightQuery.error ? (
+        <Eu5InsightErrorState error={insightQuery.error} />
+      ) : insightQuery.loading && !data ? (
+        <Eu5InsightLoadingState />
       ) : (
         <>
           {barCountries.length > 0 && (
@@ -102,9 +106,7 @@ export function ControlInsight() {
           )}
 
           {barCountries.length === 0 && (
-            <p className="py-6 text-center text-sm text-slate-500">
-              No control loss data in the selected scope
-            </p>
+            <Eu5InsightEmptyState title="No control loss data in the selected scope." />
           )}
         </>
       )}
@@ -146,9 +148,9 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
           bandMap[seg.band] = seg.lostDevelopment;
         }
         return {
-          anchorLocationIdx: c.anchorLocationIdx,
-          name: c.name,
-          tag: c.tag,
+          anchorLocationIdx: c.country.anchorLocationIdx,
+          name: c.country.name,
+          tag: c.country.tag,
           weightedAvgControl: c.weightedAvgControl,
           totalDevelopment: c.totalDevelopment,
           effectiveDevelopment: c.effectiveDevelopment,
@@ -244,8 +246,11 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    getAnchorLocationIdx: (params) =>
-      (params.data as (typeof rows)[number] | undefined)?.anchorLocationIdx,
+    backLabel: BACK_LABEL,
+    getTarget: (params) => {
+      const country = params.data as (typeof rows)[number] | undefined;
+      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
+    },
   });
 
   const height = rows.length * 24 + 54;
@@ -258,23 +263,23 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
   const isDark = isDarkMode();
 
   const labelSet = useMemo(() => {
-    if (countries.length <= 10) return new Set(countries.map((c) => c.tag));
+    if (countries.length <= 10) return new Set(countries.map((c) => c.country.tag));
     const sorted = [...countries].sort((a, b) => b.lostDevelopment - a.lostDevelopment);
-    return new Set(sorted.slice(0, SCATTER_LABEL_CAP).map((c) => c.tag));
+    return new Set(sorted.slice(0, SCATTER_LABEL_CAP).map((c) => c.country.tag));
   }, [countries]);
 
   const scatterData = useMemo(
     () =>
       countries.map((c) => ({
         value: [c.totalDevelopment, c.weightedAvgControl] as [number, number],
-        tag: c.tag,
-        name: c.name,
+        tag: c.country.tag,
+        name: c.country.name,
         lostDevelopment: c.lostDevelopment,
         totalDevelopment: c.totalDevelopment,
         weightedAvgControl: c.weightedAvgControl,
         locationCount: c.locationCount,
-        colorHex: c.colorHex,
-        anchorLocationIdx: c.anchorLocationIdx,
+        colorHex: c.country.colorHex,
+        anchorLocationIdx: c.country.anchorLocationIdx,
       })),
     [countries],
   );
@@ -370,9 +375,11 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    getAnchorLocationIdx: (params) => {
+    backLabel: BACK_LABEL,
+    getTarget: (params) => {
       if (Array.isArray(params.data)) return null;
-      return (params.data as (typeof scatterData)[number])?.anchorLocationIdx;
+      const country = params.data as (typeof scatterData)[number] | undefined;
+      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
     },
   });
 
@@ -395,7 +402,7 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
           return (
             <button
               type="button"
-              className="text-left text-sky-300 hover:text-sky-200 hover:underline"
+              className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
                 nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
                 panToEntity(loc.locationIdx);
@@ -410,29 +417,7 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
         header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
-        cell: ({ row }) => {
-          const owner = row.original.owner;
-          return (
-            <button
-              type="button"
-              className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
-              onClick={() => {
-                nav.pushMany(
-                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
-                  BACK_LABEL,
-                );
-                panToEntity(owner.anchorLocationIdx);
-              }}
-            >
-              <span
-                className="inline-block h-2 w-2 shrink-0 rounded-sm"
-                style={{ backgroundColor: owner.colorHex }}
-              />
-              {owner.tag && <span className="font-mono text-xs text-slate-500">{owner.tag}</span>}
-              <span className="truncate">{owner.name}</span>
-            </button>
-          );
-        },
+        cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
       }),
       columnHelper.accessor("control", {
         sortingFn: "basic",
@@ -463,7 +448,7 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
   );
 
   return (
-    <DataTable
+    <Eu5DataTable
       className="w-full"
       columns={columns}
       data={locations}

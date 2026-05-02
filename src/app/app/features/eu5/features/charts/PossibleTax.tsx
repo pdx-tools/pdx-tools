@@ -11,14 +11,20 @@ import { LocationDistributionChart } from "./LocationDistributionChart";
 import { PossibleTaxTopLocations } from "./PossibleTaxTopLocations";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
+import {
+  Eu5InsightEmptyState,
+  Eu5InsightErrorState,
+  Eu5InsightLoadingState,
+} from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 function PossibleTaxScopeHeader() {
-  const { data, loading } = useEu5SelectionTrigger((engine) =>
+  const { data, error, loading } = useEu5SelectionTrigger((engine) =>
     engine.trigger.getPossibleTaxScope(),
   );
 
   if (loading && !data) return <InsightScopeHeaderSkeleton />;
+  if (error && !data) return <Eu5InsightErrorState error={error} />;
   if (!data) return null;
 
   return (
@@ -38,8 +44,10 @@ export function PossibleTaxInsight() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <PossibleTaxScopeHeader />
-      {insightQuery.loading && !insightQuery.data ? (
-        <div className="h-64 animate-pulse rounded bg-white/5" />
+      {insightQuery.error ? (
+        <Eu5InsightErrorState error={insightQuery.error} />
+      ) : insightQuery.loading && !insightQuery.data ? (
+        <Eu5InsightLoadingState />
       ) : (
         <>
           {countries.length >= 2 && (
@@ -61,6 +69,10 @@ export function PossibleTaxInsight() {
               <PossibleTaxTopLocations locations={insightQuery.data.topLocations} />
             </section>
           )}
+
+          {countries.length === 0 && !insightQuery.data?.distribution && (
+            <Eu5InsightEmptyState title="No possible tax data in the selected scope." />
+          )}
         </>
       )}
     </div>
@@ -69,7 +81,7 @@ export function PossibleTaxInsight() {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );
@@ -79,7 +91,7 @@ function PossibleTaxScatterChart({ countries }: { countries: CountryPossibleTax[
   const isDark = isDarkMode();
 
   const topCountries = useMemo(
-    () => new Set(countries.slice(0, 10).map((c) => c.tag)),
+    () => new Set(countries.slice(0, 10).map((c) => c.country.tag)),
     [countries],
   );
 
@@ -87,14 +99,14 @@ function PossibleTaxScatterChart({ countries }: { countries: CountryPossibleTax[
     () =>
       countries.map((c) => ({
         value: [c.totalPossibleTax, c.avgPossibleTax] as [number, number],
-        tag: c.tag,
-        name: c.name,
+        tag: c.country.tag,
+        name: c.country.name,
         locationCount: c.locationCount,
         totalPossibleTax: c.totalPossibleTax,
         avgPossibleTax: c.avgPossibleTax,
         totalPopulation: c.totalPopulation,
-        color: c.colorHex,
-        anchorLocationIdx: c.anchorLocationIdx,
+        color: c.country.colorHex,
+        anchorLocationIdx: c.country.anchorLocationIdx,
       })),
     [countries],
   );
@@ -181,9 +193,11 @@ function PossibleTaxScatterChart({ countries }: { countries: CountryPossibleTax[
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    getAnchorLocationIdx: (params) => {
+    backLabel: "Possible Tax",
+    getTarget: (params) => {
       if (Array.isArray(params.data)) return null;
-      return (params.data as (typeof scatterData)[number])?.anchorLocationIdx;
+      const country = params.data as (typeof scatterData)[number] | undefined;
+      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
     },
   });
 

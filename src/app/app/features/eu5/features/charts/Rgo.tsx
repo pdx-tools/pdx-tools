@@ -3,7 +3,7 @@ import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { DataTable } from "@/components/DataTable";
+import { Eu5DataTable } from "../../components";
 import { Table } from "@/components/Table";
 import type {
   RgoInsightData,
@@ -20,17 +20,19 @@ import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeH
 import { StatItem } from "../../EntityProfile/components/StatItem";
 import { useEu5SelectionTrigger } from "../../EntityProfile/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
+import { locationProfileEntry, usePanelNav } from "../../EntityProfile/PanelNavContext";
+import { EntityLink } from "../../EntityProfile/EntityLink";
 import {
-  countryProfileEntry,
-  locationProfileEntry,
-  usePanelNav,
-} from "../../EntityProfile/PanelNavContext";
+  Eu5InsightEmptyState,
+  Eu5InsightErrorState,
+  Eu5InsightLoadingState,
+} from "../Eu5InsightState";
 
 const BACK_LABEL = "RGO";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );
@@ -236,7 +238,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
           return (
             <button
               type="button"
-              className="text-left text-sky-300 hover:text-sky-200 hover:underline"
+              className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
                 nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
                 panToEntity(loc.locationIdx);
@@ -251,28 +253,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
         header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
-        cell: ({ row }) => {
-          const owner = row.original.owner;
-          return (
-            <button
-              type="button"
-              className="inline-flex min-w-0 items-center gap-1.5 text-left text-sky-300 hover:text-sky-200 hover:underline"
-              onClick={() => {
-                nav.pushMany(
-                  [countryProfileEntry(owner.anchorLocationIdx, owner.name)],
-                  BACK_LABEL,
-                );
-                panToEntity(owner.anchorLocationIdx);
-              }}
-            >
-              <span
-                className="inline-block h-2 w-2 shrink-0 rounded-sm"
-                style={{ backgroundColor: owner.colorHex }}
-              />
-              <span className="truncate">{owner.name}</span>
-            </button>
-          );
-        },
+        cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
       }),
       topLocColHelper.accessor("rawMaterial", {
         sortingFn: "text",
@@ -290,7 +271,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
   );
 
   return (
-    <DataTable
+    <Eu5DataTable
       className="w-full"
       columns={columns}
       data={locations}
@@ -312,8 +293,10 @@ export function RgoInsight() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <RgoScopeHeader data={data?.scope} />
-      {insightQuery.loading && !data ? (
-        <div className="h-64 animate-pulse rounded bg-white/5" />
+      {insightQuery.error ? (
+        <Eu5InsightErrorState error={insightQuery.error} />
+      ) : insightQuery.loading && !data ? (
+        <Eu5InsightLoadingState />
       ) : (
         <>
           {materials.length > 0 && (
@@ -338,9 +321,7 @@ export function RgoInsight() {
           )}
 
           {materials.length === 0 && (
-            <p className="py-6 text-center text-sm text-slate-500">
-              No RGO data in the selected scope
-            </p>
+            <Eu5InsightEmptyState title="No RGO data in the selected scope." />
           )}
         </>
       )}

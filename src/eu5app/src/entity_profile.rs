@@ -297,12 +297,56 @@ pub struct DiplomacySection {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
-pub struct EntityRef {
-    pub kind: EntityKind,
+pub struct CountryRef {
     pub anchor_location_idx: u32,
     pub tag: String,
     pub name: String,
     pub color_hex: String,
+    pub is_player: bool,
+}
+
+impl CountryRef {
+    pub fn anchor_location_idx(&self) -> u32 {
+        self.anchor_location_idx
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum EntityRef {
+    #[serde(rename_all = "camelCase")]
+    Country(CountryRef),
+    #[serde(rename_all = "camelCase")]
+    Market {
+        anchor_location_idx: u32,
+        name: String,
+        color_hex: String,
+    },
+}
+
+impl EntityRef {
+    pub fn anchor_location_idx(&self) -> u32 {
+        match self {
+            EntityRef::Country(country) => country.anchor_location_idx,
+            EntityRef::Market {
+                anchor_location_idx,
+                ..
+            } => *anchor_location_idx,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            EntityRef::Country(country) => &country.name,
+            EntityRef::Market { name, .. } => name,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

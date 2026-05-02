@@ -1,0 +1,18 @@
+.root > div:last-child {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.root > div:last-child > div {
+  flex-shrink: 0;
+}
+
+.root > div:last-child label {
+  white-space: nowrap;
+}
+
+.root
+  button:has(> :is(svg, span:has(> svg)) ~ :is(svg, span:has(> svg)))
+  > :is(svg, span:has(> svg)):not(:last-child) {
+  display: none;
+}

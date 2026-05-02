@@ -30,7 +30,7 @@ export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
     <div className="flex flex-col gap-4">
       {data.overlord && (
         <div>
-          <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+          <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
             Overlord
           </p>
           <EntityRefRow
@@ -41,18 +41,18 @@ export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
       )}
       {[...grouped.entries()].map(([type, subjects]) => (
         <div key={type}>
-          <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+          <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
             {pluralize(type, subjects.length)}
           </p>
           <div className="flex flex-col gap-1">
             {subjects.map((s) => (
-              <EntityRefRow key={s.entity.tag} entityRef={s.entity} />
+              <EntityRefRow key={`${s.entity.anchorLocationIdx}`} entityRef={s.entity} />
             ))}
           </div>
         </div>
       ))}
       {!data.overlord && data.subjects.length === 0 && (
-        <p className="text-sm text-slate-500">No diplomatic relations.</p>
+        <p className="text-sm text-game-ink-500">No diplomatic relations.</p>
       )}
     </div>
   );
@@ -61,8 +61,8 @@ export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
 function EntityRefRow({ entityRef, label }: { entityRef: EntityRef; label?: string }) {
   return (
     <div className="flex items-center gap-1 text-sm">
-      {label && <span className="text-slate-500">{label}</span>}
-      <EntityLink entity={entityRef} className="text-sm" />
+      {label && <span className="text-game-ink-500">{label}</span>}
+      <EntityLink entity={entityRef} />
     </div>
   );
 }

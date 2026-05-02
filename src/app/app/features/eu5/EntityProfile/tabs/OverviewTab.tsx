@@ -101,10 +101,10 @@ function DiplomaticSummaryRow({ summary }: { summary: DiplomaticSummary }) {
   return (
     <section>
       <SectionTitle>Diplomacy</SectionTitle>
-      <div className="flex flex-col gap-1 text-sm text-slate-300">
+      <div className="flex flex-col gap-1 text-sm text-game-ink-300">
         {summary.overlord && (
           <div className="flex items-center gap-2">
-            <span className="text-slate-500">Subject of</span>
+            <span className="text-game-ink-500">Subject of</span>
             <EntityLink entity={summary.overlord} />
           </div>
         )}
@@ -130,7 +130,7 @@ function formatPercent(value: number, digits = 1): string {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );
@@ -138,11 +138,11 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5 rounded-md border border-white/5 bg-white/5 px-2 py-1.5">
-      <span className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
+    <div className="flex min-w-0 flex-col gap-0.5 rounded-md border border-game-line bg-game-panel-hover px-2 py-1.5">
+      <span className="text-[10px] font-semibold tracking-wider text-game-ink-300 uppercase">
         {label}
       </span>
-      <span className="truncate text-sm font-semibold text-slate-100">{value}</span>
+      <span className="truncate text-sm font-semibold text-game-ink-100">{value}</span>
     </div>
   );
 }

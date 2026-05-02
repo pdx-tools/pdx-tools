@@ -22,9 +22,8 @@ fn political_world_display_rows(
         .into_iter()
         .enumerate()
         .filter_map(|(idx, mut candidate)| {
-            let ordinal_rank = candidate.great_power_rank as u32;
-            if idx < POLITICAL_SCOREBOARD_TOP_COUNT || candidate.row.is_player {
-                candidate.row.ordinal_rank = ordinal_rank;
+            if idx < POLITICAL_SCOREBOARD_TOP_COUNT || candidate.row.country.is_player {
+                candidate.row.ordinal_rank = candidate.great_power_rank as u32;
                 Some(candidate.row)
             } else {
                 None
@@ -85,17 +84,13 @@ impl<'bump> Eu5Workspace<'bump> {
                     return None;
                 }
 
-                let entity_ref = self.entity_ref_from_country_idx(country_idx)?;
+                let country = self.country_ref_from_country_idx(country_idx)?;
                 Some(PoliticalWorldCandidate {
                     great_power_rank: data.great_power_rank,
-                    tag: entity_ref.tag.clone(),
+                    tag: country.tag.clone(),
                     row: PoliticalWorldRow {
                         ordinal_rank: 0,
-                        anchor_location_idx: entity_ref.anchor_location_idx,
-                        tag: entity_ref.tag,
-                        name: entity_ref.name,
-                        color_hex: entity_ref.color_hex,
-                        is_player: played_countries.contains(&country_id),
+                        country,
                         total_state_efficacy: aggregate.total_state_efficacy,
                         active_state_capacity: aggregate.active_state_capacity,
                         total_population: aggregate.total_population,
@@ -165,7 +160,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .into_iter()
             .filter_map(|(country_id, aggregate)| {
                 let country_idx = self.gamestate.countries.get(country_id)?;
-                let entity_ref = self.entity_ref_from_country_idx(country_idx)?;
+                let country = self.country_ref_from_country_idx(country_idx)?;
 
                 let avg_efficacy = if aggregate.location_count > 0 {
                     aggregate.total_efficacy / (aggregate.location_count as f64)
@@ -174,10 +169,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 };
 
                 Some(CountryStateEfficacy {
-                    anchor_location_idx: entity_ref.anchor_location_idx,
-                    tag: entity_ref.tag,
-                    name: entity_ref.name,
-                    color_hex: entity_ref.color_hex,
+                    country,
                     total_efficacy: aggregate.total_efficacy,
                     location_count: aggregate.location_count,
                     avg_efficacy,
@@ -190,7 +182,7 @@ impl<'bump> Eu5Workspace<'bump> {
         results.sort_by(|a, b| {
             b.total_efficacy
                 .total_cmp(&a.total_efficacy)
-                .then_with(|| a.tag.cmp(&b.tag))
+                .then_with(|| a.country.tag.cmp(&b.country.tag))
         });
 
         StateEfficacyInsightData {
@@ -484,12 +476,9 @@ impl<'bump> Eu5Workspace<'bump> {
             .into_iter()
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
-                let eref = self.entity_ref_from_country_idx(cidx)?;
+                let country = self.country_ref_from_country_idx(cidx)?;
                 Some(CountryDevSummary {
-                    anchor_location_idx: eref.anchor_location_idx,
-                    tag: eref.tag,
-                    name: eref.name,
-                    color_hex: eref.color_hex,
+                    country,
                     total_development: agg.total_dev,
                     avg_development: if agg.count > 0 {
                         agg.total_dev / agg.count as f64
@@ -504,7 +493,7 @@ impl<'bump> Eu5Workspace<'bump> {
         countries.sort_by(|a, b| {
             b.total_development
                 .total_cmp(&a.total_development)
-                .then_with(|| a.tag.cmp(&b.tag))
+                .then_with(|| a.country.tag.cmp(&b.country.tag))
         });
 
         all_locs.sort_by(|a, b| b.1.total_cmp(&a.1));
@@ -590,12 +579,9 @@ impl<'bump> Eu5Workspace<'bump> {
             .into_iter()
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
-                let eref = self.entity_ref_from_country_idx(cidx)?;
+                let country = self.country_ref_from_country_idx(cidx)?;
                 Some(CountryPossibleTax {
-                    anchor_location_idx: eref.anchor_location_idx,
-                    tag: eref.tag,
-                    name: eref.name,
-                    color_hex: eref.color_hex,
+                    country,
                     total_possible_tax: agg.total_possible_tax,
                     avg_possible_tax: if agg.count > 0 {
                         agg.total_possible_tax / agg.count as f64
@@ -610,7 +596,7 @@ impl<'bump> Eu5Workspace<'bump> {
         countries.sort_by(|a, b| {
             b.total_possible_tax
                 .total_cmp(&a.total_possible_tax)
-                .then_with(|| a.tag.cmp(&b.tag))
+                .then_with(|| a.country.tag.cmp(&b.country.tag))
         });
 
         all_locs.sort_by(|a, b| b.1.total_cmp(&a.1));
@@ -690,7 +676,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .into_iter()
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
-                let eref = self.entity_ref_from_country_idx(cidx)?;
+                let country = self.country_ref_from_country_idx(cidx)?;
                 let tax_gap = agg.total_possible_tax - agg.total_tax;
                 let realization_ratio = if agg.total_possible_tax > 0.0 {
                     agg.total_tax / agg.total_possible_tax
@@ -698,10 +684,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     0.0
                 };
                 Some(CountryTaxGap {
-                    anchor_location_idx: eref.anchor_location_idx,
-                    tag: eref.tag,
-                    name: eref.name,
-                    color_hex: eref.color_hex,
+                    country,
                     current_tax_base: agg.total_tax,
                     total_possible_tax: agg.total_possible_tax,
                     tax_gap,
@@ -714,7 +697,7 @@ impl<'bump> Eu5Workspace<'bump> {
         countries.sort_by(|a, b| {
             b.tax_gap
                 .total_cmp(&a.tax_gap)
-                .then_with(|| a.tag.cmp(&b.tag))
+                .then_with(|| a.country.tag.cmp(&b.country.tag))
         });
 
         all_locs.sort_by(|a, b| b.3.total_cmp(&a.3));
@@ -854,6 +837,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 };
                 let imbalance_value = (good.supply - good.demand) * good.price;
                 good_market_cells.push(crate::selection_views::GoodMarketBalanceCell {
+                    market_name: self.location_name(center_idx).to_string(),
                     good: good.good.to_string(),
                     market_anchor_location_idx: center_idx.value(),
                     supply: good.supply,
@@ -1169,7 +1153,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .into_iter()
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
-                let eref = self.entity_ref_from_country_idx(cidx)?;
+                let country = self.country_ref_from_country_idx(cidx)?;
                 let ranks = agg
                     .ranks
                     .into_iter()
@@ -1181,10 +1165,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     })
                     .collect();
                 Some(ScopedCountryPopulation {
-                    anchor_location_idx: eref.anchor_location_idx,
-                    tag: eref.tag,
-                    name: eref.name,
-                    color_hex: eref.color_hex,
+                    country,
                     total_population: agg.population,
                     location_count: agg.location_count,
                     ranks,
@@ -1194,7 +1175,7 @@ impl<'bump> Eu5Workspace<'bump> {
         countries.sort_by(|a, b| {
             b.total_population
                 .cmp(&a.total_population)
-                .then_with(|| a.tag.cmp(&b.tag))
+                .then_with(|| a.country.tag.cmp(&b.country.tag))
         });
 
         let mut cumulative_population = 0u32;
@@ -2158,7 +2139,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .take(COUNTRY_BAR_CAP)
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(*cid)?;
-                let eref = self.entity_ref_from_country_idx(cidx)?;
+                let country = self.country_ref_from_country_idx(cidx)?;
                 let bands = CONTROL_BANDS
                     .iter()
                     .enumerate()
@@ -2170,10 +2151,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     })
                     .collect();
                 Some(CountryControlBarSummary {
-                    anchor_location_idx: eref.anchor_location_idx,
-                    tag: eref.tag,
-                    name: eref.name,
-                    color_hex: eref.color_hex,
+                    country,
                     total_development: agg.total_development,
                     effective_development: agg.effective_development,
                     lost_development: agg.lost_development,
@@ -2189,12 +2167,9 @@ impl<'bump> Eu5Workspace<'bump> {
         let to_scatter_point =
             |(cid, agg): &(CountryId, CountryControlAgg)| -> Option<CountryControlPoint> {
                 let cidx = self.gamestate.countries.get(*cid)?;
-                let eref = self.entity_ref_from_country_idx(cidx)?;
+                let country = self.country_ref_from_country_idx(cidx)?;
                 Some(CountryControlPoint {
-                    anchor_location_idx: eref.anchor_location_idx,
-                    tag: eref.tag,
-                    name: eref.name,
-                    color_hex: eref.color_hex,
+                    country,
                     total_development: agg.total_development,
                     lost_development: agg.lost_development,
                     weighted_avg_control: weighted_avg_control(agg),
@@ -2281,11 +2256,13 @@ mod tests {
             tag: tag.to_string(),
             row: PoliticalWorldRow {
                 ordinal_rank: 0,
-                anchor_location_idx: great_power_rank as u32,
-                tag: tag.to_string(),
-                name: format!("{tag} Nation"),
-                color_hex: "#112233".to_string(),
-                is_player,
+                country: CountryRef {
+                    anchor_location_idx: great_power_rank as u32,
+                    tag: tag.to_string(),
+                    name: format!("{tag} Nation"),
+                    color_hex: "#112233".to_string(),
+                    is_player,
+                },
                 total_state_efficacy,
                 active_state_capacity,
                 total_population,
@@ -2303,14 +2280,16 @@ mod tests {
         ]);
 
         assert_eq!(
-            rows.iter().map(|row| row.tag.as_str()).collect::<Vec<_>>(),
+            rows.iter()
+                .map(|row| row.country.tag.as_str())
+                .collect::<Vec<_>>(),
             ["AAA", "CCC", "BBB"]
         );
         assert_eq!(
             rows.iter().map(|row| row.ordinal_rank).collect::<Vec<_>>(),
             [10, 20, 30]
         );
-        assert!(rows[1].is_player);
+        assert!(rows[1].country.is_player);
         assert_eq!(rows[1].total_state_efficacy, 3.5);
         assert_eq!(rows[1].active_state_capacity, 350.0);
         assert_eq!(rows[1].total_population, 300);
@@ -2332,17 +2311,17 @@ mod tests {
                 )
             })
             .collect::<Vec<_>>();
-        candidates[11].row.is_player = true;
+        candidates[11].row.country.is_player = true;
 
         let rows = political_world_display_rows(candidates);
 
         assert_eq!(rows.len(), 11);
-        assert_eq!(rows[9].tag, "C10");
+        assert_eq!(rows[9].country.tag, "C10");
         assert_eq!(rows[9].ordinal_rank, 10);
-        assert_eq!(rows[10].tag, "C12");
+        assert_eq!(rows[10].country.tag, "C12");
         assert_eq!(rows[10].ordinal_rank, 12);
-        assert!(rows[10].is_player);
-        assert!(!rows.iter().any(|row| row.tag == "C11"));
+        assert!(rows[10].country.is_player);
+        assert!(!rows.iter().any(|row| row.country.tag == "C11"));
     }
 
     #[test]

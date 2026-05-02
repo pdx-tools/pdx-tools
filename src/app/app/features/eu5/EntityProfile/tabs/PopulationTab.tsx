@@ -12,7 +12,7 @@ import { useEu5Trigger } from "../useEu5Trigger";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );
@@ -62,7 +62,7 @@ export function CountryPopulationTabContent({
 
   if (!data || (!hasTypeProfile && !hasRanks && !showConcentration)) {
     return (
-      <p className="py-6 text-center text-sm text-slate-500">
+      <p className="py-6 text-center text-sm text-game-ink-500">
         No population data across {formatInt(locations.length)} locations
       </p>
     );

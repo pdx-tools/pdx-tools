@@ -26,7 +26,7 @@ export function LocationOverviewTab({ profile }: Props) {
 
       {profile.header.owner && (
         <div>
-          <p className="mb-1 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+          <p className="mb-1 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
             Owner
           </p>
           <EntityLink entity={profile.header.owner} />
@@ -35,7 +35,7 @@ export function LocationOverviewTab({ profile }: Props) {
 
       {profile.header.market && (
         <div>
-          <p className="mb-1 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+          <p className="mb-1 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
             Market
           </p>
           <EntityLink entity={profile.header.market} />
@@ -48,10 +48,10 @@ export function LocationOverviewTab({ profile }: Props) {
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5 rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-      <span className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
+      <span className="text-[10px] font-semibold tracking-wider text-game-ink-300 uppercase">
         {label}
       </span>
-      <span className="text-sm font-semibold text-slate-100">{value}</span>
+      <span className="text-sm font-semibold text-game-ink-100">{value}</span>
     </div>
   );
 }

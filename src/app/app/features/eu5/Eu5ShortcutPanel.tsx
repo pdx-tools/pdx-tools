@@ -76,7 +76,7 @@ export function Eu5ShortcutPanel() {
       <Popover.Trigger asChild>
         <button
           type="button"
-          className="pointer-events-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-200"
+          className="pointer-events-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-[3px] text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
           aria-label="Keyboard shortcuts"
         >
           <QuestionMarkCircleIcon className="h-4 w-4" />
@@ -86,28 +86,28 @@ export function Eu5ShortcutPanel() {
         side="bottom"
         align="center"
         sideOffset={16}
-        className="w-[26rem] rounded-2xl border border-white/10 bg-slate-950/90 p-0 shadow-2xl backdrop-blur-xl"
+        className="w-[26rem] rounded-[4px] border border-game-line-strong bg-game-panel/95 p-0 font-game-ui shadow-2xl backdrop-blur-xl"
       >
         <div className="px-5 pt-4 pb-5">
           {SHORTCUT_GROUPS.map((group, groupIdx) => (
             <div key={group.label}>
-              {groupIdx > 0 && <div className="my-3 h-px bg-white/6" />}
-              <div className="mb-2 pl-0.5 text-[10px] font-medium tracking-[0.18em] text-slate-500 uppercase">
+              {groupIdx > 0 && <div className="my-3 h-px bg-game-line" />}
+              <div className="mb-2 pl-0.5 font-game-num text-[10px] font-medium tracking-[0.18em] text-game-ink-500 uppercase">
                 {group.label}
               </div>
               {group.shortcuts.map((shortcut, i) => (
                 <div key={i} className="flex items-center justify-between gap-3 py-[5px]">
-                  <span className="text-[13px] text-slate-400">{shortcut.action}</span>
+                  <span className="text-[13px] text-game-ink-300">{shortcut.action}</span>
                   <span className="flex shrink-0 items-center gap-1">
                     {shortcut.keys.map((key, j) =>
                       key === "+" ? (
-                        <span key={j} className="text-[10px] text-slate-600">
+                        <span key={j} className="text-[10px] text-game-ink-700">
                           +
                         </span>
                       ) : (
                         <kbd
                           key={j}
-                          className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-[5px] border border-white/10 bg-white/6 px-1.5 font-mono text-[11px] text-slate-300"
+                          className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-[2px] border border-game-line-strong bg-game-panel-2 px-1.5 font-game-num text-[11px] text-game-ink-300"
                         >
                           {key}
                         </kbd>
@@ -120,11 +120,11 @@ export function Eu5ShortcutPanel() {
           ))}
         </div>
 
-        <div className="flex items-center justify-center gap-1 border-t border-white/6 py-2.5">
-          <kbd className="inline-flex h-[18px] min-w-[16px] items-center justify-center rounded-[4px] border border-white/10 bg-white/6 px-1 font-mono text-[10px] text-slate-400">
+        <div className="flex items-center justify-center gap-1 border-t border-game-line py-2.5">
+          <kbd className="inline-flex h-[18px] min-w-[16px] items-center justify-center rounded-[2px] border border-game-line-strong bg-game-panel-2 px-1 font-game-num text-[10px] text-game-ink-500">
             ?
           </kbd>
-          <span className="text-[11px] text-slate-500">to dismiss</span>
+          <span className="text-[11px] text-game-ink-500">to dismiss</span>
         </div>
       </Popover.Content>
     </Popover>

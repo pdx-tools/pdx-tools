@@ -1,5 +1,4 @@
-import { Tabs } from "@/components/Tabs";
-import { EntityHeader } from "./EntityHeader";
+import { GameTabs } from "../components";
 import { CountryOverviewTabContent } from "./tabs/OverviewTab";
 import { CountryEconomyTabContent } from "./tabs/EconomyTab";
 import { ReligionTabContent } from "./tabs/ReligionTab";
@@ -24,36 +23,44 @@ export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: numbe
 
   return (
     <div className="flex h-full flex-col">
-      <EntityHeader header={profile.header} />
-      <Tabs
+      <GameTabs
         value={profileTab.value}
         onValueChange={profileTab.onValueChange}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <Tabs.List className="shrink-0 border-b border-white/10 px-2">
-          <Tabs.Trigger value="overview">Overview</Tabs.Trigger>
-          <Tabs.Trigger value="economy">Economy</Tabs.Trigger>
-          <Tabs.Trigger value="religion">Religion</Tabs.Trigger>
-          <Tabs.Trigger value="population">Population</Tabs.Trigger>
-          <Tabs.Trigger value="locations">Locations</Tabs.Trigger>
-          <Tabs.Trigger value="diplomacy">Diplomacy</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="overview" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
+        <GameTabs.List className="shrink-0 px-2">
+          <GameTabs.Trigger value="overview">Overview</GameTabs.Trigger>
+          <GameTabs.Trigger value="economy">Economy</GameTabs.Trigger>
+          <GameTabs.Trigger value="religion">Religion</GameTabs.Trigger>
+          <GameTabs.Trigger value="population">Population</GameTabs.Trigger>
+          <GameTabs.Trigger value="locations">Locations</GameTabs.Trigger>
+          <GameTabs.Trigger value="diplomacy">Diplomacy</GameTabs.Trigger>
+        </GameTabs.List>
+        <GameTabs.Content
+          value="overview"
+          className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
+        >
           <CountryOverviewTabContent
             data={profile.overview}
             locations={profile.locations.locations}
           />
-        </Tabs.Content>
-        <Tabs.Content value="economy" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
+        </GameTabs.Content>
+        <GameTabs.Content
+          value="economy"
+          className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
+        >
           <CountryEconomyTabContent
             data={profile.economy}
             locations={profile.locations.locations}
           />
-        </Tabs.Content>
-        <Tabs.Content value="religion" className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4">
+        </GameTabs.Content>
+        <GameTabs.Content
+          value="religion"
+          className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
+        >
           <ReligionTabContent data={profile.religion} />
-        </Tabs.Content>
-        <Tabs.Content
+        </GameTabs.Content>
+        <GameTabs.Content
           value="population"
           className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
         >
@@ -61,20 +68,20 @@ export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: numbe
             anchorLocationIdx={anchorLocationIdx}
             locations={profile.locations.locations}
           />
-        </Tabs.Content>
-        <Tabs.Content
+        </GameTabs.Content>
+        <GameTabs.Content
           value="locations"
           className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
         >
           <LocationsTabContent locations={profile.locations.locations} mode={mode} />
-        </Tabs.Content>
-        <Tabs.Content
+        </GameTabs.Content>
+        <GameTabs.Content
           value="diplomacy"
           className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
         >
           <DiplomacyTabContent data={profile.diplomacy} />
-        </Tabs.Content>
-      </Tabs>
+        </GameTabs.Content>
+      </GameTabs>
     </div>
   );
 }

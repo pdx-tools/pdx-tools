@@ -3,7 +3,7 @@ import { usePanToEntity } from "../../usePanToEntity";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
-import { DataTable } from "@/components/DataTable";
+import { Eu5DataTable } from "../../components";
 import type { LocationRow, MapMode } from "@/wasm/wasm_eu5";
 import type { Row } from "@tanstack/react-table";
 import { EntityLink } from "../EntityLink";
@@ -26,7 +26,7 @@ function NameCell({ row }: { row: Row<LocationRow> }) {
           void engine.trigger.setFocusedLocation(row.original.locationIdx);
         }
       }}
-      className="min-w-0 truncate text-left text-xs text-sky-300 hover:text-sky-200 hover:underline"
+      className="min-w-0 truncate text-left text-xs text-game-accent-300 hover:text-game-accent-100 hover:underline"
     >
       {row.original.name}
     </button>
@@ -114,6 +114,12 @@ export function LocationsTabContent({
   const sort = SORT_BY_MODE[mode] ?? { id: "development", desc: true };
 
   return (
-    <DataTable key={mode} columns={columns} data={locations} initialSorting={[sort]} pagination />
+    <Eu5DataTable
+      key={mode}
+      columns={columns}
+      data={locations}
+      initialSorting={[sort]}
+      pagination
+    />
   );
 }

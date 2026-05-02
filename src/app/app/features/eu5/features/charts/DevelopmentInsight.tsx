@@ -11,6 +11,11 @@ import { LocationDistributionChart } from "./LocationDistributionChart";
 import { DevelopmentTopLocations } from "./DevelopmentTopLocations";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../../EntityProfile/components/StatItem";
+import {
+  Eu5InsightEmptyState,
+  Eu5InsightErrorState,
+  Eu5InsightLoadingState,
+} from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 function DevelopmentScopeHeader({ data }: { data?: DevelopmentScopeSummary }) {
@@ -38,8 +43,10 @@ export function DevelopmentInsight() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <DevelopmentScopeHeader data={insightQuery.data?.scope} />
-      {insightQuery.loading && !insightQuery.data ? (
-        <div className="h-64 animate-pulse rounded bg-white/5" />
+      {insightQuery.error ? (
+        <Eu5InsightErrorState error={insightQuery.error} />
+      ) : insightQuery.loading && !insightQuery.data ? (
+        <Eu5InsightLoadingState />
       ) : (
         <>
           {countries.length >= 2 && (
@@ -61,6 +68,10 @@ export function DevelopmentInsight() {
               <DevelopmentTopLocations locations={insightQuery.data.topLocations} />
             </section>
           )}
+
+          {countries.length === 0 && !insightQuery.data?.distribution && (
+            <Eu5InsightEmptyState title="No development data in the selected scope." />
+          )}
         </>
       )}
     </div>
@@ -69,7 +80,7 @@ export function DevelopmentInsight() {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );
@@ -79,7 +90,7 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
   const isDark = isDarkMode();
 
   const topCountries = useMemo(
-    () => new Set(countries.slice(0, 10).map((c) => c.tag)),
+    () => new Set(countries.slice(0, 10).map((c) => c.country.tag)),
     [countries],
   );
 
@@ -87,14 +98,14 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
     () =>
       countries.map((c) => ({
         value: [c.totalDevelopment, c.avgDevelopment] as [number, number],
-        tag: c.tag,
-        name: c.name,
+        tag: c.country.tag,
+        name: c.country.name,
         locationCount: c.locationCount,
         totalDevelopment: c.totalDevelopment,
         avgDevelopment: c.avgDevelopment,
         totalPopulation: c.totalPopulation,
-        color: c.colorHex,
-        anchorLocationIdx: c.anchorLocationIdx,
+        color: c.country.colorHex,
+        anchorLocationIdx: c.country.anchorLocationIdx,
       })),
     [countries],
   );
@@ -180,9 +191,11 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    getAnchorLocationIdx: (params) => {
+    backLabel: "Development",
+    getTarget: (params) => {
       if (Array.isArray(params.data)) return null;
-      return (params.data as (typeof scatterData)[number])?.anchorLocationIdx;
+      const country = params.data as (typeof scatterData)[number] | undefined;
+      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
     },
   });
 

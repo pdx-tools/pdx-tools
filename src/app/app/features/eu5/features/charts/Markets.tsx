@@ -12,6 +12,11 @@ import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeH
 import { StatItem } from "../../EntityProfile/components/StatItem";
 import { MarketProductionLocations } from "./MarketProductionLocations";
 import { GoodsMarketsHeatmap } from "./GoodsMarketsHeatmap";
+import {
+  Eu5InsightEmptyState,
+  Eu5InsightErrorState,
+  Eu5InsightLoadingState,
+} from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 const GOODS_BAR_CAP = 20;
@@ -42,8 +47,10 @@ export function MarketsInsight() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <MarketsScopeHeader data={insightQuery.data?.scope} />
-      {insightQuery.loading && !insightQuery.data ? (
-        <div className="h-64 animate-pulse rounded bg-white/5" />
+      {insightQuery.error ? (
+        <Eu5InsightErrorState error={insightQuery.error} />
+      ) : insightQuery.loading && !insightQuery.data ? (
+        <Eu5InsightLoadingState />
       ) : (
         <>
           {goods.length > 0 && (
@@ -79,9 +86,7 @@ export function MarketsInsight() {
           )}
 
           {goods.length === 0 && markets.length === 0 && (
-            <p className="py-6 text-center text-sm text-slate-500">
-              No market data in the selected scope
-            </p>
+            <Eu5InsightEmptyState title="No market data in the selected scope." />
           )}
         </>
       )}
@@ -91,7 +96,7 @@ export function MarketsInsight() {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
       {children}
     </p>
   );
@@ -231,7 +236,7 @@ export function GoodsPressureChart({ goods }: { goods: ScopedGoodSummary[] }) {
 
   if (!hasImbalance) {
     return (
-      <p className="py-6 text-center text-sm text-slate-500">
+      <p className="py-6 text-center text-sm text-game-ink-500">
         No good imbalances in the selected scope
       </p>
     );
@@ -247,7 +252,7 @@ export function GoodsPressureChart({ goods }: { goods: ScopedGoodSummary[] }) {
           onValueChange={(value) => {
             if (value) setMetric(value as GoodsPressureMetric);
           }}
-          className="inline-flex w-fit rounded-md border border-white/10 bg-white/5 p-1"
+          className="inline-flex w-fit rounded-md border border-game-line bg-game-panel-hover p-1"
           aria-label="Goods pressure metric comparison"
         >
           <ToggleGroup.Item value="value">Value</ToggleGroup.Item>
@@ -374,9 +379,13 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
 
   const handleInit = useEu5EntityChartClick({
     kind: "market",
-    getAnchorLocationIdx: (params) => {
+    backLabel: "Markets",
+    getTarget: (params) => {
       const dataIndex = params.dataIndex;
-      return dataIndex == null ? null : markets[dataIndex]?.anchorLocationIdx;
+      const market = dataIndex == null ? null : markets[dataIndex];
+      return market
+        ? { anchorLocationIdx: market.anchorLocationIdx, label: market.centerName }
+        : null;
     },
   });
 
