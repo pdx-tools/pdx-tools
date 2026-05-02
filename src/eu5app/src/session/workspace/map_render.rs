@@ -32,53 +32,6 @@ impl<'bump> Eu5Workspace<'bump> {
         (global_max, filtered_max)
     }
 
-    fn gradient_range(
-        &self,
-        extract: impl Fn(eu5save::models::LocationIdx, &eu5save::models::Location) -> f64,
-    ) -> (f64, f64) {
-        self.gradient_range_with_filter(true, extract)
-    }
-
-    fn gradient_global_range(
-        &self,
-        extract: impl Fn(eu5save::models::LocationIdx, &eu5save::models::Location) -> f64,
-    ) -> (f64, f64) {
-        self.gradient_range_with_filter(false, extract)
-    }
-
-    fn gradient_range_with_filter(
-        &self,
-        filter_selection: bool,
-        extract: impl Fn(eu5save::models::LocationIdx, &eu5save::models::Location) -> f64,
-    ) -> (f64, f64) {
-        let has_selection = !self.selection_state.is_empty();
-        let mut min_value = f64::INFINITY;
-        let mut max_value = f64::NEG_INFINITY;
-        for loc_entry in self.gamestate.locations.iter() {
-            let idx = loc_entry.idx();
-            let terrain = self.location_terrain(idx);
-            if terrain.is_water() || !terrain.is_passable() {
-                continue;
-            }
-            if filter_selection && has_selection && !self.selection_state.contains(idx) {
-                continue;
-            }
-            let loc = loc_entry.location();
-            if loc.owner.is_dummy() {
-                continue;
-            }
-            let value = extract(idx, loc);
-            min_value = min_value.min(value);
-            max_value = max_value.max(value);
-        }
-
-        if min_value.is_finite() && max_value.is_finite() {
-            (min_value, max_value)
-        } else {
-            (0.0, 0.0)
-        }
-    }
-
     /// Effective max for the development gradient (filtered when selection active).
     pub fn max_development(&self) -> f64 {
         self.gradient_domain(|_, loc| loc.development).1
@@ -104,12 +57,6 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Effective max for the possible tax gradient (filtered when selection active).
     pub fn max_possible_tax(&self) -> f64 {
         self.gradient_domain(|_, loc| loc.possible_tax).1
-    }
-
-    pub fn tax_gap_range(&self) -> (f64, f64) {
-        let (min, max) = self.gradient_range(|_, loc| loc.possible_tax - loc.tax);
-        let max_abs = min.abs().max(max.abs());
-        (min, max_abs)
     }
 
     /// Effective max for the state efficacy gradient (filtered when selection active).
@@ -367,7 +314,7 @@ impl<'bump> Eu5Workspace<'bump> {
     pub fn location_tax_gap_color(
         &self,
         location_idx: eu5save::models::LocationIdx,
-        max_abs_gap: f64,
+        max_gap: f64,
     ) -> GpuColor {
         let terrain = self.location_terrain(location_idx);
         if terrain.is_water() {
@@ -383,8 +330,8 @@ impl<'bump> Eu5Workspace<'bump> {
             return GpuColor::UNOWNED;
         }
 
-        let gap = save_location.possible_tax - save_location.tax;
-        gradient::interpolate_tax_gap(gap, max_abs_gap)
+        let gap = (save_location.possible_tax - save_location.tax).max(0.0);
+        gradient::interpolate_eu5_gradient(gap, max_gap, GradientScale::Linear)
     }
 
     pub fn location_state_efficacy_color(
@@ -892,23 +839,16 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn apply_tax_gap_colors(&mut self) -> gradient::MapLegend {
-        let (global_min, global_max) =
-            self.gradient_global_range(|_, loc| loc.possible_tax - loc.tax);
-        let global_max_abs = global_min.abs().max(global_max.abs());
-        let (filtered_min, filtered_max) = if self.selection_state.is_empty() {
-            (global_min, global_max)
-        } else {
-            self.gradient_range(|_, loc| loc.possible_tax - loc.tax)
-        };
-        let filtered_max_abs = filtered_min.abs().max(filtered_max.abs());
+        let (global_max, filtered_max) =
+            self.gradient_domain(|_, loc| (loc.possible_tax - loc.tax).max(0.0));
 
         let mut color_data = Vec::new();
         for idx in 0..self.gamestate.locations.len() {
             let location_idx = eu5save::models::LocationIdx::new(idx as u32);
             let max = if self.selection_state.contains(location_idx) {
-                filtered_max_abs
+                filtered_max
             } else {
-                global_max_abs
+                global_max
             };
             color_data.push((idx, self.location_tax_gap_color(location_idx, max)));
         }
@@ -924,7 +864,11 @@ impl<'bump> Eu5Workspace<'bump> {
 
         self.location_arrays.copy_primary_to_secondary();
 
-        gradient::MapLegend::Quantitative(gradient::tax_gap(filtered_min, filtered_max_abs))
+        gradient::MapLegend::Quantitative(gradient::sequential(
+            GradientScale::Linear,
+            0.0,
+            filtered_max,
+        ))
     }
 
     fn apply_state_efficacy_colors(&mut self) -> gradient::MapLegend {
