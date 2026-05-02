@@ -74,10 +74,10 @@ export function Eu5Toolbar() {
 
   const handleSelect = useCallback(
     async (result: SearchResult) => {
-      if (result.kind === "location") {
-        await engine.trigger.setFocusedLocation(result.locationIdx);
+      if (result.kind === "country") {
+        await engine.trigger.selectCountry(result.locationIdx);
       } else {
-        await engine.trigger.selectEntity(result.locationIdx);
+        await engine.trigger.setFocusedLocation(result.locationIdx);
       }
       panToEntity(result.locationIdx);
       setSearchActive(false);

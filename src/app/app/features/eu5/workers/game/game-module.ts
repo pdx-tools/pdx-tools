@@ -262,15 +262,12 @@ export const createGame = async (
     ) => {
       selectionCallback = callback;
     },
-    selectEntity: (locationIdx: number) => afterMutation(app.select_entity(locationIdx)),
     selectCountry: (locationIdx: number) => afterMutation(app.select_country(locationIdx).gradient),
     addCountry: (locationIdx: number) => afterMutation(app.add_country(locationIdx)),
     removeCountry: (locationIdx: number) => afterMutation(app.remove_country(locationIdx)),
     selectMarket: (locationIdx: number) => afterMutation(app.select_market(locationIdx).gradient),
     addMarket: (locationIdx: number) => afterMutation(app.add_market(locationIdx)),
     removeMarket: (locationIdx: number) => afterMutation(app.remove_market(locationIdx)),
-    addEntity: (locationIdx: number) => afterMutation(app.add_entity(locationIdx)),
-    removeEntity: (locationIdx: number) => afterMutation(app.remove_entity(locationIdx)),
     setFocusedLocation: (locationIdx: number) =>
       afterMutation(app.set_focused_location(locationIdx).gradient),
     clearFocus: () => afterMutation(app.clear_focus()),
