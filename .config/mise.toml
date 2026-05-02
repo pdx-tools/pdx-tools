@@ -298,6 +298,14 @@ run = [
     "node ./dev/scripts/compile-all-assets.mts"
 ]
 
+[tasks."assets:steam:fetch"]
+description = "Fetch EU4 or EU5 game files through SteamCMD into assets/steam"
+run = 'cargo run --package pdx-assets -- fetch-game "$@"'
+
+[tasks."assets:steam:bundle"]
+description = "Fetch supported Steam game patches, create raw bundles, and remove installs"
+run = "node ./dev/scripts/fetch-steam-game-bundles.mts"
+
 [tasks."admin:build:cli"]
 depends = ["setup:musl"]
 run = "cargo build --package pdx-admin-cli --release --target x86_64-unknown-linux-musl"

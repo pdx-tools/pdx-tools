@@ -1,8 +1,11 @@
 FROM mcr.microsoft.com/devcontainers/base:1-bookworm
 
-RUN apt-get update && apt-get install -y \
+RUN dpkg --add-architecture i386 && \
+    apt-get update && apt-get install -y \
       clang \
       imagemagick \
+      lib32gcc-s1 \
+      lib32stdc++6 \
       libssl-dev \
       musl-tools \
       pkg-config \
@@ -10,6 +13,12 @@ RUN apt-get update && apt-get install -y \
       zstd \
     && \
     rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /usr/local/steamcmd && \
+    curl -fsSL https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz \
+      | tar -xz -C /usr/local/steamcmd && \
+    ln -s /usr/local/steamcmd/steamcmd.sh /usr/local/bin/steamcmd && \
+    chown -R vscode:vscode /usr/local/steamcmd
 
 USER vscode
 

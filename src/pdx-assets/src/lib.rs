@@ -27,6 +27,13 @@ pub enum Game {
 }
 
 impl Game {
+    pub fn steam_app_id(self) -> u32 {
+        match self {
+            Game::Eu4 => 236_850,
+            Game::Eu5 => 3_450_310,
+        }
+    }
+
     /// Auto-detect game type from file provider
     pub fn detect<P: FileProvider + ?Sized>(provider: &P) -> Result<Self> {
         if provider.file_exists("game/in_game/map_data/named_locations/00_default.txt") {

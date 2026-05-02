@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use pdx_assets::{BundleArgs, CompileArgs};
+use pdx_assets::{BundleArgs, CompileArgs, FetchGameArgs};
 use std::{io::IsTerminal, process::ExitCode};
 use tracing_subscriber::{EnvFilter, filter::LevelFilter, fmt::format::FmtSpan};
 
@@ -21,6 +21,7 @@ struct Cli {
 enum Commands {
     Bundle(BundleArgs),
     Compile(CompileArgs),
+    FetchGame(FetchGameArgs),
 }
 
 fn main() -> ExitCode {
@@ -39,6 +40,7 @@ fn main() -> ExitCode {
     let exit_code = match cli.command {
         Commands::Bundle(args) => args.run(),
         Commands::Compile(args) => args.run(),
+        Commands::FetchGame(args) => args.run(),
     };
 
     match exit_code {
