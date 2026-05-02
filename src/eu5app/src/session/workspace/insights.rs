@@ -22,7 +22,7 @@ fn political_world_display_rows(
         .into_iter()
         .enumerate()
         .filter_map(|(idx, mut candidate)| {
-            let ordinal_rank = (idx + 1) as u32;
+            let ordinal_rank = candidate.great_power_rank as u32;
             if idx < POLITICAL_SCOREBOARD_TOP_COUNT || candidate.row.is_player {
                 candidate.row.ordinal_rank = ordinal_rank;
                 Some(candidate.row)
@@ -2308,7 +2308,7 @@ mod tests {
         );
         assert_eq!(
             rows.iter().map(|row| row.ordinal_rank).collect::<Vec<_>>(),
-            [1, 2, 3]
+            [10, 20, 30]
         );
         assert!(rows[1].is_player);
         assert_eq!(rows[1].total_state_efficacy, 3.5);
