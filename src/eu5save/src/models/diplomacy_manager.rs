@@ -7,11 +7,16 @@ use std::fmt;
 #[derive(Debug, PartialEq)]
 pub struct DiplomacyManager<'bump> {
     dependencies: &'bump [DiplomacyDependency],
+    entries: &'bump [CountryDiplomacy],
 }
 
 impl<'bump> DiplomacyManager<'bump> {
     pub fn dependencies(&self) -> impl ExactSizeIterator<Item = &DiplomacyDependency> + '_ {
         self.dependencies.iter()
+    }
+
+    pub fn entries(&self) -> impl ExactSizeIterator<Item = &CountryDiplomacy> + '_ {
+        self.entries.iter()
     }
 }
 
@@ -58,6 +63,8 @@ where
         {
             if v == "dependency" {
                 Ok(DiplomacyManagerField::Dependency)
+            } else if let Ok(v) = v.parse() {
+                Ok(DiplomacyManagerField::Int(v))
             } else {
                 Ok(DiplomacyManagerField::Other)
             }
@@ -87,11 +94,16 @@ where
             A: de::MapAccess<'de>,
         {
             let mut dependencies = bumpalo::collections::Vec::new_in(self.0);
+            let mut country_diplomacy = bumpalo::collections::Vec::new_in(self.0);
 
             while let Some(key) = map.next_key()? {
                 match key {
-                    DiplomacyManagerField::Int(_) => {
-                        map.next_value::<de::IgnoredAny>()?;
+                    DiplomacyManagerField::Int(country) => {
+                        let raw = map.next_value::<CountryDiplomacyRaw>()?;
+                        country_diplomacy.push(CountryDiplomacy {
+                            country: CountryId::new(country),
+                            liberty_desire: raw.liberty_desire,
+                        });
                     }
                     DiplomacyManagerField::Dependency => {
                         let dependency =
@@ -108,6 +120,7 @@ where
 
             Ok(DiplomacyManager {
                 dependencies: dependencies.into_bump_slice(),
+                entries: country_diplomacy.into_bump_slice(),
             })
         }
     }
@@ -125,6 +138,17 @@ impl<'bump> bumpalo_serde::ArenaDeserialize<'bump> for DiplomacyManager<'bump> {
     {
         deserialize_diplomacy_manager(deserializer, allocator)
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct CountryDiplomacy {
+    pub country: CountryId,
+    pub liberty_desire: Option<f64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CountryDiplomacyRaw {
+    liberty_desire: Option<f64>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -317,5 +341,54 @@ dependency={
 }
 "#,
         );
+    }
+
+    #[test]
+    fn diplomacy_manager_deserializes_country_liberty_desire() {
+        let allocator = bumpalo::Bump::new();
+        let manager = deserialize_manager(
+            r#"
+0={
+    diplomats=2.5
+}
+3={
+    diplomats=1.1
+    liberty_desire=17
+    rivals_2={
+        list={
+            {
+                country=1773
+                date=1337.4.2
+            }
+        }
+    }
+}
+4={
+    diplomats=0.7
+    liberty_desire=70.5
+}
+dependency={
+    first=314
+    second=339
+    subject_type=vassal
+}
+"#,
+            &allocator,
+        );
+
+        let country_diplomacy: Vec<_> = manager.entries().collect();
+        let dependencies: Vec<_> = manager.dependencies().collect();
+
+        assert_eq!(country_diplomacy.len(), 3);
+        assert_eq!(country_diplomacy[0].country, CountryId::new(0));
+        assert_eq!(country_diplomacy[0].liberty_desire, None);
+        assert_eq!(country_diplomacy[1].country, CountryId::new(3));
+        assert_eq!(country_diplomacy[1].liberty_desire, Some(17.0));
+        assert_eq!(country_diplomacy[2].country, CountryId::new(4));
+        assert_eq!(country_diplomacy[2].liberty_desire, Some(70.5));
+        assert_eq!(dependencies.len(), 1);
+        assert_eq!(dependencies[0].first, CountryId::new(314));
+        assert_eq!(dependencies[0].second, CountryId::new(339));
+        assert_eq!(dependencies[0].subject_type, DiplomacySubjectType::Vassal);
     }
 }
