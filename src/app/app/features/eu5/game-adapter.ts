@@ -261,9 +261,6 @@ export function saveWorker(
       cursorHintCallback = callback;
     },
 
-    selectEntity: (locationIdx: number) => {
-      return saveEngine.selectEntity(locationIdx);
-    },
     selectCountry: (locationIdx: number) => {
       return saveEngine.selectCountry(locationIdx);
     },
@@ -281,12 +278,6 @@ export function saveWorker(
     },
     removeMarket: (locationIdx: number) => {
       return saveEngine.removeMarket(locationIdx);
-    },
-    addEntity: (locationIdx: number) => {
-      return saveEngine.addEntity(locationIdx);
-    },
-    removeEntity: (locationIdx: number) => {
-      return saveEngine.removeEntity(locationIdx);
     },
     setFocusedLocation: (locationIdx: number) => {
       return saveEngine.setFocusedLocation(locationIdx);

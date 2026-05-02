@@ -91,7 +91,6 @@ export interface AppTriggers {
   getControlInsight(): Promise<ControlInsightData>;
   getPoliticalWorldScoreboard(): Promise<PoliticalWorldScoreboard>;
   getPoliticalDefaultCountryAnchor(): Promise<number | null>;
-  selectEntity(locationIdx: number): Promise<void>;
   selectCountry(anchorLocationIdx: number): Promise<void>;
   addCountry(anchorLocationIdx: number): Promise<void>;
   removeCountry(anchorLocationIdx: number): Promise<void>;
@@ -201,7 +200,6 @@ export class Eu5UIEngine implements AppEngine {
     getControlInsight: () => this.gameInstance.getControlInsight(),
     getPoliticalWorldScoreboard: () => this.gameInstance.getPoliticalWorldScoreboard(),
     getPoliticalDefaultCountryAnchor: () => this.gameInstance.getPoliticalDefaultCountryAnchor(),
-    selectEntity: (locationIdx) => this.handleSelectEntity(locationIdx),
     selectCountry: (locationIdx) => this.gameInstance.selectCountry(locationIdx),
     addCountry: (locationIdx) => this.gameInstance.addCountry(locationIdx),
     removeCountry: (locationIdx) => this.gameInstance.removeCountry(locationIdx),
@@ -286,10 +284,6 @@ export class Eu5UIEngine implements AppEngine {
 
   private async handleGetStateEfficacy(): Promise<StateEfficacyInsightData> {
     return await this.gameInstance.getStateEfficacy();
-  }
-
-  private async handleSelectEntity(locationIdx: number): Promise<void> {
-    await this.gameInstance.selectEntity(locationIdx);
   }
 
   private async handleSetFocusedLocation(locationIdx: number): Promise<void> {
