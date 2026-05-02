@@ -112,7 +112,6 @@ export const createGame = async (
   // sees opaque CSS strings keyed by palette tag.
   const paletteGradients: Record<GradientPalette, string> = {
     eu5: paletteToCss("eu5"),
-    taxGap: paletteToCss("taxGap"),
   };
 
   if (!mapEndpoint) {

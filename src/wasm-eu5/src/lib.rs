@@ -161,7 +161,7 @@ impl From<Eu5TableCell> for TableCell {
     }
 }
 
-pub use eu5app::gradient::{GradientConfig, GradientKind, GradientPalette, GradientScale};
+pub use eu5app::gradient::{GradientConfig, GradientPalette, GradientScale};
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
 #[tsify(into_wasm_abi)]

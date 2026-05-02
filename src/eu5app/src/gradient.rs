@@ -14,20 +14,10 @@ pub enum GradientScale {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
-#[serde(rename_all = "camelCase")]
-pub enum GradientKind {
-    Sequential,
-    Diverging,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi, from_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub enum GradientPalette {
     Eu5,
-    TaxGap,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -35,7 +25,6 @@ pub enum GradientPalette {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct GradientConfig {
-    pub kind: GradientKind,
     pub scale: GradientScale,
     pub palette: GradientPalette,
     pub min_value: f64,
@@ -109,7 +98,6 @@ pub fn sequential(scale: GradientScale, min_value: f64, max_value: f64) -> Gradi
         GradientScale::Log => population_log_midpoint(max_value),
     };
     GradientConfig {
-        kind: GradientKind::Sequential,
         scale,
         palette: GradientPalette::Eu5,
         min_value,
@@ -118,28 +106,9 @@ pub fn sequential(scale: GradientScale, min_value: f64, max_value: f64) -> Gradi
     }
 }
 
-pub fn interpolate_tax_gap(value: f64, max_abs_value: f64) -> GpuColor {
-    let neutral = GpuColor::from_rgb(101, 67, 33);
-    if max_abs_value == 0.0 {
-        return neutral;
-    }
-
-    let overperforming = GpuColor::from_rgb(20, 5, 5);
-    let untapped = GpuColor::from_rgb(34, 139, 34);
-    let normalized = (value.abs() / max_abs_value).clamp(0.0, 1.0) as f32;
-
-    if value < 0.0 {
-        neutral.blend(overperforming, normalized)
-    } else {
-        neutral.blend(untapped, normalized)
-    }
-}
-
 /// Sample a palette as `(offset, rgb)` pairs suitable for rendering as a CSS
 /// gradient. The EU5 palette is sampled densely so that sRGB interpolation
-/// between adjacent stops closely approximates the shader's HSV interpolation;
-/// the diverging tax-gap palette only has three perceptual anchors so it ships
-/// those directly.
+/// between adjacent stops closely approximates the shader's HSV interpolation.
 pub fn palette_stops(palette: GradientPalette) -> Vec<(f64, (u8, u8, u8))> {
     match palette {
         GradientPalette::Eu5 => {
@@ -152,11 +121,6 @@ pub fn palette_stops(palette: GradientPalette) -> Vec<(f64, (u8, u8, u8))> {
                 })
                 .collect()
         }
-        GradientPalette::TaxGap => vec![
-            (0.0, interpolate_tax_gap(-1.0, 1.0).rgb()),
-            (0.5, interpolate_tax_gap(0.0, 1.0).rgb()),
-            (1.0, interpolate_tax_gap(1.0, 1.0).rgb()),
-        ],
     }
 }
 
@@ -167,17 +131,6 @@ pub enum MapLegend {
 
     /// Color encodes a numeric value
     Quantitative(GradientConfig),
-}
-
-pub fn tax_gap(min_value: f64, max_value: f64) -> GradientConfig {
-    GradientConfig {
-        kind: GradientKind::Diverging,
-        scale: GradientScale::Linear,
-        palette: GradientPalette::TaxGap,
-        min_value,
-        mid_value: 0.0,
-        max_value,
-    }
 }
 
 #[cfg(test)]
@@ -240,7 +193,6 @@ mod tests {
     #[test]
     fn sequential_linear_uses_arithmetic_midpoint() {
         let config = sequential(GradientScale::Linear, 0.0, 10.0);
-        assert_eq!(config.kind, GradientKind::Sequential);
         assert_eq!(config.palette, GradientPalette::Eu5);
         assert_eq!(config.min_value, 0.0);
         assert_eq!(config.mid_value, 5.0);
@@ -253,13 +205,5 @@ mod tests {
         let config = sequential(GradientScale::Log, 0.0, max);
         let normalized = (config.mid_value / 1000.0).ln_1p() / (max / 1000.0).ln_1p();
         assert!((normalized - 0.5).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn tax_gap_config_is_diverging_at_zero() {
-        let config = tax_gap(-50.0, 50.0);
-        assert_eq!(config.kind, GradientKind::Diverging);
-        assert_eq!(config.palette, GradientPalette::TaxGap);
-        assert_eq!(config.mid_value, 0.0);
     }
 }

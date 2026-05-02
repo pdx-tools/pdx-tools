@@ -48,7 +48,7 @@ export function TaxGapInsight() {
         <>
           {countries.length >= 1 && (
             <section>
-              <SectionTitle>Tax Gap · Realized vs Ceiling per Country</SectionTitle>
+              <SectionTitle>Tax Gap by Country</SectionTitle>
               <TaxGapBarChart countries={countries} />
             </section>
           )}
@@ -93,12 +93,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-type BarDatum = CountryTaxGap & {
-  matched: number;
-  untapped: number;
-  overperformed: number;
-};
-
 type ScatterDatum = [x: number, y: number];
 
 function countryTooltip(d: CountryTaxGap): string {
@@ -117,15 +111,7 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
   const isDark = isDarkMode();
 
   const sorted = useMemo(
-    (): BarDatum[] =>
-      [...countries]
-        .sort((a, b) => b.taxGap - a.taxGap)
-        .map((c) => ({
-          ...c,
-          matched: c.currentTaxBase,
-          untapped: Math.max(0, c.taxGap),
-          overperformed: -Math.max(0, -c.taxGap),
-        })),
+    (): CountryTaxGap[] => [...countries].sort((a, b) => b.taxGap - a.taxGap),
     [countries],
   );
 
@@ -136,27 +122,9 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
     const showZoom = sorted.length > BAR_CAP;
 
     return {
-      dataset: {
-        source: sorted,
-        dimensions: [
-          "name",
-          "tag",
-          "currentTaxBase",
-          "totalPossibleTax",
-          "taxGap",
-          "realizationRatio",
-          "locationCount",
-          "totalPopulation",
-          "anchorLocationIdx",
-          "colorHex",
-          "matched",
-          "untapped",
-          "overperformed",
-        ],
-      },
       grid: {
         left: 60,
-        right: 20,
+        right: 70,
         top: 10,
         bottom: showZoom ? 30 : 10,
       },
@@ -171,6 +139,7 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
       yAxis: {
         type: "category",
         inverse: true,
+        data: sorted.map((d) => d.tag),
         axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 44 },
         axisLine: { lineStyle: { color: axisColor } },
       },
@@ -191,43 +160,40 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
           }
         : {}),
       tooltip: {
-        trigger: "axis",
-        axisPointer: { type: "shadow" },
+        trigger: "item",
         formatter: (params) => {
-          const arr = Array.isArray(params) ? params : [params];
-          const first = arr[0];
-          if (!first) return "";
-          const dataIndex = (first as { dataIndex?: number }).dataIndex;
-          if (dataIndex == null) return "";
-          const d = sorted[dataIndex];
-          if (!d) return "";
+          if (Array.isArray(params)) return "";
+          const d = params.data as CountryTaxGap & { value: number };
           return countryTooltip(d);
         },
       },
       series: [
         {
-          name: "Location Tax",
           type: "bar",
-          stack: "tax",
-          encode: { x: "matched", y: "tag" },
-          itemStyle: { color: isDark ? "#475569" : "#94a3b8" },
-          emphasis: { focus: "series" },
-        },
-        {
-          name: "Untapped",
-          type: "bar",
-          stack: "tax",
-          encode: { x: "untapped", y: "tag" },
-          itemStyle: { color: isDark ? "#38bdf8" : "#0ea5e9" },
-          emphasis: { focus: "series" },
-        },
-        {
-          name: "Over-realized",
-          type: "bar",
-          stack: "tax",
-          encode: { x: "overperformed", y: "tag" },
-          itemStyle: { color: isDark ? "#fbbf24" : "#f59e0b" },
-          emphasis: { focus: "series" },
+          data: sorted.map((d) => ({ ...d, value: d.taxGap })),
+          itemStyle: {
+            color: (params) => {
+              const d = params.data as CountryTaxGap & { value: number };
+              return d.taxGap >= 0
+                ? isDark
+                  ? "#38bdf8"
+                  : "#0ea5e9"
+                : isDark
+                  ? "#fbbf24"
+                  : "#f59e0b";
+            },
+          },
+          label: {
+            show: true,
+            position: "right",
+            formatter: (params) => {
+              const d = params.data as CountryTaxGap & { value: number };
+              return `${formatFloat(d.realizationRatio * 100, 1)}%`;
+            },
+            fontSize: 10,
+            fontWeight: 600,
+            color: tickColor,
+          },
         },
       ],
     };
@@ -236,8 +202,8 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
   const handleInit = useEu5EntityChartClick({
     kind: "country",
     getAnchorLocationIdx: (params) => {
-      const dataIndex = params.dataIndex;
-      return dataIndex == null ? null : sorted[dataIndex]?.anchorLocationIdx;
+      const d = params.data as (CountryTaxGap & { value: number }) | undefined;
+      return d?.anchorLocationIdx ?? null;
     },
   });
 
