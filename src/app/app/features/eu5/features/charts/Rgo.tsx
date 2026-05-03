@@ -77,6 +77,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, gridLineColor, tickColor, labelColor } = getEChartsTheme(isDark);
+    const fallbackColor = isDark ? "#60a5fa" : "#2563eb";
 
     return {
       grid: { left: 60, right: 24, top: 24, bottom: 60 },
@@ -128,14 +129,17 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
       series: [
         {
           type: "scatter",
-          data: scatterData.map((d) => d.value),
+          data: scatterData.map((d) => ({
+            value: d.value,
+            itemStyle: { color: d.colorHex ?? fallbackColor },
+          })),
           symbolSize: (_val, params) => {
             const d = scatterData[params.dataIndex];
             if (!d) return 6;
             const scaled = Math.sqrt((d.locationCount / maxLocCount) * 900) + 4;
             return Math.max(4, Math.min(40, scaled));
           },
-          itemStyle: { color: isDark ? "#60a5fa" : "#2563eb", opacity: 0.75 },
+          itemStyle: { opacity: 0.75 },
         },
       ],
     };

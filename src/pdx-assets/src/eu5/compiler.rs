@@ -2,6 +2,7 @@ use crate::asset_compilers::PackageOptions;
 use crate::{FileProvider, ImageProcessor};
 use anyhow::Result;
 use eu5app::game_data::{
+    GoodsData,
     game_install::{GameFileSource, RawGameData},
     optimized::WorldMetadata,
 };
@@ -20,9 +21,37 @@ where
         &'a self,
         path: &str,
     ) -> std::result::Result<Box<dyn std::io::Read + 'a>, eu5app::game_data::GameDataError> {
-        self.0.open_file(path).map_err(|e| {
-            eu5app::game_data::GameDataError::Io(std::io::Error::other(e), String::from(path))
-        })
+        self.0
+            .open_file(path)
+            .map_err(|e| map_provider_error(e, path))
+    }
+
+    fn read_to_string(
+        &self,
+        path: &str,
+    ) -> std::result::Result<String, eu5app::game_data::GameDataError> {
+        self.0
+            .read_to_string(path)
+            .map_err(|e| map_provider_error(e, path))
+    }
+
+    fn walk_directory(
+        &self,
+        path: &str,
+        ends_with: &[&str],
+    ) -> std::result::Result<Vec<String>, eu5app::game_data::GameDataError> {
+        self.0
+            .walk_directory(path, ends_with)
+            .map_err(|e| map_provider_error(e, path))
+    }
+}
+
+fn map_provider_error(e: anyhow::Error, path: &str) -> eu5app::game_data::GameDataError {
+    let message = e.to_string();
+    if message.contains("File not found") || message.contains("No such file or directory") {
+        eu5app::game_data::GameDataError::MissingData(String::from(path))
+    } else {
+        eu5app::game_data::GameDataError::Io(std::io::Error::other(e), String::from(path))
     }
 }
 
@@ -65,6 +94,13 @@ where
         &mut archive,
         "country_localization.bin",
         raw_game_data.country_localizations,
+    )?;
+    write_entry(
+        &mut archive,
+        "game_data.bin",
+        GoodsData {
+            goods: raw_game_data.goods,
+        },
     )?;
     let max_location_index = textures.textures().world().max_location_index().value();
     write_entry(
