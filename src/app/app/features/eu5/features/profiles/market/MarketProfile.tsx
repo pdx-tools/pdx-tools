@@ -1,5 +1,6 @@
+import React from "react";
 import { GameTabs } from "../../../components";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatFloat } from "@/lib/format";
 import type { MarketMemberCountry } from "@/wasm/wasm_eu5";
 import { MarketProductionLocations } from "../../insights/MarketProductionLocations";
 import { EntityLink } from "../EntityLink";
@@ -8,6 +9,7 @@ import { MarketGoodsTabContent } from "./GoodsTab";
 import { useEu5Trigger } from "../useEu5Trigger";
 import { ProfileSkeleton } from "../ProfileSkeleton";
 import { useProfileTab } from "../PanelNavContext";
+import { Tooltip } from "@/components/Tooltip";
 
 export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number }) {
   const profileTab = useProfileTab("market");
@@ -53,10 +55,7 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
             <MarketLocationsTabContent anchorLocationIdx={anchorLocationIdx} />
           )}
         </GameTabs.Content>
-        <GameTabs.Content
-          value="members"
-          className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
-        >
+        <GameTabs.Content value="members" className="min-h-0 flex-1 basis-0 overflow-y-auto">
           <MarketMembers members={profile.memberCountries} />
         </GameTabs.Content>
       </GameTabs>
@@ -81,27 +80,63 @@ function MarketLocationsTabContent({ anchorLocationIdx }: { anchorLocationIdx: n
   return <MarketProductionLocations locations={locations} />;
 }
 
+const MEMBERS_COLUMNS = "1fr 96px 96px";
+
 function MarketMembers({ members }: { members: MarketMemberCountry[] }) {
   if (members.length === 0) {
-    return <p className="text-sm text-game-ink-500">No member countries.</p>;
+    return <p className="px-4 py-4 text-sm text-game-ink-500">No member countries.</p>;
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col">
+      <div
+        className="grid h-[26px] items-center border-b border-game-line-strong px-3"
+        style={{ gridTemplateColumns: MEMBERS_COLUMNS }}
+      >
+        <span className="font-game-num text-[10px] tracking-[.14em] text-game-ink-700 uppercase">
+          Country
+        </span>
+        <MemberHeaderCell tooltip="Trade advantage determines the order in which countries fulfill their exports within a market. When goods are scarce, they are distributed according to each country's trade advantage.">
+          Advantage
+        </MemberHeaderCell>
+        <MemberHeaderCell tooltip="Trade capacity represents the capacity of merchants to move goods between markets. It is primarily provided by trade buildings and is consumed by trades based in this market.">
+          Capacity
+        </MemberHeaderCell>
+      </div>
       {members.map((member) => (
         <div
           key={member.country.anchorLocationIdx}
-          className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-lg border border-game-line bg-game-panel-hover px-3 py-2 text-sm"
+          className="grid h-7 items-center border-b border-game-line px-3"
+          style={{ gridTemplateColumns: MEMBERS_COLUMNS }}
         >
-          <EntityLink entity={member.country} />
-          <span className="font-mono text-xs text-game-ink-300">
-            {formatInt(member.locationCount)} loc
-          </span>
-          <span className="font-mono text-xs text-game-ink-300">
-            {formatFloat(member.development, 1)} dev
-          </span>
+          <EntityLink entity={member.country} size="md" static />
+          <MemberMetricCell>{formatFloat(member.tradeAdvantage, 2)}</MemberMetricCell>
+          <MemberMetricCell>{formatFloat(member.tradeCapacity, 2)}</MemberMetricCell>
         </div>
       ))}
     </div>
+  );
+}
+
+function MemberMetricCell({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="truncate text-right font-game-num text-xs text-game-ink-100 tabular-nums">
+      {children}
+    </span>
+  );
+}
+
+function MemberHeaderCell({ children, tooltip }: { children: React.ReactNode; tooltip: string }) {
+  return (
+    <Tooltip>
+      <Tooltip.Trigger asChild>
+        <span className="cursor-help text-right font-game-num text-[10px] tracking-[.14em] text-game-ink-700 uppercase decoration-dotted underline-offset-2 hover:text-game-ink-500 hover:underline">
+          {children}
+        </span>
+      </Tooltip.Trigger>
+      <Tooltip.Content side="top" className="max-w-72 text-xs normal-case">
+        {tooltip}
+      </Tooltip.Content>
+    </Tooltip>
   );
 }

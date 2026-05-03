@@ -1,7 +1,7 @@
 use crate::models::bstr::BStr;
 use crate::models::de::Maybe;
 use crate::models::{
-    Color, LocationId, de::deserialize_vec_pair_arena_required, deserialize_vec_capacity,
+    Color, CountryId, LocationId, de::deserialize_vec_pair_arena_required, deserialize_vec_capacity,
 };
 use bumpalo_serde::{ArenaDeserialize, ArenaSeed};
 use core::fmt;
@@ -88,12 +88,30 @@ impl MarketDatabase<'_> {
 }
 
 #[derive(Debug, ArenaDeserialize, PartialEq)]
+pub struct Merchant {
+    #[arena(default)]
+    pub country: CountryId,
+    #[arena(default)]
+    pub power: f64,
+    #[arena(default)]
+    pub capacity: f64,
+    #[arena(default)]
+    pub original_power: f64,
+    #[arena(default)]
+    pub original_capacity: f64,
+    #[arena(default)]
+    pub used: f64,
+}
+
+#[derive(Debug, ArenaDeserialize, PartialEq)]
 pub struct Market<'bump> {
     pub center: LocationId,
     #[arena(default)]
     pub color: Color,
     #[arena(default, deserialize_with = "deserialize_market_goods")]
     pub goods: &'bump [MarketGood<'bump>],
+    #[arena(duplicated, alias = "merchant")]
+    pub merchants: &'bump [Merchant],
 }
 
 impl Market<'_> {
@@ -296,4 +314,120 @@ where
         deserialize_vec_pair_arena_required::<_, BStr<'bump>, f64>(deserializer, allocator)?
             .into_bump_slice(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use jomini::TextDeserializer;
+
+    fn deserialize_manager<'bump>(
+        data: &str,
+        allocator: &'bump bumpalo::Bump,
+    ) -> MarketManager<'bump> {
+        let deserializer =
+            TextDeserializer::from_utf8_slice(data.as_bytes()).expect("valid text data");
+        MarketManager::deserialize_in_arena(&deserializer, allocator)
+            .expect("market manager deserializes")
+    }
+
+    #[test]
+    fn market_parses_repeated_merchant_blocks() {
+        let allocator = bumpalo::Bump::new();
+        let manager = deserialize_manager(
+            r#"
+produced_goods={}
+database={
+    100={
+        center=100
+        merchant={
+            country=1523
+            power=44.33076
+            original_power=44.33076
+            capacity=23.51775
+            original_capacity=23.51775
+            used=23.51775
+        }
+        merchant={
+            country=2147
+            power=5.11316
+            original_power=5.11316
+            capacity=4.935
+            original_capacity=4.935
+            used=4.662
+        }
+        merchant={
+            country=214
+            power=2.90275
+            original_power=2.90275
+        }
+    }
+}
+"#,
+            &allocator,
+        );
+
+        let market = manager.get(MarketId::new(100)).expect("market 100 exists");
+        assert_eq!(market.merchants.len(), 3);
+
+        let m0 = &market.merchants[0];
+        assert_eq!(m0.country, CountryId::new(1523));
+        assert!((m0.power - 44.33076).abs() < 1e-5);
+        assert!((m0.capacity - 23.51775).abs() < 1e-5);
+        assert!((m0.used - 23.51775).abs() < 1e-5);
+
+        let m2 = &market.merchants[2];
+        assert_eq!(m2.country, CountryId::new(214));
+        assert!((m2.power - 2.90275).abs() < 1e-5);
+        assert_eq!(m2.capacity, 0.0);
+        assert_eq!(m2.used, 0.0);
+    }
+
+    #[test]
+    fn merchant_absent_numeric_fields_default_to_zero() {
+        let allocator = bumpalo::Bump::new();
+        let manager = deserialize_manager(
+            r#"
+produced_goods={}
+database={
+    1={
+        center=1
+        merchant={
+            country=99
+        }
+    }
+}
+"#,
+            &allocator,
+        );
+
+        let market = manager.get(MarketId::new(1)).expect("market 1 exists");
+        assert_eq!(market.merchants.len(), 1);
+        let m = &market.merchants[0];
+        assert_eq!(m.country, CountryId::new(99));
+        assert_eq!(m.power, 0.0);
+        assert_eq!(m.capacity, 0.0);
+        assert_eq!(m.original_power, 0.0);
+        assert_eq!(m.original_capacity, 0.0);
+        assert_eq!(m.used, 0.0);
+    }
+
+    #[test]
+    fn market_with_no_merchants_has_empty_slice() {
+        let allocator = bumpalo::Bump::new();
+        let manager = deserialize_manager(
+            r#"
+produced_goods={}
+database={
+    5={
+        center=5
+    }
+}
+"#,
+            &allocator,
+        );
+
+        let market = manager.get(MarketId::new(5)).expect("market 5 exists");
+        assert!(market.merchants.is_empty());
+    }
 }

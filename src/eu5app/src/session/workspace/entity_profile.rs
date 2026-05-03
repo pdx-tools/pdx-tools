@@ -96,7 +96,10 @@ impl<'bump> Eu5Workspace<'bump> {
         let locations = self.collect_entity_locations(anchor_idx, EntityKind::Market)?;
         let header = self.market_header(anchor_idx, self.headline_for_locations(&locations))?;
         let overview = self.market_overview(anchor_idx, &locations)?;
-        let member_countries = self.market_member_countries(&locations);
+        let loc = self.gamestate.locations.index(anchor_idx).location();
+        let market_id = loc.market?;
+        let market = self.gamestate.market_manager.get(market_id)?;
+        let member_countries = self.market_member_countries_from_merchants(market);
         Some(MarketProfile {
             header,
             overview,
@@ -1030,37 +1033,29 @@ impl<'bump> Eu5Workspace<'bump> {
         })
     }
 
-    fn market_member_countries(&self, locations: &[LocationIdx]) -> Vec<MarketMemberCountry> {
-        let mut countries: FxHashMap<CountryIdx, (u32, u32, f64)> = FxHashMap::default();
-        for &idx in locations {
-            let loc = self.gamestate.locations.index(idx).location();
-            let Some(owner_id) = loc.owner.real_id().map(|id| id.country_id()) else {
-                continue;
-            };
-            let Some(country_idx) = self.gamestate.countries.get(owner_id) else {
-                continue;
-            };
-            let entry = countries.entry(country_idx).or_insert((0, 0, 0.0));
-            entry.0 += 1;
-            entry.1 += self.gamestate.location_population(loc) as u32;
-            entry.2 += loc.development;
-        }
-
-        let mut rows: Vec<_> = countries
-            .into_iter()
-            .filter_map(|(country_idx, (location_count, population, development))| {
+    fn market_member_countries_from_merchants(
+        &self,
+        market: &Market<'_>,
+    ) -> Vec<MarketMemberCountry> {
+        let mut rows: Vec<_> = market
+            .merchants
+            .iter()
+            .filter_map(|m| {
+                let country_idx = self
+                    .gamestate
+                    .countries
+                    .get(m.country.real_id()?.country_id())?;
                 Some(MarketMemberCountry {
                     country: self.entity_ref_from_country_idx(country_idx)?,
-                    location_count,
-                    population,
-                    development,
+                    trade_advantage: m.power,
+                    trade_capacity: m.capacity,
                 })
             })
             .collect();
         rows.sort_by(|a, b| {
-            b.location_count
-                .cmp(&a.location_count)
-                .then_with(|| b.population.cmp(&a.population))
+            b.trade_advantage
+                .partial_cmp(&a.trade_advantage)
+                .unwrap_or(std::cmp::Ordering::Equal)
                 .then_with(|| a.country.name().cmp(b.country.name()))
         });
         rows
