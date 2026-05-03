@@ -1927,6 +1927,10 @@ impl<'bump> Eu5Workspace<'bump> {
                 };
                 RgoMaterialSummary {
                     raw_material: raw_material.to_str().to_string(),
+                    color_hex: self
+                        .game_data
+                        .good(raw_material.to_str())
+                        .and_then(|good| good.color_hex.clone()),
                     total_rgo_level: agg.total_rgo_level,
                     avg_rgo_level: agg.total_rgo_level / agg.location_count as f64,
                     median_rgo_level,

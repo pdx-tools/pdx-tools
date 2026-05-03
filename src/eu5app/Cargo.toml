@@ -5,7 +5,7 @@ edition = "2024"
 
 [features]
 default = ["zstd_rust"]
-game-install = ["dep:image", "dep:regex"]
+game-install = ["dep:image", "dep:regex", "dep:walkdir"]
 tsify = ["dep:tsify", "dep:wasm-bindgen"]
 zstd_c = ["pdx-zstd/zstd_c"]
 zstd_rust = ["pdx-zstd/zstd_rust"]
@@ -26,6 +26,7 @@ serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 tsify = { workspace = true, optional = true }
+walkdir = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 
 [[test]]

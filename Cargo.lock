@@ -983,6 +983,7 @@ dependencies = [
  "thiserror 2.0.18",
  "tracing",
  "tsify",
+ "walkdir",
  "wasm-bindgen",
 ]
 

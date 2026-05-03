@@ -9,20 +9,42 @@ pub use optimized::OptimizedGameBundle;
 
 use eu5save::hash::FxHashMap;
 use pdx_map::R16;
+use serde::{Deserialize, Serialize};
 
 use crate::GameLocation;
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct GoodsData {
+    pub goods: FxHashMap<String, GoodData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GoodData {
+    pub color_hex: Option<String>,
+    pub default_market_price: Option<f64>,
+}
 
 /// EU5 game data
 pub struct GameData {
     locations: Vec<GameLocation>,
     localization: FxHashMap<String, String>,
+    goods: FxHashMap<String, GoodData>,
 }
 
 impl GameData {
     pub fn new(locations: Vec<GameLocation>, localization: FxHashMap<String, String>) -> Self {
+        Self::with_goods(locations, localization, FxHashMap::default())
+    }
+
+    pub fn with_goods(
+        locations: Vec<GameLocation>,
+        localization: FxHashMap<String, String>,
+        goods: FxHashMap<String, GoodData>,
+    ) -> Self {
         Self {
             locations,
             localization,
+            goods,
         }
     }
 
@@ -37,6 +59,14 @@ impl GameData {
     pub fn localization(&self) -> &FxHashMap<String, String> {
         &self.localization
     }
+
+    pub fn goods(&self) -> &FxHashMap<String, GoodData> {
+        &self.goods
+    }
+
+    pub fn good(&self, name: &str) -> Option<&GoodData> {
+        self.goods.get(name)
+    }
 }
 
 impl std::fmt::Debug for GameData {
@@ -44,6 +74,7 @@ impl std::fmt::Debug for GameData {
         f.debug_struct("OwnedGameData")
             .field("locations_count", &self.locations.len())
             .field("localization_count", &self.localization.len())
+            .field("goods_count", &self.goods.len())
             .finish()
     }
 }

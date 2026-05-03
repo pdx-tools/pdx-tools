@@ -708,6 +708,7 @@ pub struct RgoScopeSummary {
 #[serde(rename_all = "camelCase")]
 pub struct RgoMaterialSummary {
     pub raw_material: String,
+    pub color_hex: Option<String>,
     pub total_rgo_level: f64,
     pub avg_rgo_level: f64,
     pub median_rgo_level: f64,

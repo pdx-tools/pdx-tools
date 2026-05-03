@@ -1,6 +1,9 @@
-use super::parsing::{parse_default_map, parse_locations_data, parse_named_locations};
+use super::parsing::{
+    parse_default_map, parse_goods, parse_locations_data, parse_map_mode_colors,
+    parse_named_locations, resolve_goods,
+};
 use crate::game_data::game_install::parsing::LocationTerrain;
-use crate::game_data::{GameData, GameDataError, TextureProvider};
+use crate::game_data::{GameData, GameDataError, GoodData, TextureProvider};
 use crate::{ColorIdx, GameLocation, hemisphere_size};
 use eu5save::hash::{FnvHashMap, FxHashMap};
 use pdx_map::{Hemisphere, HemisphereLength, R16, R16Palette, Rgb, World, WorldLength, WorldSize};
@@ -163,6 +166,8 @@ impl PalettedTextures {
 
 pub trait GameFileSource {
     fn open_file<'a>(&'a self, path: &str) -> Result<Box<dyn Read + 'a>, GameDataError>;
+    fn read_to_string(&self, path: &str) -> Result<String, GameDataError>;
+    fn walk_directory(&self, path: &str, ends_with: &[&str]) -> Result<Vec<String>, GameDataError>;
 }
 
 impl<T> GameFileSource for &T
@@ -171,6 +176,14 @@ where
 {
     fn open_file<'a>(&'a self, path: &str) -> Result<Box<dyn Read + 'a>, GameDataError> {
         (**self).open_file(path)
+    }
+
+    fn read_to_string(&self, path: &str) -> Result<String, GameDataError> {
+        (**self).read_to_string(path)
+    }
+
+    fn walk_directory(&self, path: &str, ends_with: &[&str]) -> Result<Vec<String>, GameDataError> {
+        (**self).walk_directory(path, ends_with)
     }
 }
 
@@ -192,6 +205,41 @@ impl GameFileSource for GameInstallationDirectory {
         let file = File::open(&full_path)
             .map_err(|e| GameDataError::Io(e, format!("unable to read {}", full_path.display())))?;
         Ok(Box::new(file))
+    }
+
+    fn read_to_string(&self, path: &str) -> Result<String, GameDataError> {
+        let full_path = self.base_dir.join(path);
+        std::fs::read_to_string(&full_path)
+            .map_err(|e| GameDataError::Io(e, format!("unable to read {}", full_path.display())))
+    }
+
+    fn walk_directory(&self, path: &str, ends_with: &[&str]) -> Result<Vec<String>, GameDataError> {
+        let full_path = self.base_dir.join(path);
+        let mut files = Vec::new();
+        for entry in walkdir::WalkDir::new(&full_path) {
+            let entry = entry.map_err(|e| {
+                GameDataError::Io(std::io::Error::other(e), full_path.display().to_string())
+            })?;
+            if !entry.file_type().is_file() {
+                continue;
+            }
+            let relative_path = entry
+                .path()
+                .strip_prefix(&self.base_dir)
+                .map_err(|e| {
+                    GameDataError::Io(std::io::Error::other(e), full_path.display().to_string())
+                })?
+                .to_string_lossy()
+                .replace('\\', "/");
+            if ends_with
+                .iter()
+                .any(|suffix| relative_path.ends_with(suffix))
+            {
+                files.push(relative_path);
+            }
+        }
+        files.sort();
+        Ok(files)
     }
 }
 
@@ -249,6 +297,28 @@ where
             )),
         }
     }
+
+    fn read_to_string(&self, path: &str) -> Result<String, GameDataError> {
+        let mut reader = self.open_file(path)?;
+        let mut buf = String::new();
+        reader
+            .read_to_string(&mut buf)
+            .map_err(|e| GameDataError::Io(e, String::from(path)))?;
+        Ok(buf)
+    }
+
+    fn walk_directory(&self, path: &str, ends_with: &[&str]) -> Result<Vec<String>, GameDataError> {
+        let mut files = self
+            .entries
+            .keys()
+            .filter_map(|x| std::str::from_utf8(x).ok())
+            .filter(|file_path| file_path.starts_with(path))
+            .filter(|file_path| ends_with.iter().any(|suffix| file_path.ends_with(suffix)))
+            .map(ToOwned::to_owned)
+            .collect::<Vec<_>>();
+        files.sort();
+        Ok(files)
+    }
 }
 
 #[derive(Debug)]
@@ -270,6 +340,7 @@ impl From<rawzip::ZipFileHeaderRecord<'_>> for ZipEntryMetadata {
 pub struct RawGameData {
     pub locations: Vec<LocationTerrain>,
     pub country_localizations: FxHashMap<String, String>,
+    pub goods: FxHashMap<String, GoodData>,
 }
 
 impl RawGameData {
@@ -301,10 +372,12 @@ impl RawGameData {
             super::parsing::parse_localization_string(&country_localizations_data);
         let country_localizations_map = super::parsing::country_localization(&all_localizations);
         let country_localizations = country_localizations_map.into_iter().collect();
+        let goods = parse_goods_from_source(fs)?;
 
         let me = Self {
             locations: locations.collect(),
             country_localizations,
+            goods,
         };
 
         let builder = RawTextureBuilder {
@@ -316,8 +389,50 @@ impl RawGameData {
 
     pub fn into_game_data(self, textures: &PalettedTextures) -> GameData {
         let locations = textures.location_aware(self.locations);
-        GameData::new(locations, self.country_localizations)
+        GameData::with_goods(locations, self.country_localizations, self.goods)
     }
+}
+
+fn parse_goods_from_source(
+    fs: &impl GameFileSource,
+) -> Result<FxHashMap<String, GoodData>, GameDataError> {
+    let goods_files = match fs.walk_directory("game/in_game/common/goods", &[".txt"]) {
+        Ok(files) => files,
+        Err(GameDataError::MissingData(_)) => return Ok(FxHashMap::default()),
+        Err(GameDataError::Io(e, _)) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(FxHashMap::default());
+        }
+        Err(e) => return Err(e),
+    };
+
+    let mut raw_goods = FxHashMap::default();
+    for path in goods_files {
+        let Some(file_name) = path.rsplit('/').next() else {
+            continue;
+        };
+        if file_name.to_ascii_lowercase().contains("readme") {
+            continue;
+        }
+        let data = fs.read_to_string(&path)?;
+        raw_goods.extend(parse_goods(&data, &path)?);
+    }
+
+    let color_data = match read_goods_color_data(fs) {
+        Ok(data) => data,
+        Err(GameDataError::MissingData(_)) => {
+            return Ok(resolve_goods(raw_goods, &FxHashMap::default()));
+        }
+        Err(GameDataError::Io(e, _)) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(resolve_goods(raw_goods, &FxHashMap::default()));
+        }
+        Err(e) => return Err(e),
+    };
+    let colors = parse_map_mode_colors(&color_data)?;
+    Ok(resolve_goods(raw_goods, &colors))
+}
+
+fn read_goods_color_data(fs: &impl GameFileSource) -> Result<String, GameDataError> {
+    fs.read_to_string("game/main_menu/common/named_colors/02_map.txt")
 }
 
 /// This allows one to eagerly open the locations.png file from the source, so
@@ -340,5 +455,96 @@ where
             .map_err(|e| GameDataError::Io(e, String::from("locations_png")))?;
 
         PalettedTextures::create_from_location_png(&png_bytes)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[derive(Default)]
+    struct FakeSource {
+        files: FxHashMap<String, String>,
+    }
+
+    impl FakeSource {
+        fn with_file(mut self, path: &str, data: &str) -> Self {
+            self.files.insert(path.to_string(), data.to_string());
+            self
+        }
+    }
+
+    impl GameFileSource for FakeSource {
+        fn open_file<'a>(&'a self, path: &str) -> Result<Box<dyn Read + 'a>, GameDataError> {
+            let data = self
+                .files
+                .get(path)
+                .ok_or_else(|| GameDataError::MissingData(path.to_string()))?;
+            Ok(Box::new(Cursor::new(data.as_bytes())))
+        }
+
+        fn read_to_string(&self, path: &str) -> Result<String, GameDataError> {
+            self.files
+                .get(path)
+                .cloned()
+                .ok_or_else(|| GameDataError::MissingData(path.to_string()))
+        }
+
+        fn walk_directory(
+            &self,
+            path: &str,
+            ends_with: &[&str],
+        ) -> Result<Vec<String>, GameDataError> {
+            let mut files = self
+                .files
+                .keys()
+                .filter(|file_path| file_path.starts_with(path))
+                .filter(|file_path| ends_with.iter().any(|suffix| file_path.ends_with(suffix)))
+                .cloned()
+                .collect::<Vec<_>>();
+            files.sort();
+            Ok(files)
+        }
+    }
+
+    #[test]
+    fn parse_goods_from_source_excludes_readme() {
+        let source = FakeSource::default()
+            .with_file(
+                "game/in_game/common/goods/00_goods.txt",
+                r#"
+livestock = {
+    color = goods_livestock
+    default_market_price = 1.25
+}
+"#,
+            )
+            .with_file(
+                "game/in_game/common/goods/readme.txt",
+                r#"
+readme_entry = {
+    color = goods_readme
+}
+"#,
+            )
+            .with_file(
+                "game/main_menu/common/named_colors/02_map.txt",
+                r#"
+colors = {
+    goods_livestock = rgb { 20 150 45 }
+    goods_readme = rgb { 255 0 0 }
+}
+"#,
+            );
+
+        let goods = parse_goods_from_source(&source).unwrap();
+
+        assert_eq!(goods.len(), 1);
+        assert_eq!(
+            goods.get("livestock").unwrap().color_hex.as_deref(),
+            Some("#14962d")
+        );
+        assert!(!goods.contains_key("readme_entry"));
     }
 }
