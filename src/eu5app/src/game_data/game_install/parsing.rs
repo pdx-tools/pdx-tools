@@ -92,7 +92,7 @@ pub fn parse_locations_data(
 #[derive(Debug, Deserialize)]
 pub struct RawGoodData {
     pub color: Option<String>,
-    pub default_market_price: Option<f64>,
+    pub default_market_price: f64,
 }
 
 pub fn parse_goods(
@@ -209,21 +209,23 @@ pub fn parse_map_mode_colors(data: &str) -> Result<FxHashMap<String, [u8; 3]>, G
 pub fn resolve_goods(
     raw_goods: FxHashMap<String, RawGoodData>,
     colors: &FxHashMap<String, [u8; 3]>,
-) -> FxHashMap<String, GoodData> {
+) -> Result<FxHashMap<String, GoodData>, GameDataError> {
     raw_goods
         .into_iter()
         .map(|(name, good)| {
-            let color_hex = good
-                .color
-                .and_then(|color| colors.get(&color).copied())
-                .map(color_hex);
-            (
+            let color_name = good.color.as_deref().unwrap_or(&name);
+            let rgb = colors.get(color_name).copied().ok_or_else(|| {
+                GameDataError::MissingData(format!(
+                    "good '{name}' references unknown color '{color_name}'"
+                ))
+            })?;
+            Ok((
                 name,
                 GoodData {
-                    color_hex,
+                    color_hex: color_hex(rgb),
                     default_market_price: good.default_market_price,
                 },
-            )
+            ))
         })
         .collect()
 }
@@ -341,15 +343,12 @@ porcelain = {
             goods.get("wool").unwrap().color.as_deref(),
             Some("goods_wool")
         );
-        assert_eq!(goods.get("wool").unwrap().default_market_price, Some(1.25));
+        assert_eq!(goods.get("wool").unwrap().default_market_price, 1.25);
         assert_eq!(
             goods.get("porcelain").unwrap().color.as_deref(),
             Some("goods_porcelain")
         );
-        assert_eq!(
-            goods.get("porcelain").unwrap().default_market_price,
-            Some(3.0)
-        );
+        assert_eq!(goods.get("porcelain").unwrap().default_market_price, 3.0);
     }
 
     #[test]
@@ -380,9 +379,7 @@ wool = {
 }
 livestock = {
     color = goods_livestock
-}
-unknown = {
-    color = goods_missing
+    default_market_price = 2.0
 }
 "#;
         let colors_data = r#"
@@ -394,17 +391,23 @@ colors = {
 
         let raw_goods = parse_goods(goods_data, "goods.txt").unwrap();
         let colors = parse_map_mode_colors(colors_data).unwrap();
-        let goods = resolve_goods(raw_goods, &colors);
+        let goods = resolve_goods(raw_goods, &colors).unwrap();
 
-        assert_eq!(
-            goods.get("wool").unwrap().color_hex.as_deref(),
-            Some("#8a9999")
-        );
-        assert_eq!(goods.get("wool").unwrap().default_market_price, Some(1.25));
-        assert_eq!(
-            goods.get("livestock").unwrap().color_hex.as_deref(),
-            Some("#14962d")
-        );
-        assert_eq!(goods.get("unknown").unwrap().color_hex, None);
+        assert_eq!(goods.get("wool").unwrap().color_hex, "#8a9999");
+        assert_eq!(goods.get("wool").unwrap().default_market_price, 1.25);
+        assert_eq!(goods.get("livestock").unwrap().color_hex, "#14962d");
+    }
+
+    #[test]
+    fn test_resolve_goods_unknown_color_is_error() {
+        let goods_data = r#"
+unknown = {
+    color = goods_missing
+    default_market_price = 0.5
+}
+"#;
+        let raw_goods = parse_goods(goods_data, "goods.txt").unwrap();
+        let colors = parse_map_mode_colors("colors = {}").unwrap();
+        assert!(resolve_goods(raw_goods, &colors).is_err());
     }
 }

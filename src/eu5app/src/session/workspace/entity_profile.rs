@@ -800,6 +800,22 @@ impl<'bump> Eu5Workspace<'bump> {
                     balance_ratio,
                     impact: good.impact,
                     stockpile: good.stockpile,
+                    possible: good.possible,
+                    allowed_export_amount: good.allowed_export_amount,
+                    priority: good.priority,
+                    history: good.history.to_vec(),
+                    supplied_breakdown: market_good_breakdown_entries(good.supplied),
+                    demanded_breakdown: market_good_breakdown_entries(good.demanded),
+                    taken_breakdown: market_good_breakdown_entries(good.taken),
+                    default_market_price: self
+                        .game_data
+                        .good(good.good.to_str())
+                        .map(|g| g.default_market_price),
+                    color_hex: self
+                        .game_data
+                        .good(good.good.to_str())
+                        .map(|g| g.color_hex.clone())
+                        .unwrap_or_else(|| "#888888".to_string()),
                     market_count: 1,
                     producing_location_count: producing_location_counts
                         .get(&good.good)

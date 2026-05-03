@@ -20,8 +20,8 @@ pub struct GoodsData {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GoodData {
-    pub color_hex: Option<String>,
-    pub default_market_price: Option<f64>,
+    pub color_hex: String,
+    pub default_market_price: f64,
 }
 
 /// EU5 game data

@@ -16,13 +16,14 @@ use crate::selection_views::{
     BuildingTypeForeignOwnerCell, BuildingTypeSummary, ControlBandSegment, ControlInsightData,
     ControlScopeSummary, ControlTopLocation, CountryControlBarSummary, CountryControlPoint,
     CountryDevSummary, CountryPossibleTax, CountryStateEfficacy, CountryTaxGap, DevTopLocation,
-    DevelopmentInsightData, DevelopmentScopeSummary, DistributionBucket, HoverDisplayData,
-    HoverStat, LocationDistribution, MarketInsightData, MarketProductionLocationSummary,
-    MarketScopeSummary, PoliticalWorldRow, PoliticalWorldScoreboard, PopulationConcentrationPoint,
-    PopulationInsightData, PopulationRankSegment, PopulationReligionShare, PopulationScopeSummary,
-    PopulationTopLocation, PopulationTypeProfileRow, PossibleTaxInsightData, PossibleTaxScope,
-    PossibleTaxTopLocation, ProductionLocationSummary, ReligionInsightData, ReligionRow,
-    RgoInsightData, RgoMaterialProfileDelta, RgoMaterialSummary, RgoScopeSummary, RgoTopLocation,
+    DevelopmentInsightData, DevelopmentScopeSummary, DistributionBucket, GoodBreakdownEntry,
+    HoverDisplayData, HoverStat, LocationDistribution, MarketInsightData,
+    MarketProductionLocationSummary, MarketScopeSummary, PoliticalWorldRow,
+    PoliticalWorldScoreboard, PopulationConcentrationPoint, PopulationInsightData,
+    PopulationRankSegment, PopulationReligionShare, PopulationScopeSummary, PopulationTopLocation,
+    PopulationTypeProfileRow, PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation,
+    ProductionLocationSummary, ReligionInsightData, ReligionRow, RgoInsightData,
+    RgoMaterialProfileDelta, RgoMaterialSummary, RgoScopeSummary, RgoTopLocation,
     ScopedCountryPopulation, ScopedGoodSummary, ScopedMarketSummary, StateEfficacyInsightData,
     StateEfficacyScopeSummary, StateEfficacyTopLocation, StateReligionRow, TaxGapInsightData,
     TaxGapScope, TaxGapTopLocation,
@@ -64,6 +65,24 @@ enum SelectionSetOperation {
     Add,
     Remove,
     Replace,
+}
+
+fn market_good_breakdown_entries<T: std::fmt::Display>(
+    entries: &[(T, f64)],
+) -> Vec<GoodBreakdownEntry> {
+    let mut result: Vec<GoodBreakdownEntry> = entries
+        .iter()
+        .map(|(category, amount)| GoodBreakdownEntry {
+            category: category.to_string(),
+            amount: *amount,
+        })
+        .collect();
+    result.sort_by(|a, b| {
+        b.amount
+            .total_cmp(&a.amount)
+            .then_with(|| a.category.cmp(&b.category))
+    });
+    result
 }
 
 /// Computes a "nice" step size for histogram buckets so boundaries fall on

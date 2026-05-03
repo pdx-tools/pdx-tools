@@ -931,6 +931,15 @@ impl<'bump> Eu5Workspace<'bump> {
                     0.0
                 };
                 ScopedGoodSummary {
+                    default_market_price: self
+                        .game_data
+                        .good(name.to_str())
+                        .map(|g| g.default_market_price),
+                    color_hex: self
+                        .game_data
+                        .good(name.to_str())
+                        .map(|g| g.color_hex.clone())
+                        .unwrap_or_else(|| "#888888".to_string()),
                     name: name.to_string(),
                     supply: agg.supply,
                     demand: agg.demand,
@@ -943,6 +952,13 @@ impl<'bump> Eu5Workspace<'bump> {
                     balance_ratio,
                     impact: agg.max_impact,
                     stockpile: agg.stockpile,
+                    possible: 0.0,
+                    allowed_export_amount: 0.0,
+                    priority: 0.0,
+                    history: Vec::new(),
+                    supplied_breakdown: Vec::new(),
+                    demanded_breakdown: Vec::new(),
+                    taken_breakdown: Vec::new(),
                     market_count: agg.market_count,
                     producing_location_count: agg.producing_location_count,
                 }
@@ -1930,7 +1946,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     color_hex: self
                         .game_data
                         .good(raw_material.to_str())
-                        .and_then(|good| good.color_hex.clone()),
+                        .map(|good| good.color_hex.clone()),
                     total_rgo_level: agg.total_rgo_level,
                     avg_rgo_level: agg.total_rgo_level / agg.location_count as f64,
                     median_rgo_level,

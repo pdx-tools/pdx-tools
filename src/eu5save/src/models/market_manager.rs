@@ -1,6 +1,8 @@
 use crate::models::bstr::BStr;
 use crate::models::de::Maybe;
-use crate::models::{Color, LocationId, deserialize_vec_capacity};
+use crate::models::{
+    Color, LocationId, de::deserialize_vec_pair_arena_required, deserialize_vec_capacity,
+};
 use bumpalo_serde::{ArenaDeserialize, ArenaSeed};
 use core::fmt;
 use serde::{Deserialize, Deserializer, de};
@@ -104,6 +106,9 @@ impl Market<'_> {
 pub struct MarketGood<'bump> {
     pub good: RawMaterialsName<'bump>,
     pub price: f64,
+    pub supplied: &'bump [(BStr<'bump>, f64)],
+    pub demanded: &'bump [(BStr<'bump>, f64)],
+    pub taken: &'bump [(BStr<'bump>, f64)],
     pub impact: f64,
     pub supply: f64,
     pub demand: f64,
@@ -204,6 +209,12 @@ where
     struct MarketGoodRaw<'bump> {
         #[arena(default)]
         price: f64,
+        #[arena(default, deserialize_with = "deserialize_market_good_breakdown")]
+        supplied: &'bump [(BStr<'bump>, f64)],
+        #[arena(default, deserialize_with = "deserialize_market_good_breakdown")]
+        demanded: &'bump [(BStr<'bump>, f64)],
+        #[arena(default, deserialize_with = "deserialize_market_good_breakdown")]
+        taken: &'bump [(BStr<'bump>, f64)],
         #[arena(default)]
         impact: f64,
         #[arena(default)]
@@ -249,6 +260,9 @@ where
                 let good = MarketGood {
                     good: key,
                     price: value.price,
+                    supplied: value.supplied,
+                    demanded: value.demanded,
+                    taken: value.taken,
                     impact: value.impact,
                     supply: value.supply,
                     demand: value.demand,
@@ -269,4 +283,17 @@ where
     }
 
     deserializer.deserialize_map(MarketGoodVisitor(allocator))
+}
+
+fn deserialize_market_good_breakdown<'de, 'bump, D>(
+    deserializer: D,
+    allocator: &'bump bumpalo::Bump,
+) -> Result<&'bump [(BStr<'bump>, f64)], D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(
+        deserialize_vec_pair_arena_required::<_, BStr<'bump>, f64>(deserializer, allocator)?
+            .into_bump_slice(),
+    )
 }
