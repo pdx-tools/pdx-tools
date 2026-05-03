@@ -1,16 +1,21 @@
 use bumpalo_serde::ArenaDeserialize;
 use eu5save::{
     BasicTokenResolver, Eu5BinaryDeserialization, Eu5File, SaveContentKind, SaveDataKind,
+    SaveResolver,
     models::{CountryId, Gamestate, ZipPrelude},
 };
 use jomini::common::PdsDate;
-use std::env;
+use std::{env, sync::LazyLock};
+
+static TOKENS: LazyLock<BasicTokenResolver> = LazyLock::new(|| {
+    let file_data = std::fs::read("assets/eu5.txt").expect("token file to be present");
+    BasicTokenResolver::from_text_lines(file_data.as_slice())
+        .expect("failed to create token resolver")
+});
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     let file_path = args.get(1).ok_or("Please provide a save file path")?;
-    let file_data = std::fs::read("assets/eu5.txt").unwrap_or_default();
-    let resolver = BasicTokenResolver::from_text_lines(file_data.as_slice())?;
 
     let data = std::fs::read(file_path)?;
     let file = Eu5File::from_slice(&data)?;
@@ -31,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         eu5save::SaveMetadataKind::Binary(mut meta) => {
-            let mut deser = meta.deserializer(&resolver);
+            let mut deser = meta.deserializer(&*TOKENS);
             let tracked_deser = bumpalo_serde::tracked::Deserializer::new(&mut deser, &track);
             match ZipPrelude::deserialize_in_arena(tracked_deser, &arena) {
                 Ok(value) => value,
@@ -81,7 +86,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         SaveContentKind::Binary(mut x) => {
-            let mut deser = x.deserializer(&resolver);
+            let save_resolver = SaveResolver::from_file(&file, &*TOKENS)?;
+            let mut deser = x.deserializer(&save_resolver);
             let tracked_deser = bumpalo_serde::tracked::Deserializer::new(&mut deser, &track);
             match Gamestate::deserialize_in_arena(tracked_deser, &arena) {
                 Ok(value) => value,
