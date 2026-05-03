@@ -292,6 +292,7 @@ pub struct CountryMetrics {
 pub struct SubjectRef {
     pub entity: EntityRef,
     pub subject_type: DiplomacySubjectType,
+    pub liberty_desire: f64,
     pub metrics: CountryMetrics,
 }
 

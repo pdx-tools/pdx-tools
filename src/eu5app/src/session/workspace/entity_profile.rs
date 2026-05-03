@@ -1,3 +1,5 @@
+use eu5save::models::CountryDiplomacy;
+
 use super::*;
 
 impl<'bump> Eu5Workspace<'bump> {
@@ -931,6 +933,8 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
+        let diplo_map = self.diplomatic_relations();
+
         #[derive(Default, Clone)]
         struct MetricsAgg {
             total_state_efficacy: f64,
@@ -990,6 +994,10 @@ impl<'bump> Eu5Workspace<'bump> {
                     Some(SubjectRef {
                         entity,
                         subject_type,
+                        liberty_desire: diplo_map
+                            .get(&entry.idx())
+                            .and_then(|d| d.liberty_desire)
+                            .unwrap_or(0.0),
                         metrics: country_metrics(entry.idx()),
                     })
                 } else {
@@ -1340,6 +1348,8 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
+        let diplo_map = self.diplomatic_relations();
+
         #[derive(Default, Clone)]
         struct MetricsAgg {
             total_state_efficacy: f64,
@@ -1399,6 +1409,10 @@ impl<'bump> Eu5Workspace<'bump> {
                     Some(SubjectRef {
                         entity,
                         subject_type,
+                        liberty_desire: diplo_map
+                            .get(&entry.idx())
+                            .and_then(|d| d.liberty_desire)
+                            .unwrap_or(0.0),
                         metrics: country_metrics(entry.idx()),
                     })
                 } else {
@@ -1413,6 +1427,17 @@ impl<'bump> Eu5Workspace<'bump> {
             overlord_metrics,
             subjects,
         })
+    }
+
+    fn diplomatic_relations(&self) -> FxHashMap<CountryIdx, &CountryDiplomacy> {
+        let mut result = FxHashMap::default();
+        for entry in self.gamestate.diplomacy_manager.entries() {
+            let Some(country_idx) = self.gamestate.countries.get(entry.country) else {
+                continue;
+            };
+            result.insert(country_idx, entry);
+        }
+        result
     }
 }
 

@@ -25,7 +25,7 @@ function pluralize(type: DiplomacySubjectType, count: number): string {
   return count > 1 ? `${base} (${count})` : base;
 }
 
-const GRID = "36px 1fr repeat(4, 88px)";
+const GRID = "36px minmax(96px, 1fr) repeat(5, 76px)";
 
 export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
   const nav = usePanelNav();
@@ -68,6 +68,7 @@ export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
           </HeaderCell>
           <HeaderCell tooltip="Total population across owned locations.">Pop</HeaderCell>
           <HeaderCell tooltip="Estimated monthly tax plus trade income.">Income</HeaderCell>
+          <HeaderCell tooltip="Subject liberty desire.">Liberty</HeaderCell>
         </div>
       )}
 
@@ -90,6 +91,7 @@ export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
               key={`${s.entity.anchorLocationIdx}`}
               entityRef={s.entity}
               metrics={s.metrics}
+              libertyDesire={s.libertyDesire}
               isActive={s.entity.anchorLocationIdx === activeProfileIdx}
               onOpen={() => handleOpen(s.entity)}
             />
@@ -118,12 +120,14 @@ function GroupSection({ label, children }: { label: string; children: React.Reac
 function EntityMetricRow({
   entityRef,
   metrics,
+  libertyDesire,
   label,
   isActive,
   onOpen,
 }: {
   entityRef: EntityRef;
   metrics: CountryMetrics;
+  libertyDesire?: number;
   label?: string;
   isActive: boolean;
   onOpen: () => void;
@@ -163,13 +167,29 @@ function EntityMetricRow({
       <MetricCell>{formatFloat(metrics.activeStateCapacity / 1_000_000, 1)}</MetricCell>
       <MetricCell>{formatInt(metrics.totalPopulation)}</MetricCell>
       <MetricCell>{formatFloat(metrics.taxTradeIncome, 2)}</MetricCell>
+      <MetricCell danger={libertyDesire != null && libertyDesire > 50}>
+        {libertyDesire == null ? "" : `${formatFloat(libertyDesire, 1)}%`}
+      </MetricCell>
     </div>
   );
 }
 
-function MetricCell({ children }: { children: React.ReactNode }) {
+function MetricCell({
+  children,
+  muted,
+  danger,
+}: {
+  children: React.ReactNode;
+  muted?: boolean;
+  danger?: boolean;
+}) {
   return (
-    <span className="truncate text-right font-game-num text-xs text-game-ink-100 tabular-nums">
+    <span
+      className={cx(
+        "truncate text-right font-game-num text-xs tabular-nums",
+        danger ? "text-game-err" : muted ? "text-game-ink-500" : "text-game-ink-100",
+      )}
+    >
       {children}
     </span>
   );
