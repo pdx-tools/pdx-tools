@@ -261,7 +261,7 @@ impl<'bump> Eu5Workspace<'bump> {
                             "#{:02x}{:02x}{:02x}",
                             c.color.0[0], c.color.0[1], c.color.0[2]
                         );
-                        (c.name.to_str().to_string(), hex)
+                        (c.name.key().to_str().to_string(), hex)
                     })
                     .unwrap_or_else(|| ("Unknown".to_string(), "#808080".to_string()));
                 let (religion_name, religion_color_hex) = self
@@ -1143,7 +1143,7 @@ impl<'bump> Eu5Workspace<'bump> {
                             "#{:02x}{:02x}{:02x}",
                             c.color.0[0], c.color.0[1], c.color.0[2]
                         );
-                        (c.name.to_str().to_string(), hex)
+                        (c.name.key().to_str().to_string(), hex)
                     })
                     .unwrap_or_else(|| ("Unknown".to_string(), "#808080".to_string()));
                 let (religion_name, religion_color_hex) = self
