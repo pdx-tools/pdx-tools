@@ -417,18 +417,9 @@ fn parse_goods_from_source(
         raw_goods.extend(parse_goods(&data, &path)?);
     }
 
-    let color_data = match read_goods_color_data(fs) {
-        Ok(data) => data,
-        Err(GameDataError::MissingData(_)) => {
-            return Ok(resolve_goods(raw_goods, &FxHashMap::default()));
-        }
-        Err(GameDataError::Io(e, _)) if e.kind() == std::io::ErrorKind::NotFound => {
-            return Ok(resolve_goods(raw_goods, &FxHashMap::default()));
-        }
-        Err(e) => return Err(e),
-    };
+    let color_data = read_goods_color_data(fs)?;
     let colors = parse_map_mode_colors(&color_data)?;
-    Ok(resolve_goods(raw_goods, &colors))
+    resolve_goods(raw_goods, &colors)
 }
 
 fn read_goods_color_data(fs: &impl GameFileSource) -> Result<String, GameDataError> {
@@ -541,10 +532,7 @@ colors = {
         let goods = parse_goods_from_source(&source).unwrap();
 
         assert_eq!(goods.len(), 1);
-        assert_eq!(
-            goods.get("livestock").unwrap().color_hex.as_deref(),
-            Some("#14962d")
-        );
+        assert_eq!(goods.get("livestock").unwrap().color_hex, "#14962d");
         assert!(!goods.contains_key("readme_entry"));
     }
 }

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { formatFloat } from "@/lib/format";
 import type { CountryEconomySection, LocationRow } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
@@ -6,7 +6,11 @@ import type { EChartsOption } from "@/components/viz";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { GoodsPressureChart } from "../../features/charts/Markets";
+import {
+  GoodsPressureChart,
+  GoodsPriceVsBaseChart,
+  MarketGoodDetail,
+} from "../../features/charts/Markets";
 import { useEu5Trigger } from "../useEu5Trigger";
 
 export function CountryEconomyTabContent({
@@ -139,10 +143,29 @@ function TaxGapScatter({ locations }: { locations: LocationRow[] }) {
 }
 
 export function MarketGoodsTabContent({ anchorLocationIdx }: { anchorLocationIdx: number }) {
+  const [selectedGoodName, setSelectedGoodName] = useState<string | null>(null);
   const { data: goods, loading } = useEu5Trigger(
     (engine) => engine.trigger.getMarketGoodsProfile(anchorLocationIdx),
     [anchorLocationIdx],
   );
+
+  const sortedGoods = useMemo(
+    () => [...(goods ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    [goods],
+  );
+  const defaultGood = useMemo(() => {
+    let best = null as (typeof sortedGoods)[number] | null;
+    let bestPct = -Infinity;
+    for (const g of sortedGoods) {
+      if (!g.defaultMarketPrice || g.defaultMarketPrice <= 0) continue;
+      const pct = (g.weightedPrice - g.defaultMarketPrice) / g.defaultMarketPrice;
+      if (pct > bestPct) {
+        bestPct = pct;
+        best = g;
+      }
+    }
+    return best;
+  }, [sortedGoods]);
 
   if (loading && !goods) {
     return <div className="h-64 animate-pulse rounded bg-game-panel-hover" />;
@@ -152,9 +175,43 @@ export function MarketGoodsTabContent({ anchorLocationIdx }: { anchorLocationIdx
     return <p className="py-6 text-center text-sm text-game-ink-500">No market goods data.</p>;
   }
 
+  const selectedGood =
+    sortedGoods.find((good) => good.name === selectedGoodName) ?? defaultGood ?? sortedGoods[0];
+
   return (
     <div className="flex flex-col gap-4">
-      <GoodsPressureChart goods={goods} />
+      <GoodsPressureChart
+        goods={goods}
+        selectedGoodName={selectedGood?.name}
+        onGoodSelect={(good) => setSelectedGoodName(good.name)}
+      />
+      <GoodsPriceVsBaseChart
+        goods={goods}
+        selectedGoodName={selectedGood?.name}
+        onGoodSelect={(good) => setSelectedGoodName(good.name)}
+      />
+      {selectedGood && (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
+              Selected good diagnostic
+            </p>
+            <select
+              value={selectedGood.name}
+              onChange={(event) => setSelectedGoodName(event.target.value)}
+              className="rounded-md border border-game-line bg-game-panel-hover px-2 py-1 text-xs font-semibold text-game-ink-100"
+              aria-label="Selected market good"
+            >
+              {sortedGoods.map((good) => (
+                <option key={good.name} value={good.name}>
+                  {good.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <MarketGoodDetail good={selectedGood} />
+        </section>
+      )}
     </div>
   );
 }

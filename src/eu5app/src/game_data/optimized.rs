@@ -234,8 +234,8 @@ mod tests {
         goods.insert(
             "livestock".to_string(),
             GoodData {
-                color_hex: Some("#14962d".to_string()),
-                default_market_price: Some(1.25),
+                color_hex: "#14962d".to_string(),
+                default_market_price: 1.25,
             },
         );
         let zip = test_bundle(GoodsData { goods });
@@ -246,8 +246,8 @@ mod tests {
             .unwrap();
 
         let livestock = data.good("livestock").unwrap();
-        assert_eq!(livestock.color_hex.as_deref(), Some("#14962d"));
-        assert_eq!(livestock.default_market_price, Some(1.25));
+        assert_eq!(livestock.color_hex, "#14962d");
+        assert_eq!(livestock.default_market_price, 1.25);
     }
 
     fn test_bundle(goods: GoodsData) -> Vec<u8> {

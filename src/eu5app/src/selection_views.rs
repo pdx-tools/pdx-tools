@@ -266,6 +266,15 @@ pub struct MarketScopeSummary {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
+pub struct GoodBreakdownEntry {
+    pub category: String,
+    pub amount: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
 pub struct ScopedGoodSummary {
     pub name: String,
     pub supply: f64,
@@ -279,8 +288,17 @@ pub struct ScopedGoodSummary {
     pub balance_ratio: f64,
     pub impact: f64,
     pub stockpile: f64,
+    pub possible: f64,
+    pub allowed_export_amount: f64,
+    pub priority: f64,
+    pub history: Vec<f64>,
+    pub supplied_breakdown: Vec<GoodBreakdownEntry>,
+    pub demanded_breakdown: Vec<GoodBreakdownEntry>,
+    pub taken_breakdown: Vec<GoodBreakdownEntry>,
     pub market_count: u32,
     pub producing_location_count: u32,
+    pub default_market_price: Option<f64>,
+    pub color_hex: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
