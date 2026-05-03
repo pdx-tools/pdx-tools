@@ -168,7 +168,7 @@ impl<'bump> ArenaDeserialize<'bump> for CultureName<'bump> {
             }
         }
 
-        deserializer.deserialize_any(CultureNameVisitor(allocator))
+        deserializer.deserialize_map(CultureNameVisitor(allocator))
     }
 }
 

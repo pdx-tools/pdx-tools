@@ -26,7 +26,7 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "religion": "0xe424c860024bd7e944ef54962a0337845a7ee7962f35552a7603e8385117177a",
     "rgo_level": "0xecef7be6af747cb86a9b0e434da3435323c170e42a827881b791241a64e68551",
     "state_efficacy": "0xc4f549fd28ac2645823e85681716cbcab97e0814f05d4934d7e770859f73dfd3",
-    "tax_gap": "0x0415ddfd7fef3c73a6f462bc3e442cf59729f4c9a6fd28fa0c9c15b7b24422d9"
+    "tax_gap": "0xdf3e5255e2c0a6fb69accc5dba9e44a6ad4016a34e3032468f23204d0e7fd2e0"
   },
   "save_version": "1.0.4",
   "selection_counts": {

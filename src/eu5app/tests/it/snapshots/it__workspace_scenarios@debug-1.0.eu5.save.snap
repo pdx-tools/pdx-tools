@@ -26,7 +26,7 @@ input_file: src/eu5app/tests/it/saves.d/debug-1.0.eu5.save
     "religion": "0xcdd369549b541164e4df30eec2f86bd52e51e6e4a8f8d70e02ad1de525ff9769",
     "rgo_level": "0xe6ad949687bed97bdf923df24c6eb6104f1abc4a3337dd41220c97b367166f80",
     "state_efficacy": "0x3cb5ab4cb962b133063acd9adfdd5515f6009af4412e19699a921168bca85f7a",
-    "tax_gap": "0x12022969409d277436e4ea957bbd41488381931064693c9735cd79bfd099c1b5"
+    "tax_gap": "0x2ce7b415d88356e3b6116654a153e1f1a1d6938ce90e7a7ee5a305c39a0bdf7d"
   },
   "save_version": "1.0.0",
   "selection_counts": {
