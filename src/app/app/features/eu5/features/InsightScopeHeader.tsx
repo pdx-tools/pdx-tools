@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { StatItem } from "../EntityProfile/components/StatItem";
-import { usePanelNav } from "../EntityProfile/PanelNavContext";
+import { StatItem } from "./profiles/components/StatItem";
+import { usePanelNav } from "./profiles/PanelNavContext";
 
 interface Stat {
   label: string;
