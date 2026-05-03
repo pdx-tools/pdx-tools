@@ -24,18 +24,23 @@ export function Breadcrumb() {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="flex shrink-0 flex-wrap items-center gap-1 border-b border-game-line px-4 py-2"
+      className="flex shrink-0 items-center border-b border-game-line px-4 py-1.5"
     >
-      <ol className="flex flex-wrap items-center gap-1">
-        {crumbs.map((entry) => (
-          <li key={entry.depth}>
+      <ol className="flex min-w-0 flex-wrap items-center">
+        {crumbs.map((entry, i) => (
+          <li key={entry.depth} className="flex items-center">
+            {i > 0 && (
+              <span aria-hidden="true" className="mx-1.5 text-[11px] text-game-ink-700 select-none">
+                ›
+              </span>
+            )}
             <button
               type="button"
               onClick={() => nav.popTo(entry.depth)}
-              className="flex items-center gap-1 text-xs text-game-ink-500 hover:text-game-ink-100"
+              className="flex max-w-[160px] items-center gap-1 text-xs text-game-ink-500 hover:text-game-ink-100"
             >
-              <span aria-hidden="true">←</span>
-              <span>{entry.label}</span>
+              {i === 0 && <span aria-hidden="true">←</span>}
+              <span className="overflow-hidden text-ellipsis whitespace-nowrap">{entry.label}</span>
             </button>
           </li>
         ))}
