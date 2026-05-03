@@ -6,6 +6,7 @@ edition = "2024"
 [features]
 default = ["zstd_rust"]
 game-install = ["dep:image", "dep:regex", "dep:walkdir"]
+track-parse = []
 tsify = ["dep:tsify", "dep:wasm-bindgen"]
 zstd_c = ["pdx-zstd/zstd_c"]
 zstd_rust = ["pdx-zstd/zstd_rust"]
@@ -36,7 +37,7 @@ path = "tests/it/main.rs"
 [dev-dependencies]
 attohttpc = { workspace = true }
 bytemuck = { workspace = true }
-eu5app = { path = ".", default-features = false, features = ["game-install"] }
+eu5app = { path = ".", default-features = false, features = ["game-install", "track-parse"] }
 highway = { workspace = true }
 insta = { workspace = true, features = ["glob"] }
 rstest = { workspace = true }

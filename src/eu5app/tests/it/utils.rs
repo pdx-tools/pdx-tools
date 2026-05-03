@@ -95,7 +95,7 @@ pub struct LoadedWorkspace {
 
 pub fn build_workspace(save_name: &str) -> Option<LoadedWorkspace> {
     let file = request_file(save_name);
-    let file = Eu5File::from_file(file).unwrap();
+    let file = Eu5File::from_file(file).unwrap_or_else(|e| panic!("{save_name}: {e}"));
     let is_binary = file.header().kind().is_binary();
     let resolver = &*TOKENS;
     if is_binary && resolver.is_empty() {
@@ -103,7 +103,7 @@ pub fn build_workspace(save_name: &str) -> Option<LoadedWorkspace> {
         return None;
     }
 
-    let loader = Eu5SaveLoader::open(file, resolver).unwrap();
+    let loader = Eu5SaveLoader::open(file, resolver).unwrap_or_else(|e| panic!("{save_name}: {e}"));
     let version = loader.meta().version;
 
     let bundle_path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -112,25 +112,28 @@ pub fn build_workspace(save_name: &str) -> Option<LoadedWorkspace> {
         .join("assets")
         .join("game-bundles")
         .join(format!("eu5-{}.{}.zip", version.major, version.minor));
-    let bundle_path_display = bundle_path.display();
     if !bundle_path.exists() {
         eprintln!(
-            "{save_name}: missing {bundle_path_display}; run mise run admin:assets:sync to fetch"
+            "{save_name}: missing {}; run mise run admin:assets:sync to fetch",
+            bundle_path.display()
         );
         return None;
     }
 
     let game_data = Eu5GameInstall::open(&bundle_path)
         .map(Eu5GameInstall::into_game_data)
-        .unwrap();
+        .unwrap_or_else(|e| panic!("{save_name}: {}: {e}", bundle_path.display()));
 
-    let mut loaded_save = loader.parse().unwrap();
+    let mut loaded_save = loader
+        .parse_tracked()
+        .unwrap_or_else(|e| panic!("{save_name}: {e}"));
     let gamestate = loaded_save.take_gamestate();
     // SAFETY: `gamestate` points into `loaded_save`'s arena. `LoadedWorkspace` owns both values
     // and declares `workspace` before `loaded_save`, so Rust drops the workspace before freeing
     // the arena.
     let gamestate = unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(gamestate) };
-    let workspace = Eu5Workspace::new(gamestate, game_data).unwrap();
+    let workspace =
+        Eu5Workspace::new(gamestate, game_data).unwrap_or_else(|e| panic!("{save_name}: {e}"));
 
     Some(LoadedWorkspace {
         workspace,
