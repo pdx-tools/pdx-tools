@@ -102,6 +102,47 @@ impl<R: ReaderAt, RES: TokenResolver> Eu5SaveLoader<R, RES> {
     }
 }
 
+#[cfg(feature = "track-parse")]
+impl<R: ReaderAt, RES: TokenResolver> Eu5SaveLoader<R, RES> {
+    /// Like [`parse`](Self::parse) but wraps the deserializer with
+    /// [`bumpalo_serde::tracked::Deserializer`] so that deserialization errors include the
+    /// field path (e.g. `culture_manager.database.?.name`).
+    #[tracing::instrument(name = "eu5.gamestate.parse_tracked", skip_all)]
+    pub fn parse_tracked(self) -> Result<Eu5LoadedSave, Eu5LoadError> {
+        let game_content = self
+            .archive
+            .gamestate()
+            .map_err(Eu5LoadError::GamestateExtraction)?;
+
+        let resolver = eu5save::SaveResolver::from_file(&self.archive, self.resolver)
+            .map_err(Eu5LoadError::StringLookup)?;
+
+        let mut path_buf = Vec::new();
+        let track = bumpalo_serde::tracked::Track::new_with(&mut path_buf);
+
+        let game = match game_content {
+            eu5save::SaveContentKind::Text(mut x) => {
+                let mut deser = x.deserializer();
+                let tracked = bumpalo_serde::tracked::Deserializer::new(&mut deser, &track);
+                Gamestate::deserialize_in_arena(tracked, &self.arena)
+            }
+            eu5save::SaveContentKind::Binary(mut x) => {
+                let mut deser = x.deserializer(&resolver);
+                let tracked = bumpalo_serde::tracked::Deserializer::new(&mut deser, &track);
+                Gamestate::deserialize_in_arena(tracked, &self.arena)
+            }
+        };
+
+        let game = game.map_err(|e| Eu5LoadError::GamestateDeserializationAt {
+            path: track.path().to_string(),
+            source: e,
+        })?;
+
+        let game = unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(game) };
+        Ok(Eu5LoadedSave::new(self.arena, game))
+    }
+}
+
 #[derive(Debug)]
 pub struct Eu5LoadedSave {
     arena: bumpalo::Bump,
@@ -141,6 +182,14 @@ pub enum Eu5LoadError {
 
     #[error("Unable to deserialize gamestate: {0}")]
     GamestateDeserialization(#[source] jomini::Error),
+
+    #[cfg(feature = "track-parse")]
+    #[error("Unable to deserialize gamestate at {path}: {source}")]
+    GamestateDeserializationAt {
+        path: String,
+        #[source]
+        source: jomini::Error,
+    },
 
     #[error("Unable to parse string lookup: {0}")]
     StringLookup(#[source] eu5save::Eu5Error),
