@@ -167,12 +167,11 @@ pub struct DiplomaticSummary {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryEconomySection {
-    pub current_tax_base: f64,
-    pub monthly_trade_value: f64,
     pub gold: f64,
-    pub total_building_levels: f64,
-    pub total_possible_tax: f64,
-    pub market_membership: Vec<MarketMembership>,
+    pub manpower: f64,
+    pub stability: f64,
+    pub prestige: f64,
+    pub government_power: f64,
     pub income: f64,
     pub expense: f64,
     pub monthly_gold: Vec<f64>,
@@ -190,15 +189,6 @@ pub struct MarketGoodsSection {
     pub total_building_levels: f64,
     pub total_possible_tax: f64,
     pub top_goods: Vec<MarketGoodEntry>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
-#[serde(rename_all = "camelCase")]
-pub struct MarketMembership {
-    pub market_center_name: String,
-    pub location_count: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

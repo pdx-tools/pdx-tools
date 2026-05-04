@@ -4,8 +4,8 @@ use crate::entity_profile::{
     CountryReligionSection, DiplomacySection, DiplomacySubjectType, DiplomaticSummary,
     EconomicIndicator, EntityHeader, EntityKind, EntityRef, HeadlineStats, IndicatorFormat,
     LocationHeader, LocationPopRow, LocationProfile, LocationRow, LocationStats, LocationsSection,
-    MarketGoodEntry, MarketGoodsSection, MarketMemberCountry, MarketMembership, MarketProfile,
-    RankedLocation, ReligionShare, SubjectRef,
+    MarketGoodEntry, MarketGoodsSection, MarketMemberCountry, MarketProfile, RankedLocation,
+    ReligionShare, SubjectRef,
 };
 use crate::game_data::GameData;
 use crate::selection::{
@@ -317,13 +317,6 @@ impl<'bump> Eu5Workspace<'bump> {
 
     fn market_ref_for_location(&self, loc: &eu5save::models::Location) -> Option<EntityRef> {
         self.market_ref_from_id(loc.market?)
-    }
-
-    fn market_center_name_for_location(&self, loc: &eu5save::models::Location) -> Option<String> {
-        let market_id = loc.market?;
-        let market = self.gamestate.market_manager.get(market_id)?;
-        let center_idx = self.gamestate.locations.get(market.center)?;
-        Some(self.location_name(center_idx).to_string())
     }
 
     fn owner_ref_for_location(&self, loc: &eu5save::models::Location) -> Option<EntityRef> {

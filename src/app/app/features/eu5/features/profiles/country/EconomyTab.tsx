@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatCompact, formatFloat, formatInt } from "@/lib/format";
 import type { CountryEconomySection, LocationRow } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
@@ -37,33 +37,22 @@ export function CountryEconomyTabContent({
   data: CountryEconomySection;
   locations: LocationRow[];
 }) {
+  const delta = data.income - data.expense;
+  const deltaText = `${delta >= 0 ? "+" : ""}${formatCompact(delta, 1)}`;
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3">
-        <StatRow label="Income" value={formatFloat(data.income, 2)} />
-        <StatRow label="Expense" value={formatFloat(data.expense, 2)} />
-        <StatRow label="Current Tax" value={formatFloat(data.currentTaxBase, 2)} />
-        <StatRow label="Monthly Trade" value={formatFloat(data.monthlyTradeValue, 2)} />
-        <StatRow label="Gold" value={formatFloat(data.gold, 1)} />
-        <StatRow label="Building Levels" value={formatFloat(data.totalBuildingLevels, 1)} />
-        <StatRow label="Possible Tax" value={formatFloat(data.totalPossibleTax, 2)} />
+      <div className="grid grid-cols-5 overflow-hidden rounded-lg border border-game-line-strong">
+        <StatPlate
+          label="Gold"
+          value={formatCompact(data.gold, 1)}
+          delta={{ text: deltaText, positive: delta >= 0 }}
+        />
+        <StatPlate label="Manpower" value={formatCompact(data.manpower * 1000, 1)} />
+        <StatPlate label="Stability" value={formatFloat(data.stability, 1)} />
+        <StatPlate label="Prestige" value={formatFloat(data.prestige, 1)} />
+        <StatPlate label="Gov. Power" value={formatFloat(data.governmentPower, 1)} />
       </div>
-
-      {data.marketMembership.length > 0 && (
-        <div>
-          <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-            Market membership
-          </p>
-          <div className="flex flex-col gap-1">
-            {data.marketMembership.map((m) => (
-              <div key={m.marketCenterName} className="flex items-center justify-between text-sm">
-                <span className="text-game-ink-300">{m.marketCenterName}</span>
-                <span className="font-mono text-xs text-game-ink-300">{m.locationCount} loc</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <RevenueMarginChart revenue={data.monthlyGold} balance={data.recentBalance} />
       <HistoryChart
@@ -405,13 +394,30 @@ function TaxGapScatter({ locations }: { locations: LocationRow[] }) {
   );
 }
 
-function StatRow({ label, value }: { label: string; value: string }) {
+function StatPlate({
+  label,
+  value,
+  delta,
+}: {
+  label: string;
+  value: string;
+  delta?: { text: string; positive: boolean };
+}) {
   return (
-    <div className="flex flex-col gap-0.5 rounded-lg border border-game-line bg-game-panel-hover px-3 py-2">
-      <span className="text-[10px] font-semibold tracking-wider text-game-ink-300 uppercase">
+    <div className="min-w-0 overflow-hidden border-r border-game-line bg-game-panel px-3 py-3 last:border-r-0">
+      <div className="mb-1.5 truncate font-mono text-[10px] tracking-[0.14em] text-game-ink-500 uppercase">
         {label}
-      </span>
-      <span className="text-sm font-semibold text-game-ink-100">{value}</span>
+      </div>
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-1 font-mono text-[18px] font-medium tracking-[-0.01em] text-game-ink-100 tabular-nums">
+        <span className="truncate">{value}</span>
+        {delta && (
+          <span
+            className={`shrink-0 text-[10px] ${delta.positive ? "text-game-good" : "text-game-err"}`}
+          >
+            {delta.text}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

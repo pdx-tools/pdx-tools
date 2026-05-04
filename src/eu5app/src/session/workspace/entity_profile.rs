@@ -78,7 +78,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let locations = self.collect_entity_locations(anchor_idx, EntityKind::Country)?;
         let header = self.country_header(anchor_idx, self.headline_for_locations(&locations))?;
         let overview = self.country_overview(anchor_idx, &locations)?;
-        let economy = self.country_economy(anchor_idx, &locations)?;
+        let economy = self.country_economy(anchor_idx)?;
         let religion = self.country_religion(&locations);
         let locations_section = self.build_locations_section(&locations)?;
         let diplomacy = self.country_diplomacy(anchor_idx)?;
@@ -585,13 +585,7 @@ impl<'bump> Eu5Workspace<'bump> {
         if !matches!(self.derived_entity_kind()?, EntityKind::Country) {
             return None;
         }
-        let locations: Vec<eu5save::models::LocationIdx> = self
-            .selection_state
-            .selected_locations()
-            .iter()
-            .copied()
-            .collect();
-        self.country_economy(anchor, &locations)
+        self.country_economy(anchor)
     }
 
     /// Returns goods section for the current market scope.
@@ -612,43 +606,18 @@ impl<'bump> Eu5Workspace<'bump> {
     fn country_economy(
         &self,
         anchor: eu5save::models::LocationIdx,
-        locations: &[eu5save::models::LocationIdx],
     ) -> Option<CountryEconomySection> {
         let loc = self.gamestate.locations.index(anchor).location();
         let owner_id = loc.owner.real_id()?.country_id();
         let country_idx = self.gamestate.countries.get(owner_id)?;
         let data = self.gamestate.countries.index(country_idx).data()?;
 
-        let building_levels = self.get_location_building_levels();
-        let mut total_building_levels = 0.0_f64;
-        let mut total_possible_tax = 0.0_f64;
-        let mut market_counts: FxHashMap<String, u32> = FxHashMap::default();
-
-        for &idx in locations {
-            let loc = self.gamestate.locations.index(idx).location();
-            total_building_levels += building_levels[idx];
-            total_possible_tax += loc.possible_tax;
-            if let Some(name) = self.market_center_name_for_location(loc) {
-                *market_counts.entry(name).or_insert(0) += 1;
-            }
-        }
-
-        let mut market_membership: Vec<MarketMembership> = market_counts
-            .into_iter()
-            .map(|(market_center_name, location_count)| MarketMembership {
-                market_center_name,
-                location_count,
-            })
-            .collect();
-        market_membership.sort_by(|a, b| b.location_count.cmp(&a.location_count));
-
         Some(CountryEconomySection {
-            current_tax_base: data.current_tax_base,
-            monthly_trade_value: data.monthly_trade_value,
             gold: data.currency_data.gold,
-            total_building_levels,
-            total_possible_tax,
-            market_membership,
+            manpower: data.currency_data.manpower,
+            stability: data.currency_data.stability,
+            prestige: data.currency_data.prestige,
+            government_power: data.currency_data.government_power,
             income: data.economy.income,
             expense: data.economy.expense,
             monthly_gold: data.economy.monthly_gold.to_vec(),
@@ -1240,8 +1209,7 @@ impl<'bump> Eu5Workspace<'bump> {
         &self,
         anchor_idx: eu5save::models::LocationIdx,
     ) -> Option<CountryEconomySection> {
-        let locations = self.collect_entity_locations(anchor_idx, EntityKind::Country)?;
-        self.country_economy(anchor_idx, &locations)
+        self.country_economy(anchor_idx)
     }
 
     /// Goods section for a specific market entity's full territory.
