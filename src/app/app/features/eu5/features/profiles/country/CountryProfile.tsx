@@ -1,6 +1,5 @@
 import { GameTabs } from "../../../components";
-import { CountryOverviewTabContent } from "../OverviewTab";
-import { CountryEconomyTabContent } from "./EconomyTab";
+import { CountryOverviewTabContent } from "./EconomyTab";
 import { ReligionTabContent } from "./ReligionTab";
 import { CountryPopulationTabContent } from "./PopulationTab";
 import { LocationsTabContent } from "./LocationsTab";
@@ -30,7 +29,6 @@ export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: numbe
       >
         <GameTabs.List className="shrink-0 px-2">
           <GameTabs.Trigger value="overview">Overview</GameTabs.Trigger>
-          <GameTabs.Trigger value="economy">Economy</GameTabs.Trigger>
           <GameTabs.Trigger value="religion">Religion</GameTabs.Trigger>
           <GameTabs.Trigger value="population">Population</GameTabs.Trigger>
           <GameTabs.Trigger value="locations">Locations</GameTabs.Trigger>
@@ -42,15 +40,6 @@ export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: numbe
         >
           <CountryOverviewTabContent
             data={profile.overview}
-            locations={profile.locations.locations}
-          />
-        </GameTabs.Content>
-        <GameTabs.Content
-          value="economy"
-          className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
-        >
-          <CountryEconomyTabContent
-            data={profile.economy}
             locations={profile.locations.locations}
           />
         </GameTabs.Content>
@@ -67,7 +56,7 @@ export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: numbe
           <CountryPopulationTabContent
             anchorLocationIdx={anchorLocationIdx}
             locations={profile.locations.locations}
-            historicalPopulation={profile.economy.historicalPopulation}
+            historicalPopulation={profile.overview.historicalPopulation}
           />
         </GameTabs.Content>
         <GameTabs.Content

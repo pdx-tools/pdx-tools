@@ -4,10 +4,11 @@ import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 import { Eu5DataTable } from "../../../components";
-import type { LocationRow, MapMode } from "@/wasm/wasm_eu5";
+import type { LocationDistribution, LocationRow, MapMode } from "@/wasm/wasm_eu5";
 import type { Row } from "@tanstack/react-table";
 import { EntityLink } from "../EntityLink";
 import { locationProfileEntry, usePanelNav } from "../PanelNavContext";
+import { LocationDistributionChart } from "../../insights/LocationDistributionChart";
 
 const columnHelper = createColumnHelper<LocationRow>();
 
@@ -104,6 +105,54 @@ const SORT_BY_MODE: Partial<Record<MapMode, { id: string; desc: boolean }>> = {
   religion: { id: "name", desc: false },
 };
 
+function bucketLocations(metricLabel: string, values: number[]): LocationDistribution {
+  const finiteValues = values.filter(Number.isFinite);
+  if (finiteValues.length === 0) {
+    return { metricLabel, buckets: [], topLocations: [] };
+  }
+
+  const min = Math.min(...finiteValues);
+  const max = Math.max(...finiteValues);
+  if (Math.abs(max - min) < Number.EPSILON) {
+    return {
+      metricLabel,
+      buckets: [{ lo: min, hi: max, count: finiteValues.length }],
+      topLocations: [],
+    };
+  }
+
+  const targetBuckets = 20;
+  const step = niceBucketStep(max - min, targetBuckets);
+  const start = Math.floor(min / step) * step;
+  const end = Math.ceil(max / step) * step;
+  const bucketCount = Math.max(1, Math.min(targetBuckets * 2, Math.ceil((end - start) / step)));
+  const counts = Array.from({ length: bucketCount }, () => 0);
+
+  for (const value of finiteValues) {
+    const index = Math.min(bucketCount - 1, Math.floor((value - start) / step));
+    counts[index] += 1;
+  }
+
+  return {
+    metricLabel,
+    buckets: counts.map((count, index) => ({
+      lo: start + index * step,
+      hi: start + (index + 1) * step,
+      count,
+    })),
+    topLocations: [],
+  };
+}
+
+function niceBucketStep(range: number, targetBuckets: number): number {
+  const rawStep = range / Math.max(1, targetBuckets);
+  if (rawStep <= 0) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const normalized = rawStep / magnitude;
+  const niceNormalized = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return niceNormalized * magnitude;
+}
+
 export function LocationsTabContent({
   locations,
   mode,
@@ -113,13 +162,26 @@ export function LocationsTabContent({
 }) {
   const sort = SORT_BY_MODE[mode] ?? { id: "development", desc: true };
 
+  const developmentDistribution = bucketLocations(
+    "Development",
+    locations.map((location) => location.development),
+  );
+  const controlDistribution = bucketLocations(
+    "Control (%)",
+    locations.map((location) => location.control * 100),
+  );
+
   return (
-    <Eu5DataTable
-      key={mode}
-      columns={columns}
-      data={locations}
-      initialSorting={[sort]}
-      pagination
-    />
+    <div className="flex flex-col gap-4">
+      <LocationDistributionChart distribution={developmentDistribution} />
+      <LocationDistributionChart distribution={controlDistribution} />
+      <Eu5DataTable
+        key={mode}
+        columns={columns}
+        data={locations}
+        initialSorting={[sort]}
+        pagination
+      />
+    </div>
   );
 }

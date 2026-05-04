@@ -77,15 +77,13 @@ impl<'bump> Eu5Workspace<'bump> {
     pub fn country_profile_for(&self, anchor_idx: LocationIdx) -> Option<CountryProfile> {
         let locations = self.collect_entity_locations(anchor_idx, EntityKind::Country)?;
         let header = self.country_header(anchor_idx, self.headline_for_locations(&locations))?;
-        let overview = self.country_overview(anchor_idx, &locations)?;
-        let economy = self.country_economy(anchor_idx)?;
+        let overview = self.country_overview(anchor_idx)?;
         let religion = self.country_religion(&locations);
         let locations_section = self.build_locations_section(&locations)?;
         let diplomacy = self.country_diplomacy(anchor_idx)?;
         Some(CountryProfile {
             header,
             overview,
-            economy,
             religion,
             locations: locations_section,
             diplomacy,
@@ -396,85 +394,27 @@ impl<'bump> Eu5Workspace<'bump> {
         })
     }
 
-    /// Returns aggregated overview stats for the current country scope.
-    pub fn country_overview_section(&self) -> Option<CountryOverviewSection> {
-        let anchor = self.derived_entity_anchor?;
-        if !matches!(self.derived_entity_kind()?, EntityKind::Country) {
-            return None;
-        }
-        let locations: Vec<LocationIdx> = self
-            .selection_state
-            .selected_locations()
-            .iter()
-            .copied()
-            .collect();
-        self.country_overview(anchor, &locations)
-    }
-
-    fn overview_totals(&self, locations: &[LocationIdx]) -> Option<(f64, f64, f64, f64, f64)> {
-        if locations.is_empty() {
-            return None;
-        }
-        let building_levels = self.get_location_building_levels();
-        let mut total_control = 0.0_f64;
-        let mut total_development = 0.0_f64;
-        let mut total_rgo_level = 0.0_f64;
-        let mut total_building_levels = 0.0_f64;
-        let mut total_possible_tax = 0.0_f64;
-        let count = locations.len() as f64;
-        for &idx in locations {
-            let loc = self.gamestate.locations.index(idx).location();
-            total_control += loc.control;
-            total_development += loc.development;
-            total_rgo_level += loc.rgo_level;
-            total_building_levels += building_levels[idx];
-            total_possible_tax += loc.possible_tax;
-        }
-
-        Some((
-            if count > 0.0 {
-                total_control / count
-            } else {
-                0.0
-            },
-            if count > 0.0 {
-                total_development / count
-            } else {
-                0.0
-            },
-            total_rgo_level,
-            total_building_levels,
-            total_possible_tax,
-        ))
-    }
-
     fn country_overview(
         &self,
-        anchor: LocationIdx,
-        locations: &[LocationIdx],
+        anchor: eu5save::models::LocationIdx,
     ) -> Option<CountryOverviewSection> {
-        let (
-            avg_control,
-            avg_development,
-            total_rgo_level,
-            total_building_levels,
-            total_possible_tax,
-        ) = self.overview_totals(locations)?;
-        let top_economic_indicators = self.country_overview_economic_indicators(
-            anchor,
-            total_building_levels,
-            total_possible_tax,
-        )?;
-
-        let diplomatic_summary = self.overview_diplomatic_summary(anchor)?;
+        let loc = self.gamestate.locations.index(anchor).location();
+        let owner_id = loc.owner.real_id()?.country_id();
+        let country_idx = self.gamestate.countries.get(owner_id)?;
+        let data = self.gamestate.countries.index(country_idx).data()?;
 
         Some(CountryOverviewSection {
-            avg_control,
-            avg_development,
-            total_rgo_level,
-            total_building_levels,
-            top_economic_indicators,
-            diplomatic_summary,
+            gold: data.currency_data.gold,
+            manpower: data.currency_data.manpower,
+            stability: data.currency_data.stability,
+            prestige: data.currency_data.prestige,
+            government_power: data.currency_data.government_power,
+            income: data.economy.income,
+            expense: data.economy.expense,
+            monthly_gold: data.economy.monthly_gold.to_vec(),
+            recent_balance: data.economy.recent_balance.to_vec(),
+            historical_tax_base: data.historical_tax_base.to_vec(),
+            historical_population: data.historical_population.to_vec(),
         })
     }
 
@@ -528,66 +468,6 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    fn country_overview_economic_indicators(
-        &self,
-        anchor: eu5save::models::LocationIdx,
-        total_building_levels: f64,
-        total_possible_tax: f64,
-    ) -> Option<Vec<EconomicIndicator>> {
-        let loc = self.gamestate.locations.index(anchor).location();
-        let owner_id = loc.owner.real_id()?.country_id();
-        let country_idx = self.gamestate.countries.get(owner_id)?;
-        let data = self.gamestate.countries.index(country_idx).data()?;
-        Some(vec![
-            EconomicIndicator {
-                label: "Tax base".to_string(),
-                value: data.current_tax_base,
-                format: IndicatorFormat::Float1,
-            },
-            EconomicIndicator {
-                label: "Monthly trade".to_string(),
-                value: data.monthly_trade_value,
-                format: IndicatorFormat::Currency,
-            },
-            EconomicIndicator {
-                label: "Gold".to_string(),
-                value: data.currency_data.gold,
-                format: IndicatorFormat::Currency,
-            },
-            EconomicIndicator {
-                label: "Total buildings".to_string(),
-                value: total_building_levels,
-                format: IndicatorFormat::Float1,
-            },
-            EconomicIndicator {
-                label: "Total possible tax".to_string(),
-                value: total_possible_tax,
-                format: IndicatorFormat::Float1,
-            },
-        ])
-    }
-
-    fn overview_diplomatic_summary(
-        &self,
-        anchor: eu5save::models::LocationIdx,
-    ) -> Option<DiplomaticSummary> {
-        let loc = self.gamestate.locations.index(anchor).location();
-        let owner_id = loc.owner.real_id()?.country_id();
-        let country_idx = self.gamestate.countries.get(owner_id)?;
-        let overlord =
-            self.overlord_of[country_idx].and_then(|idx| self.entity_ref_from_country_idx(idx));
-        Some(DiplomaticSummary { overlord })
-    }
-
-    /// Returns economy section for the current country scope.
-    pub fn country_economy_section(&self) -> Option<CountryEconomySection> {
-        let anchor = self.derived_entity_anchor?;
-        if !matches!(self.derived_entity_kind()?, EntityKind::Country) {
-            return None;
-        }
-        self.country_economy(anchor)
-    }
-
     /// Returns goods section for the current market scope.
     pub fn market_goods_section(&self) -> Option<MarketGoodsSection> {
         let anchor = self.derived_entity_anchor?;
@@ -601,30 +481,6 @@ impl<'bump> Eu5Workspace<'bump> {
             .copied()
             .collect();
         self.market_goods(anchor, &locations)
-    }
-
-    fn country_economy(
-        &self,
-        anchor: eu5save::models::LocationIdx,
-    ) -> Option<CountryEconomySection> {
-        let loc = self.gamestate.locations.index(anchor).location();
-        let owner_id = loc.owner.real_id()?.country_id();
-        let country_idx = self.gamestate.countries.get(owner_id)?;
-        let data = self.gamestate.countries.index(country_idx).data()?;
-
-        Some(CountryEconomySection {
-            gold: data.currency_data.gold,
-            manpower: data.currency_data.manpower,
-            stability: data.currency_data.stability,
-            prestige: data.currency_data.prestige,
-            government_power: data.currency_data.government_power,
-            income: data.economy.income,
-            expense: data.economy.expense,
-            monthly_gold: data.economy.monthly_gold.to_vec(),
-            recent_balance: data.economy.recent_balance.to_vec(),
-            historical_tax_base: data.historical_tax_base.to_vec(),
-            historical_population: data.historical_population.to_vec(),
-        })
     }
 
     fn market_goods(
@@ -1193,23 +1049,6 @@ impl<'bump> Eu5Workspace<'bump> {
             EntityKind::Country => self.country_header(anchor_idx, headline),
             EntityKind::Market => self.market_header(anchor_idx, headline),
         }
-    }
-
-    /// Overview section for a specific country entity's full territory.
-    pub fn country_overview_section_for(
-        &self,
-        anchor_idx: eu5save::models::LocationIdx,
-    ) -> Option<CountryOverviewSection> {
-        let locations = self.collect_entity_locations(anchor_idx, EntityKind::Country)?;
-        self.country_overview(anchor_idx, &locations)
-    }
-
-    /// Economy section for a specific country entity's full territory.
-    pub fn country_economy_section_for(
-        &self,
-        anchor_idx: eu5save::models::LocationIdx,
-    ) -> Option<CountryEconomySection> {
-        self.country_economy(anchor_idx)
     }
 
     /// Goods section for a specific market entity's full territory.

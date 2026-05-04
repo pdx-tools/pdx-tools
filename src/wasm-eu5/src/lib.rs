@@ -1,9 +1,8 @@
 use eu5app::Eu5SaveMetadata;
 use eu5app::TableCell as Eu5TableCell;
 use eu5app::entity_profile::{
-    ActiveProfileIdentity, CountryEconomySection, CountryOverviewSection, CountryPopulationProfile,
-    CountryProfile, DiplomacySection, EntityHeader, LocationProfile, LocationsSection,
-    MarketGoodsSection, MarketProfile,
+    ActiveProfileIdentity, CountryPopulationProfile, CountryProfile, DiplomacySection,
+    EntityHeader, LocationProfile, LocationsSection, MarketGoodsSection, MarketProfile,
 };
 use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
@@ -786,18 +785,6 @@ impl Eu5App {
         self.app().market_profile_for(idx)
     }
 
-    /// Overview section stats for the current country scope.
-    #[wasm_bindgen]
-    pub fn get_country_overview_section(&self) -> Option<CountryOverviewSection> {
-        self.app().country_overview_section()
-    }
-
-    /// Economy section for the current country scope.
-    #[wasm_bindgen]
-    pub fn get_country_economy_section(&self) -> Option<CountryEconomySection> {
-        self.app().country_economy_section()
-    }
-
     /// Goods section for the current market scope.
     #[wasm_bindgen]
     pub fn get_market_goods_section(&self) -> Option<MarketGoodsSection> {
@@ -907,26 +894,6 @@ impl Eu5App {
     pub fn get_entity_header_for(&self, anchor_location_idx: u32) -> Option<EntityHeader> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
         self.app().entity_header_for(idx)
-    }
-
-    /// Overview section for a specific country entity's full territory.
-    #[wasm_bindgen]
-    pub fn get_country_overview_section_for(
-        &self,
-        anchor_location_idx: u32,
-    ) -> Option<CountryOverviewSection> {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app().country_overview_section_for(idx)
-    }
-
-    /// Economy section for a specific country entity's full territory.
-    #[wasm_bindgen]
-    pub fn get_country_economy_section_for(
-        &self,
-        anchor_location_idx: u32,
-    ) -> Option<CountryEconomySection> {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app().country_economy_section_for(idx)
     }
 
     /// Goods section for a specific market entity's full territory.

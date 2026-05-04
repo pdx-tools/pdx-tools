@@ -53,7 +53,6 @@ pub struct EntityHeader {
 pub struct CountryProfile {
     pub header: EntityHeader,
     pub overview: CountryOverviewSection,
-    pub economy: CountryEconomySection,
     pub religion: CountryReligionSection,
     pub locations: LocationsSection,
     pub diplomacy: DiplomacySection,
@@ -97,12 +96,27 @@ pub struct HeadlineStats {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryOverviewSection {
-    pub avg_control: f64,
-    pub avg_development: f64,
-    pub total_rgo_level: f64,
-    pub total_building_levels: f64,
-    pub top_economic_indicators: Vec<EconomicIndicator>,
-    pub diplomatic_summary: DiplomaticSummary,
+    pub gold: f64,
+    pub manpower: f64,
+    pub stability: f64,
+    pub prestige: f64,
+    pub government_power: f64,
+    pub income: f64,
+    pub expense: f64,
+    pub monthly_gold: Vec<f64>,
+    pub recent_balance: Vec<f64>,
+    pub historical_tax_base: Vec<f64>,
+    pub historical_population: Vec<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct RankedLocation {
+    pub location_idx: u32,
+    pub name: String,
+    pub value: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -122,62 +136,6 @@ pub struct ReligionShare {
 #[serde(rename_all = "camelCase")]
 pub struct CountryReligionSection {
     pub religion_breakdown: Vec<ReligionShare>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
-#[serde(rename_all = "camelCase")]
-pub struct EconomicIndicator {
-    pub label: String,
-    pub value: f64,
-    pub format: IndicatorFormat,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
-#[serde(rename_all = "camelCase")]
-pub enum IndicatorFormat {
-    Integer,
-    Float1,
-    Currency,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
-#[serde(rename_all = "camelCase")]
-pub struct RankedLocation {
-    pub location_idx: u32,
-    pub name: String,
-    pub value: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
-#[serde(rename_all = "camelCase")]
-pub struct DiplomaticSummary {
-    pub overlord: Option<EntityRef>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
-#[serde(rename_all = "camelCase")]
-pub struct CountryEconomySection {
-    pub gold: f64,
-    pub manpower: f64,
-    pub stability: f64,
-    pub prestige: f64,
-    pub government_power: f64,
-    pub income: f64,
-    pub expense: f64,
-    pub monthly_gold: Vec<f64>,
-    pub recent_balance: Vec<f64>,
-    pub historical_tax_base: Vec<f64>,
-    pub historical_population: Vec<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
