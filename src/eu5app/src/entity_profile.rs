@@ -212,9 +212,8 @@ pub struct MarketMembership {
 #[serde(rename_all = "camelCase")]
 pub struct MarketMemberCountry {
     pub country: EntityRef,
-    pub location_count: u32,
-    pub population: u32,
-    pub development: f64,
+    pub trade_advantage: f64,
+    pub trade_capacity: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

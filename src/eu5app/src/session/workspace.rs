@@ -33,7 +33,7 @@ use eu5save::hash::{FnvHashSet, FxHashMap, FxHashSet};
 use eu5save::models::{
     CountryId, CountryIdx, CountryIndexedVecOwned,
     DiplomacySubjectType as SaveDiplomacySubjectType, Gamestate, LocationIdx, LocationIndexedVec,
-    LocationRank, PopulationType, RawMaterialsName,
+    LocationRank, Market, PopulationType, RawMaterialsName,
 };
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
 use std::collections::HashMap;
