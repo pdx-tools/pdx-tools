@@ -236,6 +236,7 @@ mod tests {
             GoodData {
                 color_hex: "#14962d".to_string(),
                 default_market_price: 1.25,
+                transport_cost: 1.0,
             },
         );
         let zip = test_bundle(GoodsData { goods });

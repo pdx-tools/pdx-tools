@@ -22,6 +22,7 @@ pub struct GoodsData {
 pub struct GoodData {
     pub color_hex: String,
     pub default_market_price: f64,
+    pub transport_cost: f64,
 }
 
 /// EU5 game data
