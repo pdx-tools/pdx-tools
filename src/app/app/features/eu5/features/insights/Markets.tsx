@@ -108,7 +108,7 @@ type GoodBarDatum = ScopedGoodSummary & {
   surplusBar: number;
 };
 
-type GoodsPressureMetric = "units" | "value";
+export type GoodsPressureMetric = "units" | "value";
 
 function goodTooltip(d: ScopedGoodSummary): string {
   return [
@@ -130,13 +130,22 @@ export function GoodsPressureChart({
   goods,
   selectedGoodName,
   onGoodSelect,
+  metric: controlledMetric,
+  onMetricChange,
 }: {
   goods: ScopedGoodSummary[];
   selectedGoodName?: string;
   onGoodSelect?: (good: ScopedGoodSummary) => void;
+  metric?: GoodsPressureMetric;
+  onMetricChange?: (metric: GoodsPressureMetric) => void;
 }) {
   const isDark = isDarkMode();
-  const [metric, setMetric] = useState<GoodsPressureMetric>("value");
+  const [internalMetric, setInternalMetric] = useState<GoodsPressureMetric>("value");
+  const metric = controlledMetric ?? internalMetric;
+  const setMetric = (m: GoodsPressureMetric) => {
+    setInternalMetric(m);
+    onMetricChange?.(m);
+  };
   const isValueMetric = metric === "value";
 
   const sorted = useMemo((): GoodBarDatum[] => {
@@ -266,20 +275,22 @@ export function GoodsPressureChart({
   const height = sorted.length * 20 + 60;
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-3">
-        <ToggleGroup
-          type="single"
-          value={metric}
-          onValueChange={(value) => {
-            if (value) setMetric(value as GoodsPressureMetric);
-          }}
-          className="inline-flex w-fit rounded-md border border-game-line bg-game-panel-hover p-1"
-          aria-label="Goods pressure metric comparison"
-        >
-          <ToggleGroup.Item value="value">Value</ToggleGroup.Item>
-          <ToggleGroup.Item value="units">Units</ToggleGroup.Item>
-        </ToggleGroup>
-      </div>
+      {controlledMetric == null && (
+        <div className="flex flex-wrap items-center gap-3">
+          <ToggleGroup
+            type="single"
+            value={metric}
+            onValueChange={(value) => {
+              if (value) setMetric(value as GoodsPressureMetric);
+            }}
+            className="inline-flex w-fit rounded-md border border-game-line bg-game-panel-hover p-1"
+            aria-label="Goods pressure metric comparison"
+          >
+            <ToggleGroup.Item value="value">Value</ToggleGroup.Item>
+            <ToggleGroup.Item value="units">Units</ToggleGroup.Item>
+          </ToggleGroup>
+        </div>
+      )}
       <EChart
         option={option}
         style={{ height: `${height}px`, width: "100%" }}
@@ -607,7 +618,10 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
           nameLocation: "middle",
           nameGap: 42,
           nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-          axisLabel: { color: tickColor },
+          axisLabel: {
+            color: tickColor,
+            formatter: (value: number) => formatFloat(value, 2),
+          },
           axisLine: { lineStyle: { color: axisColor } },
           splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
           min: yMin,
