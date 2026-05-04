@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { formatCompact, formatFloat, formatInt } from "@/lib/format";
-import type { CountryEconomySection, LocationRow } from "@/wasm/wasm_eu5";
+import type { CountryOverviewSection, LocationRow } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { isDarkMode } from "@/lib/dark";
@@ -30,11 +30,11 @@ function monthOffsetToDate(baseYear: number, baseMonth: number, offset: number):
   return `${year} ${MONTH_NAMES[month]}`;
 }
 
-export function CountryEconomyTabContent({
+export function CountryOverviewTabContent({
   data,
   locations,
 }: {
-  data: CountryEconomySection;
+  data: CountryOverviewSection;
   locations: LocationRow[];
 }) {
   const delta = data.income - data.expense;
