@@ -11,6 +11,7 @@ import { useProfileTab } from "../PanelNavContext";
 import { Tooltip } from "@/components/Tooltip";
 import { LocationDistributionChart } from "../../insights/LocationDistributionChart";
 import type { LocationDistribution } from "@/wasm/wasm_eu5";
+import { StatPlate } from "../country/EconomyTab";
 
 export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number }) {
   const profileTab = useProfileTab("market");
@@ -57,7 +58,7 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
           )}
         </GameTabs.Content>
         <GameTabs.Content value="members" className="min-h-0 flex-1 basis-0 overflow-y-auto">
-          <MarketMembers members={profile.memberCountries} />
+          <MarketMembers members={profile.memberCountries} marketName={profile.header.name} />
         </GameTabs.Content>
       </GameTabs>
     </div>
@@ -66,25 +67,18 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
 
 function MarketHeaderStats({ profile }: { profile: MarketProfileData }) {
   return (
-    <div className="mb-4 grid grid-cols-2 gap-2">
-      <div className="flex min-w-0 flex-col gap-0.5 rounded-md border border-game-line bg-game-panel-hover px-2 py-1.5">
-        <span className="text-[10px] font-semibold tracking-wider text-game-ink-300 uppercase">
-          Market Value
-        </span>
-        <span className="truncate text-sm font-semibold text-game-ink-100">
-          {formatFloat(profile.marketValue, 1)}
-        </span>
-      </div>
-      <div className="flex min-w-0 flex-col gap-0.5 rounded-md border border-game-line bg-game-panel-hover px-2 py-1.5">
-        <span className="text-[10px] font-semibold tracking-wider text-game-ink-300 uppercase">
-          Owner Country
-        </span>
-        {profile.ownerCountry ? (
-          <EntityLink entity={profile.ownerCountry} size="md" static />
-        ) : (
-          <span className="text-sm text-game-ink-500">—</span>
-        )}
-      </div>
+    <div className="mb-4 grid grid-cols-2 overflow-hidden rounded-lg border border-game-line-strong">
+      <StatPlate label="Market Value" value={formatFloat(profile.marketValue, 1)} />
+      <StatPlate
+        label="Owner Country"
+        value={
+          profile.ownerCountry ? (
+            <EntityLink entity={profile.ownerCountry} size="md" backLabel={profile.header.name} />
+          ) : (
+            "—"
+          )
+        }
+      />
     </div>
   );
 }
@@ -139,7 +133,13 @@ function MarketLocationsTabContent({
 
 const MEMBERS_COLUMNS = "1fr 96px 96px";
 
-function MarketMembers({ members }: { members: MarketMemberCountry[] }) {
+function MarketMembers({
+  members,
+  marketName,
+}: {
+  members: MarketMemberCountry[];
+  marketName: string;
+}) {
   if (members.length === 0) {
     return <p className="px-4 py-4 text-sm text-game-ink-500">No member countries.</p>;
   }
@@ -166,7 +166,7 @@ function MarketMembers({ members }: { members: MarketMemberCountry[] }) {
           className="grid h-7 items-center border-b border-game-line px-3"
           style={{ gridTemplateColumns: MEMBERS_COLUMNS }}
         >
-          <EntityLink entity={member.country} size="md" static />
+          <EntityLink entity={member.country} size="md" backLabel={marketName} />
           <MemberMetricCell>{formatFloat(member.tradeAdvantage, 2)}</MemberMetricCell>
           <MemberMetricCell>{formatFloat(member.tradeCapacity, 2)}</MemberMetricCell>
         </div>

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { ReactNode } from "react";
 import { formatCompact, formatFloat, formatInt } from "@/lib/format";
 import type { CountryOverviewSection, LocationRow } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
@@ -394,22 +395,22 @@ function TaxGapScatter({ locations }: { locations: LocationRow[] }) {
   );
 }
 
-function StatPlate({
+export function StatPlate({
   label,
   value,
   delta,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   delta?: { text: string; positive: boolean };
 }) {
   return (
-    <div className="min-w-0 overflow-hidden border-r border-game-line bg-game-panel px-3 py-3 last:border-r-0">
+    <div className="min-w-0 border-r border-game-line bg-game-panel px-3 py-3 last:border-r-0">
       <div className="mb-1.5 truncate font-mono text-[10px] tracking-[0.14em] text-game-ink-500 uppercase">
         {label}
       </div>
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-1 font-mono text-[18px] font-medium tracking-[-0.01em] text-game-ink-100 tabular-nums">
-        <span className="truncate">{value}</span>
+        {typeof value === "string" ? <span className="truncate">{value}</span> : value}
         {delta && (
           <span
             className={`shrink-0 text-[10px] ${delta.positive ? "text-game-good" : "text-game-err"}`}
