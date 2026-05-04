@@ -1,15 +1,16 @@
 import React from "react";
 import { GameTabs } from "../../../components";
 import { formatFloat } from "@/lib/format";
-import type { MarketMemberCountry } from "@/wasm/wasm_eu5";
+import type { MarketMemberCountry, MarketProfile as MarketProfileData } from "@/wasm/wasm_eu5";
 import { MarketProductionLocations } from "../../insights/MarketProductionLocations";
 import { EntityLink } from "../EntityLink";
-import { MarketOverviewTabContent } from "../OverviewTab";
 import { MarketGoodsTabContent } from "./GoodsTab";
 import { useEu5Trigger } from "../useEu5Trigger";
 import { ProfileSkeleton } from "../ProfileSkeleton";
 import { useProfileTab } from "../PanelNavContext";
 import { Tooltip } from "@/components/Tooltip";
+import { LocationDistributionChart } from "../../insights/LocationDistributionChart";
+import type { LocationDistribution } from "@/wasm/wasm_eu5";
 
 export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number }) {
   const profileTab = useProfileTab("market");
@@ -31,7 +32,6 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
       >
         <GameTabs.List className="shrink-0 px-2">
           <GameTabs.Trigger value="overview">Overview</GameTabs.Trigger>
-          <GameTabs.Trigger value="goods">Goods</GameTabs.Trigger>
           <GameTabs.Trigger value="locations">Locations</GameTabs.Trigger>
           <GameTabs.Trigger value="members">Members</GameTabs.Trigger>
         </GameTabs.List>
@@ -39,20 +39,21 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
           value="overview"
           className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
         >
-          <MarketOverviewTabContent data={profile.overview} />
-        </GameTabs.Content>
-        <GameTabs.Content
-          value="goods"
-          className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
-        >
-          {activeTab === "goods" && <MarketGoodsTabContent anchorLocationIdx={anchorLocationIdx} />}
+          <MarketHeaderStats profile={profile} />
+          {activeTab === "overview" && (
+            <MarketGoodsTabContent anchorLocationIdx={anchorLocationIdx} />
+          )}
         </GameTabs.Content>
         <GameTabs.Content
           value="locations"
           className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
         >
           {activeTab === "locations" && (
-            <MarketLocationsTabContent anchorLocationIdx={anchorLocationIdx} />
+            <MarketLocationsTabContent
+              anchorLocationIdx={anchorLocationIdx}
+              locationMarketAccess={profile.locationMarketAccess}
+              locationMarketAttraction={profile.locationMarketAttraction}
+            />
           )}
         </GameTabs.Content>
         <GameTabs.Content value="members" className="min-h-0 flex-1 basis-0 overflow-y-auto">
@@ -63,21 +64,77 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
   );
 }
 
-function MarketLocationsTabContent({ anchorLocationIdx }: { anchorLocationIdx: number }) {
+function MarketHeaderStats({ profile }: { profile: MarketProfileData }) {
+  return (
+    <div className="mb-4 grid grid-cols-2 gap-2">
+      <div className="flex min-w-0 flex-col gap-0.5 rounded-md border border-game-line bg-game-panel-hover px-2 py-1.5">
+        <span className="text-[10px] font-semibold tracking-wider text-game-ink-300 uppercase">
+          Market Value
+        </span>
+        <span className="truncate text-sm font-semibold text-game-ink-100">
+          {formatFloat(profile.marketValue, 1)}
+        </span>
+      </div>
+      <div className="flex min-w-0 flex-col gap-0.5 rounded-md border border-game-line bg-game-panel-hover px-2 py-1.5">
+        <span className="text-[10px] font-semibold tracking-wider text-game-ink-300 uppercase">
+          Owner Country
+        </span>
+        {profile.ownerCountry ? (
+          <EntityLink entity={profile.ownerCountry} size="md" static />
+        ) : (
+          <span className="text-sm text-game-ink-500">—</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MarketLocationsTabContent({
+  anchorLocationIdx,
+  locationMarketAccess,
+  locationMarketAttraction,
+}: {
+  anchorLocationIdx: number;
+  locationMarketAccess: number[];
+  locationMarketAttraction: number[];
+}) {
   const { data: locations, loading } = useEu5Trigger(
     (engine) => engine.trigger.getMarketLocationsProfile(anchorLocationIdx),
     [anchorLocationIdx],
   );
 
+  const accessDistribution =
+    locationMarketAccess.length >= 5
+      ? bucketLocations(
+          "Market Access (%)",
+          locationMarketAccess.map((v) => v * 100),
+        )
+      : null;
+  const attractionDistribution =
+    locationMarketAttraction.length >= 5
+      ? bucketLocations(
+          "Market Attraction (%)",
+          locationMarketAttraction.map((v) => v * 100),
+        )
+      : null;
+
   if (loading && !locations) {
     return <div className="h-64 animate-pulse rounded bg-game-panel-hover" />;
   }
 
-  if (!locations || locations.length === 0) {
-    return <p className="py-6 text-center text-sm text-game-ink-500">No production locations.</p>;
-  }
-
-  return <MarketProductionLocations locations={locations} />;
+  return (
+    <div className="flex flex-col gap-4">
+      {accessDistribution && <LocationDistributionChart distribution={accessDistribution} />}
+      {attractionDistribution && (
+        <LocationDistributionChart distribution={attractionDistribution} />
+      )}
+      {!locations || locations.length === 0 ? (
+        <p className="py-6 text-center text-sm text-game-ink-500">No production locations.</p>
+      ) : (
+        <MarketProductionLocations locations={locations} />
+      )}
+    </div>
+  );
 }
 
 const MEMBERS_COLUMNS = "1fr 96px 96px";
@@ -139,4 +196,52 @@ function MemberHeaderCell({ children, tooltip }: { children: React.ReactNode; to
       </Tooltip.Content>
     </Tooltip>
   );
+}
+
+function bucketLocations(metricLabel: string, values: number[]): LocationDistribution {
+  const finiteValues = values.filter(Number.isFinite);
+  if (finiteValues.length === 0) {
+    return { metricLabel, buckets: [], topLocations: [] };
+  }
+
+  const min = Math.min(...finiteValues);
+  const max = Math.max(...finiteValues);
+  if (Math.abs(max - min) < Number.EPSILON) {
+    return {
+      metricLabel,
+      buckets: [{ lo: min, hi: max, count: finiteValues.length }],
+      topLocations: [],
+    };
+  }
+
+  const targetBuckets = 20;
+  const step = niceBucketStep(max - min, targetBuckets);
+  const start = Math.floor(min / step) * step;
+  const end = Math.ceil(max / step) * step;
+  const bucketCount = Math.max(1, Math.min(targetBuckets * 2, Math.ceil((end - start) / step)));
+  const counts = Array.from({ length: bucketCount }, () => 0);
+
+  for (const value of finiteValues) {
+    const index = Math.min(bucketCount - 1, Math.floor((value - start) / step));
+    counts[index] += 1;
+  }
+
+  return {
+    metricLabel,
+    buckets: counts.map((count, index) => ({
+      lo: start + index * step,
+      hi: start + (index + 1) * step,
+      count,
+    })),
+    topLocations: [],
+  };
+}
+
+function niceBucketStep(range: number, targetBuckets: number): number {
+  const rawStep = range / Math.max(1, targetBuckets);
+  if (rawStep <= 0) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const normalized = rawStep / magnitude;
+  const niceNormalized = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return niceNormalized * magnitude;
 }

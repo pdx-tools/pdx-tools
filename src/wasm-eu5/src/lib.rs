@@ -3,7 +3,7 @@ use eu5app::TableCell as Eu5TableCell;
 use eu5app::entity_profile::{
     ActiveProfileIdentity, CountryEconomySection, CountryOverviewSection, CountryPopulationProfile,
     CountryProfile, DiplomacySection, EntityHeader, LocationProfile, LocationsSection,
-    MarketGoodsSection, MarketOverviewSection, MarketProfile,
+    MarketGoodsSection, MarketProfile,
 };
 use eu5app::game_data::GameData;
 use eu5app::game_data::OptimizedGameBundle;
@@ -792,12 +792,6 @@ impl Eu5App {
         self.app().country_overview_section()
     }
 
-    /// Overview section stats for the current market scope.
-    #[wasm_bindgen]
-    pub fn get_market_overview_section(&self) -> Option<MarketOverviewSection> {
-        self.app().market_overview_section()
-    }
-
     /// Economy section for the current country scope.
     #[wasm_bindgen]
     pub fn get_country_economy_section(&self) -> Option<CountryEconomySection> {
@@ -923,16 +917,6 @@ impl Eu5App {
     ) -> Option<CountryOverviewSection> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
         self.app().country_overview_section_for(idx)
-    }
-
-    /// Overview section for a specific market entity's full territory.
-    #[wasm_bindgen]
-    pub fn get_market_overview_section_for(
-        &self,
-        anchor_location_idx: u32,
-    ) -> Option<MarketOverviewSection> {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app().market_overview_section_for(idx)
     }
 
     /// Economy section for a specific country entity's full territory.
