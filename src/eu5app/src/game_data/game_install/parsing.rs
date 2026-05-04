@@ -93,6 +93,7 @@ pub fn parse_locations_data(
 pub struct RawGoodData {
     pub color: Option<String>,
     pub default_market_price: f64,
+    pub transport_cost: Option<f64>,
 }
 
 pub fn parse_goods(
@@ -224,6 +225,7 @@ pub fn resolve_goods(
                 GoodData {
                     color_hex: color_hex(rgb),
                     default_market_price: good.default_market_price,
+                    transport_cost: good.transport_cost.unwrap_or(1.0),
                 },
             ))
         })
@@ -334,6 +336,7 @@ porcelain = {
     category = produced
     color = goods_porcelain
     default_market_price = 3
+    transport_cost = 5
 }
 "#;
 
@@ -344,11 +347,13 @@ porcelain = {
             Some("goods_wool")
         );
         assert_eq!(goods.get("wool").unwrap().default_market_price, 1.25);
+        assert_eq!(goods.get("wool").unwrap().transport_cost, None);
         assert_eq!(
             goods.get("porcelain").unwrap().color.as_deref(),
             Some("goods_porcelain")
         );
         assert_eq!(goods.get("porcelain").unwrap().default_market_price, 3.0);
+        assert_eq!(goods.get("porcelain").unwrap().transport_cost, Some(5.0));
     }
 
     #[test]
@@ -380,6 +385,7 @@ wool = {
 livestock = {
     color = goods_livestock
     default_market_price = 2.0
+    transport_cost = 3.0
 }
 "#;
         let colors_data = r#"
@@ -395,7 +401,29 @@ colors = {
 
         assert_eq!(goods.get("wool").unwrap().color_hex, "#8a9999");
         assert_eq!(goods.get("wool").unwrap().default_market_price, 1.25);
+        assert_eq!(goods.get("wool").unwrap().transport_cost, 1.0);
         assert_eq!(goods.get("livestock").unwrap().color_hex, "#14962d");
+        assert_eq!(goods.get("livestock").unwrap().transport_cost, 3.0);
+    }
+
+    #[test]
+    fn test_resolve_goods_transport_cost_defaults_to_one() {
+        let goods_data = r#"
+grain = {
+    color = goods_grain
+    default_market_price = 1.0
+}
+"#;
+        let colors_data = r#"
+colors = {
+    goods_grain = rgb { 255 255 0 }
+}
+"#;
+        let raw_goods = parse_goods(goods_data, "goods.txt").unwrap();
+        let colors = parse_map_mode_colors(colors_data).unwrap();
+        let goods = resolve_goods(raw_goods, &colors).unwrap();
+
+        assert_eq!(goods.get("grain").unwrap().transport_cost, 1.0);
     }
 
     #[test]
