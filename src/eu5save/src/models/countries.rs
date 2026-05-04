@@ -145,6 +145,29 @@ impl<'bump> Countries<'bump> {
 }
 
 #[derive(Debug, Clone, ArenaDeserialize)]
+pub struct CountryEconomy<'bump> {
+    #[arena(default)]
+    pub income: f64,
+    #[arena(default)]
+    pub expense: f64,
+    #[arena(default)]
+    pub monthly_gold: &'bump [f64],
+    #[arena(default)]
+    pub recent_balance: &'bump [f64],
+}
+
+impl<'bump> Default for CountryEconomy<'bump> {
+    fn default() -> Self {
+        CountryEconomy {
+            income: 0.0,
+            expense: 0.0,
+            monthly_gold: &[],
+            recent_balance: &[],
+        }
+    }
+}
+
+#[derive(Debug, Clone, ArenaDeserialize)]
 pub struct Country<'bump> {
     pub country_name: CountryName<'bump>,
     #[arena(default)]
@@ -156,6 +179,8 @@ pub struct Country<'bump> {
     pub historical_tax_base: &'bump [f64],
     #[arena(default)]
     pub previous_tags: &'bump [CountryTag<'bump>],
+    #[arena(default)]
+    pub economy: CountryEconomy<'bump>,
     #[arena(default)]
     pub great_power_rank: i32,
     #[arena(default)]

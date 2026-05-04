@@ -712,6 +712,12 @@ impl<'bump> Eu5Workspace<'bump> {
             total_building_levels,
             total_possible_tax,
             market_membership,
+            income: data.economy.income,
+            expense: data.economy.expense,
+            monthly_gold: data.economy.monthly_gold.to_vec(),
+            recent_balance: data.economy.recent_balance.to_vec(),
+            historical_tax_base: data.historical_tax_base.to_vec(),
+            historical_population: data.historical_population.to_vec(),
         })
     }
 

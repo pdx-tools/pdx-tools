@@ -412,6 +412,8 @@ pub struct ScopedCountryPopulation {
     pub total_population: u32,
     pub location_count: u32,
     pub ranks: Vec<PopulationRankSegment>,
+    pub historical_population: Vec<f64>,
+    pub great_power_rank: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
