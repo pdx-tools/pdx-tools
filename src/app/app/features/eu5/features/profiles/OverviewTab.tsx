@@ -6,7 +6,6 @@ import type {
   EconomicIndicator,
   LocationDistribution,
   LocationRow,
-  MarketOverviewSection,
 } from "@/wasm/wasm_eu5";
 import { EntityLink } from "./EntityLink";
 import { LocationDistributionChart } from "../insights/LocationDistributionChart";
@@ -38,37 +37,7 @@ export function CountryOverviewTabContent({
   );
 }
 
-export function MarketOverviewTabContent({ data }: { data: MarketOverviewSection }) {
-  const marketAccessDistribution =
-    data.locationMarketAccess.length >= 5
-      ? bucketLocations(
-          "Market Access (%)",
-          data.locationMarketAccess.map((value) => value * 100),
-        )
-      : null;
-  const marketAttractionDistribution =
-    data.locationMarketAttraction.length >= 5
-      ? bucketLocations(
-          "Market Attraction (%)",
-          data.locationMarketAttraction.map((value) => value * 100),
-        )
-      : null;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <OverviewStats overview={data} />
-      {marketAccessDistribution && (
-        <LocationDistributionChart distribution={marketAccessDistribution} />
-      )}
-      {marketAttractionDistribution && (
-        <LocationDistributionChart distribution={marketAttractionDistribution} />
-      )}
-      <EconomicIndicatorGrid indicators={data.topEconomicIndicators} />
-    </div>
-  );
-}
-
-function OverviewStats({ overview }: { overview: CountryOverviewSection | MarketOverviewSection }) {
+function OverviewStats({ overview }: { overview: CountryOverviewSection }) {
   return (
     <div className="grid grid-cols-2 gap-2 @[22rem]:grid-cols-4">
       <StatRow label="Avg Control" value={formatPercent(overview.avgControl)} />

@@ -95,14 +95,34 @@ impl<'bump> Eu5Workspace<'bump> {
     pub fn market_profile_for(&self, anchor_idx: LocationIdx) -> Option<MarketProfile> {
         let locations = self.collect_entity_locations(anchor_idx, EntityKind::Market)?;
         let header = self.market_header(anchor_idx, self.headline_for_locations(&locations))?;
-        let overview = self.market_overview(anchor_idx, &locations)?;
         let loc = self.gamestate.locations.index(anchor_idx).location();
         let market_id = loc.market?;
         let market = self.gamestate.market_manager.get(market_id)?;
+        let market_value = market.market_value();
+        let center_idx = self.gamestate.locations.get(market.center)?;
+        let center_loc = self.gamestate.locations.index(center_idx).location();
+        let owner_country = self.owner_ref_for_location(center_loc);
+        let location_market_access = locations
+            .iter()
+            .map(|&idx| self.gamestate.locations.index(idx).location().market_access)
+            .collect();
+        let location_market_attraction = locations
+            .iter()
+            .map(|&idx| {
+                self.gamestate
+                    .locations
+                    .index(idx)
+                    .location()
+                    .market_attraction
+            })
+            .collect();
         let member_countries = self.market_member_countries_from_merchants(market);
         Some(MarketProfile {
             header,
-            overview,
+            market_value,
+            owner_country,
+            location_market_access,
+            location_market_attraction,
             member_countries,
         })
     }
@@ -391,21 +411,6 @@ impl<'bump> Eu5Workspace<'bump> {
         self.country_overview(anchor, &locations)
     }
 
-    /// Returns aggregated overview stats for the current market scope.
-    pub fn market_overview_section(&self) -> Option<MarketOverviewSection> {
-        let anchor = self.derived_entity_anchor?;
-        if !matches!(self.derived_entity_kind()?, EntityKind::Market) {
-            return None;
-        }
-        let locations: Vec<LocationIdx> = self
-            .selection_state
-            .selected_locations()
-            .iter()
-            .copied()
-            .collect();
-        self.market_overview(anchor, &locations)
-    }
-
     fn overview_totals(&self, locations: &[LocationIdx]) -> Option<(f64, f64, f64, f64, f64)> {
         if locations.is_empty() {
             return None;
@@ -523,46 +528,6 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    fn market_overview(
-        &self,
-        anchor: LocationIdx,
-        locations: &[LocationIdx],
-    ) -> Option<MarketOverviewSection> {
-        let (
-            avg_control,
-            avg_development,
-            total_rgo_level,
-            total_building_levels,
-            total_possible_tax,
-        ) = self.overview_totals(locations)?;
-        let top_economic_indicators =
-            self.market_overview_economic_indicators(anchor, total_possible_tax)?;
-        let location_market_access = locations
-            .iter()
-            .map(|&idx| self.gamestate.locations.index(idx).location().market_access)
-            .collect();
-        let location_market_attraction = locations
-            .iter()
-            .map(|&idx| {
-                self.gamestate
-                    .locations
-                    .index(idx)
-                    .location()
-                    .market_attraction
-            })
-            .collect();
-
-        Some(MarketOverviewSection {
-            avg_control,
-            avg_development,
-            total_rgo_level,
-            total_building_levels,
-            top_economic_indicators,
-            location_market_access,
-            location_market_attraction,
-        })
-    }
-
     fn country_overview_economic_indicators(
         &self,
         anchor: eu5save::models::LocationIdx,
@@ -600,34 +565,6 @@ impl<'bump> Eu5Workspace<'bump> {
                 format: IndicatorFormat::Float1,
             },
         ])
-    }
-
-    fn market_overview_economic_indicators(
-        &self,
-        anchor: eu5save::models::LocationIdx,
-        total_possible_tax: f64,
-    ) -> Option<Vec<EconomicIndicator>> {
-        let loc = self.gamestate.locations.index(anchor).location();
-        let market_id = loc.market?;
-        let market = self.gamestate.market_manager.get(market_id)?;
-        let mut indicators = vec![EconomicIndicator {
-            label: "Market value".to_string(),
-            value: market.market_value(),
-            format: IndicatorFormat::Currency,
-        }];
-        let mut top_goods: Vec<_> = market.goods.iter().collect();
-        top_goods.sort_by(|a, b| (b.price * b.total_taken).total_cmp(&(a.price * a.total_taken)));
-        indicators.extend(top_goods.into_iter().take(3).map(|good| EconomicIndicator {
-            label: format!("Top good: {}", good.good.to_str()),
-            value: good.price * good.total_taken,
-            format: IndicatorFormat::Currency,
-        }));
-        indicators.push(EconomicIndicator {
-            label: "Total possible tax".to_string(),
-            value: total_possible_tax,
-            format: IndicatorFormat::Float1,
-        });
-        Some(indicators)
     }
 
     fn overview_diplomatic_summary(
@@ -1290,15 +1227,6 @@ impl<'bump> Eu5Workspace<'bump> {
     ) -> Option<CountryOverviewSection> {
         let locations = self.collect_entity_locations(anchor_idx, EntityKind::Country)?;
         self.country_overview(anchor_idx, &locations)
-    }
-
-    /// Overview section for a specific market entity's full territory.
-    pub fn market_overview_section_for(
-        &self,
-        anchor_idx: eu5save::models::LocationIdx,
-    ) -> Option<MarketOverviewSection> {
-        let locations = self.collect_entity_locations(anchor_idx, EntityKind::Market)?;
-        self.market_overview(anchor_idx, &locations)
     }
 
     /// Economy section for a specific country entity's full territory.
