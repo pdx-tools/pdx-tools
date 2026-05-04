@@ -23,6 +23,14 @@ export function abbreviateInt(x: number) {
   }
 }
 
+export function formatCompact(x: number, precision = 1): string {
+  const abs = Math.abs(x);
+  const sign = x < 0 ? "−" : "";
+  if (abs < 1000) return formatFloat(x, precision);
+  if (abs < 1_000_000) return `${sign}${formatFloat(abs / 1000, 1)}K`;
+  return `${sign}${formatFloat(abs / 1_000_000, 2)}M`;
+}
+
 export function formatFloat(x: number, precision?: number) {
   return floatFormatters[precision ?? 3].format(x);
 }
