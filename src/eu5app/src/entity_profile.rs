@@ -173,6 +173,12 @@ pub struct CountryEconomySection {
     pub total_building_levels: f64,
     pub total_possible_tax: f64,
     pub market_membership: Vec<MarketMembership>,
+    pub income: f64,
+    pub expense: f64,
+    pub monthly_gold: Vec<f64>,
+    pub recent_balance: Vec<f64>,
+    pub historical_tax_base: Vec<f64>,
+    pub historical_population: Vec<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

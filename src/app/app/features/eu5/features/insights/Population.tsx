@@ -30,8 +30,10 @@ import {
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
+import { useEu5SaveDate } from "../../store/eu5Store";
 
 const COUNTRY_CAP = 24;
+const HISTORY_TOP_COUNT = 10;
 const BACK_LABEL = "Population";
 const RANK_COLORS = {
   rural: "#b85c5c",
@@ -51,6 +53,129 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function formatPercent(value: number, digits = 1) {
   return `${formatFloat(value * 100, digits)}%`;
+}
+
+function formatCompact(value: number): string {
+  if (value >= 1_000_000) {
+    const v = value / 1_000_000;
+    return `${v % 1 === 0 ? formatInt(v) : v.toFixed(1)}M`;
+  }
+  if (value >= 1_000) {
+    const v = value / 1_000;
+    return `${v % 1 === 0 ? formatInt(v) : v.toFixed(1)}K`;
+  }
+  return formatInt(Math.round(value));
+}
+
+function PopulationHistoryMultiChart({ countries }: { countries: ScopedCountryPopulation[] }) {
+  const isDark = isDarkMode();
+  const saveDate = useEu5SaveDate();
+
+  const filtered = useMemo(() => {
+    const playerTags = new Set(
+      countries.filter((c) => c.country.isPlayer).map((c) => c.country.tag),
+    );
+    const topRanked = countries
+      .filter((c) => c.greatPowerRank > 0)
+      .sort((a, b) => a.greatPowerRank - b.greatPowerRank)
+      .slice(0, HISTORY_TOP_COUNT)
+      .map((c) => c.country.tag);
+    const topRankedTags = new Set(topRanked);
+
+    if (topRankedTags.size > 0 || playerTags.size > 0) {
+      return countries.filter(
+        (c) => topRankedTags.has(c.country.tag) || playerTags.has(c.country.tag),
+      );
+    }
+    return countries.slice(0, HISTORY_TOP_COUNT);
+  }, [countries]);
+
+  const option = useMemo((): EChartsOption => {
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const baseYear = saveDate?.year ?? 0;
+
+    const series = filtered.map((c) => {
+      const len = c.historicalPopulation.length;
+      return {
+        name: c.country.name,
+        type: "line" as const,
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { color: c.country.colorHex, width: 2 },
+        itemStyle: { color: c.country.colorHex },
+        data: c.historicalPopulation.flatMap((v, i) => (v === 0 ? [] : [[i - len + 1, v * 1000]])),
+      };
+    });
+
+    const minX = filtered.reduce((min, c) => Math.min(min, 1 - c.historicalPopulation.length), 0);
+
+    return {
+      legend: {
+        type: "scroll",
+        bottom: 0,
+        textStyle: { color: labelColor, fontSize: 11 },
+        pageTextStyle: { color: labelColor },
+      },
+      grid: { left: 60, right: 20, top: 16, bottom: 56 },
+      xAxis: {
+        type: "value",
+        min: minX,
+        max: 0,
+        axisLabel: {
+          color: tickColor,
+          formatter: (value: number) => String(baseYear + value),
+        },
+        axisLine: { lineStyle: { color: axisColor } },
+        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
+      },
+      yAxis: {
+        type: "value",
+        name: "Population",
+        nameLocation: "middle",
+        nameGap: 46,
+        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
+        axisLabel: { color: tickColor, formatter: formatCompact },
+        axisLine: { lineStyle: { color: axisColor } },
+        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
+      },
+      tooltip: {
+        trigger: "axis",
+        formatter: (params) => {
+          const arr = Array.isArray(params) ? params : [params];
+          if (arr.length === 0) return "";
+          const firstVal = arr[0]?.value;
+          const year = baseYear + Number(Array.isArray(firstVal) ? firstVal[0] : 0);
+          const lines = arr
+            .filter((p) => Array.isArray(p.value))
+            .map(
+              (p) =>
+                `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${escapeEChartsHtml(String(p.color))};margin-right:4px"></span>${escapeEChartsHtml(String(p.seriesName))}: ${formatCompact(Number((p.value as number[])[1]))}`,
+            );
+          return `<strong>${year}</strong><br/>${lines.join("<br/>")}`;
+        },
+      },
+      series,
+    };
+  }, [filtered, isDark, saveDate]);
+
+  const handleInit = useEu5EntityChartClick({
+    kind: "country",
+    backLabel: BACK_LABEL,
+    getTarget: (params) => {
+      const c = params.seriesIndex != null ? filtered[params.seriesIndex] : null;
+      return c ? { anchorLocationIdx: c.country.anchorLocationIdx, label: c.country.name } : null;
+    },
+  });
+
+  const hasData = filtered.some((c) => c.historicalPopulation.length >= 2);
+  if (!hasData) return null;
+
+  return (
+    <section>
+      <SectionTitle>How has population changed over time?</SectionTitle>
+      <EChart option={option} style={{ height: "260px", width: "100%" }} onInit={handleInit} />
+    </section>
+  );
 }
 
 function PopulationScopeHeader({ data }: { data?: PopulationScopeSummary }) {
@@ -94,6 +219,8 @@ export function PopulationInsight() {
               <CountryPopulationSpine countries={countries} />
             </section>
           )}
+
+          {countries.length > 0 && <PopulationHistoryMultiChart countries={countries} />}
 
           {typeProfile.some(
             (r: PopulationTypeProfileRow) => r.population > 0 || r.baselinePopulation > 0,

@@ -1169,6 +1169,9 @@ impl<'bump> Eu5Workspace<'bump> {
             .into_iter()
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
+                let data = self.gamestate.countries.index(cidx).data()?;
+                let historical_population = data.historical_population.to_vec();
+                let great_power_rank = data.great_power_rank;
                 let country = self.country_ref_from_country_idx(cidx)?;
                 let ranks = agg
                     .ranks
@@ -1185,6 +1188,8 @@ impl<'bump> Eu5Workspace<'bump> {
                     total_population: agg.population,
                     location_count: agg.location_count,
                     ranks,
+                    historical_population,
+                    great_power_rank,
                 })
             })
             .collect();

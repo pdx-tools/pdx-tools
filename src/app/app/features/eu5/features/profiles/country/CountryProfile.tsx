@@ -67,6 +67,7 @@ export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: numbe
           <CountryPopulationTabContent
             anchorLocationIdx={anchorLocationIdx}
             locations={profile.locations.locations}
+            historicalPopulation={profile.economy.historicalPopulation}
           />
         </GameTabs.Content>
         <GameTabs.Content
