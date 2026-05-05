@@ -184,6 +184,101 @@ impl<'bump> Eu5Workspace<'bump> {
         self.rebuild_colors()
     }
 
+    /// Replace the selection with all locations owned by `country_idx`.
+    pub fn select_country_by_idx(
+        &mut self,
+        country_idx: eu5save::models::CountryIdx,
+    ) -> (Option<crate::ColorIdx>, crate::gradient::MapLegend) {
+        let entry = self.gamestate.countries.index(country_idx);
+        let Some(owner) = entry.id().real_id() else {
+            return (None, crate::gradient::MapLegend::Qualitative);
+        };
+        let capital_location_idx = entry
+            .data()
+            .and_then(|d| d.capital)
+            .and_then(|id| self.gamestate.locations.get(id));
+        let locs = SelectionAdapter::new(&*self).resolve_by_country_id(owner);
+        if locs.is_empty() {
+            return (None, crate::gradient::MapLegend::Qualitative);
+        }
+        self.selection_state.replace(locs);
+        self.recompute_derived_scope_for_kind(EntityKind::Country);
+        let gradient = self.rebuild_colors();
+        let center = capital_location_idx.and_then(|idx| self.center_at(idx));
+        (center, gradient)
+    }
+
+    /// Add all locations owned by `country_idx` to the existing selection.
+    pub fn add_country_by_idx(
+        &mut self,
+        country_idx: eu5save::models::CountryIdx,
+    ) -> crate::gradient::MapLegend {
+        let Some(owner) = self.gamestate.countries.index(country_idx).id().real_id() else {
+            return self.rebuild_colors();
+        };
+        let locs = SelectionAdapter::new(&*self).resolve_by_country_id(owner);
+        self.selection_state.add_all(&locs);
+        self.recompute_derived_scope_for_kind(EntityKind::Country);
+        self.rebuild_colors()
+    }
+
+    /// Remove all locations owned by `country_idx` from the selection.
+    pub fn remove_country_by_idx(
+        &mut self,
+        country_idx: eu5save::models::CountryIdx,
+    ) -> crate::gradient::MapLegend {
+        let Some(owner) = self.gamestate.countries.index(country_idx).id().real_id() else {
+            return self.rebuild_colors();
+        };
+        let locs = SelectionAdapter::new(&*self).resolve_by_country_id(owner);
+        self.remove_locations_from_scope_for_kind(&locs, EntityKind::Country);
+        self.recompute_derived_scope_for_kind(EntityKind::Country);
+        self.rebuild_colors()
+    }
+
+    /// Replace the selection with all locations belonging to `market_id`.
+    pub fn select_market_by_id(
+        &mut self,
+        market_id: eu5save::models::MarketId,
+    ) -> (Option<crate::ColorIdx>, crate::gradient::MapLegend) {
+        let locs = SelectionAdapter::new(&*self).resolve_by_market_id(market_id);
+        if locs.is_empty() {
+            return (None, crate::gradient::MapLegend::Qualitative);
+        }
+        self.selection_state.replace(locs);
+        self.recompute_derived_scope_for_kind(EntityKind::Market);
+        let gradient = self.rebuild_colors();
+        let center = self
+            .gamestate
+            .market_manager
+            .get(market_id)
+            .and_then(|m| self.gamestate.locations.get(m.center))
+            .and_then(|idx| self.center_at(idx));
+        (center, gradient)
+    }
+
+    /// Add all locations belonging to `market_id` to the existing selection.
+    pub fn add_market_by_id(
+        &mut self,
+        market_id: eu5save::models::MarketId,
+    ) -> crate::gradient::MapLegend {
+        let locs = SelectionAdapter::new(&*self).resolve_by_market_id(market_id);
+        self.selection_state.add_all(&locs);
+        self.recompute_derived_scope_for_kind(EntityKind::Market);
+        self.rebuild_colors()
+    }
+
+    /// Remove all locations belonging to `market_id` from the selection.
+    pub fn remove_market_by_id(
+        &mut self,
+        market_id: eu5save::models::MarketId,
+    ) -> crate::gradient::MapLegend {
+        let locs = SelectionAdapter::new(&*self).resolve_by_market_id(market_id);
+        self.remove_locations_from_scope_for_kind(&locs, EntityKind::Market);
+        self.recompute_derived_scope_for_kind(EntityKind::Market);
+        self.rebuild_colors()
+    }
+
     /// Apply a pre-resolved set of locations (produced by the map renderer's
     /// `commit_box_selection`) to the selection state.
     pub fn apply_resolved_box_selection(
@@ -403,11 +498,11 @@ impl<'bump> Eu5Workspace<'bump> {
         Some(crate::ColorIdx::new(gpu_idx.value()))
     }
 
-    /// Returns the anchor location index for the best default country to display
-    /// in the political map mode. When a multi-country selection is active,
-    /// the candidate set is limited to countries inside that selection.
+    /// Returns the `CountryIdx` of the best default country to display in the
+    /// political map mode. When a multi-country selection is active, the
+    /// candidate set is limited to countries inside that selection.
     /// Priority: first human-played country, then highest great-power rank.
-    pub fn political_default_country_anchor(&self) -> Option<u32> {
+    pub fn political_default_country_idx(&self) -> Option<eu5save::models::CountryIdx> {
         let mut candidates = Vec::new();
         let mut seen = FnvHashSet::default();
 
@@ -432,8 +527,7 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
-        let country_idx = self
-            .gamestate
+        self.gamestate
             .played_countries
             .iter()
             .filter_map(|p| self.gamestate.countries.get(p.country))
@@ -449,10 +543,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     .min_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(b.1)))
                     .map(|(_, _, idx)| idx)
             })
-            .or_else(|| candidates.first().copied())?;
-
-        let entity_ref = self.entity_ref_from_country_idx(country_idx)?;
-        Some(entity_ref.anchor_location_idx())
+            .or_else(|| candidates.first().copied())
     }
 
     /// Check if a location can be highlighted based on its terrain (not water and not impassable)

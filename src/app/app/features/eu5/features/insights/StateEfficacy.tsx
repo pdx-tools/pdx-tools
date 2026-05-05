@@ -117,6 +117,7 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
         avgEfficacy: c.avgEfficacy,
         totalPopulation: c.totalPopulation,
         color: c.country.colorHex,
+        id: c.country.countryIdx,
         anchorLocationIdx: c.country.anchorLocationIdx,
       })),
     [countries],
@@ -208,7 +209,9 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
     getTarget: (params) => {
       if (Array.isArray(params.data)) return null;
       const country = params.data as (typeof scatterData)[number] | undefined;
-      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
+      return country
+        ? { id: country.id, anchorLocationIdx: country.anchorLocationIdx, label: country.name }
+        : null;
     },
   });
 

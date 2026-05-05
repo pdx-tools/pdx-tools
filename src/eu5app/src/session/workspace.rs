@@ -283,6 +283,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .iter()
             .any(|p| p.country == country_id);
         Some(CountryRef {
+            country_idx: country_idx.value(),
             anchor_location_idx,
             tag,
             name,
@@ -308,6 +309,7 @@ impl<'bump> Eu5Workspace<'bump> {
             market.color.0[0], market.color.0[1], market.color.0[2]
         );
         Some(EntityRef::Market {
+            market_id: market_id.value(),
             anchor_location_idx: center_idx.value(),
             name,
             color_hex,

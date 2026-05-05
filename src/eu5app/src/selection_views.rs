@@ -306,6 +306,7 @@ pub struct ScopedGoodSummary {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct ScopedMarketSummary {
+    pub market_id: u32,
     pub anchor_location_idx: u32,
     pub center_name: String,
     pub color_hex: String,
@@ -358,6 +359,7 @@ pub struct MarketProductionLocationSummary {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct GoodMarketBalanceCell {
+    pub market_id: u32,
     pub market_name: String,
     pub good: String,
     pub market_anchor_location_idx: u32,

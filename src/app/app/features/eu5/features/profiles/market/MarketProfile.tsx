@@ -13,12 +13,12 @@ import { LocationDistributionChart } from "../../insights/LocationDistributionCh
 import type { LocationDistribution } from "@/wasm/wasm_eu5";
 import { StatPlate } from "../country/EconomyTab";
 
-export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number }) {
+export function MarketProfile({ marketId }: { marketId: number }) {
   const profileTab = useProfileTab("market");
   const activeTab = profileTab.value;
   const { data: profile, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getMarketProfile(anchorLocationIdx),
-    [anchorLocationIdx],
+    (engine) => engine.trigger.getMarketProfile(marketId),
+    [marketId],
   );
 
   if (loading && !profile) return <ProfileSkeleton />;
@@ -41,9 +41,7 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
           className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
         >
           <MarketHeaderStats profile={profile} />
-          {activeTab === "overview" && (
-            <MarketGoodsTabContent anchorLocationIdx={anchorLocationIdx} />
-          )}
+          {activeTab === "overview" && <MarketGoodsTabContent marketId={marketId} />}
         </GameTabs.Content>
         <GameTabs.Content
           value="locations"
@@ -51,7 +49,7 @@ export function MarketProfile({ anchorLocationIdx }: { anchorLocationIdx: number
         >
           {activeTab === "locations" && (
             <MarketLocationsTabContent
-              anchorLocationIdx={anchorLocationIdx}
+              marketId={marketId}
               locationMarketAccess={profile.locationMarketAccess}
               locationMarketAttraction={profile.locationMarketAttraction}
             />
@@ -84,17 +82,17 @@ function MarketHeaderStats({ profile }: { profile: MarketProfileData }) {
 }
 
 function MarketLocationsTabContent({
-  anchorLocationIdx,
+  marketId,
   locationMarketAccess,
   locationMarketAttraction,
 }: {
-  anchorLocationIdx: number;
+  marketId: number;
   locationMarketAccess: number[];
   locationMarketAttraction: number[];
 }) {
   const { data: locations, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getMarketLocationsProfile(anchorLocationIdx),
-    [anchorLocationIdx],
+    (engine) => engine.trigger.getMarketLocationsProfile(marketId),
+    [marketId],
   );
 
   const accessDistribution =
@@ -162,7 +160,9 @@ function MarketMembers({
       </div>
       {members.map((member) => (
         <div
-          key={member.country.anchorLocationIdx}
+          key={
+            member.country.kind === "country" ? member.country.countryIdx : member.country.marketId
+          }
           className="grid h-7 items-center border-b border-game-line px-3"
           style={{ gridTemplateColumns: MEMBERS_COLUMNS }}
         >

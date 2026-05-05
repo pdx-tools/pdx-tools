@@ -261,23 +261,23 @@ export function saveWorker(
       cursorHintCallback = callback;
     },
 
-    selectCountry: (locationIdx: number) => {
-      return saveEngine.selectCountry(locationIdx);
+    selectCountry: (countryIdx: number) => {
+      return saveEngine.selectCountry(countryIdx);
     },
-    addCountry: (locationIdx: number) => {
-      return saveEngine.addCountry(locationIdx);
+    addCountry: (countryIdx: number) => {
+      return saveEngine.addCountry(countryIdx);
     },
-    removeCountry: (locationIdx: number) => {
-      return saveEngine.removeCountry(locationIdx);
+    removeCountry: (countryIdx: number) => {
+      return saveEngine.removeCountry(countryIdx);
     },
-    selectMarket: (locationIdx: number) => {
-      return saveEngine.selectMarket(locationIdx);
+    selectMarket: (marketId: number) => {
+      return saveEngine.selectMarket(marketId);
     },
-    addMarket: (locationIdx: number) => {
-      return saveEngine.addMarket(locationIdx);
+    addMarket: (marketId: number) => {
+      return saveEngine.addMarket(marketId);
     },
-    removeMarket: (locationIdx: number) => {
-      return saveEngine.removeMarket(locationIdx);
+    removeMarket: (marketId: number) => {
+      return saveEngine.removeMarket(marketId);
     },
     setFocusedLocation: (locationIdx: number) => {
       return saveEngine.setFocusedLocation(locationIdx);
@@ -305,24 +305,24 @@ export function saveWorker(
       return await saveEngine.getStateEfficacy();
     },
 
-    getCountryProfile: async (anchorLocationIdx: number): Promise<CountryProfile | null> => {
-      return await saveEngine.getCountryProfile(anchorLocationIdx);
+    getCountryProfile: async (countryIdx: number): Promise<CountryProfile | null> => {
+      return await saveEngine.getCountryProfile(countryIdx);
     },
     getCountryPopulationProfile: async (
-      anchorLocationIdx: number,
+      countryIdx: number,
     ): Promise<CountryPopulationProfile | null> => {
-      return await saveEngine.getCountryPopulationProfile(anchorLocationIdx);
+      return await saveEngine.getCountryPopulationProfile(countryIdx);
     },
-    getMarketProfile: async (anchorLocationIdx: number): Promise<MarketProfile | null> => {
-      return await saveEngine.getMarketProfile(anchorLocationIdx);
+    getMarketProfile: async (marketId: number): Promise<MarketProfile | null> => {
+      return await saveEngine.getMarketProfile(marketId);
     },
-    getMarketGoodsProfile: async (anchorLocationIdx: number): Promise<ScopedGoodSummary[]> => {
-      return await saveEngine.getMarketGoodsProfile(anchorLocationIdx);
+    getMarketGoodsProfile: async (marketId: number): Promise<ScopedGoodSummary[]> => {
+      return await saveEngine.getMarketGoodsProfile(marketId);
     },
     getMarketLocationsProfile: async (
-      anchorLocationIdx: number,
+      marketId: number,
     ): Promise<MarketProductionLocationSummary[]> => {
-      return await saveEngine.getMarketLocationsProfile(anchorLocationIdx);
+      return await saveEngine.getMarketLocationsProfile(marketId);
     },
     getLocationProfile: async (locationIdx: number): Promise<LocationProfile | null> => {
       return await saveEngine.getLocationProfile(locationIdx);

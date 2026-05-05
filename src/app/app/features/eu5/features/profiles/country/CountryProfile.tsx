@@ -9,12 +9,12 @@ import { useEu5Trigger } from "../useEu5Trigger";
 import { ProfileSkeleton } from "../ProfileSkeleton";
 import { useProfileTab } from "../PanelNavContext";
 
-export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: number }) {
+export function CountryProfile({ countryIdx }: { countryIdx: number }) {
   const mode = useEu5MapMode();
   const profileTab = useProfileTab("country");
   const { data: profile, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getCountryProfile(anchorLocationIdx),
-    [anchorLocationIdx],
+    (engine) => engine.trigger.getCountryProfile(countryIdx),
+    [countryIdx],
   );
 
   if (loading && !profile) return <ProfileSkeleton />;
@@ -54,7 +54,7 @@ export function CountryProfile({ anchorLocationIdx }: { anchorLocationIdx: numbe
           className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
         >
           <CountryPopulationTabContent
-            anchorLocationIdx={anchorLocationIdx}
+            countryIdx={countryIdx}
             locations={profile.locations.locations}
             historicalPopulation={profile.overview.historicalPopulation}
           />

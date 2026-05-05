@@ -36,30 +36,28 @@ export function locationProfileEntry(locationIdx: number, label: string): PanelN
   return { kind: "focus", profile: { kind: "location", location_idx: locationIdx, label }, label };
 }
 
-export function countryProfileEntry(anchorLocationIdx: number, label: string): PanelNavEntry {
+export function countryProfileEntry(countryIdx: number, label: string): PanelNavEntry {
   return {
     kind: "profile",
-    profile: { kind: "country", anchor_location_idx: anchorLocationIdx, label },
+    profile: { kind: "country", country_idx: countryIdx, label },
     label,
   };
 }
 
-export function marketProfileEntry(anchorLocationIdx: number, label: string): PanelNavEntry {
+export function marketProfileEntry(marketId: number, label: string): PanelNavEntry {
   return {
     kind: "profile",
-    profile: { kind: "market", anchor_location_idx: anchorLocationIdx, label },
+    profile: { kind: "market", market_id: marketId, label },
     label,
   };
 }
 
 export function entityProfileEntry(
   kind: "country" | "market",
-  anchorLocationIdx: number,
+  id: number,
   label: string,
 ): PanelNavEntry {
-  return kind === "market"
-    ? marketProfileEntry(anchorLocationIdx, label)
-    : countryProfileEntry(anchorLocationIdx, label);
+  return kind === "market" ? marketProfileEntry(id, label) : countryProfileEntry(id, label);
 }
 
 interface PanelNavApi {

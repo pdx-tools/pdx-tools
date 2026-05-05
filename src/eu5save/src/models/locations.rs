@@ -192,7 +192,7 @@ where
     deserializer.deserialize_map(LocationsVisitor(allocator))
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LocationsIter<'a> {
     index: LocationIdx,
     locations: &'a LocationsDataArena<'a>,

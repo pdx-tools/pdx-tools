@@ -6,6 +6,7 @@ import { useEu5Engine } from "../../store";
 import { usePanToEntity } from "../../usePanToEntity";
 
 type EntityChartTarget = {
+  id: number;
   anchorLocationIdx: number;
   label: string;
 };
@@ -23,17 +24,16 @@ export function useEu5EntityChartClick(opts: {
     const target = opts.getTarget(params);
     if (target == null) return;
     const ev = params.event?.event as MouseEvent | undefined;
-    const idx = target.anchorLocationIdx;
 
     if (ev?.altKey) {
       void (opts.kind === "country"
-        ? engine.trigger.removeCountry(idx)
-        : engine.trigger.removeMarket(idx));
+        ? engine.trigger.removeCountry(target.id)
+        : engine.trigger.removeMarket(target.id));
       return;
     }
 
-    nav.pushMany([entityProfileEntry(opts.kind, idx, target.label)], opts.backLabel);
-    panToEntity(idx);
+    nav.pushMany([entityProfileEntry(opts.kind, target.id, target.label)], opts.backLabel);
+    panToEntity(target.anchorLocationIdx);
   });
 
   return useCallback((chart: echarts.ECharts) => {

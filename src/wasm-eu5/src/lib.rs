@@ -483,41 +483,43 @@ impl Eu5App {
     }
 
     #[wasm_bindgen]
-    pub fn select_country(&mut self, anchor_location_idx: u32) -> SelectionChange {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        let (center, gradient) = self.app.select_country_at(idx);
+    pub fn select_country(&mut self, country_idx: u32) -> SelectionChange {
+        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
+            return selection_change(None, eu5app::gradient::MapLegend::Qualitative);
+        };
+        let (center, gradient) = self.app.select_country_by_idx(idx);
         selection_change(center, gradient)
     }
 
     #[wasm_bindgen]
-    pub fn add_country(&mut self, anchor_location_idx: u32) -> Option<GradientConfig> {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        legend_to_gradient(self.app.add_country_at(idx))
+    pub fn add_country(&mut self, country_idx: u32) -> Option<GradientConfig> {
+        let idx = eu5save::models::CountryIdx::from_value(country_idx)?;
+        legend_to_gradient(self.app.add_country_by_idx(idx))
     }
 
     #[wasm_bindgen]
-    pub fn remove_country(&mut self, anchor_location_idx: u32) -> Option<GradientConfig> {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        legend_to_gradient(self.app.remove_country_at(idx))
+    pub fn remove_country(&mut self, country_idx: u32) -> Option<GradientConfig> {
+        let idx = eu5save::models::CountryIdx::from_value(country_idx)?;
+        legend_to_gradient(self.app.remove_country_by_idx(idx))
     }
 
     #[wasm_bindgen]
-    pub fn select_market(&mut self, anchor_location_idx: u32) -> SelectionChange {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        let (center, gradient) = self.app.select_market_at(idx);
+    pub fn select_market(&mut self, market_id: u32) -> SelectionChange {
+        let id = eu5save::models::MarketId::new(market_id);
+        let (center, gradient) = self.app.select_market_by_id(id);
         selection_change(center, gradient)
     }
 
     #[wasm_bindgen]
-    pub fn add_market(&mut self, anchor_location_idx: u32) -> Option<GradientConfig> {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        legend_to_gradient(self.app.add_market_at(idx))
+    pub fn add_market(&mut self, market_id: u32) -> Option<GradientConfig> {
+        let id = eu5save::models::MarketId::new(market_id);
+        legend_to_gradient(self.app.add_market_by_id(id))
     }
 
     #[wasm_bindgen]
-    pub fn remove_market(&mut self, anchor_location_idx: u32) -> Option<GradientConfig> {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        legend_to_gradient(self.app.remove_market_at(idx))
+    pub fn remove_market(&mut self, market_id: u32) -> Option<GradientConfig> {
+        let id = eu5save::models::MarketId::new(market_id);
+        legend_to_gradient(self.app.remove_market_by_id(id))
     }
 
     /// Clear the current selection and focus.
@@ -742,7 +744,9 @@ impl Eu5App {
     /// without mutating selection state.
     #[wasm_bindgen]
     pub fn political_default_country_anchor(&self) -> Option<u32> {
-        self.app().political_default_country_anchor()
+        self.app()
+            .political_default_country_idx()
+            .map(|idx| idx.value())
     }
 
     /// Political world scoreboard: top great powers in scope plus player
@@ -761,28 +765,28 @@ impl Eu5App {
         self.app().entity_header()
     }
 
-    /// Full country profile resolved from `anchor_location_idx`, independent of current map mode.
+    /// Full country profile resolved from `country_idx`, independent of current map mode.
     #[wasm_bindgen]
-    pub fn get_country_profile(&self, anchor_location_idx: u32) -> Option<CountryProfile> {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+    pub fn get_country_profile(&self, country_idx: u32) -> Option<CountryProfile> {
+        let idx = eu5save::models::CountryIdx::from_value(country_idx)?;
         self.app().country_profile_for(idx)
     }
 
-    /// Population profile resolved from `anchor_location_idx`, independent of current map mode.
+    /// Population profile resolved from `country_idx`, independent of current map mode.
     #[wasm_bindgen]
     pub fn get_country_population_profile(
         &self,
-        anchor_location_idx: u32,
+        country_idx: u32,
     ) -> Option<CountryPopulationProfile> {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
+        let idx = eu5save::models::CountryIdx::from_value(country_idx)?;
         self.app().country_population_profile_for(idx)
     }
 
-    /// Full market profile resolved from `anchor_location_idx`, independent of current map mode.
+    /// Full market profile resolved from `market_id`, independent of current map mode.
     #[wasm_bindgen]
-    pub fn get_market_profile(&self, anchor_location_idx: u32) -> Option<MarketProfile> {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app().market_profile_for(idx)
+    pub fn get_market_profile(&self, market_id: u32) -> Option<MarketProfile> {
+        let id = eu5save::models::MarketId::new(market_id);
+        self.app().market_profile_for(id)
     }
 
     /// Goods section for the current market scope.
@@ -908,19 +912,19 @@ impl Eu5App {
 
     /// Goods pressure profile for a specific market entity's full territory.
     #[wasm_bindgen]
-    pub fn get_market_goods_profile(&self, anchor_location_idx: u32) -> Vec<ScopedGoodSummary> {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app().market_goods_profile(idx)
+    pub fn get_market_goods_profile(&self, market_id: u32) -> Vec<ScopedGoodSummary> {
+        let id = eu5save::models::MarketId::new(market_id);
+        self.app().market_goods_profile(id)
     }
 
     /// Production-opportunity locations for a specific market entity's full territory.
     #[wasm_bindgen]
     pub fn get_market_locations_profile(
         &self,
-        anchor_location_idx: u32,
+        market_id: u32,
     ) -> Vec<MarketProductionLocationSummary> {
-        let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app().market_locations_profile(idx)
+        let id = eu5save::models::MarketId::new(market_id);
+        self.app().market_locations_profile(id)
     }
 
     /// Locations section for a specific entity's full territory.

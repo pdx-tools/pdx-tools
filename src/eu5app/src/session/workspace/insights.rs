@@ -761,6 +761,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         struct MarketAgg<'a> {
+            market_id: eu5save::models::MarketId,
             center_idx: LocationIdx,
             name: String,
             color_hex: String,
@@ -784,7 +785,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
         let lookup_center_idx = |center: LocationId| self.gamestate.locations.get(center);
 
-        for market in self.gamestate.market_manager.database.iter() {
+        for (market_id, market) in self.gamestate.market_manager.database.iter_with_id() {
             let Some(center_idx) = lookup_center_idx(market.center) else {
                 continue;
             };
@@ -837,6 +838,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 };
                 let imbalance_value = (good.supply - good.demand) * good.price;
                 good_market_cells.push(crate::selection_views::GoodMarketBalanceCell {
+                    market_id: market_id.value(),
                     market_name: self.location_name(center_idx).to_string(),
                     good: good.good.to_string(),
                     market_anchor_location_idx: center_idx.value(),
@@ -860,6 +862,7 @@ impl<'bump> Eu5Workspace<'bump> {
             let name = format!("{} Market", self.location_name(center_idx));
 
             market_aggs.push(MarketAgg {
+                market_id,
                 center_idx,
                 name,
                 color_hex,
@@ -987,6 +990,7 @@ impl<'bump> Eu5Workspace<'bump> {
                         }
                     }
                     ScopedMarketSummary {
+                        market_id: agg.market_id.value(),
                         anchor_location_idx: agg.center_idx.value(),
                         center_name: agg.name,
                         color_hex: agg.color_hex,
@@ -2282,6 +2286,7 @@ mod tests {
             row: PoliticalWorldRow {
                 ordinal_rank: 0,
                 country: CountryRef {
+                    country_idx: 0,
                     anchor_location_idx: great_power_rank as u32,
                     tag: tag.to_string(),
                     name: format!("{tag} Nation"),

@@ -72,11 +72,11 @@ export interface AppTriggers {
   getLocationArrays(): Promise<Blob>;
   melt(): Promise<Uint8Array<ArrayBuffer>>;
   getStateEfficacy(): Promise<StateEfficacyInsightData>;
-  getCountryProfile(anchorLocationIdx: number): Promise<CountryProfile | null>;
-  getCountryPopulationProfile(anchorLocationIdx: number): Promise<CountryPopulationProfile | null>;
-  getMarketProfile(anchorLocationIdx: number): Promise<MarketProfile | null>;
-  getMarketGoodsProfile(anchorLocationIdx: number): Promise<ScopedGoodSummary[]>;
-  getMarketLocationsProfile(anchorLocationIdx: number): Promise<MarketProductionLocationSummary[]>;
+  getCountryProfile(countryIdx: number): Promise<CountryProfile | null>;
+  getCountryPopulationProfile(countryIdx: number): Promise<CountryPopulationProfile | null>;
+  getMarketProfile(marketId: number): Promise<MarketProfile | null>;
+  getMarketGoodsProfile(marketId: number): Promise<ScopedGoodSummary[]>;
+  getMarketLocationsProfile(marketId: number): Promise<MarketProductionLocationSummary[]>;
   getLocationProfile(locationIdx: number): Promise<LocationProfile | null>;
   getDevelopmentInsight(): Promise<DevelopmentInsightData>;
   getPossibleTaxInsight(): Promise<PossibleTaxInsightData>;
@@ -91,12 +91,12 @@ export interface AppTriggers {
   getControlInsight(): Promise<ControlInsightData>;
   getPoliticalWorldScoreboard(): Promise<PoliticalWorldScoreboard>;
   getPoliticalDefaultCountryAnchor(): Promise<number | null>;
-  selectCountry(anchorLocationIdx: number): Promise<void>;
-  addCountry(anchorLocationIdx: number): Promise<void>;
-  removeCountry(anchorLocationIdx: number): Promise<void>;
-  selectMarket(anchorLocationIdx: number): Promise<void>;
-  addMarket(anchorLocationIdx: number): Promise<void>;
-  removeMarket(anchorLocationIdx: number): Promise<void>;
+  selectCountry(countryIdx: number): Promise<void>;
+  addCountry(countryIdx: number): Promise<void>;
+  removeCountry(countryIdx: number): Promise<void>;
+  selectMarket(marketId: number): Promise<void>;
+  addMarket(marketId: number): Promise<void>;
+  removeMarket(marketId: number): Promise<void>;
   setFocusedLocation(locationIdx: number): Promise<void>;
   clearFocus(): Promise<void>;
   clearFocusOrSelection(): Promise<void>;
@@ -177,15 +177,12 @@ export class Eu5UIEngine implements AppEngine {
     getLocationArrays: () => this.handleGetLocationArrays(),
     melt: () => this.handleMelt(),
     getStateEfficacy: () => this.handleGetStateEfficacy(),
-    getCountryProfile: (anchorLocationIdx) =>
-      this.gameInstance.getCountryProfile(anchorLocationIdx),
-    getCountryPopulationProfile: (anchorLocationIdx) =>
-      this.gameInstance.getCountryPopulationProfile(anchorLocationIdx),
-    getMarketProfile: (anchorLocationIdx) => this.gameInstance.getMarketProfile(anchorLocationIdx),
-    getMarketGoodsProfile: (anchorLocationIdx) =>
-      this.gameInstance.getMarketGoodsProfile(anchorLocationIdx),
-    getMarketLocationsProfile: (anchorLocationIdx) =>
-      this.gameInstance.getMarketLocationsProfile(anchorLocationIdx),
+    getCountryProfile: (countryIdx) => this.gameInstance.getCountryProfile(countryIdx),
+    getCountryPopulationProfile: (countryIdx) =>
+      this.gameInstance.getCountryPopulationProfile(countryIdx),
+    getMarketProfile: (marketId) => this.gameInstance.getMarketProfile(marketId),
+    getMarketGoodsProfile: (marketId) => this.gameInstance.getMarketGoodsProfile(marketId),
+    getMarketLocationsProfile: (marketId) => this.gameInstance.getMarketLocationsProfile(marketId),
     getLocationProfile: (locationIdx) => this.gameInstance.getLocationProfile(locationIdx),
     getDevelopmentInsight: () => this.gameInstance.getDevelopmentInsight(),
     getPossibleTaxInsight: () => this.gameInstance.getPossibleTaxInsight(),
@@ -200,12 +197,12 @@ export class Eu5UIEngine implements AppEngine {
     getControlInsight: () => this.gameInstance.getControlInsight(),
     getPoliticalWorldScoreboard: () => this.gameInstance.getPoliticalWorldScoreboard(),
     getPoliticalDefaultCountryAnchor: () => this.gameInstance.getPoliticalDefaultCountryAnchor(),
-    selectCountry: (locationIdx) => this.gameInstance.selectCountry(locationIdx),
-    addCountry: (locationIdx) => this.gameInstance.addCountry(locationIdx),
-    removeCountry: (locationIdx) => this.gameInstance.removeCountry(locationIdx),
-    selectMarket: (locationIdx) => this.gameInstance.selectMarket(locationIdx),
-    addMarket: (locationIdx) => this.gameInstance.addMarket(locationIdx),
-    removeMarket: (locationIdx) => this.gameInstance.removeMarket(locationIdx),
+    selectCountry: (countryIdx) => this.gameInstance.selectCountry(countryIdx),
+    addCountry: (countryIdx) => this.gameInstance.addCountry(countryIdx),
+    removeCountry: (countryIdx) => this.gameInstance.removeCountry(countryIdx),
+    selectMarket: (marketId) => this.gameInstance.selectMarket(marketId),
+    addMarket: (marketId) => this.gameInstance.addMarket(marketId),
+    removeMarket: (marketId) => this.gameInstance.removeMarket(marketId),
     setFocusedLocation: (locationIdx) => this.handleSetFocusedLocation(locationIdx),
     clearFocus: () => this.handleClearFocus(),
     clearFocusOrSelection: () => this.handleClearFocusOrSelection(),

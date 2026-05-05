@@ -85,6 +85,13 @@ impl MarketDatabase<'_> {
     pub fn iter(&self) -> impl Iterator<Item = &Market<'_>> {
         self.values.iter().filter_map(|x| x.as_ref())
     }
+
+    pub fn iter_with_id(&self) -> impl Iterator<Item = (MarketId, &Market<'_>)> {
+        self.ids
+            .iter()
+            .zip(self.values.iter())
+            .filter_map(|(&id, v)| v.as_ref().map(|m| (id, m)))
+    }
 }
 
 #[derive(Debug, ArenaDeserialize, PartialEq)]

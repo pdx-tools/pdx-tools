@@ -78,6 +78,16 @@ impl CountryIdx {
     fn from_index(index: usize) -> Self {
         CountryIdx(NonZeroU32::new(index as u32 + 1).unwrap())
     }
+
+    #[inline]
+    pub fn value(self) -> u32 {
+        self.0.get()
+    }
+
+    #[inline]
+    pub fn from_value(v: u32) -> Option<Self> {
+        NonZeroU32::new(v).map(CountryIdx)
+    }
 }
 
 #[derive(Debug, Clone, ArenaDeserialize)]

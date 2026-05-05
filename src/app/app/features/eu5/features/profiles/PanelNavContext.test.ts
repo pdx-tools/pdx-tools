@@ -22,7 +22,7 @@ describe("panel navigation helpers", () => {
   it("builds typed profile navigation entries", () => {
     expect(countryProfileEntry(42, "France")).toEqual({
       kind: "profile",
-      profile: { kind: "country", anchor_location_idx: 42, label: "France" },
+      profile: { kind: "country", country_idx: 42, label: "France" },
       label: "France",
     });
 

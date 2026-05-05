@@ -19,18 +19,9 @@ pub enum EntityKind {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ActiveProfileIdentity {
-    Country {
-        anchor_location_idx: u32,
-        label: String,
-    },
-    Market {
-        anchor_location_idx: u32,
-        label: String,
-    },
-    Location {
-        location_idx: u32,
-        label: String,
-    },
+    Country { country_idx: u32, label: String },
+    Market { market_id: u32, label: String },
+    Location { location_idx: u32, label: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -254,6 +245,7 @@ pub struct DiplomacySection {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryRef {
+    pub country_idx: u32,
     pub anchor_location_idx: u32,
     pub tag: String,
     pub name: String,
@@ -280,6 +272,7 @@ pub enum EntityRef {
     Country(CountryRef),
     #[serde(rename_all = "camelCase")]
     Market {
+        market_id: u32,
         anchor_location_idx: u32,
         name: String,
         color_hex: String,

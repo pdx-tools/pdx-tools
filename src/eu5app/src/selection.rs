@@ -312,6 +312,22 @@ impl<D: LocationData> SelectionAdapter<D> {
         }
     }
 
+    pub fn resolve_by_country_id(&self, owner: RealCountryId) -> FnvHashSet<LocationIdx> {
+        self.data
+            .iter_locations()
+            .filter(|(_, info)| info.owner == Some(owner))
+            .map(|(idx, _)| idx)
+            .collect()
+    }
+
+    pub fn resolve_by_market_id(&self, market: MarketId) -> FnvHashSet<LocationIdx> {
+        self.data
+            .iter_locations()
+            .filter(|(_, info)| info.market == Some(market))
+            .map(|(idx, _)| idx)
+            .collect()
+    }
+
     pub fn resolve_by_owner(&self, clicked_idx: LocationIdx) -> FnvHashSet<LocationIdx> {
         let Some(owner) = self.data.location_info(clicked_idx).owner else {
             return FnvHashSet::default();

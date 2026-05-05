@@ -261,12 +261,12 @@ export const createGame = async (
     ) => {
       selectionCallback = callback;
     },
-    selectCountry: (locationIdx: number) => afterMutation(app.select_country(locationIdx).gradient),
-    addCountry: (locationIdx: number) => afterMutation(app.add_country(locationIdx)),
-    removeCountry: (locationIdx: number) => afterMutation(app.remove_country(locationIdx)),
-    selectMarket: (locationIdx: number) => afterMutation(app.select_market(locationIdx).gradient),
-    addMarket: (locationIdx: number) => afterMutation(app.add_market(locationIdx)),
-    removeMarket: (locationIdx: number) => afterMutation(app.remove_market(locationIdx)),
+    selectCountry: (countryIdx: number) => afterMutation(app.select_country(countryIdx).gradient),
+    addCountry: (countryIdx: number) => afterMutation(app.add_country(countryIdx)),
+    removeCountry: (countryIdx: number) => afterMutation(app.remove_country(countryIdx)),
+    selectMarket: (marketId: number) => afterMutation(app.select_market(marketId).gradient),
+    addMarket: (marketId: number) => afterMutation(app.add_market(marketId)),
+    removeMarket: (marketId: number) => afterMutation(app.remove_market(marketId)),
     setFocusedLocation: (locationIdx: number) =>
       afterMutation(app.set_focused_location(locationIdx).gradient),
     clearFocus: () => afterMutation(app.clear_focus()),
@@ -277,20 +277,20 @@ export const createGame = async (
       return app.get_state_efficacy();
     },
 
-    getCountryProfile: (anchorLocationIdx: number): CountryProfile | null => {
-      return app.get_country_profile(anchorLocationIdx) ?? null;
+    getCountryProfile: (countryIdx: number): CountryProfile | null => {
+      return app.get_country_profile(countryIdx) ?? null;
     },
-    getCountryPopulationProfile: (anchorLocationIdx: number): CountryPopulationProfile | null => {
-      return app.get_country_population_profile(anchorLocationIdx) ?? null;
+    getCountryPopulationProfile: (countryIdx: number): CountryPopulationProfile | null => {
+      return app.get_country_population_profile(countryIdx) ?? null;
     },
-    getMarketProfile: (anchorLocationIdx: number): MarketProfile | null => {
-      return app.get_market_profile(anchorLocationIdx) ?? null;
+    getMarketProfile: (marketId: number): MarketProfile | null => {
+      return app.get_market_profile(marketId) ?? null;
     },
-    getMarketGoodsProfile: (anchorLocationIdx: number): ScopedGoodSummary[] => {
-      return app.get_market_goods_profile(anchorLocationIdx);
+    getMarketGoodsProfile: (marketId: number): ScopedGoodSummary[] => {
+      return app.get_market_goods_profile(marketId);
     },
-    getMarketLocationsProfile: (anchorLocationIdx: number): MarketProductionLocationSummary[] => {
-      return app.get_market_locations_profile(anchorLocationIdx);
+    getMarketLocationsProfile: (marketId: number): MarketProductionLocationSummary[] => {
+      return app.get_market_locations_profile(marketId);
     },
     getLocationProfile: (locationIdx: number): LocationProfile | null => {
       return app.get_location_profile(locationIdx) ?? null;

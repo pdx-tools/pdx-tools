@@ -106,6 +106,7 @@ function PossibleTaxScatterChart({ countries }: { countries: CountryPossibleTax[
         avgPossibleTax: c.avgPossibleTax,
         totalPopulation: c.totalPopulation,
         color: c.country.colorHex,
+        id: c.country.countryIdx,
         anchorLocationIdx: c.country.anchorLocationIdx,
       })),
     [countries],
@@ -197,7 +198,9 @@ function PossibleTaxScatterChart({ countries }: { countries: CountryPossibleTax[
     getTarget: (params) => {
       if (Array.isArray(params.data)) return null;
       const country = params.data as (typeof scatterData)[number] | undefined;
-      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
+      return country
+        ? { id: country.id, anchorLocationIdx: country.anchorLocationIdx, label: country.name }
+        : null;
     },
   });
 

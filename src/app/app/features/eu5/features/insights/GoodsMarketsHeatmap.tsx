@@ -38,12 +38,12 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
 
   const goodIndex = useMemo(() => new Map(topGoods.map((g, i) => [g.name, i])), [topGoods]);
   const marketIndex = useMemo(
-    () => new Map(topMarkets.map((m, i) => [m.anchorLocationIdx, i])),
+    () => new Map(topMarkets.map((m, i) => [m.marketId, i])),
     [topMarkets],
   );
 
   const filteredCells = useMemo(() => {
-    return cells.filter((c) => goodIndex.has(c.good) && marketIndex.has(c.marketAnchorLocationIdx));
+    return cells.filter((c) => goodIndex.has(c.good) && marketIndex.has(c.marketId));
   }, [cells, goodIndex, marketIndex]);
 
   const maxAbs = useMemo(() => {
@@ -58,7 +58,7 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
   const seriesData = useMemo(
     () =>
       filteredCells.map((c) => {
-        const x = marketIndex.get(c.marketAnchorLocationIdx) ?? 0;
+        const x = marketIndex.get(c.marketId) ?? 0;
         const y = goodIndex.get(c.good) ?? 0;
         return [x, y, c.imbalanceValue];
       }),
@@ -123,9 +123,7 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
           if (idx == null) return "";
           const c = filteredCells[idx];
           if (!c) return "";
-          const marketName =
-            topMarkets.find((m) => m.anchorLocationIdx === c.marketAnchorLocationIdx)?.centerName ??
-            "";
+          const marketName = topMarkets.find((m) => m.marketId === c.marketId)?.centerName ?? "";
           return [
             `<strong>${escapeEChartsHtml(c.good)}</strong>`,
             `<em>${escapeEChartsHtml(marketName)}</em>`,
@@ -157,7 +155,11 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
       const idx = params.dataIndex;
       const cell = idx == null ? null : filteredCells[idx];
       return cell
-        ? { anchorLocationIdx: cell.marketAnchorLocationIdx, label: cell.marketName }
+        ? {
+            id: cell.marketId,
+            anchorLocationIdx: cell.marketAnchorLocationIdx,
+            label: cell.marketName,
+          }
         : null;
     },
   });
