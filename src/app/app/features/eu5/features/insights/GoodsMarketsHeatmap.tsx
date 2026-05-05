@@ -111,8 +111,8 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
         textStyle: { color: tickColor, fontSize: 10 },
         inRange: {
           color: isDark
-            ? ["#38bdf8", "#0ea5e9", "#1e293b", "#f97316", "#ef4444"]
-            : ["#0ea5e9", "#7dd3fc", "#f1f5f9", "#fb923c", "#dc2626"],
+            ? ["#ef4444", "#f97316", "#1e293b", "#0ea5e9", "#38bdf8"]
+            : ["#dc2626", "#fb923c", "#f1f5f9", "#7dd3fc", "#0ea5e9"],
         },
       },
       tooltip: {

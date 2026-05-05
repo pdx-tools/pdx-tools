@@ -118,7 +118,7 @@ function SummaryTable({
         return (
           <div key={row.name} className="flex items-center gap-2 rounded px-2 py-1">
             <GoodDot color={row.colorHex} />
-            <span className="w-28 shrink-0 truncate text-xs font-semibold text-game-ink-100">
+            <span className="w-20 shrink-0 truncate text-xs font-semibold text-game-ink-100">
               {row.name}
             </span>
             <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-game-panel-hover">
@@ -127,10 +127,10 @@ function SummaryTable({
                 style={{ width: `${barPct}%`, color: row.colorHex || "#64748b" }}
               />
             </div>
-            <span className="w-16 shrink-0 text-right text-xs font-semibold text-game-ink-100">
+            <span className="w-8 shrink-0 text-right text-xs font-semibold text-game-ink-100">
               {metric === "units" ? formatFloat(primary, 1) : `$${formatInt(primary)}`}
             </span>
-            <span className="text-game-ink-400 w-16 shrink-0 text-right text-xs">
+            <span className="text-game-ink-400 w-8 shrink-0 text-right text-xs">
               {metric === "units" ? `$${formatInt(secondary)}` : formatFloat(secondary, 1)}
             </span>
           </div>
