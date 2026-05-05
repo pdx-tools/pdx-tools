@@ -11,7 +11,7 @@ use tsify::Tsify;
 pub struct Hoi4Metadata {
     pub date: Hoi4Date,
     pub is_meltable: bool,
-    pub player: String,
+    pub player: Option<String>,
     pub countries: Vec<CountryTag>,
 }
 

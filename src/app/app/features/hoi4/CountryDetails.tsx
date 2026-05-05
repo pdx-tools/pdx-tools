@@ -6,10 +6,21 @@ import { Alert } from "@/components/Alert";
 
 export const CountryDetails = () => {
   const meta = hoi4.useMeta();
-  const [selected, setSelected] = useState(meta.player);
+  const [selected, setSelected] = useState<string | undefined>(
+    () => meta.player ?? meta.countries[0],
+  );
 
   const { data, error } = useHoi4Worker(
-    useCallback(async (worker) => worker.countryDetails(selected), [selected]),
+    useCallback(
+      async (worker) => {
+        if (!selected) {
+          return undefined;
+        }
+
+        return worker.countryDetails(selected);
+      },
+      [selected],
+    ),
   );
 
   return (
