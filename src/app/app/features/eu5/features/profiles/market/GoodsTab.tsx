@@ -204,12 +204,12 @@ function ImportExportSummary({
   );
 }
 
-export function MarketGoodsTabContent({ anchorLocationIdx }: { anchorLocationIdx: number }) {
+export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
   const [selectedGoodName, setSelectedGoodName] = useState<string | null>(null);
   const [metric, setMetric] = useState<GoodsPressureMetric>("units");
   const { data: goods, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getMarketGoodsProfile(anchorLocationIdx),
-    [anchorLocationIdx],
+    (engine) => engine.trigger.getMarketGoodsProfile(marketId),
+    [marketId],
   );
 
   const sortedGoods = useMemo(

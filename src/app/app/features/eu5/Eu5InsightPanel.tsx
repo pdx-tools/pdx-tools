@@ -119,7 +119,8 @@ function PanelContentInner() {
 
 function profileIdentityKey(profile: ActiveProfileIdentity) {
   if (profile.kind === "location") return `location:${profile.location_idx}`;
-  return `${profile.kind}:${profile.anchor_location_idx}`;
+  if (profile.kind === "country") return `country:${profile.country_idx}`;
+  return `market:${profile.market_id}`;
 }
 
 function EmptyInsightState() {
@@ -170,34 +171,27 @@ function ProfilePanelTitle({ identity }: { identity: ActiveProfileIdentity }) {
     );
   }
 
-  return (
-    <EntityPanelTitle
-      kind={identity.kind}
-      anchorLocationIdx={identity.anchor_location_idx}
-      fallbackLabel={identity.label}
-    />
-  );
+  const id = identity.kind === "country" ? identity.country_idx : identity.market_id;
+  return <EntityPanelTitle kind={identity.kind} id={id} fallbackLabel={identity.label} />;
 }
 
 function EntityPanelTitle({
   kind,
-  anchorLocationIdx,
+  id,
   fallbackLabel,
 }: {
   kind: "country" | "market";
-  anchorLocationIdx: number;
+  id: number;
   fallbackLabel: string;
 }) {
   const { data: header } = useEu5Trigger(
     (engine) => {
       if (kind === "country") {
-        return engine.trigger
-          .getCountryProfile(anchorLocationIdx)
-          .then((profile) => profile?.header);
+        return engine.trigger.getCountryProfile(id).then((profile) => profile?.header);
       }
-      return engine.trigger.getMarketProfile(anchorLocationIdx).then((profile) => profile?.header);
+      return engine.trigger.getMarketProfile(id).then((profile) => profile?.header);
     },
-    [anchorLocationIdx, kind],
+    [id, kind],
   );
 
   if (!header) {

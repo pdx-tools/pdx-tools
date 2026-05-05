@@ -33,10 +33,11 @@ export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
 
   const topProfile =
     nav.top?.kind === "profile" || nav.top?.kind === "focus" ? nav.top.profile : null;
-  const activeProfileIdx = topProfile?.kind === "country" ? topProfile.anchor_location_idx : null;
+  const activeProfileIdx = topProfile?.kind === "country" ? topProfile.country_idx : null;
 
   const handleOpen = (entity: EntityRef) => {
-    nav.pushMany([entityProfileEntry(entity.kind, entity.anchorLocationIdx, entity.name)]);
+    const typedId = entity.kind === "country" ? entity.countryIdx : entity.marketId;
+    nav.pushMany([entityProfileEntry(entity.kind, typedId, entity.name)]);
     panToEntity(entity.anchorLocationIdx);
   };
 
@@ -78,7 +79,9 @@ export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
             entityRef={data.overlord}
             metrics={data.overlordMetrics}
             label={data.overlordSubjectType ? `${data.overlordSubjectType} of` : undefined}
-            isActive={data.overlord.anchorLocationIdx === activeProfileIdx}
+            isActive={
+              data.overlord.kind === "country" && data.overlord.countryIdx === activeProfileIdx
+            }
             onOpen={() => handleOpen(data.overlord!)}
           />
         </GroupSection>
@@ -88,11 +91,11 @@ export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
         <GroupSection key={type} label={pluralize(type, subjects.length)}>
           {subjects.map((s) => (
             <EntityMetricRow
-              key={`${s.entity.anchorLocationIdx}`}
+              key={`${s.entity.kind === "country" ? s.entity.countryIdx : s.entity.marketId}`}
               entityRef={s.entity}
               metrics={s.metrics}
               libertyDesire={s.libertyDesire}
-              isActive={s.entity.anchorLocationIdx === activeProfileIdx}
+              isActive={s.entity.kind === "country" && s.entity.countryIdx === activeProfileIdx}
               onOpen={() => handleOpen(s.entity)}
             />
           ))}

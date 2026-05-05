@@ -112,17 +112,16 @@ function EntityLinkButton({
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
 
+    const typedId = entity.kind === "country" ? entity.countryIdx : entity.marketId;
     if (event.altKey) {
       void (entity.kind === "country"
-        ? engine.trigger.removeCountry(entity.anchorLocationIdx)
-        : engine.trigger.removeMarket(entity.anchorLocationIdx));
+        ? engine.trigger.removeCountry(typedId)
+        : engine.trigger.removeMarket(typedId));
       return;
     }
 
-    nav.pushMany(
-      [entityProfileEntry(entity.kind, entity.anchorLocationIdx, entity.name)],
-      backLabel,
-    );
+    console.log(entityProfileEntry(entity.kind, typedId, entity.name));
+    nav.pushMany([entityProfileEntry(entity.kind, typedId, entity.name)], backLabel);
     panToEntity(entity.anchorLocationIdx);
   };
 

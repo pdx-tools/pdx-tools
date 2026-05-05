@@ -131,17 +131,17 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
 }
 
 export function CountryPopulationTabContent({
-  anchorLocationIdx,
+  countryIdx,
   locations,
   historicalPopulation,
 }: {
-  anchorLocationIdx: number;
+  countryIdx: number;
   locations: LocationRow[];
   historicalPopulation: number[];
 }) {
   const { data, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getCountryPopulationProfile(anchorLocationIdx),
-    [anchorLocationIdx],
+    (engine) => engine.trigger.getCountryPopulationProfile(countryIdx),
+    [countryIdx],
   );
   const concentration = useMemo(() => concentrationFromLocations(locations), [locations]);
 

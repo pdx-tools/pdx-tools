@@ -43,18 +43,15 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
 
   const topProfile =
     nav.top?.kind === "profile" || nav.top?.kind === "focus" ? nav.top.profile : null;
-  const activeProfileIdx = topProfile?.kind === "country" ? topProfile.anchor_location_idx : null;
+  const activeProfileIdx = topProfile?.kind === "country" ? topProfile.country_idx : null;
 
   const handleOpenProfile = (row: PoliticalWorldRow) => {
-    nav.pushMany(
-      [countryProfileEntry(row.country.anchorLocationIdx, row.country.name)],
-      BACK_LABEL,
-    );
+    nav.pushMany([countryProfileEntry(row.country.countryIdx, row.country.name)], BACK_LABEL);
     panToEntity(row.country.anchorLocationIdx);
   };
 
   const handleRemoveCountry = async (row: PoliticalWorldRow) => {
-    await engine.trigger.removeCountry(row.country.anchorLocationIdx);
+    await engine.trigger.removeCountry(row.country.countryIdx);
   };
 
   let hasRenderedSeparator = false;
@@ -85,7 +82,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
       {rows.map((row) => {
         const showSeparator = row.ordinalRank > 10 && !hasRenderedSeparator;
         if (showSeparator) hasRenderedSeparator = true;
-        const isActive = row.country.anchorLocationIdx === activeProfileIdx;
+        const isActive = row.country.countryIdx === activeProfileIdx;
 
         return (
           <React.Fragment key={`${row.country.tag}-${row.ordinalRank}`}>

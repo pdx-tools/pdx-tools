@@ -876,7 +876,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
         [...markets]
           .sort((a, b) => b.marketValue - a.marketValue)
           .slice(0, 8)
-          .map((m) => m.anchorLocationIdx),
+          .map((m) => m.marketId),
       ),
     [markets],
   );
@@ -951,7 +951,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
             formatter: (params) => {
               const d = markets[params.dataIndex];
               if (!d) return "";
-              return topMarkets.has(d.anchorLocationIdx) || markets.length <= 10
+              return topMarkets.has(d.marketId) || markets.length <= 10
                 ? d.centerName.replace(/ Market$/, "")
                 : "";
             },
@@ -973,7 +973,11 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
       const dataIndex = params.dataIndex;
       const market = dataIndex == null ? null : markets[dataIndex];
       return market
-        ? { anchorLocationIdx: market.anchorLocationIdx, label: market.centerName }
+        ? {
+            id: market.marketId,
+            anchorLocationIdx: market.anchorLocationIdx,
+            label: market.centerName,
+          }
         : null;
     },
   });

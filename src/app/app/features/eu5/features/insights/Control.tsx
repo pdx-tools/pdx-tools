@@ -148,6 +148,7 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
           bandMap[seg.band] = seg.lostDevelopment;
         }
         return {
+          id: c.country.countryIdx,
           anchorLocationIdx: c.country.anchorLocationIdx,
           name: c.country.name,
           tag: c.country.tag,
@@ -249,7 +250,9 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
     backLabel: BACK_LABEL,
     getTarget: (params) => {
       const country = params.data as (typeof rows)[number] | undefined;
-      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
+      return country
+        ? { id: country.id, anchorLocationIdx: country.anchorLocationIdx, label: country.name }
+        : null;
     },
   });
 
@@ -279,6 +282,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
         weightedAvgControl: c.weightedAvgControl,
         locationCount: c.locationCount,
         colorHex: c.country.colorHex,
+        id: c.country.countryIdx,
         anchorLocationIdx: c.country.anchorLocationIdx,
       })),
     [countries],
@@ -379,7 +383,9 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
     getTarget: (params) => {
       if (Array.isArray(params.data)) return null;
       const country = params.data as (typeof scatterData)[number] | undefined;
-      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
+      return country
+        ? { id: country.id, anchorLocationIdx: country.anchorLocationIdx, label: country.name }
+        : null;
     },
   });
 

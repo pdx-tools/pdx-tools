@@ -163,7 +163,13 @@ function PopulationHistoryMultiChart({ countries }: { countries: ScopedCountryPo
     backLabel: BACK_LABEL,
     getTarget: (params) => {
       const c = params.seriesIndex != null ? filtered[params.seriesIndex] : null;
-      return c ? { anchorLocationIdx: c.country.anchorLocationIdx, label: c.country.name } : null;
+      return c
+        ? {
+            id: c.country.countryIdx,
+            anchorLocationIdx: c.country.anchorLocationIdx,
+            label: c.country.name,
+          }
+        : null;
     },
   });
 
@@ -267,6 +273,7 @@ export function PopulationInsight() {
 
 type CountrySpineDatum = ScopedCountryPopulation & {
   name: string;
+  id: number;
   anchorLocationIdx: number;
   rural: number;
   town: number;
@@ -320,6 +327,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
       countries.slice(0, COUNTRY_CAP).map((country) => ({
         ...country,
         name: country.country.name,
+        id: country.country.countryIdx,
         anchorLocationIdx: country.country.anchorLocationIdx,
         rural: rankValue(country, 0),
         town: rankValue(country, 1),
@@ -404,7 +412,9 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
     getTarget: (params) => {
       const idx = params.dataIndex;
       const country = idx == null ? null : rows[idx];
-      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
+      return country
+        ? { id: country.id, anchorLocationIdx: country.anchorLocationIdx, label: country.name }
+        : null;
     },
   });
 

@@ -219,7 +219,13 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
     getTarget: (params) => {
       const dataIndex = params.dataIndex;
       const x = dataIndex == null ? null : sorted[dataIndex];
-      return x ? { anchorLocationIdx: x.country.anchorLocationIdx, label: x.country.name } : null;
+      return x
+        ? {
+            id: x.country.countryIdx,
+            anchorLocationIdx: x.country.anchorLocationIdx,
+            label: x.country.name,
+          }
+        : null;
     },
   });
 
@@ -362,7 +368,13 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
     getTarget: (params) => {
       const dataIndex = params.dataIndex;
       const country = dataIndex == null ? null : countries[dataIndex]?.country;
-      return country ? { anchorLocationIdx: country.anchorLocationIdx, label: country.name } : null;
+      return country
+        ? {
+            id: country.countryIdx,
+            anchorLocationIdx: country.anchorLocationIdx,
+            label: country.name,
+          }
+        : null;
     },
   });
 
