@@ -1,3 +1,37 @@
+.root {
+  color-scheme: dark;
+  color: var(--game-ink-300);
+  --eu5-table-border: rgb(75 85 99);
+  --eu5-table-control: rgb(51 65 85);
+  --eu5-table-control-hover: rgb(71 85 105);
+  --eu5-table-row-hover: rgb(75 85 99 / 50%);
+  --eu5-table-text: rgb(226 232 240);
+}
+
+.root :global(:is(th, tr, input, button, [role="combobox"])) {
+  border-color: var(--eu5-table-border);
+}
+
+.root :global(:is(th, input, button, [role="combobox"])) {
+  color: var(--eu5-table-text);
+}
+
+.root :global(:is(input, button.border, td.bg-gray-50, th.bg-blue-100)) {
+  background-color: var(--eu5-table-control);
+}
+
+.root :global(:is(tbody tr:hover, tbody tr[data-state="selected"])) {
+  background-color: var(--eu5-table-row-hover);
+}
+
+.root :global(:is(button.border:hover, button.border:focus-visible, button.border:active)) {
+  background-color: var(--eu5-table-control-hover);
+}
+
+.root :global(input::placeholder) {
+  color: rgb(148 163 184);
+}
+
 .root > div:last-child {
   flex-wrap: wrap;
   gap: 0.5rem;
