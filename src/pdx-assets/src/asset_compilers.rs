@@ -21,6 +21,7 @@ pub struct CompilationOutput {
 pub struct PackageOptions {
     pub minimal: bool,
     pub dry_run: bool,
+    pub game_version: Option<String>,
 }
 
 impl PackageOptions {
@@ -28,6 +29,7 @@ impl PackageOptions {
         Self {
             dry_run: true,
             minimal: true,
+            game_version: None,
         }
     }
 }
@@ -66,8 +68,10 @@ impl GameAssetCompiler for Eu5AssetCompiler {
         out_dir: &Path,
         options: &PackageOptions,
     ) -> Result<CompilationOutput> {
-        let game_version = crate::eu5::game_version::extract_game_version(provider)
-            .context("Unable to extract eu5 game version")?;
+        let game_version = options
+            .game_version
+            .clone()
+            .context("EU5 requires --version to be specified (caesar_branch.txt no longer contains a parseable version)")?;
 
         crate::eu5::compiler::compile_game_bundle(
             provider,

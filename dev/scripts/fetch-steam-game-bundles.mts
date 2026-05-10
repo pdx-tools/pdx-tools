@@ -10,7 +10,7 @@ type Game = "eu4" | "eu5";
 type BundleTarget = {
   game: Game;
   branch?: string;
-  expectedBundle: string;
+  version: string;
 };
 
 const __filename = fileURLToPath(import.meta.url);
@@ -25,18 +25,18 @@ const pdxAssetsBinary = join(
 );
 
 const targets: BundleTarget[] = [
-  { game: "eu4", branch: "1.29.6", expectedBundle: "eu4-1.29.zip" },
-  { game: "eu4", branch: "1.30.6", expectedBundle: "eu4-1.30.zip" },
-  { game: "eu4", branch: "1.31.6", expectedBundle: "eu4-1.31.zip" },
-  { game: "eu4", branch: "1.32.2", expectedBundle: "eu4-1.32.zip" },
-  { game: "eu4", branch: "1.33.3", expectedBundle: "eu4-1.33.zip" },
-  { game: "eu4", branch: "1.34.5", expectedBundle: "eu4-1.34.zip" },
-  { game: "eu4", branch: "1.35.6", expectedBundle: "eu4-1.35.zip" },
-  { game: "eu4", branch: "1.36.2", expectedBundle: "eu4-1.36.zip" },
-  { game: "eu4", expectedBundle: "eu4-1.37.zip" },
-  { game: "eu5", branch: "1.0.11", expectedBundle: "eu5-1.0.zip" },
-  { game: "eu5", branch: "1.1.0", expectedBundle: "eu5-1.1.zip" },
-  { game: "eu5", expectedBundle: "eu5-1.2.zip" },
+  { game: "eu4", branch: "1.29.6", version: "1.29" },
+  { game: "eu4", branch: "1.30.6", version: "1.30" },
+  { game: "eu4", branch: "1.31.6", version: "1.31" },
+  { game: "eu4", branch: "1.32.2", version: "1.32" },
+  { game: "eu4", branch: "1.33.3", version: "1.33" },
+  { game: "eu4", branch: "1.34.5", version: "1.34" },
+  { game: "eu4", branch: "1.35.6", version: "1.35" },
+  { game: "eu4", branch: "1.36.2", version: "1.36" },
+  { game: "eu4", version: "1.37" },
+  { game: "eu5", branch: "1.0.11", version: "1.0" },
+  { game: "eu5", branch: "1.1.0", version: "1.1" },
+  { game: "eu5", version: "1.2" },
 ];
 
 type Options = {
@@ -161,7 +161,7 @@ const installDirFor = (target: BundleTarget) =>
   join(projectRoot, "assets", "steam", "tmp", target.game, labelFor(target));
 
 const bundlePathFor = (target: BundleTarget) =>
-  join(projectRoot, "assets", "game-bundles", target.expectedBundle);
+  join(projectRoot, "assets", "game-bundles", `${target.game}-${target.version}.zip`);
 
 const fetchArgsFor = (target: BundleTarget, installDir: string, username: string) => {
   const args = [
@@ -209,9 +209,7 @@ const main = async () => {
       await run(pdxAssetsBinary, fetchArgsFor(target, installDir, options.username), {
         dryRun: options.dryRun,
       });
-      await run(pdxAssetsBinary, ["bundle", "--game", target.game, installDir, gameBundlesDir], {
-        dryRun: options.dryRun,
-      });
+      await run(pdxAssetsBinary, ["bundle", "--game", target.game, "--version", target.version, installDir, gameBundlesDir], { dryRun: options.dryRun });
     } finally {
       if (!options.keepInstalls) {
         if (options.dryRun) {
