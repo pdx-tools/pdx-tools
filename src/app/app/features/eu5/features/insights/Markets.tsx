@@ -5,6 +5,7 @@ import type { EChartsOption } from "@/components/viz";
 import type { MarketScopeSummary, ScopedGoodSummary, ScopedMarketSummary } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
+import { goodsIconHtml } from "../../components/icons/eu5IconHtml";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
@@ -804,7 +805,7 @@ export function GoodsPriceVsBaseChart({
           const pct =
             ((d.value[0] as number) >= 0 ? "+" : "") + formatFloat(d.value[0] as number, 1);
           return [
-            `<strong>${escapeEChartsHtml(d.name)}</strong>`,
+            `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle">${goodsIconHtml(d.name)}<strong>${escapeEChartsHtml(d.name)}</strong></span>`,
             `Current Price: ${formatFloat(d.value[1] as number, 3)}`,
             `Base Price: ${formatFloat(d.base, 3)}`,
             `vs Base: ${pct}%`,

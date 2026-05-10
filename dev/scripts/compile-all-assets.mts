@@ -93,32 +93,36 @@ async function packageAll() {
     gameGroups.set(game, group);
   }
 
-  // EU4 supports --minimal to skip shared assets for older patches.
-  // The latest EU4 bundle gets a full compile, earlier ones get --minimal.
-  // Other games (e.g. EU5) don't use --minimal, so all bundles compile fully.
-  const eu4Bundles = gameGroups.get("eu4") ?? [];
-  const latestEu4 = eu4Bundles.pop();
+  // EU4 and EU5 support --minimal to skip shared UI assets for older patches.
+  // The latest bundle per game gets a full compile; earlier ones get --minimal.
+  const gamesWithMinimal = ["eu4", "eu5"];
 
   // Bundle filenames are {game}-{major}.{minor}.zip — extract the version portion.
   const versionOf = (bundle: string) => bundle.slice(bundle.indexOf('-') + 1, -4);
 
-  // Process the latest EU4 bundle first (full compile with shared assets)
-  if (latestEu4 !== undefined) {
-    const bundlePath = join(gameBundlesDir, latestEu4);
-    console.log(`Processing ${latestEu4} (latest eu4 bundle)`);
-    await execCommand(pdxAssetsBinary, ['compile', '--version', versionOf(latestEu4), ...opts, bundlePath]);
+  // For each game that supports --minimal, process the latest bundle first.
+  for (const game of gamesWithMinimal) {
+    const bundles = gameGroups.get(game) ?? [];
+    const latest = bundles.pop();
+    if (latest !== undefined) {
+      const bundlePath = join(gameBundlesDir, latest);
+      console.log(`Processing ${latest} (latest ${game} bundle)`);
+      await execCommand(pdxAssetsBinary, ['compile', '--version', versionOf(latest), ...opts, bundlePath]);
+    }
   }
 
-  // Process older EU4 bundles with --minimal and all non-EU4 bundles in parallel
+  // Process older bundles with --minimal and all remaining games in parallel
   const remainingTasks: Promise<unknown>[] = [];
 
-  for (const bundle of eu4Bundles) {
-    const bundlePath = join(gameBundlesDir, bundle);
-    remainingTasks.push(execCommand(pdxAssetsBinary, ['compile', '--minimal', '--version', versionOf(bundle), ...opts, bundlePath]));
+  for (const game of gamesWithMinimal) {
+    for (const bundle of gameGroups.get(game) ?? []) {
+      const bundlePath = join(gameBundlesDir, bundle);
+      remainingTasks.push(execCommand(pdxAssetsBinary, ['compile', '--minimal', '--version', versionOf(bundle), ...opts, bundlePath]));
+    }
   }
 
   for (const [game, bundles] of gameGroups) {
-    if (game === "eu4") continue;
+    if (gamesWithMinimal.includes(game)) continue;
     for (const bundle of bundles) {
       const bundlePath = join(gameBundlesDir, bundle);
       remainingTasks.push(execCommand(pdxAssetsBinary, ['compile', '--version', versionOf(bundle), ...opts, bundlePath]));

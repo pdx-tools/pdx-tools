@@ -307,6 +307,11 @@ impl ImageProcessor for ImageMagickProcessor {
 
             // Geometry if specified
             if let Some(geom) = geometry {
+                // Use point filter for pixel art scaling to preserve hard edges
+                cmd.arg("-filter");
+                cmd.arg("point");
+
+                // Set geometry for each tile
                 cmd.arg("-geometry");
                 cmd.arg(format!("{}x{}", geom.width, geom.height));
             }
