@@ -9,7 +9,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = resolve(__dirname, "..", "..");
 const isWindows = process.platform === "win32";
-const pdxAssetsBinary = join(projectRoot, "target", "release", isWindows ? "pdx-assets.exe" : "pdx-assets");
+const pdxAssetsBinary = join(
+  projectRoot,
+  "target",
+  "release",
+  isWindows ? "pdx-assets.exe" : "pdx-assets",
+);
 
 // Helper functions
 const exists = async (path: string) => {
@@ -22,7 +27,7 @@ const exists = async (path: string) => {
 };
 
 const execCommand = async (command: string, args: string[] = [], options = {}) => {
-  console.log(`Executing: ${command} ${args.join(' ')}`);
+  console.log(`Executing: ${command} ${args.join(" ")}`);
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: projectRoot,
@@ -44,9 +49,20 @@ const execCommand = async (command: string, args: string[] = [], options = {}) =
   });
 };
 
+type Game = "eu4" | "eu5";
+
+const gameFromMise = (): Game | undefined => {
+  const game = process.env.usage_game;
+  if (game === undefined || game === "") return undefined;
+  if (game === "eu4" || game === "eu5") return game;
+  throw new Error(`Invalid usage_game from mise: ${game}`);
+};
+
+const compileArgsFromTask = () => process.argv.slice(2);
+
 async function packageAll() {
-  const args = process.argv.slice(2);
-  const opts = args.filter((arg) => arg !== "--dry-run");
+  const filterGame = gameFromMise();
+  const opts = compileArgsFromTask();
 
   const gameBundlesDir = join(projectRoot, "assets/game-bundles");
 
@@ -88,6 +104,7 @@ async function packageAll() {
   for (const bundle of zipBundles) {
     const match = bundle.match(/^([a-z0-9]+)-/);
     const game = match?.[1] ?? "unknown";
+    if (filterGame !== undefined && game !== filterGame) continue;
     const group = gameGroups.get(game) ?? [];
     group.push(bundle);
     gameGroups.set(game, group);
@@ -98,7 +115,7 @@ async function packageAll() {
   const gamesWithMinimal = ["eu4", "eu5"];
 
   // Bundle filenames are {game}-{major}.{minor}.zip — extract the version portion.
-  const versionOf = (bundle: string) => bundle.slice(bundle.indexOf('-') + 1, -4);
+  const versionOf = (bundle: string) => bundle.slice(bundle.indexOf("-") + 1, -4);
 
   // For each game that supports --minimal, process the latest bundle first.
   for (const game of gamesWithMinimal) {
@@ -107,7 +124,13 @@ async function packageAll() {
     if (latest !== undefined) {
       const bundlePath = join(gameBundlesDir, latest);
       console.log(`Processing ${latest} (latest ${game} bundle)`);
-      await execCommand(pdxAssetsBinary, ['compile', '--version', versionOf(latest), ...opts, bundlePath]);
+      await execCommand(pdxAssetsBinary, [
+        "compile",
+        "--version",
+        versionOf(latest),
+        ...opts,
+        bundlePath,
+      ]);
     }
   }
 
@@ -117,7 +140,16 @@ async function packageAll() {
   for (const game of gamesWithMinimal) {
     for (const bundle of gameGroups.get(game) ?? []) {
       const bundlePath = join(gameBundlesDir, bundle);
-      remainingTasks.push(execCommand(pdxAssetsBinary, ['compile', '--minimal', '--version', versionOf(bundle), ...opts, bundlePath]));
+      remainingTasks.push(
+        execCommand(pdxAssetsBinary, [
+          "compile",
+          "--minimal",
+          "--version",
+          versionOf(bundle),
+          ...opts,
+          bundlePath,
+        ]),
+      );
     }
   }
 
@@ -125,7 +157,15 @@ async function packageAll() {
     if (gamesWithMinimal.includes(game)) continue;
     for (const bundle of bundles) {
       const bundlePath = join(gameBundlesDir, bundle);
-      remainingTasks.push(execCommand(pdxAssetsBinary, ['compile', '--version', versionOf(bundle), ...opts, bundlePath]));
+      remainingTasks.push(
+        execCommand(pdxAssetsBinary, [
+          "compile",
+          "--version",
+          versionOf(bundle),
+          ...opts,
+          bundlePath,
+        ]),
+      );
     }
   }
 

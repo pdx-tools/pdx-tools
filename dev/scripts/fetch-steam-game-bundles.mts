@@ -83,76 +83,28 @@ const shellQuote = (value: string) => {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 };
 
-const parseArgs = (): Options => {
-  const options: Options = {
-    username: "",
-    dryRun: false,
-    force: false,
-    keepInstalls: false,
-  };
+const readBoolean = (name: string) => process.env[name] === "true";
 
-  const args = process.argv.slice(2);
-  for (let i = 0; i < args.length; i += 1) {
-    const arg = args[i];
-    switch (arg) {
-      case "--username": {
-        const username = args[i + 1];
-        if (!username) throw new Error("--username requires a value");
-        options.username = username;
-        i += 1;
-        break;
-      }
-      case "--game": {
-        const game = args[i + 1];
-        if (game !== "eu4" && game !== "eu5") {
-          throw new Error("--game requires either eu4 or eu5");
-        }
-        options.game = game;
-        i += 1;
-        break;
-      }
-      case "--dry-run":
-        options.dryRun = true;
-        break;
-      case "--force":
-        options.force = true;
-        break;
-      case "--keep-installs":
-        options.keepInstalls = true;
-        break;
-      case "--help":
-      case "-h":
-        printHelp();
-        process.exit(0);
-        break;
-      default:
-        throw new Error(`Unknown argument: ${arg}`);
-    }
-  }
-
-  const username = options.username || process.env.STEAM_USERNAME || "";
-  if (!username.trim()) {
-    throw new Error("Provide --username or set STEAM_USERNAME");
-  }
-
-  options.username = username.trim();
-  return options;
+const readGame = (): Game | undefined => {
+  const game = process.env.usage_game;
+  if (game === undefined || game === "") return undefined;
+  if (game === "eu4" || game === "eu5") return game;
+  throw new Error(`Invalid usage_game from mise: ${game}`);
 };
 
-const printHelp = () => {
-  console.log(`Fetch Steam game patches, create raw game bundles, and remove installs.
+const readOptions = (): Options => {
+  const username = process.env.usage_username ?? "";
+  if (!username.trim()) {
+    throw new Error("Provide --username or set STEAM_USERNAME through mise");
+  }
 
-Usage:
-  mise run assets:steam:bundle -- --username <steam-user>
-
-Options:
-  --username <name>  Steam username. Defaults to STEAM_USERNAME.
-  --game <eu4|eu5>   Only process targets for one game.
-  --force            Recreate bundles that already exist.
-  --keep-installs    Keep temporary game installs under assets/steam/tmp.
-  --dry-run          Print commands without executing them.
-  -h, --help         Print help.
-`);
+  return {
+    username: username.trim(),
+    game: readGame(),
+    dryRun: readBoolean("usage_dry_run"),
+    force: readBoolean("usage_force"),
+    keepInstalls: readBoolean("usage_keep_installs"),
+  };
 };
 
 const labelFor = (target: BundleTarget) => target.branch ?? "public";
@@ -182,7 +134,7 @@ const fetchArgsFor = (target: BundleTarget, installDir: string, username: string
 };
 
 const main = async () => {
-  const options = parseArgs();
+  const options = readOptions();
   const gameBundlesDir = join(projectRoot, "assets", "game-bundles");
   await mkdir(gameBundlesDir, { recursive: true });
 
@@ -209,7 +161,11 @@ const main = async () => {
       await run(pdxAssetsBinary, fetchArgsFor(target, installDir, options.username), {
         dryRun: options.dryRun,
       });
-      await run(pdxAssetsBinary, ["bundle", "--game", target.game, "--version", target.version, installDir, gameBundlesDir], { dryRun: options.dryRun });
+      await run(
+        pdxAssetsBinary,
+        ["bundle", "--game", target.game, "--version", target.version, installDir, gameBundlesDir],
+        { dryRun: options.dryRun },
+      );
     } finally {
       if (!options.keepInstalls) {
         if (options.dryRun) {
