@@ -10,7 +10,7 @@ use pdx_map::{Hemisphere, HemisphereLength, R16, R16Palette, Rgb, World, WorldLe
 use rawzip::{CompressionMethod, ReaderAt, ZipArchive, ZipArchiveEntryWayfinder};
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::Read;
 use std::sync::Arc;
 use tracing::instrument;
 
@@ -340,6 +340,7 @@ impl From<rawzip::ZipFileHeaderRecord<'_>> for ZipEntryMetadata {
 pub struct RawGameData {
     pub locations: Vec<LocationTerrain>,
     pub country_localizations: FxHashMap<String, String>,
+    pub goods_localizations: FxHashMap<String, String>,
     pub goods: FxHashMap<String, GoodData>,
 }
 
@@ -357,26 +358,24 @@ impl RawGameData {
         let locations_png_reader = fs.open_file("game/in_game/map_data/locations.png")?;
         let locations = parse_locations_data(named_locations, &default_map);
 
-        // Parse country localizations
-        let country_localizations_reader =
-            fs.open_file("game/main_menu/localization/english/country_names_l_english.yml")?;
-        let country_localizations_data = {
-            let mut buf = String::new();
-            let mut reader = BufReader::new(country_localizations_reader);
-            reader
-                .read_to_string(&mut buf)
-                .map_err(|e| GameDataError::Io(e, String::from("country_localizations")))?;
-            buf
-        };
-        let all_localizations =
-            super::parsing::parse_localization_string(&country_localizations_data);
-        let country_localizations_map = super::parsing::country_localization(&all_localizations);
-        let country_localizations = country_localizations_map.into_iter().collect();
+        let country_localizations_data =
+            fs.read_to_string("game/main_menu/localization/english/country_names_l_english.yml")?;
+        let country_localizations =
+            super::parsing::parse_country_localization(&country_localizations_data)
+                .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                .collect();
         let goods = parse_goods_from_source(fs)?;
+        let goods_localizations_data =
+            fs.read_to_string("game/main_menu/localization/english/goods_l_english.yml")?;
+        let goods_localizations = super::parsing::parse_localization(&goods_localizations_data)
+            .filter(|(key, _)| goods.contains_key(*key))
+            .map(|(k, v)| (k.to_owned(), v.to_owned()))
+            .collect();
 
         let me = Self {
             locations: locations.collect(),
             country_localizations,
+            goods_localizations,
             goods,
         };
 
@@ -389,7 +388,12 @@ impl RawGameData {
 
     pub fn into_game_data(self, textures: &PalettedTextures) -> GameData {
         let locations = textures.location_aware(self.locations);
-        GameData::with_goods(locations, self.country_localizations, self.goods)
+        GameData {
+            locations,
+            localization: self.country_localizations,
+            goods_localization: self.goods_localizations,
+            goods: self.goods,
+        }
     }
 }
 

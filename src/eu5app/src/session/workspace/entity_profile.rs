@@ -569,8 +569,13 @@ impl<'bump> Eu5Workspace<'bump> {
                     0.0
                 };
 
+                let localized = self.game_data.localized_good(good.good.to_str());
                 ScopedGoodSummary {
-                    name: good.good.to_string(),
+                    key: good.good.to_string(),
+                    name: localized
+                        .as_ref()
+                        .map(|l| l.name.clone())
+                        .unwrap_or_else(|| good.good.to_str().to_string()),
                     supply: good.supply,
                     demand: good.demand,
                     total_taken: good.total_taken,
@@ -593,14 +598,9 @@ impl<'bump> Eu5Workspace<'bump> {
                     supplied_breakdown: market_good_breakdown_entries(good.supplied),
                     demanded_breakdown: market_good_breakdown_entries(good.demanded),
                     taken_breakdown: market_good_breakdown_entries(good.taken),
-                    default_market_price: self
-                        .game_data
-                        .good(good.good.to_str())
-                        .map(|g| g.default_market_price),
-                    color_hex: self
-                        .game_data
-                        .good(good.good.to_str())
-                        .map(|g| g.color_hex.clone())
+                    default_market_price: localized.as_ref().map(|l| l.default_market_price),
+                    color_hex: localized
+                        .map(|l| l.color_hex)
                         .unwrap_or_else(|| "#888888".to_string()),
                     market_count: 1,
                     producing_location_count: producing_location_counts

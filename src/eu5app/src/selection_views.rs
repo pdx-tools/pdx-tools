@@ -276,6 +276,7 @@ pub struct GoodBreakdownEntry {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct ScopedGoodSummary {
+    pub key: String,
     pub name: String,
     pub supply: f64,
     pub demand: f64,
@@ -361,6 +362,7 @@ pub struct MarketProductionLocationSummary {
 pub struct GoodMarketBalanceCell {
     pub market_id: u32,
     pub market_name: String,
+    pub good_key: String,
     pub good: String,
     pub market_anchor_location_idx: u32,
     pub supply: f64,

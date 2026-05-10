@@ -3,7 +3,7 @@ use crate::images::{Color, Geometry, MontageRequest, OutputFormat, WebpQuality};
 use crate::{FileProvider, ImageProcessor};
 use anyhow::Result;
 use eu5app::game_data::{
-    GoodsData,
+    GoodsData, LocalizationsData,
     game_install::{GameFileSource, RawGameData},
     optimized::WorldMetadata,
 };
@@ -125,8 +125,11 @@ where
     write_entry(&mut archive, "location_lookup.bin", &locations)?;
     write_entry(
         &mut archive,
-        "country_localization.bin",
-        raw_game_data.country_localizations,
+        "localizations.bin",
+        LocalizationsData {
+            countries: raw_game_data.country_localizations,
+            goods: raw_game_data.goods_localizations,
+        },
     )?;
     write_entry(
         &mut archive,
