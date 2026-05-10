@@ -22,15 +22,7 @@ const SECTION_ORDER: Array<{ key: keyof ReleaseSection; label: string }> = [
 const rootDir = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const INDEX_PATH = path.join(rootDir, "src", "app", "public", "whats-new.json");
 const UPDATES_DIR = path.join(rootDir, "src", "app", "public", "whats-new");
-const OUTPUT_PATH = path.join(
-  rootDir,
-  "src",
-  "docs",
-  "src",
-  "content",
-  "docs",
-  "changelog.md",
-);
+const OUTPUT_PATH = path.join(rootDir, "src", "docs", "src", "content", "docs", "changelog.md");
 
 async function readJson<T>(filePath: string): Promise<T> {
   const content = await fs.readFile(filePath, "utf8");
@@ -58,9 +50,7 @@ function addList(lines: string[], items: string[], label: string): void {
   }
 }
 
-async function gatherReleases(): Promise<
-  Array<{ date: string; data: ReleaseData }>
-> {
+async function gatherReleases(): Promise<Array<{ date: string; data: ReleaseData }>> {
   const dates = await readJson<string[]>(INDEX_PATH);
   return Promise.all(
     dates.map(async (date) => ({
@@ -70,9 +60,7 @@ async function gatherReleases(): Promise<
   );
 }
 
-function buildMarkdown(
-  releases: Array<{ date: string; data: ReleaseData }>,
-): string {
+function buildMarkdown(releases: Array<{ date: string; data: ReleaseData }>): string {
   const lines: string[] = [
     "---",
     "title: Changelog",

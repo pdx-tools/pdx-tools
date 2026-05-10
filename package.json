@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "format": "oxfmt --write \"**/*.{js,jsx,ts,tsx,css}\"",
-    "format:check": "oxfmt --check \"**/*.{js,jsx,ts,tsx,css}\"",
+    "format": "oxfmt --write \"**/*.{js,jsx,ts,tsx,css,mts}\"",
+    "format:check": "oxfmt --check \"**/*.{js,jsx,ts,tsx,css,mts}\"",
     "lint": "oxlint",
     "typecheck": "tsc --build"
   },
