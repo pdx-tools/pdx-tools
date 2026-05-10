@@ -840,7 +840,11 @@ impl<'bump> Eu5Workspace<'bump> {
                 good_market_cells.push(crate::selection_views::GoodMarketBalanceCell {
                     market_id: market_id.value(),
                     market_name: self.location_name(center_idx).to_string(),
-                    good: good.good.to_string(),
+                    good_key: good.good.to_string(),
+                    good: self
+                        .game_data
+                        .localized_good_name(good.good.to_str())
+                        .to_string(),
                     market_anchor_location_idx: center_idx.value(),
                     supply: good.supply,
                     demand: good.demand,
@@ -933,17 +937,17 @@ impl<'bump> Eu5Workspace<'bump> {
                 } else {
                     0.0
                 };
+                let localized = self.game_data.localized_good(name.to_str());
                 ScopedGoodSummary {
-                    default_market_price: self
-                        .game_data
-                        .good(name.to_str())
-                        .map(|g| g.default_market_price),
-                    color_hex: self
-                        .game_data
-                        .good(name.to_str())
-                        .map(|g| g.color_hex.clone())
+                    key: name.to_string(),
+                    name: localized
+                        .as_ref()
+                        .map(|l| l.name.clone())
+                        .unwrap_or_else(|| name.to_str().to_string()),
+                    default_market_price: localized.as_ref().map(|l| l.default_market_price),
+                    color_hex: localized
+                        .map(|l| l.color_hex)
                         .unwrap_or_else(|| "#888888".to_string()),
-                    name: name.to_string(),
                     supply: agg.supply,
                     demand: agg.demand,
                     total_taken: agg.total_taken,

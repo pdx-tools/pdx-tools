@@ -1,8 +1,7 @@
 use crate::{
     GameLocation,
-    game_data::{GameData, GameDataError, GoodsData},
+    game_data::{GameData, GameDataError, GoodsData, LocalizationsData},
 };
-use eu5save::hash::FxHashMap;
 use pdx_map::R16;
 use rawzip::{ZipArchive, ZipSliceArchive};
 use serde::{Deserialize, Serialize};
@@ -26,7 +25,7 @@ impl WorldMetadata {
 pub struct OptimizedGameBundle<R: AsRef<[u8]>> {
     zip: ZipSliceArchive<R>,
     location_lookup: (u64, rawzip::ZipArchiveEntryWayfinder),
-    country_localizations: (u64, rawzip::ZipArchiveEntryWayfinder),
+    localizations: (u64, rawzip::ZipArchiveEntryWayfinder),
     game_data: (u64, rawzip::ZipArchiveEntryWayfinder),
 }
 
@@ -37,7 +36,7 @@ where
     pub fn open(data: R) -> Result<Self, GameDataError> {
         let zip = ZipArchive::from_slice(data).map_err(GameDataError::ZipAccess)?;
         let mut location_lookup_entry = None;
-        let mut country_localizations_entry = None;
+        let mut localizations_entry = None;
         let mut game_data_entry = None;
 
         for entry in zip.entries() {
@@ -47,9 +46,8 @@ where
                     location_lookup_entry =
                         Some((entry.uncompressed_size_hint(), entry.wayfinder()));
                 }
-                b"country_localization.bin" => {
-                    country_localizations_entry =
-                        Some((entry.uncompressed_size_hint(), entry.wayfinder()));
+                b"localizations.bin" => {
+                    localizations_entry = Some((entry.uncompressed_size_hint(), entry.wayfinder()));
                 }
                 b"game_data.bin" => {
                     game_data_entry = Some((entry.uncompressed_size_hint(), entry.wayfinder()));
@@ -61,8 +59,8 @@ where
         let location_lookup = location_lookup_entry.ok_or_else(|| {
             GameDataError::MissingData("location_lookup.bin not found in bundle".to_string())
         })?;
-        let country_localizations = country_localizations_entry.ok_or_else(|| {
-            GameDataError::MissingData("country_localization.bin not found in bundle".to_string())
+        let localizations = localizations_entry.ok_or_else(|| {
+            GameDataError::MissingData("localizations.bin not found in bundle".to_string())
         })?;
         let game_data = game_data_entry.ok_or_else(|| {
             GameDataError::MissingData("game_data.bin not found in bundle".to_string())
@@ -71,7 +69,7 @@ where
         Ok(Self {
             zip,
             location_lookup,
-            country_localizations,
+            localizations,
             game_data,
         })
     }
@@ -80,7 +78,7 @@ where
         let buf_size = self
             .location_lookup
             .0
-            .max(self.country_localizations.0)
+            .max(self.localizations.0)
             .max(self.game_data.0);
         let mut buf = vec![0; buf_size as usize];
 
@@ -93,14 +91,14 @@ where
         pdx_zstd::decode_to(location_entry.data(), location_buf)?;
         let locations: Vec<GameLocation> = postcard::from_bytes(location_buf)?;
 
-        // Deserialize country localizations
+        // Deserialize country and goods localizations
         let localization_entry = self
             .zip
-            .get_entry(self.country_localizations.1)
+            .get_entry(self.localizations.1)
             .map_err(GameDataError::ZipAccess)?;
-        let localization_buf = &mut buf[..self.country_localizations.0 as usize];
+        let localization_buf = &mut buf[..self.localizations.0 as usize];
         pdx_zstd::decode_to(localization_entry.data(), localization_buf)?;
-        let localization: FxHashMap<String, String> = postcard::from_bytes(localization_buf)?;
+        let localizations: LocalizationsData = postcard::from_bytes(localization_buf)?;
 
         let game_data_entry = self
             .zip
@@ -110,11 +108,12 @@ where
         pdx_zstd::decode_to(game_data_entry.data(), game_data_buf)?;
         let game_data: GoodsData = postcard::from_bytes(game_data_buf)?;
 
-        Ok(GameData::with_goods(
+        Ok(GameData {
             locations,
-            localization,
-            game_data.goods,
-        ))
+            localization: localizations.countries,
+            goods_localization: localizations.goods,
+            goods: game_data.goods,
+        })
     }
 }
 
@@ -225,11 +224,12 @@ where
 mod tests {
     use super::*;
     use crate::game_data::GoodData;
+    use eu5save::hash::FxHashMap;
     use rawzip::CompressionMethod;
     use std::io::{Cursor, Write};
 
     #[test]
-    fn optimized_bundle_reads_game_data_bin_goods() {
+    fn optimized_bundle_reads_game_data_bin_goods_and_localizations() {
         let mut goods = FxHashMap::default();
         goods.insert(
             "livestock".to_string(),
@@ -239,7 +239,15 @@ mod tests {
                 transport_cost: 1.0,
             },
         );
-        let zip = test_bundle(GoodsData { goods });
+        let mut goods_localization = FxHashMap::default();
+        goods_localization.insert("livestock".to_string(), "Livestock".to_string());
+        let zip = test_bundle(
+            GoodsData { goods },
+            LocalizationsData {
+                countries: FxHashMap::default(),
+                goods: goods_localization,
+            },
+        );
 
         let data = OptimizedGameBundle::open(zip)
             .unwrap()
@@ -249,9 +257,33 @@ mod tests {
         let livestock = data.good("livestock").unwrap();
         assert_eq!(livestock.color_hex, "#14962d");
         assert_eq!(livestock.default_market_price, 1.25);
+        let localized = data.localized_good("livestock").unwrap();
+        assert_eq!(localized.key, "livestock");
+        assert_eq!(localized.name, "Livestock");
     }
 
-    fn test_bundle(goods: GoodsData) -> Vec<u8> {
+    #[test]
+    fn optimized_bundle_falls_back_to_raw_good_key() {
+        let mut goods = FxHashMap::default();
+        goods.insert(
+            "unknown_good".to_string(),
+            GoodData {
+                color_hex: "#888888".to_string(),
+                default_market_price: 1.0,
+                transport_cost: 1.0,
+            },
+        );
+        let zip = test_bundle(GoodsData { goods }, LocalizationsData::default());
+
+        let data = OptimizedGameBundle::open(zip)
+            .unwrap()
+            .into_game_data()
+            .unwrap();
+
+        assert_eq!(data.localized_good_name("unknown_good"), "unknown_good");
+    }
+
+    fn test_bundle(goods: GoodsData, localizations: LocalizationsData) -> Vec<u8> {
         let output = Cursor::new(Vec::new());
         let mut archive = rawzip::ZipArchiveWriter::new(output);
         write_test_entry(
@@ -259,11 +291,7 @@ mod tests {
             "location_lookup.bin",
             Vec::<GameLocation>::new(),
         );
-        write_test_entry(
-            &mut archive,
-            "country_localization.bin",
-            FxHashMap::<String, String>::default(),
-        );
+        write_test_entry(&mut archive, "localizations.bin", localizations);
         write_test_entry(&mut archive, "game_data.bin", goods);
         archive.finish().unwrap().into_inner()
     }

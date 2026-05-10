@@ -129,13 +129,13 @@ function goodTooltip(d: ScopedGoodSummary): string {
 
 export function GoodsPressureChart({
   goods,
-  selectedGoodName,
+  selectedGoodKey,
   onGoodSelect,
   metric: controlledMetric,
   onMetricChange,
 }: {
   goods: ScopedGoodSummary[];
-  selectedGoodName?: string;
+  selectedGoodKey?: string;
   onGoodSelect?: (good: ScopedGoodSummary) => void;
   metric?: GoodsPressureMetric;
   onMetricChange?: (metric: GoodsPressureMetric) => void;
@@ -241,7 +241,7 @@ export function GoodsPressureChart({
           itemStyle: {
             color: (params) => {
               const d = sorted[params.dataIndex];
-              if (d?.name === selectedGoodName) return isDark ? "#67e8f9" : "#0284c7";
+              if (d?.key === selectedGoodKey) return isDark ? "#67e8f9" : "#0284c7";
               return isDark ? "#38bdf8" : "#0ea5e9";
             },
           },
@@ -255,7 +255,7 @@ export function GoodsPressureChart({
           itemStyle: {
             color: (params) => {
               const d = sorted[params.dataIndex];
-              if (d?.name === selectedGoodName) return isDark ? "#fdba74" : "#c2410c";
+              if (d?.key === selectedGoodKey) return isDark ? "#fdba74" : "#c2410c";
               return isDark ? "#f97316" : "#ea580c";
             },
           },
@@ -263,7 +263,7 @@ export function GoodsPressureChart({
         },
       ],
     };
-  }, [sorted, isDark, isValueMetric, selectedGoodName]);
+  }, [sorted, isDark, isValueMetric, selectedGoodKey]);
 
   if (!hasImbalance) {
     return (
@@ -730,11 +730,11 @@ function formatSankeyLabel(value?: string): string {
 
 export function GoodsPriceVsBaseChart({
   goods,
-  selectedGoodName,
+  selectedGoodKey,
   onGoodSelect,
 }: {
   goods: ScopedGoodSummary[];
-  selectedGoodName?: string;
+  selectedGoodKey?: string;
   onGoodSelect?: (good: ScopedGoodSummary) => void;
 }) {
   const isDark = isDarkMode();
@@ -752,12 +752,13 @@ export function GoodsPriceVsBaseChart({
     const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
     const selectedBorder = isDark ? "#f1f5f9" : "#0f172a";
     const data = filtered.map((g) => {
-      const isSelected = g.name === selectedGoodName;
+      const isSelected = g.key === selectedGoodKey;
       return {
         value: [
           ((g.weightedPrice - g.defaultMarketPrice) / g.defaultMarketPrice) * 100,
           g.weightedPrice,
         ] as [number, number],
+        key: g.key,
         name: g.name,
         color: g.colorHex,
         base: g.defaultMarketPrice,
@@ -805,7 +806,7 @@ export function GoodsPriceVsBaseChart({
           const pct =
             ((d.value[0] as number) >= 0 ? "+" : "") + formatFloat(d.value[0] as number, 1);
           return [
-            `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle">${goodsIconHtml(d.name)}<strong>${escapeEChartsHtml(d.name)}</strong></span>`,
+            `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle">${goodsIconHtml(d.key)}<strong>${escapeEChartsHtml(d.name)}</strong></span>`,
             `Current Price: ${formatFloat(d.value[1] as number, 3)}`,
             `Base Price: ${formatFloat(d.base, 3)}`,
             `vs Base: ${pct}%`,
@@ -826,7 +827,7 @@ export function GoodsPriceVsBaseChart({
         },
       ],
     };
-  }, [filtered, isDark, selectedGoodName]);
+  }, [filtered, isDark, selectedGoodKey]);
 
   if (filtered.length === 0) {
     return (

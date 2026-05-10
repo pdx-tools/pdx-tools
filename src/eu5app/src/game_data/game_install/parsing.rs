@@ -6,8 +6,7 @@ use eu5save::hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use serde::de::{self, SeqAccess, Visitor};
 use std::io::Read;
-
-use std::collections::HashMap;
+use std::sync::LazyLock;
 
 #[derive(Debug)]
 pub struct DefaultMap {
@@ -236,45 +235,25 @@ fn color_hex(rgb: [u8; 3]) -> String {
     format!("#{:02x}{:02x}{:02x}", rgb[0], rgb[1], rgb[2])
 }
 
-/// Parse a single localization file in the format:
-pub fn parse_localization_string(data: &str) -> HashMap<String, String> {
-    let quote_container = regex::Regex::new("\"(.*)\"").unwrap();
-    let mut result = HashMap::new();
+static QUOTE_RE: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new("\"(.*)\"").unwrap());
 
-    for line in data.lines().skip(1) {
+pub fn parse_localization(data: &str) -> impl Iterator<Item = (&str, &str)> + '_ {
+    data.lines().skip(1).filter_map(|line| {
         let mut splits = line.split(':');
-        if let Some(field) = splits.next() {
-            let key = field.trim();
-
-            // skip comments and blanks
-            if key.starts_with('#') || key.is_empty() {
-                continue;
-            }
-
-            if let Some(field2) = splits.next()
-                && let Some(v) = quote_container.captures(field2)
-            {
-                result.insert(String::from(key), String::from(&v[1]));
-            }
+        let key = splits.next()?.trim();
+        if key.starts_with('#') || key.is_empty() {
+            return None;
         }
-    }
-
-    result
+        let field2 = splits.next()?;
+        let v = QUOTE_RE.captures(field2)?;
+        Some((key, v.get(1)?.as_str()))
+    })
 }
 
-/// Extract country localizations from the parsed data.
-///
-/// Filters for uppercase tags and excludes adjectives (_ADJ suffix).
-pub fn country_localization(localizations: &HashMap<String, String>) -> HashMap<String, String> {
-    localizations
-        .iter()
-        .filter(|(key, _)| {
-            !key.is_empty()
-                && key.chars().all(|c| c.is_uppercase() || c == '_')
-                && !key.ends_with("_ADJ")
-        })
-        .map(|(key, value)| (key.clone(), value.clone()))
-        .collect()
+pub fn parse_country_localization(data: &str) -> impl Iterator<Item = (&str, &str)> + '_ {
+    parse_localization(data).filter(|(key, _)| {
+        key.chars().all(|c| c.is_uppercase() || c == '_') && !key.ends_with("_ADJ")
+    })
 }
 
 #[cfg(test)]
@@ -292,7 +271,9 @@ mod tests {
  DNS_ADJ: "Kalmar"
  # Comment line
 "#;
-        let parsed = parse_localization_string(data);
+        let parsed: FxHashMap<String, String> = parse_localization(data)
+            .map(|(k, v)| (k.to_owned(), v.to_owned()))
+            .collect();
         assert_eq!(parsed.get("TEU").unwrap(), "Teutonic Order");
         assert_eq!(parsed.get("TEU_ADJ").unwrap(), "Teutonic");
         assert_eq!(parsed.get("MEDICI").unwrap(), "Medici");
@@ -301,24 +282,43 @@ mod tests {
 
     #[test]
     fn test_country_localization() {
-        let mut localizations = HashMap::new();
-        localizations.insert("TEU".to_string(), "Teutonic Order".to_string());
-        localizations.insert("TEU_ADJ".to_string(), "Teutonic".to_string());
-        localizations.insert("MEDICI".to_string(), "Medici".to_string());
-        localizations.insert("MEDICI_ADJ".to_string(), "Medici".to_string());
-        localizations.insert("DNS".to_string(), "Kalmar Union".to_string());
-        localizations.insert("DNS_ADJ".to_string(), "Kalmar".to_string());
-        localizations.insert("abc".to_string(), "lowercase".to_string());
-
-        let countries = country_localization(&localizations);
+        let data = r#"l_english:
+ TEU: "Teutonic Order"
+ TEU_ADJ: "Teutonic"
+ MEDICI: "Medici"
+ MEDICI_ADJ: "Medici"
+ DNS: "Kalmar Union"
+ DNS_ADJ: "Kalmar"
+ abc: "lowercase"
+"#;
+        let countries: FxHashMap<String, String> = parse_country_localization(data)
+            .map(|(k, v)| (k.to_owned(), v.to_owned()))
+            .collect();
 
         assert_eq!(countries.get("TEU").unwrap(), "Teutonic Order");
         assert_eq!(countries.get("MEDICI").unwrap(), "Medici");
         assert_eq!(countries.get("DNS").unwrap(), "Kalmar Union");
-        assert!(!countries.contains_key("TEU_ADJ")); // Adjectives filtered out
-        assert!(!countries.contains_key("MEDICI_ADJ")); // Adjectives filtered out
-        assert!(!countries.contains_key("abc")); // Lowercase filtered out
+        assert!(!countries.contains_key("TEU_ADJ"));
+        assert!(!countries.contains_key("MEDICI_ADJ"));
+        assert!(!countries.contains_key("abc"));
         assert_eq!(countries.len(), 3);
+    }
+
+    #[test]
+    fn test_parse_localization_keeps_lowercase_keys() {
+        let data = r#"l_english:
+ wool: "Wool"
+ fine_cloth: "Fine Cloth"
+ TEU: "Teutonic Order"
+ # Comment line
+"#;
+        let parsed: FxHashMap<String, String> = parse_localization(data)
+            .map(|(k, v)| (k.to_owned(), v.to_owned()))
+            .collect();
+
+        assert_eq!(parsed.get("wool").unwrap(), "Wool");
+        assert_eq!(parsed.get("fine_cloth").unwrap(), "Fine Cloth");
+        assert_eq!(parsed.get("TEU").unwrap(), "Teutonic Order");
     }
 
     #[test]

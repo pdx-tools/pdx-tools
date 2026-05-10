@@ -205,7 +205,7 @@ function ImportExportSummary({
 }
 
 export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
-  const [selectedGoodName, setSelectedGoodName] = useState<string | null>(null);
+  const [selectedGoodKey, setSelectedGoodKey] = useState<string | null>(null);
   const [metric, setMetric] = useState<GoodsPressureMetric>("units");
   const { data: goods, loading } = useEu5Trigger(
     (engine) => engine.trigger.getMarketGoodsProfile(marketId),
@@ -239,7 +239,7 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
   }
 
   const selectedGood =
-    sortedGoods.find((good) => good.name === selectedGoodName) ?? defaultGood ?? sortedGoods[0];
+    sortedGoods.find((good) => good.key === selectedGoodKey) ?? defaultGood ?? sortedGoods[0];
 
   return (
     <div className="flex flex-col gap-4">
@@ -262,15 +262,15 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
 
       <GoodsPressureChart
         goods={goods}
-        selectedGoodName={selectedGood?.name}
-        onGoodSelect={(good) => setSelectedGoodName(good.name)}
+        selectedGoodKey={selectedGood?.key}
+        onGoodSelect={(good) => setSelectedGoodKey(good.key)}
         metric={metric}
         onMetricChange={setMetric}
       />
       <GoodsPriceVsBaseChart
         goods={goods}
-        selectedGoodName={selectedGood?.name}
-        onGoodSelect={(good) => setSelectedGoodName(good.name)}
+        selectedGoodKey={selectedGood?.key}
+        onGoodSelect={(good) => setSelectedGoodKey(good.key)}
       />
       {selectedGood && (
         <section className="flex flex-col gap-3">
@@ -279,13 +279,13 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
               Selected good diagnostic
             </p>
             <select
-              value={selectedGood.name}
-              onChange={(event) => setSelectedGoodName(event.target.value)}
+              value={selectedGood.key}
+              onChange={(event) => setSelectedGoodKey(event.target.value)}
               className="rounded-md border border-game-line bg-game-panel-hover px-2 py-1 text-xs font-semibold text-game-ink-100"
               aria-label="Selected market good"
             >
               {sortedGoods.map((good) => (
-                <option key={good.name} value={good.name}>
+                <option key={good.key} value={good.key}>
                   {good.name}
                 </option>
               ))}

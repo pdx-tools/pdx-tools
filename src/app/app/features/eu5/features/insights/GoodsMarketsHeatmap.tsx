@@ -36,14 +36,14 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
     [markets],
   );
 
-  const goodIndex = useMemo(() => new Map(topGoods.map((g, i) => [g.name, i])), [topGoods]);
+  const goodIndex = useMemo(() => new Map(topGoods.map((g, i) => [g.key, i])), [topGoods]);
   const marketIndex = useMemo(
     () => new Map(topMarkets.map((m, i) => [m.marketId, i])),
     [topMarkets],
   );
 
   const filteredCells = useMemo(() => {
-    return cells.filter((c) => goodIndex.has(c.good) && marketIndex.has(c.marketId));
+    return cells.filter((c) => goodIndex.has(c.goodKey) && marketIndex.has(c.marketId));
   }, [cells, goodIndex, marketIndex]);
 
   const maxAbs = useMemo(() => {
@@ -59,7 +59,7 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
     () =>
       filteredCells.map((c) => {
         const x = marketIndex.get(c.marketId) ?? 0;
-        const y = goodIndex.get(c.good) ?? 0;
+        const y = goodIndex.get(c.goodKey) ?? 0;
         return [x, y, c.imbalanceValue];
       }),
     [filteredCells, goodIndex, marketIndex],

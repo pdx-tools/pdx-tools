@@ -133,7 +133,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         let game_location_map: FxHashMap<_, _> = game_data
-            .locations()
+            .locations
             .iter()
             .map(|loc| (loc.name.as_str(), loc))
             .collect();

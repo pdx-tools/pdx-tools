@@ -18,6 +18,12 @@ pub struct GoodsData {
     pub goods: FxHashMap<String, GoodData>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct LocalizationsData {
+    pub countries: FxHashMap<String, String>,
+    pub goods: FxHashMap<String, String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GoodData {
     pub color_hex: String,
@@ -25,48 +31,47 @@ pub struct GoodData {
     pub transport_cost: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LocalizedGoodData {
+    pub key: String,
+    pub name: String,
+    pub color_hex: String,
+    pub default_market_price: f64,
+    pub transport_cost: f64,
+}
+
 /// EU5 game data
 pub struct GameData {
-    locations: Vec<GameLocation>,
-    localization: FxHashMap<String, String>,
-    goods: FxHashMap<String, GoodData>,
+    pub locations: Vec<GameLocation>,
+    pub localization: FxHashMap<String, String>,
+    pub goods_localization: FxHashMap<String, String>,
+    pub goods: FxHashMap<String, GoodData>,
 }
 
 impl GameData {
-    pub fn new(locations: Vec<GameLocation>, localization: FxHashMap<String, String>) -> Self {
-        Self::with_goods(locations, localization, FxHashMap::default())
-    }
-
-    pub fn with_goods(
-        locations: Vec<GameLocation>,
-        localization: FxHashMap<String, String>,
-        goods: FxHashMap<String, GoodData>,
-    ) -> Self {
-        Self {
-            locations,
-            localization,
-            goods,
-        }
-    }
-
     pub fn localized_country_name(&self, tag: &str) -> Option<&str> {
         self.localization.get(tag).map(|s| s.as_str())
     }
 
-    pub fn locations(&self) -> &[GameLocation] {
-        &self.locations
-    }
-
-    pub fn localization(&self) -> &FxHashMap<String, String> {
-        &self.localization
-    }
-
-    pub fn goods(&self) -> &FxHashMap<String, GoodData> {
-        &self.goods
-    }
-
     pub fn good(&self, name: &str) -> Option<&GoodData> {
         self.goods.get(name)
+    }
+
+    pub fn localized_good_name(&self, key: &str) -> String {
+        self.goods_localization
+            .get(key)
+            .cloned()
+            .unwrap_or_else(|| key.to_string())
+    }
+
+    pub fn localized_good(&self, key: &str) -> Option<LocalizedGoodData> {
+        self.goods.get(key).map(|good| LocalizedGoodData {
+            key: key.to_string(),
+            name: self.localized_good_name(key),
+            color_hex: good.color_hex.clone(),
+            default_market_price: good.default_market_price,
+            transport_cost: good.transport_cost,
+        })
     }
 }
 
@@ -75,6 +80,7 @@ impl std::fmt::Debug for GameData {
         f.debug_struct("OwnedGameData")
             .field("locations_count", &self.locations.len())
             .field("localization_count", &self.localization.len())
+            .field("goods_localization_count", &self.goods_localization.len())
             .field("goods_count", &self.goods.len())
             .finish()
     }
