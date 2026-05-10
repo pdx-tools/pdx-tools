@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { readdir, access, mkdir, writeFile, copyFile, readFile, stat } from 'fs/promises';
-import { join, dirname, resolve } from 'path';
-import { fileURLToPath } from 'url';
+import { exec } from "child_process";
+import { promisify } from "util";
+import { readdir, access, mkdir, writeFile, copyFile, readFile, stat } from "fs/promises";
+import { join, dirname, resolve } from "path";
+import { fileURLToPath } from "url";
 
 const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const projectRoot = resolve(__dirname, '..', '..');
+const projectRoot = resolve(__dirname, "..", "..");
 
 // Helper functions
 const exists = async (path: string) => {
@@ -26,8 +26,8 @@ const execCommand = async (command: string, options = {}) => {
   try {
     const { stdout, stderr } = await execAsync(command, {
       cwd: projectRoot,
-      encoding: 'utf-8',
-      ...options
+      encoding: "utf-8",
+      ...options,
     });
     if (stderr) {
       console.warn(`Warning from command "${command}": ${stderr}`);
@@ -61,8 +61,8 @@ const createFileIfEmpty = async (filePath: string, content: string) => {
 };
 
 const touchFile = async (filePath: string) => {
-  if (!await exists(filePath)) {
-    await writeFile(filePath, '');
+  if (!(await exists(filePath))) {
+    await writeFile(filePath, "");
   }
 };
 
@@ -82,12 +82,12 @@ const hasCommand = async (command: string) => {
 };
 
 const getMontageCommand = async () => {
-  if (await hasCommand('magick')) {
-    return 'magick montage';
+  if (await hasCommand("magick")) {
+    return "magick montage";
   }
 
-  if (await hasCommand('montage')) {
-    return 'montage';
+  if (await hasCommand("montage")) {
+    return "montage";
   }
 
   return null;
@@ -97,28 +97,28 @@ const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
 
 const getMontageFontArg = () => {
   const font = process.env.IMAGEMAGICK_FONT?.trim();
-  return font ? ` -font ${shellQuote(font)}` : '';
+  return font ? ` -font ${shellQuote(font)}` : "";
 };
 
 const findLatestBundle = async () => {
-  const eu4AssetsDir = join(projectRoot, 'assets/game/eu4');
-  
-  if (!await exists(eu4AssetsDir)) {
+  const eu4AssetsDir = join(projectRoot, "assets/game/eu4");
+
+  if (!(await exists(eu4AssetsDir))) {
     return null;
   }
 
   const contents = await readdir(eu4AssetsDir);
   const versions = contents
-    .filter(item => item !== 'common' && /^\d+\.\d+$/.test(item))
+    .filter((item) => item !== "common" && /^\d+\.\d+$/.test(item))
     .sort((a, b) => {
-      const [aMajor, aMinor] = a.split('.').map(Number);
-      const [bMajor, bMinor] = b.split('.').map(Number);
+      const [aMajor, aMinor] = a.split(".").map(Number);
+      const [bMajor, bMinor] = b.split(".").map(Number);
       return bMajor === aMajor ? bMinor! - aMinor! : bMajor! - aMajor!;
     });
 
   // Find the latest version that has common/images directory
   for (const version of versions) {
-    const commonImagesDir = join(eu4AssetsDir, version, 'common', 'images');
+    const commonImagesDir = join(eu4AssetsDir, version, "common", "images");
     if (await exists(commonImagesDir)) {
       return { version, path: commonImagesDir };
     }
@@ -148,17 +148,17 @@ const copyDirectoryRecursive = async (src: string, dest: string) => {
 };
 
 const updateCommonImages = async () => {
-  console.log('🖼️  Updating common images from latest bundle...');
-  
+  console.log("🖼️  Updating common images from latest bundle...");
+
   const latestBundle = await findLatestBundle();
   if (!latestBundle) {
-    console.log('  ⚠️  No compiled game bundle with images found, skipping image update');
+    console.log("  ⚠️  No compiled game bundle with images found, skipping image update");
     return;
   }
 
   console.log(`  📦 Found latest bundle: ${latestBundle.version}`);
 
-  const commonImagesDir = join(projectRoot, 'assets/game/eu4/common/images');
+  const commonImagesDir = join(projectRoot, "assets/game/eu4/common/images");
 
   // Copy subdirectories from latest bundle
   const bundleImagesDir = latestBundle.path;
@@ -173,7 +173,7 @@ const updateCommonImages = async () => {
     }
   }
 
-  console.log('  ✅ Common images updated successfully');
+  console.log("  ✅ Common images updated successfully");
 };
 
 // Main script
@@ -181,11 +181,11 @@ async function setupAssets() {
   // Update common images from latest bundle first
   await updateCommonImages();
 
-  const gitignoreContent = await readFile(join(projectRoot, '.gitignore'), 'utf-8');
+  const gitignoreContent = await readFile(join(projectRoot, ".gitignore"), "utf-8");
   const eu4ImagePaths = gitignoreContent
-    .split('\n')
-    .filter(line => line.startsWith('assets/game/eu4/common/images') && !line.includes('*'))
-    .map(line => line.trim())
+    .split("\n")
+    .filter((line) => line.startsWith("assets/game/eu4/common/images") && !line.includes("*"))
+    .map((line) => line.trim())
     .filter(Boolean);
 
   for (const imagePath of eu4ImagePaths) {
@@ -194,29 +194,29 @@ async function setupAssets() {
   }
 
   // Copy over the REB flag which is the only one that is statically imported
-  const rebSource = join(projectRoot, 'assets/game/eu4/common/images/REB.png');
-  const rebDest = join(projectRoot, 'assets/game/eu4/common/images/flags/REB.png');
+  const rebSource = join(projectRoot, "assets/game/eu4/common/images/REB.png");
+  const rebDest = join(projectRoot, "assets/game/eu4/common/images/flags/REB.png");
   if (await exists(rebSource)) {
     await mkdir(dirname(rebDest), { recursive: true });
     await copyFile(rebSource, rebDest);
   }
 
   // Create empty token files for devs without them (touch equivalent)
-  console.log('🔑 Creating token placeholders...');
-  await mkdir(join(projectRoot, 'assets/tokens'), { recursive: true });
-  const games = ['eu4', 'eu5', 'ck3', 'hoi4', 'imperator', 'vic3'];
+  console.log("🔑 Creating token placeholders...");
+  await mkdir(join(projectRoot, "assets/tokens"), { recursive: true });
+  const games = ["eu4", "eu5", "ck3", "hoi4", "imperator", "vic3"];
   for (const game of games) {
-    const binFile = join(projectRoot, 'assets/tokens', `${game}.bin`);
-    const txtFile = join(projectRoot, 'assets/tokens', `${game}.txt`);
+    const binFile = join(projectRoot, "assets/tokens", `${game}.bin`);
+    const txtFile = join(projectRoot, "assets/tokens", `${game}.txt`);
 
     await touchFile(binFile);
     await touchFile(txtFile);
   }
 
   // Create DLC spritesheet (with ImageMagick fallback)
-  console.log('🎨 Creating DLC spritesheet...');
-  const dlcDir = join(projectRoot, 'src/app/app/features/eu4/components/dlc-list');
-  const dlcImagesDir = join(dlcDir, 'dlc-images');
+  console.log("🎨 Creating DLC spritesheet...");
+  const dlcDir = join(projectRoot, "src/app/app/features/eu4/components/dlc-list");
+  const dlcImagesDir = join(dlcDir, "dlc-images");
 
   if (await exists(dlcImagesDir)) {
     const dlcImages = await readdir(dlcImagesDir);
@@ -226,83 +226,92 @@ async function setupAssets() {
     const montageCommand = await getMontageCommand();
 
     if (montageCommand) {
-      console.log('  ✅ Using ImageMagick for DLC spritesheet');
+      console.log("  ✅ Using ImageMagick for DLC spritesheet");
       const fontArg = getMontageFontArg();
       await execCommand(
         `${montageCommand}${fontArg} -tile ${cols}x -background transparent -define webp:lossless=true -mode concatenate "dlc-images/*" dlc-sprites.webp`,
-        { cwd: dlcDir }
+        { cwd: dlcDir },
       );
     } else {
-      console.log('  ⚠️  ImageMagick not found, creating empty DLC spritesheet placeholder');
-      await writeFile(join(dlcDir, 'dlc-sprites.webp'), '');
+      console.log("  ⚠️  ImageMagick not found, creating empty DLC spritesheet placeholder");
+      await writeFile(join(dlcDir, "dlc-sprites.webp"), "");
     }
 
     // Generate DLC sprites JSON
-    const dlcData = Object.fromEntries(dlcImages.map((image, index) => {
-      const name = image.replace(/\.[^/.]+$/, ''); // Remove extension
-      return [name, index]
-    }));
-    await writeFile(join(dlcDir, 'dlc-sprites.json'), JSON.stringify(dlcData));
+    const dlcData = Object.fromEntries(
+      dlcImages.map((image, index) => {
+        const name = image.replace(/\.[^/.]+$/, ""); // Remove extension
+        return [name, index];
+      }),
+    );
+    await writeFile(join(dlcDir, "dlc-sprites.json"), JSON.stringify(dlcData));
   }
 
   // Create icons spritesheet (with ImageMagick fallback)
-  console.log('🎯 Creating icons spritesheet...');
-  const iconsDir = join(projectRoot, 'src/app/app/features/eu4/components/icons');
+  console.log("🎯 Creating icons spritesheet...");
+  const iconsDir = join(projectRoot, "src/app/app/features/eu4/components/icons");
 
   if (await exists(iconsDir)) {
-    const iconFiles = (await readdir(iconsDir)).filter(file => file.endsWith('.png'));
+    const iconFiles = (await readdir(iconsDir)).filter((file) => file.endsWith(".png"));
     const numIcons = iconFiles.length;
     const cols = Math.ceil(Math.sqrt(numIcons - 0.5));
 
     const montageCommand = await getMontageCommand();
 
     if (montageCommand) {
-      console.log('  ✅ Using ImageMagick for icons spritesheet');
-      const iconArgs = iconFiles.join(' ');
+      console.log("  ✅ Using ImageMagick for icons spritesheet");
+      const iconArgs = iconFiles.join(" ");
       const fontArg = getMontageFontArg();
       await execCommand(
         `${montageCommand}${fontArg} -tile ${cols}x -mode concatenate -geometry "32x32>" -background transparent ${iconArgs} icons.webp`,
-        { cwd: iconsDir }
+        { cwd: iconsDir },
       );
     } else {
-      console.log('  ⚠️  ImageMagick not found, creating empty icons spritesheet placeholder');
-      await writeFile(join(iconsDir, 'icons.webp'), '');
+      console.log("  ⚠️  ImageMagick not found, creating empty icons spritesheet placeholder");
+      await writeFile(join(iconsDir, "icons.webp"), "");
     }
 
     // Generate icons JSON
-    const iconsData = Object.fromEntries(iconFiles.map((icon, index) => {
-      const name = icon.replace(/\.[^/.]+$/, '').replace('icon_', ''); // Remove extension and 'icon_' prefix
-      return [name, index];
-    }));
-    await writeFile(join(iconsDir, 'icons.json'), JSON.stringify(iconsData));
+    const iconsData = Object.fromEntries(
+      iconFiles.map((icon, index) => {
+        const name = icon.replace(/\.[^/.]+$/, "").replace("icon_", ""); // Remove extension and 'icon_' prefix
+        return [name, index];
+      }),
+    );
+    await writeFile(join(iconsDir, "icons.json"), JSON.stringify(iconsData));
   }
 
   // Create asset directories and placeholder files for development
-  console.log('📦 Creating EU4 asset placeholders for development...');
+  console.log("📦 Creating EU4 asset placeholders for development...");
 
   // Ensure directories exist
   const imageDirectories = [
-    'achievements', 'advisors', 'buildings', 'flags', 'personalities', 'tc-investments'
+    "achievements",
+    "advisors",
+    "buildings",
+    "flags",
+    "personalities",
+    "tc-investments",
   ];
 
   for (const dir of imageDirectories) {
-    await mkdir(join(projectRoot, 'assets/game/eu4/common/images', dir), { recursive: true });
+    await mkdir(join(projectRoot, "assets/game/eu4/common/images", dir), { recursive: true });
   }
 
   // Create empty webp placeholder files (touch -a equivalent)
   const webpFiles = [
-    'assets/game/eu4/common/images/achievements/achievements.webp',
-    'assets/game/eu4/common/images/advisors/advisors_x48.webp',
-    'assets/game/eu4/common/images/advisors/advisors_x64.webp',
-    'assets/game/eu4/common/images/advisors/advisors_x77.webp',
-    'assets/game/eu4/common/images/buildings/global.webp',
-    'assets/game/eu4/common/images/buildings/westerngfx.webp',
-    'assets/game/eu4/common/images/flags/flags_x8.webp',
-    'assets/game/eu4/common/images/flags/flags_x48.webp',
-    'assets/game/eu4/common/images/flags/flags_x64.webp',
-    'assets/game/eu4/common/images/flags/flags_x128.webp',
-    'assets/game/eu4/common/images/personalities/personalities.webp',
-    'assets/game/eu4/common/images/tc-investments/investments.webp'
+    "assets/game/eu4/common/images/achievements/achievements.webp",
+    "assets/game/eu4/common/images/advisors/advisors_x48.webp",
+    "assets/game/eu4/common/images/advisors/advisors_x64.webp",
+    "assets/game/eu4/common/images/advisors/advisors_x77.webp",
+    "assets/game/eu4/common/images/buildings/global.webp",
+    "assets/game/eu4/common/images/buildings/westerngfx.webp",
+    "assets/game/eu4/common/images/flags/flags_x8.webp",
+    "assets/game/eu4/common/images/flags/flags_x48.webp",
+    "assets/game/eu4/common/images/flags/flags_x64.webp",
+    "assets/game/eu4/common/images/flags/flags_x128.webp",
+    "assets/game/eu4/common/images/personalities/personalities.webp",
+    "assets/game/eu4/common/images/tc-investments/investments.webp",
   ];
 
   for (const webpFile of webpFiles) {
@@ -312,41 +321,41 @@ async function setupAssets() {
 
   // Create JSON placeholder files with empty object
   const jsonFiles = [
-    'assets/game/eu4/common/images/achievements/achievements.json',
-    'assets/game/eu4/common/images/advisors/advisors.json',
-    'assets/game/eu4/common/images/buildings/global.json',
-    'assets/game/eu4/common/images/buildings/westerngfx.json',
-    'assets/game/eu4/common/images/flags/flags.json',
-    'assets/game/eu4/common/images/personalities/personalities.json',
-    'assets/game/eu4/common/images/tc-investments/investments.json'
+    "assets/game/eu4/common/images/achievements/achievements.json",
+    "assets/game/eu4/common/images/advisors/advisors.json",
+    "assets/game/eu4/common/images/buildings/global.json",
+    "assets/game/eu4/common/images/buildings/westerngfx.json",
+    "assets/game/eu4/common/images/flags/flags.json",
+    "assets/game/eu4/common/images/personalities/personalities.json",
+    "assets/game/eu4/common/images/tc-investments/investments.json",
   ];
 
   for (const jsonFile of jsonFiles) {
-    await createFileIfEmpty(join(projectRoot, jsonFile), '{}');
+    await createFileIfEmpty(join(projectRoot, jsonFile), "{}");
   }
 
   // Generate EU4 game asset hooks
-  const outputFile = join(projectRoot, 'src/app/app/lib/game_gen.ts');
-  await writeFile(outputFile, '');
+  const outputFile = join(projectRoot, "src/app/app/lib/game_gen.ts");
+  await writeFile(outputFile, "");
 
   // Check for EU4 asset versions
-  const eu4AssetsDir = join(projectRoot, 'assets/game/eu4');
+  const eu4AssetsDir = join(projectRoot, "assets/game/eu4");
   let versions: string[] = [];
 
   if (await exists(eu4AssetsDir)) {
     const eu4Contents = await readdir(eu4AssetsDir);
     versions = eu4Contents
-      .filter(item => item !== 'common' && /^\d+\.\d+$/.test(item))
+      .filter((item) => item !== "common" && /^\d+\.\d+$/.test(item))
       .sort((a, b) => {
-        const [aMajor, aMinor] = a.split('.').map(Number);
-        const [bMajor, bMinor] = b.split('.').map(Number);
+        const [aMajor, aMinor] = a.split(".").map(Number);
+        const [bMajor, bMinor] = b.split(".").map(Number);
         return aMajor === bMajor ? aMinor! - bMinor! : aMajor! - bMajor!;
       });
   }
 
   // If no EU4 assets available, create error handlers (matching original bash)
   if (versions.length === 0) {
-    console.log('  📝 No EU4 assets found, creating error handlers');
+    console.log("  📝 No EU4 assets found, creating error handlers");
 
     const errorContent = `const msg = 'EU4 assets not found, have you forgot to compile assets';
 export const gameVersion = (x: string): any => { throw new Error(msg); } 
@@ -361,11 +370,11 @@ export const dataUrls = (x: any): any => { throw new Error(msg); }
   console.log(`  📝 Found ${versions.length} EU4 asset versions, generating static imports`);
 
   // Generate static imports (keep existing logic)
-  let content = '';
+  let content = "";
 
   // Generate imports for each version (matching original bash format)
   for (const version of versions) {
-    const minor = version.split('.')[1];
+    const minor = version.split(".")[1];
     content += `      import provinces1${minor} from "../../../../assets/game/eu4/${version}/map/provinces-1.webp";
       import provinces2${minor} from "../../../../assets/game/eu4/${version}/map/provinces-2.webp";
       import colorMap${minor} from "../../../../assets/game/eu4/${version}/map/colormap_summer.webp";
@@ -394,23 +403,23 @@ export const dataUrls = (x: any): any => { throw new Error(msg); }
   for (const version of versions.slice(1)) {
     content += ` | "${version}"`;
   }
-  content += ';\n';
+  content += ";\n";
 
-  content += 'export function gameVersion(x: string): GameVersion {\n';
-  content += '  switch (x) {\n';
+  content += "export function gameVersion(x: string): GameVersion {\n";
+  content += "  switch (x) {\n";
   for (const version of versions) {
     content += `    case "${version}":\n`;
   }
-  content += '      return x;\n';
-  content += '    default: return defaultVersion\n';
-  content += '  }\n';
-  content += '}\n';
+  content += "      return x;\n";
+  content += "    default: return defaultVersion\n";
+  content += "  }\n";
+  content += "}\n";
 
   // Generate resources function
-  content += 'export const resources = (x: GameVersion): ResourceUrls => {\n';
-  content += '  switch(x) {\n';
+  content += "export const resources = (x: GameVersion): ResourceUrls => {\n";
+  content += "  switch(x) {\n";
   for (const version of versions) {
-    const minor = version.split('.')[1];
+    const minor = version.split(".")[1];
     content += `    case "${version}": return {\n`;
     content += `      provinces1: provinces1${minor},\n`;
     content += `      provinces2: provinces2${minor},\n`;
@@ -430,29 +439,29 @@ export const dataUrls = (x: any): any => { throw new Error(msg); }
     content += `      heightmap: heightmap${minor},\n`;
     content += `      provincesUniqueColor: provincesUniqueColor${minor},\n`;
     content += `      provincesUniqueIndex: provincesUniqueIndex${minor},\n`;
-    content += '    }\n';
+    content += "    }\n";
   }
-  content += '}}\n';
+  content += "}}\n";
 
   // Add default version and dataUrls
   const lastVersion = versions[versions.length - 1];
   content += `export const defaultVersion = "${lastVersion}"\n`;
 
-  content += 'export const dataUrls = (x: GameVersion): string => {\n';
-  content += '  switch(x) {\n';
+  content += "export const dataUrls = (x: GameVersion): string => {\n";
+  content += "  switch(x) {\n";
   for (const version of versions) {
-    const minor = version.split('.')[1];
+    const minor = version.split(".")[1];
     content += `    case "${version}": return data${minor}\n`;
   }
-  content += '}}\n';
+  content += "}}\n";
 
   await writeFile(outputFile, content);
 }
 
 async function setupAssetEu5() {
-  await mkdir(join(projectRoot, 'assets', 'game', 'eu5'), { recursive: true });
-  await touchFile(join(projectRoot, 'assets', 'game', 'eu5', 'eu5-1.0.zip'));
+  await mkdir(join(projectRoot, "assets", "game", "eu5"), { recursive: true });
+  await touchFile(join(projectRoot, "assets", "game", "eu5", "eu5-1.0.zip"));
 }
 
-await setupAssets()
+await setupAssets();
 await setupAssetEu5();

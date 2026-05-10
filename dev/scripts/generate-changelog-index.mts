@@ -18,9 +18,7 @@ async function main() {
 
     const date = path.parse(entry.name).name;
     if (!ISO_DATE_REGEX.test(date)) {
-      console.warn(
-        `Skipping ${entry.name} because it does not match YYYY-MM-DD format.`,
-      );
+      console.warn(`Skipping ${entry.name} because it does not match YYYY-MM-DD format.`);
       continue;
     }
 
