@@ -251,11 +251,13 @@ run = "cargo run --release --package pdx-assets -- compile"
 
 [tasks."start:services:dev"]
 description = "Run services for development"
-run = ["node ./dev/scripts/services.mts --dev"]
+env.SERVICES_ENV = "dev"
+run = ["node ./dev/scripts/services.mts"]
 
 [tasks."start:services:test"]
 description = "Run services for testing"
-run = ["node ./dev/scripts/services.mts --test"]
+env.SERVICES_ENV = "test"
+run = ["node ./dev/scripts/services.mts"]
 
 [tasks.format]
 description = "Format code"
@@ -293,9 +295,16 @@ run = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblaze
 run_windows = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key=%ASSETS_SECRET_KEY% --s3-access-key-id=%ASSETS_ACCESS_KEY% copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.'
 
 [tasks."admin:assets:compile:all"]
+description = "Compile all downloaded game asset bundles"
+usage = '''
+flag "--game <game>" help="Only compile bundles for one game" {
+  choices "eu4" "eu5"
+}
+arg "[compile_args]" help="Extra arguments forwarded to pdx-assets compile" var=#true double_dash="required"
+'''
 run = [
     "cargo build --release --package pdx-assets",
-    "node ./dev/scripts/compile-all-assets.mts"
+    "node ./dev/scripts/compile-all-assets.mts {% for arg in usage.compile_args | default(value=[]) %}{{ arg | quote }} {% endfor %}"
 ]
 
 [tasks."assets:steam:fetch"]
@@ -304,6 +313,15 @@ run = 'cargo run --package pdx-assets -- fetch-game "$@"'
 
 [tasks."assets:steam:bundle"]
 description = "Fetch supported Steam game patches, create raw bundles, and remove installs"
+usage = '''
+flag "--username <username>" help="Steam username" env="STEAM_USERNAME"
+flag "--game <game>" help="Only process targets for one game" {
+  choices "eu4" "eu5"
+}
+flag "--force" help="Recreate bundles that already exist"
+flag "--keep-installs" help="Keep temporary game installs under assets/steam/tmp"
+flag "--dry-run" help="Print commands without executing them"
+'''
 run = "node ./dev/scripts/fetch-steam-game-bundles.mts"
 
 [tasks."admin:build:cli"]
