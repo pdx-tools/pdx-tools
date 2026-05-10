@@ -24,6 +24,10 @@ pub struct BundleArgs {
     /// Game to bundle (eu4 or eu5). If not specified, attempts to auto-detect from source
     #[clap(long)]
     game: Option<String>,
+
+    /// Game version (e.g. 1.2). Required for EU5.
+    #[clap(long)]
+    version: Option<String>,
 }
 
 impl BundleArgs {
@@ -64,7 +68,10 @@ impl BundleArgs {
             let directory_provider = DirectoryProvider::new(&game_directory);
             let tracking_provider = FileAccessTracker::new(directory_provider);
 
-            let options = PackageOptions::dry_run();
+            let options = PackageOptions {
+                game_version: self.version.clone(),
+                ..PackageOptions::dry_run()
+            };
             let compilation_output = match game {
                 Game::Eu4 => {
                     let game_compiler = Eu4AssetCompliler;

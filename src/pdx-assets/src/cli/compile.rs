@@ -28,6 +28,10 @@ pub struct CompileArgs {
     /// Game to compile (eu4 or eu5). If not specified, attempts to auto-detect from source
     #[clap(long)]
     game: Option<String>,
+
+    /// Game version (e.g. 1.2). Required for EU5.
+    #[clap(long)]
+    version: Option<String>,
 }
 
 impl CompileArgs {
@@ -73,6 +77,7 @@ impl CompileArgs {
         let options = PackageOptions {
             dry_run: false,
             minimal: self.minimal,
+            game_version: self.version.clone(),
         };
 
         // Process each game

@@ -99,11 +99,14 @@ async function packageAll() {
   const eu4Bundles = gameGroups.get("eu4") ?? [];
   const latestEu4 = eu4Bundles.pop();
 
+  // Bundle filenames are {game}-{major}.{minor}.zip — extract the version portion.
+  const versionOf = (bundle: string) => bundle.slice(bundle.indexOf('-') + 1, -4);
+
   // Process the latest EU4 bundle first (full compile with shared assets)
   if (latestEu4 !== undefined) {
     const bundlePath = join(gameBundlesDir, latestEu4);
     console.log(`Processing ${latestEu4} (latest eu4 bundle)`);
-    await execCommand(pdxAssetsBinary, ['compile', ...opts, bundlePath]);
+    await execCommand(pdxAssetsBinary, ['compile', '--version', versionOf(latestEu4), ...opts, bundlePath]);
   }
 
   // Process older EU4 bundles with --minimal and all non-EU4 bundles in parallel
@@ -111,14 +114,14 @@ async function packageAll() {
 
   for (const bundle of eu4Bundles) {
     const bundlePath = join(gameBundlesDir, bundle);
-    remainingTasks.push(execCommand(pdxAssetsBinary, ['compile', '--minimal', ...opts, bundlePath]));
+    remainingTasks.push(execCommand(pdxAssetsBinary, ['compile', '--minimal', '--version', versionOf(bundle), ...opts, bundlePath]));
   }
 
   for (const [game, bundles] of gameGroups) {
     if (game === "eu4") continue;
     for (const bundle of bundles) {
       const bundlePath = join(gameBundlesDir, bundle);
-      remainingTasks.push(execCommand(pdxAssetsBinary, ['compile', ...opts, bundlePath]));
+      remainingTasks.push(execCommand(pdxAssetsBinary, ['compile', '--version', versionOf(bundle), ...opts, bundlePath]));
     }
   }
 
