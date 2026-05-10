@@ -1,4 +1,5 @@
 use crate::asset_compilers::PackageOptions;
+use crate::images::{Color, Geometry, MontageRequest, OutputFormat, WebpQuality};
 use crate::{FileProvider, ImageProcessor};
 use anyhow::Result;
 use eu5app::game_data::{
@@ -9,7 +10,14 @@ use eu5app::game_data::{
 use rawzip::CompressionMethod;
 use serde::Serialize;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+const FRONTEND_GOODS_ICONS_DIR: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../app/app/features/eu5/components/icons/goods"
+);
+
+const TRADE_GOODS_ICON_PATH: &str = "game/main_menu/gfx/interface/icons/trade_goods";
 
 struct FileProviderAdapter<P>(P);
 
@@ -57,7 +65,7 @@ fn map_provider_error(e: anyhow::Error, path: &str) -> eu5app::game_data::GameDa
 
 pub fn compile_game_bundle<P, I>(
     fs: &P,
-    _imaging: &I,
+    imaging: &I,
     out_dir: &Path,
     game_version: &str,
     options: &PackageOptions,
@@ -68,6 +76,31 @@ where
 {
     let provider = FileProviderAdapter(fs);
     let (raw_game_data, texture_builder) = RawGameData::from_source(&provider)?;
+
+    // Collect goods icon paths now (before dry_run check) so DDS files are
+    // accessed during bundle tracing even when skipping image processing.
+    let mut goods_icon_names = raw_game_data
+        .goods
+        .keys()
+        .map(|name| {
+            (
+                name.clone(),
+                format!("{TRADE_GOODS_ICON_PATH}/icon_goods_{name}.dds"),
+            )
+        })
+        .chain(std::iter::once((
+            "_default".to_string(),
+            format!("{TRADE_GOODS_ICON_PATH}/_default.dds"),
+        )))
+        .collect::<Vec<_>>();
+    goods_icon_names.sort();
+    let goods_images: Vec<(String, PathBuf)> = goods_icon_names
+        .into_iter()
+        .map(|(name, path)| {
+            let f = fs.fs_file(&path)?;
+            Ok((name, f.path))
+        })
+        .collect::<Result<_>>()?;
 
     // If we are bundle tracing no need to do expensive image processing or create bundle
     if options.dry_run {
@@ -133,6 +166,29 @@ where
         bundle_path = %bundle_path.display(),
         "EU5 game bundle created"
     );
+
+    if !options.minimal {
+        let frontend_goods_dir = Path::new(FRONTEND_GOODS_ICONS_DIR);
+        std::fs::create_dir_all(frontend_goods_dir)?;
+
+        imaging.montage(MontageRequest {
+            images: &goods_images,
+            output_path: frontend_goods_dir.join("goods.webp"),
+            format: OutputFormat::Webp {
+                quality: WebpQuality::Lossless,
+            },
+            geometries: vec![Geometry::new(32, 32), Geometry::new(128, 128)],
+            background: Some(Color::Transparent),
+            additional_args: vec![],
+        })?;
+
+        tracing::info!(
+            name: "eu5.goods.icons.complete",
+            output_dir = %frontend_goods_dir.display(),
+            "EU5 goods icon atlas generated"
+        );
+    }
+
     Ok(())
 }
 
