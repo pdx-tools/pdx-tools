@@ -112,6 +112,7 @@ where
             locations,
             localization: localizations.countries,
             goods_localization: localizations.goods,
+            building_localization: localizations.buildings,
             goods: game_data.goods,
         })
     }
@@ -241,11 +242,14 @@ mod tests {
         );
         let mut goods_localization = FxHashMap::default();
         goods_localization.insert("livestock".to_string(), "Livestock".to_string());
+        let mut building_localization = FxHashMap::default();
+        building_localization.insert("workshop".to_string(), "Workshop".to_string());
         let zip = test_bundle(
             GoodsData { goods },
             LocalizationsData {
                 countries: FxHashMap::default(),
                 goods: goods_localization,
+                buildings: building_localization,
             },
         );
 
@@ -260,6 +264,7 @@ mod tests {
         let localized = data.localized_good("livestock").unwrap();
         assert_eq!(localized.key, "livestock");
         assert_eq!(localized.name, "Livestock");
+        assert_eq!(data.localized_building_name("workshop"), "Workshop");
     }
 
     #[test]
@@ -281,6 +286,21 @@ mod tests {
             .unwrap();
 
         assert_eq!(data.localized_good_name("unknown_good"), "unknown_good");
+    }
+
+    #[test]
+    fn optimized_bundle_falls_back_to_raw_building_key() {
+        let zip = test_bundle(GoodsData::default(), LocalizationsData::default());
+
+        let data = OptimizedGameBundle::open(zip)
+            .unwrap()
+            .into_game_data()
+            .unwrap();
+
+        assert_eq!(
+            data.localized_building_name("unknown_building"),
+            "unknown_building"
+        );
     }
 
     fn test_bundle(goods: GoodsData, localizations: LocalizationsData) -> Vec<u8> {

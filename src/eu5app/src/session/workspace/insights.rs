@@ -1663,22 +1663,27 @@ impl<'bump> Eu5Workspace<'bump> {
         let location_count = loc_agg.len() as u32;
 
         // Build type summaries (all types, sorted by levels descending)
-        let mut types: Vec<BuildingTypeSummary> = type_agg
+        let mut types_with_keys: Vec<(String, BuildingTypeSummary)> = type_agg
             .into_iter()
-            .map(|(kind, t)| BuildingTypeSummary {
-                kind: kind.to_string(),
-                levels: t.levels,
-                foreign_levels: t.foreign_levels,
-                employed: t.employed,
-                building_count: t.building_count,
-                location_count: t.locations.len() as u32,
-                foreign_owner_count: t.foreign_owners.len() as u32,
+            .map(|(kind, t)| {
+                (
+                    kind.to_string(),
+                    BuildingTypeSummary {
+                        kind: self.game_data.localized_building_name(kind),
+                        levels: t.levels,
+                        foreign_levels: t.foreign_levels,
+                        employed: t.employed,
+                        building_count: t.building_count,
+                        location_count: t.locations.len() as u32,
+                        foreign_owner_count: t.foreign_owners.len() as u32,
+                    },
+                )
             })
             .collect();
-        types.sort_by(|a, b| {
-            b.levels
-                .total_cmp(&a.levels)
-                .then_with(|| a.kind.cmp(&b.kind))
+        types_with_keys.sort_by(|a, b| {
+            b.1.levels
+                .total_cmp(&a.1.levels)
+                .then_with(|| a.0.cmp(&b.0))
         });
 
         // Keep the top foreign owners needed by the owner/type cell table.
@@ -1693,8 +1698,11 @@ impl<'bump> Eu5Workspace<'bump> {
         foreign_owner_vec.truncate(20);
 
         // Build foreign owner cells for top 20 types x top 20 foreign owners
-        let top_type_kinds: FxHashSet<&str> =
-            types.iter().take(20).map(|t| t.kind.as_str()).collect();
+        let top_type_kinds: FxHashSet<&str> = types_with_keys
+            .iter()
+            .take(20)
+            .map(|t| t.0.as_str())
+            .collect();
         let top_owner_ids: FxHashSet<CountryId> = foreign_owner_vec
             .iter()
             .take(20)
@@ -1720,7 +1728,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .filter_map(|((kind, cid), fc)| {
                 let owner = owner_erefs.get(&cid)?.clone();
                 Some(BuildingTypeForeignOwnerCell {
-                    kind: kind.to_string(),
+                    kind: self.game_data.localized_building_name(kind),
                     owner,
                     levels: fc.levels,
                     employed: fc.employed,
@@ -1756,7 +1764,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     location_name: self.location_name(loc_idx).to_string(),
                     location_owner,
                     foreign_owner,
-                    kind: kind.to_string(),
+                    kind: self.game_data.localized_building_name(kind),
                     foreign_levels: fl,
                     location_total_levels,
                 })
@@ -1796,7 +1804,10 @@ impl<'bump> Eu5Workspace<'bump> {
                 foreign_location_count,
                 foreign_owner_count,
             },
-            types,
+            types: types_with_keys
+                .into_iter()
+                .map(|(_, summary)| summary)
+                .collect(),
             foreign_owner_cells,
             foreign_location_rows,
             top_locations,

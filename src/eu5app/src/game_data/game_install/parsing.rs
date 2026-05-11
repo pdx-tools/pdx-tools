@@ -4,7 +4,7 @@ use crate::hexcolor::HexColor;
 use crate::models::Terrain;
 use eu5save::hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
-use serde::de::{self, SeqAccess, Visitor};
+use serde::de::{self, IgnoredAny, SeqAccess, Visitor};
 use std::io::Read;
 use std::sync::LazyLock;
 
@@ -103,6 +103,15 @@ pub fn parse_goods(
     jomini::text::de::TextDeserializer::from_utf8_reader(reader)
         .deserialize()
         .map_err(|e| GameDataError::Jomini(e, "goods"))
+}
+
+pub fn parse_building_keys(data: &str) -> Result<FxHashSet<String>, GameDataError> {
+    let reader = jomini::text::TokenReader::new(data.as_bytes());
+    let buildings: FxHashMap<String, IgnoredAny> =
+        jomini::text::de::TextDeserializer::from_utf8_reader(reader)
+            .deserialize()
+            .map_err(|e| GameDataError::Jomini(e, "building_types"))?;
+    Ok(buildings.into_keys().collect())
 }
 
 #[derive(Debug, Deserialize)]
@@ -319,6 +328,33 @@ mod tests {
         assert_eq!(parsed.get("wool").unwrap(), "Wool");
         assert_eq!(parsed.get("fine_cloth").unwrap(), "Fine Cloth");
         assert_eq!(parsed.get("TEU").unwrap(), "Teutonic Order");
+    }
+
+    #[test]
+    fn test_parse_building_keys_keeps_only_top_level_keys() {
+        let data = r#"
+workshop = {
+    category = basic_industry_category
+    unique_production_methods = {
+        artisan_tools = {
+            tools = 0.1
+        }
+    }
+}
+trade_office = {
+    modifier = {
+        merchant_capacity_from_building = 0.3
+    }
+}
+"#;
+
+        let parsed = parse_building_keys(data).unwrap();
+
+        assert!(parsed.contains("workshop"));
+        assert!(parsed.contains("trade_office"));
+        assert!(!parsed.contains("artisan_tools"));
+        assert!(!parsed.contains("merchant_capacity_from_building"));
+        assert_eq!(parsed.len(), 2);
     }
 
     #[test]
