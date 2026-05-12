@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffectEvent } from "react";
 import { ToggleGroup } from "@/components/ToggleGroup";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
@@ -6,6 +6,12 @@ import type { MarketScopeSummary, ScopedGoodSummary, ScopedMarketSummary } from 
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { goodsIconHtml } from "../../components/icons/eu5IconHtml";
+import {
+  GOODS_CELL_SIZE_32,
+  goodsAtlasData,
+  goodsAtlasUrl32,
+  goodsDimensions32,
+} from "../../components/icons/goods";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
@@ -22,6 +28,114 @@ import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { useEu5SaveDate } from "../../store/eu5Store";
 
 const GOODS_BAR_CAP = 20;
+const ARROW_WINDOW_MONTHS = 12;
+const ARROW_DECAY = 0.95;
+const ARROW_TOP_N = 5;
+const ARROW_MAX_PCT = 10;
+const ARROW_SCALE_FACTOR = 10;
+const ARROW_MIN_SLOPE_PCT = 0.000001;
+
+export type GoodsPriceTrajectoryInput = Pick<
+  ScopedGoodSummary,
+  "key" | "history" | "defaultMarketPrice" | "weightedPrice"
+>;
+
+export type GoodsPriceArrowDatum = {
+  startX: number;
+  endX: number;
+  y: number;
+  key: string;
+  slopePct: number;
+};
+
+export function weightedSlope(
+  history: number[],
+  windowMonths = ARROW_WINDOW_MONTHS,
+  decay = ARROW_DECAY,
+): number {
+  const values = history.slice(-windowMonths).filter((value) => Number.isFinite(value));
+  if (values.length < 2) return 0;
+
+  let sumW = 0;
+  let sumWX = 0;
+  let sumWY = 0;
+  let sumWXX = 0;
+  let sumWXY = 0;
+
+  for (let i = 0; i < values.length; i++) {
+    const x = i;
+    const y = values[i];
+    const age = values.length - 1 - i;
+    const w = decay ** age;
+    sumW += w;
+    sumWX += w * x;
+    sumWY += w * y;
+    sumWXX += w * x * x;
+    sumWXY += w * x * y;
+  }
+
+  const denominator = sumWXX - (sumWX * sumWX) / sumW;
+  if (Math.abs(denominator) < Number.EPSILON) return 0;
+  return (sumWXY - (sumWX * sumWY) / sumW) / denominator;
+}
+
+export function selectGoodsPriceTrajectoryKeys(
+  goods: GoodsPriceTrajectoryInput[],
+  topN = ARROW_TOP_N,
+): Set<string> {
+  const candidates = goods
+    .map((g) => {
+      const base = g.defaultMarketPrice;
+      if (base == null || base <= 0 || g.history.length < 2) return null;
+      const slopePct = (weightedSlope(g.history) / base) * 100;
+      if (!Number.isFinite(slopePct) || Math.abs(slopePct) <= ARROW_MIN_SLOPE_PCT) return null;
+      return { key: g.key, slopePct };
+    })
+    .filter((entry): entry is { key: string; slopePct: number } => entry != null);
+
+  const rising = candidates
+    .filter((entry) => entry.slopePct > 0)
+    .sort((a, b) => b.slopePct - a.slopePct)
+    .slice(0, topN);
+  const falling = candidates
+    .filter((entry) => entry.slopePct < 0)
+    .sort((a, b) => a.slopePct - b.slopePct)
+    .slice(0, topN);
+
+  return new Set([...rising, ...falling].map((entry) => entry.key));
+}
+
+function goodsPriceTrajectoryPct(good: GoodsPriceTrajectoryInput): number | undefined {
+  const base = good.defaultMarketPrice;
+  if (base == null || base <= 0 || good.history.length < 2) return undefined;
+  const slopePct = (weightedSlope(good.history) / base) * 100;
+  if (!Number.isFinite(slopePct) || Math.abs(slopePct) <= ARROW_MIN_SLOPE_PCT) return undefined;
+  return slopePct;
+}
+
+export function buildGoodsPriceArrowData(
+  goods: GoodsPriceTrajectoryInput[],
+): GoodsPriceArrowDatum[] {
+  const selectedKeys = selectGoodsPriceTrajectoryKeys(goods);
+
+  return goods.flatMap((g) => {
+    const base = g.defaultMarketPrice;
+    if (base == null || base <= 0 || !selectedKeys.has(g.key)) return [];
+    const slopePct = goodsPriceTrajectoryPct(g);
+    if (slopePct == null) return [];
+    const startX = ((g.weightedPrice - base) / base) * 100;
+    const arrowLengthPct = Math.min(Math.abs(slopePct) * ARROW_SCALE_FACTOR, ARROW_MAX_PCT);
+    return [
+      {
+        startX,
+        endX: startX + (slopePct > 0 ? arrowLengthPct : -arrowLengthPct),
+        y: g.weightedPrice,
+        key: g.key,
+        slopePct,
+      },
+    ];
+  });
+}
 
 function MarketsScopeHeader({ data }: { data?: MarketScopeSummary }) {
   if (!data) return <InsightScopeHeaderSkeleton />;
@@ -273,6 +387,14 @@ export function GoodsPressureChart({
     );
   }
 
+  const handlePressureClick = useEffectEvent((params: { dataIndex?: number }) => {
+    if (!onGoodSelect) return;
+    const dataIndex = params.dataIndex;
+    if (dataIndex == null) return;
+    const good = sorted[dataIndex];
+    if (good) onGoodSelect(good);
+  });
+
   const height = sorted.length * 20 + 60;
   return (
     <div className="flex flex-col gap-2">
@@ -298,12 +420,7 @@ export function GoodsPressureChart({
         onInit={
           onGoodSelect
             ? (chart) => {
-                chart.on("click", (params) => {
-                  const dataIndex = params.dataIndex;
-                  if (dataIndex == null) return;
-                  const good = sorted[dataIndex];
-                  if (good) onGoodSelect(good);
-                });
+                chart.on("click", handlePressureClick);
               }
             : undefined
         }
@@ -738,6 +855,7 @@ export function GoodsPriceVsBaseChart({
   onGoodSelect?: (good: ScopedGoodSummary) => void;
 }) {
   const isDark = isDarkMode();
+  const [hoveredGoodKey, setHoveredGoodKey] = useState<string | undefined>(undefined);
 
   const filtered = useMemo(
     () =>
@@ -750,9 +868,10 @@ export function GoodsPriceVsBaseChart({
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const selectedBorder = isDark ? "#f1f5f9" : "#0f172a";
+    const arrowColor = isDark ? "#d97706" : "#b45309";
+    const topMoverKeys = selectGoodsPriceTrajectoryKeys(filtered);
     const data = filtered.map((g) => {
-      const isSelected = g.key === selectedGoodKey;
+      const isTopMover = topMoverKeys.has(g.key);
       return {
         value: [
           ((g.weightedPrice - g.defaultMarketPrice) / g.defaultMarketPrice) * 100,
@@ -762,15 +881,162 @@ export function GoodsPriceVsBaseChart({
         name: g.name,
         color: g.colorHex,
         base: g.defaultMarketPrice,
+        trajectoryPct: goodsPriceTrajectoryPct(g),
+        isTopMover,
         itemStyle: {
           color: g.colorHex || (isDark ? "#93c5fd" : "#3b82f6"),
-          opacity: 0.85,
-          borderColor: isSelected ? selectedBorder : "transparent",
-          borderWidth: isSelected ? 2 : 0,
+          opacity: isTopMover ? 0.85 : 0.35,
         },
-        symbolSize: isSelected ? 14 : 8,
       };
     });
+    const arrowData = buildGoodsPriceArrowData(filtered);
+    const series: EChartsOption["series"] = [
+      {
+        type: "custom",
+        silent: true,
+        z: 5,
+        data: arrowData,
+        renderItem: (params, api) => {
+          const { dataIndex } = params;
+          const d = arrowData[dataIndex];
+          if (!d) return null;
+
+          const startPt = api.coord([d.startX, d.y]);
+          const endPt = api.coord([d.endX, d.y]);
+          const direction = d.endX >= d.startX ? 1 : -1;
+          const symbolRadius = d.key === selectedGoodKey ? 7 : 4;
+          const headLength = 8;
+          const headHalfHeight = 4;
+          const lineStartX = startPt[0] + direction * symbolRadius;
+          const headBaseX = endPt[0] - direction * headLength;
+          const hasLineBody = direction * (headBaseX - lineStartX) > 0;
+          const line = {
+            type: "line" as const,
+            shape: {
+              x1: lineStartX,
+              y1: startPt[1],
+              x2: headBaseX,
+              y2: endPt[1],
+            },
+            style: {
+              stroke: arrowColor,
+              lineWidth: 1.5,
+              opacity: 0.9,
+            },
+          };
+
+          return {
+            type: "group",
+            children: [
+              ...(hasLineBody ? [line] : []),
+              {
+                type: "polygon" as const,
+                shape: {
+                  points: [
+                    [endPt[0], endPt[1]],
+                    [headBaseX, endPt[1] - headHalfHeight],
+                    [headBaseX, endPt[1] + headHalfHeight],
+                  ],
+                },
+                style: {
+                  fill: arrowColor,
+                  opacity: 0.9,
+                },
+              },
+            ],
+          };
+        },
+      },
+      {
+        type: "custom" as const,
+        selectedMode: false,
+        data,
+        markLine: {
+          silent: true,
+          symbol: "none",
+          data: [{ xAxis: 0 }],
+          lineStyle: { type: "dashed", color: isDark ? "#94a3b8" : "#64748b", width: 1 },
+          label: { show: false },
+        },
+        renderItem: (params, api) => {
+          const { dataIndex } = params;
+          const d = data[dataIndex];
+          if (!d) return undefined;
+
+          const point = api.coord(d.value as [number, number]);
+          const ICON_SIZE = 16;
+          const half = ICON_SIZE / 2;
+          const x = point[0] - half;
+          const y = point[1] - half;
+          const isSelected = d.key === selectedGoodKey;
+          const highlightColor =
+            (d.color as string | undefined) || (isDark ? "#67e8f9" : "#0284c7");
+
+          let atlasIndex = goodsAtlasData[d.key as string];
+          if (atlasIndex === undefined) atlasIndex = goodsAtlasData["_default"];
+
+          const SCALE = ICON_SIZE / GOODS_CELL_SIZE_32;
+          const atlasTotalW = goodsDimensions32.cols * ICON_SIZE;
+          const atlasTotalH = goodsDimensions32.rows * ICON_SIZE;
+
+          const iconOpacity = isSelected || d.isTopMover || d.key === hoveredGoodKey ? 1 : 0.35;
+
+          const makeIconEl = () => {
+            if (atlasIndex !== undefined) {
+              const { row, col } = goodsDimensions32.coordinates(atlasIndex);
+              const spriteX = col * GOODS_CELL_SIZE_32 * SCALE;
+              const spriteY = row * GOODS_CELL_SIZE_32 * SCALE;
+              return {
+                type: "group" as const,
+                x,
+                y,
+                clipPath: {
+                  type: "rect" as const,
+                  shape: { x: 0, y: 0, width: ICON_SIZE, height: ICON_SIZE },
+                },
+                children: [
+                  {
+                    type: "image" as const,
+                    style: {
+                      image: goodsAtlasUrl32,
+                      x: -spriteX,
+                      y: -spriteY,
+                      width: atlasTotalW,
+                      height: atlasTotalH,
+                      opacity: iconOpacity,
+                    },
+                  },
+                ],
+              };
+            }
+            return {
+              type: "circle" as const,
+              shape: { cx: point[0], cy: point[1], r: half },
+              style: { fill: d.itemStyle.color as string, opacity: iconOpacity },
+            };
+          };
+
+          return {
+            type: "group" as const,
+            children: [
+              {
+                type: "rect" as const,
+                shape: { x: x - 4, y: y - 4, width: ICON_SIZE + 8, height: ICON_SIZE + 8, r: 4 },
+                style: {
+                  fill: "none",
+                  stroke: highlightColor,
+                  lineWidth: 2,
+                  opacity: isSelected ? 1 : 0,
+                  shadowBlur: isSelected ? 8 : 0,
+                  shadowColor: highlightColor,
+                },
+              },
+              makeIconEl(),
+            ],
+          };
+        },
+      },
+    ];
 
     return {
       grid: { left: 70, right: 20, top: 20, bottom: 50 },
@@ -805,29 +1071,22 @@ export function GoodsPriceVsBaseChart({
           const d = params.data as (typeof data)[number];
           const pct =
             ((d.value[0] as number) >= 0 ? "+" : "") + formatFloat(d.value[0] as number, 1);
+          const trajectory =
+            d.trajectoryPct == null
+              ? undefined
+              : `${d.trajectoryPct >= 0 ? "+" : ""}${formatFloat(d.trajectoryPct, 2)}% base/mo`;
           return [
             `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle">${goodsIconHtml(d.key)}<strong>${escapeEChartsHtml(d.name)}</strong></span>`,
             `Current Price: ${formatFloat(d.value[1] as number, 3)}`,
             `Base Price: ${formatFloat(d.base, 3)}`,
             `vs Base: ${pct}%`,
+            ...(trajectory == null ? [] : [`Trajectory: ${trajectory}`]),
           ].join("<br/>");
         },
       },
-      series: [
-        {
-          type: "scatter",
-          data,
-          markLine: {
-            silent: true,
-            symbol: "none",
-            data: [{ xAxis: 0 }],
-            lineStyle: { type: "dashed", color: isDark ? "#94a3b8" : "#64748b", width: 1 },
-            label: { show: false },
-          },
-        },
-      ],
+      series,
     };
-  }, [filtered, isDark, selectedGoodKey]);
+  }, [filtered, isDark, selectedGoodKey, hoveredGoodKey]);
 
   if (filtered.length === 0) {
     return (
@@ -837,20 +1096,27 @@ export function GoodsPriceVsBaseChart({
     );
   }
 
+  const handlePriceMouseover = useEffectEvent((params: { dataIndex?: number }) => {
+    const good = filtered[params.dataIndex ?? -1];
+    if (good) setHoveredGoodKey(good.key);
+  });
+
+  const handlePriceClick = useEffectEvent((params: { dataIndex?: number }) => {
+    const good = filtered[params.dataIndex ?? -1];
+    if (good) onGoodSelect?.(good);
+  });
+
   return (
     <EChart
       option={option}
       style={{ height: "320px", width: "100%" }}
-      onInit={
-        onGoodSelect
-          ? (chart) => {
-              chart.on("click", (params) => {
-                const good = filtered[params.dataIndex ?? -1];
-                if (good) onGoodSelect(good);
-              });
-            }
-          : undefined
-      }
+      onInit={(chart) => {
+        chart.on("mouseover", handlePriceMouseover);
+        chart.on("mouseout", () => setHoveredGoodKey(undefined));
+        if (onGoodSelect) {
+          chart.on("click", handlePriceClick);
+        }
+      }}
     />
   );
 }
