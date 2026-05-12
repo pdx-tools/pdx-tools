@@ -93,13 +93,15 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub fn location_name(&self, idx: eu5save::models::LocationIdx) -> &str {
         let index: usize = idx.value() as usize;
-        self.gamestate
+        let key = self
+            .gamestate
             .metadata
             .compatibility
             .locations
             .get(index)
             .map(|x| x.to_str())
-            .unwrap_or("Unknown")
+            .unwrap_or("Unknown");
+        self.game_data.localized_location_name(key)
     }
 
     pub fn location_terrain(&self, idx: eu5save::models::LocationIdx) -> Terrain {

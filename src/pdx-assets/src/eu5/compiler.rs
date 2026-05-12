@@ -130,6 +130,7 @@ where
             countries: raw_game_data.country_localizations,
             goods: raw_game_data.goods_localizations,
             buildings: raw_game_data.building_localizations,
+            locations: raw_game_data.location_localizations,
         },
     )?;
     write_entry(

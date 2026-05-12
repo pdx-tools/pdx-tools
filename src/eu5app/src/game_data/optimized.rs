@@ -113,6 +113,7 @@ where
             localization: localizations.countries,
             goods_localization: localizations.goods,
             building_localization: localizations.buildings,
+            location_localization: localizations.locations,
             goods: game_data.goods,
         })
     }
@@ -244,12 +245,16 @@ mod tests {
         goods_localization.insert("livestock".to_string(), "Livestock".to_string());
         let mut building_localization = FxHashMap::default();
         building_localization.insert("workshop".to_string(), "Workshop".to_string());
+        let mut location_localization = FxHashMap::default();
+        location_localization.insert("kyoto".to_string(), "Kyōto".to_string());
+        location_localization.insert("tokunoshima".to_string(), "Tokunoshima".to_string());
         let zip = test_bundle(
             GoodsData { goods },
             LocalizationsData {
                 countries: FxHashMap::default(),
                 goods: goods_localization,
                 buildings: building_localization,
+                locations: location_localization,
             },
         );
 
@@ -265,6 +270,12 @@ mod tests {
         assert_eq!(localized.key, "livestock");
         assert_eq!(localized.name, "Livestock");
         assert_eq!(data.localized_building_name("workshop"), "Workshop");
+        assert_eq!(data.localized_location_name("kyoto"), "Kyōto");
+        assert_eq!(data.localized_location_name("tokunoshima"), "Tokunoshima");
+        assert_eq!(
+            data.localized_location_name("missing_location"),
+            "missing_location"
+        );
     }
 
     #[test]

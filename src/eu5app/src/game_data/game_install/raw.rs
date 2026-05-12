@@ -342,6 +342,7 @@ pub struct RawGameData {
     pub country_localizations: FxHashMap<String, String>,
     pub goods_localizations: FxHashMap<String, String>,
     pub building_localizations: FxHashMap<String, String>,
+    pub location_localizations: FxHashMap<String, String>,
     pub goods: FxHashMap<String, GoodData>,
 }
 
@@ -373,12 +374,20 @@ impl RawGameData {
             .map(|(k, v)| (k.to_owned(), v.to_owned()))
             .collect();
         let building_localizations = parse_building_localizations_from_source(fs)?;
+        let location_localizations_data = fs.read_to_string(
+            "game/main_menu/localization/english/location_names/location_names_l_english.yml",
+        )?;
+        let location_localizations =
+            super::parsing::parse_localization(&location_localizations_data)
+                .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                .collect();
 
         let me = Self {
             locations: locations.collect(),
             country_localizations,
             goods_localizations,
             building_localizations,
+            location_localizations,
             goods,
         };
 
@@ -396,6 +405,7 @@ impl RawGameData {
             localization: self.country_localizations,
             goods_localization: self.goods_localizations,
             building_localization: self.building_localizations,
+            location_localization: self.location_localizations,
             goods: self.goods,
         }
     }
