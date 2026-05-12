@@ -39,7 +39,7 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: 0
       CARGO_TERM_COLOR: always
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: 'recursive'
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -109,7 +109,7 @@ jobs:
         echo "after"
         df -h
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: 'recursive'
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -135,7 +135,7 @@ jobs:
           src/eu5save/assets
         key: asset-cache
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       name: Clone tokens
       if: matrix.with_tokens
       with:
@@ -253,7 +253,7 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: 0
       CARGO_TERM_COLOR: always
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -283,7 +283,7 @@ jobs:
             assets/eu4-saves
             src/vic3save/assets
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         name: Clone tokens
         if: matrix.with_tokens
         with:
@@ -295,7 +295,7 @@ jobs:
         if: matrix.with_tokens
         run: cd assets/tokens && ln -s tokens/* .
 
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v4
         with:
           cache: false
 
