@@ -1014,6 +1014,34 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
+    pub(super) fn selection_covers_full_entity(
+        &self,
+        anchor: eu5save::models::LocationIdx,
+        kind: EntityKind,
+    ) -> bool {
+        let selected_count = self.selection_state.len();
+        match kind {
+            EntityKind::Country => {
+                let loc = self.gamestate.locations.index(anchor).location();
+                let Some(owner) = loc.owner.real_id() else {
+                    return false;
+                };
+                let Some(country_idx) = self.gamestate.countries.get(owner.country_id()) else {
+                    return false;
+                };
+                self.iter_country_locations(country_idx).count() == selected_count
+            }
+            EntityKind::Market => {
+                let loc = self.gamestate.locations.index(anchor).location();
+                let Some(market_id) = loc.market else {
+                    return false;
+                };
+                self.iter_market_locations(market_id)
+                    .is_some_and(|iter| iter.count() == selected_count)
+            }
+        }
+    }
+
     fn iter_country_locations(
         &self,
         country_idx: eu5save::models::CountryIdx,

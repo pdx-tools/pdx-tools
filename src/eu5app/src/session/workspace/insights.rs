@@ -1115,6 +1115,21 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         let is_empty = self.selection_state.is_empty();
+
+        // When a non-empty selection is active, track total owned locations per country so we
+        // can suppress historical_population (country-level data) for partially-selected countries.
+        let total_country_locations: FxHashMap<CountryId, u32> = if is_empty {
+            FxHashMap::default()
+        } else {
+            let mut counts: FxHashMap<CountryId, u32> = FxHashMap::default();
+            for entry in self.gamestate.locations.iter() {
+                if let Some(owner_id) = entry.location().owner.real_id().map(|r| r.country_id()) {
+                    *counts.entry(owner_id).or_insert(0) += 1;
+                }
+            }
+            counts
+        };
+
         let mut scoped_locations: Vec<(LocationIdx, CountryId, u32, Option<usize>)> = Vec::new();
 
         for entry in self.gamestate.locations.iter() {
@@ -1178,7 +1193,13 @@ impl<'bump> Eu5Workspace<'bump> {
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
                 let data = self.gamestate.countries.index(cidx).data()?;
-                let historical_population = data.historical_population.to_vec();
+                let selected = agg.location_count;
+                let total = total_country_locations.get(&cid).copied().unwrap_or(0);
+                let historical_population = if is_empty || selected == total {
+                    data.historical_population.to_vec()
+                } else {
+                    Vec::new()
+                };
                 let great_power_rank = data.great_power_rank;
                 let country = self.country_ref_from_country_idx(cidx)?;
                 let ranks = agg
