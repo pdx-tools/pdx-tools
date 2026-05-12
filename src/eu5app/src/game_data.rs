@@ -22,6 +22,7 @@ pub struct GoodsData {
 pub struct LocalizationsData {
     pub countries: FxHashMap<String, String>,
     pub goods: FxHashMap<String, String>,
+    pub buildings: FxHashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -45,6 +46,7 @@ pub struct GameData {
     pub locations: Vec<GameLocation>,
     pub localization: FxHashMap<String, String>,
     pub goods_localization: FxHashMap<String, String>,
+    pub building_localization: FxHashMap<String, String>,
     pub goods: FxHashMap<String, GoodData>,
 }
 
@@ -59,6 +61,13 @@ impl GameData {
 
     pub fn localized_good_name(&self, key: &str) -> String {
         self.goods_localization
+            .get(key)
+            .cloned()
+            .unwrap_or_else(|| key.to_string())
+    }
+
+    pub fn localized_building_name(&self, key: &str) -> String {
+        self.building_localization
             .get(key)
             .cloned()
             .unwrap_or_else(|| key.to_string())
@@ -81,6 +90,10 @@ impl std::fmt::Debug for GameData {
             .field("locations_count", &self.locations.len())
             .field("localization_count", &self.localization.len())
             .field("goods_localization_count", &self.goods_localization.len())
+            .field(
+                "building_localization_count",
+                &self.building_localization.len(),
+            )
             .field("goods_count", &self.goods.len())
             .finish()
     }

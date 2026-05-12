@@ -892,7 +892,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .iter()
             .filter(|b| b.location == location_id && b.owner == loc.owner)
             .map(|b| BuildingEntry {
-                name: b.kind.to_str().to_string(),
+                name: self.game_data.localized_building_name(b.kind.to_str()),
                 level: b.level,
             })
             .collect();

@@ -1,11 +1,11 @@
 use super::parsing::{
-    parse_default_map, parse_goods, parse_locations_data, parse_map_mode_colors,
-    parse_named_locations, resolve_goods,
+    parse_building_keys, parse_default_map, parse_goods, parse_locations_data,
+    parse_map_mode_colors, parse_named_locations, resolve_goods,
 };
 use crate::game_data::game_install::parsing::LocationTerrain;
 use crate::game_data::{GameData, GameDataError, GoodData, TextureProvider};
 use crate::{ColorIdx, GameLocation, hemisphere_size};
-use eu5save::hash::{FnvHashMap, FxHashMap};
+use eu5save::hash::{FnvHashMap, FxHashMap, FxHashSet};
 use pdx_map::{Hemisphere, HemisphereLength, R16, R16Palette, Rgb, World, WorldLength, WorldSize};
 use rawzip::{CompressionMethod, ReaderAt, ZipArchive, ZipArchiveEntryWayfinder};
 use std::collections::HashMap;
@@ -341,6 +341,7 @@ pub struct RawGameData {
     pub locations: Vec<LocationTerrain>,
     pub country_localizations: FxHashMap<String, String>,
     pub goods_localizations: FxHashMap<String, String>,
+    pub building_localizations: FxHashMap<String, String>,
     pub goods: FxHashMap<String, GoodData>,
 }
 
@@ -371,11 +372,13 @@ impl RawGameData {
             .filter(|(key, _)| goods.contains_key(*key))
             .map(|(k, v)| (k.to_owned(), v.to_owned()))
             .collect();
+        let building_localizations = parse_building_localizations_from_source(fs)?;
 
         let me = Self {
             locations: locations.collect(),
             country_localizations,
             goods_localizations,
+            building_localizations,
             goods,
         };
 
@@ -392,9 +395,43 @@ impl RawGameData {
             locations,
             localization: self.country_localizations,
             goods_localization: self.goods_localizations,
+            building_localization: self.building_localizations,
             goods: self.goods,
         }
     }
+}
+
+fn parse_building_keys_from_source(
+    fs: &impl GameFileSource,
+) -> Result<FxHashSet<String>, GameDataError> {
+    let building_files = fs.walk_directory("game/in_game/common/building_types", &[".txt"])?;
+    let mut building_keys = FxHashSet::default();
+    for path in building_files {
+        let Some(file_name) = path.rsplit('/').next() else {
+            continue;
+        };
+        if file_name.to_ascii_lowercase().contains("readme") {
+            continue;
+        }
+        let data = fs.read_to_string(&path)?;
+        building_keys.extend(parse_building_keys(&data)?);
+    }
+
+    Ok(building_keys)
+}
+
+fn parse_building_localizations_from_source(
+    fs: &impl GameFileSource,
+) -> Result<FxHashMap<String, String>, GameDataError> {
+    let building_keys = parse_building_keys_from_source(fs)?;
+    let building_localizations_data =
+        fs.read_to_string("game/main_menu/localization/english/buildings_l_english.yml")?;
+    Ok(
+        super::parsing::parse_localization(&building_localizations_data)
+            .filter(|(key, _)| building_keys.contains(*key))
+            .map(|(k, v)| (k.to_owned(), v.to_owned()))
+            .collect(),
+    )
 }
 
 fn parse_goods_from_source(
@@ -538,5 +575,49 @@ colors = {
         assert_eq!(goods.len(), 1);
         assert_eq!(goods.get("livestock").unwrap().color_hex, "#14962d");
         assert!(!goods.contains_key("readme_entry"));
+    }
+
+    #[test]
+    fn parse_building_localizations_from_source_filters_to_building_type_keys() {
+        let source = FakeSource::default()
+            .with_file(
+                "game/in_game/common/building_types/common_buildings.txt",
+                r#"
+workshop = {
+    category = basic_industry_category
+    unique_production_methods = {
+        artisan_tools = {
+            tools = 0.1
+        }
+    }
+}
+"#,
+            )
+            .with_file(
+                "game/in_game/common/building_types/readme.txt",
+                r#"
+readme_building = {
+}
+"#,
+            )
+            .with_file(
+                "game/main_menu/localization/english/buildings_l_english.yml",
+                r#"l_english:
+ workshop: "Workshop"
+ workshop_desc: "A place for craft production."
+ artisan_tools: "Artisan Tools"
+ basic_industry_category: "Basic Industry"
+ readme_building: "Readme Building"
+"#,
+            );
+
+        let localizations = parse_building_localizations_from_source(&source).unwrap();
+
+        assert_eq!(localizations.get("workshop").unwrap(), "Workshop");
+        assert_eq!(localizations.len(), 1);
+        assert!(!localizations.contains_key("workshop_desc"));
+        assert!(!localizations.contains_key("artisan_tools"));
+        assert!(!localizations.contains_key("basic_industry_category"));
+        assert!(!localizations.contains_key("readme_building"));
     }
 }
