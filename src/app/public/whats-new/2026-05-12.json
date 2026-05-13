@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Add EU5 building localization",
+      "Add EU5 trade goods price trajectory in market profile"
+    ],
+    "fixes": [
+      "Avoid showing country-granular data when locations don't cover entire country"
+    ]
+  }
+}
