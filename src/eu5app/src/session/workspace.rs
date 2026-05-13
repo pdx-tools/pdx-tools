@@ -228,7 +228,11 @@ impl<'bump> Eu5Workspace<'bump> {
 
     fn recompute_derived_scope_for_kind(&mut self, kind: EntityKind) {
         let mode = Self::map_mode_for_entity_kind(kind);
-        self.derived_entity_anchor = single_entity_scope(&self.selection_state, &*self, mode);
+        let anchor = single_entity_scope(&self.selection_state, &*self, mode);
+        let full_coverage = anchor
+            .map(|a| self.selection_covers_full_entity(a, kind))
+            .unwrap_or(false);
+        self.derived_entity_anchor = if full_coverage { anchor } else { None };
         self.derived_entity_kind = self.derived_entity_anchor.map(|_| kind);
     }
 
