@@ -210,10 +210,11 @@ impl FileProvider for ZipProvider {
     }
 
     fn walk_directory(&self, path: &str, ends_with: &[&str]) -> Result<Vec<String>> {
+        let dir_prefix = format!("{}/", path.trim_end_matches('/'));
         let mut results: Vec<String> = self
             .file_index
             .keys()
-            .filter(|file_path| file_path.starts_with(path))
+            .filter(|file_path| file_path.starts_with(&dir_prefix))
             .filter(|file_path| ends_with.iter().any(|suffix| file_path.ends_with(suffix)))
             .cloned()
             .collect();
@@ -314,5 +315,165 @@ where
 
     fn open_file(&self, path: &str) -> Result<Box<dyn Read>> {
         (*self).open_file(path)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    fn zip_with_files(
+        files: &[(&str, &[u8], rawzip::CompressionMethod)],
+    ) -> tempfile::NamedTempFile {
+        let mut tmp = tempfile::Builder::new().suffix(".zip").tempfile().unwrap();
+        let mut writer = rawzip::ZipArchiveWriter::new(&mut tmp);
+
+        for (path, contents, compression_method) in files {
+            let (mut entry, config) = writer
+                .new_file(path)
+                .compression_method(*compression_method)
+                .start()
+                .unwrap();
+
+            match compression_method {
+                rawzip::CompressionMethod::Store => {
+                    let mut w = config.wrap(&mut entry);
+                    std::io::copy(&mut Cursor::new(contents), &mut w).unwrap();
+                    let (_, output) = w.finish().unwrap();
+                    entry.finish(output).unwrap();
+                }
+                rawzip::CompressionMethod::Deflate => {
+                    let encoder = flate2::write::DeflateEncoder::new(
+                        &mut entry,
+                        flate2::Compression::default(),
+                    );
+                    let mut w = config.wrap(encoder);
+                    std::io::copy(&mut Cursor::new(contents), &mut w).unwrap();
+                    let (encoder, output) = w.finish().unwrap();
+                    encoder.finish().unwrap();
+                    entry.finish(output).unwrap();
+                }
+                rawzip::CompressionMethod::Zstd => {
+                    let encoder = zstd::stream::Encoder::new(&mut entry, 0).unwrap();
+                    let mut w = config.wrap(encoder);
+                    std::io::copy(&mut Cursor::new(contents), &mut w).unwrap();
+                    let (encoder, output) = w.finish().unwrap();
+                    encoder.finish().unwrap();
+                    entry.finish(output).unwrap();
+                }
+                method => panic!("test helper does not support {method:?}"),
+            }
+        }
+
+        writer.finish().unwrap();
+        tmp
+    }
+
+    #[test]
+    fn walk_directory_does_not_match_sibling_directories_with_shared_prefix() {
+        let tmp = zip_with_files(&[
+            (
+                "game/in_game/common/goods/00_goods.txt",
+                b"x",
+                rawzip::CompressionMethod::Store,
+            ),
+            (
+                "game/in_game/common/goods_demand/army_demands.txt",
+                b"x",
+                rawzip::CompressionMethod::Store,
+            ),
+        ]);
+
+        let provider = ZipProvider::new(tmp.path()).unwrap();
+        let files = provider
+            .walk_directory("game/in_game/common/goods", &[".txt"])
+            .unwrap();
+
+        assert_eq!(files, vec!["game/in_game/common/goods/00_goods.txt"]);
+    }
+
+    #[test]
+    fn read_file_supports_zip_compression_methods_used_by_provider() {
+        let tmp = zip_with_files(&[
+            (
+                "stored.txt",
+                b"stored contents",
+                rawzip::CompressionMethod::Store,
+            ),
+            (
+                "deflated.txt",
+                b"deflated contents",
+                rawzip::CompressionMethod::Deflate,
+            ),
+            (
+                "zstd.txt",
+                b"zstd contents",
+                rawzip::CompressionMethod::Zstd,
+            ),
+        ]);
+
+        let provider = ZipProvider::new(tmp.path()).unwrap();
+
+        assert_eq!(
+            provider.read_file("stored.txt").unwrap(),
+            b"stored contents"
+        );
+        assert_eq!(
+            provider.read_to_string("deflated.txt").unwrap(),
+            "deflated contents"
+        );
+        assert_eq!(provider.read_file("zstd.txt").unwrap(), b"zstd contents");
+    }
+
+    #[test]
+    fn open_file_reads_zip_entry_contents() {
+        let tmp = zip_with_files(&[(
+            "common/countries.txt",
+            b"country = FRA",
+            rawzip::CompressionMethod::Deflate,
+        )]);
+        let provider = ZipProvider::new(tmp.path()).unwrap();
+        let mut reader = provider.open_file("common/countries.txt").unwrap();
+        let mut contents = String::new();
+
+        reader.read_to_string(&mut contents).unwrap();
+
+        assert_eq!(contents, "country = FRA");
+    }
+
+    #[test]
+    fn fs_file_extracts_zip_entry_to_temp_file() {
+        let tmp = zip_with_files(&[(
+            "gfx/interface/icon.dds",
+            b"fake image data",
+            rawzip::CompressionMethod::Store,
+        )]);
+        let provider = ZipProvider::new(tmp.path()).unwrap();
+
+        let fs_file = provider.fs_file("gfx/interface/icon.dds").unwrap();
+
+        assert_eq!(fs_file.path.file_name().unwrap(), "icon.dds");
+        assert_eq!(fs::read(fs_file.path).unwrap(), b"fake image data");
+    }
+
+    #[test]
+    fn missing_zip_entry_returns_not_found_errors() {
+        let tmp = zip_with_files(&[("exists.txt", b"x", rawzip::CompressionMethod::Store)]);
+        let provider = ZipProvider::new(tmp.path()).unwrap();
+
+        assert!(!provider.file_exists("missing.txt"));
+        assert_eq!(
+            provider.read_file("missing.txt").unwrap_err().to_string(),
+            "File not found: missing.txt"
+        );
+        assert_eq!(
+            provider.open_file("missing.txt").err().unwrap().to_string(),
+            "File not found: missing.txt"
+        );
+        assert_eq!(
+            provider.fs_file("missing.txt").unwrap_err().to_string(),
+            "File not found: missing.txt"
+        );
     }
 }

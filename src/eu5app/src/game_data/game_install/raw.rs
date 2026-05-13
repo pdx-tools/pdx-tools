@@ -308,11 +308,12 @@ where
     }
 
     fn walk_directory(&self, path: &str, ends_with: &[&str]) -> Result<Vec<String>, GameDataError> {
+        let dir_prefix = format!("{}/", path.trim_end_matches('/'));
         let mut files = self
             .entries
             .keys()
             .filter_map(|x| std::str::from_utf8(x).ok())
-            .filter(|file_path| file_path.starts_with(path))
+            .filter(|file_path| file_path.starts_with(&dir_prefix))
             .filter(|file_path| ends_with.iter().any(|suffix| file_path.ends_with(suffix)))
             .map(ToOwned::to_owned)
             .collect::<Vec<_>>();
@@ -528,10 +529,11 @@ mod tests {
             path: &str,
             ends_with: &[&str],
         ) -> Result<Vec<String>, GameDataError> {
+            let dir_prefix = format!("{}/", path.trim_end_matches('/'));
             let mut files = self
                 .files
                 .keys()
-                .filter(|file_path| file_path.starts_with(path))
+                .filter(|file_path| file_path.starts_with(&dir_prefix))
                 .filter(|file_path| ends_with.iter().any(|suffix| file_path.ends_with(suffix)))
                 .cloned()
                 .collect::<Vec<_>>();

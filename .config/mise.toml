@@ -312,14 +312,15 @@ description = "Fetch EU4 or EU5 game files through SteamCMD into assets/steam"
 run = 'cargo run --package pdx-assets -- fetch-game "$@"'
 
 [tasks."assets:steam:bundle"]
-description = "Fetch supported Steam game patches, create raw bundles, and remove installs"
+description = "Fetch supported Steam game patches and create raw bundles"
 usage = '''
 flag "--username <username>" help="Steam username" env="STEAM_USERNAME"
 flag "--game <game>" help="Only process targets for one game" {
   choices "eu4" "eu5"
 }
-flag "--force" help="Recreate bundles that already exist"
-flag "--keep-installs" help="Keep temporary game installs under assets/steam/tmp"
+flag "--version <version>" help="Only process targets matching this version (e.g. 1.2) or 'public' for the current public branch"
+flag "--archive-dir <path>" help="Directory for permanent storage" env="ARCHIVE_DIR"
+flag "--force" help="Re-fetch from Steam even if archive zip already exists"
 flag "--dry-run" help="Print commands without executing them"
 '''
 run = "node ./dev/scripts/fetch-steam-game-bundles.mts"

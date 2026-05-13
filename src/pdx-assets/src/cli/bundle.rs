@@ -3,7 +3,7 @@ use crate::asset_compilers::{
 };
 use crate::bundler::{AssetBundler, AssetManifest};
 use crate::images::imagemagick::ImageMagickProcessor;
-use crate::{DirectoryProvider, FileAccessTracker, Game, steam};
+use crate::{FileAccessTracker, FileProvider, Game, create_provider, steam};
 use anyhow::{Context, Result};
 use clap::Args;
 use std::io::stdout;
@@ -42,8 +42,8 @@ impl BundleArgs {
         let games_to_process: Vec<(Game, PathBuf)> = match self.game_directory.as_ref() {
             Some(path) => {
                 // Path provided: detect game from directory
-                let directory_provider = DirectoryProvider::new(path);
-                let tracking_provider = FileAccessTracker::new(directory_provider);
+                let provider = create_provider(path)?;
+                let tracking_provider = FileAccessTracker::new(provider);
                 let game = self.detect_game(&tracking_provider)?;
                 vec![(game, path.clone())]
             }
@@ -65,8 +65,8 @@ impl BundleArgs {
         for (game, game_directory) in games_to_process {
             println!("\n=== Bundling {} ===\n", game);
 
-            let directory_provider = DirectoryProvider::new(&game_directory);
-            let tracking_provider = FileAccessTracker::new(directory_provider);
+            let provider = create_provider(&game_directory)?;
+            let tracking_provider = FileAccessTracker::new(provider);
 
             let options = PackageOptions {
                 game_version: self.version.clone(),
@@ -118,7 +118,7 @@ impl BundleArgs {
                 .unwrap_or_else(|| PathBuf::from(&zip_filename));
 
             let bundler = AssetBundler::new(manifest, out_file);
-            let stats = bundler.bundle()?;
+            let stats = bundler.bundle(&tracking_provider)?;
 
             println!("Files added: {}", stats.files_added);
             println!(
@@ -139,7 +139,7 @@ impl BundleArgs {
         Ok(ExitCode::SUCCESS)
     }
 
-    fn detect_game(&self, provider: &FileAccessTracker<DirectoryProvider>) -> Result<Game> {
+    fn detect_game<P: FileProvider>(&self, provider: &FileAccessTracker<P>) -> Result<Game> {
         // If explicitly specified, use that
         if let Some(game_str) = &self.game {
             game_str.parse()

@@ -16,6 +16,7 @@ assets/game/eu5
 assets/tokens
 assets/vendored/
 .env
+.config/mise.local.toml
 dev/.env.*prod
 dev/.env.*staging
 *.node
