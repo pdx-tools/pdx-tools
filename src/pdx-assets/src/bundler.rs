@@ -5,6 +5,8 @@ use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
+use crate::FileProvider;
+
 #[derive(Debug, Clone)]
 pub struct BundleStatistics {
     pub files_added: u32,
@@ -49,7 +51,7 @@ impl AssetBundler {
         Self { manifest, out_file }
     }
 
-    pub fn bundle(&self) -> Result<BundleStatistics> {
+    pub fn bundle<P: FileProvider>(&self, provider: &P) -> Result<BundleStatistics> {
         if let Some(parent) = self.out_file.parent() {
             fs::create_dir_all(parent).with_context(|| {
                 format!("Failed to create output directory {}", parent.display())
@@ -71,10 +73,9 @@ impl AssetBundler {
 
         // Add explicit files
         for file_path in &required_files {
-            let source_path = self.manifest.base_path.join(file_path);
-            if source_path.exists() && source_path.is_file() {
+            if provider.file_exists(file_path) {
                 let (uncompressed, compressed) =
-                    self.add_file_to_zip(&mut zip, &source_path, file_path)?;
+                    self.add_file_to_zip(&mut zip, provider, file_path)?;
                 files_added += 1;
                 total_uncompressed_size += uncompressed;
                 total_compressed_size += compressed;
@@ -99,14 +100,15 @@ impl AssetBundler {
     fn add_file_to_zip<W: Write>(
         &self,
         zip: &mut rawzip::ZipArchiveWriter<W>,
-        source_path: &Path,
+        provider: &impl FileProvider,
         archive_path: &str,
     ) -> Result<(u64, u64)> {
-        let mut file_content = fs::File::open(source_path)
-            .with_context(|| format!("Failed to read file: {}", source_path.display()))?;
+        let mut file_content = provider
+            .open_file(archive_path)
+            .with_context(|| format!("Failed to read file: {}", archive_path))?;
 
         // Determine compression method based on file extension
-        let compression_method = if self.should_compress_file(source_path) {
+        let compression_method = if self.should_compress_file(Path::new(archive_path)) {
             rawzip::CompressionMethod::Zstd
         } else {
             rawzip::CompressionMethod::Store

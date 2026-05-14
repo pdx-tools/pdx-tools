@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use pdx_assets::{BundleArgs, CompileArgs, FetchGameArgs};
+use pdx_assets::{BundleArgs, CompileArgs, FetchGameArgs, PackArgs};
 use std::{io::IsTerminal, process::ExitCode};
 use tracing_subscriber::{EnvFilter, filter::LevelFilter, fmt::format::FmtSpan};
 
@@ -22,6 +22,7 @@ enum Commands {
     Bundle(BundleArgs),
     Compile(CompileArgs),
     FetchGame(FetchGameArgs),
+    Pack(PackArgs),
 }
 
 fn main() -> ExitCode {
@@ -41,6 +42,7 @@ fn main() -> ExitCode {
         Commands::Bundle(args) => args.run(),
         Commands::Compile(args) => args.run(),
         Commands::FetchGame(args) => args.run(),
+        Commands::Pack(args) => args.run(),
     };
 
     match exit_code {

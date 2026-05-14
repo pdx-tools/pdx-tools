@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "child_process";
-import { access, mkdir, rm } from "fs/promises";
+import { access, mkdir, rename, rm } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
@@ -35,16 +35,17 @@ const targets: BundleTarget[] = [
   { game: "eu4", branch: "1.36.2", version: "1.36" },
   { game: "eu4", version: "1.37" },
   { game: "eu5", branch: "1.0.11", version: "1.0" },
-  { game: "eu5", branch: "1.1.0", version: "1.1" },
+  { game: "eu5", branch: "1.1.10", version: "1.1" },
   { game: "eu5", version: "1.2" },
 ];
 
 type Options = {
   game?: Game;
   username: string;
+  archiveDir?: string;
+  version?: string;
   dryRun: boolean;
   force: boolean;
-  keepInstalls: boolean;
 };
 
 const exists = async (path: string) => {
@@ -92,6 +93,11 @@ const readGame = (): Game | undefined => {
   throw new Error(`Invalid usage_game from mise: ${game}`);
 };
 
+const readOptionalString = (name: string) => {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+};
+
 const readOptions = (): Options => {
   const username = process.env.usage_username ?? "";
   if (!username.trim()) {
@@ -101,19 +107,30 @@ const readOptions = (): Options => {
   return {
     username: username.trim(),
     game: readGame(),
+    archiveDir: readOptionalString("usage_archive_dir"),
+    version: readOptionalString("usage_version"),
     dryRun: readBoolean("usage_dry_run"),
     force: readBoolean("usage_force"),
-    keepInstalls: readBoolean("usage_keep_installs"),
   };
 };
 
 const labelFor = (target: BundleTarget) => target.branch ?? "public";
 
+const archiveLabelFor = (target: BundleTarget) => target.branch ?? target.version;
+
 const installDirFor = (target: BundleTarget) =>
   join(projectRoot, "assets", "steam", "tmp", target.game, labelFor(target));
 
-const bundlePathFor = (target: BundleTarget) =>
-  join(projectRoot, "assets", "game-bundles", `${target.game}-${target.version}.zip`);
+const archiveZipPathFor = (target: BundleTarget, archiveDir: string) =>
+  join(archiveDir, target.game, `${archiveLabelFor(target)}.zip`);
+
+const archiveTempZipPathFor = (archiveZipPath: string) => `${archiveZipPath}.tmp`;
+
+const targetMatchesVersion = (target: BundleTarget, version: string | undefined) => {
+  if (version === undefined) return true;
+  if (version === "public") return target.branch === undefined;
+  return target.version === version;
+};
 
 const fetchArgsFor = (target: BundleTarget, installDir: string, username: string) => {
   const args = [
@@ -143,38 +160,95 @@ const main = async () => {
   });
 
   const selectedTargets = targets.filter(
-    (t) => options.game === undefined || t.game === options.game,
+    (t) =>
+      (options.game === undefined || t.game === options.game) &&
+      targetMatchesVersion(t, options.version),
   );
 
   for (const target of selectedTargets) {
-    const bundlePath = bundlePathFor(target);
-    if (!options.force && (await exists(bundlePath))) {
-      console.log(`Skipping ${target.game} ${labelFor(target)}; ${bundlePath} already exists`);
-      continue;
-    }
-
     const installDir = installDirFor(target);
+    const archiveZipPath =
+      options.archiveDir === undefined ? undefined : archiveZipPathFor(target, options.archiveDir);
     console.log(`\n=== ${target.game} ${labelFor(target)} ===`);
 
-    try {
-      await rm(installDir, { force: true, recursive: true });
-      await run(pdxAssetsBinary, fetchArgsFor(target, installDir, options.username), {
-        dryRun: options.dryRun,
-      });
-      await run(
-        pdxAssetsBinary,
-        ["bundle", "--game", target.game, "--version", target.version, installDir, gameBundlesDir],
-        { dryRun: options.dryRun },
-      );
-    } finally {
-      if (!options.keepInstalls) {
+    if (archiveZipPath === undefined) {
+      try {
+        await rm(installDir, { force: true, recursive: true });
+        await run(pdxAssetsBinary, fetchArgsFor(target, installDir, options.username), {
+          dryRun: options.dryRun,
+        });
+        await run(
+          pdxAssetsBinary,
+          [
+            "bundle",
+            "--game",
+            target.game,
+            "--version",
+            target.version,
+            installDir,
+            gameBundlesDir,
+          ],
+          { dryRun: options.dryRun },
+        );
+      } finally {
         if (options.dryRun) {
           console.log(`$ rm -rf ${shellQuote(installDir)}`);
         } else {
           await rm(installDir, { force: true, recursive: true });
         }
       }
+
+      continue;
     }
+
+    const archiveExists = await exists(archiveZipPath);
+    const archiveTempZipPath = archiveTempZipPathFor(archiveZipPath);
+    if (archiveExists && !options.force) {
+      console.log(`Using existing archive ${archiveZipPath}`);
+    } else {
+      try {
+        await rm(installDir, { force: true, recursive: true });
+        await rm(archiveTempZipPath, { force: true });
+        if (options.dryRun) {
+          console.log(`$ mkdir -p ${shellQuote(dirname(archiveZipPath))}`);
+        } else {
+          await mkdir(dirname(archiveZipPath), { recursive: true });
+        }
+        await run(pdxAssetsBinary, fetchArgsFor(target, installDir, options.username), {
+          dryRun: options.dryRun,
+        });
+        await run(pdxAssetsBinary, ["pack", installDir, archiveTempZipPath], {
+          dryRun: options.dryRun,
+        });
+
+        if (options.dryRun) {
+          console.log(`$ mv ${shellQuote(archiveTempZipPath)} ${shellQuote(archiveZipPath)}`);
+        } else {
+          await rename(archiveTempZipPath, archiveZipPath);
+        }
+      } finally {
+        if (options.dryRun) {
+          console.log(`$ rm -rf ${shellQuote(installDir)} ${shellQuote(archiveTempZipPath)}`);
+        } else {
+          await rm(installDir, { force: true, recursive: true });
+          await rm(archiveTempZipPath, { force: true });
+        }
+      }
+    }
+
+    await run(
+      pdxAssetsBinary,
+      [
+        "bundle",
+        "--game",
+        target.game,
+        "--version",
+        target.version,
+        archiveZipPath,
+        gameBundlesDir,
+      ],
+      { dryRun: options.dryRun },
+    );
   }
 };
 
