@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Eu5DataTable } from "../../components";
-import { Table } from "@/components/Table";
 import type { PossibleTaxTopLocation } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
@@ -24,7 +23,7 @@ export function PossibleTaxTopLocations({ locations }: Props) {
     () => [
       columnHelper.accessor("name", {
         sortingFn: "text",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Location" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
           return (
@@ -43,37 +42,41 @@ export function PossibleTaxTopLocations({ locations }: Props) {
       }),
       columnHelper.accessor("possibleTax", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Possible Tax" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 2),
+        meta: Eu5DataTable.meta({ headerLabel: "Possible Tax", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor("development", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Development" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 1),
+        meta: Eu5DataTable.meta({ headerLabel: "Development", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor("control", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Control" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 2),
+        meta: Eu5DataTable.meta({ headerLabel: "Control", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor("owner", {
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
       }),
       columnHelper.accessor("population", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Population" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatInt(info.getValue()),
+        meta: Eu5DataTable.meta({ headerLabel: "Population", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+        ),
       }),
     ],
     [nav, panToEntity],
   );
 
-  return <Eu5DataTable className="w-full" columns={columns} data={locations} pagination={true} />;
+  return <Eu5DataTable className="w-full" columns={columns} data={locations} pagination />;
 }

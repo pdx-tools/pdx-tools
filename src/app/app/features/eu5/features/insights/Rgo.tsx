@@ -4,7 +4,6 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { Eu5DataTable } from "../../components";
-import { Table } from "@/components/Table";
 import type {
   RgoInsightData,
   RgoMaterialProfileDelta,
@@ -236,7 +235,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
     () => [
       topLocColHelper.accessor("name", {
         sortingFn: "text",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Location" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
           return (
@@ -256,19 +255,20 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
       topLocColHelper.accessor("owner", {
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
       }),
       topLocColHelper.accessor("rawMaterial", {
         sortingFn: "text",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Raw Material" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Raw Material" }),
         cell: (info) => info.getValue(),
       }),
       topLocColHelper.accessor("rgoLevel", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="RGO Level" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatLevel(info.getValue()),
+        meta: Eu5DataTable.meta({ headerLabel: "RGO Level", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatLevel(info.getValue())}</Eu5DataTable.NumericCell>
+        ),
       }),
     ],
     [nav, panToEntity],
