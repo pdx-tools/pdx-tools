@@ -358,6 +358,12 @@ fn postgres_split(x: &str) -> Option<Vec<String>> {
     } else if x == "{}" {
         Some(Vec::new())
     } else {
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
         let inner_csv = x[1..x.len() - 1].replace("\"\"", "\"");
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(false)
