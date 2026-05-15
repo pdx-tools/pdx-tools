@@ -2676,7 +2676,6 @@ dependencies = [
  "applib",
  "axum",
  "bytemuck",
- "image",
  "mimalloc",
  "pdx-map",
  "pdx-screenshot",
@@ -2685,7 +2684,6 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
- "webp",
 ]
 
 [[package]]

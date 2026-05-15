@@ -13,16 +13,6 @@ export const pdxFns = ({ endpoint }: { endpoint: string }) => {
         },
       }),
 
-    convertScreenshot: (png: ArrayBuffer) => {
-      return fetchOk(`${endpoint}/webp`, {
-        method: "POST",
-        body: png,
-        headers: {
-          "Content-Type": "application/octet-stream",
-        },
-      }).then((x) => x.arrayBuffer());
-    },
-
     renderScreenshot: (save: BodyInit) => {
       return fetchOk(`${endpoint}/screenshot`, {
         method: "POST",
