@@ -45,32 +45,32 @@
 }
 
 [data-game-theme="eu5"] {
-  --game-page: var(--color-zinc-950);
-  --game-panel: var(--color-slate-950);
-  --game-panel-2: var(--color-slate-900);
-  --game-panel-hover: var(--color-slate-800);
-  --game-panel-active: var(--color-slate-800);
-  --game-overlay: color-mix(in srgb, var(--color-slate-950) 72%, transparent);
+  --game-page: oklch(15% 0.012 250);
+  --game-panel: oklch(18% 0.012 250);
+  --game-panel-2: oklch(22% 0.014 250);
+  --game-panel-hover: oklch(26% 0.018 250);
+  --game-panel-active: oklch(31% 0.02 250);
+  --game-overlay: rgba(8, 11, 16, 0.72);
 
-  --game-line: color-mix(in srgb, var(--color-white) 6%, transparent);
-  --game-line-strong: color-mix(in srgb, var(--color-white) 10%, transparent);
+  --game-line: rgba(255, 255, 255, 0.06);
+  --game-line-strong: rgba(255, 255, 255, 0.1);
 
-  --game-ink-100: var(--color-stone-100);
-  --game-ink-300: var(--color-stone-300);
-  --game-ink-500: var(--color-stone-500);
-  --game-ink-700: var(--color-stone-600);
-  --game-ink-disabled: var(--color-stone-700);
+  --game-ink-100: oklch(94% 0.018 80);
+  --game-ink-300: oklch(81% 0.012 80);
+  --game-ink-500: oklch(58% 0.01 80);
+  --game-ink-700: oklch(40% 0.01 80);
+  --game-ink-disabled: oklch(28% 0.008 80);
 
-  --game-accent-100: var(--color-amber-200);
-  --game-accent-300: var(--color-amber-600);
-  --game-accent-500: var(--color-amber-700);
-  --game-accent-soft: color-mix(in srgb, var(--color-amber-600) 14%, transparent);
-  --game-accent-line: color-mix(in srgb, var(--color-amber-600) 55%, transparent);
+  --game-accent-100: oklch(86% 0.092 78);
+  --game-accent-300: oklch(72% 0.12 78);
+  --game-accent-500: oklch(58% 0.13 78);
+  --game-accent-soft: rgba(212, 160, 90, 0.14);
+  --game-accent-line: rgba(212, 160, 90, 0.55);
 
   --game-warn: var(--color-amber-500);
-  --game-err: var(--color-red-400);
-  --game-info: var(--color-slate-400);
-  --game-good: var(--color-green-400);
+  --game-err: var(--color-rose-500);
+  --game-info: var(--color-sky-400);
+  --game-good: var(--color-emerald-500);
 
   --font-game-ui: "Public Sans", -apple-system, system-ui, "Segoe UI", sans-serif;
   --font-game-num: "IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace;
