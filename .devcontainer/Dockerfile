@@ -7,6 +7,7 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then dpkg --add-architecture i386; fi && \
       clang \
       imagemagick \
       libssl-dev \
+      mesa-vulkan-drivers \
       musl-tools \
       pkg-config \
       webp \
