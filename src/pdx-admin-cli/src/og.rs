@@ -53,9 +53,14 @@ impl OgArgs {
                 continue;
             };
 
+            let out_name = format!("{save_id}.webp");
             let out_path = match &self.out_dir {
-                Some(dir) => dir.join(save_id),
-                None => path.parent().unwrap_or(path).join("previews").join(save_id),
+                Some(dir) => dir.join(&out_name),
+                None => path
+                    .parent()
+                    .unwrap_or(path)
+                    .join("previews")
+                    .join(&out_name),
             };
 
             if out_path.exists() && !self.force {
