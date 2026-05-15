@@ -111,7 +111,10 @@ fn bytes_to_u16(bytes: &[u8]) -> Vec<u16> {
         bytes.len().is_multiple_of(2),
         "embedded u16 asset has odd byte length"
     );
-    bytemuck::cast_slice(bytes).to_vec()
+    bytes
+        .chunks_exact(2)
+        .map(|c| u16::from_le_bytes([c[0], c[1]]))
+        .collect()
 }
 
 fn decode_r16(data: &[u8], label: &str) -> Vec<R16> {
