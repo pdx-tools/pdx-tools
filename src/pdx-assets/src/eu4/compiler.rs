@@ -722,6 +722,12 @@ where
         .iter()
         .filter_map(|x| {
             let path = achievement_paths.get(&x.id)?;
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
             let achievement_path = path.display().to_string().replace("//", "/");
             let file_handle = fs
                 .fs_file(achievement_path.as_str())
@@ -777,6 +783,12 @@ where
 
     let data = fs.read_file("interface/building_icons.gfx")?;
     let sprites = sprites::parse_sprites(data.as_slice());
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
 
     let mut western_buildings = Vec::new();
     let mut global_buildings = Vec::new();
