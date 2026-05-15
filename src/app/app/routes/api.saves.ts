@@ -126,7 +126,7 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
 
     const og = pdxOg({ s3, context });
     if (og.enabled) {
-      const ogGeneration = og.generateOgIntoS3(saveId).catch((err) => {
+      const ogGeneration = og.generateOgIntoS3(saveId, bytes.buffer).catch((err) => {
         log.exception(err, { msg: "unable to generate og image" });
       });
       context.cloudflare.ctx.waitUntil(ogGeneration);

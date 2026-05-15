@@ -2552,11 +2552,13 @@ dependencies = [
  "eu4save",
  "flate2",
  "mimalloc",
+ "pdx-screenshot",
  "pdx-zstd",
  "rawzip",
  "rayon",
  "serde",
  "serde_json",
+ "tokio",
  "tracing",
  "tracing-subscriber",
  "walkdir",
@@ -2574,9 +2576,11 @@ dependencies = [
  "eu4game-data",
  "eu4save",
  "eu5app",
+ "eu5save",
  "flate2",
  "jomini",
  "mimalloc",
+ "pdx-map",
  "pdx-zstd",
  "postcard",
  "rawbmp",
@@ -2635,6 +2639,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdx-screenshot"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "eu4game",
+ "eu4game-data",
+ "eu4save",
+ "image",
+ "pdx-map",
+ "pdx-zstd",
+ "schemas",
+ "thiserror 2.0.18",
+ "tracing",
+ "webp",
+]
+
+[[package]]
 name = "pdx-tokenize-cli"
 version = "0.1.0"
 dependencies = [
@@ -2651,10 +2672,15 @@ dependencies = [
 name = "pdx-tools-api"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "applib",
  "axum",
+ "bytemuck",
  "image",
  "mimalloc",
+ "pdx-map",
+ "pdx-screenshot",
+ "thiserror 2.0.18",
  "tokio",
  "tower-http",
  "tracing",

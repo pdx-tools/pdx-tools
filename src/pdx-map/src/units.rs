@@ -3,8 +3,11 @@
 //! The module also provides `Point` and `Rect` types for working with
 //! coordinates.
 
-use std::fmt::{self, Display};
 use std::marker::PhantomData;
+use std::{
+    fmt::{self, Display},
+    ops::Div,
+};
 
 /// Marker type for physical pixel units (device pixels)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -118,12 +121,20 @@ impl<Unit, T: Display> Display for Size<Unit, T> {
     }
 }
 
+impl<Unit> Div<u32> for Size<Unit, u32> {
+    type Output = Self;
+
+    fn div(self, rhs: u32) -> Self::Output {
+        Self::new(self.width / rhs, self.height / rhs)
+    }
+}
+
 impl Size<HemisphereSpace, u32> {
-    pub fn world(&self) -> Size<WorldSpace, u32> {
+    pub const fn world(&self) -> Size<WorldSpace, u32> {
         Size::<WorldSpace, u32>::new(self.width * 2, self.height)
     }
 
-    pub fn physical(&self) -> Size<Physical, u32> {
+    pub const fn physical(&self) -> Size<Physical, u32> {
         Size::<Physical, u32>::new(self.width, self.height)
     }
 }
@@ -294,6 +305,12 @@ mod tests {
     fn test_size_display_u32() {
         let size = PhysicalSize::new(1920u32, 1080u32);
         assert_eq!(format!("{}", size), "1920x1080");
+    }
+
+    #[test]
+    fn test_size_div_u32() {
+        let size = PhysicalSize::new(1920u32, 1080u32);
+        assert_eq!(size / 2, PhysicalSize::new(960, 540));
     }
 
     #[test]

@@ -10,6 +10,7 @@ workspace = true
 
 [features]
 embedded = []
+embedded-screenshot = []
 tsify = ["dep:tsify", "dep:wasm-bindgen"]
 
 [dependencies]

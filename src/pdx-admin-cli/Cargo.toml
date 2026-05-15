@@ -18,8 +18,10 @@ clap = { features = ["derive", "env"], workspace = true }
 csv = { workspace = true }
 eu4save = { workspace = true, default-features = false, features = ["serialize", "zstd_c"] }
 flate2 = { workspace = true, default-features = false, features = ["zlib-rs"] }
+pdx-screenshot = { workspace = true, features = ["eu4"] }
 pdx-zstd = { workspace = true, default-features = false, features = ["zstd_c"] }
 rawzip = { workspace = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
 rayon = { workspace = true }
 serde = { features = ["derive"], workspace = true }
 serde_json = { workspace = true }

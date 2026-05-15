@@ -1384,14 +1384,14 @@ impl HeadlessMapRenderer {
 
         // Calculate aligned bytes per row for GPU copy
         const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
-        let unpadded_bytes_per_row = bounds.rect.size.width * 4;
+        let unpadded_bytes_per_row = texture_width * 4;
 
         // Align a value to the given alignment (power of 2)
         let alignment = COPY_BYTES_PER_ROW_ALIGNMENT;
         let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(alignment) * alignment;
 
         // Create staging buffer if it doesn't exist or has wrong size
-        let buffer_size = (padded_bytes_per_row * bounds.rect.size.height) as u64;
+        let buffer_size = (padded_bytes_per_row * texture_height) as u64;
         if self.viewport_staging_buffer.is_none()
             || self
                 .viewport_staging_buffer
@@ -1475,12 +1475,12 @@ impl HeadlessMapRenderer {
                 layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(padded_bytes_per_row),
-                    rows_per_image: Some(bounds.rect.size.height),
+                    rows_per_image: Some(texture_height),
                 },
             },
             wgpu::Extent3d {
-                width: bounds.rect.size.width,
-                height: bounds.rect.size.height,
+                width: texture_width,
+                height: texture_height,
                 depth_or_array_layers: 1,
             },
         );
@@ -1505,7 +1505,7 @@ impl HeadlessMapRenderer {
         Ok(PdxBufferView::new(
             viewport_staging_buffer,
             data,
-            bounds.rect.size.width,
+            texture_width,
             padded_bytes_per_row,
         ))
     }

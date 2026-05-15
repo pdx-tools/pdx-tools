@@ -14,14 +14,35 @@ export const pdxOg = ({
 }) => {
   const token = context.cloudflare.env.PUPPETEER_TOKEN;
   const puppeteerUrlEnv = context.cloudflare.env.PUPPETEER_URL;
+  const useScreenshotEndpoint = context.cloudflare.env.USE_NEW_SCREENSHOT_ENDPOINT === "true";
+  const parseApiEndpoint = context.cloudflare.env.PARSE_API_ENDPOINT;
   return {
-    enabled: token && puppeteerUrlEnv,
-    generateOgIntoS3: async (saveId: string) => {
-      const url = import.meta.env.PROD ? "https://pdx.tools" : "http://localhost:3001";
-
+    enabled: (useScreenshotEndpoint && parseApiEndpoint) || (token && puppeteerUrlEnv),
+    generateOgIntoS3: async (saveId: string, saveData?: ArrayBuffer) => {
       const s3Key = s3.keys.preview(saveId);
+      let buffer: ArrayBuffer;
 
-      const cmd = `export default async function ({ page }) {
+      if (useScreenshotEndpoint) {
+        const data: ArrayBuffer =
+          saveData ?? (await s3.fetchOk(s3.keys.save(saveId)).then((x) => x.arrayBuffer()));
+
+        const result = await timeit(() =>
+          pdxFns({
+            endpoint: parseApiEndpoint,
+          }).renderScreenshot(data),
+        );
+
+        buffer = result.data;
+        log.info({
+          key: saveId,
+          msg: "generated webp preview",
+          elapsedMs: result.elapsedMs.toFixed(2),
+          imageSize: buffer.byteLength,
+        });
+      } else {
+        const url = import.meta.env.PROD ? "https://pdx.tools" : "http://localhost:3001";
+
+        const cmd = `export default async function ({ page }) {
         page.setViewport({
           width: 1200 + 56,
           height: 630,
@@ -37,48 +58,50 @@ export const pdxOg = ({
       }
       `;
 
-      const puppeteerUrl = new URL(puppeteerUrlEnv + "/download");
-      log.info({ msg: "requesting og creation", puppeteerUrl, key: saveId });
-      puppeteerUrl.searchParams.set("token", token);
+        const puppeteerUrl = new URL(puppeteerUrlEnv + "/download");
+        log.info({ msg: "requesting og creation", puppeteerUrl, key: saveId });
+        puppeteerUrl.searchParams.set("token", token);
 
-      const pngBuffer = await timeit(() =>
-        fetchOk(puppeteerUrl, {
-          method: "POST",
-          body: cmd,
-          headers: {
-            "Content-Type": "application/javascript",
-          },
-        }).then((x) => x.arrayBuffer()),
-      );
+        const pngBuffer = await timeit(() =>
+          fetchOk(puppeteerUrl, {
+            method: "POST",
+            body: cmd,
+            headers: {
+              "Content-Type": "application/javascript",
+            },
+          }).then((x) => x.arrayBuffer()),
+        );
 
-      log.info({
-        msg: "generated png preview",
-        key: saveId,
-        elapsedMs: pngBuffer.elapsedMs.toFixed(2),
-        imageSize: pngBuffer.data.byteLength,
-      });
+        log.info({
+          msg: "generated png preview",
+          key: saveId,
+          elapsedMs: pngBuffer.elapsedMs.toFixed(2),
+          imageSize: pngBuffer.data.byteLength,
+        });
 
-      // An optimized webp of the screenshot can be 1/3 of the size. It may seem odd
-      // to call out to the API service to do the conversion, but it makes sense:
-      // - Puppeteer webp screenshot is not optimized
-      // - Using "sharp" has dependency issues when for Wasm deployments (npm
-      //   doesn't save what cpu runtime)
-      // - The pure rust webp impl in "image" does not output well optimized
-      //   lossless
-      // - Using "webp" rust crate does support web-assembly:
-      //   https://github.com/jaredforth/webp/issues/20
-      const { data: buffer, elapsedMs } = await timeit(() =>
-        pdxFns({
-          endpoint: context.cloudflare.env.PARSE_API_ENDPOINT,
-        }).convertScreenshot(pngBuffer.data),
-      );
+        // An optimized webp of the screenshot can be 1/3 of the size. It may seem odd
+        // to call out to the API service to do the conversion, but it makes sense:
+        // - Puppeteer webp screenshot is not optimized
+        // - Using "sharp" has dependency issues when for Wasm deployments (npm
+        //   doesn't save what cpu runtime)
+        // - The pure rust webp impl in "image" does not output well optimized
+        //   lossless
+        // - Using "webp" rust crate does support web-assembly:
+        //   https://github.com/jaredforth/webp/issues/20
+        const result = await timeit(() =>
+          pdxFns({
+            endpoint: parseApiEndpoint,
+          }).convertScreenshot(pngBuffer.data),
+        );
 
-      log.info({
-        key: saveId,
-        msg: "transcoded into webp preview",
-        elapsedMs: elapsedMs.toFixed(2),
-        imageSize: buffer.byteLength,
-      });
+        buffer = result.data;
+        log.info({
+          key: saveId,
+          msg: "transcoded into webp preview",
+          elapsedMs: result.elapsedMs.toFixed(2),
+          imageSize: buffer.byteLength,
+        });
+      }
 
       const s3Upload = await timeit(() =>
         s3.fetchOk(s3Key, {

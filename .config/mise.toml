@@ -326,16 +326,14 @@ flag "--dry-run" help="Print commands without executing them"
 run = "node ./dev/scripts/fetch-steam-game-bundles.mts"
 
 [tasks."admin:build:cli"]
-depends = ["setup:musl"]
-run = "cargo build --package pdx-admin-cli --release --target x86_64-unknown-linux-musl"
+run = "cargo build --package pdx-admin-cli --release"
 
 [tasks."release:build:docker"]
 wait_for = ["release:build:api"]
-run = "docker build -t ghcr.io/pdx-tools/api:nightly -f ./dev/api.dockerfile ./target/x86_64-unknown-linux-musl/release/"
+run = "docker build -t ghcr.io/pdx-tools/api:nightly -f ./dev/api.dockerfile ./target/release/"
 
 [tasks."release:build:api"]
-depends = ["setup:musl"]
-run = "cargo build --package pdx-tools-api --release --target x86_64-unknown-linux-musl"
+run = "cargo build --package pdx-tools-api --release"
 
 [tasks."release:build"]
 depends = ["build:wasm", "optimize:wasm:*", "build:app", "release:build:api", "release:build:docker"]
@@ -349,10 +347,6 @@ run = [
     "rustup target add wasm32-wasip1",
     "cargo bench -p bench --bench pdx-bench-criterion --target wasm32-wasip1",
 ]
-
-[tasks."setup:musl"]
-hide = true
-run = "rustup target add x86_64-unknown-linux-musl"
 
 [tasks."setup:wasm"]
 hide = true

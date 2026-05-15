@@ -1,0 +1,37 @@
+[package]
+name = "pdx-screenshot"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+eu4 = [
+    "dep:bytemuck",
+    "dep:eu4game",
+    "dep:eu4game-data",
+    "dep:eu4save",
+    "dep:image",
+    "dep:pdx-map",
+    "dep:pdx-zstd",
+    "dep:schemas",
+    "dep:webp",
+    "pdx-map?/render",
+    "pdx-map?/date-layer",
+    "pdx-map?/tracing",
+]
+
+[dependencies]
+bytemuck = { workspace = true, optional = true }
+eu4game = { workspace = true, optional = true, default-features = false, features = ["embedded", "zstd_c"] }
+eu4game-data = { workspace = true, optional = true, default-features = false, features = ["embedded", "embedded-screenshot"] }
+eu4save = { workspace = true, optional = true, default-features = false, features = ["zstd_c"] }
+image = { workspace = true, optional = true, default-features = false }
+pdx-map = { workspace = true, optional = true }
+pdx-zstd = { workspace = true, optional = true, default-features = false, features = ["zstd_c"] }
+schemas = { workspace = true, optional = true, features = ["inline"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+webp = { workspace = true, optional = true }

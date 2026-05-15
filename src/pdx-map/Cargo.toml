@@ -8,6 +8,7 @@ default = ["render", "interaction"]
 interaction = []
 render = ["dep:wgpu", "dep:futures-channel"]
 tracing = ["dep:tracing"]
+date-layer = ["render"]
 
 [dependencies]
 bytemuck = { workspace = true, features = ["derive"] }

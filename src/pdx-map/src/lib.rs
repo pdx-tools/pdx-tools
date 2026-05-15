@@ -13,6 +13,8 @@ mod controller;
 mod error;
 #[cfg(feature = "interaction")]
 mod interaction;
+#[cfg(feature = "date-layer")]
+pub mod layers;
 #[cfg(feature = "render")]
 mod renderer;
 
