@@ -1,5 +1,13 @@
 import { Sprite } from "@/features/eu4/components/Sprite";
-import { GOODS_CELL_SIZE_128, goodsAtlasData, goodsAtlasUrl128, goodsDimensions128 } from "./goods";
+import {
+  GOODS_CELL_SIZE_128,
+  GOODS_CELL_SIZE_32,
+  goodsAtlasData,
+  goodsAtlasUrl128,
+  goodsAtlasUrl32,
+  goodsDimensions128,
+  goodsDimensions32,
+} from "./goods";
 
 const warnedMissing = new Set<string>();
 const ICON_SCALE = 0.5;
@@ -25,22 +33,27 @@ export function Eu5Icon({
   id,
   alt = id,
   className,
+  size = "lg",
 }: {
   family: "goods";
   id: string;
   alt?: string;
   className?: string;
+  size?: "sm" | "lg";
 }) {
   if (family === "goods") {
     const index = resolveGoodsIndex(id);
+    const cellSize = size === "sm" ? GOODS_CELL_SIZE_32 : GOODS_CELL_SIZE_128;
+    const src = size === "sm" ? goodsAtlasUrl32 : goodsAtlasUrl128;
+    const dimensions = size === "sm" ? goodsDimensions32 : goodsDimensions128;
     if (index === undefined) {
       return (
         <span
           aria-hidden
           style={{
             display: "inline-block",
-            width: GOODS_CELL_SIZE_128 * ICON_SCALE,
-            height: GOODS_CELL_SIZE_128 * ICON_SCALE,
+            width: cellSize * ICON_SCALE,
+            height: cellSize * ICON_SCALE,
           }}
           className={className}
         />
@@ -48,10 +61,10 @@ export function Eu5Icon({
     }
     return (
       <Sprite
-        src={goodsAtlasUrl128}
+        src={src}
         alt={alt}
         index={index}
-        dimensions={goodsDimensions128}
+        dimensions={dimensions}
         scale={ICON_SCALE}
         className={className}
       />

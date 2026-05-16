@@ -15,6 +15,14 @@ import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import { Eu5Icon } from "../../components/icons/Eu5Icon";
+import { goodsIconHtml } from "../../components/icons/eu5IconHtml";
+import {
+  GOODS_CELL_SIZE_32,
+  goodsAtlasData,
+  goodsAtlasUrl32,
+  goodsDimensions32,
+} from "../../components/icons/goods";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../profiles/components/StatItem";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
@@ -116,7 +124,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
           const d = scatterData[params.dataIndex];
           if (!d) return "";
           return [
-            `<strong>${escapeEChartsHtml(d.rawMaterial)}</strong>`,
+            `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle">${goodsIconHtml(d.rawMaterial)}<strong>${escapeEChartsHtml(d.rawMaterial)}</strong></span>`,
             `Total RGO: ${formatLevel(d.totalRgoLevel)}`,
             `Avg RGO: ${formatLevel(d.avgRgoLevel)}`,
             `Median RGO: ${formatLevel(d.medianRgoLevel)}`,
@@ -128,18 +136,63 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
       },
       series: [
         {
-          type: "scatter",
+          type: "custom",
           data: scatterData.map((d) => ({
             value: d.value,
-            itemStyle: { color: d.colorHex ?? fallbackColor },
+            rawMaterial: d.rawMaterial,
+            colorHex: d.colorHex ?? fallbackColor,
+            locationCount: d.locationCount,
           })),
-          symbolSize: (_val, params) => {
-            const d = scatterData[params.dataIndex];
-            if (!d) return 6;
-            const scaled = Math.sqrt((d.locationCount / maxLocCount) * 900) + 4;
-            return Math.max(4, Math.min(40, scaled));
+          renderItem: (params, api) => {
+            const { dataIndex } = params;
+            const d = scatterData[dataIndex];
+            if (!d) return undefined;
+            const point = api.coord(d.value as [number, number]);
+            const scaled = Math.sqrt((d.locationCount / maxLocCount) * 900) + 8;
+            const size = Math.max(10, Math.min(48, scaled));
+            const half = size / 2;
+            const x = point[0] - half;
+            const y = point[1] - half;
+
+            let atlasIndex = goodsAtlasData[d.rawMaterial];
+            if (atlasIndex === undefined) atlasIndex = goodsAtlasData["_default"];
+
+            if (atlasIndex !== undefined) {
+              const { row, col } = goodsDimensions32.coordinates(atlasIndex);
+              const scale = size / GOODS_CELL_SIZE_32;
+              const spriteX = col * GOODS_CELL_SIZE_32 * scale;
+              const spriteY = row * GOODS_CELL_SIZE_32 * scale;
+              const atlasTotalW = goodsDimensions32.cols * GOODS_CELL_SIZE_32 * scale;
+              const atlasTotalH = goodsDimensions32.rows * GOODS_CELL_SIZE_32 * scale;
+              return {
+                type: "group" as const,
+                x,
+                y,
+                clipPath: {
+                  type: "rect" as const,
+                  shape: { x: 0, y: 0, width: size, height: size },
+                },
+                children: [
+                  {
+                    type: "image" as const,
+                    style: {
+                      image: goodsAtlasUrl32,
+                      x: -spriteX,
+                      y: -spriteY,
+                      width: atlasTotalW,
+                      height: atlasTotalH,
+                      opacity: 0.9,
+                    },
+                  },
+                ],
+              };
+            }
+            return {
+              type: "circle" as const,
+              shape: { cx: point[0], cy: point[1], r: half },
+              style: { fill: d.colorHex ?? fallbackColor, opacity: 0.75 },
+            };
           },
-          itemStyle: { opacity: 0.75 },
         },
       ],
     };
@@ -194,7 +247,7 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
           const d = data[idx];
           if (!d) return "";
           return [
-            `<strong>${escapeEChartsHtml(d.rawMaterial)}</strong>`,
+            `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle">${goodsIconHtml(d.rawMaterial)}<strong>${escapeEChartsHtml(d.rawMaterial)}</strong></span>`,
             `Selection share: ${formatPercent(d.scopedShare)}`,
             `Global share: ${formatPercent(d.globalShare)}`,
             `Difference: ${formatPercent(d.shareDelta)}`,
@@ -262,7 +315,15 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
       topLocColHelper.accessor("rawMaterial", {
         sortingFn: "text",
         meta: Eu5DataTable.meta({ headerLabel: "Raw Material" }),
-        cell: (info) => info.getValue(),
+        cell: (info) => {
+          const id = info.getValue();
+          return (
+            <span className="inline-flex items-center gap-1.5">
+              <Eu5Icon family="goods" id={id} size="sm" />
+              <span>{id}</span>
+            </span>
+          );
+        },
       }),
       topLocColHelper.accessor("rgoLevel", {
         sortingFn: "basic",
@@ -321,7 +382,7 @@ export function RgoInsight() {
 
           {topLocations.length > 0 && (
             <section>
-              <SectionTitle>Where are the strongest locations?</SectionTitle>
+              <SectionTitle>Top RGO locations</SectionTitle>
               <RgoTopLocationsTable locations={topLocations} />
             </section>
           )}
