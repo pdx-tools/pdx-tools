@@ -215,7 +215,9 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
-        cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
+        cell: ({ row }) => (
+          <EntityLink entity={row.original.owner} aligned backLabel={BACK_LABEL} />
+        ),
       }),
       topLocColHelper.accessor("levels", {
         sortingFn: "basic",
@@ -273,7 +275,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
           a.original.locationOwner.name.localeCompare(b.original.locationOwner.name),
         meta: Eu5DataTable.meta({ headerLabel: "Loc Owner" }),
         cell: ({ row }) => (
-          <EntityLink entity={row.original.locationOwner} backLabel={BACK_LABEL} />
+          <EntityLink entity={row.original.locationOwner} aligned backLabel={BACK_LABEL} />
         ),
       }),
       foreignLocColHelper.accessor("foreignOwner", {
@@ -281,7 +283,9 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
         sortingFn: (a, b) =>
           a.original.foreignOwner.name.localeCompare(b.original.foreignOwner.name),
         meta: Eu5DataTable.meta({ headerLabel: "Building Owner" }),
-        cell: ({ row }) => <EntityLink entity={row.original.foreignOwner} backLabel={BACK_LABEL} />,
+        cell: ({ row }) => (
+          <EntityLink entity={row.original.foreignOwner} aligned backLabel={BACK_LABEL} />
+        ),
       }),
       foreignLocColHelper.accessor("kind", {
         sortingFn: "text",
@@ -320,7 +324,9 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner", variant: "pin" }),
-        cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
+        cell: ({ row }) => (
+          <EntityLink entity={row.original.owner} aligned backLabel={BACK_LABEL} />
+        ),
       }),
       foreignOwnerCellColHelper.accessor("kind", {
         sortingFn: "text",
