@@ -23,11 +23,13 @@ use savefile::{
 use std::{collections::HashMap, io::Cursor};
 use wasm_bindgen::prelude::*;
 
+mod compress;
 mod log;
 mod models;
 mod savefile;
 mod tokens;
 
+pub use compress::{Compression, ContentType, download_transformation, init_compression};
 pub use tokens::*;
 
 #[wasm_bindgen(typescript_custom_section)]

@@ -4107,12 +4107,7 @@ dependencies = [
 name = "wasm-compress"
 version = "0.1.0"
 dependencies = [
- "flate2",
- "js-sys",
  "pdx-zstd",
- "rawzip",
- "serde",
- "tsify",
  "wasm-bindgen",
 ]
 
@@ -4132,8 +4127,10 @@ version = "0.1.0"
 dependencies = [
  "eu4game",
  "eu4save",
+ "flate2",
  "js-sys",
  "pdx-zstd",
+ "rawzip",
  "schemas",
  "serde",
  "serde-wasm-bindgen",

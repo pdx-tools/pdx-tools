@@ -20,8 +20,10 @@ zstd_rust = ["pdx-zstd/zstd_rust", "eu4save/zstd_rust", "eu4game/zstd_rust"]
 [dependencies]
 eu4game = { default-features = false , workspace = true }
 eu4save = { default-features = false, features = ["tsify"] , workspace = true }
+flate2 = { default-features = false, features = ["zlib-rs"], workspace = true }
 js-sys = { workspace = true }
 pdx-zstd = { workspace = true }
+rawzip = { workspace = true }
 schemas = { workspace = true }
 serde = { features = ["derive"] , workspace = true }
 serde-wasm-bindgen = { workspace = true }
