@@ -461,6 +461,26 @@ impl Eu5App {
         self.app.clear_highlights();
     }
 
+    #[wasm_bindgen]
+    pub fn highlight_location(&mut self, location_idx: u32) {
+        let location_idx = eu5save::models::LocationIdx::new(location_idx);
+        self.app.highlight_location(location_idx);
+    }
+
+    #[wasm_bindgen]
+    pub fn highlight_country(&mut self, country_idx: u32) {
+        let Some(country_idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
+            return;
+        };
+        self.app.highlight_country(country_idx);
+    }
+
+    #[wasm_bindgen]
+    pub fn highlight_market(&mut self, market_id: u32) {
+        let market_id = eu5save::models::MarketId::new(market_id);
+        self.app.highlight_market(market_id);
+    }
+
     /// Select the entity at the given location based on the current interaction mode.
     #[wasm_bindgen]
     pub fn select_entity(&mut self, location_idx: u32) -> Option<GradientConfig> {

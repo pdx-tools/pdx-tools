@@ -1,11 +1,12 @@
 import { useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
-import { Eu5DataTable } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable } from "../../components";
 import type { MarketProductionLocationSummary } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { usePanToEntity } from "../../usePanToEntity";
 import { EntityLink } from "../profiles/EntityLink";
+import { MapHoverButton } from "../../MapHoverButton";
 
 const BACK_LABEL = "Markets";
 const columnHelper = createColumnHelper<MarketProductionLocationSummary>();
@@ -26,8 +27,8 @@ export function MarketProductionLocations({
         cell: ({ row }) => {
           const loc = row.original;
           return (
-            <button
-              type="button"
+            <MapHoverButton
+              target={{ kind: "location", locationIdx: loc.locationIdx }}
               className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
                 nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
@@ -35,7 +36,7 @@ export function MarketProductionLocations({
               }}
             >
               {loc.name}
-            </button>
+            </MapHoverButton>
           );
         },
       }),
@@ -84,10 +85,11 @@ export function MarketProductionLocations({
   );
 
   return (
-    <Eu5DataTable
+    <Eu5MapDataTable
       className="w-full"
       columns={columns}
       data={locations}
+      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.locationIdx })}
       initialSorting={[{ id: "rgoLevel", desc: true }]}
       pagination
     />

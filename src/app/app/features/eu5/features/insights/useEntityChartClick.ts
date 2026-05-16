@@ -4,6 +4,7 @@ import type { EntityKind } from "@/wasm/wasm_eu5";
 import { entityProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { useEu5Engine } from "../../store";
 import { usePanToEntity } from "../../usePanToEntity";
+import { useEu5MapHoverSource } from "../../useEu5MapHoverTarget";
 
 type EntityChartTarget = {
   id: number;
@@ -19,6 +20,7 @@ export function useEu5EntityChartClick(opts: {
   const nav = usePanelNav();
   const engine = useEu5Engine();
   const panToEntity = usePanToEntity();
+  const hoverSource = useEu5MapHoverSource();
 
   const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
     const target = opts.getTarget(params);
@@ -36,7 +38,27 @@ export function useEu5EntityChartClick(opts: {
     panToEntity(target.anchorLocationIdx);
   });
 
+  const handleMouseover = useEffectEvent((params: echarts.ECElementEvent) => {
+    const target = opts.getTarget(params);
+    if (target == null) {
+      hoverSource.clear();
+      return;
+    }
+
+    hoverSource.highlightTarget(
+      opts.kind === "country"
+        ? { kind: "country", countryIdx: target.id }
+        : { kind: "market", marketId: target.id },
+    );
+  });
+
+  const handleMouseout = useEffectEvent(() => {
+    hoverSource.clear();
+  });
+
   return useCallback((chart: echarts.ECharts) => {
     chart.on("click", handleClick);
+    chart.on("mouseover", handleMouseover);
+    chart.on("mouseout", handleMouseout);
   }, []);
 }

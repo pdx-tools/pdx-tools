@@ -8,7 +8,7 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
-import { Eu5DataTable } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable } from "../../components";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
@@ -16,6 +16,7 @@ import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { usePanToEntity } from "../../usePanToEntity";
+import { MapHoverButton } from "../../MapHoverButton";
 import { EntityLink } from "../profiles/EntityLink";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../profiles/components/StatItem";
@@ -232,8 +233,8 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
         cell: ({ row }) => {
           const loc = row.original;
           return (
-            <button
-              type="button"
+            <MapHoverButton
+              target={{ kind: "location", locationIdx: loc.locationIdx }}
               className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
                 nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
@@ -241,7 +242,7 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
               }}
             >
               {loc.name}
-            </button>
+            </MapHoverButton>
           );
         },
       }),
@@ -283,5 +284,13 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
     [nav, panToEntity],
   );
 
-  return <Eu5DataTable className="w-full" columns={columns} data={locations} pagination />;
+  return (
+    <Eu5MapDataTable
+      className="w-full"
+      columns={columns}
+      data={locations}
+      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.locationIdx })}
+      pagination
+    />
+  );
 }

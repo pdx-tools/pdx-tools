@@ -5,3 +5,4 @@ export * from "./Input";
 export * from "./Select";
 export * from "./SidebarNav";
 export * from "./Eu5DataTable";
+export * from "./Eu5MapDataTable";

@@ -158,7 +158,7 @@ type Eu5DataTableOptions<TData> = Partial<
   >
 >;
 
-type Eu5DataTableProps<TData> = {
+export type Eu5DataTableProps<TData extends object> = {
   columns: ColumnDef<TData, any>[];
   data: TData[];
   className?: string;
@@ -174,6 +174,8 @@ type Eu5DataTableProps<TData> = {
   onAddFilter?: () => void;
   /** Marker on each row for the in-filter highlight (panel-active + accent rail). */
   isRowInFilter?: (row: TData) => boolean;
+  onRowHoverChange?: (row: TData | null) => void;
+  onRowFocusChange?: (row: TData | null) => void;
   tableOptions?: Eu5DataTableOptions<TData>;
 };
 
@@ -207,6 +209,8 @@ export function Eu5DataTable<TData extends object>({
   onRemoveFilter,
   onAddFilter,
   isRowInFilter,
+  onRowHoverChange,
+  onRowFocusChange,
   tableOptions,
 }: Eu5DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
@@ -313,6 +317,30 @@ export function Eu5DataTable<TData extends object>({
                   <tr
                     key={row.id}
                     data-in-filter={inFilter || undefined}
+                    onMouseEnter={
+                      onRowHoverChange ? () => onRowHoverChange(row.original) : undefined
+                    }
+                    onMouseLeave={onRowHoverChange ? () => onRowHoverChange(null) : undefined}
+                    onFocus={
+                      onRowFocusChange
+                        ? (event) => {
+                            if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                              return;
+                            }
+                            onRowFocusChange(row.original);
+                          }
+                        : undefined
+                    }
+                    onBlur={
+                      onRowFocusChange
+                        ? (event) => {
+                            if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                              return;
+                            }
+                            onRowFocusChange(null);
+                          }
+                        : undefined
+                    }
                     className={cx(
                       "bg-game-panel transition-colors duration-75 hover:bg-game-panel-hover",
                       "data-[in-filter=true]:bg-game-panel-active data-[in-filter=true]:hover:bg-game-panel-active",

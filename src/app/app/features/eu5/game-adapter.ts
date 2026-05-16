@@ -26,6 +26,7 @@ import type {
   PoliticalWorldScoreboard,
 } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/types";
+import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import { fetchOk } from "@/lib/fetch";
 import { getLogLevel } from "@/lib/isDeveloper";
 import type * as Eu5WorkerModuleDefinition from "./workers/game/game-module";
@@ -295,6 +296,14 @@ export function saveWorker(
 
     clearSelection: () => {
       return saveEngine.clearSelection();
+    },
+
+    highlightMapHoverTarget: (target: Eu5MapHoverTarget) => {
+      return saveEngine.highlightMapHoverTarget(target);
+    },
+
+    clearMapHoverHighlight: () => {
+      return saveEngine.clearMapHoverHighlight();
     },
 
     getSaveMetadata: async () => {
