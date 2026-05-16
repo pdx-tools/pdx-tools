@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Eu5DataTable } from "../../components";
-import { Table } from "@/components/Table";
 import type { TaxGapTopLocation } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
@@ -19,7 +18,7 @@ export function TaxGapTopLocations({ locations }: { locations: TaxGapTopLocation
     () => [
       columnHelper.accessor("name", {
         sortingFn: "text",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Location" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
           return (
@@ -38,52 +37,59 @@ export function TaxGapTopLocations({ locations }: { locations: TaxGapTopLocation
       }),
       columnHelper.accessor("tax", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Location Tax" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 2),
+        meta: Eu5DataTable.meta({ headerLabel: "Location Tax", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor("possibleTax", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Possible Tax" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 2),
+        meta: Eu5DataTable.meta({ headerLabel: "Possible Tax", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor("taxGap", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Gap" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 2),
+        meta: Eu5DataTable.meta({ headerLabel: "Gap", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor((row) => (row.possibleTax > 0 ? row.tax / row.possibleTax : 0), {
         id: "realization",
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Realization" />,
-        meta: { className: "text-right" },
-        cell: (info) => `${formatFloat(info.getValue() * 100, 1)}%`,
+        meta: Eu5DataTable.meta({ headerLabel: "Realization", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{`${formatFloat(info.getValue() * 100, 1)}%`}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor("development", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Development" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 1),
+        meta: Eu5DataTable.meta({ headerLabel: "Development", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor("control", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Control" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 2),
+        meta: Eu5DataTable.meta({ headerLabel: "Control", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor("owner", {
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
       }),
       columnHelper.accessor("population", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Population" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatInt(info.getValue()),
+        meta: Eu5DataTable.meta({ headerLabel: "Population", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+        ),
       }),
     ],
     [nav, panToEntity],

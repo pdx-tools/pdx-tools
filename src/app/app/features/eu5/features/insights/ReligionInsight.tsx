@@ -3,7 +3,6 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { Eu5DataTable } from "../../components";
-import { Table } from "@/components/Table";
 import type { ReligionRow, StateReligionRow } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
@@ -227,7 +226,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
     () => [
       religionColumnHelper.accessor("religion", {
         sortingFn: "text",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Religion" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Religion", variant: "pin" }),
         cell: ({ row }) => {
           const r = row.original;
           return (
@@ -244,7 +243,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
       religionColumnHelper.accessor("totalRuledPopulation", {
         id: "asStateReligion",
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="State Religion" />,
+        meta: Eu5DataTable.meta({ headerLabel: "State Religion" }),
         cell: ({ row }) => {
           const r = row.original;
           if (r.stateCountryCount === 0) return <span className="text-game-ink-500">—</span>;
@@ -264,7 +263,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
       religionColumnHelper.accessor("stateReligionCoverage", {
         id: "ruledPopulation",
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Ruled Population" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Ruled Population" }),
         cell: ({ row }) => {
           const r = row.original;
           return (
@@ -283,7 +282,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
       religionColumnHelper.accessor("followerPopulation", {
         id: "asPopulationReligion",
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Followers" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Followers" }),
         cell: ({ row }) => {
           const r = row.original;
           if (r.followerPopulation === 0) return <span className="text-game-ink-500">—</span>;

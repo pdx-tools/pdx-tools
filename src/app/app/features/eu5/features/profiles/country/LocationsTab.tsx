@@ -2,7 +2,6 @@ import { useEu5Engine } from "../../../store";
 import { usePanToEntity } from "../../../usePanToEntity";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
-import { Table } from "@/components/Table";
 import { Eu5DataTable } from "../../../components";
 import type { LocationDistribution, LocationRow, MapMode } from "@/wasm/wasm_eu5";
 import type { Row } from "@tanstack/react-table";
@@ -37,56 +36,62 @@ function NameCell({ row }: { row: Row<LocationRow> }) {
 const columns = [
   columnHelper.accessor("name", {
     sortingFn: "text",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Location" />,
+    meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
     cell: ({ row }) => <NameCell row={row} />,
   }),
   columnHelper.accessor("development", {
     sortingFn: "basic",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Dev" />,
-    meta: { className: "text-right" },
-    cell: (info) => formatFloat(info.getValue(), 1),
+    meta: Eu5DataTable.meta({ headerLabel: "Dev", variant: "num" }),
+    cell: (info) => (
+      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+    ),
   }),
   columnHelper.accessor("population", {
     sortingFn: "basic",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Pop" />,
-    meta: { className: "text-right" },
-    cell: (info) => formatInt(info.getValue()),
+    meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
+    cell: (info) => (
+      <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+    ),
   }),
   columnHelper.accessor("control", {
     sortingFn: "basic",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Control" />,
-    meta: { className: "text-right" },
-    cell: (info) => formatFloat(info.getValue(), 2),
+    meta: Eu5DataTable.meta({ headerLabel: "Control", variant: "num" }),
+    cell: (info) => (
+      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+    ),
   }),
   columnHelper.accessor("possibleTax", {
     sortingFn: "basic",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Possible Tax" />,
-    meta: { className: "text-right" },
-    cell: (info) => formatFloat(info.getValue(), 2),
+    meta: Eu5DataTable.meta({ headerLabel: "Possible Tax", variant: "num" }),
+    cell: (info) => (
+      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+    ),
   }),
   columnHelper.accessor("tax", {
     sortingFn: "basic",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Current Tax" />,
-    meta: { className: "text-right" },
-    cell: (info) => formatFloat(info.getValue(), 2),
+    meta: Eu5DataTable.meta({ headerLabel: "Current Tax", variant: "num" }),
+    cell: (info) => (
+      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+    ),
   }),
   columnHelper.accessor((row) => row.possibleTax - row.tax, {
     id: "taxGap",
     sortingFn: "basic",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Tax Gap" />,
-    meta: { className: "text-right" },
-    cell: (info) => formatFloat(info.getValue(), 2),
+    meta: Eu5DataTable.meta({ headerLabel: "Tax Gap", variant: "num" }),
+    cell: (info) => (
+      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+    ),
   }),
   columnHelper.accessor((row) => row.owner?.name ?? "", {
     id: "owner",
     sortingFn: "text",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
+    meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
     cell: ({ row }) => (row.original.owner ? <EntityLink entity={row.original.owner} /> : null),
   }),
   columnHelper.accessor((row) => row.market?.name ?? "", {
     id: "market",
     sortingFn: "text",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Market" />,
+    meta: Eu5DataTable.meta({ headerLabel: "Market" }),
     cell: ({ row }) => (row.original.market ? <EntityLink entity={row.original.market} /> : null),
   }),
 ];

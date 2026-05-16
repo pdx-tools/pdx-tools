@@ -4,7 +4,6 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { Eu5DataTable } from "../../components";
-import { Table } from "@/components/Table";
 import type {
   LocationPopRow,
   PopulationConcentrationPoint,
@@ -607,7 +606,7 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
     () => [
       columnHelper.accessor("name", {
         sortingFn: "text",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Location" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
           return (
@@ -627,18 +626,19 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
       columnHelper.accessor("owner", {
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
       }),
       columnHelper.accessor("population", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Pop" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatInt(info.getValue()),
+        meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor("rank", {
         sortingFn: "text",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Rank" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Rank" }),
         cell: (info) => {
           const rank = info.getValue();
           return (

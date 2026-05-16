@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Eu5DataTable } from "../../components";
-import { Table } from "@/components/Table";
 import type { MarketProductionLocationSummary } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
@@ -23,7 +22,7 @@ export function MarketProductionLocations({
     () => [
       columnHelper.accessor("name", {
         sortingFn: "text",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Location" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
           return (
@@ -43,38 +42,42 @@ export function MarketProductionLocations({
       columnHelper.accessor("rawMaterial", {
         sortingFn: (a, b) =>
           (a.original.rawMaterial ?? "").localeCompare(b.original.rawMaterial ?? ""),
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Good" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Good" }),
         cell: (info) => info.getValue() ?? "—",
       }),
       columnHelper.accessor("rgoLevel", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="RGO" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 0),
+        meta: Eu5DataTable.meta({ headerLabel: "RGO", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 0)}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor("marketAccess", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Access" />,
-        meta: { className: "text-right" },
-        cell: (info) => `${formatFloat(info.getValue() * 100, 0)}%`,
+        meta: Eu5DataTable.meta({ headerLabel: "Access", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{`${formatFloat(info.getValue() * 100, 0)}%`}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor("owner", {
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
+        meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
       }),
       columnHelper.accessor("development", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Dev" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatFloat(info.getValue(), 1),
+        meta: Eu5DataTable.meta({ headerLabel: "Dev", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+        ),
       }),
       columnHelper.accessor("population", {
         sortingFn: "basic",
-        header: ({ column }) => <Table.ColumnHeader column={column} title="Pop" />,
-        meta: { className: "text-right" },
-        cell: (info) => formatInt(info.getValue()),
+        meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+        ),
       }),
     ],
     [nav, panToEntity],

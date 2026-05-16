@@ -1,7 +1,6 @@
 import type { LocationProfile, LocationPopRow } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
-import { Table } from "@/components/Table";
 import { Eu5DataTable } from "../../../components";
 import { PopulationSankey } from "../../insights/Population";
 
@@ -14,36 +13,39 @@ const columnHelper = createColumnHelper<LocationPopRow>();
 const columns = [
   columnHelper.accessor("kind", {
     sortingFn: "text",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Kind" />,
+    meta: Eu5DataTable.meta({ headerLabel: "Kind", variant: "pin" }),
     cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("cultureName", {
     sortingFn: "text",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Culture" />,
+    meta: Eu5DataTable.meta({ headerLabel: "Culture" }),
     cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("religionName", {
     sortingFn: "text",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Religion" />,
+    meta: Eu5DataTable.meta({ headerLabel: "Religion" }),
     cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("size", {
     sortingFn: "basic",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Size" />,
-    meta: { className: "text-right" },
-    cell: (info) => formatInt(info.getValue()),
+    meta: Eu5DataTable.meta({ headerLabel: "Size", variant: "num" }),
+    cell: (info) => (
+      <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+    ),
   }),
   columnHelper.accessor("satisfaction", {
     sortingFn: "basic",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Satisfaction" />,
-    meta: { className: "text-right" },
-    cell: (info) => `${formatFloat(info.getValue() * 100, 1)}%`,
+    meta: Eu5DataTable.meta({ headerLabel: "Satisfaction", variant: "num" }),
+    cell: (info) => (
+      <Eu5DataTable.NumericCell>{`${formatFloat(info.getValue() * 100, 1)}%`}</Eu5DataTable.NumericCell>
+    ),
   }),
   columnHelper.accessor("literacy", {
     sortingFn: "basic",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Literacy" />,
-    meta: { className: "text-right" },
-    cell: (info) => `${formatFloat(info.getValue() * 100, 1)}%`,
+    meta: Eu5DataTable.meta({ headerLabel: "Literacy", variant: "num" }),
+    cell: (info) => (
+      <Eu5DataTable.NumericCell>{`${formatFloat(info.getValue() * 100, 1)}%`}</Eu5DataTable.NumericCell>
+    ),
   }),
 ];
 
