@@ -1,5 +1,5 @@
 const floatFormatters = Array.from(
-  { length: 4 },
+  { length: 5 },
   (_, n) =>
     new Intl.NumberFormat(undefined, {
       minimumFractionDigits: n,
