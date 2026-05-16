@@ -183,14 +183,15 @@ async function loadEu4Save(
       fn: () =>
         mapWorker.withResources(
           {
-            provinces1: resources.provinces1,
-            provinces2: resources.provinces2,
             terrain1: resources.terrain1,
             terrain2: resources.terrain2,
             stripes: resources.stripes,
           },
-          resources.provincesUniqueColor,
-          resources.provincesUniqueIndex,
+          {
+            provinceLocations1: resources.provinceLocations1,
+            provinceLocations2: resources.provinceLocations2,
+            provinceIdToColorIndex: resources.provinceIdToColorIndex,
+          },
         ),
       name: "textures fetched and bitmapped",
       progress: 10,
