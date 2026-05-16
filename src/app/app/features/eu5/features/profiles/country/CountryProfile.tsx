@@ -65,10 +65,7 @@ export function CountryProfile({ countryIdx }: { countryIdx: number }) {
         >
           <LocationsTabContent locations={profile.locations.locations} mode={mode} />
         </GameTabs.Content>
-        <GameTabs.Content
-          value="diplomacy"
-          className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
-        >
+        <GameTabs.Content value="diplomacy" className="min-h-0 flex-1 basis-0 overflow-y-auto">
           <DiplomacyTabContent data={profile.diplomacy} />
         </GameTabs.Content>
       </GameTabs>

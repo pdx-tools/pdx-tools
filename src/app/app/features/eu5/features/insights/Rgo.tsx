@@ -257,7 +257,9 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
-        cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
+        cell: ({ row }) => (
+          <EntityLink entity={row.original.owner} aligned backLabel={BACK_LABEL} />
+        ),
       }),
       topLocColHelper.accessor("rawMaterial", {
         sortingFn: "text",

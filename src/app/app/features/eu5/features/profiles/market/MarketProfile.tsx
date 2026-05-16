@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { GameTabs } from "../../../components";
 import { formatFloat } from "@/lib/format";
 import type { MarketMemberCountry, MarketProfile as MarketProfileData } from "@/wasm/wasm_eu5";
@@ -8,10 +8,11 @@ import { MarketGoodsTabContent } from "./GoodsTab";
 import { useEu5Trigger } from "../useEu5Trigger";
 import { ProfileSkeleton } from "../ProfileSkeleton";
 import { useProfileTab } from "../PanelNavContext";
-import { Tooltip } from "@/components/Tooltip";
 import { LocationDistributionChart } from "../../insights/LocationDistributionChart";
 import type { LocationDistribution } from "@/wasm/wasm_eu5";
 import { StatPlate } from "../country/EconomyTab";
+import { Eu5DataTable, Eu5MapDataTable } from "../../../components";
+import { createColumnHelper } from "@tanstack/react-table";
 
 export function MarketProfile({ marketId }: { marketId: number }) {
   const profileTab = useProfileTab("market");
@@ -129,7 +130,7 @@ function MarketLocationsTabContent({
   );
 }
 
-const MEMBERS_COLUMNS = "1fr 96px 96px";
+const membersColumnHelper = createColumnHelper<MarketMemberCountry>();
 
 function MarketMembers({
   members,
@@ -138,63 +139,46 @@ function MarketMembers({
   members: MarketMemberCountry[];
   marketName: string;
 }) {
-  if (members.length === 0) {
-    return <p className="px-4 py-4 text-sm text-game-ink-500">No member countries.</p>;
-  }
-
-  return (
-    <div className="flex flex-col">
-      <div
-        className="grid h-[26px] items-center border-b border-game-line-strong px-3"
-        style={{ gridTemplateColumns: MEMBERS_COLUMNS }}
-      >
-        <span className="font-game-num text-[10px] tracking-[.14em] text-game-ink-700 uppercase">
-          Country
-        </span>
-        <MemberHeaderCell tooltip="Trade advantage determines the order in which countries fulfill their exports within a market. When goods are scarce, they are distributed according to each country's trade advantage.">
-          Advantage
-        </MemberHeaderCell>
-        <MemberHeaderCell tooltip="Trade capacity represents the capacity of merchants to move goods between markets. It is primarily provided by trade buildings and is consumed by trades based in this market.">
-          Capacity
-        </MemberHeaderCell>
-      </div>
-      {members.map((member) => (
-        <div
-          key={
-            member.country.kind === "country" ? member.country.countryIdx : member.country.marketId
-          }
-          className="grid h-7 items-center border-b border-game-line px-3"
-          style={{ gridTemplateColumns: MEMBERS_COLUMNS }}
-        >
-          <EntityLink entity={member.country} size="md" backLabel={marketName} />
-          <MemberMetricCell>{formatFloat(member.tradeAdvantage, 2)}</MemberMetricCell>
-          <MemberMetricCell>{formatFloat(member.tradeCapacity, 2)}</MemberMetricCell>
-        </div>
-      ))}
-    </div>
+  const columns = useMemo(
+    () => [
+      membersColumnHelper.accessor((row) => row.country.name, {
+        id: "country",
+        sortingFn: "text",
+        meta: Eu5DataTable.meta({ headerLabel: "Country", variant: "pin" }),
+        cell: ({ row }) => (
+          <EntityLink entity={row.original.country} aligned backLabel={marketName} />
+        ),
+      }),
+      membersColumnHelper.accessor("tradeAdvantage", {
+        sortingFn: "basic",
+        meta: Eu5DataTable.meta({ headerLabel: "Advantage", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+        ),
+      }),
+      membersColumnHelper.accessor("tradeCapacity", {
+        sortingFn: "basic",
+        meta: Eu5DataTable.meta({ headerLabel: "Capacity", variant: "num" }),
+        cell: (info) => (
+          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+        ),
+      }),
+    ],
+    [marketName],
   );
-}
 
-function MemberMetricCell({ children }: { children: React.ReactNode }) {
   return (
-    <span className="truncate text-right font-game-num text-xs text-game-ink-100 tabular-nums">
-      {children}
-    </span>
-  );
-}
-
-function MemberHeaderCell({ children, tooltip }: { children: React.ReactNode; tooltip: string }) {
-  return (
-    <Tooltip>
-      <Tooltip.Trigger asChild>
-        <span className="cursor-help text-right font-game-num text-[10px] tracking-[.14em] text-game-ink-700 uppercase decoration-dotted underline-offset-2 hover:text-game-ink-500 hover:underline">
-          {children}
-        </span>
-      </Tooltip.Trigger>
-      <Tooltip.Content side="top" className="max-w-72 text-xs normal-case">
-        {tooltip}
-      </Tooltip.Content>
-    </Tooltip>
+    <Eu5MapDataTable
+      className="w-full"
+      columns={columns}
+      data={members}
+      getRowHoverTarget={(row) =>
+        row.country.kind === "country"
+          ? { kind: "country", countryIdx: row.country.countryIdx }
+          : { kind: "market", marketId: row.country.marketId }
+      }
+      initialSorting={[{ id: "tradeAdvantage", desc: true }]}
+    />
   );
 }
 

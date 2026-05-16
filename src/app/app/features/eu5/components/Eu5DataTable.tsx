@@ -41,7 +41,7 @@ const usePaginationStore = create<PaginationSettings>()(
 );
 
 const headColVariants = cva(
-  "relative h-[30px] min-w-0 border-r border-solid border-game-line px-2 py-0 text-left align-middle font-game-num text-[10px] tracking-[0.14em] text-game-ink-500 uppercase last:border-r-0",
+  "relative h-[30px] min-w-0 px-2 py-0 text-left align-middle font-game-num text-[10px] tracking-[0.14em] text-game-ink-500 uppercase",
   {
     variants: {
       variant: {
@@ -57,7 +57,7 @@ const headColVariants = cva(
 );
 
 const cellVariants = cva(
-  "min-w-0 border-r border-solid border-game-line px-2 py-1.5 align-middle font-game-ui text-[12px] text-game-ink-100 last:border-r-0",
+  "min-w-0 px-2 py-1.5 align-middle font-game-ui text-[12px] text-game-ink-100",
   {
     variants: {
       variant: {
@@ -73,7 +73,7 @@ const cellVariants = cva(
 );
 
 const summaryCellVariants = cva(
-  "min-w-0 border-r border-solid border-game-line p-2 align-baseline font-game-num text-[11.5px] tabular-nums text-game-ink-100 last:border-r-0",
+  "min-w-0 p-2 align-baseline font-game-num text-[11.5px] tabular-nums text-game-ink-100",
   {
     variants: {
       variant: {
@@ -177,6 +177,8 @@ export type Eu5DataTableProps<TData extends object> = {
   onRowHoverChange?: (row: TData | null) => void;
   onRowFocusChange?: (row: TData | null) => void;
   tableOptions?: Eu5DataTableOptions<TData>;
+  /** Inject a separator before a row. Return non-null to render a full-width separator row. */
+  rowSeparator?: (row: TData, index: number) => React.ReactNode | null;
 };
 
 type ResolvedPaginationConfig = {
@@ -212,6 +214,7 @@ export function Eu5DataTable<TData extends object>({
   onRowHoverChange,
   onRowFocusChange,
   tableOptions,
+  rowSeparator,
 }: Eu5DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -311,46 +314,60 @@ export function Eu5DataTable<TData extends object>({
                 </td>
               </tr>
             ) : (
-              rows.map((row) => {
+              rows.map((row, idx) => {
                 const inFilter = isRowInFilter?.(row.original) ?? false;
+                const separator = rowSeparator?.(row.original, idx) ?? null;
+                const colCount = table.getAllLeafColumns().length;
                 return (
-                  <tr
-                    key={row.id}
-                    data-in-filter={inFilter || undefined}
-                    onMouseEnter={
-                      onRowHoverChange ? () => onRowHoverChange(row.original) : undefined
-                    }
-                    onMouseLeave={onRowHoverChange ? () => onRowHoverChange(null) : undefined}
-                    onFocus={
-                      onRowFocusChange
-                        ? (event) => {
-                            if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                              return;
-                            }
-                            onRowFocusChange(row.original);
-                          }
-                        : undefined
-                    }
-                    onBlur={
-                      onRowFocusChange
-                        ? (event) => {
-                            if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                              return;
-                            }
-                            onRowFocusChange(null);
-                          }
-                        : undefined
-                    }
-                    className={cx(
-                      "bg-game-panel transition-colors duration-75 hover:bg-game-panel-hover",
-                      "data-[in-filter=true]:bg-game-panel-active data-[in-filter=true]:hover:bg-game-panel-active",
-                      "data-[in-filter=true]:shadow-[inset_2px_0_0_var(--color-game-accent-300)]",
+                  <React.Fragment key={row.id}>
+                    {separator !== null && (
+                      <tr>
+                        <td colSpan={colCount} className="p-0">
+                          {separator}
+                        </td>
+                      </tr>
                     )}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <BodyCell key={cell.id} cell={cell} />
-                    ))}
-                  </tr>
+                    <tr
+                      data-in-filter={inFilter || undefined}
+                      onMouseEnter={
+                        onRowHoverChange ? () => onRowHoverChange(row.original) : undefined
+                      }
+                      onMouseLeave={onRowHoverChange ? () => onRowHoverChange(null) : undefined}
+                      onFocus={
+                        onRowFocusChange
+                          ? (event) => {
+                              if (
+                                event.currentTarget.contains(event.relatedTarget as Node | null)
+                              ) {
+                                return;
+                              }
+                              onRowFocusChange(row.original);
+                            }
+                          : undefined
+                      }
+                      onBlur={
+                        onRowFocusChange
+                          ? (event) => {
+                              if (
+                                event.currentTarget.contains(event.relatedTarget as Node | null)
+                              ) {
+                                return;
+                              }
+                              onRowFocusChange(null);
+                            }
+                          : undefined
+                      }
+                      className={cx(
+                        "bg-game-panel transition-colors duration-75 hover:bg-game-panel-hover",
+                        "data-[in-filter=true]:bg-game-panel-active data-[in-filter=true]:hover:bg-game-panel-active",
+                        "data-[in-filter=true]:shadow-[inset_2px_0_0_var(--color-game-accent-300)]",
+                      )}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <BodyCell key={cell.id} cell={cell} />
+                      ))}
+                    </tr>
+                  </React.Fragment>
                 );
               })
             )}

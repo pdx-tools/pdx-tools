@@ -66,7 +66,9 @@ export function PossibleTaxTopLocations({ locations }: Props) {
         id: "owner",
         sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
-        cell: ({ row }) => <EntityLink entity={row.original.owner} backLabel={BACK_LABEL} />,
+        cell: ({ row }) => (
+          <EntityLink entity={row.original.owner} aligned backLabel={BACK_LABEL} />
+        ),
       }),
       columnHelper.accessor("population", {
         sortingFn: "basic",

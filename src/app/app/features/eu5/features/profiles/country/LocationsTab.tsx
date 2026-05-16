@@ -87,13 +87,15 @@ const columns = [
     id: "owner",
     sortingFn: "text",
     meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
-    cell: ({ row }) => (row.original.owner ? <EntityLink entity={row.original.owner} /> : null),
+    cell: ({ row }) =>
+      row.original.owner ? <EntityLink entity={row.original.owner} aligned /> : null,
   }),
   columnHelper.accessor((row) => row.market?.name ?? "", {
     id: "market",
     sortingFn: "text",
     meta: Eu5DataTable.meta({ headerLabel: "Market" }),
-    cell: ({ row }) => (row.original.market ? <EntityLink entity={row.original.market} /> : null),
+    cell: ({ row }) =>
+      row.original.market ? <EntityLink entity={row.original.market} aligned /> : null,
   }),
 ];
 

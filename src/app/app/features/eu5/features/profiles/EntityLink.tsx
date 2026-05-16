@@ -8,28 +8,29 @@ import { useEu5MapHoverTarget } from "../../useEu5MapHoverTarget";
 
 const sizeClasses = {
   xs: {
-    wrapper: "gap-1.5 h-[18px]",
-    swatch: "w-[12px] h-2",
-    tag: "text-[9px] px-0.5",
+    wrapper: "gap-[5px] h-[18px]",
+    swatch: "w-[12px] h-[9px]",
+    tag: "text-[9.5px]",
     name: "text-[11px]",
   },
   sm: {
     wrapper: "gap-1.5 h-[22px]",
-    swatch: "w-[14px] h-[9px]",
-    tag: "text-[9.5px] px-1",
+    swatch: "w-[14px] h-[10px]",
+    tag: "text-[10px]",
     name: "text-[12px]",
   },
   md: {
-    wrapper: "gap-1.5 h-7",
+    wrapper: "gap-2 h-7",
     swatch: "w-[18px] h-3",
-    tag: "text-[9.5px] px-1",
-    name: "text-[13px]",
+    tag: "text-[10.5px]",
+    name: "text-[13.5px]",
   },
 };
 
 type EntityLinkProps = {
   entity: EntityRef;
   size?: keyof typeof sizeClasses;
+  aligned?: boolean;
   backLabel?: string;
   className?: string;
   children?: React.ReactNode;
@@ -48,7 +49,7 @@ function EntitySwatch({
     <span
       className={cx(
         "relative shrink-0 rounded-[1px] border border-black/30",
-        isPlayer && "ring-1 ring-game-accent-300 ring-offset-1 ring-offset-game-page",
+        isPlayer && "ring-2 ring-game-ink-100 ring-offset-1 ring-offset-game-page",
         className,
       )}
       style={{ backgroundColor: colorHex }}
@@ -57,13 +58,14 @@ function EntitySwatch({
 }
 
 export function EntityLink(props: EntityLinkProps) {
-  const { entity, size = "sm", className, children } = props;
+  const { entity, size = "sm", aligned = false, className, children } = props;
   const s = sizeClasses[size];
 
   const tag = entity.kind === "country" && (
     <span
       className={cx(
-        "shrink-0 rounded-[1px] border border-game-line-strong font-game-num tracking-[0.06em] text-game-ink-700",
+        "shrink-0 font-game-num tracking-[0.06em] text-game-ink-500",
+        aligned && "min-w-[calc(5ch+0.3em)]",
         s.tag,
       )}
     >
@@ -99,12 +101,11 @@ export function EntityLink(props: EntityLinkProps) {
     );
   }
 
-  return <EntityLinkButton {...props} size={size} s={s} tag={tag} hoverProps={hoverProps} />;
+  return <EntityLinkButton {...props} s={s} tag={tag} hoverProps={hoverProps} />;
 }
 
 function EntityLinkButton({
   entity,
-  size: _size,
   backLabel,
   className,
   children,
