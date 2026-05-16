@@ -5,7 +5,7 @@ pub mod optimized;
 pub mod game_install;
 
 pub use error::GameDataError;
-pub use optimized::OptimizedGameBundle;
+pub use optimized::{OptimizedGameBundle, OptimizedMapBundle};
 
 use eu5save::hash::FxHashMap;
 use pdx_map::R16;

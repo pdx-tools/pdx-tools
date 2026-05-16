@@ -459,8 +459,10 @@ export const dataUrls = (x: any): any => { throw new Error(msg); }
 }
 
 async function setupAssetEu5() {
-  await mkdir(join(projectRoot, "assets", "game", "eu5"), { recursive: true });
-  await touchFile(join(projectRoot, "assets", "game", "eu5", "eu5-1.0.zip"));
+  const versionDir = join(projectRoot, "assets", "game", "eu5", "1.0");
+  await mkdir(versionDir, { recursive: true });
+  await touchFile(join(versionDir, "game.zip"));
+  await touchFile(join(versionDir, "map.zip"));
 }
 
 await setupAssets();

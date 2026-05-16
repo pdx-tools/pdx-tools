@@ -57,11 +57,11 @@ export const createGame = async (
     save: Eu5SaveInput;
   },
   {
-    bundle,
+    gameBundle,
     onProgress,
   }: {
-    bundle: {
-      setVersion: (version: string) => void;
+    gameBundle: {
+      selectVersion: (version: string) => void;
       fetch: () => Promise<Uint8Array>;
     };
     onProgress?: (increment: number) => void;
@@ -89,19 +89,19 @@ export const createGame = async (
 
   const metadata = saveParser.meta();
   const version = `${metadata.version.major}.${metadata.version.minor}`;
-  bundle.setVersion(version);
-  const gameDataTask = bundle.fetch();
+  gameBundle.selectVersion(version);
+  const gameDataTask = gameBundle.fetch();
 
   const gamestate = timeSync("Parse Gamestate", () => saveParser.parse_gamestate());
   onProgress?.(30); // Parse gamestate
 
   const gameBundleData = await gameDataTask;
-  const gameBundle = timeSync("Create game bundle", () =>
+  const gameBundleWasm = timeSync("Create game bundle", () =>
     wasm_eu5.Eu5WasmGameBundle.open(gameBundleData),
   );
   onProgress?.(5); // Create game bundle
 
-  const app = timeSync("Initialize App", () => wasm_eu5.Eu5App.init(gamestate, gameBundle));
+  const app = timeSync("Initialize App", () => wasm_eu5.Eu5App.init(gamestate, gameBundleWasm));
   onProgress?.(5); // Initialize app
 
   // Build search indexes once after initialization.

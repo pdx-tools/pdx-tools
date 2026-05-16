@@ -21,7 +21,8 @@ impl WorldMetadata {
     }
 }
 
-/// Optimized game data is the pre-built format for distributing EU5 game data.
+/// Optimized game-domain bundle: language-agnostic gameplay lookup data plus
+/// (transitional) localization. Consumed by the game worker.
 pub struct OptimizedGameBundle<R: AsRef<[u8]>> {
     zip: ZipSliceArchive<R>,
     location_lookup: (u64, rawzip::ZipArchiveEntryWayfinder),
@@ -128,15 +129,17 @@ where
     }
 }
 
+/// Optimized map-domain bundle: hemisphere textures and world metadata.
+/// Consumed by the map worker.
 #[derive(Debug)]
-pub struct OptimizedTextureBundle<R: AsRef<[u8]>> {
+pub struct OptimizedMapBundle<R: AsRef<[u8]>> {
     zip: ZipSliceArchive<R>,
     west_texture: (u64, rawzip::ZipArchiveEntryWayfinder),
     east_texture: (u64, rawzip::ZipArchiveEntryWayfinder),
     world_meta: Option<(u64, rawzip::ZipArchiveEntryWayfinder)>,
 }
 
-impl<R> OptimizedTextureBundle<R>
+impl<R> OptimizedMapBundle<R>
 where
     R: AsRef<[u8]>,
 {
@@ -189,12 +192,7 @@ where
         pdx_zstd::decode_to(entry.data(), dst)?;
         Ok(())
     }
-}
 
-impl<R> OptimizedTextureBundle<R>
-where
-    R: AsRef<[u8]>,
-{
     /// Load the precomputed max location index, when present.
     pub fn load_max_location_index(&self) -> Result<Option<R16>, GameDataError> {
         let Some((meta_bytes, wayfinder)) = self.world_meta else {
@@ -244,7 +242,7 @@ mod tests {
         goods_localization.insert("livestock".to_string(), "Livestock".to_string());
         let mut building_localization = FxHashMap::default();
         building_localization.insert("workshop".to_string(), "Workshop".to_string());
-        let zip = test_bundle(
+        let zip = test_game_zip(
             GoodsData { goods },
             LocalizationsData {
                 countries: FxHashMap::default(),
@@ -278,7 +276,7 @@ mod tests {
                 transport_cost: 1.0,
             },
         );
-        let zip = test_bundle(GoodsData { goods }, LocalizationsData::default());
+        let zip = test_game_zip(GoodsData { goods }, LocalizationsData::default());
 
         let data = OptimizedGameBundle::open(zip)
             .unwrap()
@@ -290,7 +288,7 @@ mod tests {
 
     #[test]
     fn optimized_bundle_falls_back_to_raw_building_key() {
-        let zip = test_bundle(GoodsData::default(), LocalizationsData::default());
+        let zip = test_game_zip(GoodsData::default(), LocalizationsData::default());
 
         let data = OptimizedGameBundle::open(zip)
             .unwrap()
@@ -303,7 +301,37 @@ mod tests {
         );
     }
 
-    fn test_bundle(goods: GoodsData, localizations: LocalizationsData) -> Vec<u8> {
+    #[test]
+    fn game_bundle_rejects_map_zip() {
+        let zip = test_map_zip();
+        let err = OptimizedGameBundle::open(zip).unwrap_err();
+        match err {
+            GameDataError::MissingData(msg) => assert!(msg.contains("location_lookup.bin")),
+            other => panic!("expected MissingData, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn map_bundle_rejects_game_zip() {
+        let zip = test_game_zip(GoodsData::default(), LocalizationsData::default());
+        let err = OptimizedMapBundle::open(zip).unwrap_err();
+        match err {
+            GameDataError::MissingData(msg) => assert!(msg.contains("locations-0.r16")),
+            other => panic!("expected MissingData, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn map_bundle_loads_hemispheres_and_metadata() {
+        let zip = test_map_zip();
+        let mut bundle = OptimizedMapBundle::open(zip).unwrap();
+        let (west, east) = bundle.load_hemispheres().unwrap();
+        assert_eq!(west.len(), 4);
+        assert_eq!(east.len(), 4);
+        assert_eq!(bundle.load_max_location_index().unwrap(), Some(R16::new(7)));
+    }
+
+    fn test_game_zip(goods: GoodsData, localizations: LocalizationsData) -> Vec<u8> {
         let output = Cursor::new(Vec::new());
         let mut archive = rawzip::ZipArchiveWriter::new(output);
         write_test_entry(
@@ -313,6 +341,29 @@ mod tests {
         );
         write_test_entry(&mut archive, "localizations.bin", localizations);
         write_test_entry(&mut archive, "game_data.bin", goods);
+        archive.finish().unwrap().into_inner()
+    }
+
+    fn test_map_zip() -> Vec<u8> {
+        let output = Cursor::new(Vec::new());
+        let mut archive = rawzip::ZipArchiveWriter::new(output);
+
+        for filename in ["locations-0.r16", "locations-1.r16"] {
+            let data = vec![R16::new(0); 4];
+            let (mut entry, config) = archive
+                .new_file(filename)
+                .compression_method(CompressionMethod::Zstd)
+                .start()
+                .unwrap();
+            let encoder = pdx_zstd::Encoder::new(&mut entry, 1).unwrap();
+            let mut writer = config.wrap(encoder);
+            writer.write_all(bytemuck::cast_slice(&data)).unwrap();
+            let (encoder, out) = writer.finish().unwrap();
+            encoder.finish().unwrap();
+            entry.finish(out).unwrap();
+        }
+
+        write_test_entry(&mut archive, "world_meta.bin", WorldMetadata::new(7));
         archive.finish().unwrap().into_inner()
     }
 
