@@ -4,6 +4,7 @@ import type { EntityRef } from "@/wasm/wasm_eu5";
 import { usePanelNav, entityProfileEntry } from "./PanelNavContext";
 import { usePanToEntity } from "../../usePanToEntity";
 import { useEu5Engine } from "../../store";
+import { useEu5MapHoverTarget } from "../../useEu5MapHoverTarget";
 
 const sizeClasses = {
   xs: {
@@ -70,10 +71,18 @@ export function EntityLink(props: EntityLinkProps) {
     </span>
   );
   const isPlayer = entity.kind === "country" ? entity.isPlayer : false;
+  const hoverProps = useEu5MapHoverTarget(
+    entity.kind === "country"
+      ? { kind: "country", countryIdx: entity.countryIdx }
+      : { kind: "market", marketId: entity.marketId },
+  );
 
   if (props.static) {
     return (
-      <span className={cx("inline-flex max-w-full min-w-0 items-center", s.wrapper, className)}>
+      <span
+        {...hoverProps}
+        className={cx("inline-flex max-w-full min-w-0 items-center", s.wrapper, className)}
+      >
         <EntitySwatch colorHex={entity.colorHex} isPlayer={isPlayer} className={s.swatch} />
         {tag}
         {children ?? (
@@ -90,7 +99,7 @@ export function EntityLink(props: EntityLinkProps) {
     );
   }
 
-  return <EntityLinkButton {...props} size={size} s={s} tag={tag} />;
+  return <EntityLinkButton {...props} size={size} s={s} tag={tag} hoverProps={hoverProps} />;
 }
 
 function EntityLinkButton({
@@ -101,9 +110,11 @@ function EntityLinkButton({
   children,
   s,
   tag,
+  hoverProps,
 }: EntityLinkProps & {
   s: (typeof sizeClasses)[keyof typeof sizeClasses];
   tag: React.ReactNode;
+  hoverProps: ReturnType<typeof useEu5MapHoverTarget>;
 }) {
   const nav = usePanelNav();
   const panToEntity = usePanToEntity();
@@ -131,6 +142,7 @@ function EntityLinkButton({
     <button
       type="button"
       onClick={handleClick}
+      {...hoverProps}
       className={cx(
         "group/er inline-flex max-w-full min-w-0 cursor-pointer items-center border-0 bg-transparent p-0 text-left align-middle",
         s.wrapper,

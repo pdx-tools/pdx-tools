@@ -9,6 +9,7 @@ import type {
   SelectionSummaryData,
 } from "./game-adapter";
 import type { Eu5SaveInput } from "./store/types";
+import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import type {
   MapMode,
   StateEfficacyInsightData,
@@ -102,6 +103,8 @@ export interface AppTriggers {
   clearFocusOrSelection(): Promise<void>;
   selectPlayers(): Promise<void>;
   clearSelection(): Promise<void>;
+  highlightMapHoverTarget(target: Eu5MapHoverTarget): Promise<void>;
+  clearMapHoverHighlight(): Promise<void>;
   searchEntities(query: string): Promise<SearchResult[]>;
   panToLocation(
     locationIdx: number,
@@ -208,6 +211,8 @@ export class Eu5UIEngine implements AppEngine {
     clearFocusOrSelection: () => this.handleClearFocusOrSelection(),
     selectPlayers: () => this.handleSelectPlayers(),
     clearSelection: () => this.handleClearSelection(),
+    highlightMapHoverTarget: (target) => this.gameInstance.highlightMapHoverTarget(target),
+    clearMapHoverHighlight: () => this.gameInstance.clearMapHoverHighlight(),
     searchEntities: (query) => this.handleSearchEntities(query),
     panToLocation: (locationIdx, insets) => this.gameInstance.panToLocation(locationIdx, insets),
   };

@@ -3,7 +3,7 @@ import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { Eu5DataTable } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable } from "../../components";
 import type {
   ControlScopeSummary,
   ControlTopLocation,
@@ -18,6 +18,7 @@ import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeH
 import { StatItem } from "../profiles/components/StatItem";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
+import { MapHoverButton } from "../../MapHoverButton";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { EntityLink } from "../profiles/EntityLink";
 import {
@@ -405,8 +406,8 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
         cell: ({ row }) => {
           const loc = row.original;
           return (
-            <button
-              type="button"
+            <MapHoverButton
+              target={{ kind: "location", locationIdx: loc.locationIdx }}
               className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
                 nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
@@ -414,7 +415,7 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
               }}
             >
               {loc.name}
-            </button>
+            </MapHoverButton>
           );
         },
       }),
@@ -457,10 +458,11 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
   );
 
   return (
-    <Eu5DataTable
+    <Eu5MapDataTable
       className="w-full"
       columns={columns}
       data={locations}
+      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.locationIdx })}
       initialSorting={[{ id: "lostDevelopment", desc: true }]}
       pagination
     />

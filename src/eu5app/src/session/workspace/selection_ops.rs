@@ -561,6 +561,60 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
+    pub fn highlight_location(&mut self, location_idx: eu5save::models::LocationIdx) {
+        if !self.can_highlight_location(location_idx) {
+            return;
+        }
+
+        let Some(gpu_index) = self.gpu_indices[location_idx] else {
+            return;
+        };
+
+        let mut state = self.location_arrays.get_mut(gpu_index);
+        state.flags_mut().set(LocationFlags::HIGHLIGHTED);
+    }
+
+    pub fn highlight_country(&mut self, country_idx: eu5save::models::CountryIdx) {
+        let Some(owner) = self.gamestate.countries.index(country_idx).id().real_id() else {
+            return;
+        };
+
+        for entry in self.gamestate.locations.iter() {
+            let idx = entry.idx();
+            if entry.location().owner.real_id() != Some(owner) || !self.can_highlight_location(idx)
+            {
+                continue;
+            }
+
+            let Some(gpu_index) = self.gpu_indices[idx] else {
+                continue;
+            };
+
+            let mut state = self.location_arrays.get_mut(gpu_index);
+            state.flags_mut().set(LocationFlags::HIGHLIGHTED);
+        }
+    }
+
+    pub fn highlight_market(&mut self, market_id: eu5save::models::MarketId) {
+        if self.gamestate.market_manager.get(market_id).is_none() {
+            return;
+        }
+
+        for entry in self.gamestate.locations.iter() {
+            let idx = entry.idx();
+            if entry.location().market != Some(market_id) || !self.can_highlight_location(idx) {
+                continue;
+            }
+
+            let Some(gpu_index) = self.gpu_indices[idx] else {
+                continue;
+            };
+
+            let mut state = self.location_arrays.get_mut(gpu_index);
+            state.flags_mut().set(LocationFlags::HIGHLIGHTED);
+        }
+    }
+
     pub fn handle_location_hover(&mut self, location_idx: eu5save::models::LocationIdx) {
         let scope_mode = self.derived_scope_map_mode();
 
@@ -578,18 +632,21 @@ impl<'bump> Eu5Workspace<'bump> {
         if let Some(anchor) = self.derived_entity_anchor
             && self.same_entity(location_idx, anchor, scope_mode)
         {
-            if !self.can_highlight_location(location_idx) {
-                return;
-            }
-            let Some(gpu_index) = self.gpu_indices[location_idx] else {
-                return;
-            };
-            let mut state = self.location_arrays.get_mut(gpu_index);
-            state.flags_mut().set(LocationFlags::HIGHLIGHTED);
+            self.highlight_location(location_idx);
             return;
         }
 
         self.highlight_entity(location_idx);
+    }
+
+    fn highlight_locations_by_index(&mut self, idxs: &eu5save::models::LocationIndexedVec<bool>) {
+        let mut iter = self.location_arrays.iter_mut();
+        while let Some(mut loc) = iter.next_location() {
+            let loc_idx = eu5save::models::LocationIdx::new(loc.location_id().value());
+            if idxs[loc_idx] {
+                loc.flags_mut().set(LocationFlags::HIGHLIGHTED);
+            }
+        }
     }
 
     fn highlight_entity(&mut self, location_idx: eu5save::models::LocationIdx) {
@@ -605,13 +662,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 idxs[entry.idx()] = entry.location().market == Some(market_id);
             }
 
-            let mut iter = self.location_arrays.iter_mut();
-            while let Some(mut loc) = iter.next_location() {
-                let loc_idx = eu5save::models::LocationIdx::new(loc.location_id().value());
-                if idxs[loc_idx] {
-                    loc.flags_mut().set(LocationFlags::HIGHLIGHTED);
-                }
-            }
+            self.highlight_locations_by_index(&idxs);
         } else {
             let owner = location.owner.real_id();
             let mut idxs = self.gamestate.locations.create_index(false);
@@ -623,13 +674,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 }
             }
 
-            let mut iter = self.location_arrays.iter_mut();
-            while let Some(mut loc) = iter.next_location() {
-                let loc_idx = eu5save::models::LocationIdx::new(loc.location_id().value());
-                if idxs[loc_idx] {
-                    loc.flags_mut().set(LocationFlags::HIGHLIGHTED);
-                }
-            }
+            self.highlight_locations_by_index(&idxs);
         }
     }
 }

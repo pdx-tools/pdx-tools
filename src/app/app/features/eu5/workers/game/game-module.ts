@@ -1,4 +1,5 @@
 import { fetchOk } from "@/lib/fetch";
+import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
 import type { Eu5MapEndpoint } from "../map/map-module";
 import type { Eu5SaveInput } from "../../store/types";
 import { timeAsync, timeSync } from "@/lib/timeit";
@@ -273,6 +274,25 @@ export const createGame = async (
     clearFocusOrSelection: () => afterMutation(app.clear_focus_or_selection()),
     selectPlayers: () => afterMutation(app.select_players()),
     clearSelection: () => afterMutation(app.clear_selection()),
+    highlightMapHoverTarget: (target: Eu5MapHoverTarget) => {
+      app.clear_highlights();
+      switch (target.kind) {
+        case "location":
+          app.highlight_location(target.locationIdx);
+          break;
+        case "country":
+          app.highlight_country(target.countryIdx);
+          break;
+        case "market":
+          app.highlight_market(target.marketId);
+          break;
+      }
+      return syncLocationData();
+    },
+    clearMapHoverHighlight: () => {
+      app.clear_highlights();
+      return syncLocationData();
+    },
     getStateEfficacy: (): StateEfficacyInsightData => {
       return app.get_state_efficacy();
     },

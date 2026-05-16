@@ -3,7 +3,7 @@ import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { Eu5DataTable } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable } from "../../components";
 import type {
   BuildingLevelsScopeSummary,
   BuildingTypeSummary,
@@ -19,6 +19,7 @@ import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeH
 import { StatItem } from "../profiles/components/StatItem";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
+import { MapHoverButton } from "../../MapHoverButton";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { EntityLink } from "../profiles/EntityLink";
 import {
@@ -197,8 +198,8 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
         cell: ({ row }) => {
           const loc = row.original;
           return (
-            <button
-              type="button"
+            <MapHoverButton
+              target={{ kind: "location", locationIdx: loc.locationIdx }}
               className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
                 nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
@@ -206,7 +207,7 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
               }}
             >
               {loc.name}
-            </button>
+            </MapHoverButton>
           );
         },
       }),
@@ -228,10 +229,11 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
   );
 
   return (
-    <Eu5DataTable
+    <Eu5MapDataTable
       className="w-full"
       columns={columns}
       data={locations}
+      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.locationIdx })}
       initialSorting={[{ id: "levels", desc: true }]}
       pagination
     />
@@ -252,8 +254,8 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
         cell: ({ row }) => {
           const r = row.original;
           return (
-            <button
-              type="button"
+            <MapHoverButton
+              target={{ kind: "location", locationIdx: r.locationIdx }}
               className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
                 nav.pushMany([locationProfileEntry(r.locationIdx, r.locationName)], BACK_LABEL);
@@ -261,7 +263,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
               }}
             >
               {r.locationName}
-            </button>
+            </MapHoverButton>
           );
         },
       }),
@@ -298,10 +300,11 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
   );
 
   return (
-    <Eu5DataTable
+    <Eu5MapDataTable
       className="w-full"
       columns={columns}
       data={rows}
+      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.locationIdx })}
       initialSorting={[{ id: "foreignLevels", desc: true }]}
       pagination
     />
@@ -343,10 +346,15 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
   );
 
   return (
-    <Eu5DataTable
+    <Eu5MapDataTable
       className="w-full"
       columns={columns}
       data={cells}
+      getRowHoverTarget={(row) =>
+        row.owner.kind === "country"
+          ? { kind: "country", countryIdx: row.owner.countryIdx }
+          : { kind: "market", marketId: row.owner.marketId }
+      }
       initialSorting={[{ id: "levels", desc: true }]}
       pagination
     />
