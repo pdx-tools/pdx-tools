@@ -347,7 +347,7 @@ impl SaveLoader {
         let meta = self.meta();
         let parsed_save = self
             .parser
-            .parse()
+            .parse_tracked()
             .map_err(|e| JsError::new(&format!("Failed to parse game state: {e}")))?;
 
         Ok(Eu5WasmGamestate { parsed_save, meta })
