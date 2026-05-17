@@ -4,7 +4,7 @@ use crate::models::{Color, LocationId, de::Maybe};
 use bumpalo_serde::{ArenaDeserialize, ArenaSeed};
 use serde::{
     Deserialize, Deserializer,
-    de::{DeserializeSeed, value::MapAccessDeserializer},
+    de::{self, DeserializeSeed, IgnoredAny, value::MapAccessDeserializer},
 };
 use std::ops::IndexMut;
 use std::{collections::HashMap, fmt, num::NonZeroU32, ops::Index};
@@ -263,17 +263,100 @@ pub enum CountryName<'bump> {
 }
 
 impl<'bump> CountryName<'bump> {
+    /// Returns the raw name key: the tag for `Tag` variants, or `obj.name` for objects.
+    /// For presentation code use a proper resolver; this is for debug/raw-key access only.
     pub fn name(&self) -> BStr<'bump> {
         match self {
             CountryName::Tag(tag) => *tag,
-            CountryName::Object(obj) => obj.name,
+            CountryName::Object(obj) => obj.name.unwrap_or(BStr::new(&[])),
         }
     }
 }
 
+/// The `key` map inside a `country_name` object, e.g. `key={ "Adjective"="YMT_ADJ" }`.
+#[derive(Debug, Clone, Default, ArenaDeserialize)]
+pub struct CountryNameKeys<'bump> {
+    #[arena(default, alias = "Adjective")]
+    pub adjective: Option<BStr<'bump>>,
+    #[arena(default, alias = "Custom_Name")]
+    pub custom_name: Option<BStr<'bump>>,
+}
+
+impl<'bump> CountryNameKeys<'bump> {
+    pub fn adjective_key(&self) -> Option<BStr<'bump>> {
+        self.adjective
+    }
+}
+
+/// The `bases` map inside a `country_name` object, e.g. `bases={ Base=JAL }`.
+#[derive(Debug, Clone, Default, ArenaDeserialize)]
+pub struct CountryNameBases<'bump> {
+    #[arena(default, alias = "Base")]
+    pub base: Option<BStr<'bump>>,
+}
+
 #[derive(Debug, Clone, ArenaDeserialize)]
 pub struct CountryNameObject<'bump> {
-    pub name: BStr<'bump>, // e.g., "CIVILWAR_FACTION_nobles_estate_NAME"
+    /// Absent for placeholder countries (e.g. "Paradox Country" which only has a `key`).
+    #[arena(default)]
+    pub name: Option<BStr<'bump>>,
+    /// Localization key for the display name. May be a plain key (`"tokunoshima"`) or
+    /// extracted from a structured object (`override_name={ key="..." ... }`).
+    #[arena(default, deserialize_with = "deserialize_override_key")]
+    pub override_name: Option<BStr<'bump>>,
+    /// Localization key for the adjective form of the override name.
+    #[arena(default, deserialize_with = "deserialize_override_key")]
+    pub override_adj: Option<BStr<'bump>>,
+    /// String-keyed localization entries such as `"Adjective"="YMT_ADJ"`.
+    #[arena(default)]
+    pub key: CountryNameKeys<'bump>,
+    /// Base tag substitutions such as `Base=JAL` used by `$ADJ$` templates.
+    #[arena(default)]
+    pub bases: CountryNameBases<'bump>,
+}
+
+/// Deserializes an `override_name` or `override_adj` value, which may be either:
+/// - A plain string: `override_name="tokunoshima"` → captured as-is
+/// - A structured object: `override_name={ key="game_dynasty_name_struct_notooltip" ... }`
+///   → only the inner `key` string is preserved
+/// - A sequence (binary encoding variant) → `None`
+fn deserialize_override_key<'de, 'bump, D>(
+    deserializer: D,
+    allocator: &'bump bumpalo::Bump,
+) -> Result<Option<BStr<'bump>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visitor<'bump>(&'bump bumpalo::Bump);
+    impl<'de, 'bump> de::Visitor<'de> for Visitor<'bump> {
+        type Value = Option<BStr<'bump>>;
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("string or object with key field")
+        }
+        fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+            self.visit_bytes(v.as_bytes())
+        }
+        fn visit_borrowed_str<E: de::Error>(self, v: &'de str) -> Result<Self::Value, E> {
+            self.visit_bytes(v.as_bytes())
+        }
+        fn visit_bytes<E: de::Error>(self, v: &[u8]) -> Result<Self::Value, E> {
+            Ok(Some(BStr::new(self.0.alloc_slice_copy(v))))
+        }
+        fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
+            #[derive(ArenaDeserialize)]
+            struct OverrideKeyObject<'bump> {
+                key: BStr<'bump>,
+            }
+            let obj =
+                OverrideKeyObject::deserialize_in_arena(MapAccessDeserializer::new(map), self.0)?;
+            Ok(Some(obj.key))
+        }
+        fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+            while seq.next_element::<IgnoredAny>()?.is_some() {}
+            Ok(None)
+        }
+    }
+    deserializer.deserialize_any(Visitor(allocator))
 }
 
 #[derive(Debug, Clone, Deserialize, ArenaDeserialize)]
@@ -598,6 +681,139 @@ impl<'bump> ArenaDeserialize<'bump> for CountryName<'bump> {
         }
 
         deserializer.deserialize_map(CountryNameVisitor(allocator))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bumpalo_serde::ArenaDeserialize;
+    use jomini::TextDeserializer;
+
+    #[derive(ArenaDeserialize)]
+    struct Wrapper<'bump> {
+        country_name: CountryName<'bump>,
+    }
+
+    fn deserialize_country_name<'bump>(
+        data: &str,
+        allocator: &'bump bumpalo::Bump,
+    ) -> CountryName<'bump> {
+        let deserializer =
+            TextDeserializer::from_utf8_slice(data.as_bytes()).expect("valid text data");
+        Wrapper::deserialize_in_arena(&deserializer, allocator)
+            .expect("country name deserializes")
+            .country_name
+    }
+
+    #[test]
+    fn country_name_tag_string() {
+        let allocator = bumpalo::Bump::new();
+        let name = deserialize_country_name(r#"country_name="GBR""#, &allocator);
+        assert_eq!(name.name().to_str(), "GBR");
+    }
+
+    #[test]
+    fn country_name_object_with_name_and_adjective_key() {
+        // e.g. name="INC" key={ "Adjective"="INC_ADJ" }
+        let allocator = bumpalo::Bump::new();
+        let name = deserialize_country_name(
+            r#"country_name={ name="INC" key={ "Adjective"="INC_ADJ" } }"#,
+            &allocator,
+        );
+        let CountryName::Object(obj) = name else {
+            panic!("expected Object")
+        };
+        assert_eq!(obj.name.unwrap().to_str(), "INC");
+        assert_eq!(obj.key.adjective_key().unwrap().to_str(), "INC_ADJ");
+        assert!(obj.override_name.is_none());
+        assert!(obj.bases.base.is_none());
+    }
+
+    #[test]
+    fn country_name_object_without_name_is_empty() {
+        // "Paradox Country" placeholder: only has a key, no name field
+        let allocator = bumpalo::Bump::new();
+        let name = deserialize_country_name(
+            r#"country_name={ key={ "Custom_Name"="Paradox Country" } }"#,
+            &allocator,
+        );
+        let CountryName::Object(obj) = name else {
+            panic!("expected Object")
+        };
+        assert!(obj.name.is_none());
+        assert_eq!(obj.key.custom_name.unwrap().to_str(), "Paradox Country");
+    }
+
+    #[test]
+    fn country_name_object_with_plain_override() {
+        // e.g. name="KOU" override_name="saitama" override_adj="saitama"
+        let allocator = bumpalo::Bump::new();
+        let name = deserialize_country_name(
+            r#"country_name={ name="KOU" override_name="saitama" override_adj="saitama" }"#,
+            &allocator,
+        );
+        let CountryName::Object(obj) = name else {
+            panic!("expected Object")
+        };
+        assert_eq!(obj.override_name.unwrap().to_str(), "saitama");
+        assert_eq!(obj.override_adj.unwrap().to_str(), "saitama");
+    }
+
+    #[test]
+    fn country_name_object_with_override_and_adjective_key() {
+        // e.g. name="YMT" override_name="kyoto" override_adj="kyoto" key={ "Adjective"="YMT_ADJ" }
+        let allocator = bumpalo::Bump::new();
+        let name = deserialize_country_name(
+            r#"country_name={ name="YMT" override_name="kyoto" override_adj="kyoto" key={ "Adjective"="YMT_ADJ" } }"#,
+            &allocator,
+        );
+        let CountryName::Object(obj) = name else {
+            panic!("expected Object")
+        };
+        assert_eq!(obj.name.unwrap().to_str(), "YMT");
+        assert_eq!(obj.override_name.unwrap().to_str(), "kyoto");
+        assert_eq!(obj.override_adj.unwrap().to_str(), "kyoto");
+        assert_eq!(obj.key.adjective_key().unwrap().to_str(), "YMT_ADJ");
+    }
+
+    #[test]
+    fn country_name_object_with_bases() {
+        // e.g. name="CIVILWAR_FACTION_nobles_estate_NAME" key={ "Adjective"="..." } bases={ Base=HKK }
+        let allocator = bumpalo::Bump::new();
+        let name = deserialize_country_name(
+            r#"country_name={ name="CIVILWAR_FACTION_nobles_estate_NAME" key={ "Adjective"="CIVILWAR_FACTION_nobles_estate_ADJECTIVE" } bases={ Base=HKK } }"#,
+            &allocator,
+        );
+        let CountryName::Object(obj) = name else {
+            panic!("expected Object")
+        };
+        assert_eq!(
+            obj.name.unwrap().to_str(),
+            "CIVILWAR_FACTION_nobles_estate_NAME"
+        );
+        assert_eq!(
+            obj.key.adjective_key().unwrap().to_str(),
+            "CIVILWAR_FACTION_nobles_estate_ADJECTIVE"
+        );
+        assert_eq!(obj.bases.base.unwrap().to_str(), "HKK");
+    }
+
+    #[test]
+    fn country_name_object_with_structured_override_extracts_key() {
+        // e.g. override_name={ key="game_dynasty_name_struct_notooltip" variables={...} }
+        let allocator = bumpalo::Bump::new();
+        let name = deserialize_country_name(
+            r#"country_name={ name="CLR" override_name={ key="game_dynasty_name_struct_notooltip" variables={ { key="PREFIX" value="x" } } } }"#,
+            &allocator,
+        );
+        let CountryName::Object(obj) = name else {
+            panic!("expected Object")
+        };
+        assert_eq!(
+            obj.override_name.unwrap().to_str(),
+            "game_dynasty_name_struct_notooltip"
+        );
     }
 }
 

@@ -168,7 +168,7 @@ impl<'bump> bumpalo_serde::ArenaDeserialize<'bump> for DiplomacyDependency {
         D: Deserializer<'de>,
     {
         let raw = DiplomacyDependencyRaw::deserialize(deserializer)?;
-        Self::from_raw(raw)
+        Ok(Self::from_raw(raw))
     }
 }
 
@@ -178,24 +178,21 @@ impl<'de> Deserialize<'de> for DiplomacyDependency {
         D: Deserializer<'de>,
     {
         let raw = DiplomacyDependencyRaw::deserialize(deserializer)?;
-        Self::from_raw(raw)
+        Ok(Self::from_raw(raw))
     }
 }
 
 impl DiplomacyDependency {
-    fn from_raw<E>(raw: DiplomacyDependencyRaw) -> Result<Self, E>
-    where
-        E: de::Error,
-    {
-        Ok(DiplomacyDependency {
+    fn from_raw(raw: DiplomacyDependencyRaw) -> Self {
+        DiplomacyDependency {
             first: raw.first,
             second: raw.second,
             start_date: raw.start_date,
             subject_type: raw
                 .subject_type
                 .or(raw.named_targets)
-                .ok_or_else(|| de::Error::missing_field("subject_type"))?,
-        })
+                .unwrap_or(DiplomacySubjectType::Other),
+        }
     }
 }
 
@@ -279,6 +276,9 @@ pub enum DiplomacySubjectType {
     Tusi,
     March,
     MahaSamanta,
+    ColonialNation,
+    Conquistador,
+    TradeCompany,
     #[serde(other)]
     Other,
 }
@@ -341,6 +341,85 @@ dependency={
 }
 "#,
         );
+    }
+
+    #[test]
+    fn diplomacy_dependency_unknown_subject_type_deserializes_to_other() {
+        let allocator = bumpalo::Bump::new();
+        let manager = deserialize_manager(
+            r#"
+dependency={
+    first=314
+    second=339
+    named_targets={ {
+            flag="subject_type"
+            target={
+                type=subject_type
+                object=unknown_future_type
+            }
+        } }
+}
+"#,
+            &allocator,
+        );
+        let dependencies: Vec<_> = manager.dependencies().collect();
+        assert_eq!(dependencies.len(), 1);
+        assert_eq!(dependencies[0].subject_type, DiplomacySubjectType::Other);
+    }
+
+    #[test]
+    fn diplomacy_dependency_deserializes_colonial_nation_subject_type() {
+        let allocator = bumpalo::Bump::new();
+        let manager = deserialize_manager(
+            r#"
+dependency={
+    first=283
+    second=83888446
+    named_targets={ {
+            flag="subject_type"
+            target={
+                type=subject_type
+                object=colonial_nation
+            }
+        } }
+    start_date=1445.1.1
+}
+"#,
+            &allocator,
+        );
+        let dependencies: Vec<_> = manager.dependencies().collect();
+        assert_eq!(dependencies.len(), 1);
+        assert_eq!(
+            dependencies[0].subject_type,
+            DiplomacySubjectType::ColonialNation
+        );
+    }
+
+    #[test]
+    fn diplomacy_dependency_with_null_identity_falls_back_to_other() {
+        // Some dependencies have identity=18446744073709551615 (null sentinel) instead of
+        // object=<type>, leaving subject_type unresolvable — should fall back to Other.
+        let allocator = bumpalo::Bump::new();
+        let manager = deserialize_manager(
+            r#"
+dependency={
+    first=283
+    second=1898
+    named_targets={ {
+            flag="subject_type"
+            target={
+                type=subject_type
+                identity=18446744073709551615
+            }
+        } }
+    start_date=1572.2.2
+}
+"#,
+            &allocator,
+        );
+        let dependencies: Vec<_> = manager.dependencies().collect();
+        assert_eq!(dependencies.len(), 1);
+        assert_eq!(dependencies[0].subject_type, DiplomacySubjectType::Other);
     }
 
     #[test]
