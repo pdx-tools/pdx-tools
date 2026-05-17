@@ -212,10 +212,12 @@ impl Eu4Parser {
     {
         if self.debug {
             let mut track = serde_path_to_error::Track::new();
-            let deser = serde_path_to_error::Deserializer::new(deser, &mut track);
-            let mut erased = <dyn erased_serde::Deserializer>::erase(deser);
-            erased_serde::deserialize(&mut erased)
-                .map_err(|e| Eu4GameError::DeserializeDebug(e.to_string()))
+            let result = {
+                let deser = serde_path_to_error::Deserializer::new(deser, &mut track);
+                let mut erased = <dyn erased_serde::Deserializer>::erase(deser);
+                erased_serde::deserialize(&mut erased)
+            };
+            result.map_err(|e| Eu4GameError::DeserializeDebug(format!("{}: {}", track.path(), e)))
         } else {
             Ok(T::deserialize(deser)?)
         }
