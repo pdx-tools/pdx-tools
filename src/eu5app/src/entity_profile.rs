@@ -202,6 +202,11 @@ pub enum DiplomacySubjectType {
     March,
     #[serde(rename = "Maha Samanta")]
     MahaSamanta,
+    #[serde(rename = "Colonial Nation")]
+    ColonialNation,
+    Conquistador,
+    #[serde(rename = "Trade Company")]
+    TradeCompany,
     #[serde(rename = "Subject")]
     Other,
 }

@@ -1260,6 +1260,9 @@ fn into_profile_subject_type(t: SaveDiplomacySubjectType) -> DiplomacySubjectTyp
         SaveDiplomacySubjectType::Tusi => DiplomacySubjectType::Tusi,
         SaveDiplomacySubjectType::March => DiplomacySubjectType::March,
         SaveDiplomacySubjectType::MahaSamanta => DiplomacySubjectType::MahaSamanta,
+        SaveDiplomacySubjectType::ColonialNation => DiplomacySubjectType::ColonialNation,
+        SaveDiplomacySubjectType::Conquistador => DiplomacySubjectType::Conquistador,
+        SaveDiplomacySubjectType::TradeCompany => DiplomacySubjectType::TradeCompany,
         SaveDiplomacySubjectType::Other => DiplomacySubjectType::Other,
     }
 }
