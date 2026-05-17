@@ -1,6 +1,5 @@
 use eu5app::{
-    GroupId, GroupingTable, game_data::optimized::OptimizedTextureBundle,
-    should_highlight_individual_locations,
+    GroupId, GroupingTable, game_data::OptimizedMapBundle, should_highlight_individual_locations,
 };
 use eu5save::hash::FnvHashSet;
 use pdx_map::{
@@ -563,17 +562,17 @@ impl Eu5WasmMapRenderer {
 
 #[wasm_bindgen]
 #[derive(Debug)]
-pub struct Eu5WasmGameBundle {
-    textures: OptimizedTextureBundle<Vec<u8>>,
+pub struct Eu5WasmMapBundle {
+    textures: OptimizedMapBundle<Vec<u8>>,
 }
 
 #[wasm_bindgen]
-impl Eu5WasmGameBundle {
+impl Eu5WasmMapBundle {
     #[wasm_bindgen]
     pub fn open(data: Vec<u8>) -> Result<Self, JsError> {
-        OptimizedTextureBundle::open(data)
-            .map(|textures| Eu5WasmGameBundle { textures })
-            .map_err(|e| JsError::new(&format!("Failed to open game bundle: {e}")))
+        OptimizedMapBundle::open(data)
+            .map(|textures| Eu5WasmMapBundle { textures })
+            .map_err(|e| JsError::new(&format!("Failed to open map bundle: {e}")))
     }
 
     #[wasm_bindgen]

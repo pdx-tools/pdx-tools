@@ -112,63 +112,75 @@ where
     // Create location data with color awareness
     let locations = textures.location_aware(raw_game_data.locations);
 
-    // Create output directory
-    let eu5_out_dir = out_dir.join("eu5");
-    std::fs::create_dir_all(&eu5_out_dir)?;
+    // Create per-version output directory: assets/game/eu5/{version}/
+    let version_dir = out_dir.join("eu5").join(game_version);
+    std::fs::create_dir_all(&version_dir)?;
 
-    // Create the bundle zip file
-    let bundle_path = eu5_out_dir.join(format!("eu5-{game_version}.zip"));
-    let output = std::fs::File::create(&bundle_path)?;
-    let writer = std::io::BufWriter::new(output);
-    let mut archive = rawzip::ZipArchiveWriter::new(writer);
+    // Game part: language/lookup data consumed by the game worker.
+    let game_path = version_dir.join("game.zip");
+    {
+        let output = std::fs::File::create(&game_path)?;
+        let writer = std::io::BufWriter::new(output);
+        let mut archive = rawzip::ZipArchiveWriter::new(writer);
 
-    write_entry(&mut archive, "location_lookup.bin", &locations)?;
-    write_entry(
-        &mut archive,
-        "localizations.bin",
-        LocalizationsData {
-            countries: raw_game_data.country_localizations,
-            goods: raw_game_data.goods_localizations,
-            buildings: raw_game_data.building_localizations,
-        },
-    )?;
-    write_entry(
-        &mut archive,
-        "game_data.bin",
-        GoodsData {
-            goods: raw_game_data.goods,
-        },
-    )?;
-    let max_location_index = textures.textures().world().max_location_index().value();
-    write_entry(
-        &mut archive,
-        "world_meta.bin",
-        WorldMetadata::new(max_location_index),
-    )?;
+        write_entry(&mut archive, "location_lookup.bin", &locations)?;
+        write_entry(
+            &mut archive,
+            "localizations.bin",
+            LocalizationsData {
+                countries: raw_game_data.country_localizations,
+                goods: raw_game_data.goods_localizations,
+                buildings: raw_game_data.building_localizations,
+            },
+        )?;
+        write_entry(
+            &mut archive,
+            "game_data.bin",
+            GoodsData {
+                goods: raw_game_data.goods,
+            },
+        )?;
+        archive.finish()?
+    };
 
-    // Write R16 texture files
-    for (filename, data) in [
-        ("locations-0.r16", textures.textures().west_data()),
-        ("locations-1.r16", textures.textures().east_data()),
-    ] {
-        let (mut entry, config) = archive
-            .new_file(filename)
-            .compression_method(CompressionMethod::Zstd)
-            .start()?;
-        let encoder = pdx_zstd::Encoder::new(&mut entry, 7)?;
-        let mut writer = config.wrap(encoder);
-        writer.write_all(bytemuck::cast_slice(data))?;
-        let (encoder, out) = writer.finish()?;
-        encoder.finish()?;
-        entry.finish(out)?;
-    }
+    // Map part: hemisphere textures and world metadata consumed by the map worker.
+    let map_path = version_dir.join("map.zip");
+    {
+        let output = std::fs::File::create(&map_path)?;
+        let writer = std::io::BufWriter::new(output);
+        let mut archive = rawzip::ZipArchiveWriter::new(writer);
 
-    archive.finish()?;
+        let max_location_index = textures.textures().world().max_location_index().value();
+        write_entry(
+            &mut archive,
+            "world_meta.bin",
+            WorldMetadata::new(max_location_index),
+        )?;
+
+        for (filename, data) in [
+            ("locations-0.r16", textures.textures().west_data()),
+            ("locations-1.r16", textures.textures().east_data()),
+        ] {
+            let (mut entry, config) = archive
+                .new_file(filename)
+                .compression_method(CompressionMethod::Zstd)
+                .start()?;
+            let encoder = pdx_zstd::Encoder::new(&mut entry, 7)?;
+            let mut writer = config.wrap(encoder);
+            writer.write_all(bytemuck::cast_slice(data))?;
+            let (encoder, out) = writer.finish()?;
+            encoder.finish()?;
+            entry.finish(out)?;
+        }
+
+        archive.finish()?
+    };
 
     tracing::info!(
         name: "eu5.bundle.complete",
-        bundle_path = %bundle_path.display(),
-        "EU5 game bundle created"
+        game_path = %game_path.display(),
+        map_path = %map_path.display(),
+        "EU5 optimized bundle parts created"
     );
 
     if !options.minimal {

@@ -2,7 +2,7 @@ import { timeAsync, timeSync } from "@/lib/timeit";
 import init, {
   Eu5CanvasSurface,
   Eu5WasmMapRenderer,
-  Eu5WasmGameBundle,
+  Eu5WasmMapBundle,
   setup_eu5_map_wasm,
 } from "../../../../wasm/wasm_eu5_map";
 import type { CanvasDisplay, LogLevel } from "../../../../wasm/wasm_eu5_map";
@@ -116,10 +116,10 @@ export const createMapEngine = async (
     inputConfig: SharedCanvasInputConfig;
   },
   {
-    bundleFetch,
+    mapBundle,
     onProgress,
   }: {
-    bundleFetch: () => Promise<Uint8Array>;
+    mapBundle: { fetch: () => Promise<Uint8Array> };
     onProgress?: (increment: number) => void;
   },
 ) => {
@@ -136,10 +136,10 @@ export const createMapEngine = async (
   );
   onProgress?.(5); // Canvas initialization
 
-  const bundle = await bundleFetch();
+  const bundle = await mapBundle.fetch();
 
-  const gameBundle = Eu5WasmGameBundle.open(bundle);
-  const textureData = timeSync("Create Texture Data", () => gameBundle.load_texture_data());
+  const mapBundleWasm = Eu5WasmMapBundle.open(bundle);
+  const textureData = timeSync("Create Texture Data", () => mapBundleWasm.load_texture_data());
 
   const westView = timeSync("Upload Texture Data (West)", () =>
     canvasInit.upload_west_texture(textureData),

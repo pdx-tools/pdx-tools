@@ -35,27 +35,68 @@ import type { SharedCanvasInputConfig } from "@/lib/canvas_courier";
 import type { BoxSelectOverlayRect } from "./types/box-select";
 import type { CursorHint } from "./workers/map/map-module";
 
-const bundleUrls = import.meta.glob<true, string, string>(
-  "../../../../../assets/game/eu5/eu5-*.zip",
+const gameZipUrls = import.meta.glob<true, string, string>(
+  "../../../../../assets/game/eu5/*/game.zip",
   { query: "?url", eager: true, import: "default" },
 );
 
-function getBundleUrl(version: string): string {
-  const path = `../../../../../assets/game/eu5/eu5-${version}.zip`;
-  const url = bundleUrls[path];
-  if (url) {
-    return url;
+const mapZipUrls = import.meta.glob<true, string, string>(
+  "../../../../../assets/game/eu5/*/map.zip",
+  { query: "?url", eager: true, import: "default" },
+);
+
+type BundleVersion = { version: string; major: number; minor: number };
+
+function parseBundleVersion(version: string): BundleVersion | null {
+  const match = /^(\d+)\.(\d+)$/.exec(version);
+  if (!match) return null;
+  return { version, major: Number(match[1]), minor: Number(match[2]) };
+}
+
+function extractDirVersion(path: string): string | null {
+  const match = /\/assets\/game\/eu5\/([^/]+)\//.exec(path);
+  return match ? match[1] : null;
+}
+
+function discoverBundles(): Map<string, { game: string; map: string }> {
+  const games = new Map<string, string>();
+  for (const [path, url] of Object.entries(gameZipUrls)) {
+    const version = extractDirVersion(path);
+    if (version !== null) games.set(version, url);
   }
 
-  // Fallback to last bundle in sorted order
-  const bundlePaths = Object.keys(bundleUrls).sort();
-  if (bundlePaths.length === 0) {
-    throw new Error("No game bundles found");
+  const complete = new Map<string, { game: string; map: string }>();
+  for (const [path, mapUrl] of Object.entries(mapZipUrls)) {
+    const version = extractDirVersion(path);
+    if (version === null || parseBundleVersion(version) === null) continue;
+    const gameUrl = games.get(version);
+    if (gameUrl) complete.set(version, { game: gameUrl, map: mapUrl });
   }
 
-  const lastBundle = bundlePaths[bundlePaths.length - 1];
-  console.warn(`Bundle for version ${version} not found, falling back to ${lastBundle}`);
-  return bundleUrls[lastBundle];
+  return complete;
+}
+
+const completeBundles = discoverBundles();
+
+function resolveBundleVersion(requested: string): string {
+  if (completeBundles.has(requested)) return requested;
+
+  const sorted = Array.from(completeBundles.keys())
+    .map((v) => parseBundleVersion(v)!)
+    .sort((a, b) => (b.major === a.major ? b.minor - a.minor : b.major - a.major));
+
+  if (sorted.length === 0) {
+    throw new Error("No complete EU5 optimized bundles found");
+  }
+
+  const latest = sorted[0].version;
+  console.warn(`EU5 bundle for version ${requested} not found, falling back to ${latest}`);
+  return latest;
+}
+
+function getBundleUrls(version: string): { game: string; map: string } {
+  const resolved = resolveBundleVersion(version);
+  return completeBundles.get(resolved)!;
 }
 
 // Worker types
@@ -111,50 +152,59 @@ export class Eu5GameAdapter {
     },
     onProgress?: (increment: number) => void,
   ) {
-    // Fetch the game bundle on the main thread, as our other options are:
-    // - Fetch in the game worker, then transfer to map worker (bad as the
-    //   parsing gamestate blocks the event loop and prevents the message from
-    //   being sent)
-    // - Fetch in both workers (bad: as inter-web worker fetches don't *appear*
-    //   to be consolidated, though under some circumstances they might).
-    // So since we can do the de-duplication ourselves, might as well.
+    // Coordinate part fetching on the main thread. The game worker calls
+    // `gameBundle.selectVersion(version)` after parsing save metadata, which
+    // eagerly kicks off both `game.zip` and `map.zip` fetches against the
+    // resolved bundle family. Each worker awaits only its own part. The
+    // alternative (fetching inside workers) either blocks on gamestate parse
+    // or runs duplicate fetches.
     //
-    // Create bundle coordination: the game worker will call setVersion after
-    // parsing metadata, and both workers will call fetch (which waits for the
-    // version to be set, then fetches the appropriate bundle once).
-    let bundleVersionResolver: ((version: string) => void) | null = null;
-    const bundleVersionPromise = new Promise<string>((resolve) => {
-      bundleVersionResolver = resolve;
+    // Progress: the external UI still shows one combined load. We split the
+    // old "fetch" allocation evenly across game.zip and map.zip.
+    let resolvedVersion: string | null = null;
+    let resolveBundles: (b: { game: Promise<Uint8Array>; map: Promise<Uint8Array> }) => void;
+
+    const bundlesPromise = new Promise<{
+      game: Promise<Uint8Array>;
+      map: Promise<Uint8Array>;
+    }>((resolve) => {
+      resolveBundles = resolve;
     });
 
-    let bundleFetchPromise: Promise<Uint8Array> | null = null;
+    const fetchPart = async (url: string): Promise<Uint8Array> => {
+      const response = await fetchOk(url);
+      const arrayBuffer = await response.arrayBuffer();
+      return new Uint8Array(arrayBuffer);
+    };
 
-    const bundleApi = {
-      setVersion: (version: string) => {
-        if (bundleVersionResolver) {
-          bundleVersionResolver(version);
+    const selectVersion = (version: string) => {
+      if (resolvedVersion !== null) {
+        if (resolvedVersion !== version) {
+          throw new Error(
+            `selectVersion called with ${version} after already resolving ${resolvedVersion}`,
+          );
         }
-      },
-      fetch: async () => {
-        // Only fetch once, even if called by multiple workers
-        if (!bundleFetchPromise) {
-          bundleFetchPromise = (async () => {
-            const version = await bundleVersionPromise;
-            const url = getBundleUrl(version);
-            const response = await fetchOk(url);
-            const arrayBuffer = await response.arrayBuffer();
-            return new Uint8Array(arrayBuffer);
-          })();
-        }
-        return await bundleFetchPromise;
-      },
+        return;
+      }
+      resolvedVersion = version;
+      const urls = getBundleUrls(version);
+      resolveBundles({ game: fetchPart(urls.game), map: fetchPart(urls.map) });
+    };
+
+    const gameBundleApi = {
+      selectVersion,
+      fetch: async () => (await bundlesPromise).game,
+    };
+
+    const mapBundleApi = {
+      fetch: async () => (await bundlesPromise).map,
     };
 
     const [saveEngine, mapEngine] = await Promise.all([
       this.eu5Worker.createGame(
         { save: config.save },
         proxy({
-          bundle: bundleApi,
+          gameBundle: gameBundleApi,
           onProgress: (increment: number) => onProgress?.(increment),
         }),
       ),
@@ -168,7 +218,7 @@ export class Eu5GameAdapter {
           [config.canvas],
         ),
         proxy({
-          bundleFetch: bundleApi.fetch,
+          mapBundle: mapBundleApi,
           onProgress: (increment: number) => onProgress?.(increment),
         }),
       ),
