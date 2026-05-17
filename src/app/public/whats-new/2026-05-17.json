@@ -1,0 +1,15 @@
+{
+  "sections": {
+    "improvements": [
+      "Update EU5 data table implementation",
+      "Add EU5 map hover highlights from tables, links, and entity charts",
+      "Add trade good icons to EU5 RGO insights"
+    ],
+    "fixes": [
+      "Fix EU5 deserialization errors for country names variants",
+      "Fix EU5 deserialization errors for diplomatic identities",
+      "Fix EU4 dev distribution float formatting crashes",
+      "Surface parser error paths for easier save-loading diagnostics"
+    ]
+  }
+}
