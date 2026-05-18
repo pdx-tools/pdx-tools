@@ -29,7 +29,7 @@ import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
 import { MapHoverButton } from "../../MapHoverButton";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
-import { EntityLink } from "../profiles/EntityLink";
+import { CountryLink } from "../profiles/EntityLink";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
@@ -124,7 +124,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
           const d = scatterData[params.dataIndex];
           if (!d) return "";
           return [
-            `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle">${goodsIconHtml(d.rawMaterial)}<strong>${escapeEChartsHtml(d.rawMaterial)}</strong></span>`,
+            `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle">${goodsIconHtml(d.rawMaterial.key)}<strong>${escapeEChartsHtml(d.rawMaterial.name)}</strong></span>`,
             `Total RGO: ${formatLevel(d.totalRgoLevel)}`,
             `Avg RGO: ${formatLevel(d.avgRgoLevel)}`,
             `Median RGO: ${formatLevel(d.medianRgoLevel)}`,
@@ -140,7 +140,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
           data: scatterData.map((d) => ({
             value: d.value,
             rawMaterial: d.rawMaterial,
-            colorHex: d.colorHex ?? fallbackColor,
+            colorHex: d.rawMaterial.colorHex || fallbackColor,
             locationCount: d.locationCount,
           })),
           renderItem: (params, api) => {
@@ -154,7 +154,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
             const x = point[0] - half;
             const y = point[1] - half;
 
-            let atlasIndex = goodsAtlasData[d.rawMaterial];
+            let atlasIndex = goodsAtlasData[d.rawMaterial.key];
             if (atlasIndex === undefined) atlasIndex = goodsAtlasData["_default"];
 
             if (atlasIndex !== undefined) {
@@ -190,7 +190,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
             return {
               type: "circle" as const,
               shape: { cx: point[0], cy: point[1], r: half },
-              style: { fill: d.colorHex ?? fallbackColor, opacity: 0.75 },
+              style: { fill: d.rawMaterial.colorHex || fallbackColor, opacity: 0.75 },
             };
           },
         },
@@ -208,6 +208,8 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
     () =>
       deltas.map((d) => ({
         ...d,
+        rawMaterialName: d.rawMaterial.name,
+        rawMaterialKey: d.rawMaterial.key,
         posBar: Math.max(0, d.shareDelta),
         negBar: Math.min(0, d.shareDelta),
       })),
@@ -218,7 +220,14 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
     const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
 
     return {
-      dataset: { source: data, dimensions: ["rawMaterial", "posBar", "negBar"] },
+      dataset: {
+        source: data.map((d) => ({
+          rawMaterialName: d.rawMaterialName,
+          posBar: d.posBar,
+          negBar: d.negBar,
+        })),
+        dimensions: ["rawMaterialName", "posBar", "negBar"],
+      },
       grid: { left: 100, right: 24, top: 8, bottom: 28 },
       xAxis: {
         type: "value",
@@ -247,7 +256,7 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
           const d = data[idx];
           if (!d) return "";
           return [
-            `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle">${goodsIconHtml(d.rawMaterial)}<strong>${escapeEChartsHtml(d.rawMaterial)}</strong></span>`,
+            `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle">${goodsIconHtml(d.rawMaterial.key)}<strong>${escapeEChartsHtml(d.rawMaterial.name)}</strong></span>`,
             `Selection share: ${formatPercent(d.scopedShare)}`,
             `Global share: ${formatPercent(d.globalShare)}`,
             `Difference: ${formatPercent(d.shareDelta)}`,
@@ -261,14 +270,14 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
           name: "Over",
           type: "bar",
           stack: "delta",
-          encode: { x: "posBar", y: "rawMaterial" },
+          encode: { x: "posBar", y: "rawMaterialName" },
           itemStyle: { color: isDark ? "#f97316" : "#ea580c" },
         },
         {
           name: "Under",
           type: "bar",
           stack: "delta",
-          encode: { x: "negBar", y: "rawMaterial" },
+          encode: { x: "negBar", y: "rawMaterialName" },
           itemStyle: { color: isDark ? "#38bdf8" : "#0ea5e9" },
         },
       ],
@@ -287,42 +296,48 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
 
   const columns = useMemo(
     () => [
-      topLocColHelper.accessor("name", {
-        sortingFn: "text",
+      topLocColHelper.accessor("location", {
+        id: "location",
+        sortingFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
           return (
             <MapHoverButton
-              target={{ kind: "location", locationIdx: loc.locationIdx }}
+              target={{ kind: "location", locationIdx: loc.location.key }}
               className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
-                nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
-                panToEntity(loc.locationIdx);
+                nav.pushMany(
+                  [locationProfileEntry(loc.location.key, loc.location.name)],
+                  BACK_LABEL,
+                );
+                panToEntity(loc.location.key);
               }}
             >
-              {loc.name}
+              {loc.location.name}
             </MapHoverButton>
           );
         },
       }),
       topLocColHelper.accessor("owner", {
         id: "owner",
-        sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
+        sortingFn: (a, b) =>
+          a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => (
-          <EntityLink entity={row.original.owner} aligned backLabel={BACK_LABEL} />
+          <CountryLink country={row.original.owner} aligned backLabel={BACK_LABEL} />
         ),
       }),
-      topLocColHelper.accessor("rawMaterial", {
+      topLocColHelper.accessor((row) => row.rawMaterial.name, {
+        id: "rawMaterial",
         sortingFn: "text",
         meta: Eu5DataTable.meta({ headerLabel: "Raw Material" }),
-        cell: (info) => {
-          const id = info.getValue();
+        cell: ({ row }) => {
+          const rm = row.original.rawMaterial;
           return (
             <span className="inline-flex items-center gap-1.5">
-              <Eu5Icon family="goods" id={id} size="sm" />
-              <span>{id}</span>
+              <Eu5Icon family="goods" id={rm.key} size="sm" />
+              <span>{rm.name}</span>
             </span>
           );
         },
@@ -343,7 +358,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
       className="w-full"
       columns={columns}
       data={locations}
-      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.locationIdx })}
+      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.location.key })}
       initialSorting={[{ id: "rgoLevel", desc: true }]}
       pagination
     />

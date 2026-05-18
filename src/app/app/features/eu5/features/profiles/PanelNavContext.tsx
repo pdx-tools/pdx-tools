@@ -33,13 +33,17 @@ export function setProfileTabValue(
 }
 
 export function locationProfileEntry(locationIdx: number, label: string): PanelNavEntry {
-  return { kind: "focus", profile: { kind: "location", location_idx: locationIdx, label }, label };
+  return {
+    kind: "focus",
+    profile: { kind: "location", location: { key: locationIdx, name: label } },
+    label,
+  };
 }
 
 export function countryProfileEntry(countryIdx: number, label: string): PanelNavEntry {
   return {
     kind: "profile",
-    profile: { kind: "country", country_idx: countryIdx, label },
+    profile: { kind: "country", country: { key: countryIdx, name: label } },
     label,
   };
 }
@@ -47,7 +51,7 @@ export function countryProfileEntry(countryIdx: number, label: string): PanelNav
 export function marketProfileEntry(marketId: number, label: string): PanelNavEntry {
   return {
     kind: "profile",
-    profile: { kind: "market", market_id: marketId, label },
+    profile: { kind: "market", market: { key: marketId, name: label } },
     label,
   };
 }

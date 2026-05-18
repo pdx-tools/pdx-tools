@@ -8,12 +8,9 @@ impl<'bump> Eu5Workspace<'bump> {
         self.derived_entity_kind
     }
 
-    pub fn active_profile_identity(&self) -> Option<ActiveProfileIdentity> {
+    pub(crate) fn active_profile_identity(&self) -> Option<ActiveProfileIdentity> {
         if let Some(idx) = self.selection_state.focused_location() {
-            return Some(ActiveProfileIdentity::Location {
-                location_idx: idx.value(),
-                label: self.location_name(idx).to_string(),
-            });
+            return Some(ActiveProfileIdentity::Location(idx));
         }
 
         if let (Some(anchor), Some(kind)) = (self.derived_entity_anchor, self.derived_entity_kind) {
@@ -22,20 +19,14 @@ impl<'bump> Eu5Workspace<'bump> {
                     let loc = self.gamestate.locations.index(anchor).location();
                     let owner_id = loc.owner.real_id()?.country_id();
                     let country_idx = self.gamestate.countries.get(owner_id)?;
-                    let h = self.country_header(country_idx, self.empty_headline())?;
-                    Some(ActiveProfileIdentity::Country {
-                        country_idx: country_idx.value(),
-                        label: h.name,
-                    })
+                    self.gamestate.countries.index(country_idx).data()?;
+                    Some(ActiveProfileIdentity::Country(country_idx))
                 }
                 EntityKind::Market => {
                     let loc = self.gamestate.locations.index(anchor).location();
                     let market_id = loc.market?;
-                    let h = self.market_header(market_id, self.empty_headline())?;
-                    Some(ActiveProfileIdentity::Market {
-                        market_id: market_id.value(),
-                        label: h.name,
-                    })
+                    self.gamestate.market_manager.get(market_id)?;
+                    Some(ActiveProfileIdentity::Market(market_id))
                 }
             };
         }
@@ -47,21 +38,10 @@ impl<'bump> Eu5Workspace<'bump> {
                 .iter()
                 .next()
                 .copied()?;
-            return Some(ActiveProfileIdentity::Location {
-                location_idx: idx.value(),
-                label: self.location_name(idx).to_string(),
-            });
+            return Some(ActiveProfileIdentity::Location(idx));
         }
 
         None
-    }
-
-    fn empty_headline(&self) -> HeadlineStats {
-        HeadlineStats {
-            location_count: 0,
-            total_development: 0.0,
-            total_population: 0,
-        }
     }
 
     fn headline_for_locations(
@@ -84,7 +64,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn country_profile_for(
+    pub(crate) fn country_profile_for(
         &self,
         country_idx: eu5save::models::CountryIdx,
     ) -> Option<CountryProfile> {
@@ -104,7 +84,7 @@ impl<'bump> Eu5Workspace<'bump> {
         })
     }
 
-    pub fn market_profile_for(
+    pub(crate) fn market_profile_for(
         &self,
         market_id: eu5save::models::MarketId,
     ) -> Option<MarketProfile> {
@@ -115,7 +95,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let market_value = market.market_value();
         let center_idx = self.gamestate.locations.get(market.center)?;
         let center_loc = self.gamestate.locations.index(center_idx).location();
-        let owner_country = self.owner_ref_for_location(center_loc);
+        let owner_country = self.owner_country_ref_for_location(center_loc);
         let location_market_access = locations
             .clone()
             .map(|idx| self.gamestate.locations.index(idx).location().market_access)
@@ -140,7 +120,7 @@ impl<'bump> Eu5Workspace<'bump> {
         })
     }
 
-    pub fn country_population_profile_for(
+    pub(crate) fn country_population_profile_for(
         &self,
         country_idx: eu5save::models::CountryIdx,
     ) -> Option<CountryPopulationProfile> {
@@ -278,58 +258,14 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut sankey_rows: Vec<LocationPopRow> = sankey_map
             .into_iter()
             .map(|((kind, culture_id, religion_id), agg)| {
-                let kind = match kind {
-                    PopulationType::Burghers => "Burghers",
-                    PopulationType::Clergy => "Clergy",
-                    PopulationType::Laborers => "Laborers",
-                    PopulationType::Nobles => "Nobles",
-                    PopulationType::Peasants => "Peasants",
-                    PopulationType::Slaves => "Slaves",
-                    PopulationType::Soldiers => "Soldiers",
-                    PopulationType::Tribesmen => "Tribesmen",
-                    PopulationType::Other => "Other",
-                }
-                .to_string();
-                let (culture_name, culture_color_hex) = culture_id
-                    .and_then(|cid| self.gamestate.culture_manager.lookup(cid))
-                    .map(|c| {
-                        let hex = format!(
-                            "#{:02x}{:02x}{:02x}",
-                            c.color.0[0], c.color.0[1], c.color.0[2]
-                        );
-                        (c.name.key().to_str().to_string(), hex)
-                    })
-                    .unwrap_or_else(|| ("Unknown".to_string(), "#808080".to_string()));
-                let (religion_name, religion_color_hex) = self
-                    .gamestate
-                    .religion_manager
-                    .lookup(religion_id)
-                    .map(|r| {
-                        let hex = format!(
-                            "#{:02x}{:02x}{:02x}",
-                            r.color.0[0], r.color.0[1], r.color.0[2]
-                        );
-                        (r.name.to_str().to_string(), hex)
-                    })
-                    .unwrap_or_else(|| ("Unknown".to_string(), "#808080".to_string()));
-                let (satisfaction, literacy) = if agg.size > 0 {
-                    (
-                        agg.sat_weighted / agg.size as f64,
-                        agg.lit_weighted / agg.size as f64,
-                    )
-                } else {
-                    (0.0, 0.0)
-                };
-                LocationPopRow {
+                self.build_workspace_pop_row(
                     kind,
-                    culture_name,
-                    culture_color_hex,
-                    religion_name,
-                    religion_color_hex,
-                    size: agg.size,
-                    satisfaction,
-                    literacy,
-                }
+                    culture_id,
+                    religion_id,
+                    agg.size,
+                    agg.sat_weighted,
+                    agg.lit_weighted,
+                )
             })
             .collect();
         sankey_rows.sort_by(|a, b| b.size.cmp(&a.size));
@@ -341,9 +277,45 @@ impl<'bump> Eu5Workspace<'bump> {
         })
     }
 
+    fn build_workspace_pop_row(
+        &self,
+        kind: PopulationType,
+        culture_id: Option<eu5save::models::CultureId>,
+        religion_id: eu5save::models::ReligionId,
+        size: u32,
+        sat_weighted: f64,
+        lit_weighted: f64,
+    ) -> LocationPopRow {
+        let culture_color_hex = culture_id
+            .and_then(|cid| self.gamestate.culture_manager.lookup(cid))
+            .map(|c| crate::Srgb(c.color.0))
+            .unwrap_or(crate::Srgb([0x80, 0x80, 0x80]));
+        let religion_color_hex = self
+            .gamestate
+            .religion_manager
+            .lookup(religion_id)
+            .map(|r| crate::Srgb(r.color.0))
+            .unwrap_or(crate::Srgb([0x80, 0x80, 0x80]));
+        let (satisfaction, literacy) = if size > 0 {
+            (sat_weighted / size as f64, lit_weighted / size as f64)
+        } else {
+            (0.0, 0.0)
+        };
+        LocationPopRow {
+            kind,
+            culture: culture_id,
+            culture_color_hex,
+            religion: religion_id,
+            religion_color_hex,
+            size,
+            satisfaction,
+            literacy,
+        }
+    }
+
     /// Returns header data for the current single-entity scope.
     /// Returns None when the filter is empty or spans multiple entities.
-    pub fn entity_header(&self) -> Option<EntityHeader> {
+    pub(crate) fn entity_header(&self) -> Option<EntityHeader> {
         let anchor = self.derived_entity_anchor?;
         let loc = self.gamestate.locations.index(anchor).location();
         let locations = self.selection_state.selected_locations().iter().copied();
@@ -367,23 +339,9 @@ impl<'bump> Eu5Workspace<'bump> {
         headline: HeadlineStats,
     ) -> Option<EntityHeader> {
         let entry = self.gamestate.countries.index(country_idx);
-        let data = entry.data()?;
-        let tag = entry.tag().to_str().to_string();
-        let name = self.localized_country_name(&data.country_name).to_string();
-        let color_hex = format!(
-            "#{:02x}{:02x}{:02x}",
-            data.color.0[0], data.color.0[1], data.color.0[2]
-        );
-        let anchor_location_idx = self
-            .anchor_for_country_idx(country_idx)
-            .map(|i| i.value())
-            .unwrap_or(0);
+        entry.data()?;
         Some(EntityHeader {
-            kind: EntityKind::Country,
-            name,
-            tag: Some(tag),
-            color_hex,
-            anchor_location_idx,
+            kind: EntityHeaderKindSource::Country(country_idx),
             headline,
         })
     }
@@ -393,19 +351,9 @@ impl<'bump> Eu5Workspace<'bump> {
         market_id: eu5save::models::MarketId,
         headline: HeadlineStats,
     ) -> Option<EntityHeader> {
-        let market = self.gamestate.market_manager.get(market_id)?;
-        let center_idx = self.gamestate.locations.get(market.center)?;
-        let name = format!("{} Market", self.location_name(center_idx));
-        let color_hex = format!(
-            "#{:02x}{:02x}{:02x}",
-            market.color.0[0], market.color.0[1], market.color.0[2]
-        );
+        self.gamestate.market_manager.get(market_id)?;
         Some(EntityHeader {
-            kind: EntityKind::Market,
-            name,
-            tag: None,
-            color_hex,
-            anchor_location_idx: center_idx.value(),
+            kind: EntityHeaderKindSource::Market(market_id),
             headline,
         })
     }
@@ -461,12 +409,9 @@ impl<'bump> Eu5Workspace<'bump> {
             .into_iter()
             .filter_map(|(rid, agg)| {
                 let rel = self.gamestate.religion_manager.lookup(rid)?;
-                let color_hex = format!(
-                    "#{:02x}{:02x}{:02x}",
-                    rel.color.0[0], rel.color.0[1], rel.color.0[2]
-                );
+                let color_hex = crate::Srgb(rel.color.0);
                 Some(ReligionShare {
-                    religion: rel.name.to_str().to_string(),
+                    religion: rid,
                     location_count: agg.location_count,
                     population: agg.population,
                     color_hex,
@@ -476,7 +421,7 @@ impl<'bump> Eu5Workspace<'bump> {
         rows.sort_by(|a, b| {
             b.location_count
                 .cmp(&a.location_count)
-                .then_with(|| a.religion.cmp(&b.religion))
+                .then_with(|| a.religion.value().cmp(&b.religion.value()))
         });
 
         CountryReligionSection {
@@ -485,7 +430,7 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     /// Returns goods section for the current market scope.
-    pub fn market_goods_section(&self) -> Option<MarketGoodsSection> {
+    pub(crate) fn market_goods_section(&'bump self) -> Option<MarketGoodsSection<'bump>> {
         let anchor = self.derived_entity_anchor?;
         if !matches!(self.derived_entity_kind()?, EntityKind::Market) {
             return None;
@@ -500,10 +445,10 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn market_goods(
-        &self,
+        &'bump self,
         anchor: eu5save::models::LocationIdx,
         locations: &[eu5save::models::LocationIdx],
-    ) -> Option<MarketGoodsSection> {
+    ) -> Option<MarketGoodsSection<'bump>> {
         let loc = self.gamestate.locations.index(anchor).location();
         let market_id = loc.market?;
         let market = self.gamestate.market_manager.get(market_id)?;
@@ -521,7 +466,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .goods
             .iter()
             .map(|g| MarketGoodEntry {
-                good_name: g.good.to_str().to_string(),
+                good: g.good,
                 price: g.price,
                 supply: g.supply,
                 demand: g.demand,
@@ -538,15 +483,15 @@ impl<'bump> Eu5Workspace<'bump> {
         })
     }
 
-    pub fn market_goods_profile(
+    pub(crate) fn market_goods_profile(
         &self,
         market_id: eu5save::models::MarketId,
-    ) -> Vec<ScopedGoodSummary> {
+    ) -> Vec<ScopedGoodSummary<'_>> {
         let Some(market) = self.gamestate.market_manager.get(market_id) else {
             return Vec::new();
         };
 
-        let mut producing_location_counts: FxHashMap<RawMaterialsName, u32> = FxHashMap::default();
+        let mut producing_location_counts: FxHashMap<GoodName, u32> = FxHashMap::default();
         for entry in self.gamestate.locations.iter() {
             let loc = entry.location();
             if loc.owner.is_dummy() || loc.market != Some(market_id) {
@@ -557,7 +502,7 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
-        let mut goods: Vec<ScopedGoodSummary> = market
+        let mut goods: Vec<ScopedGoodSummary<'_>> = market
             .goods
             .iter()
             .map(|good| {
@@ -569,13 +514,9 @@ impl<'bump> Eu5Workspace<'bump> {
                     0.0
                 };
 
-                let localized = self.game_data.localized_good(good.good.to_str());
+                let good_data = self.game_data.good(good.good.to_str());
                 ScopedGoodSummary {
-                    key: good.good.to_string(),
-                    name: localized
-                        .as_ref()
-                        .map(|l| l.name.clone())
-                        .unwrap_or_else(|| good.good.to_str().to_string()),
+                    good: crate::presentation::GoodRefSource(good.good),
                     supply: good.supply,
                     demand: good.demand,
                     total_taken: good.total_taken,
@@ -598,10 +539,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     supplied_breakdown: market_good_breakdown_entries(good.supplied),
                     demanded_breakdown: market_good_breakdown_entries(good.demanded),
                     taken_breakdown: market_good_breakdown_entries(good.taken),
-                    default_market_price: localized.as_ref().map(|l| l.default_market_price),
-                    color_hex: localized
-                        .map(|l| l.color_hex)
-                        .unwrap_or_else(|| "#888888".to_string()),
+                    default_market_price: good_data.map(|g| g.default_market_price),
                     market_count: 1,
                     producing_location_count: producing_location_counts
                         .get(&good.good)
@@ -616,15 +554,15 @@ impl<'bump> Eu5Workspace<'bump> {
             let b_imbalance = b.shortage_value.max(b.surplus_value);
             b_imbalance
                 .total_cmp(&a_imbalance)
-                .then_with(|| a.name.cmp(&b.name))
+                .then_with(|| a.good.0.to_str().cmp(b.good.0.to_str()))
         });
         goods
     }
 
-    pub fn market_locations_profile(
+    pub(crate) fn market_locations_profile(
         &self,
         market_id: eu5save::models::MarketId,
-    ) -> Vec<MarketProductionLocationSummary> {
+    ) -> Vec<MarketProductionLocationSummary<'_>> {
         let mut production_rows = Vec::new();
         for entry in self.gamestate.locations.iter() {
             let idx = entry.idx();
@@ -636,15 +574,14 @@ impl<'bump> Eu5Workspace<'bump> {
             let Some(raw_material) = loc.raw_material else {
                 continue;
             };
-            let Some(owner) = self.owner_ref_for_location(loc) else {
+            let Some(owner) = self.owner_country_ref_for_location(loc) else {
                 continue;
             };
 
             production_rows.push(MarketProductionLocationSummary {
-                location_idx: idx.value(),
-                name: self.location_name(idx).to_string(),
+                location: idx,
                 owner,
-                raw_material: Some(raw_material.to_string()),
+                raw_material: Some(raw_material),
                 rgo_level: loc.rgo_level,
                 market_access: loc.market_access,
                 development: loc.development,
@@ -655,33 +592,13 @@ impl<'bump> Eu5Workspace<'bump> {
         production_rows.sort_by(|a, b| {
             b.rgo_level
                 .total_cmp(&a.rgo_level)
-                .then_with(|| a.name.cmp(&b.name))
+                .then_with(|| a.location.value().cmp(&b.location.value()))
         });
         production_rows
     }
 
-    /// Resolve a representative `LocationIdx` for a country from its `CountryIdx`.
-    /// Prefers the capital; falls back to the first owned location.
-    fn anchor_for_country_idx(
-        &self,
-        country_idx: eu5save::models::CountryIdx,
-    ) -> Option<LocationIdx> {
-        let entry = self.gamestate.countries.index(country_idx);
-        let data = entry.data()?;
-        let owner = entry.id().real_id()?;
-        data.capital
-            .and_then(|id| self.gamestate.locations.get(id))
-            .or_else(|| {
-                self.gamestate
-                    .locations
-                    .iter()
-                    .find(|e| e.location().owner.real_id() == Some(owner))
-                    .map(|e| e.idx())
-            })
-    }
-
     /// Returns location rows for all selected locations, sorted by location index.
-    pub fn locations_section(&self) -> Option<LocationsSection> {
+    pub(crate) fn locations_section(&self) -> Option<LocationsSection> {
         self.derived_entity_anchor?;
         let locations = self.selection_state.selected_locations().iter().copied();
         Some(self.build_locations_section(locations))
@@ -696,25 +613,24 @@ impl<'bump> Eu5Workspace<'bump> {
                 let loc = self.gamestate.locations.index(idx).location();
                 let population = self.gamestate.location_population(loc) as u32;
                 LocationRow {
-                    location_idx: idx.value(),
-                    name: self.location_name(idx).to_string(),
+                    location: idx,
                     development: loc.development,
                     population,
                     control: loc.control,
                     tax: loc.tax,
                     possible_tax: loc.possible_tax,
-                    owner: self.owner_ref_for_location(loc),
+                    owner: self.owner_country_ref_for_location(loc),
                     market: self.market_ref_for_location(loc),
                 }
             })
             .collect();
-        rows.sort_by_key(|row| row.location_idx);
+        rows.sort_by_key(|row| row.location.value());
         LocationsSection { locations: rows }
     }
 
     /// Returns diplomacy data for the current country scope.
     /// Returns None for market entities (markets have no diplomacy).
-    pub fn diplomacy_section(&self) -> Option<DiplomacySection> {
+    pub(crate) fn diplomacy_section(&self) -> Option<DiplomacySection> {
         let anchor = self.derived_entity_anchor?;
         if matches!(self.derived_entity_kind()?, EntityKind::Market) {
             return None;
@@ -729,67 +645,17 @@ impl<'bump> Eu5Workspace<'bump> {
         &self,
         anchor_country_idx: eu5save::models::CountryIdx,
     ) -> Option<DiplomacySection> {
-        let mut subject_type_map: FxHashMap<CountryIdx, SaveDiplomacySubjectType> =
-            FxHashMap::default();
-        let mut overlord_subject_type: Option<DiplomacySubjectType> = None;
-        for dep in self.gamestate.diplomacy_manager.dependencies() {
-            let Some(first_idx) = self.gamestate.countries.get(dep.first) else {
-                continue;
-            };
-            let Some(second_idx) = self.gamestate.countries.get(dep.second) else {
-                continue;
-            };
-            if first_idx == anchor_country_idx {
-                subject_type_map.insert(second_idx, dep.subject_type);
-            } else if second_idx == anchor_country_idx {
-                overlord_subject_type = Some(into_profile_subject_type(dep.subject_type));
-            }
-        }
-
+        let (subject_type_map, overlord_subject_type) =
+            self.diplomacy_subject_types_for(anchor_country_idx);
         let diplo_map = self.diplomatic_relations();
-
-        #[derive(Default, Clone)]
-        struct MetricsAgg {
-            total_state_efficacy: f64,
-            active_state_capacity: f64,
-            total_population: u32,
-        }
-
-        let mut metrics_map: FxHashMap<CountryIdx, MetricsAgg> = FxHashMap::default();
-        for entry in self.gamestate.locations.iter() {
-            let loc = entry.location();
-            let Some(owner_id) = loc.owner.real_id().map(|id| id.country_id()) else {
-                continue;
-            };
-            let Some(country_idx) = self.gamestate.countries.get(owner_id) else {
-                continue;
-            };
-            let agg = metrics_map.entry(country_idx).or_default();
-            let population = self.gamestate.location_population(loc) as u32;
-            let state_efficacy = loc.control * loc.development;
-            agg.total_state_efficacy += state_efficacy;
-            agg.active_state_capacity += population as f64 * state_efficacy;
-            agg.total_population += population;
-        }
+        let metrics_map = self.country_metrics_map();
 
         let country_metrics = |idx: CountryIdx| -> CountryMetrics {
-            let agg = metrics_map.get(&idx).cloned().unwrap_or_default();
-            let data = self.gamestate.countries.index(idx).data();
-            let tax_trade_income = data
-                .map(|d| d.estimated_monthly_income_trade_and_tax)
-                .unwrap_or(0.0);
-            let great_power_rank = data.map(|d| d.great_power_rank).unwrap_or(0);
-            CountryMetrics {
-                great_power_rank,
-                total_state_efficacy: agg.total_state_efficacy,
-                active_state_capacity: agg.active_state_capacity,
-                total_population: agg.total_population,
-                tax_trade_income,
-            }
+            self.country_metrics_from_map(idx, &metrics_map)
         };
 
         let overlord_country_idx = self.overlord_of[anchor_country_idx];
-        let overlord = overlord_country_idx.and_then(|idx| self.entity_ref_from_country_idx(idx));
+        let overlord = overlord_country_idx.map(|idx| self.country_ref_from_country_idx(idx));
         let overlord_metrics = overlord_country_idx.map(country_metrics);
 
         let subjects: Vec<SubjectRef> = self
@@ -798,7 +664,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .iter()
             .filter_map(|entry| {
                 if self.overlord_of[entry.idx()] == Some(anchor_country_idx) {
-                    let entity = self.entity_ref_from_country_idx(entry.idx())?;
+                    let entity = self.country_ref_from_country_idx(entry.idx());
                     let subject_type = subject_type_map
                         .get(&entry.idx())
                         .copied()
@@ -827,17 +693,83 @@ impl<'bump> Eu5Workspace<'bump> {
         })
     }
 
+    fn diplomacy_subject_types_for(
+        &self,
+        anchor_country_idx: CountryIdx,
+    ) -> (
+        FxHashMap<CountryIdx, SaveDiplomacySubjectType>,
+        Option<DiplomacySubjectType>,
+    ) {
+        let mut subject_type_map: FxHashMap<CountryIdx, SaveDiplomacySubjectType> =
+            FxHashMap::default();
+        let mut overlord_subject_type: Option<DiplomacySubjectType> = None;
+        for dep in self.gamestate.diplomacy_manager.dependencies() {
+            let Some(first_idx) = self.gamestate.countries.get(dep.first) else {
+                continue;
+            };
+            let Some(second_idx) = self.gamestate.countries.get(dep.second) else {
+                continue;
+            };
+            if first_idx == anchor_country_idx {
+                subject_type_map.insert(second_idx, dep.subject_type);
+            } else if second_idx == anchor_country_idx {
+                overlord_subject_type = Some(into_profile_subject_type(dep.subject_type));
+            }
+        }
+        (subject_type_map, overlord_subject_type)
+    }
+
+    fn country_metrics_map(&self) -> FxHashMap<CountryIdx, MetricsAgg> {
+        let mut metrics_map: FxHashMap<CountryIdx, MetricsAgg> = FxHashMap::default();
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            let Some(owner_id) = loc.owner.real_id().map(|id| id.country_id()) else {
+                continue;
+            };
+            let Some(country_idx) = self.gamestate.countries.get(owner_id) else {
+                continue;
+            };
+            let agg = metrics_map.entry(country_idx).or_default();
+            let population = self.gamestate.location_population(loc) as u32;
+            let state_efficacy = loc.control * loc.development;
+            agg.total_state_efficacy += state_efficacy;
+            agg.active_state_capacity += population as f64 * state_efficacy;
+            agg.total_population += population;
+        }
+        metrics_map
+    }
+
+    fn country_metrics_from_map(
+        &self,
+        idx: CountryIdx,
+        metrics_map: &FxHashMap<CountryIdx, MetricsAgg>,
+    ) -> CountryMetrics {
+        let agg = metrics_map.get(&idx).cloned().unwrap_or_default();
+        let data = self.gamestate.countries.index(idx).data();
+        let tax_trade_income = data
+            .map(|d| d.estimated_monthly_income_trade_and_tax)
+            .unwrap_or(0.0);
+        let great_power_rank = data.map(|d| d.great_power_rank).unwrap_or(0);
+        CountryMetrics {
+            great_power_rank,
+            total_state_efficacy: agg.total_state_efficacy,
+            active_state_capacity: agg.active_state_capacity,
+            total_population: agg.total_population,
+            tax_trade_income,
+        }
+    }
+
     fn market_member_countries_from_merchants(
         &self,
         market: &Market<'_>,
     ) -> Vec<MarketMemberCountry> {
-        let mut rows: Vec<_> = market
+        let mut rows: Vec<MarketMemberCountry> = market
             .merchants
             .iter()
             .filter_map(|m| {
                 let country_idx = self.gamestate.countries.get(m.country)?;
                 Some(MarketMemberCountry {
-                    country: self.entity_ref_from_country_idx(country_idx)?,
+                    country: self.country_ref_from_country_idx(country_idx),
                     trade_advantage: m.power,
                     trade_capacity: m.capacity,
                 })
@@ -847,23 +779,27 @@ impl<'bump> Eu5Workspace<'bump> {
             b.trade_advantage
                 .partial_cmp(&a.trade_advantage)
                 .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| a.country.name().cmp(b.country.name()))
+                .then_with(|| {
+                    a.country
+                        .country_idx
+                        .value()
+                        .cmp(&b.country.country_idx.value())
+                })
         });
         rows
     }
 
     /// Returns a full data profile for a single location.
     /// Returns None for unowned / water tiles.
-    pub fn location_profile_for(
-        &self,
+    pub(crate) fn location_profile_for(
+        &'bump self,
         idx: eu5save::models::LocationIdx,
-    ) -> Option<LocationProfile> {
+    ) -> Option<LocationProfile<'bump>> {
         let loc = self.gamestate.locations.index(idx).location();
         if loc.owner.is_dummy() {
             return None;
         }
 
-        let name = self.location_name(idx).to_string();
         let population = self.gamestate.location_population(loc) as u32;
 
         let terrain = match self.location_terrain(idx) {
@@ -873,15 +809,8 @@ impl<'bump> Eu5Workspace<'bump> {
         }
         .to_string();
 
-        let religion = loc.religion.and_then(|rid| {
-            self.gamestate
-                .religion_manager
-                .lookup(rid)
-                .map(|r| r.name.to_str().to_string())
-        });
-
-        let raw_material = loc.raw_material.map(|r| r.to_str().to_string());
-        let owner = self.owner_ref_for_location(loc);
+        let raw_material = loc.raw_material;
+        let owner = self.owner_country_ref_for_location(loc);
         let market = self.market_ref_for_location(loc);
 
         let location_id = self.gamestate.locations.index(idx).id();
@@ -892,7 +821,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .iter()
             .filter(|b| b.location == location_id && b.owner == loc.owner)
             .map(|b| BuildingEntry {
-                name: self.game_data.localized_building_name(b.kind.to_str()),
+                building_key: b.kind.to_str().to_string(),
                 level: b.level,
             })
             .collect();
@@ -926,66 +855,21 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut population_profile: Vec<LocationPopRow> = by_pop
             .into_iter()
             .map(|((kind, culture_id, religion_id), agg)| {
-                let kind = match kind {
-                    eu5save::models::PopulationType::Burghers => "Burghers",
-                    eu5save::models::PopulationType::Clergy => "Clergy",
-                    eu5save::models::PopulationType::Laborers => "Laborers",
-                    eu5save::models::PopulationType::Nobles => "Nobles",
-                    eu5save::models::PopulationType::Peasants => "Peasants",
-                    eu5save::models::PopulationType::Slaves => "Slaves",
-                    eu5save::models::PopulationType::Soldiers => "Soldiers",
-                    eu5save::models::PopulationType::Tribesmen => "Tribesmen",
-                    eu5save::models::PopulationType::Other => "Other",
-                }
-                .to_string();
-                let (culture_name, culture_color_hex) = culture_id
-                    .and_then(|cid| self.gamestate.culture_manager.lookup(cid))
-                    .map(|c| {
-                        let hex = format!(
-                            "#{:02x}{:02x}{:02x}",
-                            c.color.0[0], c.color.0[1], c.color.0[2]
-                        );
-                        (c.name.key().to_str().to_string(), hex)
-                    })
-                    .unwrap_or_else(|| ("Unknown".to_string(), "#808080".to_string()));
-                let (religion_name, religion_color_hex) = self
-                    .gamestate
-                    .religion_manager
-                    .lookup(religion_id)
-                    .map(|r| {
-                        let hex = format!(
-                            "#{:02x}{:02x}{:02x}",
-                            r.color.0[0], r.color.0[1], r.color.0[2]
-                        );
-                        (r.name.to_str().to_string(), hex)
-                    })
-                    .unwrap_or_else(|| ("Unknown".to_string(), "#808080".to_string()));
-                let (satisfaction, literacy) = if agg.size > 0 {
-                    (
-                        agg.sat_weighted / agg.size as f64,
-                        agg.lit_weighted / agg.size as f64,
-                    )
-                } else {
-                    (0.0, 0.0)
-                };
-                LocationPopRow {
+                self.build_workspace_pop_row(
                     kind,
-                    culture_name,
-                    culture_color_hex,
-                    religion_name,
-                    religion_color_hex,
-                    size: agg.size,
-                    satisfaction,
-                    literacy,
-                }
+                    culture_id,
+                    religion_id,
+                    agg.size,
+                    agg.sat_weighted,
+                    agg.lit_weighted,
+                )
             })
             .collect();
         population_profile.sort_by(|a, b| b.size.cmp(&a.size));
 
         Some(LocationProfile {
             header: LocationHeader {
-                location_idx: idx.value(),
-                name,
+                location: idx,
                 owner,
                 market,
             },
@@ -994,7 +878,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 population,
                 control: loc.control,
                 terrain,
-                religion,
+                religion: loc.religion,
                 raw_material,
                 tax: loc.tax,
                 possible_tax: loc.possible_tax,
@@ -1086,7 +970,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Header for a specific entity resolved from `anchor_idx`, over that
     /// entity's full territory in the gamestate (ignores current selection).
-    pub fn entity_header_for(
+    pub(crate) fn entity_header_for(
         &self,
         anchor_idx: eu5save::models::LocationIdx,
     ) -> Option<EntityHeader> {
@@ -1107,16 +991,16 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     /// Goods section for a specific market entity's full territory.
-    pub fn market_goods_section_for(
-        &self,
+    pub(crate) fn market_goods_section_for(
+        &'bump self,
         anchor_idx: eu5save::models::LocationIdx,
-    ) -> Option<MarketGoodsSection> {
+    ) -> Option<MarketGoodsSection<'bump>> {
         let locations = self.collect_entity_locations(anchor_idx, EntityKind::Market)?;
         self.market_goods(anchor_idx, &locations)
     }
 
     /// Locations section for a specific entity's full territory.
-    pub fn locations_section_for(
+    pub(crate) fn locations_section_for(
         &self,
         anchor_idx: eu5save::models::LocationIdx,
     ) -> Option<LocationsSection> {
@@ -1127,7 +1011,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Diplomacy section for a specific country entity (by anchor location).
     /// Returns None for market entities or if the anchor doesn't resolve to a country.
-    pub fn diplomacy_section_for(
+    pub(crate) fn diplomacy_section_for(
         &self,
         anchor_idx: eu5save::models::LocationIdx,
     ) -> Option<DiplomacySection> {
@@ -1137,103 +1021,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let loc = self.gamestate.locations.index(anchor_idx).location();
         let owner_id = loc.owner.real_id()?.country_id();
         let anchor_country_idx = self.gamestate.countries.get(owner_id)?;
-
-        let mut subject_type_map: FxHashMap<CountryIdx, SaveDiplomacySubjectType> =
-            FxHashMap::default();
-        let mut overlord_subject_type: Option<DiplomacySubjectType> = None;
-        for dep in self.gamestate.diplomacy_manager.dependencies() {
-            let Some(first_idx) = self.gamestate.countries.get(dep.first) else {
-                continue;
-            };
-            let Some(second_idx) = self.gamestate.countries.get(dep.second) else {
-                continue;
-            };
-            if first_idx == anchor_country_idx {
-                subject_type_map.insert(second_idx, dep.subject_type);
-            } else if second_idx == anchor_country_idx {
-                overlord_subject_type = Some(into_profile_subject_type(dep.subject_type));
-            }
-        }
-
-        let diplo_map = self.diplomatic_relations();
-
-        #[derive(Default, Clone)]
-        struct MetricsAgg {
-            total_state_efficacy: f64,
-            active_state_capacity: f64,
-            total_population: u32,
-        }
-
-        let mut metrics_map: FxHashMap<CountryIdx, MetricsAgg> = FxHashMap::default();
-        for entry in self.gamestate.locations.iter() {
-            let loc = entry.location();
-            let Some(owner_id) = loc.owner.real_id().map(|id| id.country_id()) else {
-                continue;
-            };
-            let Some(country_idx) = self.gamestate.countries.get(owner_id) else {
-                continue;
-            };
-            let agg = metrics_map.entry(country_idx).or_default();
-            let population = self.gamestate.location_population(loc) as u32;
-            let state_efficacy = loc.control * loc.development;
-            agg.total_state_efficacy += state_efficacy;
-            agg.active_state_capacity += population as f64 * state_efficacy;
-            agg.total_population += population;
-        }
-
-        let country_metrics = |idx: CountryIdx| -> CountryMetrics {
-            let agg = metrics_map.get(&idx).cloned().unwrap_or_default();
-            let data = self.gamestate.countries.index(idx).data();
-            let tax_trade_income = data
-                .map(|d| d.estimated_monthly_income_trade_and_tax)
-                .unwrap_or(0.0);
-            let great_power_rank = data.map(|d| d.great_power_rank).unwrap_or(0);
-            CountryMetrics {
-                great_power_rank,
-                total_state_efficacy: agg.total_state_efficacy,
-                active_state_capacity: agg.active_state_capacity,
-                total_population: agg.total_population,
-                tax_trade_income,
-            }
-        };
-
-        let overlord_country_idx = self.overlord_of[anchor_country_idx];
-        let overlord = overlord_country_idx.and_then(|idx| self.entity_ref_from_country_idx(idx));
-        let overlord_metrics = overlord_country_idx.map(country_metrics);
-
-        let subjects: Vec<SubjectRef> = self
-            .gamestate
-            .countries
-            .iter()
-            .filter_map(|entry| {
-                if self.overlord_of[entry.idx()] == Some(anchor_country_idx) {
-                    let entity = self.entity_ref_from_country_idx(entry.idx())?;
-                    let subject_type = subject_type_map
-                        .get(&entry.idx())
-                        .copied()
-                        .map(into_profile_subject_type)
-                        .unwrap_or(DiplomacySubjectType::Other);
-                    Some(SubjectRef {
-                        entity,
-                        subject_type,
-                        liberty_desire: diplo_map
-                            .get(&entry.idx())
-                            .and_then(|d| d.liberty_desire)
-                            .unwrap_or(0.0),
-                        metrics: country_metrics(entry.idx()),
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        Some(DiplomacySection {
-            overlord,
-            overlord_subject_type,
-            overlord_metrics,
-            subjects,
-        })
+        self.country_diplomacy(anchor_country_idx)
     }
 
     fn diplomatic_relations(&self) -> FxHashMap<CountryIdx, &CountryDiplomacy> {
@@ -1246,6 +1034,13 @@ impl<'bump> Eu5Workspace<'bump> {
         }
         result
     }
+}
+
+#[derive(Default, Clone)]
+pub(crate) struct MetricsAgg {
+    pub total_state_efficacy: f64,
+    pub active_state_capacity: f64,
+    pub total_population: u32,
 }
 
 fn into_profile_subject_type(t: SaveDiplomacySubjectType) -> DiplomacySubjectType {

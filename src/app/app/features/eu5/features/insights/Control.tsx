@@ -20,7 +20,7 @@ import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
 import { MapHoverButton } from "../../MapHoverButton";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
-import { EntityLink } from "../profiles/EntityLink";
+import { CountryLink } from "../profiles/EntityLink";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
@@ -148,9 +148,9 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
           bandMap[seg.band] = seg.lostDevelopment;
         }
         return {
-          id: c.country.countryIdx,
+          id: c.country.country.key,
           anchorLocationIdx: c.country.anchorLocationIdx,
-          name: c.country.name,
+          name: c.country.country.name,
           tag: c.country.tag,
           weightedAvgControl: c.weightedAvgControl,
           totalDevelopment: c.totalDevelopment,
@@ -276,13 +276,13 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
       countries.map((c) => ({
         value: [c.totalDevelopment, c.weightedAvgControl] as [number, number],
         tag: c.country.tag,
-        name: c.country.name,
+        name: c.country.country.name,
         lostDevelopment: c.lostDevelopment,
         totalDevelopment: c.totalDevelopment,
         weightedAvgControl: c.weightedAvgControl,
         locationCount: c.locationCount,
         colorHex: c.country.colorHex,
-        id: c.country.countryIdx,
+        id: c.country.country.key,
         anchorLocationIdx: c.country.anchorLocationIdx,
       })),
     [countries],
@@ -400,31 +400,36 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("name", {
-        sortingFn: "text",
+      columnHelper.accessor("location", {
+        id: "location",
+        sortingFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
           return (
             <MapHoverButton
-              target={{ kind: "location", locationIdx: loc.locationIdx }}
+              target={{ kind: "location", locationIdx: loc.location.key }}
               className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
-                nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
-                panToEntity(loc.locationIdx);
+                nav.pushMany(
+                  [locationProfileEntry(loc.location.key, loc.location.name)],
+                  BACK_LABEL,
+                );
+                panToEntity(loc.location.key);
               }}
             >
-              {loc.name}
+              {loc.location.name}
             </MapHoverButton>
           );
         },
       }),
       columnHelper.accessor("owner", {
         id: "owner",
-        sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
+        sortingFn: (a, b) =>
+          a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => (
-          <EntityLink entity={row.original.owner} aligned backLabel={BACK_LABEL} />
+          <CountryLink country={row.original.owner} aligned backLabel={BACK_LABEL} />
         ),
       }),
       columnHelper.accessor("control", {
@@ -464,7 +469,7 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
       className="w-full"
       columns={columns}
       data={locations}
-      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.locationIdx })}
+      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.location.key })}
       initialSorting={[{ id: "lostDevelopment", desc: true }]}
       pagination
     />

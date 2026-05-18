@@ -8,7 +8,7 @@ function good(
   defaultMarketPrice: number | undefined = 100,
 ): GoodsPriceTrajectoryInput {
   return {
-    key,
+    good: { key, name: key, colorHex: "" },
     history,
     defaultMarketPrice,
     weightedPrice: history.at(-1) ?? defaultMarketPrice ?? 0,
@@ -54,7 +54,12 @@ describe("goods price trajectory arrows", () => {
   it("excludes goods without enough history or a base price", () => {
     const keys = selectGoodsPriceTrajectoryKeys([
       good("no-history", [100]),
-      { key: "no-base", history: [100, 101], defaultMarketPrice: undefined, weightedPrice: 101 },
+      {
+        good: { key: "no-base", name: "no-base", colorHex: "" },
+        history: [100, 101],
+        defaultMarketPrice: undefined,
+        weightedPrice: 101,
+      },
       good("valid", [100, 101]),
     ]);
 

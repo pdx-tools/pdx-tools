@@ -2,7 +2,7 @@ import { CursorTooltip } from "@/components/CursorTooltip";
 import type { CursorPosition } from "@/components/CursorTooltip";
 import { useEu5HoverData, useEu5BoxSelectRect } from "./store";
 import { formatFloat, formatInt } from "@/lib/format";
-import type { HoverDisplayData, HoverStat } from "@/wasm/wasm_eu5";
+import type { DisplayData, HoverStat } from "@/wasm/wasm_eu5";
 
 interface Eu5CursorTooltipProps {
   cursorRef: React.RefObject<CursorPosition>;
@@ -31,30 +31,30 @@ function formatHoverStat(stat: HoverStat): string | null {
     case "markets":
       return `${formatInt(stat.value.access * 100)}%`;
     case "religion":
-      return stat.value.name;
+      return stat.value.religion.name;
   }
 
   const _exhaustive: never = stat;
   return _exhaustive;
 }
 
-function getTooltipContent(hoverData: HoverDisplayData): TooltipContent | null {
+function getTooltipContent(hoverData: DisplayData): TooltipContent | null {
   switch (hoverData.kind) {
     case "clear":
       return null;
     case "location":
       return {
-        name: hoverData.locationName,
+        name: hoverData.location.name,
         stat: formatHoverStat(hoverData.stat),
       };
     case "country":
       return {
-        name: hoverData.countryName,
+        name: hoverData.country.country.name,
         stat: formatHoverStat(hoverData.stat),
       };
     case "market":
       return {
-        name: hoverData.marketCenterName,
+        name: hoverData.market.name,
         stat: formatFloat(hoverData.marketValue, 2),
       };
   }

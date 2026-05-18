@@ -23,7 +23,10 @@ interface Props {
 export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
   const isDark = isDarkMode();
 
-  const topGoods = useMemo(() => [...goods].sort((a, b) => a.name.localeCompare(b.name)), [goods]);
+  const topGoods = useMemo(
+    () => [...goods].sort((a, b) => a.good.name.localeCompare(b.good.name)),
+    [goods],
+  );
 
   const topMarkets = useMemo(
     () =>
@@ -36,14 +39,14 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
     [markets],
   );
 
-  const goodIndex = useMemo(() => new Map(topGoods.map((g, i) => [g.key, i])), [topGoods]);
+  const goodIndex = useMemo(() => new Map(topGoods.map((g, i) => [g.good.key, i])), [topGoods]);
   const marketIndex = useMemo(
-    () => new Map(topMarkets.map((m, i) => [m.marketId, i])),
+    () => new Map(topMarkets.map((m, i) => [m.market.market.key, i])),
     [topMarkets],
   );
 
   const filteredCells = useMemo(() => {
-    return cells.filter((c) => goodIndex.has(c.goodKey) && marketIndex.has(c.marketId));
+    return cells.filter((c) => goodIndex.has(c.good.key) && marketIndex.has(c.market.market.key));
   }, [cells, goodIndex, marketIndex]);
 
   const maxAbs = useMemo(() => {
@@ -58,15 +61,15 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
   const seriesData = useMemo(
     () =>
       filteredCells.map((c) => {
-        const x = marketIndex.get(c.marketId) ?? 0;
-        const y = goodIndex.get(c.goodKey) ?? 0;
+        const x = marketIndex.get(c.market.market.key) ?? 0;
+        const y = goodIndex.get(c.good.key) ?? 0;
         return [x, y, c.imbalanceValue];
       }),
     [filteredCells, goodIndex, marketIndex],
   );
 
   const marketLabels = useMemo(
-    () => topMarkets.map((m) => m.centerName.replace(/ Market$/, "")),
+    () => topMarkets.map((m) => m.market.market.name.replace(/ Market$/, "")),
     [topMarkets],
   );
 
@@ -91,7 +94,7 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
       },
       yAxis: {
         type: "category",
-        data: topGoods.map((g) => g.name),
+        data: topGoods.map((g) => g.good.name),
         inverse: true,
         axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 110 },
         axisLine: { lineStyle: { color: axisColor } },
@@ -123,10 +126,9 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
           if (idx == null) return "";
           const c = filteredCells[idx];
           if (!c) return "";
-          const marketName = topMarkets.find((m) => m.marketId === c.marketId)?.centerName ?? "";
           return [
-            `<strong>${escapeEChartsHtml(c.good)}</strong>`,
-            `<em>${escapeEChartsHtml(marketName)}</em>`,
+            `<strong>${escapeEChartsHtml(c.good.name)}</strong>`,
+            `<em>${escapeEChartsHtml(c.market.market.name)}</em>`,
             `Supply: ${formatFloat(c.supply, 2)}`,
             `Demand: ${formatFloat(c.demand, 2)}`,
             `Price: ${formatFloat(c.price, 2)}`,
@@ -146,7 +148,7 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
         },
       ],
     };
-  }, [isDark, marketLabels, topGoods, topMarkets, filteredCells, seriesData, maxAbs]);
+  }, [isDark, marketLabels, topGoods, filteredCells, seriesData, maxAbs]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "market",
@@ -156,9 +158,9 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
       const cell = idx == null ? null : filteredCells[idx];
       return cell
         ? {
-            id: cell.marketId,
-            anchorLocationIdx: cell.marketAnchorLocationIdx,
-            label: cell.marketName,
+            id: cell.market.market.key,
+            anchorLocationIdx: cell.market.anchorLocationIdx,
+            label: cell.market.market.name,
           }
         : null;
     },

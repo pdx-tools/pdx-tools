@@ -21,7 +21,7 @@ import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
 import { MapHoverButton } from "../../MapHoverButton";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
-import { EntityLink } from "../profiles/EntityLink";
+import { CountryLink } from "../profiles/EntityLink";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
@@ -61,6 +61,7 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
     () =>
       types.slice(0, 30).map((t) => ({
         ...t,
+        name: t.building.name,
         domestic: t.levels - t.foreignLevels,
       })),
     [types],
@@ -72,7 +73,7 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
     return {
       dataset: {
         source: rows,
-        dimensions: ["kind", "domestic", "foreignLevels"],
+        dimensions: ["name", "domestic", "foreignLevels"],
       },
       grid: { left: 140, right: 24, top: 8, bottom: 64 },
       xAxis: {
@@ -102,14 +103,14 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
           name: "Domestic",
           stack: "levels",
           itemStyle: { color: "#4e9e6b" },
-          encode: { x: "domestic", y: "kind" },
+          encode: { x: "domestic", y: "name" },
         },
         {
           type: "bar",
           name: "Foreign",
           stack: "levels",
           itemStyle: { color: "#c0614a" },
-          encode: { x: "foreignLevels", y: "kind" },
+          encode: { x: "foreignLevels", y: "name" },
         },
       ],
       tooltip: {
@@ -121,7 +122,7 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
           const d = rows[idx];
           if (!d) return "";
           return [
-            `<strong>${escapeEChartsHtml(d.kind)}</strong>`,
+            `<strong>${escapeEChartsHtml(d.building.name)}</strong>`,
             `Domestic levels: ${formatLevels(d.domestic)}`,
             `Foreign levels: ${formatLevels(d.foreignLevels)}`,
             `Total levels: ${formatLevels(d.levels)}`,
@@ -192,31 +193,36 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
 
   const columns = useMemo(
     () => [
-      topLocColHelper.accessor("name", {
-        sortingFn: "text",
+      topLocColHelper.accessor("location", {
+        id: "location",
+        sortingFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
           return (
             <MapHoverButton
-              target={{ kind: "location", locationIdx: loc.locationIdx }}
+              target={{ kind: "location", locationIdx: loc.location.key }}
               className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
-                nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
-                panToEntity(loc.locationIdx);
+                nav.pushMany(
+                  [locationProfileEntry(loc.location.key, loc.location.name)],
+                  BACK_LABEL,
+                );
+                panToEntity(loc.location.key);
               }}
             >
-              {loc.name}
+              {loc.location.name}
             </MapHoverButton>
           );
         },
       }),
       topLocColHelper.accessor("owner", {
         id: "owner",
-        sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
+        sortingFn: (a, b) =>
+          a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => (
-          <EntityLink entity={row.original.owner} aligned backLabel={BACK_LABEL} />
+          <CountryLink country={row.original.owner} aligned backLabel={BACK_LABEL} />
         ),
       }),
       topLocColHelper.accessor("levels", {
@@ -235,7 +241,7 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
       className="w-full"
       columns={columns}
       data={locations}
-      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.locationIdx })}
+      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.location.key })}
       initialSorting={[{ id: "levels", desc: true }]}
       pagination
     />
@@ -250,21 +256,22 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
 
   const columns = useMemo(
     () => [
-      foreignLocColHelper.accessor("locationName", {
-        sortingFn: "text",
+      foreignLocColHelper.accessor("location", {
+        id: "location",
+        sortingFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const r = row.original;
           return (
             <MapHoverButton
-              target={{ kind: "location", locationIdx: r.locationIdx }}
+              target={{ kind: "location", locationIdx: r.location.key }}
               className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
-                nav.pushMany([locationProfileEntry(r.locationIdx, r.locationName)], BACK_LABEL);
-                panToEntity(r.locationIdx);
+                nav.pushMany([locationProfileEntry(r.location.key, r.location.name)], BACK_LABEL);
+                panToEntity(r.location.key);
               }}
             >
-              {r.locationName}
+              {r.location.name}
             </MapHoverButton>
           );
         },
@@ -272,22 +279,25 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
       foreignLocColHelper.accessor("locationOwner", {
         id: "locationOwner",
         sortingFn: (a, b) =>
-          a.original.locationOwner.name.localeCompare(b.original.locationOwner.name),
+          a.original.locationOwner.country.name.localeCompare(
+            b.original.locationOwner.country.name,
+          ),
         meta: Eu5DataTable.meta({ headerLabel: "Loc Owner" }),
         cell: ({ row }) => (
-          <EntityLink entity={row.original.locationOwner} aligned backLabel={BACK_LABEL} />
+          <CountryLink country={row.original.locationOwner} aligned backLabel={BACK_LABEL} />
         ),
       }),
       foreignLocColHelper.accessor("foreignOwner", {
         id: "foreignOwner",
         sortingFn: (a, b) =>
-          a.original.foreignOwner.name.localeCompare(b.original.foreignOwner.name),
+          a.original.foreignOwner.country.name.localeCompare(b.original.foreignOwner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Building Owner" }),
         cell: ({ row }) => (
-          <EntityLink entity={row.original.foreignOwner} aligned backLabel={BACK_LABEL} />
+          <CountryLink country={row.original.foreignOwner} aligned backLabel={BACK_LABEL} />
         ),
       }),
-      foreignLocColHelper.accessor("kind", {
+      foreignLocColHelper.accessor((row) => row.building.name, {
+        id: "building",
         sortingFn: "text",
         meta: Eu5DataTable.meta({ headerLabel: "Type" }),
         cell: (info) => info.getValue(),
@@ -308,7 +318,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
       className="w-full"
       columns={columns}
       data={rows}
-      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.locationIdx })}
+      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.location.key })}
       initialSorting={[{ id: "foreignLevels", desc: true }]}
       pagination
     />
@@ -322,13 +332,15 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
     () => [
       foreignOwnerCellColHelper.accessor("owner", {
         id: "owner",
-        sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
+        sortingFn: (a, b) =>
+          a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner", variant: "pin" }),
         cell: ({ row }) => (
-          <EntityLink entity={row.original.owner} aligned backLabel={BACK_LABEL} />
+          <CountryLink country={row.original.owner} aligned backLabel={BACK_LABEL} />
         ),
       }),
-      foreignOwnerCellColHelper.accessor("kind", {
+      foreignOwnerCellColHelper.accessor((row) => row.building.name, {
+        id: "building",
         sortingFn: "text",
         meta: Eu5DataTable.meta({ headerLabel: "Type" }),
         cell: (info) => info.getValue(),
@@ -356,11 +368,10 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
       className="w-full"
       columns={columns}
       data={cells}
-      getRowHoverTarget={(row) =>
-        row.owner.kind === "country"
-          ? { kind: "country", countryIdx: row.owner.countryIdx }
-          : { kind: "market", marketId: row.owner.marketId }
-      }
+      getRowHoverTarget={(row) => ({
+        kind: "country",
+        countryIdx: row.owner.country.key,
+      })}
       initialSorting={[{ id: "levels", desc: true }]}
       pagination
     />

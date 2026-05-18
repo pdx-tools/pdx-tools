@@ -55,8 +55,8 @@ pub struct LocationsDataArena<'bump> {
 }
 
 impl<'bump> Locations<'bump> {
-    pub fn iter(&self) -> LocationsIter<'_> {
-        LocationsIter::new(&self.locations)
+    pub fn iter(&self) -> LocationsIter<'bump> {
+        LocationsIter::new(self.locations.ids, self.locations.values)
     }
 
     pub fn get(&self, id: LocationId) -> Option<LocationIdx> {
@@ -73,10 +73,11 @@ impl<'bump> Locations<'bump> {
             .map(|idx| LocationIdx(idx as u32))
     }
 
-    pub fn index(&self, idx: LocationIdx) -> LocationEntry<'_> {
+    pub fn index(&self, idx: LocationIdx) -> LocationEntry<'bump> {
         LocationEntry {
             idx,
-            locations: &self.locations,
+            ids: self.locations.ids,
+            values: self.locations.values,
         }
     }
 
@@ -125,7 +126,7 @@ pub struct Location<'bump> {
     pub tax: f64,
     #[arena(default)]
     pub possible_tax: f64,
-    pub raw_material: Option<models::RawMaterialsName<'bump>>,
+    pub raw_material: Option<models::GoodName<'bump>>,
     #[arena(default)]
     pub rank: LocationRank,
 }
@@ -193,28 +194,31 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct LocationsIter<'a> {
+pub struct LocationsIter<'bump> {
     index: LocationIdx,
-    locations: &'a LocationsDataArena<'a>,
+    ids: &'bump [LocationId],
+    values: &'bump [Location<'bump>],
 }
 
-impl<'a> LocationsIter<'a> {
-    pub fn new(locations: &'a LocationsDataArena<'a>) -> Self {
+impl<'bump> LocationsIter<'bump> {
+    pub fn new(ids: &'bump [LocationId], values: &'bump [Location<'bump>]) -> Self {
         LocationsIter {
             index: LocationIdx(0),
-            locations,
+            ids,
+            values,
         }
     }
 }
 
-impl<'a> Iterator for LocationsIter<'a> {
-    type Item = LocationEntry<'a>;
+impl<'bump> Iterator for LocationsIter<'bump> {
+    type Item = LocationEntry<'bump>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if (self.index.0 as usize) < self.locations.ids.len() {
+        if (self.index.0 as usize) < self.ids.len() {
             let result = LocationEntry {
                 idx: self.index,
-                locations: self.locations,
+                ids: self.ids,
+                values: self.values,
             };
             self.index.0 += 1;
             Some(result)
@@ -224,18 +228,19 @@ impl<'a> Iterator for LocationsIter<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.locations.ids.len() - (self.index.0 as usize);
+        let len = self.ids.len() - (self.index.0 as usize);
         (len, Some(len))
     }
 }
 
 #[derive(Debug)]
-pub struct LocationEntry<'a> {
+pub struct LocationEntry<'bump> {
     idx: LocationIdx,
-    locations: &'a LocationsDataArena<'a>,
+    ids: &'bump [LocationId],
+    values: &'bump [Location<'bump>],
 }
 
-impl<'a> LocationEntry<'a> {
+impl<'bump> LocationEntry<'bump> {
     #[inline]
     pub fn idx(&self) -> LocationIdx {
         self.idx
@@ -243,12 +248,12 @@ impl<'a> LocationEntry<'a> {
 
     #[inline]
     pub fn id(&self) -> LocationId {
-        self.locations.ids[self.idx.0 as usize]
+        self.ids[self.idx.0 as usize]
     }
 
     #[inline]
-    pub fn location(&self) -> &'a Location<'a> {
-        &self.locations.values[self.idx.0 as usize]
+    pub fn location(&self) -> &'bump Location<'bump> {
+        &self.values[self.idx.0 as usize]
     }
 }
 

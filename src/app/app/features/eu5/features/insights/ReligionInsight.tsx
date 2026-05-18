@@ -68,7 +68,7 @@ export function ReligionInsight() {
 }
 
 type FlatStateReligionDatum = {
-  religion: string;
+  religionName: string;
   colorHex: string;
   countryCount: number;
   totalRuledPopulation: number;
@@ -82,12 +82,12 @@ function stateReligionTooltip(row: FlatStateReligionDatum): string {
   const topReligions = row.topPopulationReligions
     .map(
       (r) =>
-        `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${escapeEChartsHtml(r.colorHex)};margin-right:4px"></span>${escapeEChartsHtml(r.religion)}: ${formatInt(r.population)}`,
+        `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${escapeEChartsHtml(r.colorHex)};margin-right:4px"></span>${escapeEChartsHtml(r.religion.name)}: ${formatInt(r.population)}`,
     )
     .join("<br/>");
 
   return [
-    `<strong>${escapeEChartsHtml(row.religion)}</strong>`,
+    `<strong>${escapeEChartsHtml(row.religionName)}</strong>`,
     `Countries: ${formatInt(row.countryCount)}`,
     `Total ruled population: ${formatInt(row.totalRuledPopulation)}`,
     `State-religion population: ${formatInt(row.stateReligionPopulation)}`,
@@ -105,7 +105,7 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
   const rows = useMemo<FlatStateReligionDatum[]>(
     () =>
       stateReligions.slice(0, STATE_RELIGION_CAP).map((r) => ({
-        religion: r.religion,
+        religionName: r.religion.name,
         colorHex: r.colorHex,
         countryCount: r.countryCount,
         totalRuledPopulation: r.totalRuledPopulation,
@@ -120,7 +120,7 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
   const flatSource = useMemo(
     () =>
       rows.map((r) => ({
-        religion: r.religion,
+        religion: r.religionName,
         stateReligionPopulation: r.stateReligionPopulation,
         otherFaithPopulation: r.otherFaithPopulation,
       })),
@@ -224,7 +224,8 @@ function CoverageBar({
 function ReligionTable({ religions }: { religions: ReligionRow[] }) {
   const columns = useMemo(
     () => [
-      religionColumnHelper.accessor("religion", {
+      religionColumnHelper.accessor((row) => row.religion.name, {
+        id: "religion",
         sortingFn: "text",
         meta: Eu5DataTable.meta({ headerLabel: "Religion", variant: "pin" }),
         cell: ({ row }) => {
@@ -235,7 +236,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
                 className="inline-block h-2 w-2 shrink-0 rounded-sm"
                 style={{ backgroundColor: r.colorHex }}
               />
-              <span className="truncate">{r.religion}</span>
+              <span className="truncate">{r.religion.name}</span>
             </span>
           );
         },

@@ -353,7 +353,7 @@ function TaxGapScatter({ locations }: { locations: LocationRow[] }) {
           const gap = d.possibleTax - d.tax;
           const realization = d.possibleTax > 0 ? (d.tax / d.possibleTax) * 100 : 100;
           return [
-            `<strong>${escapeEChartsHtml(d.name)}</strong>`,
+            `<strong>${escapeEChartsHtml(d.location.name)}</strong>`,
             `Possible Tax: ${formatFloat(d.possibleTax, 2)}`,
             `Actual Tax: ${formatFloat(d.tax, 2)}`,
             `Gap: ${formatFloat(gap, 2)}`,

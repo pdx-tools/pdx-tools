@@ -1,12 +1,12 @@
 use super::*;
 
 impl<'bump> Eu5Workspace<'bump> {
-    pub fn hover_data(&self, location_idx: LocationIdx) -> HoverDisplayData {
+    pub(crate) fn hover_data(&self, location_idx: LocationIdx) -> HoverDisplayDataSource {
         let mode = self.get_map_mode();
         let location = self.gamestate().locations.index(location_idx).location();
 
         if location.owner.is_dummy() {
-            return HoverDisplayData::Clear;
+            return HoverDisplayDataSource::Clear;
         }
 
         let should_show_location = self
@@ -15,17 +15,17 @@ impl<'bump> Eu5Workspace<'bump> {
             .unwrap_or(false);
 
         if should_show_location {
-            HoverDisplayData::Location {
+            HoverDisplayDataSource::Location {
                 location_id: location_idx.value(),
-                location_name: self.location_name(location_idx).to_string(),
+                location: location_idx,
                 stat: self.location_stat(mode, location_idx, location),
             }
         } else if mode == MapMode::Markets {
             self.market_hover(location_idx, location)
-                .unwrap_or(HoverDisplayData::Clear)
+                .unwrap_or(HoverDisplayDataSource::Clear)
         } else {
             self.country_hover(location_idx, location, mode)
-                .unwrap_or(HoverDisplayData::Clear)
+                .unwrap_or(HoverDisplayDataSource::Clear)
         }
     }
 
@@ -34,41 +34,40 @@ impl<'bump> Eu5Workspace<'bump> {
         mode: MapMode,
         location_idx: LocationIdx,
         location: &eu5save::models::Location<'_>,
-    ) -> HoverStat {
+    ) -> HoverStatSource {
         match mode {
-            MapMode::Political => HoverStat::None,
-            MapMode::Control => HoverStat::Control {
+            MapMode::Political => HoverStatSource::None,
+            MapMode::Control => HoverStatSource::Control {
                 value: location.control,
             },
-            MapMode::Development => HoverStat::Development {
+            MapMode::Development => HoverStatSource::Development {
                 value: location.development,
             },
-            MapMode::Population => HoverStat::Population {
+            MapMode::Population => HoverStatSource::Population {
                 value: self.gamestate().location_population(location) as u32,
             },
-            MapMode::Markets => HoverStat::Markets {
+            MapMode::Markets => HoverStatSource::Markets {
                 access: location.market_access,
             },
-            MapMode::RgoLevel => HoverStat::RgoLevel {
+            MapMode::RgoLevel => HoverStatSource::RgoLevel {
                 value: location.rgo_level,
             },
-            MapMode::BuildingLevels => HoverStat::BuildingLevels {
+            MapMode::BuildingLevels => HoverStatSource::BuildingLevels {
                 value: self.get_location_building_levels()[location_idx],
             },
-            MapMode::PossibleTax => HoverStat::PossibleTax {
+            MapMode::PossibleTax => HoverStatSource::PossibleTax {
                 value: location.possible_tax,
             },
-            MapMode::TaxGap => HoverStat::TaxGap {
+            MapMode::TaxGap => HoverStatSource::TaxGap {
                 value: location.possible_tax - location.tax,
             },
             MapMode::Religion => location
                 .religion
-                .and_then(|rid| self.gamestate().religion_manager.lookup(rid))
-                .map(|religion| HoverStat::Religion {
-                    name: religion.name.to_str().to_string(),
+                .map(|religion_id| HoverStatSource::Religion {
+                    religion: religion_id,
                 })
-                .unwrap_or(HoverStat::None),
-            MapMode::StateEfficacy => HoverStat::StateEfficacy {
+                .unwrap_or(HoverStatSource::None),
+            MapMode::StateEfficacy => HoverStatSource::StateEfficacy {
                 value: location.control * location.development,
             },
         }
@@ -79,20 +78,13 @@ impl<'bump> Eu5Workspace<'bump> {
         location_idx: LocationIdx,
         location: &eu5save::models::Location<'_>,
         mode: MapMode,
-    ) -> Option<HoverDisplayData> {
+    ) -> Option<HoverDisplayDataSource> {
         let owner_id = location.owner;
-        let country = self.gamestate().countries.get_entry(owner_id)?;
-        let country_tag = country.tag().to_str().to_string();
-        let country_name = country
-            .data()
-            .map(|data| self.localized_country_name(&data.country_name))
-            .map(|name| name.to_string())
-            .unwrap_or_else(|| format!("C{}", owner_id.value()));
+        let country_idx = self.gamestate().countries.get(owner_id)?;
 
-        Some(HoverDisplayData::Country {
+        Some(HoverDisplayDataSource::Country {
             location_id: location_idx.value(),
-            country_tag: country_tag.clone(),
-            country_name: format!("{country_name} ({country_tag})"),
+            country: CountryRefSource { country_idx },
             stat: self.country_stat(mode, owner_id),
         })
     }
@@ -101,21 +93,23 @@ impl<'bump> Eu5Workspace<'bump> {
         &self,
         location_idx: LocationIdx,
         location: &eu5save::models::Location<'_>,
-    ) -> Option<HoverDisplayData> {
+    ) -> Option<HoverDisplayDataSource> {
         let market_id = location.market?;
-        let market = self.gamestate().market_manager.get(market_id)?;
-        let center_idx = self.gamestate().locations.get(market.center)?;
 
-        Some(HoverDisplayData::Market {
+        Some(HoverDisplayDataSource::Market {
             location_id: location_idx.value(),
-            market_center_name: self.location_name(center_idx).to_string(),
-            market_value: market.market_value(),
+            market: market_id,
+            market_value: self
+                .gamestate()
+                .market_manager
+                .get(market_id)?
+                .market_value(),
         })
     }
 
-    fn country_stat(&self, mode: MapMode, owner_id: CountryId) -> HoverStat {
+    fn country_stat(&self, mode: MapMode, owner_id: CountryId) -> HoverStatSource {
         match mode {
-            MapMode::Political => HoverStat::None,
+            MapMode::Political => HoverStatSource::None,
             MapMode::Control => {
                 let mut control_sum = 0.0;
                 let mut count = 0_u32;
@@ -129,9 +123,9 @@ impl<'bump> Eu5Workspace<'bump> {
                 }
 
                 if count == 0 {
-                    HoverStat::None
+                    HoverStatSource::None
                 } else {
-                    HoverStat::Control {
+                    HoverStatSource::Control {
                         value: control_sum / count as f64,
                     }
                 }
@@ -146,7 +140,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     }
                 }
 
-                HoverStat::Development { value: total }
+                HoverStatSource::Development { value: total }
             }
             MapMode::Population => {
                 let mut total = 0_u32;
@@ -158,9 +152,9 @@ impl<'bump> Eu5Workspace<'bump> {
                     }
                 }
 
-                HoverStat::Population { value: total }
+                HoverStatSource::Population { value: total }
             }
-            MapMode::Markets => HoverStat::None,
+            MapMode::Markets => HoverStatSource::None,
             MapMode::RgoLevel => {
                 let mut total = 0.0;
 
@@ -171,7 +165,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     }
                 }
 
-                HoverStat::RgoLevel { value: total }
+                HoverStatSource::RgoLevel { value: total }
             }
             MapMode::BuildingLevels => {
                 let building_levels = self.get_location_building_levels();
@@ -183,7 +177,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     }
                 }
 
-                HoverStat::BuildingLevels { value: total }
+                HoverStatSource::BuildingLevels { value: total }
             }
             MapMode::PossibleTax => {
                 let mut total = 0.0;
@@ -195,7 +189,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     }
                 }
 
-                HoverStat::PossibleTax { value: total }
+                HoverStatSource::PossibleTax { value: total }
             }
             MapMode::TaxGap => {
                 let mut total = 0.0;
@@ -207,7 +201,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     }
                 }
 
-                HoverStat::TaxGap { value: total }
+                HoverStatSource::TaxGap { value: total }
             }
             MapMode::Religion => self
                 .gamestate()
@@ -215,11 +209,10 @@ impl<'bump> Eu5Workspace<'bump> {
                 .get_entry(owner_id)
                 .and_then(|country| country.data())
                 .and_then(|data| data.primary_religion)
-                .and_then(|religion_id| self.gamestate().religion_manager.lookup(religion_id))
-                .map(|religion| HoverStat::Religion {
-                    name: religion.name.to_str().to_string(),
+                .map(|religion_id| HoverStatSource::Religion {
+                    religion: religion_id,
                 })
-                .unwrap_or(HoverStat::None),
+                .unwrap_or(HoverStatSource::None),
             MapMode::StateEfficacy => {
                 let mut total = 0.0;
 
@@ -230,7 +223,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     }
                 }
 
-                HoverStat::StateEfficacy { value: total }
+                HoverStatSource::StateEfficacy { value: total }
             }
         }
     }

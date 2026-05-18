@@ -10,7 +10,7 @@ use serde::{Deserialize, Deserializer, de};
 #[derive(Debug, ArenaDeserialize)]
 pub struct MarketManager<'bump> {
     #[arena(deserialize_with = "deserialize_produced_goods")]
-    pub produced_goods: &'bump [(RawMaterialsName<'bump>, f64)],
+    pub produced_goods: &'bump [(GoodName<'bump>, f64)],
 
     #[arena(deserialize_with = "deserialize_markets")]
     pub database: MarketDatabase<'bump>,
@@ -43,15 +43,19 @@ impl<'bump> MarketManager<'bump> {
 }
 
 #[derive(Debug, Clone, ArenaDeserialize, PartialEq, Copy, Eq, Hash, PartialOrd, Ord)]
-pub struct RawMaterialsName<'bump>(BStr<'bump>);
+pub struct GoodName<'bump>(BStr<'bump>);
 
-impl<'bump> RawMaterialsName<'bump> {
+impl<'bump> GoodName<'bump> {
+    pub fn new(bstr: BStr<'bump>) -> Self {
+        Self(bstr)
+    }
+
     pub fn to_str(&self) -> &str {
         self.0.to_str()
     }
 }
 
-impl std::fmt::Display for RawMaterialsName<'_> {
+impl std::fmt::Display for GoodName<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_str())
     }
@@ -129,7 +133,7 @@ impl Market<'_> {
 
 #[derive(Debug, PartialEq)]
 pub struct MarketGood<'bump> {
-    pub good: RawMaterialsName<'bump>,
+    pub good: GoodName<'bump>,
     pub price: f64,
     pub supplied: &'bump [(BStr<'bump>, f64)],
     pub demanded: &'bump [(BStr<'bump>, f64)],
@@ -191,14 +195,14 @@ where
 fn deserialize_produced_goods<'de, 'bump, D>(
     deserializer: D,
     allocator: &'bump bumpalo::Bump,
-) -> Result<&'bump [(RawMaterialsName<'bump>, f64)], D::Error>
+) -> Result<&'bump [(GoodName<'bump>, f64)], D::Error>
 where
     D: Deserializer<'de>,
 {
     struct ProducedGoodsVisitor<'bump>(&'bump bumpalo::Bump);
 
     impl<'de, 'bump> de::Visitor<'de> for ProducedGoodsVisitor<'bump> {
-        type Value = &'bump [(RawMaterialsName<'bump>, f64)];
+        type Value = &'bump [(GoodName<'bump>, f64)];
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
             formatter.write_str("a map of produced goods")

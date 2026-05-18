@@ -9,10 +9,10 @@ interface Props {
 
 export function EntityProfileRoot({ identity }: Props) {
   if (identity.kind === "country") {
-    return <CountryProfile countryIdx={identity.country_idx} />;
+    return <CountryProfile countryIdx={identity.country.key} />;
   }
   if (identity.kind === "market") {
-    return <MarketProfile marketId={identity.market_id} />;
+    return <MarketProfile marketId={identity.market.key} />;
   }
-  return <LocationProfile locationIdx={identity.location_idx} />;
+  return <LocationProfile locationIdx={identity.location.key} />;
 }

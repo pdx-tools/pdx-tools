@@ -1,38 +1,55 @@
+use crate::entity_profile::country::workspace::{
+    ActiveProfileIdentity, CountryPopulationProfile, CountryProfile, CountryReligionSection,
+    ReligionShare,
+};
+use crate::entity_profile::diplomacy::workspace::{DiplomacySection, SubjectRef};
+use crate::entity_profile::location::workspace::{
+    BuildingEntry, EntityHeader, LocationHeader, LocationPopRow, LocationProfile, LocationRow,
+    LocationStats, LocationsSection,
+};
+use crate::entity_profile::market::workspace::{
+    MarketGoodEntry, MarketGoodsSection, MarketMemberCountry, MarketProfile,
+};
 use crate::entity_profile::{
-    ActiveProfileIdentity, BuildingEntry, CountryMetrics, CountryOverviewSection,
-    CountryPopulationProfile, CountryProfile, CountryRef, CountryReligionSection, DiplomacySection,
-    DiplomacySubjectType, EntityHeader, EntityKind, EntityRef, HeadlineStats, LocationHeader,
-    LocationPopRow, LocationProfile, LocationRow, LocationStats, LocationsSection, MarketGoodEntry,
-    MarketGoodsSection, MarketMemberCountry, MarketProfile, RankedLocation, ReligionShare,
-    SubjectRef,
+    CountryMetrics, CountryOverviewSection, DiplomacySubjectType, EntityHeaderKindSource,
+    EntityKind, HeadlineStats,
 };
 use crate::game_data::GameData;
+use crate::hover::workspace::{
+    DisplayData as HoverDisplayDataSource, HoverStat as HoverStatSource,
+};
+use crate::insights::buildings::workspace::*;
+use crate::insights::control::workspace::*;
+use crate::insights::development::workspace::{
+    CountryDevSummary, DevTopLocation, DevelopmentInsightData,
+};
+use crate::insights::distribution::workspace::*;
+use crate::insights::markets::workspace::{
+    GoodMarketBalanceCell, MarketInsightData, MarketProductionLocationSummary,
+    ProductionLocationSummary, ScopedGoodSummary, ScopedMarketSummary,
+};
+use crate::insights::population::workspace::*;
+use crate::insights::religion::workspace::*;
+use crate::insights::rgo::workspace::*;
+use crate::insights::state_efficacy::workspace::*;
+use crate::insights::tax::workspace::*;
+use crate::insights::{
+    BuildingLevelsScopeSummary, ControlBandSegment, ControlScopeSummary, DevelopmentScopeSummary,
+    DistributionBucket, GoodBreakdownEntry, MarketScopeSummary, PopulationConcentrationPoint,
+    PopulationRankSegment, PopulationScopeSummary, PopulationTypeProfileRow, PossibleTaxScope,
+    RgoScopeSummary, StateEfficacyScopeSummary, TaxGapScope,
+};
+use crate::overlay::{OverlayBodyConfigSource, OverlayTableSource, TableCellSource};
+use crate::presentation::{CountryRefSource, Eu5Presenter, MarketRefSource};
 use crate::selection::{
     GroupId, GroupingTable, LocationData, SelectionAdapter, SelectionState, single_entity_scope,
 };
-use crate::selection_views::{
-    BuildingLevelsInsightData, BuildingLevelsScopeSummary, BuildingLevelsTopLocation,
-    BuildingTypeForeignOwnerCell, BuildingTypeSummary, ControlBandSegment, ControlInsightData,
-    ControlScopeSummary, ControlTopLocation, CountryControlBarSummary, CountryControlPoint,
-    CountryDevSummary, CountryPossibleTax, CountryStateEfficacy, CountryTaxGap, DevTopLocation,
-    DevelopmentInsightData, DevelopmentScopeSummary, DistributionBucket, GoodBreakdownEntry,
-    HoverDisplayData, HoverStat, LocationDistribution, MarketInsightData,
-    MarketProductionLocationSummary, MarketScopeSummary, PoliticalWorldRow,
-    PoliticalWorldScoreboard, PopulationConcentrationPoint, PopulationInsightData,
-    PopulationRankSegment, PopulationReligionShare, PopulationScopeSummary, PopulationTopLocation,
-    PopulationTypeProfileRow, PossibleTaxInsightData, PossibleTaxScope, PossibleTaxTopLocation,
-    ProductionLocationSummary, ReligionInsightData, ReligionRow, RgoInsightData,
-    RgoMaterialProfileDelta, RgoMaterialSummary, RgoScopeSummary, RgoTopLocation,
-    ScopedCountryPopulation, ScopedGoodSummary, ScopedMarketSummary, StateEfficacyInsightData,
-    StateEfficacyScopeSummary, StateEfficacyTopLocation, StateReligionRow, TaxGapInsightData,
-    TaxGapScope, TaxGapTopLocation,
-};
-use crate::{MapMode, OverlayBodyConfig, OverlayTable, TableCell, models::Terrain, subject_color};
+use crate::{MapMode, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap, FxHashSet};
 use eu5save::models::{
     CountryId, CountryIdx, CountryIndexedVecOwned,
-    DiplomacySubjectType as SaveDiplomacySubjectType, Gamestate, LocationIdx, LocationIndexedVec,
-    LocationRank, Market, PopulationType, RawMaterialsName,
+    DiplomacySubjectType as SaveDiplomacySubjectType, Gamestate, GoodName, LocationIdx,
+    LocationIndexedVec, LocationRank, Market, PopulationType,
 };
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
 use std::collections::HashMap;
@@ -193,18 +210,16 @@ impl<'bump> Eu5Workspace<'bump> {
         Ok(workspace)
     }
 
-    /// Get localized country name from a country tag.
-    /// Returns the localized name if available, otherwise returns the tag itself.
-    pub fn localized_country_name<'a>(
-        &'a self,
-        country_name: &'a eu5save::models::CountryName,
-    ) -> &'a str {
-        let tag = country_name.name().to_str();
-        self.game_data.localized_country_name(tag).unwrap_or(tag)
-    }
-
     pub fn gamestate(&self) -> &Gamestate<'bump> {
         &self.gamestate
+    }
+
+    pub(crate) fn game_data(&self) -> &GameData {
+        &self.game_data
+    }
+
+    pub fn presenter(&self) -> Eu5Presenter<'_, 'bump> {
+        Eu5Presenter::new(self)
     }
 
     fn map_mode_for_entity_kind(kind: EntityKind) -> MapMode {
@@ -258,76 +273,23 @@ impl<'bump> Eu5Workspace<'bump> {
     fn country_ref_from_country_idx(
         &self,
         country_idx: eu5save::models::CountryIdx,
-    ) -> Option<CountryRef> {
-        let entry = self.gamestate.countries.index(country_idx);
-        let data = entry.data()?;
-        let owner = entry.id().real_id()?;
-        let tag = entry.tag().to_str().to_string();
-        let name = self.localized_country_name(&data.country_name).to_string();
-        let color_hex = format!(
-            "#{:02x}{:02x}{:02x}",
-            data.color.0[0], data.color.0[1], data.color.0[2]
-        );
-        let anchor_location_idx = data
-            .capital
-            .and_then(|id| self.gamestate.locations.get(id))
-            .or_else(|| {
-                self.gamestate
-                    .locations
-                    .iter()
-                    .find(|entry| entry.location().owner.real_id() == Some(owner))
-                    .map(|entry| entry.idx())
-            })
-            .map(|idx| idx.value())
-            .unwrap_or(0);
-        let country_id = owner.country_id();
-        let is_player = self
-            .gamestate
-            .played_countries
-            .iter()
-            .any(|p| p.country == country_id);
-        Some(CountryRef {
-            country_idx: country_idx.value(),
-            anchor_location_idx,
-            tag,
-            name,
-            color_hex,
-            is_player,
-        })
+    ) -> CountryRefSource {
+        CountryRefSource { country_idx }
     }
 
-    fn entity_ref_from_country_idx(
+    fn owner_country_ref_for_location(
         &self,
-        country_idx: eu5save::models::CountryIdx,
-    ) -> Option<EntityRef> {
-        self.country_ref_from_country_idx(country_idx)
-            .map(EntityRef::Country)
-    }
-
-    fn market_ref_from_id(&self, market_id: eu5save::models::MarketId) -> Option<EntityRef> {
-        let market = self.gamestate.market_manager.get(market_id)?;
-        let center_idx = self.gamestate.locations.get(market.center)?;
-        let name = format!("{} Market", self.location_name(center_idx));
-        let color_hex = format!(
-            "#{:02x}{:02x}{:02x}",
-            market.color.0[0], market.color.0[1], market.color.0[2]
-        );
-        Some(EntityRef::Market {
-            market_id: market_id.value(),
-            anchor_location_idx: center_idx.value(),
-            name,
-            color_hex,
-        })
-    }
-
-    fn market_ref_for_location(&self, loc: &eu5save::models::Location) -> Option<EntityRef> {
-        self.market_ref_from_id(loc.market?)
-    }
-
-    fn owner_ref_for_location(&self, loc: &eu5save::models::Location) -> Option<EntityRef> {
+        loc: &eu5save::models::Location,
+    ) -> Option<CountryRefSource> {
         let owner_id = loc.owner.real_id()?.country_id();
         let country_idx = self.gamestate.countries.get(owner_id)?;
-        self.entity_ref_from_country_idx(country_idx)
+        Some(self.country_ref_from_country_idx(country_idx))
+    }
+
+    fn market_ref_for_location(&self, loc: &eu5save::models::Location) -> Option<MarketRefSource> {
+        Some(MarketRefSource {
+            market_id: loc.market?,
+        })
     }
 }
 

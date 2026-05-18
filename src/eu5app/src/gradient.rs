@@ -1,7 +1,7 @@
 use pdx_map::GpuColor;
 use serde::{Deserialize, Serialize};
 
-use crate::color::{Hsv, Rgb};
+use crate::color::{Hsv, UnitRgb};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
@@ -48,7 +48,7 @@ pub fn interpolate_eu5_gradient(value: f64, max_value: f64, scale: GradientScale
 
     if max_value == 0.0 {
         let (h, s, v) = STOPS[0];
-        let rgb: Rgb = Hsv { h, s, v }.into();
+        let rgb: UnitRgb = Hsv { h, s, v }.into();
         let (r, g, b) = rgb.into();
         return GpuColor::from_rgb(r, g, b);
     }
@@ -75,7 +75,7 @@ pub fn interpolate_eu5_gradient(value: f64, max_value: f64, scale: GradientScale
     let s = s0 + (s1 - s0) * local_t;
     let v = v0 + (v1 - v0) * local_t;
 
-    let rgb: Rgb = Hsv { h, s, v }.into();
+    let rgb: UnitRgb = Hsv { h, s, v }.into();
     let (r, g, b) = rgb.into();
     GpuColor::from_rgb(r, g, b)
 }

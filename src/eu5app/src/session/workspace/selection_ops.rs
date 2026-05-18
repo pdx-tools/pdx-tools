@@ -385,38 +385,6 @@ impl<'bump> Eu5Workspace<'bump> {
         (self.center_at(location), gradient)
     }
 
-    pub fn focused_location_display_name(&self) -> Option<String> {
-        self.selection_state
-            .focused_location()
-            .map(|idx| self.location_name(idx).to_string())
-    }
-
-    /// Display name for the currently derived single-entity scope.
-    pub fn scope_display_name(&self) -> Option<String> {
-        let anchor = self.derived_entity_anchor?;
-        let loc = self.gamestate.locations.index(anchor).location();
-        match self.derived_entity_kind? {
-            EntityKind::Market => {
-                let market_id = loc.market?;
-                let market = self.gamestate.market_manager.get(market_id)?;
-                let center_idx = self.gamestate.locations.get(market.center)?;
-                Some(format!("{} Market", self.location_name(center_idx)))
-            }
-            EntityKind::Country => {
-                let owner_id = loc.owner.real_id()?;
-                let country_id = owner_id.country_id();
-                let country_idx = self.gamestate.countries.get(country_id)?;
-                let entry = self.gamestate.countries.index(country_idx);
-                Some(
-                    entry
-                        .data()
-                        .map(|data| self.localized_country_name(&data.country_name).to_string())
-                        .unwrap_or_else(|| format!("Country {}", country_id.value())),
-                )
-            }
-        }
-    }
-
     /// Select all locations owned by human-controlled countries and their subjects.
     pub fn select_players(&mut self) {
         let player_idxs: FnvHashSet<CountryIdx> = self

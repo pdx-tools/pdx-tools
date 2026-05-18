@@ -6,7 +6,7 @@ import { formatFloat, formatInt } from "@/lib/format";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanelNav } from "../profiles/PanelNavContext";
 import { useEu5Engine } from "../../store";
-import { EntityLink } from "../profiles/EntityLink";
+import { CountryLink } from "../profiles/EntityLink";
 import { Eu5DataTable, Eu5MapDataTable } from "../../components";
 import {
   Eu5InsightEmptyState,
@@ -57,7 +57,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
 
   const topProfile =
     nav.top?.kind === "profile" || nav.top?.kind === "focus" ? nav.top.profile : null;
-  const activeProfileIdx = topProfile?.kind === "country" ? topProfile.country_idx : null;
+  const activeProfileIdx = topProfile?.kind === "country" ? topProfile.country.key : null;
 
   const columns = useMemo(
     () => [
@@ -77,12 +77,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
         header: "Country",
         enableSorting: false,
         cell: ({ row }) => (
-          <EntityLink
-            entity={{ kind: "country", ...row.original.country }}
-            size="md"
-            aligned
-            backLabel={BACK_LABEL}
-          />
+          <CountryLink country={row.original.country} size="md" aligned backLabel={BACK_LABEL} />
         ),
       }),
       columnHelper.accessor("totalStateEfficacy", {
@@ -147,8 +142,8 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
         cell: ({ row }) => (
           <Eu5DataTable.Affordance
             kind="remove"
-            label={`Remove ${row.original.country.name} from selection`}
-            onClick={() => void engine.trigger.removeCountry(row.original.country.countryIdx)}
+            label={`Remove ${row.original.country.country.name} from selection`}
+            onClick={() => void engine.trigger.removeCountry(row.original.country.country.key)}
           />
         ),
       }),
@@ -179,9 +174,9 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
       columns={columns}
       data={rows}
       tableOptions={{ enableSorting: false }}
-      isRowInFilter={(row) => row.country.countryIdx === activeProfileIdx}
+      isRowInFilter={(row) => row.country.country.key === activeProfileIdx}
       rowSeparator={rowSeparator}
-      getRowHoverTarget={(row) => ({ kind: "country", countryIdx: row.country.countryIdx })}
+      getRowHoverTarget={(row) => ({ kind: "country", countryIdx: row.country.country.key })}
     />
   );
 }

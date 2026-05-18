@@ -37,7 +37,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function concentrationFromLocations(locations: LocationRow[]): PopulationConcentrationPoint[] {
   const sorted = [...locations].sort(
-    (a, b) => b.population - a.population || a.locationIdx - b.locationIdx,
+    (a, b) => b.population - a.population || a.location.key - b.location.key,
   );
   const totalPopulation = sorted.reduce((sum, location) => sum + location.population, 0);
   let cumulativePopulation = 0;

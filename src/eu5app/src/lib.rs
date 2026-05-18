@@ -2,13 +2,21 @@ mod color;
 pub mod entity_profile;
 pub mod game_data;
 pub mod gradient;
-mod hexcolor;
+
+pub mod hover;
+pub mod insights;
 mod map;
 mod models;
+pub(crate) mod overlay;
+pub mod presentation;
 mod selection;
-pub mod selection_views;
 mod session;
 mod subject_color;
+
+pub use presentation::{
+    LocalizationContext, Localized, Present, UiCountryIdx, UiCultureId, UiLocationId,
+    UiLocationIdx, UiMarketId, UiReligionId,
+};
 
 pub use entity_profile::EntityKind;
 pub use selection::{
@@ -17,34 +25,8 @@ pub use selection::{
 };
 pub use session::{Eu5LoadError, Eu5LoadedSave, Eu5SaveLoader, Eu5SaveMetadata, Eu5Workspace};
 
-pub use hexcolor::HexColor;
+pub use color::Srgb;
 pub use map::*;
 pub use models::*;
-
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", content = "value")]
-#[serde(rename_all = "camelCase")]
-pub enum TableCell {
-    #[serde(rename = "text")]
-    Text(String),
-    #[serde(rename = "integer")]
-    Integer(i64),
-    #[serde(rename = "float")]
-    Float { value: f64, decimals: u8 },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OverlayBodyConfig {
-    pub left_table: OverlayTable,
-    pub right_table: OverlayTable,
-    pub max_rows: Option<u32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OverlayTable {
-    pub title: Option<String>,
-    pub headers: Vec<String>,
-    pub rows: Vec<Vec<TableCell>>,
-}
+pub(crate) use overlay::OverlayBodyConfigSource;
+pub use overlay::{OverlayBodyConfig, OverlayTable, TableCell};

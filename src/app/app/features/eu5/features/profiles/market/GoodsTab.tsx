@@ -49,8 +49,8 @@ function computeImportRows(goods: ScopedGoodSummary[]): ImportRow[] {
     if (unmetUnits < 0.0001) continue;
     const price = g.weightedPrice > 0 ? g.weightedPrice : (g.defaultMarketPrice ?? 0);
     rows.push({
-      name: g.name,
-      colorHex: g.colorHex,
+      name: g.good.name,
+      colorHex: g.good.colorHex,
       unmetUnits,
       unmetValue: unmetUnits * price,
     });
@@ -67,8 +67,8 @@ function computeExportRows(goods: ScopedGoodSummary[]): ExportRow[] {
     if (shippedUnits < 0.0001) continue;
     const price = g.weightedPrice > 0 ? g.weightedPrice : (g.defaultMarketPrice ?? 0);
     rows.push({
-      name: g.name,
-      colorHex: g.colorHex,
+      name: g.good.name,
+      colorHex: g.good.colorHex,
       shippedUnits,
       shippedValue: shippedUnits * price,
     });
@@ -213,7 +213,7 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
   );
 
   const sortedGoods = useMemo(
-    () => [...(goods ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    () => [...(goods ?? [])].sort((a, b) => a.good.name.localeCompare(b.good.name)),
     [goods],
   );
   const defaultGood = useMemo(() => {
@@ -239,7 +239,7 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
   }
 
   const selectedGood =
-    sortedGoods.find((good) => good.key === selectedGoodKey) ?? defaultGood ?? sortedGoods[0];
+    sortedGoods.find((good) => good.good.key === selectedGoodKey) ?? defaultGood ?? sortedGoods[0];
 
   return (
     <div className="flex flex-col gap-4">
@@ -262,15 +262,15 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
 
       <GoodsPressureChart
         goods={goods}
-        selectedGoodKey={selectedGood?.key}
-        onGoodSelect={(good) => setSelectedGoodKey(good.key)}
+        selectedGoodKey={selectedGood?.good.key}
+        onGoodSelect={(good) => setSelectedGoodKey(good.good.key)}
         metric={metric}
         onMetricChange={setMetric}
       />
       <GoodsPriceVsBaseChart
         goods={goods}
-        selectedGoodKey={selectedGood?.key}
-        onGoodSelect={(good) => setSelectedGoodKey(good.key)}
+        selectedGoodKey={selectedGood?.good.key}
+        onGoodSelect={(good) => setSelectedGoodKey(good.good.key)}
       />
       {selectedGood && (
         <section className="flex flex-col gap-3">
@@ -279,14 +279,14 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
               Selected good diagnostic
             </p>
             <select
-              value={selectedGood.key}
+              value={selectedGood.good.key}
               onChange={(event) => setSelectedGoodKey(event.target.value)}
               className="rounded-md border border-game-line bg-game-panel-hover px-2 py-1 text-xs font-semibold text-game-ink-100"
               aria-label="Selected market good"
             >
               {sortedGoods.map((good) => (
-                <option key={good.key} value={good.key}>
-                  {good.name}
+                <option key={good.good.key} value={good.good.key}>
+                  {good.good.name}
                 </option>
               ))}
             </select>

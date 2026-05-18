@@ -118,9 +118,9 @@ function PanelContentInner() {
 }
 
 function profileIdentityKey(profile: ActiveProfileIdentity) {
-  if (profile.kind === "location") return `location:${profile.location_idx}`;
-  if (profile.kind === "country") return `country:${profile.country_idx}`;
-  return `market:${profile.market_id}`;
+  if (profile.kind === "location") return `location:${profile.location.key}`;
+  if (profile.kind === "country") return `country:${profile.country.key}`;
+  return `market:${profile.market.key}`;
 }
 
 function EmptyInsightState() {
@@ -166,13 +166,13 @@ function ProfilePanelTitle({ identity }: { identity: ActiveProfileIdentity }) {
   if (identity.kind === "location") {
     return (
       <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
-        {identity.label}
+        {identity.location.name}
       </span>
     );
   }
 
-  const id = identity.kind === "country" ? identity.country_idx : identity.market_id;
-  return <EntityPanelTitle kind={identity.kind} id={id} fallbackLabel={identity.label} />;
+  const entity = identity.kind === "country" ? identity.country : identity.market;
+  return <EntityPanelTitle kind={identity.kind} id={entity.key} fallbackLabel={entity.name} />;
 }
 
 function EntityPanelTitle({

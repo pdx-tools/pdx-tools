@@ -18,7 +18,7 @@ export function LocationEconomyTab({ profile }: Props) {
       <div className="flex flex-col gap-1">
         {profile.buildings.map((b, i) => (
           <div key={i} className="flex items-center justify-between text-sm">
-            <span className="text-game-ink-300">{b.name}</span>
+            <span className="text-game-ink-300">{b.building.name}</span>
             <span className="font-game-num text-xs text-game-ink-300">
               {formatFloat(b.level, 0)}
             </span>

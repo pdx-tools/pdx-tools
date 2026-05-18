@@ -8,16 +8,20 @@ pub use error::GameDataError;
 pub use optimized::{OptimizedGameBundle, OptimizedMapBundle};
 
 use eu5save::hash::FxHashMap;
+use eu5save::models::GoodName;
 use pdx_map::R16;
 use serde::{Deserialize, Serialize};
 
 use crate::GameLocation;
+use crate::color::Srgb;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct GoodsData {
     pub goods: FxHashMap<String, GoodData>,
 }
 
+/// On-disk bundle format for the three localization maps. Constructs a
+/// runtime [`Localization`] on load.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct LocalizationsData {
     pub countries: FxHashMap<String, String>,
@@ -27,60 +31,55 @@ pub struct LocalizationsData {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GoodData {
-    pub color_hex: String,
+    pub color_hex: Srgb,
     pub default_market_price: f64,
     pub transport_cost: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct LocalizedGoodData {
-    pub key: String,
-    pub name: String,
-    pub color_hex: String,
-    pub default_market_price: f64,
-    pub transport_cost: f64,
+/// Display-name lookup tables, separated from
+#[derive(Debug, Clone, Default)]
+pub struct Localization {
+    countries: FxHashMap<String, String>,
+    goods: FxHashMap<String, String>,
+    buildings: FxHashMap<String, String>,
+}
+
+impl Localization {
+    pub fn new(
+        countries: FxHashMap<String, String>,
+        goods: FxHashMap<String, String>,
+        buildings: FxHashMap<String, String>,
+    ) -> Self {
+        Self {
+            countries,
+            goods,
+            buildings,
+        }
+    }
+
+    pub fn country(&self, tag: &str) -> Option<&str> {
+        self.countries.get(tag).map(String::as_str)
+    }
+
+    pub fn good(&self, good: GoodName<'_>) -> Option<&str> {
+        self.goods.get(good.to_str()).map(String::as_str)
+    }
+
+    pub fn building(&self, key: &str) -> Option<&str> {
+        self.buildings.get(key).map(String::as_str)
+    }
 }
 
 /// EU5 game data
 pub struct GameData {
     pub locations: Vec<GameLocation>,
-    pub localization: FxHashMap<String, String>,
-    pub goods_localization: FxHashMap<String, String>,
-    pub building_localization: FxHashMap<String, String>,
+    pub localization: Localization,
     pub goods: FxHashMap<String, GoodData>,
 }
 
 impl GameData {
-    pub fn localized_country_name(&self, tag: &str) -> Option<&str> {
-        self.localization.get(tag).map(|s| s.as_str())
-    }
-
     pub fn good(&self, name: &str) -> Option<&GoodData> {
         self.goods.get(name)
-    }
-
-    pub fn localized_good_name(&self, key: &str) -> String {
-        self.goods_localization
-            .get(key)
-            .cloned()
-            .unwrap_or_else(|| key.to_string())
-    }
-
-    pub fn localized_building_name(&self, key: &str) -> String {
-        self.building_localization
-            .get(key)
-            .cloned()
-            .unwrap_or_else(|| key.to_string())
-    }
-
-    pub fn localized_good(&self, key: &str) -> Option<LocalizedGoodData> {
-        self.goods.get(key).map(|good| LocalizedGoodData {
-            key: key.to_string(),
-            name: self.localized_good_name(key),
-            color_hex: good.color_hex.clone(),
-            default_market_price: good.default_market_price,
-            transport_cost: good.transport_cost,
-        })
     }
 }
 
@@ -88,12 +87,6 @@ impl std::fmt::Debug for GameData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("OwnedGameData")
             .field("locations_count", &self.locations.len())
-            .field("localization_count", &self.localization.len())
-            .field("goods_localization_count", &self.goods_localization.len())
-            .field(
-                "building_localization_count",
-                &self.building_localization.len(),
-            )
             .field("goods_count", &self.goods.len())
             .finish()
     }

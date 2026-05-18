@@ -3,7 +3,7 @@ import type { Remote } from "comlink";
 import type {
   GradientConfig,
   GradientPalette,
-  HoverDisplayData,
+  DisplayData,
   MapMode,
   SelectionSummaryData,
   CountryPopulationProfile,
@@ -108,7 +108,7 @@ export type Eu5MapWorker = Remote<Eu5MapWorkerModule>;
 
 export type GameInstance = ReturnType<typeof saveWorker>;
 export type PaletteGradients = Record<GradientPalette, string>;
-export type { GradientConfig, HoverDisplayData, SelectionSummaryData };
+export type { GradientConfig, DisplayData, SelectionSummaryData };
 export type { BoxSelectOverlayRect } from "./types/box-select";
 export type { CursorHint } from "./workers/map/map-module";
 
@@ -237,14 +237,14 @@ export function saveWorker(
   saveEngine: Awaited<ReturnType<Eu5Worker["createGame"]>>,
   mapEngine: Awaited<ReturnType<Eu5MapWorker["createMapEngine"]>>,
 ) {
-  let hoverDisplayCallback: ((data: HoverDisplayData) => void) | null = null;
+  let hoverDisplayCallback: ((data: DisplayData) => void) | null = null;
   let selectionCallback: ((data: SelectionSummaryData, gradient?: GradientConfig) => void) | null =
     null;
   let boxSelectRectCallback: ((rect: BoxSelectOverlayRect | null) => void) | null = null;
   let cursorHintCallback: ((hint: CursorHint) => void) | null = null;
 
   saveEngine.onHoverDisplayUpdate(
-    proxy((data: HoverDisplayData) => {
+    proxy((data: DisplayData) => {
       hoverDisplayCallback?.(data);
     }),
   );
@@ -294,7 +294,7 @@ export function saveWorker(
 
     stopHoverTracking: () => mapEngine.stopHoverTracking(),
 
-    onHoverDisplayUpdate: (callback: (data: HoverDisplayData) => void) => {
+    onHoverDisplayUpdate: (callback: (data: DisplayData) => void) => {
       hoverDisplayCallback = callback;
     },
 

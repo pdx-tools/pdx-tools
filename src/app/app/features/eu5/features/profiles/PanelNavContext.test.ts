@@ -22,13 +22,13 @@ describe("panel navigation helpers", () => {
   it("builds typed profile navigation entries", () => {
     expect(countryProfileEntry(42, "France")).toEqual({
       kind: "profile",
-      profile: { kind: "country", country_idx: 42, label: "France" },
+      profile: { kind: "country", country: { key: 42, name: "France" } },
       label: "France",
     });
 
     expect(locationProfileEntry(99, "Paris")).toEqual({
       kind: "focus",
-      profile: { kind: "location", location_idx: 99, label: "Paris" },
+      profile: { kind: "location", location: { key: 99, name: "Paris" } },
       label: "Paris",
     });
   });

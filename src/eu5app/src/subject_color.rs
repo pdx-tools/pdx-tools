@@ -1,4 +1,4 @@
-use crate::color::{Hsv, Rgb};
+use crate::color::{Hsv, UnitRgb};
 
 const OVERLORD_HUE_STRENGTH_ON_SUBJECT: f32 = 0.99;
 const OVERLORD_SATURATION_STRENGTH_ON_SUBJECT: f32 = 0.75;
@@ -8,8 +8,8 @@ const SUBJECT_MAP_COLOR_SATURATE: f32 = -0.1;
 
 /// Blends the subject's map color with the overlord's map color.
 pub fn blend_color(subject_color: (u8, u8, u8), overlord_color: (u8, u8, u8)) -> (u8, u8, u8) {
-    let subject_hsv: Hsv = Rgb::from(subject_color).into();
-    let overlord_hsv: Hsv = Rgb::from(overlord_color).into();
+    let subject_hsv: Hsv = UnitRgb::from(subject_color).into();
+    let overlord_hsv: Hsv = UnitRgb::from(overlord_color).into();
 
     let mut hue_delta = overlord_hsv.h - subject_hsv.h;
     if hue_delta > 180.0 {
@@ -31,7 +31,7 @@ pub fn blend_color(subject_color: (u8, u8, u8), overlord_color: (u8, u8, u8)) ->
         v: (blended_v + SUBJECT_MAP_COLOR_LIGHTEN).clamp(0.0, 1.0),
     };
 
-    Rgb::from(final_hsv).into()
+    UnitRgb::from(final_hsv).into()
 }
 
 #[cfg(test)]

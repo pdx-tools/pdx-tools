@@ -17,7 +17,7 @@ import { LocationDistributionChart } from "./LocationDistributionChart";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { usePanToEntity } from "../../usePanToEntity";
 import { MapHoverButton } from "../../MapHoverButton";
-import { EntityLink } from "../profiles/EntityLink";
+import { CountryLink } from "../profiles/EntityLink";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { StatItem } from "../profiles/components/StatItem";
 import {
@@ -111,13 +111,13 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
       countries.map((c) => ({
         value: [c.totalEfficacy, c.avgEfficacy] as [number, number],
         tag: c.country.tag,
-        name: c.country.name,
+        name: c.country.country.name,
         locationCount: c.locationCount,
         totalEfficacy: c.totalEfficacy,
         avgEfficacy: c.avgEfficacy,
         totalPopulation: c.totalPopulation,
         color: c.country.colorHex,
-        id: c.country.countryIdx,
+        id: c.country.country.key,
         anchorLocationIdx: c.country.anchorLocationIdx,
       })),
     [countries],
@@ -227,21 +227,25 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("name", {
-        sortingFn: "text",
+      columnHelper.accessor("location", {
+        id: "location",
+        sortingFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
           return (
             <MapHoverButton
-              target={{ kind: "location", locationIdx: loc.locationIdx }}
+              target={{ kind: "location", locationIdx: loc.location.key }}
               className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
-                nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
-                panToEntity(loc.locationIdx);
+                nav.pushMany(
+                  [locationProfileEntry(loc.location.key, loc.location.name)],
+                  BACK_LABEL,
+                );
+                panToEntity(loc.location.key);
               }}
             >
-              {loc.name}
+              {loc.location.name}
             </MapHoverButton>
           );
         },
@@ -269,10 +273,11 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
       }),
       columnHelper.accessor("owner", {
         id: "owner",
-        sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
+        sortingFn: (a, b) =>
+          a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => (
-          <EntityLink entity={row.original.owner} aligned backLabel={BACK_LABEL} />
+          <CountryLink country={row.original.owner} aligned backLabel={BACK_LABEL} />
         ),
       }),
       columnHelper.accessor("population", {
@@ -291,7 +296,7 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
       className="w-full"
       columns={columns}
       data={locations}
-      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.locationIdx })}
+      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.location.key })}
       pagination
     />
   );
