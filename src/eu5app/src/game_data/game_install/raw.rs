@@ -337,12 +337,60 @@ impl From<rawzip::ZipFileHeaderRecord<'_>> for ZipEntryMetadata {
     }
 }
 
+/// One localization file folded into the flat [`Localization`] map. `filter`
+/// runs against each parsed key; only keys where it returns `true` are kept.
+/// The runtime map stays an opaque key/value bag; filtering only trims keys
+/// that can never be looked up so the bundle stays small.
+pub struct BlessedFile<'a> {
+    pub path: &'static str,
+    pub filter: Box<dyn Fn(&str) -> bool + 'a>,
+}
+
+/// Country names: drop `*_ADJ` adjective forms and keep only tag-shaped keys
+/// (uppercase letters and underscores).
+fn is_country_tag(key: &str) -> bool {
+    !key.ends_with("_ADJ") && key.chars().all(|c| c.is_ascii_uppercase() || c == '_')
+}
+
+/// Build the ordered blessed-file list. Each file's filter is declared inline
+/// next to its path, so adding a new file is a one-line extension and new
+/// filter strategies do not require touching a central dispatch.
+fn blessed_files<'a>(
+    goods: &'a FxHashSet<String>,
+    buildings: &'a FxHashSet<String>,
+) -> Vec<BlessedFile<'a>> {
+    vec![
+        BlessedFile {
+            path: "game/main_menu/localization/english/country_names_l_english.yml",
+            filter: Box::new(is_country_tag),
+        },
+        BlessedFile {
+            path: "game/main_menu/localization/english/goods_l_english.yml",
+            filter: Box::new(move |k| goods.contains(k)),
+        },
+        BlessedFile {
+            path: "game/main_menu/localization/english/buildings_l_english.yml",
+            filter: Box::new(move |k| buildings.contains(k)),
+        },
+        BlessedFile {
+            path: "game/main_menu/localization/english/location_names/location_names_l_english.yml",
+            filter: Box::new(|_| true),
+        },
+        BlessedFile {
+            path: "game/main_menu/localization/english/province_names_l_english.yml",
+            filter: Box::new(|_| true),
+        },
+        BlessedFile {
+            path: "game/main_menu/localization/english/rebel_l_english.yml",
+            filter: Box::new(|_| true),
+        },
+    ]
+}
+
 /// Source game data parsed from raw game files (EU5 installation or source bundle).
 pub struct RawGameData {
     pub locations: Vec<LocationTerrain>,
-    pub country_localizations: FxHashMap<String, String>,
-    pub goods_localizations: FxHashMap<String, String>,
-    pub building_localizations: FxHashMap<String, String>,
+    pub localizations: FxHashMap<String, String>,
     pub goods: FxHashMap<String, GoodData>,
 }
 
@@ -360,26 +408,14 @@ impl RawGameData {
         let locations_png_reader = fs.open_file("game/in_game/map_data/locations.png")?;
         let locations = parse_locations_data(named_locations, &default_map);
 
-        let country_localizations_data =
-            fs.read_to_string("game/main_menu/localization/english/country_names_l_english.yml")?;
-        let country_localizations =
-            super::parsing::parse_country_localization(&country_localizations_data)
-                .map(|(k, v)| (k.to_owned(), v.to_owned()))
-                .collect();
         let goods = parse_goods_from_source(fs)?;
-        let goods_localizations_data =
-            fs.read_to_string("game/main_menu/localization/english/goods_l_english.yml")?;
-        let goods_localizations = super::parsing::parse_localization(&goods_localizations_data)
-            .filter(|(key, _)| goods.contains_key(*key))
-            .map(|(k, v)| (k.to_owned(), v.to_owned()))
-            .collect();
-        let building_localizations = parse_building_localizations_from_source(fs)?;
+        let building_keys = parse_building_keys_from_source(fs)?;
+        let goods_keys: FxHashSet<String> = goods.keys().cloned().collect();
+        let localizations = load_blessed_localizations(fs, &goods_keys, &building_keys)?;
 
         let me = Self {
             locations: locations.collect(),
-            country_localizations,
-            goods_localizations,
-            building_localizations,
+            localizations,
             goods,
         };
 
@@ -393,11 +429,7 @@ impl RawGameData {
     /// Apply paletted textures and split into runtime [`GameData`] + [`Localization`].
     pub fn materialize(self, textures: &PalettedTextures) -> (GameData, Localization) {
         let locations = textures.location_aware(self.locations);
-        let localization = Localization::new(
-            self.country_localizations,
-            self.goods_localizations,
-            self.building_localizations,
-        );
+        let localization = Localization::new(self.localizations);
         (
             GameData {
                 locations,
@@ -406,6 +438,58 @@ impl RawGameData {
             localization,
         )
     }
+}
+
+/// EU5 localization (across all english localization):
+/// - 222,265 unique keys found
+/// - 61 keys are duplicated across files
+/// - 31 duplicated keys have different values
+fn load_blessed_localizations(
+    fs: &impl GameFileSource,
+    goods: &FxHashSet<String>,
+    buildings: &FxHashSet<String>,
+) -> Result<FxHashMap<String, String>, GameDataError> {
+    let mut entries: FxHashMap<String, String> = FxHashMap::default();
+    let mut same_value_duplicates: usize = 0;
+    let mut conflicting_duplicates: usize = 0;
+    for file in blessed_files(goods, buildings) {
+        let data = fs.read_to_string(file.path)?;
+        for (key, value) in super::parsing::parse_localization(&data) {
+            if !(file.filter)(key) {
+                continue;
+            }
+            match entries.get(key) {
+                Some(prev) if prev == value => {
+                    same_value_duplicates += 1;
+                }
+                Some(prev) => {
+                    tracing::debug!(
+                        name: "eu5.localization.duplicate.conflict",
+                        key = key,
+                        previous = %prev,
+                        replacement = value,
+                        file = file.path,
+                        "later blessed file overrides earlier value for key",
+                    );
+                    conflicting_duplicates += 1;
+                    entries.insert(key.to_owned(), value.to_owned());
+                }
+                None => {
+                    entries.insert(key.to_owned(), value.to_owned());
+                }
+            }
+        }
+    }
+
+    tracing::info!(
+        name: "eu5.localization.loaded",
+        unique_keys = entries.len(),
+        same_value_duplicates,
+        conflicting_duplicates,
+        "blessed localization files merged into flat map",
+    );
+
+    Ok(entries)
 }
 
 fn parse_building_keys_from_source(
@@ -425,20 +509,6 @@ fn parse_building_keys_from_source(
     }
 
     Ok(building_keys)
-}
-
-fn parse_building_localizations_from_source(
-    fs: &impl GameFileSource,
-) -> Result<FxHashMap<String, String>, GameDataError> {
-    let building_keys = parse_building_keys_from_source(fs)?;
-    let building_localizations_data =
-        fs.read_to_string("game/main_menu/localization/english/buildings_l_english.yml")?;
-    Ok(
-        super::parsing::parse_localization(&building_localizations_data)
-            .filter(|(key, _)| building_keys.contains(*key))
-            .map(|(k, v)| (k.to_owned(), v.to_owned()))
-            .collect(),
-    )
 }
 
 fn parse_goods_from_source(
@@ -588,27 +658,22 @@ colors = {
         assert!(!goods.contains_key("readme_entry"));
     }
 
-    #[test]
-    fn parse_building_localizations_from_source_filters_to_building_type_keys() {
-        let source = FakeSource::default()
+    fn blessed_source() -> FakeSource {
+        FakeSource::default()
             .with_file(
-                "game/in_game/common/building_types/common_buildings.txt",
-                r#"
-workshop = {
-    category = basic_industry_category
-    unique_production_methods = {
-        artisan_tools = {
-            tools = 0.1
-        }
-    }
-}
+                "game/main_menu/localization/english/country_names_l_english.yml",
+                r#"l_english:
+ SWE: "Sweden"
+ SWE_ADJ: "Swedish"
+ lowercase_tag: "junk"
+ SHARED: "from_countries"
 "#,
             )
             .with_file(
-                "game/in_game/common/building_types/readme.txt",
-                r#"
-readme_building = {
-}
+                "game/main_menu/localization/english/goods_l_english.yml",
+                r#"l_english:
+ wool: "Wool"
+ unknown_good: "Unknown Good"
 "#,
             )
             .with_file(
@@ -617,18 +682,81 @@ readme_building = {
  workshop: "Workshop"
  workshop_desc: "A place for craft production."
  artisan_tools: "Artisan Tools"
- basic_industry_category: "Basic Industry"
- readme_building: "Readme Building"
 "#,
-            );
+            )
+            .with_file(
+                "game/main_menu/localization/english/location_names/location_names_l_english.yml",
+                r#"l_english:
+ stockholm: "Stockholm"
+"#,
+            )
+            .with_file(
+                "game/main_menu/localization/english/province_names_l_english.yml",
+                r#"l_english:
+ svealand: "Svealand"
+"#,
+            )
+            .with_file(
+                "game/main_menu/localization/english/rebel_l_english.yml",
+                r#"l_english:
+ peasant_rebels: "Peasant Rebels"
+"#,
+            )
+    }
 
-        let localizations = parse_building_localizations_from_source(&source).unwrap();
+    fn allow(items: &[&str]) -> FxHashSet<String> {
+        items.iter().map(|s| (*s).to_owned()).collect()
+    }
 
-        assert_eq!(localizations.get("workshop").unwrap(), "Workshop");
-        assert_eq!(localizations.len(), 1);
-        assert!(!localizations.contains_key("workshop_desc"));
-        assert!(!localizations.contains_key("artisan_tools"));
-        assert!(!localizations.contains_key("basic_industry_category"));
-        assert!(!localizations.contains_key("readme_building"));
+    #[test]
+    fn load_blessed_localizations_merges_files_into_flat_map() {
+        let source = blessed_source();
+        let goods = allow(&["wool"]);
+        let buildings = allow(&["workshop"]);
+        let entries = load_blessed_localizations(&source, &goods, &buildings).unwrap();
+
+        assert_eq!(entries.get("SWE").unwrap(), "Sweden");
+        assert_eq!(entries.get("wool").unwrap(), "Wool");
+        assert_eq!(entries.get("workshop").unwrap(), "Workshop");
+        assert_eq!(entries.get("stockholm").unwrap(), "Stockholm");
+        assert_eq!(entries.get("svealand").unwrap(), "Svealand");
+        assert_eq!(entries.get("peasant_rebels").unwrap(), "Peasant Rebels");
+    }
+
+    #[test]
+    fn load_blessed_localizations_filters_country_adjectives_and_non_tags() {
+        let source = blessed_source();
+        let entries =
+            load_blessed_localizations(&source, &allow(&["wool"]), &allow(&["workshop"])).unwrap();
+
+        assert!(!entries.contains_key("SWE_ADJ"));
+        assert!(!entries.contains_key("lowercase_tag"));
+    }
+
+    #[test]
+    fn load_blessed_localizations_filters_goods_and_buildings_by_allowlist() {
+        let source = blessed_source();
+        let entries =
+            load_blessed_localizations(&source, &allow(&["wool"]), &allow(&["workshop"])).unwrap();
+
+        assert!(!entries.contains_key("unknown_good"));
+        assert!(!entries.contains_key("workshop_desc"));
+        assert!(!entries.contains_key("artisan_tools"));
+    }
+
+    #[test]
+    fn load_blessed_localizations_later_files_override_earlier_files() {
+        // Override across files: stockholm appears in both location_names and
+        // province_names (later wins).
+        let source = blessed_source().with_file(
+            "game/main_menu/localization/english/province_names_l_english.yml",
+            r#"l_english:
+ svealand: "Svealand"
+ stockholm: "Stockholm Province"
+"#,
+        );
+        let entries =
+            load_blessed_localizations(&source, &allow(&["wool"]), &allow(&["workshop"])).unwrap();
+        assert_eq!(entries.get("stockholm").unwrap(), "Stockholm Province");
     }
 }

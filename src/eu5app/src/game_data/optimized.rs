@@ -132,11 +132,7 @@ where
         let mut buf = vec![0; self.localizations.0 as usize];
         pdx_zstd::decode_to(entry.data(), &mut buf)?;
         let data: LocalizationsData = postcard::from_bytes(&buf)?;
-        Ok(Localization::new(
-            data.countries,
-            data.goods,
-            data.buildings,
-        ))
+        Ok(Localization::new(data.entries))
     }
 }
 
@@ -256,13 +252,8 @@ mod tests {
     use crate::color::Srgb;
     use crate::game_data::GoodData;
     use eu5save::hash::FxHashMap;
-    use eu5save::models::{BStr, GoodName};
     use rawzip::CompressionMethod;
     use std::io::{Cursor, Write};
-
-    fn good_name(s: &str) -> GoodName<'_> {
-        GoodName::new(BStr::new(s.as_bytes()))
-    }
 
     #[test]
     fn optimized_bundle_reads_game_data_bin_goods() {
@@ -289,35 +280,30 @@ mod tests {
 
     #[test]
     fn localization_bundle_reads_localizations_bin() {
-        let mut goods_localization = FxHashMap::default();
-        goods_localization.insert("livestock".to_string(), "Livestock".to_string());
-        let mut building_localization = FxHashMap::default();
-        building_localization.insert("workshop".to_string(), "Workshop".to_string());
-        let zip = test_loc_zip(LocalizationsData {
-            countries: FxHashMap::default(),
-            goods: goods_localization,
-            buildings: building_localization,
-        });
+        let mut entries = FxHashMap::default();
+        entries.insert("livestock".to_string(), "Livestock".to_string());
+        entries.insert("workshop".to_string(), "Workshop".to_string());
+        let zip = test_loc_zip(LocalizationsData { entries });
 
         let loc = OptimizedLocalizationBundle::open(zip)
             .unwrap()
             .into_localization()
             .unwrap();
 
-        assert_eq!(loc.good(good_name("livestock")), Some("Livestock"));
-        assert_eq!(loc.building("workshop"), Some("Workshop"));
+        assert_eq!(loc.get("livestock"), Some("Livestock"));
+        assert_eq!(loc.get("workshop"), Some("Workshop"));
     }
 
     #[test]
-    fn localization_bundle_falls_back_to_raw_keys() {
+    fn localization_bundle_returns_none_for_missing_keys() {
         let zip = test_loc_zip(LocalizationsData::default());
         let loc = OptimizedLocalizationBundle::open(zip)
             .unwrap()
             .into_localization()
             .unwrap();
 
-        assert_eq!(loc.good(good_name("unknown_good")), None);
-        assert_eq!(loc.building("unknown_building"), None);
+        assert_eq!(loc.get("unknown_good"), None);
+        assert_eq!(loc.get("unknown_building"), None);
     }
 
     #[test]

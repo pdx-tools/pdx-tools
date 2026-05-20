@@ -46,9 +46,9 @@ impl<'a> Present for TableCellSource<'a> {
     fn present(self, ctx: &crate::presentation::LocalizationContext<'_, '_>) -> Self::Output {
         match self {
             TableCellSource::Text(text) => TableCell::Text(text),
-            TableCellSource::Country(idx) => TableCell::Text(ctx.resolve_country(idx).name),
-            TableCellSource::Good(good) => TableCell::Text(ctx.resolve_good(good).name),
-            TableCellSource::Location(idx) => TableCell::Text(ctx.resolve_location(idx).name),
+            TableCellSource::Country(idx) => TableCell::Text(idx.present(ctx).name),
+            TableCellSource::Good(good) => TableCell::Text(good.present(ctx).name),
+            TableCellSource::Location(idx) => TableCell::Text(idx.present(ctx).name),
             TableCellSource::Integer(value) => TableCell::Integer(value),
             TableCellSource::Float { value, decimals } => TableCell::Float { value, decimals },
         }

@@ -7,7 +7,7 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
   "location": [
     {
       "id": 1,
-      "name": "stockholm",
+      "name": "Stockholm",
       "owner": {
         "id": 3,
         "name": "Sweden",

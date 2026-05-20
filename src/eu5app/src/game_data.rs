@@ -8,7 +8,6 @@ pub use error::GameDataError;
 pub use optimized::{OptimizedGameBundle, OptimizedLocalizationBundle, OptimizedMapBundle};
 
 use eu5save::hash::FxHashMap;
-use eu5save::models::GoodName;
 use pdx_map::R16;
 use serde::{Deserialize, Serialize};
 
@@ -20,13 +19,11 @@ pub struct GoodsData {
     pub goods: FxHashMap<String, GoodData>,
 }
 
-/// On-disk bundle format for the three localization maps. Constructs a
+/// On-disk bundle format for the flat localization map. Constructs a
 /// runtime [`Localization`] on load.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct LocalizationsData {
-    pub countries: FxHashMap<String, String>,
-    pub goods: FxHashMap<String, String>,
-    pub buildings: FxHashMap<String, String>,
+    pub entries: FxHashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -36,37 +33,19 @@ pub struct GoodData {
     pub transport_cost: f64,
 }
 
-/// Display-name lookup tables, separated from
+/// Opaque flat key/value display-name lookup table.
 #[derive(Debug, Clone, Default)]
 pub struct Localization {
-    countries: FxHashMap<String, String>,
-    goods: FxHashMap<String, String>,
-    buildings: FxHashMap<String, String>,
+    entries: FxHashMap<String, String>,
 }
 
 impl Localization {
-    pub fn new(
-        countries: FxHashMap<String, String>,
-        goods: FxHashMap<String, String>,
-        buildings: FxHashMap<String, String>,
-    ) -> Self {
-        Self {
-            countries,
-            goods,
-            buildings,
-        }
+    pub fn new(entries: FxHashMap<String, String>) -> Self {
+        Self { entries }
     }
 
-    pub fn country(&self, tag: &str) -> Option<&str> {
-        self.countries.get(tag).map(String::as_str)
-    }
-
-    pub fn good(&self, good: GoodName<'_>) -> Option<&str> {
-        self.goods.get(good.to_str()).map(String::as_str)
-    }
-
-    pub fn building(&self, key: &str) -> Option<&str> {
-        self.buildings.get(key).map(String::as_str)
+    pub fn get(&self, key: &str) -> Option<&str> {
+        self.entries.get(key).map(String::as_str)
     }
 }
 
@@ -104,4 +83,26 @@ pub trait TextureProvider {
 
     /// Get expected size of east texture.
     fn east_texture_size(&self) -> usize;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn localization_get_returns_value_for_known_key() {
+        let mut entries = FxHashMap::default();
+        entries.insert("workshop".to_string(), "Workshop".to_string());
+        entries.insert("SWE".to_string(), "Sweden".to_string());
+        let loc = Localization::new(entries);
+
+        assert_eq!(loc.get("workshop"), Some("Workshop"));
+        assert_eq!(loc.get("SWE"), Some("Sweden"));
+    }
+
+    #[test]
+    fn localization_get_returns_none_for_missing_key() {
+        let loc = Localization::default();
+        assert_eq!(loc.get("missing"), None);
+    }
 }
