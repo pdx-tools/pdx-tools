@@ -108,7 +108,7 @@ const SORT_BY_MODE: Partial<Record<MapMode, { id: string; desc: boolean }>> = {
   possibleTax: { id: "possibleTax", desc: true },
   taxGap: { id: "taxGap", desc: true },
   stateEfficacy: { id: "development", desc: true },
-  political: { id: "owner", desc: false },
+  political: { id: "development", desc: true },
   markets: { id: "market", desc: false },
   religion: { id: "name", desc: false },
 };
