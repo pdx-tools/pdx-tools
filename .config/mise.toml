@@ -179,7 +179,11 @@ description = "Run complete development setup (backend and frontend)"
 depends = ["build:wasm", "dev:app", "dev:docs", "start:services:dev", "serve:api:dev"]
 
 [tasks."test:wasm"]
-run = "cargo test -p wasm-*"
+depends = ["setup:wasm"]
+run = [
+    "cargo test -p wasm-*",
+    "cargo test -p wasm-eu5 --target wasm32-unknown-unknown",
+]
 hide = true
 
 [tasks."test:cargo"]

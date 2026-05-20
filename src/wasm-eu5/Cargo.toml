@@ -24,3 +24,6 @@ serde = { workspace = true, features = ["derive", "rc"] }
 tsify = { workspace = true, default-features = false, features = ["js"] }
 wasm-bindgen = { workspace = true }
 wasm-pdx-core = { workspace = true }
+
+[dev-dependencies]
+wasm-bindgen-test = { workspace = true }
