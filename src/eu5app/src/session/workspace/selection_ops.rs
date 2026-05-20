@@ -37,13 +37,14 @@ impl<'bump> Eu5Workspace<'bump> {
             derived_entity_anchor,
         );
 
-        let is_same_entity_click = outcome.focused_location.is_none()
+        let focused_location = outcome.focused_location.filter(|&f| self.can_focus(f));
+        let is_same_entity_click = focused_location.is_none()
             && !outcome.locations.is_empty()
             && self.selection_state.len() == outcome.locations.len()
             && derived_entity_anchor
                 .is_some_and(|anchor| self.same_entity(anchor, clicked_idx, mode));
 
-        if let Some(focus) = outcome.focused_location {
+        if let Some(focus) = focused_location {
             if self.selection_state.focused_location() == Some(focus) {
                 self.selection_state.clear_focus();
             } else {
@@ -70,7 +71,7 @@ impl<'bump> Eu5Workspace<'bump> {
             &self.selection_state,
             derived_entity_anchor,
         );
-        if outcome.focused_location.is_some() {
+        if outcome.focused_location.is_some_and(|f| self.can_focus(f)) {
             self.selection_state.set_focus(clicked_idx);
         } else {
             for idx in outcome.locations {
@@ -99,6 +100,18 @@ impl<'bump> Eu5Workspace<'bump> {
         }
         self.recompute_derived_scope();
         self.rebuild_colors()
+    }
+
+    /// Filled terrain joins its country for a click, but it has no profile
+    /// of its own, so a click inside the selected country does not focus it.
+    fn can_focus(&self, idx: eu5save::models::LocationIdx) -> bool {
+        !self
+            .gamestate
+            .locations
+            .index(idx)
+            .location()
+            .owner
+            .is_dummy()
     }
 
     /// Replace the selection with the country owning `anchor_idx`.
@@ -478,8 +491,23 @@ impl<'bump> Eu5Workspace<'bump> {
     pub fn can_highlight_location(&self, location_idx: eu5save::models::LocationIdx) -> bool {
         let terrain = self.location_terrain(location_idx);
 
-        // Can highlight if terrain is not water and not impassable
-        !terrain.is_water() && terrain.is_passable()
+        if !terrain.is_water() && terrain.is_passable() {
+            return true;
+        }
+
+        // Surrounded special-terrain participates in highlights as if it were
+        // part of the donor's country.
+        self.fill_donor(location_idx).is_some()
+    }
+
+    /// The owner for highlight purposes: a location's own owner, or for
+    /// filled terrain, the owner of its donor.
+    fn resolved_political_owner(
+        &self,
+        location_idx: eu5save::models::LocationIdx,
+    ) -> Option<eu5save::models::RealCountryId> {
+        self.owner_at_timeline_date(self.fill_source(location_idx))
+            .real_id()
     }
 
     pub fn clear_highlights(&mut self) {
@@ -509,8 +537,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
         for entry in self.gamestate.locations.iter() {
             let idx = entry.idx();
-            if entry.location().owner.real_id() != Some(owner) || !self.can_highlight_location(idx)
-            {
+            if self.resolved_political_owner(idx) != Some(owner) {
                 continue;
             }
 
@@ -575,13 +602,14 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn highlight_owner_at_timeline_date(&mut self, location_idx: eu5save::models::LocationIdx) {
-        let owner = self.owner_at_timeline_date(location_idx);
+        let owner = self.owner_at_timeline_date(self.political_fill_source(location_idx));
         if owner.is_dummy() {
             return;
         }
         let mut idxs = self.gamestate.locations.create_index(false);
         for entry in self.gamestate.locations.iter() {
-            idxs[entry.idx()] = self.owner_at_timeline_date(entry.idx()) == owner;
+            idxs[entry.idx()] =
+                self.owner_at_timeline_date(self.political_fill_source(entry.idx())) == owner;
         }
         self.highlight_locations_by_index(&idxs);
     }
@@ -611,13 +639,12 @@ impl<'bump> Eu5Workspace<'bump> {
 
             self.highlight_locations_by_index(&idxs);
         } else {
-            let owner = location.owner.real_id();
+            let owner = self.resolved_political_owner(location_idx);
             let mut idxs = self.gamestate.locations.create_index(false);
 
             if let Some(owner) = owner {
                 for entry in self.gamestate.locations.iter() {
-                    idxs[entry.idx()] =
-                        entry.location().owner.real_id().is_some_and(|x| x == owner);
+                    idxs[entry.idx()] = self.resolved_political_owner(entry.idx()) == Some(owner);
                 }
             }
 

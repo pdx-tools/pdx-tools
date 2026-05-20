@@ -8,7 +8,7 @@ pub use error::GameDataError;
 pub use optimized::{OptimizedGameBundle, OptimizedLocalizationBundle, OptimizedMapBundle};
 
 use eu5save::hash::FxHashMap;
-use pdx_map::R16;
+use pdx_map::{R16, TopologyIndex};
 use serde::{Deserialize, Serialize};
 
 use crate::GameLocation;
@@ -53,6 +53,7 @@ impl Localization {
 pub struct GameData {
     pub locations: Vec<GameLocation>,
     pub goods: FxHashMap<String, GoodData>,
+    pub topology: TopologyIndex,
 }
 
 impl GameData {
@@ -66,6 +67,7 @@ impl std::fmt::Debug for GameData {
         f.debug_struct("OwnedGameData")
             .field("locations_count", &self.locations.len())
             .field("goods_count", &self.goods.len())
+            .field("topology_len", &self.topology.len())
             .finish()
     }
 }

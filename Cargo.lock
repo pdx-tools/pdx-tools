@@ -2975,6 +2975,8 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "futures-channel",
+ "postcard",
+ "serde",
  "tokio",
  "tracing",
  "wasm-bindgen",
