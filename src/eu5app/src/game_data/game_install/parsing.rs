@@ -152,6 +152,15 @@ pub fn parse_building_keys(data: &str) -> Result<FxHashSet<String>, GameDataErro
     Ok(buildings.into_keys().collect())
 }
 
+pub fn parse_religion_keys(data: &str) -> Result<FxHashSet<String>, GameDataError> {
+    let reader = jomini::text::TokenReader::new(data.as_bytes());
+    let religions: FxHashMap<String, IgnoredAny> =
+        jomini::text::de::TextDeserializer::from_utf8_reader(reader)
+            .deserialize()
+            .map_err(|e| GameDataError::Jomini(e, "religions"))?;
+    Ok(religions.into_keys().collect())
+}
+
 pub fn parse_goods(
     data: &str,
     _source_name: &str,

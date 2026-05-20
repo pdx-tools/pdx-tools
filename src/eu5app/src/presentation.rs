@@ -637,13 +637,13 @@ impl Present for ReligionId {
     type Output = Localized<String>;
 
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
-        let key = ctx
-            .gamestate
-            .religion_manager
-            .lookup(self)
-            .map(|r| r.name.to_str().to_string())
-            .unwrap_or_else(|| format!("religion_{}", self.value()));
-        Localized::new(key.clone(), key)
+        let Some(religion) = ctx.gamestate.religion_manager.lookup(self) else {
+            let fallback = format!("religion_{}", self.value());
+            return Localized::new(fallback.clone(), fallback);
+        };
+        let key = religion.key.to_str().to_string();
+        let name = ctx.localization.get(&key).unwrap_or(&key).to_string();
+        Localized::new(key, name)
     }
 }
 
