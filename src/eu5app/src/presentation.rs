@@ -513,7 +513,8 @@ impl Present for CountryIdx {
 
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
         let entry = ctx.gamestate.countries.index(self);
-        let tag = entry.tag().to_str();
+        let tag = entry.tag();
+        let tag = tag.to_str();
         let name = match entry.data().map(|data| &data.country_name) {
             Some(CountryName::Object(obj)) => {
                 if let Some(override_name) = obj.override_name {
