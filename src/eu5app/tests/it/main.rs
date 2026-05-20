@@ -83,6 +83,7 @@ fn workspace_scenarios() {
         let Some(mut loaded) = utils::build_workspace(save_name) else {
             return;
         };
+        let localization = loaded.localization;
         let ws = &mut loaded.workspace;
 
         ws.clear_selection();
@@ -140,16 +141,17 @@ fn workspace_scenarios() {
             .unwrap();
         let owner = ws.gamestate().countries.index(owner_idx);
         let owner_tag = owner.tag();
+        let localized = ws.localized(&localization);
         let snapshot = serde_json::json!({
             "save_version": ws.gamestate().metadata().version.to_string(),
             "map_mode_colors": color_hashes,
             "location": [{
                 "id": location.id().value(),
-                "name": ws.presenter().location_display_name(location.idx()),
+                "name": localized.presenter().location_display_name(location.idx()),
                 "owner": {
                     "id": owner.id().value(),
                     "tag": owner_tag.to_str(),
-                    "name": ws.presenter().country_display_name(owner_idx)
+                    "name": localized.presenter().country_display_name(owner_idx)
                 },
             }],
             "selection_counts": {

@@ -45,6 +45,11 @@ const mapZipUrls = import.meta.glob<true, string, string>(
   { query: "?url", eager: true, import: "default" },
 );
 
+const locZipUrls = import.meta.glob<true, string, string>(
+  "../../../../../assets/game/eu5/*/loc-en.zip",
+  { query: "?url", eager: true, import: "default" },
+);
+
 type BundleVersion = { version: string; major: number; minor: number };
 
 function parseBundleVersion(version: string): BundleVersion | null {
@@ -58,19 +63,28 @@ function extractDirVersion(path: string): string | null {
   return match ? match[1] : null;
 }
 
-function discoverBundles(): Map<string, { game: string; map: string }> {
+function discoverBundles(): Map<string, { game: string; map: string; loc: string }> {
   const games = new Map<string, string>();
   for (const [path, url] of Object.entries(gameZipUrls)) {
     const version = extractDirVersion(path);
     if (version !== null) games.set(version, url);
   }
 
-  const complete = new Map<string, { game: string; map: string }>();
+  const locs = new Map<string, string>();
+  for (const [path, url] of Object.entries(locZipUrls)) {
+    const version = extractDirVersion(path);
+    if (version !== null) locs.set(version, url);
+  }
+
+  const complete = new Map<string, { game: string; map: string; loc: string }>();
   for (const [path, mapUrl] of Object.entries(mapZipUrls)) {
     const version = extractDirVersion(path);
     if (version === null || parseBundleVersion(version) === null) continue;
     const gameUrl = games.get(version);
-    if (gameUrl) complete.set(version, { game: gameUrl, map: mapUrl });
+    const locUrl = locs.get(version);
+    if (gameUrl && locUrl) {
+      complete.set(version, { game: gameUrl, map: mapUrl, loc: locUrl });
+    }
   }
 
   return complete;
@@ -94,7 +108,7 @@ function resolveBundleVersion(requested: string): string {
   return latest;
 }
 
-function getBundleUrls(version: string): { game: string; map: string } {
+function getBundleUrls(version: string): { game: string; map: string; loc: string } {
   const resolved = resolveBundleVersion(version);
   return completeBundles.get(resolved)!;
 }
@@ -154,19 +168,22 @@ export class Eu5GameAdapter {
   ) {
     // Coordinate part fetching on the main thread. The game worker calls
     // `gameBundle.selectVersion(version)` after parsing save metadata, which
-    // eagerly kicks off both `game.zip` and `map.zip` fetches against the
-    // resolved bundle family. Each worker awaits only its own part. The
-    // alternative (fetching inside workers) either blocks on gamestate parse
-    // or runs duplicate fetches.
-    //
-    // Progress: the external UI still shows one combined load. We split the
-    // old "fetch" allocation evenly across game.zip and map.zip.
+    // eagerly kicks off `game.zip`, `map.zip`, and `loc-en.zip` fetches against
+    // the resolved bundle family. Each worker awaits only the parts it needs:
+    // the map worker awaits `map.zip`; the game worker awaits `game.zip` to
+    // build the workspace and sync map buffers, then awaits
+    // `loc-en.zip` to localize before exposing presentation endpoints.
     let resolvedVersion: string | null = null;
-    let resolveBundles: (b: { game: Promise<Uint8Array>; map: Promise<Uint8Array> }) => void;
+    let resolveBundles: (b: {
+      game: Promise<Uint8Array>;
+      map: Promise<Uint8Array>;
+      loc: Promise<Uint8Array>;
+    }) => void;
 
     const bundlesPromise = new Promise<{
       game: Promise<Uint8Array>;
       map: Promise<Uint8Array>;
+      loc: Promise<Uint8Array>;
     }>((resolve) => {
       resolveBundles = resolve;
     });
@@ -188,12 +205,17 @@ export class Eu5GameAdapter {
       }
       resolvedVersion = version;
       const urls = getBundleUrls(version);
-      resolveBundles({ game: fetchPart(urls.game), map: fetchPart(urls.map) });
+      resolveBundles({
+        game: fetchPart(urls.game),
+        map: fetchPart(urls.map),
+        loc: fetchPart(urls.loc),
+      });
     };
 
     const gameBundleApi = {
       selectVersion,
       fetch: async () => (await bundlesPromise).game,
+      fetchLocalization: async () => (await bundlesPromise).loc,
     };
 
     const mapBundleApi = {

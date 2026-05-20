@@ -22,7 +22,7 @@ use crate::entity_profile::{
     CountriesData, CountryRef, CountrySearchEntry, EntityKind, LocationSearchEntry, LocationsData,
     MarketRef,
 };
-use crate::game_data::GameData;
+use crate::game_data::{GameData, Localization};
 use crate::hover::presentation::DisplayData as HoverDisplayData;
 use crate::insights::buildings::presentation::BuildingLevelsInsightData;
 use crate::insights::control::presentation::{ControlInsightData, PoliticalWorldScoreboard};
@@ -48,10 +48,14 @@ pub struct Eu5Presenter<'a, 'bump> {
 }
 
 impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
-    pub(crate) fn new(workspace: &'a Eu5Workspace<'bump>) -> Self {
+    pub(crate) fn new(workspace: &'a Eu5Workspace<'bump>, localization: &'a Localization) -> Self {
         Self {
             workspace,
-            ctx: LocalizationContext::new(workspace.game_data(), workspace.gamestate()),
+            ctx: LocalizationContext::new(
+                localization,
+                workspace.game_data(),
+                workspace.gamestate(),
+            ),
         }
     }
 
@@ -403,20 +407,26 @@ impl From<CultureId> for UiCultureId {
 }
 
 pub struct LocalizationContext<'a, 'bump> {
+    pub localization: &'a Localization,
     pub game_data: &'a GameData,
     pub gamestate: &'a eu5save::models::Gamestate<'bump>,
 }
 
 impl<'a, 'bump> LocalizationContext<'a, 'bump> {
-    pub fn new(game_data: &'a GameData, gamestate: &'a eu5save::models::Gamestate<'bump>) -> Self {
+    pub fn new(
+        localization: &'a Localization,
+        game_data: &'a GameData,
+        gamestate: &'a eu5save::models::Gamestate<'bump>,
+    ) -> Self {
         Self {
+            localization,
             game_data,
             gamestate,
         }
     }
 
-    fn localization(&self) -> &crate::game_data::Localization {
-        &self.game_data.localization
+    fn localization(&self) -> &Localization {
+        self.localization
     }
 
     fn resolve_country_name_key(&self, country_name: &CountryName) -> String {

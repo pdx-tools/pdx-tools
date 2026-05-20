@@ -8,7 +8,8 @@ use eu5app::entity_profile::location::presentation::LocationProfile;
 use eu5app::entity_profile::market::presentation::{MarketGoodsSection, MarketProfile};
 use eu5app::entity_profile::{CountriesData, LocationsData};
 use eu5app::game_data::GameData;
-use eu5app::game_data::OptimizedGameBundle;
+use eu5app::game_data::Localization;
+use eu5app::game_data::{OptimizedGameBundle, OptimizedLocalizationBundle};
 use eu5app::hover::presentation::DisplayData as HoverDisplayData;
 use eu5app::insights::buildings::presentation::BuildingLevelsInsightData;
 use eu5app::insights::control::presentation::{ControlInsightData, PoliticalWorldScoreboard};
@@ -356,38 +357,112 @@ impl Eu5WasmGameBundle {
     }
 }
 
+/// Localization bundle (`loc-en.zip`) loaded into a [`Localization`] payload.
 #[wasm_bindgen]
 #[derive(Debug)]
-pub struct Eu5App {
-    _loaded_save: Eu5LoadedSave,
-    app: eu5app::Eu5Workspace<'static>, // depends on _loaded_save
-
-    _meta: Eu5SaveMetadataHandle,
+pub struct Eu5WasmLocalizationBundle {
+    localization: Localization,
 }
 
 #[wasm_bindgen]
-impl Eu5App {
+impl Eu5WasmLocalizationBundle {
+    #[wasm_bindgen]
+    pub fn open(data: Vec<u8>) -> Result<Self, JsError> {
+        let bundle = OptimizedLocalizationBundle::open(data)
+            .map_err(|e| JsError::new(&format!("Failed to open localization bundle: {e}")))?;
+        let localization = bundle
+            .into_localization()
+            .map_err(|e| JsError::new(&format!("Failed to deserialize localization: {e}")))?;
+        Ok(Self { localization })
+    }
+}
+
+/// Workspace built from the game bundle (no localization yet).
+#[wasm_bindgen]
+#[derive(Debug)]
+pub struct Eu5WasmWorkspace {
+    _loaded_save: Eu5LoadedSave,
+    app: eu5app::Eu5Workspace<'static>, // depends on _loaded_save
+    meta: Eu5SaveMetadataHandle,
+}
+
+#[wasm_bindgen]
+impl Eu5WasmWorkspace {
     #[wasm_bindgen]
     pub fn init(
         mut gamestate: Eu5WasmGamestate,
         game_bundle: Eu5WasmGameBundle,
-    ) -> Result<Eu5App, JsError> {
+    ) -> Result<Eu5WasmWorkspace, JsError> {
         let meta = gamestate.meta;
         let eu5_gamestate = gamestate.parsed_save.take_gamestate();
         let eu5_gamestate =
             unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(eu5_gamestate) };
         let app = eu5app::Eu5Workspace::new(eu5_gamestate, game_bundle.game_data)
             .map_err(|x| JsError::new(&format!("Failed to create EU5 app: {x}")))?;
-
-        Ok(Eu5App {
+        Ok(Eu5WasmWorkspace {
             _loaded_save: gamestate.parsed_save,
             app,
-            _meta: meta,
+            meta,
         })
     }
 
+    /// Initial map-mode-colored location buffer, available before localization
+    /// is joined so the map worker can sync GPU buffers in parallel.
+    #[wasm_bindgen]
+    pub fn location_arrays(&self) -> BufferParts {
+        let data = self.app.location_arrays().as_data();
+        BufferParts {
+            ptr: data.as_ptr() as *const u8,
+            len: data.len(),
+        }
+    }
+
+    /// Initial grouping table for the default map mode.
+    #[wasm_bindgen]
+    pub fn grouping_table(&self) -> js_sys::Uint32Array {
+        let table = self.app.build_grouping_table();
+        let raw: Vec<u32> = table.iter().map(|(_, g)| g.raw()).collect();
+        js_sys::Uint32Array::from(raw.as_slice())
+    }
+
+    /// Center color id for the player's capital, when present.
+    #[wasm_bindgen]
+    pub fn get_starting_coordinates(&self) -> Option<CapitalColorId> {
+        let color_id = self.app.player_capital_color_id()?;
+        Some(CapitalColorId {
+            color_id: color_id.value(),
+        })
+    }
+
+    /// Join a localization bundle to produce the final localized [`Eu5App`].
+    #[wasm_bindgen]
+    pub fn localize(self, localization: Eu5WasmLocalizationBundle) -> Eu5App {
+        Eu5App {
+            _loaded_save: self._loaded_save,
+            app: self.app,
+            localization: localization.localization,
+            _meta: self.meta,
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Debug)]
+pub struct Eu5App {
+    _loaded_save: Eu5LoadedSave,
+    app: eu5app::Eu5Workspace<'static>, // depends on _loaded_save
+    localization: Localization,
+    _meta: Eu5SaveMetadataHandle,
+}
+
+#[wasm_bindgen]
+impl Eu5App {
     fn app(&self) -> &eu5app::Eu5Workspace<'_> {
         &self.app
+    }
+
+    fn localized(&self) -> eu5app::LocalizedEu5Workspace<'_, 'static> {
+        self.app.localized(&self.localization)
     }
 
     #[wasm_bindgen]
@@ -548,13 +623,13 @@ impl Eu5App {
     /// Display name for the focused location.
     #[wasm_bindgen]
     pub fn focused_location_display_name(&self) -> Option<String> {
-        self.app().presenter().focused_location_display_name()
+        self.localized().presenter().focused_location_display_name()
     }
 
     /// Display name for the current derived entity scope.
     #[wasm_bindgen]
     pub fn scope_display_name(&self) -> Option<String> {
-        self.app().presenter().scope_display_name()
+        self.localized().presenter().scope_display_name()
     }
 
     #[wasm_bindgen]
@@ -638,11 +713,14 @@ impl Eu5App {
             total_population,
             preset,
             focused_location: sel.focused_location().map(|idx| idx.value()),
-            focused_location_display_name: self.app.presenter().focused_location_display_name(),
+            focused_location_display_name: self
+                .localized()
+                .presenter()
+                .focused_location_display_name(),
             derived_entity_anchor,
-            scope_display_name: self.app.presenter().scope_display_name(),
+            scope_display_name: self.localized().presenter().scope_display_name(),
             first_location_idx,
-            active_profile: self.app.presenter().active_profile_identity(),
+            active_profile: self.localized().presenter().active_profile_identity(),
         }
     }
 
@@ -650,7 +728,7 @@ impl Eu5App {
     /// Shows location-level detail when scoped and hovering an in-scope location.
     #[wasm_bindgen]
     pub fn get_hover_data(&self, location_id: u32) -> HoverDisplayData {
-        self.app()
+        self.localized()
             .presenter()
             .hover_data(eu5save::models::LocationIdx::new(location_id))
     }
@@ -663,7 +741,7 @@ impl Eu5App {
         let version = &self.app().gamestate().metadata.version;
         let patch_version = format!("{}.{}.{}", version.major, version.minor, version.patch);
 
-        let overlay_data = self.app().presenter().get_overlay_data();
+        let overlay_data = self.localized().presenter().get_overlay_data();
         ScreenshotOverlayData {
             title: map_mode_title,
             save_date,
@@ -683,19 +761,21 @@ impl Eu5App {
     /// Return all countries with their localized identity, tag, and capital location idx.
     #[wasm_bindgen]
     pub fn get_countries(&self) -> CountriesData {
-        self.app().presenter().country_search_entries()
+        self.localized().presenter().country_search_entries()
     }
 
     /// Return all named map-present locations for search.
     #[wasm_bindgen]
     pub fn get_locations(&self) -> LocationsData {
-        self.app().presenter().location_search_entries()
+        self.localized().presenter().location_search_entries()
     }
 
     /// Calculate state efficacy scores for all nations
     #[wasm_bindgen]
     pub fn get_state_efficacy(&self) -> StateEfficacyInsightData {
-        self.app().presenter().calculate_state_efficacy_insight()
+        self.localized()
+            .presenter()
+            .calculate_state_efficacy_insight()
     }
 
     /// Returns the anchor location index for the best default political country,
@@ -711,7 +791,7 @@ impl Eu5App {
     /// countries outside the top tier.
     #[wasm_bindgen]
     pub fn get_political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
-        self.app().presenter().political_world_scoreboard()
+        self.localized().presenter().political_world_scoreboard()
     }
 
     // ── Entity Profile Endpoints ──────────────────────────────────────────
@@ -720,14 +800,14 @@ impl Eu5App {
     /// when the filter spans multiple entities.
     #[wasm_bindgen]
     pub fn get_entity_header(&self) -> Option<EntityHeader> {
-        self.app().presenter().entity_header()
+        self.localized().presenter().entity_header()
     }
 
     /// Full country profile resolved from `country_idx`, independent of current map mode.
     #[wasm_bindgen]
     pub fn get_country_profile(&self, country_idx: u32) -> Option<CountryProfile> {
         let idx = eu5save::models::CountryIdx::from_value(country_idx)?;
-        self.app().presenter().country_profile_for(idx)
+        self.localized().presenter().country_profile_for(idx)
     }
 
     /// Population profile resolved from `country_idx`, independent of current map mode.
@@ -737,61 +817,65 @@ impl Eu5App {
         country_idx: u32,
     ) -> Option<CountryPopulationProfile> {
         let idx = eu5save::models::CountryIdx::from_value(country_idx)?;
-        self.app().presenter().country_population_profile_for(idx)
+        self.localized()
+            .presenter()
+            .country_population_profile_for(idx)
     }
 
     /// Full market profile resolved from `market_id`, independent of current map mode.
     #[wasm_bindgen]
     pub fn get_market_profile(&self, market_id: u32) -> Option<MarketProfile> {
         let id = eu5save::models::MarketId::new(market_id);
-        self.app().presenter().market_profile_for(id)
+        self.localized().presenter().market_profile_for(id)
     }
 
     /// Goods section for the current market scope.
     #[wasm_bindgen]
     pub fn get_market_goods_section(&self) -> Option<MarketGoodsSection> {
-        self.app().presenter().market_goods_section()
+        self.localized().presenter().market_goods_section()
     }
 
     /// Locations section for the current single-entity scope.
     #[wasm_bindgen]
     pub fn get_locations_section(&self) -> Option<LocationsSection> {
-        self.app().presenter().locations_section()
+        self.localized().presenter().locations_section()
     }
 
     /// Diplomacy section for the current single country scope.
     /// Returns None for market entities.
     #[wasm_bindgen]
     pub fn get_diplomacy_section(&self) -> Option<DiplomacySection> {
-        self.app().presenter().diplomacy_section()
+        self.localized().presenter().diplomacy_section()
     }
 
     /// Full profile for a single location.
     #[wasm_bindgen]
     pub fn get_location_profile(&self, location_idx: u32) -> Option<LocationProfile> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        self.app().presenter().location_profile_for(idx)
+        self.localized().presenter().location_profile_for(idx)
     }
 
     /// Development insight data: per-country aggregates for scatter chart and
     /// top development locations for the table view.
     #[wasm_bindgen]
     pub fn get_development_insight(&self) -> DevelopmentInsightData {
-        self.app().presenter().calculate_development_insight()
+        self.localized().presenter().calculate_development_insight()
     }
 
     /// Possible-tax insight data: per-country realized vs ceiling aggregates
     /// and top locations by possible tax.
     #[wasm_bindgen]
     pub fn get_possible_tax_insight(&self) -> PossibleTaxInsightData {
-        self.app().presenter().calculate_possible_tax_insight()
+        self.localized()
+            .presenter()
+            .calculate_possible_tax_insight()
     }
 
     /// Tax-gap insight data: per-country realized vs ceiling aggregates and
     /// top locations by signed gap.
     #[wasm_bindgen]
     pub fn get_tax_gap_insight(&self) -> TaxGapInsightData {
-        self.app().presenter().calculate_tax_gap_insight()
+        self.localized().presenter().calculate_tax_gap_insight()
     }
 
     /// Possible-tax scope: location count, summed possible tax ceiling, and
@@ -812,42 +896,44 @@ impl Eu5App {
     /// and top production-opportunity locations for the current filter.
     #[wasm_bindgen]
     pub fn get_market_insight(&self) -> MarketInsightData {
-        self.app().presenter().calculate_market_insight()
+        self.localized().presenter().calculate_market_insight()
     }
 
     /// Population insight data: scoped country population, concentration curve,
     /// and top populated locations for the current filter.
     #[wasm_bindgen]
     pub fn get_population_insight(&self) -> PopulationInsightData {
-        self.app().presenter().calculate_population_insight()
+        self.localized().presenter().calculate_population_insight()
     }
 
     /// Building levels insight data: scoped building type aggregates, foreign owner
     /// summaries, heatmap cells, and top locations by total levels.
     #[wasm_bindgen]
     pub fn get_building_levels_insight(&self) -> BuildingLevelsInsightData {
-        self.app().presenter().calculate_building_levels_insight()
+        self.localized()
+            .presenter()
+            .calculate_building_levels_insight()
     }
 
     /// Religion insight data: state religions by ruled population and per-religion
     /// follower/coverage breakdown for the current filter.
     #[wasm_bindgen]
     pub fn get_religion_insight(&self) -> ReligionInsightData {
-        self.app().presenter().calculate_religion_insight()
+        self.localized().presenter().calculate_religion_insight()
     }
 
     /// RGO insight data: scoped raw-material capacity by material and location,
     /// profile deltas against global share, and owner-control breakdown.
     #[wasm_bindgen]
     pub fn get_rgo_insight(&self) -> RgoInsightData {
-        self.app().presenter().calculate_rgo_insight()
+        self.localized().presenter().calculate_rgo_insight()
     }
 
     /// Control insight data: per-country lost-development breakdown, concentration
     /// curve, and top locations by lost development for the current filter.
     #[wasm_bindgen]
     pub fn get_control_insight(&self) -> ControlInsightData {
-        self.app().presenter().calculate_control_insight()
+        self.localized().presenter().calculate_control_insight()
     }
 
     /// Entity header for a specific entity resolved from `anchor_location_idx`,
@@ -855,7 +941,7 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_entity_header_for(&self, anchor_location_idx: u32) -> Option<EntityHeader> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app().presenter().entity_header_for(idx)
+        self.localized().presenter().entity_header_for(idx)
     }
 
     /// Goods section for a specific market entity's full territory.
@@ -865,14 +951,14 @@ impl Eu5App {
         anchor_location_idx: u32,
     ) -> Option<MarketGoodsSection> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app().presenter().market_goods_section_for(idx)
+        self.localized().presenter().market_goods_section_for(idx)
     }
 
     /// Goods pressure profile for a specific market entity's full territory.
     #[wasm_bindgen]
     pub fn get_market_goods_profile(&self, market_id: u32) -> Vec<ScopedGoodSummary> {
         let id = eu5save::models::MarketId::new(market_id);
-        self.app().presenter().market_goods_profile(id)
+        self.localized().presenter().market_goods_profile(id)
     }
 
     /// Production-opportunity locations for a specific market entity's full territory.
@@ -882,14 +968,14 @@ impl Eu5App {
         market_id: u32,
     ) -> Vec<MarketProductionLocationSummary> {
         let id = eu5save::models::MarketId::new(market_id);
-        self.app().presenter().market_locations_profile(id)
+        self.localized().presenter().market_locations_profile(id)
     }
 
     /// Locations section for a specific entity's full territory.
     #[wasm_bindgen]
     pub fn get_locations_section_for(&self, anchor_location_idx: u32) -> Option<LocationsSection> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app().presenter().locations_section_for(idx)
+        self.localized().presenter().locations_section_for(idx)
     }
 
     /// Diplomacy section for a specific country entity.
@@ -897,7 +983,7 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_diplomacy_section_for(&self, anchor_location_idx: u32) -> Option<DiplomacySection> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.app().presenter().diplomacy_section_for(idx)
+        self.localized().presenter().diplomacy_section_for(idx)
     }
 }
 

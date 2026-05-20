@@ -63,6 +63,7 @@ export const createGame = async (
     gameBundle: {
       selectVersion: (version: string) => void;
       fetch: () => Promise<Uint8Array>;
+      fetchLocalization: () => Promise<Uint8Array>;
     };
     onProgress?: (increment: number) => void;
   },
@@ -91,6 +92,11 @@ export const createGame = async (
   const version = `${metadata.version.major}.${metadata.version.minor}`;
   gameBundle.selectVersion(version);
   const gameDataTask = gameBundle.fetch();
+  const localizationTask = gameBundle
+    .fetchLocalization()
+    .then((data) =>
+      timeSync("Create localization bundle", () => wasm_eu5.Eu5WasmLocalizationBundle.open(data)),
+    );
 
   const gamestate = timeSync("Parse Gamestate", () => saveParser.parse_gamestate());
   onProgress?.(30); // Parse gamestate
@@ -101,8 +107,47 @@ export const createGame = async (
   );
   onProgress?.(5); // Create game bundle
 
-  const app = timeSync("Initialize App", () => wasm_eu5.Eu5App.init(gamestate, gameBundleWasm));
-  onProgress?.(5); // Initialize app
+  // Build the workspace first so the map worker can begin syncing
+  // GPU buffers in parallel with the localization fetch.
+  const workspace = timeSync("Initialize workspace", () =>
+    wasm_eu5.Eu5WasmWorkspace.init(gamestate, gameBundleWasm),
+  );
+  onProgress?.(3); // Initialize workspace
+
+  if (!mapEndpoint) {
+    throw new Error("Map endpoint not initialized");
+  }
+  const map = mapEndpoint;
+
+  const startingLocation = workspace.get_starting_coordinates();
+  if (startingLocation) {
+    map.center_at_color_id(startingLocation.color_id);
+  }
+
+  const syncInitialLocationData = () => {
+    const buffer = workspace.location_arrays();
+    const locationArray = new Uint32Array(wasm.memory.buffer, buffer.ptr(), buffer.len());
+
+    // Making a clone in the web worker instead of having the channel do a
+    // structured clone is 100x faster on firefox. Decreased latency from 600ms
+    // to 6ms.
+    const cloned = new Uint32Array(locationArray);
+    return map.syncLocationData(transfer(cloned, [cloned.buffer]));
+  };
+
+  const syncInitialGroupingTable = () => {
+    const raw = workspace.grouping_table();
+    return map.syncGroupingTable(transfer(raw, [raw.buffer]));
+  };
+
+  await syncInitialLocationData();
+  syncInitialGroupingTable();
+  onProgress?.(5); // Sync location data
+
+  const localizationBundle = await localizationTask;
+  onProgress?.(2); // Create localization bundle
+
+  const app = timeSync("Localize app", () => workspace.localize(localizationBundle));
 
   // Build search indexes once after initialization.
   const countryIndex = timeSync("Build country index", () => app.get_countries().countries);
@@ -115,15 +160,6 @@ export const createGame = async (
     eu5: paletteToCss("eu5"),
   };
 
-  if (!mapEndpoint) {
-    throw new Error("Map endpoint not initialized");
-  }
-
-  const startingLocation = app.get_starting_coordinates();
-  if (startingLocation) {
-    mapEndpoint.center_at_color_id(startingLocation.color_id);
-  }
-
   const syncLocationData = () => {
     const buffer = app.location_arrays();
     const locationArray = new Uint32Array(wasm.memory.buffer, buffer.ptr(), buffer.len());
@@ -132,12 +168,12 @@ export const createGame = async (
     // structured clone is 100x faster on firefox. Decreased latency from 600ms
     // to 6ms.
     const cloned = new Uint32Array(locationArray);
-    return mapEndpoint?.syncLocationData(transfer(cloned, [cloned.buffer]));
+    return map.syncLocationData(transfer(cloned, [cloned.buffer]));
   };
 
   const syncGroupingTable = () => {
     const raw = app.grouping_table();
-    return mapEndpoint?.syncGroupingTable(transfer(raw, [raw.buffer]));
+    return map.syncGroupingTable(transfer(raw, [raw.buffer]));
   };
 
   const syncAll = () => {
@@ -160,11 +196,7 @@ export const createGame = async (
     return p;
   };
 
-  await syncLocationData();
-  syncGroupingTable();
-  onProgress?.(5); // Sync location data
-
-  mapEndpoint.onLocationHoverUpdate(
+  map.onLocationHoverUpdate(
     proxy((event) => {
       app.clear_highlights();
 
@@ -179,7 +211,7 @@ export const createGame = async (
     }),
   );
 
-  mapEndpoint.onLocationClickUpdate(
+  map.onLocationClickUpdate(
     proxy((event) => {
       let gradient: GradientConfig | undefined;
       if (event.kind === "update") {
@@ -199,7 +231,7 @@ export const createGame = async (
     }),
   );
 
-  mapEndpoint.onBoxSelectCommit(
+  map.onBoxSelectCommit(
     proxy((event) => {
       let gradient: GradientConfig | undefined;
       switch (event.operation) {
