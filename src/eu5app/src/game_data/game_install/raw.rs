@@ -1,6 +1,6 @@
 use super::parsing::{
     parse_building_keys, parse_default_map, parse_goods, parse_locations_data,
-    parse_map_mode_colors, parse_named_locations, resolve_goods,
+    parse_map_mode_colors, parse_named_locations, parse_religion_keys, resolve_goods,
 };
 use crate::game_data::game_install::parsing::LocationTerrain;
 use crate::game_data::{GameData, GameDataError, GoodData, Localization, TextureProvider};
@@ -358,6 +358,7 @@ fn is_country_tag(key: &str) -> bool {
 fn blessed_files<'a>(
     goods: &'a FxHashSet<String>,
     buildings: &'a FxHashSet<String>,
+    religions: &'a FxHashSet<String>,
 ) -> Vec<BlessedFile<'a>> {
     vec![
         BlessedFile {
@@ -371,6 +372,10 @@ fn blessed_files<'a>(
         BlessedFile {
             path: "game/main_menu/localization/english/buildings_l_english.yml",
             filter: Box::new(move |k| buildings.contains(k)),
+        },
+        BlessedFile {
+            path: "game/main_menu/localization/english/religion_l_english.yml",
+            filter: Box::new(move |k| religions.contains(k)),
         },
         BlessedFile {
             path: "game/main_menu/localization/english/location_names/location_names_l_english.yml",
@@ -410,8 +415,10 @@ impl RawGameData {
 
         let goods = parse_goods_from_source(fs)?;
         let building_keys = parse_building_keys_from_source(fs)?;
+        let religion_keys = parse_religion_keys_from_source(fs)?;
         let goods_keys: FxHashSet<String> = goods.keys().cloned().collect();
-        let localizations = load_blessed_localizations(fs, &goods_keys, &building_keys)?;
+        let localizations =
+            load_blessed_localizations(fs, &goods_keys, &building_keys, &religion_keys)?;
 
         let me = Self {
             locations: locations.collect(),
@@ -448,11 +455,12 @@ fn load_blessed_localizations(
     fs: &impl GameFileSource,
     goods: &FxHashSet<String>,
     buildings: &FxHashSet<String>,
+    religions: &FxHashSet<String>,
 ) -> Result<FxHashMap<String, String>, GameDataError> {
     let mut entries: FxHashMap<String, String> = FxHashMap::default();
     let mut same_value_duplicates: usize = 0;
     let mut conflicting_duplicates: usize = 0;
-    for file in blessed_files(goods, buildings) {
+    for file in blessed_files(goods, buildings, religions) {
         let data = fs.read_to_string(file.path)?;
         for (key, value) in super::parsing::parse_localization(&data) {
             if !(file.filter)(key) {
@@ -509,6 +517,25 @@ fn parse_building_keys_from_source(
     }
 
     Ok(building_keys)
+}
+
+fn parse_religion_keys_from_source(
+    fs: &impl GameFileSource,
+) -> Result<FxHashSet<String>, GameDataError> {
+    let religion_files = fs.walk_directory("game/in_game/common/religions", &[".txt"])?;
+    let mut religion_keys = FxHashSet::default();
+    for path in religion_files {
+        let Some(file_name) = path.rsplit('/').next() else {
+            continue;
+        };
+        if file_name.to_ascii_lowercase().contains("readme") {
+            continue;
+        }
+        let data = fs.read_to_string(&path)?;
+        religion_keys.extend(parse_religion_keys(&data)?);
+    }
+
+    Ok(religion_keys)
 }
 
 fn parse_goods_from_source(
@@ -685,6 +712,14 @@ colors = {
 "#,
             )
             .with_file(
+                "game/main_menu/localization/english/religion_l_english.yml",
+                r#"l_english:
+ catholic: "Catholicism"
+ catholic_ADJ: "Catholic"
+ unknown_religion: "Unknown Religion"
+"#,
+            )
+            .with_file(
                 "game/main_menu/localization/english/location_names/location_names_l_english.yml",
                 r#"l_english:
  stockholm: "Stockholm"
@@ -713,11 +748,13 @@ colors = {
         let source = blessed_source();
         let goods = allow(&["wool"]);
         let buildings = allow(&["workshop"]);
-        let entries = load_blessed_localizations(&source, &goods, &buildings).unwrap();
+        let religions = allow(&["catholic"]);
+        let entries = load_blessed_localizations(&source, &goods, &buildings, &religions).unwrap();
 
         assert_eq!(entries.get("SWE").unwrap(), "Sweden");
         assert_eq!(entries.get("wool").unwrap(), "Wool");
         assert_eq!(entries.get("workshop").unwrap(), "Workshop");
+        assert_eq!(entries.get("catholic").unwrap(), "Catholicism");
         assert_eq!(entries.get("stockholm").unwrap(), "Stockholm");
         assert_eq!(entries.get("svealand").unwrap(), "Svealand");
         assert_eq!(entries.get("peasant_rebels").unwrap(), "Peasant Rebels");
@@ -726,8 +763,13 @@ colors = {
     #[test]
     fn load_blessed_localizations_filters_country_adjectives_and_non_tags() {
         let source = blessed_source();
-        let entries =
-            load_blessed_localizations(&source, &allow(&["wool"]), &allow(&["workshop"])).unwrap();
+        let entries = load_blessed_localizations(
+            &source,
+            &allow(&["wool"]),
+            &allow(&["workshop"]),
+            &allow(&["catholic"]),
+        )
+        .unwrap();
 
         assert!(!entries.contains_key("SWE_ADJ"));
         assert!(!entries.contains_key("lowercase_tag"));
@@ -736,12 +778,19 @@ colors = {
     #[test]
     fn load_blessed_localizations_filters_goods_and_buildings_by_allowlist() {
         let source = blessed_source();
-        let entries =
-            load_blessed_localizations(&source, &allow(&["wool"]), &allow(&["workshop"])).unwrap();
+        let entries = load_blessed_localizations(
+            &source,
+            &allow(&["wool"]),
+            &allow(&["workshop"]),
+            &allow(&["catholic"]),
+        )
+        .unwrap();
 
         assert!(!entries.contains_key("unknown_good"));
         assert!(!entries.contains_key("workshop_desc"));
         assert!(!entries.contains_key("artisan_tools"));
+        assert!(!entries.contains_key("catholic_ADJ"));
+        assert!(!entries.contains_key("unknown_religion"));
     }
 
     #[test]
@@ -755,8 +804,13 @@ colors = {
  stockholm: "Stockholm Province"
 "#,
         );
-        let entries =
-            load_blessed_localizations(&source, &allow(&["wool"]), &allow(&["workshop"])).unwrap();
+        let entries = load_blessed_localizations(
+            &source,
+            &allow(&["wool"]),
+            &allow(&["workshop"]),
+            &allow(&["catholic"]),
+        )
+        .unwrap();
         assert_eq!(entries.get("stockholm").unwrap(), "Stockholm Province");
     }
 }
