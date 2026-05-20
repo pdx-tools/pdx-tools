@@ -187,6 +187,135 @@ where
     }
 }
 
+pub trait Eu5GameFileSourceExt: GameFileSource {
+    fn parse_goods(&self) -> Result<FxHashMap<String, GoodData>, GameDataError>;
+    fn parse_building_keys(&self) -> Result<FxHashSet<String>, GameDataError>;
+    fn parse_religion_keys(&self) -> Result<FxHashSet<String>, GameDataError>;
+    fn load_blessed_localizations(
+        &self,
+        goods: &FxHashSet<String>,
+        buildings: &FxHashSet<String>,
+        religions: &FxHashSet<String>,
+    ) -> Result<FxHashMap<String, String>, GameDataError>;
+}
+
+impl<T: GameFileSource + ?Sized> Eu5GameFileSourceExt for T {
+    fn parse_goods(&self) -> Result<FxHashMap<String, GoodData>, GameDataError> {
+        let goods_files = match self.walk_directory("game/in_game/common/goods", &[".txt"]) {
+            Ok(files) => files,
+            Err(GameDataError::MissingData(_)) => return Ok(FxHashMap::default()),
+            Err(GameDataError::Io(e, _)) if e.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(FxHashMap::default());
+            }
+            Err(e) => return Err(e),
+        };
+
+        let mut raw_goods = FxHashMap::default();
+        for path in goods_files {
+            let Some(file_name) = path.rsplit('/').next() else {
+                continue;
+            };
+            if file_name.to_ascii_lowercase().contains("readme") {
+                continue;
+            }
+            let data = self.read_to_string(&path)?;
+            raw_goods.extend(parse_goods(&data, &path)?);
+        }
+
+        let color_data = self.read_to_string("game/main_menu/common/named_colors/02_map.txt")?;
+        let colors = parse_map_mode_colors(&color_data)?;
+        resolve_goods(raw_goods, &colors)
+    }
+
+    fn parse_building_keys(&self) -> Result<FxHashSet<String>, GameDataError> {
+        let building_files =
+            self.walk_directory("game/in_game/common/building_types", &[".txt"])?;
+        let mut building_keys = FxHashSet::default();
+        for path in building_files {
+            let Some(file_name) = path.rsplit('/').next() else {
+                continue;
+            };
+            if file_name.to_ascii_lowercase().contains("readme") {
+                continue;
+            }
+            let data = self.read_to_string(&path)?;
+            building_keys.extend(parse_building_keys(&data)?);
+        }
+
+        Ok(building_keys)
+    }
+
+    fn parse_religion_keys(&self) -> Result<FxHashSet<String>, GameDataError> {
+        let religion_files = self.walk_directory("game/in_game/common/religions", &[".txt"])?;
+        let mut religion_keys = FxHashSet::default();
+        for path in religion_files {
+            let Some(file_name) = path.rsplit('/').next() else {
+                continue;
+            };
+            if file_name.to_ascii_lowercase().contains("readme") {
+                continue;
+            }
+            let data = self.read_to_string(&path)?;
+            religion_keys.extend(parse_religion_keys(&data)?);
+        }
+
+        Ok(religion_keys)
+    }
+
+    /// EU5 localization (across all english localization):
+    /// - 222,265 unique keys found
+    /// - 61 keys are duplicated across files
+    /// - 31 duplicated keys have different values
+    fn load_blessed_localizations(
+        &self,
+        goods: &FxHashSet<String>,
+        buildings: &FxHashSet<String>,
+        religions: &FxHashSet<String>,
+    ) -> Result<FxHashMap<String, String>, GameDataError> {
+        let mut entries: FxHashMap<String, String> = FxHashMap::default();
+        let mut same_value_duplicates: usize = 0;
+        let mut conflicting_duplicates: usize = 0;
+        for file in blessed_files(goods, buildings, religions) {
+            let data = self.read_to_string(file.path)?;
+            for (key, value) in super::parsing::parse_localization(&data) {
+                if !(file.filter)(key) {
+                    continue;
+                }
+                match entries.get(key) {
+                    Some(prev) if prev == value => {
+                        same_value_duplicates += 1;
+                    }
+                    Some(prev) => {
+                        tracing::debug!(
+                            name: "eu5.localization.duplicate.conflict",
+                            key = key,
+                            previous = %prev,
+                            replacement = value,
+                            file = file.path,
+                            "later blessed file overrides earlier value for key",
+                        );
+                        conflicting_duplicates += 1;
+                        entries.insert(key.to_owned(), value.to_owned());
+                    }
+                    None => {
+                        entries.insert(key.to_owned(), value.to_owned());
+                    }
+                }
+            }
+        }
+
+        tracing::info!(
+            name: "eu5.localization.loaded",
+            unique_keys = entries.len(),
+            same_value_duplicates,
+            conflicting_duplicates,
+            "blessed localization files merged into flat map",
+        );
+
+        Ok(entries)
+    }
+}
+
 pub struct GameInstallationDirectory {
     base_dir: std::path::PathBuf,
 }
@@ -413,12 +542,12 @@ impl RawGameData {
         let locations_png_reader = fs.open_file("game/in_game/map_data/locations.png")?;
         let locations = parse_locations_data(named_locations, &default_map);
 
-        let goods = parse_goods_from_source(fs)?;
-        let building_keys = parse_building_keys_from_source(fs)?;
-        let religion_keys = parse_religion_keys_from_source(fs)?;
+        let goods = fs.parse_goods()?;
+        let building_keys = fs.parse_building_keys()?;
+        let religion_keys = fs.parse_religion_keys()?;
         let goods_keys: FxHashSet<String> = goods.keys().cloned().collect();
         let localizations =
-            load_blessed_localizations(fs, &goods_keys, &building_keys, &religion_keys)?;
+            fs.load_blessed_localizations(&goods_keys, &building_keys, &religion_keys)?;
 
         let me = Self {
             locations: locations.collect(),
@@ -445,130 +574,6 @@ impl RawGameData {
             localization,
         )
     }
-}
-
-/// EU5 localization (across all english localization):
-/// - 222,265 unique keys found
-/// - 61 keys are duplicated across files
-/// - 31 duplicated keys have different values
-fn load_blessed_localizations(
-    fs: &impl GameFileSource,
-    goods: &FxHashSet<String>,
-    buildings: &FxHashSet<String>,
-    religions: &FxHashSet<String>,
-) -> Result<FxHashMap<String, String>, GameDataError> {
-    let mut entries: FxHashMap<String, String> = FxHashMap::default();
-    let mut same_value_duplicates: usize = 0;
-    let mut conflicting_duplicates: usize = 0;
-    for file in blessed_files(goods, buildings, religions) {
-        let data = fs.read_to_string(file.path)?;
-        for (key, value) in super::parsing::parse_localization(&data) {
-            if !(file.filter)(key) {
-                continue;
-            }
-            match entries.get(key) {
-                Some(prev) if prev == value => {
-                    same_value_duplicates += 1;
-                }
-                Some(prev) => {
-                    tracing::debug!(
-                        name: "eu5.localization.duplicate.conflict",
-                        key = key,
-                        previous = %prev,
-                        replacement = value,
-                        file = file.path,
-                        "later blessed file overrides earlier value for key",
-                    );
-                    conflicting_duplicates += 1;
-                    entries.insert(key.to_owned(), value.to_owned());
-                }
-                None => {
-                    entries.insert(key.to_owned(), value.to_owned());
-                }
-            }
-        }
-    }
-
-    tracing::info!(
-        name: "eu5.localization.loaded",
-        unique_keys = entries.len(),
-        same_value_duplicates,
-        conflicting_duplicates,
-        "blessed localization files merged into flat map",
-    );
-
-    Ok(entries)
-}
-
-fn parse_building_keys_from_source(
-    fs: &impl GameFileSource,
-) -> Result<FxHashSet<String>, GameDataError> {
-    let building_files = fs.walk_directory("game/in_game/common/building_types", &[".txt"])?;
-    let mut building_keys = FxHashSet::default();
-    for path in building_files {
-        let Some(file_name) = path.rsplit('/').next() else {
-            continue;
-        };
-        if file_name.to_ascii_lowercase().contains("readme") {
-            continue;
-        }
-        let data = fs.read_to_string(&path)?;
-        building_keys.extend(parse_building_keys(&data)?);
-    }
-
-    Ok(building_keys)
-}
-
-fn parse_religion_keys_from_source(
-    fs: &impl GameFileSource,
-) -> Result<FxHashSet<String>, GameDataError> {
-    let religion_files = fs.walk_directory("game/in_game/common/religions", &[".txt"])?;
-    let mut religion_keys = FxHashSet::default();
-    for path in religion_files {
-        let Some(file_name) = path.rsplit('/').next() else {
-            continue;
-        };
-        if file_name.to_ascii_lowercase().contains("readme") {
-            continue;
-        }
-        let data = fs.read_to_string(&path)?;
-        religion_keys.extend(parse_religion_keys(&data)?);
-    }
-
-    Ok(religion_keys)
-}
-
-fn parse_goods_from_source(
-    fs: &impl GameFileSource,
-) -> Result<FxHashMap<String, GoodData>, GameDataError> {
-    let goods_files = match fs.walk_directory("game/in_game/common/goods", &[".txt"]) {
-        Ok(files) => files,
-        Err(GameDataError::MissingData(_)) => return Ok(FxHashMap::default()),
-        Err(GameDataError::Io(e, _)) if e.kind() == std::io::ErrorKind::NotFound => {
-            return Ok(FxHashMap::default());
-        }
-        Err(e) => return Err(e),
-    };
-
-    let mut raw_goods = FxHashMap::default();
-    for path in goods_files {
-        let Some(file_name) = path.rsplit('/').next() else {
-            continue;
-        };
-        if file_name.to_ascii_lowercase().contains("readme") {
-            continue;
-        }
-        let data = fs.read_to_string(&path)?;
-        raw_goods.extend(parse_goods(&data, &path)?);
-    }
-
-    let color_data = read_goods_color_data(fs)?;
-    let colors = parse_map_mode_colors(&color_data)?;
-    resolve_goods(raw_goods, &colors)
-}
-
-fn read_goods_color_data(fs: &impl GameFileSource) -> Result<String, GameDataError> {
-    fs.read_to_string("game/main_menu/common/named_colors/02_map.txt")
 }
 
 /// This allows one to eagerly open the locations.png file from the source, so
@@ -675,7 +680,7 @@ colors = {
 "#,
             );
 
-        let goods = parse_goods_from_source(&source).unwrap();
+        let goods = source.parse_goods().unwrap();
 
         assert_eq!(goods.len(), 1);
         assert_eq!(
@@ -749,7 +754,9 @@ colors = {
         let goods = allow(&["wool"]);
         let buildings = allow(&["workshop"]);
         let religions = allow(&["catholic"]);
-        let entries = load_blessed_localizations(&source, &goods, &buildings, &religions).unwrap();
+        let entries = source
+            .load_blessed_localizations(&goods, &buildings, &religions)
+            .unwrap();
 
         assert_eq!(entries.get("SWE").unwrap(), "Sweden");
         assert_eq!(entries.get("wool").unwrap(), "Wool");
@@ -763,13 +770,13 @@ colors = {
     #[test]
     fn load_blessed_localizations_filters_country_adjectives_and_non_tags() {
         let source = blessed_source();
-        let entries = load_blessed_localizations(
-            &source,
-            &allow(&["wool"]),
-            &allow(&["workshop"]),
-            &allow(&["catholic"]),
-        )
-        .unwrap();
+        let entries = source
+            .load_blessed_localizations(
+                &allow(&["wool"]),
+                &allow(&["workshop"]),
+                &allow(&["catholic"]),
+            )
+            .unwrap();
 
         assert!(!entries.contains_key("SWE_ADJ"));
         assert!(!entries.contains_key("lowercase_tag"));
@@ -778,13 +785,13 @@ colors = {
     #[test]
     fn load_blessed_localizations_filters_goods_and_buildings_by_allowlist() {
         let source = blessed_source();
-        let entries = load_blessed_localizations(
-            &source,
-            &allow(&["wool"]),
-            &allow(&["workshop"]),
-            &allow(&["catholic"]),
-        )
-        .unwrap();
+        let entries = source
+            .load_blessed_localizations(
+                &allow(&["wool"]),
+                &allow(&["workshop"]),
+                &allow(&["catholic"]),
+            )
+            .unwrap();
 
         assert!(!entries.contains_key("unknown_good"));
         assert!(!entries.contains_key("workshop_desc"));
@@ -804,13 +811,13 @@ colors = {
  stockholm: "Stockholm Province"
 "#,
         );
-        let entries = load_blessed_localizations(
-            &source,
-            &allow(&["wool"]),
-            &allow(&["workshop"]),
-            &allow(&["catholic"]),
-        )
-        .unwrap();
+        let entries = source
+            .load_blessed_localizations(
+                &allow(&["wool"]),
+                &allow(&["workshop"]),
+                &allow(&["catholic"]),
+            )
+            .unwrap();
         assert_eq!(entries.get("stockholm").unwrap(), "Stockholm Province");
     }
 }
