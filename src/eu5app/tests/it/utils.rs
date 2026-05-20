@@ -6,6 +6,7 @@ use std::io::BufWriter;
 use std::path::Path;
 use std::sync::{LazyLock, Mutex};
 
+use eu5app::game_data::Localization;
 use eu5app::game_data::game_install::Eu5GameInstall;
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader, Eu5Workspace};
 use eu5save::models::Gamestate;
@@ -89,8 +90,8 @@ static TOKENS: LazyLock<BasicTokenResolver> = LazyLock::new(|| {
 
 pub struct LoadedWorkspace {
     pub workspace: Eu5Workspace<'static>,
-    #[allow(dead_code)]
-    pub loaded_save: Eu5LoadedSave,
+    pub localization: Localization,
+    _loaded_save: Eu5LoadedSave,
 }
 
 pub fn build_workspace(save_name: &str) -> Option<LoadedWorkspace> {
@@ -120,9 +121,9 @@ pub fn build_workspace(save_name: &str) -> Option<LoadedWorkspace> {
         return None;
     }
 
-    let game_data = Eu5GameInstall::open(&bundle_path)
-        .map(Eu5GameInstall::into_game_data)
+    let install = Eu5GameInstall::open(&bundle_path)
         .unwrap_or_else(|e| panic!("{save_name}: {}: {e}", bundle_path.display()));
+    let (_textures, game_data, localization) = install.into_inner();
 
     let mut loaded_save = loader
         .parse_tracked()
@@ -137,7 +138,8 @@ pub fn build_workspace(save_name: &str) -> Option<LoadedWorkspace> {
 
     Some(LoadedWorkspace {
         workspace,
-        loaded_save,
+        localization,
+        _loaded_save: loaded_save,
     })
 }
 

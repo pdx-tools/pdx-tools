@@ -3,7 +3,7 @@ use super::parsing::{
     parse_map_mode_colors, parse_named_locations, resolve_goods,
 };
 use crate::game_data::game_install::parsing::LocationTerrain;
-use crate::game_data::{GameData, GameDataError, GoodData, TextureProvider};
+use crate::game_data::{GameData, GameDataError, GoodData, Localization, TextureProvider};
 use crate::{ColorIdx, GameLocation, hemisphere_size};
 use eu5save::hash::{FnvHashMap, FxHashMap, FxHashSet};
 use pdx_map::{Hemisphere, HemisphereLength, R16, R16Palette, Rgb, World, WorldLength, WorldSize};
@@ -390,17 +390,21 @@ impl RawGameData {
         Ok((me, builder))
     }
 
-    pub fn into_game_data(self, textures: &PalettedTextures) -> GameData {
+    /// Apply paletted textures and split into runtime [`GameData`] + [`Localization`].
+    pub fn materialize(self, textures: &PalettedTextures) -> (GameData, Localization) {
         let locations = textures.location_aware(self.locations);
-        GameData {
-            locations,
-            localization: crate::game_data::Localization::new(
-                self.country_localizations,
-                self.goods_localizations,
-                self.building_localizations,
-            ),
-            goods: self.goods,
-        }
+        let localization = Localization::new(
+            self.country_localizations,
+            self.goods_localizations,
+            self.building_localizations,
+        );
+        (
+            GameData {
+                locations,
+                goods: self.goods,
+            },
+            localization,
+        )
     }
 }
 

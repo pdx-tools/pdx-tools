@@ -116,7 +116,7 @@ where
     let version_dir = out_dir.join("eu5").join(game_version);
     std::fs::create_dir_all(&version_dir)?;
 
-    // Game part: language/lookup data consumed by the game worker.
+    // Game part: language-agnostic gameplay/lookup data consumed by the game worker.
     let game_path = version_dir.join("game.zip");
     {
         let output = std::fs::File::create(&game_path)?;
@@ -126,18 +126,27 @@ where
         write_entry(&mut archive, "location_lookup.bin", &locations)?;
         write_entry(
             &mut archive,
+            "game_data.bin",
+            GoodsData {
+                goods: raw_game_data.goods,
+            },
+        )?;
+        archive.finish()?
+    };
+
+    // English localization part: split out so map workers can ignore it.
+    let loc_path = version_dir.join("loc-en.zip");
+    {
+        let output = std::fs::File::create(&loc_path)?;
+        let writer = std::io::BufWriter::new(output);
+        let mut archive = rawzip::ZipArchiveWriter::new(writer);
+        write_entry(
+            &mut archive,
             "localizations.bin",
             LocalizationsData {
                 countries: raw_game_data.country_localizations,
                 goods: raw_game_data.goods_localizations,
                 buildings: raw_game_data.building_localizations,
-            },
-        )?;
-        write_entry(
-            &mut archive,
-            "game_data.bin",
-            GoodsData {
-                goods: raw_game_data.goods,
             },
         )?;
         archive.finish()?
@@ -180,6 +189,7 @@ where
         name: "eu5.bundle.complete",
         game_path = %game_path.display(),
         map_path = %map_path.display(),
+        loc_path = %loc_path.display(),
         "EU5 optimized bundle parts created"
     );
 

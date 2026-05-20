@@ -218,8 +218,17 @@ impl<'bump> Eu5Workspace<'bump> {
         &self.game_data
     }
 
-    pub fn presenter(&self) -> Eu5Presenter<'_, 'bump> {
-        Eu5Presenter::new(self)
+    /// Pair this unlocalized workspace with a [`Localization`] to produce a
+    /// presentation-capable wrapper. Cheap; the wrapper just borrows both
+    /// values and gates `presenter()` access through them.
+    pub fn localized<'a>(
+        &'a self,
+        localization: &'a crate::game_data::Localization,
+    ) -> LocalizedEu5Workspace<'a, 'bump> {
+        LocalizedEu5Workspace {
+            workspace: self,
+            localization,
+        }
     }
 
     fn map_mode_for_entity_kind(kind: EntityKind) -> MapMode {
@@ -316,6 +325,28 @@ impl LocationData for Eu5Workspace<'_> {
             owner: loc.owner.real_id(),
             market: loc.market,
         }
+    }
+}
+
+/// Borrow-only wrapper around an unlocalized [`Eu5Workspace`] plus a
+/// [`Localization`](crate::game_data::Localization). Presentation entry point
+/// for tests and native callers that need localized output.
+pub struct LocalizedEu5Workspace<'a, 'bump> {
+    pub workspace: &'a Eu5Workspace<'bump>,
+    pub localization: &'a crate::game_data::Localization,
+}
+
+impl<'a, 'bump> LocalizedEu5Workspace<'a, 'bump> {
+    pub fn presenter(&self) -> Eu5Presenter<'a, 'bump> {
+        Eu5Presenter::new(self.workspace, self.localization)
+    }
+}
+
+impl<'a, 'bump> std::ops::Deref for LocalizedEu5Workspace<'a, 'bump> {
+    type Target = Eu5Workspace<'bump>;
+
+    fn deref(&self) -> &Self::Target {
+        self.workspace
     }
 }
 

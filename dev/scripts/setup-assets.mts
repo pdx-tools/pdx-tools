@@ -463,6 +463,7 @@ async function setupAssetEu5() {
   await mkdir(versionDir, { recursive: true });
   await touchFile(join(versionDir, "game.zip"));
   await touchFile(join(versionDir, "map.zip"));
+  await touchFile(join(versionDir, "loc-en.zip"));
 }
 
 await setupAssets();

@@ -23,7 +23,10 @@ pub use selection::{
     ClickOutcome, GroupId, GroupingTable, LocationData, SelectionPreset, SelectionState,
     SelectionSummary, single_entity_scope,
 };
-pub use session::{Eu5LoadError, Eu5LoadedSave, Eu5SaveLoader, Eu5SaveMetadata, Eu5Workspace};
+pub use session::{
+    Eu5LoadError, Eu5LoadedSave, Eu5SaveLoader, Eu5SaveMetadata, Eu5Workspace,
+    LocalizedEu5Workspace,
+};
 
 pub use color::Srgb;
 pub use map::*;

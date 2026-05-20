@@ -5,7 +5,7 @@ pub mod optimized;
 pub mod game_install;
 
 pub use error::GameDataError;
-pub use optimized::{OptimizedGameBundle, OptimizedMapBundle};
+pub use optimized::{OptimizedGameBundle, OptimizedLocalizationBundle, OptimizedMapBundle};
 
 use eu5save::hash::FxHashMap;
 use eu5save::models::GoodName;
@@ -70,10 +70,9 @@ impl Localization {
     }
 }
 
-/// EU5 game data
+/// EU5 game data: gameplay/lookup data only.
 pub struct GameData {
     pub locations: Vec<GameLocation>,
-    pub localization: Localization,
     pub goods: FxHashMap<String, GoodData>,
 }
 
