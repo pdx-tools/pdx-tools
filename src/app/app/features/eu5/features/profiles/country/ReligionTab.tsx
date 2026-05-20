@@ -31,14 +31,14 @@ function ReligionStackedBars({ breakdown }: { breakdown: ReligionShare[] }) {
     const locRow: Record<string, string | number> = { metric: "Locations" };
     const popRow: Record<string, string | number> = { metric: "Population" };
     for (const r of breakdown) {
-      locRow[r.religion] = totalLocations > 0 ? (r.locationCount / totalLocations) * 100 : 0;
-      popRow[r.religion] = totalPopulation > 0 ? (r.population / totalPopulation) * 100 : 0;
+      locRow[r.religion.name] = totalLocations > 0 ? (r.locationCount / totalLocations) * 100 : 0;
+      popRow[r.religion.name] = totalPopulation > 0 ? (r.population / totalPopulation) * 100 : 0;
     }
 
     return {
       dataset: {
         source: [locRow, popRow],
-        dimensions: ["metric", ...breakdown.map((r) => r.religion)],
+        dimensions: ["metric", ...breakdown.map((r) => r.religion.name)],
       },
       grid: { left: 70, right: 0, top: 4, bottom: 4 },
       xAxis: {
@@ -63,23 +63,23 @@ function ReligionStackedBars({ breakdown }: { breakdown: ReligionShare[] }) {
           return arr
             .map((p) => {
               const row = breakdown.find(
-                (r) => r.religion === (p as { seriesName?: string }).seriesName,
+                (r) => r.religion.name === (p as { seriesName?: string }).seriesName,
               );
               if (!row) return "";
               const [abs, pct] = isLocations
                 ? [row.locationCount, totalLocations > 0 ? row.locationCount / totalLocations : 0]
                 : [row.population, totalPopulation > 0 ? row.population / totalPopulation : 0];
-              return `${escapeEChartsHtml(row.religion)}: ${formatInt(abs)} (${formatFloat(pct * 100, 1)}%)`;
+              return `${escapeEChartsHtml(row.religion.name)}: ${formatInt(abs)} (${formatFloat(pct * 100, 1)}%)`;
             })
             .filter(Boolean)
             .join("<br/>");
         },
       },
       series: breakdown.map((r) => ({
-        name: r.religion,
+        name: r.religion.name,
         type: "bar",
         stack: "total",
-        encode: { x: r.religion, y: "metric" },
+        encode: { x: r.religion.name, y: "metric" },
         itemStyle: { color: r.colorHex },
       })),
     };
@@ -92,9 +92,9 @@ function ReligionLegend({ breakdown }: { breakdown: ReligionShare[] }) {
   return (
     <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
       {breakdown.map((row) => (
-        <div key={row.religion} className="flex items-center gap-1.5 text-xs text-game-ink-300">
+        <div key={row.religion.key} className="flex items-center gap-1.5 text-xs text-game-ink-300">
           <span className="h-2 w-2 shrink-0 rounded-sm" style={{ backgroundColor: row.colorHex }} />
-          {row.religion}
+          {row.religion.name}
         </div>
       ))}
     </div>

@@ -1,4 +1,4 @@
-use crate::models::{RawMaterialsName, de::Maybe};
+use crate::models::{GoodName, de::Maybe};
 use bumpalo_serde::{ArenaDeserialize, ArenaSeed};
 use serde::{Deserialize, de};
 use std::fmt;
@@ -53,7 +53,7 @@ pub struct TradeEntry<'bump> {
     pub effect: f64,
     #[arena(default)]
     pub cached: f64,
-    pub which: RawMaterialsName<'bump>,
+    pub which: GoodName<'bump>,
 }
 
 #[inline]

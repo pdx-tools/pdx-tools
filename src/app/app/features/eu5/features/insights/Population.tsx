@@ -23,7 +23,7 @@ import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
 import { MapHoverButton } from "../../MapHoverButton";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
-import { EntityLink } from "../profiles/EntityLink";
+import { CountryLink } from "../profiles/EntityLink";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
@@ -97,7 +97,7 @@ function PopulationHistoryMultiChart({ countries }: { countries: ScopedCountryPo
     const series = filtered.map((c) => {
       const len = c.historicalPopulation.length;
       return {
-        name: c.country.name,
+        name: c.country.country.name,
         type: "line" as const,
         smooth: true,
         showSymbol: false,
@@ -165,9 +165,9 @@ function PopulationHistoryMultiChart({ countries }: { countries: ScopedCountryPo
       const c = params.seriesIndex != null ? filtered[params.seriesIndex] : null;
       return c
         ? {
-            id: c.country.countryIdx,
+            id: c.country.country.key,
             anchorLocationIdx: c.country.anchorLocationIdx,
-            label: c.country.name,
+            label: c.country.country.name,
           }
         : null;
     },
@@ -309,7 +309,7 @@ function countryTooltip(country: ScopedCountryPopulation): string {
     );
 
   return [
-    `<strong>${escapeEChartsHtml(country.country.name)}</strong>`,
+    `<strong>${escapeEChartsHtml(country.country.country.name)}</strong>`,
     country.country.tag ? `Tag: ${escapeEChartsHtml(country.country.tag)}` : "",
     `Population: ${formatInt(country.totalPopulation)}`,
     `Locations: ${formatInt(country.locationCount)}`,
@@ -326,8 +326,8 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
     () =>
       countries.slice(0, COUNTRY_CAP).map((country) => ({
         ...country,
-        name: country.country.name,
-        id: country.country.countryIdx,
+        name: country.country.country.name,
+        id: country.country.country.key,
         anchorLocationIdx: country.country.anchorLocationIdx,
         rural: rankValue(country, 0),
         town: rankValue(country, 1),
@@ -605,31 +605,36 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("name", {
-        sortingFn: "text",
+      columnHelper.accessor("location", {
+        id: "location",
+        sortingFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
           return (
             <MapHoverButton
-              target={{ kind: "location", locationIdx: loc.locationIdx }}
+              target={{ kind: "location", locationIdx: loc.location.key }}
               className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
               onClick={() => {
-                nav.pushMany([locationProfileEntry(loc.locationIdx, loc.name)], BACK_LABEL);
-                panToEntity(loc.locationIdx);
+                nav.pushMany(
+                  [locationProfileEntry(loc.location.key, loc.location.name)],
+                  BACK_LABEL,
+                );
+                panToEntity(loc.location.key);
               }}
             >
-              {loc.name}
+              {loc.location.name}
             </MapHoverButton>
           );
         },
       }),
       columnHelper.accessor("owner", {
         id: "owner",
-        sortingFn: (a, b) => a.original.owner.name.localeCompare(b.original.owner.name),
+        sortingFn: (a, b) =>
+          a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => (
-          <EntityLink entity={row.original.owner} aligned backLabel={BACK_LABEL} />
+          <CountryLink country={row.original.owner} aligned backLabel={BACK_LABEL} />
         ),
       }),
       columnHelper.accessor("population", {
@@ -664,7 +669,7 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
       className="w-full"
       columns={columns}
       data={locations}
-      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.locationIdx })}
+      getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.location.key })}
       initialSorting={[{ id: "population", desc: true }]}
       pagination
     />
@@ -827,6 +832,11 @@ export function PopulationTypeProfile({
 }
 
 const OTHER_COLOR = "#6b7280";
+const NO_CULTURE_LABEL = "No culture";
+
+function getCultureName(row: LocationPopRow) {
+  return row.culture?.name ?? NO_CULTURE_LABEL;
+}
 
 function buildSankeyOption(rows: LocationPopRow[]): EChartsOption {
   const totalSize = rows.reduce((s, r) => s + r.size, 0);
@@ -836,21 +846,26 @@ function buildSankeyOption(rows: LocationPopRow[]): EChartsOption {
   const religionTotals = new Map<string, number>();
   const cultureTotals = new Map<string, number>();
   for (const row of rows) {
-    religionTotals.set(row.religionName, (religionTotals.get(row.religionName) ?? 0) + row.size);
-    cultureTotals.set(row.cultureName, (cultureTotals.get(row.cultureName) ?? 0) + row.size);
+    const cultureName = getCultureName(row);
+    religionTotals.set(row.religion.name, (religionTotals.get(row.religion.name) ?? 0) + row.size);
+    cultureTotals.set(cultureName, (cultureTotals.get(cultureName) ?? 0) + row.size);
   }
 
-  const remapped = rows.map((row) => ({
-    ...row,
-    religionName:
-      (religionTotals.get(row.religionName) ?? 0) >= threshold ? row.religionName : "Others",
-    religionColorHex:
-      (religionTotals.get(row.religionName) ?? 0) >= threshold ? row.religionColorHex : OTHER_COLOR,
-    cultureName:
-      (cultureTotals.get(row.cultureName) ?? 0) >= threshold ? row.cultureName : "Others",
-    cultureColorHex:
-      (cultureTotals.get(row.cultureName) ?? 0) >= threshold ? row.cultureColorHex : OTHER_COLOR,
-  }));
+  const remapped = rows.map((row) => {
+    const cultureName = getCultureName(row);
+    const cultureTotal = cultureTotals.get(cultureName) ?? 0;
+    return {
+      ...row,
+      religionName:
+        (religionTotals.get(row.religion.name) ?? 0) >= threshold ? row.religion.name : "Others",
+      religionColorHex:
+        (religionTotals.get(row.religion.name) ?? 0) >= threshold
+          ? row.religionColorHex
+          : OTHER_COLOR,
+      cultureName: cultureTotal >= threshold ? cultureName : "Others",
+      cultureColorHex: cultureTotal >= threshold ? row.cultureColorHex : OTHER_COLOR,
+    };
+  });
 
   const rId = (name: string) => `r:${name}`;
   const cId = (name: string) => `c:${name}`;

@@ -1,10 +1,11 @@
 import type React from "react";
 import { cx } from "class-variance-authority";
-import type { EntityRef } from "@/wasm/wasm_eu5";
+import type { CountryRef, MarketRef } from "@/wasm/wasm_eu5";
 import { usePanelNav, entityProfileEntry } from "./PanelNavContext";
 import { usePanToEntity } from "../../usePanToEntity";
 import { useEu5Engine } from "../../store";
 import { useEu5MapHoverTarget } from "../../useEu5MapHoverTarget";
+import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
 
 const sizeClasses = {
   xs: {
@@ -27,9 +28,10 @@ const sizeClasses = {
   },
 };
 
-type EntityLinkProps = {
-  entity: EntityRef;
-  size?: keyof typeof sizeClasses;
+type Size = keyof typeof sizeClasses;
+
+type SharedProps = {
+  size?: Size;
   aligned?: boolean;
   backLabel?: string;
   className?: string;
@@ -57,35 +59,37 @@ function EntitySwatch({
   );
 }
 
-export function EntityLink(props: EntityLinkProps) {
-  const { entity, size = "sm", aligned = false, className, children } = props;
+type LinkBodyProps = SharedProps & {
+  hoverTarget: Eu5MapHoverTarget;
+  colorHex: string;
+  isPlayer: boolean;
+  tag?: React.ReactNode;
+  name: string;
+  onActivate: (event: React.MouseEvent<HTMLButtonElement>) => void;
+};
+
+function LinkBody({
+  hoverTarget,
+  colorHex,
+  isPlayer,
+  tag,
+  name,
+  onActivate,
+  size = "sm",
+  className,
+  children,
+  ...rest
+}: LinkBodyProps) {
   const s = sizeClasses[size];
+  const hoverProps = useEu5MapHoverTarget(hoverTarget);
 
-  const tag = entity.kind === "country" && (
-    <span
-      className={cx(
-        "shrink-0 font-game-num tracking-[0.06em] text-game-ink-500",
-        aligned && "min-w-[calc(5ch+0.3em)]",
-        s.tag,
-      )}
-    >
-      {entity.tag}
-    </span>
-  );
-  const isPlayer = entity.kind === "country" ? entity.isPlayer : false;
-  const hoverProps = useEu5MapHoverTarget(
-    entity.kind === "country"
-      ? { kind: "country", countryIdx: entity.countryIdx }
-      : { kind: "market", marketId: entity.marketId },
-  );
-
-  if (props.static) {
+  if (rest.static) {
     return (
       <span
         {...hoverProps}
         className={cx("inline-flex max-w-full min-w-0 items-center", s.wrapper, className)}
       >
-        <EntitySwatch colorHex={entity.colorHex} isPlayer={isPlayer} className={s.swatch} />
+        <EntitySwatch colorHex={colorHex} isPlayer={isPlayer} className={s.swatch} />
         {tag}
         {children ?? (
           <span
@@ -94,55 +98,17 @@ export function EntityLink(props: EntityLinkProps) {
               s.name,
             )}
           >
-            {entity.name}
+            {name}
           </span>
         )}
       </span>
     );
   }
 
-  return <EntityLinkButton {...props} s={s} tag={tag} hoverProps={hoverProps} />;
-}
-
-function EntityLinkButton({
-  entity,
-  backLabel,
-  className,
-  children,
-  s,
-  tag,
-  hoverProps,
-}: EntityLinkProps & {
-  s: (typeof sizeClasses)[keyof typeof sizeClasses];
-  tag: React.ReactNode;
-  hoverProps: ReturnType<typeof useEu5MapHoverTarget>;
-}) {
-  const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
-  const engine = useEu5Engine();
-
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-
-    const typedId = entity.kind === "country" ? entity.countryIdx : entity.marketId;
-    if (event.altKey) {
-      void (entity.kind === "country"
-        ? engine.trigger.removeCountry(typedId)
-        : engine.trigger.removeMarket(typedId));
-      return;
-    }
-
-    console.log(entityProfileEntry(entity.kind, typedId, entity.name));
-    nav.pushMany([entityProfileEntry(entity.kind, typedId, entity.name)], backLabel);
-    panToEntity(entity.anchorLocationIdx);
-  };
-
-  const isPlayer = entity.kind === "country" ? entity.isPlayer : false;
-
   return (
     <button
       type="button"
-      onClick={handleClick}
+      onClick={onActivate}
       {...hoverProps}
       className={cx(
         "group/er inline-flex max-w-full min-w-0 cursor-pointer items-center border-0 bg-transparent p-0 text-left align-middle",
@@ -150,7 +116,7 @@ function EntityLinkButton({
         className,
       )}
     >
-      <EntitySwatch colorHex={entity.colorHex} isPlayer={isPlayer} className={s.swatch} />
+      <EntitySwatch colorHex={colorHex} isPlayer={isPlayer} className={s.swatch} />
       {tag}
       {children ?? (
         <span
@@ -160,9 +126,83 @@ function EntityLinkButton({
             s.name,
           )}
         >
-          {entity.name}
+          {name}
         </span>
       )}
     </button>
+  );
+}
+
+export function CountryLink({ country, ...props }: SharedProps & { country: CountryRef }) {
+  const nav = usePanelNav();
+  const panToEntity = usePanToEntity();
+  const engine = useEu5Engine();
+  const s = sizeClasses[props.size ?? "sm"];
+
+  const tag = (
+    <span
+      className={cx(
+        "shrink-0 font-game-num tracking-[0.06em] text-game-ink-500",
+        props.aligned && "min-w-[calc(5ch+0.3em)]",
+        s.tag,
+      )}
+    >
+      {country.tag}
+    </span>
+  );
+
+  const onActivate = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (event.altKey) {
+      void engine.trigger.removeCountry(country.country.key);
+      return;
+    }
+    nav.pushMany(
+      [entityProfileEntry("country", country.country.key, country.country.name)],
+      props.backLabel,
+    );
+    panToEntity(country.anchorLocationIdx);
+  };
+
+  return (
+    <LinkBody
+      {...props}
+      hoverTarget={{ kind: "country", countryIdx: country.country.key }}
+      colorHex={country.colorHex}
+      isPlayer={country.isPlayer}
+      tag={tag}
+      name={country.country.name}
+      onActivate={onActivate}
+    />
+  );
+}
+
+export function MarketLink({ market, ...props }: SharedProps & { market: MarketRef }) {
+  const nav = usePanelNav();
+  const panToEntity = usePanToEntity();
+  const engine = useEu5Engine();
+
+  const onActivate = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (event.altKey) {
+      void engine.trigger.removeMarket(market.market.key);
+      return;
+    }
+    nav.pushMany(
+      [entityProfileEntry("market", market.market.key, market.market.name)],
+      props.backLabel,
+    );
+    panToEntity(market.anchorLocationIdx);
+  };
+
+  return (
+    <LinkBody
+      {...props}
+      hoverTarget={{ kind: "market", marketId: market.market.key }}
+      colorHex={market.colorHex}
+      isPlayer={false}
+      name={market.market.name}
+      onActivate={onActivate}
+    />
   );
 }

@@ -1,6 +1,6 @@
 use crate::{
     GameLocation,
-    game_data::{GameData, GameDataError, GoodsData, LocalizationsData},
+    game_data::{GameData, GameDataError, GoodsData, Localization, LocalizationsData},
 };
 use pdx_map::R16;
 use rawzip::{ZipArchive, ZipSliceArchive};
@@ -111,9 +111,11 @@ where
 
         Ok(GameData {
             locations,
-            localization: localizations.countries,
-            goods_localization: localizations.goods,
-            building_localization: localizations.buildings,
+            localization: Localization::new(
+                localizations.countries,
+                localizations.goods,
+                localizations.buildings,
+            ),
             goods: game_data.goods,
         })
     }
@@ -222,10 +224,16 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::color::Srgb;
     use crate::game_data::GoodData;
     use eu5save::hash::FxHashMap;
+    use eu5save::models::{BStr, GoodName};
     use rawzip::CompressionMethod;
     use std::io::{Cursor, Write};
+
+    fn good_name(s: &str) -> GoodName<'_> {
+        GoodName::new(BStr::new(s.as_bytes()))
+    }
 
     #[test]
     fn optimized_bundle_reads_game_data_bin_goods_and_localizations() {
@@ -233,7 +241,7 @@ mod tests {
         goods.insert(
             "livestock".to_string(),
             GoodData {
-                color_hex: "#14962d".to_string(),
+                color_hex: Srgb([0x14, 0x96, 0x2d]),
                 default_market_price: 1.25,
                 transport_cost: 1.0,
             },
@@ -257,12 +265,13 @@ mod tests {
             .unwrap();
 
         let livestock = data.good("livestock").unwrap();
-        assert_eq!(livestock.color_hex, "#14962d");
+        assert_eq!(livestock.color_hex, Srgb([0x14, 0x96, 0x2d]));
         assert_eq!(livestock.default_market_price, 1.25);
-        let localized = data.localized_good("livestock").unwrap();
-        assert_eq!(localized.key, "livestock");
-        assert_eq!(localized.name, "Livestock");
-        assert_eq!(data.localized_building_name("workshop"), "Workshop");
+        assert_eq!(
+            data.localization.good(good_name("livestock")),
+            Some("Livestock"),
+        );
+        assert_eq!(data.localization.building("workshop"), Some("Workshop"),);
     }
 
     #[test]
@@ -271,7 +280,7 @@ mod tests {
         goods.insert(
             "unknown_good".to_string(),
             GoodData {
-                color_hex: "#888888".to_string(),
+                color_hex: Srgb([0x88, 0x88, 0x88]),
                 default_market_price: 1.0,
                 transport_cost: 1.0,
             },
@@ -283,7 +292,7 @@ mod tests {
             .into_game_data()
             .unwrap();
 
-        assert_eq!(data.localized_good_name("unknown_good"), "unknown_good");
+        assert_eq!(data.localization.good(good_name("unknown_good")), None);
     }
 
     #[test]
@@ -295,10 +304,7 @@ mod tests {
             .into_game_data()
             .unwrap();
 
-        assert_eq!(
-            data.localized_building_name("unknown_building"),
-            "unknown_building"
-        );
+        assert_eq!(data.localization.building("unknown_building"), None,);
     }
 
     #[test]

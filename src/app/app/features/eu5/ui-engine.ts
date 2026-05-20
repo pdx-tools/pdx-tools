@@ -4,7 +4,7 @@ import type {
   CursorHint,
   GameInstance,
   GradientConfig,
-  HoverDisplayData,
+  DisplayData,
   PaletteGradients,
   SelectionSummaryData,
 } from "./game-adapter";
@@ -37,7 +37,7 @@ import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
 
 export interface AppState {
   currentMapMode: MapMode;
-  hoverDisplayData: HoverDisplayData | null;
+  hoverDisplayData: DisplayData | null;
   isGeneratingScreenshot: boolean;
   ownerBordersEnabled: boolean;
   paletteGradients: PaletteGradients;

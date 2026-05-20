@@ -6,7 +6,7 @@ import { timeAsync, timeSync } from "@/lib/timeit";
 import init, * as wasm_eu5 from "../../../../wasm/wasm_eu5";
 import type {
   MapMode,
-  HoverDisplayData,
+  DisplayData,
   GradientConfig,
   GradientPalette,
   StateEfficacyInsightData,
@@ -254,7 +254,7 @@ export const createGame = async (
         () => wasm_eu5.melt(new Uint8Array(saveData)) as Uint8Array<ArrayBuffer>,
       );
     },
-    onHoverDisplayUpdate: (callback: (data: HoverDisplayData) => void) => {
+    onHoverDisplayUpdate: (callback: (data: DisplayData) => void) => {
       hoverDisplayCallback = callback;
     },
     onSelectionUpdate: (
@@ -358,25 +358,25 @@ export const createGame = async (
       const countries = countryIndex
         .filter(
           (c) =>
-            c.capitalLocationIdx !== null &&
-            c.capitalLocationIdx !== undefined &&
-            (c.name.toLowerCase().includes(lower) || c.tag.toLowerCase().includes(lower)),
+            c.capital !== null &&
+            c.capital !== undefined &&
+            (c.country.name.toLowerCase().includes(lower) || c.tag.toLowerCase().includes(lower)),
         )
         .map((c) => ({
           kind: "country" as const,
-          id: c.id,
-          name: c.name,
+          id: c.country.key,
+          name: c.country.name,
           tag: c.tag,
-          locationIdx: c.capitalLocationIdx!,
+          locationIdx: c.capital!,
         }));
 
       const locations = locationIndex
-        .filter((location) => location.name.toLowerCase().includes(lower))
-        .map((location) => ({
+        .filter((entry) => entry.location.name.toLowerCase().includes(lower))
+        .map((entry) => ({
           kind: "location" as const,
-          id: location.id,
-          name: location.name,
-          locationIdx: location.locationIdx,
+          id: entry.location.key,
+          name: entry.location.name,
+          locationIdx: entry.location.key,
         }));
 
       return [...countries, ...locations].slice(0, 20);
@@ -393,7 +393,7 @@ export const createGame = async (
 };
 
 let mapEndpoint: Eu5MapEndpoint | null = null;
-let hoverDisplayCallback: ((data: HoverDisplayData) => void) | null = null;
+let hoverDisplayCallback: ((data: DisplayData) => void) | null = null;
 let selectionCallback: ((data: SelectionSummaryData, gradient?: GradientConfig) => void) | null =
   null;
 

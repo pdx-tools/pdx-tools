@@ -111,7 +111,7 @@ type ScatterDatum = [x: number, y: number];
 
 function countryTooltip(d: CountryTaxGap): string {
   return [
-    `<strong>${escapeEChartsHtml(d.country.name)}</strong> (${escapeEChartsHtml(d.country.tag)})`,
+    `<strong>${escapeEChartsHtml(d.country.country.name)}</strong> (${escapeEChartsHtml(d.country.tag)})`,
     `Location Tax: ${formatFloat(d.currentTaxBase, 2)}`,
     `Possible Tax: ${formatFloat(d.totalPossibleTax, 2)}`,
     `Gap: ${formatFloat(d.taxGap, 2)}`,
@@ -221,9 +221,9 @@ function TaxGapBarChart({ countries }: { countries: CountryTaxGap[] }) {
       const x = dataIndex == null ? null : sorted[dataIndex];
       return x
         ? {
-            id: x.country.countryIdx,
+            id: x.country.country.key,
             anchorLocationIdx: x.country.anchorLocationIdx,
-            label: x.country.name,
+            label: x.country.country.name,
           }
         : null;
     },
@@ -306,7 +306,7 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
           const d = countries[dataIndex];
           if (!d) return "";
           return [
-            `<strong>${escapeEChartsHtml(d.country.name)}</strong> (${escapeEChartsHtml(d.country.tag)})`,
+            `<strong>${escapeEChartsHtml(d.country.country.name)}</strong> (${escapeEChartsHtml(d.country.tag)})`,
             `Location Tax: ${formatFloat(d.currentTaxBase, 2)}`,
             `Possible Tax: ${formatFloat(d.totalPossibleTax, 2)}`,
             `Gap: ${formatFloat(d.taxGap, 2)}`,
@@ -367,12 +367,12 @@ function TaxGapScatterChart({ countries }: { countries: CountryTaxGap[] }) {
     backLabel: "Tax Gap",
     getTarget: (params) => {
       const dataIndex = params.dataIndex;
-      const country = dataIndex == null ? null : countries[dataIndex]?.country;
-      return country
+      const countryRef = dataIndex == null ? null : countries[dataIndex]?.country;
+      return countryRef
         ? {
-            id: country.countryIdx,
-            anchorLocationIdx: country.anchorLocationIdx,
-            label: country.name,
+            id: countryRef.country.key,
+            anchorLocationIdx: countryRef.anchorLocationIdx,
+            label: countryRef.country.name,
           }
         : null;
     },

@@ -1,6 +1,6 @@
-use crate::color::{Hsv, Rgb};
+use crate::color::Srgb;
+use crate::color::{Hsv, UnitRgb};
 use crate::game_data::{GameDataError, GoodData};
-use crate::hexcolor::HexColor;
 use crate::models::Terrain;
 use eu5save::hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
@@ -49,26 +49,27 @@ pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap, GameDataError>
     })
 }
 
-pub fn parse_named_locations(
-    reader: impl Read,
-) -> Result<FxHashMap<String, HexColor>, GameDataError> {
+pub fn parse_named_locations(reader: impl Read) -> Result<FxHashMap<String, Srgb>, GameDataError> {
     let reader = jomini::text::TokenReader::new(reader);
-    let location_hex: FxHashMap<String, HexColor> =
+    let location_hex: FxHashMap<String, ClauseHexColor> =
         jomini::text::de::TextDeserializer::from_utf8_reader(reader)
             .deserialize()
             .map_err(|e| GameDataError::Jomini(e, "named_locations"))?;
-    Ok(location_hex)
+    Ok(location_hex
+        .into_iter()
+        .map(|(name, color)| (name, color.0))
+        .collect())
 }
 
 #[derive(Debug)]
 pub struct LocationTerrain {
     pub name: String,
     pub terrain: Terrain,
-    pub color: HexColor,
+    pub color: Srgb,
 }
 
 pub fn parse_locations_data(
-    named_locations: FxHashMap<String, HexColor>,
+    named_locations: FxHashMap<String, Srgb>,
     default_map: &DefaultMap,
 ) -> impl Iterator<Item = LocationTerrain> {
     named_locations.into_iter().map(|(name, hex)| {
@@ -93,6 +94,53 @@ pub struct RawGoodData {
     pub color: Option<String>,
     pub default_market_price: f64,
     pub transport_cost: Option<f64>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ClauseHexColor(Srgb);
+
+struct ClauseHexColorVisitor;
+
+impl serde::de::Visitor<'_> for ClauseHexColorVisitor {
+    type Value = ClauseHexColor;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a hex color string in the format 'RRGGBB'")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        // The last two bytes are blue, then green, then red. That means that
+        // when encountering a string with 4 characters like "1e05", the red
+        // component should be zero. Similar with 5 characters, pad out 0's.
+        // For strings longer than 6 characters, take only the first 6.
+        let trimmed = &v[..std::cmp::min(v.len(), 6)];
+        let mut chunks = trimmed.as_bytes().rchunks(2);
+        let b = chunks
+            .next()
+            .and_then(|s| u8::from_str_radix(std::str::from_utf8(s).ok()?, 16).ok())
+            .unwrap_or(0);
+        let g = chunks
+            .next()
+            .and_then(|s| u8::from_str_radix(std::str::from_utf8(s).ok()?, 16).ok())
+            .unwrap_or(0);
+        let r = chunks
+            .next()
+            .and_then(|s| u8::from_str_radix(std::str::from_utf8(s).ok()?, 16).ok())
+            .unwrap_or(0);
+        Ok(ClauseHexColor(Srgb([r, g, b])))
+    }
+}
+
+impl<'de> Deserialize<'de> for ClauseHexColor {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(ClauseHexColorVisitor)
+    }
 }
 
 pub fn parse_goods(
@@ -174,7 +222,7 @@ impl<'de> Visitor<'de> for ClauseColorVisitor {
                 }
             }
             ColorKind::Hsv => {
-                let rgb: Rgb = Hsv {
+                let rgb: UnitRgb = Hsv {
                     h: a * 360.0,
                     s: b,
                     v: c,
@@ -184,7 +232,7 @@ impl<'de> Visitor<'de> for ClauseColorVisitor {
                 [r, g, b]
             }
             ColorKind::Hsv360 => {
-                let rgb: Rgb = Hsv {
+                let rgb: UnitRgb = Hsv {
                     h: a,
                     s: b / 100.0,
                     v: c / 100.0,
@@ -231,17 +279,13 @@ pub fn resolve_goods(
             Ok((
                 name,
                 GoodData {
-                    color_hex: color_hex(rgb),
+                    color_hex: Srgb(rgb),
                     default_market_price: good.default_market_price,
                     transport_cost: good.transport_cost.unwrap_or(1.0),
                 },
             ))
         })
         .collect()
-}
-
-fn color_hex(rgb: [u8; 3]) -> String {
-    format!("#{:02x}{:02x}{:02x}", rgb[0], rgb[1], rgb[2])
 }
 
 static QUOTE_RE: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new("\"(.*)\"").unwrap());
@@ -358,6 +402,39 @@ trade_office = {
     }
 
     #[test]
+    fn test_parse_named_locations_hex_colors() {
+        let data = r#"
+one_char = a
+two_chars = ff
+three_chars = abc
+four_chars = 1234
+five_chars = e4d0f
+six_chars = 77ac4c
+eight_chars = 77ac4cff
+"#;
+
+        let parsed = parse_named_locations(data.as_bytes()).unwrap();
+
+        let test_cases = [
+            ("one_char", Srgb([0, 0, 10])),
+            ("two_chars", Srgb([0, 0, 255])),
+            ("three_chars", Srgb([0, 10, 188])),
+            ("four_chars", Srgb([0, 18, 52])),
+            ("five_chars", Srgb([14, 77, 15])),
+            ("six_chars", Srgb([119, 172, 76])),
+            ("eight_chars", Srgb([119, 172, 76])),
+        ];
+
+        for (input, expected) in test_cases {
+            assert_eq!(
+                parsed.get(input),
+                Some(&expected),
+                "Failed for input: {input}"
+            );
+        }
+    }
+
+    #[test]
     fn test_parse_goods() {
         let data = r#"
 wool = {
@@ -435,10 +512,16 @@ colors = {
         let colors = parse_map_mode_colors(colors_data).unwrap();
         let goods = resolve_goods(raw_goods, &colors).unwrap();
 
-        assert_eq!(goods.get("wool").unwrap().color_hex, "#8a9999");
+        assert_eq!(
+            goods.get("wool").unwrap().color_hex,
+            Srgb([0x8a, 0x99, 0x99])
+        );
         assert_eq!(goods.get("wool").unwrap().default_market_price, 1.25);
         assert_eq!(goods.get("wool").unwrap().transport_cost, 1.0);
-        assert_eq!(goods.get("livestock").unwrap().color_hex, "#14962d");
+        assert_eq!(
+            goods.get("livestock").unwrap().color_hex,
+            Srgb([0x14, 0x96, 0x2d])
+        );
         assert_eq!(goods.get("livestock").unwrap().transport_cost, 3.0);
     }
 

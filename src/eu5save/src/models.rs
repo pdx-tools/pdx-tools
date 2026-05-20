@@ -17,6 +17,7 @@ mod unit_manager;
 mod version;
 mod war_manager;
 
+pub use bstr::BStr;
 pub use building_manager::*;
 pub use character_db::*;
 pub use color::Color;
@@ -35,7 +36,6 @@ pub use version::GameVersion;
 pub use war_manager::*;
 
 use crate::Eu5Date;
-use crate::models::bstr::BStr;
 use bumpalo_serde::ArenaDeserialize;
 use de::*;
 

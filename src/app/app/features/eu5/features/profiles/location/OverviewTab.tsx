@@ -1,6 +1,6 @@
 import type { LocationProfile } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
-import { EntityLink } from "../EntityLink";
+import { CountryLink, MarketLink } from "../EntityLink";
 
 interface Props {
   profile: LocationProfile;
@@ -20,8 +20,8 @@ export function LocationOverviewTab({ profile }: Props) {
         <StatRow label="Current Tax" value={formatFloat(s.tax, 2)} />
         <StatRow label="Possible Tax" value={formatFloat(s.possibleTax, 2)} />
         <StatRow label="Terrain" value={s.terrain} />
-        {s.religion && <StatRow label="Religion" value={s.religion} />}
-        {s.rawMaterial && <StatRow label="Raw Material" value={s.rawMaterial} />}
+        {s.religion && <StatRow label="Religion" value={s.religion.name} />}
+        {s.rawMaterial && <StatRow label="Raw Material" value={s.rawMaterial.name} />}
       </div>
 
       {profile.header.owner && (
@@ -29,7 +29,7 @@ export function LocationOverviewTab({ profile }: Props) {
           <p className="mb-1 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
             Owner
           </p>
-          <EntityLink entity={profile.header.owner} />
+          <CountryLink country={profile.header.owner} />
         </div>
       )}
 
@@ -38,7 +38,7 @@ export function LocationOverviewTab({ profile }: Props) {
           <p className="mb-1 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
             Market
           </p>
-          <EntityLink entity={profile.header.market} />
+          <MarketLink market={profile.header.market} />
         </div>
       )}
     </div>

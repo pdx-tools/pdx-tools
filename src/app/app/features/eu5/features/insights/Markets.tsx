@@ -37,7 +37,7 @@ const ARROW_MIN_SLOPE_PCT = 0.000001;
 
 export type GoodsPriceTrajectoryInput = Pick<
   ScopedGoodSummary,
-  "key" | "history" | "defaultMarketPrice" | "weightedPrice"
+  "good" | "history" | "defaultMarketPrice" | "weightedPrice"
 >;
 
 export type GoodsPriceArrowDatum = {
@@ -89,7 +89,7 @@ export function selectGoodsPriceTrajectoryKeys(
       if (base == null || base <= 0 || g.history.length < 2) return null;
       const slopePct = (weightedSlope(g.history) / base) * 100;
       if (!Number.isFinite(slopePct) || Math.abs(slopePct) <= ARROW_MIN_SLOPE_PCT) return null;
-      return { key: g.key, slopePct };
+      return { key: g.good.key, slopePct };
     })
     .filter((entry): entry is { key: string; slopePct: number } => entry != null);
 
@@ -120,7 +120,7 @@ export function buildGoodsPriceArrowData(
 
   return goods.flatMap((g) => {
     const base = g.defaultMarketPrice;
-    if (base == null || base <= 0 || !selectedKeys.has(g.key)) return [];
+    if (base == null || base <= 0 || !selectedKeys.has(g.good.key)) return [];
     const slopePct = goodsPriceTrajectoryPct(g);
     if (slopePct == null) return [];
     const startX = ((g.weightedPrice - base) / base) * 100;
@@ -130,7 +130,7 @@ export function buildGoodsPriceArrowData(
         startX,
         endX: startX + (slopePct > 0 ? arrowLengthPct : -arrowLengthPct),
         y: g.weightedPrice,
-        key: g.key,
+        key: g.good.key,
         slopePct,
       },
     ];
@@ -227,7 +227,7 @@ export type GoodsPressureMetric = "units" | "value";
 
 function goodTooltip(d: ScopedGoodSummary): string {
   return [
-    `<strong>${escapeEChartsHtml(d.name)}</strong>`,
+    `<strong>${escapeEChartsHtml(d.good.name)}</strong>`,
     `Supply: ${formatFloat(d.supply, 2)}`,
     `Demand: ${formatFloat(d.demand, 2)}`,
     `Total Taken: ${formatFloat(d.totalTaken, 2)}`,
@@ -294,19 +294,12 @@ export function GoodsPressureChart({
 
     return {
       dataset: {
-        source: sorted,
-        dimensions: [
-          "name",
-          "supply",
-          "demand",
-          "totalTaken",
-          "weightedPrice",
-          "shortageValue",
-          "surplusValue",
-          "balanceRatio",
-          "shortageBar",
-          "surplusBar",
-        ],
+        source: sorted.map((g) => ({
+          goodName: g.good.name,
+          shortageBar: g.shortageBar,
+          surplusBar: g.surplusBar,
+        })),
+        dimensions: ["goodName", "shortageBar", "surplusBar"],
       },
       grid: {
         left: 100,
@@ -351,11 +344,11 @@ export function GoodsPressureChart({
           name: `Surplus ${metricLabel}`,
           type: "bar",
           stack: "balance",
-          encode: { x: "surplusBar", y: "name" },
+          encode: { x: "surplusBar", y: "goodName" },
           itemStyle: {
             color: (params) => {
               const d = sorted[params.dataIndex];
-              if (d?.key === selectedGoodKey) return isDark ? "#67e8f9" : "#0284c7";
+              if (d?.good.key === selectedGoodKey) return isDark ? "#67e8f9" : "#0284c7";
               return isDark ? "#38bdf8" : "#0ea5e9";
             },
           },
@@ -365,11 +358,11 @@ export function GoodsPressureChart({
           name: `Shortage ${metricLabel}`,
           type: "bar",
           stack: "balance",
-          encode: { x: "shortageBar", y: "name" },
+          encode: { x: "shortageBar", y: "goodName" },
           itemStyle: {
             color: (params) => {
               const d = sorted[params.dataIndex];
-              if (d?.key === selectedGoodKey) return isDark ? "#fdba74" : "#c2410c";
+              if (d?.good.key === selectedGoodKey) return isDark ? "#fdba74" : "#c2410c";
               return isDark ? "#f97316" : "#ea580c";
             },
           },
@@ -455,7 +448,7 @@ export function MarketGoodDetail({ good }: { good: ScopedGoodSummary }) {
       </div>
 
       <section>
-        <SectionTitle>Where does {good.name} come from, and who gets it?</SectionTitle>
+        <SectionTitle>Where does {good.good.name} come from, and who gets it?</SectionTitle>
         <MarketGoodSankey good={good} />
       </section>
 
@@ -504,7 +497,7 @@ function MarketGoodSankey({ good }: { good: ScopedGoodSummary }) {
 function buildMarketGoodSankeyOption(good: ScopedGoodSummary): EChartsOption {
   const sourcePrefix = "source:";
   const sinkPrefix = "sink:";
-  const goodNode = `good:${good.name}`;
+  const goodNode = `good:${good.good.name}`;
   const nodes = new Map<string, { name: string; itemStyle?: { color: string } }>();
   const links: { source: string; target: string; value: number }[] = [];
   const addNode = (name: string, color?: string) => {
@@ -871,20 +864,20 @@ export function GoodsPriceVsBaseChart({
     const arrowColor = isDark ? "#d97706" : "#b45309";
     const topMoverKeys = selectGoodsPriceTrajectoryKeys(filtered);
     const data = filtered.map((g) => {
-      const isTopMover = topMoverKeys.has(g.key);
+      const isTopMover = topMoverKeys.has(g.good.key);
       return {
         value: [
           ((g.weightedPrice - g.defaultMarketPrice) / g.defaultMarketPrice) * 100,
           g.weightedPrice,
         ] as [number, number],
-        key: g.key,
-        name: g.name,
-        color: g.colorHex,
+        key: g.good.key,
+        name: g.good.name,
+        color: g.good.colorHex,
         base: g.defaultMarketPrice,
         trajectoryPct: goodsPriceTrajectoryPct(g),
         isTopMover,
         itemStyle: {
-          color: g.colorHex || (isDark ? "#93c5fd" : "#3b82f6"),
+          color: g.good.colorHex || (isDark ? "#93c5fd" : "#3b82f6"),
           opacity: isTopMover ? 0.85 : 0.35,
         },
       };
@@ -1098,7 +1091,7 @@ export function GoodsPriceVsBaseChart({
 
   const handlePriceMouseover = useEffectEvent((params: { dataIndex?: number }) => {
     const good = filtered[params.dataIndex ?? -1];
-    if (good) setHoveredGoodKey(good.key);
+    if (good) setHoveredGoodKey(good.good.key);
   });
 
   const handlePriceClick = useEffectEvent((params: { dataIndex?: number }) => {
@@ -1123,7 +1116,7 @@ export function GoodsPriceVsBaseChart({
 
 function marketTooltip(d: ScopedMarketSummary): string {
   return [
-    `<strong>${escapeEChartsHtml(d.centerName)}</strong>`,
+    `<strong>${escapeEChartsHtml(d.market.market.name)}</strong>`,
     `Market Value: ${formatFloat(d.marketValue, 0)}`,
     `Shortage $: ${formatFloat(d.shortagePressure, 0)}`,
     `Surplus $: ${formatFloat(d.surplusPressure, 0)}`,
@@ -1144,7 +1137,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
         [...markets]
           .sort((a, b) => b.marketValue - a.marketValue)
           .slice(0, 8)
-          .map((m) => m.marketId),
+          .map((m) => m.market.market.key),
       ),
     [markets],
   );
@@ -1210,7 +1203,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
           itemStyle: {
             color: (params) => {
               const d = markets[params.dataIndex];
-              return d?.colorHex ?? (isDark ? "#93c5fd" : "#3b82f6");
+              return d?.market.colorHex ?? (isDark ? "#93c5fd" : "#3b82f6");
             },
             opacity: 0.75,
           },
@@ -1219,8 +1212,8 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
             formatter: (params) => {
               const d = markets[params.dataIndex];
               if (!d) return "";
-              return topMarkets.has(d.marketId) || markets.length <= 10
-                ? d.centerName.replace(/ Market$/, "")
+              return topMarkets.has(d.market.market.key) || markets.length <= 10
+                ? d.market.market.name.replace(/ Market$/, "")
                 : "";
             },
             position: "top",
@@ -1242,9 +1235,9 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
       const market = dataIndex == null ? null : markets[dataIndex];
       return market
         ? {
-            id: market.marketId,
-            anchorLocationIdx: market.anchorLocationIdx,
-            label: market.centerName,
+            id: market.market.market.key,
+            anchorLocationIdx: market.market.anchorLocationIdx,
+            label: market.market.market.name,
           }
         : null;
     },

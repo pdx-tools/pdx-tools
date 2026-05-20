@@ -15,7 +15,6 @@ impl<'bump> BStr<'bump> {
 
     /// Return a string slice that encompasses the valid UTF-8 subset of the
     /// `BStr`
-    #[expect(clippy::wrong_self_convention)]
     pub fn to_str(&self) -> &'bump str {
         match std::str::from_utf8(self.0) {
             Ok(s) => s,

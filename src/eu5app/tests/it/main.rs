@@ -140,18 +140,16 @@ fn workspace_scenarios() {
             .unwrap();
         let owner = ws.gamestate().countries.index(owner_idx);
         let owner_tag = owner.tag();
-        let owner_data = owner.data().unwrap();
-
         let snapshot = serde_json::json!({
             "save_version": ws.gamestate().metadata().version.to_string(),
             "map_mode_colors": color_hashes,
             "location": [{
                 "id": location.id().value(),
-                "name": ws.location_name(location.idx()),
+                "name": ws.presenter().location_display_name(location.idx()),
                 "owner": {
                     "id": owner.id().value(),
                     "tag": owner_tag.to_str(),
-                    "name": ws.localized_country_name(&owner_data.country_name)
+                    "name": ws.presenter().country_display_name(owner_idx)
                 },
             }],
             "selection_counts": {

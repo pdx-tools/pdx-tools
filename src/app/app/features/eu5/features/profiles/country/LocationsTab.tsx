@@ -6,7 +6,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Eu5DataTable, Eu5MapDataTable } from "../../../components";
 import type { LocationDistribution, LocationRow, MapMode } from "@/wasm/wasm_eu5";
 import type { Row } from "@tanstack/react-table";
-import { EntityLink } from "../EntityLink";
+import { CountryLink, MarketLink } from "../EntityLink";
 import { locationProfileEntry, usePanelNav } from "../PanelNavContext";
 import { LocationDistributionChart } from "../../insights/LocationDistributionChart";
 
@@ -18,24 +18,27 @@ function NameCell({ row }: { row: Row<LocationRow> }) {
   const panToEntity = usePanToEntity();
   return (
     <MapHoverButton
-      target={{ kind: "location", locationIdx: row.original.locationIdx }}
+      target={{ kind: "location", locationIdx: row.original.location.key }}
       onClick={() => {
-        panToEntity(row.original.locationIdx);
+        panToEntity(row.original.location.key);
         if (nav.stack.length > 0) {
-          nav.pushMany([locationProfileEntry(row.original.locationIdx, row.original.name)]);
+          nav.pushMany([
+            locationProfileEntry(row.original.location.key, row.original.location.name),
+          ]);
         } else {
-          void engine.trigger.setFocusedLocation(row.original.locationIdx);
+          void engine.trigger.setFocusedLocation(row.original.location.key);
         }
       }}
       className="min-w-0 truncate text-left text-xs text-game-accent-300 hover:text-game-accent-100 hover:underline"
     >
-      {row.original.name}
+      {row.original.location.name}
     </MapHoverButton>
   );
 }
 
 const columns = [
-  columnHelper.accessor("name", {
+  columnHelper.accessor("location", {
+    id: "location",
     sortingFn: "text",
     meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
     cell: ({ row }) => <NameCell row={row} />,
@@ -83,19 +86,19 @@ const columns = [
       <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
     ),
   }),
-  columnHelper.accessor((row) => row.owner?.name ?? "", {
+  columnHelper.accessor((row) => row.owner?.country.name ?? "", {
     id: "owner",
     sortingFn: "text",
     meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
     cell: ({ row }) =>
-      row.original.owner ? <EntityLink entity={row.original.owner} aligned /> : null,
+      row.original.owner ? <CountryLink country={row.original.owner} aligned /> : null,
   }),
-  columnHelper.accessor((row) => row.market?.name ?? "", {
+  columnHelper.accessor((row) => row.market?.market.name ?? "", {
     id: "market",
     sortingFn: "text",
     meta: Eu5DataTable.meta({ headerLabel: "Market" }),
     cell: ({ row }) =>
-      row.original.market ? <EntityLink entity={row.original.market} aligned /> : null,
+      row.original.market ? <MarketLink market={row.original.market} aligned /> : null,
   }),
 ];
 
@@ -110,7 +113,7 @@ const SORT_BY_MODE: Partial<Record<MapMode, { id: string; desc: boolean }>> = {
   stateEfficacy: { id: "development", desc: true },
   political: { id: "owner", desc: false },
   markets: { id: "market", desc: false },
-  religion: { id: "name", desc: false },
+  religion: { id: "location", desc: false },
 };
 
 function bucketLocations(metricLabel: string, values: number[]): LocationDistribution {
@@ -187,7 +190,7 @@ export function LocationsTabContent({
         key={mode}
         columns={columns}
         data={locations}
-        getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.locationIdx })}
+        getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.location.key })}
         initialSorting={[sort]}
         pagination
       />

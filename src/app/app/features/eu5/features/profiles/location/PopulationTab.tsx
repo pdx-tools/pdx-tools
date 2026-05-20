@@ -16,12 +16,14 @@ const columns = [
     meta: Eu5DataTable.meta({ headerLabel: "Kind", variant: "pin" }),
     cell: (info) => info.getValue(),
   }),
-  columnHelper.accessor("cultureName", {
+  columnHelper.accessor((row) => row.culture?.name ?? "No culture", {
+    id: "culture",
     sortingFn: "text",
     meta: Eu5DataTable.meta({ headerLabel: "Culture" }),
     cell: (info) => info.getValue(),
   }),
-  columnHelper.accessor("religionName", {
+  columnHelper.accessor((row) => row.religion.name, {
+    id: "religion",
     sortingFn: "text",
     meta: Eu5DataTable.meta({ headerLabel: "Religion" }),
     cell: (info) => info.getValue(),

@@ -5,7 +5,7 @@ const POLITICAL_SCOREBOARD_TOP_COUNT: usize = 10;
 #[derive(Debug, Clone)]
 struct PoliticalWorldCandidate {
     great_power_rank: i32,
-    tag: String,
+    is_player: bool,
     row: PoliticalWorldRow,
 }
 
@@ -13,16 +13,20 @@ fn political_world_display_rows(
     mut candidates: Vec<PoliticalWorldCandidate>,
 ) -> Vec<PoliticalWorldRow> {
     candidates.sort_by(|a, b| {
-        a.great_power_rank
-            .cmp(&b.great_power_rank)
-            .then_with(|| a.tag.cmp(&b.tag))
+        a.great_power_rank.cmp(&b.great_power_rank).then_with(|| {
+            a.row
+                .country
+                .country_idx
+                .value()
+                .cmp(&b.row.country.country_idx.value())
+        })
     });
 
     candidates
         .into_iter()
         .enumerate()
         .filter_map(|(idx, mut candidate)| {
-            if idx < POLITICAL_SCOREBOARD_TOP_COUNT || candidate.row.country.is_player {
+            if idx < POLITICAL_SCOREBOARD_TOP_COUNT || candidate.is_player {
                 candidate.row.ordinal_rank = candidate.great_power_rank as u32;
                 Some(candidate.row)
             } else {
@@ -33,7 +37,7 @@ fn political_world_display_rows(
 }
 
 impl<'bump> Eu5Workspace<'bump> {
-    pub fn calculate_political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
+    pub(crate) fn calculate_political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
         #[derive(Default)]
         struct PoliticalCountryAgg {
             total_state_efficacy: f64,
@@ -84,13 +88,13 @@ impl<'bump> Eu5Workspace<'bump> {
                     return None;
                 }
 
-                let country = self.country_ref_from_country_idx(country_idx)?;
+                let is_player = played_countries.contains(&country_id);
                 Some(PoliticalWorldCandidate {
                     great_power_rank: data.great_power_rank,
-                    tag: country.tag.clone(),
+                    is_player,
                     row: PoliticalWorldRow {
                         ordinal_rank: 0,
-                        country,
+                        country: self.country_ref_from_country_idx(country_idx),
                         total_state_efficacy: aggregate.total_state_efficacy,
                         active_state_capacity: aggregate.active_state_capacity,
                         total_population: aggregate.total_population,
@@ -110,7 +114,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// State efficacy measures territorial quality by combining location control and development.
     /// Formula: Location Efficacy = Control × Development
     /// National metrics: Total Efficacy (sum), Average Efficacy (mean), Location Count, Total Population
-    pub fn calculate_state_efficacy_insight(&self) -> StateEfficacyInsightData {
+    pub(crate) fn calculate_state_efficacy_insight(&self) -> StateEfficacyInsightData {
         #[derive(Default)]
         struct EfficacyAggregator {
             total_efficacy: f64,
@@ -123,53 +127,42 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut total_efficacy = 0.0f64;
         let mut total_population = 0u32;
 
-        // Single pass through all locations
         for location_entry in self.gamestate.locations.iter() {
             let location = location_entry.location();
 
-            // Skip unowned locations
             if location.owner.is_dummy() {
                 continue;
             }
 
-            // When a selection is active, only include selected locations
             if !self.selection_state.is_empty()
                 && !self.selection_state.contains(location_entry.idx())
             {
                 continue;
             }
 
-            // Calculate location efficacy: control × development
             let location_efficacy = location.control * location.development;
-
-            // Get population for this location
             let population = self.gamestate.location_population(location) as u32;
             location_count += 1;
             total_efficacy += location_efficacy;
             total_population += population;
 
-            // Aggregate by country
             let aggregate = aggregates.entry(location.owner).or_default();
             aggregate.total_efficacy += location_efficacy;
             aggregate.location_count += 1;
             aggregate.total_population += population;
         }
 
-        // Convert to result vector
         let mut results: Vec<CountryStateEfficacy> = aggregates
             .into_iter()
             .filter_map(|(country_id, aggregate)| {
                 let country_idx = self.gamestate.countries.get(country_id)?;
-                let country = self.country_ref_from_country_idx(country_idx)?;
-
                 let avg_efficacy = if aggregate.location_count > 0 {
                     aggregate.total_efficacy / (aggregate.location_count as f64)
                 } else {
                     0.0
                 };
-
                 Some(CountryStateEfficacy {
-                    country,
+                    country: self.country_ref_from_country_idx(country_idx),
                     total_efficacy: aggregate.total_efficacy,
                     location_count: aggregate.location_count,
                     avg_efficacy,
@@ -178,11 +171,13 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
-        // Sort by total efficacy descending
         results.sort_by(|a, b| {
-            b.total_efficacy
-                .total_cmp(&a.total_efficacy)
-                .then_with(|| a.country.tag.cmp(&b.country.tag))
+            b.total_efficacy.total_cmp(&a.total_efficacy).then_with(|| {
+                a.country
+                    .country_idx
+                    .value()
+                    .cmp(&b.country.country_idx.value())
+            })
         });
 
         StateEfficacyInsightData {
@@ -204,7 +199,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn state_efficacy_location_distribution(&self) -> LocationDistribution {
+    pub(crate) fn state_efficacy_location_distribution(&self) -> LocationDistribution {
         let mut metrics = self.state_efficacy_location_metrics();
 
         if metrics.is_empty() {
@@ -260,8 +255,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .iter()
             .take(10)
             .map(|(idx, value, _, _, _)| RankedLocation {
-                location_idx: idx.value(),
-                name: self.location_name(*idx).to_string(),
+                location: *idx,
                 value: *value,
             })
             .collect();
@@ -273,7 +267,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn state_efficacy_top_locations(&self) -> Vec<StateEfficacyTopLocation> {
+    pub(crate) fn state_efficacy_top_locations(&self) -> Vec<StateEfficacyTopLocation> {
         let mut metrics = self.state_efficacy_location_metrics();
         metrics.sort_by(|a, b| b.1.total_cmp(&a.1));
 
@@ -283,10 +277,9 @@ impl<'bump> Eu5Workspace<'bump> {
             .take(TOP_LOCATIONS)
             .filter_map(|&(idx, state_efficacy, development, control, population)| {
                 let loc = self.gamestate.locations.index(idx).location();
-                let owner = self.owner_ref_for_location(loc)?;
+                let owner = self.owner_country_ref_for_location(loc)?;
                 Some(StateEfficacyTopLocation {
-                    location_idx: idx.value(),
-                    name: self.location_name(idx).to_string(),
+                    location: idx,
                     state_efficacy,
                     development,
                     control,
@@ -323,7 +316,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Returns a histogram distribution of per-location metric values for the
     /// current map mode over the current selection (or all locations if empty).
-    pub fn selection_location_distribution(&self) -> LocationDistribution {
+    pub(crate) fn selection_location_distribution(&self) -> LocationDistribution {
         let building_levels = self.get_location_building_levels();
 
         let metric_label = match self.current_map_mode {
@@ -420,8 +413,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .iter()
             .take(10)
             .map(|(idx, value)| RankedLocation {
-                location_idx: idx.value(),
-                name: self.location_name(*idx).to_string(),
+                location: *idx,
                 value: *value,
             })
             .collect();
@@ -435,7 +427,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Development insight: per-country aggregates + top locations by development,
     /// over the current selection (or all locations when empty).
-    pub fn calculate_development_insight(&self) -> DevelopmentInsightData {
+    pub(crate) fn calculate_development_insight(&self) -> DevelopmentInsightData {
         #[derive(Default)]
         struct DevAgg {
             total_dev: f64,
@@ -476,7 +468,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .into_iter()
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
-                let country = self.country_ref_from_country_idx(cidx)?;
+                let country = self.country_ref_from_country_idx(cidx);
                 Some(CountryDevSummary {
                     country,
                     total_development: agg.total_dev,
@@ -493,7 +485,12 @@ impl<'bump> Eu5Workspace<'bump> {
         countries.sort_by(|a, b| {
             b.total_development
                 .total_cmp(&a.total_development)
-                .then_with(|| a.country.tag.cmp(&b.country.tag))
+                .then_with(|| {
+                    a.country
+                        .country_idx
+                        .value()
+                        .cmp(&b.country.country_idx.value())
+                })
         });
 
         all_locs.sort_by(|a, b| b.1.total_cmp(&a.1));
@@ -505,10 +502,9 @@ impl<'bump> Eu5Workspace<'bump> {
             .take(TOP_LOCATIONS)
             .filter_map(|&(idx, dev, pop, ctrl)| {
                 let loc = self.gamestate.locations.index(idx).location();
-                let owner = self.owner_ref_for_location(loc)?;
+                let owner = self.owner_country_ref_for_location(loc)?;
                 Some(DevTopLocation {
-                    location_idx: idx.value(),
-                    name: self.location_name(idx).to_string(),
+                    location: idx,
                     development: dev,
                     population: pop,
                     control: ctrl,
@@ -541,7 +537,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Possible-tax insight: per-country ceiling aggregates and top locations
     /// by possible tax, over the current selection (or all locations when empty).
-    pub fn calculate_possible_tax_insight(&self) -> PossibleTaxInsightData {
+    pub(crate) fn calculate_possible_tax_insight(&self) -> PossibleTaxInsightData {
         #[derive(Default)]
         struct TaxAgg {
             total_possible_tax: f64,
@@ -579,7 +575,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .into_iter()
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
-                let country = self.country_ref_from_country_idx(cidx)?;
+                let country = self.country_ref_from_country_idx(cidx);
                 Some(CountryPossibleTax {
                     country,
                     total_possible_tax: agg.total_possible_tax,
@@ -596,7 +592,12 @@ impl<'bump> Eu5Workspace<'bump> {
         countries.sort_by(|a, b| {
             b.total_possible_tax
                 .total_cmp(&a.total_possible_tax)
-                .then_with(|| a.country.tag.cmp(&b.country.tag))
+                .then_with(|| {
+                    a.country
+                        .country_idx
+                        .value()
+                        .cmp(&b.country.country_idx.value())
+                })
         });
 
         all_locs.sort_by(|a, b| b.1.total_cmp(&a.1));
@@ -606,10 +607,9 @@ impl<'bump> Eu5Workspace<'bump> {
             .take(TOP_LOCATIONS)
             .filter_map(|&(idx, ptax, pop, ctrl, dev)| {
                 let loc = self.gamestate.locations.index(idx).location();
-                let owner = self.owner_ref_for_location(loc)?;
+                let owner = self.owner_country_ref_for_location(loc)?;
                 Some(PossibleTaxTopLocation {
-                    location_idx: idx.value(),
-                    name: self.location_name(idx).to_string(),
+                    location: idx,
                     possible_tax: ptax,
                     development: dev,
                     control: ctrl,
@@ -628,7 +628,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn calculate_tax_gap_insight(&self) -> TaxGapInsightData {
+    pub(crate) fn calculate_tax_gap_insight(&self) -> TaxGapInsightData {
         #[derive(Default)]
         struct TaxAgg {
             total_tax: f64,
@@ -676,7 +676,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .into_iter()
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
-                let country = self.country_ref_from_country_idx(cidx)?;
+                let country = self.country_ref_from_country_idx(cidx);
                 let tax_gap = agg.total_possible_tax - agg.total_tax;
                 let realization_ratio = if agg.total_possible_tax > 0.0 {
                     agg.total_tax / agg.total_possible_tax
@@ -695,9 +695,12 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
         countries.sort_by(|a, b| {
-            b.tax_gap
-                .total_cmp(&a.tax_gap)
-                .then_with(|| a.country.tag.cmp(&b.country.tag))
+            b.tax_gap.total_cmp(&a.tax_gap).then_with(|| {
+                a.country
+                    .country_idx
+                    .value()
+                    .cmp(&b.country.country_idx.value())
+            })
         });
 
         all_locs.sort_by(|a, b| b.3.total_cmp(&a.3));
@@ -707,10 +710,9 @@ impl<'bump> Eu5Workspace<'bump> {
             .take(TOP_LOCATIONS)
             .filter_map(|&(idx, tax, ptax, gap, pop, ctrl, dev)| {
                 let loc = self.gamestate.locations.index(idx).location();
-                let owner = self.owner_ref_for_location(loc)?;
+                let owner = self.owner_country_ref_for_location(loc)?;
                 Some(TaxGapTopLocation {
-                    location_idx: idx.value(),
-                    name: self.location_name(idx).to_string(),
+                    location: idx,
                     tax,
                     possible_tax: ptax,
                     tax_gap: gap,
@@ -737,7 +739,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// location sits inside the current location filter (or every market if the
     /// selection is empty). Production-opportunity rows only include locations
     /// in the current scope.
-    pub fn calculate_market_insight(&self) -> MarketInsightData {
+    pub(crate) fn calculate_market_insight(&self) -> MarketInsightData<'_> {
         use eu5save::models::LocationId;
 
         let is_empty_selection = self.selection_state.is_empty();
@@ -763,8 +765,6 @@ impl<'bump> Eu5Workspace<'bump> {
         struct MarketAgg<'a> {
             market_id: eu5save::models::MarketId,
             center_idx: LocationIdx,
-            name: String,
-            color_hex: String,
             market_value: f64,
             shortage_pressure: f64,
             surplus_pressure: f64,
@@ -773,11 +773,11 @@ impl<'bump> Eu5Workspace<'bump> {
             member_locations: Vec<(LocationIdx, &'a eu5save::models::Location<'a>)>,
         }
 
-        let mut good_aggs: FxHashMap<RawMaterialsName, GoodAgg> = FxHashMap::default();
+        let mut good_aggs: FxHashMap<GoodName, GoodAgg> = FxHashMap::default();
         let mut market_aggs: Vec<MarketAgg> = Vec::new();
-        let mut good_price_by_market: FxHashMap<(u32, RawMaterialsName), (f64, f64, f64)> =
+        let mut good_price_by_market: FxHashMap<(u32, GoodName), (f64, f64, f64)> =
             FxHashMap::default();
-        let mut good_market_cells: Vec<crate::selection_views::GoodMarketBalanceCell> = Vec::new();
+        let mut good_market_cells: Vec<GoodMarketBalanceCell<'_>> = Vec::new();
 
         let mut total_market_value = 0.0f64;
         let mut total_shortage_value = 0.0f64;
@@ -837,15 +837,9 @@ impl<'bump> Eu5Workspace<'bump> {
                     0.0
                 };
                 let imbalance_value = (good.supply - good.demand) * good.price;
-                good_market_cells.push(crate::selection_views::GoodMarketBalanceCell {
-                    market_id: market_id.value(),
-                    market_name: self.location_name(center_idx).to_string(),
-                    good_key: good.good.to_string(),
-                    good: self
-                        .game_data
-                        .localized_good_name(good.good.to_str())
-                        .to_string(),
-                    market_anchor_location_idx: center_idx.value(),
+                good_market_cells.push(GoodMarketBalanceCell {
+                    market: MarketRefSource { market_id },
+                    good: good.good,
                     supply: good.supply,
                     demand: good.demand,
                     price: good.price,
@@ -859,17 +853,9 @@ impl<'bump> Eu5Workspace<'bump> {
             total_shortage_value += shortage_pressure;
             total_surplus_value += surplus_pressure;
 
-            let color_hex = format!(
-                "#{:02x}{:02x}{:02x}",
-                market.color.0[0], market.color.0[1], market.color.0[2]
-            );
-            let name = format!("{} Market", self.location_name(center_idx));
-
             market_aggs.push(MarketAgg {
                 market_id,
                 center_idx,
-                name,
-                color_hex,
                 market_value,
                 shortage_pressure,
                 surplus_pressure,
@@ -889,7 +875,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut market_access_sum = 0.0f64;
         let mut market_access_count = 0u32;
         let mut production_candidates: Vec<(LocationIdx, &eu5save::models::Location)> = Vec::new();
-        let mut producing_location_counts: FxHashMap<RawMaterialsName, u32> = FxHashMap::default();
+        let mut producing_location_counts: FxHashMap<GoodName, u32> = FxHashMap::default();
 
         for entry in self.gamestate.locations.iter() {
             let idx = entry.idx();
@@ -924,7 +910,7 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
-        let mut goods: Vec<ScopedGoodSummary> = good_aggs
+        let mut goods: Vec<ScopedGoodSummary<'_>> = good_aggs
             .into_iter()
             .map(|(name, agg)| {
                 let weighted_price = if agg.price_weighted_denom > 0.0 {
@@ -937,17 +923,10 @@ impl<'bump> Eu5Workspace<'bump> {
                 } else {
                     0.0
                 };
-                let localized = self.game_data.localized_good(name.to_str());
+                let good_data = self.game_data.good(name.to_str());
                 ScopedGoodSummary {
-                    key: name.to_string(),
-                    name: localized
-                        .as_ref()
-                        .map(|l| l.name.clone())
-                        .unwrap_or_else(|| name.to_str().to_string()),
-                    default_market_price: localized.as_ref().map(|l| l.default_market_price),
-                    color_hex: localized
-                        .map(|l| l.color_hex)
-                        .unwrap_or_else(|| "#888888".to_string()),
+                    good: crate::presentation::GoodRefSource(name),
+                    default_market_price: good_data.map(|l| l.default_market_price),
                     supply: agg.supply,
                     demand: agg.demand,
                     total_taken: agg.total_taken,
@@ -976,7 +955,7 @@ impl<'bump> Eu5Workspace<'bump> {
             let b_imbalance = b.shortage_value.max(b.surplus_value);
             b_imbalance
                 .total_cmp(&a_imbalance)
-                .then_with(|| a.name.cmp(&b.name))
+                .then_with(|| a.good.0.to_str().cmp(b.good.0.to_str()))
         });
 
         let markets: Vec<ScopedMarketSummary> = {
@@ -994,10 +973,9 @@ impl<'bump> Eu5Workspace<'bump> {
                         }
                     }
                     ScopedMarketSummary {
-                        market_id: agg.market_id.value(),
-                        anchor_location_idx: agg.center_idx.value(),
-                        center_name: agg.name,
-                        color_hex: agg.color_hex,
+                        market: MarketRefSource {
+                            market_id: agg.market_id,
+                        },
                         market_value: agg.market_value,
                         shortage_pressure: agg.shortage_pressure,
                         surplus_pressure: agg.surplus_pressure,
@@ -1016,27 +994,24 @@ impl<'bump> Eu5Workspace<'bump> {
             rows.sort_by(|a, b| {
                 b.market_value
                     .total_cmp(&a.market_value)
-                    .then_with(|| a.center_name.cmp(&b.center_name))
+                    .then_with(|| a.market.market_id.value().cmp(&b.market.market_id.value()))
             });
             rows
         };
 
-        let mut production_rows: Vec<ProductionLocationSummary> = Vec::new();
+        let mut production_rows: Vec<ProductionLocationSummary<'_>> = Vec::new();
         for (idx, loc) in production_candidates {
-            let Some(owner) = self.owner_ref_for_location(loc) else {
+            let Some(owner) = self.owner_country_ref_for_location(loc) else {
                 continue;
             };
             let Some(raw_material) = loc.raw_material else {
                 continue;
             };
-            let (market_center_name, center_location_idx_opt) = if let Some(market_id) = loc.market
+            let (market_id_opt, center_location_idx_opt) = if let Some(market_id) = loc.market
                 && let Some(market) = self.gamestate.market_manager.get(market_id)
                 && let Some(center_idx) = lookup_center_idx(market.center)
             {
-                (
-                    Some(self.location_name(center_idx).to_string()),
-                    Some(center_idx.value()),
-                )
+                (Some(market_id), Some(center_idx.value()))
             } else {
                 (None, None)
             };
@@ -1052,11 +1027,10 @@ impl<'bump> Eu5Workspace<'bump> {
             let opportunity = loc.rgo_level.max(0.0) * loc.market_access.max(0.0) * shortage_value;
 
             production_rows.push(ProductionLocationSummary {
-                location_idx: idx.value(),
-                name: self.location_name(idx).to_string(),
+                location: idx,
                 owner,
-                market_center_name,
-                raw_material: Some(raw_material.to_string()),
+                market: market_id_opt.map(|market_id| MarketRefSource { market_id }),
+                raw_material: Some(raw_material),
                 rgo_level: loc.rgo_level,
                 market_access: loc.market_access,
                 development: loc.development,
@@ -1100,7 +1074,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Population insight: scoped country population, concentration curve, and
     /// top populated locations for the current selection or whole save.
-    pub fn calculate_population_insight(&self) -> PopulationInsightData {
+    pub(crate) fn calculate_population_insight(&self) -> PopulationInsightData {
         #[derive(Default)]
         struct RankAgg {
             population: u32,
@@ -1201,7 +1175,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     Vec::new()
                 };
                 let great_power_rank = data.great_power_rank;
-                let country = self.country_ref_from_country_idx(cidx)?;
+                let country = self.country_ref_from_country_idx(cidx);
                 let ranks = agg
                     .ranks
                     .into_iter()
@@ -1223,9 +1197,12 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
         countries.sort_by(|a, b| {
-            b.total_population
-                .cmp(&a.total_population)
-                .then_with(|| a.country.tag.cmp(&b.country.tag))
+            b.total_population.cmp(&a.total_population).then_with(|| {
+                a.country
+                    .country_idx
+                    .value()
+                    .cmp(&b.country.country_idx.value())
+            })
         });
 
         let mut cumulative_population = 0u32;
@@ -1254,10 +1231,9 @@ impl<'bump> Eu5Workspace<'bump> {
             .take(50)
             .filter_map(|(idx, _, population, rank_idx)| {
                 let loc = self.gamestate.locations.index(idx).location();
-                let owner = self.owner_ref_for_location(loc)?;
+                let owner = self.owner_country_ref_for_location(loc)?;
                 Some(PopulationTopLocation {
-                    location_idx: idx.value(),
-                    name: self.location_name(idx).to_string(),
+                    location: idx,
                     owner,
                     population,
                     rank: rank_idx? as u8,
@@ -1381,7 +1357,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn calculate_religion_insight(&self) -> ReligionInsightData {
+    pub(crate) fn calculate_religion_insight(&self) -> ReligionInsightData {
         use eu5save::models::ReligionId;
 
         struct StateReligionAgg {
@@ -1454,20 +1430,18 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
-        let religion_color_hex = |rid: ReligionId| -> Option<(String, String)> {
+        let religion_color_hex = |rid: ReligionId| -> Option<String> {
             let rel = self.gamestate.religion_manager.lookup(rid)?;
-            let name = rel.name.to_str().to_string();
-            let hex = format!(
+            Some(format!(
                 "#{:02x}{:02x}{:02x}",
                 rel.color.0[0], rel.color.0[1], rel.color.0[2]
-            );
-            Some((name, hex))
+            ))
         };
 
         let mut state_religions: Vec<StateReligionRow> = state_rel_aggs
             .iter()
             .filter_map(|(&sr_id, agg)| {
-                let (religion, color_hex) = religion_color_hex(sr_id)?;
+                let color_hex = religion_color_hex(sr_id)?;
                 let total = agg.total_ruled_population;
                 let sr_pop = agg.state_religion_population;
                 let coverage = if total > 0.0 { sr_pop / total } else { 0.0 };
@@ -1482,9 +1456,9 @@ impl<'bump> Eu5Workspace<'bump> {
                     .into_iter()
                     .take(3)
                     .filter_map(|(rid, pop)| {
-                        let (rel_name, rel_hex) = religion_color_hex(rid)?;
+                        let rel_hex = religion_color_hex(rid)?;
                         Some(PopulationReligionShare {
-                            religion: rel_name,
+                            religion: rid,
                             color_hex: rel_hex,
                             population: pop as u32,
                         })
@@ -1492,7 +1466,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     .collect();
 
                 Some(StateReligionRow {
-                    religion,
+                    religion: sr_id,
                     color_hex,
                     country_count: agg.country_ids.len() as u32,
                     total_ruled_population: total as u32,
@@ -1506,7 +1480,7 @@ impl<'bump> Eu5Workspace<'bump> {
         state_religions.sort_by(|a, b| {
             b.total_ruled_population
                 .cmp(&a.total_ruled_population)
-                .then_with(|| a.religion.cmp(&b.religion))
+                .then_with(|| a.religion.value().cmp(&b.religion.value()))
         });
 
         let all_religion_ids: FxHashSet<ReligionId> = state_rel_aggs
@@ -1518,7 +1492,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut religions: Vec<ReligionRow> = all_religion_ids
             .iter()
             .filter_map(|&rid| {
-                let (religion, color_hex) = religion_color_hex(rid)?;
+                let color_hex = religion_color_hex(rid)?;
                 let state_agg = state_rel_aggs.get(&rid);
                 let follower_agg = follower_aggs.get(&rid);
 
@@ -1541,7 +1515,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     .unwrap_or(0);
 
                 Some(ReligionRow {
-                    religion,
+                    religion: rid,
                     color_hex,
                     state_country_count,
                     total_ruled_population: total_ruled as u32,
@@ -1557,7 +1531,7 @@ impl<'bump> Eu5Workspace<'bump> {
         religions.sort_by(|a, b| {
             b.total_ruled_population
                 .cmp(&a.total_ruled_population)
-                .then_with(|| a.religion.cmp(&b.religion))
+                .then_with(|| a.religion.value().cmp(&b.religion.value()))
         });
 
         ReligionInsightData {
@@ -1566,8 +1540,8 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn calculate_building_levels_insight(&self) -> BuildingLevelsInsightData {
-        use crate::selection_views::ForeignBuildingLocationRow;
+    pub(crate) fn calculate_building_levels_insight(&self) -> BuildingLevelsInsightData<'_> {
+        use crate::presentation::BuildingKeyRef;
         use eu5save::models::CountryId;
 
         let is_empty = self.selection_state.is_empty();
@@ -1683,14 +1657,16 @@ impl<'bump> Eu5Workspace<'bump> {
 
         let location_count = loc_agg.len() as u32;
 
-        // Build type summaries (all types, sorted by levels descending)
-        let mut types_with_keys: Vec<(String, BuildingTypeSummary)> = type_agg
+        // Build type summaries (all types, sorted by levels descending). Keep
+        // the borrowed kind alongside each entry so we can sort by key without
+        // allocating a tag string.
+        let mut types_with_keys: Vec<(&str, BuildingTypeSummary<'_>)> = type_agg
             .into_iter()
             .map(|(kind, t)| {
                 (
-                    kind.to_string(),
+                    kind,
                     BuildingTypeSummary {
-                        kind: self.game_data.localized_building_name(kind),
+                        building: BuildingKeyRef(kind),
                         levels: t.levels,
                         foreign_levels: t.foreign_levels,
                         employed: t.employed,
@@ -1701,11 +1677,8 @@ impl<'bump> Eu5Workspace<'bump> {
                 )
             })
             .collect();
-        types_with_keys.sort_by(|a, b| {
-            b.1.levels
-                .total_cmp(&a.1.levels)
-                .then_with(|| a.0.cmp(&b.0))
-        });
+        types_with_keys
+            .sort_by(|a, b| b.1.levels.total_cmp(&a.1.levels).then_with(|| a.0.cmp(b.0)));
 
         // Keep the top foreign owners needed by the owner/type cell table.
         let foreign_owner_count = foreign_owner_agg.len() as u32;
@@ -1719,29 +1692,25 @@ impl<'bump> Eu5Workspace<'bump> {
         foreign_owner_vec.truncate(20);
 
         // Build foreign owner cells for top 20 types x top 20 foreign owners
-        let top_type_kinds: FxHashSet<&str> = types_with_keys
-            .iter()
-            .take(20)
-            .map(|t| t.0.as_str())
-            .collect();
+        let top_type_kinds: FxHashSet<&str> =
+            types_with_keys.iter().take(20).map(|t| t.0).collect();
         let top_owner_ids: FxHashSet<CountryId> = foreign_owner_vec
             .iter()
             .take(20)
             .map(|(cid, _)| *cid)
             .collect();
 
-        // Resolve EntityRef for each top foreign owner
-        let owner_erefs: FxHashMap<CountryId, EntityRef> = foreign_owner_vec
+        // Resolve workspace CountryRef for each top foreign owner.
+        let owner_erefs: FxHashMap<CountryId, CountryRefSource> = foreign_owner_vec
             .iter()
             .take(20)
             .filter_map(|(cid, _)| {
                 let cidx = self.gamestate.countries.get(*cid)?;
-                let eref = self.entity_ref_from_country_idx(cidx)?;
-                Some((*cid, eref))
+                Some((*cid, self.country_ref_from_country_idx(cidx)))
             })
             .collect();
 
-        let mut foreign_owner_cells: Vec<BuildingTypeForeignOwnerCell> = foreign_cell_agg
+        let mut foreign_owner_cells: Vec<BuildingTypeForeignOwnerCell<'_>> = foreign_cell_agg
             .into_iter()
             .filter(|&((kind, ref cid), _)| {
                 top_type_kinds.contains(kind) && top_owner_ids.contains(cid)
@@ -1749,7 +1718,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .filter_map(|((kind, cid), fc)| {
                 let owner = owner_erefs.get(&cid)?.clone();
                 Some(BuildingTypeForeignOwnerCell {
-                    kind: self.game_data.localized_building_name(kind),
+                    building: BuildingKeyRef(kind),
                     owner,
                     levels: fc.levels,
                     employed: fc.employed,
@@ -1771,21 +1740,20 @@ impl<'bump> Eu5Workspace<'bump> {
         loc_foreign_vec.sort_by(|a, b| b.1.total_cmp(&a.1));
         loc_foreign_vec.truncate(100);
 
-        let foreign_location_rows: Vec<ForeignBuildingLocationRow> = loc_foreign_vec
+        let foreign_location_rows: Vec<ForeignBuildingLocationRow<'_>> = loc_foreign_vec
             .into_iter()
             .filter_map(|((loc_idx_val, kind, foreign_owner_id), fl)| {
                 let loc_idx = eu5save::models::LocationIdx::new(loc_idx_val);
                 let loc = self.gamestate.locations.index(loc_idx).location();
-                let location_owner = self.owner_ref_for_location(loc)?;
+                let location_owner = self.owner_country_ref_for_location(loc)?;
                 let foreign_cidx = self.gamestate.countries.get(foreign_owner_id)?;
-                let foreign_owner = self.entity_ref_from_country_idx(foreign_cidx)?;
+                let foreign_owner = self.country_ref_from_country_idx(foreign_cidx);
                 let location_total_levels = loc_agg.get(&loc_idx_val).map_or(0.0, |la| la.levels);
                 Some(ForeignBuildingLocationRow {
-                    location_idx: loc_idx_val,
-                    location_name: self.location_name(loc_idx).to_string(),
+                    location: loc_idx,
                     location_owner,
                     foreign_owner,
-                    kind: self.game_data.localized_building_name(kind),
+                    building: BuildingKeyRef(kind),
                     foreign_levels: fl,
                     location_total_levels,
                 })
@@ -1807,10 +1775,9 @@ impl<'bump> Eu5Workspace<'bump> {
             .filter_map(|(loc_idx_val, la)| {
                 let loc_idx = eu5save::models::LocationIdx::new(loc_idx_val);
                 let loc = self.gamestate.locations.index(loc_idx).location();
-                let owner = self.owner_ref_for_location(loc)?;
+                let owner = self.owner_country_ref_for_location(loc)?;
                 Some(BuildingLevelsTopLocation {
-                    location_idx: loc_idx_val,
-                    name: self.location_name(loc_idx).to_string(),
+                    location: loc_idx,
                     owner,
                     levels: la.levels,
                 })
@@ -1897,7 +1864,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn calculate_rgo_insight(&self) -> RgoInsightData {
+    pub(crate) fn calculate_rgo_insight(&self) -> RgoInsightData<'_> {
         const TOP_LOCATIONS_CAP: usize = 50;
         const PROFILE_DELTA_CAP: usize = 20;
 
@@ -1912,12 +1879,12 @@ impl<'bump> Eu5Workspace<'bump> {
 
         struct LocEntry<'a> {
             idx: LocationIdx,
-            raw_material: RawMaterialsName<'a>,
+            raw_material: GoodName<'a>,
             rgo_level: f64,
         }
 
-        let mut scoped_mat: FxHashMap<RawMaterialsName<'_>, MaterialAgg> = FxHashMap::default();
-        let mut global_mat_total: FxHashMap<RawMaterialsName<'_>, f64> = FxHashMap::default();
+        let mut scoped_mat: FxHashMap<GoodName<'_>, MaterialAgg> = FxHashMap::default();
+        let mut global_mat_total: FxHashMap<GoodName<'_>, f64> = FxHashMap::default();
 
         let mut scoped_total = 0.0_f64;
         let mut global_total = 0.0_f64;
@@ -1958,15 +1925,14 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
-        let mut mat_entries: Vec<(RawMaterialsName<'_>, MaterialAgg)> =
-            scoped_mat.into_iter().collect();
+        let mut mat_entries: Vec<(GoodName<'_>, MaterialAgg)> = scoped_mat.into_iter().collect();
         mat_entries.sort_by(|a, b| b.1.total_rgo_level.total_cmp(&a.1.total_rgo_level));
 
         for (_, agg) in &mut mat_entries {
             agg.levels.sort_by(f64::total_cmp);
         }
 
-        let materials: Vec<RgoMaterialSummary> = mat_entries
+        let materials: Vec<RgoMaterialSummary<'_>> = mat_entries
             .iter()
             .map(|(raw_material, agg)| {
                 let n = agg.levels.len();
@@ -1987,11 +1953,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     0.0
                 };
                 RgoMaterialSummary {
-                    raw_material: raw_material.to_str().to_string(),
-                    color_hex: self
-                        .game_data
-                        .good(raw_material.to_str())
-                        .map(|good| good.color_hex.clone()),
+                    raw_material: crate::presentation::GoodRefSource(*raw_material),
                     total_rgo_level: agg.total_rgo_level,
                     avg_rgo_level: agg.total_rgo_level / agg.location_count as f64,
                     median_rgo_level,
@@ -2002,13 +1964,13 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
-        let profile_deltas: Vec<RgoMaterialProfileDelta> = if is_selection_empty {
+        let profile_deltas: Vec<RgoMaterialProfileDelta<'_>> = if is_selection_empty {
             Vec::new()
         } else {
-            let scoped_lookup: FxHashMap<RawMaterialsName<'_>, &MaterialAgg> =
+            let scoped_lookup: FxHashMap<GoodName<'_>, &MaterialAgg> =
                 mat_entries.iter().map(|(name, agg)| (*name, agg)).collect();
 
-            let mut deltas: Vec<RgoMaterialProfileDelta> = global_mat_total
+            let mut deltas: Vec<RgoMaterialProfileDelta<'_>> = global_mat_total
                 .iter()
                 .map(|(raw_material, global_rgo)| {
                     let scoped_agg = scoped_lookup.get(raw_material).copied();
@@ -2025,7 +1987,7 @@ impl<'bump> Eu5Workspace<'bump> {
                         0.0
                     };
                     RgoMaterialProfileDelta {
-                        raw_material: raw_material.to_str().to_string(),
+                        raw_material: *raw_material,
                         scoped_share,
                         global_share,
                         share_delta: scoped_share - global_share,
@@ -2038,24 +2000,23 @@ impl<'bump> Eu5Workspace<'bump> {
                 b.share_delta
                     .abs()
                     .total_cmp(&a.share_delta.abs())
-                    .then_with(|| a.raw_material.cmp(&b.raw_material))
+                    .then_with(|| a.raw_material.to_str().cmp(b.raw_material.to_str()))
             });
             deltas.truncate(PROFILE_DELTA_CAP);
             deltas
         };
 
         scoped_locs.sort_by(|a, b| b.rgo_level.total_cmp(&a.rgo_level));
-        let top_locations: Vec<RgoTopLocation> = scoped_locs
+        let top_locations: Vec<RgoTopLocation<'_>> = scoped_locs
             .iter()
             .take(TOP_LOCATIONS_CAP)
             .filter_map(|entry| {
                 let loc = self.gamestate.locations.index(entry.idx).location();
-                let owner = self.owner_ref_for_location(loc)?;
+                let owner = self.owner_country_ref_for_location(loc)?;
                 Some(RgoTopLocation {
-                    location_idx: entry.idx.value(),
-                    name: self.location_name(entry.idx).to_string(),
+                    location: entry.idx,
                     owner,
-                    raw_material: entry.raw_material.to_str().to_string(),
+                    raw_material: entry.raw_material,
                     rgo_level: entry.rgo_level,
                 })
             })
@@ -2080,7 +2041,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn calculate_control_insight(&self) -> ControlInsightData {
+    pub(crate) fn calculate_control_insight(&self) -> ControlInsightData {
         const COUNTRY_BAR_CAP: usize = 20;
         const COUNTRY_SCATTER_CAP: usize = 250;
         const TOP_LOCATION_CAP: usize = 50;
@@ -2204,7 +2165,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .take(COUNTRY_BAR_CAP)
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(*cid)?;
-                let country = self.country_ref_from_country_idx(cidx)?;
+                let country = self.country_ref_from_country_idx(cidx);
                 let bands = CONTROL_BANDS
                     .iter()
                     .enumerate()
@@ -2232,7 +2193,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let to_scatter_point =
             |(cid, agg): &(CountryId, CountryControlAgg)| -> Option<CountryControlPoint> {
                 let cidx = self.gamestate.countries.get(*cid)?;
-                let country = self.country_ref_from_country_idx(cidx)?;
+                let country = self.country_ref_from_country_idx(cidx);
                 Some(CountryControlPoint {
                     country,
                     total_development: agg.total_development,
@@ -2273,10 +2234,9 @@ impl<'bump> Eu5Workspace<'bump> {
             .take(TOP_LOCATION_CAP)
             .filter_map(|cand| {
                 let loc = self.gamestate.locations.index(cand.idx).location();
-                let owner = self.owner_ref_for_location(loc)?;
+                let owner = self.owner_country_ref_for_location(loc)?;
                 Some(ControlTopLocation {
-                    location_idx: cand.idx.value(),
-                    name: self.location_name(cand.idx).to_string(),
+                    location: cand.idx,
                     owner,
                     control: cand.control,
                     development: cand.development,
@@ -2306,9 +2266,10 @@ impl<'bump> Eu5Workspace<'bump> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use eu5save::models::CountryIdx;
 
     fn candidate(
-        tag: &str,
+        country_idx_value: u32,
         great_power_rank: i32,
         is_player: bool,
         total_state_efficacy: f64,
@@ -2318,16 +2279,11 @@ mod tests {
     ) -> PoliticalWorldCandidate {
         PoliticalWorldCandidate {
             great_power_rank,
-            tag: tag.to_string(),
+            is_player,
             row: PoliticalWorldRow {
                 ordinal_rank: 0,
-                country: CountryRef {
-                    country_idx: 0,
-                    anchor_location_idx: great_power_rank as u32,
-                    tag: tag.to_string(),
-                    name: format!("{tag} Nation"),
-                    color_hex: "#112233".to_string(),
-                    is_player,
+                country: CountryRefSource {
+                    country_idx: CountryIdx::from_value(country_idx_value).unwrap(),
                 },
                 total_state_efficacy,
                 active_state_capacity,
@@ -2340,22 +2296,21 @@ mod tests {
     #[test]
     fn political_world_rows_sort_and_assign_ordinals() {
         let rows = political_world_display_rows(vec![
-            candidate("BBB", 30, false, 2.5, 250.0, 200, 20.0),
-            candidate("AAA", 10, false, 1.5, 150.0, 100, 10.0),
-            candidate("CCC", 20, true, 3.5, 350.0, 300, 30.0),
+            candidate(2, 30, false, 2.5, 250.0, 200, 20.0),
+            candidate(1, 10, false, 1.5, 150.0, 100, 10.0),
+            candidate(3, 20, true, 3.5, 350.0, 300, 30.0),
         ]);
 
         assert_eq!(
             rows.iter()
-                .map(|row| row.country.tag.as_str())
+                .map(|row| row.country.country_idx.value())
                 .collect::<Vec<_>>(),
-            ["AAA", "CCC", "BBB"]
+            [1, 3, 2]
         );
         assert_eq!(
             rows.iter().map(|row| row.ordinal_rank).collect::<Vec<_>>(),
             [10, 20, 30]
         );
-        assert!(rows[1].country.is_player);
         assert_eq!(rows[1].total_state_efficacy, 3.5);
         assert_eq!(rows[1].active_state_capacity, 350.0);
         assert_eq!(rows[1].total_population, 300);
@@ -2367,7 +2322,7 @@ mod tests {
         let mut candidates = (1..=12)
             .map(|rank| {
                 candidate(
-                    &format!("C{rank:02}"),
+                    rank as u32,
                     rank,
                     false,
                     rank as f64,
@@ -2377,17 +2332,16 @@ mod tests {
                 )
             })
             .collect::<Vec<_>>();
-        candidates[11].row.country.is_player = true;
+        candidates[11].is_player = true;
 
         let rows = political_world_display_rows(candidates);
 
         assert_eq!(rows.len(), 11);
-        assert_eq!(rows[9].country.tag, "C10");
+        assert_eq!(rows[9].country.country_idx.value(), 10);
         assert_eq!(rows[9].ordinal_rank, 10);
-        assert_eq!(rows[10].country.tag, "C12");
+        assert_eq!(rows[10].country.country_idx.value(), 12);
         assert_eq!(rows[10].ordinal_rank, 12);
-        assert!(rows[10].country.is_player);
-        assert!(!rows.iter().any(|row| row.country.tag == "C11"));
+        assert!(!rows.iter().any(|row| row.country.country_idx.value() == 11));
     }
 
     #[test]

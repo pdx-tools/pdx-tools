@@ -4,14 +4,14 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { formatFloat, formatInt } from "@/lib/format";
 import type {
   CountryMetrics,
+  CountryRef,
   DiplomacySection,
   DiplomacySubjectType,
-  EntityRef,
   SubjectRef,
 } from "@/wasm/wasm_eu5";
 import { entityProfileEntry, usePanelNav } from "../PanelNavContext";
 import { usePanToEntity } from "../../../usePanToEntity";
-import { EntityLink } from "../EntityLink";
+import { CountryLink } from "../EntityLink";
 import { Eu5DataTable, Eu5MapDataTable } from "../../../components";
 import type { Eu5MapHoverTarget } from "../../../useEu5MapHoverTarget";
 import type { Row } from "@tanstack/react-table";
@@ -30,7 +30,7 @@ function pluralize(type: DiplomacySubjectType, count: number): string {
 
 type DiplomacyRow = {
   id: string;
-  entity: EntityRef;
+  entity: CountryRef;
   metrics: CountryMetrics;
   libertyDesire?: number;
   subjectLabel?: string;
@@ -46,8 +46,7 @@ function NameCell({ row }: { row: Row<DiplomacyRow> }) {
   const { entity, subjectLabel, isActive } = row.original;
 
   const handleOpen = () => {
-    const typedId = entity.kind === "country" ? entity.countryIdx : entity.marketId;
-    nav.pushMany([entityProfileEntry(entity.kind, typedId, entity.name)]);
+    nav.pushMany([entityProfileEntry("country", entity.country.key, entity.country.name)]);
     panToEntity(entity.anchorLocationIdx);
   };
 
@@ -63,7 +62,7 @@ function NameCell({ row }: { row: Row<DiplomacyRow> }) {
       {subjectLabel && (
         <span className="shrink-0 text-[11px] text-game-ink-500">{subjectLabel}</span>
       )}
-      <EntityLink entity={entity} aligned static />
+      <CountryLink country={entity} aligned static />
     </button>
   );
 }
@@ -94,7 +93,7 @@ const columns = [
       ) : null;
     },
   }),
-  columnHelper.accessor((row) => row.entity.name, {
+  columnHelper.accessor((row) => row.entity.country.name, {
     id: "name",
     sortingFn: "text",
     meta: Eu5DataTable.meta({ headerLabel: "Country", variant: "pin" }),
@@ -140,29 +139,27 @@ const columns = [
   }),
 ];
 
-function getRowHoverTarget(row: DiplomacyRow): Eu5MapHoverTarget | null {
-  if (row.entity.kind === "country") return { kind: "country", countryIdx: row.entity.countryIdx };
-  if (row.entity.kind === "market") return { kind: "market", marketId: row.entity.marketId };
-  return null;
+function getRowHoverTarget(row: DiplomacyRow): Eu5MapHoverTarget {
+  return { kind: "country", countryIdx: row.entity.country.key };
 }
 
 export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
   const nav = usePanelNav();
   const topProfile =
     nav.top?.kind === "profile" || nav.top?.kind === "focus" ? nav.top.profile : null;
-  const activeProfileIdx = topProfile?.kind === "country" ? topProfile.country_idx : null;
+  const activeProfileIdx = topProfile?.kind === "country" ? topProfile.country.key : null;
 
   const rows = useMemo<DiplomacyRow[]>(() => {
     const result: DiplomacyRow[] = [];
 
     if (data.overlord && data.overlordMetrics) {
       result.push({
-        id: `overlord-${data.overlord.kind === "country" ? data.overlord.countryIdx : data.overlord.marketId}`,
+        id: `overlord-${data.overlord.country.key}`,
         entity: data.overlord,
         metrics: data.overlordMetrics,
         subjectLabel: data.overlordSubjectType ? `${data.overlordSubjectType} of` : undefined,
         group: "Overlord",
-        isActive: data.overlord.kind === "country" && data.overlord.countryIdx === activeProfileIdx,
+        isActive: data.overlord.country.key === activeProfileIdx,
       });
     }
 
@@ -177,12 +174,12 @@ export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
       const groupLabel = pluralize(type, subjects.length);
       for (const s of subjects) {
         result.push({
-          id: `subject-${s.entity.kind === "country" ? s.entity.countryIdx : s.entity.marketId}`,
+          id: `subject-${s.entity.country.key}`,
           entity: s.entity,
           metrics: s.metrics,
           libertyDesire: s.libertyDesire,
           group: groupLabel,
-          isActive: s.entity.kind === "country" && s.entity.countryIdx === activeProfileIdx,
+          isActive: s.entity.country.key === activeProfileIdx,
         });
       }
     }

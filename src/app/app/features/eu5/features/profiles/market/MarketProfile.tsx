@@ -3,7 +3,7 @@ import { GameTabs } from "../../../components";
 import { formatFloat } from "@/lib/format";
 import type { MarketMemberCountry, MarketProfile as MarketProfileData } from "@/wasm/wasm_eu5";
 import { MarketProductionLocations } from "../../insights/MarketProductionLocations";
-import { EntityLink } from "../EntityLink";
+import { CountryLink } from "../EntityLink";
 import { MarketGoodsTabContent } from "./GoodsTab";
 import { useEu5Trigger } from "../useEu5Trigger";
 import { ProfileSkeleton } from "../ProfileSkeleton";
@@ -72,7 +72,7 @@ function MarketHeaderStats({ profile }: { profile: MarketProfileData }) {
         label="Owner Country"
         value={
           profile.ownerCountry ? (
-            <EntityLink entity={profile.ownerCountry} size="md" backLabel={profile.header.name} />
+            <CountryLink country={profile.ownerCountry} size="md" backLabel={profile.header.name} />
           ) : (
             "—"
           )
@@ -141,12 +141,12 @@ function MarketMembers({
 }) {
   const columns = useMemo(
     () => [
-      membersColumnHelper.accessor((row) => row.country.name, {
+      membersColumnHelper.accessor((row) => row.country.country.name, {
         id: "country",
         sortingFn: "text",
         meta: Eu5DataTable.meta({ headerLabel: "Country", variant: "pin" }),
         cell: ({ row }) => (
-          <EntityLink entity={row.original.country} aligned backLabel={marketName} />
+          <CountryLink country={row.original.country} aligned backLabel={marketName} />
         ),
       }),
       membersColumnHelper.accessor("tradeAdvantage", {
@@ -172,11 +172,10 @@ function MarketMembers({
       className="w-full"
       columns={columns}
       data={members}
-      getRowHoverTarget={(row) =>
-        row.country.kind === "country"
-          ? { kind: "country", countryIdx: row.country.countryIdx }
-          : { kind: "market", marketId: row.country.marketId }
-      }
+      getRowHoverTarget={(row) => ({
+        kind: "country",
+        countryIdx: row.country.country.key,
+      })}
       initialSorting={[{ id: "tradeAdvantage", desc: true }]}
     />
   );

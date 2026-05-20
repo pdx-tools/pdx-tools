@@ -394,9 +394,11 @@ impl RawGameData {
         let locations = textures.location_aware(self.locations);
         GameData {
             locations,
-            localization: self.country_localizations,
-            goods_localization: self.goods_localizations,
-            building_localization: self.building_localizations,
+            localization: crate::game_data::Localization::new(
+                self.country_localizations,
+                self.goods_localizations,
+                self.building_localizations,
+            ),
             goods: self.goods,
         }
     }
@@ -575,7 +577,10 @@ colors = {
         let goods = parse_goods_from_source(&source).unwrap();
 
         assert_eq!(goods.len(), 1);
-        assert_eq!(goods.get("livestock").unwrap().color_hex, "#14962d");
+        assert_eq!(
+            goods.get("livestock").unwrap().color_hex,
+            crate::color::Srgb([0x14, 0x96, 0x2d]),
+        );
         assert!(!goods.contains_key("readme_entry"));
     }
 

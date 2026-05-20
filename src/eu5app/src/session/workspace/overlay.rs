@@ -2,11 +2,14 @@ use super::*;
 
 impl<'bump> Eu5Workspace<'bump> {
     /// Get screenshot overlay data for the current map mode
-    pub fn get_overlay_data(&self) -> crate::OverlayBodyConfig {
+    pub(crate) fn get_overlay_data(&self) -> crate::OverlayBodyConfigSource<'bump> {
         self.get_overlay_data_for_map_mode(self.current_map_mode)
     }
 
-    pub fn get_overlay_data_for_map_mode(&self, map_mode: MapMode) -> OverlayBodyConfig {
+    pub(crate) fn get_overlay_data_for_map_mode(
+        &self,
+        map_mode: MapMode,
+    ) -> OverlayBodyConfigSource<'bump> {
         match map_mode {
             MapMode::Political => self.generate_political_overlay_data(),
             MapMode::RgoLevel => self.generate_rgo_level_overlay_data(),
@@ -53,7 +56,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    fn generate_political_overlay_data(&self) -> OverlayBodyConfig {
+    fn generate_political_overlay_data(&self) -> OverlayBodyConfigSource<'bump> {
         const MAX_ROWS: usize = 10;
 
         let mut direct_counts = self.gamestate.countries.create_index(0u32);
@@ -83,7 +86,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
         struct CountryOwnershipSummary {
             id: CountryId,
-            label: String,
+            country_idx: CountryIdx,
             direct: u32,
             realm_total: u32,
         }
@@ -99,16 +102,9 @@ impl<'bump> Eu5Workspace<'bump> {
                 continue;
             }
 
-            let tag = entry.tag().to_str();
-            let display_name = entry
-                .data()
-                .map(|data| self.localized_country_name(&data.country_name))
-                .filter(|name| !name.trim().is_empty())
-                .unwrap_or(tag);
-
             summaries.push(CountryOwnershipSummary {
                 id: entry.id(),
-                label: display_name.to_string(),
+                country_idx: idx,
                 direct,
                 realm_total,
             });
@@ -125,15 +121,15 @@ impl<'bump> Eu5Workspace<'bump> {
                 .then_with(|| a.id.value().cmp(&b.id.value()))
         });
 
-        let left_table_rows: Vec<Vec<TableCell>> = direct_rows
+        let left_table_rows: Vec<Vec<TableCellSource>> = direct_rows
             .into_iter()
             .take(MAX_ROWS)
             .enumerate()
             .map(|(idx, summary)| {
                 vec![
-                    TableCell::Text(format!("{}", idx + 1)),
-                    TableCell::Text(summary.label.clone()),
-                    TableCell::Integer(summary.direct as i64),
+                    TableCellSource::Text(format!("{}", idx + 1)),
+                    TableCellSource::Country(summary.country_idx),
+                    TableCellSource::Integer(summary.direct as i64),
                 ]
             })
             .collect();
@@ -149,21 +145,21 @@ impl<'bump> Eu5Workspace<'bump> {
                 .then_with(|| a.id.value().cmp(&b.id.value()))
         });
 
-        let right_table_rows: Vec<Vec<TableCell>> = realm_rows
+        let right_table_rows: Vec<Vec<TableCellSource>> = realm_rows
             .into_iter()
             .take(MAX_ROWS)
             .enumerate()
             .map(|(idx, summary)| {
                 vec![
-                    TableCell::Text(format!("{}", idx + 1)),
-                    TableCell::Text(summary.label.clone()),
-                    TableCell::Integer(summary.realm_total as i64),
+                    TableCellSource::Text(format!("{}", idx + 1)),
+                    TableCellSource::Country(summary.country_idx),
+                    TableCellSource::Integer(summary.realm_total as i64),
                 ]
             })
             .collect();
 
-        OverlayBodyConfig {
-            left_table: OverlayTable {
+        OverlayBodyConfigSource {
+            left_table: OverlayTableSource {
                 title: Some("Top Location Owners".to_string()),
                 headers: vec![
                     "#".to_string(),
@@ -172,7 +168,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 ],
                 rows: left_table_rows,
             },
-            right_table: OverlayTable {
+            right_table: OverlayTableSource {
                 title: Some("Top Realms (Subjects included)".to_string()),
                 headers: vec![
                     "#".to_string(),
@@ -185,33 +181,33 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    fn generate_empty_overlay_data(&self) -> OverlayBodyConfig {
-        OverlayBodyConfig {
-            left_table: OverlayTable {
+    fn generate_empty_overlay_data(&self) -> OverlayBodyConfigSource<'bump> {
+        OverlayBodyConfigSource {
+            left_table: OverlayTableSource {
                 title: None,
                 headers: vec!["".to_string(), "".to_string()],
                 rows: vec![
                     vec![
-                        TableCell::Text("".to_string()),
-                        TableCell::Text("".to_string()),
+                        TableCellSource::Text("".to_string()),
+                        TableCellSource::Text("".to_string()),
                     ],
                     vec![
-                        TableCell::Text("".to_string()),
-                        TableCell::Text("".to_string()),
+                        TableCellSource::Text("".to_string()),
+                        TableCellSource::Text("".to_string()),
                     ],
                 ],
             },
-            right_table: OverlayTable {
+            right_table: OverlayTableSource {
                 title: None,
                 headers: vec!["".to_string(), "".to_string()],
                 rows: vec![
                     vec![
-                        TableCell::Text("".to_string()),
-                        TableCell::Text("".to_string()),
+                        TableCellSource::Text("".to_string()),
+                        TableCellSource::Text("".to_string()),
                     ],
                     vec![
-                        TableCell::Text("".to_string()),
-                        TableCell::Text("".to_string()),
+                        TableCellSource::Text("".to_string()),
+                        TableCellSource::Text("".to_string()),
                     ],
                 ],
             },
@@ -219,7 +215,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    fn generate_rgo_level_overlay_data(&self) -> OverlayBodyConfig {
+    fn generate_rgo_level_overlay_data(&self) -> OverlayBodyConfigSource<'bump> {
         #[derive(Debug)]
         struct ResourceSummary {
             total_levels: f64,
@@ -228,10 +224,10 @@ impl<'bump> Eu5Workspace<'bump> {
 
         #[derive(Debug, Clone, PartialEq)]
         struct LocationRgoData<'a> {
-            name: &'a str,
+            idx: LocationIdx,
             id: u32,
             owner_id: CountryId,
-            resource_name: RawMaterialsName<'a>,
+            resource_name: GoodName<'a>,
             rgo_level: f64,
         }
 
@@ -252,9 +248,10 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         // Separate collections: one for resource summaries, one for top locations
-        let mut resource_summaries: HashMap<RawMaterialsName, ResourceSummary> = HashMap::new();
-        let mut top_locations: std::collections::BinaryHeap<std::cmp::Reverse<LocationRgoData>> =
-            std::collections::BinaryHeap::new();
+        let mut resource_summaries: HashMap<GoodName<'bump>, ResourceSummary> = HashMap::new();
+        let mut top_locations: std::collections::BinaryHeap<
+            std::cmp::Reverse<LocationRgoData<'bump>>,
+        > = std::collections::BinaryHeap::new();
 
         // Iterate through all locations using the locations database
         for location_entry in self.gamestate.locations.iter() {
@@ -271,7 +268,6 @@ impl<'bump> Eu5Workspace<'bump> {
             }
 
             let location_id = location_entry.id();
-            let location_name = self.location_name(location_entry.idx());
 
             // Update resource summary
             let summary = resource_summaries
@@ -285,7 +281,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
             // Maintain top 10 locations using min-heap
             let location_data = LocationRgoData {
-                name: location_name,
+                idx: location_entry.idx(),
                 id: location_id.value(),
                 owner_id: owner,
                 resource_name: raw_material,
@@ -314,18 +310,19 @@ impl<'bump> Eu5Workspace<'bump> {
         resource_summary.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         resource_summary.truncate(10);
 
-        let left_table_rows: Vec<Vec<TableCell>> = resource_summary
+        let left_table_rows: Vec<Vec<TableCellSource>> = resource_summary
             .into_iter()
             .enumerate()
             .map(|(i, (resource, avg, count, total))| {
                 vec![
-                    TableCell::Text(format!("{}. {}", i + 1, resource)),
-                    TableCell::Float {
+                    TableCellSource::Text(format!("{}", i + 1)),
+                    TableCellSource::Good(*resource),
+                    TableCellSource::Float {
                         value: avg,
                         decimals: 1,
                     },
-                    TableCell::Integer(count as i64),
-                    TableCell::Float {
+                    TableCellSource::Integer(count as i64),
+                    TableCellSource::Float {
                         value: total,
                         decimals: 0,
                     },
@@ -341,24 +338,19 @@ impl<'bump> Eu5Workspace<'bump> {
             .map(|std::cmp::Reverse(location)| location)
             .collect();
 
-        let right_table_rows: Vec<Vec<TableCell>> = top_locations_vec
+        let right_table_rows: Vec<Vec<TableCellSource>> = top_locations_vec
             .into_iter()
             .map(|location_data| {
-                let owner = self
-                    .gamestate
-                    .countries
-                    .get(location_data.owner_id)
-                    .and_then(|idx| self.gamestate.countries.index(idx).data())
-                    .map(|x| self.localized_country_name(&x.country_name))
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| format!("C{}", location_data.owner_id.value()));
+                let owner = self.gamestate.countries.get(location_data.owner_id);
 
                 vec![
-                    TableCell::Text(location_data.name.to_string()),
-                    TableCell::Text(owner),
-                    TableCell::Text(location_data.resource_name.to_string()),
-                    TableCell::Integer(location_data.id as i64),
-                    TableCell::Float {
+                    TableCellSource::Location(location_data.idx),
+                    owner.map(TableCellSource::Country).unwrap_or_else(|| {
+                        TableCellSource::Text(format!("C{}", location_data.owner_id.value()))
+                    }),
+                    TableCellSource::Good(location_data.resource_name),
+                    TableCellSource::Integer(location_data.id as i64),
+                    TableCellSource::Float {
                         value: location_data.rgo_level,
                         decimals: 0,
                     },
@@ -366,10 +358,11 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
-        OverlayBodyConfig {
-            left_table: OverlayTable {
+        OverlayBodyConfigSource {
+            left_table: OverlayTableSource {
                 title: Some("Highest Average RGO Levels".to_string()),
                 headers: vec![
+                    "#".to_string(),
                     "Resource".to_string(),
                     "Avg".to_string(),
                     "Loc".to_string(),
@@ -377,7 +370,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 ],
                 rows: left_table_rows,
             },
-            right_table: OverlayTable {
+            right_table: OverlayTableSource {
                 title: Some("Highest RGO Levels by Location".to_string()),
                 headers: vec![
                     "Location".to_string(),
@@ -392,11 +385,12 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    fn generate_building_levels_overlay_data(&self) -> OverlayBodyConfig {
+    fn generate_building_levels_overlay_data(&self) -> OverlayBodyConfigSource<'bump> {
         const MAX_ROWS: usize = 10;
 
         #[derive(Debug, Clone, PartialEq)]
         struct LocationBuildingData {
+            idx: LocationIdx,
             id: u32,
             owner_id: CountryId,
             building_levels_sum: f64,
@@ -446,6 +440,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
             // Track top 10 locations
             let location_data = LocationBuildingData {
+                idx: location_entry.idx(),
                 id: location_entry.id().value(),
                 owner_id,
                 building_levels_sum,
@@ -464,7 +459,7 @@ impl<'bump> Eu5Workspace<'bump> {
         // Generate left table: top countries by average building levels
         struct CountrySummary {
             id: CountryId,
-            label: String,
+            country_idx: CountryIdx,
             avg_levels: f64,
         }
 
@@ -481,16 +476,9 @@ impl<'bump> Eu5Workspace<'bump> {
             let total_levels = country_total_levels[idx];
             let avg_levels = total_levels / (location_count as f64);
 
-            let tag = entry.tag().to_str();
-            let display_name = entry
-                .data()
-                .map(|data| self.localized_country_name(&data.country_name))
-                .filter(|name| !name.trim().is_empty())
-                .unwrap_or(tag);
-
             country_summaries.push(CountrySummary {
                 id: entry.id(),
-                label: display_name.to_string(),
+                country_idx: idx,
                 avg_levels,
             });
         }
@@ -502,15 +490,15 @@ impl<'bump> Eu5Workspace<'bump> {
                 .then_with(|| a.id.value().cmp(&b.id.value()))
         });
 
-        let left_table_rows: Vec<Vec<TableCell>> = country_summaries
+        let left_table_rows: Vec<Vec<TableCellSource>> = country_summaries
             .into_iter()
             .take(MAX_ROWS)
             .enumerate()
             .map(|(idx, summary)| {
                 vec![
-                    TableCell::Text(format!("{}", idx + 1)),
-                    TableCell::Text(summary.label),
-                    TableCell::Float {
+                    TableCellSource::Text(format!("{}", idx + 1)),
+                    TableCellSource::Country(summary.country_idx),
+                    TableCellSource::Float {
                         value: summary.avg_levels,
                         decimals: 1,
                     },
@@ -525,24 +513,19 @@ impl<'bump> Eu5Workspace<'bump> {
             .map(|std::cmp::Reverse(location)| location)
             .collect();
 
-        let right_table_rows: Vec<Vec<TableCell>> = top_locations_vec
+        let right_table_rows: Vec<Vec<TableCellSource>> = top_locations_vec
             .into_iter()
             .enumerate()
             .map(|(idx, location_data)| {
-                let owner = self
-                    .gamestate
-                    .countries
-                    .get(location_data.owner_id)
-                    .and_then(|idx| self.gamestate.countries.index(idx).data())
-                    .map(|x| self.localized_country_name(&x.country_name))
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| format!("C{}", location_data.owner_id.value()));
+                let owner = self.gamestate.countries.get(location_data.owner_id);
 
                 vec![
-                    TableCell::Text(format!("{}", idx + 1)),
-                    TableCell::Integer(location_data.id as i64),
-                    TableCell::Text(owner),
-                    TableCell::Float {
+                    TableCellSource::Text(format!("{}", idx + 1)),
+                    TableCellSource::Location(location_data.idx),
+                    owner.map(TableCellSource::Country).unwrap_or_else(|| {
+                        TableCellSource::Text(format!("C{}", location_data.owner_id.value()))
+                    }),
+                    TableCellSource::Float {
                         value: location_data.building_levels_sum,
                         decimals: 0,
                     },
@@ -550,17 +533,17 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
-        OverlayBodyConfig {
-            left_table: OverlayTable {
+        OverlayBodyConfigSource {
+            left_table: OverlayTableSource {
                 title: Some("Highest Average Building Levels".to_string()),
                 headers: vec!["#".to_string(), "Country".to_string(), "Avg".to_string()],
                 rows: left_table_rows,
             },
-            right_table: OverlayTable {
+            right_table: OverlayTableSource {
                 title: Some("Highest Building Levels by Location".to_string()),
                 headers: vec![
                     "#".to_string(),
-                    "Location ID".to_string(),
+                    "Location".to_string(),
                     "Country".to_string(),
                     "Total".to_string(),
                 ],
@@ -570,13 +553,13 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    fn generate_markets_overlay_data(&self) -> OverlayBodyConfig {
+    fn generate_markets_overlay_data(&self) -> OverlayBodyConfigSource<'bump> {
         const MAX_ROWS: usize = 10;
 
         #[derive(Debug, Clone, PartialEq)]
         struct MarketData {
             center_location_id: u32,
-            center_location_name: String,
+            center_location_idx: LocationIdx,
             market_value: f64,
         }
 
@@ -606,12 +589,11 @@ impl<'bump> Eu5Workspace<'bump> {
                 continue;
             };
 
-            let center_location_name = self.location_name(center_idx).to_string();
             let market_value = market.market_value();
 
             let market_data = MarketData {
                 center_location_id: market.center.value(),
-                center_location_name,
+                center_location_idx: center_idx,
                 market_value,
             };
 
@@ -632,14 +614,14 @@ impl<'bump> Eu5Workspace<'bump> {
             .map(|std::cmp::Reverse(market)| market)
             .collect();
 
-        let left_table_rows: Vec<Vec<TableCell>> = top_markets_vec
+        let left_table_rows: Vec<Vec<TableCellSource>> = top_markets_vec
             .into_iter()
             .enumerate()
             .map(|(idx, market_data)| {
                 vec![
-                    TableCell::Text(format!("{}", idx + 1)),
-                    TableCell::Text(market_data.center_location_name),
-                    TableCell::Float {
+                    TableCellSource::Text(format!("{}", idx + 1)),
+                    TableCellSource::Location(market_data.center_location_idx),
+                    TableCellSource::Float {
                         value: market_data.market_value,
                         decimals: 0,
                     },
@@ -647,8 +629,8 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
-        OverlayBodyConfig {
-            left_table: OverlayTable {
+        OverlayBodyConfigSource {
+            left_table: OverlayTableSource {
                 title: Some("Top 10 Markets by Value".to_string()),
                 headers: vec![
                     "#".to_string(),
@@ -657,7 +639,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 ],
                 rows: left_table_rows,
             },
-            right_table: OverlayTable {
+            right_table: OverlayTableSource {
                 title: None,
                 headers: vec![],
                 rows: vec![],
