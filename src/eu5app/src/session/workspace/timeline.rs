@@ -140,7 +140,8 @@ impl<'bump> Eu5Workspace<'bump> {
         self.apply_map_mode(mode)
     }
 
-    /// Move the owners to `date` and return the locations that changed.
+    /// Move the owners to `date` and return the locations that changed:
+    /// those that changed hands and the surrounded terrain next to them.
     ///
     /// The owner color of each changed location is refreshed here, because
     /// the owner borders read it in every map mode, and the map mode passes
@@ -153,17 +154,54 @@ impl<'bump> Eu5Workspace<'bump> {
                 .borders
                 .step(&mut self.timeline.owners, from, date, &mut touched);
             self.timeline.date = date;
+            self.refill_around(&mut touched);
             for &location_idx in &touched {
                 let Some(gpu_index) = self.gpu_indices[location_idx] else {
                     continue;
                 };
-                let color = self.location_political_color(location_idx);
+                let color = self.location_political_color(self.political_fill_source(location_idx));
                 self.location_arrays
                     .get_mut(gpu_index)
                     .set_owner_color(color);
             }
         }
         touched
+    }
+
+    /// Resolve the fill of the surrounded terrain next to the locations in
+    /// `touched` again, and add that terrain to `touched`.
+    ///
+    /// Only the land around a component decides its fill, so a day that
+    /// moves a few locations resolves a few components, each from its own
+    /// boundary.
+    fn refill_around(&mut self, touched: &mut Vec<LocationIdx>) {
+        let mut components = Vec::new();
+        for &location_idx in touched.iter() {
+            let Some(gpu_index) = self.gpu_indices[location_idx] else {
+                continue;
+            };
+            let neighbors = self
+                .game_data
+                .topology
+                .neighbors_of_index(gpu_index.value());
+            components.extend(
+                neighbors
+                    .iter()
+                    .filter_map(|&nb| self.fill_components.component_of_color(nb)),
+            );
+        }
+        components.sort_unstable();
+        components.dedup();
+
+        for component in components {
+            let donor = self
+                .fill_components
+                .resolve(component, |loc| self.owner_at_timeline_date(loc).real_id());
+            for &member in self.fill_components.members(component) {
+                self.fill_donors[member] = donor;
+                touched.push(member);
+            }
+        }
     }
 
     pub(super) fn save_date(&self) -> Eu5Date {

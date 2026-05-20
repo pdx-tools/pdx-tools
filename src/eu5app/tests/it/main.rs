@@ -231,3 +231,53 @@ fn timeline_round_trip_restores_the_live_map() {
         assert_eq!(ws.get_map_mode(), MapMode::Population);
     });
 }
+
+/// Playback steps between past dates repaint only the locations that
+/// changed hands and the surrounded terrain next to them. After a walk
+/// through the campaign, that incremental map must equal a full repaint of
+/// the same date.
+#[test]
+fn incremental_timeline_steps_match_a_full_repaint() {
+    insta::glob!("saves.d/*.save", |path| {
+        let save_name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .expect("pointer file stem is UTF-8");
+        let Some(mut loaded) = utils::build_workspace(save_name) else {
+            return;
+        };
+        let ws = &mut loaded.workspace;
+        let summary = ws.timeline_summary();
+        if !summary.available {
+            return;
+        }
+
+        ws.set_map_mode(MapMode::Political);
+        ws.set_timeline_date(summary.start);
+        assert!(!ws.is_timeline_live());
+
+        // Walk forward through the dates with changes, and then back again,
+        // so that fills form and dissolve in both directions.
+        let past_dates: Vec<_> = summary
+            .change_dates
+            .iter()
+            .copied()
+            .filter(|&date| date < summary.end)
+            .collect();
+        for &date in past_dates.iter().chain(past_dates.iter().rev()).skip(1) {
+            ws.set_timeline_date(date);
+            assert!(
+                !ws.is_timeline_live(),
+                "{save_name}: {date:?} is a past date"
+            );
+        }
+        let incremental = utils::hash_location_arrays(ws.location_arrays());
+
+        ws.set_map_mode(MapMode::Political);
+        let full = utils::hash_location_arrays(ws.location_arrays());
+        assert_eq!(
+            incremental, full,
+            "{save_name}: incremental steps drift from a full repaint"
+        );
+    });
+}

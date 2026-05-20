@@ -74,6 +74,12 @@ pub struct Eu5Workspace<'bump> {
     overlord_of: CountryIndexedVecOwned<Option<CountryIdx>>,
     location_terrain: LocationIndexedVec<Terrain>,
     location_building_levels: OnceLock<LocationIndexedVec<f64>>,
+    fill_components: terrain_fill::FillComponents,
+    /// The political fill of surrounded terrain on the timeline date: the
+    /// location whose color each lake or impassable location shows.
+    fill_donors: LocationIndexedVec<Option<LocationIdx>>,
+    /// The religion fill of surrounded terrain at the save date.
+    religion_fill_donors: OnceLock<LocationIndexedVec<Option<LocationIdx>>>,
 
     // Map app state (rendering)
     current_map_mode: MapMode,
@@ -177,6 +183,7 @@ mod insights;
 mod map_render;
 mod overlay;
 mod selection_ops;
+mod terrain_fill;
 mod timeline;
 
 pub use self::timeline::{TimelineNote, TimelineSummary, humanize_note_key};
@@ -242,6 +249,9 @@ impl<'bump> Eu5Workspace<'bump> {
 
         let location_arrays = LocationArrays::allocate((max_color_id as usize) + 1);
         let timeline = timeline::TimelineState::new(&gamestate);
+        let fill_components =
+            terrain_fill::FillComponents::new(&game_data.topology, &gpu_indices, &location_terrain);
+        let fill_donors = gamestate.locations.create_index(None);
 
         let mut workspace = Self {
             gamestate,
@@ -249,6 +259,9 @@ impl<'bump> Eu5Workspace<'bump> {
             overlord_of,
             location_terrain,
             location_building_levels: OnceLock::new(),
+            fill_components,
+            fill_donors,
+            religion_fill_donors: OnceLock::new(),
             current_map_mode: MapMode::Political,
             location_arrays,
             gpu_indices,
@@ -388,8 +401,15 @@ impl LocationData for Eu5Workspace<'_> {
         })
     }
 
+    /// Filled terrain belongs to the country it takes its color from, so a
+    /// click or a hover on it resolves to that country. The iteration above
+    /// stays raw: filled terrain is never a member of a selection.
     fn location_info(&self, idx: eu5save::models::LocationIdx) -> crate::selection::LocationInfo {
-        let loc = self.gamestate.locations.index(idx).location();
+        let loc = self
+            .gamestate
+            .locations
+            .index(self.fill_source(idx))
+            .location();
         crate::selection::LocationInfo {
             owner: loc.owner.real_id(),
             market: loc.market,
