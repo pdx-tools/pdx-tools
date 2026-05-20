@@ -10,7 +10,8 @@ use std::sync::LazyLock;
 
 #[derive(Debug)]
 pub struct DefaultMap {
-    pub water_locations: FxHashSet<String>,
+    pub sea_zones: FxHashSet<String>,
+    pub lakes: FxHashSet<String>,
     pub impassable: FxHashSet<String>,
 }
 
@@ -29,13 +30,6 @@ pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap, GameDataError>
         .deserialize()
         .map_err(|e| GameDataError::Jomini(e, "default.map"))?;
 
-    let water_locations = default_map
-        .sea_zones
-        .iter()
-        .chain(default_map.lakes.iter())
-        .cloned()
-        .collect::<FxHashSet<_>>();
-
     let impassable = default_map
         .impassable_mountains
         .iter()
@@ -44,7 +38,8 @@ pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap, GameDataError>
         .collect::<FxHashSet<_>>();
 
     Ok(DefaultMap {
-        water_locations,
+        sea_zones: default_map.sea_zones.into_iter().collect(),
+        lakes: default_map.lakes.into_iter().collect(),
         impassable,
     })
 }
@@ -73,8 +68,10 @@ pub fn parse_locations_data(
     default_map: &DefaultMap,
 ) -> impl Iterator<Item = LocationTerrain> {
     named_locations.into_iter().map(|(name, hex)| {
-        let terrain = if default_map.water_locations.contains(&name) {
-            Terrain::Water
+        let terrain = if default_map.sea_zones.contains(&name) {
+            Terrain::Sea
+        } else if default_map.lakes.contains(&name) {
+            Terrain::Lake
         } else if default_map.impassable.contains(&name) {
             Terrain::Impassable
         } else {
