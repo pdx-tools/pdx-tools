@@ -236,11 +236,11 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
     }
 
     pub fn location_display_name(&self, idx: LocationIdx) -> String {
-        self.ctx.resolve_location(idx).name
+        idx.present(&self.ctx).name
     }
 
     pub fn country_display_name(&self, idx: CountryIdx) -> String {
-        self.ctx.resolve_country(idx).name
+        idx.present(&self.ctx).name
     }
 
     pub fn scope_display_name(&self) -> Option<String> {
@@ -254,13 +254,13 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
         match self.workspace.derived_entity_kind()? {
             EntityKind::Market => {
                 let market_id = loc.market?;
-                Some(self.ctx.resolve_market(market_id).name)
+                Some(market_id.present(&self.ctx).name)
             }
             EntityKind::Country => {
                 let owner_id = loc.owner.real_id()?;
                 let country_id = owner_id.country_id();
                 let country_idx = self.workspace.gamestate().countries.get(country_id)?;
-                Some(self.ctx.resolve_country(country_idx).name)
+                Some(country_idx.present(&self.ctx).name)
             }
         }
     }
@@ -276,7 +276,7 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
             .iter()
             .filter_map(|entry| {
                 let data = entry.data()?;
-                let country = self.ctx.resolve_country(entry.idx());
+                let country = entry.idx().present(&self.ctx);
                 let tag = entry.tag().to_str().to_string();
                 let capital = data
                     .capital
@@ -298,7 +298,7 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
             .locations
             .iter()
             .map(|entry| LocationSearchEntry {
-                location: self.ctx.resolve_location(entry.idx()),
+                location: entry.idx().present(&self.ctx),
             })
             .collect();
         LocationsData { locations }
@@ -319,7 +319,46 @@ impl Present for CountryRefSource {
     type Output = CountryRef;
 
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
-        ctx.resolve_country_ref(self.country_idx)
+        let idx = self.country_idx;
+        let entry = ctx.gamestate.countries.index(idx);
+        let data = entry.data();
+        let owner = entry.id().real_id();
+        let color_hex = data.map(|data| data.color.into()).unwrap_or_default();
+        let anchor_location_idx = data
+            .and_then(|data| {
+                let owner = owner?;
+                Some((data, owner))
+            })
+            .and_then(|(data, owner)| {
+                data.capital
+                    .and_then(|id| ctx.gamestate.locations.get(id))
+                    .or_else(|| {
+                        ctx.gamestate
+                            .locations
+                            .iter()
+                            .find(|entry| entry.location().owner.real_id() == Some(owner))
+                            .map(|entry| entry.idx())
+                    })
+            })
+            .map(UiLocationIdx::from)
+            .unwrap_or(UiLocationIdx(0));
+        let is_player = owner
+            .map(|owner| owner.country_id())
+            .is_some_and(|country_id| {
+                ctx.gamestate
+                    .played_countries
+                    .iter()
+                    .any(|p| p.country == country_id)
+            });
+        CountryRef {
+            country: idx.present(ctx),
+            anchor_location_idx,
+            tag: data
+                .map(|_| entry.tag().to_str().to_string())
+                .unwrap_or_else(|| "---".to_string()),
+            color_hex,
+            is_player,
+        }
     }
 }
 
@@ -327,7 +366,22 @@ impl Present for MarketRefSource {
     type Output = MarketRef;
 
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
-        ctx.resolve_market_ref(self.market_id)
+        let id = self.market_id;
+        let market = ctx
+            .gamestate
+            .market_manager
+            .get(id)
+            .expect("market id should resolve to a saved market");
+        let center_idx = ctx
+            .gamestate
+            .locations
+            .get(market.center)
+            .unwrap_or_default();
+        MarketRef {
+            market: id.present(ctx),
+            anchor_location_idx: UiLocationIdx::from(center_idx),
+            color_hex: market.color.into(),
+        }
     }
 }
 
@@ -425,113 +479,6 @@ impl<'a, 'bump> LocalizationContext<'a, 'bump> {
         }
     }
 
-    fn localization(&self) -> &Localization {
-        self.localization
-    }
-
-    fn resolve_country_name_key(&self, country_name: &CountryName) -> String {
-        let key = match country_name {
-            CountryName::Tag(tag) => tag.to_str(),
-            CountryName::Object(obj) => obj
-                .override_name
-                .or(obj.name)
-                .map(|name| name.to_str())
-                .unwrap_or_default(),
-        };
-        self.localization().country(key).unwrap_or(key).to_string()
-    }
-
-    pub fn resolve_good(&self, good: GoodName<'_>) -> Localized<String> {
-        let key = good.to_str();
-        let name = self.localization().good(good).unwrap_or(key).to_string();
-        Localized::new(key.to_string(), name)
-    }
-
-    pub fn resolve_good_ref(&self, good: GoodName<'_>) -> GoodRef {
-        let localized = self.resolve_good(good);
-        let color_hex = self
-            .game_data
-            .good(localized.key.as_str())
-            .map(|g| g.color_hex)
-            .unwrap_or_default();
-        GoodRef {
-            good: localized,
-            color_hex,
-        }
-    }
-
-    pub fn resolve_building(&self, key: BuildingKeyRef<'_>) -> Localized<String> {
-        let name = self
-            .localization()
-            .building(key.0)
-            .unwrap_or(key.0)
-            .to_string();
-        Localized::new(key.0.to_string(), name)
-    }
-
-    pub fn resolve_religion_key(&self, key: &str) -> Localized<String> {
-        Localized::new(key.to_string(), key.to_string())
-    }
-
-    pub fn resolve_culture_key(&self, key: &str) -> Localized<String> {
-        Localized::new(key.to_string(), key.to_string())
-    }
-
-    /// Resolve a country's display name by looking up the tag in the country
-    /// localization map.
-    pub fn resolve_country(&self, idx: CountryIdx) -> Localized<UiCountryIdx> {
-        let entry = self.gamestate.countries.index(idx);
-        let tag = entry.tag().to_str();
-        let name = entry
-            .data()
-            .map(|data| self.resolve_country_name_key(&data.country_name))
-            .filter(|name| !name.trim().is_empty())
-            .unwrap_or_else(|| self.localization().country(tag).unwrap_or(tag).to_string());
-        Localized::new(UiCountryIdx::from(idx), name)
-    }
-
-    pub fn resolve_country_ref(&self, idx: CountryIdx) -> CountryRef {
-        let entry = self.gamestate.countries.index(idx);
-        let data = entry.data();
-        let owner = entry.id().real_id();
-        let color_hex = data.map(|data| data.color.into()).unwrap_or_default();
-        let anchor_location_idx = data
-            .and_then(|data| {
-                let owner = owner?;
-                Some((data, owner))
-            })
-            .and_then(|(data, owner)| {
-                data.capital
-                    .and_then(|id| self.gamestate.locations.get(id))
-                    .or_else(|| {
-                        self.gamestate
-                            .locations
-                            .iter()
-                            .find(|entry| entry.location().owner.real_id() == Some(owner))
-                            .map(|entry| entry.idx())
-                    })
-            })
-            .map(UiLocationIdx::from)
-            .unwrap_or(UiLocationIdx(0));
-        let is_player = owner
-            .map(|owner| owner.country_id())
-            .is_some_and(|country_id| {
-                self.gamestate
-                    .played_countries
-                    .iter()
-                    .any(|p| p.country == country_id)
-            });
-        CountryRef {
-            country: self.resolve_country(idx),
-            anchor_location_idx,
-            tag: data
-                .map(|_| entry.tag().to_str().to_string())
-                .unwrap_or_else(|| "---".to_string()),
-            color_hex,
-            is_player,
-        }
-    }
-
     fn raw_location_key(&self, idx: LocationIdx) -> &str {
         let index = idx.value() as usize;
         self.gamestate
@@ -541,46 +488,6 @@ impl<'a, 'bump> LocalizationContext<'a, 'bump> {
             .get(index)
             .map(|x| x.to_str())
             .unwrap_or("Unknown")
-    }
-
-    /// Resolve a location's display name. Currently falls back to the static name in
-    /// the save's compatibility metadata.
-    pub fn resolve_location(&self, idx: LocationIdx) -> Localized<UiLocationIdx> {
-        let raw = self.raw_location_key(idx);
-        Localized::new(UiLocationIdx::from(idx), raw.to_string())
-    }
-
-    /// Resolve a market's display name via its center location plus " Market".
-    pub fn resolve_market(&self, id: MarketId) -> Localized<UiMarketId> {
-        let name = self
-            .gamestate
-            .market_manager
-            .get(id)
-            .and_then(|market| {
-                let idx = self.gamestate.locations.get(market.center)?;
-                let center = self.resolve_location(idx);
-                Some(format!("{} Market", center.name))
-            })
-            .unwrap_or_else(|| format!("market_{}", id.value()));
-        Localized::new(UiMarketId::from(id), name)
-    }
-
-    pub fn resolve_market_ref(&self, id: MarketId) -> MarketRef {
-        let market = self
-            .gamestate
-            .market_manager
-            .get(id)
-            .expect("market id should resolve to a saved market");
-        let center_idx = self
-            .gamestate
-            .locations
-            .get(market.center)
-            .unwrap_or_default();
-        MarketRef {
-            market: self.resolve_market(id),
-            anchor_location_idx: UiLocationIdx::from(center_idx),
-            color_hex: market.color.into(),
-        }
     }
 }
 
@@ -595,7 +502,37 @@ impl Present for GoodName<'_> {
     type Output = Localized<String>;
 
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
-        ctx.resolve_good(self)
+        let key = self.to_str();
+        let name = ctx.localization.get(key).unwrap_or(key).to_string();
+        Localized::new(key.to_string(), name)
+    }
+}
+
+impl Present for CountryIdx {
+    type Output = Localized<UiCountryIdx>;
+
+    fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
+        let entry = ctx.gamestate.countries.index(self);
+        let tag = entry.tag().to_str();
+        let name = match entry.data().map(|data| &data.country_name) {
+            Some(CountryName::Object(obj)) => {
+                if let Some(override_name) = obj.override_name {
+                    let key = override_name.to_str();
+                    ctx.localization.get(key).unwrap_or(key).to_string()
+                } else if let Some(name) = obj.name {
+                    let key = name.to_str();
+                    ctx.localization.get(key).unwrap_or(key).to_string()
+                } else {
+                    ctx.localization.get(tag).unwrap_or(tag).to_string()
+                }
+            }
+            Some(CountryName::Tag(t)) => {
+                let key = t.to_str();
+                ctx.localization.get(key).unwrap_or(key).to_string()
+            }
+            None => ctx.localization.get(tag).unwrap_or(tag).to_string(),
+        };
+        Localized::new(UiCountryIdx::from(self), name)
     }
 }
 
@@ -608,8 +545,8 @@ pub struct GoodRefSource<'a>(pub GoodName<'a>);
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct GoodRef {
-    #[serde(flatten)]
-    pub good: Localized<String>,
+    pub key: String,
+    pub name: String,
     pub color_hex: Srgb,
 }
 
@@ -617,12 +554,22 @@ impl Present for GoodRefSource<'_> {
     type Output = GoodRef;
 
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
-        ctx.resolve_good_ref(self.0)
+        let good = self.0.present(ctx);
+        let color_hex = ctx
+            .game_data
+            .good(good.key.as_str())
+            .map(|g| g.color_hex)
+            .unwrap_or_default();
+        GoodRef {
+            key: good.key,
+            name: good.name,
+            color_hex,
+        }
     }
 }
 
 /// Borrowed building-kind key carried through aggregation. Resolves to
-/// `Localized<String>` at presentation time via [`LocalizationContext::resolve_building`].
+/// `Localized<String>` at presentation time by looking up the localization map.
 #[derive(Debug, Clone, Copy)]
 pub struct BuildingKeyRef<'a>(pub &'a str);
 
@@ -630,7 +577,9 @@ impl Present for BuildingKeyRef<'_> {
     type Output = Localized<String>;
 
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
-        ctx.resolve_building(self)
+        let key = self.0;
+        let name = ctx.localization.get(key).unwrap_or(key).to_string();
+        Localized::new(key.to_string(), name)
     }
 }
 
@@ -660,7 +609,9 @@ impl Present for LocationIdx {
     type Output = Localized<UiLocationIdx>;
 
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
-        ctx.resolve_location(self)
+        let raw = ctx.raw_location_key(self);
+        let name = ctx.localization.get(raw).unwrap_or(raw).to_string();
+        Localized::new(UiLocationIdx::from(self), name)
     }
 }
 
@@ -668,7 +619,17 @@ impl Present for MarketId {
     type Output = Localized<UiMarketId>;
 
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
-        ctx.resolve_market(self)
+        let name = ctx
+            .gamestate
+            .market_manager
+            .get(self)
+            .and_then(|market| {
+                let idx = ctx.gamestate.locations.get(market.center)?;
+                let center = idx.present(ctx);
+                Some(format!("{} Market", center.name))
+            })
+            .unwrap_or_else(|| format!("market_{}", self.value()));
+        Localized::new(UiMarketId::from(self), name)
     }
 }
 

@@ -143,6 +143,15 @@ impl<'de> Deserialize<'de> for ClauseHexColor {
     }
 }
 
+pub fn parse_building_keys(data: &str) -> Result<FxHashSet<String>, GameDataError> {
+    let reader = jomini::text::TokenReader::new(data.as_bytes());
+    let buildings: FxHashMap<String, IgnoredAny> =
+        jomini::text::de::TextDeserializer::from_utf8_reader(reader)
+            .deserialize()
+            .map_err(|e| GameDataError::Jomini(e, "building_types"))?;
+    Ok(buildings.into_keys().collect())
+}
+
 pub fn parse_goods(
     data: &str,
     _source_name: &str,
@@ -151,15 +160,6 @@ pub fn parse_goods(
     jomini::text::de::TextDeserializer::from_utf8_reader(reader)
         .deserialize()
         .map_err(|e| GameDataError::Jomini(e, "goods"))
-}
-
-pub fn parse_building_keys(data: &str) -> Result<FxHashSet<String>, GameDataError> {
-    let reader = jomini::text::TokenReader::new(data.as_bytes());
-    let buildings: FxHashMap<String, IgnoredAny> =
-        jomini::text::de::TextDeserializer::from_utf8_reader(reader)
-            .deserialize()
-            .map_err(|e| GameDataError::Jomini(e, "building_types"))?;
-    Ok(buildings.into_keys().collect())
 }
 
 #[derive(Debug, Deserialize)]
@@ -303,12 +303,6 @@ pub fn parse_localization(data: &str) -> impl Iterator<Item = (&str, &str)> + '_
     })
 }
 
-pub fn parse_country_localization(data: &str) -> impl Iterator<Item = (&str, &str)> + '_ {
-    parse_localization(data).filter(|(key, _)| {
-        key.chars().all(|c| c.is_uppercase() || c == '_') && !key.ends_with("_ADJ")
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -331,47 +325,6 @@ mod tests {
         assert_eq!(parsed.get("TEU_ADJ").unwrap(), "Teutonic");
         assert_eq!(parsed.get("MEDICI").unwrap(), "Medici");
         assert_eq!(parsed.get("DNS").unwrap(), "Kalmar Union");
-    }
-
-    #[test]
-    fn test_country_localization() {
-        let data = r#"l_english:
- TEU: "Teutonic Order"
- TEU_ADJ: "Teutonic"
- MEDICI: "Medici"
- MEDICI_ADJ: "Medici"
- DNS: "Kalmar Union"
- DNS_ADJ: "Kalmar"
- abc: "lowercase"
-"#;
-        let countries: FxHashMap<String, String> = parse_country_localization(data)
-            .map(|(k, v)| (k.to_owned(), v.to_owned()))
-            .collect();
-
-        assert_eq!(countries.get("TEU").unwrap(), "Teutonic Order");
-        assert_eq!(countries.get("MEDICI").unwrap(), "Medici");
-        assert_eq!(countries.get("DNS").unwrap(), "Kalmar Union");
-        assert!(!countries.contains_key("TEU_ADJ"));
-        assert!(!countries.contains_key("MEDICI_ADJ"));
-        assert!(!countries.contains_key("abc"));
-        assert_eq!(countries.len(), 3);
-    }
-
-    #[test]
-    fn test_parse_localization_keeps_lowercase_keys() {
-        let data = r#"l_english:
- wool: "Wool"
- fine_cloth: "Fine Cloth"
- TEU: "Teutonic Order"
- # Comment line
-"#;
-        let parsed: FxHashMap<String, String> = parse_localization(data)
-            .map(|(k, v)| (k.to_owned(), v.to_owned()))
-            .collect();
-
-        assert_eq!(parsed.get("wool").unwrap(), "Wool");
-        assert_eq!(parsed.get("fine_cloth").unwrap(), "Fine Cloth");
-        assert_eq!(parsed.get("TEU").unwrap(), "Teutonic Order");
     }
 
     #[test]
@@ -399,6 +352,23 @@ trade_office = {
         assert!(!parsed.contains("artisan_tools"));
         assert!(!parsed.contains("merchant_capacity_from_building"));
         assert_eq!(parsed.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_localization_keeps_lowercase_keys() {
+        let data = r#"l_english:
+ wool: "Wool"
+ fine_cloth: "Fine Cloth"
+ TEU: "Teutonic Order"
+ # Comment line
+"#;
+        let parsed: FxHashMap<String, String> = parse_localization(data)
+            .map(|(k, v)| (k.to_owned(), v.to_owned()))
+            .collect();
+
+        assert_eq!(parsed.get("wool").unwrap(), "Wool");
+        assert_eq!(parsed.get("fine_cloth").unwrap(), "Fine Cloth");
+        assert_eq!(parsed.get("TEU").unwrap(), "Teutonic Order");
     }
 
     #[test]

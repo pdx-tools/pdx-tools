@@ -144,9 +144,7 @@ where
             &mut archive,
             "localizations.bin",
             LocalizationsData {
-                countries: raw_game_data.country_localizations,
-                goods: raw_game_data.goods_localizations,
-                buildings: raw_game_data.building_localizations,
+                entries: raw_game_data.localizations,
             },
         )?;
         archive.finish()?

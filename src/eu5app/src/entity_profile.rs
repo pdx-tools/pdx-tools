@@ -262,13 +262,13 @@ impl Present for ActiveProfileIdentitySource {
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
         match self {
             ActiveProfileIdentitySource::Country(idx) => ActiveProfileIdentity::Country {
-                country: ctx.resolve_country(idx),
+                country: idx.present(ctx),
             },
             ActiveProfileIdentitySource::Market(id) => ActiveProfileIdentity::Market {
-                market: ctx.resolve_market(id),
+                market: id.present(ctx),
             },
             ActiveProfileIdentitySource::Location(idx) => ActiveProfileIdentity::Location {
-                location: ctx.resolve_location(idx),
+                location: idx.present(ctx),
             },
         }
     }
@@ -295,7 +295,7 @@ impl Present for EntityHeaderSource {
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
         match self.kind {
             EntityHeaderKindSource::Country(idx) => {
-                let cref = ctx.resolve_country_ref(idx);
+                let cref = crate::presentation::CountryRefSource { country_idx: idx }.present(ctx);
                 EntityHeader {
                     kind: EntityKind::Country,
                     name: cref.country.name,
@@ -306,7 +306,7 @@ impl Present for EntityHeaderSource {
                 }
             }
             EntityHeaderKindSource::Market(id) => {
-                let mref = ctx.resolve_market_ref(id);
+                let mref = crate::presentation::MarketRefSource { market_id: id }.present(ctx);
                 EntityHeader {
                     kind: EntityKind::Market,
                     name: mref.market.name,
@@ -346,7 +346,7 @@ impl Present for BuildingEntrySource {
 
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
         BuildingEntry {
-            building: ctx.resolve_building(crate::presentation::BuildingKeyRef(&self.building_key)),
+            building: crate::presentation::BuildingKeyRef(&self.building_key).present(ctx),
             level: self.level,
         }
     }
