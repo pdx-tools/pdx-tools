@@ -671,13 +671,13 @@ impl Present for CultureId {
     type Output = Localized<String>;
 
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
-        let key = ctx
-            .gamestate
-            .culture_manager
-            .lookup(self)
-            .and_then(|c| c.key.map(|x| x.to_str().to_string()))
-            .unwrap_or_else(|| format!("culture_{}", self.value()));
-        Localized::new(key.clone(), key)
+        let Some(culture) = ctx.gamestate.culture_manager.lookup(self) else {
+            let fallback = format!("culture_{}", self.value());
+            return Localized::new(fallback.clone(), fallback);
+        };
+        let key = culture.name.key().to_str().to_string();
+        let name = ctx.localization.get(&key).unwrap_or(&key).to_string();
+        Localized::new(key, name)
     }
 }
 
