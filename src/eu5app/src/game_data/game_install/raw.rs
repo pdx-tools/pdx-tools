@@ -589,10 +589,12 @@ impl RawGameData {
     pub fn materialize(self, textures: &PalettedTextures) -> (GameData, Localization) {
         let locations = textures.location_aware(self.locations);
         let localization = Localization::new(self.localizations);
+        let topology = textures.textures().world().build_topology_index();
         (
             GameData {
                 locations,
                 goods: self.goods,
+                topology,
             },
             localization,
         )
