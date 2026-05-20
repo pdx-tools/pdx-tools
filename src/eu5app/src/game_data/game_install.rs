@@ -3,8 +3,8 @@ mod raw;
 
 use pdx_map::R16;
 pub use raw::{
-    GameFileSource, GameInstallationDirectory, GameTextures, PalettedTextures, RawGameData,
-    ZipArchiveData,
+    Eu5GameFileSourceExt, GameFileSource, GameInstallationDirectory, GameTextures,
+    PalettedTextures, RawGameData, ZipArchiveData,
 };
 
 use crate::game_data::{
