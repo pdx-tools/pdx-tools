@@ -90,19 +90,106 @@ impl CountryIdx {
     }
 }
 
-#[derive(Debug, Clone, ArenaDeserialize)]
-pub struct CountryTag<'bump>(BStr<'bump>);
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct CountryTag {
+    bytes: [u8; 5],
+    len: u8,
+}
 
-impl<'bump> CountryTag<'bump> {
+impl CountryTag {
+    pub fn create(s: &[u8]) -> Option<Self> {
+        if (3..=5).contains(&s.len())
+            && s.iter()
+                .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || *b == b'-')
+        {
+            let mut bytes = [0u8; 5];
+            bytes[..s.len()].copy_from_slice(s);
+            Some(Self {
+                bytes,
+                len: s.len() as u8,
+            })
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes[..self.len as usize]
+    }
+
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        debug_assert!(std::str::from_utf8(self.as_bytes()).is_ok());
+        unsafe { std::str::from_utf8_unchecked(self.as_bytes()) }
+    }
+
+    #[inline]
     pub fn to_str(&self) -> &str {
-        self.0.to_str()
+        self.as_str()
+    }
+}
+
+impl fmt::Debug for CountryTag {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl fmt::Display for CountryTag {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for CountryTag {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct CountryTagVisitor;
+
+        impl de::Visitor<'_> for CountryTagVisitor {
+            type Value = CountryTag;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a 3-5 byte ASCII country tag")
+            }
+
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                self.visit_bytes(v.as_bytes())
+            }
+
+            fn visit_bytes<E: de::Error>(self, v: &[u8]) -> Result<Self::Value, E> {
+                CountryTag::create(v).ok_or_else(|| {
+                    de::Error::custom(format!(
+                        "invalid country tag: {:?}",
+                        std::str::from_utf8(v).unwrap_or("<non-utf8>")
+                    ))
+                })
+            }
+        }
+
+        deserializer.deserialize_bytes(CountryTagVisitor)
+    }
+}
+
+impl<'bump> ArenaDeserialize<'bump> for CountryTag {
+    fn deserialize_in_arena<'de, D>(
+        deserializer: D,
+        _allocator: &'bump bumpalo::Bump,
+    ) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::deserialize(deserializer)
     }
 }
 
 #[derive(Debug)]
 pub struct Countries<'bump> {
     ids: CountryIndexedVec<'bump, CountryId>,
-    tags: CountryIndexedVec<'bump, CountryTag<'bump>>,
+    tags: CountryIndexedVec<'bump, CountryTag>,
     database: CountryIndexedVec<'bump, Option<Country<'bump>>>,
 }
 
@@ -188,7 +275,7 @@ pub struct Country<'bump> {
     #[arena(default)]
     pub historical_tax_base: &'bump [f64],
     #[arena(default)]
-    pub previous_tags: &'bump [CountryTag<'bump>],
+    pub previous_tags: &'bump [CountryTag],
     #[arena(default)]
     pub economy: CountryEconomy<'bump>,
     #[arena(default)]
@@ -537,7 +624,7 @@ impl<'de, 'bump> serde::de::Visitor<'de> for CountriesVisitor<'bump> {
         struct TagDataSeed<'bump>(&'bump bumpalo::Bump);
 
         impl<'bump, 'de> DeserializeSeed<'de> for TagDataSeed<'bump> {
-            type Value = (&'bump [CountryId], &'bump [CountryTag<'bump>]);
+            type Value = (&'bump [CountryId], &'bump [CountryTag]);
 
             fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
             where
@@ -546,7 +633,7 @@ impl<'de, 'bump> serde::de::Visitor<'de> for CountriesVisitor<'bump> {
                 struct TagDataVisitor<'bump>(&'bump bumpalo::Bump);
 
                 impl<'bump, 'de> serde::de::Visitor<'de> for TagDataVisitor<'bump> {
-                    type Value = (&'bump [CountryId], &'bump [CountryTag<'bump>]);
+                    type Value = (&'bump [CountryId], &'bump [CountryTag]);
 
                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                         formatter.write_str("a map with country IDs and tags")
@@ -560,10 +647,9 @@ impl<'de, 'bump> serde::de::Visitor<'de> for CountriesVisitor<'bump> {
                         let mut tags = bumpalo::collections::Vec::new_in(self.0);
 
                         while let Some(key) = map.next_key::<CountryId>()? {
-                            let tag =
-                                map.next_value_seed(
-                                    bumpalo_serde::ArenaSeed::<CountryTag<'bump>>::new(self.0),
-                                )?;
+                            let tag = map.next_value_seed(
+                                bumpalo_serde::ArenaSeed::<CountryTag>::new(self.0),
+                            )?;
                             ids.push(key);
                             tags.push(tag);
                         }
@@ -872,8 +958,8 @@ impl<'a> CountryEntry<'a> {
     }
 
     #[inline]
-    pub fn tag(&self) -> &'a CountryTag<'a> {
-        &self.countries.tags[self.idx]
+    pub fn tag(&self) -> CountryTag {
+        self.countries.tags[self.idx]
     }
 
     #[inline]

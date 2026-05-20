@@ -506,9 +506,9 @@ impl<'bump> Eu5Workspace<'bump> {
                     .filter_map(|&idx| {
                         let entry = self.gamestate.countries.index(idx);
                         let rank = entry.data()?.great_power_rank;
-                        (rank > 0).then_some((rank, entry.tag().to_str(), idx))
+                        (rank > 0).then_some((rank, entry.tag(), idx))
                     })
-                    .min_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(b.1)))
+                    .min_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)))
                     .map(|(_, _, idx)| idx)
             })
             .or_else(|| candidates.first().copied())
