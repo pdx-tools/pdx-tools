@@ -4,6 +4,7 @@ use std::{
 };
 
 use bytemuck::{Pod, Zeroable};
+use serde::{Deserialize, Serialize};
 
 /// 24-bit RGB color
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
@@ -34,7 +35,9 @@ impl From<[u8; 3]> for Rgb {
 }
 
 /// 16-bit red channel used as location index in Paradox map textures
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Pod, Zeroable)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Pod, Zeroable, Serialize, Deserialize,
+)]
 #[repr(transparent)]
 pub struct R16(u16);
 
