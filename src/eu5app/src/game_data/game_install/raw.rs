@@ -1,5 +1,5 @@
 use super::parsing::{
-    parse_building_keys, parse_default_map, parse_goods, parse_locations_data,
+    parse_building_keys, parse_culture_keys, parse_default_map, parse_goods, parse_locations_data,
     parse_map_mode_colors, parse_named_locations, parse_religion_keys, resolve_goods,
 };
 use crate::game_data::game_install::parsing::LocationTerrain;
@@ -191,24 +191,19 @@ pub trait Eu5GameFileSourceExt: GameFileSource {
     fn parse_goods(&self) -> Result<FxHashMap<String, GoodData>, GameDataError>;
     fn parse_building_keys(&self) -> Result<FxHashSet<String>, GameDataError>;
     fn parse_religion_keys(&self) -> Result<FxHashSet<String>, GameDataError>;
+    fn parse_culture_keys(&self) -> Result<FxHashSet<String>, GameDataError>;
     fn load_blessed_localizations(
         &self,
         goods: &FxHashSet<String>,
         buildings: &FxHashSet<String>,
         religions: &FxHashSet<String>,
+        cultures: &FxHashSet<String>,
     ) -> Result<FxHashMap<String, String>, GameDataError>;
 }
 
 impl<T: GameFileSource + ?Sized> Eu5GameFileSourceExt for T {
     fn parse_goods(&self) -> Result<FxHashMap<String, GoodData>, GameDataError> {
-        let goods_files = match self.walk_directory("game/in_game/common/goods", &[".txt"]) {
-            Ok(files) => files,
-            Err(GameDataError::MissingData(_)) => return Ok(FxHashMap::default()),
-            Err(GameDataError::Io(e, _)) if e.kind() == std::io::ErrorKind::NotFound => {
-                return Ok(FxHashMap::default());
-            }
-            Err(e) => return Err(e),
-        };
+        let goods_files = self.walk_directory("game/in_game/common/goods", &[".txt"])?;
 
         let mut raw_goods = FxHashMap::default();
         for path in goods_files {
@@ -262,6 +257,23 @@ impl<T: GameFileSource + ?Sized> Eu5GameFileSourceExt for T {
         Ok(religion_keys)
     }
 
+    fn parse_culture_keys(&self) -> Result<FxHashSet<String>, GameDataError> {
+        let culture_files = self.walk_directory("game/in_game/common/cultures", &[".txt"])?;
+        let mut culture_keys = FxHashSet::default();
+        for path in culture_files {
+            let Some(file_name) = path.rsplit('/').next() else {
+                continue;
+            };
+            if file_name.to_ascii_lowercase().contains("readme") {
+                continue;
+            }
+            let data = self.read_to_string(&path)?;
+            culture_keys.extend(parse_culture_keys(&data)?);
+        }
+
+        Ok(culture_keys)
+    }
+
     /// EU5 localization (across all english localization):
     /// - 222,265 unique keys found
     /// - 61 keys are duplicated across files
@@ -271,11 +283,12 @@ impl<T: GameFileSource + ?Sized> Eu5GameFileSourceExt for T {
         goods: &FxHashSet<String>,
         buildings: &FxHashSet<String>,
         religions: &FxHashSet<String>,
+        cultures: &FxHashSet<String>,
     ) -> Result<FxHashMap<String, String>, GameDataError> {
         let mut entries: FxHashMap<String, String> = FxHashMap::default();
         let mut same_value_duplicates: usize = 0;
         let mut conflicting_duplicates: usize = 0;
-        for file in blessed_files(goods, buildings, religions) {
+        for file in blessed_files(goods, buildings, religions, cultures) {
             let data = self.read_to_string(file.path)?;
             for (key, value) in super::parsing::parse_localization(&data) {
                 if !(file.filter)(key) {
@@ -488,6 +501,7 @@ fn blessed_files<'a>(
     goods: &'a FxHashSet<String>,
     buildings: &'a FxHashSet<String>,
     religions: &'a FxHashSet<String>,
+    cultures: &'a FxHashSet<String>,
 ) -> Vec<BlessedFile<'a>> {
     vec![
         BlessedFile {
@@ -505,6 +519,10 @@ fn blessed_files<'a>(
         BlessedFile {
             path: "game/main_menu/localization/english/religion_l_english.yml",
             filter: Box::new(move |k| religions.contains(k)),
+        },
+        BlessedFile {
+            path: "game/main_menu/localization/english/cultural_and_languages_l_english.yml",
+            filter: Box::new(move |k| cultures.contains(k)),
         },
         BlessedFile {
             path: "game/main_menu/localization/english/location_names/location_names_l_english.yml",
@@ -545,9 +563,14 @@ impl RawGameData {
         let goods = fs.parse_goods()?;
         let building_keys = fs.parse_building_keys()?;
         let religion_keys = fs.parse_religion_keys()?;
+        let culture_keys = fs.parse_culture_keys()?;
         let goods_keys: FxHashSet<String> = goods.keys().cloned().collect();
-        let localizations =
-            fs.load_blessed_localizations(&goods_keys, &building_keys, &religion_keys)?;
+        let localizations = fs.load_blessed_localizations(
+            &goods_keys,
+            &building_keys,
+            &religion_keys,
+            &culture_keys,
+        )?;
 
         let me = Self {
             locations: locations.collect(),
@@ -725,6 +748,14 @@ colors = {
 "#,
             )
             .with_file(
+                "game/main_menu/localization/english/cultural_and_languages_l_english.yml",
+                r#"l_english:
+ dakelh_culture: "Dakelh"
+ luo_language: "Luo"
+ unknown_culture: "Unknown Culture"
+"#,
+            )
+            .with_file(
                 "game/main_menu/localization/english/location_names/location_names_l_english.yml",
                 r#"l_english:
  stockholm: "Stockholm"
@@ -754,14 +785,16 @@ colors = {
         let goods = allow(&["wool"]);
         let buildings = allow(&["workshop"]);
         let religions = allow(&["catholic"]);
+        let cultures = allow(&["dakelh_culture"]);
         let entries = source
-            .load_blessed_localizations(&goods, &buildings, &religions)
+            .load_blessed_localizations(&goods, &buildings, &religions, &cultures)
             .unwrap();
 
         assert_eq!(entries.get("SWE").unwrap(), "Sweden");
         assert_eq!(entries.get("wool").unwrap(), "Wool");
         assert_eq!(entries.get("workshop").unwrap(), "Workshop");
         assert_eq!(entries.get("catholic").unwrap(), "Catholicism");
+        assert_eq!(entries.get("dakelh_culture").unwrap(), "Dakelh");
         assert_eq!(entries.get("stockholm").unwrap(), "Stockholm");
         assert_eq!(entries.get("svealand").unwrap(), "Svealand");
         assert_eq!(entries.get("peasant_rebels").unwrap(), "Peasant Rebels");
@@ -775,6 +808,7 @@ colors = {
                 &allow(&["wool"]),
                 &allow(&["workshop"]),
                 &allow(&["catholic"]),
+                &allow(&["dakelh_culture"]),
             )
             .unwrap();
 
@@ -790,6 +824,7 @@ colors = {
                 &allow(&["wool"]),
                 &allow(&["workshop"]),
                 &allow(&["catholic"]),
+                &allow(&["dakelh_culture"]),
             )
             .unwrap();
 
@@ -798,6 +833,8 @@ colors = {
         assert!(!entries.contains_key("artisan_tools"));
         assert!(!entries.contains_key("catholic_ADJ"));
         assert!(!entries.contains_key("unknown_religion"));
+        assert!(!entries.contains_key("luo_language"));
+        assert!(!entries.contains_key("unknown_culture"));
     }
 
     #[test]
@@ -816,6 +853,7 @@ colors = {
                 &allow(&["wool"]),
                 &allow(&["workshop"]),
                 &allow(&["catholic"]),
+                &allow(&["dakelh_culture"]),
             )
             .unwrap();
         assert_eq!(entries.get("stockholm").unwrap(), "Stockholm Province");
