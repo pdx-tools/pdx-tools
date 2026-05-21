@@ -517,15 +517,13 @@ impl Present for CountryIdx {
         let tag = tag.to_str();
         let name = match entry.data().map(|data| &data.country_name) {
             Some(CountryName::Object(obj)) => {
-                if let Some(override_name) = obj.override_name {
-                    let key = override_name.to_str();
-                    ctx.localization.get(key).unwrap_or(key).to_string()
-                } else if let Some(name) = obj.name {
-                    let key = name.to_str();
-                    ctx.localization.get(key).unwrap_or(key).to_string()
-                } else {
-                    ctx.localization.get(tag).unwrap_or(tag).to_string()
-                }
+                let (key, variables) = match obj.override_name.as_ref() {
+                    Some(ov) => (ov.key.to_str(), ov.variables),
+                    None => (obj.name.map(|b| b.to_str()).unwrap_or(tag), &[][..]),
+                };
+                let template = ctx.localization.get(key).unwrap_or(key);
+                let base = obj.bases.base.map(|b| b.to_str());
+                interpolate_country_name(template, base, variables, ctx.localization)
             }
             Some(CountryName::Tag(t)) => {
                 let key = t.to_str();
@@ -535,6 +533,68 @@ impl Present for CountryIdx {
         };
         Localized::new(UiCountryIdx::from(self), name)
     }
+}
+
+/// Substitute `$TOKEN$` in a country-name template: `$NAME$`/`$ADJ$` from the
+/// base tag (`<base>` / `<base>_ADJ`), other tokens from `variables` (value
+/// treated as a loc key). Unknown tokens are left intact; output is not rescanned.
+fn interpolate_country_name(
+    template: &str,
+    base: Option<&str>,
+    variables: &[eu5save::models::CountryNameVariable<'_>],
+    localization: &Localization,
+) -> String {
+    if !template.contains('$') {
+        return template.to_string();
+    }
+
+    let mut out = String::with_capacity(template.len());
+    let mut lookup_key = String::new();
+    let mut rest = template;
+    while let Some((prefix, after_start)) = rest.split_once('$') {
+        out.push_str(prefix);
+        let Some((token, tail)) = after_start.split_once('$') else {
+            out.push('$');
+            out.push_str(after_start);
+            return out;
+        };
+        if let Some(sub) = resolve_token(token, base, variables, localization, &mut lookup_key) {
+            out.push_str(sub);
+        } else {
+            out.push('$');
+            out.push_str(token);
+            out.push('$');
+        }
+        rest = tail;
+    }
+    out.push_str(rest);
+    out
+}
+
+fn resolve_token<'a>(
+    token: &str,
+    base: Option<&'a str>,
+    variables: &'a [eu5save::models::CountryNameVariable<'_>],
+    localization: &'a Localization,
+    lookup_key: &'a mut String,
+) -> Option<&'a str> {
+    // Base-tag tokens take precedence so a variable can't shadow $NAME$/$ADJ$.
+    if let Some(b) = base {
+        match token {
+            "NAME" => return Some(localization.get(b).unwrap_or(b)),
+            "ADJ" => {
+                lookup_key.clear();
+                lookup_key.push_str(b);
+                lookup_key.push_str("_ADJ");
+                return Some(localization.get(lookup_key).unwrap_or(b));
+            }
+            _ => {}
+        }
+    }
+    variables.iter().find(|v| v.key.to_str() == token).map(|v| {
+        let val = v.value.to_str();
+        localization.get(val).unwrap_or(val)
+    })
 }
 
 /// Workspace-side source for a good's rich presentation form.
@@ -708,16 +768,95 @@ mod tests {
         assert_eq!(u32::from(id), 7);
     }
 
-    /// Raw ref structs carry identity only — no display strings or hex colors
-    /// can leak through them. Asserted at the type level: changing
-    /// `CountryRefSource`/`MarketRefSource` to gain a `String`/`Srgb` field would
-    /// break this test by changing the type signatures used here.
+    fn loc(pairs: &[(&str, &str)]) -> Localization {
+        let mut entries = eu5save::hash::FxHashMap::default();
+        for (k, v) in pairs {
+            entries.insert((*k).to_string(), (*v).to_string());
+        }
+        Localization::new(entries)
+    }
+
+    fn var<'a>(k: &'a [u8], v: &'a [u8]) -> eu5save::models::CountryNameVariable<'a> {
+        eu5save::models::CountryNameVariable {
+            key: eu5save::models::BStr::new(k),
+            value: eu5save::models::BStr::new(v),
+        }
+    }
+
+    #[test]
+    fn interpolate_adj_resolves_from_base_tag() {
+        let l = loc(&[("TIM_ADJ", "Timurid")]);
+        let out = interpolate_country_name("$ADJ$ Rival Warlord", Some("TIM"), &[], &l);
+        assert_eq!(out, "Timurid Rival Warlord");
+    }
+
+    #[test]
+    fn interpolate_adj_falls_back_to_base_tag_when_missing() {
+        let l = loc(&[]);
+        let out = interpolate_country_name("$ADJ$ Clergy", Some("DNS"), &[], &l);
+        assert_eq!(out, "DNS Clergy");
+    }
+
+    #[test]
+    fn interpolate_name_resolves_from_base_tag() {
+        let l = loc(&[("TIM", "Timurid")]);
+        let out = interpolate_country_name("$NAME$ Successor", Some("TIM"), &[], &l);
+        assert_eq!(out, "Timurid Successor");
+    }
+
+    #[test]
+    fn interpolate_unknown_token_is_preserved() {
+        let l = loc(&[]);
+        let out = interpolate_country_name("$FOO$ Whatever", Some("TIM"), &[], &l);
+        assert_eq!(out, "$FOO$ Whatever");
+    }
+
+    #[test]
+    fn interpolate_no_dollar_returns_as_is() {
+        let l = loc(&[]);
+        let out = interpolate_country_name("Plain Name", Some("TIM"), &[], &l);
+        assert_eq!(out, "Plain Name");
+    }
+
+    #[test]
+    fn interpolate_without_base_leaves_base_tokens_intact() {
+        let l = loc(&[("TIM_ADJ", "Timurid")]);
+        let out = interpolate_country_name("$ADJ$ Rival", None, &[], &l);
+        assert_eq!(out, "$ADJ$ Rival");
+    }
+
+    #[test]
+    fn interpolate_variables_substitute_from_override_variables() {
+        let l = loc(&[("oyama_dynasty", "Oyama")]);
+        let vars = [var(b"NAME", b"oyama_dynasty")];
+        let out = interpolate_country_name("$NAME$ House", None, &vars, &l);
+        assert_eq!(out, "Oyama House");
+    }
+
+    #[test]
+    fn interpolate_variables_fall_back_to_literal_value() {
+        let l = loc(&[]);
+        let vars = [var(b"PREFIX", b"Mc"), var(b"SUFFIX", b"son")];
+        let out = interpolate_country_name("$PREFIX$Donald$SUFFIX$", None, &vars, &l);
+        assert_eq!(out, "McDonaldson");
+    }
+
+    #[test]
+    fn interpolate_base_tokens_win_over_variables() {
+        // $NAME$ resolves from base tag, not from a variable named NAME.
+        let l = loc(&[("TIM", "Timurid")]);
+        let vars = [var(b"NAME", b"should_not_be_used")];
+        let out = interpolate_country_name("$NAME$ Empire", Some("TIM"), &vars, &l);
+        assert_eq!(out, "Timurid Empire");
+    }
+
+    /// Raw ref structs carry identity only — adding a `String`/`Srgb` field to
+    /// `CountryRefSource`/`MarketRefSource` would break this at the type level.
     #[test]
     fn workspace_refs_carry_identity_only() {
         let country_ref = CountryRefSource {
             country_idx: eu5save::models::CountryIdx::from_value(1).unwrap(),
         };
-        // Asserting the field exists and is exactly a CountryIdx.
         let _idx: eu5save::models::CountryIdx = country_ref.country_idx;
 
         let market_ref = MarketRefSource {
