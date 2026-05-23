@@ -8,7 +8,7 @@ catalog:
   comlink: 4.4.2
   react-dom: 19.2.5
   react: 19.2.5
-  typescript: 5.9.3
+  typescript: 6.0.3
   vite: 8.0.8
   wrangler: 4.81.1
 onlyBuiltDependencies:
