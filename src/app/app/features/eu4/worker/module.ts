@@ -18,14 +18,46 @@ import type {
 import type { MapPayload, QuickTipPayload } from "../types/map";
 import { workLedgerData } from "../utils/ledger";
 import { expandLosses } from "../utils/losses";
-import { wasm } from "./common";
+import { Eu4WasmModule, wasm } from "./common";
 import type { ActiveWarParticipant, TimelapseIter, Wars } from "@/wasm/wasm_eu4";
 import { timeSync } from "@/lib/timeit";
+import { formatInt } from "@/lib/format";
 import { createBudget } from "../features/country-details/budget";
 export * from "./init";
 
+export type CompressProgressCb = (portion: number) => void;
+
 export const getRawData = () => wasm.viewData();
 export const melt = () => wasm.melt();
+
+export function eu4Compress(data: Uint8Array<ArrayBuffer>, cb: CompressProgressCb) {
+  const compression = timeSync("initialized compression", () =>
+    Eu4WasmModule.init_compression(data),
+  );
+  const contentType = compression.content_type();
+
+  const startKb = formatInt(data.length / 1024);
+  const deflated = timeSync(
+    (result) => {
+      const endKb = formatInt(result.length / 1024);
+      return `compressed: ${startKb}kB to ${endKb}kB`;
+    },
+    () => compression.compress_cb(cb),
+  );
+
+  return transfer(
+    {
+      contentType,
+      data: deflated as Uint8Array<ArrayBuffer>,
+    },
+    [deflated.buffer],
+  );
+}
+
+export function eu4DownloadTransform(data: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+  const out = Eu4WasmModule.download_transformation(data) as Uint8Array<ArrayBuffer>;
+  return transfer(out, [out.buffer]);
+}
 
 let provinceIdToColorIndex = new Uint16Array();
 
