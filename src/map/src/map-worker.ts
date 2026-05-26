@@ -15,12 +15,15 @@ import {
 import { compileShaders } from "./shaderCompiler";
 import type {
   BaseImageResourceUrls,
+  ProvinceLocationUrls,
   ShaderSourceUrls,
   StaticResources,
   TerrainOverlayResources,
   TerrainOverlayResourcesUrls,
 } from "./types";
 import { XbrShader } from "./XbrShader";
+import initWasmCompress, { decode_zstd } from "../../app/app/wasm/wasm_compress";
+import wasmCompressUrl from "../../app/app/wasm/wasm_compress_bg.wasm?url";
 
 let state: Partial<{
   canvas: OffscreenCanvas;
@@ -81,25 +84,45 @@ export async function init(
   );
 }
 
+let zstdReady: Promise<void> | undefined;
+async function ensureZstd() {
+  return (zstdReady ??= initWasmCompress(wasmCompressUrl).then(() => undefined));
+}
+
+async function fetchAndDecodeR16(url: string): Promise<Uint16Array> {
+  await ensureZstd();
+  const compressed = await fetchOk(url)
+    .then((x) => x.arrayBuffer())
+    .then((x) => new Uint8Array(x));
+  const decoded = decode_zstd(compressed);
+  return new Uint16Array(decoded.buffer, decoded.byteOffset, decoded.byteLength / 2);
+}
+
 export async function withResources(
   urls: BaseImageResourceUrls,
-  provincesUniqueColorUrl: string,
-  provincesUniqueIndexUrl: string,
+  locationUrls: ProvinceLocationUrls,
 ) {
-  const resourceTask = Promise.all([
-    loadBaseImages(urls),
-    fetchOk(provincesUniqueColorUrl)
-      .then((x) => x.arrayBuffer())
-      .then((x) => new Uint8Array(x)),
-  ]);
-  const colorIndexToProvinceIdTask = fetchOk(provincesUniqueIndexUrl)
+  const imagesTask = loadBaseImages(urls);
+  const west = fetchAndDecodeR16(locationUrls.provinceLocations1);
+  const east = fetchAndDecodeR16(locationUrls.provinceLocations2);
+  const colorIndexToProvinceIdTask = fetchOk(locationUrls.provinceIdToColorIndex)
     .then((x) => x.arrayBuffer())
     .then((x) => provinceIdToColorIndexInvert(new Uint16Array(x)));
 
-  const [images, provincesUniqueColor] = await resourceTask;
-  const staticResources = { ...images, provincesUniqueColor };
+  const [images, provinceLocations1, provinceLocations2, colorIndexToProvinceId] =
+    await Promise.all([imagesTask, west, east, colorIndexToProvinceIdTask]);
+
+  const width = IMG_WIDTH / 2;
+  const height = IMG_HEIGHT;
+  const staticResources: StaticResources = {
+    ...images,
+    provinceLocations1,
+    provinceLocations2,
+    colorIndexToProvinceId,
+    provinceLocationsWidth: width,
+    provinceLocationsHeight: height,
+  };
   const glInit = GLResources.create(state.gl!, staticResources);
-  const colorIndexToProvinceId = await colorIndexToProvinceIdTask;
   state.colorIndexToProvinceId = colorIndexToProvinceId;
   state.glInit = glInit;
   state.staticResources = staticResources;
@@ -121,9 +144,10 @@ export async function withMap(
   const glResources = new GLResources(...glInit, mapShader, xbrShader);
 
   const finder = new ProvinceFinder(
-    staticResources.provinces1,
-    staticResources.provinces2,
-    staticResources.provincesUniqueColor,
+    staticResources.provinceLocations1,
+    staticResources.provinceLocations2,
+    staticResources.provinceLocationsWidth,
+    staticResources.provinceLocationsHeight,
     colorIndexToProvinceId,
   );
   const map = WebGLMap.create(glResources, finder, pixelRatio);

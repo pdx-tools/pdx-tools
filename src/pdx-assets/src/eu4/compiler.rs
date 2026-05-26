@@ -1167,11 +1167,8 @@ where
         ("provinces-1.r16.zst", west.as_slice()),
         ("provinces-2.r16.zst", east.as_slice()),
     ] {
-        let mut file = BufWriter::new(std::fs::File::create(map_dir.join(filename))?);
-        let mut encoder = pdx_zstd::Encoder::new(&mut file, 7)?;
-        encoder.write_all(bytemuck::cast_slice(data))?;
-        encoder.finish()?;
-        file.flush()?;
+        let compressed = pdx_zstd::encode_all(bytemuck::cast_slice(data), 19)?;
+        std::fs::write(map_dir.join(filename), &compressed)?;
     }
 
     Ok(())
