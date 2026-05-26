@@ -488,10 +488,10 @@ pub struct BlessedFile<'a> {
     pub filter: Box<dyn Fn(&str) -> bool + 'a>,
 }
 
-/// Country names: drop `*_ADJ` adjective forms and keep only tag-shaped keys
-/// (uppercase letters and underscores).
-fn is_country_tag(key: &str) -> bool {
-    !key.ends_with("_ADJ") && key.chars().all(|c| c.is_ascii_uppercase() || c == '_')
+/// Tag-shaped keys (uppercase + underscores). Keeps `TAG` and `TAG_ADJ`; the
+/// adjective form is needed to resolve `$ADJ$` in templated country names.
+fn is_country_name_key(key: &str) -> bool {
+    key.chars().all(|c| c.is_ascii_uppercase() || c == '_')
 }
 
 /// Build the ordered blessed-file list. Each file's filter is declared inline
@@ -506,7 +506,7 @@ fn blessed_files<'a>(
     vec![
         BlessedFile {
             path: "game/main_menu/localization/english/country_names_l_english.yml",
-            filter: Box::new(is_country_tag),
+            filter: Box::new(is_country_name_key),
         },
         BlessedFile {
             path: "game/main_menu/localization/english/goods_l_english.yml",
@@ -801,7 +801,7 @@ colors = {
     }
 
     #[test]
-    fn load_blessed_localizations_filters_country_adjectives_and_non_tags() {
+    fn load_blessed_localizations_keeps_adjectives_but_filters_non_tags() {
         let source = blessed_source();
         let entries = source
             .load_blessed_localizations(
@@ -812,7 +812,8 @@ colors = {
             )
             .unwrap();
 
-        assert!(!entries.contains_key("SWE_ADJ"));
+        // *_ADJ entries are retained to resolve $ADJ$ tokens in templated names.
+        assert!(entries.contains_key("SWE_ADJ"));
         assert!(!entries.contains_key("lowercase_tag"));
     }
 
