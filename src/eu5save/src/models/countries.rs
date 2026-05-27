@@ -376,10 +376,51 @@ impl<'bump> CountryNameKeys<'bump> {
 }
 
 /// The `bases` map inside a `country_name` object, e.g. `bases={ Base=JAL }`.
+///
+/// `Base` can also be a full country-name object (e.g. `Base={ name="ASK" override_name=... }`);
+/// in that case the inner `name` field is extracted as the base tag.
 #[derive(Debug, Clone, Default, ArenaDeserialize)]
 pub struct CountryNameBases<'bump> {
-    #[arena(default, alias = "Base")]
+    #[arena(default, alias = "Base", deserialize_with = "deserialize_base")]
     pub base: Option<BStr<'bump>>,
+}
+
+/// Accepts a bare tag string or a `{ name=... }` country-name object as a base tag.
+/// Returns the name field of the object, or the string itself.
+/// Sequences (binary-encoding of objects) are drained and return `None`.
+fn deserialize_base<'de, 'bump, D>(
+    deserializer: D,
+    allocator: &'bump bumpalo::Bump,
+) -> Result<Option<BStr<'bump>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visitor<'bump>(&'bump bumpalo::Bump);
+    impl<'de, 'bump> de::Visitor<'de> for Visitor<'bump> {
+        type Value = Option<BStr<'bump>>;
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("base tag string or object")
+        }
+        fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+            Ok(Some(BStr::new(self.0.alloc_slice_copy(v.as_bytes()))))
+        }
+        fn visit_borrowed_str<E: de::Error>(self, v: &'de str) -> Result<Self::Value, E> {
+            Ok(Some(BStr::new(self.0.alloc_slice_copy(v.as_bytes()))))
+        }
+        fn visit_bytes<E: de::Error>(self, v: &[u8]) -> Result<Self::Value, E> {
+            Ok(Some(BStr::new(self.0.alloc_slice_copy(v))))
+        }
+        fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
+            let obj =
+                CountryNameObject::deserialize_in_arena(MapAccessDeserializer::new(map), self.0)?;
+            Ok(obj.name)
+        }
+        fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+            while seq.next_element::<IgnoredAny>()?.is_some() {}
+            Ok(None)
+        }
+    }
+    deserializer.deserialize_any(Visitor(allocator))
 }
 
 #[derive(Debug, Clone, ArenaDeserialize)]
@@ -961,6 +1002,40 @@ mod tests {
         assert_eq!(on.variables.len(), 2);
         assert_eq!(on.variables[1].key.to_str(), "SUFFIX");
         assert_eq!(on.variables[1].value.to_str(), "b");
+    }
+
+    #[test]
+    fn country_name_object_with_base_object() {
+        // bases.Base can be a nested CountryNameObject rather than a simple tag string,
+        // as seen in civil war faction countries in EU5 saves.
+        let allocator = bumpalo::Bump::new();
+        let name = deserialize_country_name(
+            r#"country_name={
+                name="CIVILWAR_FACTION_clergy_estate_NAME"
+                key={
+                    "Adjective"="CIVILWAR_FACTION_clergy_estate_ADJECTIVE"
+                }
+                bases={
+                    Base={
+                        name="ASK"
+                        override_name="toshima_kanto"
+                        override_adj="toshima_kanto"
+                        key={
+                            "Adjective"="ASK_ADJ"
+                        }
+                    }
+                }
+            }"#,
+            &allocator,
+        );
+        let CountryName::Object(obj) = name else {
+            panic!("expected Object")
+        };
+        assert_eq!(
+            obj.name.unwrap().to_str(),
+            "CIVILWAR_FACTION_clergy_estate_NAME"
+        );
+        assert_eq!(obj.bases.base.unwrap().to_str(), "ASK");
     }
 }
 
