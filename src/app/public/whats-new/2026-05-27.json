@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "EU5 locations, religions, cultures, and countries now localized",
+      "EU5 location table sorted by development by default",
+      "EU5 game data split into separate bundles for faster loading"
+    ],
+    "fixes": [
+      "Fix Knights of the Caribbean achievement detection"
+    ]
+  }
+}
