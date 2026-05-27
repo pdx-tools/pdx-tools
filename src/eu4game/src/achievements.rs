@@ -2198,7 +2198,7 @@ impl<'a> AchievementHunter<'a> {
             .iter()
             .all(|id| self.owns_core_province_id(ProvinceId::from(*id)))
                 && self.all_provs_in_region("carribeans_region", |prov, _| {
-                    prov.owner == Some(self.starting_country)
+                    prov.owner == Some(self.tag)
                 })
         } else {
             false
