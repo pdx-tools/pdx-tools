@@ -11,8 +11,11 @@ catalog:
   typescript: 6.0.3
   vite: 8.0.8
   wrangler: 4.81.1
-onlyBuiltDependencies:
-  - '@sentry/cli'
-  - '@tailwindcss/oxide'
-  - esbuild
-  - workerd
+allowBuilds:
+  '@sentry/cli': true
+  '@tailwindcss/oxide': true
+  core-js: false
+  esbuild: true
+  protobufjs: false
+  sharp: true
+  workerd: true
