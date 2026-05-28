@@ -34,7 +34,6 @@ jobs:
     name: devcontainer / build / ${{ matrix.arch }}
     env:
       DEVCONTAINER_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      CARGO_TERM_VERBOSE: true
       CARGO_INCREMENTAL: 0
       CARGO_PROFILE_DEV_DEBUG: 0
       CARGO_TERM_COLOR: always
@@ -93,7 +92,6 @@ jobs:
     name: devcontainer / test / ${{ matrix.arch }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
     env:
       DEVCONTAINER_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      CARGO_TERM_VERBOSE: true
       CARGO_INCREMENTAL: 0
       CARGO_PROFILE_DEV_DEBUG: 0
       CARGO_TERM_COLOR: always
