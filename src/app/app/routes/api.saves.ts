@@ -10,6 +10,7 @@ import { ValidationError } from "@/server-lib/errors";
 import { pdxFns } from "@/server-lib/functions";
 import { genId } from "@/server-lib/id";
 import { log } from "@/server-lib/logging";
+import { pdxMetrics } from "@/server-lib/metrics";
 import { captureEvent } from "@/server-lib/posthog";
 import { withCore } from "@/server-lib/middleware";
 import { headerMetadata, uploadMetadata } from "@/server-lib/models";
@@ -60,21 +61,61 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
   const { bytes, metadata } = await fileUploadData(request);
   const saveId = genId(12);
   const s3 = pdxS3(pdxCloudflareS3({ context }));
+  const metrics = pdxMetrics(context);
 
   // Optimistically start upload to s3, the longest stage
   const uploadTask = s3.uploadFileToS3(bytes, saveId, metadata.uploadType);
+  uploadTask.then(
+    (put) =>
+      metrics.record({
+        domain: "save_file",
+        operation: "save_file_put",
+        outcome: "success",
+        status: put.status,
+        elapsedMs: put.elapsedMs,
+        bytes: put.bytes,
+      }),
+    () =>
+      metrics.record({
+        domain: "save_file",
+        operation: "save_file_put",
+        outcome: "error",
+        status: "error",
+        elapsedMs: 0,
+        bytes: bytes.length,
+      }),
+  );
 
   try {
-    const { data: out, elapsedMs } = await timeit(() =>
+    const parsed = await timeit(() =>
       pdxFns({
         endpoint: context.cloudflare.env.PARSE_API_ENDPOINT,
       }).parseSave(bytes),
-    );
+    ).catch((err) => {
+      metrics.record({
+        domain: "parse_api",
+        operation: "parse_save",
+        outcome: "error",
+        status: "error",
+        elapsedMs: 0,
+        bytes: bytes.length,
+      });
+      throw err;
+    });
+    const out = parsed.data;
+    metrics.record({
+      domain: "parse_api",
+      operation: "parse_save",
+      outcome: "success",
+      status: 200,
+      elapsedMs: parsed.elapsedMs,
+      bytes: bytes.length,
+    });
     log.info({
       key: saveId,
       user: session.id,
       msg: "parsed file",
-      elapsedMs: elapsedMs.toFixed(2),
+      elapsedMs: parsed.elapsedMs.toFixed(2),
     });
 
     if (out.kind === "InvalidPatch") {

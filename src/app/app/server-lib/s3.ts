@@ -117,6 +117,8 @@ export const pdxS3 = ({ accessKey, secretKey, region, bucket, endpoint }: S3Conn
         bytes: body.length,
         elapsedMs: put.elapsedMs.toFixed(2),
       });
+
+      return { elapsedMs: put.elapsedMs, bytes: body.length, status: put.data.status };
     },
 
     deleteFile: async (s3Key: S3Key) => {

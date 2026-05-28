@@ -11,6 +11,10 @@ directory = "./build/client"
 enabled = true
 head_sampling_rate = 1
 
+[[analytics_engine_datasets]]
+binding = "PDX_METRICS"
+dataset = "pdx_metrics"
+
 [version_metadata]
 binding = "CF_VERSION_METADATA"
 
@@ -20,6 +24,10 @@ id = "52bcc7b655d44776a6e42672fd11b388"
 localConnectionString = "postgres://app_user:mercantilismbaby2@localhost:5432/postgres"
 
 [env.test]
+
+[[env.test.analytics_engine_datasets]]
+binding = "PDX_METRICS"
+dataset = "pdx_metrics"
 
 [[env.test.hyperdrive]]
 binding = "PDX_DB"
