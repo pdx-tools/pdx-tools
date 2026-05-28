@@ -2020,7 +2020,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.normal_start_date());
         result.and(self.has_not_switched_nation());
 
-        let riga = "RIG".parse().unwrap();
+        let riga: CountryTag = "RIG".parse().unwrap();
         let starter = self.starting_country == riga;
         let desc = "started as Riga";
         result.and(AchievementCondition::new(starter, desc));
@@ -2030,12 +2030,14 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(playing, desc));
 
         let owns_baltic = if result.completed() {
-            self.all_provs_in_region("baltic_region", |p, _| owned_and_cored_by(p, riga))
+            self.all_provs_in_region("baltic_region", |p, _| {
+                self.owns_or_non_sovereign_subject_of_province(p)
+            })
         } else {
             false
         };
 
-        let desc = "Riga owns and cored baltic region";
+        let desc = "Riga or a non-sovereign subject owns baltic region";
         result.and(AchievementCondition::new(owns_baltic, desc));
 
         result
@@ -2149,9 +2151,7 @@ impl<'a> AchievementHunter<'a> {
                 ]
                 .iter()
                 .all(|x| {
-                    self.all_provs_in_area(x, |province, _| {
-                        self.owns_or_non_sovereign_subject_of_province(province)
-                    })
+                    self.all_provs_in_area(x, |province, _| owned_and_cored_by(province, self.tag))
                 })
         } else {
             false
@@ -2244,9 +2244,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(playing, desc));
 
         let provinces = if result.completed() {
-            self.all_provs_in_region("australia_region", |p, _| {
-                p.religion.as_ref() == self.country.religion.as_ref()
-            })
+            self.all_provs_in_region("australia_region", |p, _| p.owner == Some(self.tag))
         } else {
             false
         };
