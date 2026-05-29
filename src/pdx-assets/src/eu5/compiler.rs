@@ -109,6 +109,8 @@ where
 
     let textures = texture_builder.build()?;
 
+    let topology = textures.textures().world().build_topology_index();
+
     // Create location data with color awareness
     let locations = textures.location_aware(raw_game_data.locations);
 
@@ -131,6 +133,7 @@ where
                 goods: raw_game_data.goods,
             },
         )?;
+        write_entry(&mut archive, "topology.bin", &topology)?;
         archive.finish()?
     };
 

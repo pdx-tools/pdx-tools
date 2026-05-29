@@ -518,8 +518,32 @@ impl<'bump> Eu5Workspace<'bump> {
     pub fn can_highlight_location(&self, location_idx: eu5save::models::LocationIdx) -> bool {
         let terrain = self.location_terrain(location_idx);
 
-        // Can highlight if terrain is not water and not impassable
-        !terrain.is_water() && terrain.is_passable()
+        if !terrain.is_water() && terrain.is_passable() {
+            return true;
+        }
+
+        // Surrounded special-terrain participates in highlights as if it were
+        // part of the donor's country.
+        self.political_surrounded_donors()[location_idx].is_some()
+    }
+
+    /// Resolve the "effective" owner for highlight/hover purposes: a location's
+    /// real owner, or — for surrounded special-terrain — the donor's owner.
+    fn resolved_political_owner(
+        &self,
+        location_idx: eu5save::models::LocationIdx,
+    ) -> Option<eu5save::models::RealCountryId> {
+        let location = self.gamestate.locations.index(location_idx).location();
+        if let Some(real) = location.owner.real_id() {
+            return Some(real);
+        }
+        let donor = self.political_surrounded_donors()[location_idx]?;
+        self.gamestate
+            .locations
+            .index(donor)
+            .location()
+            .owner
+            .real_id()
     }
 
     pub fn clear_highlights(&mut self) {
@@ -549,8 +573,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
         for entry in self.gamestate.locations.iter() {
             let idx = entry.idx();
-            if entry.location().owner.real_id() != Some(owner) || !self.can_highlight_location(idx)
-            {
+            if self.resolved_political_owner(idx) != Some(owner) {
                 continue;
             }
 
@@ -598,13 +621,37 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         if let Some(anchor) = self.derived_entity_anchor
-            && self.same_entity(location_idx, anchor, scope_mode)
+            && self.same_entity_for_hover(location_idx, anchor, scope_mode)
         {
             self.highlight_location(location_idx);
             return;
         }
 
         self.highlight_entity(location_idx);
+    }
+
+    fn same_entity_for_hover(
+        &self,
+        a: eu5save::models::LocationIdx,
+        b: eu5save::models::LocationIdx,
+        mode: MapMode,
+    ) -> bool {
+        if self.same_entity(a, b, mode) {
+            return true;
+        }
+        // Filled special-terrain has no real owner of its own; treat it as
+        // part of the source country only in modes where terrain fill is
+        // actually rendered.
+        if !Self::uses_terrain_fill(mode) {
+            return false;
+        }
+        match (
+            self.resolved_political_owner(a),
+            self.resolved_political_owner(b),
+        ) {
+            (Some(o1), Some(o2)) => o1 == o2,
+            _ => false,
+        }
     }
 
     fn highlight_locations_by_index(&mut self, idxs: &eu5save::models::LocationIndexedVec<bool>) {
@@ -632,13 +679,12 @@ impl<'bump> Eu5Workspace<'bump> {
 
             self.highlight_locations_by_index(&idxs);
         } else {
-            let owner = location.owner.real_id();
+            let owner = self.resolved_political_owner(location_idx);
             let mut idxs = self.gamestate.locations.create_index(false);
 
             if let Some(owner) = owner {
                 for entry in self.gamestate.locations.iter() {
-                    idxs[entry.idx()] =
-                        entry.location().owner.real_id().is_some_and(|x| x == owner);
+                    idxs[entry.idx()] = self.resolved_political_owner(entry.idx()) == Some(owner);
                 }
             }
 
