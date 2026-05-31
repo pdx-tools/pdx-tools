@@ -11,8 +11,8 @@ use crate::entity_profile::market::workspace::{
     MarketGoodEntry, MarketGoodsSection, MarketMemberCountry, MarketProfile,
 };
 use crate::entity_profile::{
-    CountryMetrics, CountryOverviewSection, DiplomacySubjectType, EntityHeaderKindSource,
-    EntityKind, HeadlineStats,
+    CountryMetrics, CountryOverviewRanks, CountryOverviewSection, DiplomacySubjectType,
+    EntityHeaderKindSource, EntityKind, HeadlineStats,
 };
 use crate::game_data::GameData;
 use crate::hover::workspace::{

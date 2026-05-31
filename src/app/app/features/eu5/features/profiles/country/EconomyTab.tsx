@@ -8,6 +8,7 @@ import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { useEu5SaveDate } from "../../../store/eu5Store";
+import { StatRail } from "../../../components";
 
 const MONTH_NAMES = [
   "Jan",
@@ -38,22 +39,50 @@ export function CountryOverviewTabContent({
   data: CountryOverviewSection;
   locations: LocationRow[];
 }) {
-  const delta = data.income - data.expense;
-  const deltaText = `${delta >= 0 ? "+" : ""}${formatCompact(delta, 1)}`;
-
+  const { ranks } = data;
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-5 overflow-hidden rounded-lg border border-game-line-strong">
-        <StatPlate
-          label="Gold"
-          value={formatCompact(data.gold, 1)}
-          delta={{ text: deltaText, positive: delta >= 0 }}
+      <StatRail title="Overview">
+        <StatRail.Row
+          label="Net Gold"
+          value={formatCompact(data.netGold, 1)}
+          bar={data.netGoldMax > 0 ? data.netGold / data.netGoldMax : undefined}
+          rank={ranks.netGold}
         />
-        <StatPlate label="Manpower" value={formatCompact(data.manpower * 1000, 1)} />
-        <StatPlate label="Stability" value={formatFloat(data.stability, 1)} />
-        <StatPlate label="Prestige" value={formatFloat(data.prestige, 1)} />
-        <StatPlate label="Gov. Power" value={formatFloat(data.governmentPower, 1)} />
-      </div>
+        <StatRail.Row
+          label="Income"
+          value={formatCompact(data.income, 1)}
+          bar={data.incomeMax > 0 ? data.income / data.incomeMax : undefined}
+          rank={ranks.income}
+        />
+        <StatRail.Row label="Expense" value={formatCompact(data.expense, 1)} />
+
+        <StatRail.Row
+          label="Stability"
+          value={formatFloat(data.stability, 1)}
+          bar={(data.stability + 100) / 200}
+          rank={ranks.stability}
+        />
+        <StatRail.Row
+          label="Prestige"
+          value={formatFloat(data.prestige, 1)}
+          bar={data.prestige / 100}
+          rank={ranks.prestige}
+        />
+        <StatRail.Row
+          label="Gov. Power"
+          value={formatFloat(data.governmentPower, 1)}
+          bar={data.governmentPower / 100}
+          rank={ranks.governmentPower}
+        />
+
+        <StatRail.Row
+          label="Manpower"
+          value={formatCompact(data.manpower * 1000, 1)}
+          bar={data.manpowerMax > 0 ? data.manpower / data.manpowerMax : undefined}
+          rank={ranks.manpower}
+        />
+      </StatRail>
 
       <RevenueMarginChart revenue={data.monthlyGold} balance={data.recentBalance} />
       <HistoryChart

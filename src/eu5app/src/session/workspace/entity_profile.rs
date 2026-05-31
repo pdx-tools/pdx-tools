@@ -1,4 +1,4 @@
-use eu5save::models::CountryDiplomacy;
+use eu5save::{hash::FnvHashMap, models::CountryDiplomacy};
 
 use super::*;
 
@@ -363,19 +363,94 @@ impl<'bump> Eu5Workspace<'bump> {
         country_idx: eu5save::models::CountryIdx,
     ) -> Option<CountryOverviewSection> {
         let data = self.gamestate.countries.index(country_idx).data()?;
+        let mut loan_totals: FnvHashMap<CountryIdx, f64> = FnvHashMap::default();
+        for loan in self.gamestate.loan_manager.database.iter() {
+            if let Some(idx) = self.gamestate.countries.get(loan.borrower) {
+                *loan_totals.entry(idx).or_insert(0.0) += loan.amount;
+            }
+        }
+        let loan_total_for = |idx: CountryIdx| loan_totals.get(&idx).copied().unwrap_or(0.0);
+
+        let net_gold = data.currency_data.gold - loan_total_for(country_idx);
+        let manpower = data.currency_data.manpower;
+        let stability = data.currency_data.stability;
+        let prestige = data.currency_data.prestige;
+        let government_power = data.currency_data.government_power;
+        let income = data.economy.income;
+
+        // Rank this country's value against every real country (the same
+        // `great_power_rank > 0` universe the political scoreboard uses) and
+        // capture each bounded metric's cohort maximum so the UI can scale its
+        // bar. A metric's rank is one plus the number of countries with a
+        // strictly greater value, so ties share the better rank. `cohort` is
+        // that universe's size and is identical across metrics. Maxima are
+        // seeded with this country's own value so its own bar never exceeds 1
+        // even when it sits outside the cohort.
+        let mut cohort = 0u32;
+        let mut net_gold_rank = 1u32;
+        let mut manpower_rank = 1u32;
+        let mut stability_rank = 1u32;
+        let mut prestige_rank = 1u32;
+        let mut government_power_rank = 1u32;
+        let mut income_rank = 1u32;
+        let mut net_gold_max = net_gold;
+        let mut income_max = income;
+        let mut manpower_max = manpower;
+        for entry in self.gamestate.countries.iter() {
+            let Some(other) = entry.data() else { continue };
+            if other.great_power_rank <= 0 {
+                continue;
+            }
+            cohort += 1;
+            let other_net_gold = other.currency_data.gold - loan_total_for(entry.idx());
+            if other_net_gold > net_gold {
+                net_gold_rank += 1;
+            }
+            if other.currency_data.manpower > manpower {
+                manpower_rank += 1;
+            }
+            if other.currency_data.stability > stability {
+                stability_rank += 1;
+            }
+            if other.currency_data.prestige > prestige {
+                prestige_rank += 1;
+            }
+            if other.currency_data.government_power > government_power {
+                government_power_rank += 1;
+            }
+            if other.economy.income > income {
+                income_rank += 1;
+            }
+            net_gold_max = net_gold_max.max(other_net_gold);
+            income_max = income_max.max(other.economy.income);
+            manpower_max = manpower_max.max(other.currency_data.manpower);
+        }
+        let ranks = CountryOverviewRanks {
+            cohort,
+            net_gold: net_gold_rank,
+            manpower: manpower_rank,
+            stability: stability_rank,
+            prestige: prestige_rank,
+            government_power: government_power_rank,
+            income: income_rank,
+        };
 
         Some(CountryOverviewSection {
-            gold: data.currency_data.gold,
-            manpower: data.currency_data.manpower,
-            stability: data.currency_data.stability,
-            prestige: data.currency_data.prestige,
-            government_power: data.currency_data.government_power,
-            income: data.economy.income,
+            net_gold,
+            manpower,
+            stability,
+            prestige,
+            government_power,
+            income,
             expense: data.economy.expense,
+            net_gold_max,
+            income_max,
+            manpower_max,
             monthly_gold: data.economy.monthly_gold.to_vec(),
             recent_balance: data.economy.recent_balance.to_vec(),
             historical_tax_base: data.historical_tax_base.to_vec(),
             historical_population: data.historical_population.to_vec(),
+            ranks,
         })
     }
 
@@ -697,11 +772,11 @@ impl<'bump> Eu5Workspace<'bump> {
         &self,
         anchor_country_idx: CountryIdx,
     ) -> (
-        FxHashMap<CountryIdx, SaveDiplomacySubjectType>,
+        FnvHashMap<CountryIdx, SaveDiplomacySubjectType>,
         Option<DiplomacySubjectType>,
     ) {
-        let mut subject_type_map: FxHashMap<CountryIdx, SaveDiplomacySubjectType> =
-            FxHashMap::default();
+        let mut subject_type_map: FnvHashMap<CountryIdx, SaveDiplomacySubjectType> =
+            FnvHashMap::default();
         let mut overlord_subject_type: Option<DiplomacySubjectType> = None;
         for dep in self.gamestate.diplomacy_manager.dependencies() {
             let Some(first_idx) = self.gamestate.countries.get(dep.first) else {
@@ -719,8 +794,8 @@ impl<'bump> Eu5Workspace<'bump> {
         (subject_type_map, overlord_subject_type)
     }
 
-    fn country_metrics_map(&self) -> FxHashMap<CountryIdx, MetricsAgg> {
-        let mut metrics_map: FxHashMap<CountryIdx, MetricsAgg> = FxHashMap::default();
+    fn country_metrics_map(&self) -> FnvHashMap<CountryIdx, MetricsAgg> {
+        let mut metrics_map: FnvHashMap<CountryIdx, MetricsAgg> = FnvHashMap::default();
         for entry in self.gamestate.locations.iter() {
             let loc = entry.location();
             let Some(owner_id) = loc.owner.real_id().map(|id| id.country_id()) else {
@@ -742,7 +817,7 @@ impl<'bump> Eu5Workspace<'bump> {
     fn country_metrics_from_map(
         &self,
         idx: CountryIdx,
-        metrics_map: &FxHashMap<CountryIdx, MetricsAgg>,
+        metrics_map: &FnvHashMap<CountryIdx, MetricsAgg>,
     ) -> CountryMetrics {
         let agg = metrics_map.get(&idx).cloned().unwrap_or_default();
         let data = self.gamestate.countries.index(idx).data();
