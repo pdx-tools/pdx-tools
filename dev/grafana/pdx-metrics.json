@@ -217,10 +217,66 @@
       ]
     },
     {
+      "title": "Save fetch latency · uncached (ms)",
+      "type": "stat",
+      "datasource": { "type": "vertamedia-clickhouse-datasource", "uid": "${DS_CLICKHOUSE}" },
+      "gridPos": { "h": 5, "w": 12, "x": 0, "y": 5 },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "vertamedia-clickhouse-datasource", "uid": "${DS_CLICKHOUSE}" },
+          "rawQuery": true,
+          "format": "table",
+          "dateTimeType": "DATETIME",
+          "dateTimeColDataType": "timestamp",
+          "database": "default",
+          "table": "pdx_metrics",
+          "query": "SELECT quantileWeighted(0.5)(double2, _sample_interval) as median, quantileWeighted(0.95)(double2, _sample_interval) as p95 FROM $table WHERE $timeFilter AND blob1 = 'save_file_get' AND blob2 = 'MISS'"
+        }
+      ]
+    },
+    {
+      "title": "OG fetch latency · uncached (ms)",
+      "type": "stat",
+      "datasource": { "type": "vertamedia-clickhouse-datasource", "uid": "${DS_CLICKHOUSE}" },
+      "gridPos": { "h": 5, "w": 12, "x": 12, "y": 5 },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "vertamedia-clickhouse-datasource", "uid": "${DS_CLICKHOUSE}" },
+          "rawQuery": true,
+          "format": "table",
+          "dateTimeType": "DATETIME",
+          "dateTimeColDataType": "timestamp",
+          "database": "default",
+          "table": "pdx_metrics",
+          "query": "SELECT quantileWeighted(0.5)(double2, _sample_interval) as median, quantileWeighted(0.95)(double2, _sample_interval) as p95 FROM $table WHERE $timeFilter AND blob1 = 'og_get' AND blob2 != 'HIT'"
+        }
+      ]
+    },
+    {
       "title": "Requests by operation (per bucket)",
       "type": "timeseries",
       "datasource": { "type": "vertamedia-clickhouse-datasource", "uid": "${DS_CLICKHOUSE}" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -253,7 +309,7 @@
       "title": "p95 latency by operation (ms)",
       "type": "timeseries",
       "datasource": { "type": "vertamedia-clickhouse-datasource", "uid": "${DS_CLICKHOUSE}" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
@@ -287,7 +343,7 @@
       "title": "Save-file cache HIT / MISS (per bucket)",
       "type": "timeseries",
       "datasource": { "type": "vertamedia-clickhouse-datasource", "uid": "${DS_CLICKHOUSE}" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -320,7 +376,7 @@
       "title": "OG-image cache status (per bucket)",
       "type": "timeseries",
       "datasource": { "type": "vertamedia-clickhouse-datasource", "uid": "${DS_CLICKHOUSE}" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -353,7 +409,7 @@
       "title": "Bytes processed by operation (per bucket)",
       "type": "timeseries",
       "datasource": { "type": "vertamedia-clickhouse-datasource", "uid": "${DS_CLICKHOUSE}" },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 21 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 26 },
       "fieldConfig": {
         "defaults": {
           "unit": "bytes",
