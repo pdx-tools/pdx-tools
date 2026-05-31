@@ -157,17 +157,43 @@ pub struct HeadlineStats {
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryOverviewSection {
-    pub gold: f64,
+    /// Gold on hand minus outstanding loan principal. Negative when a country
+    /// is leveraged beyond its treasury, so a loan-funded war chest no longer
+    /// reads as wealth.
+    pub net_gold: f64,
     pub manpower: f64,
     pub stability: f64,
     pub prestige: f64,
     pub government_power: f64,
     pub income: f64,
     pub expense: f64,
+    /// Cohort maxima (same `ranks` universe) used to scale bounded bars. Each is
+    /// seeded with this country's own value, so its own bar never exceeds 1.
+    pub net_gold_max: f64,
+    pub income_max: f64,
+    pub manpower_max: f64,
     pub monthly_gold: Vec<f64>,
     pub recent_balance: Vec<f64>,
     pub historical_tax_base: Vec<f64>,
     pub historical_population: Vec<f64>,
+    pub ranks: CountryOverviewRanks,
+}
+
+/// This country's 1-based ordinal rank for each overview metric among all real
+/// countries. `cohort` is the size of that universe and is shared by every
+/// metric (so the UI shows the cohort once rather than repeating it per row).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct CountryOverviewRanks {
+    pub cohort: u32,
+    pub net_gold: u32,
+    pub manpower: u32,
+    pub stability: u32,
+    pub prestige: u32,
+    pub government_power: u32,
+    pub income: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

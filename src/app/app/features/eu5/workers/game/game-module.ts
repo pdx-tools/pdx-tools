@@ -330,7 +330,7 @@ export const createGame = async (
     },
 
     getCountryProfile: (countryIdx: number): CountryProfile | null => {
-      return app.get_country_profile(countryIdx) ?? null;
+      return timeSync("Get country profile", () => app.get_country_profile(countryIdx) ?? null);
     },
     getCountryPopulationProfile: (countryIdx: number): CountryPopulationProfile | null => {
       return app.get_country_population_profile(countryIdx) ?? null;
