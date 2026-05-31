@@ -37,8 +37,8 @@ const MAP_MODE_CONFIG = [
   { value: "markets", label: "Markets" },
   { value: "rgoLevel", label: "RGO Level" },
   { value: "buildingLevels", label: "Building Levels" },
-  { value: "possibleTax", label: "Possible Tax" },
-  { value: "taxGap", label: "Tax Gap" },
+  { value: "wealth", label: "Wealth" },
+  { value: "unrealizedTaxBase", label: "Tax Base Gap" },
   { value: "religion", label: "Religion" },
   { value: "stateEfficacy", label: "State Efficacy" },
 ] as const;

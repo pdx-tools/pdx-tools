@@ -55,10 +55,10 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::BuildingLevels => HoverStatSource::BuildingLevels {
                 value: self.get_location_building_levels()[location_idx],
             },
-            MapMode::PossibleTax => HoverStatSource::PossibleTax {
+            MapMode::Wealth => HoverStatSource::Wealth {
                 value: location.possible_tax,
             },
-            MapMode::TaxGap => HoverStatSource::TaxGap {
+            MapMode::UnrealizedTaxBase => HoverStatSource::UnrealizedTaxBase {
                 value: location.possible_tax - location.tax,
             },
             MapMode::Religion => location
@@ -179,7 +179,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
                 HoverStatSource::BuildingLevels { value: total }
             }
-            MapMode::PossibleTax => {
+            MapMode::Wealth => {
                 let mut total = 0.0;
 
                 for entry in self.gamestate().locations.iter() {
@@ -189,9 +189,9 @@ impl<'bump> Eu5Workspace<'bump> {
                     }
                 }
 
-                HoverStatSource::PossibleTax { value: total }
+                HoverStatSource::Wealth { value: total }
             }
-            MapMode::TaxGap => {
+            MapMode::UnrealizedTaxBase => {
                 let mut total = 0.0;
 
                 for entry in self.gamestate().locations.iter() {
@@ -201,7 +201,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     }
                 }
 
-                HoverStatSource::TaxGap { value: total }
+                HoverStatSource::UnrealizedTaxBase { value: total }
             }
             MapMode::Religion => self
                 .gamestate()

@@ -167,11 +167,15 @@ pub struct CountryOverviewSection {
     pub government_power: f64,
     pub income: f64,
     pub expense: f64,
+    pub wealth: f64,
+    pub tax_base: f64,
     /// Cohort maxima (same `ranks` universe) used to scale bounded bars. Each is
     /// seeded with this country's own value, so its own bar never exceeds 1.
     pub net_gold_max: f64,
     pub income_max: f64,
     pub manpower_max: f64,
+    pub wealth_max: f64,
+    pub tax_base_max: f64,
     pub monthly_gold: Vec<f64>,
     pub recent_balance: Vec<f64>,
     pub historical_tax_base: Vec<f64>,
@@ -194,6 +198,8 @@ pub struct CountryOverviewRanks {
     pub prestige: u32,
     pub government_power: u32,
     pub income: u32,
+    pub wealth: u32,
+    pub tax_base: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -354,8 +360,8 @@ present_dto! {
         terrain: String,
         religion: Option<eu5save::models::ReligionId> => Option<Localized<String>>,
         raw_material: Option<GoodName<'bump>> => Option<Localized<String>>,
-        tax: f64,
-        possible_tax: f64,
+        tax_base: f64,
+        wealth: f64,
         rgo_level: f64,
         market_access: f64,
     }
@@ -427,7 +433,7 @@ present_dto! {
     pub(crate) workspace MarketGoodsSectionSource<'bump> => pub MarketGoodsSection {
         market_value: f64,
         total_building_levels: f64,
-        total_possible_tax: f64,
+        total_wealth: f64,
         top_goods: Vec<MarketGoodEntrySource<'bump>> => Vec<MarketGoodEntry>,
     }
 }
@@ -456,8 +462,8 @@ present_dto! {
         development: f64,
         population: u32,
         control: f64,
-        tax: f64,
-        possible_tax: f64,
+        tax_base: f64,
+        wealth: f64,
         owner: Option<crate::presentation::CountryRefSource> => Option<CountryRef>,
         market: Option<crate::presentation::MarketRefSource> => Option<MarketRef>,
     }

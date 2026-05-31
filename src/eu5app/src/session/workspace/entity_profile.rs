@@ -370,6 +370,21 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
         let loan_total_for = |idx: CountryIdx| loan_totals.get(&idx).copied().unwrap_or(0.0);
+        let mut wealth_by_country: FnvHashMap<CountryIdx, (f64, f64)> = FnvHashMap::default();
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            let Some(owner_id) = loc.owner.real_id().map(|id| id.country_id()) else {
+                continue;
+            };
+            let Some(owner_idx) = self.gamestate.countries.get(owner_id) else {
+                continue;
+            };
+            let totals = wealth_by_country.entry(owner_idx).or_default();
+            totals.0 += loc.possible_tax;
+            totals.1 += loc.tax;
+        }
+        let wealth_and_tax_base_for =
+            |idx: CountryIdx| wealth_by_country.get(&idx).copied().unwrap_or_default();
 
         let net_gold = data.currency_data.gold - loan_total_for(country_idx);
         let manpower = data.currency_data.manpower;
@@ -377,6 +392,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let prestige = data.currency_data.prestige;
         let government_power = data.currency_data.government_power;
         let income = data.economy.income;
+        let (wealth, tax_base) = wealth_and_tax_base_for(country_idx);
 
         // Rank this country's value against every real country (the same
         // `great_power_rank > 0` universe the political scoreboard uses) and
@@ -393,9 +409,13 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut prestige_rank = 1u32;
         let mut government_power_rank = 1u32;
         let mut income_rank = 1u32;
+        let mut wealth_rank = 1u32;
+        let mut tax_base_rank = 1u32;
         let mut net_gold_max = net_gold;
         let mut income_max = income;
         let mut manpower_max = manpower;
+        let mut wealth_max = wealth;
+        let mut tax_base_max = tax_base;
         for entry in self.gamestate.countries.iter() {
             let Some(other) = entry.data() else { continue };
             if other.great_power_rank <= 0 {
@@ -403,6 +423,7 @@ impl<'bump> Eu5Workspace<'bump> {
             }
             cohort += 1;
             let other_net_gold = other.currency_data.gold - loan_total_for(entry.idx());
+            let (other_wealth, other_tax_base) = wealth_and_tax_base_for(entry.idx());
             if other_net_gold > net_gold {
                 net_gold_rank += 1;
             }
@@ -421,9 +442,17 @@ impl<'bump> Eu5Workspace<'bump> {
             if other.economy.income > income {
                 income_rank += 1;
             }
+            if other_wealth > wealth {
+                wealth_rank += 1;
+            }
+            if other_tax_base > tax_base {
+                tax_base_rank += 1;
+            }
             net_gold_max = net_gold_max.max(other_net_gold);
             income_max = income_max.max(other.economy.income);
             manpower_max = manpower_max.max(other.currency_data.manpower);
+            wealth_max = wealth_max.max(other_wealth);
+            tax_base_max = tax_base_max.max(other_tax_base);
         }
         let ranks = CountryOverviewRanks {
             cohort,
@@ -433,6 +462,8 @@ impl<'bump> Eu5Workspace<'bump> {
             prestige: prestige_rank,
             government_power: government_power_rank,
             income: income_rank,
+            wealth: wealth_rank,
+            tax_base: tax_base_rank,
         };
 
         Some(CountryOverviewSection {
@@ -443,9 +474,13 @@ impl<'bump> Eu5Workspace<'bump> {
             government_power,
             income,
             expense: data.economy.expense,
+            wealth,
+            tax_base,
             net_gold_max,
             income_max,
             manpower_max,
+            wealth_max,
+            tax_base_max,
             monthly_gold: data.economy.monthly_gold.to_vec(),
             recent_balance: data.economy.recent_balance.to_vec(),
             historical_tax_base: data.historical_tax_base.to_vec(),
@@ -530,11 +565,11 @@ impl<'bump> Eu5Workspace<'bump> {
 
         let building_levels = self.get_location_building_levels();
         let mut total_building_levels = 0.0_f64;
-        let mut total_possible_tax = 0.0_f64;
+        let mut total_wealth = 0.0_f64;
         for &idx in locations {
             let l = self.gamestate.locations.index(idx).location();
             total_building_levels += building_levels[idx];
-            total_possible_tax += l.possible_tax;
+            total_wealth += l.possible_tax;
         }
 
         let mut top_goods: Vec<MarketGoodEntry> = market
@@ -553,7 +588,7 @@ impl<'bump> Eu5Workspace<'bump> {
         Some(MarketGoodsSection {
             market_value: market.market_value(),
             total_building_levels,
-            total_possible_tax,
+            total_wealth,
             top_goods,
         })
     }
@@ -692,8 +727,8 @@ impl<'bump> Eu5Workspace<'bump> {
                     development: loc.development,
                     population,
                     control: loc.control,
-                    tax: loc.tax,
-                    possible_tax: loc.possible_tax,
+                    tax_base: loc.tax,
+                    wealth: loc.possible_tax,
                     owner: self.owner_country_ref_for_location(loc),
                     market: self.market_ref_for_location(loc),
                 }
@@ -955,8 +990,8 @@ impl<'bump> Eu5Workspace<'bump> {
                 terrain,
                 religion: loc.religion,
                 raw_material,
-                tax: loc.tax,
-                possible_tax: loc.possible_tax,
+                tax_base: loc.tax,
+                wealth: loc.possible_tax,
                 rgo_level: loc.rgo_level,
                 market_access: loc.market_access,
             },

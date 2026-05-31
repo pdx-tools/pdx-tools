@@ -12,10 +12,10 @@ import type {
   LocationProfile,
   MarketProductionLocationSummary,
   DevelopmentInsightData,
-  PossibleTaxInsightData,
-  PossibleTaxScope,
-  TaxGapInsightData,
-  TaxGapScope,
+  WealthInsightData,
+  WealthScope,
+  UnrealizedTaxBaseInsightData,
+  UnrealizedTaxBaseScope,
   MarketInsightData,
   ScopedGoodSummary,
   PopulationInsightData,
@@ -412,17 +412,17 @@ export function saveWorker(
     getDevelopmentInsight: async (): Promise<DevelopmentInsightData> => {
       return await saveEngine.getDevelopmentInsight();
     },
-    getPossibleTaxInsight: async (): Promise<PossibleTaxInsightData> => {
-      return await saveEngine.getPossibleTaxInsight();
+    getWealthInsight: async (): Promise<WealthInsightData> => {
+      return await saveEngine.getWealthInsight();
     },
-    getPossibleTaxScope: async (): Promise<PossibleTaxScope> => {
-      return await saveEngine.getPossibleTaxScope();
+    getWealthScope: async (): Promise<WealthScope> => {
+      return await saveEngine.getWealthScope();
     },
-    getTaxGapInsight: async (): Promise<TaxGapInsightData> => {
-      return await saveEngine.getTaxGapInsight();
+    getUnrealizedTaxBaseInsight: async (): Promise<UnrealizedTaxBaseInsightData> => {
+      return await saveEngine.getUnrealizedTaxBaseInsight();
     },
-    getTaxGapScope: async (): Promise<TaxGapScope> => {
-      return await saveEngine.getTaxGapScope();
+    getUnrealizedTaxBaseScope: async (): Promise<UnrealizedTaxBaseScope> => {
+      return await saveEngine.getUnrealizedTaxBaseScope();
     },
     getMarketInsight: async (): Promise<MarketInsightData> => {
       return await saveEngine.getMarketInsight();

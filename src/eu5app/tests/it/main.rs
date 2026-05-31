@@ -13,8 +13,8 @@ const ALL_MAP_MODES: [MapMode; 11] = [
     MapMode::Markets,
     MapMode::RgoLevel,
     MapMode::BuildingLevels,
-    MapMode::PossibleTax,
-    MapMode::TaxGap,
+    MapMode::Wealth,
+    MapMode::UnrealizedTaxBase,
     MapMode::Religion,
     MapMode::StateEfficacy,
 ];
@@ -28,8 +28,8 @@ fn mode_name(mode: MapMode) -> &'static str {
         MapMode::Markets => "markets",
         MapMode::RgoLevel => "rgo_level",
         MapMode::BuildingLevels => "building_levels",
-        MapMode::PossibleTax => "possible_tax",
-        MapMode::TaxGap => "tax_gap",
+        MapMode::Wealth => "wealth",
+        MapMode::UnrealizedTaxBase => "unrealized_tax_base",
         MapMode::Religion => "religion",
         MapMode::StateEfficacy => "state_efficacy",
     }

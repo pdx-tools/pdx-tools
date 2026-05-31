@@ -64,24 +64,24 @@ const columns = [
       <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
     ),
   }),
-  columnHelper.accessor("possibleTax", {
+  columnHelper.accessor("wealth", {
     sortingFn: "basic",
-    meta: Eu5DataTable.meta({ headerLabel: "Possible Tax", variant: "num" }),
+    meta: Eu5DataTable.meta({ headerLabel: "Wealth", variant: "num" }),
     cell: (info) => (
       <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
     ),
   }),
-  columnHelper.accessor("tax", {
+  columnHelper.accessor("taxBase", {
     sortingFn: "basic",
-    meta: Eu5DataTable.meta({ headerLabel: "Current Tax", variant: "num" }),
+    meta: Eu5DataTable.meta({ headerLabel: "Tax Base", variant: "num" }),
     cell: (info) => (
       <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
     ),
   }),
-  columnHelper.accessor((row) => row.possibleTax - row.tax, {
-    id: "taxGap",
+  columnHelper.accessor((row) => row.wealth - row.taxBase, {
+    id: "unrealizedTaxBase",
     sortingFn: "basic",
-    meta: Eu5DataTable.meta({ headerLabel: "Tax Gap", variant: "num" }),
+    meta: Eu5DataTable.meta({ headerLabel: "Tax Base Gap", variant: "num" }),
     cell: (info) => (
       <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
     ),
@@ -108,8 +108,8 @@ const SORT_BY_MODE: Partial<Record<MapMode, { id: string; desc: boolean }>> = {
   control: { id: "control", desc: true },
   rgoLevel: { id: "development", desc: true },
   buildingLevels: { id: "development", desc: true },
-  possibleTax: { id: "possibleTax", desc: true },
-  taxGap: { id: "taxGap", desc: true },
+  wealth: { id: "wealth", desc: true },
+  unrealizedTaxBase: { id: "unrealizedTaxBase", desc: true },
   stateEfficacy: { id: "development", desc: true },
   political: { id: "development", desc: true },
   markets: { id: "market", desc: false },

@@ -236,7 +236,7 @@ impl<'bump> Gamestate<'bump> {
             .unwrap_or((0.0, LocationId::new(0)))
     }
 
-    pub fn location_max_possible_tax(&self) -> (f64, LocationId) {
+    pub fn location_max_wealth(&self) -> (f64, LocationId) {
         self.locations
             .iter()
             .map(|x| (x.location().possible_tax, x.id()))

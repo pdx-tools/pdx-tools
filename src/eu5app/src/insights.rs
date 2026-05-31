@@ -32,10 +32,10 @@ pub struct StateEfficacyScopeSummary {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
-pub struct PossibleTaxScope {
+pub struct WealthScope {
     pub location_count: u32,
-    pub total_possible_tax: f64,
-    pub avg_possible_tax: f64,
+    pub total_wealth: f64,
+    pub avg_wealth: f64,
     pub is_empty: bool,
 }
 
@@ -43,9 +43,9 @@ pub struct PossibleTaxScope {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
-pub struct TaxGapScope {
+pub struct UnrealizedTaxBaseScope {
     pub location_count: u32,
-    pub tax_gap: f64,
+    pub unrealized_tax_base: f64,
     pub realization_ratio: f64,
     pub is_empty: bool,
 }
@@ -274,53 +274,53 @@ pub mod tax {
         pub(crate) mod workspace;
         pub mod presentation;
 
-        pub CountryPossibleTax {
+        pub CountryWealth {
             country: crate::presentation::CountryRefSource => CountryRef,
-            total_possible_tax: f64,
-            avg_possible_tax: f64,
+            total_wealth: f64,
+            avg_wealth: f64,
             location_count: u32,
             total_population: u32,
         }
 
-        pub PossibleTaxTopLocation {
+        pub WealthTopLocation {
             location: eu5save::models::LocationIdx => Localized<UiLocationIdx>,
-            possible_tax: f64,
+            wealth: f64,
             development: f64,
             control: f64,
             population: u32,
             owner: crate::presentation::CountryRefSource => CountryRef,
         }
 
-        pub PossibleTaxInsightData {
-            countries: Vec<workspace::CountryPossibleTax> => Vec<presentation::CountryPossibleTax>,
-            top_locations: Vec<workspace::PossibleTaxTopLocation> => Vec<presentation::PossibleTaxTopLocation>,
+        pub WealthInsightData {
+            countries: Vec<workspace::CountryWealth> => Vec<presentation::CountryWealth>,
+            top_locations: Vec<workspace::WealthTopLocation> => Vec<presentation::WealthTopLocation>,
             distribution: distribution::workspace::LocationDistribution => distribution::presentation::LocationDistribution,
         }
 
-        pub CountryTaxGap {
+        pub CountryUnrealizedTaxBase {
             country: crate::presentation::CountryRefSource => CountryRef,
-            current_tax_base: f64,
-            total_possible_tax: f64,
-            tax_gap: f64,
+            total_tax_base: f64,
+            total_wealth: f64,
+            unrealized_tax_base: f64,
             realization_ratio: f64,
             location_count: u32,
             total_population: u32,
         }
 
-        pub TaxGapTopLocation {
+        pub UnrealizedTaxBaseTopLocation {
             location: eu5save::models::LocationIdx => Localized<UiLocationIdx>,
-            tax: f64,
-            possible_tax: f64,
-            tax_gap: f64,
+            tax_base: f64,
+            wealth: f64,
+            unrealized_tax_base: f64,
             development: f64,
             control: f64,
             population: u32,
             owner: crate::presentation::CountryRefSource => CountryRef,
         }
 
-        pub TaxGapInsightData {
-            countries: Vec<workspace::CountryTaxGap> => Vec<presentation::CountryTaxGap>,
-            top_locations: Vec<workspace::TaxGapTopLocation> => Vec<presentation::TaxGapTopLocation>,
+        pub UnrealizedTaxBaseInsightData {
+            countries: Vec<workspace::CountryUnrealizedTaxBase> => Vec<presentation::CountryUnrealizedTaxBase>,
+            top_locations: Vec<workspace::UnrealizedTaxBaseTopLocation> => Vec<presentation::UnrealizedTaxBaseTopLocation>,
             distribution: distribution::workspace::LocationDistribution => distribution::presentation::LocationDistribution,
         }
     }

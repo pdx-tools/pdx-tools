@@ -54,8 +54,8 @@ impl<'bump> Eu5Workspace<'bump> {
         self.gradient_domain(|idx, _| levels[idx]).1
     }
 
-    /// Effective max for the possible tax gradient (filtered when selection active).
-    pub fn max_possible_tax(&self) -> f64 {
+    /// Effective max for the wealth gradient (filtered when selection active).
+    pub fn max_wealth(&self) -> f64 {
         self.gradient_domain(|_, loc| loc.possible_tax).1
     }
 
@@ -274,10 +274,10 @@ impl<'bump> Eu5Workspace<'bump> {
         )
     }
 
-    pub fn location_possible_tax_color(
+    pub fn location_wealth_color(
         &self,
         location_idx: eu5save::models::LocationIdx,
-        max_possible_tax: f64,
+        max_wealth: f64,
     ) -> GpuColor {
         let terrain = self.location_terrain(location_idx);
         if terrain.is_water() {
@@ -295,12 +295,12 @@ impl<'bump> Eu5Workspace<'bump> {
 
         gradient::interpolate_eu5_gradient(
             save_location.possible_tax,
-            max_possible_tax,
+            max_wealth,
             GradientScale::Linear,
         )
     }
 
-    pub fn location_tax_gap_color(
+    pub fn location_unrealized_tax_base_color(
         &self,
         location_idx: eu5save::models::LocationIdx,
         max_gap: f64,
@@ -524,8 +524,8 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::Markets => self.apply_markets_colors(),
             MapMode::RgoLevel => self.apply_rgo_level_colors(),
             MapMode::BuildingLevels => self.apply_building_levels_colors(),
-            MapMode::PossibleTax => self.apply_possible_tax_colors(),
-            MapMode::TaxGap => self.apply_tax_gap_colors(),
+            MapMode::Wealth => self.apply_wealth_colors(),
+            MapMode::UnrealizedTaxBase => self.apply_unrealized_tax_base_colors(),
             MapMode::Religion => self.apply_religion_colors(),
             MapMode::StateEfficacy => self.apply_state_efficacy_colors(),
         };
@@ -791,7 +791,7 @@ impl<'bump> Eu5Workspace<'bump> {
         ))
     }
 
-    fn apply_possible_tax_colors(&mut self) -> gradient::MapLegend {
+    fn apply_wealth_colors(&mut self) -> gradient::MapLegend {
         let (global_max, filtered_max) = self.gradient_domain(|_, loc| loc.possible_tax);
 
         // Collect color data first to avoid borrow conflicts
@@ -803,8 +803,8 @@ impl<'bump> Eu5Workspace<'bump> {
             } else {
                 global_max
             };
-            let possible_tax_color = self.location_possible_tax_color(location_idx, max);
-            color_data.push((idx, possible_tax_color));
+            let wealth_color = self.location_wealth_color(location_idx, max);
+            color_data.push((idx, wealth_color));
         }
 
         // Apply colors
@@ -827,7 +827,7 @@ impl<'bump> Eu5Workspace<'bump> {
         ))
     }
 
-    fn apply_tax_gap_colors(&mut self) -> gradient::MapLegend {
+    fn apply_unrealized_tax_base_colors(&mut self) -> gradient::MapLegend {
         let (global_max, filtered_max) =
             self.gradient_domain(|_, loc| (loc.possible_tax - loc.tax).max(0.0));
 
@@ -839,7 +839,10 @@ impl<'bump> Eu5Workspace<'bump> {
             } else {
                 global_max
             };
-            color_data.push((idx, self.location_tax_gap_color(location_idx, max)));
+            color_data.push((
+                idx,
+                self.location_unrealized_tax_base_color(location_idx, max),
+            ));
         }
 
         for (idx, color) in color_data {

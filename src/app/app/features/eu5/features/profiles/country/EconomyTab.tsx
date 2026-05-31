@@ -56,6 +56,18 @@ export function CountryOverviewTabContent({
           rank={ranks.income}
         />
         <StatRail.Row label="Expense" value={formatCompact(data.expense, 1)} />
+        <StatRail.Row
+          label="Wealth"
+          value={formatCompact(data.wealth, 1)}
+          bar={data.wealthMax > 0 ? data.wealth / data.wealthMax : undefined}
+          rank={ranks.wealth}
+        />
+        <StatRail.Row
+          label="Tax Base"
+          value={formatCompact(data.taxBase, 1)}
+          bar={data.taxBaseMax > 0 ? data.taxBase / data.taxBaseMax : undefined}
+          rank={ranks.taxBase}
+        />
 
         <StatRail.Row
           label="Stability"
@@ -92,7 +104,7 @@ export function CountryOverviewTabContent({
         isYearly
       />
 
-      <TaxGapScatter locations={locations} />
+      <UnrealizedTaxBaseScatter locations={locations} />
     </div>
   );
 }
@@ -332,18 +344,18 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
   );
 }
 
-function TaxGapScatter({ locations }: { locations: LocationRow[] }) {
+function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
   const isDark = isDarkMode();
 
-  const eligible = useMemo(() => locations.filter((r) => r.possibleTax > 0), [locations]);
+  const eligible = useMemo(() => locations.filter((r) => r.wealth > 0), [locations]);
 
   const scatterData = useMemo(
-    (): [number, number][] => eligible.map((r) => [r.possibleTax, r.tax]),
+    (): [number, number][] => eligible.map((r) => [r.wealth, r.taxBase]),
     [eligible],
   );
 
   const diagonalMax = useMemo(() => {
-    const max = Math.max(...eligible.map((r) => r.possibleTax));
+    const max = Math.max(...eligible.map((r) => r.wealth));
     return max > 0 ? max : 1;
   }, [eligible]);
 
@@ -353,7 +365,7 @@ function TaxGapScatter({ locations }: { locations: LocationRow[] }) {
       grid: { left: 70, right: 20, top: 16, bottom: 50 },
       xAxis: {
         type: "value",
-        name: "Possible Tax",
+        name: "Wealth",
         nameLocation: "middle",
         nameGap: 36,
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
@@ -364,7 +376,7 @@ function TaxGapScatter({ locations }: { locations: LocationRow[] }) {
       },
       yAxis: {
         type: "value",
-        name: "Actual Tax",
+        name: "Tax Base",
         nameLocation: "middle",
         nameGap: 52,
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
@@ -379,13 +391,13 @@ function TaxGapScatter({ locations }: { locations: LocationRow[] }) {
           if (Array.isArray(params)) return "";
           const d = eligible[params.dataIndex ?? -1];
           if (!d) return "";
-          const gap = d.possibleTax - d.tax;
-          const realization = d.possibleTax > 0 ? (d.tax / d.possibleTax) * 100 : 100;
+          const gap = d.wealth - d.taxBase;
+          const realization = d.wealth > 0 ? (d.taxBase / d.wealth) * 100 : 100;
           return [
             `<strong>${escapeEChartsHtml(d.location.name)}</strong>`,
-            `Possible Tax: ${formatFloat(d.possibleTax, 2)}`,
-            `Actual Tax: ${formatFloat(d.tax, 2)}`,
-            `Gap: ${formatFloat(gap, 2)}`,
+            `Wealth: ${formatFloat(d.wealth, 2)}`,
+            `Tax Base: ${formatFloat(d.taxBase, 2)}`,
+            `Tax Base Gap: ${formatFloat(gap, 2)}`,
             `Realization: ${formatFloat(realization, 1)}%`,
           ].join("<br/>");
         },
@@ -417,7 +429,7 @@ function TaxGapScatter({ locations }: { locations: LocationRow[] }) {
   return (
     <section>
       <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-        Tax Gap · Possible vs Actual
+        Tax Base Gap · Wealth vs Tax Base
       </p>
       <EChart option={option} style={{ height: "300px", width: "100%" }} />
     </section>

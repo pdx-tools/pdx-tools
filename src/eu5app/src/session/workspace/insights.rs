@@ -324,8 +324,8 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::Population => "Population",
             MapMode::RgoLevel => "RGO Level",
             MapMode::BuildingLevels => "Building Levels",
-            MapMode::PossibleTax | MapMode::Markets => "Possible Tax",
-            MapMode::TaxGap => "Tax Gap",
+            MapMode::Wealth | MapMode::Markets => "Wealth",
+            MapMode::UnrealizedTaxBase => "Unrealized Tax Base",
             MapMode::StateEfficacy => "State Efficacy",
             _ => "Development",
         };
@@ -341,8 +341,8 @@ impl<'bump> Eu5Workspace<'bump> {
                 MapMode::Population => self.gamestate.location_population(loc),
                 MapMode::RgoLevel => loc.rgo_level,
                 MapMode::BuildingLevels => building_levels[idx],
-                MapMode::PossibleTax | MapMode::Markets => loc.possible_tax,
-                MapMode::TaxGap => loc.possible_tax - loc.tax,
+                MapMode::Wealth | MapMode::Markets => loc.possible_tax,
+                MapMode::UnrealizedTaxBase => loc.possible_tax - loc.tax,
                 MapMode::StateEfficacy => loc.control * loc.development,
                 _ => loc.development,
             };
@@ -535,12 +535,12 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    /// Possible-tax insight: per-country ceiling aggregates and top locations
-    /// by possible tax, over the current selection (or all locations when empty).
-    pub(crate) fn calculate_possible_tax_insight(&self) -> PossibleTaxInsightData {
+    /// Wealth insight: per-country ceiling aggregates and top locations
+    /// by wealth, over the current selection (or all locations when empty).
+    pub(crate) fn calculate_wealth_insight(&self) -> WealthInsightData {
         #[derive(Default)]
         struct TaxAgg {
-            total_possible_tax: f64,
+            total_wealth: f64,
             count: u32,
             pop: u32,
         }
@@ -557,30 +557,30 @@ impl<'bump> Eu5Workspace<'bump> {
                 continue;
             }
 
-            let ptax = loc.possible_tax;
+            let wealth = loc.possible_tax;
             let pop = self.gamestate.location_population(loc) as u32;
             let ctrl = loc.control;
             let dev = loc.development;
-            all_locs.push((entry.idx(), ptax, pop, ctrl, dev));
+            all_locs.push((entry.idx(), wealth, pop, ctrl, dev));
 
             if let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) {
                 let agg = aggregates.entry(owner_id).or_default();
-                agg.total_possible_tax += ptax;
+                agg.total_wealth += wealth;
                 agg.count += 1;
                 agg.pop += pop;
             }
         }
 
-        let mut countries: Vec<CountryPossibleTax> = aggregates
+        let mut countries: Vec<CountryWealth> = aggregates
             .into_iter()
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
                 let country = self.country_ref_from_country_idx(cidx);
-                Some(CountryPossibleTax {
+                Some(CountryWealth {
                     country,
-                    total_possible_tax: agg.total_possible_tax,
-                    avg_possible_tax: if agg.count > 0 {
-                        agg.total_possible_tax / agg.count as f64
+                    total_wealth: agg.total_wealth,
+                    avg_wealth: if agg.count > 0 {
+                        agg.total_wealth / agg.count as f64
                     } else {
                         0.0
                     },
@@ -590,27 +590,25 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
         countries.sort_by(|a, b| {
-            b.total_possible_tax
-                .total_cmp(&a.total_possible_tax)
-                .then_with(|| {
-                    a.country
-                        .country_idx
-                        .value()
-                        .cmp(&b.country.country_idx.value())
-                })
+            b.total_wealth.total_cmp(&a.total_wealth).then_with(|| {
+                a.country
+                    .country_idx
+                    .value()
+                    .cmp(&b.country.country_idx.value())
+            })
         });
 
         all_locs.sort_by(|a, b| b.1.total_cmp(&a.1));
         const TOP_LOCATIONS: usize = 50;
-        let top_locations: Vec<PossibleTaxTopLocation> = all_locs
+        let top_locations: Vec<WealthTopLocation> = all_locs
             .iter()
             .take(TOP_LOCATIONS)
-            .filter_map(|&(idx, ptax, pop, ctrl, dev)| {
+            .filter_map(|&(idx, wealth, pop, ctrl, dev)| {
                 let loc = self.gamestate.locations.index(idx).location();
                 let owner = self.owner_country_ref_for_location(loc)?;
-                Some(PossibleTaxTopLocation {
+                Some(WealthTopLocation {
                     location: idx,
-                    possible_tax: ptax,
+                    wealth,
                     development: dev,
                     control: ctrl,
                     population: pop,
@@ -621,18 +619,18 @@ impl<'bump> Eu5Workspace<'bump> {
 
         let distribution = self.selection_location_distribution();
 
-        PossibleTaxInsightData {
+        WealthInsightData {
             countries,
             top_locations,
             distribution,
         }
     }
 
-    pub(crate) fn calculate_tax_gap_insight(&self) -> TaxGapInsightData {
+    pub(crate) fn calculate_unrealized_tax_base_insight(&self) -> UnrealizedTaxBaseInsightData {
         #[derive(Default)]
         struct TaxAgg {
-            total_tax: f64,
-            total_possible_tax: f64,
+            total_tax_base: f64,
+            total_wealth: f64,
             count: u32,
             pop: u32,
         }
@@ -649,14 +647,14 @@ impl<'bump> Eu5Workspace<'bump> {
                 continue;
             }
 
-            let tax = loc.tax;
-            let ptax = loc.possible_tax;
-            let gap = ptax - tax;
+            let tax_base = loc.tax;
+            let wealth = loc.possible_tax;
+            let gap = wealth - tax_base;
             let pop = self.gamestate.location_population(loc) as u32;
             all_locs.push((
                 entry.idx(),
-                tax,
-                ptax,
+                tax_base,
+                wealth,
                 gap,
                 pop,
                 loc.control,
@@ -665,29 +663,29 @@ impl<'bump> Eu5Workspace<'bump> {
 
             if let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) {
                 let agg = aggregates.entry(owner_id).or_default();
-                agg.total_tax += tax;
-                agg.total_possible_tax += ptax;
+                agg.total_tax_base += tax_base;
+                agg.total_wealth += wealth;
                 agg.count += 1;
                 agg.pop += pop;
             }
         }
 
-        let mut countries: Vec<CountryTaxGap> = aggregates
+        let mut countries: Vec<CountryUnrealizedTaxBase> = aggregates
             .into_iter()
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
                 let country = self.country_ref_from_country_idx(cidx);
-                let tax_gap = agg.total_possible_tax - agg.total_tax;
-                let realization_ratio = if agg.total_possible_tax > 0.0 {
-                    agg.total_tax / agg.total_possible_tax
+                let unrealized_tax_base = agg.total_wealth - agg.total_tax_base;
+                let realization_ratio = if agg.total_wealth > 0.0 {
+                    agg.total_tax_base / agg.total_wealth
                 } else {
                     0.0
                 };
-                Some(CountryTaxGap {
+                Some(CountryUnrealizedTaxBase {
                     country,
-                    current_tax_base: agg.total_tax,
-                    total_possible_tax: agg.total_possible_tax,
-                    tax_gap,
+                    total_tax_base: agg.total_tax_base,
+                    total_wealth: agg.total_wealth,
+                    unrealized_tax_base,
                     realization_ratio,
                     location_count: agg.count,
                     total_population: agg.pop,
@@ -695,27 +693,29 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
         countries.sort_by(|a, b| {
-            b.tax_gap.total_cmp(&a.tax_gap).then_with(|| {
-                a.country
-                    .country_idx
-                    .value()
-                    .cmp(&b.country.country_idx.value())
-            })
+            b.unrealized_tax_base
+                .total_cmp(&a.unrealized_tax_base)
+                .then_with(|| {
+                    a.country
+                        .country_idx
+                        .value()
+                        .cmp(&b.country.country_idx.value())
+                })
         });
 
         all_locs.sort_by(|a, b| b.3.total_cmp(&a.3));
         const TOP_LOCATIONS: usize = 50;
-        let top_locations: Vec<TaxGapTopLocation> = all_locs
+        let top_locations: Vec<UnrealizedTaxBaseTopLocation> = all_locs
             .iter()
             .take(TOP_LOCATIONS)
-            .filter_map(|&(idx, tax, ptax, gap, pop, ctrl, dev)| {
+            .filter_map(|&(idx, tax_base, wealth, gap, pop, ctrl, dev)| {
                 let loc = self.gamestate.locations.index(idx).location();
                 let owner = self.owner_country_ref_for_location(loc)?;
-                Some(TaxGapTopLocation {
+                Some(UnrealizedTaxBaseTopLocation {
                     location: idx,
-                    tax,
-                    possible_tax: ptax,
-                    tax_gap: gap,
+                    tax_base,
+                    wealth,
+                    unrealized_tax_base: gap,
                     development: dev,
                     control: ctrl,
                     population: pop,
@@ -726,7 +726,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
         let distribution = self.selection_location_distribution();
 
-        TaxGapInsightData {
+        UnrealizedTaxBaseInsightData {
             countries,
             top_locations,
             distribution,
@@ -1802,9 +1802,9 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn get_possible_tax_scope(&self) -> PossibleTaxScope {
+    pub fn get_wealth_scope(&self) -> WealthScope {
         let is_empty = self.selection_state.is_empty();
-        let mut total_possible_tax = 0.0f64;
+        let mut total_wealth = 0.0f64;
         let mut location_count = 0u32;
 
         for entry in self.gamestate.locations.iter() {
@@ -1815,15 +1815,15 @@ impl<'bump> Eu5Workspace<'bump> {
             if !is_empty && !self.selection_state.contains(entry.idx()) {
                 continue;
             }
-            total_possible_tax += loc.possible_tax;
+            total_wealth += loc.possible_tax;
             location_count += 1;
         }
 
-        PossibleTaxScope {
+        WealthScope {
             location_count,
-            total_possible_tax,
-            avg_possible_tax: if location_count > 0 {
-                total_possible_tax / location_count as f64
+            total_wealth,
+            avg_wealth: if location_count > 0 {
+                total_wealth / location_count as f64
             } else {
                 0.0
             },
@@ -1831,10 +1831,10 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn get_tax_gap_scope(&self) -> TaxGapScope {
+    pub fn get_unrealized_tax_base_scope(&self) -> UnrealizedTaxBaseScope {
         let is_empty = self.selection_state.is_empty();
-        let mut total_tax = 0.0f64;
-        let mut total_possible_tax = 0.0f64;
+        let mut total_tax_base = 0.0f64;
+        let mut total_wealth = 0.0f64;
         let mut location_count = 0u32;
 
         for entry in self.gamestate.locations.iter() {
@@ -1845,18 +1845,18 @@ impl<'bump> Eu5Workspace<'bump> {
             if !is_empty && !self.selection_state.contains(entry.idx()) {
                 continue;
             }
-            total_tax += loc.tax;
-            total_possible_tax += loc.possible_tax;
+            total_tax_base += loc.tax;
+            total_wealth += loc.possible_tax;
             location_count += 1;
         }
 
-        let tax_gap = total_possible_tax - total_tax;
+        let unrealized_tax_base = total_wealth - total_tax_base;
 
-        TaxGapScope {
+        UnrealizedTaxBaseScope {
             location_count,
-            tax_gap,
-            realization_ratio: if total_possible_tax > 0.0 {
-                total_tax / total_possible_tax
+            unrealized_tax_base,
+            realization_ratio: if total_wealth > 0.0 {
+                total_tax_base / total_wealth
             } else {
                 0.0
             },

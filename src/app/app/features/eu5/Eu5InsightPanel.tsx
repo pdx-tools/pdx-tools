@@ -6,8 +6,8 @@ import { useEu5MapMode, useEu5SelectionState, useSetEu5InsightPanelWidth } from 
 import { StateEfficacyInsight } from "./features/insights/StateEfficacy";
 import { ControlInsight } from "./features/insights/Control";
 import { DevelopmentInsight } from "./features/insights/DevelopmentInsight";
-import { PossibleTaxInsight } from "./features/insights/PossibleTax";
-import { TaxGapInsight } from "./features/insights/TaxGap";
+import { WealthInsight } from "./features/insights/Wealth";
+import { UnrealizedTaxBaseInsight } from "./features/insights/UnrealizedTaxBase";
 import { MarketsInsight } from "./features/insights/Markets";
 import { PopulationInsight } from "./features/insights/Population";
 import { BuildingLevelsInsight } from "./features/insights/BuildingLevels";
@@ -85,10 +85,10 @@ function PanelContentInner() {
     content = <DevelopmentInsight />;
   } else if (currentMapMode === "stateEfficacy") {
     content = <StateEfficacyInsight />;
-  } else if (currentMapMode === "possibleTax") {
-    content = <PossibleTaxInsight />;
-  } else if (currentMapMode === "taxGap") {
-    content = <TaxGapInsight />;
+  } else if (currentMapMode === "wealth") {
+    content = <WealthInsight />;
+  } else if (currentMapMode === "unrealizedTaxBase") {
+    content = <UnrealizedTaxBaseInsight />;
   } else if (currentMapMode === "markets") {
     content = <MarketsInsight />;
   } else if (currentMapMode === "population") {
@@ -136,8 +136,8 @@ const MAP_MODE_TITLES = {
   control: "Control",
   development: "Development",
   stateEfficacy: "State Efficacy",
-  possibleTax: "Possible Tax",
-  taxGap: "Tax Gap",
+  wealth: "Wealth",
+  unrealizedTaxBase: "Tax Base Gap",
   markets: "Markets",
   population: "Population",
   buildingLevels: "Building Levels",
