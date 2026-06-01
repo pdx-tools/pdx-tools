@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cx } from "class-variance-authority";
+import { Tooltip } from "@/components/Tooltip";
 
 /**
  * StatRail — the EU5 "dense rail" stat display (Design Spec §10).
@@ -55,9 +56,22 @@ export interface StatRailRowProps {
   /** Reserved for future use; not rendered today. */
   delta?: { value: string; dir: "up" | "down" | "flat" };
   icon?: ReactNode;
+  tooltip?: ReactNode;
 }
 
-function Row({ label, value, denom, bar, rank, icon }: StatRailRowProps) {
+function Row({ label, value, denom, bar, rank, icon, tooltip }: StatRailRowProps) {
+  const labelNode = (
+    <span
+      className={cx(
+        "truncate font-game-ui text-[12px] text-game-ink-100",
+        tooltip &&
+          "cursor-help underline decoration-game-ink-500 decoration-dotted underline-offset-2 hover:decoration-game-ink-100",
+      )}
+    >
+      {label}
+    </span>
+  );
+
   return (
     <div
       className={cx(
@@ -67,7 +81,16 @@ function Row({ label, value, denom, bar, rank, icon }: StatRailRowProps) {
     >
       {icon ?? <IconSlot />}
 
-      <span className="truncate font-game-ui text-[12px] text-game-ink-100">{label}</span>
+      {tooltip ? (
+        <Tooltip>
+          <Tooltip.Trigger asChild>{labelNode}</Tooltip.Trigger>
+          <Tooltip.Content side="top" className="max-w-72 text-xs">
+            {tooltip}
+          </Tooltip.Content>
+        </Tooltip>
+      ) : (
+        labelNode
+      )}
 
       {/* Bar track — only painted for bounded ratios. */}
       <span className="flex items-center">

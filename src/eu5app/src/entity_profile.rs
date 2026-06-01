@@ -169,6 +169,10 @@ pub struct CountryOverviewSection {
     pub expense: f64,
     pub wealth: f64,
     pub tax_base: f64,
+    pub total_population: u32,
+    pub effective_development: f64,
+    pub active_state_capacity: f64,
+    pub building_levels: f64,
     /// Cohort maxima (same `ranks` universe) used to scale bounded bars. Each is
     /// seeded with this country's own value, so its own bar never exceeds 1.
     pub net_gold_max: f64,
@@ -176,6 +180,10 @@ pub struct CountryOverviewSection {
     pub manpower_max: f64,
     pub wealth_max: f64,
     pub tax_base_max: f64,
+    pub total_population_max: u32,
+    pub effective_development_max: f64,
+    pub active_state_capacity_max: f64,
+    pub building_levels_max: f64,
     pub monthly_gold: Vec<f64>,
     pub recent_balance: Vec<f64>,
     pub historical_tax_base: Vec<f64>,
@@ -200,6 +208,10 @@ pub struct CountryOverviewRanks {
     pub income: u32,
     pub wealth: u32,
     pub tax_base: u32,
+    pub total_population: u32,
+    pub effective_development: u32,
+    pub active_state_capacity: u32,
+    pub building_levels: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
