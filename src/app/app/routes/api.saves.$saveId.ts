@@ -6,7 +6,7 @@ import { withDb } from "@/server-lib/db/middleware";
 import { NotFoundError, ValidationError } from "@/server-lib/errors";
 import { captureEvent } from "@/server-lib/posthog";
 import { withCore } from "@/server-lib/middleware";
-import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
+import { pdxStorage } from "@/server-lib/storage";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Route } from "./+types/api.saves.$saveId";
@@ -100,7 +100,7 @@ export const action = withCore(
         return new Response(null, { status: 204 });
       }
       case "DELETE": {
-        const s3 = pdxS3(pdxCloudflareS3({ context }));
+        const storage = pdxStorage({ context });
         await db.transaction(async (tx) => {
           const saves = await tx
             .delete(table.saves)
@@ -108,8 +108,8 @@ export const action = withCore(
             .returning({ userId: table.saves.userId });
           ensurePermissions(session, "savefile:delete", saves.at(0));
           await Promise.all([
-            s3.deleteFile(s3.keys.save(params.saveId)),
-            s3.deleteFile(s3.keys.preview(params.saveId)),
+            storage.saves.delete(params.saveId),
+            storage.previews.delete(params.saveId),
           ]);
         });
         captureEvent({
