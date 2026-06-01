@@ -1,0 +1,7 @@
+{
+  "sections": {
+    "improvements": [
+      "New storage backend that should serve saves and previews much faster"
+    ]
+  }
+}
