@@ -21,8 +21,8 @@ use eu5app::insights::population::presentation::PopulationInsightData;
 use eu5app::insights::religion::presentation::ReligionInsightData;
 use eu5app::insights::rgo::presentation::RgoInsightData;
 use eu5app::insights::state_efficacy::presentation::StateEfficacyInsightData;
-use eu5app::insights::tax::presentation::{PossibleTaxInsightData, TaxGapInsightData};
-use eu5app::insights::{PossibleTaxScope, TaxGapScope};
+use eu5app::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
+use eu5app::insights::{UnrealizedTaxBaseScope, WealthScope};
 use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
 use eu5save::models::Gamestate;
@@ -46,8 +46,8 @@ pub enum MapMode {
     Markets,
     RgoLevel,
     BuildingLevels,
-    PossibleTax,
-    TaxGap,
+    Wealth,
+    UnrealizedTaxBase,
     Religion,
     StateEfficacy,
 }
@@ -85,8 +85,8 @@ impl From<MapMode> for Eu5MapMode {
             MapMode::Markets => Eu5MapMode::Markets,
             MapMode::RgoLevel => Eu5MapMode::RgoLevel,
             MapMode::BuildingLevels => Eu5MapMode::BuildingLevels,
-            MapMode::PossibleTax => Eu5MapMode::PossibleTax,
-            MapMode::TaxGap => Eu5MapMode::TaxGap,
+            MapMode::Wealth => Eu5MapMode::Wealth,
+            MapMode::UnrealizedTaxBase => Eu5MapMode::UnrealizedTaxBase,
             MapMode::Religion => Eu5MapMode::Religion,
             MapMode::StateEfficacy => Eu5MapMode::StateEfficacy,
         }
@@ -103,8 +103,8 @@ impl From<Eu5MapMode> for MapMode {
             Eu5MapMode::Markets => MapMode::Markets,
             Eu5MapMode::RgoLevel => MapMode::RgoLevel,
             Eu5MapMode::BuildingLevels => MapMode::BuildingLevels,
-            Eu5MapMode::PossibleTax => MapMode::PossibleTax,
-            Eu5MapMode::TaxGap => MapMode::TaxGap,
+            Eu5MapMode::Wealth => MapMode::Wealth,
+            Eu5MapMode::UnrealizedTaxBase => MapMode::UnrealizedTaxBase,
             Eu5MapMode::Religion => MapMode::Religion,
             Eu5MapMode::StateEfficacy => MapMode::StateEfficacy,
         }
@@ -862,34 +862,34 @@ impl Eu5App {
         self.localized().presenter().calculate_development_insight()
     }
 
-    /// Possible-tax insight data: per-country realized vs ceiling aggregates
-    /// and top locations by possible tax.
+    /// Wealth insight data: per-country realized vs ceiling aggregates
+    /// and top locations by wealth.
     #[wasm_bindgen]
-    pub fn get_possible_tax_insight(&self) -> PossibleTaxInsightData {
-        self.localized()
-            .presenter()
-            .calculate_possible_tax_insight()
+    pub fn get_wealth_insight(&self) -> WealthInsightData {
+        self.localized().presenter().calculate_wealth_insight()
     }
 
-    /// Tax-gap insight data: per-country realized vs ceiling aggregates and
+    /// Unrealized-tax-base insight data: per-country realized vs ceiling aggregates and
     /// top locations by signed gap.
     #[wasm_bindgen]
-    pub fn get_tax_gap_insight(&self) -> TaxGapInsightData {
-        self.localized().presenter().calculate_tax_gap_insight()
+    pub fn get_unrealized_tax_base_insight(&self) -> UnrealizedTaxBaseInsightData {
+        self.localized()
+            .presenter()
+            .calculate_unrealized_tax_base_insight()
     }
 
-    /// Possible-tax scope: location count, summed possible tax ceiling, and
+    /// Wealth scope: location count, summed wealth ceiling, and
     /// summed realized tax base for the active selection or entire world.
     #[wasm_bindgen]
-    pub fn get_possible_tax_scope(&self) -> PossibleTaxScope {
-        self.app().get_possible_tax_scope()
+    pub fn get_wealth_scope(&self) -> WealthScope {
+        self.app().get_wealth_scope()
     }
 
-    /// Tax-gap scope: location count, signed gap, and aggregate realization
+    /// Unrealized-tax-base scope: location count, signed gap, and aggregate realization
     /// ratio for the active selection or entire world.
     #[wasm_bindgen]
-    pub fn get_tax_gap_scope(&self) -> TaxGapScope {
-        self.app().get_tax_gap_scope()
+    pub fn get_unrealized_tax_base_scope(&self) -> UnrealizedTaxBaseScope {
+        self.app().get_unrealized_tax_base_scope()
     }
 
     /// Market insight data: scoped goods pressure, scoped market stress,

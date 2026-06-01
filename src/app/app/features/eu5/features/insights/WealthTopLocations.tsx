@@ -1,17 +1,22 @@
 import { useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Eu5DataTable, Eu5MapDataTable } from "../../components";
-import type { TaxGapTopLocation } from "@/wasm/wasm_eu5";
+import type { WealthTopLocation } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { usePanToEntity } from "../../usePanToEntity";
 import { CountryLink } from "../profiles/EntityLink";
 import { MapHoverButton } from "../../MapHoverButton";
 
-const BACK_LABEL = "Tax Gap";
-const columnHelper = createColumnHelper<TaxGapTopLocation>();
+const BACK_LABEL = "Wealth";
 
-export function TaxGapTopLocations({ locations }: { locations: TaxGapTopLocation[] }) {
+const columnHelper = createColumnHelper<WealthTopLocation>();
+
+interface Props {
+  locations: WealthTopLocation[];
+}
+
+export function WealthTopLocations({ locations }: Props) {
   const nav = usePanelNav();
   const panToEntity = usePanToEntity();
 
@@ -40,33 +45,11 @@ export function TaxGapTopLocations({ locations }: { locations: TaxGapTopLocation
           );
         },
       }),
-      columnHelper.accessor("tax", {
+      columnHelper.accessor("wealth", {
         sortingFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Location Tax", variant: "num" }),
+        meta: Eu5DataTable.meta({ headerLabel: "Wealth", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
-        ),
-      }),
-      columnHelper.accessor("possibleTax", {
-        sortingFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Possible Tax", variant: "num" }),
-        cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
-        ),
-      }),
-      columnHelper.accessor("taxGap", {
-        sortingFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Gap", variant: "num" }),
-        cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
-        ),
-      }),
-      columnHelper.accessor((row) => (row.possibleTax > 0 ? row.tax / row.possibleTax : 0), {
-        id: "realization",
-        sortingFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Realization", variant: "num" }),
-        cell: (info) => (
-          <Eu5DataTable.NumericCell>{`${formatFloat(info.getValue() * 100, 1)}%`}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("development", {
@@ -109,7 +92,6 @@ export function TaxGapTopLocations({ locations }: { locations: TaxGapTopLocation
       columns={columns}
       data={locations}
       getRowHoverTarget={(row) => ({ kind: "location", locationIdx: row.location.key })}
-      initialSorting={[{ id: "taxGap", desc: true }]}
       pagination
     />
   );

@@ -19,10 +19,10 @@ import type {
   LocationProfile,
   MarketProductionLocationSummary,
   DevelopmentInsightData,
-  PossibleTaxInsightData,
-  PossibleTaxScope,
-  TaxGapInsightData,
-  TaxGapScope,
+  WealthInsightData,
+  WealthScope,
+  UnrealizedTaxBaseInsightData,
+  UnrealizedTaxBaseScope,
   MarketInsightData,
   ScopedGoodSummary,
   PopulationInsightData,
@@ -80,10 +80,10 @@ export interface AppTriggers {
   getMarketLocationsProfile(marketId: number): Promise<MarketProductionLocationSummary[]>;
   getLocationProfile(locationIdx: number): Promise<LocationProfile | null>;
   getDevelopmentInsight(): Promise<DevelopmentInsightData>;
-  getPossibleTaxInsight(): Promise<PossibleTaxInsightData>;
-  getPossibleTaxScope(): Promise<PossibleTaxScope>;
-  getTaxGapInsight(): Promise<TaxGapInsightData>;
-  getTaxGapScope(): Promise<TaxGapScope>;
+  getWealthInsight(): Promise<WealthInsightData>;
+  getWealthScope(): Promise<WealthScope>;
+  getUnrealizedTaxBaseInsight(): Promise<UnrealizedTaxBaseInsightData>;
+  getUnrealizedTaxBaseScope(): Promise<UnrealizedTaxBaseScope>;
   getMarketInsight(): Promise<MarketInsightData>;
   getPopulationInsight(): Promise<PopulationInsightData>;
   getBuildingLevelsInsight(): Promise<BuildingLevelsInsightData>;
@@ -188,10 +188,10 @@ export class Eu5UIEngine implements AppEngine {
     getMarketLocationsProfile: (marketId) => this.gameInstance.getMarketLocationsProfile(marketId),
     getLocationProfile: (locationIdx) => this.gameInstance.getLocationProfile(locationIdx),
     getDevelopmentInsight: () => this.gameInstance.getDevelopmentInsight(),
-    getPossibleTaxInsight: () => this.gameInstance.getPossibleTaxInsight(),
-    getPossibleTaxScope: () => this.gameInstance.getPossibleTaxScope(),
-    getTaxGapInsight: () => this.gameInstance.getTaxGapInsight(),
-    getTaxGapScope: () => this.gameInstance.getTaxGapScope(),
+    getWealthInsight: () => this.gameInstance.getWealthInsight(),
+    getWealthScope: () => this.gameInstance.getWealthScope(),
+    getUnrealizedTaxBaseInsight: () => this.gameInstance.getUnrealizedTaxBaseInsight(),
+    getUnrealizedTaxBaseScope: () => this.gameInstance.getUnrealizedTaxBaseScope(),
     getMarketInsight: () => this.gameInstance.getMarketInsight(),
     getPopulationInsight: () => this.gameInstance.getPopulationInsight(),
     getBuildingLevelsInsight: () => this.gameInstance.getBuildingLevelsInsight(),

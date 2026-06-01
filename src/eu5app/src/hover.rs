@@ -15,8 +15,8 @@ present_dto! {
         Markets { access: f64 },
         RgoLevel { value: f64 },
         BuildingLevels { value: f64 },
-        PossibleTax { value: f64 },
-        TaxGap { value: f64 },
+        Wealth { value: f64 },
+        UnrealizedTaxBase { value: f64 },
         Religion { religion: ReligionId => Localized<String> },
         StateEfficacy { value: f64 },
     }

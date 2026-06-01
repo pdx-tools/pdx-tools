@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import type { CountryTaxGap } from "@/wasm/wasm_eu5";
+import type { CountryUnrealizedTaxBase } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
@@ -9,12 +9,12 @@ import { getEChartsTheme } from "@/components/viz/echartsTheme";
 const BUCKET_WIDTH = 5;
 const MAX_BUCKET = 100;
 
-export function RealizationHistogram({ countries }: { countries: CountryTaxGap[] }) {
+export function RealizationHistogram({ countries }: { countries: CountryUnrealizedTaxBase[] }) {
   const isDark = isDarkMode();
 
-  const { buckets, zeroPossibleCount } = useMemo(() => {
+  const { buckets, zeroWealthCount } = useMemo(() => {
     const ratios = countries
-      .filter((c) => c.totalPossibleTax > 0)
+      .filter((c) => c.totalWealth > 0)
       .map((c) => c.realizationRatio)
       .filter((v) => Number.isFinite(v));
     const nextBuckets = Array.from({ length: MAX_BUCKET / BUCKET_WIDTH }, (_, i) => ({
@@ -31,7 +31,7 @@ export function RealizationHistogram({ countries }: { countries: CountryTaxGap[]
 
     return {
       buckets: nextBuckets.filter((b) => b.count > 0 || b.hi === MAX_BUCKET),
-      zeroPossibleCount: countries.length - ratios.length,
+      zeroWealthCount: countries.length - ratios.length,
     };
   }, [countries]);
 
@@ -89,9 +89,9 @@ export function RealizationHistogram({ countries }: { countries: CountryTaxGap[]
   return (
     <div>
       <EChart option={option} style={{ height: "260px", width: "100%" }} />
-      {zeroPossibleCount > 0 && (
+      {zeroWealthCount > 0 && (
         <p className="mt-1 text-xs text-game-ink-500">
-          {formatInt(zeroPossibleCount)} countries with zero possible tax excluded.
+          {formatInt(zeroWealthCount)} countries with zero wealth excluded.
         </p>
       )}
     </div>

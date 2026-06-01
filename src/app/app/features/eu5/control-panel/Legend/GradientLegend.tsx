@@ -12,8 +12,8 @@ function formatValue(mode: MapMode, value: number): string {
     case "development":
     case "buildingLevels":
     case "rgoLevel":
-    case "possibleTax":
-    case "taxGap":
+    case "wealth":
+    case "unrealizedTaxBase":
       return formatFloat(value, 1);
     default:
       return formatFloat(value, 2);

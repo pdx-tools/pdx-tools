@@ -33,8 +33,8 @@ pub enum MapMode {
     Markets,
     RgoLevel,
     BuildingLevels,
-    PossibleTax,
-    TaxGap,
+    Wealth,
+    UnrealizedTaxBase,
     Religion,
     StateEfficacy,
 }
@@ -49,8 +49,8 @@ impl MapMode {
             MapMode::Markets => "Markets",
             MapMode::RgoLevel => "RGO Level",
             MapMode::BuildingLevels => "Building Levels",
-            MapMode::PossibleTax => "Possible Tax",
-            MapMode::TaxGap => "Tax Gap",
+            MapMode::Wealth => "Wealth",
+            MapMode::UnrealizedTaxBase => "Unrealized Tax Base",
             MapMode::Religion => "Religion",
             MapMode::StateEfficacy => "State Efficacy",
         }

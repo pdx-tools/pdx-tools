@@ -17,10 +17,10 @@ import type {
   LocationProfile,
   MarketProductionLocationSummary,
   DevelopmentInsightData,
-  PossibleTaxInsightData,
-  PossibleTaxScope,
-  TaxGapInsightData,
-  TaxGapScope,
+  WealthInsightData,
+  WealthScope,
+  UnrealizedTaxBaseInsightData,
+  UnrealizedTaxBaseScope,
   MarketInsightData,
   ScopedGoodSummary,
   PopulationInsightData,
@@ -351,17 +351,17 @@ export const createGame = async (
     getDevelopmentInsight: (): DevelopmentInsightData => {
       return app.get_development_insight();
     },
-    getPossibleTaxInsight: (): PossibleTaxInsightData => {
-      return app.get_possible_tax_insight();
+    getWealthInsight: (): WealthInsightData => {
+      return app.get_wealth_insight();
     },
-    getPossibleTaxScope: (): PossibleTaxScope => {
-      return app.get_possible_tax_scope();
+    getWealthScope: (): WealthScope => {
+      return app.get_wealth_scope();
     },
-    getTaxGapInsight: (): TaxGapInsightData => {
-      return app.get_tax_gap_insight();
+    getUnrealizedTaxBaseInsight: (): UnrealizedTaxBaseInsightData => {
+      return app.get_unrealized_tax_base_insight();
     },
-    getTaxGapScope: (): TaxGapScope => {
-      return app.get_tax_gap_scope();
+    getUnrealizedTaxBaseScope: (): UnrealizedTaxBaseScope => {
+      return app.get_unrealized_tax_base_scope();
     },
     getMarketInsight: (): MarketInsightData => {
       return app.get_market_insight();

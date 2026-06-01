@@ -34,7 +34,7 @@ use crate::insights::population::presentation::PopulationInsightData;
 use crate::insights::religion::presentation::ReligionInsightData;
 use crate::insights::rgo::presentation::RgoInsightData;
 use crate::insights::state_efficacy::presentation::StateEfficacyInsightData;
-use crate::insights::tax::presentation::{PossibleTaxInsightData, TaxGapInsightData};
+use crate::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
 use crate::overlay::OverlayBodyConfig;
 use crate::session::Eu5Workspace;
 
@@ -75,15 +75,13 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
             .present(&self.ctx)
     }
 
-    pub fn calculate_possible_tax_insight(&self) -> PossibleTaxInsightData {
-        self.workspace
-            .calculate_possible_tax_insight()
-            .present(&self.ctx)
+    pub fn calculate_wealth_insight(&self) -> WealthInsightData {
+        self.workspace.calculate_wealth_insight().present(&self.ctx)
     }
 
-    pub fn calculate_tax_gap_insight(&self) -> TaxGapInsightData {
+    pub fn calculate_unrealized_tax_base_insight(&self) -> UnrealizedTaxBaseInsightData {
         self.workspace
-            .calculate_tax_gap_insight()
+            .calculate_unrealized_tax_base_insight()
             .present(&self.ctx)
     }
 
