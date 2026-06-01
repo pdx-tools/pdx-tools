@@ -151,7 +151,7 @@ export const AppHeader = () => {
       <WhatsNewBanner />
 
       <div className="h-16 bg-slate-900 px-4">
-        <div className="mx-auto flex h-full w-full max-w-screen-xl items-center">
+        <div className="mx-auto flex h-full w-full max-w-7xl items-center">
           <Link
             to="/"
             variant="ghost"

@@ -118,7 +118,7 @@ type Ck3PageProps = Ck3SaveFile & { meta: Ck3Metadata };
 const Ck3Page = ({ save, meta }: Ck3PageProps) => {
   useDocumentTitle(`${save.file.name.replace(".ck3", "")} - CK3 (${meta.version}) - PDX Tools`);
   return (
-    <main className="mx-auto mt-4 max-w-screen-lg">
+    <main className="mx-auto mt-4 max-w-5xl">
       <div className="mx-auto flex max-w-prose flex-col gap-4">
         <h2 className="text-2xl font-bold">CK3</h2>
         <p>

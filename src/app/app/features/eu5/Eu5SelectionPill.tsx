@@ -27,7 +27,7 @@ export function Eu5SelectionPill() {
   const meta = formatSelectionSummary(selectionState.entityCount, selectionState.locationCount);
 
   return (
-    <div className="pointer-events-auto absolute bottom-4 left-[calc(20rem+1rem)] z-20 inline-flex h-7 items-center gap-2 rounded-[4px] border border-game-accent-line bg-game-overlay px-2.5 font-game-ui shadow-lg backdrop-blur-md">
+    <div className="pointer-events-auto absolute bottom-4 left-84 z-20 inline-flex h-7 items-center gap-2 rounded-panel border border-game-accent-line bg-game-overlay px-2.5 font-game-ui shadow-lg backdrop-blur-md">
       {name !== null && (
         <>
           <span className="text-[11px] font-semibold text-game-ink-100">{name}</span>
@@ -38,7 +38,7 @@ export function Eu5SelectionPill() {
       <button
         type="button"
         onClick={() => void handleClear()}
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[3px] text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-control text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
         aria-label="Clear selection"
       >
         <XMarkIcon className="h-3 w-3" />

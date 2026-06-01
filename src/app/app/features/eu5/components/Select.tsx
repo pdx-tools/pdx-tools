@@ -55,7 +55,7 @@ const GameSelectContent = React.forwardRef<
         ref={ref}
         position={position}
         className={cx(
-          "relative z-[1001] min-w-24 overflow-hidden",
+          "relative z-1001 min-w-24 overflow-hidden",
           "rounded-[var(--radius-panel)] border border-solid border-game-line-strong bg-game-panel py-1 shadow-lg",
           "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
@@ -106,10 +106,10 @@ const GameSelectItem = React.forwardRef<
     <SelectPrimitive.Item
       ref={ref}
       className={cx(
-        "relative flex h-7 cursor-default items-center gap-1.5 rounded-[2px] px-2.5 pr-7",
+        "relative flex h-7 cursor-default items-center gap-1.5 rounded-plate px-2.5 pr-7",
         "font-game-ui text-[12.5px] text-game-ink-300 outline-none select-none",
-        "data-[highlighted]:bg-game-panel-hover data-[highlighted]:text-game-ink-100",
-        "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
+        "data-highlighted:bg-game-panel-hover data-highlighted:text-game-ink-100",
+        "data-disabled:pointer-events-none data-disabled:opacity-40",
         className,
       )}
       {...props}

@@ -15,7 +15,7 @@ type ImperatorPageProps = ImperatorSaveFile & { meta: ImperatorMetadata };
 export const ImperatorPage = ({ save, meta }: ImperatorPageProps) => {
   useDocumentTitle(`${save.file.name.replace(".rome", "")} - Imperator (${meta.date}) - PDX Tools`);
   return (
-    <main className="mx-auto mt-4 max-w-screen-lg">
+    <main className="mx-auto mt-4 max-w-5xl">
       <div className="mx-auto flex max-w-prose flex-col gap-4">
         <h2 className="text-2xl font-bold">Imperator</h2>
         <p>

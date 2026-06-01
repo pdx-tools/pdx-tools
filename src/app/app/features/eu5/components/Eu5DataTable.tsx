@@ -95,10 +95,10 @@ const headerSortBtnClass =
   "flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-inherit uppercase hover:text-game-ink-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-game-accent-300";
 
 const toolBtnClass =
-  "inline-flex h-[26px] cursor-pointer items-center gap-1 rounded-(--radius-control) border border-solid border-transparent bg-transparent px-1.5 font-game-ui text-[11.5px] text-game-ink-300 hover:border-game-line hover:bg-game-panel-hover hover:text-game-ink-100";
+  "inline-flex h-[26px] cursor-pointer items-center gap-1 rounded-control border border-solid border-transparent bg-transparent px-1.5 font-game-ui text-[11.5px] text-game-ink-300 hover:border-game-line hover:bg-game-panel-hover hover:text-game-ink-100";
 
 const filterChipVariants = cva(
-  "inline-flex h-[22px] items-center gap-1 rounded-(--radius-plate) border border-solid pl-1.5 font-game-ui text-[11.5px]",
+  "inline-flex h-[22px] items-center gap-1 rounded-plate border border-solid pl-1.5 font-game-ui text-[11.5px]",
   {
     variants: {
       negated: {
@@ -494,7 +494,7 @@ function ToolbarBand({
   return (
     <div className="flex items-center gap-1 border-b border-solid border-game-line bg-game-panel-2 px-3 py-1.5">
       {search !== null && (
-        <div className="flex h-[26px] min-w-0 flex-1 items-center gap-1.5 rounded-(--radius-control) border border-solid border-game-line-strong bg-game-page px-2">
+        <div className="flex h-[26px] min-w-0 flex-1 items-center gap-1.5 rounded-control border border-solid border-game-line-strong bg-game-page px-2">
           <span className="font-game-num text-[12px] text-game-ink-500">⌕</span>
           <input
             type="text"
@@ -526,7 +526,7 @@ function ToolButton({ glyph, label, count }: { glyph: string; label: string; cou
       <span className="font-game-num text-[12px] text-game-ink-500">{glyph}</span>
       <span>{label}</span>
       {count && (
-        <span className="rounded-[2px] bg-game-accent-soft px-1 py-px font-game-num text-[10px] text-game-accent-100">
+        <span className="rounded-plate bg-game-accent-soft px-1 py-px font-game-num text-[10px] text-game-accent-100">
           {count}
         </span>
       )}
@@ -577,7 +577,7 @@ function FilterBand({
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex h-[22px] cursor-pointer items-center gap-1 rounded-(--radius-plate) border border-dashed border-game-line-strong bg-transparent px-1.5 font-game-ui text-[11.5px] text-game-ink-500 hover:border-game-accent-line hover:text-game-accent-100"
+          className="inline-flex h-[22px] cursor-pointer items-center gap-1 rounded-plate border border-dashed border-game-line-strong bg-transparent px-1.5 font-game-ui text-[11.5px] text-game-ink-500 hover:border-game-accent-line hover:text-game-accent-100"
         >
           <span>+</span>
           <span>Filter</span>
@@ -756,7 +756,7 @@ function FooterBand({
           id={selectId}
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value) as PageSize)}
-          className="h-[22px] cursor-pointer rounded-(--radius-control) border border-solid border-game-line-strong bg-game-page px-1.5 font-game-num text-[11px] text-game-ink-100"
+          className="h-[22px] cursor-pointer rounded-control border border-solid border-game-line-strong bg-game-page px-1.5 font-game-num text-[11px] text-game-ink-100"
         >
           {pageSizeOptions.map((s) => (
             <option key={s} value={s}>
@@ -806,7 +806,7 @@ function PagerBtn({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-(--radius-control) border border-solid border-game-line-strong bg-game-page font-game-num text-[11px] text-game-ink-300 hover:text-game-ink-100 disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-control border border-solid border-game-line-strong bg-game-page font-game-num text-[11px] text-game-ink-300 hover:text-game-ink-100 disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
     </button>
@@ -855,7 +855,7 @@ function Pill({ children, className }: { children: React.ReactNode; className?: 
   return (
     <span
       className={cx(
-        "inline-flex h-[18px] items-center rounded-(--radius-plate) border border-solid border-game-line-strong bg-game-panel-2 px-1.5 font-game-num text-[10px] tracking-[0.04em] text-game-ink-300",
+        "inline-flex h-[18px] items-center rounded-plate border border-solid border-game-line-strong bg-game-panel-2 px-1.5 font-game-num text-[10px] tracking-[0.04em] text-game-ink-300",
         className,
       )}
     >

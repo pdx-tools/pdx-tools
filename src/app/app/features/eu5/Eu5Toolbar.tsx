@@ -111,7 +111,7 @@ export function Eu5Toolbar() {
 
       <div
         className={cx(
-          "relative flex items-center gap-1 rounded-[4px] border border-game-line-strong bg-game-overlay px-1.5 py-1.5 font-game-ui shadow-xl backdrop-blur-md",
+          "relative flex items-center gap-1 rounded-panel border border-game-line-strong bg-game-overlay px-1.5 py-1.5 font-game-ui shadow-xl backdrop-blur-md",
           "transition-all duration-200",
           searchActive && "w-[24rem]",
         )}
@@ -120,12 +120,12 @@ export function Eu5Toolbar() {
         <button
           type="button"
           onClick={openSearch}
-          className="pointer-events-auto flex h-7 shrink-0 items-center gap-1.5 rounded-[3px] px-1.5 text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
+          className="pointer-events-auto flex h-7 shrink-0 items-center gap-1.5 rounded-control px-1.5 text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
           aria-label="Search countries or locations"
         >
           <MagnifyingGlassIcon className="h-4 w-4" />
           {!searchActive && (
-            <kbd className="rounded-[2px] border border-game-line px-1 py-px font-game-num text-[9.5px] text-game-ink-500">
+            <kbd className="rounded-plate border border-game-line px-1 py-px font-game-num text-[9.5px] text-game-ink-500">
               /
             </kbd>
           )}
@@ -139,7 +139,7 @@ export function Eu5Toolbar() {
               type="button"
               onClick={() => void handleSelectPlayers()}
               className={cx(
-                "pointer-events-auto h-7 shrink-0 rounded-[3px] px-3 text-[10.5px] font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none",
+                "pointer-events-auto h-7 shrink-0 rounded-control px-3 text-[10.5px] font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none",
                 selectionState?.preset === "players"
                   ? "bg-game-accent-soft text-game-accent-100 shadow-[inset_0_-1px_0_var(--color-game-accent-300)]"
                   : "text-game-ink-300 hover:bg-game-panel-hover hover:text-game-ink-100",
@@ -170,8 +170,8 @@ export function Eu5Toolbar() {
 
             {showDropdown && (
               <div className="absolute top-full right-0 left-0 mt-2">
-                <div className="rounded-[4px] border border-game-line-strong bg-game-panel/95 shadow-2xl backdrop-blur-md">
-                  <CommandPrimitive.List className="max-h-[20rem] overflow-y-auto p-1.5">
+                <div className="rounded-panel border border-game-line-strong bg-game-panel/95 shadow-2xl backdrop-blur-md">
+                  <CommandPrimitive.List className="max-h-80 overflow-y-auto p-1.5">
                     <CommandPrimitive.Empty className="py-4 text-center text-xs text-game-ink-500">
                       No results found
                     </CommandPrimitive.Empty>
@@ -185,7 +185,7 @@ export function Eu5Toolbar() {
                           <CommandPrimitive.Item
                             key={`country-${result.id}`}
                             onSelect={() => void handleSelect(result)}
-                            className="flex cursor-default items-center gap-2 rounded-[2px] px-2.5 py-2 text-[12.5px] text-game-ink-300 outline-none select-none aria-selected:bg-game-panel-hover aria-selected:text-game-ink-100"
+                            className="flex cursor-default items-center gap-2 rounded-plate px-2.5 py-2 text-[12.5px] text-game-ink-300 outline-none select-none aria-selected:bg-game-panel-hover aria-selected:text-game-ink-100"
                           >
                             <span className="shrink-0 font-game-num text-[11px] text-game-ink-700">
                               {result.tag}
@@ -205,7 +205,7 @@ export function Eu5Toolbar() {
                           <CommandPrimitive.Item
                             key={`location-${result.id}`}
                             onSelect={() => void handleSelect(result)}
-                            className="flex cursor-default items-center rounded-[2px] px-2.5 py-2 text-[12.5px] text-game-ink-300 outline-none select-none aria-selected:bg-game-panel-hover aria-selected:text-game-ink-100"
+                            className="flex cursor-default items-center rounded-plate px-2.5 py-2 text-[12.5px] text-game-ink-300 outline-none select-none aria-selected:bg-game-panel-hover aria-selected:text-game-ink-100"
                           >
                             <span className="truncate">{result.name}</span>
                           </CommandPrimitive.Item>

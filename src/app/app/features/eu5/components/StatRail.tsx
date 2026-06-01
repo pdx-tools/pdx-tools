@@ -34,7 +34,7 @@ function IconSlot() {
   return (
     <span
       aria-hidden="true"
-      className="size-4 shrink-0 rounded-[2px] border border-game-line opacity-70"
+      className="size-4 shrink-0 rounded-plate border border-game-line opacity-70"
       style={{
         backgroundImage:
           "repeating-linear-gradient(45deg, var(--color-game-line-strong) 0 2px, transparent 2px 5px)",
