@@ -8,6 +8,7 @@ import type { Eu4SaveInput } from "./store";
 import { BrowserCheck } from "@/components/landing/BrowserCheck";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
+import { ogImageUrl } from "@/lib/media";
 import { Eu4CursorTooltip } from "./features/map/Eu4CursorTooltip";
 import { Timelapse } from "./features/settings/Timelapse";
 
@@ -39,7 +40,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
           <div
             className="absolute inset-0 bg-cover blur-md brightness-75"
             style={{
-              backgroundImage: `url('/eu4/saves/${save.saveId}/og')`,
+              backgroundImage: `url('${ogImageUrl(save.saveId)}')`,
             }}
           />
           <AppLoading />

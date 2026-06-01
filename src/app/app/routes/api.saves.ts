@@ -13,10 +13,10 @@ import { log } from "@/server-lib/logging";
 import { pdxMetrics } from "@/server-lib/metrics";
 import { captureEvent } from "@/server-lib/posthog";
 import { withCore } from "@/server-lib/middleware";
-import { headerMetadata, uploadMetadata } from "@/server-lib/models";
+import { headerMetadata, uploadContentType, uploadMetadata } from "@/server-lib/models";
 import type { SavePostResponse } from "@/server-lib/models";
 import { pdxOg } from "@/server-lib/og";
-import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
+import { pdxStorage } from "@/server-lib/storage";
 import type { Route } from "./+types/api.saves";
 
 async function fileUploadData(req: Request) {
@@ -60,18 +60,30 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
   ensurePermissions(session, "savefile:create");
   const { bytes, metadata } = await fileUploadData(request);
   const saveId = genId(12);
-  const s3 = pdxS3(pdxCloudflareS3({ context }));
+  const storage = pdxStorage({ context });
   const metrics = pdxMetrics(context);
 
-  // Optimistically start upload to s3, the longest stage
-  const uploadTask = s3.uploadFileToS3(bytes, saveId, metadata.uploadType);
+  // Optimistically start upload, the longest stage
+  const uploadTask = timeit(() =>
+    storage.saves.put(saveId, bytes, {
+      httpMetadata: { contentType: uploadContentType(metadata.uploadType) },
+    }),
+  ).then((put) => {
+    log.info({
+      msg: "uploaded a new save file",
+      key: saveId,
+      bytes: bytes.length,
+      elapsedMs: put.elapsedMs.toFixed(2),
+    });
+    return { elapsedMs: put.elapsedMs, bytes: bytes.length };
+  });
   uploadTask.then(
     (put) =>
       metrics.record({
         domain: "save_file",
         operation: "save_file_put",
         outcome: "success",
-        status: put.status,
+        status: 200,
         elapsedMs: put.elapsedMs,
         bytes: put.bytes,
       }),
@@ -165,9 +177,9 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
       save_id: saveId,
     };
 
-    const og = pdxOg({ s3, context });
+    const og = pdxOg({ storage, context });
     if (og.enabled) {
-      const ogGeneration = og.generateOgIntoS3(saveId, bytes.buffer).catch((err) => {
+      const ogGeneration = og.generateOgIntoStorage(saveId, bytes.buffer).catch((err) => {
         log.exception(err, { msg: "unable to generate og image" });
       });
       context.cloudflare.ctx.waitUntil(ogGeneration);
@@ -175,13 +187,13 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
 
     return Response.json(response);
   } catch (ex) {
-    // If anything goes awry, delete the s3 file if it was uploaded
-    const deleteFileFromS3 = uploadTask
-      .then(() => s3.deleteFile(s3.keys.save(saveId)))
+    // If anything goes awry, delete the stored file if it was uploaded
+    const deleteUploadedFile = uploadTask
+      .then(() => storage.saves.delete(saveId))
       .catch((err) => {
-        log.exception(err, { msg: "unable to delete file from s3", saveId });
+        log.exception(err, { msg: "unable to delete uploaded save file", saveId });
       });
-    context.cloudflare.ctx.waitUntil(deleteFileFromS3);
+    context.cloudflare.ctx.waitUntil(deleteUploadedFile);
 
     // If we have a unique constraint violation, let's assume it is the
     // idx_save_hash and throw a validation error.

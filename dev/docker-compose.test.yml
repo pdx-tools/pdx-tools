@@ -11,15 +11,3 @@ services:
       context: .
     ports:
       - "${DATABASE_PORT}:5432"
-
-  s3:
-    extends:
-      file: docker-compose.s3.yml
-      service: s3
-    ports:
-      - "${S3_PORT}:9000"
-
-  createbuckets:
-    extends:
-      file: docker-compose.s3.yml
-      service: createbuckets

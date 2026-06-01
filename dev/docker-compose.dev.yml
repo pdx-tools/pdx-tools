@@ -3,13 +3,3 @@ services:
     extends:
       file: docker-compose.test.yml
       service: db
-
-  s3:
-    extends:
-      file: docker-compose.test.yml
-      service: s3
-
-  createbuckets:
-    extends:
-      file: docker-compose.test.yml
-      service: createbuckets

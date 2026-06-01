@@ -1,6 +1,6 @@
 import { log } from "@/server-lib/logging";
 import { pdxMetrics } from "@/server-lib/metrics";
-import { pdxCloudflareS3, pdxS3 } from "@/server-lib/s3";
+import { pdxStorage } from "@/server-lib/storage";
 import { z } from "zod";
 import type { Route } from "./+types/api.saves.$saveId.file";
 
@@ -16,7 +16,7 @@ function responseBytes(response: Response) {
 export async function loader({ request, params, context }: Route.LoaderArgs) {
   const startedAt = performance.now();
   const save = saveSchema.parse(params);
-  const s3 = pdxS3(pdxCloudflareS3({ context }));
+  const storage = pdxStorage({ context });
   const metrics = pdxMetrics(context);
   let cacheResult: CacheResult = "MISS";
 
@@ -51,22 +51,35 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
     }
 
     log.info({ msg: "cache miss", key: save.saveId });
-    const origin = await s3.fetchOk(s3.keys.save(save.saveId), {
-      headers: s3.headers(request.headers),
+    const object = await storage.saves.get(save.saveId, {
+      onlyIf: request.headers,
     });
 
+    if (object === null) {
+      metrics.record({
+        domain: "save_file",
+        operation: "save_file_get",
+        cacheResult,
+        outcome: "error",
+        status: 404,
+        elapsedMs: performance.now() - startedAt,
+      });
+      return new Response(null, { status: 404 });
+    }
+
+    const headers = new Headers();
+    object.writeHttpMetadata(headers);
+    headers.set("etag", object.httpEtag);
     // Cloudflare's Cache API only persists responses with a cacheable
     // Cache-Control.
-    const headers = new Headers(origin.headers);
     headers.set("Cache-Control", "public, max-age=86400");
-    response = new Response(origin.body, {
-      status: origin.status,
-      statusText: origin.statusText,
-      headers,
-    });
 
-    // Only cache complete 200s (ie: don't store 304's)
-    if (response.status === 200) {
+    // A bodyless R2Object means the If-None-Match precondition matched, so the
+    // client already has the object: respond 304 and don't (re)cache.
+    if (!("body" in object)) {
+      response = new Response(null, { status: 304, headers });
+    } else {
+      response = new Response(object.body, { status: 200, headers });
       context.cloudflare.ctx.waitUntil(cache.put(cacheKey, response.clone()));
     }
 

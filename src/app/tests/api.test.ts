@@ -7,7 +7,6 @@ import { oneshotDb } from "@/server-lib/db/connection";
 import { beforeEach, expect, test } from "vitest";
 import type { SavePostResponse } from "@/server-lib/models";
 import { pdxFns } from "@/server-lib/functions";
-import { pdxS3 } from "@/server-lib/s3";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
 import type { NewestSaveResponse } from "@/routes/api.new";
 import type { PdxSession } from "@/server-lib/auth/session";
@@ -23,27 +22,10 @@ beforeEach(async () => {
   });
 });
 
-beforeEach(async () => {
-  const s3 = pdxS3({
-    accessKey: "miniominio",
-    secretKey: "minio12minio",
-    bucket: "savefiles",
-    endpoint: "http://localhost:9001",
-    region: "nyc",
-  });
-
-  const headBucket = await s3.fetch(s3.bucket, { method: "HEAD" });
-  if (!headBucket.ok) {
-    await s3.fetchOk(s3.bucket, { method: "PUT" });
-  }
-
-  const objsData = await s3.fetchOk(`${s3.bucket}?list-type=2`);
-  const objText = await objsData.text();
-  const keys = [...objText.matchAll(/<Key>(.*?)<\/Key>/g)].map(([_, key]) =>
-    s3.fetchOk(`${s3.bucket}/${key}`, { method: "DELETE" }),
-  );
-  await Promise.all(keys);
-});
+// Save files live in the Worker's local R2 simulation (miniflare), which is only
+// reachable from inside the Worker. Save ids are random (genId), so leftover
+// objects can't collide across tests and an explicit per-test purge is
+// unnecessary — the db reset above is enough.
 
 const pdxUrl = (path: string) => `http://localhost:3000${path}`;
 

@@ -2,6 +2,7 @@ import type { ActionFunctionArgs, EntryContext, LoaderFunctionArgs } from "react
 import { ServerRouter } from "react-router";
 import { renderToReadableStream } from "react-dom/server";
 import { log } from "./server-lib/logging";
+import { mediaOrigin } from "./lib/media";
 
 export default async function handleRequest(
   request: Request,
@@ -11,10 +12,11 @@ export default async function handleRequest(
 ) {
   const controller = new AbortController();
 
+  const imageSources = ["'self'", "data:", mediaOrigin].filter(Boolean);
   const globalCsp = [
     "default-src 'self'",
     "connect-src 'self' blob:",
-    "img-src 'self' data:",
+    `img-src ${imageSources.join(" ")}`,
     "style-src 'self' 'unsafe-inline'",
     "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:",
   ];

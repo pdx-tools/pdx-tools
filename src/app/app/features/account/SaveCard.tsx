@@ -6,6 +6,7 @@ import { Card } from "@/components/Card";
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { formatInt } from "@/lib/format";
 import { difficultyColor } from "@/lib/difficulty";
+import { ogImageUrl } from "@/lib/media";
 import type { useSavesGroupedByPlaythrough } from "./UserSaveTable";
 
 export function SaveCard({
@@ -23,7 +24,7 @@ export function SaveCard({
         alt={`preview of save ${save.id}`}
         width={1200}
         height={630}
-        src={`/eu4/saves/${save.id}/og`}
+        src={ogImageUrl(save.id)}
         loading="lazy"
       />
       <div className="flex min-w-56 flex-shrink-0 flex-col gap-2 p-4 lg:w-64 lg:gap-4">
