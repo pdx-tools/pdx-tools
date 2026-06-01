@@ -46,6 +46,10 @@ export type Event =
       kind: "Whats new clicked";
       source: "button" | "banner";
       latestRelease?: string;
+    }
+  | {
+      kind: "Preload error";
+      saveLoaded: boolean;
     };
 
 let isRecording = false;

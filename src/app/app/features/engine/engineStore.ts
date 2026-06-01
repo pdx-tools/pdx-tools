@@ -62,3 +62,4 @@ const useEngineStore = create<EngineState>()((set, get) => ({
 export const useSaveFileInput = () => useEngineStore((x) => x.input);
 export const useSaveInputId = () => useEngineStore((x) => x.inputId);
 export const useEngineActions = () => useEngineStore((x) => x.actions);
+export const isSaveLoaded = () => useEngineStore.getState().input !== null;
