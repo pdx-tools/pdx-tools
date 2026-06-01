@@ -43,6 +43,7 @@ export function CountryOverviewTabContent({
   return (
     <div className="flex flex-col gap-4">
       <StatRail title="Overview">
+        <StatRail.Section label="Economy" />
         <StatRail.Row
           label="Net Gold"
           value={formatCompact(data.netGold, 1)}
@@ -68,7 +69,54 @@ export function CountryOverviewTabContent({
           bar={data.taxBaseMax > 0 ? data.taxBase / data.taxBaseMax : undefined}
           rank={ranks.taxBase}
         />
+        <StatRail.Row
+          label="Buildings"
+          value={formatInt(data.buildingLevels)}
+          bar={
+            data.buildingLevelsMax > 0 ? data.buildingLevels / data.buildingLevelsMax : undefined
+          }
+          rank={ranks.buildingLevels}
+        />
 
+        <StatRail.Section label="Society" />
+        <StatRail.Row
+          label="Population"
+          value={formatCompact(data.totalPopulation, 1)}
+          bar={
+            data.totalPopulationMax > 0 ? data.totalPopulation / data.totalPopulationMax : undefined
+          }
+          rank={ranks.totalPopulation}
+        />
+        <StatRail.Row
+          label="Manpower"
+          value={formatCompact(data.manpower * 1000, 1)}
+          bar={data.manpowerMax > 0 ? data.manpower / data.manpowerMax : undefined}
+          rank={ranks.manpower}
+        />
+
+        <StatRail.Section label="State" />
+        <StatRail.Row
+          label="Effective Development"
+          tooltip="Effective Development: sum of control × development across owned locations."
+          value={formatFloat(data.effectiveDevelopment, 1)}
+          bar={
+            data.effectiveDevelopmentMax > 0
+              ? data.effectiveDevelopment / data.effectiveDevelopmentMax
+              : undefined
+          }
+          rank={ranks.effectiveDevelopment}
+        />
+        <StatRail.Row
+          label="Active State Capacity"
+          tooltip="Active State Capacity: sum of population × control × development across owned locations. Displayed in millions."
+          value={`${formatFloat(data.activeStateCapacity / 1_000_000, 1)}M`}
+          bar={
+            data.activeStateCapacityMax > 0
+              ? data.activeStateCapacity / data.activeStateCapacityMax
+              : undefined
+          }
+          rank={ranks.activeStateCapacity}
+        />
         <StatRail.Row
           label="Stability"
           value={formatFloat(data.stability, 1)}
@@ -86,13 +134,6 @@ export function CountryOverviewTabContent({
           value={formatFloat(data.governmentPower, 1)}
           bar={data.governmentPower / 100}
           rank={ranks.governmentPower}
-        />
-
-        <StatRail.Row
-          label="Manpower"
-          value={formatCompact(data.manpower * 1000, 1)}
-          bar={data.manpowerMax > 0 ? data.manpower / data.manpowerMax : undefined}
-          rank={ranks.manpower}
         />
       </StatRail>
 
