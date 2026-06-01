@@ -69,7 +69,7 @@ export const ErrorDisplay = ({
         </Button>
       </div>
       <div className="mb-4 flex items-start gap-3">
-        <ExclamationTriangleIcon className="h-8 w-8 flex-shrink-0 text-rose-600" />
+        <ExclamationTriangleIcon className="h-8 w-8 shrink-0 text-rose-600" />
         <div>
           <h2 className="text-xl font-semibold text-rose-800 dark:text-rose-300">{title}</h2>
           {message && (

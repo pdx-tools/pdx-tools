@@ -17,7 +17,7 @@ export const WhatsNewBanner = () => {
 
   return (
     <AnnouncementBar>
-      <div className="flex w-full max-w-screen-xl items-center justify-between gap-4 px-4 text-sm">
+      <div className="flex w-full max-w-7xl items-center justify-between gap-4 px-4 text-sm">
         <div className="flex items-center gap-2">
           <span aria-hidden="true" className="text-lg">
             ✨

@@ -76,7 +76,7 @@ export function Eu5ShortcutPanel() {
       <Popover.Trigger asChild>
         <button
           type="button"
-          className="pointer-events-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-[3px] text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
+          className="pointer-events-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-control text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
           aria-label="Keyboard shortcuts"
         >
           <QuestionMarkCircleIcon className="h-4 w-4" />
@@ -86,7 +86,7 @@ export function Eu5ShortcutPanel() {
         side="bottom"
         align="center"
         sideOffset={16}
-        className="w-[26rem] rounded-[4px] border border-game-line-strong bg-game-panel/95 p-0 font-game-ui shadow-2xl backdrop-blur-xl"
+        className="w-104 rounded-panel border border-game-line-strong bg-game-panel/95 p-0 font-game-ui shadow-2xl backdrop-blur-xl"
       >
         <div className="px-5 pt-4 pb-5">
           {SHORTCUT_GROUPS.map((group, groupIdx) => (
@@ -107,7 +107,7 @@ export function Eu5ShortcutPanel() {
                       ) : (
                         <kbd
                           key={j}
-                          className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-[2px] border border-game-line-strong bg-game-panel-2 px-1.5 font-game-num text-[11px] text-game-ink-300"
+                          className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-plate border border-game-line-strong bg-game-panel-2 px-1.5 font-game-num text-[11px] text-game-ink-300"
                         >
                           {key}
                         </kbd>
@@ -121,7 +121,7 @@ export function Eu5ShortcutPanel() {
         </div>
 
         <div className="flex items-center justify-center gap-1 border-t border-game-line py-2.5">
-          <kbd className="inline-flex h-[18px] min-w-[16px] items-center justify-center rounded-[2px] border border-game-line-strong bg-game-panel-2 px-1 font-game-num text-[10px] text-game-ink-500">
+          <kbd className="inline-flex h-[18px] min-w-[16px] items-center justify-center rounded-plate border border-game-line-strong bg-game-panel-2 px-1 font-game-num text-[10px] text-game-ink-500">
             ?
           </kbd>
           <span className="text-[11px] text-game-ink-500">to dismiss</span>

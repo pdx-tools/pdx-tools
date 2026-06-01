@@ -153,7 +153,7 @@ const Eu5UiContent = ({
         <button
           type="button"
           onClick={() => setInsightOpen(true)}
-          className="pointer-events-auto absolute top-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-[3px] border border-game-line-strong bg-game-overlay text-game-ink-300 backdrop-blur-md transition-colors duration-150 hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
+          className="pointer-events-auto absolute top-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-control border border-game-line-strong bg-game-overlay text-game-ink-300 backdrop-blur-md transition-colors duration-150 hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
           aria-label="Open insights panel"
         >
           <ChevronLeftIcon className="h-4 w-4" />

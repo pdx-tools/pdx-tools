@@ -11,7 +11,7 @@ export const meta: MetaFunction = () =>
 export default function SkanderbegRoute() {
   return (
     <WebPage>
-      <main className="mx-auto mt-8 max-w-screen-md">
+      <main className="mx-auto mt-8 max-w-3xl">
         <SkanderbegRoute />
       </main>
     </WebPage>

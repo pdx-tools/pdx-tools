@@ -50,7 +50,7 @@ const GameTabsTrigger = React.forwardRef<
     >
       {children}
       {count !== undefined && (
-        <span className="rounded-[2px] bg-game-panel-2 px-1 font-game-num text-[10px] text-game-ink-500">
+        <span className="rounded-plate bg-game-panel-2 px-1 font-game-num text-[10px] text-game-ink-500">
           {count}
         </span>
       )}

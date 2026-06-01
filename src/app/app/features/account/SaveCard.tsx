@@ -26,7 +26,7 @@ export function SaveCard({
         src={`/eu4/saves/${save.id}/og`}
         loading="lazy"
       />
-      <div className="flex min-w-56 flex-shrink-0 flex-col gap-2 p-4 lg:w-64 lg:gap-4">
+      <div className="flex min-w-56 shrink-0 flex-col gap-2 p-4 lg:w-64 lg:gap-4">
         <div className="flex flex-col flex-wrap justify-around gap-4">
           <div>
             <div className="text-center text-gray-600 dark:text-gray-400">

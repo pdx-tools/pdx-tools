@@ -3,7 +3,7 @@ import { cx } from "class-variance-authority";
 import { Chip } from "./Chip";
 
 const baseInputClass =
-  "h-7 w-full rounded-(--radius-control) border border-solid border-game-line bg-game-page px-2.5 font-game-ui text-[12.5px] text-game-ink-100 placeholder:text-game-ink-500 focus:outline-none focus:ring-1 focus:ring-game-accent-line disabled:opacity-40 disabled:cursor-not-allowed";
+  "h-7 w-full rounded-control border border-solid border-game-line bg-game-page px-2.5 font-game-ui text-[12.5px] text-game-ink-100 placeholder:text-game-ink-500 focus:outline-none focus:ring-1 focus:ring-game-accent-line disabled:opacity-40 disabled:cursor-not-allowed";
 
 export const GameInput = React.forwardRef<
   HTMLInputElement,
@@ -21,7 +21,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
     return (
       <div
         className={cx(
-          "relative flex h-7 items-center rounded-(--radius-control) border border-solid border-game-line bg-game-page",
+          "relative flex h-7 items-center rounded-control border border-solid border-game-line bg-game-page",
           "focus-within:ring-1 focus-within:ring-game-accent-line",
           className,
         )}
