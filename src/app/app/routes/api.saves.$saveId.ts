@@ -1,9 +1,9 @@
 import { ensurePermissions } from "@/lib/auth";
 import { getAuth } from "@/server-lib/auth/session";
-import { saveView, table, toApiSave } from "@/server-lib/db";
-import type { DbConnection } from "@/server-lib/db/connection";
+import { table } from "@/server-lib/db";
 import { withDb } from "@/server-lib/db/middleware";
-import { NotFoundError, ValidationError } from "@/server-lib/errors";
+import { ValidationError } from "@/server-lib/errors";
+import { getSave } from "@/server-lib/fn/save";
 import { captureEvent } from "@/server-lib/posthog";
 import { withCore } from "@/server-lib/middleware";
 import { pdxStorage } from "@/server-lib/storage";
@@ -26,26 +26,6 @@ const PatchBody = z.object({
     .transform((x) => x ?? undefined),
   leaderboard_qualified: z.boolean().optional(),
 });
-
-export type SaveResponse = Awaited<ReturnType<typeof getSave>>;
-async function getSave(db: DbConnection, params: { saveId: string }) {
-  const saves = await db
-    .select(
-      saveView({
-        save: { aar: table.saves.aar, filename: table.saves.filename },
-      }),
-    )
-    .from(table.saves)
-    .where(eq(table.saves.id, params.saveId))
-    .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
-
-  const save = saves.at(0);
-  if (save === undefined) {
-    throw new NotFoundError("save");
-  }
-
-  return { ...save.user, ...toApiSave(save.save) };
-}
 
 export const loader = withCore(
   withDb(async ({ params: rawParams }: Route.LoaderArgs, { db }) => {
