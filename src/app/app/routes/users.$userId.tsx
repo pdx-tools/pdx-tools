@@ -6,6 +6,7 @@ import { UserSaveTable } from "@/features/account/UserSaveTable";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { hasPermission, userId } from "@/lib/auth";
 import { seo } from "@/lib/seo";
+import { mediaPreconnectLinks } from "@/lib/media";
 import { getUser } from "@/server-lib/db";
 import { usingDb } from "@/server-lib/db/connection";
 import { withCore } from "@/server-lib/middleware";
@@ -20,6 +21,8 @@ export const meta = ({ params: { userId } }: Route.MetaArgs) =>
     title: "User saves - PDX Tools",
     description: `EU4 Saves uploaded by user ${userId}`,
   });
+
+export const links = () => mediaPreconnectLinks;
 
 export const loader = withCore(async ({ params, context }: Route.LoaderArgs) => {
   const { userId: uid } = params;

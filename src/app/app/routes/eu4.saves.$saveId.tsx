@@ -1,6 +1,6 @@
 import Eu4Ui from "@/features/eu4/Eu4Ui";
 import { seo } from "@/lib/seo";
-import { ogImageUrl } from "@/lib/media";
+import { ogImageUrl, mediaPreconnectLinks } from "@/lib/media";
 import { useParams } from "react-router";
 import { useMemo } from "react";
 import type { Route } from "./+types/eu4.saves.$saveId";
@@ -11,6 +11,8 @@ export const meta = ({ params: { saveId } }: Route.MetaArgs) =>
     description: `View EU4 maps, charts, timelapses, and data`,
     image: ogImageUrl(saveId),
   });
+
+export const links = () => mediaPreconnectLinks;
 
 export default function SaveRoute() {
   const { saveId } = useParams();
