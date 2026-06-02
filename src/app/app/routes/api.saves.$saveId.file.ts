@@ -27,12 +27,7 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
     const url = new URL(request.url);
     const cacheKey = new Request(url.toString(), request);
 
-    let cache: Cache;
-    if ("default" in context.cloudflare.caches) {
-      cache = context.cloudflare.caches.default as Cache;
-    } else {
-      cache = await context.cloudflare.caches.open("pdx-cache");
-    }
+    const cache = context.cloudflare.caches.default;
 
     let response = await cache.match(cacheKey);
     if (response) {
