@@ -2,6 +2,7 @@ import { WebPage } from "@/components/layout/WebPage";
 import { LoadingState } from "@/components/LoadingState";
 import { Eu4GamePage } from "@/features/eu4/Eu4GamePage";
 import { seo } from "@/lib/seo";
+import { mediaPreconnectLinks } from "@/lib/media";
 import { usingDb } from "@/server-lib/db/connection";
 import { getSaves } from "@/server-lib/fn/new";
 import { withCore } from "@/server-lib/middleware";
@@ -16,6 +17,8 @@ export const meta = () =>
     title: "EU4 - PDX Tools",
     description: "Latest uploaded EU4 saves",
   });
+
+export const links = () => mediaPreconnectLinks;
 
 export const loader = withCore(async ({ context }: Route.LoaderArgs) => {
   const { db, close } = usingDb(context);
