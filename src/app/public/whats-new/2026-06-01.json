@@ -1,7 +1,9 @@
 {
   "sections": {
     "improvements": [
-      "New storage backend that should serve saves and previews much faster"
+      "New storage backend that should serve saves and previews much faster",
+      "Preview links now contain a much richer description of the uploaded save file",
+      "Get a notification when a new version of pdx.tools has been released"
     ]
   }
 }
