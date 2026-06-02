@@ -1,4 +1,5 @@
 import type { captureException as SentryCaptureException } from "@sentry/react-router";
+import { isStaleVersion } from "@/lib/staleVersion";
 
 type CaptureException = typeof SentryCaptureException;
 type CaptureExceptionImpl = (
@@ -16,6 +17,10 @@ export const captureException = (
     console.error(exception, exception.stack);
   } else {
     console.error(exception);
+  }
+
+  if (isStaleVersion()) {
+    return undefined;
   }
 
   return captureImplementation?.(exception, captureContext);

@@ -1,27 +1,40 @@
 import { toast as sonnerToast } from "sonner";
 import { cx } from "class-variance-authority";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { Button } from "@/components/Button";
+
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
 
 interface ToastProps {
   id: string | number;
-  type: "success" | "error";
+  type: "success" | "error" | "info";
   title: string;
   description?: string;
   closeButton?: boolean;
+  action?: ToastAction;
 }
 
-function Toast({ id, type, title, description, closeButton }: ToastProps) {
+function Toast({ id, type, title, description, closeButton, action }: ToastProps) {
   return (
     <div
       className={cx(
         "flex w-full items-start gap-3 rounded-lg border-2 border-solid p-4 shadow-lg",
         type === "success" && "border-green-200 bg-green-100",
         type === "error" && "border-rose-200 bg-rose-100",
+        type === "info" && "border-sky-200 bg-sky-100",
       )}
     >
       <div className="flex-1">
         <p className="text-sm font-medium text-gray-900">{title}</p>
         {description && <p className="mt-1 text-sm text-gray-700">{description}</p>}
+        {action && (
+          <Button variant="primary" className="mt-3 text-sm" onClick={() => action.onClick()}>
+            {action.label}
+          </Button>
+        )}
       </div>
       {closeButton && (
         <button
@@ -55,6 +68,30 @@ export const toast = {
         />
       ),
       { duration: opts?.duration ?? 4000 },
+    );
+  },
+  info(
+    title: string,
+    opts?: {
+      description?: string;
+      duration?: number;
+      closeButton?: boolean;
+      action?: ToastAction;
+      id?: string | number;
+    },
+  ) {
+    return sonnerToast.custom(
+      (id) => (
+        <Toast
+          id={id}
+          type="info"
+          title={title}
+          description={opts?.description}
+          closeButton={opts?.closeButton}
+          action={opts?.action}
+        />
+      ),
+      { duration: opts?.duration ?? 4000, id: opts?.id },
     );
   },
 };
