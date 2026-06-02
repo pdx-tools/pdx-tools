@@ -14,7 +14,7 @@ import { createCompressionWorker } from "@/features/compress";
 import type { PdxSession } from "@/server-lib/auth/session";
 import type { NewestSaveResponse } from "@/routes/api.new";
 import type { UserSaves } from "@/server-lib/db";
-import type { SaveResponse } from "@/routes/api.saves.$saveId";
+import type { SaveResponse } from "@/server-lib/fn/save";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
 import { log } from "@/lib/log";
 export type { GameDifficulty } from "@/server-lib/save-parsing-types";
@@ -214,7 +214,7 @@ export const pdxApi = {
     useGet: (id: string, opts?: Partial<{ enabled?: boolean }>) => {
       const enabled = opts?.enabled ?? true;
       return useQuery({
-        queryKey: [...pdxKeys.save(id), { enabled }],
+        queryKey: pdxKeys.save(id),
         queryFn: () => fetchOkJson<SaveResponse>(`/api/saves/${id}`),
         enabled,
       });

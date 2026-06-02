@@ -10,7 +10,7 @@ import { pdxFns } from "@/server-lib/functions";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
 import type { NewestSaveResponse } from "@/routes/api.new";
 import type { PdxSession } from "@/server-lib/auth/session";
-import type { SaveResponse } from "@/routes/api.saves.$saveId";
+import type { SaveResponse } from "@/server-lib/fn/save";
 import type { NewKeyResponse } from "@/services/appApi";
 
 const dbConnection = "postgres://app_user:mercantilismbaby@localhost:5433/postgres";
