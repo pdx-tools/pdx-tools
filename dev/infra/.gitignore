@@ -1,0 +1,19 @@
+# OpenTofu / Terraform state — never commit (may contain resource metadata)
+*.tfstate
+*.tfstate.*
+
+# Provider plugins, lock dirs, CLI working files
+.terraform/
+.terraform.lock.hcl.bak
+
+*.auto.tfvars
+terraform.tfvars
+
+# Live discovery dumps — contain the zone's real routing/security config
+discovery.*.json
+
+# Pre-apply state snapshots (R2 has no object versioning)
+backups/
+
+# Local secret env files sourced into the shell (provider token, etc.)
+*.local.env
