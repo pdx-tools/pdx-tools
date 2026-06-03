@@ -62,6 +62,17 @@ resource "cloudflare_dns_record" "jomini" {
   ttl     = 1
 }
 
+# Redirect-only host: www.pdx.tools 301s to the apex via the ruleset in
+# redirect.tf. Proxied so the edge handles it; 100:: is a discard address.
+resource "cloudflare_dns_record" "www" {
+  zone_id = var.cf_zone_id
+  name    = "www.pdx.tools"
+  type    = "AAAA"
+  content = "100::"
+  proxied = true
+  ttl     = 1
+}
+
 resource "cloudflare_dns_record" "txt_github_challenge" {
   zone_id = var.cf_zone_id
   name    = "_github-challenge-pdx-tools.pdx.tools"

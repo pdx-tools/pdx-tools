@@ -58,7 +58,7 @@ depends = ["infra:cf:backup"]
 dir = "dev/infra/cloudflare"
 tools."github:opentofu/opentofu" = "1.12.1"
 env._.file = { path = "dev/infra/cloudflare/cf.local.env", redact = true }
-run = "tofu apply"
+run = "tofu apply -auto-approve"
 
 [tasks."infra:cf:change"]
 description = "Run Cloudflare infra preflight checks and plan"
