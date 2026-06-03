@@ -14,7 +14,7 @@
 idiomatic_version_file_enable_tools = ["rust"]
 
 [env]
-_.path = ['{{config_root}}/.config/bin']
+_.path = ['{{config_root}}/.config/bin', '{{config_root}}/node_modules/.bin']
 
 [tasks."build:cargo-wasm"]
 depends = ["setup:wasm"]

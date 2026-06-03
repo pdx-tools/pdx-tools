@@ -1,0 +1,7 @@
+# Copy to terraform.tfvars (gitignored) to override defaults in variables.tf.
+# The provider token is supplied via the CLOUDFLARE_API_TOKEN env var.
+
+cf_account_id    = "0000000000000000000000000000000000"
+cf_zone_id       = "0000000000000000000000000000000000"
+vps_origin_ip    = "0.0.0.0"
+email_forward_to = "you@example.com"
