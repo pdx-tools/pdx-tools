@@ -1,8 +1,17 @@
+# Infrastructure tasks (OpenTofu + Cloudflare/GCP). Must opt in.
+
+[tools]
+"github:opentofu/opentofu" = "1.12.1"
+
+[env]
+_.file = [
+    { path = "dev/infra/state.local.env", redact = true },
+    { path = "dev/infra/cloudflare/cf.local.env", redact = true },
+]
+
 [tasks."infra:cf:init"]
 description = "Initialize the Cloudflare OpenTofu backend and provider"
 dir = "dev/infra/cloudflare"
-tools."github:opentofu/opentofu" = "1.12.1"
-env._.file = [{ path = "dev/infra/state.local.env", redact = true }, { path = "dev/infra/cloudflare/cf.local.env", redact = true }]
 env.CLOUDFLARE_API_TOKEN = { required = "Set CLOUDFLARE_API_TOKEN in dev/infra/cloudflare/cf.local.env" }
 env.AWS_ACCESS_KEY_ID = { required = "Set AWS_ACCESS_KEY_ID in dev/infra/state.local.env" }
 env.AWS_SECRET_ACCESS_KEY = { required = "Set AWS_SECRET_ACCESS_KEY in dev/infra/state.local.env" }
@@ -11,20 +20,16 @@ run = "tofu init"
 [tasks."infra:cf:fmt"]
 description = "Format Cloudflare OpenTofu files"
 dir = "dev/infra/cloudflare"
-tools."github:opentofu/opentofu" = "1.12.1"
 run = "tofu fmt"
 
 [tasks."infra:cf:fmt:check"]
 description = "Check Cloudflare OpenTofu formatting"
 dir = "dev/infra/cloudflare"
-tools."github:opentofu/opentofu" = "1.12.1"
 run = "tofu fmt -check -diff"
 
 [tasks."infra:cf:validate"]
 description = "Validate Cloudflare OpenTofu configuration"
 dir = "dev/infra/cloudflare"
-tools."github:opentofu/opentofu" = "1.12.1"
-env._.file = [{ path = "dev/infra/state.local.env", redact = true }, { path = "dev/infra/cloudflare/cf.local.env", redact = true }]
 env.CLOUDFLARE_API_TOKEN = { required = "Set CLOUDFLARE_API_TOKEN in dev/infra/cloudflare/cf.local.env" }
 env.AWS_ACCESS_KEY_ID = { required = "Set AWS_ACCESS_KEY_ID in dev/infra/state.local.env" }
 env.AWS_SECRET_ACCESS_KEY = { required = "Set AWS_SECRET_ACCESS_KEY in dev/infra/state.local.env" }
@@ -34,15 +39,11 @@ run = "tofu validate"
 description = "Plan Cloudflare OpenTofu changes"
 depends = ["infra:cf:validate"]
 dir = "dev/infra/cloudflare"
-tools."github:opentofu/opentofu" = "1.12.1"
-env._.file = [{ path = "dev/infra/state.local.env", redact = true }, { path = "dev/infra/cloudflare/cf.local.env", redact = true }]
 run = "tofu plan -input=false"
 
 [tasks."infra:cf:backup"]
 description = "Snapshot Cloudflare OpenTofu state to dev/infra/backups"
 dir = "dev/infra/cloudflare"
-tools."github:opentofu/opentofu" = "1.12.1"
-env._.file = [{ path = "dev/infra/state.local.env", redact = true }, { path = "dev/infra/cloudflare/cf.local.env", redact = true }]
 env.CLOUDFLARE_API_TOKEN = { required = "Set CLOUDFLARE_API_TOKEN in dev/infra/cloudflare/cf.local.env" }
 env.AWS_ACCESS_KEY_ID = { required = "Set AWS_ACCESS_KEY_ID in dev/infra/state.local.env" }
 env.AWS_SECRET_ACCESS_KEY = { required = "Set AWS_SECRET_ACCESS_KEY in dev/infra/state.local.env" }
@@ -56,8 +57,6 @@ tofu state pull > "../backups/$(date -u +%Y%m%dT%H%M%SZ).tfstate"
 description = "Apply Cloudflare OpenTofu changes after taking a state backup"
 depends = ["infra:cf:backup"]
 dir = "dev/infra/cloudflare"
-tools."github:opentofu/opentofu" = "1.12.1"
-env._.file = [{ path = "dev/infra/state.local.env", redact = true }, { path = "dev/infra/cloudflare/cf.local.env", redact = true }]
 run = "tofu apply -auto-approve"
 
 [tasks."infra:cf:change"]
@@ -68,7 +67,6 @@ depends = ["infra:cf:fmt:check", "infra:cf:plan"]
 description = "Show the media.pdx.tools R2 custom domain"
 depends = ["pnpm-install"]
 dir = "dev/infra/cloudflare"
-env._.file = { path = "dev/infra/cloudflare/cf.local.env", redact = true }
 env.CLOUDFLARE_API_TOKEN = { required = "Set CLOUDFLARE_API_TOKEN in dev/infra/cloudflare/cf.local.env" }
 run = "wrangler r2 bucket domain get pdx-media --domain media.pdx.tools"
 
@@ -76,7 +74,6 @@ run = "wrangler r2 bucket domain get pdx-media --domain media.pdx.tools"
 description = "Attach media.pdx.tools to the pdx-media R2 bucket"
 depends = ["pnpm-install"]
 dir = "dev/infra/cloudflare"
-env._.file = { path = "dev/infra/cloudflare/cf.local.env", redact = true }
 env.CLOUDFLARE_API_TOKEN = { required = "Set CLOUDFLARE_API_TOKEN in dev/infra/cloudflare/cf.local.env" }
 env.ZONE_ID = { required = "Set ZONE_ID in dev/infra/cloudflare/cf.local.env" }
 run = 'wrangler r2 bucket domain add pdx-media --domain media.pdx.tools --zone-id "$ZONE_ID" --min-tls 1.2'
@@ -84,8 +81,6 @@ run = 'wrangler r2 bucket domain add pdx-media --domain media.pdx.tools --zone-i
 [tasks."infra:gcp:init"]
 description = "Initialize the GCP OpenTofu backend and provider"
 dir = "dev/infra/gcp"
-tools."github:opentofu/opentofu" = "1.12.1"
-env._.file = { path = "dev/infra/state.local.env", redact = true }
 env.AWS_ACCESS_KEY_ID = { required = "Set AWS_ACCESS_KEY_ID in dev/infra/state.local.env" }
 env.AWS_SECRET_ACCESS_KEY = { required = "Set AWS_SECRET_ACCESS_KEY in dev/infra/state.local.env" }
 run = "tofu init"
@@ -93,20 +88,16 @@ run = "tofu init"
 [tasks."infra:gcp:fmt"]
 description = "Format GCP OpenTofu files"
 dir = "dev/infra/gcp"
-tools."github:opentofu/opentofu" = "1.12.1"
 run = "tofu fmt"
 
 [tasks."infra:gcp:fmt:check"]
 description = "Check GCP OpenTofu formatting"
 dir = "dev/infra/gcp"
-tools."github:opentofu/opentofu" = "1.12.1"
 run = "tofu fmt -check -diff"
 
 [tasks."infra:gcp:validate"]
 description = "Validate GCP OpenTofu configuration"
 dir = "dev/infra/gcp"
-tools."github:opentofu/opentofu" = "1.12.1"
-env._.file = { path = "dev/infra/state.local.env", redact = true }
 env.AWS_ACCESS_KEY_ID = { required = "Set AWS_ACCESS_KEY_ID in dev/infra/state.local.env" }
 env.AWS_SECRET_ACCESS_KEY = { required = "Set AWS_SECRET_ACCESS_KEY in dev/infra/state.local.env" }
 run = "tofu validate"
@@ -115,15 +106,11 @@ run = "tofu validate"
 description = "Plan GCP OpenTofu changes"
 depends = ["infra:gcp:validate"]
 dir = "dev/infra/gcp"
-tools."github:opentofu/opentofu" = "1.12.1"
-env._.file = { path = "dev/infra/state.local.env", redact = true }
 run = "tofu plan -input=false"
 
 [tasks."infra:gcp:backup"]
 description = "Snapshot GCP OpenTofu state to dev/infra/backups"
 dir = "dev/infra/gcp"
-tools."github:opentofu/opentofu" = "1.12.1"
-env._.file = { path = "dev/infra/state.local.env", redact = true }
 env.AWS_ACCESS_KEY_ID = { required = "Set AWS_ACCESS_KEY_ID in dev/infra/state.local.env" }
 env.AWS_SECRET_ACCESS_KEY = { required = "Set AWS_SECRET_ACCESS_KEY in dev/infra/state.local.env" }
 run = '''
@@ -136,8 +123,6 @@ tofu state pull > "../backups/gcp-$(date -u +%Y%m%dT%H%M%SZ).tfstate"
 description = "Apply GCP OpenTofu changes after taking a state backup"
 depends = ["infra:gcp:backup"]
 dir = "dev/infra/gcp"
-tools."github:opentofu/opentofu" = "1.12.1"
-env._.file = { path = "dev/infra/state.local.env", redact = true }
 run = "tofu apply -auto-approve"
 
 [tasks."infra:gcp:change"]
