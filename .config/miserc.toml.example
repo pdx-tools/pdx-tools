@@ -1,0 +1,2 @@
+# Copy this file to .config/miserc.toml (git-ignored) to opt into other configs.
+env = ["infra"]

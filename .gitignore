@@ -17,6 +17,7 @@ assets/tokens
 assets/vendored/
 .env
 .config/mise.local.toml
+.config/miserc.toml
 dev/.env.*prod
 dev/.env.*staging
 *.node
