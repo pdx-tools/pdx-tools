@@ -1,5 +1,11 @@
 use applib::parser::{ParseResult, parse_save_data};
-use axum::{Json, Router, body::Bytes, extract::DefaultBodyLimit, http::StatusCode, routing::post};
+use axum::{
+    Json, Router,
+    body::Bytes,
+    extract::DefaultBodyLimit,
+    http::StatusCode,
+    routing::{get, post},
+};
 use std::net::SocketAddr;
 use tokio::{net::TcpListener, signal};
 use tower_http::trace::{self, TraceLayer};
@@ -27,6 +33,12 @@ async fn upload(data: Bytes) -> Result<Json<ParseResult>, StatusCode> {
     }
 }
 
+// Liveness/readiness probe. This service is stateless (no external deps), so a
+// bare 200 is an honest signal that the router is up and serving.
+async fn health() -> StatusCode {
+    StatusCode::OK
+}
+
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
@@ -42,6 +54,7 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", post(upload))
+        .route("/healthz", get(health))
         .route("/screenshot", post(screenshot::endpoint))
         .layer(DefaultBodyLimit::max(50 * 1024 * 1024))
         .layer(

@@ -210,7 +210,7 @@ depends = [
     "start:services:test -d"
 ]
 dir = "src/app"
-run = ['pnpm exec concurrently --kill-others --success command-2 --passthrough-arguments "mise run serve:api:test" "pnpm run preview --mode test" "sleep 2 && pnpm test -- run {@}"']
+run = ['pnpm exec concurrently --kill-others --success command-2 --passthrough-arguments "mise run serve:api:test" "pnpm run preview --mode test" "pnpm test -- run {@}"']
 
 [tasks."env:dev"]
 description = "Run backend services (eg: postgres, s3) configured for development"
