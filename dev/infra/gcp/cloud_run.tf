@@ -33,12 +33,23 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       startup_probe {
-        tcp_socket {
+        http_get {
+          path = "/healthz"
           port = 8080
         }
-        timeout_seconds   = 240
-        period_seconds    = 240
-        failure_threshold = 1
+        timeout_seconds   = 3
+        period_seconds    = 3
+        failure_threshold = 10
+      }
+
+      liveness_probe {
+        http_get {
+          path = "/healthz"
+          port = 8080
+        }
+        timeout_seconds   = 5
+        period_seconds    = 10
+        failure_threshold = 3
       }
     }
   }
