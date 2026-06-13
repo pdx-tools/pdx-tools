@@ -1,6 +1,6 @@
 import { WebPage } from "@/components/layout/WebPage";
 import { LoggedIn } from "@/components/LoggedIn";
-import { Account } from "@/features/account";
+import { Account, LoginRequired } from "@/features/account";
 import { useLoaderData } from "react-router";
 import { pdxSession } from "@/server-lib/auth/session";
 import { seo } from "@/lib/seo";
@@ -14,9 +14,6 @@ export const meta = () =>
 
 export const loader = async ({ request, context }: Route.LoaderArgs) => {
   const session = await pdxSession({ request, context }).get();
-  if (session.kind !== "user") {
-    throw new Error("Not logged in");
-  }
   return { session };
 };
 
@@ -24,9 +21,13 @@ export default function AccountRoute() {
   const { session } = useLoaderData<typeof loader>();
   return (
     <WebPage>
-      <LoggedIn session={session}>
-        <Account />
-      </LoggedIn>
+      {session.kind === "user" ? (
+        <LoggedIn session={session}>
+          <Account />
+        </LoggedIn>
+      ) : (
+        <LoginRequired title="Manage Your Account" />
+      )}
     </WebPage>
   );
 }

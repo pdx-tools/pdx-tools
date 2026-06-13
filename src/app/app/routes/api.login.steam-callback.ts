@@ -7,6 +7,7 @@ import { withCore } from "@/server-lib/middleware";
 import type { AppLoadContext } from "react-router";
 import { withDb } from "@/server-lib/db/middleware";
 import { pdxSession } from "@/server-lib/auth/session";
+import { safeRedirect } from "@/server-lib/auth/redirect";
 import { pdxSteam } from "@/server-lib/steam.server";
 import { userId } from "@/lib/auth";
 import type { Route } from "./+types/api.login.steam-callback";
@@ -43,7 +44,7 @@ export const loader = withCore(
       event: user.inserted ? "User created" : "User updated",
     });
 
-    const dest = new URL("/", request.url);
+    const dest = new URL(safeRedirect(searchParams.get("returnTo")), request.url);
 
     const sessionStorage = pdxSession({ context, request });
     const session = await sessionStorage.new();
