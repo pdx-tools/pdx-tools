@@ -43,18 +43,14 @@ async fn health() -> StatusCode {
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    let builder = tracing_subscriber::fmt()
+
+    tracing_subscriber::fmt()
         .with_target(false)
         .with_span_events(FmtSpan::CLOSE)
-        .with_env_filter(filter);
-
-    // Pretty, colored output in an interactive terminal; structured JSON
-    // otherwise.
-    if std::io::stdout().is_terminal() {
-        builder.compact().init();
-    } else {
-        builder.json().init();
-    }
+        .with_env_filter(filter)
+        .with_ansi(std::io::stdout().is_terminal())
+        .compact()
+        .init();
 
     let port = match std::env::var("PORT") {
         Ok(x) => x.parse::<u16>().unwrap(),
