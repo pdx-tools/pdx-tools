@@ -36,7 +36,8 @@ const targets: BundleTarget[] = [
   { game: "eu4", version: "1.37" },
   { game: "eu5", branch: "1.0.11", version: "1.0" },
   { game: "eu5", branch: "1.1.10", version: "1.1" },
-  { game: "eu5", version: "1.2" },
+  { game: "eu5", branch: "1.2.5", version: "1.2" },
+  { game: "eu5", branch: "1.3-open-beta", version: "1.3" },
 ];
 
 type Options = {
