@@ -6,11 +6,12 @@ use axum::{
     http::StatusCode,
     routing::{get, post},
 };
+use std::io::IsTerminal;
 use std::net::SocketAddr;
 use tokio::{net::TcpListener, signal};
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
-use tracing_subscriber::fmt::format::FmtSpan;
+use tracing_subscriber::{EnvFilter, fmt::format::FmtSpan};
 
 mod screenshot;
 
@@ -41,11 +42,19 @@ async fn health() -> StatusCode {
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let builder = tracing_subscriber::fmt()
         .with_target(false)
         .with_span_events(FmtSpan::CLOSE)
-        .compact()
-        .init();
+        .with_env_filter(filter);
+
+    // Pretty, colored output in an interactive terminal; structured JSON
+    // otherwise.
+    if std::io::stdout().is_terminal() {
+        builder.compact().init();
+    } else {
+        builder.json().init();
+    }
 
     let port = match std::env::var("PORT") {
         Ok(x) => x.parse::<u16>().unwrap(),
