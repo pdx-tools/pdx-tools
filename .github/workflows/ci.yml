@@ -295,6 +295,7 @@ jobs:
 
       - uses: jdx/mise-action@v4
         with:
+          version: 2026.4.5
           cache: false
 
       # Trial out rust caching with the slowest run:
