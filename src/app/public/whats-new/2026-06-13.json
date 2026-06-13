@@ -1,0 +1,7 @@
+{
+  "sections": {
+    "fixes": [
+      "Show a login screen instead of a server error when visiting account pages while signed out"
+    ]
+  }
+}
