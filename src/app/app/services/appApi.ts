@@ -10,7 +10,7 @@ import {
 import type { Achievement, Difficulty } from "@/wasm/wasm_app";
 import { getEu4Worker } from "@/features/eu4/worker/getEu4Worker";
 import type { SavePostResponse, UploadMetadaInput } from "@/server-lib/models";
-import { createCompressionWorker } from "@/features/compress";
+import { proxy, transfer } from "comlink";
 import type { PdxSession } from "@/server-lib/auth/session";
 import type { NewestSaveResponse } from "@/routes/api.new";
 import type { UserSaves } from "@/server-lib/db";
@@ -122,89 +122,84 @@ export const pdxApi = {
           values: { aar?: string; filename: string };
           signal?: AbortSignal;
         }) => {
-          const compression = createCompressionWorker();
+          const data = new FormData();
+          dispatch({ kind: "progress", progress: 5 });
 
-          try {
-            const data = new FormData();
-            dispatch({ kind: "progress", progress: 5 });
+          const worker = getEu4Worker();
+          const rawFileData = await worker.getRawData();
+          dispatch({ kind: "progress", progress: 10 });
 
-            const worker = getEu4Worker();
-            const rawFileData = await worker.getRawData();
-            dispatch({ kind: "progress", progress: 10 });
+          const compressProgress = (portion: number) => {
+            const progress = 10 + (portion * 100) / (100 / (50 - 10));
+            dispatch({ kind: "progress", progress });
+          };
 
-            const compressProgress = (portion: number) => {
-              const progress = 10 + (portion * 100) / (100 / (50 - 10));
-              dispatch({ kind: "progress", progress });
+          const rawBytes = new Uint8Array(rawFileData);
+          const fileData = await worker.eu4Compress(
+            transfer(rawBytes, [rawBytes.buffer]),
+            proxy(compressProgress),
+          );
+          dispatch({ kind: "progress", progress: 50 });
+
+          const blob = new Blob([fileData.data], {
+            type: fileData.contentType,
+          });
+
+          const metadata = JSON.stringify({
+            aar: values.aar,
+            filename: values.filename,
+            content_type: fileData.contentType,
+          } satisfies UploadMetadaInput);
+
+          data.append("file", blob);
+          data.append("metadata", metadata);
+
+          return new Promise<SavePostResponse>((resolve, reject) => {
+            const request = new XMLHttpRequest();
+            request.open("POST", "/api/saves");
+
+            request.upload.addEventListener("progress", function (e) {
+              const percent_complete = (e.loaded / e.total) * 100;
+              dispatch({
+                kind: "progress",
+                progress: 50 + percent_complete / 2,
+              });
+            });
+
+            request.addEventListener("load", function () {
+              if (request.status >= 200 && request.status < 300) {
+                const response: SavePostResponse = JSON.parse(request.response);
+                resolve(response);
+              } else {
+                try {
+                  const err = JSON.parse(request.response).msg;
+                  reject(new Error(err));
+                } catch (e) {
+                  log("Failed to parse upload error response", e);
+                  reject(new Error(`unknown error: ${request.response}`));
+                }
+              }
+            });
+
+            signal?.addEventListener("abort", () => {
+              request.abort();
+            });
+
+            const onError = () => {
+              reject(new Error("upload request errored"));
             };
 
-            const fileData = await compression.compress(
-              new Uint8Array(rawFileData),
-              compressProgress,
-            );
-            dispatch({ kind: "progress", progress: 50 });
+            const onAbort = () => {
+              reject(new Error("upload request aborted"));
+            };
 
-            const blob = new Blob([fileData.data], {
-              type: fileData.contentType,
-            });
+            request.addEventListener("error", onError);
+            request.upload.addEventListener("error", onError);
+            request.addEventListener("abort", onAbort);
+            request.upload.addEventListener("abort", onAbort);
 
-            const metadata = JSON.stringify({
-              aar: values.aar,
-              filename: values.filename,
-              content_type: fileData.contentType,
-            } satisfies UploadMetadaInput);
-
-            data.append("file", blob);
-            data.append("metadata", metadata);
-
-            return new Promise<SavePostResponse>((resolve, reject) => {
-              const request = new XMLHttpRequest();
-              request.open("POST", "/api/saves");
-
-              request.upload.addEventListener("progress", function (e) {
-                const percent_complete = (e.loaded / e.total) * 100;
-                dispatch({
-                  kind: "progress",
-                  progress: 50 + percent_complete / 2,
-                });
-              });
-
-              request.addEventListener("load", function () {
-                if (request.status >= 200 && request.status < 300) {
-                  const response: SavePostResponse = JSON.parse(request.response);
-                  resolve(response);
-                } else {
-                  try {
-                    const err = JSON.parse(request.response).msg;
-                    reject(new Error(err));
-                  } catch (e) {
-                    log("Failed to parse upload error response", e);
-                    reject(new Error(`unknown error: ${request.response}`));
-                  }
-                }
-              });
-
-              signal?.addEventListener("abort", () => {
-                request.abort();
-              });
-
-              const onError = () => {
-                reject(new Error("upload request errored"));
-              };
-
-              const onAbort = () => {
-                reject(new Error("upload request aborted"));
-              };
-
-              request.addEventListener("error", onError);
-              request.upload.addEventListener("error", onError);
-              request.addEventListener("abort", onAbort);
-              request.upload.addEventListener("abort", onAbort);
-
-              request.send(data);
-            });
-          } finally {
-            compression.release();
-          }
+            request.send(data);
+          });
         },
       });
     },

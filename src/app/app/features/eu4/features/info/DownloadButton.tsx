@@ -2,19 +2,18 @@ import { emitEvent } from "@/lib/events";
 import { downloadData } from "@/lib/downloadData";
 import { getEu4Worker } from "../../worker";
 import { useSaveFilename } from "../../store";
-import { useCompression } from "@/features/compress";
 import { Button } from "@/components/Button";
 import { Tooltip } from "@/components/Tooltip";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { useTriggeredAction } from "@/hooks/useTriggeredAction";
 
 export const DownloadButton = () => {
-  const compressWorker = useCompression();
   const filename = useSaveFilename();
   const { isLoading: loading, run: download } = useTriggeredAction({
     action: async () => {
-      const raw = await getEu4Worker().getRawData();
-      const data = await compressWorker.transform(raw);
+      const worker = getEu4Worker();
+      const raw = await worker.getRawData();
+      const data = await worker.eu4DownloadTransform(raw);
       emitEvent({ kind: "Save downloaded", game: "eu4" });
       downloadData(data, filename);
     },
