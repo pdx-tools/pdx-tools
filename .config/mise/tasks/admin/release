@@ -24,6 +24,9 @@ if ! grep -Fq "\"${today}\"" src/app/public/whats-new.json; then
     echo "No changelog entry for ${today} found in src/app/public/whats-new/"
     exit 1
 fi
+release_sha=$(git rev-parse HEAD)
+release_tag=$(git rev-parse --short=12 HEAD)
+release_message="Release ${today} ${release_sha}"
 
 export VITE_EXTERNAL_ADDRESS=$EXTERNAL_ADDRESS
 export VITE_SENTRY_DSN=$SENTRY_DSN
@@ -33,13 +36,16 @@ export VITE_POSTHOG_KEY=$POSTHOG_KEY
 mise run release:build
 cd src/app
 find build/ -iname "*.map" -delete
-pnpm exec wrangler versions upload
+pnpm exec wrangler versions upload --tag "$release_tag" --message "$release_message"
 
 docker tag ghcr.io/pdx-tools/api:nightly us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
 if [ "$usage_execute" = "true" ]; then
+  pnpm exec wrangler versions deploy --version-tag "${release_tag}@100" --yes --message "$release_message"
   docker push us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
   gcloud run deploy api --region=us-west2 --project=$GCLOUD_PROJECT --image=us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly
 else
+  echo "To deploy frontend, execute:"
+  echo "  cd src/app && pnpm exec wrangler versions deploy --version-tag ${release_tag}@100 --yes --message '${release_message}'"
   echo "To deploy backend, execute:"
   echo "  docker push us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly"
   echo "  gcloud run deploy api --region=us-west2 --project=$GCLOUD_PROJECT --image=us-west1-docker.pkg.dev/$GCLOUD_PROJECT/docker/api:nightly"
