@@ -99,6 +99,22 @@ fn test_je_maintiendrai() {
 }
 
 #[test]
+fn test_stiff_upper_lippe() {
+    let data = utils::request("Lippe.eu4");
+    let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
+    let game = Game::new(&save.meta.savegame_version);
+    let query = Query::from_save(save);
+    let achievements = AchievementHunter::new(encoding, &query, &game).unwrap();
+    let completed_ids: Vec<i32> = achievements
+        .achievements()
+        .iter()
+        .filter(|x| x.completed())
+        .map(|x| x.id)
+        .collect();
+    assert!(completed_ids.contains(&306));
+}
+
+#[test]
 fn test_never_say_nevers() {
     let data = utils::request("nevers.eu4");
     let Eu4SaveOutput { save, encoding, .. } = Eu4Parser::new().parse(&data).unwrap();
