@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "fixes": [
+      "Fix release and play tracking error when released on 1444-11-11",
+      "Fix recognizing income from selling ships as a wrapped around 300k expense"
+    ]
+  }
+}
