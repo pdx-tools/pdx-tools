@@ -14,6 +14,9 @@ export default defineConfig(() => ({
       "Cross-Origin-Opener-Policy": "same-origin",
     },
   },
+  build: {
+    sourcemap: "hidden",
+  },
   plugins: [cloudflare({ viteEnvironment: { name: "ssr" } }), tailwindcss(), reactRouter()].concat(
     process.env.PDX_RELEASE
       ? [
