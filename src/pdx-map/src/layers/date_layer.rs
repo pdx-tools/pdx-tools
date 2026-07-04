@@ -117,11 +117,11 @@ impl DateLayer {
             immediate_size: 0,
         });
 
-        let vertex_buffers = [wgpu::VertexBufferLayout {
+        let vertex_buffers = [Some(wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<OverlayVertex>() as u64,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x2],
-        }];
+        })];
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Date Layer Pipeline"),
