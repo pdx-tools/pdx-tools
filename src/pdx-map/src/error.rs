@@ -52,6 +52,8 @@ pub enum RenderErrorKind {
     OperationCanceled,
     /// Device polling failed
     DevicePoll(wgpu::PollError),
+    /// Buffer range mapping failed
+    MapRange(wgpu::MapRangeError),
 }
 
 impl fmt::Display for RenderError {
@@ -64,6 +66,7 @@ impl fmt::Display for RenderError {
             RenderErrorKind::BufferAsync(e) => write!(f, "Buffer mapping failed: {e}"),
             RenderErrorKind::OperationCanceled => write!(f, "Async operation was canceled"),
             RenderErrorKind::DevicePoll(e) => write!(f, "Device polling failed: {e}"),
+            RenderErrorKind::MapRange(e) => write!(f, "Buffer range mapping failed: {e}"),
         }
     }
 }
@@ -84,6 +87,7 @@ impl std::error::Error for RenderError {
             RenderErrorKind::BufferAsync(e) => Some(e),
             RenderErrorKind::OperationCanceled => None,
             RenderErrorKind::DevicePoll(e) => Some(e),
+            RenderErrorKind::MapRange(e) => Some(e),
         }
     }
 }
@@ -121,5 +125,11 @@ impl From<futures_channel::oneshot::Canceled> for RenderError {
 impl From<wgpu::PollError> for RenderError {
     fn from(err: wgpu::PollError) -> Self {
         Self::new(RenderErrorKind::DevicePoll(err))
+    }
+}
+
+impl From<wgpu::MapRangeError> for RenderError {
+    fn from(err: wgpu::MapRangeError) -> Self {
+        Self::new(RenderErrorKind::MapRange(err))
     }
 }

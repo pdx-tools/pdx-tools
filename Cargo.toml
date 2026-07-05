@@ -107,7 +107,7 @@ wasm-pdx-core = { path = "src/wasm-pdx-core" }
 wasm-pdx-map = { path = "src/wasm-pdx-map" }
 web-sys = "0.3.95"
 webp = "0.3"
-wgpu = { version = "29.0" }
+wgpu = { version = "30.0" }
 winit = "0.30"
 zstd = { version = "0.13.3", default-features = false }
 

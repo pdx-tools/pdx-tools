@@ -243,6 +243,7 @@ impl GpuContext {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: surface,
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             })
             .await?;
 
@@ -473,6 +474,7 @@ impl GpuContext {
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
+            color_space: wgpu::SurfaceColorSpace::Auto,
         }
     }
 }
@@ -977,7 +979,11 @@ impl ColorIdReadback {
     pub async fn read_id(self) -> GpuLocationIdx {
         let _ = self.receiver.await;
 
-        let pixel_data = self.pixel_staging_buffer.slice(0..8).get_mapped_range();
+        let pixel_data = self
+            .pixel_staging_buffer
+            .slice(0..8)
+            .get_mapped_range()
+            .expect("buffer mapped successfully");
         let mut result = [0u8; 2];
         result.copy_from_slice(&pixel_data[0..2]);
 
@@ -1106,7 +1112,7 @@ impl SurfaceMapRenderer {
         }
 
         self.queue().submit(Some(encoder.finish()));
-        output.present();
+        self.queue().present(output);
 
         Ok(())
     }
@@ -1293,6 +1299,7 @@ fn offscreen_surface_config(
         alpha_mode: wgpu::CompositeAlphaMode::Opaque,
         view_formats: vec![],
         desired_maximum_frame_latency: 2,
+        color_space: wgpu::SurfaceColorSpace::Auto,
     }
 }
 
@@ -1500,7 +1507,7 @@ impl HeadlessMapRenderer {
         })?;
         receiver.await??;
 
-        let data = buffer_slice.get_mapped_range();
+        let data = buffer_slice.get_mapped_range()?;
 
         Ok(PdxBufferView::new(
             viewport_staging_buffer,
