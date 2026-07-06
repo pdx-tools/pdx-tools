@@ -48,6 +48,15 @@ pub async fn render(gpu: &GpuContext, data: &[u8]) -> Result<Vec<u8>, Screenshot
     encode_webp(image_buffer)
 }
 
+#[tracing::instrument(
+    level = "info",
+    name = "screenshot.encode_webp",
+    skip(image_buffer),
+    fields(
+        input_bytes = image_buffer.len(),
+        output_bytes = tracing::field::Empty,
+    )
+)]
 fn encode_webp(image_buffer: Vec<u8>) -> Result<Vec<u8>, ScreenshotError> {
     let output_size = viewport::OUTPUT_IMAGE_SIZE;
     let img = image::RgbaImage::from_raw(output_size.width, output_size.height, image_buffer)
@@ -56,7 +65,9 @@ fn encode_webp(image_buffer: Vec<u8>) -> Result<Vec<u8>, ScreenshotError> {
 
     let encoder = webp::Encoder::from_image(&dynamic_img)
         .map_err(|e| ScreenshotError::WebpEncode(e.to_string()))?;
-    Ok(encoder.encode_lossless().to_vec())
+    let webp = encoder.encode_lossless().to_vec();
+    tracing::Span::current().record("output_bytes", webp.len());
+    Ok(webp)
 }
 
 fn load_patch_assets(

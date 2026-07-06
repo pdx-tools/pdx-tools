@@ -7,6 +7,14 @@
       "type": "datasource",
       "pluginId": "vertamedia-clickhouse-datasource",
       "pluginName": "Altinity plugin for ClickHouse"
+    },
+    {
+      "name": "DS_TEMPO",
+      "label": "Tempo (Grafana Cloud)",
+      "description": "Tempo datasource holding pdx-tools-api spans exported over OTLP from Cloud Run",
+      "type": "datasource",
+      "pluginId": "tempo",
+      "pluginName": "Tempo"
     }
   ],
   "__requires": [
@@ -16,17 +24,24 @@
       "name": "Altinity plugin for ClickHouse",
       "version": "3.0.0"
     },
-    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    {
+      "type": "datasource",
+      "id": "tempo",
+      "name": "Tempo",
+      "version": "1.0.0"
+    },
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "11.0.0" },
+    { "type": "panel", "id": "row", "name": "Row", "version": "" },
     { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
     { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" }
   ],
   "annotations": { "list": [] },
-  "description": "Backend observability for pdx.tools save-file / OG-image / pdx-api operations. Single Cloudflare Analytics Engine dataset `pdx_metrics`; every query filters/groups on blob1 (operation). Headline stats total over the selected range; the time-series below show shape (counts as bars, latency as points) since traffic is bursty. Counts are sample-weighted: sum(_sample_interval * double1).",
+  "description": "Backend observability for pdx.tools. Top section: Cloudflare Analytics Engine dataset `pdx_metrics` (edge/Worker view — save-file / OG-image ops, cache, bytes; every query filters/groups on blob1, counts sample-weighted as sum(_sample_interval * double1)). Bottom 'API server spans' row: Cloud Run OTEL spans in Tempo, queried with TraceQL metrics — this is the server-side breakdown of parse/screenshot latency (e.g. screenshot.endpoint = screenshot.parse_save + pdx-map.render + pdx-map.headless.capture-viewport).",
   "editable": true,
   "graphTooltip": 1,
   "refresh": "5m",
   "schemaVersion": 39,
-  "tags": ["pdx-tools", "observability", "cloudflare"],
+  "tags": ["pdx-tools", "observability", "cloudflare", "tempo", "traces"],
   "time": { "from": "now-7d", "to": "now" },
   "timepicker": {},
   "templating": {
@@ -37,7 +52,15 @@
         "query": "vertamedia-clickhouse-datasource",
         "current": {},
         "hide": 0,
-        "label": "Datasource"
+        "label": "Analytics Engine"
+      },
+      {
+        "name": "DS_TEMPO",
+        "type": "datasource",
+        "query": "tempo",
+        "current": {},
+        "hide": 0,
+        "label": "Tempo"
       }
     ]
   },
@@ -435,6 +458,203 @@
           "database": "default",
           "table": "pdx_metrics",
           "query": "SELECT $timeSeries as t, blob1 as operation, sum(_sample_interval * double3) as bytes FROM $table WHERE $timeFilter AND blob1 IN ('save_file_put','og_put','parse_save','render_screenshot') GROUP BY t, operation ORDER BY t"
+        }
+      ]
+    },
+    {
+      "title": "API server spans · Cloud Run (Tempo / TraceQL metrics)",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "panels": []
+    },
+    {
+      "title": "Parse p95",
+      "type": "stat",
+      "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 35 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+          "queryType": "traceql",
+          "query": "{ name = \"eu4.parse\" } | quantile_over_time(duration, .95)",
+          "limit": 20,
+          "filters": []
+        }
+      ]
+    },
+    {
+      "title": "Screenshot p95 (endpoint)",
+      "type": "stat",
+      "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 35 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+          "queryType": "traceql",
+          "query": "{ name = \"screenshot.endpoint\" } | quantile_over_time(duration, .95)",
+          "limit": 20,
+          "filters": []
+        }
+      ]
+    },
+    {
+      "title": "Screenshot: parse phase p95",
+      "type": "stat",
+      "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 35 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+          "queryType": "traceql",
+          "query": "{ name = \"screenshot.parse_save\" } | quantile_over_time(duration, .95)",
+          "limit": 20,
+          "filters": []
+        }
+      ]
+    },
+    {
+      "title": "Screenshot: GPU capture p95",
+      "type": "stat",
+      "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 35 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+          "queryType": "traceql",
+          "query": "{ name = \"pdx-map.headless.capture-viewport\" } | quantile_over_time(duration, .95)",
+          "limit": 20,
+          "filters": []
+        }
+      ]
+    },
+    {
+      "title": "Span p95 latency by name (Tempo)",
+      "type": "timeseries",
+      "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "auto",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["max"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+          "queryType": "traceql",
+          "query": "{ name =~ \"eu4.parse|screenshot.endpoint|screenshot.parse_save|pdx-map.render|pdx-map.headless.capture-viewport\" } | quantile_over_time(duration, .95) by (name)",
+          "limit": 100,
+          "filters": []
+        }
+      ]
+    },
+    {
+      "title": "Screenshot phase breakdown · p50 (Tempo)",
+      "type": "timeseries",
+      "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 70,
+            "spanNulls": false,
+            "stacking": { "mode": "normal", "group": "A" }
+          }
+        },
+        "overrides": []
+      },
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+          "queryType": "traceql",
+          "query": "{ name =~ \"screenshot.parse_save|pdx-map.render|pdx-map.headless.capture-viewport|pdx-map.map-shader.compile\" } | quantile_over_time(duration, .5) by (name)",
+          "limit": 100,
+          "filters": []
+        }
+      ]
+    },
+    {
+      "title": "Endpoint span throughput · req/s (Tempo)",
+      "type": "timeseries",
+      "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 48 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "spanNulls": false,
+            "stacking": { "mode": "normal", "group": "A" }
+          }
+        },
+        "overrides": []
+      },
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+          "queryType": "traceql",
+          "query": "{ name =~ \"eu4.parse|screenshot.endpoint\" } | rate() by (name)",
+          "limit": 100,
+          "filters": []
         }
       ]
     }

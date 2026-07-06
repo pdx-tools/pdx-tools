@@ -21,3 +21,16 @@ variable "invoker_members" {
   type        = list(string)
   default     = []
 }
+
+variable "otlp_endpoint" {
+  description = <<-EOT
+    OTLP/HTTP endpoint for exporting api traces (e.g. Grafana Cloud Tempo:
+    https://otlp-gateway-<region>.grafana.net/otlp). Leave empty to disable
+    trace export — the api then only logs to stdout. When set, the api container
+    also gets OTEL_EXPORTER_OTLP_HEADERS sourced from the otlp-auth-header secret;
+    add the token first (see terraform.tfvars.example) or Cloud Run will fail to
+    start on a secret with no version.
+  EOT
+  type        = string
+  default     = ""
+}
