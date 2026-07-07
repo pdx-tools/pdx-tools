@@ -1,2 +1,3 @@
 # Copy this file to .config/miserc.toml (git-ignored) to opt into other configs.
+# Keep in mind, adding infra env will mess with releases due to CLOUDFLARE_API_TOKEN
 env = ["infra"]

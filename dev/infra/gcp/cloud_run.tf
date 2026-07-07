@@ -4,6 +4,26 @@ resource "google_service_account" "api" {
   display_name = "Cloud Run api runtime (least privilege)"
 }
 
+# Holds the OTLP Authorization header (e.g. Grafana Cloud "Basic <base64>").
+# tofu owns the container; the token version is added out-of-band via gcloud so
+# the secret value never lands in tofu state (see terraform.tfvars.example).
+resource "google_secret_manager_secret" "otlp_auth_header" {
+  secret_id = "otlp-auth-header"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secretmanager]
+}
+
+# The api runtime identity needs to read the header at container start.
+resource "google_secret_manager_secret_iam_member" "api_otlp_auth" {
+  secret_id = google_secret_manager_secret.otlp_auth_header.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.api.email}"
+}
+
 # The EU4 parse / screenshot backend. The Cloudflare Worker reaches this service
 # via PARSE_API_ENDPOINT. tofu owns the service config (resources, probe, IAM);
 # `gcloud run deploy` (admin:release) owns the deployed image — hence the
@@ -21,6 +41,30 @@ resource "google_cloud_run_v2_service" "api" {
 
       ports {
         container_port = 8080
+      }
+
+      # Trace export config, wired only when var.otlp_endpoint is set. The Rust
+      # api treats a missing OTEL_EXPORTER_OTLP_ENDPOINT as "stdout logs only",
+      # so an empty endpoint leaves both env vars off.
+      dynamic "env" {
+        for_each = var.otlp_endpoint == "" ? [] : [var.otlp_endpoint]
+        content {
+          name  = "OTEL_EXPORTER_OTLP_ENDPOINT"
+          value = env.value
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.otlp_endpoint == "" ? [] : [google_secret_manager_secret.otlp_auth_header.secret_id]
+        content {
+          name = "OTEL_EXPORTER_OTLP_HEADERS"
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
+          }
+        }
       }
 
       resources {
@@ -62,7 +106,12 @@ resource "google_cloud_run_v2_service" "api" {
     ]
   }
 
-  depends_on = [google_project_service.run]
+  # The IAM grant must exist before a revision references the secret, otherwise
+  # the container fails to start while the runtime SA still lacks read access.
+  depends_on = [
+    google_project_service.run,
+    google_secret_manager_secret_iam_member.api_otlp_auth,
+  ]
 }
 
 # Cloud Run is private by default. The Worker calls PARSE_API_ENDPOINT

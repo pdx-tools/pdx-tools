@@ -1,3 +1,17 @@
 # Copy to terraform.tfvars (gitignored) to override defaults in variables.tf.
 # gcp_project / artifact_region / run_region already default in variables.tf.
 invoker_members = ["allUsers"]
+
+# Trace export (Grafana Cloud Tempo). Two-step, so the token stays out of state:
+#
+#   1. First apply with otlp_endpoint = "" (default). This creates the
+#      otlp-auth-header secret + IAM grant but wires no env vars.
+#      OTEL_EXPORTER_OTLP_HEADERS is a comma-separated list of key=value header
+#      pairs, so the secret holds the whole "Authorization=Basic <base64>" string
+#      (keep the "Authorization=" prefix; <base64> is base64(instanceID:token)
+#      from Grafana's OTLP connection page):
+#        printf 'Authorization=Basic <base64>' | gcloud secrets versions add \
+#          otlp-auth-header --project=i-hexagon-388212 --data-file=-
+#   2. Set otlp_endpoint below and re-apply to wire the env vars, then deploy.
+#
+# otlp_endpoint = "https://otlp-gateway-<region>.grafana.net/otlp"

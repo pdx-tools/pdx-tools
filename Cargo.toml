@@ -1,38 +1,38 @@
 [workspace]
 resolver = "2"
 members = [
-    "src/api",
-    "src/applib",
-    "src/bench",
-    "src/bumpalo-serde-derive",
-    "src/bumpalo-serde",
-    "src/eu4game-data",
-    "src/eu4game",
-    "src/eu5app",
-    "src/eu5native",
-    "src/eu5save",
-    "src/pdx-admin-cli",
-    "src/pdx-screenshot",
-    "src/pdx-assets",
-    "src/pdx-fun-cli",
-    "src/pdx-map-cli",
-    "src/pdx-map",
-    "src/pdx-tokenize-cli",
-    "src/pdx-zstd",
-    "src/rawbmp",
-    "src/schemas",
-    "src/vic3save",
-    "src/wasm-app",
-    "src/wasm-ck3",
-    "src/wasm-compress",
-    "src/wasm-eu4",
-    "src/wasm-eu5-map",
-    "src/wasm-eu5",
-    "src/wasm-hoi4",
-    "src/wasm-imperator",
-    "src/wasm-pdx-core",
-    "src/wasm-pdx-map",
-    "src/wasm-vic3",
+  "src/api",
+  "src/applib",
+  "src/bench",
+  "src/bumpalo-serde-derive",
+  "src/bumpalo-serde",
+  "src/eu4game-data",
+  "src/eu4game",
+  "src/eu5app",
+  "src/eu5native",
+  "src/eu5save",
+  "src/pdx-admin-cli",
+  "src/pdx-screenshot",
+  "src/pdx-assets",
+  "src/pdx-fun-cli",
+  "src/pdx-map-cli",
+  "src/pdx-map",
+  "src/pdx-tokenize-cli",
+  "src/pdx-zstd",
+  "src/rawbmp",
+  "src/schemas",
+  "src/vic3save",
+  "src/wasm-app",
+  "src/wasm-ck3",
+  "src/wasm-compress",
+  "src/wasm-eu4",
+  "src/wasm-eu5-map",
+  "src/wasm-eu5",
+  "src/wasm-hoi4",
+  "src/wasm-imperator",
+  "src/wasm-pdx-core",
+  "src/wasm-pdx-map",
+  "src/wasm-vic3",
 ]
 
 [workspace.dependencies]
@@ -70,6 +70,14 @@ js-sys = "0.3.95"
 mathru = "0.16.2"
 mimalloc = "0.1.48"
 nu-ansi-term = "0.50.3"
+opentelemetry = "0.32"
+opentelemetry-otlp = { version = "0.32", default-features = false, features = [
+  "http-proto",
+  "reqwest-blocking-client",
+  "reqwest-rustls",
+  "trace",
+] }
+opentelemetry_sdk = { version = "0.32", features = ["trace"] }
 pdx-assets = { path = "src/pdx-assets" }
 pdx-map = { path = "src/pdx-map", default-features = false }
 pdx-screenshot = { path = "src/pdx-screenshot" }
@@ -96,6 +104,7 @@ thiserror = "2.0.18"
 tokio = { version = "1.51.1", default-features = false }
 tower-http = "0.6.8"
 tracing = "0.1"
+tracing-opentelemetry = "0.33"
 tracing-subscriber = "0.3"
 tsify = { version = "0.5.6", default-features = false, features = ["js"] }
 vic3save = { path = "src/vic3save" }

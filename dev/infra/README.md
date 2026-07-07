@@ -1,5 +1,13 @@
 # Infra
 
+All infra tasks live in the `infra` mise environment, so run them with
+`mise --env infra run ...` (or `MISE_ENV=infra`). This is deliberate: the
+environment loads `state.local.env` / `cf.local.env`, and gating it keeps those
+credentials out of unrelated commands like `mise run release:build`. You can
+instead opt in persistently via `.config/miserc.toml` (`env = ["infra"]`), but
+then the infra credentials apply to every mise invocation — including releases,
+where `CLOUDFLARE_API_TOKEN` will interfere — so prefer the per-command form.
+
 ## What tofu owns (and doesn't)
 
 tofu owns resources wrangler can't manage: bucket existence, the
@@ -13,14 +21,14 @@ required):
 ```sh
 cp cloudflare/cf.local.env.example cloudflare/cf.local.env   # fill in CLOUDFLARE_API_TOKEN + ZONE_ID
 cp cloudflare/terraform.tfvars.example cloudflare/terraform.tfvars   # fill in IDs + secrets
-mise run infra:cf:init
+mise --env infra run infra:cf:init
 ```
 
 ## Making a change
 
 ```sh
-mise run infra:cf:change   # fmt check + validate + plan
-mise run infra:cf:apply    # backs up state first, then applies
+mise --env infra run infra:cf:change   # fmt check + validate + plan
+mise --env infra run infra:cf:apply    # backs up state first, then applies
 ```
 
 ## Disaster recovery
@@ -29,10 +37,10 @@ Resources already exist in the cloud — `tofu apply` recreates them only on a
 clean account. To rebuild:
 
 1. `wrangler r2 bucket create pdx-tofu-state`, restore the latest `backups/`
-   snapshot, then `mise run infra:cf:init`.
-2. `mise run infra:cf:apply` to recreate buckets/rules (drop `prevent_destroy`
+   snapshot, then `mise --env infra run infra:cf:init`.
+2. `mise --env infra run infra:cf:apply` to recreate buckets/rules (drop `prevent_destroy`
    only if you really mean to recreate prod buckets).
-3. Re-attach the media domain: `mise run infra:cf:media-domain:attach`.
+3. Re-attach the media domain: `mise --env infra run infra:cf:media-domain:attach`.
 
 ## GCP (`gcp/`)
 
@@ -47,12 +55,12 @@ auth comes from Application Default Credentials, not an env file:
 
 ```sh
 gcloud auth application-default login   # provider auth (ADC)
-mise run infra:gcp:init
+mise --env infra run infra:gcp:init
 ```
 
 ### Making a change
 
 ```sh
-mise run infra:gcp:change   # fmt check + validate + plan
-mise run infra:gcp:apply    # backs up state first, then applies
+mise --env infra run infra:gcp:change   # fmt check + validate + plan
+mise --env infra run infra:gcp:apply    # backs up state first, then applies
 ```
