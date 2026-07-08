@@ -31,6 +31,8 @@ jobs:
           version: 2026.4.5
           cache: false
       - run: rustup component add clippy
+      - name: Check Cargo.lock is in sync with manifests
+        run: cargo metadata --locked --format-version=1 > /dev/null
       - run: mise run lint
 
   miri:
