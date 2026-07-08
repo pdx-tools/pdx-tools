@@ -36,7 +36,7 @@
     "d3-selection": "3.0.0",
     "dayjs": "1.11.20",
     "drizzle-orm": "0.45.2",
-    "echarts": "6.0.0",
+    "echarts": "6.1.0",
     "mediabunny": "1.40.1",
     "nanoid": "5.1.7",
     "postgres": "3.4.9",
