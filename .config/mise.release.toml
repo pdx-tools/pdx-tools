@@ -1,0 +1,4 @@
+# Release tools. Must opt in.
+
+[tools]
+"vfox:mise-plugins/vfox-gcloud" = "518.0.0"
