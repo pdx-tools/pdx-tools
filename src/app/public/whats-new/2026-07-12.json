@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Support parsing HOI4 v1.17+ save files",
+      "Minor performance improvements"
+    ],
+    "fixes": [
+      "Avoid the highly nested deserialization errors"
+    ]
+  }
+}
