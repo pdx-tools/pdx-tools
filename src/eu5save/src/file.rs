@@ -15,21 +15,21 @@ pub use jomini::envelope::*;
 /// Type alias for Eu5 text deserializer
 ///
 /// A lazy way to avoid the need to reimplement deserializer
-pub type Eu5TextDeserializer<R> = TextReaderDeserializer<R, Utf8Encoding>;
-pub type Eu5BinaryDeserializer<'res, RES, R> = BinaryReaderDeserializer<'res, RES, Eu5Flavor, R>;
+pub type Eu5TextDeserializer<'r> = TextReaderDeserializer<'r, Utf8Encoding>;
+pub type Eu5BinaryDeserializer<'r, 'res, RES> = BinaryReaderDeserializer<'r, 'res, RES, Eu5Flavor>;
 
 pub trait Eu5BinaryDeserialization {
     fn deserializer<'res, RES: TokenResolver>(
         &mut self,
         resolver: &'res RES,
-    ) -> Eu5BinaryDeserializer<'res, RES, impl Read + '_>;
+    ) -> Eu5BinaryDeserializer<'_, 'res, RES>;
 }
 
 impl<R: ReaderAt> Eu5BinaryDeserialization for &'_ SaveData<BinaryEncoding, R> {
     fn deserializer<'res, RES: TokenResolver>(
         &mut self,
         resolver: &'res RES,
-    ) -> Eu5BinaryDeserializer<'res, RES, impl Read + '_> {
+    ) -> Eu5BinaryDeserializer<'_, 'res, RES> {
         BinaryDeserializerBuilder::with_flavor(Eu5Flavor::new())
             .from_reader(self.body().cursor(), resolver)
     }
@@ -39,7 +39,7 @@ impl<R: Read> Eu5BinaryDeserialization for SaveContent<BinaryEncoding, R> {
     fn deserializer<'res, RES: TokenResolver>(
         &mut self,
         resolver: &'res RES,
-    ) -> Eu5BinaryDeserializer<'res, RES, impl Read + '_> {
+    ) -> Eu5BinaryDeserializer<'_, 'res, RES> {
         BinaryDeserializerBuilder::with_flavor(Eu5Flavor::new()).from_reader(self, resolver)
     }
 }
@@ -48,7 +48,7 @@ impl<R: Read> Eu5BinaryDeserialization for SaveMetadata<BinaryEncoding, R> {
     fn deserializer<'res, RES: TokenResolver>(
         &mut self,
         resolver: &'res RES,
-    ) -> Eu5BinaryDeserializer<'res, RES, impl Read + '_> {
+    ) -> Eu5BinaryDeserializer<'_, 'res, RES> {
         BinaryDeserializerBuilder::with_flavor(Eu5Flavor::new()).from_reader(self, resolver)
     }
 }

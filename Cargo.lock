@@ -546,7 +546,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/ck3save.git#30925a4c6b02d04d206751399dff34560fc41ca3"
+source = "git+https://github.com/rakaly/ck3save.git#02561a12c1cf510b31b1e1ad3c4cb00af9ac25e5"
 dependencies = [
  "jomini",
  "serde",
@@ -998,7 +998,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#d790318237dcf01264eeac67a4b4e116340ac763"
+source = "git+https://github.com/rakaly/eu4save.git#60877eb4c28fd423e588013e34672cacf63e0b1e"
 dependencies = [
  "flate2",
  "jomini",
@@ -1481,7 +1481,7 @@ checksum = "9040319a6910b901d5d49cbada4a99db52836a1b63228a05f7e2b7f8feef89b1"
 [[package]]
 name = "hoi4save"
 version = "0.4.0"
-source = "git+https://github.com/rakaly/hoi4save.git#f276a72baea9146ffe223a37bf90ad919350e2ed"
+source = "git+https://github.com/rakaly/hoi4save.git#dd4879835b45ea2197a6e89e73e794b4e4f930c1"
 dependencies = [
  "jomini",
  "serde",
@@ -1718,7 +1718,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/imperator-save.git#d38b3555d9183b8355547159e3aec14fae415ea6"
+source = "git+https://github.com/rakaly/imperator-save.git#2df19e2580c37f75f352266cd38d4780fb4f53d5"
 dependencies = [
  "jomini",
  "serde",
@@ -1874,9 +1874,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.34.1"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c7674b19c84addd10c6e31ffe84ecdecff8025dab81bdbc6eab979107ca9e11"
+checksum = "4f4c61579587088dfada0b4aab19b4117a916964998e2bbc1f84363976145433"
 dependencies = [
  "flate2",
  "itoa",
@@ -3236,7 +3236,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3325,9 +3325,9 @@ checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
 
 [[package]]
 name = "rawzip"
-version = "0.4.4"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d9575f44c8cf85bc843ad666dcdf20d05a7753772bef56eb2a5140282b32150"
+checksum = "d661184e2add3106911b7c17e76b49328db021428c242ce0e577c3e8744d8130"
 
 [[package]]
 name = "rayon"
@@ -3598,7 +3598,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

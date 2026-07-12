@@ -24,7 +24,7 @@ fn test_recompression_zip() {
     let mut entries = archive.entries();
     let entry = entries.next_entry().unwrap().unwrap();
     assert_eq!(entry.file_path().as_ref(), b"test.txt");
-    assert_eq!(entry.compression_method(), CompressionMethod::Zstd);
+    assert_eq!(entry.compression_method(), CompressionMethod::ZSTD);
     let file = archive.get_entry(entry.wayfinder()).unwrap();
     let actual = pdx_zstd::decode_all(file.data()).unwrap();
     assert_eq!(actual.as_slice(), b"aaaaaaaaaa\n");
@@ -35,7 +35,7 @@ fn test_recompression_zip() {
     let mut entries = archive.entries();
     let entry = entries.next_entry().unwrap().unwrap();
     assert_eq!(entry.file_path().as_ref(), b"test.txt");
-    assert_eq!(entry.compression_method(), CompressionMethod::Deflate);
+    assert_eq!(entry.compression_method(), CompressionMethod::DEFLATE);
     let file = archive.get_entry(entry.wayfinder()).unwrap();
     let mut buf = Vec::new();
     flate2::bufread::DeflateDecoder::new(file.data())

@@ -13,21 +13,22 @@ pub use jomini::envelope::*;
 /// Type alias for Vic3 text deserializer
 ///
 /// A lazy way to avoid the need to reimplement deserializer
-pub type Vic3TextDeserializer<R> = TextReaderDeserializer<R, Utf8Encoding>;
-pub type Vic3BinaryDeserializer<'res, RES, R> = BinaryReaderDeserializer<'res, RES, Vic3Flavor, R>;
+pub type Vic3TextDeserializer<'r> = TextReaderDeserializer<'r, Utf8Encoding>;
+pub type Vic3BinaryDeserializer<'r, 'res, RES> =
+    BinaryReaderDeserializer<'r, 'res, RES, Vic3Flavor>;
 
 pub trait Vic3BinaryDeserialization {
     fn deserializer<'res, RES: TokenResolver>(
         &mut self,
         resolver: &'res RES,
-    ) -> Vic3BinaryDeserializer<'res, RES, impl Read + '_>;
+    ) -> Vic3BinaryDeserializer<'_, 'res, RES>;
 }
 
 impl<R: ReaderAt> Vic3BinaryDeserialization for &'_ SaveData<BinaryEncoding, R> {
     fn deserializer<'res, RES: TokenResolver>(
         &mut self,
         resolver: &'res RES,
-    ) -> Vic3BinaryDeserializer<'res, RES, impl Read + '_> {
+    ) -> Vic3BinaryDeserializer<'_, 'res, RES> {
         BinaryDeserializerBuilder::with_flavor(Vic3Flavor::new())
             .from_reader(self.body().cursor(), resolver)
     }
@@ -37,7 +38,7 @@ impl<R: Read> Vic3BinaryDeserialization for SaveContent<BinaryEncoding, R> {
     fn deserializer<'res, RES: TokenResolver>(
         &mut self,
         resolver: &'res RES,
-    ) -> Vic3BinaryDeserializer<'res, RES, impl Read + '_> {
+    ) -> Vic3BinaryDeserializer<'_, 'res, RES> {
         BinaryDeserializerBuilder::with_flavor(Vic3Flavor::new()).from_reader(self, resolver)
     }
 }
@@ -46,7 +47,7 @@ impl<R: Read> Vic3BinaryDeserialization for SaveMetadata<BinaryEncoding, R> {
     fn deserializer<'res, RES: TokenResolver>(
         &mut self,
         resolver: &'res RES,
-    ) -> Vic3BinaryDeserializer<'res, RES, impl Read + '_> {
+    ) -> Vic3BinaryDeserializer<'_, 'res, RES> {
         BinaryDeserializerBuilder::with_flavor(Vic3Flavor::new()).from_reader(self, resolver)
     }
 }

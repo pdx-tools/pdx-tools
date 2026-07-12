@@ -95,7 +95,7 @@ impl Compression {
                     .map(|x| x.local_header_offset())
                     .min()
                     .unwrap_or(zip.directory_offset());
-                let prelude = zip.as_bytes()[0..prelude as usize].to_vec();
+                let prelude = zip.get_ref()[0..prelude as usize].to_vec();
                 Compression {
                     content: Reader::Zip { zip, prelude },
                 }
@@ -139,7 +139,7 @@ impl Compression {
                 for (name, wayfinder) in files {
                     let (mut out_file, config) = out_zip
                         .new_file(&name)
-                        .compression_method(rawzip::CompressionMethod::Zstd)
+                        .compression_method(rawzip::CompressionMethod::ZSTD)
                         .start()?;
                     let enc = pdx_zstd::Encoder::new(&mut out_file, 7)?;
                     let mut writer = config.wrap(enc);
@@ -215,7 +215,7 @@ fn _download_transformation(data: Vec<u8>) -> Result<Vec<u8>, JsError> {
             let name = entry.file_path().try_normalize()?;
             let (mut out_file, config) = out_zip
                 .new_file(name.as_ref())
-                .compression_method(rawzip::CompressionMethod::Deflate)
+                .compression_method(rawzip::CompressionMethod::DEFLATE)
                 .start()?;
 
             let writer =

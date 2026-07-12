@@ -170,7 +170,7 @@ where
         ] {
             let (mut entry, config) = archive
                 .new_file(filename)
-                .compression_method(CompressionMethod::Zstd)
+                .compression_method(CompressionMethod::ZSTD)
                 .start()?;
             let encoder = pdx_zstd::Encoder::new(&mut entry, 7)?;
             let mut writer = config.wrap(encoder);
@@ -223,7 +223,7 @@ fn write_entry<W: Write>(
 ) -> Result<()> {
     let (mut entry, config) = archive
         .new_file(filename)
-        .compression_method(CompressionMethod::Zstd)
+        .compression_method(CompressionMethod::ZSTD)
         .start()?;
     let encoder = pdx_zstd::Encoder::new(&mut entry, 7)?;
     let mut writer = config.wrap(encoder);
@@ -233,7 +233,7 @@ fn write_entry<W: Write>(
     let (encoder, out) = writer.finish()?;
     encoder.finish()?;
     let uncompressed_size = out.uncompressed_size();
-    let compressed_size = entry.finish(out)?;
+    let compressed_size = entry.finish(out)?.compressed_size();
 
     tracing::info!(
         name: "eu5.write.complete",

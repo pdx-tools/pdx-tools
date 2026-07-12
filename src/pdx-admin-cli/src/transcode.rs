@@ -49,7 +49,7 @@ impl TranscodeArgs {
                             continue;
                         }
 
-                        is_encoded &= entry.compression_method() == rawzip::CompressionMethod::Zstd;
+                        is_encoded &= entry.compression_method() == rawzip::CompressionMethod::ZSTD;
                         files.push((String::from(file_path.try_normalize()?), entry.wayfinder()));
                     }
 
@@ -65,7 +65,7 @@ impl TranscodeArgs {
                     for (name, wayfinder) in files {
                         let (mut out_file, config) = out_zip
                             .new_file(&name)
-                            .compression_method(rawzip::CompressionMethod::Zstd)
+                            .compression_method(rawzip::CompressionMethod::ZSTD)
                             .start()?;
                         let enc = pdx_zstd::Encoder::new(&mut out_file, 7)?;
                         let mut writer = config.wrap(enc);

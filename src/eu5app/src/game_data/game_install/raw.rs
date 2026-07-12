@@ -425,11 +425,11 @@ where
         let reader = zip_entry.reader();
 
         match entry.compression_method {
-            rawzip::CompressionMethod::Store => {
+            rawzip::CompressionMethod::STORE => {
                 let reader = zip_entry.verifying_reader(reader);
                 Ok(Box::new(reader))
             }
-            rawzip::CompressionMethod::Zstd => {
+            rawzip::CompressionMethod::ZSTD => {
                 let reader = pdx_zstd::Decoder::new(reader)?;
                 let reader = zip_entry.verifying_reader(reader);
                 Ok(Box::new(reader))

@@ -58,7 +58,7 @@ impl PackArgs {
 
             let (mut out_file, config) = archive
                 .new_file(&archive_path)
-                .compression_method(rawzip::CompressionMethod::Store)
+                .compression_method(rawzip::CompressionMethod::STORE)
                 .start()?;
             let mut zip_writer = config.wrap(&mut out_file);
             let bytes = std::io::copy(&mut input, &mut zip_writer)?;

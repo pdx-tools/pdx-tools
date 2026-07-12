@@ -145,7 +145,7 @@ impl ZipProvider {
         let entry = archive.get_entry(wayfinder)?;
 
         match compression_method {
-            rawzip::CompressionMethod::Store => {
+            rawzip::CompressionMethod::STORE => {
                 // No compression - read directly
                 let reader = entry.reader();
                 let mut verifying_reader = entry.verifying_reader(reader);
@@ -153,7 +153,7 @@ impl ZipProvider {
                 verifying_reader.read_to_end(&mut buffer)?;
                 Ok(buffer)
             }
-            rawzip::CompressionMethod::Deflate => {
+            rawzip::CompressionMethod::DEFLATE => {
                 // Deflate compression
                 let reader = entry.reader();
                 let inflater = flate2::read::DeflateDecoder::new(reader);
@@ -162,7 +162,7 @@ impl ZipProvider {
                 verifying_reader.read_to_end(&mut buffer)?;
                 Ok(buffer)
             }
-            rawzip::CompressionMethod::Zstd => {
+            rawzip::CompressionMethod::ZSTD => {
                 // Zstd compression
                 let reader = entry.reader();
                 let decoder = zstd::stream::read::Decoder::new(reader)?;
@@ -336,14 +336,14 @@ mod tests {
                 .start()
                 .unwrap();
 
-            match compression_method {
-                rawzip::CompressionMethod::Store => {
+            match *compression_method {
+                rawzip::CompressionMethod::STORE => {
                     let mut w = config.wrap(&mut entry);
                     std::io::copy(&mut Cursor::new(contents), &mut w).unwrap();
                     let (_, output) = w.finish().unwrap();
                     entry.finish(output).unwrap();
                 }
-                rawzip::CompressionMethod::Deflate => {
+                rawzip::CompressionMethod::DEFLATE => {
                     let encoder = flate2::write::DeflateEncoder::new(
                         &mut entry,
                         flate2::Compression::default(),
@@ -354,7 +354,7 @@ mod tests {
                     encoder.finish().unwrap();
                     entry.finish(output).unwrap();
                 }
-                rawzip::CompressionMethod::Zstd => {
+                rawzip::CompressionMethod::ZSTD => {
                     let encoder = zstd::stream::Encoder::new(&mut entry, 0).unwrap();
                     let mut w = config.wrap(encoder);
                     std::io::copy(&mut Cursor::new(contents), &mut w).unwrap();
@@ -376,12 +376,12 @@ mod tests {
             (
                 "game/in_game/common/goods/00_goods.txt",
                 b"x",
-                rawzip::CompressionMethod::Store,
+                rawzip::CompressionMethod::STORE,
             ),
             (
                 "game/in_game/common/goods_demand/army_demands.txt",
                 b"x",
-                rawzip::CompressionMethod::Store,
+                rawzip::CompressionMethod::STORE,
             ),
         ]);
 
@@ -399,17 +399,17 @@ mod tests {
             (
                 "stored.txt",
                 b"stored contents",
-                rawzip::CompressionMethod::Store,
+                rawzip::CompressionMethod::STORE,
             ),
             (
                 "deflated.txt",
                 b"deflated contents",
-                rawzip::CompressionMethod::Deflate,
+                rawzip::CompressionMethod::DEFLATE,
             ),
             (
                 "zstd.txt",
                 b"zstd contents",
-                rawzip::CompressionMethod::Zstd,
+                rawzip::CompressionMethod::ZSTD,
             ),
         ]);
 
@@ -431,7 +431,7 @@ mod tests {
         let tmp = zip_with_files(&[(
             "common/countries.txt",
             b"country = FRA",
-            rawzip::CompressionMethod::Deflate,
+            rawzip::CompressionMethod::DEFLATE,
         )]);
         let provider = ZipProvider::new(tmp.path()).unwrap();
         let mut reader = provider.open_file("common/countries.txt").unwrap();
@@ -447,7 +447,7 @@ mod tests {
         let tmp = zip_with_files(&[(
             "gfx/interface/icon.dds",
             b"fake image data",
-            rawzip::CompressionMethod::Store,
+            rawzip::CompressionMethod::STORE,
         )]);
         let provider = ZipProvider::new(tmp.path()).unwrap();
 
@@ -459,7 +459,7 @@ mod tests {
 
     #[test]
     fn missing_zip_entry_returns_not_found_errors() {
-        let tmp = zip_with_files(&[("exists.txt", b"x", rawzip::CompressionMethod::Store)]);
+        let tmp = zip_with_files(&[("exists.txt", b"x", rawzip::CompressionMethod::STORE)]);
         let provider = ZipProvider::new(tmp.path()).unwrap();
 
         assert!(!provider.file_exists("missing.txt"));
