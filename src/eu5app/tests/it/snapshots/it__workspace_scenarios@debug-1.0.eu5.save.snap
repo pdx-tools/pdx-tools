@@ -22,11 +22,11 @@ input_file: src/eu5app/tests/it/saves.d/debug-1.0.eu5.save
     "markets": "0x250d38d1849dceef72516ba840f26487c09f5cbe8e8c357cf6e9abf2972da5ef",
     "political": "0x581133f6e235f7f728f0cf3eab84db641a410726acd71a3d35f5a2fba5185c8a",
     "population": "0x0f1d06df69f6379c616dc273a78e42cffb86ff962f34c1dee8d0363d7302bb4a",
-    "wealth": "0xd442603f9b52f9ee32a5c3310a365289ebe36039fe7cde6e2185503bb0615f89",
     "religion": "0xcdd369549b541164e4df30eec2f86bd52e51e6e4a8f8d70e02ad1de525ff9769",
     "rgo_level": "0xe6ad949687bed97bdf923df24c6eb6104f1abc4a3337dd41220c97b367166f80",
     "state_efficacy": "0x3cb5ab4cb962b133063acd9adfdd5515f6009af4412e19699a921168bca85f7a",
-    "unrealized_tax_base": "0x2ce7b415d88356e3b6116654a153e1f1a1d6938ce90e7a7ee5a305c39a0bdf7d"
+    "unrealized_tax_base": "0x2ce7b415d88356e3b6116654a153e1f1a1d6938ce90e7a7ee5a305c39a0bdf7d",
+    "wealth": "0xd442603f9b52f9ee32a5c3310a365289ebe36039fe7cde6e2185503bb0615f89"
   },
   "save_version": "1.0.0",
   "selection_counts": {

@@ -22,11 +22,11 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "markets": "0x7eef6b272c18867c72b7880422d2bfef8ac23380b653d387f0762bb2a6957955",
     "political": "0x3c5e79d1450bbb157fa83171d2c1ad0f23f6794f9097cde8c0dfbc3cd2c73e1d",
     "population": "0x799e75484664a7f27fc01c4a9f419cb966d61c8dbcdce5e1759fc24b6c8af73c",
-    "wealth": "0x6900729141c0595d2f5bff1dfe665bdad4c7d53adc8e3248f77741f16f07ba58",
     "religion": "0xe424c860024bd7e944ef54962a0337845a7ee7962f35552a7603e8385117177a",
     "rgo_level": "0xecef7be6af747cb86a9b0e434da3435323c170e42a827881b791241a64e68551",
     "state_efficacy": "0xc4f549fd28ac2645823e85681716cbcab97e0814f05d4934d7e770859f73dfd3",
-    "unrealized_tax_base": "0xdf3e5255e2c0a6fb69accc5dba9e44a6ad4016a34e3032468f23204d0e7fd2e0"
+    "unrealized_tax_base": "0xdf3e5255e2c0a6fb69accc5dba9e44a6ad4016a34e3032468f23204d0e7fd2e0",
+    "wealth": "0x6900729141c0595d2f5bff1dfe665bdad4c7d53adc8e3248f77741f16f07ba58"
   },
   "save_version": "1.0.4",
   "selection_counts": {
