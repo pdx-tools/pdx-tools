@@ -170,12 +170,12 @@ impl ImageMagickProcessor {
                 fs::File::create(&extract_path).context("Failed to create extracted file")?;
 
             match entry.compression_method() {
-                rawzip::CompressionMethod::Store => {
+                rawzip::CompressionMethod::STORE => {
                     output_file
                         .write_all(zip_entry.data())
                         .context("Failed to write extracted file")?;
                 }
-                rawzip::CompressionMethod::Deflate => {
+                rawzip::CompressionMethod::DEFLATE => {
                     let decoder = flate2::read::DeflateDecoder::new(zip_entry.data());
                     let mut reader = zip_entry.verifying_reader(decoder);
                     std::io::copy(&mut reader, &mut output_file)

@@ -383,7 +383,7 @@ mod tests {
             let data = vec![R16::new(0); 4];
             let (mut entry, config) = archive
                 .new_file(filename)
-                .compression_method(CompressionMethod::Zstd)
+                .compression_method(CompressionMethod::ZSTD)
                 .start()
                 .unwrap();
             let encoder = pdx_zstd::Encoder::new(&mut entry, 1).unwrap();
@@ -405,7 +405,7 @@ mod tests {
     ) {
         let (mut entry, config) = archive
             .new_file(filename)
-            .compression_method(CompressionMethod::Zstd)
+            .compression_method(CompressionMethod::ZSTD)
             .start()
             .unwrap();
         let encoder = pdx_zstd::Encoder::new(&mut entry, 1).unwrap();

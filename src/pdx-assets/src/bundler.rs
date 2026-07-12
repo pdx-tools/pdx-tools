@@ -109,9 +109,9 @@ impl AssetBundler {
 
         // Determine compression method based on file extension
         let compression_method = if self.should_compress_file(Path::new(archive_path)) {
-            rawzip::CompressionMethod::Zstd
+            rawzip::CompressionMethod::ZSTD
         } else {
-            rawzip::CompressionMethod::Store
+            rawzip::CompressionMethod::STORE
         };
 
         let (mut out_file, config) = zip
@@ -119,19 +119,19 @@ impl AssetBundler {
             .compression_method(compression_method)
             .start()?;
 
-        if compression_method == rawzip::CompressionMethod::Zstd {
+        if compression_method == rawzip::CompressionMethod::ZSTD {
             let encoder = zstd::stream::Encoder::new(&mut out_file, 11)?;
             let mut writer = config.wrap(encoder);
             let uncompressed = std::io::copy(&mut file_content, &mut writer)?;
             let (encoder, output) = writer.finish()?;
             encoder.finish()?;
-            let compressed = out_file.finish(output)?;
+            let compressed = out_file.finish(output)?.compressed_size();
             Ok((uncompressed, compressed))
         } else {
             let mut writer = config.wrap(&mut out_file);
             let uncompressed = std::io::copy(&mut file_content, &mut writer)?;
             let (_, output) = writer.finish()?;
-            let compressed = out_file.finish(output)?;
+            let compressed = out_file.finish(output)?.compressed_size();
             Ok((uncompressed, compressed))
         }
     }
