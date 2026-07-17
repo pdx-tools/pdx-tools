@@ -38,7 +38,7 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: 0
       CARGO_TERM_COLOR: always
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -107,7 +107,7 @@ jobs:
         echo "after"
         df -h
 
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -124,7 +124,7 @@ jobs:
 
     - name: Cache assets
       if: matrix.arch == 'amd64'
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: |
           assets/game-bundles
@@ -133,7 +133,7 @@ jobs:
           src/eu5save/assets
         key: asset-cache
 
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       name: Clone tokens
       if: matrix.with_tokens
       with:
@@ -251,7 +251,7 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: 0
       CARGO_TERM_COLOR: always
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -272,7 +272,7 @@ jobs:
           echo "IMAGEMAGICK_FONT=$FONT_PATH" >> "$GITHUB_ENV"
 
       - name: Cache assets
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           key: asset-cache
           enableCrossOsArchive: true # shared cache between OSes
@@ -281,7 +281,7 @@ jobs:
             assets/eu4-saves
             src/vic3save/assets
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         name: Clone tokens
         if: matrix.with_tokens
         with:
@@ -309,7 +309,7 @@ jobs:
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
     
       - name: Setup pnpm cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
