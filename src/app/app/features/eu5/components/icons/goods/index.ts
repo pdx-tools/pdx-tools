@@ -1,4 +1,4 @@
-import { spriteDimension } from "@/features/eu4/components/Sprite";
+import { spriteDimension } from "@/components/Sprite";
 import data from "./goods.json";
 import url32 from "./goods_x32.webp";
 import url128 from "./goods_x128.webp";

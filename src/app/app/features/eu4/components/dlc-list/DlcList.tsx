@@ -2,7 +2,7 @@ import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import imageUrl from "./dlc-sprites.webp";
 import data from "./dlc-sprites.json";
-import { Sprite, spriteDimension } from "../Sprite";
+import { Sprite, spriteDimension } from "@/components/Sprite";
 
 const dimensions = spriteDimension({
   data,

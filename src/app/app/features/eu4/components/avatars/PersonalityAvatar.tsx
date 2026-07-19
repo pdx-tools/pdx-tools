@@ -1,7 +1,7 @@
 import type { LocalizedObj } from "@/features/eu4/types/models";
 import { Tooltip } from "@/components/Tooltip";
-import { Sprite, spriteDimension } from "../Sprite";
-import type { SpriteDimension } from "../Sprite";
+import { Sprite, spriteDimension } from "@/components/Sprite";
+import type { SpriteDimension } from "@/components/Sprite";
 import spriteData from "@/images/eu4/personalities/personalities.json";
 import spriteSrc from "@/images/eu4/personalities/personalities.webp";
 
