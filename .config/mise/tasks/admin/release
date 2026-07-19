@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -exo pipefail
+set -eo pipefail
 
 #USAGE flag "--execute" help="Execute deployment"
 #MISE depends=["docs:setup:changelog"]
@@ -8,6 +8,7 @@ set -exo pipefail
 . .env
 
 export PDX_RELEASE=1
+export SENTRY_AUTH_TOKEN SENTRY_ORG SENTRY_PROJECT
 
 if [[ "$(gcloud config get-value account 2>&1)" = "(unset)" ]]; then
     gcloud auth login
