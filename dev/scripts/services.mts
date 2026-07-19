@@ -49,20 +49,6 @@ async function main() {
   await execCommand(`${envPrefix} up --no-start`);
   await execCommand(`${envPrefix} up --wait db`);
 
-  // Wait for PostgreSQL to be ready (up to 3 attempts)
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      await execCommand(`${envPrefix} exec -u postgres --no-TTY db pg_isready`);
-      break;
-    } catch (error) {
-      if (attempt === 3) {
-        throw error;
-      }
-      console.log(`PostgreSQL not ready, attempt ${attempt}/3. Waiting 1 second...`);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
-
   await execCommand(`${envPrefix} cp ../src/app/migrations db:/`);
   // Run migrations
   const migrationFiles = await readdir(resolve(projectRoot, "src/app/migrations"));
