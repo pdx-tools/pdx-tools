@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [
+      "Add EU5 country flags and richer country profile headers",
+      "Update bundled EU5 game data to v1.3.11",
+      "Improve the sharpness and visual quality of EU4 flags and icons"
+    ]
+  }
+}
