@@ -11,10 +11,10 @@ import { Suspense } from "react";
 import { z } from "zod";
 import type { Route } from "./+types/eu4.achievements.$achievementId";
 
-export const meta = ({ data }: Route.MetaArgs) =>
+export const meta = ({ loaderData }: Route.MetaArgs) =>
   seo({
-    title: `${data?.achievement.name} Leaderboard`,
-    description: `Top EU4 saves for ${data?.achievement.name}: ${data?.achievement.description}`,
+    title: `${loaderData?.achievement.name} Leaderboard`,
+    description: `Top EU4 saves for ${loaderData?.achievement.name}: ${loaderData?.achievement.description}`,
   });
 
 const ParamSchema = z.object({ achievementId: z.string() });

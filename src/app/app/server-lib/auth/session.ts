@@ -1,6 +1,7 @@
 import { check } from "@/lib/isPresent";
 import { createCookieSessionStorage } from "react-router";
-import type { AppLoadContext } from "react-router";
+import { getCloudflare } from "../cloudflare-context";
+import type { PdxRouteContext } from "../cloudflare-context";
 import { z } from "zod";
 import { parseBasicAuth } from "./basic";
 import { oneshotDb } from "../db/connection";
@@ -10,11 +11,18 @@ import { userId } from "@/lib/auth";
 import type { LoggedInUser } from "@/lib/auth";
 
 export type PdxSessionStorage = ReturnType<typeof pdxSession>;
-export const pdxSession = ({ request, context }: { request: Request; context: AppLoadContext }) => {
+export const pdxSession = ({
+  request,
+  context,
+}: {
+  request: Request;
+  context: PdxRouteContext;
+}) => {
+  const cloudflare = getCloudflare(context);
   const storage = createCookieSessionStorage({
     cookie: {
       name: "sid",
-      secrets: [check(context.cloudflare.env.SESSION_SECRET, "missing session secret")],
+      secrets: [check(cloudflare.env.SESSION_SECRET, "missing session secret")],
       sameSite: "strict",
       httpOnly: true,
       secure: true,
@@ -58,8 +66,9 @@ export async function getAuth({
   context,
 }: {
   request: Request;
-  context: AppLoadContext;
+  context: PdxRouteContext;
 }): Promise<LoggedInUser> {
+  const cloudflare = getCloudflare(context);
   const header = request.headers.get("authorization");
   if (header) {
     const creds = parseBasicAuth(header);
@@ -67,7 +76,7 @@ export async function getAuth({
       throw unauthResponse();
     }
 
-    const users = await oneshotDb(context.cloudflare.env.PDX_DB.connectionString, (db) =>
+    const users = await oneshotDb(cloudflare.env.PDX_DB.connectionString, (db) =>
       db
         .select({ apiKey: table.users.apiKey, account: table.users.account })
         .from(table.users)

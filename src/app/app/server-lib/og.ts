@@ -3,10 +3,11 @@ import { timeit } from "@/lib/timeit";
 import { pdxMetrics } from "./metrics";
 import type { PdxStorage } from "./storage";
 import { pdxFns } from "./functions";
-import type { AppLoadContext } from "react-router";
+import { getCloudflare } from "./cloudflare-context";
+import type { PdxRouteContext } from "./cloudflare-context";
 
-export const pdxOg = ({ storage, context }: { storage: PdxStorage; context: AppLoadContext }) => {
-  const parseApiEndpoint = context.cloudflare.env.PARSE_API_ENDPOINT;
+export const pdxOg = ({ storage, context }: { storage: PdxStorage; context: PdxRouteContext }) => {
+  const parseApiEndpoint = getCloudflare(context).env.PARSE_API_ENDPOINT;
   return {
     enabled: !!parseApiEndpoint,
     generateOgIntoStorage: async (saveId: string, saveData?: ArrayBuffer) => {

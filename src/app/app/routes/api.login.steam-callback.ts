@@ -4,7 +4,7 @@ import { genId } from "@/server-lib/id";
 import { check } from "@/lib/isPresent";
 import { captureEvent } from "@/server-lib/posthog";
 import { withCore } from "@/server-lib/middleware";
-import type { AppLoadContext } from "react-router";
+import type { PdxRouteContext } from "@/server-lib/cloudflare-context";
 import { withDb } from "@/server-lib/db/middleware";
 import { pdxSession } from "@/server-lib/auth/session";
 import { safeRedirect } from "@/server-lib/auth/redirect";
@@ -76,7 +76,7 @@ export const loader = withCore(
   }),
 );
 
-async function steamInfo(context: AppLoadContext, searchParams: URLSearchParams) {
+async function steamInfo(context: PdxRouteContext, searchParams: URLSearchParams) {
   const steam = pdxSteam({ context });
   const steamUid = await steam.loginVerify(searchParams);
   const steamName = await steam.getPlayerName(steamUid);

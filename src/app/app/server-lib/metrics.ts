@@ -1,4 +1,5 @@
-import type { AppLoadContext } from "react-router";
+import { getCloudflare } from "./cloudflare-context";
+import type { PdxRouteContext } from "./cloudflare-context";
 
 // All backend metrics share a single Analytics Engine dataset (`pdx_metrics`)
 // with a fixed positional schema. Every writeDataPoint must agree on what each
@@ -32,9 +33,9 @@ export type Metric = {
   bytes?: number;
 };
 
-export const pdxMetrics = (context: AppLoadContext) => ({
+export const pdxMetrics = (context: PdxRouteContext) => ({
   record: (m: Metric) => {
-    context.cloudflare.env.PDX_METRICS.writeDataPoint({
+    getCloudflare(context).env.PDX_METRICS.writeDataPoint({
       indexes: [m.domain],
       blobs: [m.operation, m.cacheResult ?? "n/a", m.outcome, String(m.status ?? "n/a")],
       doubles: [1, m.elapsedMs, m.bytes ?? 0],

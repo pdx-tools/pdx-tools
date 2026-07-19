@@ -1,10 +1,10 @@
-import type { AppLoadContext } from "react-router";
 import { usingDb } from "./connection";
 import type { DbConnection } from "./connection";
+import type { PdxRouteContext } from "../cloudflare-context";
 
 export type DbRoute = { db: DbConnection };
 export function withDb<
-  Args extends { request: Request; context: AppLoadContext },
+  Args extends { request: Request; context: PdxRouteContext },
   T,
   R extends Promise<T>,
   Ctxt = object,

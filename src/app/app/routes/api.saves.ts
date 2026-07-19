@@ -17,6 +17,7 @@ import { headerMetadata, uploadContentType, uploadMetadata } from "@/server-lib/
 import type { SavePostResponse } from "@/server-lib/models";
 import { pdxOg } from "@/server-lib/og";
 import { pdxStorage } from "@/server-lib/storage";
+import { getCloudflare } from "@/server-lib/cloudflare-context";
 import type { Route } from "./+types/api.saves";
 
 async function fileUploadData(req: Request) {
@@ -52,6 +53,7 @@ async function fileUploadData(req: Request) {
 }
 
 export const action = withCore(async ({ request, context }: Route.ActionArgs) => {
+  const cloudflare = getCloudflare(context);
   if (request.method !== "POST") {
     throw Response.json({ msg: "Method not allowed" }, { status: 405 });
   }
@@ -101,7 +103,7 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
   try {
     const parsed = await timeit(() =>
       pdxFns({
-        endpoint: context.cloudflare.env.PARSE_API_ENDPOINT,
+        endpoint: cloudflare.env.PARSE_API_ENDPOINT,
       }).parseSave(bytes),
     ).catch((err) => {
       metrics.record({
@@ -182,7 +184,7 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
       const ogGeneration = og.generateOgIntoStorage(saveId, bytes.buffer).catch((err) => {
         log.exception(err, { msg: "unable to generate og image" });
       });
-      context.cloudflare.ctx.waitUntil(ogGeneration);
+      cloudflare.ctx.waitUntil(ogGeneration);
     }
 
     return Response.json(response);
@@ -193,7 +195,7 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
       .catch((err) => {
         log.exception(err, { msg: "unable to delete uploaded save file", saveId });
       });
-    context.cloudflare.ctx.waitUntil(deleteUploadedFile);
+    cloudflare.ctx.waitUntil(deleteUploadedFile);
 
     // If we have a unique constraint violation, let's assume it is the
     // idx_save_hash and throw a validation error.

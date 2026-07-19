@@ -4,6 +4,7 @@ import { log } from "@/server-lib/logging";
 import { withCore } from "@/server-lib/middleware";
 import { pdxOg } from "@/server-lib/og";
 import { pdxStorage } from "@/server-lib/storage";
+import { getCloudflare } from "@/server-lib/cloudflare-context";
 import { z } from "zod";
 import type { Route } from "./+types/api.admin.og";
 
@@ -22,6 +23,6 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
         saveId: save.saveId,
       });
     });
-  context.cloudflare.ctx.waitUntil(task);
+  getCloudflare(context).ctx.waitUntil(task);
   return Response.json({ msg: "done" });
 });
