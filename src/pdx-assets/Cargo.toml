@@ -17,6 +17,7 @@ eu4save = { default-features = false , workspace = true, features = ["zstd_c"] }
 eu5app = { workspace = true, default-features = false, features = ["game-install", "zstd_c"] }
 eu5save = { workspace = true, default-features = false }
 flate2 = { workspace = true, default-features = false, features = ["zlib-rs"]}
+image = { workspace = true, features = ["png", "pnm"] }
 jomini = { workspace = true }
 pdx-map = { workspace = true, default-features = false }
 pdx-zstd = { workspace = true, default-features = false, features = ["zstd_c"] }
@@ -31,6 +32,7 @@ tempfile = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 walkdir = { workspace = true }
+webp = { workspace = true }
 zstd = { workspace = true }
 
 [target.'cfg(target_env = "musl")'.dependencies]

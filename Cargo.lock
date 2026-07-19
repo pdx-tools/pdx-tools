@@ -2819,6 +2819,7 @@ dependencies = [
  "eu5app",
  "eu5save",
  "flate2",
+ "image",
  "jomini",
  "mimalloc",
  "pdx-map",
@@ -2834,6 +2835,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "walkdir",
+ "webp",
  "zstd",
 ]
 
