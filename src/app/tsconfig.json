@@ -4,6 +4,7 @@
     "rootDirs": [".", "./.react-router/types"],
     "paths": {
       "@/images/eu4/*": ["../../assets/game/eu4/common/images/*"],
+      "@/images/eu5/*": ["../../assets/game/eu5/common/images/*"],
       "@/*": ["./app/*"]
     },
     "types": [

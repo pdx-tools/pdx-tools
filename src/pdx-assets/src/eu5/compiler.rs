@@ -20,6 +20,7 @@ const FRONTEND_GOODS_ICONS_DIR: &str = concat!(
 );
 
 const TRADE_GOODS_ICON_PATH: &str = "game/main_menu/gfx/interface/icons/trade_goods";
+const FLAGS_PER_ATLAS: usize = 128;
 
 struct FileProviderAdapter<P>(P);
 
@@ -103,6 +104,13 @@ where
             Ok((name, f.path))
         })
         .collect::<Result<_>>()?;
+
+    // Load coat of arms definitions and warm/trace the referenced emblem and
+    // pattern textures now (before the dry_run check) so they are recorded for
+    // bundle tracing even when we skip image processing. EU5 flag assets are
+    // required; `load` fails loudly if they are absent.
+    let flag_renderer = crate::eu5::coat_of_arms::Eu5FlagRenderer::load(fs)?;
+    flag_renderer.trace();
 
     // If we are bundle tracing no need to do expensive image processing or create bundle
     if options.dry_run {
@@ -216,7 +224,57 @@ where
             output_dir = %frontend_goods_dir.display(),
             "EU5 goods icon atlas generated"
         );
+
+        translate_flags(imaging, &version_dir, &flag_renderer)?;
     }
+
+    Ok(())
+}
+
+/// Render every scoped coat of arms to temporary PNGs and montage consecutive
+/// chunks of 128 sorted keys into multi-resolution flag atlases. Sorting makes
+/// the split reproducible and usually keeps a country's named variants together.
+fn translate_flags<I, P>(
+    imaging: &I,
+    version_dir: &Path,
+    renderer: &crate::eu5::coat_of_arms::Eu5FlagRenderer<P>,
+) -> Result<()>
+where
+    I: ImageProcessor,
+    P: FileProvider + ?Sized,
+{
+    let temp = tempfile::tempdir()?;
+    let flag_images = renderer.render_to_pngs(temp.path())?;
+
+    let flags_dir = version_dir.join("common").join("images").join("flags");
+    if flags_dir.exists() {
+        std::fs::remove_dir_all(&flags_dir)?;
+    }
+    std::fs::create_dir_all(&flags_dir)?;
+
+    for (atlas_index, atlas_images) in flag_images.chunks(FLAGS_PER_ATLAS).enumerate() {
+        imaging.montage(MontageRequest {
+            images: atlas_images,
+            output_path: flags_dir.join(format!("flags-{atlas_index:02}.webp")),
+            format: OutputFormat::Webp {
+                quality: WebpQuality::Quality(90),
+            },
+            sizing: MontageSizing::Scaled {
+                sizes: crate::eu5::coat_of_arms::flag_montage_geometries(),
+                filter: ScaleFilter::Lanczos,
+            },
+            background: Some(Color::Transparent),
+            additional_args: vec![],
+        })?;
+    }
+
+    tracing::info!(
+        name: "eu5.flags.complete",
+        output_dir = %flags_dir.display(),
+        flag_count = flag_images.len(),
+        atlas_count = flag_images.len().div_ceil(FLAGS_PER_ATLAS),
+        "EU5 country flag atlas generated"
+    );
 
     Ok(())
 }

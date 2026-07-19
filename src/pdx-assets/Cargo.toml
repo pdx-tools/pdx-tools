@@ -18,12 +18,14 @@ eu5app = { workspace = true, default-features = false, features = ["game-install
 eu5save = { workspace = true, default-features = false }
 flate2 = { workspace = true, default-features = false, features = ["zlib-rs"]}
 image = { workspace = true, features = ["png", "pnm"] }
+image_dds = { workspace = true }
 jomini = { workspace = true }
 pdx-map = { workspace = true, default-features = false }
 pdx-zstd = { workspace = true, default-features = false, features = ["zstd_c"] }
 postcard = { workspace = true }
 rawbmp = { workspace = true }
 rawzip = { workspace = true }
+rayon = { workspace = true }
 regex = { workspace = true }
 schemas = { workspace = true, features = ["inline"] }
 serde = { workspace = true }

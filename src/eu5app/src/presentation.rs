@@ -354,6 +354,10 @@ impl Present for CountryRefSource {
             tag: data
                 .map(|_| entry.tag().to_str().to_string())
                 .unwrap_or_else(|| "---".to_string()),
+            flag: data.map(|data| match data.flag.as_ref() {
+                Some(flag) => flag.to_str().to_string(),
+                None => entry.tag().to_str().to_string(),
+            }),
             color_hex,
             is_player,
         }

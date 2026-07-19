@@ -10,7 +10,7 @@ pub struct FsFile {
     pub path: PathBuf,
 }
 
-pub trait FileProvider {
+pub trait FileProvider: Send + Sync {
     fn read_file(&self, path: &str) -> Result<Vec<u8>>;
     fn read_to_string(&self, path: &str) -> Result<String>;
     fn file_exists(&self, path: &str) -> bool;
@@ -251,7 +251,9 @@ impl FileProvider for ZipProvider {
 }
 
 // Helper function to create appropriate provider based on path
-pub fn create_provider<P: AsRef<Path>>(source_path: P) -> Result<Box<dyn FileProvider>> {
+pub fn create_provider<P: AsRef<Path>>(
+    source_path: P,
+) -> Result<Box<dyn FileProvider + Send + Sync>> {
     let path = source_path.as_ref();
 
     if path.is_dir() {
@@ -263,7 +265,10 @@ pub fn create_provider<P: AsRef<Path>>(source_path: P) -> Result<Box<dyn FilePro
     }
 }
 
-impl FileProvider for Box<dyn FileProvider> {
+impl<P> FileProvider for Box<P>
+where
+    P: FileProvider + ?Sized,
+{
     fn read_file(&self, path: &str) -> Result<Vec<u8>> {
         self.as_ref().read_file(path)
     }
@@ -291,7 +296,7 @@ impl FileProvider for Box<dyn FileProvider> {
 
 impl<P> FileProvider for &P
 where
-    P: FileProvider,
+    P: FileProvider + ?Sized,
 {
     fn read_file(&self, path: &str) -> Result<Vec<u8>> {
         (*self).read_file(path)

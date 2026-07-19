@@ -1,6 +1,7 @@
 mod asset_compilers;
 mod bundler;
 mod cli;
+pub mod coat_of_arms;
 pub mod de;
 pub mod eu4;
 pub mod eu5;

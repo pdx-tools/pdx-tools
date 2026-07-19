@@ -269,6 +269,10 @@ pub struct Country<'bump> {
     pub country_name: CountryName<'bump>,
     #[arena(default)]
     pub color: Color,
+    /// The coat of arms key this country flies (e.g. `flag=MER`). Used to look
+    /// up the pre-rendered flag in the web UI.
+    #[arena(default)]
+    pub flag: Option<BStr<'bump>>,
     pub capital: Option<LocationId>,
     #[arena(default)]
     pub historical_population: &'bump [f64],

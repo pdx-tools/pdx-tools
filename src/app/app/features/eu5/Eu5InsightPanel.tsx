@@ -2,6 +2,8 @@ import type React from "react";
 import { useCallback } from "react";
 import { ResizablePanel } from "./components/ResizablePanel";
 import type { ActiveProfileIdentity, EntityHeader } from "@/wasm/wasm_eu5";
+import { formatCompact, formatInt } from "@/lib/format";
+import { Eu5Flag } from "./components/flags/Eu5Flag";
 import { useEu5MapMode, useEu5SelectionState, useSetEu5InsightPanelWidth } from "./store";
 import { StateEfficacyInsight } from "./features/insights/StateEfficacy";
 import { ControlInsight } from "./features/insights/Control";
@@ -206,20 +208,61 @@ function EntityPanelTitle({
 }
 
 function EntityTitleContent({ header }: { header: EntityHeader }) {
-  return (
-    <span className="inline-flex max-w-full min-w-0 items-center gap-2">
-      <span
-        className="h-3.5 w-3.5 shrink-0 rounded-[1px] border border-black/25"
-        style={{ backgroundColor: header.colorHex }}
-      />
-      {header.tag && (
-        <span className="shrink-0 rounded-[1px] border border-game-line-strong px-1 font-game-num text-[10px] tracking-[0.06em] text-game-ink-700">
-          {header.tag}
+  // Countries get a rich header: the coat of arms at its native atlas size
+  // (72px) alongside the tag, name, and headline stats. Non-country entities
+  // (markets) have no flag, so they stay a compact color-swatch + name label.
+  if (!header.tag) {
+    return (
+      <span className="inline-flex max-w-full min-w-0 items-center gap-2">
+        <span
+          className="h-3.5 w-3.5 shrink-0 rounded-[1px] border border-black/25"
+          style={{ backgroundColor: header.colorHex }}
+        />
+        <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
+          {header.name}
         </span>
-      )}
-      <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
-        {header.name}
       </span>
+    );
+  }
+
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <Eu5Flag
+        flag={header.flag}
+        colorHex={header.colorHex}
+        size="xl"
+        alt={`${header.name} flag`}
+        className="shrink-0 rounded-[2px] border border-black/30 shadow-sm"
+      />
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 rounded-[1px] border border-game-line-strong px-1 font-game-num text-[10px] tracking-[0.06em] text-game-ink-700">
+            {header.tag}
+          </span>
+          <span className="truncate font-game-ui text-base font-semibold text-game-ink-100">
+            {header.name}
+          </span>
+        </span>
+        <span className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <HeadlineStat label="Locations" value={formatInt(header.headline.locationCount)} />
+          <HeadlineStat label="Development" value={formatInt(header.headline.totalDevelopment)} />
+          <HeadlineStat
+            label="Population"
+            value={formatCompact(header.headline.totalPopulation, 1)}
+          />
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function HeadlineStat({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="flex items-baseline gap-1">
+      <span className="font-game-num text-[13px] font-medium text-game-ink-100 tabular-nums">
+        {value}
+      </span>
+      <span className="text-[10px] tracking-[0.06em] text-game-ink-500 uppercase">{label}</span>
     </span>
   );
 }
