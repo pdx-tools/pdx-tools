@@ -1,4 +1,4 @@
-import { Sprite } from "@/features/eu4/components/Sprite";
+import { Sprite } from "@/components/Sprite";
 import {
   GOODS_CELL_SIZE_128,
   GOODS_CELL_SIZE_32,

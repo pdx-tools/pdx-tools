@@ -4,7 +4,7 @@ import { Tooltip } from "@/components/Tooltip";
 import { cx } from "class-variance-authority";
 import { Button } from "@/components/Button";
 import { check } from "@/lib/isPresent";
-import { Sprite, spriteDimension } from "../Sprite";
+import { Sprite, spriteDimension } from "@/components/Sprite";
 import flagJson from "@/images/eu4/flags/flags.json";
 import flag8 from "@/images/eu4/flags/flags_x8.webp";
 import flag48 from "@/images/eu4/flags/flags_x48.webp";
