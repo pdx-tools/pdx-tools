@@ -301,13 +301,10 @@ async function setupAssets() {
   // Create empty webp placeholder files (touch -a equivalent)
   const webpFiles = [
     "assets/game/eu4/common/images/achievements/achievements.webp",
-    "assets/game/eu4/common/images/advisors/advisors_x48.webp",
-    "assets/game/eu4/common/images/advisors/advisors_x64.webp",
-    "assets/game/eu4/common/images/advisors/advisors_x77.webp",
+    "assets/game/eu4/common/images/advisors/advisors.webp",
     "assets/game/eu4/common/images/buildings/global.webp",
     "assets/game/eu4/common/images/buildings/westerngfx.webp",
     "assets/game/eu4/common/images/flags/flags_x8.webp",
-    "assets/game/eu4/common/images/flags/flags_x48.webp",
     "assets/game/eu4/common/images/flags/flags_x64.webp",
     "assets/game/eu4/common/images/flags/flags_x128.webp",
     "assets/game/eu4/common/images/personalities/personalities.webp",

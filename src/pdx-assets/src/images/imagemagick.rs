@@ -1,6 +1,6 @@
 use super::{
-    Color, ConvertRequest, Geometry, ImageOperation, ImageProcessor, MontageRequest, OutputFormat,
-    WebpQuality,
+    Color, ConvertRequest, Geometry, ImageOperation, ImageProcessor, MontageRequest, MontageSizing,
+    OutputFormat, ScaleFilter, WebpQuality,
 };
 use crate::images::ImageError;
 use anyhow::{Context, Result, bail, ensure};
@@ -280,17 +280,21 @@ impl ImageProcessor for ImageMagickProcessor {
         let response_path = request.output_path.with_extension("txt");
         let response_file = self.create_response_file(request.images, response_path)?;
 
-        // Determine if we need to add size suffixes
-        let add_suffix = request.geometries.len() > 1;
+        // Only multiple outputs need distinguishing names; a lone size keeps
+        // the plain filename.
+        let (add_suffix, scaling): (bool, Vec<Option<(&Geometry, ScaleFilter)>>) =
+            match &request.sizing {
+                MontageSizing::Native => (false, vec![None]),
+                MontageSizing::Scaled { sizes, .. } if sizes.is_empty() => {
+                    bail!("montage scaling requires at least one size")
+                }
+                MontageSizing::Scaled { sizes, filter } => (
+                    sizes.len() > 1,
+                    sizes.iter().map(|size| Some((size, *filter))).collect(),
+                ),
+            };
 
-        // If no geometries specified, create one montage at original size
-        let geometries_to_process: Vec<Option<&Geometry>> = if request.geometries.is_empty() {
-            vec![None]
-        } else {
-            request.geometries.iter().map(Some).collect()
-        };
-
-        for geometry in geometries_to_process {
+        for geometry in scaling {
             let mut cmd = self.get_command("montage")?;
 
             // Always auto-orient images for web assets
@@ -306,10 +310,9 @@ impl ImageProcessor for ImageMagickProcessor {
             cmd.arg(&tile_spec);
 
             // Geometry if specified
-            if let Some(geom) = geometry {
-                // Use point filter for pixel art scaling to preserve hard edges
+            if let Some((geom, filter)) = geometry {
                 cmd.arg("-filter");
-                cmd.arg("point");
+                cmd.arg(filter.as_arg());
 
                 // Set geometry for each tile
                 cmd.arg("-geometry");
@@ -350,7 +353,7 @@ impl ImageProcessor for ImageMagickProcessor {
             }
 
             // Determine output path with or without size suffix
-            let output_path = if add_suffix && let Some(geom) = geometry {
+            let output_path = if add_suffix && let Some((geom, _)) = geometry {
                 // Add _x{size} suffix before extension
                 let stem = request.output_path.file_stem().unwrap().to_str().unwrap();
                 let extension = request.output_path.extension().unwrap().to_str().unwrap();

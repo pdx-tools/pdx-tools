@@ -7,7 +7,6 @@ import { check } from "@/lib/isPresent";
 import { Sprite, spriteDimension } from "@/components/Sprite";
 import flagJson from "@/images/eu4/flags/flags.json";
 import flag8 from "@/images/eu4/flags/flags_x8.webp";
-import flag48 from "@/images/eu4/flags/flags_x48.webp";
 import flag64 from "@/images/eu4/flags/flags_x64.webp";
 import flag128 from "@/images/eu4/flags/flags_x128.webp";
 import flagReb from "../../../../../../../assets/game/eu4/common/images/REB.png";
@@ -99,7 +98,7 @@ const FlagCountryName = React.forwardRef<HTMLSpanElement, React.HTMLAttributes<H
 
 Flag.CountryName = FlagCountryName;
 
-type AvatarSize = "xs" | "small" | "base" | "large";
+type AvatarSize = "xs" | "small" | "base" | "large" | "xl";
 interface FlagAvatarCoreProps {
   tag: string;
   size?: AvatarSize;
@@ -114,6 +113,8 @@ interface FlagAvatarProps {
 
 function sizeFactor(size?: AvatarSize): number {
   switch (size) {
+    case "xl":
+      return 16;
     case "large":
       return 12;
     case "small":
@@ -164,17 +165,17 @@ const FlagSprite = ({ index, size }: { index: number; size?: AvatarSize }) => {
   const factor = sizeFactor(size);
   return (
     <Sprite
-      src={flag48}
+      src={flag64}
       srcSet={[
-        [flag48, "1x"],
-        [flag64, "1.33x"],
-        [flag128, "2.66x"],
+        [flag64, "1x"],
+        [flag128, "2x"],
       ]}
       alt=""
       dimensions={dimensions}
       index={index}
       scale={(factor * 4) / dimensions.spriteCell.height}
       blurSrc={flag8}
+      rendering="smooth"
     />
   );
 };

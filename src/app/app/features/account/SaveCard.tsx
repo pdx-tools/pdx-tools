@@ -48,12 +48,12 @@ export function SaveCard({
           </div>
 
           {save.players <= 1 ? (
-            <div className="flex justify-center gap-2 lg:my-3">
+            <div className="flex flex-col items-center gap-2 lg:my-3">
               <Flag tag={save.player_tag} name={save.player_tag_name ?? save.player_tag}>
-                <Flag.Image size="large" />
-                <div>
-                  <Flag.CountryName className="line-clamp-1 break-all" />
-                  <div>
+                <Flag.Image size="xl" />
+                <div className="text-center">
+                  <Flag.CountryName className="line-clamp-2 text-lg leading-tight font-semibold" />
+                  <div className="text-gray-600 dark:text-gray-400">
                     {save.patch}{" "}
                     <span
                       className={

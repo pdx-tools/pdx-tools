@@ -24,9 +24,45 @@ pub struct MontageRequest<'a> {
     pub images: &'a [(String, PathBuf)],
     pub output_path: PathBuf,
     pub format: OutputFormat,
-    pub geometries: Vec<Geometry>,
+    pub sizing: MontageSizing,
     pub background: Option<Color>,
     pub additional_args: Vec<String>,
+}
+
+/// How a montage maps source images into its cells.
+#[derive(Debug, Clone)]
+pub enum MontageSizing {
+    /// Tile the images at their source size. Nothing is resampled, so no
+    /// filter applies, and a single unsuffixed file is written.
+    Native,
+    /// Scale every image to each of `sizes`, which must not be empty. A lone
+    /// size writes an unsuffixed file; several write `{stem}_x{width}.{ext}`
+    /// so they can coexist.
+    Scaled {
+        sizes: Vec<Geometry>,
+        filter: ScaleFilter,
+    },
+}
+
+/// How to resample source images when scaling them into montage cells.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScaleFilter {
+    /// Nearest neighbor. Preserves the hard edges of pixel art, but on
+    /// continuous-tone art it drops source pixels rather than averaging them,
+    /// which mangles fine detail at non-integer ratios.
+    Point,
+    /// Windowed sinc. The right choice for continuous-tone art such as country
+    /// flags, whose emblems are rendered rather than hand-placed pixels.
+    Lanczos,
+}
+
+impl ScaleFilter {
+    fn as_arg(self) -> &'static str {
+        match self {
+            ScaleFilter::Point => "point",
+            ScaleFilter::Lanczos => "Lanczos",
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

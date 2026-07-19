@@ -34,6 +34,7 @@ export const Sprite = ({
   alt,
   scale = 1,
   className,
+  rendering = "crisp",
 }: {
   src: string;
   blurSrc?: string;
@@ -47,6 +48,13 @@ export const Sprite = ({
   alt: string;
   className?: string;
   scale?: number;
+  /**
+   * How the browser resamples the atlas when the render size doesn't land on a
+   * whole multiple of the cell. "crisp" keeps hard edges for pixel art;
+   * "smooth" suits continuous-tone art, where nearest neighbor drops pixels
+   * instead of blending them.
+   */
+  rendering?: "crisp" | "smooth";
 }) => {
   const { row, col } = dimensions.coordinates(index);
 
@@ -80,6 +88,7 @@ export const Sprite = ({
   const imgStyles = {
     ...srcSetStyles,
     "--img-src": `url(${src})`,
+    ...(rendering === "smooth" ? { "--img-rendering": "auto" } : {}),
   };
 
   const image = (

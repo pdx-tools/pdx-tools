@@ -1,7 +1,7 @@
 .static-sprite,
 .sprite {
   background-image: var(--img-src);
-  image-rendering: crisp-edges;
+  image-rendering: var(--img-rendering, crisp-edges);
 }
 
 .sprite {

@@ -209,7 +209,7 @@ where
     let gfx = sprites::parse_sprites(gfx_data.as_slice());
     let sprites: HashMap<String, PathBuf> =
         gfx.into_iter().map(|x| (x.name, x.texturefile)).collect();
-    let sprite_images = data
+    let mut sprite_images = data
         .iter()
         .map(|(name, investment)| {
             let sprite_path = sprites.get(&investment.sprite).unwrap();
@@ -217,6 +217,10 @@ where
             Ok((name.clone(), file_handle.path.clone()))
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
+
+    // Sort for a deterministic montage: the source is a hash map, whose
+    // iteration order otherwise reshuffles the atlas on every build.
+    sprite_images.sort_by(|a, b| a.0.cmp(&b.0));
 
     if !options.dry_run && !options.minimal {
         let image_out_dir = Path::new(&out_dir).join("common/images/tc-investments");
@@ -228,7 +232,7 @@ where
             format: crate::images::OutputFormat::Webp {
                 quality: crate::images::WebpQuality::Quality(90),
             },
-            geometries: vec![],
+            sizing: crate::images::MontageSizing::Native,
             background: None,
             additional_args: vec![],
         };
@@ -315,7 +319,7 @@ where
             format: crate::images::OutputFormat::Webp {
                 quality: crate::images::WebpQuality::Quality(90),
             },
-            geometries: vec![],
+            sizing: crate::images::MontageSizing::Native,
             background: Some(crate::images::Color::Transparent),
             additional_args: vec![],
         };
@@ -355,7 +359,7 @@ where
         }
     }
 
-    let advisors_montage = advisors
+    let mut advisors_montage = advisors
         .iter()
         .map(|(advisor, _)| {
             let advisor_path = format!("gfx/interface/advisors/{}.dds", advisor);
@@ -363,6 +367,10 @@ where
             Ok((advisor.clone(), file_handle.path.clone()))
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
+
+    // Sort for a deterministic montage: the source is a hash map, whose
+    // iteration order otherwise reshuffles the atlas on every build.
+    advisors_montage.sort_by(|a, b| a.0.cmp(&b.0));
 
     if !options.dry_run && !options.minimal {
         let image_out_dir = Path::new(&out_dir).join("common/images/advisors");
@@ -374,11 +382,12 @@ where
             format: crate::images::OutputFormat::Webp {
                 quality: crate::images::WebpQuality::Quality(90),
             },
-            geometries: vec![
-                crate::images::Geometry::new(48, 48),
-                crate::images::Geometry::new(64, 64),
-                crate::images::Geometry::new(77, 77),
-            ],
+            // The UI displays advisors at 32px or 48px; generate one atlas at
+            // the native 77px size and let the browser downscale it.
+            sizing: crate::images::MontageSizing::Scaled {
+                sizes: vec![crate::images::Geometry::new(77, 77)],
+                filter: crate::images::ScaleFilter::Lanczos,
+            },
             background: Some(crate::images::Color::Transparent),
             additional_args: vec![],
         };
@@ -687,12 +696,14 @@ where
         format: crate::images::OutputFormat::Webp {
             quality: crate::images::WebpQuality::Quality(90),
         },
-        geometries: vec![
-            crate::images::Geometry::new(8, 8),
-            crate::images::Geometry::new(48, 48),
-            crate::images::Geometry::new(64, 64),
-            crate::images::Geometry::new(128, 128),
-        ],
+        sizing: crate::images::MontageSizing::Scaled {
+            sizes: vec![
+                crate::images::Geometry::new(8, 8),
+                crate::images::Geometry::new(64, 64),
+                crate::images::Geometry::new(128, 128),
+            ],
+            filter: crate::images::ScaleFilter::Lanczos,
+        },
         background: Some(crate::images::Color::White),
         additional_args: vec!["-alpha".to_string(), "Off".to_string()],
     };
@@ -747,7 +758,10 @@ where
         format: crate::images::OutputFormat::Webp {
             quality: crate::images::WebpQuality::Quality(90),
         },
-        geometries: vec![crate::images::Geometry::new(64, 64)],
+        sizing: crate::images::MontageSizing::Scaled {
+            sizes: vec![crate::images::Geometry::new(64, 64)],
+            filter: crate::images::ScaleFilter::Point,
+        },
         background: Some(crate::images::Color::Transparent),
         additional_args: vec![],
     };
@@ -838,7 +852,7 @@ where
         format: crate::images::OutputFormat::Webp {
             quality: crate::images::WebpQuality::Quality(90),
         },
-        geometries: vec![],
+        sizing: crate::images::MontageSizing::Native,
         background: Some(crate::images::Color::White),
         additional_args: additional_args.clone(),
     };
@@ -851,7 +865,7 @@ where
         format: crate::images::OutputFormat::Webp {
             quality: crate::images::WebpQuality::Quality(90),
         },
-        geometries: vec![],
+        sizing: crate::images::MontageSizing::Native,
         background: Some(crate::images::Color::White),
         additional_args,
     };
