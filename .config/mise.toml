@@ -1,5 +1,5 @@
 [tools]
-"node" = { version = "22.18.0" }
+"node" = { version = "24.18.0" }
 "rust" = { version = "1.92" } # update in rust-toolchain.toml too!
 "github:cargo-bins/cargo-binstall" = { version = "1.12.5" }
 "github:docker/compose" = { version = "2.33.1", rename_exe = "docker-compose" }

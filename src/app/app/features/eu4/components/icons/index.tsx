@@ -1,7 +1,7 @@
 import { Tooltip } from "@/components/Tooltip";
 import data from "./icons.json";
 import imageUrl from "./icons.webp";
-import { Sprite, spriteDimension } from "../Sprite";
+import { Sprite, spriteDimension } from "@/components/Sprite";
 
 const dimensions = spriteDimension({
   data,
