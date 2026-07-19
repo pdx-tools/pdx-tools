@@ -332,6 +332,12 @@ impl ImageProcessor for ImageMagickProcessor {
                     WebpQuality::Quality(q) => {
                         cmd.arg("-quality");
                         cmd.arg(q.to_string());
+
+                        // Deblocking smooths across block boundaries, which in
+                        // an atlas are the seams between sprites, leaving each
+                        // one fringed with its neighbors.
+                        cmd.arg("-define");
+                        cmd.arg("webp:filter-strength=0");
                     }
                 },
                 OutputFormat::Png => {

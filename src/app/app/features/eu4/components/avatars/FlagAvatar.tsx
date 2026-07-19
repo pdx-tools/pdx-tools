@@ -166,6 +166,7 @@ const FlagSprite = ({ index, size }: { index: number; size?: AvatarSize }) => {
     <Sprite
       src={flag48}
       srcSet={[
+        [flag48, "1x"],
         [flag64, "1.33x"],
         [flag128, "2.66x"],
       ]}
