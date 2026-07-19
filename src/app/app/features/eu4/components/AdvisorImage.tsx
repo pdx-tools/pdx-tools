@@ -30,6 +30,7 @@ export function AdvisorImage({
 
   const index = spriteData[id as keyof typeof spriteData];
   srcSet ??= [
+    [advisor48, `1x`],
     [advisor64, `1.33x`],
     [advisor77, `1.60x`],
   ];
