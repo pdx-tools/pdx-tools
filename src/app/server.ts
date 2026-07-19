@@ -1,16 +1,6 @@
-import { createRequestHandler } from "react-router";
+import { createRequestHandler, RouterContextProvider } from "react-router";
 import * as Sentry from "@sentry/cloudflare";
-
-declare module "react-router" {
-  export interface AppLoadContext {
-    cloudflare: {
-      env: CloudflareWorkerEnv;
-      ctx: ExecutionContext;
-      cf: CfProperties<unknown> | undefined;
-      caches: typeof caches;
-    };
-  }
-}
+import { cloudflareContext } from "./app/server-lib/cloudflare-context";
 
 const requestHandler = createRequestHandler(
   () => import("virtual:react-router/server-build"),
@@ -20,14 +10,14 @@ const requestHandler = createRequestHandler(
 export const app = {
   async fetch(request: Request, env: CloudflareWorkerEnv, ctx: ExecutionContext) {
     try {
-      return await requestHandler(request, {
-        cloudflare: {
-          env,
-          ctx,
-          cf: request.cf,
-          caches,
-        },
+      const context = new RouterContextProvider();
+      context.set(cloudflareContext, {
+        env,
+        ctx,
+        cf: request.cf,
+        caches,
       });
+      return await requestHandler(request, context);
     } catch (error) {
       console.log(error);
       return new Response("An unexpected error occurred", { status: 500 });

@@ -3,7 +3,8 @@ import { fetchOk, fetchOkJson } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import { log } from "./logging";
 import { z } from "zod";
-import type { AppLoadContext } from "react-router";
+import { getCloudflare } from "./cloudflare-context";
+import type { PdxRouteContext } from "./cloudflare-context";
 
 const SteamSchema = z.object({
   response: z.object({
@@ -17,9 +18,10 @@ const SteamSchema = z.object({
   }),
 });
 
-export const pdxSteam = ({ context }: { context: AppLoadContext }) => {
-  const apiKey = context.cloudflare.env.STEAM_API_KEY;
-  const loginAddress = context.cloudflare.env.STEAM_LOGIN_ADDRESS;
+export const pdxSteam = ({ context }: { context: PdxRouteContext }) => {
+  const { env } = getCloudflare(context);
+  const apiKey = env.STEAM_API_KEY;
+  const loginAddress = env.STEAM_LOGIN_ADDRESS;
 
   return {
     loginVerify: async (data: URLSearchParams) => {

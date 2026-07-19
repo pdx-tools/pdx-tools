@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import { flushEvents } from "./posthog";
 import type { LoaderFunctionArgs } from "react-router";
 import { AuthorizationError } from "@/lib/auth";
+import { getCloudflare } from "./cloudflare-context";
 
 export function withCore<A1 extends LoaderFunctionArgs, T extends Array<unknown>, R>(
   fn: (a1: A1, ...args: T) => Promise<R>,
@@ -41,7 +42,7 @@ export function withCore<A1 extends LoaderFunctionArgs, T extends Array<unknown>
         }
       })
       .finally(() => {
-        a1.context.cloudflare.ctx.waitUntil(flushEvents());
+        getCloudflare(a1.context).ctx.waitUntil(flushEvents());
       });
   };
 }

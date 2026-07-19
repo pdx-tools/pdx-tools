@@ -1,6 +1,7 @@
 import { log } from "@/server-lib/logging";
 import { pdxMetrics } from "@/server-lib/metrics";
 import { pdxStorage } from "@/server-lib/storage";
+import { getCloudflare } from "@/server-lib/cloudflare-context";
 import { z } from "zod";
 import type { Route } from "./+types/api.saves.$saveId.file";
 
@@ -13,7 +14,7 @@ function responseBytes(response: Response) {
   return Number(response.headers.get("content-length")) || 0;
 }
 
-export async function loader({ request, params, context }: Route.LoaderArgs) {
+export async function loader({ request, url, params, context }: Route.LoaderArgs) {
   const startedAt = performance.now();
   const save = saveSchema.parse(params);
   const storage = pdxStorage({ context });
@@ -24,10 +25,10 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
     // Need to manually cache save files in cloudflare caches to get hits
     // https://community.cloudflare.com/t/fetch-response-shows-cf-cache-status-dynamic-even-with-cacheeverything-true/299979
     // Based on: https://developers.cloudflare.com/r2/examples/cache-api/
-    const url = new URL(request.url);
     const cacheKey = new Request(url.toString(), request);
 
-    const cache = context.cloudflare.caches.default;
+    const cloudflare = getCloudflare(context);
+    const cache = cloudflare.caches.default;
 
     let response = await cache.match(cacheKey);
     if (response) {
@@ -75,7 +76,7 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       response = new Response(null, { status: 304, headers });
     } else {
       response = new Response(object.body, { status: 200, headers });
-      context.cloudflare.ctx.waitUntil(cache.put(cacheKey, response.clone()));
+      cloudflare.ctx.waitUntil(cache.put(cacheKey, response.clone()));
     }
 
     metrics.record({

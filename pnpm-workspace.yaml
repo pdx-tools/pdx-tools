@@ -6,8 +6,8 @@ packages:
 catalog:
   '@types/node': 24.9.1
   comlink: 4.4.2
-  react-dom: 19.2.5
-  react: 19.2.5
+  react-dom: 19.2.7
+  react: 19.2.7
   typescript: 6.0.3
   vite: 8.1.3
   wrangler: 4.107.0

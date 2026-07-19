@@ -1,4 +1,5 @@
-import type { AppLoadContext } from "react-router";
+import { getCloudflare } from "./cloudflare-context";
+import type { PdxRouteContext } from "./cloudflare-context";
 
 type Bucketed = {
   get: R2Bucket["get"];
@@ -11,13 +12,13 @@ export const pdxStorage = ({
   context,
   game = "eu4",
 }: {
-  context: AppLoadContext;
+  context: PdxRouteContext;
   game?: string;
 }): {
   saves: Bucketed;
   previews: Bucketed;
 } => {
-  const { SAVE_BUCKET, MEDIA_BUCKET } = context.cloudflare.env;
+  const { SAVE_BUCKET, MEDIA_BUCKET } = getCloudflare(context).env;
   const saveKey = (id: string) => `${game}/${id}`;
   const ogKey = (id: string) => `${game}/og/${id}.webp`;
   return {
