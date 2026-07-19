@@ -137,6 +137,8 @@ pub struct EntityHeader {
     pub kind: EntityKind,
     pub name: String,
     pub tag: Option<String>,
+    /// Coat of arms key for the country's flag (`None` for non-country entities).
+    pub flag: Option<String>,
     pub color_hex: Srgb,
     pub anchor_location_idx: u32,
     pub headline: HeadlineStats,
@@ -260,6 +262,8 @@ pub struct CountryRef {
     pub country: Localized<UiCountryIdx>,
     pub anchor_location_idx: UiLocationIdx,
     pub tag: String,
+    /// Resolved coat of arms key for the country's pre-rendered flag.
+    pub flag: Option<String>,
     pub color_hex: Srgb,
     pub is_player: bool,
 }
@@ -344,6 +348,7 @@ impl Present for EntityHeaderSource {
                     kind: EntityKind::Country,
                     name: cref.country.name,
                     tag: Some(cref.tag),
+                    flag: cref.flag,
                     color_hex: cref.color_hex,
                     anchor_location_idx: cref.anchor_location_idx.value(),
                     headline: self.headline,
@@ -355,6 +360,7 @@ impl Present for EntityHeaderSource {
                     kind: EntityKind::Market,
                     name: mref.market.name,
                     tag: None,
+                    flag: None,
                     color_hex: mref.color_hex,
                     anchor_location_idx: mref.anchor_location_idx.value(),
                     headline: self.headline,

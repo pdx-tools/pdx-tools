@@ -6,6 +6,8 @@ import { usePanToEntity } from "../../usePanToEntity";
 import { useEu5Engine } from "../../store";
 import { useEu5MapHoverTarget } from "../../useEu5MapHoverTarget";
 import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
+import { Eu5Flag } from "../../components/flags/Eu5Flag";
+import type { Eu5FlagSize } from "../../components/flags/Eu5Flag";
 
 const sizeClasses = {
   xs: {
@@ -63,6 +65,7 @@ type LinkBodyProps = SharedProps & {
   hoverTarget: Eu5MapHoverTarget;
   colorHex: string;
   isPlayer: boolean;
+  visual?: React.ReactNode;
   tag?: React.ReactNode;
   name: string;
   onActivate: (event: React.MouseEvent<HTMLButtonElement>) => void;
@@ -72,6 +75,7 @@ function LinkBody({
   hoverTarget,
   colorHex,
   isPlayer,
+  visual,
   tag,
   name,
   onActivate,
@@ -89,7 +93,7 @@ function LinkBody({
         {...hoverProps}
         className={cx("inline-flex max-w-full min-w-0 items-center", s.wrapper, className)}
       >
-        <EntitySwatch colorHex={colorHex} isPlayer={isPlayer} className={s.swatch} />
+        {visual ?? <EntitySwatch colorHex={colorHex} isPlayer={isPlayer} className={s.swatch} />}
         {tag}
         {children ?? (
           <span
@@ -116,7 +120,7 @@ function LinkBody({
         className,
       )}
     >
-      <EntitySwatch colorHex={colorHex} isPlayer={isPlayer} className={s.swatch} />
+      {visual ?? <EntitySwatch colorHex={colorHex} isPlayer={isPlayer} className={s.swatch} />}
       {tag}
       {children ?? (
         <span
@@ -132,6 +136,12 @@ function LinkBody({
     </button>
   );
 }
+
+const flagSizeByLinkSize: Record<Size, Eu5FlagSize> = {
+  xs: "xs",
+  sm: "sm",
+  md: "base",
+};
 
 export function CountryLink({ country, ...props }: SharedProps & { country: CountryRef }) {
   const nav = usePanelNav();
@@ -170,6 +180,17 @@ export function CountryLink({ country, ...props }: SharedProps & { country: Coun
       hoverTarget={{ kind: "country", countryIdx: country.country.key }}
       colorHex={country.colorHex}
       isPlayer={country.isPlayer}
+      visual={
+        <Eu5Flag
+          flag={country.flag}
+          colorHex={country.colorHex}
+          size={flagSizeByLinkSize[props.size ?? "sm"]}
+          className={cx(
+            "shrink-0 rounded-[1px] border border-black/30",
+            country.isPlayer && "ring-2 ring-game-ink-100 ring-offset-1 ring-offset-game-page",
+          )}
+        />
+      }
       tag={tag}
       name={country.country.name}
       onActivate={onActivate}

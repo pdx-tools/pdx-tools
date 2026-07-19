@@ -2,7 +2,7 @@
 
 import { exec } from "child_process";
 import { promisify } from "util";
-import { readdir, access, mkdir, writeFile, copyFile, readFile, stat } from "fs/promises";
+import { readdir, access, mkdir, writeFile, copyFile, readFile, rm, stat } from "fs/promises";
 import { join, dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
@@ -100,14 +100,14 @@ const getMontageFontArg = () => {
   return font ? ` -font ${shellQuote(font)}` : "";
 };
 
-const findLatestBundle = async () => {
-  const eu4AssetsDir = join(projectRoot, "assets/game/eu4");
+const findLatestBundle = async (game: string) => {
+  const gameAssetsDir = join(projectRoot, "assets/game", game);
 
-  if (!(await exists(eu4AssetsDir))) {
+  if (!(await exists(gameAssetsDir))) {
     return null;
   }
 
-  const contents = await readdir(eu4AssetsDir);
+  const contents = await readdir(gameAssetsDir);
   const versions = contents
     .filter((item) => item !== "common" && /^\d+\.\d+$/.test(item))
     .sort((a, b) => {
@@ -118,7 +118,7 @@ const findLatestBundle = async () => {
 
   // Find the latest version that has common/images directory
   for (const version of versions) {
-    const commonImagesDir = join(eu4AssetsDir, version, "common", "images");
+    const commonImagesDir = join(gameAssetsDir, version, "common", "images");
     if (await exists(commonImagesDir)) {
       return { version, path: commonImagesDir };
     }
@@ -128,37 +128,33 @@ const findLatestBundle = async () => {
 };
 
 const copyDirectoryRecursive = async (src: string, dest: string) => {
-  try {
-    await mkdir(dest, { recursive: true });
-    const entries = await readdir(src, { withFileTypes: true });
+  await mkdir(dest, { recursive: true });
+  const entries = await readdir(src, { withFileTypes: true });
 
-    for (const entry of entries) {
-      const srcPath = join(src, entry.name);
-      const destPath = join(dest, entry.name);
+  for (const entry of entries) {
+    const srcPath = join(src, entry.name);
+    const destPath = join(dest, entry.name);
 
-      if (entry.isDirectory()) {
-        await copyDirectoryRecursive(srcPath, destPath);
-      } else {
-        await copyFile(srcPath, destPath);
-      }
+    if (entry.isDirectory()) {
+      await copyDirectoryRecursive(srcPath, destPath);
+    } else {
+      await copyFile(srcPath, destPath);
     }
-  } catch (error) {
-    console.warn(`Failed to copy directory ${src} to ${dest}: ${(error as Error).message}`);
   }
 };
 
-const updateCommonImages = async () => {
-  console.log("🖼️  Updating common images from latest bundle...");
+const updateCommonImages = async (game: string) => {
+  console.log(`🖼️  Updating ${game} common images from latest bundle...`);
 
-  const latestBundle = await findLatestBundle();
+  const latestBundle = await findLatestBundle(game);
   if (!latestBundle) {
-    console.log("  ⚠️  No compiled game bundle with images found, skipping image update");
+    console.log(`  ⚠️  No compiled ${game} bundle with images found, skipping image update`);
     return;
   }
 
   console.log(`  📦 Found latest bundle: ${latestBundle.version}`);
 
-  const commonImagesDir = join(projectRoot, "assets/game/eu4/common/images");
+  const commonImagesDir = join(projectRoot, "assets/game", game, "common/images");
 
   // Copy subdirectories from latest bundle
   const bundleImagesDir = latestBundle.path;
@@ -168,6 +164,13 @@ const updateCommonImages = async () => {
     if (entry.isDirectory()) {
       const srcPath = join(bundleImagesDir, entry.name);
       const destPath = join(commonImagesDir, entry.name);
+      // EU5 flag shards are authoritative. Replace that directory so a newer
+      // bundle with fewer shards cannot leave stale indexes behind. Other
+      // common image directories contain checked-in fallbacks that an asset
+      // bundle may not include, so they must remain additive.
+      if (game === "eu5" && entry.name === "flags") {
+        await rm(destPath, { recursive: true, force: true });
+      }
       await copyDirectoryRecursive(srcPath, destPath);
       console.log(`  📁 Copied directory: ${entry.name}`);
     }
@@ -179,7 +182,7 @@ const updateCommonImages = async () => {
 // Main script
 async function setupAssets() {
   // Update common images from latest bundle first
-  await updateCommonImages();
+  await updateCommonImages("eu4");
 
   const gitignoreContent = await readFile(join(projectRoot, ".gitignore"), "utf-8");
   const eu4ImagePaths = gitignoreContent
@@ -461,6 +464,20 @@ async function setupAssetEu5() {
   await touchFile(join(versionDir, "game.zip"));
   await touchFile(join(versionDir, "map.zip"));
   await touchFile(join(versionDir, "loc-en.zip"));
+
+  // Sync compiled images (e.g. the flag atlas) from the latest versioned bundle
+  // into the unversioned `common/images` dir the frontend imports from.
+  await updateCommonImages("eu5");
+
+  // The EU5 flags component discovers the alphabetically sharded atlases in
+  // this directory. Lay down one empty shard so asset-free development builds
+  // exercise the same import path as compiled assets.
+  const flagsDir = join(projectRoot, "assets", "game", "eu5", "common", "images", "flags");
+  await mkdir(flagsDir, { recursive: true });
+  for (const webp of ["flags-00_x72.webp", "flags-00_x144.webp"]) {
+    await touchFile(join(flagsDir, webp));
+  }
+  await createFileIfEmpty(join(flagsDir, "flags-00.json"), "{}");
 }
 
 await setupAssets();
