@@ -1,12 +1,9 @@
 import { Sprite, spriteDimension } from "@/components/Sprite";
 import type { SpriteDimension } from "@/components/Sprite";
 import spriteData from "@/images/eu4/advisors/advisors.json";
-import advisor48 from "@/images/eu4/advisors/advisors_x48.webp";
-import advisor64 from "@/images/eu4/advisors/advisors_x64.webp";
-import advisor77 from "@/images/eu4/advisors/advisors_x77.webp";
+import advisors from "@/images/eu4/advisors/advisors.webp";
 
 let dimensions: SpriteDimension | undefined;
-let srcSet: [string, string][] | undefined;
 
 export function AdvisorImage({
   id,
@@ -29,21 +26,16 @@ export function AdvisorImage({
   }
 
   const index = spriteData[id as keyof typeof spriteData];
-  srcSet ??= [
-    [advisor48, `1x`],
-    [advisor64, `1.33x`],
-    [advisor77, `1.60x`],
-  ];
 
   return (
     <Sprite
       {...props}
-      src={advisor48}
-      srcSet={srcSet}
+      src={advisors}
       alt={alt ?? ""}
       dimensions={dimensions}
       index={index}
       scale={size / 48}
+      rendering="smooth"
     />
   );
 }

@@ -1,5 +1,7 @@
 use crate::asset_compilers::PackageOptions;
-use crate::images::{Color, Geometry, MontageRequest, OutputFormat, WebpQuality};
+use crate::images::{
+    Color, Geometry, MontageRequest, MontageSizing, OutputFormat, ScaleFilter, WebpQuality,
+};
 use crate::{FileProvider, ImageProcessor};
 use anyhow::Result;
 use eu5app::game_data::{
@@ -201,7 +203,10 @@ where
             format: OutputFormat::Webp {
                 quality: WebpQuality::Lossless,
             },
-            geometries: vec![Geometry::new(32, 32), Geometry::new(128, 128)],
+            sizing: MontageSizing::Scaled {
+                sizes: vec![Geometry::new(32, 32), Geometry::new(128, 128)],
+                filter: ScaleFilter::Point,
+            },
             background: Some(Color::Transparent),
             additional_args: vec![],
         })?;
