@@ -11,7 +11,6 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
-#[command(propagate_version = true)]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,

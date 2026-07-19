@@ -19,6 +19,10 @@ use std::collections::{HashMap, HashSet};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
+// Empirically, q88 is the knee where higher quality adds substantially more
+// bytes than fidelity across both continuous-tone and transparent atlases.
+const MONTAGE_WEBP_QUALITY: u8 = 88;
+
 struct GameData<'a> {
     countries: &'a [Country],
     trade_companies: &'a HashMap<String, String>,
@@ -230,7 +234,7 @@ where
             images: &sprite_images,
             output_path: image_out_dir.join("investments.webp"),
             format: crate::images::OutputFormat::Webp {
-                quality: crate::images::WebpQuality::Quality(90),
+                quality: crate::images::WebpQuality::Quality(MONTAGE_WEBP_QUALITY),
             },
             sizing: crate::images::MontageSizing::Native,
             background: None,
@@ -317,7 +321,7 @@ where
             images: &personalities_order,
             output_path: image_out_dir.join("personalities.webp"),
             format: crate::images::OutputFormat::Webp {
-                quality: crate::images::WebpQuality::Quality(90),
+                quality: crate::images::WebpQuality::Quality(MONTAGE_WEBP_QUALITY),
             },
             sizing: crate::images::MontageSizing::Native,
             background: Some(crate::images::Color::Transparent),
@@ -380,7 +384,7 @@ where
             images: &advisors_montage,
             output_path: image_out_dir.join("advisors.webp"),
             format: crate::images::OutputFormat::Webp {
-                quality: crate::images::WebpQuality::Quality(90),
+                quality: crate::images::WebpQuality::Quality(MONTAGE_WEBP_QUALITY),
             },
             // The UI displays advisors at 32px or 48px; generate one atlas at
             // the native 77px size and let the browser downscale it.
@@ -694,7 +698,7 @@ where
         images: &flags_with_paths,
         output_path: base_flag_path.join("flags.webp"),
         format: crate::images::OutputFormat::Webp {
-            quality: crate::images::WebpQuality::Quality(90),
+            quality: crate::images::WebpQuality::Quality(MONTAGE_WEBP_QUALITY),
         },
         sizing: crate::images::MontageSizing::Scaled {
             sizes: vec![
@@ -756,7 +760,7 @@ where
         images: &achieves,
         output_path: base_achievements_path.join("achievements.webp"),
         format: crate::images::OutputFormat::Webp {
-            quality: crate::images::WebpQuality::Quality(90),
+            quality: crate::images::WebpQuality::Quality(MONTAGE_WEBP_QUALITY),
         },
         sizing: crate::images::MontageSizing::Scaled {
             sizes: vec![crate::images::Geometry::new(64, 64)],
@@ -850,7 +854,7 @@ where
         images: &western_buildings,
         output_path: base_path.join("westerngfx.webp"),
         format: crate::images::OutputFormat::Webp {
-            quality: crate::images::WebpQuality::Quality(90),
+            quality: crate::images::WebpQuality::Quality(MONTAGE_WEBP_QUALITY),
         },
         sizing: crate::images::MontageSizing::Native,
         background: Some(crate::images::Color::White),
@@ -863,7 +867,7 @@ where
         images: &global_buildings,
         output_path: base_path.join("global.webp"),
         format: crate::images::OutputFormat::Webp {
-            quality: crate::images::WebpQuality::Quality(90),
+            quality: crate::images::WebpQuality::Quality(MONTAGE_WEBP_QUALITY),
         },
         sizing: crate::images::MontageSizing::Native,
         background: Some(crate::images::Color::White),

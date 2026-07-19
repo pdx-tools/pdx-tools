@@ -5,9 +5,9 @@ use super::{
 use crate::images::ImageError;
 use anyhow::{Context, Result, bail, ensure};
 use std::fs;
-use std::io::{BufWriter, Write};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 /// Creates an ImageMagick command with the given subcommand.
 /// Automatically handles both ImageMagick 7+ ("magick <subcommand>") and ImageMagick 6 ("<subcommand>") installations.
@@ -325,31 +325,8 @@ impl ImageProcessor for ImageMagickProcessor {
                 cmd.arg(color_to_string(color));
             }
 
-            // Output format settings
-            match &request.format {
-                OutputFormat::Webp { quality } => match quality {
-                    WebpQuality::Lossless => {
-                        cmd.arg("-define");
-                        cmd.arg("webp:lossless=true");
-                    }
-                    WebpQuality::Quality(q) => {
-                        cmd.arg("-quality");
-                        cmd.arg(q.to_string());
-
-                        // Deblocking smooths across block boundaries, which in
-                        // an atlas are the seams between sprites, leaving each
-                        // one fringed with its neighbors.
-                        cmd.arg("-define");
-                        cmd.arg("webp:filter-strength=0");
-                    }
-                },
-                OutputFormat::Png => {
-                    // PNG doesn't need special args
-                }
-                OutputFormat::Raw => {
-                    // Raw format not supported for montage
-                    bail!("Raw format is not supported for montage operations");
-                }
+            if matches!(request.format, OutputFormat::Raw) {
+                bail!("Raw format is not supported for montage operations");
             }
 
             // Determine output path with or without size suffix
@@ -366,21 +343,97 @@ impl ImageProcessor for ImageMagickProcessor {
 
             // Input files from response file
             cmd.arg(format!("@{}", response_file.path().display()));
-            cmd.arg(&output_path);
+            match &request.format {
+                OutputFormat::Webp { quality } => {
+                    // PAM is an uncompressed, self-describing RGBA stream.
+                    // It avoids both a temporary file and the encode/decode
+                    // overhead of using PNG as an intermediate format.
+                    cmd.arg("pam:-");
+                    cmd.stdout(Stdio::piped());
+                    cmd.stderr(Stdio::piped());
+                    let mut child = cmd.spawn().context("unable to start ImageMagick montage")?;
+                    let stdout = child
+                        .stdout
+                        .take()
+                        .context("unable to read montage output")?;
+                    let mut stderr = child
+                        .stderr
+                        .take()
+                        .context("unable to read ImageMagick errors")?;
+                    let stderr_task = std::thread::spawn(move || {
+                        let mut contents = Vec::new();
+                        stderr.read_to_end(&mut contents).map(|_| contents)
+                    });
+                    let decoded = image::codecs::pnm::PnmDecoder::new(BufReader::new(stdout))
+                        .and_then(image::DynamicImage::from_decoder)
+                        .map(image::DynamicImage::into_rgba8);
+                    let status = child.wait()?;
+                    let stderr = stderr_task
+                        .join()
+                        .map_err(|_| anyhow::anyhow!("ImageMagick stderr reader panicked"))??;
 
-            let output = cmd.output()?;
+                    if !status.success() {
+                        return Err(ImageError::ImageMagickFailed {
+                            command: "montage".to_string(),
+                            stderr: String::from_utf8_lossy(&stderr).to_string(),
+                        }
+                        .into());
+                    }
 
-            if !output.status.success() {
-                return Err(ImageError::ImageMagickFailed {
-                    command: "montage".to_string(),
-                    stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+                    let image = decoded.context("unable to decode ImageMagick montage output")?;
+                    encode_webp(&image, &output_path, quality)?;
                 }
-                .into());
+                OutputFormat::Png => {
+                    cmd.arg(&output_path);
+                    let output = cmd.output()?;
+                    if !output.status.success() {
+                        return Err(ImageError::ImageMagickFailed {
+                            command: "montage".to_string(),
+                            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+                        }
+                        .into());
+                    }
+                }
+                OutputFormat::Raw => unreachable!(),
             }
         }
 
         Ok(())
     }
+}
+
+fn encode_webp(
+    image: &image::RgbaImage,
+    output_path: &std::path::Path,
+    quality: &WebpQuality,
+) -> Result<()> {
+    let encoder = webp::Encoder::from_rgba(image.as_raw(), image.width(), image.height());
+
+    let encoded = match quality {
+        WebpQuality::Lossless => encoder.encode_simple(true, 75.0).map_err(|error| {
+            anyhow::anyhow!("unable to encode lossless WebP montage: {error:?}")
+        })?,
+        WebpQuality::Quality(quality) => {
+            ensure!(*quality <= 100, "WebP quality must be between 0 and 100");
+            let mut config = webp::WebPConfig::new()
+                .map_err(|_| anyhow::anyhow!("unable to create WebP config"))?;
+            config.quality = f32::from(*quality);
+            // Filtering can blend pixels across neighboring sprites in an
+            // atlas, causing visible fringes when individual cells are drawn.
+            config.filter_strength = 0;
+            // Preserve saturated, high-contrast sprite edges during WebP's
+            // RGB-to-YUV conversion. Encoding is slower, but these are static
+            // build assets and the visual improvement is substantial.
+            config.use_sharp_yuv = 1;
+            encoder.encode_advanced(&config).map_err(|error| {
+                anyhow::anyhow!("unable to encode lossy WebP montage: {error:?}")
+            })?
+        }
+    };
+
+    fs::write(output_path, &*encoded)
+        .with_context(|| format!("unable to write montage: {}", output_path.display()))?;
+    Ok(())
 }
 
 /// ImageMagick response file that gets deleted when dropped
@@ -450,5 +503,42 @@ fn color_to_string(color: &Color) -> String {
         Color::Transparent => "transparent".to_string(),
         Color::White => "white".to_string(),
         Color::Black => "black".to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn montage_webp_quality_controls_encoded_output() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let source_path = temp.path().join("gradient.png");
+        let source = image::RgbaImage::from_fn(128, 128, |x, y| {
+            image::Rgba([x as u8, y as u8, (x ^ y) as u8, 255])
+        });
+        source.save(&source_path)?;
+        let images = vec![("gradient".to_string(), source_path)];
+        let processor = ImageMagickProcessor::create()?;
+
+        let encode = |quality, name: &str| -> Result<PathBuf> {
+            let output_path = temp.path().join(name);
+            processor.montage(MontageRequest {
+                images: &images,
+                output_path: output_path.clone(),
+                format: OutputFormat::Webp {
+                    quality: WebpQuality::Quality(quality),
+                },
+                sizing: MontageSizing::Native,
+                background: Some(Color::Transparent),
+                additional_args: vec![],
+            })?;
+            Ok(output_path)
+        };
+
+        let low = encode(20, "low.webp")?;
+        let high = encode(90, "high.webp")?;
+        assert!(fs::metadata(low)?.len() < fs::metadata(high)?.len());
+        Ok(())
     }
 }
